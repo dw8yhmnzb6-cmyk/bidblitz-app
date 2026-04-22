@@ -17,6 +17,75 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Push notification received
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push received:', event);
+  
+  let data = {
+    title: 'BidBlitz Benachrichtigung',
+    body: 'Neue Nachricht erhalten',
+    icon: '/logo192.png',
+    badge: '/logo192.png',
+    tag: 'default',
+    data: {}
+  };
+  
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+  
+  const options = {
+    body: data.body,
+    icon: data.icon || '/logo192.png',
+    badge: data.badge || '/logo192.png',
+    tag: data.tag || 'default',
+    data: data.data || {},
+    requireInteraction: data.tag === 'sos_alert', // SOS stays on screen
+    vibrate: data.tag === 'sos_alert' ? [200, 100, 200, 100, 200] : [100, 50, 100],
+    actions: data.tag === 'sos_alert' ? [
+      { action: 'view', title: 'Standort öffnen', icon: '/logo192.png' },
+      { action: 'close', title: 'Schließen', icon: '/logo192.png' }
+    ] : []
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Notification clicked
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification clicked:', event);
+  
+  event.notification.close();
+  
+  const urlToOpen = event.notification.data?.url || '/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Check if app is already open
+      for (const client of clientList) {
+        if (client.url === new URL(urlToOpen, self.location.origin).href && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Open new window/tab
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
+
 // Activate event - clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(

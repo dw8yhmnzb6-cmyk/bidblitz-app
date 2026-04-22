@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check } from "lucide-react";
+import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Camera, Plus, Edit2 } from "lucide-react";
+import { toast } from "sonner";
 const API = process.env.REACT_APP_BACKEND_URL;
+
+const DAILY_FREE_SWIPES = 20; // Bumble-style limit
 
 export default function DatingPage({ onBack }) {
   const [profiles, setProfiles] = useState([]);
@@ -11,18 +14,75 @@ export default function DatingPage({ onBack }) {
   const [tab, setTab] = useState("discover");
   const [matchPopup, setMatchPopup] = useState(false);
   const [dir, setDir] = useState(null);
+  const [swipesLeft, setSwipesLeft] = useState(DAILY_FREE_SWIPES);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
 
   useEffect(()=>{load();},[]);
-  const load = async()=>{try{const[r1,r2]=await Promise.all([fetch(`${API}/api/dating/discover`,{credentials:"include"}),fetch(`${API}/api/dating/matches`,{credentials:"include"}).catch(()=>({ok:false}))]);const d1=await r1.json();setProfiles(d1.profiles||[]);if(r2.ok){const d2=await r2.json();setMatches(d2.matches||[]);}}catch{}setLoading(false);};
+  const load = async()=>{
+    try{
+      // Load user profile
+      const profileRes = await fetch(`${API}/api/dating/profile/me`, {credentials:"include"});
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+        setUserProfile(profileData.profile);
+        setIsPremium(profileData.profile?.premium || false);
+        
+        // Check swipes left today
+        const swipesRes = await fetch(`${API}/api/dating/swipes-left`, {credentials:"include"});
+        if (swipesRes.ok) {
+          const swipesData = await swipesRes.json();
+          setSwipesLeft(swipesData.swipes_left);
+        }
+      } else {
+        // No profile yet - show setup
+        setShowProfileSetup(true);
+      }
+      
+      const[r1,r2]=await Promise.all([
+        fetch(`${API}/api/dating/discover`,{credentials:"include"}),
+        fetch(`${API}/api/dating/matches`,{credentials:"include"}).catch(()=>({ok:false}))
+      ]);
+      const d1=await r1.json();
+      setProfiles(d1.profiles||[]);
+      if(r2.ok){const d2=await r2.json();setMatches(d2.matches||[]);}
+    }catch{}
+    setLoading(false);
+  };
 
   const action = async(type)=>{
     const p=profiles[idx]; if(!p)return;
+    
+    // Check swipe limit (free users only)
+    if (!isPremium && swipesLeft <= 0 && type !== "pass") {
+      setShowPaywall(true);
+      return;
+    }
+    
     setDir(type==="like"?"right":"left");
     try{
-      if(type==="like"){const r=await fetch(`${API}/api/dating/like`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile_id:p.profile_id})});if(r.ok){const d=await r.json();if(d.match)setMatchPopup(true);}}
-      else{await fetch(`${API}/api/dating/pass`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile_id:p.profile_id})});}
+      if(type==="like"){
+        const r=await fetch(`${API}/api/dating/like`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile_id:p.profile_id})});
+        if(r.ok){
+          const d=await r.json();
+          if(d.match)setMatchPopup(true);
+          if(!isPremium) setSwipesLeft(s => Math.max(0, s - 1));
+        }
+      }
+      else{
+        await fetch(`${API}/api/dating/pass`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile_id:p.profile_id})});
+      }
     }catch{}
     setTimeout(()=>{setIdx(i=>i+1);setDir(null);},300);
+  };
+
+  const upgradeToPremium = () => {
+    toast.success("Premium aktiviert! ∞ Swipes freigeschaltet");
+    setIsPremium(true);
+    setShowPaywall(false);
+    setSwipesLeft(999);
   };
 
   const current = profiles[idx];
@@ -32,9 +92,30 @@ export default function DatingPage({ onBack }) {
       <div className="px-4 pt-4 pb-3 flex items-center gap-3">
         <button onClick={onBack} className="w-10 h-10 rounded-full flex items-center justify-center" style={{background:"var(--bg-card,#111)"}} data-testid="dat-back"><ArrowLeft size={20} style={{color:"var(--text-primary,#fff)"}}/></button>
         <h1 className="text-lg font-bold" style={{color:"var(--text-primary,#fff)"}}>Dating</h1>
+        
+        {/* Swipe Counter */}
+        {!isPremium && tab === "discover" && (
+          <div className="ml-2 px-3 py-1 rounded-full flex items-center gap-1.5" style={{background:"rgba(236,72,153,0.15)"}}>
+            <Heart size={12} className="text-pink-400"/>
+            <span className="text-xs font-bold text-pink-400">{swipesLeft}/{DAILY_FREE_SWIPES}</span>
+          </div>
+        )}
+        
+        {isPremium && (
+          <div className="ml-2 px-3 py-1 rounded-full flex items-center gap-1" style={{background:"linear-gradient(135deg, #FFD700, #FFA500)"}}>
+            <Crown size={12} className="text-black"/>
+            <span className="text-xs font-bold text-black">Premium</span>
+          </div>
+        )}
+        
         <div className="ml-auto flex gap-1 p-1 rounded-xl" style={{background:"var(--bg-card,#111)"}}>
           {[{id:"discover",label:"Entdecken"},{id:"matches",label:"Matches"}].map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{background:tab===t.id?"#EC4899":"transparent",color:tab===t.id?"#fff":"var(--text-secondary,#888)"}} data-testid={`dat-tab-${t.id}`}>{t.label}</button>))}
         </div>
+        
+        {/* Profile Edit Button */}
+        <button onClick={()=>setShowProfileSetup(true)} className="w-9 h-9 rounded-full flex items-center justify-center" style={{background:"var(--bg-card,#111)"}}>
+          <Edit2 size={16} style={{color:"var(--text-primary,#fff)"}}/>
+        </button>
       </div>
 
       {tab==="discover"?(
@@ -82,6 +163,47 @@ export default function DatingPage({ onBack }) {
             <h2 className="text-3xl font-bold text-white mb-2">It's a Match!</h2>
             <p className="text-white/70">Ihr mögt euch gegenseitig!</p>
             <button onClick={()=>setMatchPopup(false)} className="mt-6 px-6 py-3 rounded-xl font-semibold text-sm" style={{background:"#EC4899",color:"white"}} data-testid="dat-match-close">Nachricht senden</button>
+          </motion.div>
+        </motion.div>
+      )}</AnimatePresence>
+      
+      {/* 💰 PAYWALL MODAL (Tinder/Bumble Style) */}
+      <AnimatePresence>{showPaywall&&(
+        <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+          <motion.div initial={{scale:0.9,y:20}} animate={{scale:1,y:0}} exit={{scale:0.9,y:20}} className="w-full max-w-md rounded-3xl p-8 text-center" style={{background:"linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)",border:"2px solid rgba(236,72,153,0.3)"}}>
+            <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{background:"linear-gradient(135deg, #FFD700, #FFA500)"}}>
+              <Crown size={40} className="text-black"/>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-3">Gratis-Swipes aufgebraucht!</h2>
+            <p className="text-gray-400 text-sm mb-6">Du hast heute {DAILY_FREE_SWIPES} Swipes verwendet. Upgrade zu Premium für unbegrenzte Swipes!</p>
+            
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3 text-left">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:"rgba(16,185,129,0.2)"}}><Check size={16} className="text-green-400"/></div>
+                <span className="text-sm text-white">∞ Unbegrenzte Swipes</span>
+              </div>
+              <div className="flex items-center gap-3 text-left">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:"rgba(59,130,246,0.2)"}}><Star size={16} className="text-blue-400"/></div>
+                <span className="text-sm text-white">5 Super Likes pro Tag</span>
+              </div>
+              <div className="flex items-center gap-3 text-left">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:"rgba(236,72,153,0.2)"}}><Sparkles size={16} className="text-pink-400"/></div>
+                <span className="text-sm text-white">Siehe wer dich geliked hat</span>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <button onClick={upgradeToPremium} className="w-full py-4 rounded-2xl font-bold text-black" style={{background:"linear-gradient(135deg, #FFD700, #FFA500)"}}>
+                <Crown size={18} className="inline mr-2"/>Premium für €9,99/Monat
+              </button>
+              <button onClick={()=>setShowPaywall(false)} className="w-full py-3 rounded-xl font-medium text-white" style={{background:"rgba(255,255,255,0.05)"}}>
+                Morgen wiederkommen (kostenlos)
+              </button>
+            </div>
+            
+            <p className="text-xs text-gray-600 mt-4">
+              Swipes werden um 00:00 Uhr zurückgesetzt
+            </p>
           </motion.div>
         </motion.div>
       )}</AnimatePresence>
