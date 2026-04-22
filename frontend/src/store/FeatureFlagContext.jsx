@@ -36,7 +36,7 @@ export function FeatureFlagProvider({ children }) {
   const refreshFlags = loadFlags;
 
   return (
-    <FeatureFlagContext.Provider value={{ flags, isEnabled, loaded, refreshFlags }}>
+    <FeatureFlagContext.Provider value={React.useMemo(() => ({ flags, isEnabled, loaded, refreshFlags }), [flags, isEnabled, loaded, refreshFlags])}>
       {children}
     </FeatureFlagContext.Provider>
   );

@@ -65,7 +65,7 @@ export function I18nProvider({ children }) {
   }, [lang]);
 
   return (
-    <I18nContext.Provider value={{ lang, setLang, t, LANGUAGES }}>
+    <I18nContext.Provider value={React.useMemo(() => ({ lang, setLang, t, LANGUAGES }), [lang, setLang, t])}>
       {children}
     </I18nContext.Provider>
   );

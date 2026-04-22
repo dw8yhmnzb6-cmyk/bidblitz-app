@@ -168,7 +168,7 @@ export function MerchantProvider({ children }) {
     return state.payments.map((p) => ({ ...p, time: formatRelativeTime(p.date) }));
   }, [state.payments]);
 
-  const value = {
+  const value = React.useMemo(() => ({
     id: state.id,
     businessName: state.businessName,
     totalEarnings: state.totalEarnings,
@@ -187,7 +187,7 @@ export function MerchantProvider({ children }) {
     cancelPaymentRequest,
     getPaymentsWithRelativeTime,
     refreshDashboard,
-  };
+  }), [state, receivePayment, createPaymentRequest, updatePaymentRequest, cancelPaymentRequest, getPaymentsWithRelativeTime, refreshDashboard]);
 
   return <MerchantContext.Provider value={value}>{children}</MerchantContext.Provider>;
 }

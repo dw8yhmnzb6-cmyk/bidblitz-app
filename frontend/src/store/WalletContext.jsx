@@ -152,7 +152,7 @@ export function WalletProvider({ children }) {
 
   const canAfford = useCallback((amount) => state.balance >= Math.abs(amount), [state.balance]);
 
-  const value = {
+  const value = React.useMemo(() => ({
     balance: state.balance,
     currency: state.currency,
     cardNumber: state.cardNumber,
@@ -167,7 +167,7 @@ export function WalletProvider({ children }) {
     sendMoney,
     canAfford,
     refreshWallet,
-  };
+  }), [state, addMoney, pay, sendMoney, canAfford, refreshWallet]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
