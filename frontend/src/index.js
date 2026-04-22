@@ -4,18 +4,26 @@ import "@/index.css";
 import App from "@/App";
 
 // ═══════════════════════════════════════════════════
-// PWA SERVICE WORKER REGISTRATION
+// PWA SERVICE WORKER REGISTRATION - DISABLED FOR DEBUGGING
 // ═══════════════════════════════════════════════════
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
-      });
+  // FORCE UNREGISTER ALL SERVICE WORKERS TO FIX CACHE ISSUE
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for(let registration of registrations) {
+      registration.unregister();
+      console.log('SW unregistered:', registration.scope);
+    }
   });
+  
+  // Clear all caches
+  if ('caches' in window) {
+    caches.keys().then(function(names) {
+      for (let name of names) {
+        caches.delete(name);
+        console.log('Cache deleted:', name);
+      }
+    });
+  }
 }
 
 // Block any auto-injected testing overlays/panels from platform scripts
