@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bidblitz-v2-cache';
+const CACHE_NAME = 'bidblitz-v3-cache';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
