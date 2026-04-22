@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from services.nft_ai_generator import get_nft_generator
 
 router = APIRouter(prefix="/api/nft", tags=["nft"])
 
@@ -298,9 +299,32 @@ async def generate_nft(req: GenerateNFTRequest, request: Request):
     # Generate NFT name
     nft_name = generate_nft_name(req.style_id, rarity)
     
-    # Select image (mock - in real system would generate)
-    style_images = NFT_IMAGES.get(req.style_id, NFT_IMAGES["abstract"])
-    image_url = random.choice(style_images)
+    # ✨ AI Image Generation with Gemini Nano Banana ✨
+    try:
+        nft_id_temp = secrets.token_hex(8)
+        ai_generator = get_nft_generator()
+        
+        # Generate unique NFT artwork
+        generation_result = await ai_generator.generate_nft_image(
+            style_id=req.style_id,
+            rarity=rarity,
+            custom_prompt=req.custom_prompt
+        )
+        
+        if not generation_result.get("success"):
+            # Fallback to Unsplash if AI generation fails
+            style_images = NFT_IMAGES.get(req.style_id, NFT_IMAGES["abstract"])
+            image_url = random.choice(style_images)
+        else:
+            # Save AI-generated image
+            image_url = await ai_generator.save_image_to_storage(
+                generation_result["image_base64"],
+                nft_id_temp
+            )
+    except Exception as e:
+        # Fallback to Unsplash on any error
+        style_images = NFT_IMAGES.get(req.style_id, NFT_IMAGES["abstract"])
+        image_url = random.choice(style_images)
     
     # Create NFT record
     nft = {

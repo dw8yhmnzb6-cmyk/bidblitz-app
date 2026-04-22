@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 
@@ -733,6 +734,14 @@ def start_credit_autopay_loop():
                 await _asyncio_loop.sleep(60)
 
     _asyncio_loop.get_event_loop().create_task(_credit_loop())
+
+
+
+# ── Static Files for NFT Images ──
+import os
+static_dir = Path(__file__).parent / "static"
+static_dir.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 # ── Startup ──
