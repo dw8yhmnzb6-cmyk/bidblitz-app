@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from services.sabre_client import sabre_client, SabreApiError, sabre_environment
+from data.airports import search_airports, AIRPORTS
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,21 @@ async def sabre_status():
         }
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Sabre unreachable: {e}")
+
+
+@router.get("/airports/search")
+async def airports_search(q: str = Query("", description="Search query (city name, IATA code, country)"),
+                           limit: int = Query(12, ge=1, le=50)):
+    """Autocomplete airport/city search (works with just 2+ characters)."""
+    if len(q.strip()) < 2:
+        # Return popular airports as default
+        popular = ["FRA", "MUC", "BER", "HAM", "VIE", "ZRH", "PRN", "TIA", "IST", "DXB",
+                   "JFK", "LAX", "LHR", "CDG", "AMS", "MAD", "BCN", "FCO"]
+        return {
+            "ok": True,
+            "airports": [a for a in AIRPORTS if a["code"] in popular][:limit],
+        }
+    return {"ok": True, "airports": search_airports(q, limit)}
 
 
 @router.post("/flights/search")
