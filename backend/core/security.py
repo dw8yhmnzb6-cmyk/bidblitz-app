@@ -129,3 +129,36 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+
+async def get_current_user_from_token(token: str) -> dict:
+    """Validate JWT token and return user (for WebSocket authentication)."""
+    if not token:
+        raise HTTPException(status_code=401, detail="Token required")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_ref = payload.get("sub") or payload.get("user_id")
+        if not user_ref:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        
+        token_type = payload.get("type")
+        if token_type and token_type != "access":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        
+        # Try ObjectId lookup first (V2), then UUID string lookup (V1)
+        user = None
+        try:
+            user = await db.users.find_one({"_id": ObjectId(user_ref)})
+        except Exception:
+            pass
+        if not user:
+            user = await db.users.find_one({"id": user_ref})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")

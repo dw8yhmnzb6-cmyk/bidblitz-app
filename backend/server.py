@@ -310,7 +310,9 @@ app.include_router(restaurant_dashboard_router)
 
 # Kids GPS & Safety System
 from routes.kids_gps import router as kids_gps_router
+from routes.kids_gps_websocket import router as kids_gps_ws_router
 app.include_router(kids_gps_router)
+app.include_router(kids_gps_ws_router)
 
 # Gaming Platform
 from routes.gaming import router as gaming_router

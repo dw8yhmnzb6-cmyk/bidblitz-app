@@ -202,6 +202,20 @@ async def update_child_location(loc: LocationUpdate, request: Request):
     # Check zones
     await check_zones_for_child(parent_id, loc.child_id, child.get("name", "Kind"), loc.lat, loc.lng)
     
+    # Broadcast to WebSocket clients (if any connected)
+    try:
+        from routes.kids_gps_websocket import notify_location_update
+        await notify_location_update(parent_id, loc.child_id, {
+            "name": child.get("name"),
+            "lat": loc.lat,
+            "lng": loc.lng,
+            "battery_level": loc.battery_level,
+            "speed": loc.speed,
+            "last_update": now.isoformat(),
+        })
+    except:
+        pass  # WebSocket notification is optional
+    
     return {"ok": True, "timestamp": now.isoformat()}
 
 
