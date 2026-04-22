@@ -5,6 +5,7 @@ import "@/App.css";
 
 import { AppProvider, useUser, useI18n } from "./store";
 import { ThemeProvider, useTheme } from "./store/ThemeContext";
+import FloatingChatbot from "./components/FloatingChatbot";
 
 import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
@@ -803,6 +804,8 @@ function AppContent() {
       {showOnboarding && !user.isAuthenticated && (
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
+      {/* AI Chatbot */}
+      {user.isAuthenticated && <FloatingChatbot />}
     </div>
   );
 }

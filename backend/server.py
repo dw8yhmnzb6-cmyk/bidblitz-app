@@ -397,6 +397,12 @@ app.include_router(merchant_portal_router)
 from routes.kids_app import router as kids_app_router
 app.include_router(kids_app_router)
 
+
+
+# AI Chatbot
+from routes.ai_chatbot import router as ai_chatbot_router
+app.include_router(ai_chatbot_router, prefix="/api/chatbot", tags=["chatbot"])
+
 from routes.email_marketing import router as email_marketing_router
 app.include_router(email_marketing_router)
 
