@@ -147,8 +147,9 @@ export function UserProvider({ children }) {
         return '2fa_required';
       }
       
-      // CRITICAL FIX: Ensure we only pass plain JSON object (not Response)
-      const userData = response.user ? { ...response.user } : { ...response };
+      // CRITICAL FIX v2: Deep clone via JSON to ensure plain object (removes all non-serializable data)
+      const rawData = response.user || response;
+      const userData = JSON.parse(JSON.stringify(rawData));
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: userData });
       return true;
     } catch (err) {
