@@ -1,15 +1,29 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Search, Zap, BatteryCharging, MapPin, Star, Plug, CheckCircle, CircleStop, Wallet, Receipt, Clock, TrendingUp, X, ChevronRight, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Search, Zap, BatteryCharging, MapPin, Star, Plug, CheckCircle, CircleStop, Wallet, Receipt, Clock, TrendingUp, X, ChevronRight, AlertTriangle, Filter, Map as MapIcon, List } from "lucide-react";
+import LeafletChargingMap from "../components/LeafletChargingMap";
+
 const API = process.env.REACT_APP_BACKEND_URL;
 const STATUS_COLORS = {available:"#10B981",occupied:"#F59E0B",offline:"#EF4444"};
 const STATUS_LABELS = {available:"Verfügbar",occupied:"Belegt",offline:"Offline"};
+
+const CONNECTOR_TYPES = ["CCS", "CHAdeMO", "Typ 2", "Tesla"];
+const POWER_RANGES = [
+  { label: "Alle", min: 0, max: 999 },
+  { label: "22 kW (AC)", min: 0, max: 30 },
+  { label: "50-150 kW", min: 50, max: 150 },
+  { label: "150+ kW (HPC)", min: 150, max: 999 },
+];
 
 export default function LadesaeulenPage({ onBack }) {
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [connectorFilter, setConnectorFilter] = useState("");
+  const [powerRange, setPowerRange] = useState(POWER_RANGES[0]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState("list"); // list | map
   const [selected, setSelected] = useState(null);
   const [charging, setCharging] = useState(null);
   const [receipt, setReceipt] = useState(null);
@@ -20,9 +34,24 @@ export default function LadesaeulenPage({ onBack }) {
   const [timer, setTimer] = useState(0);
   const timerRef = useRef(null);
 
-  useEffect(()=>{load(); loadWallet(); checkActive();},[typeFilter]);
+  useEffect(()=>{load(); loadWallet(); checkActive();},[typeFilter, connectorFilter]);
 
-  const load = async()=>{try{const p=typeFilter?`?type=${typeFilter}`:"";const r=await fetch(`${API}/api/ladesaeulen/stations${p}`);const d=await r.json();setStations(d.stations||[]);}catch{}setLoading(false);};
+  const load = async()=>{
+    try{
+      const params = new URLSearchParams();
+      if(typeFilter) params.set("type", typeFilter);
+      if(connectorFilter) params.set("connector", connectorFilter);
+      const r=await fetch(`${API}/api/ladesaeulen/stations?${params}`);
+      const d=await r.json();
+      let filtered = d.stations || [];
+      // Client-side power filter
+      if(powerRange.min > 0 || powerRange.max < 999) {
+        filtered = filtered.filter(s => s.power_kw >= powerRange.min && s.power_kw <= powerRange.max);
+      }
+      setStations(filtered);
+    }catch{}
+    setLoading(false);
+  };
 
   const loadWallet = async()=>{try{const r=await fetch(`${API}/api/auth/me`,{credentials:"include"});if(r.ok){const d=await r.json();setWalletBalance(d.balance);}}catch{}};
 
@@ -195,15 +224,72 @@ export default function LadesaeulenPage({ onBack }) {
 
         {tab==="stations"&&(
           <>
+            {/* View Mode Toggle & Filter Button */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex gap-1 p-1 rounded-xl" style={{background:"var(--bg-card,#111)"}}>
+                <button onClick={()=>setViewMode("list")} className="px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-medium" style={{background:viewMode==="list"?"#10B981":"transparent",color:viewMode==="list"?"#000":"#888"}}>
+                  <List size={12}/> Liste
+                </button>
+                <button onClick={()=>setViewMode("map")} className="px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-medium" style={{background:viewMode==="map"?"#10B981":"transparent",color:viewMode==="map"?"#000":"#888"}}>
+                  <MapIcon size={12}/> Karte
+                </button>
+              </div>
+              <button onClick={()=>setShowFilters(!showFilters)} className="flex-1 px-3 py-1.5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-medium" style={{background:showFilters?"rgba(16,185,129,0.15)":"var(--bg-card,#111)",color:showFilters?"#10B981":"#888",border:showFilters?"1px solid rgba(16,185,129,0.3)":"none"}}>
+                <Filter size={12}/> Filter {(connectorFilter || powerRange.min > 0) && "●"}
+              </button>
+            </div>
+            
+            {/* Search */}
             <div className="relative mb-3"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{color:"var(--text-secondary,#666)"}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Station oder Stadt suchen..." className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm" style={{background:"var(--bg-card,#111)",color:"var(--text-primary,#fff)",border:"1px solid rgba(255,255,255,0.06)"}} data-testid="ev-search"/></div>
-            <div className="flex gap-2">{[{id:"",label:"Alle"},{id:"DC",label:"DC Schnell"},{id:"HPC",label:"HPC 350kW"},{id:"AC",label:"AC 22kW"}].map(t=>(<button key={t.id} onClick={()=>setTypeFilter(t.id)} className="px-3 py-1.5 rounded-full text-xs font-medium shrink-0" style={{background:typeFilter===t.id?"#10B981":"var(--bg-card,#111)",color:typeFilter===t.id?"#000":"var(--text-secondary,#aaa)"}} data-testid={`ev-type-${t.id||"all"}`}>{t.label}</button>))}</div>
+            
+            {/* Quick Type Filter */}
+            <div className="flex gap-2 mb-3">{[{id:"",label:"Alle"},{id:"DC",label:"DC Schnell"},{id:"HPC",label:"HPC 350kW"},{id:"AC",label:"AC 22kW"}].map(t=>(<button key={t.id} onClick={()=>setTypeFilter(t.id)} className="px-3 py-1.5 rounded-full text-xs font-medium shrink-0" style={{background:typeFilter===t.id?"#10B981":"var(--bg-card,#111)",color:typeFilter===t.id?"#000":"var(--text-secondary,#aaa)"}} data-testid={`ev-type-${t.id||"all"}`}>{t.label}</button>))}</div>
+            
+            {/* Advanced Filters Panel */}
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} className="mb-3 overflow-hidden">
+                  <div className="rounded-xl p-3 space-y-3" style={{background:"var(--bg-card,#111)",border:"1px solid rgba(255,255,255,0.05)"}}>
+                    {/* Connector Filter */}
+                    <div>
+                      <label className="text-[10px] font-semibold uppercase mb-2 block" style={{color:"#10B981"}}>Anschlusstyp</label>
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={()=>setConnectorFilter("")} className="px-3 py-1 rounded-full text-[11px] font-medium" style={{background:connectorFilter===""?"rgba(16,185,129,0.2)":"rgba(255,255,255,0.05)",color:connectorFilter===""?"#10B981":"#888"}}>Alle</button>
+                        {CONNECTOR_TYPES.map(ct=>(
+                          <button key={ct} onClick={()=>setConnectorFilter(ct)} className="px-3 py-1 rounded-full text-[11px] font-medium" style={{background:connectorFilter===ct?"rgba(16,185,129,0.2)":"rgba(255,255,255,0.05)",color:connectorFilter===ct?"#10B981":"#888"}}>{ct}</button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Power Range Filter */}
+                    <div>
+                      <label className="text-[10px] font-semibold uppercase mb-2 block" style={{color:"#10B981"}}>Leistung</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {POWER_RANGES.map(pr=>(
+                          <button key={pr.label} onClick={()=>setPowerRange(pr)} className="px-3 py-1 rounded-full text-[11px] font-medium" style={{background:powerRange.label===pr.label?"rgba(16,185,129,0.2)":"rgba(255,255,255,0.05)",color:powerRange.label===pr.label?"#10B981":"#888"}}>{pr.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
       </div>
 
       <div className="px-4 space-y-3">
+        {/* ═══ MAP VIEW ═══ */}
+        {tab==="stations" && viewMode==="map" && (
+          <div className="rounded-2xl overflow-hidden border border-white/5" style={{height:"500px"}}>
+            <LeafletChargingMap 
+              stations={filtered} 
+              onStationClick={(station) => setSelected(station)}
+            />
+          </div>
+        )}
+        
         {/* ═══ STATIONS LIST ═══ */}
-        {tab==="stations"&&(loading?<div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{borderColor:"#10B981",borderTopColor:"transparent"}}/></div>:filtered.length===0?<div className="text-center py-20"><BatteryCharging size={48} className="mx-auto mb-3" style={{color:"var(--text-secondary,#444)"}}/><p style={{color:"var(--text-secondary,#888)"}}>Keine Stationen gefunden</p></div>:filtered.map(s=>{const statusColor=STATUS_COLORS[s.status]||"#888";return(
+        {tab==="stations" && viewMode==="list" && (loading?<div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{borderColor:"#10B981",borderTopColor:"transparent"}}/></div>:filtered.length===0?<div className="text-center py-20"><BatteryCharging size={48} className="mx-auto mb-3" style={{color:"var(--text-secondary,#444)"}}/><p style={{color:"var(--text-secondary,#888)"}}>Keine Stationen gefunden</p></div>:filtered.map(s=>{const statusColor=STATUS_COLORS[s.status]||"#888";return(
           <motion.div key={s.station_id} initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} className="rounded-2xl overflow-hidden cursor-pointer" style={{background:"var(--bg-card,#111)",border:"1px solid rgba(255,255,255,0.05)"}} onClick={()=>setSelected(s)} data-testid={`ev-station-${s.station_id}`}>
             <div className="relative"><img src={s.image} alt={s.name} className="w-full h-36 object-cover" loading="lazy"/><span className="absolute top-3 right-3 px-2 py-0.5 rounded text-[10px] font-bold text-white" style={{background:statusColor}}>{STATUS_LABELS[s.status]}</span></div>
             <div className="p-3"><h3 className="text-sm font-semibold" style={{color:"var(--text-primary,#fff)"}}>{s.name}</h3>

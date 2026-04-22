@@ -22,6 +22,7 @@ const FlightSearchPage = ({ onBack }) => {
   const [date, setDate] = useState("");
   const [tClass, setTClass] = useState("economy");
   const [pax, setPax] = useState(1);
+  const [directOnly, setDirectOnly] = useState(false); // NEW: Direct flights filter
   const [selected, setSelected] = useState(null);
   const [myBookings, setMyBookings] = useState([]);
   const [booking, setBooking] = useState(false);
@@ -118,11 +119,20 @@ const FlightSearchPage = ({ onBack }) => {
               className="w-full py-3 rounded-xl bg-[#06B6D4] text-white font-bold text-sm flex items-center justify-center gap-2" data-testid="flight-search-btn">
               <Search size={16} /> Flüge suchen
             </motion.button>
+            
+            {/* NEW: Direct Flights Filter (Google Flights Style) */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={directOnly} onChange={e => setDirectOnly(e.target.checked)} className="w-4 h-4 rounded bg-white/5 border border-white/20 checked:bg-[#06B6D4]" />
+                <span className="text-xs text-gray-400">Nur Direktflüge</span>
+              </label>
+              <p className="text-[9px] text-gray-600">{flights.filter(f => !directOnly || f.stops === 0).length} Ergebnisse</p>
+            </div>
           </div>
 
           {loading && <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-[#06B6D4]" /></div>}
 
-          {!loading && flights.map((f, i) => (
+          {!loading && flights.filter(f => !directOnly || f.stops === 0).map((f, i) => (
             <motion.div key={f.flight_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
               onClick={() => { setSelected(f); setBookResult(null); setError(""); }}
               className="bg-[#111118] rounded-2xl border border-white/5 p-4 cursor-pointer hover:border-white/10" data-testid={`flight-${f.flight_id}`}>

@@ -90,7 +90,10 @@ const SubPage = ({ title, onBack, children }) => (
 );
 
 // ── Profile Sub-page ──
-const ProfileView = ({ user, onBack, t, initialOpenPw }) => {
+const ProfileView = ({ userId, userName, userEmail, userRole, userBalance, userCurrency, userAvatar, userIsPremium, userCreatedAt, onBack, t, initialOpenPw }) => {
+  // Reconstruct user object for internal use
+  const user = { id: userId, name: userName, email: userEmail, role: userRole, balance: userBalance, currency: userCurrency, avatar: userAvatar, isPremium: userIsPremium, created_at: userCreatedAt };
+  
   const { refreshUser } = useUser();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user.name || "");
@@ -769,17 +772,21 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   // Sub-page rendering — only for authenticated users
   if (!isGuest) {
     if (subPage === "profile") {
-      return <ProfileView user={{
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        balance: user.balance,
-        currency: user.currency,
-        avatar: user.avatar,
-        isPremium: user.isPremium,
-        created_at: user.created_at
-      }} onBack={() => { setSubPage(null); setProfileOpenPw(false); }} t={t} initialOpenPw={profileOpenPw} />;
+      // Fix: Pass primitive values directly instead of creating new object
+      return <ProfileView 
+        userId={user.id}
+        userName={user.name}
+        userEmail={user.email}
+        userRole={user.role}
+        userBalance={user.balance}
+        userCurrency={user.currency}
+        userAvatar={user.avatar}
+        userIsPremium={user.isPremium}
+        userCreatedAt={user.created_at}
+        onBack={() => { setSubPage(null); setProfileOpenPw(false); }} 
+        t={t} 
+        initialOpenPw={profileOpenPw} 
+      />;
     }
     if (subPage === "settings") {
       return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
