@@ -432,3 +432,48 @@ def send_topup_confirmation_email(to: str, amount: float, new_balance: float, us
     
     html = get_base_template(content, "Wallet aufgeladen - BidBlitz")
     return send_email(to, f"Wallet aufgeladen: +€{amount:.2f}", html)
+
+
+def send_transfer_notification(to: str, sender_name: str, title: str, message: str, 
+                                file_count: int, total_size: str, share_url: str, expires_days: int) -> bool:
+    """Send BlitzTransfer notification email to recipient."""
+    
+    content = f"""
+        <div style="text-align:center;margin:0 0 25px;">
+            <div style="width:60px;height:60px;background:#00C2FF20;border-radius:50%;display:inline-block;line-height:60px;font-size:28px;">
+                📦
+            </div>
+        </div>
+        <h2 style="color:#00C2FF;font-size:18px;margin:0 0 15px;text-align:center;">{title}</h2>
+        <p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 20px;">
+            <strong>{sender_name}</strong> hat dir {file_count} Datei(en) ({total_size}) per BlitzTransfer gesendet.
+        </p>
+        {f'<p style="color:#888;font-size:13px;line-height:1.5;margin:0 0 20px;background:#111;padding:15px;border-radius:8px;font-style:italic;">"{message}"</p>' if message else ''}
+        <div style="background:#111;border-radius:12px;padding:20px;margin:0 0 25px;">
+            <table width="100%" style="border-collapse:collapse;">
+                <tr>
+                    <td style="color:#666;font-size:13px;padding:8px 0;">Dateien</td>
+                    <td style="color:#fff;font-size:14px;font-weight:600;text-align:right;">{file_count}</td>
+                </tr>
+                <tr>
+                    <td style="color:#666;font-size:13px;padding:8px 0;">Größe</td>
+                    <td style="color:#fff;font-size:14px;font-weight:600;text-align:right;">{total_size}</td>
+                </tr>
+                <tr>
+                    <td style="color:#666;font-size:13px;padding:8px 0;">Gültig für</td>
+                    <td style="color:#FFB800;font-size:14px;font-weight:600;text-align:right;">{expires_days} Tage</td>
+                </tr>
+            </table>
+        </div>
+        <div style="text-align:center;">
+            <a href="{share_url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#00C2FF,#0090FF);color:#000;text-decoration:none;border-radius:12px;font-weight:600;font-size:14px;">
+                Dateien herunterladen
+            </a>
+        </div>
+        <p style="color:#666;font-size:12px;line-height:1.5;margin:25px 0 0;text-align:center;">
+            Link: <a href="{share_url}" style="color:#00C2FF;text-decoration:none;">{share_url[:60]}...</a>
+        </p>
+    """
+    
+    html = get_base_template(content, f"Transfer von {sender_name} - BidBlitz")
+    return send_email(to, f"📦 {sender_name} hat dir {file_count} Datei(en) gesendet", html)

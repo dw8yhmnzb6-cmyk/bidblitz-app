@@ -202,6 +202,24 @@ async def create_transfer(
 
     await db.transfers.insert_one(transfer)
 
+    # 📧 Send email notification to recipient (if email provided)
+    if recipient_email and "@" in recipient_email:
+        try:
+            from core.email import send_transfer_notification
+            share_url = f"https://bidblitz.ae/blitz-transfer/{transfer_id}/{download_code}"
+            send_transfer_notification(
+                to=recipient_email,
+                sender_name=user.get("name", user_email),
+                title=title or f"Transfer von {user.get('name', user_email)}",
+                message=message,
+                file_count=len(saved_files),
+                total_size=human_size(total_size),
+                share_url=share_url,
+                expires_days=expires_days
+            )
+        except Exception as e:
+            logger.error(f"Failed to send transfer email: {e}")
+
     return {
         "ok": True,
         "transfer_id": transfer_id,
