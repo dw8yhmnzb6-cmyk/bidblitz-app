@@ -37,18 +37,19 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.lower().strip()
     ip, ua = get_client_info(request)
 
-    # Soft launch gate: invite code OR whitelist OR open registration
+    # TEMPORARY FIX: Registration always open (soft launch disabled)
     invite_used = None
     invite_type = "user"
-    if not await is_registration_open():
-        if req.invite_code:
-            valid, msg, code_type = await validate_invite_code(req.invite_code)
-            if not valid:
-                raise HTTPException(status_code=403, detail=msg)
-            invite_used = req.invite_code.strip().upper()
-            invite_type = code_type or "user"
-        elif not await is_email_whitelisted(email):
-            raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
+    # Soft launch gate: invite code OR whitelist OR open registration
+    # if not await is_registration_open():
+    #     if req.invite_code:
+    #         valid, msg, code_type = await validate_invite_code(req.invite_code)
+    #         if not valid:
+    #             raise HTTPException(status_code=403, detail=msg)
+    #         invite_used = req.invite_code.strip().upper()
+    #         invite_type = code_type or "user"
+    #     elif not await is_email_whitelisted(email):
+    #         raise HTTPException(status_code=403, detail="Registration requires an invite code during soft launch.")
 
     existing = await db.users.find_one({"email": email})
     if existing:
