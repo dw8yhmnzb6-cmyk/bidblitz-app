@@ -1,5 +1,5 @@
-const CACHE_NAME = 'bidblitz-v9-offline-api';
-const API_CACHE_NAME = 'bidblitz-api-v1';
+const CACHE_NAME = 'bidblitz-v10-offline-api';
+const API_CACHE_NAME = 'bidblitz-api-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -118,6 +118,15 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   
+  // CRITICAL: Never cache auth endpoints (login, register, logout)
+  if (url.pathname.includes('/api/auth/login') || 
+      url.pathname.includes('/api/auth/register') ||
+      url.pathname.includes('/api/auth/logout') ||
+      url.pathname.includes('/api/auth/refresh') ||
+      url.pathname.includes('/api/auth/verify-2fa')) {
+    return; // Let browser handle these directly, no caching
+  }
+  
   // Handle API requests with cache-first for specific routes
   if (url.pathname.includes('/api/')) {
     const isCacheable = CACHEABLE_API_ROUTES.some(route => url.pathname.includes(route));
@@ -128,18 +137,23 @@ self.addEventListener('fetch', (event) => {
         fetch(event.request)
           .then((response) => {
             if (response.status === 200) {
-              const responseClone = response.clone();
-              caches.open(API_CACHE_NAME).then((cache) => {
-                // Cache with 5 min expiry header
-                const headers = new Headers(responseClone.headers);
-                headers.set('sw-cache-time', Date.now().toString());
-                const cachedResponse = new Response(responseClone.body, {
-                  status: responseClone.status,
-                  statusText: responseClone.statusText,
-                  headers: headers
-                });
-                cache.put(event.request, cachedResponse);
-              });
+              // CRITICAL FIX: Wrap clone in try-catch to prevent "object cannot be cloned" errors
+              try {
+                const responseClone = response.clone();
+                caches.open(API_CACHE_NAME).then((cache) => {
+                  // Cache with 5 min expiry header
+                  const headers = new Headers(responseClone.headers);
+                  headers.set('sw-cache-time', Date.now().toString());
+                  const cachedResponse = new Response(responseClone.body, {
+                    status: responseClone.status,
+                    statusText: responseClone.statusText,
+                    headers: headers
+                  });
+                  cache.put(event.request, cachedResponse);
+                }).catch(() => {}); // Silently fail cache write
+              } catch (cloneError) {
+                console.warn('[SW] Cannot clone response:', event.request.url, cloneError);
+              }
             }
             return response;
           })
