@@ -1,5 +1,5 @@
-const CACHE_NAME = 'bidblitz-v10-offline-api';
-const API_CACHE_NAME = 'bidblitz-api-v2';
+const CACHE_NAME = 'bidblitz-v11-FINAL';
+const API_CACHE_NAME = 'bidblitz-api-v3-FINAL';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -113,19 +113,19 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-
   const url = new URL(event.request.url);
   
-  // CRITICAL: Never cache auth endpoints (login, register, logout)
-  if (url.pathname.includes('/api/auth/login') || 
-      url.pathname.includes('/api/auth/register') ||
-      url.pathname.includes('/api/auth/logout') ||
-      url.pathname.includes('/api/auth/refresh') ||
-      url.pathname.includes('/api/auth/verify-2fa')) {
-    return; // Let browser handle these directly, no caching
+  // ✅ CRITICAL: COMPLETELY SKIP SERVICE WORKER FOR ALL AUTH ROUTES
+  if (url.pathname.includes('/api/auth') || 
+      url.pathname.includes('/login') || 
+      url.pathname.includes('/register') ||
+      url.pathname.includes('/logout')) {
+    // Let browser handle auth requests DIRECTLY - NO CACHING, NO INTERCEPTION
+    return;
   }
+  
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') return;
   
   // Handle API requests with cache-first for specific routes
   if (url.pathname.includes('/api/')) {
