@@ -265,6 +265,12 @@ CLASSIFIED_CATEGORIES = [
     {"id": "sonstige",   "label": "Sonstiges", "icon": "📦"},
 ]
 
+CLASSIFIED_COUNTRIES = [
+    {"code": "DE", "name": "Deutschland", "flag": "🇩🇪"},
+    {"code": "XK", "name": "Kosovo", "flag": "🇽🇰"},
+    {"code": "AE", "name": "VAE", "flag": "🇦🇪"},
+]
+
 BOOST_TIERS = {
     "top_7d":  {"eur": 2.99, "days": 7,  "label": "Top-Anzeige 7 Tage"},
     "top_30d": {"eur": 9.99, "days": 30, "label": "Top-Anzeige 30 Tage"},
@@ -279,6 +285,7 @@ class ClassifiedCreate(BaseModel):
     price: float = Field(..., ge=0)
     is_free: bool = False
     city: str = Field(..., min_length=2, max_length=80)
+    country: str = "DE"  # DE, XK, AE
     plz: Optional[str] = None
     image_urls: List[str] = Field(default_factory=list)
     condition: Optional[str] = Field(None, pattern="^(neu|wie_neu|gut|gebraucht|defekt)$")
@@ -286,14 +293,16 @@ class ClassifiedCreate(BaseModel):
 
 @router.get("/classifieds/categories")
 async def classified_categories():
-    return {"categories": CLASSIFIED_CATEGORIES, "boost_tiers": BOOST_TIERS}
+    return {"categories": CLASSIFIED_CATEGORIES, "boost_tiers": BOOST_TIERS, "countries": CLASSIFIED_COUNTRIES}
 
 
 @router.get("/classifieds/list")
 async def list_classifieds(category: Optional[str] = None, city: Optional[str] = None,
-                           search: Optional[str] = None, limit: int = 40, skip: int = 0):
+                           country: Optional[str] = None, search: Optional[str] = None, 
+                           limit: int = 40, skip: int = 0):
     q = {"status": "active"}
     if category: q["category"] = category
+    if country: q["country"] = country
     if city: q["city"] = {"$regex": f"^{city}", "$options": "i"}
     if search: q["$or"] = [{"title": {"$regex": search, "$options": "i"}},
                            {"description": {"$regex": search, "$options": "i"}}]
@@ -342,6 +351,7 @@ async def create_classified(req: ClassifiedCreate, request: Request):
         "price": float(req.price) if not req.is_free else 0,
         "is_free": req.is_free,
         "city": req.city.strip(),
+        "country": req.country,  # NEW: Multi-country support
         "plz": (req.plz or "").strip(),
         "image_urls": req.image_urls[:8],  # max 8 images
         "condition": req.condition,

@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 # Configuration
-BACKEND_URL = "https://bidblitz-v2-prod.preview.emergentagent.com/api"
+BACKEND_URL = "https://blitz-auction-taxi.preview.emergentagent.com/api"
 TEST_CREDENTIALS = {
     "admin": {"email": "admin@bidblitz.com", "password": "BidBlitz2026!"},
     "customer": {"email": "kunde@bidblitz.com", "password": "Kunde2026!"},

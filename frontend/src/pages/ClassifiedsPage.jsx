@@ -1,10 +1,11 @@
 /**
- * ClassifiedsPage - Kleinanzeigen-Marktplatz
+ * ClassifiedsPage V2 - eBay Kleinanzeigen 2026 Style
+ * Multi-Country Support: Deutschland 🇩🇪, Kosovo 🇽🇰, VAE 🇦🇪
  * Backend: /api/classifieds/*
  */
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Plus, Search, MapPin, Eye, MessageCircle, TrendingUp, Trash2, X, Camera, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Loader2, Plus, Search, MapPin, Eye, MessageCircle, TrendingUp, Trash2, X, Camera, Check, Filter, Globe } from "lucide-react";
 import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -14,22 +15,26 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
   const [items, setItems] = useState([]);
   const [myItems, setMyItems] = useState([]);
   const [cats, setCats] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [boostTiers, setBoostTiers] = useState({});
   const [selectedCat, setSelectedCat] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [contactMsg, setContactMsg] = useState("");
   const [sending, setSending] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", category: "elektronik", price: "", is_free: false,
-    city: "", plz: "", condition: "gut", image_urls: [],
+    city: "", country: "DE", plz: "", condition: "gut", image_urls: [],
   });
 
-  // Load categories once
+  // Load categories, countries, and boost tiers once
   useEffect(() => {
     fetch(`${API}/api/classifieds/categories`).then(r => r.json()).then(d => {
       setCats(d.categories || []);
+      setCountries(d.countries || []);
       setBoostTiers(d.boost_tiers || {});
     });
   }, []);
@@ -39,13 +44,14 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
     try {
       const params = new URLSearchParams();
       if (selectedCat) params.set("category", selectedCat);
+      if (selectedCountry) params.set("country", selectedCountry);
       if (search) params.set("search", search);
       const r = await fetch(`${API}/api/classifieds/list?${params}`);
       const j = await r.json();
       setItems(j.items || []);
     } catch { toast.error("Fehler beim Laden"); }
     setLoading(false);
-  }, [selectedCat, search]);
+  }, [selectedCat, selectedCountry, search]);
 
   const loadMine = useCallback(async () => {
     setLoading(true);
@@ -63,7 +69,7 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
   }, [view, loadBrowse, loadMine]);
 
   const create = async () => {
-    if (!form.title || !form.description || !form.city) return toast.error("Bitte alle Felder ausfüllen");
+    if (!form.title || !form.description || !form.city || !form.country) return toast.error("Bitte alle Felder ausfüllen");
     try {
       const r = await fetch(`${API}/api/classifieds/create`, {
         method: "POST", credentials: "include",
@@ -77,7 +83,7 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.detail || "Fehler");
       toast.success("Anzeige erstellt! 🎉");
-      setForm({ title: "", description: "", category: "elektronik", price: "", is_free: false, city: "", plz: "", condition: "gut", image_urls: [] });
+      setForm({ title: "", description: "", category: "elektronik", price: "", is_free: false, city: "", country: "DE", plz: "", condition: "gut", image_urls: [] });
       setView("mine");
     } catch (e) { toast.error(e.message); }
   };
@@ -159,7 +165,9 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
                 {selected.is_free ? "Gratis" : `€${selected.price}`}
               </p>
             </div>
-            <p className="text-[11px] text-white/50 mt-1"><MapPin size={10} className="inline"/> {selected.city} {selected.plz && `· ${selected.plz}`}</p>
+            <p className="text-[11px] text-white/50 mt-1">
+              {countries.find(c => c.code === selected.country)?.flag || "🌍"} {selected.city} {selected.plz && `· ${selected.plz}`}
+            </p>
             <div className="flex gap-3 mt-2 text-[10px] text-white/40">
               <span><Eye size={10} className="inline"/> {selected.views || 0}</span>
               <span><MessageCircle size={10} className="inline"/> {selected.contact_count || 0}</span>
@@ -211,6 +219,16 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
         <div className="p-4 space-y-3">
           <input data-testid="c-title" placeholder="Titel" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
             className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-[14px] focus:outline-none focus:border-[#00C2FF]"/>
+          
+          {/* Country Selector (NEW) */}
+          <div>
+            <label className="text-[11px] text-white/60 mb-1 block">Land / Country</label>
+            <select data-testid="c-country" value={form.country} onChange={e => setForm({ ...form, country: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-[14px]">
+              {countries.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+            </select>
+          </div>
+          
           <select data-testid="c-cat" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
             className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-[14px]">
             {cats.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
@@ -323,12 +341,53 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
       <div className="p-4 space-y-3">
         {view === "browse" && (
           <>
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3">
-              <Search size={14} className="text-white/40"/>
-              <input data-testid="search" placeholder="Suche..." value={search}
-                onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && loadBrowse()}
-                className="flex-1 py-2.5 bg-transparent text-white text-[13px] focus:outline-none"/>
+            {/* Search Bar */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3">
+                <Search size={14} className="text-white/40"/>
+                <input data-testid="search" placeholder="Suche..." value={search}
+                  onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && loadBrowse()}
+                  className="flex-1 py-2.5 bg-transparent text-white text-[13px] focus:outline-none"/>
+              </div>
+              <button onClick={() => setShowFilters(!showFilters)}
+                className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center"
+                style={{ background: showFilters ? "rgba(0,194,255,0.15)" : "", borderColor: showFilters ? "#00C2FF" : "" }}>
+                <Filter size={15} className={showFilters ? "text-[#00C2FF]" : "text-white/60"}/>
+              </button>
             </div>
+            
+            {/* Advanced Filters (NEW) */}
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden">
+                  <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+                    <div>
+                      <label className="text-[10px] text-white/50 mb-1 block uppercase">Land / Country</label>
+                      <div className="flex gap-1.5 flex-wrap">
+                        <button onClick={() => setSelectedCountry("")}
+                          className="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap"
+                          style={{ background: !selectedCountry ? "rgba(0,194,255,0.2)" : "rgba(255,255,255,0.04)", color: !selectedCountry ? "#00C2FF" : "white" }}>
+                          <Globe size={10} className="inline mr-1"/> Alle
+                        </button>
+                        {countries.map(c => (
+                          <button key={c.code} onClick={() => setSelectedCountry(c.code)}
+                            className="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap"
+                            style={{ background: selectedCountry === c.code ? "rgba(0,194,255,0.2)" : "rgba(255,255,255,0.04)", color: selectedCountry === c.code ? "#00C2FF" : "rgba(255,255,255,0.7)" }}>
+                            {c.flag} {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {/* Category Pills */}
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               <button onClick={() => setSelectedCat("")} data-testid="cat-all"
                 className="px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap"
@@ -385,7 +444,7 @@ export default function ClassifiedsPage({ onBack, onNavigate }) {
                     {item.is_free ? "Gratis" : `€${item.price}`}
                   </p>
                   <p className="text-[9px] text-white/40 truncate mt-0.5">
-                    <MapPin size={8} className="inline"/> {item.city}
+                    {countries.find(c => c.code === item.country)?.flag || "🌍"} {item.city}
                   </p>
                 </div>
                 {view === "mine" && (
