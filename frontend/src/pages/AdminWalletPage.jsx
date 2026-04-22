@@ -147,9 +147,9 @@ const SendTab = ({ onDone }) => {
                   {u.username} · {u.role}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-[11px] font-bold text-[#00E89D]">{fmt(u.balance_eur)}€</p>
-                <p className="text-[9px] text-[#FFD700]">{fmt(u.balance_blz, 0)} BLZ</p>
+              <div className="text-right shrink-0">
+                <p className="text-[15px] font-bold text-[#00E89D] leading-tight">{fmt(u.balance_eur)}€</p>
+                <p className="text-[12px] font-semibold text-[#FFD700] leading-tight">{fmt(u.balance_blz, 0)} BLZ</p>
               </div>
             </motion.button>
           ))}
@@ -165,9 +165,9 @@ const SendTab = ({ onDone }) => {
               <UserIcon size={14} className="text-[#00C2FF]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-bold text-white truncate">{selected.email}</p>
-              <p className="text-[10px] text-white/50">
-                Aktuell: {fmt(selected.balance_eur)}€ · {fmt(selected.balance_blz, 0)} BLZ
+              <p className="text-[13px] font-bold text-white truncate">{selected.email}</p>
+              <p className="text-[12px] text-white/70 font-medium">
+                💶 {fmt(selected.balance_eur)}€ · 🪙 {fmt(selected.balance_blz, 0)} BLZ
               </p>
             </div>
             <button

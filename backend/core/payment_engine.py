@@ -339,10 +339,17 @@ async def credit_wallet(
     
     await db.transactions.insert_one(transaction)
     
-    # 5. Atomic balance update
+    # 5. Atomic balance update (BOTH users AND wallets)
     result = await db.users.update_one(
         {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
         {"$inc": {"balance": amount}}
+    )
+    
+    # Also update wallets collection (for admin wallet tool)
+    await db.wallets.update_one(
+        {"user_id": user_id},
+        {"$inc": {"balance": amount}, "$setOnInsert": {"user_id": user_id, "balance_blz": 0}},
+        upsert=True
     )
     
     if result.modified_count == 0:
