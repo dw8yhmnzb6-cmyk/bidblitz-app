@@ -25,8 +25,9 @@ MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15 if IS_PRODUCTION else 5
 
 # ── Cookie Security (production-ready) ──
-COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() == "true" if IS_PRODUCTION else False
-COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "strict" if IS_PRODUCTION else "lax")
+# Force secure cookies for preview server (HTTPS)
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() == "true"
+COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "none" if COOKIE_SECURE else "lax")
 COOKIE_HTTPONLY = True
 
 # ── CORS ──

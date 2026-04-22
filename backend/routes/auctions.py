@@ -154,6 +154,14 @@ async def list_all_auctions(status: str = None, limit: int = 50):
     return {"auctions": auctions, "total": len(auctions)}
 
 
+
+
+# ── Feed alias (same as /list) ──
+@router.get("/feed")
+async def auctions_feed(request: Request, status: str = None, limit: int = 50):
+    """Alias for /list endpoint (used by frontend)."""
+    return await list_all_auctions(status, limit)
+
 # ── Get user's credit balance ──
 @router.get("/credits/balance")
 async def get_credits(request: Request):

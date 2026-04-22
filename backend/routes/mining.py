@@ -183,6 +183,14 @@ async def process_auto_rewards():
 
 
 # ── Dashboard ──
+
+
+# ── Status alias (same as /dashboard) ──
+@router.get("/status")
+async def mining_status(request: Request):
+    """Alias for /dashboard endpoint (used by frontend)."""
+    return await mining_dashboard(request)
+
 @router.get("/dashboard")
 async def mining_dashboard(request: Request):
     """Get mining dashboard with stats."""
