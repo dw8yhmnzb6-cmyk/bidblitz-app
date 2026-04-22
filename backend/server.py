@@ -383,6 +383,9 @@ app.include_router(flights_router)
 from routes.sabre import router as sabre_router
 app.include_router(sabre_router)
 
+from routes.kids_controls import router as kids_controls_router
+app.include_router(kids_controls_router)
+
 from routes.parcels import router as parcels_router
 app.include_router(parcels_router)
 

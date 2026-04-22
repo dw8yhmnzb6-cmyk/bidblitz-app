@@ -109,6 +109,7 @@ import CVBuilderPage from "./pages/CVBuilderPage";
 import NearbyPage from "./pages/NearbyPage";
 import MerchantPortalPage from "./pages/MerchantPortalPage";
 import KidsAppPage from "./pages/KidsAppPage";
+import ParentControlsPage from "./pages/ParentControlsPage";
 import RealEstatePage from "./pages/RealEstatePage";
 import FreelancerPage from "./pages/FreelancerPage";
 import ELearningPage from "./pages/ELearningPage";
@@ -267,9 +268,14 @@ function AppContent() {
     setShowAuthGate(true);
   };
 
-  const handleNavigate = (path) => {
+  const [navState, setNavState] = useState({});
+
+  const handleNavigate = (path, state) => {
     // Track page view
     tracker.pageView(path);
+
+    // Store navigation state (e.g., selected child for parent-controls)
+    setNavState(state || {});
 
     // Auto-switch mode based on navigation target
     if (path === "/kids" || path === "/kids-app") {
@@ -570,10 +576,11 @@ function AppContent() {
       case "/jobs":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <JobMarketplacePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/flights":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FlightSearchPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/flights-live":
       case "/sabre-flights":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SabreFlightsPage onBack={() => handleNavigate("/flights")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SabreFlightsPage onBack={() => handleNavigate("/more")} />;
+      case "/flights-catalog":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FlightSearchPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/parcels":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ParcelPage onBack={() => handleNavigate("/more")} />;
       case "/cv-builder":
@@ -584,6 +591,12 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPortalPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/kids-app":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <KidsAppPage onBack={() => handleNavigate("/kids")} />;
+      case "/parent-controls":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ParentControlsPage
+            onBack={() => handleNavigate("/kids")}
+            childId={navState?.childId}
+            childName={navState?.childName}
+          />;
       case "/gaming":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/real-estate":

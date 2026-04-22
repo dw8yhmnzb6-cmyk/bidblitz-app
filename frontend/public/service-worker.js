@@ -56,16 +56,20 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== API_CACHE_NAME)
-          .map((name) => caches.delete(name))
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const cacheNames = await caches.keys();
+    await Promise.all(
+      cacheNames
+        .filter((name) => name !== CACHE_NAME && name !== API_CACHE_NAME)
+        .map((name) => caches.delete(name))
+    );
+    await self.clients.claim();
+    // Tell all open pages to reload so they pick up the new build.
+    const clientsList = await self.clients.matchAll({ type: 'window' });
+    for (const c of clientsList) {
+      try { c.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME }); } catch (e) {}
+    }
+  })());
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

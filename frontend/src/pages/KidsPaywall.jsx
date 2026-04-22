@@ -741,9 +741,9 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                   <div className="flex gap-1.5 flex-wrap">
                     {[
                       { icon: Send, label: "Senden", bg: "rgba(0,194,255,0.1)", color: "#00C2FF", border: "rgba(0,194,255,0.2)", action: () => setWalletChild(child) },
+                      { icon: Shield, label: "Kontrollen", bg: "rgba(0,210,106,0.1)", color: "#00D26A", border: "rgba(0,210,106,0.25)", action: (e) => { e?.stopPropagation(); onNavigate && onNavigate("/parent-controls", { childId: child.child_id, childName: child.name }); }, testId: `parent-controls-btn-${child.child_id}` },
                       { icon: CheckSquare, label: "Aufgaben", bg: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "rgba(245,158,11,0.2)", action: (e) => { e?.stopPropagation(); setTasksChild(child); }, testId: `tasks-btn-${child.child_id}` },
                       { icon: Key, label: "PIN", bg: "rgba(168,85,247,0.1)", color: "#A855F7", border: "rgba(168,85,247,0.2)", action: () => setShowSetPin(child) },
-                      { icon: Eye, label: "Details", bg: "rgba(99,102,241,0.1)", color: "#6366F1", border: "rgba(99,102,241,0.2)", action: () => setWalletChild(child) },
                       { icon: isFrozen ? Unlock : Lock, label: isFrozen ? "Aktiv" : "Sperren", bg: isFrozen ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", color: isFrozen ? "#22C55E" : "#EF4444", border: isFrozen ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)", action: () => handleFreezeToggle(child.child_id, { stopPropagation: () => {} }) },
                     ].map((btn, bi) => (
                       <motion.button
