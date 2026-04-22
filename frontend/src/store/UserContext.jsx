@@ -147,7 +147,9 @@ export function UserProvider({ children }) {
         return '2fa_required';
       }
       
-      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: response.user || response });
+      // CRITICAL FIX: Ensure we only pass plain JSON object (not Response)
+      const userData = response.user ? { ...response.user } : { ...response };
+      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: userData });
       return true;
     } catch (err) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
