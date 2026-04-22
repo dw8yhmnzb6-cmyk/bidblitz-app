@@ -9,7 +9,7 @@ import random
 import string
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://mobility-auctions.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://bidblitz-v2-prod.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.com"
