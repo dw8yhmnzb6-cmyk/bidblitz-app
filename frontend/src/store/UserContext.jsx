@@ -228,7 +228,10 @@ export function UserProvider({ children }) {
     dispatch({ type: AUTH_ACTIONS.SET_MODE, payload: mode });
   }, []);
 
-  const value = {
+  // CRITICAL FIX: Wrap context value in useMemo to prevent React 19 StrictMode cloning issues
+  // React 19 tries to clone the entire context value during reconciliation
+  // Functions cannot be cloned → "The object can not be cloned" error
+  const value = React.useMemo(() => ({
     id: state.id,
     name: state.name,
     email: state.email,
@@ -256,7 +259,7 @@ export function UserProvider({ children }) {
     logout,
     refreshUser,
     setMode,
-  };
+  }), [state, login, verify2FA, cancel2FA, register, logout, refreshUser, setMode]);
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
