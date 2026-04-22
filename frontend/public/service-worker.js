@@ -1,9 +1,20 @@
-const CACHE_NAME = 'bidblitz-v8-no-strictmode';
+const CACHE_NAME = 'bidblitz-v9-offline-api';
+const API_CACHE_NAME = 'bidblitz-api-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/offline.html',
+];
+
+// API endpoints to cache for offline access
+const CACHEABLE_API_ROUTES = [
+  '/api/auctions/active',
+  '/api/wallet/balance',
+  '/api/auth/me',
+  '/api/kids/children',
+  '/api/taxi/nearby',
+  '/api/food/restaurants',
 ];
 
 // Install event - cache static assets
@@ -92,7 +103,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => name !== CACHE_NAME && name !== API_CACHE_NAME)
           .map((name) => caches.delete(name))
       );
     })
@@ -105,11 +116,63 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API requests
-  if (event.request.url.includes('/api/')) {
-    return;
+  const url = new URL(event.request.url);
+  
+  // Handle API requests with cache-first for specific routes
+  if (url.pathname.includes('/api/')) {
+    const isCacheable = CACHEABLE_API_ROUTES.some(route => url.pathname.includes(route));
+    
+    if (isCacheable) {
+      // Network first, fallback to cache, cache response
+      event.respondWith(
+        fetch(event.request)
+          .then((response) => {
+            if (response.status === 200) {
+              const responseClone = response.clone();
+              caches.open(API_CACHE_NAME).then((cache) => {
+                // Cache with 5 min expiry header
+                const headers = new Headers(responseClone.headers);
+                headers.set('sw-cache-time', Date.now().toString());
+                const cachedResponse = new Response(responseClone.body, {
+                  status: responseClone.status,
+                  statusText: responseClone.statusText,
+                  headers: headers
+                });
+                cache.put(event.request, cachedResponse);
+              });
+            }
+            return response;
+          })
+          .catch(async () => {
+            // Offline - return cached API response
+            const cached = await caches.match(event.request);
+            if (cached) {
+              // Check if cache is stale (> 5 min)
+              const cacheTime = cached.headers.get('sw-cache-time');
+              const age = cacheTime ? (Date.now() - parseInt(cacheTime)) / 1000 : 0;
+              
+              // Add offline indicator header
+              const headers = new Headers(cached.headers);
+              headers.set('X-Offline-Cache', 'true');
+              headers.set('X-Cache-Age', age.toString());
+              
+              return new Response(cached.body, {
+                status: cached.status,
+                statusText: cached.statusText,
+                headers: headers
+              });
+            }
+            return new Response(JSON.stringify({ error: 'offline', message: 'Keine Verbindung' }), {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          })
+      );
+    }
+    return; // Don't cache other API requests
   }
 
+  // Handle static assets
   event.respondWith(
     fetch(event.request)
       .then((response) => {
