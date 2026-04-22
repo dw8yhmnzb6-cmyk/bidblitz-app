@@ -736,7 +736,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       const saved = JSON.parse(localStorage.getItem("more_open_groups") || "null");
       if (saved) return saved;
     } catch {}
-    return { mobility: true, finance: true };
+    // Default: open Mobility, Finance, and Admin sections
+    return { mobility: true, finance: true, admin: true };
   });
 
   // Demo mode: overlay mock user data

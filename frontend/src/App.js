@@ -242,7 +242,7 @@ function AppContent() {
     let lastCheck = Date.now();
     const checkNotifs = async () => {
       try {
-        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/notifications/unread`, { credentials: "include" });
+        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/notifications/unread-count`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           const newNotifs = (data.notifications || []).filter(n => new Date(n.created_at).getTime() > lastCheck - 30000);
