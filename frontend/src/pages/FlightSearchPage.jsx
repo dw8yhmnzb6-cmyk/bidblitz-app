@@ -5,14 +5,14 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Search, Plane, MapPin, Clock, Calendar, Users,
-  Loader2, Check, ChevronRight, ArrowRight
+  Loader2, Check, ChevronRight, ArrowRight, Zap
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const CLASS_LABELS = { economy: "Economy", business: "Business", first: "First" };
 
-const FlightSearchPage = ({ onBack }) => {
+const FlightSearchPage = ({ onBack, onNavigate }) => {
   const [view, setView] = useState("search");
   const [flights, setFlights] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -74,6 +74,16 @@ const FlightSearchPage = ({ onBack }) => {
             <div><h1 className="text-[15px] font-bold">Flugsuche</h1><p className="text-[10px] text-gray-500">{flights.length} Flüge</p></div>
           </div>
           <div className="flex gap-2">
+            {onNavigate && (
+              <motion.button
+                data-testid="flights-live-toggle"
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onNavigate("/flights-live")}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-[#00D26A] to-[#06B6D4] text-black flex items-center gap-1"
+              >
+                <Zap size={11} /> LIVE
+              </motion.button>
+            )}
             {["search", "bookings"].map(v => (
               <motion.button key={v} whileTap={{ scale: 0.95 }} onClick={() => setView(v)}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-medium ${view === v ? "bg-[#06B6D4] text-white" : "bg-white/5 text-gray-500"}`}>

@@ -103,6 +103,7 @@ import AppointmentPage from "./pages/AppointmentPage";
 import SocialFeedPage from "./pages/SocialFeedPage";
 import JobMarketplacePage from "./pages/JobMarketplacePage";
 import FlightSearchPage from "./pages/FlightSearchPage";
+import SabreFlightsPage from "./pages/SabreFlightsPage";
 import ParcelPage from "./pages/ParcelPage";
 import CVBuilderPage from "./pages/CVBuilderPage";
 import NearbyPage from "./pages/NearbyPage";
@@ -569,7 +570,10 @@ function AppContent() {
       case "/jobs":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <JobMarketplacePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/flights":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FlightSearchPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FlightSearchPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/flights-live":
+      case "/sabre-flights":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SabreFlightsPage onBack={() => handleNavigate("/flights")} />;
       case "/parcels":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ParcelPage onBack={() => handleNavigate("/more")} />;
       case "/cv-builder":

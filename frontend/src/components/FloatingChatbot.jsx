@@ -2,8 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Loader, ThumbsUp, ThumbsDown } from 'lucide-react';
 
+const STORAGE_KEY = 'bidblitz-chatbot-hidden';
+
 export default function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHidden, setIsHidden] = useState(() => {
+    try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch { return false; }
+  });
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -12,6 +17,12 @@ export default function FloatingChatbot() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const hideBubble = (e) => {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    setIsHidden(true);
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch {}
   };
 
   useEffect(() => {
@@ -112,23 +123,37 @@ export default function FloatingChatbot() {
 
   return (
     <>
-      {/* Floating Button - LARGER & PULSE ANIMATION */}
+      {/* Floating Button - COMPACT with dismiss */}
       <AnimatePresence>
-        {!isOpen && (
-          <motion.button
+        {!isOpen && !isHidden && (
+          <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsOpen(true)}
-            className="fixed bottom-24 right-6 z-50 w-20 h-20 bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-500 rounded-full shadow-2xl flex items-center justify-center cursor-pointer hover:shadow-cyan-400/50 transition-all animate-pulse-slow"
+            className="fixed bottom-24 right-4 z-50"
+            data-testid="floating-chatbot-bubble"
           >
-            <MessageCircle className="w-9 h-9 text-white" />
-            <span className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center text-sm font-black text-white shadow-lg border-2 border-white animate-bounce">
-              AI
-            </span>
-          </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => setIsOpen(true)}
+              aria-label="KI-Assistent öffnen"
+              className="relative w-12 h-12 bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-500 rounded-full shadow-xl flex items-center justify-center cursor-pointer hover:shadow-cyan-400/40"
+            >
+              <MessageCircle className="w-5 h-5 text-white" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-lg border border-white/30">
+                AI
+              </span>
+            </motion.button>
+            <button
+              onClick={hideBubble}
+              aria-label="Assistent ausblenden"
+              data-testid="floating-chatbot-hide"
+              className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-gray-800/90 border border-white/20 flex items-center justify-center hover:bg-gray-700"
+            >
+              <X className="w-2.5 h-2.5 text-white/80" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 

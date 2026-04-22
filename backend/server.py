@@ -380,6 +380,9 @@ app.include_router(jobs_router)
 from routes.flights import router as flights_router
 app.include_router(flights_router)
 
+from routes.sabre import router as sabre_router
+app.include_router(sabre_router)
+
 from routes.parcels import router as parcels_router
 app.include_router(parcels_router)
 

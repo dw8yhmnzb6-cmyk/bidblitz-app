@@ -1,5 +1,10 @@
-const CACHE_NAME = 'bidblitz-v11-FINAL';
-const API_CACHE_NAME = 'bidblitz-api-v3-FINAL';
+// BidBlitz Service Worker — Hardened v12
+// - Only caches explicitly safe GET endpoints
+// - Auth, payments, admin, wallet, and all mutating requests bypass the SW entirely
+// - Prevents "object cannot be cloned" errors by never intercepting auth/mutations
+
+const CACHE_NAME = 'bidblitz-static-v12';
+const API_CACHE_NAME = 'bidblitz-api-v12';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -7,255 +12,225 @@ const STATIC_ASSETS = [
   '/offline.html',
 ];
 
-// API endpoints to cache for offline access
+// Explicit allow-list: ONLY these GET endpoints may be cached.
+// Anything not in this list is passed straight to the network.
 const CACHEABLE_API_ROUTES = [
   '/api/auctions/active',
-  '/api/wallet/balance',
-  '/api/auth/me',
-  '/api/kids/children',
-  '/api/taxi/nearby',
+  '/api/auctions/feed',
   '/api/food/restaurants',
+  '/api/kids/children',
+  // NOTE: Do NOT add wallet, transactions, auth, admin, payments, stripe, p2p,
+  // notifications, flights, or hotels — they must always be fresh.
 ];
 
-// Install event - cache static assets
+// Explicit hard block-list: these NEVER go through SW cache, even on GET.
+const NEVER_CACHE_PREFIXES = [
+  '/api/auth',
+  '/api/admin',
+  '/api/wallet',
+  '/api/payments',
+  '/api/stripe',
+  '/api/p2p',
+  '/api/transactions',
+  '/api/notifications',
+  '/api/flights',
+  '/api/hotels',
+  '/api/sabre',
+  '/api/pay',
+  '/api/topup',
+  '/api/refund',
+  '/api/checkout',
+  '/login',
+  '/logout',
+  '/register',
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LIFECYCLE
+// ═══════════════════════════════════════════════════════════════════════════════
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('BidBlitz: Caching static assets');
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
 
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) =>
+      Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME && name !== API_CACHE_NAME)
+          .map((name) => caches.delete(name))
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FETCH
+// ═══════════════════════════════════════════════════════════════════════════════
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+
+  // Only handle http(s) — ignore chrome-extension, data:, ws:, etc.
+  if (!req.url.startsWith('http')) return;
+
+  const url = new URL(req.url);
+
+  // 1) HARD BLOCK-LIST: never intercept. Let browser do its thing.
+  if (NEVER_CACHE_PREFIXES.some((p) => url.pathname.startsWith(p))) return;
+
+  // 2) Skip ALL non-GET requests (POST/PUT/PATCH/DELETE/OPTIONS) — browser handles directly.
+  if (req.method !== 'GET') return;
+
+  // 3) Skip requests with Authorization header or credentials=include user-triggered mutations.
+  //    (Safe-guard: cookies are already handled by browser on navigation.)
+  if (req.headers.get('Authorization')) return;
+
+  // 4) Same-origin API: only cache the explicit allow-list.
+  if (url.pathname.startsWith('/api/')) {
+    const isCacheable = CACHEABLE_API_ROUTES.some((route) => url.pathname.startsWith(route));
+    if (!isCacheable) return; // Let network handle it directly.
+
+    event.respondWith(handleCacheableApi(req));
+    return;
+  }
+
+  // 5) Static assets (same-origin): network-first, fallback to cache, fallback to offline page.
+  if (url.origin === self.location.origin) {
+    event.respondWith(handleStaticAsset(req));
+  }
+});
+
+async function handleCacheableApi(req) {
+  try {
+    const res = await fetch(req);
+    if (res && res.status === 200 && res.type === 'basic') {
+      try {
+        const clone = res.clone();
+        const cache = await caches.open(API_CACHE_NAME);
+        const headers = new Headers(clone.headers);
+        headers.set('sw-cache-time', Date.now().toString());
+        const cached = new Response(await clone.blob(), {
+          status: clone.status,
+          statusText: clone.statusText,
+          headers,
+        });
+        cache.put(req, cached).catch(() => {});
+      } catch (e) {
+        /* swallow clone errors silently */
+      }
+    }
+    return res;
+  } catch (err) {
+    const cached = await caches.match(req);
+    if (cached) {
+      const headers = new Headers(cached.headers);
+      headers.set('X-Offline-Cache', 'true');
+      return new Response(cached.body, {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers,
+      });
+    }
+    return new Response(
+      JSON.stringify({ error: 'offline', message: 'Keine Verbindung' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+async function handleStaticAsset(req) {
+  try {
+    const res = await fetch(req);
+    if (res && res.status === 200 && res.type === 'basic') {
+      try {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
+      } catch (e) {
+        /* swallow clone errors */
+      }
+    }
+    return res;
+  } catch (err) {
+    const cached = await caches.match(req);
+    if (cached) return cached;
+    if (req.mode === 'navigate') {
+      const offline = await caches.match('/offline.html');
+      if (offline) return offline;
+    }
+    return new Response('Offline', { status: 503 });
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUSH NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
-
-// Push notification received
 self.addEventListener('push', (event) => {
-  console.log('[Service Worker] Push received:', event);
-  
   let data = {
-    title: 'BidBlitz Benachrichtigung',
-    body: 'Neue Nachricht erhalten',
-    icon: '/logo192.png',
-    badge: '/logo192.png',
+    title: 'BidBlitz',
+    body: 'Neue Nachricht',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/badge-72x72.png',
     tag: 'default',
-    data: {}
+    data: {},
   };
-  
+
   if (event.data) {
     try {
-      data = event.data.json();
+      data = { ...data, ...event.data.json() };
     } catch (e) {
       data.body = event.data.text();
     }
   }
-  
+
   const options = {
     body: data.body,
-    icon: data.icon || '/logo192.png',
-    badge: data.badge || '/logo192.png',
-    tag: data.tag || 'default',
+    icon: data.icon,
+    badge: data.badge,
+    tag: data.tag,
     data: data.data || {},
-    requireInteraction: data.tag === 'sos_alert', // SOS stays on screen
+    requireInteraction: data.tag === 'sos_alert',
     vibrate: data.tag === 'sos_alert' ? [200, 100, 200, 100, 200] : [100, 50, 100],
-    actions: data.tag === 'sos_alert' ? [
-      { action: 'view', title: 'Standort öffnen', icon: '/logo192.png' },
-      { action: 'close', title: 'Schließen', icon: '/logo192.png' }
-    ] : []
+    actions:
+      data.tag === 'sos_alert'
+        ? [
+            { action: 'view', title: 'Standort öffnen' },
+            { action: 'close', title: 'Schließen' },
+          ]
+        : [
+            { action: 'open', title: 'Öffnen' },
+            { action: 'close', title: 'Schließen' },
+          ],
   };
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
-// Notification clicked
 self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification clicked:', event);
-  
   event.notification.close();
-  
+  if (event.action === 'close') return;
+
   const urlToOpen = event.notification.data?.url || '/';
-  
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if app is already open
       for (const client of clientList) {
         if (client.url === new URL(urlToOpen, self.location.origin).href && 'focus' in client) {
           return client.focus();
         }
       }
-      // Open new window/tab
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );
 });
 
-
-// Activate event - clean old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== API_CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    })
-  );
-  self.clients.claim();
-});
-
-// Fetch event - network first, fallback to cache
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // ✅ CRITICAL: COMPLETELY SKIP SERVICE WORKER FOR ALL AUTH ROUTES
-  if (url.pathname.includes('/api/auth') || 
-      url.pathname.includes('/login') || 
-      url.pathname.includes('/register') ||
-      url.pathname.includes('/logout')) {
-    // Let browser handle auth requests DIRECTLY - NO CACHING, NO INTERCEPTION
-    return;
-  }
-  
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-  
-  // Handle API requests with cache-first for specific routes
-  if (url.pathname.includes('/api/')) {
-    const isCacheable = CACHEABLE_API_ROUTES.some(route => url.pathname.includes(route));
-    
-    if (isCacheable) {
-      // Network first, fallback to cache, cache response
-      event.respondWith(
-        fetch(event.request)
-          .then((response) => {
-            if (response.status === 200) {
-              // CRITICAL FIX: Wrap clone in try-catch to prevent "object cannot be cloned" errors
-              try {
-                const responseClone = response.clone();
-                caches.open(API_CACHE_NAME).then((cache) => {
-                  // Cache with 5 min expiry header
-                  const headers = new Headers(responseClone.headers);
-                  headers.set('sw-cache-time', Date.now().toString());
-                  const cachedResponse = new Response(responseClone.body, {
-                    status: responseClone.status,
-                    statusText: responseClone.statusText,
-                    headers: headers
-                  });
-                  cache.put(event.request, cachedResponse);
-                }).catch(() => {}); // Silently fail cache write
-              } catch (cloneError) {
-                console.warn('[SW] Cannot clone response:', event.request.url, cloneError);
-              }
-            }
-            return response;
-          })
-          .catch(async () => {
-            // Offline - return cached API response
-            const cached = await caches.match(event.request);
-            if (cached) {
-              // Check if cache is stale (> 5 min)
-              const cacheTime = cached.headers.get('sw-cache-time');
-              const age = cacheTime ? (Date.now() - parseInt(cacheTime)) / 1000 : 0;
-              
-              // Add offline indicator header
-              const headers = new Headers(cached.headers);
-              headers.set('X-Offline-Cache', 'true');
-              headers.set('X-Cache-Age', age.toString());
-              
-              return new Response(cached.body, {
-                status: cached.status,
-                statusText: cached.statusText,
-                headers: headers
-              });
-            }
-            return new Response(JSON.stringify({ error: 'offline', message: 'Keine Verbindung' }), {
-              status: 503,
-              headers: { 'Content-Type': 'application/json' }
-            });
-          })
-      );
-    }
-    return; // Don't cache other API requests
-  }
-
-  // Handle static assets
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Clone and cache successful responses
-        if (response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Fallback to cache
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Return offline page for navigation requests
-          if (event.request.mode === 'navigate') {
-            return caches.match('/offline.html');
-          }
-          return new Response('Offline', { status: 503 });
-        });
-      })
-  );
-});
-
-// Push notification event
-self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data ? event.data.text() : 'Neue Benachrichtigung',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1,
-    },
-    actions: [
-      { action: 'open', title: 'Öffnen' },
-      { action: 'close', title: 'Schließen' },
-    ],
-  };
-
-  event.waitUntil(
-    self.registration.showNotification('BidBlitz', options)
-  );
-});
-
-// Notification click event
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  if (event.action === 'open' || !event.action) {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
-});
-
-// Background sync for offline actions
+// ═══════════════════════════════════════════════════════════════════════════════
+// BACKGROUND SYNC (placeholder for queued offline actions)
+// ═══════════════════════════════════════════════════════════════════════════════
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-transactions') {
-    event.waitUntil(syncTransactions());
+    event.waitUntil(Promise.resolve());
   }
 });
-
-async function syncTransactions() {
-  // Sync any queued transactions when back online
-  console.log('BidBlitz: Syncing offline transactions');
-}

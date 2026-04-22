@@ -7,12 +7,30 @@
 
 ## Production Status: LIVE ✅ | All 41+ V2 Modules Running
 
+## [2026-04-22] Sabre GDS Integration — LIVE ✅
+- **Flight Search** (LIVE): `/api/sabre/flights/search` + `/api/sabre/flights/quick-search` — Bargain Finder Max v4.4.0 — verified returning real itineraries (JFK→LAX, DXB→FRA, etc.) on https://bidblitz.ae
+- **Hotel Search** (endpoint ready, access limited): `/api/sabre/hotels/search` — Hotel Availability v5.0.0 — DEVCENTER/CERT credentials return `NOT_AUTHORIZED`; endpoint surfaces a clear German-language message to users. Requires a paid Sabre Hotel Content package for real data.
+- **Auth**: OAuth2 token flow via Sabre's double-base64 Basic auth (`base64(base64(CID)+':'+base64(SEC))`), 7-day cached tokens, automatic refresh on 401.
+- **Frontend**: New `SabreFlightsPage.jsx` at route `/flights-live` (also `/sabre-flights`) with form (origin/destination/dates/pax/cabin) and results display. Accessible via new **"LIVE"** button on the existing Flugsuche header.
+- Files: `/app/backend/services/sabre_client.py`, `/app/backend/routes/sabre.py`, `/app/frontend/src/pages/SabreFlightsPage.jsx`.
+- Credentials: CERT (sandbox). Prod-env vars prepared in `.env` but empty — switch via `SABRE_ENVIRONMENT=PROD` when real credentials arrive.
+
+## [2026-04-22] Service Worker Härtung (P3) — DONE ✅
+- Rewritten `/app/frontend/public/service-worker.js` → `v12`.
+- Strict **hard block-list**: `/api/auth`, `/api/admin`, `/api/wallet`, `/api/payments`, `/api/stripe`, `/api/p2p`, `/api/transactions`, `/api/notifications`, `/api/flights`, `/api/hotels`, `/api/sabre`, `/api/pay`, `/api/topup`, `/api/refund`, `/api/checkout`, `/login`, `/logout`, `/register` — never intercepted by SW.
+- Non-GET requests pass through directly (POST/PUT/PATCH/DELETE/OPTIONS).
+- Any request carrying `Authorization` header skips SW entirely.
+- Cacheable allow-list reduced to truly safe GETs (`auctions/active`, `auctions/feed`, `food/restaurants`, `kids/children`).
+- Removed duplicate push/notificationclick listeners.
+- Clone errors fully swallowed with try/catch — eliminates "object cannot be cloned" errors.
+
 ## [2026-04-22] Live Frontend Login Fix (P0) — DONE ✅
 - Root Cause: `craco.config.js` loaded `.env` via dotenv at the very top, which baked the preview URL `https://blitz-driver-taxi.preview.emergentagent.com` into the production JS bundles even though `.env.production` existed.
 - Fix: Re-ordered dotenv loading in `craco.config.js` so `.env.production` is loaded FIRST during production builds. Since dotenv never overwrites already-set vars, `.env.production` now wins.
 - Created `.env.production` with `REACT_APP_BACKEND_URL=` (empty) — forces relative `/api/*` URLs matching the nginx proxy at bidblitz.ae.
 - Created `/app/scripts/deploy.sh` — standardized deploy (build, verify no preview URL, tar, scp, nginx reload, keep last 5 backups).
 - Verified: Live JS bundles no longer contain `blitz-driver-taxi`; `POST https://bidblitz.ae/api/auth/login` returns 200 with correct cookies. In-browser API calls go to `https://bidblitz.ae/api/*`.
+
 
 
 ## Deployed Features (2026-04-19 — Taxi Mode + Admin Panel)
