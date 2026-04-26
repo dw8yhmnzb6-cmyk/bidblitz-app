@@ -202,6 +202,9 @@ from routes.kyc import router as kyc_router
 from routes.push_notifications import router as push_notifications_router
 from routes.support_tickets import router as support_tickets_router
 from routes.two_factor import router as two_factor_router
+from routes.admin_approvals import router as admin_approvals_router
+from routes.crypto_wallet import router as crypto_wallet_router
+from routes.crypto_prices import router as crypto_prices_router
 
 app.include_router(auth_router)
 app.include_router(wallet_router)
@@ -211,6 +214,9 @@ app.include_router(transactions_router)
 app.include_router(stripe_router)
 app.include_router(payout_router)
 app.include_router(admin_router)
+app.include_router(admin_approvals_router)
+app.include_router(crypto_wallet_router)
+app.include_router(crypto_prices_router)
 app.include_router(monitoring_router)
 app.include_router(merchant_admin_router)
 app.include_router(blitz_transfer_router)
@@ -511,6 +517,8 @@ app.include_router(blitzpay_router)
 
 from routes.crypto_earn import router as crypto_earn_router
 app.include_router(crypto_earn_router)
+app.include_router(crypto_wallet_router)
+# crypto_prices_router already included above
 
 from routes.crypto_baskets import router as crypto_baskets_router
 app.include_router(crypto_baskets_router)

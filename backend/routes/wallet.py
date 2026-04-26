@@ -9,6 +9,13 @@ import secrets
 
 router = APIRouter(prefix="/api/wallet", tags=["wallet"])
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# REALISTIC LIMITS - NO FAKE NUMBERS!
+# ═══════════════════════════════════════════════════════════════════════════════
+MAX_TOPUP_AMOUNT = 10000.0       # Max 10.000 EUR per top-up (realistic for retail)
+DAILY_TOPUP_LIMIT = 25000.0      # Max 25.000 EUR per day
+ADMIN_APPROVAL_AMOUNT = 5000.0   # Require admin approval for > 5.000 EUR
+
 
 def generate_reference():
     return f"BLZ-{secrets.token_hex(4).upper()}"
@@ -36,6 +43,90 @@ async def get_balance(request: Request):
     return {
         "balance": round(user.get("balance", 0.0), 2),
         "currency": user.get("currency", "EUR"),
+    }
+
+
+@router.get("/balance/total")
+async def get_total_balance(request: Request):
+    """
+    Get user's COMPLETE REAL balance:
+    - EUR wallet balance
+    - Crypto wallet balances (in EUR)
+    - Crypto Earn deposits (in EUR)
+    = TOTAL REAL BALANCE (wie auf bidblitz.ae angezeigt!)
+    """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    
+    # 1. EUR Wallet Balance
+    eur_balance = user.get("balance", 0.0)
+    
+    # 2. Crypto Wallet Balances (convert to EUR)
+    from routes.crypto_prices import get_eur_value
+    
+    crypto_wallets = await db.crypto_wallets.find(
+        {"user_id": user_id},
+        {"_id": 0, "coin": 1, "balance": 1, "locked_balance": 1}
+    ).to_list(100)
+    
+    crypto_total_eur = 0.0
+    crypto_breakdown = []
+    
+    for wallet in crypto_wallets:
+        coin = wallet.get("coin")
+        balance = wallet.get("balance", 0)
+        locked = wallet.get("locked_balance", 0)
+        total_crypto = balance + locked
+        
+        if total_crypto > 0:
+            eur_value = get_eur_value(coin, total_crypto)
+            crypto_total_eur += eur_value
+            
+            crypto_breakdown.append({
+                "coin": coin,
+                "amount": total_crypto,
+                "available": balance,
+                "locked_in_earn": locked,
+                "value_eur": round(eur_value, 2)
+            })
+    
+    # 3. Crypto Earn Active Deposits (calculate earned interest)
+    earn_deposits = await db.crypto_earn_deposits.find(
+        {"user_id": user_id, "status": "active"},
+        {"_id": 0, "coin": 1, "amount": 1, "earned": 1, "apy": 1, "created_at": 1}
+    ).to_list(100)
+    
+    earn_breakdown = []
+    
+    for dep in earn_deposits:
+        # Calculate current earned interest
+        from datetime import datetime, timezone
+        days_elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(dep["created_at"])).days
+        if days_elapsed < 1:
+            days_elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(dep["created_at"])).total_seconds() / 86400
+        
+        daily_rate = dep.get("apy", 0) / 100 / 365
+        earned = dep.get("amount", 0) * daily_rate * days_elapsed
+        
+        earn_breakdown.append({
+            "coin": dep.get("coin"),
+            "principal": dep.get("amount", 0),
+            "earned": round(earned, 8),
+            "apy": dep.get("apy", 0),
+            "days": round(days_elapsed, 1)
+        })
+    
+    # TOTAL BALANCE (EUR + Crypto in EUR)
+    total_balance = eur_balance + crypto_total_eur
+    
+    return {
+        "eur_balance": round(eur_balance, 2),
+        "crypto_balance_eur": round(crypto_total_eur, 2),
+        "total_balance_eur": round(total_balance, 2),
+        "crypto_breakdown": crypto_breakdown,
+        "earn_breakdown": earn_breakdown,
+        "currency": "EUR",
+        "note": "Total includes EUR wallet + crypto wallets (converted to EUR at current rates)"
     }
 
 
@@ -95,7 +186,76 @@ async def topup(req: TopUpRequest, request: Request):
     user_id = str(user["_id"])
     ref = generate_reference()
 
-    # Update balance
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # REALISTIC VALIDATION - NO FAKE NUMBERS!
+    # ═══════════════════════════════════════════════════════════════════════════════
+    
+    # 1. Check maximum amount (NO MORE 1.3M EUR!)
+    if req.amount > MAX_TOPUP_AMOUNT:
+        raise HTTPException(
+            400, 
+            f"⚠️ Maximalbetrag überschritten! Max pro Aufladung: EUR {MAX_TOPUP_AMOUNT:,.2f}. "
+            f"Für größere Beträge kontaktiere bitte den Support."
+        )
+    
+    # 2. Check daily limit
+    from datetime import timedelta
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_topups = await db.transactions.find({
+        "user_id": user_id,
+        "type": "topup",
+        "status": "completed",
+        "created_at": {"$gte": today_start.isoformat()}
+    }).to_list(100)
+    
+    total_today = sum(t.get("amount", 0) for t in today_topups)
+    if (total_today + req.amount) > DAILY_TOPUP_LIMIT:
+        raise HTTPException(
+            400,
+            f"⚠️ Tageslimit erreicht! Heute bereits EUR {total_today:,.2f} aufgeladen. "
+            f"Maximales Tageslimit: EUR {DAILY_TOPUP_LIMIT:,.2f}"
+        )
+    
+    # 3. Check if needs admin approval
+    needs_approval = req.amount > ADMIN_APPROVAL_AMOUNT
+    
+    if needs_approval:
+        # Create pending transaction
+        txn = {
+            "id": secrets.token_hex(8),
+            "user_id": user_id,
+            "type": "topup",
+            "amount": req.amount,
+            "description": f"Top-up via {req.payment_method} (Pending Approval)",
+            "merchant_name": "",
+            "status": "pending_approval",
+            "reference": ref,
+            "payment_method": req.payment_method,
+            "category": "topup",
+            "needs_admin_approval": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.transactions.insert_one(txn)
+        
+        # Notify admins
+        await db.notifications.insert_one({
+            "user_id": "admin",
+            "type": "admin_action_required",
+            "title": f"🔔 Top-Up Approval: EUR {req.amount:,.2f}",
+            "message": f"User {user.get('email')} möchte EUR {req.amount:,.2f} aufladen. Approval erforderlich.",
+            "data": {"transaction_id": txn["id"], "user_email": user.get("email")},
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        
+        return {
+            "ok": True,
+            "message": f"⏳ Aufladung von EUR {req.amount:,.2f} wartet auf Admin-Freigabe. Du wirst benachrichtigt!",
+            "pending_approval": True,
+            "transaction": txn
+        }
+
+    # Update balance (only if no approval needed)
     await db.users.update_one(
         {"_id": user["_id"]},
         {"$inc": {"balance": req.amount}}
