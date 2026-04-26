@@ -480,6 +480,16 @@ class BidRequest(BaseModel):
 async def place_bid(req: BidRequest, request: Request):
     """Place a bid on an auction. Costs 1 credit."""
     user = await get_current_user(request)
+    # Block bidding without KYC (admins exempt)
+    if user.get("role") != "admin" and user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um an Auktionen teilzunehmen.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
     user_id = str(user["_id"])
     ip, ua = get_client_info(request)
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import MiniLeafletMap from "../components/MiniLeafletMap";
 import {
   ChevronLeft, Shield, Eye, CreditCard, Zap,
   Check, Star, Crown, Loader2, Users, PlusCircle,
@@ -712,11 +713,13 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
                         data-testid={`child-gps-${child.child_id}`}
                       >
                         {hasCoords && (
-                          <img
-                            src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/pin-s+3B82F6(${loc.lng},${loc.lat})/${loc.lng},${loc.lat},14,0/340x100@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
-                            alt="GPS"
-                            className="w-full h-[80px] object-cover"
-                            onError={(e) => { e.target.style.display = 'none'; }}
+                          <MiniLeafletMap
+                            lat={loc.lat}
+                            lng={loc.lng}
+                            zoom={14}
+                            height={80}
+                            pins={[{ lat: loc.lat, lng: loc.lng, color: "#3B82F6" }]}
+                            testId={`child-gps-mini-${child.child_id}`}
                           />
                         )}
                         <div

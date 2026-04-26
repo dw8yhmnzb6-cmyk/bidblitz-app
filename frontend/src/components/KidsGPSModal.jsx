@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import MiniLeafletMap from "./MiniLeafletMap";
 import {
   X, MapPin, Navigation, Battery, Wifi, WifiOff, Clock,
   History, Plus, Trash2, Shield, AlertTriangle, ChevronRight,
@@ -259,11 +260,14 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
               <div className="h-[220px] rounded-2xl overflow-hidden border border-blue-500/20 relative">
                 {location?.lat && location?.lng ? (
                   <>
-                    <img
-                      src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/pin-l+3B82F6(${location.lng},${location.lat})/${location.lng},${location.lat},15,0/600x400@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
-                      alt="GPS Map"
-                      className="w-full h-full object-cover"
-                      onError={(e) => { e.target.style.display = 'none'; }}
+                    <MiniLeafletMap
+                      lat={location.lat}
+                      lng={location.lng}
+                      zoom={15}
+                      height={220}
+                      pins={[{ lat: location.lat, lng: location.lng, color: "#3B82F6" }]}
+                      testId={`kids-gps-map-${child?.child_id || ""}`}
+                      className="w-full"
                     />
                     {/* Child indicator */}
                     <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2">

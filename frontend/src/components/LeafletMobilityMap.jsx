@@ -30,7 +30,7 @@ const MAP_STYLES = {
   },
   light: {
     name: "Hell",
-    url: "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png",
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     attribution: "&copy; OSM &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 20,

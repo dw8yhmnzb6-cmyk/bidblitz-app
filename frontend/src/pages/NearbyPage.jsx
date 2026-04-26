@@ -114,15 +114,24 @@ const NearbyPage = ({ onBack, onNavigate }) => {
     });
   }, [markers, filters]);
 
-  // Mapbox Geocoding search
+  // Address search via OpenStreetMap Nominatim (free, no key required)
   const searchAddress = async (q) => {
     if (!q || q.length < 3) { setSearchResults([]); return; }
     setSearching(true);
     try {
       const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${mapboxgl.accessToken}&language=de&limit=5`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1&accept-language=de`,
+        { headers: { "Accept": "application/json" } }
       );
-      if (res.ok) { const d = await res.json(); setSearchResults(d.features || []); }
+      if (res.ok) {
+        const d = await res.json();
+        // Normalize to Mapbox-style features so the rest of the code keeps working
+        const features = (d || []).map((p) => ({
+          place_name: p.display_name,
+          center: [parseFloat(p.lon), parseFloat(p.lat)],
+        }));
+        setSearchResults(features);
+      }
     } catch {}
     setSearching(false);
   };

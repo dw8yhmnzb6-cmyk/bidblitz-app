@@ -13,7 +13,7 @@ import {
   // Marketing
   Zap, Eye, Mail, Trophy, Target, Gift, MessageSquare,
   // Auktionen
-  Package, Gavel, Crown, Ticket, Bot, CheckCircle2, TrendingUp, Users, Euro,
+  Package, Gavel, Crown, Ticket, Bot, CheckCircle2, TrendingUp, Users, Euro, Image,
   // Gutscheine & Codes
   Tag, Percent,
   // Kunden & Personal

@@ -14,6 +14,21 @@ def generate_reference():
     return f"BLZ-{secrets.token_hex(4).upper()}"
 
 
+def _ensure_kyc(user: dict):
+    """Block wallet writes until KYC is approved (admins exempt)."""
+    if user.get("role") == "admin":
+        return
+    if user.get("kyc_status") != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "kyc_required",
+                "message": "Bitte verifiziere zuerst deinen Ausweis, um Wallet-Aktionen durchzuführen.",
+                "kyc_status": user.get("kyc_status", "not_started"),
+            },
+        )
+
+
 @router.get("/balance")
 async def get_balance(request: Request):
     """Get user's wallet balance - optimized with minimal DB read."""
@@ -76,6 +91,7 @@ async def get_wallet_balance(request: Request):
 @router.post("/topup")
 async def topup(req: TopUpRequest, request: Request):
     user = await get_current_user(request)
+    _ensure_kyc(user)
     user_id = str(user["_id"])
     ref = generate_reference()
 
@@ -129,6 +145,7 @@ class SendMoneyRequest(BaseModel):
 async def send_money(req: SendMoneyRequest, request: Request):
     """P2P transfer between BidBlitz wallet users - atomic & safe"""
     user = await get_current_user(request)
+    _ensure_kyc(user)
     sender_id = str(user["_id"])
     
     # Validate amount

@@ -4,6 +4,7 @@ import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
+import KYCVerificationModal from "../components/KYCVerificationModal";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -70,6 +71,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const [forgotSent, setForgotSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true); // Default to true for better UX
   const [otpCode, setOtpCode] = useState("");
+  const [showKYC, setShowKYC] = useState(false);
   const { t } = useI18n();
 
   const user = useUser();
@@ -108,7 +110,21 @@ export const AuthPage = ({ onBack, initialMode }) => {
           }).catch(() => {});
         }
       } catch {}
+      // Open KYC modal immediately after registration
+      setShowKYC(true);
     }
+  };
+
+  const handleKYCComplete = async (result) => {
+    // Refresh user profile to pick up kyc_status
+    try {
+      if (typeof user.refresh === "function") {
+        await user.refresh();
+      } else if (typeof user.fetchProfile === "function") {
+        await user.fetchProfile();
+      }
+    } catch {}
+    setShowKYC(false);
   };
 
   const handleForgotPassword = async (e) => {
@@ -534,6 +550,12 @@ export const AuthPage = ({ onBack, initialMode }) => {
           <span className="text-[10px] text-[#222] font-medium">Secured with end-to-end encryption</span>
         </motion.div>
       </div>
+
+      <KYCVerificationModal
+        open={showKYC}
+        onClose={() => setShowKYC(false)}
+        onComplete={handleKYCComplete}
+      />
     </motion.div>
   );
 };

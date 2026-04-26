@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
+import MiniLeafletMap from '../components/MiniLeafletMap';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -489,20 +490,25 @@ export default function ScooterPage({ onNavigate }) {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
-              {/* Map - Mapbox Dark Style with Scooter Pins */}
+              {/* Map - Leaflet with scooter pins (Mapbox-free) */}
               <div className="relative h-64 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
                 {(() => {
-                  const pins = scooters.slice(0, 8).map(s =>
-                    `pin-s+10B981(${s.location?.lng || userLocation.lng + (Math.random() - 0.5) * 0.01},${s.location?.lat || userLocation.lat + (Math.random() - 0.5) * 0.01})`
-                  ).join(',');
-                  const userPin = `pin-l+00C2FF(${userLocation.lng},${userLocation.lat})`;
-                  const allPins = pins ? `${userPin},${pins}` : userPin;
+                  const allPins = [
+                    { lat: userLocation.lat, lng: userLocation.lng, color: "#00C2FF", label: "Du" },
+                    ...scooters.slice(0, 8).map((s) => ({
+                      lat: s.location?.lat || userLocation.lat + (Math.random() - 0.5) * 0.01,
+                      lng: s.location?.lng || userLocation.lng + (Math.random() - 0.5) * 0.01,
+                      color: "#10B981",
+                    })),
+                  ];
                   return (
-                    <img
-                      src={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/static/${allPins}/${userLocation.lng},${userLocation.lat},14,0/800x400@2x?access_token=${process.env.REACT_APP_MAPBOX_TOKEN}`}
-                      alt="Scooter Map"
-                      className="w-full h-full object-cover"
-                      onError={(e) => { e.target.style.display = 'none'; }}
+                    <MiniLeafletMap
+                      lat={userLocation.lat}
+                      lng={userLocation.lng}
+                      zoom={14}
+                      height={256}
+                      pins={allPins}
+                      testId="scooter-map"
                     />
                   );
                 })()}
