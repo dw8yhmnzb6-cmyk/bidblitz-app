@@ -157,7 +157,7 @@ export default function DatingPage({ onBack }) {
       )}
 
       <AnimatePresence>{matchPopup&&(
-        <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur" onClick={()=>setMatchPopup(false)}>
+        <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur" onClick={()=>setMatchPopup(false)}>
           <motion.div initial={{scale:0.5}} animate={{scale:1}} className="text-center p-8">
             <Sparkles size={64} className="mx-auto mb-4 text-pink-400"/>
             <h2 className="text-3xl font-bold text-white mb-2">It's a Match!</h2>
@@ -169,7 +169,7 @@ export default function DatingPage({ onBack }) {
       
       {/* 💰 PAYWALL MODAL (Tinder/Bumble Style) */}
       <AnimatePresence>{showPaywall&&(
-        <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+        <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <motion.div initial={{scale:0.9,y:20}} animate={{scale:1,y:0}} exit={{scale:0.9,y:20}} className="w-full max-w-md rounded-3xl p-8 text-center" style={{background:"linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)",border:"2px solid rgba(236,72,153,0.3)"}}>
             <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{background:"linear-gradient(135deg, #FFD700, #FFA500)"}}>
               <Crown size={40} className="text-black"/>

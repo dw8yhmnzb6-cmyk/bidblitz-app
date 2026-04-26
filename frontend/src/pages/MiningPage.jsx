@@ -1403,7 +1403,7 @@ export default function MiningPage({ onBack, onNavigate }) {
       {/* ════ Purchase Success Overlay ════ */}
       <AnimatePresence>
         {purchaseSuccess && (
-          <motion.div data-testid="purchase-success-overlay" className="fixed inset-0 z-50 flex items-center justify-center"
+          <motion.div data-testid="purchase-success-overlay" className="fixed inset-0 z-[10000] flex items-center justify-center"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
             <motion.div className="relative text-center p-8"

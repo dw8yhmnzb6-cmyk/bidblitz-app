@@ -371,7 +371,7 @@ export const BlitzOfficePage = ({ onBack }) => {
       <AnimatePresence>
         {showLeaderboard && (
           <motion.div
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-end sm:items-center justify-center"
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-xl flex items-end sm:items-center justify-center"
             onClick={() => setShowLeaderboard(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

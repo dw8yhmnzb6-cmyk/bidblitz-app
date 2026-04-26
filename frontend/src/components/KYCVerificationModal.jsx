@@ -125,12 +125,17 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+        className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+        style={{ zIndex: 10000 }}
         data-testid="kyc-modal">
         <motion.div
           initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30 }}
-          className="bg-[#0A0A0F] w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl border-t sm:border border-white/10 max-h-[92vh] overflow-y-auto">
+          className="bg-[#0A0A0F] w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl border-t sm:border border-white/10 overflow-y-auto"
+          style={{
+            maxHeight: "min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - 16px))",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+          }}>
 
           {/* Header */}
           <div className="sticky top-0 bg-[#0A0A0F]/95 backdrop-blur p-4 border-b border-white/5 flex items-center gap-3 z-10">

@@ -228,7 +228,7 @@ const ArcadeTab = ({ blz, onBalanceChange }) => {
       <AnimatePresence>
         {playing && (
           <motion.div
-            className="fixed inset-0 z-50 bg-black flex flex-col"
+            className="fixed inset-0 z-[10000] bg-black flex flex-col"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <div className="flex items-center justify-between p-3 bg-[#0A0A0F] border-b border-white/[0.06]">

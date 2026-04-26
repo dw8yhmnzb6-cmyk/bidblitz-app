@@ -395,7 +395,7 @@ export const BlitzRecyclePage = ({ onBack }) => {
       <AnimatePresence>
         {showLB && (
           <motion.div
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-end sm:items-center justify-center"
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-xl flex items-end sm:items-center justify-center"
             onClick={() => setShowLB(false)}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >

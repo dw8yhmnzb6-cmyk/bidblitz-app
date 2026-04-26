@@ -229,7 +229,7 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
       onClick={onClose}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
     >
@@ -619,7 +619,7 @@ const ModuleForm = ({ mod, item, onClose, onSaved }) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center"
       onClick={onClose}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
     >

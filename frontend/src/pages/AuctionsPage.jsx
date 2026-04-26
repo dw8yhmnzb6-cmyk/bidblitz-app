@@ -288,7 +288,7 @@ const BuyCreditsModal = ({ open, onClose, onPurchased, balance: propBalance }) =
   if (!open) return null;
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <motion.div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={step === "processing" ? undefined : onClose} />
       <motion.div className={`relative w-full max-w-md mx-4 mb-4 sm:mb-0 rounded-2xl overflow-hidden ${glass}`}
         style={{ background: "rgba(8,12,20,0.95)", border: panelBorder }}
@@ -502,7 +502,7 @@ const AutoBidModal = ({ open, onClose, auctionId, onSet }) => {
   };
   if (!open) return null;
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <motion.div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       <motion.div className={`relative w-full max-w-sm mx-4 mb-4 sm:mb-0 rounded-2xl overflow-hidden ${glass}`}
         style={{ background: "rgba(8,12,20,0.92)", border: panelBorder }} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>

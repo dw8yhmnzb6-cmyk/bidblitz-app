@@ -216,7 +216,7 @@ const SocialFeedPage = ({ onBack }) => {
       <AnimatePresence>
         {showCreate && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowCreate(false)}>
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowCreate(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28 }} onClick={e => e.stopPropagation()}
               className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 p-5" data-testid="create-post-modal">
@@ -248,7 +248,7 @@ const SocialFeedPage = ({ onBack }) => {
       <AnimatePresence>
         {activePost && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setActivePost(null)}>
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setActivePost(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28 }} onClick={e => e.stopPropagation()}
               className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 max-h-[70vh] flex flex-col" data-testid="comments-modal">

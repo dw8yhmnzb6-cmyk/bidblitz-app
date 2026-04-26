@@ -173,7 +173,7 @@ const ContactsPage = ({ onBack, onNavigate }) => {
       <AnimatePresence>
         {sendModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center" onClick={() => setSendModal(null)}>
+            className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-end justify-center" onClick={() => setSendModal(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25 }} onClick={e => e.stopPropagation()}
               className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 p-6">

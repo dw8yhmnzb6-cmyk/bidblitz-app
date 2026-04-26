@@ -157,6 +157,37 @@ async def _spin_wheel_post_hook(uid: str):
     await _quest_track(uid, "spin_wheel", 1)
 
 
+@router.get("/spin-wheel/history")
+async def spin_history(request: Request, limit: int = 20):
+    """Return user's recent spin history with prize, value, and date."""
+    user = await get_current_user(request)
+    uid = str(user.get("_id") or user.get("id"))
+    cursor = db.spin_wheel_log.find(
+        {"user_id": uid},
+        {"_id": 0, "prize_label": 1, "prize_type": 1, "prize_value": 1, "prize_index": 1, "created_at": 1, "date": 1},
+    ).sort("created_at", -1).limit(min(max(limit, 1), 50))
+    items = await cursor.to_list(50)
+
+    # Aggregate stats
+    total_spins = await db.spin_wheel_log.count_documents({"user_id": uid})
+    total_blz = 0
+    total_eur = 0.0
+    async for s in db.spin_wheel_log.find({"user_id": uid}, {"_id": 0, "prize_type": 1, "prize_value": 1}):
+        if s.get("prize_type") == "blz":
+            total_blz += int(s.get("prize_value") or 0)
+        else:
+            total_eur += float(s.get("prize_value") or 0)
+
+    return {
+        "items": items,
+        "stats": {
+            "total_spins": total_spins,
+            "total_blz_won": total_blz,
+            "total_eur_won": round(total_eur, 2),
+        },
+    }
+
+
 # ══════════════════════════════════════════════════════════════
 # 2. BIRTHDAY BONUS
 # ══════════════════════════════════════════════════════════════

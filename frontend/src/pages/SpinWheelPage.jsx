@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Gift, Crown, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, Gift, Crown, Clock, Trophy, History } from "lucide-react";
 import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -35,6 +35,7 @@ function useCountdown(targetIso) {
 
 export default function SpinWheelPage({ onBack, onNavigate }) {
   const [data, setData] = useState(null);
+  const [history, setHistory] = useState({ items: [], stats: { total_spins: 0, total_blz_won: 0, total_eur_won: 0 } });
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [lastPrize, setLastPrize] = useState(null);
@@ -42,9 +43,14 @@ export default function SpinWheelPage({ onBack, onNavigate }) {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/api/spin-wheel/status`, { credentials: "include" });
-      const j = await r.json();
-      setData(j);
+      const [statusRes, historyRes] = await Promise.all([
+        fetch(`${API}/api/spin-wheel/status`, { credentials: "include" }),
+        fetch(`${API}/api/spin-wheel/history?limit=20`, { credentials: "include" }),
+      ]);
+      const status = await statusRes.json();
+      const hist = await historyRes.json();
+      setData(status);
+      if (historyRes.ok) setHistory(hist);
     } catch { toast.error("Fehler beim Laden"); }
   }, []);
 
@@ -189,7 +195,7 @@ export default function SpinWheelPage({ onBack, onNavigate }) {
 
         {/* Prizes overview */}
         <div>
-          <p className="text-[11px] font-bold text-white/50 uppercase tracking-wider mb-2">Gewinne</p>
+          <p className="text-[11px] font-bold text-white/50 uppercase tracking-wider mb-2">Mögliche Gewinne</p>
           <div className="grid grid-cols-2 gap-1.5">
             {data.prizes.map((p, i) => (
               <div key={i} className="rounded-lg px-3 py-2 text-[11px] font-bold flex items-center gap-2"
@@ -200,6 +206,89 @@ export default function SpinWheelPage({ onBack, onNavigate }) {
             ))}
           </div>
         </div>
+
+        {/* Statistik & Verlauf */}
+        {history.stats.total_spins > 0 && (
+          <div data-testid="spin-stats">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Trophy size={12} className="text-[#FFD700]"/>
+              <p className="text-[11px] font-bold text-white/50 uppercase tracking-wider">Deine Bilanz</p>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="rounded-xl p-2.5 text-center"
+                   style={{ background: "rgba(255,184,0,0.08)", border: "1px solid rgba(255,184,0,0.18)" }}>
+                <p className="text-[16px] font-black text-[#FFB800] tabular-nums leading-none">
+                  {history.stats.total_spins}
+                </p>
+                <p className="text-[9px] text-white/50 mt-1 uppercase tracking-wider">Spins</p>
+              </div>
+              <div className="rounded-xl p-2.5 text-center"
+                   style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.18)" }}>
+                <p className="text-[16px] font-black text-[#A855F7] tabular-nums leading-none">
+                  {history.stats.total_blz_won}
+                </p>
+                <p className="text-[9px] text-white/50 mt-1 uppercase tracking-wider">BLZ</p>
+              </div>
+              <div className="rounded-xl p-2.5 text-center"
+                   style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.18)" }}>
+                <p className="text-[16px] font-black text-[#00D26A] tabular-nums leading-none">
+                  {history.stats.total_eur_won.toFixed(2)}
+                </p>
+                <p className="text-[9px] text-white/50 mt-1 uppercase tracking-wider">€</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {history.items.length > 0 && (
+          <div data-testid="spin-history">
+            <div className="flex items-center gap-1.5 mb-2">
+              <History size={12} className="text-white/50"/>
+              <p className="text-[11px] font-bold text-white/50 uppercase tracking-wider">Letzte Gewinne</p>
+            </div>
+            <div className="space-y-1.5">
+              {history.items.map((s, i) => {
+                const dt = new Date(s.created_at);
+                const dateStr = dt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                const timeStr = dt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+                const color = PRIZE_COLORS[(s.prize_index ?? 0) % PRIZE_COLORS.length];
+                const isCurrency = s.prize_type === "eur";
+                return (
+                  <div key={i}
+                       data-testid={`spin-history-${i}`}
+                       className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-2"
+                       style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                           style={{ background: `${color}22`, border: `1px solid ${color}40` }}>
+                        <Gift size={13} style={{ color }}/>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-bold text-white leading-tight truncate">{s.prize_label}</p>
+                        <p className="text-[10px] text-white/50">{dateStr} · {timeStr}</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-[13px] font-black tabular-nums" style={{ color }}>
+                        +{isCurrency ? s.prize_value.toFixed(2) : s.prize_value}
+                        <span className="text-[9px] ml-0.5 font-bold opacity-70">
+                          {isCurrency ? "€" : "BLZ"}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {history.items.length === 0 && history.stats.total_spins === 0 && (
+          <div className="text-center py-3 px-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+            <Gift size={20} className="text-white/30 mx-auto mb-2"/>
+            <p className="text-[11px] text-white/50">Noch keine Spins. Drehe das Glücksrad und gewinne BLZ oder €!</p>
+          </div>
+        )}
       </div>
     </div>
   );

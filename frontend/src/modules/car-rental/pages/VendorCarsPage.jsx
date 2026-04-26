@@ -312,7 +312,7 @@ export default function VendorCarsPage({ onBack, onNavigate }) {
       <AnimatePresence>
         {showForm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm overflow-y-auto"
             onClick={() => !saving && setShowForm(false)}>
             <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
               onClick={e => e.stopPropagation()}

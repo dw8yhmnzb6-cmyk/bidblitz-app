@@ -147,7 +147,7 @@ export default function VendorStaffPage({ onBack }) {
       <AnimatePresence>
         {(showAdd || editingStaff) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center"
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-end justify-center"
             onClick={() => { setShowAdd(false); setEditingStaff(null); }}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-[#111118] rounded-t-3xl p-6">

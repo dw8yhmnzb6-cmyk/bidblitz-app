@@ -273,7 +273,7 @@ export default function VendorBookingDetailPage({ bookingId, onBack, onNavigate 
 
       {/* Handover Modal */}
       {showHandover && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowHandover(false)}>
+        <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowHandover(false)}>
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-[#111118] rounded-t-3xl p-6">
             <h3 className="text-lg font-bold mb-4">Fahrzeugübergabe</h3>
@@ -311,7 +311,7 @@ export default function VendorBookingDetailPage({ bookingId, onBack, onNavigate 
 
       {/* Return Modal */}
       {showReturn && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowReturn(false)}>
+        <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowReturn(false)}>
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }}
             onClick={e => e.stopPropagation()} className="w-full max-w-lg bg-[#111118] rounded-t-3xl p-6">
             <h3 className="text-lg font-bold mb-4">Fahrzeugrückgabe</h3>

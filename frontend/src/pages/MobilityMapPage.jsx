@@ -28,7 +28,7 @@ const LocationPermissionGate = ({ onGranted, onSkipped }) => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 bg-[#0A0A0F] flex flex-col items-center justify-center p-8 text-center">
+      className="fixed inset-0 z-[10000] bg-[#0A0A0F] flex flex-col items-center justify-center p-8 text-center">
       <motion.div initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <div className="w-20 h-20 rounded-full bg-[#00C2FF]/10 border-2 border-[#00C2FF]/30 flex items-center justify-center mx-auto mb-6">
           <MapPin size={36} className="text-[#00C2FF]" />

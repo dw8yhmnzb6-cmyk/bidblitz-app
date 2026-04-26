@@ -883,7 +883,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
           >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => { setShowSetPin(null); setPinValue(''); }} />
             <motion.div
@@ -1220,7 +1220,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         {/* App Control Modal */}
         {appControlChild && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center"
+            className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-end justify-center"
             onClick={() => setAppControlChild(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25 }}
@@ -1285,7 +1285,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         {/* Device Status Modal */}
         {deviceChild && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setDeviceChild(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
@@ -1340,7 +1340,7 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
         {/* SOS Alerts Modal */}
         {showSOS && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center"
+            className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-end justify-center"
             onClick={() => setShowSOS(false)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25 }}
