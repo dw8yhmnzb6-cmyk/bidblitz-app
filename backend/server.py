@@ -601,6 +601,10 @@ app.include_router(push_notifications_router)
 from routes.directory import router as directory_router
 app.include_router(directory_router)
 
+# Advertising Platform
+from routes.advertising import router as advertising_router
+app.include_router(advertising_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
