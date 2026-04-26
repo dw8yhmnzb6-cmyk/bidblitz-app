@@ -1,0 +1,18 @@
+{
+  "id": "bidblitz-deploy",
+  "execute-command": "/root/deploy.sh",
+  "command-working-directory": "/var/www/bidblitz",
+  "response-message": "Deployment started successfully",
+  "pass-arguments-to-command": [],
+  "pass-environment-to-command": [],
+  "trigger-rule": {
+    "match": {
+      "type": "value",
+      "value": "deploy",
+      "parameter": {
+        "source": "payload",
+        "name": "action"
+      }
+    }
+  }
+}
