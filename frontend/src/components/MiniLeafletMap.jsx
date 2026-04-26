@@ -43,7 +43,7 @@ const MiniLeafletMap = ({
       }).setView([lat, lng], zoom);
       mapRef.current = map;
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
         subdomains: "abcd",
         maxZoom: 19,
       }).addTo(map);

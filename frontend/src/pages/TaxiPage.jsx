@@ -17,17 +17,17 @@ const API = process.env.REACT_APP_BACKEND_URL;
 // Map Style Tile-Provider (CartoDB + ESRI) — Apple Maps-ähnliche Auswahl
 const MAP_STYLES = {
   dark: {
-    name: 'Dark',
-    description: 'Klassisch dunkel',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    name: 'Hell',
+    description: 'Apple-Maps Stil',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
     attribution: '&copy; OSM &copy; CARTO',
     subdomains: 'abcd',
     maxZoom: 20,
   },
   light: {
     name: 'Hell',
-    description: 'Heller Standard',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    description: 'Apple-Maps Stil',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
     attribution: '&copy; OSM &copy; CARTO',
     subdomains: 'abcd',
     maxZoom: 20,

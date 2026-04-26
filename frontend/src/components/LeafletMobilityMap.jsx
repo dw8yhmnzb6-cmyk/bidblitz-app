@@ -22,15 +22,15 @@ const DEFAULT_ZOOM = 13;
 // Map style tile providers
 const MAP_STYLES = {
   dark: {
-    name: "Dark",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    name: "Hell",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
     attribution: "&copy; OSM &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 20,
   },
   light: {
     name: "Hell",
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
     attribution: "&copy; OSM &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 20,

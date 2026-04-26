@@ -31,7 +31,7 @@ const LeafletChargingMap = ({ stations, center = [51.1657, 10.4515], zoom = 6, o
     });
 
     // Dark tiles (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OSM &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 20,
