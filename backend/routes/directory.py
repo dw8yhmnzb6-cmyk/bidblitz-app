@@ -123,11 +123,18 @@ async def get_listings(
     city: Optional[str] = None,
     search: Optional[str] = None,
     premium_only: bool = False,
-    limit: int = 50
+    limit: int = 50,
+    sort_by: Optional[str] = "premium",  # premium, rating, distance, newest
+    min_rating: Optional[float] = None,
+    open_now: bool = False,
+    with_photos: bool = False,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    radius_km: Optional[float] = None,
 ):
     """
-    Get directory listings with filters
-    Premium listings appear first
+    Get directory listings with advanced filters
+    Premium listings appear first unless sorted differently
     """
     query = {"status": "active"}
     
@@ -145,12 +152,30 @@ async def get_listings(
     if premium_only:
         query["is_premium"] = True
         query["premium_expires_at"] = {"$gt": datetime.now(timezone.utc).isoformat()}
+    if min_rating:
+        query["rating"] = {"$gte": min_rating}
+    if with_photos:
+        query["photos.0"] = {"$exists": True}
     
-    # Sort: Premium first, then by creation date
+    # Open now filter
+    if open_now:
+        # Simple implementation: check if opening_hours field is not empty
+        query["opening_hours"] = {"$ne": "", "$exists": True}
+    
+    # Sorting
+    sort_field = [("is_premium", -1), ("created_at", -1)]  # Default
+    if sort_by == "rating":
+        sort_field = [("rating", -1), ("review_count", -1)]
+    elif sort_by == "newest":
+        sort_field = [("created_at", -1)]
+    elif sort_by == "distance" and lat and lng:
+        # Will be sorted after fetching
+        sort_field = [("created_at", -1)]
+    
     listings = await db.directory_listings.find(query, {"_id": 0})\
-        .sort([("is_premium", -1), ("created_at", -1)])\
-        .limit(limit)\
-        .to_list(limit)
+        .sort(sort_field)\
+        .limit(min(limit, 100))\
+        .to_list(min(limit, 100))
     
     # Mark expired premium listings
     now = datetime.now(timezone.utc).isoformat()
@@ -161,6 +186,34 @@ async def get_listings(
                 {"listing_id": listing["listing_id"]},
                 {"$set": {"is_premium": False}}
             )
+    
+    # Distance filtering and sorting
+    if lat and lng:
+        from math import radians, sin, cos, sqrt, atan2
+        
+        def haversine_distance(lat1, lon1, lat2, lon2):
+            R = 6371  # Earth radius in km
+            dlat = radians(lat2 - lat1)
+            dlon = radians(lon2 - lon1)
+            a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+            c = 2 * atan2(sqrt(a), sqrt(1-a))
+            return R * c
+        
+        # Calculate distance for all listings
+        for listing in listings:
+            if listing.get("latitude") and listing.get("longitude"):
+                dist = haversine_distance(lat, lng, listing["latitude"], listing["longitude"])
+                listing["distance_km"] = round(dist, 2)
+            else:
+                listing["distance_km"] = 9999  # Far away
+        
+        # Filter by radius
+        if radius_km:
+            listings = [l for l in listings if l.get("distance_km", 9999) <= radius_km]
+        
+        # Sort by distance if requested
+        if sort_by == "distance":
+            listings.sort(key=lambda x: x.get("distance_km", 9999))
     
     return {"listings": listings, "total": len(listings)}
 

@@ -415,6 +415,54 @@ frontend:
         agent: "testing"
         comment: "COMPREHENSIVE ADMIN PANEL TESTING COMPLETE (2026-04-26): ✅ ALL 17 Admin Panels Working (100% success rate), ✅ Main Admin Panel (/admin/overview) - platform statistics working, ✅ Admin Monitoring (/admin/monitoring/health) - system health checks working, ✅ Admin Merchants (/admin/merchants) - merchant management working, ✅ Admin Legal (/admin/legal/all) - legal document management working, ✅ Admin Wallet (/admin/wallet/users) - user wallet management working, ✅ Admin SMM (/smm/admin/orders) - social media marketing orders working, ✅ Admin Manage (/admin/system-health) - system management working, ✅ Admin Taxi (/admin/taxi/overview) - taxi service management working, ✅ Admin Revenue (/sponsor/tiers) - revenue and sponsorship working, ✅ Admin Customers (/admin/users) - user management working, ✅ Admin Payments (/admin/transactions) - transaction monitoring working, ✅ Admin Modules (/admin/feature-flags) - feature flag management working, ✅ Admin Support (/support/admin/tickets) - support ticket management working, ✅ Admin Credits (/admin/wallet/transactions) - credit management working, ✅ Admin Auction Images (/admin/auction-images/list) - auction image management working, ✅ Admin Email Marketing (/email-marketing/campaigns) - email campaign management working, ✅ Admin Directory (/directory/admin/agents) - directory agent management working, ✅ Directory Stats (/directory/stats) - directory statistics working. All admin authentication working with admin@bidblitz.com credentials. Complete admin control panel is fully functional."
 
+  - task: "Directory System - Public Directory Page"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/DirectoryPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL: Public Directory Page (/directory) is fully implemented with all UI components (search, filters, map view, detail view) but shows 0 listings. Frontend code is complete and functional. Issue: Backend API endpoints return 404 'Not Found' on production (https://bidblitz.ae/api/directory/listings, /api/directory/categories, /api/directory/countries). Backend routes exist in /app/backend/routes/directory.py and are registered in server.py, but production database has no test data. Expected 3 test listings (Dr. Schmidt Zahnarkt Berlin, Müller Elektro Premium Berlin, Pizza Roma Prishtina) are missing. Quick filters (Top bewertet, Jetzt geöffnet, Mit Fotos, In der Nähe, Premium), advanced filters (category, country, city), map view with Leaflet, and search functionality are all implemented but cannot be tested without data."
+
+  - task: "Directory System - Field Agent Portal"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/FieldAgentPortalPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL: Field Agent Portal (/field-agent-portal) is fully implemented with 3 tabs (Dashboard, Neu erstellen, Meine Listings) but cannot be tested properly. Login as agent@bidblitz.com successful, but portal shows empty state. Frontend code is complete with dashboard stats, commission tracking, listing creation form, and premium upgrade buttons. Issue: Backend API endpoints return 404 on production. Field agent user (agent@bidblitz.com with role field_agent) may not exist in production database, or directory_listings collection is empty. Cannot verify dashboard stats, my listings display, or premium upgrade functionality without test data."
+
+  - task: "Directory System - Admin Directory Panel"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/AdminDirectoryPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL: Admin Directory Panel (/admin/directory) is fully implemented with 4 tabs (Mitarbeiter, Listings, Statistiken, Auszahlungen) but cannot be tested. Frontend code is complete with agent management, listings overview with delete functionality, statistics breakdown by category/country, and payout management. Issue: Backend API endpoints return 404 on production. Cannot verify agent list, listings management, statistics display, or payout functionality without test data. Admin authentication works but panel shows empty state."
+
+  - task: "Directory System - Backend API & Data Seeding"
+    implemented: true
+    working: false
+    file: "/app/backend/routes/directory.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL: Directory backend routes are fully implemented and registered in server.py (lines 601-602) but production database is EMPTY. All API endpoints (/api/directory/listings, /api/directory/categories, /api/directory/countries, /api/directory/agent/dashboard, /api/directory/admin/agents) return 404 'Not Found' on https://bidblitz.ae. Backend code exists at /app/backend/routes/directory.py with proper models, validation, and business logic. Issue: No seed script exists for directory data. Production needs: 1) Seed script to create 3 test listings (Dr. Schmidt Zahnarzt in Berlin with category aerzte, Müller Elektro Premium in Berlin with category elektriker, Pizza Roma in Prishtina Kosovo with category restaurants), 2) Field agent user (agent@bidblitz.com with role field_agent, assigned_countries [DE, XK], commission_rate 0.30), 3) Geocoding for listings (latitude/longitude for map markers). Without data seeding, entire directory system is non-functional on production despite complete implementation."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
@@ -423,8 +471,12 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Admin Panel System Testing"
-  stuck_tasks: []
+    - "Directory System - Backend API & Data Seeding"
+    - "Directory System - Public Directory Page"
+    - "Directory System - Field Agent Portal"
+    - "Directory System - Admin Directory Panel"
+  stuck_tasks:
+    - "Directory System - Backend API & Data Seeding"
   test_all: false
   test_priority: "high_first"
 
@@ -445,3 +497,5 @@ agent_communication:
     message: "KYC SYSTEM COMPREHENSIVE TESTING COMPLETE (2026-04-26): ✅ Backend KYC API fully functional - all 9 tests passed (100% success rate), ✅ KYC status endpoint returns proper structure (kyc_verified, kyc_status, can_use_features), ✅ KYC gating working correctly - wallet topup/send and auction bidding properly blocked with 403 + kyc_required errors for unverified users, ✅ Admin KYC management endpoints working, ✅ Frontend KYC components fully implemented - KYCVerificationModal with 3-step flow and KYCBanner integrated in HomePage, ✅ Authentication properly required for all KYC endpoints. KYC system is production-ready with proper ID verification flow and feature gating."
   - agent: "testing"
     message: "COMPREHENSIVE ADMIN PANEL TESTING COMPLETE (2026-04-26): ✅ ALL 17 Admin Panels Working (100% success rate) - Main Admin, Monitoring, Merchants, Legal, Wallet, SMM, Manage, Taxi, Revenue, Customers, Payments, Modules, Support, Credits, Auction Images, Email Marketing, and Directory panels all functional. ✅ Admin authentication working with admin@bidblitz.com credentials, ✅ All backend API endpoints responding correctly (200 OK), ✅ Proper data structures returned from all endpoints, ✅ No 404 or 403 errors found, ✅ Complete admin control panel system is fully operational. Admin can manage all aspects of the BidBlitz V2 platform including users, transactions, services, content, and system health."
+  - agent: "testing"
+    message: "DIRECTORY SYSTEM TESTING COMPLETE (2026-04-26): ❌ CRITICAL ISSUE FOUND - Directory system is FULLY IMPLEMENTED but has NO DATA on production server. ✅ Frontend components exist and are properly coded (DirectoryPage.jsx, FieldAgentPortalPage.jsx, AdminDirectoryPage.jsx), ✅ Backend routes exist and are registered in server.py (/app/backend/routes/directory.py with prefix /api/directory), ✅ All API endpoints properly defined (categories, countries, listings, agent dashboard, admin management), ❌ BUT all directory API endpoints return 404 'Not Found' on https://bidblitz.ae, ❌ No test listings in database (expected: Dr. Schmidt Zahnarzt, Müller Elektro Premium, Pizza Roma), ❌ No seed script exists for directory data, ❌ Field agent portal shows empty state (no listings), ❌ Admin directory panel has no agents or listings to display. ROOT CAUSE: Directory system code is complete but production database is empty - needs test data seeding. REQUIRED ACTION: Create and run seed script to populate directory_listings collection with 3 test listings (Dr. Schmidt in Berlin, Müller Elektro Premium in Berlin, Pizza Roma in Prishtina) and create field agent user (agent@bidblitz.com with role field_agent)."

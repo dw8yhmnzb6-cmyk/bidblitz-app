@@ -37,6 +37,14 @@ export default function DirectoryPage({ onNavigate }) {
   const [selectedCity, setSelectedCity] = useState('');
   const [premiumOnly, setPremiumOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Advanced filters
+  const [sortBy, setSortBy] = useState('premium'); // premium, rating, distance, newest
+  const [minRating, setMinRating] = useState(0);
+  const [openNow, setOpenNow] = useState(false);
+  const [withPhotos, setWithPhotos] = useState(false);
+  const [radiusKm, setRadiusKm] = useState(10);
+  const [userLocation, setUserLocation] = useState(null);
 
   // Favorites
   const [favorites, setFavorites] = useState([]);
@@ -50,7 +58,22 @@ export default function DirectoryPage({ onNavigate }) {
 
   useEffect(() => {
     loadListings();
-  }, [selectedCategory, selectedCountry, selectedCity, premiumOnly, searchQuery]);
+  }, [selectedCategory, selectedCountry, selectedCity, premiumOnly, searchQuery, sortBy, minRating, openNow, withPhotos, radiusKm, userLocation]);
+
+  useEffect(() => {
+    // Get user location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        () => {}
+      );
+    }
+  }, []);
 
   const loadCategories = async () => {
     try {
@@ -77,6 +100,15 @@ export default function DirectoryPage({ onNavigate }) {
       if (selectedCity) params.append('city', selectedCity);
       if (searchQuery) params.append('search', searchQuery);
       if (premiumOnly) params.append('premium_only', 'true');
+      if (sortBy) params.append('sort_by', sortBy);
+      if (minRating > 0) params.append('min_rating', minRating);
+      if (openNow) params.append('open_now', 'true');
+      if (withPhotos) params.append('with_photos', 'true');
+      if (userLocation) {
+        params.append('lat', userLocation.lat);
+        params.append('lng', userLocation.lng);
+        if (radiusKm) params.append('radius_km', radiusKm);
+      }
       
       const res = await fetch(`${API}/api/directory/listings?${params}`);
       const data = await res.json();
@@ -380,7 +412,7 @@ export default function DirectoryPage({ onNavigate }) {
           </div>
 
           {/* Search Bar */}
-          <div className="relative">
+          <div className="relative mb-3">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={searchQuery}
@@ -388,6 +420,50 @@ export default function DirectoryPage({ onNavigate }) {
               placeholder="Suche nach Name, Beschreibung..."
               className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
             />
+          </div>
+
+          {/* Quick Filters */}
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+            <button
+              onClick={() => setSortBy(sortBy === 'rating' ? 'premium' : 'rating')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                sortBy === 'rating' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-gray-400 border border-white/10'
+              }`}
+            >
+              ⭐ Top bewertet
+            </button>
+            <button
+              onClick={() => setOpenNow(!openNow)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                openNow ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-gray-400 border border-white/10'
+              }`}
+            >
+              🕐 Jetzt geöffnet
+            </button>
+            <button
+              onClick={() => setWithPhotos(!withPhotos)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                withPhotos ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-white/5 text-gray-400 border border-white/10'
+              }`}
+            >
+              📸 Mit Fotos
+            </button>
+            <button
+              onClick={() => setSortBy(sortBy === 'distance' ? 'premium' : 'distance')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                sortBy === 'distance' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-white/5 text-gray-400 border border-white/10'
+              }`}
+            >
+              📍 In der Nähe
+            </button>
+            <button
+              onClick={() => setPremiumOnly(!premiumOnly)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                premiumOnly ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-white/5 text-gray-400 border border-white/10'
+              }`}
+            >
+              👑 Premium
+            </button>
           </div>
 
           {/* Filters Panel */}
