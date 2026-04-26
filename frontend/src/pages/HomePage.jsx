@@ -17,6 +17,7 @@ import LanguageSwitcher from "../components/LanguageSwitcher";
 import QuickAccessBar from "../components/QuickAccessBar";
 import AdBanner from "../components/AdBanner";
 import HomeRecommendations from "../components/HomeRecommendations";
+import SmartRecommendations from "../components/SmartRecommendations";
 import ModeSwitcher from "../components/ModeSwitcher";
 import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
 import RecommendAppCard from "../components/RecommendAppCard";
@@ -586,6 +587,13 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
             {/* ═══ Sponsored Banners ═══ */}
             <AdBanner onNavigate={onNavigate} />
+
+            {/* ═══ AI Smart Recommendations (gpt-5.2) ═══ */}
+            {!isGuest && (
+              <div className="overflow-hidden">
+                <SmartRecommendations onNavigate={onNavigate} />
+              </div>
+            )}
 
             {/* ═══ Recommendations ═══ */}
             <div className="overflow-hidden">

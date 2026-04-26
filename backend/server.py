@@ -605,6 +605,10 @@ app.include_router(directory_router)
 from routes.advertising import router as advertising_router
 app.include_router(advertising_router)
 
+# AI Tools (Chatbot, Content Generator, Smart Recommendations)
+from routes.ai_chat import router as ai_router
+app.include_router(ai_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

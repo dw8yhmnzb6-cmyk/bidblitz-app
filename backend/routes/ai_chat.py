@@ -1,299 +1,326 @@
 """
-BidBlitz V2 - AI-Chatbot & Smart Assistant
-24/7 Support, Navigation, Empfehlungen, Buchungen
+BidBlitz V2 - AI Chatbot, Content Generator & Smart Recommendations
+Powered by Emergent LLM Key (gpt-5.2)
 """
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
-from typing import Optional, List
+import os
+import secrets
+import logging
 from datetime import datetime, timezone
+from typing import Optional, List
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
+
+from emergentintegrations.llm.chat import LlmChat, UserMessage
+from dotenv import load_dotenv
+
 from core.database import db
 from core.security import get_current_user
-import secrets
-import os
-from emergentintegrations.openai_client import OpenAIClient
 
-router = APIRouter(prefix="/api/ai-chat", tags=["ai-chat"])
+load_dotenv()
+logger = logging.getLogger("bidblitz.ai")
 
-# Initialize OpenAI Client
-openai_client = OpenAIClient(api_key=os.environ.get("EMERGENT_LLM_KEY"))
+router = APIRouter(prefix="/api/ai", tags=["ai"])
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MODELS
-# ══════════════════════════════════════════════════════════════════════════════
+EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+DEFAULT_MODEL = ("openai", "gpt-5.2")
 
-class ChatMessage(BaseModel):
-    message: str
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1. AI CHATBOT — Multi-turn Customer Support (German)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CHATBOT_SYSTEM_PROMPT = """Du bist der freundliche AI-Assistent von BidBlitz, einer All-in-One Super-App für:
+- Zahlungen, Wallet, BLZ-Token, Mining
+- Auktionen & Lotterie mit echten Sachpreisen (iPhone, MacBook, Gutscheine)
+- Lokales Verzeichnis (Restaurants, Ärzte, Handwerker, Hotels)
+- Buchungen & Reservierungen
+- Werbekampagnen für Händler
+- Taxi, Flüge, Streaming, Telemedizin
+
+Antworte IMMER auf Deutsch, kurz und präzise (max. 3 Sätze, außer der Nutzer fragt nach Details).
+Sei freundlich, höflich und hilfsbereit. Wenn du etwas nicht weißt, sage es ehrlich und schlage vor,
+den Support unter support@bidblitz.com zu kontaktieren."""
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
     session_id: Optional[str] = None
 
-# ══════════════════════════════════════════════════════════════════════════════
-# FUNCTION DEFINITIONS FOR GPT
-# ══════════════════════════════════════════════════════════════════════════════
 
-FUNCTIONS = [
-    {
-        "name": "search_services",
-        "description": "Suche nach Dienstleistern (Hotels, Restaurants, Ärzte, etc.)",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "service_type": {
-                    "type": "string",
-                    "enum": ["hotel", "restaurant", "doctor", "handyman", "salon"],
-                    "description": "Art des Services"
-                },
-                "city": {
-                    "type": "string",
-                    "description": "Stadt"
-                },
-                "date": {
-                    "type": "string",
-                    "description": "Gewünschtes Datum (YYYY-MM-DD)"
-                }
-            },
-            "required": ["service_type"]
-        }
-    },
-    {
-        "name": "book_service",
-        "description": "Buche einen Service (Restaurant, Hotel, Arzt, etc.)",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "provider_id": {
-                    "type": "string",
-                    "description": "ID des Service-Providers"
-                },
-                "date": {
-                    "type": "string",
-                    "description": "Datum (YYYY-MM-DD)"
-                },
-                "time": {
-                    "type": "string",
-                    "description": "Uhrzeit (HH:MM)"
-                }
-            },
-            "required": ["provider_id", "date", "time"]
-        }
-    },
-    {
-        "name": "create_ad_campaign",
-        "description": "Erstelle eine Werbekampagne",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "campaign_name": {
-                    "type": "string",
-                    "description": "Name der Kampagne"
-                },
-                "budget": {
-                    "type": "number",
-                    "description": "Budget in Euro"
-                },
-                "ad_type": {
-                    "type": "string",
-                    "enum": ["banner", "sponsored_listing"],
-                    "description": "Anzeigentyp"
-                }
-            },
-            "required": ["campaign_name", "budget"]
-        }
-    },
-    {
-        "name": "get_my_bookings",
-        "description": "Hole meine aktuellen Buchungen",
-        "parameters": {
-            "type": "object",
-            "properties": {}
-        }
-    }
-]
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
 
-# ══════════════════════════════════════════════════════════════════════════════
-# FUNCTION IMPLEMENTATIONS
-# ══════════════════════════════════════════════════════════════════════════════
 
-async def search_services(service_type: str, city: Optional[str] = None, date: Optional[str] = None):
-    """Search for service providers"""
-    query = {"service_type": service_type, "is_active": True}
-    if city:
-        query["city"] = {"$regex": city, "$options": "i"}
-    
-    providers = await db.booking_providers.find(query, {"_id": 0}).limit(5).to_list(5)
-    
-    if not providers:
-        return {"result": f"Keine {service_type} gefunden" + (f" in {city}" if city else "")}
-    
-    result = f"Ich habe {len(providers)} {service_type} gefunden:\n\n"
-    for p in providers:
-        result += f"• {p['business_name']} - {p['city']} (⭐ {p.get('rating', 0)}/5)\n"
-    
-    return {"result": result, "providers": providers}
+@router.post("/chat", response_model=ChatResponse)
+async def ai_chat(req: ChatRequest, request: Request):
+    """Multi-turn AI Chat with persistent session history."""
+    user = await get_current_user(request)
+    user_email = user.get("email", "guest")
 
-async def book_service(provider_id: str, date: str, time: str, user_email: str):
-    """Book a service"""
-    provider = await db.booking_providers.find_one({"provider_id": provider_id})
-    if not provider:
-        return {"result": "Provider nicht gefunden"}
-    
-    # Create booking
-    booking = {
-        "booking_id": f"book_{secrets.token_hex(8)}",
-        "provider_id": provider_id,
-        "user_email": user_email,
-        "service_type": provider["service_type"],
-        "business_name": provider["business_name"],
-        "booking_date": date,
-        "booking_time": time,
-        "duration_minutes": 60,
-        "status": "confirmed",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    
-    await db.bookings.insert_one(booking)
-    
-    return {
-        "result": f"✅ Buchung bestätigt!\n{provider['business_name']}\n{date} um {time}",
-        "booking": booking
-    }
+    if not EMERGENT_LLM_KEY:
+        raise HTTPException(503, "AI service nicht konfiguriert")
 
-async def get_my_bookings(user_email: str):
-    """Get user's bookings"""
-    bookings = await db.bookings.find(
-        {"user_email": user_email},
-        {"_id": 0}
-    ).limit(5).to_list(5)
-    
-    if not bookings:
-        return {"result": "Du hast noch keine Buchungen."}
-    
-    result = f"Du hast {len(bookings)} Buchungen:\n\n"
-    for b in bookings:
-        result += f"• {b['business_name']} - {b['booking_date']} um {b['booking_time']} ({b['status']})\n"
-    
-    return {"result": result, "bookings": bookings}
+    session_id = req.session_id or f"chat_{secrets.token_hex(8)}"
 
-# ══════════════════════════════════════════════════════════════════════════════
-# CHAT ENDPOINT
-# ══════════════════════════════════════════════════════════════════════════════
+    # Load history (last 20 messages) for context window
+    history_doc = await db.ai_chat_sessions.find_one({"session_id": session_id}, {"_id": 0})
+    history = (history_doc or {}).get("messages", [])
 
-@router.post("/chat")
-async def chat_with_ai(req: ChatMessage, request: Request):
-    """
-    Chat with AI Assistant
-    Supports function calling for app actions
-    """
+    # Build LlmChat instance fresh per session (per playbook)
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=session_id,
+        system_message=CHATBOT_SYSTEM_PROMPT,
+    ).with_model(*DEFAULT_MODEL)
+
+    # Replay last N user/assistant turns into the chat instance
+    for m in history[-10:]:
+        if m["role"] == "user":
+            try:
+                await chat.send_message(UserMessage(text=m["content"]))
+            except Exception:
+                pass
+
+    # Send the new message
     try:
-        user = await get_current_user(request)
-        user_email = user.get("email", "guest")
-        
-        # Get or create session
-        session_id = req.session_id or f"sess_{secrets.token_hex(8)}"
-        
-        # Get conversation history
-        history = await db.chat_sessions.find_one({"session_id": session_id})
-        messages = history.get("messages", []) if history else []
-        
-        # Add system message if new session
-        if not messages:
-            system_msg = """Du bist der BidBlitz AI-Assistent. Du hilfst Nutzern bei:
-- Navigation in der App
-- Suche nach Services (Hotels, Restaurants, Ärzte, Handwerker)
-- Buchungen vornehmen
-- Werbekampagnen erstellen
-- Fragen zur App beantworten
+        reply = await chat.send_message(UserMessage(text=req.message))
+    except Exception:
+        logger.exception("AI chat failed")
+        raise HTTPException(502, "KI-Service nicht erreichbar")
 
-Sei freundlich, hilfsbereit und präzise. Nutze die verfügbaren Funktionen wenn nötig.
-Antworte auf Deutsch."""
-            messages.append({"role": "system", "content": system_msg})
-        
-        # Add user message
-        messages.append({"role": "user", "content": req.message})
-        
-        # Call OpenAI
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            functions=FUNCTIONS,
-            function_call="auto",
-            temperature=0.7,
-        )
-        
-        assistant_message = response.choices[0].message
-        
-        # Handle function call
-        if assistant_message.function_call:
-            function_name = assistant_message.function_call.name
-            function_args = eval(assistant_message.function_call.arguments)
-            
-            # Execute function
-            if function_name == "search_services":
-                function_result = await search_services(**function_args)
-            elif function_name == "book_service":
-                function_result = await book_service(**function_args, user_email=user_email)
-            elif function_name == "get_my_bookings":
-                function_result = await get_my_bookings(user_email)
-            else:
-                function_result = {"result": "Funktion nicht verfügbar"}
-            
-            # Add function result to messages
-            messages.append({
-                "role": "function",
-                "name": function_name,
-                "content": str(function_result)
-            })
-            
-            # Get final response
-            response2 = openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=messages,
-                temperature=0.7,
-            )
-            
-            final_response = response2.choices[0].message.content
-        else:
-            final_response = assistant_message.content
-        
-        # Add assistant response
-        messages.append({"role": "assistant", "content": final_response})
-        
-        # Save session
-        await db.chat_sessions.update_one(
-            {"session_id": session_id},
-            {
-                "$set": {
-                    "user_email": user_email,
-                    "messages": messages[-20:],  # Keep last 20 messages
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
+    # Persist new turns
+    now = datetime.now(timezone.utc).isoformat()
+    new_messages = history + [
+        {"role": "user", "content": req.message, "ts": now},
+        {"role": "assistant", "content": reply, "ts": now},
+    ]
+    await db.ai_chat_sessions.update_one(
+        {"session_id": session_id},
+        {
+            "$set": {
+                "session_id": session_id,
+                "user_email": user_email,
+                "messages": new_messages[-30:],  # cap stored history
+                "updated_at": now,
             },
-            upsert=True
-        )
-        
-        return {
-            "response": final_response,
-            "session_id": session_id,
-        }
-    
-    except Exception as e:
-        return {
-            "response": f"Entschuldigung, ich hatte einen technischen Fehler. Bitte versuche es nochmal.",
-            "error": str(e)
-        }
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
+    )
 
-@router.delete("/chat/{session_id}")
-async def clear_chat_session(session_id: str):
-    """Clear chat session"""
-    await db.chat_sessions.delete_one({"session_id": session_id})
-    return {"ok": True, "message": "Chat-Verlauf gelöscht"}
+    return ChatResponse(response=reply, session_id=session_id)
+
 
 @router.get("/chat/history")
-async def get_chat_history(request: Request):
-    """Get all chat sessions for user"""
+async def chat_history(request: Request, session_id: Optional[str] = None):
+    """Return last session messages or list of recent sessions."""
     user = await get_current_user(request)
-    
-    sessions = await db.chat_sessions.find(
-        {"user_email": user.get("email")},
-        {"_id": 0}
-    ).sort("updated_at", -1).limit(10).to_list(10)
-    
+    if session_id:
+        doc = await db.ai_chat_sessions.find_one({"session_id": session_id}, {"_id": 0})
+        return doc or {"session_id": session_id, "messages": []}
+    cursor = db.ai_chat_sessions.find(
+        {"user_email": user.get("email")}, {"_id": 0, "messages": 0}
+    ).sort("updated_at", -1).limit(10)
+    sessions = await cursor.to_list(10)
     return {"sessions": sessions}
+
+
+@router.delete("/chat/{session_id}")
+async def clear_chat(session_id: str, request: Request):
+    """Delete chat session."""
+    user = await get_current_user(request)
+    await db.ai_chat_sessions.delete_one({"session_id": session_id, "user_email": user.get("email")})
+    return {"ok": True}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2. AI CONTENT GENERATOR — Listings & Ad Copy
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ContentGenRequest(BaseModel):
+    content_type: str = Field(pattern="^(listing|ad_headline|ad_body|email|push)$")
+    business_name: str = Field(min_length=1, max_length=100)
+    category: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    tone: Optional[str] = Field(default="professional", pattern="^(professional|casual|playful|urgent)$")
+    language: Optional[str] = Field(default="de", pattern="^(de|en|sq|tr)$")
+    target_length: Optional[int] = Field(default=120, ge=20, le=800)
+
+
+class ContentGenResponse(BaseModel):
+    text: str
+    variations: List[str]
+
+
+CONTENT_PROMPTS = {
+    "listing": "eine professionelle, ansprechende Beschreibung für ein Verzeichnis-Eintrag",
+    "ad_headline": "eine kurze, aufmerksamkeitsstarke Werbeüberschrift (max. 60 Zeichen)",
+    "ad_body": "einen überzeugenden Werbetext für eine Anzeige",
+    "email": "einen Marketing-Email-Text mit Betreff und Inhalt",
+    "push": "eine kurze, klickstarke Push-Benachrichtigung (max. 80 Zeichen)",
+}
+
+LANGUAGE_NAMES = {"de": "Deutsch", "en": "English", "sq": "Shqip", "tr": "Türkçe"}
+
+
+@router.post("/content/generate", response_model=ContentGenResponse)
+async def generate_content(req: ContentGenRequest, request: Request):
+    """Generate marketing content using LLM. Returns 3 variations."""
+    await get_current_user(request)
+
+    if not EMERGENT_LLM_KEY:
+        raise HTTPException(503, "AI service nicht konfiguriert")
+
+    description = CONTENT_PROMPTS.get(req.content_type, "einen Marketing-Text")
+    lang = LANGUAGE_NAMES.get(req.language or "de", "Deutsch")
+    keywords = ", ".join(req.keywords or [])
+
+    system = (
+        f"Du bist ein erstklassiger Werbetexter. Schreibe {description} "
+        f"in {lang}. Tonalität: {req.tone}. "
+        f"Liefere GENAU 3 unterschiedliche Varianten, getrennt durch '|||'. "
+        f"Jede Variante max. {req.target_length} Zeichen, KEINE Aufzählungen, "
+        f"KEINE Markdown, NUR den Text."
+    )
+
+    prompt = (
+        f"Geschäft: {req.business_name}\n"
+        f"Kategorie: {req.category or 'nicht angegeben'}\n"
+        f"Keywords: {keywords or 'keine'}\n\n"
+        f"Schreibe jetzt 3 Varianten."
+    )
+
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"content_{secrets.token_hex(6)}",
+        system_message=system,
+    ).with_model(*DEFAULT_MODEL)
+
+    try:
+        reply = await chat.send_message(UserMessage(text=prompt))
+    except Exception:
+        logger.exception("Content gen failed")
+        raise HTTPException(502, "KI-Service nicht erreichbar")
+
+    parts = [p.strip().strip('"').strip() for p in reply.split("|||") if p.strip()]
+    if not parts:
+        parts = [reply.strip()]
+    while len(parts) < 3:
+        parts.append(parts[-1])
+
+    return ContentGenResponse(text=parts[0], variations=parts[:3])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3. SMART RECOMMENDATIONS — Personalized Suggestions
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class RecommendItem(BaseModel):
+    title: str
+    description: str
+    category: str
+    reason: str
+    cta: str
+
+
+class RecommendResponse(BaseModel):
+    items: List[RecommendItem]
+    generated_at: str
+
+
+@router.get("/recommendations", response_model=RecommendResponse)
+async def smart_recommendations(request: Request, limit: int = 5):
+    """Generate personalized recommendations based on user activity."""
+    user = await get_current_user(request)
+    uid = str(user.get("_id") or user.get("id"))
+
+    if not EMERGENT_LLM_KEY:
+        raise HTTPException(503, "AI service nicht konfiguriert")
+
+    # Pull user's recent activity signals
+    recent_tx = await db.transactions.find(
+        {"user_id": uid}, {"_id": 0, "category": 1, "merchant_name": 1, "amount": 1, "description": 1}
+    ).sort("created_at", -1).limit(15).to_list(15)
+
+    recent_bookings = await db.bookings.find(
+        {"user_id": uid}, {"_id": 0, "service_type": 1, "business_name": 1}
+    ).sort("created_at", -1).limit(5).to_list(5)
+
+    balance_blz = int(float(user.get("balance_blz", 0) or 0))
+    balance_eur = round(float(user.get("balance", 0) or 0), 2)
+
+    # Build a compact profile for the LLM
+    tx_summary = ", ".join(
+        f"{t.get('category','?')}/{t.get('merchant_name','?')}" for t in recent_tx[:10]
+    ) or "keine Aktivität"
+    booking_summary = ", ".join(
+        f"{b.get('service_type','?')}@{b.get('business_name','?')}" for b in recent_bookings
+    ) or "keine"
+
+    system = (
+        "Du bist ein Empfehlungs-Engine für die BidBlitz Super-App. "
+        "Schlage personalisierte Aktionen, Services oder Auktionen vor. "
+        "Antworte AUSSCHLIESSLICH in JSON-Array Format mit Objekten: "
+        '{"title":"...","description":"...","category":"...","reason":"...","cta":"..."}. '
+        "Keine Erklärungen außerhalb des JSON. Maximal 5 Empfehlungen. Auf Deutsch."
+    )
+
+    prompt = (
+        f"Nutzer-Profil:\n"
+        f"- BLZ-Guthaben: {balance_blz}\n"
+        f"- EUR-Guthaben: {balance_eur}€\n"
+        f"- Letzte Transaktionen: {tx_summary}\n"
+        f"- Letzte Buchungen: {booking_summary}\n\n"
+        f"Verfügbare Kategorien: lottery, auction, restaurant, hotel, taxi, "
+        f"telemedizin, handwerker, freelancer, streaming, mining, premium, ad_campaign.\n\n"
+        f"Erstelle {min(limit, 5)} personalisierte Empfehlungen als JSON-Array."
+    )
+
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"reco_{uid}_{secrets.token_hex(4)}",
+        system_message=system,
+    ).with_model(*DEFAULT_MODEL)
+
+    try:
+        reply = await chat.send_message(UserMessage(text=prompt))
+    except Exception:
+        logger.exception("Recommendations failed")
+        raise HTTPException(502, "KI-Service nicht erreichbar")
+
+    # Parse JSON safely
+    import json
+    import re
+    match = re.search(r"\[.*\]", reply, re.DOTALL)
+    items: List[RecommendItem] = []
+    if match:
+        try:
+            arr = json.loads(match.group(0))
+            for x in arr[:limit]:
+                if isinstance(x, dict):
+                    items.append(RecommendItem(
+                        title=str(x.get("title", ""))[:100],
+                        description=str(x.get("description", ""))[:300],
+                        category=str(x.get("category", "general"))[:50],
+                        reason=str(x.get("reason", ""))[:200],
+                        cta=str(x.get("cta", "Jetzt entdecken"))[:50],
+                    ))
+        except Exception:
+            logger.warning(f"Could not parse JSON from LLM: {reply[:200]}")
+
+    # Fallback: at least one default recommendation
+    if not items:
+        items = [RecommendItem(
+            title="Tägliche Lotterie",
+            description="Gewinne echte Sachpreise wie iPhone, MacBook oder Gutscheine.",
+            category="lottery",
+            reason="Hohe Chance auf attraktive Preise.",
+            cta="Lose kaufen",
+        )]
+
+    return RecommendResponse(
+        items=items,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
