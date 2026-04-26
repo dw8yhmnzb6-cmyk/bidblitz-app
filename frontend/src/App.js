@@ -98,6 +98,7 @@ const RetentionHubPage = lazy(() => import("./pages/RetentionHubPage"));
 const MarketingHubPage = lazy(() => import("./pages/MarketingHubPage"));
 const AdminRevenueDashboardPage = lazy(() => import("./pages/AdminRevenueDashboardPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
+import KYCTestPage from "./pages/KYCTestPage";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
 import CurrencyConverterPage from "./pages/CurrencyConverterPage";
@@ -441,6 +442,8 @@ function AppContent() {
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
+      case "/test/kyc":
+        return <KYCTestPage />;
       case "/blitz-transfer":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzTransferPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-boost":

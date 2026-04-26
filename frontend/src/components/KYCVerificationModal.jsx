@@ -133,8 +133,9 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
           transition={{ type: "spring", damping: 30 }}
           className="bg-[#0A0A0F] w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl border-t sm:border border-white/10 overflow-y-auto"
           style={{
-            maxHeight: "min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - 16px))",
-            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+            maxHeight: "min(85vh, calc(100vh - env(safe-area-inset-top, 0px) - 80px))",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+            marginBottom: "env(safe-area-inset-bottom, 0px)",
           }}>
 
           {/* Header */}
