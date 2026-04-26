@@ -13,7 +13,57 @@
       "34-Minute Flight Time",
       "10km O4 Video Transmission"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "DJI Mini 4 Pro",
+        "description": "DJI Mini 4 Pro — Unter 250 g, 4K HDR, Tri-Directional Sensing, Fly More Combo",
+        "features": [
+          "Unter 249 g, keine Registrierung erforderlich",
+          "1/1.3\" CMOS, 48MP Fotos",
+          "4K/60fps HDR Video",
+          "Tri-Directional Obstacle Sensing",
+          "34 Minuten Flugzeit",
+          "10 km O4 Videoübertragung"
+        ]
+      },
+      "en": {
+        "title": "DJI Mini 4 Pro",
+        "description": "DJI Mini 4 Pro — Under 250g, 4K HDR, Tri-Directional Sensing, Fly More Combo",
+        "features": [
+          "Under 249g, No Registration Needed",
+          "1/1.3\" CMOS, 48MP Photos",
+          "4K/60fps HDR Video",
+          "Tri-Directional Obstacle Sensing",
+          "34-Minute Flight Time",
+          "10km O4 Video Transmission"
+        ]
+      },
+      "sq": {
+        "title": "DJI Mini 4 Pro",
+        "description": "DJI Mini 4 Pro — Nën 250 g, 4K HDR, Tri-Directional Sensing, Fly More Combo",
+        "features": [
+          "Nën 249 g, nuk nevojitet regjistrim",
+          "1/1.3\" CMOS, foto 48MP",
+          "Video 4K/60fps HDR",
+          "Tri-Directional Obstacle Sensing",
+          "34 minuta kohë fluturimi",
+          "Transmetim video O4 deri në 10 km"
+        ]
+      },
+      "tr": {
+        "title": "DJI Mini 4 Pro",
+        "description": "DJI Mini 4 Pro — 250 g altı, 4K HDR, Tri-Directional Sensing, Fly More Combo",
+        "features": [
+          "249 g altı, kayıt gerektirmez",
+          "1/1.3\" CMOS, 48MP fotoğraf",
+          "4K/60fps HDR video",
+          "Tri-Directional Obstacle Sensing",
+          "34 dakikalık uçuş süresi",
+          "10 km O4 video iletimi"
+        ]
+      }
+    }
   },
   {
     "title": "De'Longhi La Specialista",
@@ -29,7 +79,57 @@
       "3 Preset Recipes + Custom",
       "LatteCrema Hot System"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "De'Longhi La Specialista",
+        "description": "De'Longhi La Specialista Arte Evo — Integriertes Mahlwerk, Smart Tamping, Dampflanze",
+        "features": [
+          "Sensor Grinding Technology",
+          "Smart Tamping Station",
+          "Active Temperature Control",
+          "Professional Steam Wand",
+          "3 Preset Recipes + Custom",
+          "LatteCrema Hot System"
+        ]
+      },
+      "en": {
+        "title": "De'Longhi La Specialista",
+        "description": "De'Longhi La Specialista Arte Evo — Integrated Grinder, Smart Tamping, Steam Wand",
+        "features": [
+          "Sensor Grinding Technology",
+          "Smart Tamping Station",
+          "Active Temperature Control",
+          "Professional Steam Wand",
+          "3 Preset Recipes + Custom",
+          "LatteCrema Hot System"
+        ]
+      },
+      "sq": {
+        "title": "De'Longhi La Specialista",
+        "description": "De'Longhi La Specialista Arte Evo — Mullir i integruar, Smart Tamping, shkop avulli",
+        "features": [
+          "Sensor Grinding Technology",
+          "Smart Tamping Station",
+          "Active Temperature Control",
+          "Professional Steam Wand",
+          "3 Preset Recipes + Custom",
+          "LatteCrema Hot System"
+        ]
+      },
+      "tr": {
+        "title": "De'Longhi La Specialista",
+        "description": "De'Longhi La Specialista Arte Evo — Entegre öğütücü, Smart Tamping, buhar çubuğu",
+        "features": [
+          "Sensor Grinding Technology",
+          "Smart Tamping Station",
+          "Active Temperature Control",
+          "Professional Steam Wand",
+          "3 Preset Recipes + Custom",
+          "LatteCrema Hot System"
+        ]
+      }
+    }
   },
   {
     "title": "Google Nest Audio",
@@ -45,7 +145,57 @@
       "Ambient IQ Auto-Adjust",
       "Chromecast Built-In"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Google Nest Audio",
+        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
+        "features": [
+          "75mm Woofer, 19mm Tweeter",
+          "Google Assistant integriert",
+          "Multi-Room Audio Unterstützung",
+          "Voice Match zur Personalisierung",
+          "Ambient IQ automatische Anpassung",
+          "Chromecast integriert"
+        ]
+      },
+      "en": {
+        "title": "Google Nest Audio",
+        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
+        "features": [
+          "75mm Woofer, 19mm Tweeter",
+          "Google Assistant built-in",
+          "Multi-Room Audio support",
+          "Voice Match for personalization",
+          "Ambient IQ auto-adjust",
+          "Chromecast built-in"
+        ]
+      },
+      "sq": {
+        "title": "Google Nest Audio",
+        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
+        "features": [
+          "75mm Woofer, 19mm Tweeter",
+          "Google Assistant i integruar",
+          "Mbështetje për Multi-Room Audio",
+          "Voice Match për personalizim",
+          "Ambient IQ me rregullim automatik",
+          "Chromecast i integruar"
+        ]
+      },
+      "tr": {
+        "title": "Google Nest Audio",
+        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
+        "features": [
+          "75mm Woofer, 19mm Tweeter",
+          "Google Assistant yerleşik",
+          "Multi-Room Audio desteği",
+          "Kişiselleştirme için Voice Match",
+          "Ambient IQ otomatik ayarlama",
+          "Chromecast yerleşik"
+        ]
+      }
+    }
   },
   {
     "title": "iPad Pro 13\" M5",
@@ -61,7 +211,57 @@
       "12MP Ultra-Wide Front, LiDAR Scanner",
       "Face ID, Wi-Fi 7, 5G Optional"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "iPad Pro 13\" M5",
+        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
+        "features": [
+          "13\" Tandem OLED, 2752x2064, ProMotion",
+          "Apple M5 Chip, Hardware Ray Tracing",
+          "Apple Pencil 3 & Magic Keyboard Unterstützung",
+          "Thunderbolt 5 / USB 4",
+          "12MP Ultra-Wide Front, LiDAR Scanner",
+          "Face ID, Wi-Fi 7, 5G optional"
+        ]
+      },
+      "en": {
+        "title": "iPad Pro 13\" M5",
+        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
+        "features": [
+          "13\" Tandem OLED, 2752x2064, ProMotion",
+          "Apple M5 Chip, Hardware Ray Tracing",
+          "Apple Pencil 3 & Magic Keyboard support",
+          "Thunderbolt 5 / USB 4",
+          "12MP Ultra-Wide front, LiDAR Scanner",
+          "Face ID, Wi-Fi 7, 5G optional"
+        ]
+      },
+      "sq": {
+        "title": "iPad Pro 13\" M5",
+        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
+        "features": [
+          "13\" Tandem OLED, 2752x2064, ProMotion",
+          "Apple M5 Chip, Hardware Ray Tracing",
+          "Mbështetje për Apple Pencil 3 & Magic Keyboard",
+          "Thunderbolt 5 / USB 4",
+          "12MP Ultra-Wide përpara, LiDAR Scanner",
+          "Face ID, Wi-Fi 7, 5G opsionale"
+        ]
+      },
+      "tr": {
+        "title": "iPad Pro 13\" M5",
+        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
+        "features": [
+          "13\" Tandem OLED, 2752x2064, ProMotion",
+          "Apple M5 Chip, Hardware Ray Tracing",
+          "Apple Pencil 3 ve Magic Keyboard desteği",
+          "Thunderbolt 5 / USB 4",
+          "12MP Ultra-Wide ön kamera, LiDAR Scanner",
+          "Face ID, Wi-Fi 7, isteğe bağlı 5G"
+        ]
+      }
+    }
   },
   {
     "title": "Sony A7 IV",
@@ -77,7 +277,57 @@
       "5-Axis In-Body Stabilization",
       "759-Point Phase Detection AF"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Sony A7 IV",
+        "description": "Sony Alpha 7 IV — 33MP Vollformat, 4K 60p, Real-Time Eye AF, 10 B/s Serienaufnahme",
+        "features": [
+          "33MP Exmor R Vollformat-Sensor",
+          "BIONZ XR Processor",
+          "4K 60p 10-Bit-Video",
+          "Real-Time Eye AF für Menschen/Tiere",
+          "5-Achsen-IBIS (In-Body Stabilization)",
+          "759-Punkt-Phasenerkennungs-AF"
+        ]
+      },
+      "en": {
+        "title": "Sony A7 IV",
+        "description": "Sony Alpha 7 IV — 33MP Full-Frame, 4K 60p, Real-Time Eye AF, 10fps Burst",
+        "features": [
+          "33MP Exmor R Full-Frame Sensor",
+          "BIONZ XR Processor",
+          "4K 60p 10-Bit Video",
+          "Real-Time Eye AF for Humans/Animals",
+          "5-Axis In-Body Stabilization",
+          "759-Point Phase Detection AF"
+        ]
+      },
+      "sq": {
+        "title": "Sony A7 IV",
+        "description": "Sony Alpha 7 IV — 33MP Full-Frame, 4K 60p, Real-Time Eye AF, shkrepje në seri 10fps",
+        "features": [
+          "Sensor 33MP Exmor R Full-Frame",
+          "BIONZ XR Processor",
+          "Video 4K 60p 10-Bit",
+          "Real-Time Eye AF për njerëz/kafshë",
+          "Stabilizim në trup me 5 akse (In-Body Stabilization)",
+          "AF me detektim faze me 759 pika"
+        ]
+      },
+      "tr": {
+        "title": "Sony A7 IV",
+        "description": "Sony Alpha 7 IV — 33MP Full-Frame, 4K 60p, Real-Time Eye AF, 10fps seri çekim",
+        "features": [
+          "33MP Exmor R Full-Frame Sensör",
+          "BIONZ XR Processor",
+          "4K 60p 10-Bit Video",
+          "İnsanlar/Hayvanlar için Real-Time Eye AF",
+          "5 Eksenli In-Body Stabilization",
+          "759 Noktalı Phase Detection AF"
+        ]
+      }
+    }
   },
   {
     "title": "MacBook Pro 16\" M5 Pro",
@@ -93,7 +343,57 @@
       "Thunderbolt 5, HDMI 2.1, SD Card Slot",
       "6-Speaker Sound System, Spatial Audio"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "MacBook Pro 16\" M5 Pro",
+        "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR",
+        "features": [
+          "16,2\" Liquid Retina XDR, 3456x2234",
+          "Apple M5 Pro, 12-Core CPU, 18-Core GPU",
+          "18GB Unified Memory, 512GB SSD",
+          "Bis zu 22 Std. Batterielaufzeit",
+          "Thunderbolt 5, HDMI 2.1, SD Card Slot",
+          "6-Speaker Sound System, Spatial Audio"
+        ]
+      },
+      "en": {
+        "title": "MacBook Pro 16\" M5 Pro",
+        "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR",
+        "features": [
+          "16.2\" Liquid Retina XDR, 3456x2234",
+          "Apple M5 Pro, 12-Core CPU, 18-Core GPU",
+          "18GB Unified Memory, 512GB SSD",
+          "Up to 22h Battery Life",
+          "Thunderbolt 5, HDMI 2.1, SD Card Slot",
+          "6-Speaker Sound System, Spatial Audio"
+        ]
+      },
+      "sq": {
+        "title": "MacBook Pro 16\" M5 Pro",
+        "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR",
+        "features": [
+          "16.2\" Liquid Retina XDR, 3456x2234",
+          "Apple M5 Pro, 12-Core CPU, 18-Core GPU",
+          "18GB Unified Memory, 512GB SSD",
+          "Deri në 22h Battery Life",
+          "Thunderbolt 5, HDMI 2.1, SD Card Slot",
+          "6-Speaker Sound System, Spatial Audio"
+        ]
+      },
+      "tr": {
+        "title": "MacBook Pro 16\" M5 Pro",
+        "description": "Apple MacBook Pro 16\" M5 Pro — 18GB RAM, 512GB SSD, Liquid Retina XDR",
+        "features": [
+          "16.2\" Liquid Retina XDR, 3456x2234",
+          "Apple M5 Pro, 12-Core CPU, 18-Core GPU",
+          "18GB Unified Memory, 512GB SSD",
+          "22h Battery Life'ye kadar",
+          "Thunderbolt 5, HDMI 2.1, SD Card Slot",
+          "6-Speaker Sound System, Spatial Audio"
+        ]
+      }
+    }
   },
   {
     "title": "Sonos Era 300",
@@ -109,7 +409,57 @@
       "Amazon Alexa Built-In",
       "AirPlay 2 Compatible"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Sonos Era 300",
+        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
+        "features": [
+          "Dolby Atmos Music Unterstützung",
+          "6 Treiber für Spatial Sound",
+          "Trueplay Tuning Technology",
+          "WiFi 6, Bluetooth, USB-C",
+          "Amazon Alexa integriert",
+          "AirPlay 2 kompatibel"
+        ]
+      },
+      "en": {
+        "title": "Sonos Era 300",
+        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
+        "features": [
+          "Dolby Atmos Music support",
+          "6 drivers for Spatial Sound",
+          "Trueplay Tuning Technology",
+          "WiFi 6, Bluetooth, USB-C",
+          "Amazon Alexa built-in",
+          "AirPlay 2 compatible"
+        ]
+      },
+      "sq": {
+        "title": "Sonos Era 300",
+        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
+        "features": [
+          "Mbështetje për Dolby Atmos Music",
+          "6 driverë për Spatial Sound",
+          "Trueplay Tuning Technology",
+          "WiFi 6, Bluetooth, USB-C",
+          "Amazon Alexa e integruar",
+          "E përputhshme me AirPlay 2"
+        ]
+      },
+      "tr": {
+        "title": "Sonos Era 300",
+        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
+        "features": [
+          "Dolby Atmos Music desteği",
+          "Spatial Sound için 6 sürücü",
+          "Trueplay Tuning Technology",
+          "WiFi 6, Bluetooth, USB-C",
+          "Amazon Alexa yerleşik",
+          "AirPlay 2 ile uyumlu"
+        ]
+      }
+    }
   },
   {
     "title": "LG UltraGear 45GR95QE",
@@ -125,7 +475,57 @@
       "G-Sync & FreeSync Premium",
       "Anti-Glare Low Reflection"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "LG UltraGear 45GR95QE",
+        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
+        "features": [
+          "45\" Curved OLED Panel",
+          "3440x1440 WQHD Resolution",
+          "240Hz Refresh Rate",
+          "0.03ms GtG Response Time",
+          "G-Sync & FreeSync Premium",
+          "Anti-Glare Low Reflection"
+        ]
+      },
+      "en": {
+        "title": "LG UltraGear 45GR95QE",
+        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
+        "features": [
+          "45\" Curved OLED Panel",
+          "3440x1440 WQHD Resolution",
+          "240Hz Refresh Rate",
+          "0.03ms GtG Response Time",
+          "G-Sync & FreeSync Premium",
+          "Anti-Glare Low Reflection"
+        ]
+      },
+      "sq": {
+        "title": "LG UltraGear 45GR95QE",
+        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
+        "features": [
+          "45\" Panel OLED i lakuar",
+          "Rezolucion WQHD 3440x1440",
+          "Frekuencë rifreskimi 240Hz",
+          "Kohë përgjigjeje 0.03ms GtG",
+          "G-Sync & FreeSync Premium",
+          "Anti-Glare Low Reflection"
+        ]
+      },
+      "tr": {
+        "title": "LG UltraGear 45GR95QE",
+        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
+        "features": [
+          "45\" Kavisli OLED Panel",
+          "3440x1440 WQHD Çözünürlük",
+          "240Hz Yenileme Hızı",
+          "0.03ms GtG Tepki Süresi",
+          "G-Sync & FreeSync Premium",
+          "Anti-Glare Low Reflection"
+        ]
+      }
+    }
   },
   {
     "title": "Dyson Airstrait Pro",
@@ -141,7 +541,57 @@
       "Dual Airflow Jets for Fast Drying",
       "360° Swivel Cable, Heat-Resistant Case"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Dyson Airstrait Pro",
+        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, intelligente Wärmekontrolle",
+        "features": [
+          "Wet-to-Dry-Glättungstechnologie",
+          "Intelligente Wärmekontrolle 100x/Sek.",
+          "Flexible Platten für Styling vom Ansatz bis in die Spitzen",
+          "3 Heizstufen + Kaltmodus",
+          "Duale Luftstromdüsen für schnelles Trocknen",
+          "360°-Drehkabel, hitzebeständiges Etui"
+        ]
+      },
+      "en": {
+        "title": "Dyson Airstrait Pro",
+        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, intelligent heat control",
+        "features": [
+          "Wet-to-Dry straightening technology",
+          "Intelligent heat control 100x/sec",
+          "Flexing plates for root-to-tip styling",
+          "3 heat settings + cool mode",
+          "Dual airflow jets for fast drying",
+          "360° swivel cable, heat-resistant case"
+        ]
+      },
+      "sq": {
+        "title": "Dyson Airstrait Pro",
+        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, kontroll inteligjent i nxehtësisë",
+        "features": [
+          "Teknologji drejtimi Wet-to-Dry",
+          "Kontroll inteligjent i nxehtësisë 100 herë/sek.",
+          "Pllaka fleksibël për stilim nga rrënja deri te majat",
+          "3 nivele nxehtësie + modalitet i ftohtë",
+          "Grykë me rrjedhë ajri të dyfishtë për tharje të shpejtë",
+          "Kabllo rrotulluese 360°, këllëf rezistent ndaj nxehtësisë"
+        ]
+      },
+      "tr": {
+        "title": "Dyson Airstrait Pro",
+        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, akıllı ısı kontrolü",
+        "features": [
+          "Wet-to-Dry düzleştirme teknolojisi",
+          "100x/sn akıllı ısı kontrolü",
+          "Dipten uca şekillendirme için esnek plakalar",
+          "3 ısı ayarı + soğuk mod",
+          "Hızlı kurutma için çift hava akışı jeti",
+          "360° dönebilen kablo, ısıya dayanıklı taşıma kılıfı"
+        ]
+      }
+    }
   },
   {
     "title": "Nintendo Switch 2",
@@ -157,7 +607,57 @@
       "64GB Internal Storage, microSD Slot",
       "USB-C Dock for 4K TV Output"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Nintendo Switch 2",
+        "description": "Nintendo Switch 2 Konsole — 8\" LCD, magnetische Joy-Cons, abwärtskompatibel",
+        "features": [
+          "8\" 1080p LCD-Display",
+          "NVIDIA Custom Processor",
+          "Magnetic Joy-Con 2 Controller",
+          "Abwärtskompatibel mit Switch-Spielen",
+          "64GB interner Speicher, microSD-Steckplatz",
+          "USB-C Dock für 4K-TV-Ausgabe"
+        ]
+      },
+      "en": {
+        "title": "Nintendo Switch 2",
+        "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible",
+        "features": [
+          "8\" 1080p LCD Display",
+          "NVIDIA Custom Processor",
+          "Magnetic Joy-Con 2 Controllers",
+          "Backwards Compatible with Switch Games",
+          "64GB Internal Storage, microSD Slot",
+          "USB-C Dock for 4K TV Output"
+        ]
+      },
+      "sq": {
+        "title": "Nintendo Switch 2",
+        "description": "Konsola Nintendo Switch 2 — 8\" LCD, Magnetic Joy-Cons, e pajtueshme me versionet e mëparshme",
+        "features": [
+          "Ekran 8\" 1080p LCD",
+          "NVIDIA Custom Processor",
+          "Kontrollorë Magnetic Joy-Con 2",
+          "E pajtueshme me lojërat Switch",
+          "Memorie e brendshme 64GB, vend për microSD",
+          "USB-C Dock për dalje 4K në TV"
+        ]
+      },
+      "tr": {
+        "title": "Nintendo Switch 2",
+        "description": "Nintendo Switch 2 Konsol — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible",
+        "features": [
+          "8\" 1080p LCD Ekran",
+          "NVIDIA Custom Processor",
+          "Magnetic Joy-Con 2 Kontrolcüler",
+          "Switch Oyunlarıyla Backwards Compatible",
+          "64GB Dahili Depolama, microSD Yuvası",
+          "4K TV Çıkışı için USB-C Dock"
+        ]
+      }
+    }
   },
   {
     "title": "Hyperice Hypervolt 2 Pro",

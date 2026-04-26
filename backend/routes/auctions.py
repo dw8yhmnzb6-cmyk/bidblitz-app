@@ -1168,6 +1168,8 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
         "auction_id": auction_id,
         "title": d["title"],
         "description": d["description"],
+        # i18n: pre-translated catalog (DE/EN/SQ/TR) — None if not yet translated
+        "translations": d.get("translations") or None,
         "image_url": PRODUCT_IMAGES.get(d["title"], ""),
         "retail_price": d["retail_price"],
         "starting_price": 0.00,
@@ -1188,11 +1190,11 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
         "features": d.get("features", []),
         "condition": d.get("condition", "Brand New — Factory Sealed"),
         # ── Live Viewer Counter ──
-        "viewer_count": random.randint(8, 35),  # initial random viewers for realism
+        "viewer_count": random.randint(8, 35),
         # ── Auto Bot-Bidding Configuration ──
         "bot_enabled": True,
         "bot_target_price": _bot_target_for(d["retail_price"]),
-        "bot_final_phase_seconds": 300,  # Last 5 min → bots resume
+        "bot_final_phase_seconds": 300,
         "bot_probability": 0.35,
         "bot_strategy": "standard",
         "bot_aggression": "medium",
