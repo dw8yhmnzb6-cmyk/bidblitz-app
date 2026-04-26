@@ -86,6 +86,8 @@ const AffiliatePage = lazy(() => import("./pages/AffiliatePage"));
 const LotteryPage = lazy(() => import("./pages/LotteryPage"));
 const AdminTaxiPage = lazy(() => import("./pages/AdminTaxiPage"));
 const AdminDirectoryPage = lazy(() => import("./pages/AdminDirectoryPage"));
+const AdminAdManagerPage = lazy(() => import("./pages/AdminAdManagerPage"));
+const AdminBookingManagerPage = lazy(() => import("./pages/AdminBookingManagerPage"));
 const SpinWheelPage = lazy(() => import("./pages/SpinWheelPage"));
 const ClassifiedsPage = lazy(() => import("./pages/ClassifiedsPage"));
 const QuestsPage = lazy(() => import("./pages/QuestsPage"));
@@ -467,6 +469,10 @@ function AppContent() {
         return user.role === "admin" ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/directory":
         return user.role === "admin" ? <AdminDirectoryPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+      case "/admin/ads":
+        return user.role === "admin" ? <AdminAdManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+      case "/admin/bookings":
+        return user.role === "admin" ? <AdminBookingManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/spin-wheel":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/classifieds":
@@ -514,7 +520,7 @@ function AppContent() {
       case "/ads":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdCampaignManagerPage onNavigate={handleNavigate} />;
       case "/bookings":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BookingPage onNavigate={handleNavigate} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BookingsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/directory":
         return <DirectoryPage onNavigate={handleNavigate} />;
       case "/restaurant-dashboard":
@@ -849,6 +855,16 @@ function AppContent() {
 
 function App() {
   return (
+    <AppProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </AppProvider>
+  );
+}
+
+export default App;
+rn (
     <AppProvider>
       <ThemeProvider>
         <AppContent />

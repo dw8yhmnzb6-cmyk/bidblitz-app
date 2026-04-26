@@ -223,6 +223,66 @@ backend:
         comment: "COMPREHENSIVE KYC SYSTEM TESTING COMPLETE (2026-04-26): ✅ KYC Status endpoint working correctly (returns kyc_verified, kyc_status, can_use_features), ✅ KYC Submit endpoint validation working (correctly rejects empty submissions with 422), ✅ Wallet KYC gating working (topup and send blocked with 403 + kyc_required error), ✅ Auction KYC gating working (bidding blocked with 403 + kyc_required error), ✅ Admin KYC endpoints working (list reviews), ✅ Authentication required (401 for unauthenticated requests), ✅ All 9 backend tests passed (100% success rate). KYC system fully functional with proper gating."
 
 frontend:
+  - task: "Werbeplattform (Ads Platform) - /ads"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/AdCampaignManagerPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL DEPLOYMENT ISSUE (2026-04-26): AdCampaignManagerPage.jsx is FULLY IMPLEMENTED with complete UI (campaign creation modal, campaign list, detail view, stats display). Backend routes exist at /api/ads (advertising.py) with endpoints for campaign CRUD, admin stats, and ad serving. Route added to App.js (line 517). BUT production site (https://bidblitz.ae) does NOT serve this page - /ads route returns homepage instead. Issue: Frontend source code changes not deployed to production. Production serves built version (main.7673dfa4.js) which doesn't include latest changes. Cannot test campaign creation, 'Sommer-Aktion 2026' test campaign, or admin panel (/admin/ads) because routes don't work on live site. REQUIRED: Deploy latest frontend build to production."
+
+  - task: "Buchungssystem (Booking System) - /bookings"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/BookingsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL DEPLOYMENT ISSUE (2026-04-26): BookingsPage.jsx is FULLY IMPLEMENTED with complete booking flow (provider browsing, service selection, date/time slots, booking summary, my bookings tab). Backend routes exist at /api/bookings (bookings.py) with 4 seeded providers (Salon Elegance, Dr. Mueller Praxis, Massage Oase, AutoFit Werkstatt). Route fixed in App.js to use BookingsPage instead of BookingPage (line 519). BUT production site does NOT serve this page - /bookings route returns homepage. Cannot test provider list, booking flow, or test providers (Hotel Adria, Restaurant Tiffany, Dr. Weber) because route doesn't work on live site. REQUIRED: Deploy latest frontend build to production."
+
+  - task: "Admin Ad Manager - /admin/ads"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/AdminAdManagerPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL ROUTING ISSUE (2026-04-26): AdminAdManagerPage.jsx is FULLY IMPLEMENTED with admin stats (total campaigns, revenue, impressions, CTR) and campaign list view. Backend admin endpoints exist at /api/ads/admin/campaigns and /api/ads/admin/stats. Route ADDED to App.js (new - line 472-473). BUT route not working on production - /admin/ads returns homepage. Cannot verify admin panel functionality because route doesn't work on live site. REQUIRED: Deploy latest frontend build to production."
+
+  - task: "Admin Booking Manager - /admin/bookings"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/AdminBookingManagerPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL ROUTING ISSUE (2026-04-26): AdminBookingManagerPage.jsx is FULLY IMPLEMENTED with admin stats (service providers, total bookings, completion rate, commission revenue). Backend admin endpoint exists at /api/reservations/admin/stats. Route ADDED to App.js (new - line 474-475). BUT route not working on production - /admin/bookings returns homepage. Cannot verify admin panel functionality because route doesn't work on live site. REQUIRED: Deploy latest frontend build to production."
+
+  - task: "MorePage Service Cards Integration"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/MorePage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL DEPLOYMENT ISSUE (2026-04-26): MorePage.jsx has 3 new service cards in source code (lines 871-873): 'Lokales Verzeichnis' (green, Building2 icon, navigates to /directory), 'Werbung schalten' (orange, TrendingUp icon, navigates to /ads), 'Buchen & Reservieren' (purple, Calendar icon, navigates to /bookings). Cards are in growthMenu array with proper icons, descriptions, and navigation actions. BUT cards NOT VISIBLE on production MorePage at https://bidblitz.ae/more. Production site shows different menu structure without these cards. Issue: Frontend source code not deployed to production. REQUIRED: Deploy latest frontend build to production."
+
   - task: "Nearby Page - Leaflet Map Migration"
     implemented: true
     working: true
@@ -471,12 +531,17 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Directory System - Backend API & Data Seeding"
-    - "Directory System - Public Directory Page"
-    - "Directory System - Field Agent Portal"
-    - "Directory System - Admin Directory Panel"
+    - "Werbeplattform (Ads Platform) - /ads"
+    - "Buchungssystem (Booking System) - /bookings"
+    - "Admin Ad Manager - /admin/ads"
+    - "Admin Booking Manager - /admin/bookings"
+    - "MorePage Service Cards Integration"
   stuck_tasks:
-    - "Directory System - Backend API & Data Seeding"
+    - "Werbeplattform (Ads Platform) - /ads"
+    - "Buchungssystem (Booking System) - /bookings"
+    - "Admin Ad Manager - /admin/ads"
+    - "Admin Booking Manager - /admin/bookings"
+    - "MorePage Service Cards Integration"
   test_all: false
   test_priority: "high_first"
 
@@ -499,3 +564,5 @@ agent_communication:
     message: "COMPREHENSIVE ADMIN PANEL TESTING COMPLETE (2026-04-26): ✅ ALL 17 Admin Panels Working (100% success rate) - Main Admin, Monitoring, Merchants, Legal, Wallet, SMM, Manage, Taxi, Revenue, Customers, Payments, Modules, Support, Credits, Auction Images, Email Marketing, and Directory panels all functional. ✅ Admin authentication working with admin@bidblitz.com credentials, ✅ All backend API endpoints responding correctly (200 OK), ✅ Proper data structures returned from all endpoints, ✅ No 404 or 403 errors found, ✅ Complete admin control panel system is fully operational. Admin can manage all aspects of the BidBlitz V2 platform including users, transactions, services, content, and system health."
   - agent: "testing"
     message: "DIRECTORY SYSTEM TESTING COMPLETE (2026-04-26): ❌ CRITICAL ISSUE FOUND - Directory system is FULLY IMPLEMENTED but has NO DATA on production server. ✅ Frontend components exist and are properly coded (DirectoryPage.jsx, FieldAgentPortalPage.jsx, AdminDirectoryPage.jsx), ✅ Backend routes exist and are registered in server.py (/app/backend/routes/directory.py with prefix /api/directory), ✅ All API endpoints properly defined (categories, countries, listings, agent dashboard, admin management), ❌ BUT all directory API endpoints return 404 'Not Found' on https://bidblitz.ae, ❌ No test listings in database (expected: Dr. Schmidt Zahnarzt, Müller Elektro Premium, Pizza Roma), ❌ No seed script exists for directory data, ❌ Field agent portal shows empty state (no listings), ❌ Admin directory panel has no agents or listings to display. ROOT CAUSE: Directory system code is complete but production database is empty - needs test data seeding. REQUIRED ACTION: Create and run seed script to populate directory_listings collection with 3 test listings (Dr. Schmidt in Berlin, Müller Elektro Premium in Berlin, Pizza Roma in Prishtina) and create field agent user (agent@bidblitz.com with role field_agent)."
+  - agent: "testing"
+    message: "MONETIZATION FEATURES TESTING COMPLETE (2026-04-26): ❌ CRITICAL DEPLOYMENT ISSUE - Werbeplattform (Ads) and Buchungssystem (Bookings) are FULLY IMPLEMENTED in codebase but NOT DEPLOYED to production. ✅ CODE IMPLEMENTATION COMPLETE: AdCampaignManagerPage.jsx (campaign creation, listing, detail views), BookingsPage.jsx (provider browsing, booking flow, appointment management), AdminAdManagerPage.jsx (admin ads panel), AdminBookingManagerPage.jsx (admin bookings panel), Backend routes exist (advertising.py at /api/ads, bookings.py at /api/bookings), MorePage.jsx has 3 service cards (Lokales Verzeichnis, Werbung schalten, Buchen & Reservieren) in code (lines 871-873). ❌ ROUTING ISSUES FIXED IN SOURCE: Added /admin/ads and /admin/bookings routes to App.js, Fixed /bookings route to use BookingsPage instead of BookingPage. ❌ PRODUCTION DEPLOYMENT ISSUE: Production site (https://bidblitz.ae) serves built version (main.7673dfa4.js), Source code changes NOT reflected on live site, All routes (/ads, /bookings, /admin/ads, /admin/bookings) return homepage instead of expected pages, Service cards not visible in MorePage on production. ROOT CAUSE: Features exist in /app/frontend/src/ but are NOT deployed to https://bidblitz.ae. REQUIRED ACTION: Deploy latest frontend build to production OR test on staging/development environment. Cannot verify test data (Sommer-Aktion 2026 campaign, 3 test providers) because UI routes don't work on production."
