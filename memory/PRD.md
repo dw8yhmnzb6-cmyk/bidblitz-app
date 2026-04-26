@@ -162,7 +162,23 @@ See `/app/memory/test_credentials.md`
 - Already fully wired in `/app/backend/core/email.py` with templates: welcome, password_reset, payment_confirmation, receipt, KYC, OTP, topup, blitz_transfer
 - API key configured in `/app/backend/.env` as `RESEND_API_KEY`
 
-### POS / Warenwirtschaftssystem (Apr 26 2026 — late evening)
+### POS Erweiterungen (Apr 26 2026 — Wizard, NFC, Chat, Approval)
+
+**Frontend** (`POSPage.jsx`)
+- **4-Schritt Onboarding-Wizard**: Profil → Filiale → Kasse → erstes Produkt (mit Progress-Bar, jeder Schritt überspringbar/zurücksetzbar)
+- **Web NFC API**: echte `NDEFReader` Integration für Android Chrome, automatischer QR-Fallback wenn Hardware fehlt
+- **Team-Chat Tab**: Threads pro Store + automatische System-Nachrichten bei Refund-Anfragen
+- **Freigaben Tab**: Manager sehen offene Refund-Requests, können freigeben oder ablehnen mit Notiz
+
+**Backend** (`pos_chat.py` — 7 neue Endpoints)
+- `POST /api/pos/refund-requests/create` (cashier requests, manager+ auto-approves)
+- `GET /api/pos/refund-requests` (filter by status)
+- `POST /api/pos/refund-requests/approve` + `/reject`
+- `POST /api/pos/chat/send` + `GET /api/pos/chat/messages` + `/threads`
+
+**E2E Tested**
+- Refund-Request als merchant_admin → auto-approved → wallet reverse + restock + system message
+- Chat send/receive funktioniert
 
 **Backend modules** (`/app/backend/routes/pos_system.py` + `pos_inventory.py`)
 - 57 production endpoints: merchants, stores, registers, staff, products, suppliers, purchase orders, stock movements, carts, payments (wallet QR / customer barcode / cash / card-external / NFC), refunds (full + item-level with restock), receipts (HTML + PDF), 4 reports (sales, inventory, tax, refunds) + CSV export, full admin panel

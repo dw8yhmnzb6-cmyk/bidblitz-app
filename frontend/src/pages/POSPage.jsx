@@ -12,7 +12,7 @@ import {
   ArrowLeft, ScanLine, Plus, Search, Trash2, Loader2, Check, X,
   Package, Warehouse, Truck, FileText, RotateCcw, BarChart3, Home,
   ShieldCheck, Banknote, QrCode, CreditCard, Smartphone, Store,
-  AlertTriangle, Edit3, Download, RefreshCw,
+  AlertTriangle, Edit3, Download, RefreshCw, MessageCircle, Send, Check as CheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +43,8 @@ const TABS = [
   { id: "orders", label: "Bestellungen", icon: FileText },
   { id: "receipts", label: "Belege", icon: FileText },
   { id: "refunds", label: "Erstattungen", icon: RotateCcw },
+  { id: "approvals", label: "Freigaben", icon: ShieldCheck },
+  { id: "chat", label: "Team-Chat", icon: MessageCircle },
   { id: "reports", label: "Berichte", icon: BarChart3 },
   { id: "admin", label: "Admin", icon: ShieldCheck },
 ];
@@ -164,6 +166,8 @@ export default function POSPage({ onBack }) {
         {tab === "orders" && <PurchaseOrdersTab storeId={storeId} />}
         {tab === "receipts" && <ReceiptsTab storeId={storeId} />}
         {tab === "refunds" && <RefundsTab storeId={storeId} />}
+        {tab === "approvals" && <ApprovalsTab storeId={storeId} />}
+        {tab === "chat" && <ChatTab storeId={storeId} />}
         {tab === "reports" && <ReportsTab />}
         {tab === "admin" && <AdminTab />}
       </div>
@@ -171,52 +175,201 @@ export default function POSPage({ onBack }) {
   );
 }
 
-// ───────────────────────── Onboarding (no merchant yet)
+// ───────────────────────── Onboarding Wizard (Profil → Filiale → Kasse → Produkt)
 function MerchantOnboarding({ onBack, onDone }) {
-  const [form, setForm] = useState({ business_name: "", business_type: "retail", country: "DE", contact_phone: "" });
+  const [step, setStep] = useState(1);
+  const [merchant, setMerchant] = useState(null);
+  const [store, setStore] = useState(null);
+  const [register, setRegister] = useState(null);
   const [saving, setSaving] = useState(false);
-  const submit = async () => {
-    if (!form.business_name) return toast.error("Name fehlt");
+
+  // Step 1: Profile
+  const [m, setM] = useState({ business_name: "", business_type: "retail", country: "DE", contact_phone: "" });
+  // Step 2: Store
+  const [s, setS] = useState({ name: "", city: "", address: "" });
+  // Step 3: Register
+  const [r, setR] = useState({ name: "Kasse 1", location: "" });
+  // Step 4: Product
+  const [p, setP] = useState({ name: "", barcode: "", price: 0, tax_rate: 0.19, stock: 0, unit: "Stk" });
+
+  const submitMerchant = async () => {
+    if (!m.business_name) return toast.error("Firmenname fehlt");
     setSaving(true);
     try {
-      await apiCall("/api/pos/merchants/register", { method: "POST", body: form });
-      toast.success("POS-Profil angelegt — wartet auf BidBlitz Freischaltung");
-      onDone();
+      const res = await apiCall("/api/pos/merchants/register", { method: "POST", body: m });
+      setMerchant(res.merchant);
+      toast.success("Profil angelegt");
+      setStep(2);
     } catch (e) { toast.error(e.message); }
     setSaving(false);
   };
+
+  const submitStore = async () => {
+    if (!s.name) return toast.error("Filialname fehlt");
+    setSaving(true);
+    try {
+      const res = await apiCall("/api/pos/stores/create", { method: "POST", body: { ...s, country: m.country } });
+      setStore(res.store);
+      toast.success("Filiale erstellt");
+      setStep(3);
+    } catch (e) { toast.error(e.message); }
+    setSaving(false);
+  };
+
+  const submitRegister = async () => {
+    setSaving(true);
+    try {
+      const res = await apiCall("/api/pos/registers/create", { method: "POST", body: { store_id: store.store_id, ...r } });
+      setRegister(res.register);
+      toast.success("Kasse angelegt");
+      setStep(4);
+    } catch (e) { toast.error(e.message); }
+    setSaving(false);
+  };
+
+  const submitProduct = async () => {
+    if (!p.name) return finish();
+    setSaving(true);
+    try {
+      await apiCall("/api/pos/products/create", { method: "POST", body: { store_id: store.store_id, ...p, track_stock: true } });
+      toast.success("Produkt angelegt");
+      finish();
+    } catch (e) { toast.error(e.message); setSaving(false); }
+  };
+
+  const finish = () => {
+    toast.success("Setup abgeschlossen!");
+    onDone();
+  };
+
+  const StepBar = (
+    <div className="flex items-center gap-1 mb-5">
+      {[1, 2, 3, 4].map((n) => (
+        <div key={n} className="flex-1 h-1.5 rounded-full"
+          style={{ background: step >= n ? "#00C2FF" : "rgba(255,255,255,0.1)" }} />
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#060810] text-white p-5">
-      <button onClick={onBack} className="mb-4 flex items-center gap-2 text-white/70 text-sm">
+      <button onClick={onBack} className="mb-4 flex items-center gap-2 text-white/70 text-sm" data-testid="pos-onb-back">
         <ArrowLeft size={16} /> Zurück
       </button>
-      <h1 className="text-2xl font-black mb-1">BidBlitz POS aktivieren</h1>
-      <p className="text-white/60 text-sm mb-6">Lege dein Händler-Profil an, damit du Produkte verwalten und Zahlungen annehmen kannst.</p>
-      <div className="space-y-3 max-w-md">
-        <Field label="Firmenname *">
-          <input value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })}
-            className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-name" />
-        </Field>
-        <Field label="Branche">
-          <select value={form.business_type} onChange={(e) => setForm({ ...form, business_type: e.target.value })}
-            className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
-            <option value="retail">Einzelhandel</option>
-            <option value="supermarket">Supermarkt</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="kiosk">Kiosk</option>
-            <option value="other">Sonstige</option>
-          </select>
-        </Field>
-        <Field label="Telefon">
-          <input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
-            className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
-        </Field>
-        <button onClick={submit} disabled={saving}
-          className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50"
-          data-testid="pos-onb-submit">
-          {saving ? <Loader2 size={16} className="animate-spin inline" /> : "POS-Profil anlegen"}
-        </button>
-      </div>
+      <h1 className="text-2xl font-black mb-1">BidBlitz POS Setup</h1>
+      <p className="text-white/60 text-sm mb-5">Schritt {step} von 4</p>
+      {StepBar}
+
+      {step === 1 && (
+        <div className="space-y-3 max-w-md">
+          <h2 className="text-lg font-bold">1. Dein Geschäftsprofil</h2>
+          <Field label="Firmenname *">
+            <input value={m.business_name} onChange={(e) => setM({ ...m, business_name: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-name" />
+          </Field>
+          <Field label="Branche">
+            <select value={m.business_type} onChange={(e) => setM({ ...m, business_type: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
+              <option value="retail">Einzelhandel</option>
+              <option value="supermarket">Supermarkt</option>
+              <option value="restaurant">Restaurant</option>
+              <option value="kiosk">Kiosk</option>
+              <option value="other">Sonstige</option>
+            </select>
+          </Field>
+          <Field label="Telefon">
+            <input value={m.contact_phone} onChange={(e) => setM({ ...m, contact_phone: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+          </Field>
+          <button onClick={submitMerchant} disabled={saving}
+            className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50 mt-2"
+            data-testid="pos-onb-submit-1">
+            {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Weiter →"}
+          </button>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="space-y-3 max-w-md">
+          <h2 className="text-lg font-bold">2. Erste Filiale</h2>
+          <Field label="Filialname *">
+            <input value={s.name} onChange={(e) => setS({ ...s, name: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-store" />
+          </Field>
+          <Field label="Stadt">
+            <input value={s.city} onChange={(e) => setS({ ...s, city: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+          </Field>
+          <Field label="Adresse">
+            <input value={s.address} onChange={(e) => setS({ ...s, address: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+          </Field>
+          <button onClick={submitStore} disabled={saving}
+            className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50 mt-2"
+            data-testid="pos-onb-submit-2">
+            {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Weiter →"}
+          </button>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="space-y-3 max-w-md">
+          <h2 className="text-lg font-bold">3. Erste Kasse</h2>
+          <Field label="Kassenname">
+            <input value={r.name} onChange={(e) => setR({ ...r, name: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-register" />
+          </Field>
+          <Field label="Standort (optional)">
+            <input value={r.location} onChange={(e) => setR({ ...r, location: e.target.value })} placeholder="z.B. Eingang links"
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+          </Field>
+          <button onClick={submitRegister} disabled={saving}
+            className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50 mt-2"
+            data-testid="pos-onb-submit-3">
+            {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Weiter →"}
+          </button>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-3 max-w-md">
+          <h2 className="text-lg font-bold">4. Erstes Produkt (optional)</h2>
+          <p className="text-[11px] text-white/50">Du kannst diesen Schritt überspringen und Produkte später anlegen.</p>
+          <Field label="Produktname">
+            <input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })}
+              className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-product" />
+          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Barcode">
+              <input value={p.barcode} onChange={(e) => setP({ ...p, barcode: e.target.value })}
+                className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+            </Field>
+            <Field label="Preis €">
+              <input type="number" step="0.01" value={p.price} onChange={(e) => setP({ ...p, price: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+            </Field>
+            <Field label="Bestand">
+              <input type="number" value={p.stock} onChange={(e) => setP({ ...p, stock: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+            </Field>
+            <Field label="Einheit">
+              <input value={p.unit} onChange={(e) => setP({ ...p, unit: e.target.value })}
+                className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button onClick={finish} disabled={saving}
+              className="py-3 rounded-xl bg-white/10 text-white font-bold" data-testid="pos-onb-skip">
+              Überspringen
+            </button>
+            <button onClick={submitProduct} disabled={saving}
+              className="py-3 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50"
+              data-testid="pos-onb-submit-4">
+              {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Anlegen ✓"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -489,7 +642,7 @@ function CheckoutTab({ storeId, registerId, shift, onShiftChange }) {
     if (pollRef.current) clearInterval(pollRef.current);
   };
 
-  // NFC fallback
+  // NFC: try Web NFC reader (Android Chrome), fall back to QR
   const startNFC = async () => {
     if (cart.length === 0) return toast.error("Cart leer");
     try {
@@ -501,12 +654,38 @@ function CheckoutTab({ storeId, registerId, shift, onShiftChange }) {
         method: "POST",
         body: { register_id: registerId, cart_id: c.cart.cart_id, amount: c.cart.total },
       });
+      const nfcAvailable = "NDEFReader" in window;
       setActivePayment({
         ...sess.session,
         is_nfc: true,
         qr_code: sess.fallback_qr,
         amount: c.cart.total,
+        nfc_supported: nfcAvailable,
       });
+
+      // Try real Web NFC reader
+      if (nfcAvailable) {
+        try {
+          // eslint-disable-next-line no-undef
+          const reader = new NDEFReader();
+          await reader.scan();
+          reader.onreading = (e) => {
+            for (const rec of e.message.records) {
+              const td = new TextDecoder();
+              const text = td.decode(rec.data);
+              if (text.includes("BIDBLITZ-USER:")) {
+                const userId = text.split("BIDBLITZ-USER:")[1]?.trim();
+                toast.success(`NFC-Karte: ${userId}`);
+                // Confirm session via signed token would happen here in production.
+                // For now we surface the tag to the cashier; customer must still confirm in app.
+              }
+            }
+          };
+        } catch (err) {
+          console.warn("NFC reader failed:", err);
+        }
+      }
+
       // Poll session
       pollRef.current = setInterval(async () => {
         const s = await apiCall(`/api/pos/nfc/session/${sess.session.session_id}`);
@@ -550,6 +729,11 @@ function CheckoutTab({ storeId, registerId, shift, onShiftChange }) {
             <div className="font-mono text-[10px] text-black break-all max-w-[220px]">{activePayment.qr_code || activePayment.barcode || activePayment.payment_id}</div>
           </div>
           <p className="text-[11px] text-white/60 mb-1">Kunde scannt mit BidBlitz App</p>
+          {activePayment.is_nfc && (
+            <p className="text-[10px] mb-1" style={{ color: activePayment.nfc_supported ? "#10B981" : "#F59E0B" }}>
+              {activePayment.nfc_supported ? "📡 NFC-Reader aktiv (Android Chrome)" : "⚠️ Kein NFC — bitte QR-Fallback nutzen"}
+            </p>
+          )}
           <p className="text-[10px] text-white/40 mb-4">Status: {activePayment.status}</p>
           <button onClick={cancelActive} className="px-4 py-2 rounded-lg bg-white/10 text-[11px]" data-testid="pos-cancel-payment">
             Abbrechen
@@ -1139,10 +1323,13 @@ function RefundsTab({ storeId }) {
     try {
       const body = full
         ? { payment_id: sale.payment_id, reason: "Voller Refund" }
-        : { payment_id: sale.payment_id, items: sale.items.map((it) => ({ product_id: it.product_id, quantity: it.quantity, refund_amount: it.line_total })), reason: "Item-Refund", restock: true };
-      const url = full ? "/api/pos/payment/refund" : "/api/pos/refund/items";
-      await apiCall(url, { method: "POST", body });
-      toast.success("Erstattung gebucht");
+        : { payment_id: sale.payment_id, reason: "Item-Refund", items: sale.items.map((it) => ({ product_id: it.product_id, quantity: it.quantity, refund_amount: it.line_total })), restock: true };
+      const res = await apiCall("/api/pos/refund-requests/create", { method: "POST", body });
+      if (res.auto_approved) {
+        toast.success("Erstattung gebucht");
+      } else {
+        toast.success("Anfrage gesendet — Manager muss freigeben");
+      }
       setRefunding(null);
     } catch (e) { toast.error(e.message); }
   };
