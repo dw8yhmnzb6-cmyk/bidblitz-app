@@ -71,6 +71,7 @@ const ADMIN_SECTIONS = [
     color: "#00C2FF",
     items: [
       { id: "products", icon: Package, label: "Produkte", path: "/admin/products" },
+      { id: "auction-images-ai", icon: Image, label: "Bilder (AI Regen)", path: "/admin/auction-images" },
       { id: "standard-auctions", icon: Gavel, label: "Standard-Auktionen", path: "/admin/auctions" },
       { id: "vip-auctions", icon: Crown, label: "VIP-Auktionen", path: "/admin/vip-auctions" },
       { id: "voucher-auctions", icon: Ticket, label: "Gutschein-Auktionen", path: "/admin/voucher-auctions" },

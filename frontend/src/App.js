@@ -110,6 +110,7 @@ import NearbyPage from "./pages/NearbyPage";
 import MerchantPortalPage from "./pages/MerchantPortalPage";
 import KidsAppPage from "./pages/KidsAppPage";
 import ParentControlsPage from "./pages/ParentControlsPage";
+import AdminAuctionImagesPage from "./pages/AdminAuctionImagesPage";
 import RealEstatePage from "./pages/RealEstatePage";
 import FreelancerPage from "./pages/FreelancerPage";
 import ELearningPage from "./pages/ELearningPage";
@@ -597,6 +598,10 @@ function AppContent() {
             childId={navState?.childId}
             childName={navState?.childName}
           />;
+      case "/admin/auction-images":
+        return (!user.isAuthenticated || user.role !== "admin")
+          ? <HomePage {...homeProps} />
+          : <AdminAuctionImagesPage onBack={() => handleNavigate("/admin")} />;
       case "/gaming":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GamingPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/real-estate":

@@ -386,6 +386,9 @@ app.include_router(sabre_router)
 from routes.kids_controls import router as kids_controls_router
 app.include_router(kids_controls_router)
 
+from routes.admin_auction_images import router as admin_auction_images_router
+app.include_router(admin_auction_images_router)
+
 from routes.parcels import router as parcels_router
 app.include_router(parcels_router)
 
