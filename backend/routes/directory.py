@@ -197,6 +197,82 @@ async def search_cities(country: str, query: str = ""):
     cities = await db.directory_listings.distinct("city", match_query)
     return {"cities": sorted(cities[:20])}
 
+@router.post("/listings/{listing_id}/upload-photo")
+async def upload_listing_photo(listing_id: str, photo: UploadFile = File(...), request: Request = None):
+    """
+    Upload photo for listing (agent/admin/owner only)
+    """
+    user = await get_current_user(request)
+    
+    listing = await db.directory_listings.find_one({"listing_id": listing_id})
+    if not listing:
+        raise HTTPException(404, "Listing nicht gefunden")
+    
+    if not _can_edit_listing(user, listing):
+        raise HTTPException(403, "Keine Berechtigung")
+    
+    # Read file
+    contents = await photo.read()
+    if len(contents) > 5 * 1024 * 1024:  # 5MB limit
+        raise HTTPException(400, "Foto zu groß (max 5MB)")
+    
+    # Save to static directory
+    import os
+    photo_dir = "/app/backend/static/directory_photos"
+    os.makedirs(photo_dir, exist_ok=True)
+    
+    # Generate unique filename
+    import uuid
+    ext = photo.filename.split('.')[-1] if '.' in photo.filename else 'jpg'
+    filename = f"{listing_id}_{uuid.uuid4().hex[:8]}.{ext}"
+    filepath = os.path.join(photo_dir, filename)
+    
+    # Write file
+    with open(filepath, 'wb') as f:
+        f.write(contents)
+    
+    # Update listing
+    photo_url = f"/static/directory_photos/{filename}"
+    await db.directory_listings.update_one(
+        {"listing_id": listing_id},
+        {"$push": {"photos": photo_url}}
+    )
+    
+    return {"ok": True, "photo_url": photo_url, "message": "Foto hochgeladen"}
+
+@router.delete("/listings/{listing_id}/photos/{photo_index}")
+async def delete_listing_photo(listing_id: str, photo_index: int, request: Request):
+    """
+    Delete photo from listing
+    """
+    user = await get_current_user(request)
+    
+    listing = await db.directory_listings.find_one({"listing_id": listing_id})
+    if not listing:
+        raise HTTPException(404, "Listing nicht gefunden")
+    
+    if not _can_edit_listing(user, listing):
+        raise HTTPException(403, "Keine Berechtigung")
+    
+    photos = listing.get("photos", [])
+    if photo_index >= len(photos):
+        raise HTTPException(404, "Foto nicht gefunden")
+    
+    # Remove from DB
+    photo_url = photos[photo_index]
+    await db.directory_listings.update_one(
+        {"listing_id": listing_id},
+        {"$pull": {"photos": photo_url}}
+    )
+    
+    # Delete file
+    import os
+    filepath = f"/app/backend{photo_url}"
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    
+    return {"ok": True, "message": "Foto gelöscht"}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # AGENT/ADMIN ENDPOINTS - Create & Manage Listings
 # ══════════════════════════════════════════════════════════════════════════════
@@ -411,6 +487,29 @@ async def create_review(req: ReviewCreate, request: Request):
             "review_count": len(reviews)
         }}
     )
+    
+    # Send notification to listing owner and agent
+    notification_recipients = []
+    if listing.get("owner_email"):
+        notification_recipients.append(listing["owner_email"])
+    if listing.get("created_by"):
+        notification_recipients.append(listing["created_by"])
+    
+    for recipient in set(notification_recipients):  # Remove duplicates
+        await db.notifications.insert_one({
+            "notification_id": f"notif_{secrets.token_hex(8)}",
+            "user_email": recipient,
+            "type": "directory_review",
+            "title": "Neue Bewertung",
+            "message": f"{user.get('name', 'Jemand')} hat {listing['business_name']} bewertet: {req.rating} Sterne",
+            "data": {
+                "listing_id": req.listing_id,
+                "review_id": review["review_id"],
+                "rating": req.rating,
+            },
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
     
     return {"ok": True, "message": "Bewertung hinzugefügt!"}
 

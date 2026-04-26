@@ -6,10 +6,21 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, MapPin, Phone, Mail, Globe, Clock, Star, Heart,
-  Filter, X, ChevronRight, Crown, Navigation, Share2, ArrowLeft
+  Filter, X, ChevronRight, Crown, Navigation, Share2, ArrowLeft, Map as MapIcon
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const API = process.env.REACT_APP_BACKEND_URL;
+
+// Fix Leaflet default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 export default function DirectoryPage({ onNavigate }) {
   const [listings, setListings] = useState([]);
@@ -17,6 +28,7 @@ export default function DirectoryPage({ onNavigate }) {
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedListing, setSelectedListing] = useState(null);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -349,6 +361,14 @@ export default function DirectoryPage({ onNavigate }) {
               <p className="text-xs text-gray-400">{listings.length} Einträge</p>
             </div>
             <button
+              onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+              className={`p-2 rounded-xl transition-colors ${
+                viewMode === 'map' ? 'bg-cyan-500/20 text-cyan-400' : 'hover:bg-white/5 text-gray-400'
+              }`}
+            >
+              <MapIcon size={20} />
+            </button>
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className="p-2 hover:bg-white/5 rounded-xl transition-colors relative"
             >
@@ -450,6 +470,45 @@ export default function DirectoryPage({ onNavigate }) {
           <div className="text-center py-12">
             <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-gray-400">Lade Einträge...</p>
+          </div>
+        ) : viewMode === 'map' ? (
+          // MAP VIEW
+          <div className="h-[600px] rounded-2xl overflow-hidden border border-white/10">
+            <MapContainer
+              center={[50.1109, 8.6821]} // Germany center
+              zoom={6}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              />
+              {listings
+                .filter(l => l.latitude && l.longitude)
+                .map((listing) => (
+                  <Marker
+                    key={listing.listing_id}
+                    position={[listing.latitude, listing.longitude]}
+                  >
+                    <Popup>
+                      <div className="text-black">
+                        <h3 className="font-bold">{listing.business_name}</h3>
+                        <p className="text-sm">{listing.city}, {listing.country_code}</p>
+                        <p className="text-xs mt-1">{listing.phone}</p>
+                        <button
+                          onClick={() => {
+                            setViewMode('list');
+                            openListing(listing.listing_id);
+                          }}
+                          className="text-xs text-blue-600 underline mt-2"
+                        >
+                          Details anzeigen
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+            </MapContainer>
           </div>
         ) : listings.length === 0 ? (
           <div className="text-center py-12">
