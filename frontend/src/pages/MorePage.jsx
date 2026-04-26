@@ -7,7 +7,7 @@ import {
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
   Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu, Car, Zap, ShoppingBag, Coins,
   Split, CreditCardIcon, PiggyBank, BadgePercent, Banknote, Bitcoin, GiftIcon, Gamepad2,
-  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2
+  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2, Building2, Phone
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -868,6 +868,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "blitzjobs", icon: Cpu, label: "BlitzJobs", desc: "Micro-Jobs, Geld verdienen", color: "#22C55E", action: gatedAction(() => onNavigate("/blitzjobs")), roles: ["user", "admin"] },
     { id: "cashback", icon: Coins, label: "Cashback Shopping", desc: "2-8% bei Partner-Shops", color: "#F59E0B", action: gatedAction(() => onNavigate("/cashback")), roles: ["user", "admin"] },
     { id: "quests", icon: Sparkles, label: "Tägliche Quests", desc: "3 Aufgaben täglich · Bis zu 70+ BLZ gewinnen", color: "#00C2FF", action: gatedAction(() => onNavigate("/quests")), roles: ["all"] },
+    { id: "directory", icon: Building2, label: "Lokales Verzeichnis", desc: "Ärzte, Handwerker, Dienstleister in der Nähe", color: "#10B981", action: () => onNavigate("/directory"), roles: ["all"] },
     { id: "rewards-hub", icon: Sparkles, label: "Belohnungen & Top-Liste", desc: "Streak · Leaderboard · BLZ-Tausch · Geschenk-Codes", color: "#FF6B35", action: gatedAction(() => onNavigate("/rewards-hub")), roles: ["all"] },
     { id: "marketing-hub", icon: Sparkles, label: "Marketing & Boost", desc: "Anzeigen pushen · Werbung · KYC Express · Sofort-Auszahlung", color: "#FFB800", action: gatedAction(() => onNavigate("/marketing-hub")), roles: ["all"] },
     { id: "spin-wheel", icon: Sparkles, label: "Glücksrad", desc: "Täglich gratis spinnen · Bis zu 100 BLZ / 5 € gewinnen", color: "#FFD700", action: gatedAction(() => onNavigate("/spin-wheel")), roles: ["all"] },
