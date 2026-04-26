@@ -162,6 +162,7 @@ import UtilitiesHubPage from "./pages/UtilitiesHubPage";
 import EngageHubPage from "./pages/EngageHubPage";
 import ViralHubPage from "./pages/ViralHubPage";
 import FieldAgentPortalPage from "./pages/FieldAgentPortalPage";
+import DirectoryPage from "./pages/DirectoryPage";
 
 // Car Rental Module
 import {
@@ -842,6 +843,11 @@ function App() {
         <AppContent />
       </ThemeProvider>
     </AppProvider>
+  );
+}
+
+export default App;
+ovider>
   );
 }
 
