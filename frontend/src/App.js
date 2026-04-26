@@ -164,6 +164,8 @@ import EngageHubPage from "./pages/EngageHubPage";
 import ViralHubPage from "./pages/ViralHubPage";
 import FieldAgentPortalPage from "./pages/FieldAgentPortalPage";
 import DirectoryPage from "./pages/DirectoryPage";
+const AdCampaignManagerPage = lazy(() => import("./pages/AdCampaignManagerPage"));
+const BookingPage = lazy(() => import("./pages/BookingPage"));
 
 // Car Rental Module
 import {
@@ -509,6 +511,12 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DriverDashboardPage onNavigate={handleNavigate} />;
       case "/field-agent-portal":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FieldAgentPortalPage onNavigate={handleNavigate} />;
+      case "/ads":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdCampaignManagerPage onNavigate={handleNavigate} />;
+      case "/bookings":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BookingPage onNavigate={handleNavigate} />;
+      case "/directory":
+        return <DirectoryPage onNavigate={handleNavigate} />;
       case "/restaurant-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RestaurantDashboardPage onNavigate={handleNavigate} />;
       case "/child-mode":
