@@ -162,8 +162,15 @@ See `/app/memory/test_credentials.md`
 - Already fully wired in `/app/backend/core/email.py` with templates: welcome, password_reset, payment_confirmation, receipt, KYC, OTP, topup, blitz_transfer
 - API key configured in `/app/backend/.env` as `RESEND_API_KEY`
 
-### Pending (next session)
-- P0 frontend: Hotel calendar + price breakdown UI; Food item-options modal + tip slider; Taxi SOS button + class chooser; Scooter QR-Scanner UI + parking photo upload
-- P1 features per competitive analysis (filter/sort, in-app chat, live driver map, no-go zones)
-- VPS frontend deployment (yarn build + nginx reload)
-- Refactor App.js routing (~900-line switch)
+### POS / Warenwirtschaftssystem (Apr 26 2026 — late evening)
+
+**Backend modules** (`/app/backend/routes/pos_system.py` + `pos_inventory.py`)
+- 57 production endpoints: merchants, stores, registers, staff, products, suppliers, purchase orders, stock movements, carts, payments (wallet QR / customer barcode / cash / card-external / NFC), refunds (full + item-level with restock), receipts (HTML + PDF), 4 reports (sales, inventory, tax, refunds) + CSV export, full admin panel
+- Production data: real wallet debit/credit (`payment_engine`), atomic wallet+stock updates, audit log (`pos_audit_log`), no fake data, role-based access (merchant_admin/store_manager/cashier/accountant/bidblitz_admin), prevent duplicate payments, expire windows (3 min QR, 60 s NFC)
+- E2E flow validated: customer `kunde@bidblitz.com` paid €4.98 via wallet QR → balance went 6878.41 → 6873.43, sale + receipt created, stock decremented from 100 → 97, fee 1.5% (0.07€) deducted, merchant settlement +4.91€
+
+**Frontend** (`/app/frontend/src/pages/POSPage.jsx`)
+- One unified POS hub at `/pos` with 11 tabs (Dashboard, Kasse, Produkte, Bestand, Bewegungen, Lieferanten, Bestellungen, Belege, Erstattungen, Berichte, Admin)
+- Cashier UI: barcode scan input (auto-focus), product search, cart with qty/discount, all 4 payment methods + NFC fallback
+- Live polling for QR/NFC payment status, auto-finalize on paid
+- Available via `/more → POS / Kasse` menu entry

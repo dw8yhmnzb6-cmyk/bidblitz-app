@@ -31,6 +31,10 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
   const [booking, setBooking] = useState(false);
   const [bookResult, setBookResult] = useState(null);
   const [error, setError] = useState("");
+  // P0: real availability + price quote from backend
+  const [blockedDates, setBlockedDates] = useState([]);
+  const [quote, setQuote] = useState(null);
+  const [loadingQuote, setLoadingQuote] = useState(false);
 
   const loadProperties = useCallback(async () => {
     try {
@@ -48,6 +52,40 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
   }, []);
 
   useEffect(() => { loadProperties(); loadBookings(); }, [loadProperties, loadBookings]);
+
+  // Load availability when a property is selected
+  useEffect(() => {
+    if (!selectedProp) { setBlockedDates([]); return; }
+    fetch(`${API}/api/hotels/${selectedProp.property_id}/availability`)
+      .then(r => r.ok ? r.json() : { blocked_dates: [] })
+      .then(d => setBlockedDates(d.blocked_dates || []))
+      .catch(() => {});
+  }, [selectedProp]);
+
+  // Fetch real itemized quote whenever dates / guests change
+  useEffect(() => {
+    if (!selectedProp || !checkIn || !checkOut) { setQuote(null); return; }
+    const ci = new Date(checkIn); const co = new Date(checkOut);
+    if (co <= ci) { setQuote(null); return; }
+    setLoadingQuote(true);
+    fetch(`${API}/api/hotels/${selectedProp.property_id}/quote?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setQuote(d))
+      .catch(() => setQuote(null))
+      .finally(() => setLoadingQuote(false));
+  }, [selectedProp, checkIn, checkOut, guests]);
+
+  // Helpers for the date inputs
+  const today = new Date().toISOString().slice(0, 10);
+  const isBlocked = (d) => blockedDates.includes(d);
+  const onCheckInChange = (val) => {
+    setCheckIn(val);
+    if (checkOut && new Date(checkOut) <= new Date(val)) setCheckOut("");
+  };
+  const onCheckOutChange = (val) => {
+    if (checkIn && new Date(val) <= new Date(checkIn)) return;
+    setCheckOut(val);
+  };
 
   const book = async () => {
     if (!checkIn || !checkOut || !selectedProp) return;

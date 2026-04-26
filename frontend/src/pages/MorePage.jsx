@@ -845,6 +845,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "credit-score", icon: Shield, label: t("more.credit_score"), desc: t("more.credit_score_desc"), color: "#10B981", action: gatedAction(() => onNavigate("/credit-score")) },
     { id: "ai-assistant", icon: Sparkles, label: "BlitzBot", desc: "KI-Finanzassistent", color: "#A855F7", action: gatedAction(() => onNavigate("/ai-assistant")) },
     { id: "crypto", icon: TrendingUp, label: "Krypto Wallet", desc: "BTC, ETH, SOL kaufen & verkaufen", color: "#F7931A", action: gatedAction(() => onNavigate("/crypto")) },
+    { id: "pos", icon: Store, label: "POS / Kasse", desc: "Warenwirtschaft, Kasse & Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pos")) },
     { id: "budget", icon: BarChart3, label: "Budgetplaner", desc: "Ausgaben & Limits", color: "#3B82F6", action: gatedAction(() => onNavigate("/budget")) },
   ];
 

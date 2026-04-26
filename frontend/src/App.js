@@ -73,6 +73,7 @@ const AdminCreditPage = lazy(() => import("./pages/AdminCreditPage"));
 const AdminPanelFullPage = lazy(() => import("./pages/AdminPanelFullPage"));
 const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
+const POSPage = lazy(() => import("./pages/POSPage"));
 const BlitzTransferPage = lazy(() => import("./pages/BlitzTransferPage"));
 const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
 const BlitzMinePage = lazy(() => import("./pages/BlitzMinePage"));
@@ -438,6 +439,8 @@ function AppContent() {
         return user.role === "admin"
           ? <MerchantAdminPage onNavigate={handleNavigate} onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
+      case "/pos":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
       case "/admin/old":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
