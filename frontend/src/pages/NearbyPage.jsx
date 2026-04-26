@@ -20,6 +20,19 @@ const TYPE_CONFIG = {
   appointment: { icon: "📅", color: "#3B82F6", label: "Termine", Icon: Calendar },
   hotel: { icon: "🏨", color: "#6366F1", label: "Hotels", Icon: Hotel },
   event: { icon: "🎫", color: "#A855F7", label: "Events", Icon: Ticket },
+  osm: { icon: "📍", color: "#10B981", label: "Reale Orte", Icon: MapPin },
+};
+
+// Map OSM amenity types to nice icons/labels
+const OSM_AMENITY = {
+  restaurant: "🍴", cafe: "☕", bar: "🍺", fast_food: "🍔", food_court: "🍱", ice_cream: "🍦",
+  bank: "🏦", atm: "💳", bureau_de_change: "💱",
+  pharmacy: "💊", hospital: "🏥", clinic: "🩺", dentist: "🦷", doctors: "👨‍⚕️",
+  fuel: "⛽", charging_station: "🔌",
+  cinema: "🎬", theatre: "🎭", nightclub: "🎶", arts_centre: "🎨",
+  parking: "🅿️", bus_station: "🚌", taxi: "🚖",
+  supermarket: "🛒", convenience: "🏪", bakery: "🥐", kiosk: "🏬", mall: "🛍️",
+  post_office: "📮", library: "📚",
 };
 
 const NearbyPage = ({ onBack, onNavigate }) => {
@@ -28,7 +41,7 @@ const NearbyPage = ({ onBack, onNavigate }) => {
   const markersRef = useRef([]);
   const [markers, setMarkers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ restaurant: true, appointment: true, hotel: true, event: true });
+  const [filters, setFilters] = useState({ restaurant: true, appointment: true, hotel: true, event: true, osm: true });
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [userLoc, setUserLoc] = useState({ lat: 25.2048, lng: 55.2708 }); // Default Dubai
 
@@ -63,8 +76,28 @@ const NearbyPage = ({ onBack, onNavigate }) => {
   // Load nearby markers
   const loadMarkers = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/places/all?lat=${userLoc.lat}&lng=${userLoc.lng}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setMarkers(d.markers || []); }
+      const [dbRes, osmRes] = await Promise.all([
+        fetch(`${API}/api/places/all?lat=${userLoc.lat}&lng=${userLoc.lng}`, { credentials: "include" }).then(r => r.ok ? r.json() : { markers: [] }).catch(() => ({ markers: [] })),
+        fetch(`${API}/api/osm/places?lat=${userLoc.lat}&lng=${userLoc.lng}&radius_m=2000&category=all&limit=80`).then(r => r.ok ? r.json() : { places: [] }).catch(() => ({ places: [] })),
+      ]);
+      const dbMarkers = dbRes.markers || [];
+      const osmMarkers = (osmRes.places || []).map(p => ({
+        id: p.id,
+        type: "osm",
+        name: p.name,
+        subtitle: `${OSM_AMENITY[p.category] || "📍"} ${p.category} · ${p.distance_m}m${p.address ? " · " + p.address : ""}`,
+        rating: 0,
+        image: null,
+        lat: p.lat,
+        lng: p.lng,
+        route: null,
+        color: "#10B981",
+        osm_category: p.category,
+        phone: p.phone,
+        website: p.website,
+        opening_hours: p.opening_hours,
+      }));
+      setMarkers([...dbMarkers, ...osmMarkers]);
     } catch {}
     setLoading(false);
   }, [userLoc]);
@@ -106,11 +139,13 @@ const NearbyPage = ({ onBack, onNavigate }) => {
     const filtered = markers.filter(m => filters[m.type]);
     filtered.forEach(m => {
       const cfg = TYPE_CONFIG[m.type] || {};
+      const iconChar = m.type === "osm" ? (OSM_AMENITY[m.osm_category] || "📍") : (cfg.icon || "📍");
+      const size = m.type === "osm" ? 22 : 28;
       const icon = L.divIcon({
-        html: `<div style="width:28px;height:28px;border-radius:8px;background:${cfg.color || "#666"};display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;box-shadow:0 2px 8px ${cfg.color}44;border:2px solid white;">${cfg.icon || "📍"}</div>`,
+        html: `<div style="width:${size}px;height:${size}px;border-radius:8px;background:${cfg.color || "#666"};display:flex;align-items:center;justify-content:center;font-size:${m.type === "osm" ? 11 : 14}px;cursor:pointer;box-shadow:0 2px 8px ${cfg.color}44;border:2px solid white;">${iconChar}</div>`,
         className: "",
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
       });
       const marker = L.marker([m.lat, m.lng], { icon }).addTo(mapRef.current);
       marker.on("click", () => setSelectedMarker(m));
@@ -333,15 +368,40 @@ const NearbyPage = ({ onBack, onNavigate }) => {
                 )}
               </div>
               <div className="flex flex-col gap-1.5 flex-shrink-0">
-                <motion.button whileTap={{ scale: 0.9 }} onClick={() => onNavigate?.(selectedMarker.route)}
-                  className="px-3 py-1.5 rounded-lg text-[9px] font-bold text-white"
-                  style={{ background: TYPE_CONFIG[selectedMarker.type]?.color || "#666" }}>
-                  Öffnen
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSelectedMarker(null)}
-                  className="px-3 py-1.5 rounded-lg bg-gray-100 text-[9px] text-gray-500">
-                  Schließen
-                </motion.button>
+                {selectedMarker.type === "osm" ? (
+                  <>
+                    {selectedMarker.website && (
+                      <a href={selectedMarker.website} target="_blank" rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg text-[9px] font-bold text-white text-center"
+                        style={{ background: "#10B981" }}>
+                        Website
+                      </a>
+                    )}
+                    {selectedMarker.phone && (
+                      <a href={`tel:${selectedMarker.phone}`}
+                        className="px-3 py-1.5 rounded-lg text-[9px] font-bold text-white text-center"
+                        style={{ background: "#3B82F6" }}>
+                        Anrufen
+                      </a>
+                    )}
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSelectedMarker(null)}
+                      className="px-3 py-1.5 rounded-lg bg-gray-100 text-[9px] text-gray-500">
+                      Schließen
+                    </motion.button>
+                  </>
+                ) : (
+                  <>
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => onNavigate?.(selectedMarker.route)}
+                      className="px-3 py-1.5 rounded-lg text-[9px] font-bold text-white"
+                      style={{ background: TYPE_CONFIG[selectedMarker.type]?.color || "#666" }}>
+                      Öffnen
+                    </motion.button>
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSelectedMarker(null)}
+                      className="px-3 py-1.5 rounded-lg bg-gray-100 text-[9px] text-gray-500">
+                      Schließen
+                    </motion.button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

@@ -286,8 +286,10 @@ app.include_router(receipts_router)
 
 # Real Map & Nearby System
 from routes.nearby import router as nearby_router
+from routes.nearby_osm import router as nearby_osm_router
 from routes.admin_map import router as admin_map_router
 app.include_router(nearby_router)
+app.include_router(nearby_osm_router)
 app.include_router(admin_map_router)
 
 # Mobility & Delivery Modules

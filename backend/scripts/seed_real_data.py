@@ -187,29 +187,10 @@ else:
     print("[SKIP] Mietwagen vorhanden")
 
 # ============================================================
-# 6. NEARBY PLACES
+# 6. NEARBY PLACES — Replaced by OSM Overpass API (real-world data)
+# Endpoint: /api/osm/places
+# No seed required — fetches live from OpenStreetMap
 # ============================================================
-NEARBY = [
-    {"place_id": f"np_{rid()}", "name": "Rossmann", "category": "drogerie", "lat": 52.5205, "lng": 13.4070, "city": "Berlin", "address": "Alexanderplatz 3", "rating": 4.2, "open_now": True, "opening_hours": "08:00-21:00", "distance_m": 120},
-    {"place_id": f"np_{rid()}", "name": "REWE City", "category": "supermarkt", "lat": 52.5195, "lng": 13.4085, "city": "Berlin", "address": "Karl-Liebknecht-Str. 11", "rating": 4.0, "open_now": True, "opening_hours": "07:00-22:00", "distance_m": 250},
-    {"place_id": f"np_{rid()}", "name": "Deutsche Bank Filiale", "category": "bank", "lat": 52.5180, "lng": 13.4020, "city": "Berlin", "address": "Unter den Linden 13", "rating": 3.8, "open_now": True, "opening_hours": "09:00-16:00", "distance_m": 400},
-    {"place_id": f"np_{rid()}", "name": "dm-drogerie markt", "category": "drogerie", "lat": 52.5210, "lng": 13.4110, "city": "Berlin", "address": "Alexanderstr. 5", "rating": 4.3, "open_now": True, "opening_hours": "08:00-20:00", "distance_m": 180},
-    {"place_id": f"np_{rid()}", "name": "Aral Tankstelle", "category": "tankstelle", "lat": 52.5160, "lng": 13.3950, "city": "Berlin", "address": "Friedrichstr. 100", "rating": 3.9, "open_now": True, "opening_hours": "24h", "distance_m": 600},
-    {"place_id": f"np_{rid()}", "name": "Apotheke am Alex", "category": "apotheke", "lat": 52.5215, "lng": 13.4125, "city": "Berlin", "address": "Alexanderplatz 7", "rating": 4.5, "open_now": True, "opening_hours": "08:00-20:00", "distance_m": 90},
-    {"place_id": f"np_{rid()}", "name": "Commerzbank", "category": "bank", "lat": 52.5170, "lng": 13.3890, "city": "Berlin", "address": "Potsdamer Platz 1", "rating": 3.7, "open_now": False, "opening_hours": "09:00-16:00", "distance_m": 800},
-    {"place_id": f"np_{rid()}", "name": "Shell Ladestation", "category": "ladestation", "lat": 52.5140, "lng": 13.3800, "city": "Berlin", "address": "Potsdamer Str. 50", "rating": 4.1, "open_now": True, "opening_hours": "24h", "distance_m": 950},
-    {"place_id": f"np_{rid()}", "name": "Lidl", "category": "supermarkt", "lat": 52.5230, "lng": 13.4000, "city": "Berlin", "address": "Torstr. 89", "rating": 4.0, "open_now": True, "opening_hours": "07:00-22:00", "distance_m": 450},
-    {"place_id": f"np_{rid()}", "name": "McFit Fitness", "category": "fitness", "lat": 52.5190, "lng": 13.4150, "city": "Berlin", "address": "Karl-Marx-Allee 33", "rating": 4.2, "open_now": True, "opening_hours": "00:00-24:00", "distance_m": 350},
-]
-
-for p in NEARBY:
-    p["created_at"] = ts(0)
-
-if db.nearby_places.count_documents({}) < 5:
-    db.nearby_places.insert_many(NEARBY)
-    print(f"[OK] {len(NEARBY)} Nearby Places")
-else:
-    print("[SKIP] Nearby Places vorhanden")
 
 # ============================================================
 # SUMMARY
@@ -220,4 +201,4 @@ print(f"  Scooters: {db.scooters.count_documents({})}")
 print(f"  Hotels: {db.hotels.count_documents({})}")
 print(f"  Fluege: {db.flights.count_documents({})}")
 print(f"  Mietwagen: {db.car_rentals.count_documents({})}")
-print(f"  Nearby: {db.nearby_places.count_documents({})}")
+print(f"  Nearby: 'OSM Overpass live (no seed)'")
