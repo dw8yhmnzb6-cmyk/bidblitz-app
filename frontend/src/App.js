@@ -85,6 +85,8 @@ const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
 const AffiliatePage = lazy(() => import("./pages/AffiliatePage"));
 const LotteryPage = lazy(() => import("./pages/LotteryPage"));
 const AIContentGeneratorPage = lazy(() => import("./pages/AIContentGeneratorPage"));
+const KidsPremiumHubPage = lazy(() => import("./pages/KidsPremiumHubPage"));
+const InstantCreditPage = lazy(() => import("./pages/InstantCreditPage"));
 const AdminTaxiPage = lazy(() => import("./pages/AdminTaxiPage"));
 const AdminDirectoryPage = lazy(() => import("./pages/AdminDirectoryPage"));
 const AdminAdManagerPage = lazy(() => import("./pages/AdminAdManagerPage"));
@@ -466,6 +468,10 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LotteryPage onBack={() => handleNavigate("/more")} />;
       case "/ai/content":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AIContentGeneratorPage onBack={() => handleNavigate("/more")} />;
+      case "/kids-premium":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <KidsPremiumHubPage onBack={() => handleNavigate("/kids")} childId={user.kids_active_child} />;
+      case "/instant-credit":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InstantCreditPage onBack={() => handleNavigate("/more")} />;
       case "/admin/manage":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/taxi":

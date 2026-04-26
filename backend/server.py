@@ -613,6 +613,14 @@ app.include_router(ai_router)
 from routes.watchlist import router as watchlist_router
 app.include_router(watchlist_router)
 
+# Kids Premium Features (Chores, AI Tutor, Gifts, Badges, Approvals, Allowance, Charity, Insights, School Mode, Sibling Transfer, Courses, Mini-Games)
+from routes.kids_premium import router as kids_premium_router
+app.include_router(kids_premium_router)
+
+# Instant Credit (Sofort-Kredit bis 100€, 3 Min, 0% Zinsen)
+from routes.instant_credit import router as instant_credit_router
+app.include_router(instant_credit_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
@@ -781,6 +789,12 @@ async def startup():
     start_bot_loop()
     # Start auction maintenance: ends expired, auto-restarts to keep 30 active, fluctuates viewers
     start_auction_maintenance_loop()
+    # Start kids allowance auto-pay loop
+    from routes.kids_premium import start_allowance_loop
+    start_allowance_loop()
+    # Start instant credit payout + overdue loops
+    from routes.instant_credit import start_instant_credit_loops
+    start_instant_credit_loops()
     # Start mining auto-reward background loop
     start_auto_reward_loop()
     # Start subscription renewal background loop

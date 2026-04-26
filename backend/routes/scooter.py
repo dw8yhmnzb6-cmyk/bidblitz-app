@@ -233,11 +233,37 @@ async def get_scooter_plans_alt():
     return {"plans": SCOOTER_PLANS}
 
 
+@router.get("/pricing")
+async def get_scooter_pricing():
+    """Public: pricing & service info."""
+    return {
+        "unlock_fee": 1.00,
+        "per_minute": 0.20,
+        "currency": "EUR",
+        "free_paused_minutes": 5,
+        "max_speed_kmh": 25,
+        "service_area": "Berlin, München, Hamburg",
+        "subscription_plans": SCOOTER_PLANS,
+    }
+
+
+@router.get("/active")
+async def get_active_ride_alias(request: Request):
+    """Alias for /ride/active — used by frontend."""
+    user = await get_current_user(request)
+    uid = str(user.get("_id") or user.get("id"))
+    ride = await db.scooter_rides.find_one(
+        {"user_id": uid, "status": {"$in": ["active", "paused"]}},
+        {"_id": 0},
+    )
+    return {"ride": ride}
+
+
 @router.get("/{scooter_id}")
 async def get_scooter_details(scooter_id: str):
     """Get scooter details by ID or QR code."""
     # Skip known sub-routes that shouldn't match here
-    if scooter_id in ("plans", "subscribe", "my-subscription", "cancel-subscription", "subscription-plans"):
+    if scooter_id in ("plans", "subscribe", "my-subscription", "cancel-subscription", "subscription-plans", "pricing", "active"):
         raise HTTPException(status_code=404, detail="Ungültige Route")
     scooter = await db.scooters.find_one(
         {"$or": [{"scooter_id": scooter_id}, {"qr_code": scooter_id}]},
