@@ -85,6 +85,7 @@ const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
 const AffiliatePage = lazy(() => import("./pages/AffiliatePage"));
 const LotteryPage = lazy(() => import("./pages/LotteryPage"));
 const AdminTaxiPage = lazy(() => import("./pages/AdminTaxiPage"));
+const AdminDirectoryPage = lazy(() => import("./pages/AdminDirectoryPage"));
 const SpinWheelPage = lazy(() => import("./pages/SpinWheelPage"));
 const ClassifiedsPage = lazy(() => import("./pages/ClassifiedsPage"));
 const QuestsPage = lazy(() => import("./pages/QuestsPage"));
@@ -462,6 +463,8 @@ function AppContent() {
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
       case "/admin/taxi":
         return user.role === "admin" ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+      case "/admin/directory":
+        return user.role === "admin" ? <AdminDirectoryPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/spin-wheel":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SpinWheelPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/classifieds":
@@ -843,11 +846,6 @@ function App() {
         <AppContent />
       </ThemeProvider>
     </AppProvider>
-  );
-}
-
-export default App;
-ovider>
   );
 }
 
