@@ -5,6 +5,7 @@ Users buy bid credits, each bid costs 1 credit, increases price by €0.01, exte
 
 import secrets
 import asyncio
+import random
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -957,7 +958,7 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
                 "currency": "eur",
                 "product_data": {
                     "name": f"{credits_amount}x Gebot-Credits",
-                    "description": f"BidBlitz Auktions-Credits",
+                    "description": "BidBlitz Auktions-Credits",
                 },
                 "unit_amount": int(price * 100),
             },
@@ -1097,13 +1098,9 @@ PRODUCT_IMAGES = {
     "iPad Pro 13\" M5": "https://images.unsplash.com/photo-1622849030045-1f2c32ae3099?w=600&h=400&fit=crop&q=80",
     "Meta Quest 4": "https://images.unsplash.com/photo-1758523670318-f1b79559e1d1?w=600&h=400&fit=crop&q=80",
     "Dyson Airstrait Pro": "https://images.unsplash.com/photo-1629397683830-9805395892e8?w=600&h=400&fit=crop&q=80",
-    "LG OLED G5 77\"": "https://images.unsplash.com/photo-1684777219236-a387cbefb883?w=600&h=400&fit=crop&q=80",
-    "Samsung Neo QLED 8K 75\"": "https://images.unsplash.com/photo-1623902118614-01c68f0508c8?w=600&h=400&fit=crop&q=80",
     "Roborock S9 MaxV Ultra": "https://images.unsplash.com/photo-1762859731349-c9ff2808b672?w=600&h=400&fit=crop&q=80",
     "Apple HomePod 3": "https://images.unsplash.com/photo-1617722694908-9be1092d1bc2?w=600&h=400&fit=crop&q=80",
-    # NEW 20 PRODUCTS - April 2026
-    "Rolex Submariner Gold": "https://images.unsplash.com/photo-1760532467609-45ed8016f795?w=600&h=400&fit=crop&q=80",
-    "Omega Seamaster 300": "https://images.unsplash.com/photo-1704783549722-8dcd98e9cf5d?w=600&h=400&fit=crop&q=80",
+    # NEW Premium Products - April 2026 (alle ≤ 3000€)
     "Razer Huntsman V3 Pro": "https://images.unsplash.com/photo-1645802106095-765b7e86f5bb?w=600&h=400&fit=crop&q=80",
     "Corsair K100 RGB": "https://images.unsplash.com/photo-1628089700970-0012c5718efc?w=600&h=400&fit=crop&q=80",
     "DJI Mavic 4 Pro": "https://images.unsplash.com/photo-1668836733970-9ed7e53cd2ca?w=600&h=400&fit=crop&q=80",
@@ -1113,7 +1110,6 @@ PRODUCT_IMAGES = {
     "De'Longhi La Specialista": "https://images.unsplash.com/photo-1741113937337-1d0273bf941d?w=600&h=400&fit=crop&q=80",
     "Breville Barista Touch": "https://images.unsplash.com/photo-1635749269192-489bdda05932?w=600&h=400&fit=crop&q=80",
     "Sony A7 IV": "https://images.unsplash.com/photo-1637270871981-4b579f127c0c?w=600&h=400&fit=crop&q=80",
-    "Sony A7R V": "https://images.unsplash.com/photo-1576420379131-bfc2344aab31?w=600&h=400&fit=crop&q=80",
     "VanMoof S5": "https://images.unsplash.com/photo-1753092604434-8c0e6c3b50f0?w=600&h=400&fit=crop&q=80",
     "Cowboy 5": "https://images.unsplash.com/photo-1666360058702-a3aa07227c53?w=600&h=400&fit=crop&q=80",
     "Secretlab Titan Evo 2024": "https://images.unsplash.com/photo-1770195555068-37103df33bf8?w=600&h=400&fit=crop&q=80",
@@ -1128,8 +1124,15 @@ PRODUCT_IMAGES = {
     "Samsung Freestyle 2": "https://images.unsplash.com/photo-1750994700257-133c7fdb0c7a?w=600&h=400&fit=crop&q=80",
     "Theragun Pro Plus": "https://images.unsplash.com/photo-1746278925416-9d6c71f55c2d?w=600&h=400&fit=crop&q=80",
     "Hyperice Hypervolt 2 Pro": "https://images.unsplash.com/photo-1611908200005-b898ddde09cf?w=600&h=400&fit=crop&q=80",
-    # 50th Product - Tesla Model Pi Phone 2026
-    "Tesla Model Pi Phone 2026": "https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=600&h=400&fit=crop&q=80",
+    # 8 NEW Premium-Products (April 2026)
+    "Bose QuietComfort Ultra": "https://images.unsplash.com/photo-1545127398-14699f92334b?w=600&h=400&fit=crop&q=80",
+    "GoPro Hero 13 Black": "https://images.unsplash.com/photo-1606857521015-7f9fcf423740?w=600&h=400&fit=crop&q=80",
+    "Kindle Scribe 2": "https://images.unsplash.com/photo-1592434134753-a70baf7979d5?w=600&h=400&fit=crop&q=80",
+    "Lego Star Wars Millennium Falcon UCS": "https://images.unsplash.com/photo-1577375727119-be4eea3e6a40?w=600&h=400&fit=crop&q=80",
+    "Bose Soundbar Ultra": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=600&h=400&fit=crop&q=80",
+    "Apple Vision Pro": "https://images.unsplash.com/photo-1707347988076-6e62b54e7e1d?w=600&h=400&fit=crop&q=80",
+    "Samsung Galaxy Tab S10 Ultra": "https://images.unsplash.com/photo-1561154464-82e9adf32764?w=600&h=400&fit=crop&q=80",
+    "iRobot Roomba j7+ Combo": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&h=400&fit=crop&q=80",
 }
 
 import json
@@ -1184,6 +1187,8 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
         "category": d.get("category", ""),
         "features": d.get("features", []),
         "condition": d.get("condition", "Brand New — Factory Sealed"),
+        # ── Live Viewer Counter ──
+        "viewer_count": random.randint(8, 35),  # initial random viewers for realism
         # ── Auto Bot-Bidding Configuration ──
         "bot_enabled": True,
         "bot_target_price": _bot_target_for(d["retail_price"]),
@@ -1196,7 +1201,7 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
 
 
 async def seed_demo_auctions():
-    """Seed ALL 50 auctions from product catalog if none exist (with bot auto-bidding)."""
+    """Seed all 30 auctions from product catalog if none exist (with bot auto-bidding)."""
     count = await db.auctions.count_documents({"status": "active"})
     if count > 0:
         return
@@ -1206,6 +1211,181 @@ async def seed_demo_auctions():
         auction = _build_auction_doc(d, "system", now)
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
+
+
+# ══════════════════════════════════════════════════════════════
+# AUCTION MAINTENANCE LOOP
+# - Marks expired auctions as ended
+# - Auto-creates new auctions to keep count at TARGET_ACTIVE_AUCTIONS
+# - Naturally fluctuates viewer counts for realism
+# ══════════════════════════════════════════════════════════════
+TARGET_ACTIVE_AUCTIONS = 30
+
+
+async def _next_product_for_restart() -> dict:
+    """Pick a product to spawn — least recently used wins."""
+    # Find the product titles that were ended most-long-ago
+    last_ended = {}
+    cursor = db.auctions.find(
+        {"status": "ended"},
+        {"_id": 0, "title": 1, "ended_at": 1, "created_at": 1},
+    ).sort("ended_at", -1).limit(200)
+    async for doc in cursor:
+        last_ended.setdefault(doc.get("title"), doc.get("ended_at") or doc.get("created_at"))
+
+    # Score each catalog product: prefer ones never ended (= None) or ended longest ago
+    def score(p):
+        return last_ended.get(p["title"]) or "0000"
+
+    sorted_catalog = sorted(PRODUCT_CATALOG, key=score)
+    return sorted_catalog[0]
+
+
+async def auction_maintenance_loop():
+    """Background loop: end expired, restart to maintain 30 active, fluctuate viewers."""
+    import logging
+    logger = logging.getLogger("bidblitz.auctions")
+    logger.info("🎰 Auction maintenance loop STARTED")
+
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            now_iso = now.isoformat()
+
+            # 1) End expired auctions (timer fully ran out)
+            expired = await db.auctions.find(
+                {"status": "active", "ends_at": {"$lt": now_iso}},
+                {"_id": 0, "auction_id": 1, "last_bidder_id": 1, "last_bidder_name": 1, "current_price": 1, "title": 1},
+            ).to_list(100)
+
+            for ex in expired:
+                update = {"status": "ended", "ended_at": now_iso}
+                if ex.get("last_bidder_id"):
+                    update["winner_id"] = ex["last_bidder_id"]
+                    update["winner_name"] = ex.get("last_bidder_name")
+                await db.auctions.update_one({"auction_id": ex["auction_id"]}, {"$set": update})
+
+            if expired:
+                logger.info(f"🎰 Ended {len(expired)} expired auctions")
+
+            # 2) Auto-restart: ensure TARGET_ACTIVE_AUCTIONS are running
+            active_count = await db.auctions.count_documents({"status": "active"})
+            need = TARGET_ACTIVE_AUCTIONS - active_count
+
+            if need > 0:
+                logger.info(f"🎰 Auto-restart: spawning {need} new auctions (current={active_count}, target={TARGET_ACTIVE_AUCTIONS})")
+                created_titles = set()
+                # Get current active titles to avoid duplicates
+                async for a in db.auctions.find({"status": "active"}, {"_id": 0, "title": 1}):
+                    created_titles.add(a.get("title"))
+
+                spawned = 0
+                # Sort catalog by least-recently-used
+                sorted_cat = []
+                last_ended_map = {}
+                async for doc in db.auctions.find(
+                    {"status": "ended"}, {"_id": 0, "title": 1, "ended_at": 1}
+                ).sort("ended_at", -1).limit(200):
+                    last_ended_map.setdefault(doc.get("title"), doc.get("ended_at") or "")
+
+                sorted_cat = sorted(
+                    PRODUCT_CATALOG, key=lambda p: last_ended_map.get(p["title"], "")
+                )
+
+                for d in sorted_cat:
+                    if spawned >= need:
+                        break
+                    if d["title"] in created_titles:
+                        continue
+                    auction = _build_auction_doc(d, "system_auto", now)
+                    await db.auctions.insert_one(auction)
+                    created_titles.add(d["title"])
+                    spawned += 1
+
+            # 3) Naturally fluctuate viewer counts (every ~2 minutes per auction)
+            actives = await db.auctions.find(
+                {"status": "active"}, {"_id": 0, "auction_id": 1, "viewer_count": 1, "ends_at": 1}
+            ).to_list(100)
+
+            for a in actives:
+                # Skew viewer fluctuations: more viewers as auction approaches end
+                try:
+                    ends = datetime.fromisoformat(a["ends_at"])
+                    remaining = (ends - now).total_seconds()
+                except Exception:
+                    remaining = 86400
+
+                cur = int(a.get("viewer_count") or 10)
+                if remaining < 600:           # last 10 min: surge
+                    delta = random.randint(-1, 6)
+                    floor, ceil = 20, 250
+                elif remaining < 3600:        # last hour: rising
+                    delta = random.randint(-2, 4)
+                    floor, ceil = 12, 120
+                else:
+                    delta = random.randint(-3, 3)
+                    floor, ceil = 6, 80
+                new_v = max(floor, min(ceil, cur + delta))
+                if new_v != cur:
+                    await db.auctions.update_one(
+                        {"auction_id": a["auction_id"]},
+                        {"$set": {"viewer_count": new_v}},
+                    )
+
+        except Exception as e:
+            import logging
+            logging.getLogger("bidblitz").error(f"Auction maintenance error: {e}")
+
+        await asyncio.sleep(20)  # tick every 20s
+
+
+def start_auction_maintenance_loop():
+    """Start the auction maintenance background task."""
+    asyncio.create_task(auction_maintenance_loop())
+
+
+# ══════════════════════════════════════════════════════════════
+# Viewer Tracking Endpoint
+# ══════════════════════════════════════════════════════════════
+@router.post("/{auction_id}/view")
+async def track_auction_view(auction_id: str, request: Request):
+    """Increment viewer count when a user opens the auction page."""
+    auction = await db.auctions.find_one({"auction_id": auction_id}, {"_id": 0})
+    if not auction:
+        raise HTTPException(404, "Auction not found")
+    await db.auctions.update_one(
+        {"auction_id": auction_id},
+        {"$inc": {"viewer_count": 1}},
+    )
+    new_count = (auction.get("viewer_count") or 0) + 1
+    return {"viewer_count": new_count}
+
+
+# ══════════════════════════════════════════════════════════════
+# Admin: Force Reseed (clear & recreate 30 auctions)
+# ══════════════════════════════════════════════════════════════
+@router.post("/admin/reseed")
+async def admin_reseed_auctions(request: Request):
+    """Admin: End all active auctions and create 30 fresh ones from current catalog."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(403, "Admin only")
+
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    await db.auctions.update_many(
+        {"status": "active"}, {"$set": {"status": "ended", "ended_at": now_iso}}
+    )
+
+    created = []
+    for d in PRODUCT_CATALOG[:TARGET_ACTIVE_AUCTIONS]:
+        auction = _build_auction_doc(d, str(user.get("_id") or "admin"), now)
+        await db.auctions.insert_one(auction)
+        auction.pop("_id", None)
+        created.append({"auction_id": auction["auction_id"], "title": auction["title"]})
+
+    return {"ok": True, "created": len(created), "auctions": created}
 
 
 # ── Admin: Refresh product auctions ──
@@ -1277,7 +1457,6 @@ BOT_NAMES = [
     "Nina_E", "Moritz_L", "Elena_O", "Finn_J", "Lea_U",
 ]
 
-import random
 
 
 class BotConfigRequest(BaseModel):

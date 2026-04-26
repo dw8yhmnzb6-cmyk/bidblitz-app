@@ -5,7 +5,7 @@ import {
   Coins, Loader2, X, User,
   Gavel, Trophy, ShieldCheck, Timer, Package, Truck, Globe, Check, Shield,
   Lock, Activity, Flame, Gift, Bot, AlertTriangle, Users,
-  Heart, Share2, Copy, Bell, Sparkles, PartyPopper, XCircle,
+  Heart, Share2, Copy, Bell, Sparkles, PartyPopper, XCircle, Eye,
   Wallet, CreditCard, Mail, Smartphone, Link2, Award, Crown, ChevronDown, ChevronUp
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
@@ -617,6 +617,21 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
             }}>
             <Gavel size={10} className={isHot ? "text-[#FF8C42]" : "text-white/50"} />
             <span className={`text-[11px] font-bold tabular-nums ${isHot ? "text-[#FF8C42]" : "text-white/70"}`}>{auction.total_bids}</span>
+          </div>
+        )}
+
+        {/* Live Viewer Counter — Top Left below timer */}
+        {!isEnded && auction.viewer_count > 0 && (
+          <div data-testid={`auction-viewers-${auction.auction_id}`}
+               className="absolute top-12 left-2.5 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-md"
+               style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <motion.span
+              className="w-1.5 h-1.5 rounded-full bg-emerald-400"
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity }}
+            />
+            <Eye size={9} className="text-white/70" />
+            <span className="text-[10px] font-bold tabular-nums text-white/90">{auction.viewer_count}</span>
           </div>
         )}
 

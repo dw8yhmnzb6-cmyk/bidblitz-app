@@ -770,17 +770,19 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 async def startup():
     await create_indexes()
     await seed_admin()
-    # Seed 50 product auctions if none exist
-    from routes.auctions import seed_demo_auctions, start_bot_loop
+    # Seed 30 product auctions if none exist
+    from routes.auctions import seed_demo_auctions, start_bot_loop, start_auction_maintenance_loop
     await seed_demo_auctions()
     # Start bot bidding background loop (Admin-controlled bots)
     start_bot_loop()
+    # Start auction maintenance: ends expired, auto-restarts to keep 30 active, fluctuates viewers
+    start_auction_maintenance_loop()
     # Start mining auto-reward background loop
     start_auto_reward_loop()
     # Start subscription renewal background loop
     start_subscription_renewal_loop()
     start_credit_autopay_loop()
-    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards + Subscriptions + 50 Product Auctions active")
+    logger.info(f"BidBlitz V2 API started [env={APP_ENV}] — Bot loop + Auto-rewards + Subscriptions + 30 Auto-Restart Auctions + Viewer Tracking active")
 
 
 @app.on_event("shutdown")
