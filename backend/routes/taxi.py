@@ -2266,3 +2266,179 @@ async def get_nearby_drivers_for_map(lat: float = 25.2048, lng: float = 55.2708,
     Returns online drivers for visualization.
     """
     return await get_nearby_taxis(lat, lng, radius)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SOS / EMERGENCY  (P0 — Safety Feature)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class SosRequest(BaseModel):
+    ride_id: Optional[str] = None
+    lat: float
+    lng: float
+    note: Optional[str] = ""
+
+
+@router.post("/sos")
+async def trigger_sos(req: SosRequest, request: Request):
+    """
+    Customer or driver triggers SOS during a ride.
+    Stores the alert and notifies admin/operator. Frontend can additionally
+    open the native phone dialer to local emergency services (e.g. 112).
+    """
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now = datetime.now(timezone.utc).isoformat()
+
+    ride = None
+    if req.ride_id:
+        ride = await db.taxi_rides.find_one({"ride_id": req.ride_id}, {"_id": 0})
+
+    alert = {
+        "alert_id": secrets.token_hex(8),
+        "type": "sos",
+        "user_id": user_id,
+        "user_name": user.get("name", ""),
+        "user_phone": user.get("phone", ""),
+        "ride_id": req.ride_id,
+        "driver_id": ride.get("driver_id") if ride else None,
+        "lat": req.lat,
+        "lng": req.lng,
+        "note": req.note or "",
+        "status": "open",
+        "created_at": now,
+    }
+    await db.taxi_sos_alerts.insert_one(alert)
+    alert.pop("_id", None)
+
+    # Notify admin via in-app notification
+    await db.notifications.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": "admin",
+        "type": "sos_alert",
+        "title": "🚨 SOS Alert",
+        "message": f"{user.get('name', 'User')} hat SOS ausgelöst (Ride {req.ride_id or '-'})",
+        "data": {"alert_id": alert["alert_id"], "lat": req.lat, "lng": req.lng},
+        "read": False,
+        "created_at": now,
+    })
+
+    return {
+        "ok": True,
+        "alert_id": alert["alert_id"],
+        "emergency_numbers": {"de": "112", "at": "112", "ch": "112", "ks": "112", "ae": "999"},
+        "message": "Notruf registriert. Wähle 112 für sofortige Hilfe.",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TRIP RECEIPT  (P0 — Post-Ride Receipt)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/rides/{ride_id}/receipt")
+async def get_ride_receipt(ride_id: str, request: Request):
+    """Itemised receipt for a completed ride."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    if ride.get("customer_id") != user_id and ride.get("driver_id") != user_id:
+        raise HTTPException(status_code=403, detail="Nicht berechtigt")
+    if ride.get("status") not in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="Fahrt noch nicht abgeschlossen")
+
+    fare = float(ride.get("final_fare") or ride.get("estimated_fare") or 0)
+    distance_km = float(ride.get("distance_km", 0) or 0)
+    duration_min = float(ride.get("duration_minutes", 0) or 0)
+    car_type = ride.get("car_type", "standard")
+    region = ride.get("region", "germany")
+    pricing = REGIONAL_PRICING.get(region, REGIONAL_PRICING["default"]).get(car_type, {})
+    tip = float(ride.get("tip", 0) or 0)
+
+    breakdown = [
+        {"label": "Grundpreis", "amount": pricing.get("base", 0)},
+        {"label": f"Distanz ({distance_km:.1f} km)", "amount": round(distance_km * pricing.get("per_km", 0), 2)},
+        {"label": f"Zeit ({duration_min:.0f} min)", "amount": round(duration_min * pricing.get("per_minute", 0), 2)},
+    ]
+    if tip > 0:
+        breakdown.append({"label": "Trinkgeld", "amount": tip})
+
+    return {
+        "ride_id": ride_id,
+        "reference": ride.get("reference") or f"RIDE-{ride_id[:6].upper()}",
+        "status": ride.get("status"),
+        "from": ride.get("pickup_address") or ride.get("pickup", {}).get("address"),
+        "to": ride.get("dropoff_address") or ride.get("dropoff", {}).get("address"),
+        "distance_km": distance_km,
+        "duration_minutes": duration_min,
+        "car_type": car_type,
+        "region": region,
+        "pricing_label": REGIONAL_PRICING.get(region, REGIONAL_PRICING["default"]).get("label", ""),
+        "breakdown": breakdown,
+        "subtotal": round(fare - tip, 2),
+        "tip": tip,
+        "total": round(fare, 2),
+        "currency": "EUR",
+        "driver_name": ride.get("driver_name", ""),
+        "vehicle": ride.get("vehicle", ""),
+        "created_at": ride.get("created_at"),
+        "completed_at": ride.get("completed_at"),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADD TIP AFTER RIDE  (P0)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TipRequest(BaseModel):
+    ride_id: str
+    amount: float = Field(..., ge=0, le=200)
+
+
+@router.post("/rides/tip")
+async def add_ride_tip(req: TipRequest, request: Request):
+    """Add a tip to a completed ride. Charges customer wallet, credits driver."""
+    from core.payment_engine import debit_wallet, TransactionType
+
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    ride = await db.taxi_rides.find_one({"ride_id": req.ride_id})
+    if not ride or ride.get("customer_id") != user_id:
+        raise HTTPException(status_code=403, detail="Nicht berechtigt")
+    if ride.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Fahrt nicht abgeschlossen")
+    if ride.get("tip", 0) > 0:
+        raise HTTPException(status_code=400, detail="Trinkgeld bereits hinzugefügt")
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Betrag muss > 0 sein")
+
+    # Charge customer
+    pay = await debit_wallet(
+        user_id=user_id,
+        amount=req.amount,
+        tx_type=TransactionType.TAXI_PAYMENT,
+        description=f"Trinkgeld Fahrt {req.ride_id[:6].upper()}",
+        reference=f"TIP-{req.ride_id[:6].upper()}",
+    )
+    if not pay.success:
+        raise HTTPException(status_code=400, detail=pay.error)
+
+    # Credit driver
+    if ride.get("driver_id"):
+        try:
+            await db.users.update_one(
+                {"_id": ObjectId(ride["driver_id"])},
+                {"$inc": {"balance": req.amount, "earnings": req.amount}},
+            )
+        except Exception:
+            pass
+
+    await db.taxi_rides.update_one(
+        {"ride_id": req.ride_id},
+        {"$set": {"tip": req.amount, "tip_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    return {"ok": True, "tip": req.amount}

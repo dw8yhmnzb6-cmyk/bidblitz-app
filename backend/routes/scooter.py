@@ -412,6 +412,7 @@ class EndRideRequest(BaseModel):
     scooter_id: Optional[str] = None
     end_lat: Optional[float] = None
     end_lng: Optional[float] = None
+    parking_photo_url: Optional[str] = None  # Photo proof of correct parking
 
 
 @router.post("/end")
@@ -506,6 +507,7 @@ async def end_ride(req: EndRideRequest, request: Request):
             "ride_cost": ride_cost,
             "total_cost": total_cost,
             "distance_km": round(distance_km, 2),
+            "parking_photo_url": req.parking_photo_url,
         }}
     )
     
@@ -1192,3 +1194,198 @@ async def get_active_shares(request: Request):
         "shared_by_me": as_host,
         "shared_with_me": as_guest,
     }
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# QR-CODE UNLOCK — P0 (Industry standard for Scooter Apps)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class QrUnlockRequest(BaseModel):
+    qr_code: str  # Raw QR content (URL or scooter_id)
+
+
+@router.post("/unlock-qr")
+async def unlock_via_qr(req: QrUnlockRequest, request: Request):
+    """
+    Unlock scooter from a scanned QR code.
+    Accepts either:
+      - direct scooter_id (e.g. "SC-T1234")
+      - URL containing it (e.g. "https://bidblitz.com/scooter/SC-T1234")
+      - URL with ?id= or ?scooter_id= query
+    """
+    from urllib.parse import urlparse, parse_qs
+
+    raw = (req.qr_code or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="QR-Code leer")
+
+    scooter_id = None
+
+    # 1) Direct ID
+    if raw.startswith("SC-") and len(raw) <= 20:
+        scooter_id = raw
+    else:
+        # 2) Try URL parsing
+        try:
+            parsed = urlparse(raw)
+            qs = parse_qs(parsed.query or "")
+            if qs.get("scooter_id"):
+                scooter_id = qs["scooter_id"][0]
+            elif qs.get("id"):
+                scooter_id = qs["id"][0]
+            else:
+                # Last segment of path
+                parts = [p for p in (parsed.path or "").split("/") if p]
+                if parts and parts[-1].startswith("SC-"):
+                    scooter_id = parts[-1]
+        except Exception:
+            pass
+
+    if not scooter_id:
+        raise HTTPException(status_code=400, detail="QR-Code unbekannt")
+
+    # Reuse existing unlock logic
+    return await unlock_scooter(UnlockRequest(scooter_id=scooter_id), request)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REPORT ISSUE — Damage / Problem with Scooter
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ReportIssueRequest(BaseModel):
+    scooter_id: str
+    category: str  # "damage" | "battery" | "lights" | "brakes" | "tire" | "vandalism" | "other"
+    description: str = Field("", max_length=500)
+    photo_url: Optional[str] = None
+    severity: str = "medium"  # "low" | "medium" | "high"
+
+
+@router.post("/report-issue")
+async def report_scooter_issue(req: ReportIssueRequest, request: Request):
+    """User reports an issue/damage on a scooter."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    scooter = await db.scooters.find_one({"scooter_id": req.scooter_id}, {"_id": 0})
+    if not scooter:
+        raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
+
+    now = datetime.now(timezone.utc).isoformat()
+    report_id = secrets.token_hex(8)
+
+    doc = {
+        "report_id": report_id,
+        "scooter_id": req.scooter_id,
+        "user_id": user_id,
+        "user_name": user.get("name", ""),
+        "category": req.category,
+        "description": req.description,
+        "photo_url": req.photo_url,
+        "severity": req.severity,
+        "status": "open",
+        "created_at": now,
+    }
+    await db.scooter_issues.insert_one(doc)
+    doc.pop("_id", None)
+
+    # Auto-flag scooter as maintenance for severe issues
+    if req.severity == "high":
+        await db.scooters.update_one(
+            {"scooter_id": req.scooter_id},
+            {"$set": {"status": "maintenance", "needs_maintenance": True}},
+        )
+
+    # Notify admin
+    await db.notifications.insert_one({
+        "id": secrets.token_hex(8),
+        "user_id": "admin",
+        "type": "scooter_issue",
+        "title": f"⚠️ Scooter-Problem ({req.severity})",
+        "message": f"{req.scooter_id}: {req.category}",
+        "data": {"report_id": report_id, "scooter_id": req.scooter_id},
+        "read": False,
+        "created_at": now,
+    })
+
+    return {"ok": True, "report_id": report_id, "message": "Danke für die Meldung!"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RESERVATION — Hold a scooter for X minutes
+# ══════════════════════════════════════════════════════════════════════════════
+
+RESERVE_FEE = 0.50           # one-time hold fee
+RESERVE_MINUTES = 10         # how long the hold lasts
+
+
+class ReserveRequest(BaseModel):
+    scooter_id: str
+
+
+@router.post("/reserve")
+async def reserve_scooter(req: ReserveRequest, request: Request):
+    """Reserve a scooter for {RESERVE_MINUTES} minutes."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    scooter = await db.scooters.find_one({"scooter_id": req.scooter_id})
+    if not scooter:
+        raise HTTPException(status_code=404, detail="Scooter nicht gefunden")
+    if scooter.get("status") not in ("available",):
+        raise HTTPException(status_code=400, detail="Scooter ist nicht verfügbar")
+
+    # Cancel any previous reservation by this user
+    await db.scooter_reservations.update_many(
+        {"user_id": user_id, "status": "active"}, {"$set": {"status": "cancelled"}}
+    )
+
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=RESERVE_MINUTES)
+    res_id = secrets.token_hex(8)
+
+    doc = {
+        "reservation_id": res_id,
+        "user_id": user_id,
+        "scooter_id": req.scooter_id,
+        "fee": RESERVE_FEE,
+        "status": "active",
+        "created_at": now.isoformat(),
+        "expires_at": expires.isoformat(),
+    }
+    await db.scooter_reservations.insert_one(doc)
+    doc.pop("_id", None)
+
+    await db.scooters.update_one(
+        {"scooter_id": req.scooter_id},
+        {"$set": {"status": "reserved", "reserved_by": user_id, "reserved_until": expires.isoformat()}},
+    )
+
+    return {
+        "ok": True,
+        "reservation": doc,
+        "expires_in_seconds": RESERVE_MINUTES * 60,
+        "expires_at": expires.isoformat(),
+    }
+
+
+@router.post("/reserve/cancel")
+async def cancel_reservation(request: Request):
+    """Cancel active reservation for current user."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    res = await db.scooter_reservations.find_one(
+        {"user_id": user_id, "status": "active"}, {"_id": 0}
+    )
+    if not res:
+        return {"ok": True, "message": "Keine aktive Reservierung"}
+
+    await db.scooter_reservations.update_one(
+        {"reservation_id": res["reservation_id"]}, {"$set": {"status": "cancelled"}}
+    )
+    await db.scooters.update_one(
+        {"scooter_id": res["scooter_id"]},
+        {"$set": {"status": "available"}, "$unset": {"reserved_by": "", "reserved_until": ""}},
+    )
+    return {"ok": True}

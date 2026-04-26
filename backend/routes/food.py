@@ -6,6 +6,7 @@ ONLY REAL APPROVED RESTAURANTS - No seeded/demo data shown to users.
 
 import secrets
 import math
+import random
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -222,6 +223,34 @@ async def get_categories():
     return {"categories": CATEGORIES}
 
 
+@router.get("/promo/validate")
+async def validate_promo(code: str, subtotal: float = 0):
+    """Validate a promo code and return discount."""
+    code_clean = (code or "").upper().strip()
+    if not code_clean:
+        return {"valid": False, "message": "Code fehlt"}
+
+    promo = await db.food_promos.find_one({"code": code_clean, "active": True}, {"_id": 0})
+    if not promo:
+        return {"valid": False, "message": "Code ungültig"}
+
+    if promo.get("type") == "percent":
+        discount = round(subtotal * float(promo.get("value", 0)) / 100, 2)
+    else:
+        discount = round(float(promo.get("value", 0)), 2)
+    if subtotal > 0:
+        discount = min(discount, subtotal)
+
+    return {
+        "valid": True,
+        "code": code_clean,
+        "type": promo.get("type", "amount"),
+        "value": promo.get("value", 0),
+        "discount": discount,
+        "label": promo.get("label", ""),
+    }
+
+
 # ══════════════════════════════════════
 # GET RESTAURANTS
 # ══════════════════════════════════════
@@ -345,14 +374,20 @@ async def place_order(req: OrderRequest, request: Request):
         menu_item = menu_map.get(cart_item.item_id)
         if not menu_item:
             raise HTTPException(status_code=400, detail=f"Artikel {cart_item.item_id} nicht gefunden")
-        
-        item_total = menu_item["price"] * cart_item.quantity
+
+        # Sum option prices for this line
+        options_total = round(sum(o.price for o in cart_item.options), 2)
+        unit_price = round(menu_item["price"] + options_total, 2)
+        item_total = round(unit_price * cart_item.quantity, 2)
         subtotal += item_total
-        
+
         order_items.append({
             "item_id": cart_item.item_id,
             "name": menu_item["name"],
             "price": menu_item["price"],
+            "options": [o.dict() for o in cart_item.options],
+            "options_total": options_total,
+            "unit_price": unit_price,
             "quantity": cart_item.quantity,
             "total": item_total,
             "notes": cart_item.notes,
@@ -361,13 +396,29 @@ async def place_order(req: OrderRequest, request: Request):
     if subtotal < MIN_ORDER_AMOUNT:
         raise HTTPException(status_code=400, detail=f"Mindestbestellwert: €{MIN_ORDER_AMOUNT:.2f}")
     
-    # Calculate fees
-    delivery_fee = restaurant.get("delivery_fee", DELIVERY_FEE_BASE)
+    # Calculate fees (skip delivery + small-order fee for pickup)
+    is_pickup = req.delivery_type == "pickup"
+    delivery_fee = 0.0 if is_pickup else restaurant.get("delivery_fee", DELIVERY_FEE_BASE)
     service_fee = round(subtotal * SERVICE_FEE_PERCENT, 2)
-    small_order_fee = SMALL_ORDER_FEE if subtotal < SMALL_ORDER_THRESHOLD else 0
+    small_order_fee = 0.0 if is_pickup else (SMALL_ORDER_FEE if subtotal < SMALL_ORDER_THRESHOLD else 0)
     tip = round(req.tip, 2)
-    
-    total = subtotal + delivery_fee + service_fee + small_order_fee + tip
+
+    # Apply promo code (validate by lookup)
+    promo_discount = 0.0
+    promo_doc = None
+    if req.promo_code:
+        promo_doc = await db.food_promos.find_one({
+            "code": req.promo_code.upper().strip(),
+            "active": True,
+        })
+        if promo_doc:
+            if promo_doc.get("type") == "percent":
+                promo_discount = round(subtotal * float(promo_doc.get("value", 0)) / 100, 2)
+            else:
+                promo_discount = round(float(promo_doc.get("value", 0)), 2)
+            promo_discount = min(promo_discount, subtotal)
+
+    total = round(subtotal + delivery_fee + service_fee + small_order_fee + tip - promo_discount, 2)
     
     now = datetime.now(timezone.utc)
     order_id = secrets.token_hex(8)
@@ -401,12 +452,15 @@ async def place_order(req: OrderRequest, request: Request):
         "restaurant_image": restaurant.get("image", ""),
         "items": order_items,
         "delivery_address": req.delivery_address,
+        "delivery_type": req.delivery_type,
         "payment_method": req.payment_method,
         "subtotal": round(subtotal, 2),
         "delivery_fee": delivery_fee,
         "service_fee": service_fee,
         "small_order_fee": small_order_fee,
         "tip": tip,
+        "promo_code": req.promo_code.upper().strip() if req.promo_code else None,
+        "promo_discount": promo_discount,
         "total": round(total, 2),
         "status": "pending",  # pending -> confirmed -> preparing -> picked_up -> delivered / cancelled
         "estimated_delivery": estimated_delivery.isoformat(),

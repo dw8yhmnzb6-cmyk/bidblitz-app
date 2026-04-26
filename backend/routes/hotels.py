@@ -29,6 +29,10 @@ class PropertyCreate(BaseModel):
     amenities: List[str] = []
     images: List[str] = []
     rules: str = ""
+    cleaning_fee: float = 0          # one-time fee per booking
+    service_fee_pct: float = 0.10    # 10% platform service fee
+    cancellation_policy: str = "flexible"  # flexible | moderate | strict
+    instant_book: bool = True
 
 
 class BookingCreate(BaseModel):
@@ -78,6 +82,93 @@ async def get_property(property_id: str):
     return p
 
 
+@router.get("/{property_id}/availability")
+async def get_availability(property_id: str, days: int = 90):
+    """Return list of booked date ranges so frontend can disable them in calendar."""
+    prop = await db.properties.find_one({"property_id": property_id}, {"_id": 0})
+    if not prop:
+        raise HTTPException(status_code=404, detail="Unterkunft nicht gefunden")
+
+    today = datetime.now(timezone.utc).date()
+    end = today + timedelta(days=days)
+
+    bookings = await db.hotel_bookings.find({
+        "property_id": property_id,
+        "status": {"$in": ["confirmed", "pending"]},
+        "check_out": {"$gte": today.isoformat()},
+        "check_in": {"$lte": end.isoformat()},
+    }, {"_id": 0, "check_in": 1, "check_out": 1}).to_list(200)
+
+    # Build flat list of unavailable dates (exclusive of check_out per hotel convention)
+    blocked = set()
+    for b in bookings:
+        try:
+            ci = datetime.strptime(b["check_in"], "%Y-%m-%d").date()
+            co = datetime.strptime(b["check_out"], "%Y-%m-%d").date()
+            d = ci
+            while d < co:
+                blocked.add(d.isoformat())
+                d += timedelta(days=1)
+        except (ValueError, KeyError):
+            continue
+
+    return {
+        "property_id": property_id,
+        "blocked_dates": sorted(blocked),
+        "ranges": [{"check_in": b["check_in"], "check_out": b["check_out"]} for b in bookings],
+        "horizon_days": days,
+    }
+
+
+@router.get("/{property_id}/quote")
+async def get_price_quote(property_id: str, check_in: str, check_out: str, guests: int = 1):
+    """Itemized price quote with breakdown (nights × rate, cleaning, service fee, total)."""
+    prop = await db.properties.find_one({"property_id": property_id, "status": "active"}, {"_id": 0})
+    if not prop:
+        raise HTTPException(status_code=404, detail="Unterkunft nicht gefunden")
+
+    try:
+        ci = datetime.strptime(check_in, "%Y-%m-%d")
+        co = datetime.strptime(check_out, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Datum ungültig (YYYY-MM-DD)")
+    if co <= ci:
+        raise HTTPException(status_code=400, detail="Check-out muss nach Check-in sein")
+
+    nights = (co - ci).days
+    if guests > prop.get("max_guests", 2):
+        raise HTTPException(status_code=400, detail=f"Max. {prop.get('max_guests')} Gäste")
+
+    rate = float(prop["price_per_night"])
+    subtotal = round(rate * nights, 2)
+    cleaning = float(prop.get("cleaning_fee", 0) or 0)
+    service_pct = float(prop.get("service_fee_pct", 0.10) or 0)
+    service_fee = round(subtotal * service_pct, 2)
+    total = round(subtotal + cleaning + service_fee, 2)
+    cashback = round(total * CASHBACK_RATE, 2)
+
+    return {
+        "property_id": property_id,
+        "check_in": check_in,
+        "check_out": check_out,
+        "nights": nights,
+        "guests": guests,
+        "rate_per_night": rate,
+        "breakdown": [
+            {"label": f"€{rate:.2f} × {nights} Nächte", "amount": subtotal},
+            {"label": "Reinigungsgebühr", "amount": cleaning},
+            {"label": f"Service-Gebühr ({int(service_pct * 100)}%)", "amount": service_fee},
+        ],
+        "subtotal": subtotal,
+        "cleaning_fee": cleaning,
+        "service_fee": service_fee,
+        "total": total,
+        "cashback": cashback,
+        "cancellation_policy": prop.get("cancellation_policy", "flexible"),
+        "instant_book": prop.get("instant_book", True),
+    }
+
+
 @router.post("/properties")
 async def create_property(req: PropertyCreate, request: Request):
     user = await get_current_user(request)
@@ -102,6 +193,10 @@ async def create_property(req: PropertyCreate, request: Request):
         "amenities": req.amenities,
         "images": req.images,
         "rules": req.rules,
+        "cleaning_fee": req.cleaning_fee,
+        "service_fee_pct": req.service_fee_pct,
+        "cancellation_policy": req.cancellation_policy,
+        "instant_book": req.instant_book,
         "rating": 0,
         "review_count": 0,
         "booking_count": 0,
@@ -152,7 +247,11 @@ async def book_property(req: BookingCreate, request: Request):
         raise HTTPException(status_code=400, detail="Check-out muss nach Check-in sein")
 
     nights = (check_out - check_in).days
-    total = round(prop["price_per_night"] * nights, 2)
+    subtotal = round(prop["price_per_night"] * nights, 2)
+    cleaning = float(prop.get("cleaning_fee", 0) or 0)
+    service_pct = float(prop.get("service_fee_pct", 0.10) or 0)
+    service_fee = round(subtotal * service_pct, 2)
+    total = round(subtotal + cleaning + service_fee, 2)
 
     # Check wallet balance
     balance = user.get("balance", 0)
@@ -207,6 +306,9 @@ async def book_property(req: BookingCreate, request: Request):
         "nights": nights,
         "guests": req.guests,
         "price_per_night": prop["price_per_night"],
+        "subtotal": subtotal,
+        "cleaning_fee": cleaning,
+        "service_fee": service_fee,
         "total": total,
         "platform_fee": round(total * 0.1, 2),
         "cashback": cashback,

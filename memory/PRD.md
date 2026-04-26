@@ -121,3 +121,49 @@ See `/app/memory/test_credentials.md`
 - Auction overhaul: 30 fresh auctions ≤3000€, no Rolex, viewer counter, auto-restart loop, bot loop verified
 - Testing agent iteration_18: 100% pass on AI features
 - Backend logs show: "30 Auto-Restart Auctions + Viewer Tracking active"
+
+## Session Notes (Apr 26 2026 — late evening, FAST MODE)
+
+### OSM Real-World Nearby Places (DONE)
+- New endpoint `GET /api/osm/places?lat=&lng=&radius_m=&category=` (OpenStreetMap Overpass)
+- New endpoint `GET /api/osm/categories` (8 categories: food, shop, money, health, fuel, fun, transport, all)
+- 15-min in-memory cache, no API key required
+- File: `/app/backend/routes/nearby_osm.py`
+- Frontend: `NearbyPage.jsx` shows DB markers + OSM markers on Leaflet map (green pins, anrufbar/Website-Button)
+- Removed fake seed data block from `seed_real_data.py` (Rossmann/REWE/Aral etc.)
+
+### P0 Backend — Competitive feature parity (DONE)
+
+**Hotels (Booking.com-style)**
+- `GET /api/hotels/{id}/availability?days=90` — booked date ranges for calendar
+- `GET /api/hotels/{id}/quote?check_in=&check_out=&guests=` — itemized price breakdown (rate × nights + cleaning_fee + service_fee_pct)
+- `PropertyCreate` extended: `cleaning_fee`, `service_fee_pct`, `cancellation_policy`, `instant_book`
+- `/api/hotels/book` now uses subtotal + cleaning + service_fee = total
+
+**Food (Lieferando-style)**
+- `CartItem.options[]` — variants/add-ons with per-option price (Größe, Extras)
+- `OrderRequest.delivery_type` — "delivery" | "pickup" (skips delivery fee/small-order fee for pickup)
+- `OrderRequest.promo_code` — applies promo discount, validated against `db.food_promos`
+- `GET /api/food/promo/validate?code=&subtotal=` — pre-checkout promo validation
+
+**Taxi (Uber-style)**
+- `POST /api/taxi/sos` — emergency alert with location, notifies admin, returns 112/999 numbers
+- `GET /api/taxi/rides/{ride_id}/receipt` — itemized receipt (base+km+time+tip)
+- `POST /api/taxi/rides/tip` — add tip after ride, charges customer, credits driver
+
+**Scooter (TIER-style)**
+- `POST /api/scooter/unlock-qr` — unlock from QR content (URL or scooter_id)
+- `EndRideRequest.parking_photo_url` — proof of parking on end-ride
+- `POST /api/scooter/report-issue` — damage/issue report, auto-flags maintenance for high severity
+- `POST /api/scooter/reserve` — hold scooter for 10 min (€0.50)
+- `POST /api/scooter/reserve/cancel`
+
+### Email (Resend)
+- Already fully wired in `/app/backend/core/email.py` with templates: welcome, password_reset, payment_confirmation, receipt, KYC, OTP, topup, blitz_transfer
+- API key configured in `/app/backend/.env` as `RESEND_API_KEY`
+
+### Pending (next session)
+- P0 frontend: Hotel calendar + price breakdown UI; Food item-options modal + tip slider; Taxi SOS button + class chooser; Scooter QR-Scanner UI + parking photo upload
+- P1 features per competitive analysis (filter/sort, in-app chat, live driver map, no-go zones)
+- VPS frontend deployment (yarn build + nginx reload)
+- Refactor App.js routing (~900-line switch)
