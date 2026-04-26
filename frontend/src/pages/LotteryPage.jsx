@@ -1,21 +1,21 @@
 /**
- * LotteryPage - Tägliche BLZ-Lotterie
+ * LotteryPage - Tägliche BLZ-Lotterie mit echten Sachpreisen
  * Backend: /api/lottery/current, /api/lottery/buy-tickets, /api/lottery/my-tickets
  */
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Ticket, Loader2, Trophy, Sparkles, Clock, Zap, Gift
+  ArrowLeft, Ticket, Loader2, Trophy, Sparkles, Clock, Gift, X, Star
 } from "lucide-react";
 import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const TIER_STYLES = {
-  grand: { color: "#FFD700", label: "Jackpot", emoji: "💎" },
-  big: { color: "#A855F7", label: "Groß", emoji: "🏆" },
-  small: { color: "#00C2FF", label: "Klein", emoji: "🎁" },
-  mini: { color: "#00D26A", label: "Mini", emoji: "✨" },
+  grand: { color: "#FFD700", gradient: "linear-gradient(135deg,#FFD700,#FFA500)", emoji: "💎", glow: "rgba(255,215,0,0.4)" },
+  big:   { color: "#A855F7", gradient: "linear-gradient(135deg,#A855F7,#EC4899)", emoji: "🏆", glow: "rgba(168,85,247,0.35)" },
+  small: { color: "#00C2FF", gradient: "linear-gradient(135deg,#00C2FF,#0EA5E9)", emoji: "🎁", glow: "rgba(0,194,255,0.3)" },
+  mini:  { color: "#00D26A", gradient: "linear-gradient(135deg,#00D26A,#10B981)", emoji: "✨", glow: "rgba(0,210,106,0.3)" },
 };
 
 function useCountdownToMidnight() {
@@ -44,19 +44,26 @@ export default function LotteryPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
   const [buying, setBuying] = useState(false);
+  const [selectedPrize, setSelectedPrize] = useState(null); // { tier, item }
   const countdown = useCountdownToMidnight();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [cur, mine] = await Promise.all([
-        fetch(`${API}/api/lottery/current`, { credentials: "include" }).then(r => r.json()),
-        fetch(`${API}/api/lottery/my-tickets`, { credentials: "include" }).then(r => r.json()),
+      const [curRes, mineRes] = await Promise.all([
+        fetch(`${API}/api/lottery/current`, { credentials: "include" }),
+        fetch(`${API}/api/lottery/my-tickets`, { credentials: "include" }),
       ]);
+      const cur = await curRes.json();
+      const mine = await mineRes.json();
       setData(cur);
       setMyDraws(mine.draws || []);
-    } catch {
-      toast.error("Fehler beim Laden");
+    } catch (err) {
+      // Suppress iOS Safari "Body is disturbed or locked" transient errors silently
+      const msg = String(err?.message || "");
+      if (!/disturbed|locked|body/i.test(msg)) {
+        toast.error("Fehler beim Laden");
+      }
     }
     setLoading(false);
   }, []);
@@ -95,9 +102,15 @@ export default function LotteryPage({ onBack }) {
   const price = data.ticket_price_blz;
   const pool = data.prize_pool || {};
   const total = price * qty;
-  const totalPrizeBlz = Object.values(pool).reduce(
-    (a, t) => a + (t.blz || 0) * (t.count_per_draw || 0), 0
-  );
+
+  // Total Sachwert in EUR (alle Sachpreise summiert)
+  const totalValueEur = Object.values(pool).reduce((sum, tier) => {
+    const items = tier.items || [];
+    if (!items.length) return sum;
+    // Durchschnittswert pro Item × Anzahl Gewinne
+    const avg = items.reduce((a, it) => a + (it.value_eur || 0), 0) / items.length;
+    return sum + avg * (tier.count_per_draw || 0);
+  }, 0);
 
   return (
     <div data-testid="lottery-page" className="min-h-screen pb-24"
@@ -114,19 +127,20 @@ export default function LotteryPage({ onBack }) {
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Jackpot Hero */}
+      <div className="p-4 space-y-5">
+        {/* Hero: Heutiger Sachwert + Countdown */}
         <motion.div
+          data-testid="lottery-hero"
           className="rounded-3xl p-6 text-center relative overflow-hidden"
           style={{ background: "linear-gradient(135deg,#A855F7 0%,#EC4899 100%)" }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         >
           <Sparkles size={32} className="mx-auto text-white mb-2" />
-          <p className="text-[10px] font-black text-white/80 uppercase tracking-[0.2em]">Heutiger Preispool</p>
-          <p className="text-[48px] font-black text-white leading-none mt-2 font-outfit tabular-nums">
-            {totalPrizeBlz.toLocaleString("de-DE")}
+          <p className="text-[10px] font-black text-white/80 uppercase tracking-[0.2em]">Heutiger Sachpreis-Pool</p>
+          <p className="text-[44px] font-black text-white leading-none mt-2 font-outfit tabular-nums">
+            ~{Math.round(totalValueEur).toLocaleString("de-DE")}€
           </p>
-          <p className="text-[14px] font-bold text-white/90 mt-1">BLZ</p>
+          <p className="text-[12px] font-bold text-white/90 mt-1">an echten Sachpreisen</p>
           <div className="flex items-center justify-center gap-2 mt-4 bg-black/25 rounded-full py-2 px-4 inline-flex">
             <Clock size={12} className="text-white" />
             <p className="text-[11px] font-bold text-white">Ziehung in {countdown}</p>
@@ -142,6 +156,86 @@ export default function LotteryPage({ onBack }) {
             </div>
           </div>
         </motion.div>
+
+        {/* WAS KANNST DU GEWINNEN? — Prominent oben */}
+        <div data-testid="lottery-prize-showcase">
+          <div className="flex items-center gap-2 mb-3">
+            <Gift size={16} className="text-amber-400" />
+            <h2 className="text-[13px] font-black text-white uppercase tracking-wider">
+              Das kannst du gewinnen
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {Object.entries(pool).map(([tierKey, tier]) => {
+              const style = TIER_STYLES[tierKey] || TIER_STYLES.mini;
+              const items = tier.items || [];
+              return (
+                <div key={tierKey} data-testid={`lottery-tier-${tierKey}`}>
+                  {/* Tier Header */}
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[18px]">{style.emoji}</span>
+                      <div>
+                        <p className="text-[12px] font-black text-white uppercase tracking-wider">
+                          {tier.label_de || tierKey}
+                        </p>
+                        <p className="text-[10px] text-white/50">
+                          {tier.count_per_draw}× pro Ziehung
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[13px] font-black tabular-nums" style={{ color: style.color }}>
+                        +{tier.blz?.toLocaleString("de-DE")} BLZ
+                      </p>
+                      <p className="text-[9px] text-white/40 uppercase">Bonus</p>
+                    </div>
+                  </div>
+
+                  {/* Items horizontal scroll */}
+                  <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory"
+                       style={{ scrollbarWidth: "none" }}>
+                    {items.map((item, idx) => (
+                      <motion.button
+                        key={idx}
+                        data-testid={`lottery-prize-${tierKey}-${idx}`}
+                        onClick={() => setSelectedPrize({ tier: tierKey, tierData: tier, item, style })}
+                        whileTap={{ scale: 0.96 }}
+                        className="flex-shrink-0 w-[160px] rounded-2xl overflow-hidden text-left snap-start"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: `1px solid ${style.color}30`,
+                          boxShadow: `0 4px 20px ${style.glow}`,
+                        }}
+                      >
+                        <div className="relative w-full h-[110px] overflow-hidden bg-white/5">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
+                          <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-black"
+                               style={{ background: style.gradient, color: "#000" }}>
+                            {item.value_eur}€
+                          </div>
+                        </div>
+                        <div className="p-2.5">
+                          <p className="text-[11px] font-bold text-white leading-tight line-clamp-2 min-h-[28px]">
+                            {item.name}
+                          </p>
+                          <p className="text-[9px] text-white/40 mt-1">Tippen für Details</p>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Buy Tickets */}
         <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4">
@@ -189,38 +283,9 @@ export default function LotteryPage({ onBack }) {
             {buying ? <Loader2 size={16} className="animate-spin" /> : <Ticket size={16} />}
             {buying ? "Kauf läuft..." : `Kaufen für ${total} BLZ`}
           </motion.button>
-        </div>
-
-        {/* Prize Tiers */}
-        <div>
-          <h2 className="text-[11px] font-bold text-white/50 uppercase tracking-wider mb-2">
-            Gewinnklassen
-          </h2>
-          <div className="space-y-2">
-            {Object.entries(pool).map(([key, cfg]) => {
-              const style = TIER_STYLES[key] || TIER_STYLES.mini;
-              return (
-                <div key={key}
-                  className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 flex items-center gap-3"
-                  data-testid={`lottery-tier-${key}`}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[18px]"
-                    style={{ background: `${style.color}20`, border: `1px solid ${style.color}40` }}>
-                    {style.emoji}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[13px] font-bold text-white">{style.label}</p>
-                    <p className="text-[10px] text-white/50">{cfg.count_per_draw}× pro Ziehung</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[14px] font-black tabular-nums" style={{ color: style.color }}>
-                      {cfg.blz.toLocaleString("de-DE")}
-                    </p>
-                    <p className="text-[9px] text-white/50 uppercase">BLZ</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <p className="text-center text-[10px] text-white/40 mt-2">
+            Jedes Los = 1 Chance auf alle oben gezeigten Preise
+          </p>
         </div>
 
         {/* My Tickets History */}
@@ -264,6 +329,87 @@ export default function LotteryPage({ onBack }) {
           </div>
         )}
       </div>
+
+      {/* Prize Detail Modal */}
+      <AnimatePresence>
+        {selectedPrize && (
+          <motion.div
+            data-testid="lottery-prize-modal"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSelectedPrize(null)}
+          >
+            <motion.div
+              className="w-full sm:max-w-md bg-[#0a0a0a] border-t sm:border border-white/[0.08] rounded-t-3xl sm:rounded-3xl overflow-hidden"
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative">
+                <img
+                  src={selectedPrize.item.image}
+                  alt={selectedPrize.item.name}
+                  className="w-full h-64 object-cover"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+                <button
+                  data-testid="lottery-prize-modal-close"
+                  onClick={() => setSelectedPrize(null)}
+                  className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 backdrop-blur flex items-center justify-center"
+                >
+                  <X size={16} className="text-white" />
+                </button>
+                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1"
+                     style={{ background: selectedPrize.style.gradient, color: "#000" }}>
+                  <Star size={10} fill="#000" />
+                  {selectedPrize.tierData.label_de}
+                </div>
+              </div>
+              <div className="p-5 space-y-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider"
+                     style={{ color: selectedPrize.style.color }}>
+                    Wert {selectedPrize.item.value_eur}€
+                  </p>
+                  <h3 className="text-[20px] font-black text-white leading-tight mt-1">
+                    {selectedPrize.item.name}
+                  </h3>
+                </div>
+                <p className="text-[13px] text-white/70 leading-relaxed">
+                  {selectedPrize.item.description}
+                </p>
+                <div className="bg-white/[0.04] rounded-xl p-3 space-y-1.5">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-white/50">Anzahl pro Ziehung</span>
+                    <span className="text-white font-bold">{selectedPrize.tierData.count_per_draw}× Gewinner</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-white/50">Zusätzlicher BLZ-Bonus</span>
+                    <span className="font-bold" style={{ color: selectedPrize.style.color }}>
+                      +{selectedPrize.tierData.blz?.toLocaleString("de-DE")} BLZ
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-white/50">Preis pro Los</span>
+                    <span className="text-white font-bold">{price} BLZ</span>
+                  </div>
+                </div>
+                <motion.button
+                  data-testid="lottery-prize-modal-buy"
+                  onClick={() => { setSelectedPrize(null); buy(); }}
+                  disabled={buying}
+                  className="w-full py-3.5 rounded-2xl font-black text-[14px] text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{ background: selectedPrize.style.gradient, color: "#000" }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Ticket size={16} />
+                  Jetzt mitspielen ({total} BLZ)
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -272,11 +272,107 @@ async def marketplace_transfer(req: MarketplaceTransferRequest, request: Request
 # 5. LOTTERIE
 # ═══════════════════════════════════════════════════════════
 LOTTERY_TICKET_PRICE_BLZ = 10  # 10 BLZ pro Los
+
+# Echte Sachpreise pro Tier (Bilder via Unsplash CDN, Wert in EUR)
 LOTTERY_PRIZE_POOL = {
-    "grand": {"blz": 5000, "count_per_draw": 1},
-    "big":   {"blz": 500,  "count_per_draw": 5},
-    "small": {"blz": 50,   "count_per_draw": 20},
-    "mini":  {"blz": 15,   "count_per_draw": 100},
+    "grand": {
+        "blz": 5000,
+        "count_per_draw": 1,
+        "label_de": "Hauptpreis",
+        "label_en": "Grand Prize",
+        "items": [
+            {
+                "name": "iPhone 17 Pro 256GB",
+                "value_eur": 1499,
+                "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80",
+                "description": "Brandneues iPhone 17 Pro in Titanium-Schwarz",
+            },
+            {
+                "name": "MacBook Air M4",
+                "value_eur": 1299,
+                "image": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&q=80",
+                "description": "MacBook Air mit M4-Chip, 13 Zoll, 256GB",
+            },
+        ],
+    },
+    "big": {
+        "blz": 500,
+        "count_per_draw": 5,
+        "label_de": "Großer Preis",
+        "label_en": "Big Prize",
+        "items": [
+            {
+                "name": "AirPods Pro 3",
+                "value_eur": 279,
+                "image": "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=600&q=80",
+                "description": "AirPods Pro mit Active Noise Cancelling",
+            },
+            {
+                "name": "Apple Watch SE",
+                "value_eur": 299,
+                "image": "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=600&q=80",
+                "description": "Apple Watch SE 44mm GPS",
+            },
+            {
+                "name": "Amazon Gutschein 250€",
+                "value_eur": 250,
+                "image": "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80",
+                "description": "Amazon.de Gutschein im Wert von 250€",
+            },
+        ],
+    },
+    "small": {
+        "blz": 50,
+        "count_per_draw": 20,
+        "label_de": "Kleiner Preis",
+        "label_en": "Small Prize",
+        "items": [
+            {
+                "name": "Restaurant-Gutschein 50€",
+                "value_eur": 50,
+                "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80",
+                "description": "Gutschein für Partner-Restaurants",
+            },
+            {
+                "name": "Lieferando Gutschein 50€",
+                "value_eur": 50,
+                "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80",
+                "description": "Lieferando Bestellgutschein",
+            },
+            {
+                "name": "Netflix 3 Monate",
+                "value_eur": 45,
+                "image": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80",
+                "description": "Netflix Premium 3 Monate",
+            },
+        ],
+    },
+    "mini": {
+        "blz": 15,
+        "count_per_draw": 100,
+        "label_de": "Mini-Preis",
+        "label_en": "Mini Prize",
+        "items": [
+            {
+                "name": "Kaffee-Gutschein 15€",
+                "value_eur": 15,
+                "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&q=80",
+                "description": "Starbucks / lokaler Coffee-Shop",
+            },
+            {
+                "name": "Spotify Premium 1 Monat",
+                "value_eur": 11,
+                "image": "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?w=600&q=80",
+                "description": "1 Monat Spotify Premium",
+            },
+            {
+                "name": "BLZ Bonus-Token",
+                "value_eur": 15,
+                "image": "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=600&q=80",
+                "description": "Direkt aufgeladen ins BidBlitz Wallet",
+            },
+        ],
+    },
 }
 
 

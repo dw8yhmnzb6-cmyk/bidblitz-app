@@ -864,13 +864,3 @@ function App() {
 }
 
 export default App;
-rn (
-    <AppProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </AppProvider>
-  );
-}
-
-export default App;
