@@ -137,7 +137,18 @@ export const api = {
   refresh: () => request("/api/auth/refresh", { method: "POST" }),
 
   // Wallet
-  getWallet: () => request("/api/wallet"),
+  getWallet: async () => {
+    // Fetch TOTAL balance (EUR + Crypto)
+    const totalBalance = await request("/api/wallet/balance/total");
+    // Fetch regular wallet data  
+    const wallet = await request("/api/wallet");
+    
+    // Merge both responses
+    return {
+      ...wallet,
+      ...totalBalance,
+    };
+  },
   getWalletBalance: () => request("/api/wallet/balance"),
   topUp: (body) => request("/api/wallet/topup", { method: "POST", body: JSON.stringify(body) }),
 

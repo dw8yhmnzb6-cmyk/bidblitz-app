@@ -267,10 +267,14 @@ const LoyaltyCard = ({ onNavigate, t }) => {
 // ── Main Page ──
 export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister, onStartDemo }) => {
   const user = useUser();
-  const { balance, currency } = useWallet();
+  const { balance, currency, cryptoBalanceEur, totalBalanceEur, cryptoBreakdown } = useWallet();
   const { percentageChange } = useWalletStats();
   const { t, lang } = useI18n();
   const gt = useGuestTranslations(lang);
+  
+  // Use total balance if available, otherwise fall back to EUR balance
+  const displayBalance = totalBalanceEur > 0 ? totalBalanceEur : balance;
+  const hasCrypto = cryptoBalanceEur > 0;
 
   const [hintDismissed, setHintDismissed] = useState(() => {
     try { return localStorage.getItem("bb_hint_dismissed") === "1"; } catch { return false; }
@@ -552,8 +556,28 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 </div>
                 <motion.div className="flex items-baseline gap-1 mb-3" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
                   <span className="text-[22px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
-                  <span className="text-[42px] font-bold font-outfit text-white tracking-[-0.03em] leading-none">{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
+                  <span className="text-[42px] font-bold font-outfit text-white tracking-[-0.03em] leading-none">{displayBalance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
                 </motion.div>
+                
+                {/* Crypto Breakdown */}
+                {hasCrypto && (
+                  <motion.div 
+                    className="flex flex-col gap-1 mb-2 pb-2 border-b border-white/[0.03]"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <div className="flex items-center justify-between text-[9px]">
+                      <span className="text-white/30">EUR Wallet</span>
+                      <span className="text-white/50 font-mono">€{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[9px]">
+                      <span className="text-white/30">Crypto ({cryptoBreakdown.length} Coins)</span>
+                      <span className="text-[#00C2FF] font-mono">€{cryptoBalanceEur.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </motion.div>
+                )}
+                
                 <motion.div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(0,210,106,0.06)", border: "1px solid rgba(0,210,106,0.12)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
                   <TrendingUp size={10} className="text-[#00D26A]" />
                   <span className="text-[10px] text-[#00D26A] font-semibold">+{percentageChange}% {t("home.month")}</span>

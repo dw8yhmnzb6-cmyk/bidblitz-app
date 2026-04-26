@@ -14,6 +14,9 @@ const ACTIONS = {
 const initialState = {
   balance: 0,
   currency: 'EUR',
+  cryptoBalanceEur: 0,  // NEW: Crypto balance in EUR
+  totalBalanceEur: 0,    // NEW: Total (EUR + Crypto)
+  cryptoBreakdown: [],   // NEW: Individual crypto holdings
   cardNumber: '',
   cardExpiry: '',
   cardHolder: '',
@@ -34,6 +37,9 @@ function walletReducer(state, action) {
       return {
         ...state,
         balance: w.balance ?? 0,
+        cryptoBalanceEur: w.crypto_balance_eur ?? 0,
+        totalBalanceEur: w.total_balance_eur ?? w.balance ?? 0,
+        cryptoBreakdown: w.crypto_breakdown ?? [],
         currency: w.currency || 'EUR',
         cardNumber: w.card_number || '',
         cardExpiry: w.card_expiry || '',
