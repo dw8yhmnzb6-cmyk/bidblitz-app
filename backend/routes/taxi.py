@@ -2185,3 +2185,84 @@ async def delete_company_vehicle(vehicle_id: str, request: Request):
     if result.deleted_count == 0:
         raise HTTPException(404, "Fahrzeug nicht gefunden")
     return {"ok": True}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NEARBY ENDPOINTS - For Live Maps (Taxi & Driver Mode)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/nearby")
+async def get_nearby_taxis(lat: float = 25.2048, lng: float = 55.2708, radius: float = 5.0):
+    """
+    Get nearby available taxis (for customer view on NearbyPage).
+    Returns online drivers from both taxi operators and private drivers.
+    """
+    # Get business drivers (from taxi operators)
+    operators = await db.taxi_operators.find({"status": "approved"}).to_list(100)
+    business_drivers = []
+    for op in operators:
+        for driver in op.get("drivers", []):
+            if driver.get("is_online") and driver.get("status") == "active":
+                # Get driver location
+                loc = await db.driver_locations.find_one({"driver_id": driver["driver_id"]}, {"_id": 0})
+                if loc:
+                    dist = haversine_distance(lat, lng, loc["lat"], loc["lng"])
+                    if dist <= radius:
+                        business_drivers.append({
+                            "driver_id": driver["driver_id"],
+                            "name": driver.get("name", "Fahrer"),
+                            "vehicle": f"{driver.get('vehicle_model', 'Standard')} ({driver.get('vehicle_plate', '')})",
+                            "car_type": driver.get("car_type", "standard"),
+                            "rating": driver.get("rating", 5.0),
+                            "lat": loc["lat"],
+                            "lng": loc["lng"],
+                            "distance_km": round(dist, 2),
+                            "type": "business",
+                        })
+    
+    # Get private drivers
+    private_driver_users = await db.users.find({
+        "is_private_driver": True,
+        "driver_online": True
+    }, {"_id": 0, "private_driver_id": 1, "name": 1}).to_list(100)
+    
+    private_drivers = []
+    for user in private_driver_users:
+        driver_id = user.get("private_driver_id")
+        if not driver_id:
+            continue
+        driver_doc = await db.private_drivers.find_one({"driver_id": driver_id}, {"_id": 0})
+        if driver_doc and driver_doc.get("status") == "approved":
+            # Get location from driver_locations
+            loc = await db.driver_locations.find_one({"driver_id": driver_id}, {"_id": 0})
+            if loc:
+                dist = haversine_distance(lat, lng, loc["lat"], loc["lng"])
+                if dist <= radius:
+                    private_drivers.append({
+                        "driver_id": driver_id,
+                        "name": user.get("name", "Privatfahrer"),
+                        "vehicle": f"{driver_doc.get('vehicle_model', 'Standard')} ({driver_doc.get('vehicle_plate', '')})",
+                        "car_type": driver_doc.get("car_type", "standard"),
+                        "rating": driver_doc.get("rating", 5.0),
+                        "lat": loc["lat"],
+                        "lng": loc["lng"],
+                        "distance_km": round(dist, 2),
+                        "type": "private",
+                    })
+    
+    all_drivers = business_drivers + private_drivers
+    all_drivers.sort(key=lambda x: x["distance_km"])
+    
+    return {
+        "drivers": all_drivers[:20],
+        "total": len(all_drivers),
+    }
+
+
+@router.get("/driver/nearby")
+async def get_nearby_drivers_for_map(lat: float = 25.2048, lng: float = 55.2708, radius: float = 5.0):
+    """
+    Same as /nearby but aliased for driver dashboard maps.
+    Returns online drivers for visualization.
+    """
+    return await get_nearby_taxis(lat, lng, radius)

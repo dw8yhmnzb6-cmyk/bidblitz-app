@@ -1,12 +1,12 @@
 /**
  * BidBlitz V2 - In der Nähe (Nearby)
- * Mapbox Karte + Restaurants, Termine, Hotels, Events
- * + Adress-Suche + Gespeicherte Standorte
+ * Leaflet Karte (kostenlos via CartoCDN) + Restaurants, Termine, Hotels, Events
+ * + Adress-Suche via Nominatim + Gespeicherte Standorte
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   ArrowLeft, Search, MapPin, Star, UtensilsCrossed, Calendar,
   Hotel, Ticket, Filter, X, Home, Briefcase, Heart, Plus,
@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
 const TYPE_CONFIG = {
   restaurant: { icon: "🍽️", color: "#F59E0B", label: "Restaurant", Icon: UtensilsCrossed },
@@ -72,44 +71,49 @@ const NearbyPage = ({ onBack, onNavigate }) => {
 
   useEffect(() => { loadMarkers(); }, [loadMarkers]);
 
-  // Initialize map
+  // Initialize Leaflet map
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
-    const map = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [userLoc.lng, userLoc.lat],
-      zoom: 11,
-    });
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    const map = L.map(mapContainer.current, {
+      zoomControl: true,
+      attributionControl: false,
+    }).setView([userLoc.lat, userLoc.lng], 11);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 19,
+    }).addTo(map);
     mapRef.current = map;
 
     // User location marker
-    const el = document.createElement("div");
-    el.innerHTML = `<div style="width:14px;height:14px;border-radius:50%;background:#00C2FF;border:3px solid white;box-shadow:0 0 8px rgba(0,194,255,0.5)"></div>`;
-    new mapboxgl.Marker({ element: el }).setLngLat([userLoc.lng, userLoc.lat]).addTo(map);
+    const userIcon = L.divIcon({
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:#00C2FF;border:3px solid white;box-shadow:0 0 8px rgba(0,194,255,0.5)"></div>`,
+      className: "",
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+    L.marker([userLoc.lat, userLoc.lng], { icon: userIcon }).addTo(map);
 
     return () => { map.remove(); mapRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update markers on map
   useEffect(() => {
     if (!mapRef.current) return;
-    // Remove old markers
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
     const filtered = markers.filter(m => filters[m.type]);
     filtered.forEach(m => {
       const cfg = TYPE_CONFIG[m.type] || {};
-      const el = document.createElement("div");
-      el.style.cssText = `width:28px;height:28px;border-radius:8px;background:${cfg.color || "#666"};display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;box-shadow:0 2px 8px ${cfg.color}44;border:2px solid white;`;
-      el.textContent = cfg.icon || "📍";
-      el.addEventListener("click", () => setSelectedMarker(m));
-
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([m.lng, m.lat])
-        .addTo(mapRef.current);
+      const icon = L.divIcon({
+        html: `<div style="width:28px;height:28px;border-radius:8px;background:${cfg.color || "#666"};display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;box-shadow:0 2px 8px ${cfg.color}44;border:2px solid white;">${cfg.icon || "📍"}</div>`,
+        className: "",
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+      const marker = L.marker([m.lat, m.lng], { icon }).addTo(mapRef.current);
+      marker.on("click", () => setSelectedMarker(m));
       markersRef.current.push(marker);
     });
   }, [markers, filters]);
@@ -137,7 +141,7 @@ const NearbyPage = ({ onBack, onNavigate }) => {
   };
 
   const flyTo = (lng, lat, zoom = 14) => {
-    if (mapRef.current) mapRef.current.flyTo({ center: [lng, lat], zoom, duration: 1500 });
+    if (mapRef.current) mapRef.current.flyTo([lat, lng], zoom, { duration: 1.5 });
   };
 
   const selectSearchResult = (feature) => {
@@ -151,7 +155,12 @@ const NearbyPage = ({ onBack, onNavigate }) => {
   const saveLocation = async () => {
     if (!newLocLabel) return;
     const center = mapRef.current?.getCenter();
-    const newLoc = { label: newLocLabel, address: newLocAddr || "", lat: center?.lat || userLoc.lat, lng: center?.lng || userLoc.lng };
+    const newLoc = {
+      label: newLocLabel,
+      address: newLocAddr || "",
+      lat: center?.lat ?? userLoc.lat,
+      lng: center?.lng ?? userLoc.lng,
+    };
     const updated = [...savedLocs, newLoc];
     setSavedLocs(updated);
     setNewLocLabel("");

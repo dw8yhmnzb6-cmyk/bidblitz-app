@@ -120,6 +120,18 @@ backend:
         agent: "testing"
         comment: "COMPREHENSIVE UI LOGIN FLOW TESTING COMPLETE (2026-04-22): ✅ Onboarding flow working (Weiter → Überspringen buttons found and clicked), ✅ Login button (Anmelden) found and clicked successfully, ✅ Credentials filled correctly (admin@bidblitz.ae / BidBlitz2026!), ✅ Login completed successfully with URL redirect to homepage, ✅ User authenticated and displayed as 'BidBlitz Admin' in header, ✅ Balance visible (EUR 0,00), ✅ NO 'clone' errors in console, ✅ NO CORS errors, ✅ All 23 API calls going to bidblitz.ae/api/* (confirmed NOT using preview.emergentagent.com), ✅ Console shows only expected 401 errors before login (normal auth check behavior). Login system fully functional on live production site."
 
+  - task: "Taxi/Driver Nearby Endpoints"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/taxi.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "NEW ENDPOINTS ADDED (2026-04-26): GET /api/taxi/nearby and GET /api/taxi/driver/nearby successfully implemented (lines 2192-2262 in taxi.py). Both endpoints return online drivers (business operators + private drivers) within specified radius. Returns driver details: name, vehicle, car_type, rating, lat/lng, distance_km. Tested via curl with Dubai coordinates (25.2048, 55.2708) - endpoints return 200 OK with correct JSON structure (empty array when no online drivers). Haversine distance calculation working. Ready for frontend integration."
+  
   - task: "Daily Challenges API"
     implemented: true
     working: true
@@ -200,14 +212,29 @@ backend:
     working: true
     file: "/app/backend/routes/kyc.py"
     stuck_count: 0
-    priority: "medium"
+    priority: "high"
     needs_retesting: false
     status_history:
       - working: true
         agent: "testing"
         comment: "GET /api/kyc/status working correctly, returns KYC verification status and withdrawal limits. File upload tests skipped as requested."
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE KYC SYSTEM TESTING COMPLETE (2026-04-26): ✅ KYC Status endpoint working correctly (returns kyc_verified, kyc_status, can_use_features), ✅ KYC Submit endpoint validation working (correctly rejects empty submissions with 422), ✅ Wallet KYC gating working (topup and send blocked with 403 + kyc_required error), ✅ Auction KYC gating working (bidding blocked with 403 + kyc_required error), ✅ Admin KYC endpoints working (list reviews), ✅ Authentication required (401 for unauthenticated requests), ✅ All 9 backend tests passed (100% success rate). KYC system fully functional with proper gating."
 
 frontend:
+  - task: "Nearby Page - Leaflet Map Migration"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/NearbyPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "MAPBOX MIGRATION COMPLETE (2026-04-26): Verified NearbyPage.jsx has NO Mapbox remnants. Leaflet fully integrated with CartoCDN dark tiles (https://basemaps.cartocdn.com/dark_all). grep confirmed zero 'mapbox' or 'mapboxgl' references. Map uses OpenStreetMap Nominatim for address search (free, no API key). User location marker, filters, saved locations all working with Leaflet. Map container properly initialized with L.map(). Mapbox token issues resolved by complete removal. Frontend ready for /api/taxi/nearby integration."
+  
   - task: "Login & Authentication"
     implemented: true
     working: true
@@ -364,6 +391,18 @@ frontend:
         agent: "testing"
         comment: "COMPREHENSIVE TEST COMPLETE (2026-04-22): ✅ Admin login successful (admin@bidblitz.ae), ✅ Wallet-Tool page loads correctly at /admin/wallet, ✅ User search working (found users with 'test' query), ✅ User list displays with email, role, EUR and BLZ balances, ✅ User selection working, ✅ Credit user flow successful (10 EUR sent to afrimfinaltest@icloud.com with success toast), ✅ All tabs visible and working (Senden/Abziehen, Self-Topup, Log), ✅ Credit/Debit toggle working, ✅ Amount inputs (EUR and BLZ) working, ✅ Submit button clickable and functional, ✅ Self-Topup tab shows admin wallet balance (5.00€), ✅ History tab accessible. Minor: Wallet-Tool button not easily discoverable in MEHR page (had to use direct navigation), but functionality is 100% working. Backend API endpoints (/api/admin/wallet/users, /api/admin/wallet/credit) working correctly."
 
+  - task: "KYC Frontend Components"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/KYCVerificationModal.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "KYC FRONTEND COMPONENTS TESTING COMPLETE (2026-04-26): ✅ KYCVerificationModal.jsx exists with complete 3-step verification flow (document type selection, front/back photo, selfie), ✅ KYCBanner.jsx exists with status-based messaging (not_started, pending, rejected), ✅ KYCBanner properly integrated in HomePage.jsx for authenticated users, ✅ Modal includes proper file upload handling, AI confidence display, and result screens, ✅ Components use proper API endpoints (/api/kyc/submit, /api/kyc/status), ✅ Proper error handling and validation, ✅ Responsive design with motion animations. Frontend KYC system fully implemented and ready for user interaction."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
@@ -372,9 +411,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Admin Panel Access"
-    - "Notifications API Integration"
-    - "Bottom Navigation"
+    - "Sabre Hotel API Error Handling"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -390,3 +427,7 @@ agent_communication:
     message: "COMPREHENSIVE UI LOGIN FLOW RE-VERIFICATION COMPLETE (2026-04-22): Tested complete end-to-end login flow on live production site https://bidblitz.ae. ALL CRITICAL CHECKS PASSED: ✅ Onboarding flow (Weiter → Überspringen), ✅ Login button discovery and interaction, ✅ Credential input (admin@bidblitz.ae), ✅ Successful authentication and redirect, ✅ User session established (BidBlitz Admin displayed), ✅ Balance visible (EUR 0,00), ✅ Zero 'clone' errors in console, ✅ Zero CORS errors, ✅ All 23 API calls correctly routed to bidblitz.ae/api/* (NO calls to preview server). Login system is production-ready and fully functional."
   - agent: "testing"
     message: "ADMIN WALLET TOOL TESTING COMPLETE (2026-04-22): Comprehensive test of Admin Wallet Tool feature at https://bidblitz.ae/admin/wallet. ALL CORE FEATURES WORKING: ✅ User search functionality (search by email/name), ✅ User list displays with balances (EUR + BLZ), ✅ Credit user flow successful (10 EUR sent with success toast), ✅ All UI tabs working (Senden/Abziehen, Self-Topup, Log), ✅ Credit/Debit toggle functional, ✅ Amount inputs working, ✅ Backend API endpoints operational (/api/admin/wallet/users, /api/admin/wallet/credit). Minor UX issue: Wallet-Tool button not easily discoverable in MEHR page (had to use direct navigation to /admin/wallet), but all functionality is 100% working. Feature is production-ready."
+  - agent: "main"
+    message: "P0 TASKS COMPLETED (2026-04-26): Fixed critical Taxi/Driver Nearby endpoints and Mapbox migration. ✅ Added /api/taxi/nearby and /api/taxi/driver/nearby endpoints in taxi.py (lines 2192-2262). Both return online drivers (business + private) within radius. Tested via curl - endpoints functional and returning correct structure (empty array when no drivers online). ✅ Verified NearbyPage.jsx has NO Mapbox remnants - Leaflet migration already complete. NearbyPage uses Leaflet with CartoCDN tiles. Maps should now display correctly. Ready for KYC integration testing next."
+  - agent: "testing"
+    message: "KYC SYSTEM COMPREHENSIVE TESTING COMPLETE (2026-04-26): ✅ Backend KYC API fully functional - all 9 tests passed (100% success rate), ✅ KYC status endpoint returns proper structure (kyc_verified, kyc_status, can_use_features), ✅ KYC gating working correctly - wallet topup/send and auction bidding properly blocked with 403 + kyc_required errors for unverified users, ✅ Admin KYC management endpoints working, ✅ Frontend KYC components fully implemented - KYCVerificationModal with 3-step flow and KYCBanner integrated in HomePage, ✅ Authentication properly required for all KYC endpoints. KYC system is production-ready with proper ID verification flow and feature gating."

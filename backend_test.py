@@ -1,755 +1,307 @@
 #!/usr/bin/env python3
 """
-BidBlitz V2 - Comprehensive Backend Testing
-Testing all new features: Gamification, Friends, 2FA, Export, Support Tickets, KYC
+BidBlitz V2 - KYC System Backend Testing
+Tests KYC endpoints and gating functionality for wallet and auctions.
 """
 
-import asyncio
-import aiohttp
+import requests
 import json
-import os
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+import sys
+from datetime import datetime
 
 # Configuration
-BACKEND_URL = "https://blitz-driver-taxi.preview.emergentagent.com/api"
-TEST_CREDENTIALS = {
-    "admin": {"email": "admin@bidblitz.com", "password": "BidBlitz2026!"},
-    "customer": {"email": "kunde@bidblitz.com", "password": "Kunde2026!"},
-    "driver": {"email": "fahrer@bidblitz.com", "password": "Fahrer2026!"},
-    "merchant": {"email": "haendler@bidblitz.com", "password": "Haendler2026!"}
-}
+BASE_URL = "https://auction-2026-staging.preview.emergentagent.com/api"
+TEST_USER_EMAIL = "kunde@bidblitz.com"
+TEST_USER_PASSWORD = "Kunde2026!"
+ADMIN_EMAIL = "admin@bidblitz.com"
+ADMIN_PASSWORD = "BidBlitz2026!"
 
-class BidBlitzTester:
+class KYCTester:
     def __init__(self):
-        self.session = None
-        self.tokens = {}
+        self.session = requests.Session()
+        self.user_token = None
+        self.admin_token = None
         self.test_results = []
         
-    async def __aenter__(self):
-        self.session = aiohttp.ClientSession()
-        return self
-        
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            await self.session.close()
-    
-    def log_test(self, test_name: str, status: str, details: str = "", response_data: Any = None):
-        """Log test results"""
-        result = {
-            "test": test_name,
-            "status": status,
-            "details": details,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "response_data": response_data
-        }
-        self.test_results.append(result)
-        
-        status_emoji = "✅" if status == "PASS" else "❌" if status == "FAIL" else "⚠️"
-        print(f"{status_emoji} {test_name}: {status}")
+    def log_test(self, test_name, success, details=""):
+        """Log test result"""
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status} {test_name}")
         if details:
-            print(f"   Details: {details}")
-        if status == "FAIL" and response_data:
-            print(f"   Response: {response_data}")
-        print()
-    
-    async def make_request(self, method: str, endpoint: str, data: Dict = None, 
-                          headers: Dict = None, user_type: str = None) -> Dict:
-        """Make HTTP request with cookie-based authentication"""
-        url = f"{BACKEND_URL}{endpoint}"
+            print(f"    {details}")
+        self.test_results.append({
+            "test": test_name,
+            "success": success,
+            "details": details,
+            "timestamp": datetime.now().isoformat()
+        })
         
-        # For cookie-based auth, we don't need to add headers manually
-        # The session will automatically include cookies
-        
+    def login_user(self, email, password):
+        """Login and return session cookies"""
         try:
-            if method.upper() == "GET":
-                async with self.session.get(url, headers=headers) as resp:
-                    return {"status": resp.status, "data": await resp.json()}
-            elif method.upper() == "POST":
-                async with self.session.post(url, json=data, headers=headers) as resp:
-                    return {"status": resp.status, "data": await resp.json()}
-            elif method.upper() == "DELETE":
-                async with self.session.delete(url, headers=headers) as resp:
-                    return {"status": resp.status, "data": await resp.json()}
+            response = self.session.post(f"{BASE_URL}/auth/login", json={
+                "email": email,
+                "password": password
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test(f"Login {email}", True, f"Logged in as {data.get('user', {}).get('name', 'User')}")
+                return True
+            else:
+                self.log_test(f"Login {email}", False, f"Status: {response.status_code}, Response: {response.text}")
+                return False
+                
         except Exception as e:
-            return {"status": 0, "error": str(e)}
+            self.log_test(f"Login {email}", False, f"Exception: {str(e)}")
+            return False
     
-    async def login_user(self, user_type: str) -> bool:
-        """Login and store cookies for authentication"""
-        if user_type not in TEST_CREDENTIALS:
-            self.log_test(f"Login {user_type}", "FAIL", f"Unknown user type: {user_type}")
+    def test_kyc_status_endpoint(self):
+        """Test GET /api/kyc/status endpoint"""
+        try:
+            response = self.session.get(f"{BASE_URL}/kyc/status")
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["kyc_verified", "kyc_status", "can_use_features"]
+                
+                missing_fields = [field for field in required_fields if field not in data]
+                if missing_fields:
+                    self.log_test("KYC Status Endpoint", False, f"Missing fields: {missing_fields}")
+                    return False
+                    
+                # Check can_use_features structure
+                features = data.get("can_use_features", {})
+                expected_features = ["wallet_topup", "wallet_send", "place_bids", "browse"]
+                missing_features = [f for f in expected_features if f not in features]
+                
+                if missing_features:
+                    self.log_test("KYC Status Endpoint", False, f"Missing features: {missing_features}")
+                    return False
+                    
+                self.log_test("KYC Status Endpoint", True, 
+                             f"Status: {data['kyc_status']}, Verified: {data['kyc_verified']}")
+                return data
+                
+            else:
+                self.log_test("KYC Status Endpoint", False, f"Status: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("KYC Status Endpoint", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_kyc_submit_endpoint_validation(self):
+        """Test KYC submit endpoint validation (without actual file upload)"""
+        try:
+            # Test without files - should return validation error
+            response = self.session.post(f"{BASE_URL}/kyc/submit")
+            
+            if response.status_code == 422:  # Validation error expected
+                self.log_test("KYC Submit Validation", True, "Correctly rejects empty submission")
+                return True
+            else:
+                self.log_test("KYC Submit Validation", False, 
+                             f"Expected 422, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("KYC Submit Validation", False, f"Exception: {str(e)}")
+            return False
+    
+    def test_wallet_kyc_gating(self):
+        """Test wallet endpoints require KYC verification"""
+        # Test topup endpoint
+        try:
+            response = self.session.post(f"{BASE_URL}/wallet/topup", json={
+                "amount": 10.0,
+                "payment_method": "test"
+            })
+            
+            if response.status_code == 403:
+                data = response.json()
+                if "kyc_required" in str(data.get("detail", {})):
+                    self.log_test("Wallet Topup KYC Gating", True, "Correctly blocks topup without KYC")
+                else:
+                    self.log_test("Wallet Topup KYC Gating", False, f"Wrong error message: {data}")
+                    return False
+            else:
+                self.log_test("Wallet Topup KYC Gating", False, 
+                             f"Expected 403, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Wallet Topup KYC Gating", False, f"Exception: {str(e)}")
             return False
         
-        creds = TEST_CREDENTIALS[user_type]
-        url = f"{BACKEND_URL}/auth/login"
-        
+        # Test send money endpoint
         try:
-            async with self.session.post(url, json={
-                "email": creds["email"],
-                "password": creds["password"]
-            }) as resp:
-                data = await resp.json()
-                
-                if resp.status == 200 and "id" in data:
-                    # Store user ID for this user type (cookies are automatically handled by session)
-                    self.tokens[user_type] = data["id"]
-                    self.log_test(f"Login {user_type}", "PASS", f"Logged in as {creds['email']}")
+            response = self.session.post(f"{BASE_URL}/wallet/send", json={
+                "recipient_email": "test@example.com",
+                "amount": 5.0,
+                "note": "Test transfer"
+            })
+            
+            if response.status_code == 403:
+                data = response.json()
+                if "kyc_required" in str(data.get("detail", {})):
+                    self.log_test("Wallet Send KYC Gating", True, "Correctly blocks send without KYC")
                     return True
                 else:
-                    self.log_test(f"Login {user_type}", "FAIL", 
-                                 f"Login failed: {data}")
+                    self.log_test("Wallet Send KYC Gating", False, f"Wrong error message: {data}")
                     return False
+            else:
+                self.log_test("Wallet Send KYC Gating", False, 
+                             f"Expected 403, got {response.status_code}")
+                return False
+                
         except Exception as e:
-            self.log_test(f"Login {user_type}", "FAIL", f"Login error: {str(e)}")
+            self.log_test("Wallet Send KYC Gating", False, f"Exception: {str(e)}")
             return False
     
-    # ═══════════════════════════════════════════════════════════════
-    # PHASE 1: GAMIFICATION SYSTEM TESTS
-    # ═══════════════════════════════════════════════════════════════
-    
-    async def test_gamification_system(self):
-        """Test daily challenges and achievements APIs"""
-        print("🎮 TESTING GAMIFICATION SYSTEM")
-        print("=" * 50)
-        
-        # Test 1: Get daily challenges
-        response = await self.make_request("GET", "/gamification/challenges/today", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "challenges" in data and "date" in data:
-                self.log_test("Daily Challenges - Get Today", "PASS", 
-                             f"Found {len(data['challenges'])} challenges for {data['date']}")
-            else:
-                self.log_test("Daily Challenges - Get Today", "FAIL", 
-                             "Missing challenges or date in response", data)
-        else:
-            self.log_test("Daily Challenges - Get Today", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 2: Complete a challenge (login_streak should auto-complete)
-        response = await self.make_request("POST", "/gamification/challenges/complete/login_streak", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok") and "rewards" in data:
-                self.log_test("Daily Challenges - Complete Challenge", "PASS", 
-                             f"Completed login_streak, rewards: {data['rewards']}")
-            else:
-                self.log_test("Daily Challenges - Complete Challenge", "FAIL", 
-                             "Challenge completion failed", data)
-        else:
-            self.log_test("Daily Challenges - Complete Challenge", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 3: Try to complete invalid challenge
-        response = await self.make_request("POST", "/gamification/challenges/complete/invalid_challenge", 
-                                         user_type="customer")
-        if response["status"] == 404:
-            self.log_test("Daily Challenges - Invalid Challenge", "PASS", 
-                         "Correctly rejected invalid challenge")
-        else:
-            self.log_test("Daily Challenges - Invalid Challenge", "FAIL", 
-                         f"Should return 404, got {response['status']}")
-        
-        # Test 4: Get achievements
-        response = await self.make_request("GET", "/gamification/achievements", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "achievements" in data and "stats" in data:
-                self.log_test("Achievements - Get All", "PASS", 
-                             f"Found {len(data['achievements'])} achievements, "
-                             f"{data['stats']['total_unlocked']} unlocked")
-            else:
-                self.log_test("Achievements - Get All", "FAIL", 
-                             "Missing achievements or stats", data)
-        else:
-            self.log_test("Achievements - Get All", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 5: Unlock an achievement
-        response = await self.make_request("POST", "/gamification/achievements/unlock/first_payment", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok"):
-                self.log_test("Achievements - Unlock Achievement", "PASS", 
-                             f"Unlocked first_payment, reward: {data.get('reward_blz')} BLZ")
-            else:
-                self.log_test("Achievements - Unlock Achievement", "FAIL", 
-                             "Achievement unlock failed", data)
-        else:
-            # Could be already unlocked, check if that's the case
-            if response["status"] == 200 and response["data"].get("message") == "Already unlocked":
-                self.log_test("Achievements - Unlock Achievement", "PASS", 
-                             "Achievement already unlocked (expected)")
-            else:
-                self.log_test("Achievements - Unlock Achievement", "FAIL", 
-                             f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 6: Try to unlock invalid achievement
-        response = await self.make_request("POST", "/gamification/achievements/unlock/invalid_achievement", 
-                                         user_type="customer")
-        if response["status"] == 404:
-            self.log_test("Achievements - Invalid Achievement", "PASS", 
-                         "Correctly rejected invalid achievement")
-        else:
-            self.log_test("Achievements - Invalid Achievement", "FAIL", 
-                         f"Should return 404, got {response['status']}")
-    
-    # ═══════════════════════════════════════════════════════════════
-    # PHASE 2: FRIENDS SYSTEM TESTS
-    # ═══════════════════════════════════════════════════════════════
-    
-    async def test_friends_system(self):
-        """Test friends API endpoints"""
-        print("👥 TESTING FRIENDS SYSTEM")
-        print("=" * 50)
-        
-        # First, get user IDs for testing
-        customer_response = await self.make_request("GET", "/auth/me", user_type="customer")
-        driver_response = await self.make_request("GET", "/auth/me", user_type="driver")
-        
-        if customer_response["status"] != 200 or driver_response["status"] != 200:
-            self.log_test("Friends - Get User IDs", "FAIL", "Could not get user profiles")
-            return
-        
-        customer_id = customer_response["data"]["id"]
-        driver_id = driver_response["data"]["id"]
-        
-        # Test 1: Search for users
-        response = await self.make_request("GET", "/friends/search?q=fahrer", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "users" in data:
-                self.log_test("Friends - Search Users", "PASS", 
-                             f"Found {len(data['users'])} users matching 'fahrer'")
-            else:
-                self.log_test("Friends - Search Users", "FAIL", 
-                             "Missing users in response", data)
-        else:
-            self.log_test("Friends - Search Users", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 2: Send friend request
-        response = await self.make_request("POST", "/friends/send-request", 
-                                         {"friend_id": driver_id}, user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok") and "request_id" in data:
-                request_id = data["request_id"]
-                self.log_test("Friends - Send Request", "PASS", 
-                             f"Sent friend request, ID: {request_id}")
-            else:
-                self.log_test("Friends - Send Request", "FAIL", 
-                             "Request failed", data)
-        else:
-            # Could be already friends or request exists
-            if response["status"] == 400:
-                self.log_test("Friends - Send Request", "PASS", 
-                             f"Request rejected (expected): {response['data'].get('detail')}")
-            else:
-                self.log_test("Friends - Send Request", "FAIL", 
-                             f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 3: Get friend requests (as recipient)
-        response = await self.make_request("GET", "/friends/requests", 
-                                         user_type="driver")
-        if response["status"] == 200:
-            data = response["data"]
-            if "received" in data and "sent" in data:
-                self.log_test("Friends - Get Requests", "PASS", 
-                             f"Received: {data['total_received']}, Sent: {data['total_sent']}")
-                
-                # If there are received requests, try to accept one
-                if data["received"]:
-                    request_id = data["received"][0]["request_id"]
-                    
-                    # Test 4: Accept friend request
-                    response = await self.make_request("POST", "/friends/accept", 
-                                                     {"request_id": request_id}, user_type="driver")
-                    if response["status"] == 200:
-                        data = response["data"]
-                        if data.get("ok"):
-                            self.log_test("Friends - Accept Request", "PASS", 
-                                         f"Accepted request, friendship ID: {data.get('friendship_id')}")
-                        else:
-                            self.log_test("Friends - Accept Request", "FAIL", 
-                                         "Accept failed", data)
-                    else:
-                        self.log_test("Friends - Accept Request", "FAIL", 
-                                     f"HTTP {response['status']}", response.get("data"))
-            else:
-                self.log_test("Friends - Get Requests", "FAIL", 
-                             "Missing received/sent in response", data)
-        else:
-            self.log_test("Friends - Get Requests", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 5: Get friends list
-        response = await self.make_request("GET", "/friends/list", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "friends" in data:
-                self.log_test("Friends - Get Friends List", "PASS", 
-                             f"Found {data['total']} friends")
-                
-                # If there are friends, test removing one
-                if data["friends"]:
-                    friend_id = data["friends"][0]["id"]
-                    
-                    # Test 6: Remove friend
-                    response = await self.make_request("DELETE", f"/friends/remove/{friend_id}", 
-                                                     user_type="customer")
-                    if response["status"] == 200:
-                        data = response["data"]
-                        if data.get("ok"):
-                            self.log_test("Friends - Remove Friend", "PASS", 
-                                         "Successfully removed friend")
-                        else:
-                            self.log_test("Friends - Remove Friend", "FAIL", 
-                                         "Remove failed", data)
-                    else:
-                        self.log_test("Friends - Remove Friend", "FAIL", 
-                                     f"HTTP {response['status']}", response.get("data"))
-            else:
-                self.log_test("Friends - Get Friends List", "FAIL", 
-                             "Missing friends in response", data)
-        else:
-            self.log_test("Friends - Get Friends List", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 7: Try to send friend request to self
-        response = await self.make_request("POST", "/friends/send-request", 
-                                         {"friend_id": customer_id}, user_type="customer")
-        if response["status"] == 400:
-            self.log_test("Friends - Self Request", "PASS", 
-                         "Correctly rejected self friend request")
-        else:
-            self.log_test("Friends - Self Request", "FAIL", 
-                         f"Should reject self request, got {response['status']}")
-    
-    # ═══════════════════════════════════════════════════════════════
-    # PHASE 2: 2FA SYSTEM TESTS
-    # ═══════════════════════════════════════════════════════════════
-    
-    async def test_2fa_system(self):
-        """Test 2FA system endpoints"""
-        print("🔐 TESTING 2FA SYSTEM")
-        print("=" * 50)
-        
-        # Test 1: Get 2FA status
-        response = await self.make_request("GET", "/2fa/status", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "enabled" in data:
-                self.log_test("2FA - Get Status", "PASS", 
-                             f"2FA enabled: {data['enabled']}, method: {data.get('method')}")
-            else:
-                self.log_test("2FA - Get Status", "FAIL", 
-                             "Missing enabled field", data)
-        else:
-            self.log_test("2FA - Get Status", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 2: Setup TOTP (QR code generation)
-        response = await self.make_request("POST", "/2fa/totp/setup", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok") and "qr_code" in data and "secret" in data:
-                self.log_test("2FA - TOTP Setup", "PASS", 
-                             f"Generated TOTP secret and QR code")
-                totp_secret = data["secret"]
-            else:
-                self.log_test("2FA - TOTP Setup", "FAIL", 
-                             "Missing QR code or secret", data)
-        else:
-            self.log_test("2FA - TOTP Setup", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 3: Try to verify TOTP with invalid code
-        response = await self.make_request("POST", "/2fa/totp/verify-and-enable", 
-                                         {"code": "123456"}, user_type="customer")
-        if response["status"] == 400:
-            self.log_test("2FA - TOTP Invalid Code", "PASS", 
-                         "Correctly rejected invalid TOTP code")
-        else:
-            self.log_test("2FA - TOTP Invalid Code", "FAIL", 
-                         f"Should reject invalid code, got {response['status']}")
-        
-        # Test 4: Disable 2FA (if enabled)
-        response = await self.make_request("POST", "/2fa/disable", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok"):
-                self.log_test("2FA - Disable", "PASS", "Successfully disabled 2FA")
-            else:
-                self.log_test("2FA - Disable", "FAIL", "Disable failed", data)
-        else:
-            # Could be not enabled
-            if response["status"] == 400:
-                self.log_test("2FA - Disable", "PASS", 
-                             "2FA not enabled (expected)")
-            else:
-                self.log_test("2FA - Disable", "FAIL", 
-                             f"HTTP {response['status']}", response.get("data"))
-    
-    # ═══════════════════════════════════════════════════════════════
-    # PHASE 2: TRANSACTION EXPORT TESTS
-    # ═══════════════════════════════════════════════════════════════
-    
-    async def test_export_system(self):
-        """Test transaction export endpoints"""
-        print("📊 TESTING EXPORT SYSTEM")
-        print("=" * 50)
-        
-        # Test 1: Export user transactions (CSV)
-        response = await self.make_request("GET", "/export/user/transactions", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            # For CSV, we won't get JSON response, so check if we get data
-            self.log_test("Export - User Transactions CSV", "PASS", 
-                         "Successfully exported transactions as CSV")
-        else:
-            self.log_test("Export - User Transactions CSV", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 2: Export user transactions (PDF)
-        response = await self.make_request("GET", "/export/user/transactions/pdf", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            self.log_test("Export - User Transactions PDF", "PASS", 
-                         "Successfully exported transactions as PDF")
-        else:
-            self.log_test("Export - User Transactions PDF", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 3: Export with date filters
-        response = await self.make_request("GET", "/export/user/transactions?date_from=2024-01-01&date_to=2024-12-31", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            self.log_test("Export - Filtered Transactions", "PASS", 
-                         "Successfully exported filtered transactions")
-        else:
-            self.log_test("Export - Filtered Transactions", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 4: Export user topups
-        response = await self.make_request("GET", "/export/user/topups", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            self.log_test("Export - User Topups", "PASS", 
-                         "Successfully exported topups")
-        else:
-            self.log_test("Export - User Topups", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 5: Export user payments
-        response = await self.make_request("GET", "/export/user/payments", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            self.log_test("Export - User Payments", "PASS", 
-                         "Successfully exported payments")
-        else:
-            self.log_test("Export - User Payments", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 6: Export report summary (JSON)
-        response = await self.make_request("GET", "/export/report/user/summary", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "total_transactions" in data:
-                self.log_test("Export - User Summary Report", "PASS", 
-                             f"Total transactions: {data['total_transactions']}")
-            else:
-                self.log_test("Export - User Summary Report", "FAIL", 
-                             "Missing transaction data", data)
-        else:
-            self.log_test("Export - User Summary Report", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-    
-    # ═══════════════════════════════════════════════════════════════
-    # PHASE 3: SUPPORT TICKETS TESTS
-    # ═══════════════════════════════════════════════════════════════
-    
-    async def test_support_tickets(self):
-        """Test support ticket system"""
-        print("🎫 TESTING SUPPORT TICKETS")
-        print("=" * 50)
-        
-        # Test 1: Create support ticket
-        ticket_data = {
-            "subject": "Test Support Ticket",
-            "message": "This is a test ticket created by automated testing.",
-            "category": "technical"
-        }
-        response = await self.make_request("POST", "/support/tickets/create", 
-                                         ticket_data, user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok") and "ticket_id" in data:
-                ticket_id = data["ticket_id"]
-                self.log_test("Support - Create Ticket", "PASS", 
-                             f"Created ticket ID: {ticket_id}")
-            else:
-                self.log_test("Support - Create Ticket", "FAIL", 
-                             "Ticket creation failed", data)
-                return
-        else:
-            self.log_test("Support - Create Ticket", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-            return
-        
-        # Test 2: Get my tickets
-        response = await self.make_request("GET", "/support/tickets/my", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "tickets" in data:
-                self.log_test("Support - Get My Tickets", "PASS", 
-                             f"Found {data['total']} tickets")
-            else:
-                self.log_test("Support - Get My Tickets", "FAIL", 
-                             "Missing tickets in response", data)
-        else:
-            self.log_test("Support - Get My Tickets", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 3: Get ticket details
-        response = await self.make_request("GET", f"/support/tickets/{ticket_id}", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "ticket_id" in data and "messages" in data:
-                self.log_test("Support - Get Ticket Details", "PASS", 
-                             f"Retrieved ticket {ticket_id} with {len(data['messages'])} messages")
-            else:
-                self.log_test("Support - Get Ticket Details", "FAIL", 
-                             "Missing ticket data", data)
-        else:
-            self.log_test("Support - Get Ticket Details", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 4: Reply to ticket
-        reply_data = {
-            "ticket_id": ticket_id,
-            "message": "This is a test reply from the customer."
-        }
-        response = await self.make_request("POST", "/support/tickets/reply", 
-                                         reply_data, user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok"):
-                self.log_test("Support - Reply to Ticket", "PASS", 
-                             "Successfully replied to ticket")
-            else:
-                self.log_test("Support - Reply to Ticket", "FAIL", 
-                             "Reply failed", data)
-        else:
-            self.log_test("Support - Reply to Ticket", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 5: Close ticket
-        response = await self.make_request("POST", f"/support/tickets/{ticket_id}/close", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if data.get("ok"):
-                self.log_test("Support - Close Ticket", "PASS", 
-                             "Successfully closed ticket")
-            else:
-                self.log_test("Support - Close Ticket", "FAIL", 
-                             "Close failed", data)
-        else:
-            self.log_test("Support - Close Ticket", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Test 6: Try to access non-existent ticket
-        response = await self.make_request("GET", "/support/tickets/nonexistent", 
-                                         user_type="customer")
-        if response["status"] == 404:
-            self.log_test("Support - Non-existent Ticket", "PASS", 
-                         "Correctly returned 404 for non-existent ticket")
-        else:
-            self.log_test("Support - Non-existent Ticket", "FAIL", 
-                         f"Should return 404, got {response['status']}")
-    
-    # ═══════════════════════════════════════════════════════════════
-    # PHASE 4: KYC TESTS
-    # ═══════════════════════════════════════════════════════════════
-    
-    async def test_kyc_system(self):
-        """Test KYC verification system"""
-        print("🆔 TESTING KYC SYSTEM")
-        print("=" * 50)
-        
-        # Test 1: Get KYC status
-        response = await self.make_request("GET", "/kyc/status", 
-                                         user_type="customer")
-        if response["status"] == 200:
-            data = response["data"]
-            if "kyc_verified" in data and "withdrawal_limit" in data:
-                self.log_test("KYC - Get Status", "PASS", 
-                             f"KYC verified: {data['kyc_verified']}, "
-                             f"withdrawal limit: €{data['withdrawal_limit']}")
-            else:
-                self.log_test("KYC - Get Status", "FAIL", 
-                             "Missing KYC data", data)
-        else:
-            self.log_test("KYC - Get Status", "FAIL", 
-                         f"HTTP {response['status']}", response.get("data"))
-        
-        # Note: File upload tests are skipped as requested
-        self.log_test("KYC - File Upload Tests", "SKIP", 
-                     "File upload tests skipped as requested")
-    
-    # ═══════════════════════════════════════════════════════════════
-    # AUTHENTICATION & ERROR HANDLING TESTS
-    # ═══════════════════════════════════════════════════════════════
-    
-    async def test_authentication_and_errors(self):
-        """Test authentication and error handling"""
-        print("🔒 TESTING AUTHENTICATION & ERROR HANDLING")
-        print("=" * 50)
-        
-        # Test 1: Access protected endpoint without auth
-        response = await self.make_request("GET", "/gamification/challenges/today")
-        if response["status"] == 401:
-            self.log_test("Auth - Unauthorized Access", "PASS", 
-                         "Correctly rejected unauthorized request")
-        else:
-            self.log_test("Auth - Unauthorized Access", "FAIL", 
-                         f"Should return 401, got {response['status']}")
-        
-        # Test 2: Access with invalid token
-        headers = {"Authorization": "Bearer invalid_token"}
-        response = await self.make_request("GET", "/gamification/challenges/today", 
-                                         headers=headers)
-        if response["status"] == 401:
-            self.log_test("Auth - Invalid Token", "PASS", 
-                         "Correctly rejected invalid token")
-        else:
-            self.log_test("Auth - Invalid Token", "FAIL", 
-                         f"Should return 401, got {response['status']}")
-        
-        # Test 3: Test 404 for non-existent endpoints
-        response = await self.make_request("GET", "/nonexistent/endpoint", 
-                                         user_type="customer")
-        if response["status"] == 404:
-            self.log_test("Error - 404 Handling", "PASS", 
-                         "Correctly returned 404 for non-existent endpoint")
-        else:
-            self.log_test("Error - 404 Handling", "FAIL", 
-                         f"Should return 404, got {response['status']}")
-        
-        # Test 4: Test malformed JSON
+    def test_auction_kyc_gating(self):
+        """Test auction bidding requires KYC verification"""
         try:
-            url = f"{BACKEND_URL}/gamification/challenges/complete/test"
-            headers = {"Authorization": f"Bearer {self.tokens.get('customer', '')}", 
-                      "Content-Type": "application/json"}
-            async with self.session.post(url, data="invalid json", headers=headers) as resp:
-                if resp.status == 400 or resp.status == 422:
-                    self.log_test("Error - Malformed JSON", "PASS", 
-                                 "Correctly handled malformed JSON")
+            # First get an active auction
+            response = self.session.get(f"{BASE_URL}/auctions/active")
+            
+            if response.status_code != 200:
+                self.log_test("Auction KYC Gating", False, "Could not fetch active auctions")
+                return False
+                
+            auctions = response.json().get("auctions", [])
+            if not auctions:
+                self.log_test("Auction KYC Gating", False, "No active auctions found")
+                return False
+                
+            auction_id = auctions[0]["auction_id"]
+            
+            # Try to place a bid
+            response = self.session.post(f"{BASE_URL}/auctions/bid", json={
+                "auction_id": auction_id
+            })
+            
+            if response.status_code == 403:
+                data = response.json()
+                if "kyc_required" in str(data.get("detail", {})):
+                    self.log_test("Auction Bidding KYC Gating", True, "Correctly blocks bidding without KYC")
+                    return True
                 else:
-                    self.log_test("Error - Malformed JSON", "FAIL", 
-                                 f"Should return 400/422, got {resp.status}")
+                    self.log_test("Auction Bidding KYC Gating", False, f"Wrong error message: {data}")
+                    return False
+            else:
+                self.log_test("Auction Bidding KYC Gating", False, 
+                             f"Expected 403, got {response.status_code}: {response.text}")
+                return False
+                
         except Exception as e:
-            self.log_test("Error - Malformed JSON", "PASS", 
-                         f"Request failed as expected: {str(e)}")
+            self.log_test("Auction Bidding KYC Gating", False, f"Exception: {str(e)}")
+            return False
     
-    # ═══════════════════════════════════════════════════════════════
-    # MAIN TEST RUNNER
-    # ═══════════════════════════════════════════════════════════════
+    def test_admin_kyc_endpoints(self):
+        """Test admin KYC management endpoints"""
+        # Login as admin
+        if not self.login_user(ADMIN_EMAIL, ADMIN_PASSWORD):
+            self.log_test("Admin KYC Endpoints", False, "Could not login as admin")
+            return False
+            
+        try:
+            # Test admin list endpoint
+            response = self.session.get(f"{BASE_URL}/kyc/admin/list")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "reviews" in data:
+                    self.log_test("Admin KYC List", True, f"Found {len(data['reviews'])} KYC reviews")
+                else:
+                    self.log_test("Admin KYC List", False, "Missing 'reviews' field")
+                    return False
+            else:
+                self.log_test("Admin KYC List", False, f"Status: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("Admin KYC Endpoints", False, f"Exception: {str(e)}")
+            return False
+            
+        return True
     
-    async def run_all_tests(self):
-        """Run all test suites"""
-        print("🚀 STARTING BIDBLITZ V2 BACKEND TESTING")
-        print("=" * 60)
-        print(f"Backend URL: {BACKEND_URL}")
-        print(f"Test started at: {datetime.now(timezone.utc).isoformat()}")
-        print("=" * 60)
-        print()
+    def test_authentication_required(self):
+        """Test that KYC endpoints require authentication"""
+        # Create a new session without login
+        unauth_session = requests.Session()
         
-        # Login all test users
-        print("🔑 LOGGING IN TEST USERS")
-        print("=" * 30)
-        for user_type in ["admin", "customer", "driver", "merchant"]:
-            await self.login_user(user_type)
-        print()
-        
-        # Run test suites
-        await self.test_gamification_system()
-        await self.test_friends_system()
-        await self.test_2fa_system()
-        await self.test_export_system()
-        await self.test_support_tickets()
-        await self.test_kyc_system()
-        await self.test_authentication_and_errors()
-        
-        # Print summary
-        self.print_summary()
+        try:
+            response = unauth_session.get(f"{BASE_URL}/kyc/status")
+            
+            if response.status_code == 401:
+                self.log_test("KYC Authentication Required", True, "Correctly requires authentication")
+                return True
+            else:
+                self.log_test("KYC Authentication Required", False, 
+                             f"Expected 401, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_test("KYC Authentication Required", False, f"Exception: {str(e)}")
+            return False
     
-    def print_summary(self):
-        """Print test results summary"""
-        print("📊 TEST RESULTS SUMMARY")
-        print("=" * 60)
+    def run_all_tests(self):
+        """Run all KYC tests"""
+        print("🧪 Starting KYC System Backend Tests")
+        print("=" * 50)
         
-        total_tests = len(self.test_results)
-        passed = len([t for t in self.test_results if t["status"] == "PASS"])
-        failed = len([t for t in self.test_results if t["status"] == "FAIL"])
-        skipped = len([t for t in self.test_results if t["status"] == "SKIP"])
+        # Test authentication requirement
+        self.test_authentication_required()
         
-        print(f"Total Tests: {total_tests}")
-        print(f"✅ Passed: {passed}")
-        print(f"❌ Failed: {failed}")
-        print(f"⚠️ Skipped: {skipped}")
-        print(f"Success Rate: {(passed/total_tests*100):.1f}%")
-        print()
+        # Login as test user
+        if not self.login_user(TEST_USER_EMAIL, TEST_USER_PASSWORD):
+            print("❌ Cannot proceed without user login")
+            return False
         
-        if failed > 0:
-            print("❌ FAILED TESTS:")
-            print("-" * 30)
-            for test in self.test_results:
-                if test["status"] == "FAIL":
-                    print(f"• {test['test']}: {test['details']}")
-            print()
+        # Test KYC endpoints
+        kyc_status = self.test_kyc_status_endpoint()
+        self.test_kyc_submit_endpoint_validation()
         
-        print("🎯 FEATURE COVERAGE:")
-        print("-" * 30)
-        features = {
-            "Gamification": ["Daily Challenges", "Achievements"],
-            "Friends System": ["Search", "Send Request", "Accept", "List", "Remove"],
-            "2FA System": ["Status", "TOTP Setup", "Verification"],
-            "Export System": ["CSV", "PDF", "Filtered", "Summary"],
-            "Support Tickets": ["Create", "List", "Reply", "Close"],
-            "KYC System": ["Status Check"],
-            "Authentication": ["Security", "Error Handling"]
-        }
+        # Test KYC gating
+        self.test_wallet_kyc_gating()
+        self.test_auction_kyc_gating()
         
-        for feature, components in features.items():
-            feature_tests = [t for t in self.test_results if feature.lower().replace(" ", "_") in t["test"].lower()]
-            if feature_tests:
-                feature_passed = len([t for t in feature_tests if t["status"] == "PASS"])
-                print(f"• {feature}: {feature_passed}/{len(feature_tests)} tests passed")
+        # Test admin endpoints
+        self.test_admin_kyc_endpoints()
         
-        print()
-        print(f"Test completed at: {datetime.now(timezone.utc).isoformat()}")
-        print("=" * 60)
+        # Summary
+        print("\n" + "=" * 50)
+        print("📊 Test Summary")
+        print("=" * 50)
+        
+        passed = sum(1 for result in self.test_results if result["success"])
+        total = len(self.test_results)
+        
+        print(f"Total Tests: {total}")
+        print(f"Passed: {passed}")
+        print(f"Failed: {total - passed}")
+        print(f"Success Rate: {(passed/total)*100:.1f}%")
+        
+        if total - passed > 0:
+            print("\n❌ Failed Tests:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['details']}")
+        
+        return passed == total
 
-
-async def main():
+def main():
     """Main test runner"""
-    async with BidBlitzTester() as tester:
-        await tester.run_all_tests()
-
+    tester = KYCTester()
+    success = tester.run_all_tests()
+    
+    if success:
+        print("\n🎉 All KYC tests passed!")
+        sys.exit(0)
+    else:
+        print("\n💥 Some KYC tests failed!")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
