@@ -609,6 +609,10 @@ app.include_router(advertising_router)
 from routes.ai_chat import router as ai_router
 app.include_router(ai_router)
 
+# Watchlist (Auktionen merken)
+from routes.watchlist import router as watchlist_router
+app.include_router(watchlist_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

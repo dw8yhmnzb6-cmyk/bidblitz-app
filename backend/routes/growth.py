@@ -157,7 +157,49 @@ async def _spin_wheel_post_hook(uid: str):
     await _quest_track(uid, "spin_wheel", 1)
 
 
-@router.get("/spin-wheel/history")
+@router.get("/spin-wheel/leaderboard")
+async def spin_leaderboard(request: Request, limit: int = 10):
+    """Top spinners today (UTC) — by total prize value."""
+    await get_current_user(request)
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    pipeline = [
+        {"$match": {"date": today}},
+        {"$group": {
+            "_id": "$user_id",
+            "total_spins": {"$sum": 1},
+            "total_blz": {"$sum": {"$cond": [{"$eq": ["$prize_type", "blz"]}, "$prize_value", 0]}},
+            "total_eur": {"$sum": {"$cond": [{"$eq": ["$prize_type", "eur"]}, "$prize_value", 0]}},
+            "best_label": {"$last": "$prize_label"},
+        }},
+        {"$sort": {"total_blz": -1, "total_spins": -1}},
+        {"$limit": min(max(limit, 1), 50)},
+    ]
+    rows = await db.spin_wheel_log.aggregate(pipeline).to_list(50)
+
+    # Resolve user names
+    leaderboard = []
+    for i, r in enumerate(rows):
+        try:
+            u = await db.users.find_one({"_id": _oid(r["_id"])}, {"_id": 0, "name": 1, "username": 1})
+        except Exception:
+            u = None
+        name = (u or {}).get("username") or (u or {}).get("name") or "Anonym"
+        # Anonymize for privacy: only show first name + last initial
+        parts = name.split(" ", 1)
+        display = parts[0] + (" " + parts[1][0] + "." if len(parts) > 1 and parts[1] else "")
+        leaderboard.append({
+            "rank": i + 1,
+            "name": display,
+            "spins": r["total_spins"],
+            "blz_won": int(r["total_blz"] or 0),
+            "eur_won": round(float(r["total_eur"] or 0), 2),
+            "best_prize": r.get("best_label", ""),
+        })
+    return {"date": today, "leaderboard": leaderboard, "total_players": len(rows)}
+
+
+
 async def spin_history(request: Request, limit: int = 20):
     """Return user's recent spin history with prize, value, and date."""
     user = await get_current_user(request)

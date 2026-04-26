@@ -300,8 +300,15 @@ export const api = {
   getAutoBid: (auctionId) => request(`/api/auctions/auto-bid/${auctionId}`),
   claimDailyReward: () => request("/api/auctions/daily-reward", { method: "POST" }),
   checkDailyReward: () => request("/api/auctions/daily-reward"),
-  toggleWatchlist: (auctionId) => request(`/api/auctions/${auctionId}/watchlist`, { method: "POST" }),
-  getWatchlist: () => request("/api/auctions/user/watchlist"),
+  toggleWatchlist: async (auctionId) => {
+    const r = await request(`/api/watchlist/toggle/${auctionId}`, { method: "POST" });
+    return { ...r, watched: r.watching };
+  },
+  getWatchlist: async () => {
+    const r = await request("/api/watchlist/ids");
+    return { watchlist: r.ids || [] };
+  },
+  getWatchlistFull: () => request("/api/watchlist"),
   getBidStreak: () => request("/api/auctions/user/streak"),
   getAuctionNotifications: () => request("/api/auctions/user/notifications"),
   markAuctionNotificationsRead: () => request("/api/auctions/user/notifications/read", { method: "POST" }),

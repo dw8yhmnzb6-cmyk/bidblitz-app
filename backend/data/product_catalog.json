@@ -673,7 +673,57 @@
       "5 Attachment Heads",
       "TSA-Approved Carry Size"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Hyperice Hypervolt 2 Pro",
+        "description": "Hyperice Hypervolt 2 Pro — Bluetooth-verbunden, 5 Geschwindigkeiten, Quiet Glide Technology",
+        "features": [
+          "Quiet Glide Technology",
+          "Bluetooth-App-Steuerung",
+          "5 Geschwindigkeitsstufen",
+          "3 Stunden Akkulaufzeit",
+          "5 Aufsatzköpfe",
+          "TSA-zugelassene Reisegröße"
+        ]
+      },
+      "en": {
+        "title": "Hyperice Hypervolt 2 Pro",
+        "description": "Hyperice Hypervolt 2 Pro — Bluetooth Connected, 5 Speeds, Quiet Glide Technology",
+        "features": [
+          "Quiet Glide Technology",
+          "Bluetooth App Control",
+          "5 Speed Settings",
+          "3-Hour Battery Life",
+          "5 Attachment Heads",
+          "TSA-Approved Carry Size"
+        ]
+      },
+      "sq": {
+        "title": "Hyperice Hypervolt 2 Pro",
+        "description": "Hyperice Hypervolt 2 Pro — i lidhur me Bluetooth, 5 shpejtësi, Quiet Glide Technology",
+        "features": [
+          "Quiet Glide Technology",
+          "Kontroll përmes aplikacionit Bluetooth",
+          "5 nivele shpejtësie",
+          "Jetëgjatësi baterie 3 orë",
+          "5 koka/shtojca të ndërrueshme",
+          "Madhësi për transport e aprovuar nga TSA"
+        ]
+      },
+      "tr": {
+        "title": "Hyperice Hypervolt 2 Pro",
+        "description": "Hyperice Hypervolt 2 Pro — Bluetooth bağlantılı, 5 hız, Quiet Glide Technology",
+        "features": [
+          "Quiet Glide Technology",
+          "Bluetooth uygulama kontrolü",
+          "5 hız ayarı",
+          "3 saat pil ömrü",
+          "5 başlık aparatı",
+          "TSA onaylı taşıma boyutu"
+        ]
+      }
+    }
   },
   {
     "title": "PlayStation 5 Pro",
@@ -689,7 +739,57 @@
       "Tempest 3D Audio Engine",
       "4K Gaming at 120fps"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "PlayStation 5 Pro",
+        "description": "Sony PS5 Pro 2TB — Verbesserte GPU, 8K-Ausgabe, DualSense Edge Controller",
+        "features": [
+          "Verbesserte GPU mit Ray Tracing",
+          "2TB SSD Ultra-schneller Speicher",
+          "Unterstützung für 8K-Videoausgabe",
+          "DualSense Edge Wireless Controller",
+          "Tempest 3D Audio Engine",
+          "4K-Gaming mit 120 fps"
+        ]
+      },
+      "en": {
+        "title": "PlayStation 5 Pro",
+        "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller",
+        "features": [
+          "Enhanced GPU with Ray Tracing",
+          "2TB SSD Ultra-Fast Storage",
+          "8K Video Output Support",
+          "DualSense Edge Wireless Controller",
+          "Tempest 3D Audio Engine",
+          "4K gaming at 120 fps"
+        ]
+      },
+      "sq": {
+        "title": "PlayStation 5 Pro",
+        "description": "Sony PS5 Pro 2TB — GPU e përmirësuar, dalje 8K, DualSense Edge Controller",
+        "features": [
+          "GPU e përmirësuar me Ray Tracing",
+          "2TB SSD memorie ultra e shpejtë",
+          "Mbështetje për dalje video 8K",
+          "DualSense Edge Wireless Controller",
+          "Tempest 3D Audio Engine",
+          "Lojëra 4K me 120 fps"
+        ]
+      },
+      "tr": {
+        "title": "PlayStation 5 Pro",
+        "description": "Sony PS5 Pro 2TB — Geliştirilmiş GPU, 8K Çıkış, DualSense Edge Controller",
+        "features": [
+          "Ray Tracing destekli geliştirilmiş GPU",
+          "2TB SSD ultra hızlı depolama",
+          "8K video çıkışı desteği",
+          "DualSense Edge Wireless Controller",
+          "Tempest 3D Audio Engine",
+          "120 fps'de 4K oyun"
+        ]
+      }
+    }
   },
   {
     "title": "Lego Star Wars Millennium Falcon UCS",
@@ -704,7 +804,53 @@
       "Sammler-Edition",
       "Display-Modell"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Lego Star Wars Millennium Falcon UCS",
+        "description": "Lego Ultimate Collector Series Millennium Falcon — 7.541 Teile, Sammler-Edition",
+        "features": [
+          "7.541 Teile",
+          "Ultimate Collector Series",
+          "84cm Länge",
+          "Sammler-Edition",
+          "Display-Modell"
+        ]
+      },
+      "en": {
+        "title": "Lego Star Wars Millennium Falcon UCS",
+        "description": "Lego Ultimate Collector Series Millennium Falcon — 7,541 pieces, collector's edition",
+        "features": [
+          "7,541 pieces",
+          "Ultimate Collector Series",
+          "84 cm length",
+          "Collector's edition",
+          "Display model"
+        ]
+      },
+      "sq": {
+        "title": "Lego Star Wars Millennium Falcon UCS",
+        "description": "Lego Ultimate Collector Series Millennium Falcon — 7.541 pjesë, edicion koleksionistësh",
+        "features": [
+          "7.541 pjesë",
+          "Ultimate Collector Series",
+          "84 cm gjatësi",
+          "Edicion koleksionistësh",
+          "Model për ekspozim"
+        ]
+      },
+      "tr": {
+        "title": "Lego Star Wars Millennium Falcon UCS",
+        "description": "Lego Ultimate Collector Series Millennium Falcon — 7.541 parça, koleksiyoncu edisyonu",
+        "features": [
+          "7.541 parça",
+          "Ultimate Collector Series",
+          "84 cm uzunluk",
+          "Koleksiyoncu edisyonu",
+          "Sergileme modeli"
+        ]
+      }
+    }
   },
   {
     "title": "Cowboy 5",
@@ -720,7 +866,57 @@
       "Crash Detection & SOS",
       "GPS Anti-Theft"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Cowboy 5",
+        "description": "Cowboy 5 — Carbon Belt Drive, Removable Battery, 70km Range, Crash Detection",
+        "features": [
+          "Carbon Belt Drive, keine Kette",
+          "Herausnehmbarer 360Wh Akku",
+          "70km / 43mi Reichweite",
+          "Integrierte Beleuchtung",
+          "Crash Detection & SOS",
+          "GPS-Diebstahlschutz"
+        ]
+      },
+      "en": {
+        "title": "Cowboy 5",
+        "description": "Cowboy 5 — Carbon Belt Drive, Removable Battery, 70km Range, Crash Detection",
+        "features": [
+          "Carbon Belt Drive, no chain",
+          "Removable 360Wh Battery",
+          "70km / 43mi Range",
+          "Integrated Lights",
+          "Crash Detection & SOS",
+          "GPS Anti-Theft"
+        ]
+      },
+      "sq": {
+        "title": "Cowboy 5",
+        "description": "Cowboy 5 — Carbon Belt Drive, Removable Battery, 70km Range, Crash Detection",
+        "features": [
+          "Carbon Belt Drive, pa zinxhir",
+          "Bateri 360Wh e heqshme",
+          "Autonomi 70km / 43mi",
+          "Drita të integruara",
+          "Crash Detection & SOS",
+          "GPS kundër vjedhjes"
+        ]
+      },
+      "tr": {
+        "title": "Cowboy 5",
+        "description": "Cowboy 5 — Carbon Belt Drive, Removable Battery, 70km Range, Crash Detection",
+        "features": [
+          "Carbon Belt Drive, zincir yok",
+          "Çıkarılabilir 360Wh Batarya",
+          "70km / 43mi Menzil",
+          "Entegre Aydınlatma",
+          "Crash Detection & SOS",
+          "GPS Hırsızlık Önleme"
+        ]
+      }
+    }
   },
   {
     "title": "Meta Quest 4",
@@ -736,7 +932,57 @@
       "Hand Tracking 3.0, Eye Tracking",
       "Meta Horizon OS, 1000+ Apps & Games"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Meta Quest 4",
+        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K pro Auge, 256GB",
+        "features": [
+          "Snapdragon XR3 Gen 1 Processor",
+          "4K pro Auge, Pancake Lens 2.0",
+          "Mixed Reality Passthrough in Vollfarbe",
+          "256GB Speicher, Wi-Fi 7",
+          "Hand Tracking 3.0, Eye Tracking",
+          "Meta Horizon OS, 1000+ Apps & Games"
+        ]
+      },
+      "en": {
+        "title": "Meta Quest 4",
+        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per eye, 256GB",
+        "features": [
+          "Snapdragon XR3 Gen 1 Processor",
+          "4K per eye, Pancake Lens 2.0",
+          "Full-Color Mixed Reality Passthrough",
+          "256GB storage, Wi-Fi 7",
+          "Hand Tracking 3.0, Eye Tracking",
+          "Meta Horizon OS, 1000+ Apps & Games"
+        ]
+      },
+      "sq": {
+        "title": "Meta Quest 4",
+        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K për sy, 256GB",
+        "features": [
+          "Snapdragon XR3 Gen 1 Processor",
+          "4K për sy, Pancake Lens 2.0",
+          "Passthrough Mixed Reality me ngjyra të plota",
+          "256GB hapësirë ruajtëse, Wi-Fi 7",
+          "Hand Tracking 3.0, Eye Tracking",
+          "Meta Horizon OS, 1000+ aplikacione & lojëra"
+        ]
+      },
+      "tr": {
+        "title": "Meta Quest 4",
+        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, göz başına 4K, 256GB",
+        "features": [
+          "Snapdragon XR3 Gen 1 Processor",
+          "Göz başına 4K, Pancake Lens 2.0",
+          "Tam Renkli Mixed Reality Passthrough",
+          "256GB depolama, Wi-Fi 7",
+          "Hand Tracking 3.0, Eye Tracking",
+          "Meta Horizon OS, 1000+ uygulama & oyun"
+        ]
+      }
+    }
   },
   {
     "title": "Samsung Odyssey G9 49\"",
@@ -752,7 +998,57 @@
       "1000R Curvature",
       "HDR10+ Gaming, 99% DCI-P3"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Samsung Odyssey G9 49\"",
+        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
+        "features": [
+          "49\" QD-OLED Curved Display",
+          "5120x1440, 32:9 Seitenverhältnis",
+          "240Hz Bildwiederholrate",
+          "0.03ms Reaktionszeit",
+          "1000R Krümmung",
+          "HDR10+ Gaming, 99% DCI-P3"
+        ]
+      },
+      "en": {
+        "title": "Samsung Odyssey G9 49\"",
+        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
+        "features": [
+          "49\" QD-OLED Curved Display",
+          "5120x1440, 32:9 aspect ratio",
+          "240Hz refresh rate",
+          "0.03ms response time",
+          "1000R curvature",
+          "HDR10+ Gaming, 99% DCI-P3"
+        ]
+      },
+      "sq": {
+        "title": "Samsung Odyssey G9 49\"",
+        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
+        "features": [
+          "49\" QD-OLED Curved Display",
+          "5120x1440, raport pamjeje 32:9",
+          "Shkallë rifreskimi 240Hz",
+          "Kohë përgjigjeje 0.03ms",
+          "Lakim 1000R",
+          "HDR10+ Gaming, 99% DCI-P3"
+        ]
+      },
+      "tr": {
+        "title": "Samsung Odyssey G9 49\"",
+        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
+        "features": [
+          "49\" QD-OLED Curved Display",
+          "5120x1440, 32:9 en-boy oranı",
+          "240Hz yenileme hızı",
+          "0.03ms tepki süresi",
+          "1000R kavis",
+          "HDR10+ Gaming, %99 DCI-P3"
+        ]
+      }
+    }
   },
   {
     "title": "Samsung Freestyle 2",
@@ -768,7 +1064,57 @@
       "Gaming Hub Support",
       "Portable, 830g Weight"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Samsung Freestyle 2",
+        "description": "Samsung The Freestyle 2nd Gen — Tragbarer Projektor, 360° Sound, Samsung Smart TV integriert",
+        "features": [
+          "Full HD 1080p Auflösung",
+          "360° Sound integriert",
+          "Auto Focus & Auto Keystone",
+          "Samsung Smart TV integriert",
+          "Gaming Hub Unterstützung",
+          "Tragbar, 830 g Gewicht"
+        ]
+      },
+      "en": {
+        "title": "Samsung Freestyle 2",
+        "description": "Samsung The Freestyle 2nd Gen — Portable Projector, 360° Sound, Samsung Smart TV Built-In",
+        "features": [
+          "Full HD 1080p Resolution",
+          "360° Sound Built-In",
+          "Auto Focus & Auto Keystone",
+          "Samsung Smart TV Built-In",
+          "Gaming Hub Support",
+          "Portable, 830g Weight"
+        ]
+      },
+      "sq": {
+        "title": "Samsung Freestyle 2",
+        "description": "Samsung The Freestyle 2nd Gen — Projektor portativ, 360° Sound, Samsung Smart TV i integruar",
+        "features": [
+          "Rezolucion Full HD 1080p",
+          "360° Sound i integruar",
+          "Auto Focus & Auto Keystone",
+          "Samsung Smart TV i integruar",
+          "Mbështetje për Gaming Hub",
+          "Portativ, peshë 830 g"
+        ]
+      },
+      "tr": {
+        "title": "Samsung Freestyle 2",
+        "description": "Samsung The Freestyle 2nd Gen — Taşınabilir Projektör, 360° Sound, Samsung Smart TV Dahili",
+        "features": [
+          "Full HD 1080p Çözünürlük",
+          "360° Sound Dahili",
+          "Auto Focus & Auto Keystone",
+          "Samsung Smart TV Dahili",
+          "Gaming Hub Desteği",
+          "Taşınabilir, 830 g Ağırlık"
+        ]
+      }
+    }
   },
   {
     "title": "GoPro Hero 13 Black",
@@ -783,7 +1129,53 @@
       "27MP Photos",
       "GP2 Processor"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "GoPro Hero 13 Black",
+        "description": "GoPro Hero 13 Black Action Cam — 5.3K Video, HyperSmooth 6.0, 27MP Foto, wasserdicht bis 10 m",
+        "features": [
+          "5.3K60 Videoaufnahme",
+          "HyperSmooth 6.0 Stabilisierung",
+          "Wasserdicht bis 10 m",
+          "27MP Fotos",
+          "GP2 Processor"
+        ]
+      },
+      "en": {
+        "title": "GoPro Hero 13 Black",
+        "description": "GoPro Hero 13 Black Action Cam — 5.3K video, HyperSmooth 6.0, 27MP photo, waterproof to 10 m",
+        "features": [
+          "5.3K60 video recording",
+          "HyperSmooth 6.0 stabilization",
+          "Waterproof to 10 m",
+          "27MP photos",
+          "GP2 Processor"
+        ]
+      },
+      "sq": {
+        "title": "GoPro Hero 13 Black",
+        "description": "GoPro Hero 13 Black kamera aksioni — video 5.3K, HyperSmooth 6.0, foto 27MP, rezistente ndaj ujit deri në 10 m",
+        "features": [
+          "Regjistrim video 5.3K60",
+          "Stabilizim HyperSmooth 6.0",
+          "Rezistente ndaj ujit deri në 10 m",
+          "Foto 27MP",
+          "GP2 Processor"
+        ]
+      },
+      "tr": {
+        "title": "GoPro Hero 13 Black",
+        "description": "GoPro Hero 13 Black aksiyon kamerası — 5.3K video, HyperSmooth 6.0, 27MP foto, 10 m'ye kadar su geçirmez",
+        "features": [
+          "5.3K60 video kayıt",
+          "HyperSmooth 6.0 sabitleme",
+          "10 m'ye kadar su geçirmez",
+          "27MP fotoğraflar",
+          "GP2 Processor"
+        ]
+      }
+    }
   },
   {
     "title": "iRobot Roomba j7+ Combo",
@@ -798,7 +1190,53 @@
       "Smart Mapping",
       "App-Steuerung"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "iRobot Roomba j7+ Combo",
+        "description": "iRobot Roomba Combo j7+ — Saug- und Wischroboter, Auto-Entleerung, AI-Hindernis-Erkennung",
+        "features": [
+          "Saug- + Wischfunktion",
+          "Automatische Entleerung",
+          "AI-Hindernis-Erkennung",
+          "Smart Mapping",
+          "App-Steuerung"
+        ]
+      },
+      "en": {
+        "title": "iRobot Roomba j7+ Combo",
+        "description": "iRobot Roomba Combo j7+ — vacuum and mop robot, auto-emptying, AI obstacle detection",
+        "features": [
+          "Vacuum + mop function",
+          "Automatic emptying",
+          "AI obstacle detection",
+          "Smart Mapping",
+          "App control"
+        ]
+      },
+      "sq": {
+        "title": "iRobot Roomba j7+ Combo",
+        "description": "iRobot Roomba Combo j7+ — robot fshesë me vakum dhe pastrues me leckë, auto-zbrazje, zbulim pengesash me AI",
+        "features": [
+          "Funksion fshirjeje me vakum + pastrimi me leckë",
+          "Zbrazje automatike",
+          "Zbulim pengesash me AI",
+          "Smart Mapping",
+          "Kontroll me aplikacion"
+        ]
+      },
+      "tr": {
+        "title": "iRobot Roomba j7+ Combo",
+        "description": "iRobot Roomba Combo j7+ — süpürme ve silme robotu, otomatik boşaltma, AI engel algılama",
+        "features": [
+          "Süpürme + silme fonksiyonu",
+          "Otomatik boşaltma",
+          "AI engel algılama",
+          "Smart Mapping",
+          "Uygulama ile kontrol"
+        ]
+      }
+    }
   },
   {
     "title": "Evolve GTR 2",
@@ -814,7 +1252,57 @@
       "175mm All-Terrain Wheels",
       "LED Lights, Regenerative Braking"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Evolve GTR 2",
+        "description": "Evolve GTR 2 Bamboo — All-Terrain, Dual 3000W Motors, 50km Reichweite, 50km/h",
+        "features": [
+          "Dual 3000W Hub Motors",
+          "50km / 31mi Reichweite",
+          "50km/h / 31mph Höchstgeschwindigkeit",
+          "Bamboo Deck mit Fiberglass",
+          "175mm All-Terrain Wheels",
+          "LED-Lichter, regeneratives Bremsen"
+        ]
+      },
+      "en": {
+        "title": "Evolve GTR 2",
+        "description": "Evolve GTR 2 Bamboo — All-Terrain, Dual 3000W Motors, 50km Range, 50km/h",
+        "features": [
+          "Dual 3000W Hub Motors",
+          "50km / 31mi Range",
+          "50km/h / 31mph Top Speed",
+          "Bamboo Deck with Fiberglass",
+          "175mm All-Terrain Wheels",
+          "LED Lights, Regenerative Braking"
+        ]
+      },
+      "sq": {
+        "title": "Evolve GTR 2",
+        "description": "Evolve GTR 2 Bamboo — All-Terrain, Dual 3000W Motors, Autonomi 50km, 50km/h",
+        "features": [
+          "Dual 3000W Hub Motors",
+          "Autonomi 50km / 31mi",
+          "Shpejtësi maksimale 50km/h / 31mph",
+          "Bamboo Deck me Fiberglass",
+          "175mm All-Terrain Wheels",
+          "Drita LED, frenim rigjenerues"
+        ]
+      },
+      "tr": {
+        "title": "Evolve GTR 2",
+        "description": "Evolve GTR 2 Bamboo — All-Terrain, Dual 3000W Motors, 50km Menzil, 50km/h",
+        "features": [
+          "Dual 3000W Hub Motors",
+          "50km / 31mi menzil",
+          "50km/h / 31mph maksimum hız",
+          "Fiberglass ile Bamboo Deck",
+          "175mm All-Terrain Wheels",
+          "LED ışıklar, rejeneratif frenleme"
+        ]
+      }
+    }
   },
   {
     "title": "Boosted Board Mini X",
@@ -830,7 +1318,57 @@
       "Regenerative Braking",
       "Hyper Mode Available"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Boosted Board Mini X",
+        "description": "Boosted Mini X — Kompaktes Design, 23 km Reichweite, 30 km/h Geschwindigkeit, Deep-Concave-Deck",
+        "features": [
+          "Kompaktes 29,5\" Deck",
+          "1000 W Dual-Motoren",
+          "23 km / 14 mi Reichweite",
+          "30 km/h / 18,5 mph Geschwindigkeit",
+          "Rekuperatives Bremsen",
+          "Hyper Mode verfügbar"
+        ]
+      },
+      "en": {
+        "title": "Boosted Board Mini X",
+        "description": "Boosted Mini X — Compact design, 23 km range, 30 km/h speed, deep concave deck",
+        "features": [
+          "Compact 29.5\" deck",
+          "1000W dual motors",
+          "23km / 14mi range",
+          "30km/h / 18.5mph speed",
+          "Regenerative braking",
+          "Hyper Mode available"
+        ]
+      },
+      "sq": {
+        "title": "Boosted Board Mini X",
+        "description": "Boosted Mini X — Dizajn kompakt, autonomi 23 km, shpejtësi 30 km/h, deck me konkavitet të thellë",
+        "features": [
+          "Deck kompakt 29.5\"",
+          "Motorë të dyfishtë 1000W",
+          "Autonomi 23km / 14mi",
+          "Shpejtësi 30km/h / 18.5mph",
+          "Frenim rigjenerues",
+          "Hyper Mode i disponueshëm"
+        ]
+      },
+      "tr": {
+        "title": "Boosted Board Mini X",
+        "description": "Boosted Mini X — Kompakt tasarım, 23 km menzil, 30 km/s hız, derin konkav deck",
+        "features": [
+          "Kompakt 29.5\" deck",
+          "1000W çift motor",
+          "23km / 14mi menzil",
+          "30km/h / 18.5mph hız",
+          "Rejeneratif frenleme",
+          "Hyper Mode mevcut"
+        ]
+      }
+    }
   },
   {
     "title": "Secretlab Titan Evo 2024",
@@ -846,7 +1384,57 @@
       "XL Pebble Seat Base",
       "5-Year Extended Warranty"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Secretlab Titan Evo 2024",
+        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Magnetic Armrests, Hybrid Leatherette",
+        "features": [
+          "4-Way L-Adapt Lumbar Support",
+          "Magnetic CloudSwap Armrests",
+          "Neo Hybrid Leatherette",
+          "Multi-Tilt Mechanism",
+          "XL Pebble Seat Base",
+          "5-Year Extended Warranty"
+        ]
+      },
+      "en": {
+        "title": "Secretlab Titan Evo 2024",
+        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Magnetic Armrests, Hybrid Leatherette",
+        "features": [
+          "4-Way L-Adapt Lumbar Support",
+          "Magnetic CloudSwap Armrests",
+          "Neo Hybrid Leatherette",
+          "Multi-Tilt Mechanism",
+          "XL Pebble Seat Base",
+          "5-Year Extended Warranty"
+        ]
+      },
+      "sq": {
+        "title": "Secretlab Titan Evo 2024",
+        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Mbështetëse krahësh magnetike, Hybrid Leatherette",
+        "features": [
+          "4-Way L-Adapt Lumbar Support",
+          "Magnetic CloudSwap Armrests",
+          "Neo Hybrid Leatherette",
+          "Mekanizëm Multi-Tilt",
+          "Bazë sediljeje XL Pebble",
+          "Garanci e zgjatur 5-vjeçare"
+        ]
+      },
+      "tr": {
+        "title": "Secretlab Titan Evo 2024",
+        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Manyetik kolçaklar, Hybrid Leatherette",
+        "features": [
+          "4-Way L-Adapt Lumbar Support",
+          "Magnetic CloudSwap Armrests",
+          "Neo Hybrid Leatherette",
+          "Multi-Tilt Mekanizması",
+          "XL Pebble Oturma Tabanı",
+          "5 Yıl Uzatılmış Garanti"
+        ]
+      }
+    }
   },
   {
     "title": "VanMoof S5",
@@ -862,7 +1450,57 @@
       "Kick Lock Anti-Theft",
       "Find My Bike Tracking"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "VanMoof S5",
+        "description": "VanMoof S5 — Integrierter Diebstahlschutz, Turbo Boost, 150 km Reichweite, App-verbunden",
+        "features": [
+          "Front- & Heck-Nabenmotoren",
+          "Turbo-Boost-Taste",
+          "150 km / 93 mi Reichweite",
+          "Integriertes Smart Lock",
+          "Kick Lock Diebstahlschutz",
+          "Find My Bike Tracking"
+        ]
+      },
+      "en": {
+        "title": "VanMoof S5",
+        "description": "VanMoof S5 — Integrated Anti-Theft, Turbo Boost, 150km Range, App Connected",
+        "features": [
+          "Front & Rear Hub Motors",
+          "Turbo Boost Button",
+          "150km / 93mi Range",
+          "Integrated Smart Lock",
+          "Kick Lock Anti-Theft",
+          "Find My Bike Tracking"
+        ]
+      },
+      "sq": {
+        "title": "VanMoof S5",
+        "description": "VanMoof S5 — Mbrojtje e integruar kundër vjedhjes, Turbo Boost, autonomi 150 km, i lidhur me aplikacion",
+        "features": [
+          "Motorë me bosht në rrotën e përparme dhe të pasme",
+          "Butoni Turbo Boost",
+          "Autonomi 150 km / 93 mi",
+          "Smart Lock i integruar",
+          "Mbrojtje kundër vjedhjes Kick Lock",
+          "Gjurmim Find My Bike"
+        ]
+      },
+      "tr": {
+        "title": "VanMoof S5",
+        "description": "VanMoof S5 — Entegre Hırsızlık Önleme, Turbo Boost, 150 km Menzil, Uygulama Bağlantılı",
+        "features": [
+          "Ön ve arka göbek motorları",
+          "Turbo Boost düğmesi",
+          "150 km / 93 mi menzil",
+          "Entegre Smart Lock",
+          "Kick Lock hırsızlık önleme",
+          "Find My Bike takip özelliği"
+        ]
+      }
+    }
   },
   {
     "title": "Xiaomi Electric Scooter 5",
@@ -878,7 +1516,57 @@
       "LED Dashboard Display",
       "Apple Find My Compatible"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Xiaomi Electric Scooter 5",
+        "description": "Xiaomi Electric Scooter 5 Pro — 600W Motor, 45 km Reichweite, 10\" schlauchlose Reifen",
+        "features": [
+          "600W Dual-Motor-Spitzenleistung",
+          "Max. Reichweite: 45 km / 28 mi",
+          "10\" schlauchlose, selbstabdichtende Reifen",
+          "Scheibenbremsen vorne & hinten",
+          "LED-Dashboard-Display",
+          "Apple Find My kompatibel"
+        ]
+      },
+      "en": {
+        "title": "Xiaomi Electric Scooter 5",
+        "description": "Xiaomi Electric Scooter 5 Pro — 600W Motor, 45km Range, 10\" Tubeless Tires",
+        "features": [
+          "600W dual motor peak",
+          "45km / 28mi max range",
+          "10\" tubeless self-sealing tires",
+          "Front & rear disc brakes",
+          "LED dashboard display",
+          "Apple Find My compatible"
+        ]
+      },
+      "sq": {
+        "title": "Xiaomi Electric Scooter 5",
+        "description": "Xiaomi Electric Scooter 5 Pro — motor 600W, autonomi 45 km, goma 10\" pa tub",
+        "features": [
+          "Kulm fuqie 600W me dy motorë",
+          "Autonomi maksimale: 45 km / 28 mi",
+          "Goma 10\" pa tub, vetë-mbyllëse",
+          "Frena me disk përpara & prapa",
+          "Ekran LED në panelin e komandimit",
+          "E pajtueshme me Apple Find My"
+        ]
+      },
+      "tr": {
+        "title": "Xiaomi Electric Scooter 5",
+        "description": "Xiaomi Electric Scooter 5 Pro — 600W motor, 45 km menzil, 10\" tubeless lastikler",
+        "features": [
+          "600W çift motor tepe gücü",
+          "Maks. menzil: 45 km / 28 mi",
+          "10\" tubeless, kendini mühürleyen lastikler",
+          "Ön ve arka disk frenler",
+          "LED gösterge paneli ekranı",
+          "Apple Find My ile uyumlu"
+        ]
+      }
+    }
   },
   {
     "title": "Breville Barista Touch",
@@ -894,7 +1582,57 @@
       "Programmable Shot Volumes",
       "Auto Steam Wand"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Breville Barista Touch",
+        "description": "Breville Barista Touch Impress — Unterstütztes Tampen, Touch-Display, Mahlgrad-Drehregler",
+        "features": [
+          "Impress Puck System, Auto-Tamping",
+          "Intuitives Touchscreen-Display",
+          "ThermoJet Heizsystem",
+          "Integriertes konisches Kegelmahlwerk",
+          "Programmierbare Shot-Volumen",
+          "Auto-Dampflanze"
+        ]
+      },
+      "en": {
+        "title": "Breville Barista Touch",
+        "description": "Breville Barista Touch Impress — Assisted tamping, touch display, grind size dial",
+        "features": [
+          "Impress Puck System, auto tamping",
+          "Intuitive touch screen display",
+          "ThermoJet heating system",
+          "Integrated conical burr grinder",
+          "Programmable shot volumes",
+          "Auto steam wand"
+        ]
+      },
+      "sq": {
+        "title": "Breville Barista Touch",
+        "description": "Breville Barista Touch Impress — Tampim i asistuar, ekran me prekje, rrotë për madhësinë e bluarjes",
+        "features": [
+          "Impress Puck System, tampim automatik",
+          "Ekran intuitiv me prekje",
+          "Sistemi i ngrohjes ThermoJet",
+          "Mulli i integruar me gurë konikë",
+          "Vëllime shot-i të programueshme",
+          "Shkop avulli automatik"
+        ]
+      },
+      "tr": {
+        "title": "Breville Barista Touch",
+        "description": "Breville Barista Touch Impress — Destekli tamping, dokunmatik ekran, öğütme boyutu kadranı",
+        "features": [
+          "Impress Puck System, otomatik tamping",
+          "Sezgisel dokunmatik ekran",
+          "ThermoJet ısıtma sistemi",
+          "Entegre konik burr öğütücü",
+          "Programlanabilir shot hacimleri",
+          "Otomatik buhar çubuğu"
+        ]
+      }
+    }
   },
   {
     "title": "Bose QuietComfort Ultra",
@@ -909,7 +1647,53 @@
       "Bluetooth 5.3",
       "Premium Komfort"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Bose QuietComfort Ultra",
+        "description": "Bose QuietComfort Ultra Headphones — Erstklassiges Noise Cancelling, Immersive Audio, 24h Akku",
+        "features": [
+          "Active Noise Cancelling",
+          "Immersive Audio mit Spatial Sound",
+          "24 Stunden Akku",
+          "Bluetooth 5.3",
+          "Premium Komfort"
+        ]
+      },
+      "en": {
+        "title": "Bose QuietComfort Ultra",
+        "description": "Bose QuietComfort Ultra Headphones — Best-in-class Noise Cancelling, Immersive Audio, 24h battery",
+        "features": [
+          "Active Noise Cancelling",
+          "Immersive Audio with Spatial Sound",
+          "24-hour battery",
+          "Bluetooth 5.3",
+          "Premium comfort"
+        ]
+      },
+      "sq": {
+        "title": "Bose QuietComfort Ultra",
+        "description": "Bose QuietComfort Ultra Headphones — Noise Cancelling më i miri në klasë, Immersive Audio, bateri 24h",
+        "features": [
+          "Active Noise Cancelling",
+          "Immersive Audio me Spatial Sound",
+          "Bateri 24 orë",
+          "Bluetooth 5.3",
+          "Komoditet premium"
+        ]
+      },
+      "tr": {
+        "title": "Bose QuietComfort Ultra",
+        "description": "Bose QuietComfort Ultra Headphones — Sınıfının en iyisi Noise Cancelling, Immersive Audio, 24h pil",
+        "features": [
+          "Active Noise Cancelling",
+          "Spatial Sound ile Immersive Audio",
+          "24 saat pil",
+          "Bluetooth 5.3",
+          "Premium konfor"
+        ]
+      }
+    }
   },
   {
     "title": "Bose Soundbar Ultra",
@@ -924,7 +1708,53 @@
       "Wireless Surround Ready",
       "Spatial Audio"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Bose Soundbar Ultra",
+        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, integrierte Sprachsteuerung",
+        "features": [
+          "Dolby Atmos Sound",
+          "AI Dialogue Mode",
+          "Sprachassistenten-Integration",
+          "Kabelloses Surround-System bereit",
+          "Räumlicher Klang"
+        ]
+      },
+      "en": {
+        "title": "Bose Soundbar Ultra",
+        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, Built-in Voice Control",
+        "features": [
+          "Dolby Atmos Sound",
+          "AI Dialogue Mode",
+          "Voice Assistant Integration",
+          "Wireless Surround Ready",
+          "Spatial Audio"
+        ]
+      },
+      "sq": {
+        "title": "Bose Soundbar Ultra",
+        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, kontroll zanor i integruar",
+        "features": [
+          "Dolby Atmos Sound",
+          "AI Dialogue Mode",
+          "Integrim me asistentin zanor",
+          "Gati për Surround pa tela",
+          "Audio hapësinore"
+        ]
+      },
+      "tr": {
+        "title": "Bose Soundbar Ultra",
+        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, yerleşik sesli kontrol",
+        "features": [
+          "Dolby Atmos Sound",
+          "AI Dialogue Mode",
+          "Sesli asistan entegrasyonu",
+          "Kablosuz Surround'a hazır",
+          "Mekânsal ses"
+        ]
+      }
+    }
   },
   {
     "title": "Samsung Galaxy S26 Ultra",
@@ -940,7 +1770,57 @@
       "512GB Storage, 16GB RAM",
       "S Pen Built-in, IP68 Water Resistant"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Samsung Galaxy S26 Ultra",
+        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Kamera",
+        "features": [
+          "6.9\" Dynamic AMOLED 2X, 3120x1440",
+          "Snapdragon 8 Elite 2 Prozessor",
+          "200MP Hauptkamera + 50MP Ultraweitwinkel + 10MP Telephoto",
+          "5000mAh Akku, 65W Schnellladen",
+          "512GB Speicher, 16GB RAM",
+          "S Pen integriert, IP68 wasserresistent"
+        ]
+      },
+      "en": {
+        "title": "Samsung Galaxy S26 Ultra",
+        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera",
+        "features": [
+          "6.9\" Dynamic AMOLED 2X, 3120x1440",
+          "Snapdragon 8 Elite 2 Processor",
+          "200MP Main + 50MP Ultra-Wide + 10MP Telephoto",
+          "5000mAh Battery, 65W Fast Charge",
+          "512GB Storage, 16GB RAM",
+          "S Pen Built-in, IP68 Water Resistant"
+        ]
+      },
+      "sq": {
+        "title": "Samsung Galaxy S26 Ultra",
+        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, Kamera 200MP",
+        "features": [
+          "6.9\" Dynamic AMOLED 2X, 3120x1440",
+          "Procesor Snapdragon 8 Elite 2",
+          "200MP Kamera kryesore + 50MP Ultra-Wide + 10MP Telephoto",
+          "Bateri 5000mAh, karikim i shpejtë 65W",
+          "512GB hapësirë ruajtjeje, 16GB RAM",
+          "S Pen i integruar, rezistencë ndaj ujit IP68"
+        ]
+      },
+      "tr": {
+        "title": "Samsung Galaxy S26 Ultra",
+        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Kamera",
+        "features": [
+          "6.9\" Dynamic AMOLED 2X, 3120x1440",
+          "Snapdragon 8 Elite 2 İşlemci",
+          "200MP Ana + 50MP Ultra-Wide + 10MP Telephoto",
+          "5000mAh Batarya, 65W Hızlı Şarj",
+          "512GB Depolama, 16GB RAM",
+          "Dahili S Pen, IP68 suya dayanıklılık"
+        ]
+      }
+    }
   },
   {
     "title": "Segway Ninebot Max G3",
@@ -956,7 +1836,57 @@
       "Built-in Phone Charger",
       "IPX5 Water Resistant"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Segway Ninebot Max G3",
+        "description": "Segway Ninebot KickScooter Max G3 — 40 km Reichweite, 30 km/h Geschwindigkeit, 10\" Luftreifen",
+        "features": [
+          "40 km / 25 mi maximale Reichweite",
+          "30 km/h / 18,6 mph Höchstgeschwindigkeit",
+          "10\" Luftreifen",
+          "Vorder- & Hinterradfederung",
+          "Integriertes Handy-Ladegerät",
+          "IPX5 wasserbeständig"
+        ]
+      },
+      "en": {
+        "title": "Segway Ninebot Max G3",
+        "description": "Segway Ninebot KickScooter Max G3 — 40km Range, 30km/h Speed, 10\" Pneumatic Tires",
+        "features": [
+          "40km / 25mi Max Range",
+          "30km/h / 18.6mph Top Speed",
+          "10\" Pneumatic Tires",
+          "Front & Rear Suspension",
+          "Built-in Phone Charger",
+          "IPX5 Water Resistant"
+        ]
+      },
+      "sq": {
+        "title": "Segway Ninebot Max G3",
+        "description": "Segway Ninebot KickScooter Max G3 — Autonomi 40 km, shpejtësi 30 km/h, goma pneumatike 10\"",
+        "features": [
+          "Autonomi maksimale 40 km / 25 mi",
+          "Shpejtësi maksimale 30 km/h / 18.6 mph",
+          "Goma pneumatike 10\"",
+          "Sistem amortizimi përpara dhe mbrapa",
+          "Karikues telefoni i integruar",
+          "Rezistent ndaj ujit IPX5"
+        ]
+      },
+      "tr": {
+        "title": "Segway Ninebot Max G3",
+        "description": "Segway Ninebot KickScooter Max G3 — 40 km menzil, 30 km/sa hız, 10\" pnömatik lastikler",
+        "features": [
+          "40 km / 25 mi maksimum menzil",
+          "30 km/sa / 18.6 mph maksimum hız",
+          "10\" pnömatik lastikler",
+          "Ön ve arka süspansiyon",
+          "Dahili telefon şarj cihazı",
+          "IPX5 suya dayanıklı"
+        ]
+      }
+    }
   },
   {
     "title": "Corsair K100 RGB",
@@ -972,6 +1902,56 @@
       "Per-Key RGB Backlighting",
       "Detachable Palm Rest"
     ],
-    "condition": "Brand New — Factory Sealed"
+    "condition": "Brand New — Factory Sealed",
+    "translations": {
+      "de": {
+        "title": "Corsair K100 RGB",
+        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, Flugzeugaluminium",
+        "features": [
+          "Corsair OPX Optical Switches",
+          "4000Hz Hyper-Polling",
+          "iCUE Control Wheel",
+          "Rahmen aus Flugzeugaluminium",
+          "RGB-Hintergrundbeleuchtung pro Taste",
+          "Abnehmbare Handballenauflage"
+        ]
+      },
+      "en": {
+        "title": "Corsair K100 RGB",
+        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, Aircraft Aluminum",
+        "features": [
+          "Corsair OPX Optical Switches",
+          "4000Hz Hyper-Polling",
+          "iCUE Control Wheel",
+          "Aircraft-Grade Aluminum Frame",
+          "Per-Key RGB Backlighting",
+          "Detachable Palm Rest"
+        ]
+      },
+      "sq": {
+        "title": "Corsair K100 RGB",
+        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, alumin aviacioni",
+        "features": [
+          "Corsair OPX Optical Switches",
+          "4000Hz Hyper-Polling",
+          "iCUE Control Wheel",
+          "Kornizë alumini e klasës së aviacionit",
+          "Ndriçim RGB për çdo tast",
+          "Mbështetëse pëllëmbësh e shkëputshme"
+        ]
+      },
+      "tr": {
+        "title": "Corsair K100 RGB",
+        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, uçak sınıfı alüminyum",
+        "features": [
+          "Corsair OPX Optical Switches",
+          "4000Hz Hyper-Polling",
+          "iCUE Control Wheel",
+          "Uçak sınıfı alüminyum gövde",
+          "Tuş başına RGB arka aydınlatma",
+          "Çıkarılabilir avuç içi desteği"
+        ]
+      }
+    }
   }
 ]

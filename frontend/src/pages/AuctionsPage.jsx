@@ -27,6 +27,16 @@ const accentGreen = "#00E89D";
 const accentRed = "#FF4060";
 const accentPurple = "#B068FF";
 
+// ── i18n Helper für Auktionen mit Übersetzungen ──
+const localized = (auction, lang) => {
+  const t = auction?.translations?.[lang];
+  return {
+    title: t?.title || auction?.title || "",
+    description: t?.description || auction?.description || "",
+    features: (t?.features || auction?.features || []),
+  };
+};
+
 // ── Countdown ──
 const Countdown = ({ endsAt, status, size = "md" }) => {
   const { t } = useI18n();
@@ -534,8 +544,9 @@ const AutoBidModal = ({ open, onClose, auctionId, onSet }) => {
 /* ════════════════════════════════════════════
    PREMIUM GRID CARD — DealDash-Style
    ════════════════════════════════════════════ */
-const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch }) => {
+const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch, lang = "de" }) => {
   const isEnded = auction.status === "ended";
+  const loc = localized(auction, lang);
   const [rem, setRem] = useState(0);
   useEffect(() => {
     const c = () => setRem(Math.max(0, Math.floor((new Date(auction.ends_at) - Date.now()) / 1000)));
@@ -580,7 +591,7 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
         {auction.image_url ? (
           <img 
             src={auction.image_url} 
-            alt={auction.title} 
+            alt={loc.title} 
             className={`w-full h-full object-contain p-3 transition-all duration-500 group-hover:scale-105 ${isEnded ? "opacity-25 grayscale" : ""}`} 
             loading="lazy" 
           />
@@ -633,6 +644,24 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
             <Eye size={9} className="text-white/70" />
             <span className="text-[10px] font-bold tabular-nums text-white/90">{auction.viewer_count}</span>
           </div>
+        )}
+
+        {/* Watchlist Heart — Bottom Right Corner */}
+        {!isEnded && onToggleWatch && (
+          <motion.button
+            data-testid={`auction-watch-${auction.auction_id}`}
+            onClick={(e) => { e.stopPropagation(); onToggleWatch(auction.auction_id); }}
+            whileTap={{ scale: 0.85 }}
+            className="absolute bottom-2 right-2 w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center"
+            style={{
+              background: isWatched ? "rgba(255,64,96,0.22)" : "rgba(0,0,0,0.55)",
+              border: isWatched ? "1px solid rgba(255,64,96,0.5)" : "1px solid rgba(255,255,255,0.1)",
+            }}
+            aria-label={isWatched ? "Aus Merkliste entfernen" : "Auf Merkliste"}
+          >
+            <Heart size={14} fill={isWatched ? "#FF4060" : "transparent"}
+                   className={isWatched ? "text-[#FF4060]" : "text-white/80"} />
+          </motion.button>
         )}
 
         {/* Watchlist Heart — Bottom Right */}
@@ -699,7 +728,7 @@ const AuctionGridCard = ({ auction, onClick, t, idx, isWatched, onToggleWatch })
       <div className="px-3 py-2.5 space-y-2">
         {/* Product Title */}
         <h3 className={`text-[12px] font-semibold leading-tight line-clamp-2 min-h-[32px] ${isEnded ? "text-white/30" : "text-white/90"}`}>
-          {auction.title}
+          {loc.title}
         </h3>
         
         {/* Price + UVP */}
@@ -1421,7 +1450,7 @@ const ReferralPanel = ({ t }) => {
    MAIN AUCTIONS PAGE
    ════════════════════════════════════════════ */
 const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const user = useUser();
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1429,6 +1458,10 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const [showCredits, setShowCredits] = useState(false);
   const [credits, setCredits] = useState(0);
   const [filter, setFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("ending_soon"); // ending_soon | low_price | most_bids
+  const [showFilters, setShowFilters] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
   const [auctionNotifs, setAuctionNotifs] = useState([]);
   const [showNotifToast, setShowNotifToast] = useState(false);
@@ -1494,8 +1527,27 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
 
   if (selected) return <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} />;
 
-  const active = auctions.filter(a => a.status === "active" && (filter === "all" || a.category === filter));
-  const ended = auctions.filter(a => a.status === "ended" && (filter === "all" || a.category === filter));
+  // Apply search + category + sort
+  const applyFiltersAndSort = (list) => {
+    let arr = [...list];
+    if (categoryFilter !== "all") arr = arr.filter(a => a.category === categoryFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      arr = arr.filter(a => {
+        const loc = localized(a, lang);
+        return (loc.title || "").toLowerCase().includes(q)
+            || (loc.description || "").toLowerCase().includes(q)
+            || (a.title || "").toLowerCase().includes(q);
+      });
+    }
+    if (sortBy === "low_price") arr.sort((a, b) => (a.current_price || 0) - (b.current_price || 0));
+    else if (sortBy === "most_bids") arr.sort((a, b) => (b.total_bids || 0) - (a.total_bids || 0));
+    else if (sortBy === "ending_soon") arr.sort((a, b) => new Date(a.ends_at) - new Date(b.ends_at));
+    return arr;
+  };
+
+  const active = applyFiltersAndSort(auctions.filter(a => a.status === "active" && (filter === "all" || a.category === filter)));
+  const ended = applyFiltersAndSort(auctions.filter(a => a.status === "ended" && (filter === "all" || a.category === filter)));
   const activeCats = [...new Set(auctions.filter(a => a.status === "active").map(a => a.category).filter(Boolean))];
   const winners = auctions.filter(a => a.status === "ended" && a.winner_name);
 
@@ -1627,6 +1679,33 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
           })}
         </div>
 
+        {/* Suche + Sortierung */}
+        <div className="flex gap-2 mt-2">
+          <div className="flex-1 relative">
+            <input
+              data-testid="auction-search"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Suchen..."
+              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl pl-9 pr-3 py-2 text-[12px] text-white placeholder-white/30 focus:outline-none focus:border-[#00C2FF]/40"
+            />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/>
+            </svg>
+          </div>
+          <select
+            data-testid="auction-sort"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-white/[0.04] border border-white/[0.06] rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#00C2FF]/40"
+          >
+            <option value="ending_soon" className="bg-[#0a0a0a]">Endet bald</option>
+            <option value="low_price" className="bg-[#0a0a0a]">Niedrigster Preis</option>
+            <option value="most_bids" className="bg-[#0a0a0a]">Meiste Gebote</option>
+          </select>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-16"><Loader2 size={18} className="animate-spin text-[#00E0FF]" /></div>
         ) : (
@@ -1655,7 +1734,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
                 </div>
                 {/* Premium Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
-                  {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} />)}
+                  {active.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} isWatched={watchlist.includes(a.auction_id)} onToggleWatch={!isGuest ? toggleWatch : null} lang={lang} />)}
                 </div>
               </motion.div>
             )}
@@ -1670,7 +1749,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
                   </span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {ended.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} />)}
+                  {ended.map((a, i) => <AuctionGridCard key={a.auction_id} auction={a} onClick={() => setSelected(a.auction_id)} t={t} idx={i} lang={lang} />)}
                 </div>
               </motion.div>
             )}

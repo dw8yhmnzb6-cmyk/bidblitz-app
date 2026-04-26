@@ -589,6 +589,18 @@ async def place_bid(req: BidRequest, request: Request):
             "read": False,
             "created_at": now_iso,
         })
+        # Push notification to outbid user
+        try:
+            from routes.web_push import send_push_to_user
+            asyncio.create_task(send_push_to_user(
+                user_id=auction["last_bidder_id"],
+                title="🔥 Du wurdest überboten!",
+                body=f"{auction['title']} — jetzt €{new_price:.2f}. Schnell, biete weiter!",
+                icon="/logo192.png",
+                data={"url": f"/auction/{req.auction_id}", "type": "outbid", "auction_id": req.auction_id},
+            ))
+        except Exception:
+            pass
         # Email outbid notification (fire-and-forget)
         try:
             from routes.email_service import notify_outbid
@@ -600,6 +612,23 @@ async def place_bid(req: BidRequest, request: Request):
                 ))
         except Exception:
             pass
+
+    # Push to all watchlist users (except current bidder + previous bidder)
+    try:
+        from routes.web_push import send_push_to_user
+        watchers = await db.watchlist.find(
+            {"auction_id": req.auction_id, "user_id": {"$nin": [user_id, auction.get("last_bidder_id") or ""]}},
+            {"_id": 0, "user_id": 1},
+        ).to_list(50)
+        for w in watchers:
+            asyncio.create_task(send_push_to_user(
+                user_id=w["user_id"],
+                title="📈 Neues Gebot bei deiner gemerkten Auktion",
+                body=f"{auction['title']} — jetzt €{new_price:.2f}",
+                data={"url": f"/auction/{req.auction_id}", "type": "watchlist_bid"},
+            ))
+    except Exception:
+        pass
 
     updated_user = await db.users.find_one({"_id": user["_id"]})
 
@@ -1266,6 +1295,36 @@ async def auction_maintenance_loop():
                     update["winner_id"] = ex["last_bidder_id"]
                     update["winner_name"] = ex.get("last_bidder_name")
                 await db.auctions.update_one({"auction_id": ex["auction_id"]}, {"$set": update})
+
+                # Push winner notification
+                if ex.get("last_bidder_id"):
+                    try:
+                        from routes.web_push import send_push_to_user
+                        asyncio.create_task(send_push_to_user(
+                            user_id=ex["last_bidder_id"],
+                            title="🎉 Du hast gewonnen!",
+                            body=f"{ex['title']} für €{ex.get('current_price', 0):.2f}",
+                            data={"url": f"/auction/{ex['auction_id']}", "type": "auction_won"},
+                        ))
+                    except Exception:
+                        pass
+
+                # Push to watchlist users (auction ended)
+                try:
+                    from routes.web_push import send_push_to_user
+                    watchers = await db.watchlist.find(
+                        {"auction_id": ex["auction_id"]}, {"_id": 0, "user_id": 1}
+                    ).to_list(50)
+                    for w in watchers:
+                        if w["user_id"] != ex.get("last_bidder_id"):
+                            asyncio.create_task(send_push_to_user(
+                                user_id=w["user_id"],
+                                title="⏱ Auktion beendet",
+                                body=f"{ex['title']} ist beendet — Endpreis €{ex.get('current_price', 0):.2f}",
+                                data={"type": "watchlist_ended"},
+                            ))
+                except Exception:
+                    pass
 
             if expired:
                 logger.info(f"🎰 Ended {len(expired)} expired auctions")
