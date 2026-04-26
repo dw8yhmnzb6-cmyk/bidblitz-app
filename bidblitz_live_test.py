@@ -267,7 +267,7 @@ class BidBlitzLiveTester:
         
         # Verify we're not accidentally hitting preview server
         try:
-            preview_url = "https://auction-2026-staging.preview.emergentagent.com/api/auth/login"
+            preview_url = "https://kids-premium-live.preview.emergentagent.com/api/auth/login"
             async with self.session.post(preview_url, json=LIVE_CREDENTIALS) as resp:
                 # This should fail or return different response than live server
                 if resp.status == 200:
