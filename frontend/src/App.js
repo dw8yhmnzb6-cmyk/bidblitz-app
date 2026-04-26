@@ -161,6 +161,7 @@ import ContractsPage from "./pages/ContractsPage";
 import UtilitiesHubPage from "./pages/UtilitiesHubPage";
 import EngageHubPage from "./pages/EngageHubPage";
 import ViralHubPage from "./pages/ViralHubPage";
+import FieldAgentPortalPage from "./pages/FieldAgentPortalPage";
 
 // Car Rental Module
 import {
@@ -502,6 +503,8 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FoodPage onNavigate={handleNavigate} />;
       case "/driver-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DriverDashboardPage onNavigate={handleNavigate} />;
+      case "/field-agent-portal":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FieldAgentPortalPage onNavigate={handleNavigate} />;
       case "/restaurant-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RestaurantDashboardPage onNavigate={handleNavigate} />;
       case "/child-mode":

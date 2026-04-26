@@ -597,6 +597,10 @@ app.include_router(viral_router)
 # Push Notifications
 app.include_router(push_notifications_router)
 
+# Directory (Lokales Telefonbuch)
+from routes.directory import router as directory_router
+app.include_router(directory_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
