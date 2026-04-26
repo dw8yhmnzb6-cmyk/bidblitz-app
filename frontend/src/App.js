@@ -779,6 +779,40 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TwoFactorSettingsPage onBack={() => handleNavigate("/settings")} />;
       
       default:
+        // ── Admin sub-routes catch-all: map /admin/{slug} → AdminPage with tab
+        if (currentPath.startsWith("/admin/")) {
+          if (user.role !== "admin") return <HomePage {...homeProps} />;
+          const slug = currentPath.replace("/admin/", "");
+          // Map AdminPanelPage paths → AdminPage tab IDs
+          const ADMIN_TAB_MAP = {
+            // Customers & Roles
+            "users": "users", "customers": "users", "enterprise": "users",
+            "kyc": "verification",
+            "managers": "roles", "employees": "roles", "influencer": "roles",
+            "auto-ads": "promos", "partner-credit": "merchant-fees",
+            // Partners
+            "merchants": "merchants", "partner-portal": "merchants", "applications": "merchants",
+            // Auctions
+            "products": "auctions", "standard-auctions": "auctions", "vip-auctions": "auctions",
+            "voucher-auctions": "auctions", "bot-system": "auctions", "winner-control": "auctions",
+            // Analytics
+            "analytics": "analytics", "product-analysis": "analytics",
+            "user-analysis": "analytics", "revenue-analysis": "analytics",
+            // Promos
+            "merchant-coupons": "promos", "bidder-coupons": "promos",
+            "partner-coupons": "promos", "discount-codes": "promos",
+            "marketing": "promos", "email-marketing": "promos",
+            // Finance
+            "finance": "transactions", "transactions": "transactions",
+            "deposits": "transactions", "withdrawals": "transactions",
+            "fees": "merchant-fees",
+            // Other
+            "compliance": "verification", "moderation": "verification",
+            "logs": "logs", "system": "settings", "settings": "settings",
+          };
+          const tab = ADMIN_TAB_MAP[slug] || "overview";
+          return <AdminPage onNavigate={handleNavigate} defaultTab={tab} />;
+        }
         // Handle dynamic routes
         if (currentPath.startsWith("/car-rental/vendor/bookings/")) {
           const bId = currentPath.split("/car-rental/vendor/bookings/")[1];

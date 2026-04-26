@@ -335,10 +335,11 @@ const tabs = [
   { id: "gutscheine", key: "Gutscheine", icon: Ticket },
 ];
 
-export const AdminPage = ({ onNavigate }) => {
+export const AdminPage = ({ onNavigate, defaultTab }) => {
   const user = useUser();
   const { t } = useI18n();
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(defaultTab || "overview");
+  useEffect(() => { if (defaultTab) setTab(defaultTab); }, [defaultTab]);
   const [showGridMenu, setShowGridMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
