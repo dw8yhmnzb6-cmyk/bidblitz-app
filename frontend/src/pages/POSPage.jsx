@@ -15,6 +15,7 @@ import {
   AlertTriangle, Edit3, Download, RefreshCw, MessageCircle, Send, Check as CheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { printReceipt, isBluetoothSupported } from "../utils/escposPrinter";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -877,19 +878,39 @@ function PayBtn({ icon: Icon, label, active, onClick, testid }) {
 }
 
 function SaleCompleteCard({ sale, onClose }) {
+  const [printing, setPrinting] = useState(false);
+  const print = async () => {
+    setPrinting(true);
+    try {
+      // Optional: fetch full receipt for merchant + store info
+      const r = await apiCall(`/api/pos/receipts/${sale.receipt_id}`);
+      await printReceipt(r.sale, r.merchant, r.store);
+      toast.success("Beleg gedruckt");
+    } catch (e) {
+      toast.error("Druck fehlgeschlagen: " + e.message);
+    }
+    setPrinting(false);
+  };
+  const btSupported = "bluetooth" in navigator;
   return (
     <Card title="✓ Zahlung erfolgreich" testid="pos-sale-success">
       <div className="text-center py-3">
         <Check size={36} className="text-[#10B981] mx-auto mb-2" />
         <p className="text-2xl font-black mb-1">€{sale.total.toFixed(2)}</p>
         <p className="text-[11px] text-white/60">Beleg: {sale.receipt_id}</p>
-        <div className="grid grid-cols-2 gap-2 mt-3">
+        <div className="grid grid-cols-3 gap-2 mt-3">
           <a href={`${API}/api/pos/receipts/${sale.receipt_id}/pdf`} target="_blank" rel="noopener noreferrer"
             className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1">
             <Download size={12} /> PDF
           </a>
+          <button onClick={print} disabled={!btSupported || printing}
+            className="py-2 rounded-lg bg-white/10 text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-30"
+            title={btSupported ? "ESC/POS Bluetooth-Drucker" : "Web Bluetooth nicht unterstützt"}
+            data-testid="pos-print-bt">
+            {printing ? <Loader2 size={12} className="animate-spin" /> : "🖨 BT"}
+          </button>
           <button onClick={onClose} className="py-2 rounded-lg bg-[#00C2FF] text-black text-[11px] font-bold">
-            Neu starten
+            Neu
           </button>
         </div>
       </div>
@@ -1508,6 +1529,49 @@ function AdminTab() {
           </div>
         ))}
         {failed.length === 0 && <p className="text-[11px] text-white/40 text-center py-3">Keine Fehler</p>}
+      </Card>
+
+      {/* Audit-Log Suche */}
+      <Card title="Audit-Log Suche" testid="pos-audit-search">
+        <div className="grid grid-cols-12 gap-2 mb-3">
+          <input value={auditQuery} onChange={(e) => setAuditQuery(e.target.value)} placeholder="Such-Text (action, actor)"
+            className="col-span-7 px-2 py-2 bg-white/5 border border-white/10 rounded text-[11px]" data-testid="pos-audit-q" />
+          <select value={auditAction} onChange={(e) => setAuditAction(e.target.value)}
+            className="col-span-3 px-2 py-2 bg-white/5 border border-white/10 rounded text-[11px]">
+            <option value="">Alle Actions</option>
+            {auditActions.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={auditDays} onChange={(e) => setAuditDays(parseInt(e.target.value))}
+            className="col-span-2 px-2 py-2 bg-white/5 border border-white/10 rounded text-[11px]">
+            <option value="1">1 Tag</option>
+            <option value="7">7 Tage</option>
+            <option value="30">30 Tage</option>
+            <option value="90">90 Tage</option>
+            <option value="365">1 Jahr</option>
+          </select>
+        </div>
+        {auditTop.length > 0 && (
+          <div className="flex gap-1 overflow-x-auto mb-2 pb-1">
+            {auditTop.slice(0, 8).map((t) => (
+              <button key={t.action} onClick={() => setAuditAction(t.action)}
+                className="px-2 py-0.5 rounded-full text-[9px] whitespace-nowrap bg-white/5 hover:bg-white/10">
+                {t.action} ({t.count})
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="max-h-64 overflow-y-auto">
+          {auditLog.map((l) => (
+            <div key={l.audit_id} className="py-1.5 border-b border-white/5 last:border-0 text-[10px]">
+              <div className="flex justify-between">
+                <span className="font-bold text-[#00C2FF]">{l.action}</span>
+                <span className="text-white/40">{new Date(l.ts).toLocaleString()}</span>
+              </div>
+              <p className="text-white/60 truncate">{l.actor_id} · {JSON.stringify(l.ref)}</p>
+            </div>
+          ))}
+          {auditLog.length === 0 && <p className="text-[11px] text-white/40 text-center py-3">Keine Treffer</p>}
+        </div>
       </Card>
     </div>
   );

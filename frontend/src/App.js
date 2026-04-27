@@ -74,6 +74,7 @@ const AdminPanelFullPage = lazy(() => import("./pages/AdminPanelFullPage"));
 const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
+const SelfCheckoutPage = lazy(() => import("./pages/SelfCheckoutPage"));
 const BlitzTransferPage = lazy(() => import("./pages/BlitzTransferPage"));
 const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
 const BlitzMinePage = lazy(() => import("./pages/BlitzMinePage"));
