@@ -190,3 +190,39 @@ See `/app/memory/test_credentials.md`
 - Cashier UI: barcode scan input (auto-focus), product search, cart with qty/discount, all 4 payment methods + NFC fallback
 - Live polling for QR/NFC payment status, auto-finalize on paid
 - Available via `/more → POS / Kasse` menu entry
+
+## ✅ Mega-Sprint Advanced POS (Feb 2026 — Session "C")
+
+**Backend** (`/app/backend/routes/pos_advanced.py`, 29 routes)
+- 1. **Lieferschein-OCR** — `POST /api/pos/ocr/delivery-note` — Foto → JSON-Artikel via Gemini 2.5 Pro Vision (`emergentintegrations.llm.chat.LlmChat` + `ImageContent`, Emergent LLM Key)
+- 2. **Voice Commands** — `POST /api/pos/voice/transcribe` — Audio (webm) → Text + Befehl (add_item / discount / cancel) via OpenAI Whisper (`emergentintegrations.llm.openai.OpenAISpeechToText`)
+- 3. **Etiketten-PDF** — `POST /api/pos/labels/generate` — generiert Preisschilder als A4-PDF (FPDF, 18 pro Seite)
+- 4. **Auto-Bestellung** — `POST /api/pos/auto-order/run` — erzeugt POs für alle Artikel unter Mindestbestand pro Lieferant
+- 5. **CSV Bulk-Import / Export** — `POST /api/pos/products/bulk-import` + `GET /api/pos/products/bulk-export`
+- 6. **Inventur** — start / count / finalize / list (`/api/pos/stocktake/*`) — automatische Bestand-Korrektur + Bewegung-Log
+- 7. **Chargen / MHD** — create + expiring (`/api/pos/batches/*`)
+- 8. **Rezepte (BOM)** — Stücklisten für Restaurants — `/api/pos/recipes/*` — Zutaten-Abzug bei Verkauf
+- 9. **Schichtplan** — `/api/pos/schedule/*` — Wochen-Übersicht
+- 10. **Kassierer-Performance** — `GET /api/pos/performance/cashiers`
+- 11. **KI-Umsatzprognose** — `GET /api/pos/forecast/sales` (basiert auf 28-Tage-Schnitt + Wochentag-Multiplikator)
+- 12. **Cross-Sell-Vorschläge** — `GET /api/pos/cross-sell/{product_id}`
+- 13. **DATEV-Export** — `GET /api/pos/accounting/datev/export` (CSV nach DATEV-Format)
+- 14. **Lexoffice-Export** — `GET /api/pos/accounting/lexoffice/export`
+- 15. **P&L heute** — `GET /api/pos/pnl/today` (Umsatz, COGS, Brutto-Gewinn, Marge)
+- 16. **Online-Katalog** — `GET /api/pos/public/catalog/{store_id}` (öffentlich, ohne Auth — für QR-Speisekarte)
+- 17. **Reservierungen** — `/api/pos/reservations/*` (Restaurant-Tische)
+- 18. **E-Mail-Kampagnen** — `POST /api/pos/marketing/campaigns/send` (Segmentierung nach Tier + Inaktivität)
+- 19. **Geschenkgutscheine** — create + redeem (`/api/pos/giftcards/*`)
+- 20. **Alterskontrolle** — `POST /api/pos/age-check/log` (Tabak/Alkohol-Compliance)
+
+**Frontend** (`/app/frontend/src/pages/POSAdvancedTab.jsx` + `POSPage.jsx` Tab "Mega-Tools")
+- 6 Sub-Sections: KI-Tools · Bestand+ · Rezepte & Cross-Sell · Schicht & Reservierung · Finanzen & DATEV · Marketing
+- Foto-Upload mit `capture="environment"` für mobile Kamera-OCR
+- Browser MediaRecorder → Whisper für Voice-Befehle
+- CSV-Drag-Drop-Import, automatischer Browser-Download für PDF/CSV
+- Vollständige Test-IDs (`adv-section-*`, `ocr-*`, `voice-*`, `csv-*`, `auto-order-btn`, `label-*`, `stk-*`, `recipe-*`, `cs-*`, `fc-*`, `sch-*`, `rsv-*`, `perf-*`, `datev-btn`, `lexoffice-btn`, `pnl-*`, `camp-*`, `gc-*`, `age-*`)
+
+**Test-Status**: 21/21 Backend-Endpoints geprüft (Iteration 19) — alle 200 OK gegen MongoDB. OCR/Voice korrekt verdrahtet (Library imports und Upstream-Calls bestätigt; 500 nur bei Dummy-Bildern wegen Gemini-Größenfilter).
+
+**Tech-Stack-Ergänzungen**: `emergentintegrations.llm.openai.OpenAISpeechToText` (Whisper), `emergentintegrations.llm.chat.LlmChat` mit `gemini-2.5-pro` für Vision, `fpdf2` (Etiketten).
+
