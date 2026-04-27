@@ -763,3 +763,113 @@ async def log_age_check(req: AgeCheckLog, request: Request):
                                          "minimum_age": req.minimum_age, "method": req.method,
                                          "created_at": now_iso()})
     return {"ok": True}
+
+
+
+# ── 20. DEMO-MODUS — One-click sample data ────────────────────────────
+@router.post("/demo/seed")
+async def seed_demo_data(request: Request, store_id: str):
+    """Erzeugt mit einem Klick: Test-Lieferant, 3 Demo-Produkte, Test-Gutschein,
+    Test-Inventur, Test-Rezept, Test-Reservierung, Test-Schicht.
+    Alle mit dem Präfix DEMO- damit Händler sie leicht löschen können."""
+    user = await get_current_user(request)
+    store = await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    merchant_id = store["merchant_id"]
+    created: Dict[str, Any] = {}
+
+    # 1. Lieferant
+    sup_id = short_id("SUP", 10)
+    await db.pos_suppliers.insert_one({
+        "supplier_id": sup_id, "merchant_id": merchant_id,
+        "name": "DEMO Lieferant GmbH", "email": "demo@lieferant.test",
+        "phone": "+49 30 12345678", "lead_days": 3, "active": True,
+        "created_at": now_iso(),
+    })
+    created["supplier_id"] = sup_id
+
+    # 2. Produkte
+    products = [
+        {"name": "DEMO Coca-Cola 1L", "barcode": "DEMO-5449000054227", "price": 2.49, "purchase_price": 1.20, "stock": 50, "minimum_stock": 10, "tax_rate": 0.19, "unit": "Stk", "category": "Getränke"},
+        {"name": "DEMO Brötchen", "barcode": "DEMO-1000000001", "price": 0.49, "purchase_price": 0.18, "stock": 80, "minimum_stock": 20, "tax_rate": 0.07, "unit": "Stk", "category": "Backwaren"},
+        {"name": "DEMO Burger Menü", "barcode": "DEMO-2000000001", "price": 9.90, "purchase_price": 3.50, "stock": 999, "minimum_stock": 0, "tax_rate": 0.19, "unit": "Stk", "category": "Speisen"},
+    ]
+    pids = []
+    for p in products:
+        pid = short_id("PRD", 10)
+        await db.pos_products.insert_one({
+            "product_id": pid, "merchant_id": merchant_id, "store_id": store_id,
+            "supplier_id": sup_id, "track_stock": True, "active": True,
+            "created_at": now_iso(), **p,
+        })
+        pids.append(pid)
+    created["product_ids"] = pids
+
+    # 3. Gutschein
+    gc_code = secrets.token_urlsafe(8).upper()[:10]
+    gc_id = short_id("GFT", 10)
+    await db.pos_giftcards.insert_one({
+        "giftcard_id": gc_id, "code": gc_code, "merchant_id": merchant_id,
+        "initial_amount": 25.0, "balance": 25.0,
+        "recipient_name": "DEMO Kunde", "status": "active",
+        "issued_by": str(user["_id"]), "issued_at": now_iso(),
+    })
+    created["giftcard"] = {"id": gc_id, "code": gc_code, "amount": 25.0}
+
+    # 4. Inventur
+    stk_id = short_id("STK", 10)
+    await db.pos_stocktakes.insert_one({
+        "stocktake_id": stk_id, "store_id": store_id, "name": "DEMO Inventur",
+        "status": "open", "counts": [], "started_by": str(user["_id"]),
+        "started_at": now_iso(),
+    })
+    created["stocktake_id"] = stk_id
+
+    # 5. Rezept (Burger Menü = 1 Brötchen + 1 Cola)
+    if len(pids) >= 3:
+        await db.pos_recipes.insert_one({
+            "product_id": pids[2], "merchant_id": merchant_id,
+            "ingredients": [
+                {"product_id": pids[1], "quantity": 1},
+                {"product_id": pids[0], "quantity": 1},
+            ],
+            "created_at": now_iso(),
+        })
+        created["recipe_for"] = pids[2]
+
+    # 6. Reservierung (heute Abend)
+    rsv_id = short_id("RSV", 10)
+    tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d 19:00")
+    await db.pos_reservations.insert_one({
+        "reservation_id": rsv_id, "store_id": store_id, "merchant_id": merchant_id,
+        "guest_name": "DEMO Familie Müller", "phone": "+49 170 1234567",
+        "when": tomorrow, "party_size": 4, "notes": "Fensterplatz",
+        "status": "confirmed", "created_at": now_iso(),
+    })
+    created["reservation_id"] = rsv_id
+
+    # 7. Schicht (heute)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await db.pos_schedule.insert_one({
+        "store_id": store_id, "user_id": str(user["_id"]),
+        "date": today, "start": "09:00", "end": "17:00",
+        "role": "cashier", "created_at": now_iso(),
+    })
+    created["schedule_today"] = True
+
+    await _audit(str(user["_id"]), "demo_seed", {"store_id": store_id, **created})
+    return {"ok": True, "message": "Demo-Daten erstellt — alle mit Präfix DEMO", "created": created}
+
+
+@router.delete("/demo/clear")
+async def clear_demo_data(request: Request, store_id: str):
+    """Löscht ALLE Demo-Daten (Präfix DEMO) für diese Filiale."""
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    deleted = {
+        "products": (await db.pos_products.delete_many({"store_id": store_id, "name": {"$regex": "^DEMO "}})).deleted_count,
+        "suppliers": (await db.pos_suppliers.delete_many({"name": {"$regex": "^DEMO "}})).deleted_count,
+        "giftcards": (await db.pos_giftcards.delete_many({"recipient_name": {"$regex": "^DEMO "}})).deleted_count,
+        "stocktakes": (await db.pos_stocktakes.delete_many({"store_id": store_id, "name": {"$regex": "^DEMO "}})).deleted_count,
+        "reservations": (await db.pos_reservations.delete_many({"store_id": store_id, "guest_name": {"$regex": "^DEMO "}})).deleted_count,
+    }
+    return {"ok": True, "deleted": deleted}

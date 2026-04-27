@@ -31,6 +31,7 @@ async function api(path, { method = "GET", body, raw = false, formData = null } 
 }
 
 const SECTIONS = [
+  { id: "demo", label: "Demo-Modus", icon: Sparkles },
   { id: "ki", label: "KI-Tools", icon: Sparkles },
   { id: "stock", label: "Bestand+", icon: Layers },
   { id: "menu", label: "Rezepte & Cross-Sell", icon: ChefHat },
@@ -77,7 +78,7 @@ const Input = ({ value, onChange, placeholder, type = "text", testId }) => (
 );
 
 export default function POSAdvancedTab({ storeId, registerId }) {
-  const [section, setSection] = useState("ki");
+  const [section, setSection] = useState("demo");
 
   if (!storeId) {
     return <div className="text-white/60 text-[12px] text-center py-10">Bitte erst eine Filiale wählen.</div>;
@@ -103,6 +104,7 @@ export default function POSAdvancedTab({ storeId, registerId }) {
         ))}
       </div>
 
+      {section === "demo" && <DemoSection storeId={storeId} />}
       {section === "ki" && <KISection storeId={storeId} registerId={registerId} />}
       {section === "stock" && <StockSection storeId={storeId} />}
       {section === "menu" && <MenuSection storeId={storeId} />}
@@ -110,6 +112,67 @@ export default function POSAdvancedTab({ storeId, registerId }) {
       {section === "money" && <MoneySection storeId={storeId} />}
       {section === "marketing" && <MarketingSection storeId={storeId} />}
     </div>
+  );
+}
+
+// ─────────────────── 0. DEMO MODE — One-Click Sample Data
+function DemoSection({ storeId }) {
+  const [busy, setBusy] = useState("");
+  const [result, setResult] = useState(null);
+
+  const seed = async () => {
+    setBusy("seed");
+    try {
+      const d = await api(`/api/pos/demo/seed?store_id=${storeId}`, { method: "POST" });
+      setResult(d.created);
+      toast.success("Demo-Daten erstellt!");
+    } catch (err) { toast.error(err.message); } finally { setBusy(""); }
+  };
+
+  const clear = async () => {
+    if (!window.confirm("ALLE Demo-Daten (Präfix DEMO) löschen?")) return;
+    setBusy("clear");
+    try {
+      const d = await api(`/api/pos/demo/clear?store_id=${storeId}`, { method: "DELETE" });
+      const total = Object.values(d.deleted).reduce((a, b) => a + b, 0);
+      toast.success(`${total} Demo-Einträge gelöscht`);
+      setResult(null);
+    } catch (err) { toast.error(err.message); } finally { setBusy(""); }
+  };
+
+  return (
+    <>
+      <Card title="Demo-Daten mit einem Klick anlegen" icon={Sparkles}>
+        <p className="text-[10px] text-white/50 mb-3 leading-relaxed">
+          Perfekt für den ersten Test: erzeugt sofort einen Test-Lieferanten, 3 Demo-Produkte
+          (Cola, Brötchen, Burger-Menü), einen 25 €-Gutschein, eine offene Inventur,
+          ein Rezept (Burger = Brötchen + Cola), eine Reservierung für morgen 19:00 Uhr
+          und eine Schicht für heute. Alles mit Präfix <span className="text-[#00C2FF] font-bold">DEMO</span> —
+          jederzeit löschbar.
+        </p>
+        <div className="flex gap-2">
+          <Btn onClick={seed} loading={busy === "seed"} testId="demo-seed-btn">
+            <Sparkles size={12} /> Demo-Daten erstellen
+          </Btn>
+          <Btn onClick={clear} loading={busy === "clear"} variant="secondary" testId="demo-clear-btn">
+            Alle DEMO-Einträge löschen
+          </Btn>
+        </div>
+        {result && (
+          <div className="mt-3 bg-black/30 rounded-lg p-3 text-[10px] space-y-1" data-testid="demo-result">
+            <p className="text-[#10B981] font-bold">✓ Erstellt:</p>
+            <p className="text-white/70">• Lieferant: <span className="text-white">{result.supplier_id}</span></p>
+            <p className="text-white/70">• Produkte: <span className="text-white">{result.product_ids?.length || 0}</span> (IDs: {(result.product_ids || []).join(", ")})</p>
+            <p className="text-white/70">• Gutschein: <span className="text-[#00C2FF] font-bold">{result.giftcard?.code}</span> ({result.giftcard?.amount} €)</p>
+            <p className="text-white/70">• Offene Inventur: <span className="text-white">{result.stocktake_id}</span></p>
+            <p className="text-white/70">• Rezept verknüpft mit Produkt: <span className="text-white">{result.recipe_for}</span></p>
+            <p className="text-white/70">• Reservierung: <span className="text-white">{result.reservation_id}</span></p>
+            <p className="text-white/70">• Schicht für heute angelegt</p>
+            <p className="text-white/40 mt-2 italic">Tipp: wechsle in die Tabs „Bestand+", „Rezepte" oder „Schicht & Reservierung" um die Daten zu sehen.</p>
+          </div>
+        )}
+      </Card>
+    </>
   );
 }
 

@@ -226,3 +226,10 @@ See `/app/memory/test_credentials.md`
 
 **Tech-Stack-Ergänzungen**: `emergentintegrations.llm.openai.OpenAISpeechToText` (Whisper), `emergentintegrations.llm.chat.LlmChat` mit `gemini-2.5-pro` für Vision, `fpdf2` (Etiketten).
 
+## ✅ Demo-Modus (One-Click Onboarding)
+
+- `POST /api/pos/demo/seed?store_id=…` — erzeugt mit einem Klick: 1 Test-Lieferant, 3 Demo-Produkte (Cola, Brötchen, Burger-Menü), 25 €-Gutschein, offene Inventur, Rezept (Burger = Brötchen + Cola), Reservierung morgen 19:00, Schicht heute. Alle mit Präfix `DEMO ` für leichte Identifikation.
+- `DELETE /api/pos/demo/clear?store_id=…` — löscht ALLE DEMO-Einträge der Filiale auf einen Schlag.
+- Frontend: neue Sub-Section "Demo-Modus" (Default-Tab beim Öffnen von Mega-Tools) mit `demo-seed-btn` + `demo-clear-btn` und Live-Result-Anzeige.
+- E2E getestet: Seed liefert alle 7 Entitäten, Clear räumt sauber auf.
+
