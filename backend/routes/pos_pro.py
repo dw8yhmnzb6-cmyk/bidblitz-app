@@ -43,6 +43,64 @@ log = logging.getLogger("bidblitz.pos.pro")
 # ═══════════════════════════════════════════════════════════════════════
 
 
+@router.post("/tse/sign-sale/{sale_id}")
+async def sign_sale_tse(sale_id: str, request: Request):
+    """KassenSichV-konforme TSE-Signatur für einen Sale (pos_sales).
+    Ergänzt den pos_extended /tse/sign-payment Flow (der auf pos_payments arbeitet)
+    und schreibt zusätzlich einen unveränderbaren GoBD-Archiv-Eintrag."""
+    user = await get_current_user(request)
+    merchant = await _require_merchant(user)
+    sale = await db.pos_sales.find_one({"sale_id": sale_id, "merchant_id": merchant["merchant_id"]})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale nicht gefunden")
+    if sale.get("tse_signature"):
+        return {"ok": True, "already_signed": True,
+                "tse": {k: sale[k] for k in sale if k.startswith("tse_")}}
+    cfg = await db.pos_tse_config.find_one({"merchant_id": merchant["merchant_id"]})
+    if not cfg:
+        raise HTTPException(status_code=400,
+                            detail="TSE nicht konfiguriert. /api/pos/tse/configure aufrufen.")
+    serial = cfg.get("serial", "NO-TSE")
+    last = await db.pos_sales.find_one(
+        {"merchant_id": merchant["merchant_id"], "tse_signature": {"$exists": True}},
+        sort=[("paid_at", -1)],
+    )
+    prev_sig = last["tse_signature"] if last else "GENESIS"
+    counter = await db.pos_tse_counter.find_one_and_update(
+        {"merchant_id": merchant["merchant_id"]},
+        {"$inc": {"counter": 1}},
+        upsert=True, return_document=True,
+    )
+    txn = (counter or {}).get("counter", 1)
+    log_time = now_iso()
+    payload = (
+        f"{serial}|{sale_id}|{sale.get('total', 0):.2f}|"
+        f"{sale.get('vat_19', 0):.2f}|{sale.get('vat_7', 0):.2f}|"
+        f"{prev_sig}|{txn}|{log_time}"
+    )
+    sig = hashlib.sha256(payload.encode()).hexdigest()
+    qr_data = f"V0;{txn};Kassenbeleg-V1;Beleg^{sale.get('total', 0):.2f}^Bar:{sale.get('total', 0):.2f};{log_time};{sig[:32]}"
+    update = {
+        "tse_serial": serial,
+        "tse_signature": sig,
+        "tse_signature_counter": txn,
+        "tse_log_time": log_time,
+        "tse_qr_data": qr_data,
+        "tse_signed_at": log_time,
+    }
+    await db.pos_sales.update_one({"sale_id": sale_id}, {"$set": update})
+    await db.pos_gobd_archive.insert_one({
+        "archive_id": short_id("GBD", 14),
+        "merchant_id": merchant["merchant_id"],
+        "sale_id": sale_id,
+        "snapshot": {k: v for k, v in sale.items() if k != "_id"},
+        "tse": update,
+        "archived_at": log_time,
+        "retention_until": (datetime.now(timezone.utc) + timedelta(days=365 * 10)).isoformat(),
+    })
+    return {"ok": True, "tse": update}
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # b) GOBD ARCHIVE
 # ═══════════════════════════════════════════════════════════════════════
@@ -52,8 +110,12 @@ async def gobd_list(request: Request, year: int, month: Optional[int] = None):
     user = await get_current_user(request)
     merchant = await _require_merchant(user)
     start = datetime(year, month or 1, 1, tzinfo=timezone.utc)
-    end = datetime(year + (1 if not month and 12 == 12 else 0), (month or 12) + 1 if (month or 12) < 12 else 1,
-                   1, tzinfo=timezone.utc) if month else datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+    if month:
+        next_month = month + 1 if month < 12 else 1
+        next_year = year if month < 12 else year + 1
+        end = datetime(next_year, next_month, 1, tzinfo=timezone.utc)
+    else:
+        end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
     items = await db.pos_gobd_archive.find({
         "merchant_id": merchant["merchant_id"],
         "archived_at": {"$gte": start.isoformat(), "$lt": end.isoformat()},

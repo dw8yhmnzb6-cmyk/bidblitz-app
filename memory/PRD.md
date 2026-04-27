@@ -233,3 +233,45 @@ See `/app/memory/test_credentials.md`
 - Frontend: neue Sub-Section "Demo-Modus" (Default-Tab beim Öffnen von Mega-Tools) mit `demo-seed-btn` + `demo-clear-btn` und Live-Result-Anzeige.
 - E2E getestet: Seed liefert alle 7 Entitäten, Clear räumt sauber auf.
 
+## ✅ POS Pro Suite — 16 Production-Features (Feb 2026 — Session "Alles")
+
+**Backend** (`/app/backend/routes/pos_pro.py`, 36 routes)
+
+**Compliance / DE-Pflicht:**
+- TSE Sign-Sale — `POST /api/pos/tse/sign-sale/{sale_id}` — KassenSichV-konforme Signatur jedes Bons mit verkettetem Hash + Counter + QR-Daten
+- GoBD-Archiv — `GET /api/pos/gobd/archive/list?year=&month=` + `GET /api/pos/gobd/integrity-check` (10-Jahre-Aufbewahrung, Compliance-Rate-Berechnung)
+
+**Restaurant-Killer-Features:**
+- KDS Stations — `/api/pos/kds/stations/*` + `/api/pos/kds/orders/*` (Küche/Bar/Pizza-Stationen mit Auto-Routing nach Kategorie)
+- QR-Tisch-Bestellung — `POST /api/pos/tables/{id}/qr-enable` + `GET /api/pos/public/order/{qr_token}` + `POST /api/pos/public/order/submit` (komplett ohne Auth, KDS-Auto-Routing)
+- Pfandsystem — `/api/pos/deposits/register|return|outstanding` (Mehrweg-Tracking)
+
+**KI & Automation:**
+- KI-Chat-Assistent für Händler — `POST /api/pos/assistant/ask` mit gpt-5.1 + Live-DB-Kontext (Umsatz heute, niedriger Bestand etc.)
+- Produkt-Bilderkennung ohne Barcode — `POST /api/pos/products/recognize` mit Gemini 2.5 Pro Vision
+- Dynamic Pricing — `/api/pos/pricing/rules/*` (Happy Hour, Zeitfenster, Stoßzeiten-Aufschlag, Lagerstand-basiert)
+
+**Operations:**
+- Kunden-Display — `GET /api/pos/customer-display/{register_id}` (Zweit-Bildschirm mit Live-Cart, ohne Auth)
+- Mitarbeiter-Stempeluhr — `/api/pos/timeclock/punch|me|store` (in/out/break_start/break_end)
+- Trinkgeld-Pool — `/api/pos/tips/add|pool/distribute|my-payouts` (gleichmäßige Verteilung an eingestempelte Mitarbeiter pro Tag)
+
+**Plattform:**
+- Public API + Webhooks — `/api/pos/api-keys/*` + `/api/pos/webhooks/*` (HMAC-SHA256-Signatur, async-Delivery via BackgroundTasks)
+
+**Frontend**
+- `/app/frontend/src/pages/POSProTab.jsx` (~600 Zeilen) — neuer Tab "Pro / Compliance" in POSPage mit 9 Sub-Sections
+- `/app/frontend/src/pages/KDSPage.jsx` — Standalone Kitchen-Display für Tablets unter `/kds/{station_id}` (Auto-Refresh 5s, Tap → Status)
+- `/app/frontend/src/pages/CustomerDisplayPage.jsx` — Zweit-Bildschirm unter `/customer-display/{register_id}` (Live-Cart-Polling)
+- `/app/frontend/src/pages/PublicTableOrderPage.jsx` — Gast-Self-Service-Bestellung unter `/order/{qr_token}` (kein Login, KDS-Auto-Routing)
+- App.js: Prefix-basiertes Dynamic Routing für `/kds/`, `/customer-display/`, `/order/`
+
+**Test-Status**: 19/19 Backend-Tests bestanden (Iteration 20 nach Sign-Sale-Fix). End-to-End validiert: Tisch-QR-Bestellung mit echter Auto-KDS-Verteilung, TSE-Signatur erzeugt 100% Compliance-Rate auf gesigneten Sales, KI-Assistent antwortet auf Deutsch mit Live-Kontextdaten.
+
+**Bestehende Module (NICHT neu, schon im Codebase, nur referenziert):**
+- TSE-Configure: `pos_extended.py` `/tse/configure`, `/tse/sign-payment`, `/tse/status`
+- Loyalty: `pos_extended.py` `/loyalty/*`
+- Z-Bon/DSFinV-K: `pos_extended.py` `/zbon/*`
+- Push: `web_push.py`
+- Referral: `referral.py` / `referral_system.py`
+
