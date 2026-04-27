@@ -165,6 +165,7 @@ from routes.pos_chat import router as pos_chat_router
 from routes.pos_admin_self import router as pos_admin_self_router
 from routes.pos_extended import router as pos_extended_router
 from routes.pos_advanced import router as pos_advanced_router
+from routes.pos_pro import router as pos_pro_router
 from routes.mining import router as mining_router
 from routes.mining_phase2 import router as mining_phase2_router
 from routes.blitz_mine import router as blitz_mine_router
@@ -252,6 +253,7 @@ app.include_router(pos_chat_router)
 app.include_router(pos_admin_self_router)
 app.include_router(pos_extended_router)
 app.include_router(pos_advanced_router)
+app.include_router(pos_pro_router)
 app.include_router(mining_router)
 app.include_router(mining_phase2_router)
 app.include_router(blitz_mine_router)

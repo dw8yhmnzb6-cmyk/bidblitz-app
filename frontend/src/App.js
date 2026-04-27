@@ -74,6 +74,9 @@ const AdminPanelFullPage = lazy(() => import("./pages/AdminPanelFullPage"));
 const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
+const KDSPage = lazy(() => import("./pages/KDSPage"));
+const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
+const PublicTableOrderPage = lazy(() => import("./pages/PublicTableOrderPage"));
 const SelfCheckoutPage = lazy(() => import("./pages/SelfCheckoutPage"));
 const BlitzTransferPage = lazy(() => import("./pages/BlitzTransferPage"));
 const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
@@ -384,6 +387,16 @@ function AppContent() {
         });
       },
     };
+    // ─── Dynamic path handlers (must run before switch since switch uses exact match)
+    if (currentPath.startsWith("/kds/")) {
+      return <KDSPage stationId={currentPath.split("/")[2]} />;
+    }
+    if (currentPath.startsWith("/customer-display/")) {
+      return <CustomerDisplayPage registerId={currentPath.split("/")[2]} />;
+    }
+    if (currentPath.startsWith("/order/")) {
+      return <PublicTableOrderPage qrToken={currentPath.split("/")[2]} />;
+    }
     switch (currentPath) {
       case "/":
         return <HomePage {...homeProps} />;
