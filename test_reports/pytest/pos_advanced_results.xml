@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="22" time="14.092" timestamp="2026-04-27T20:31:58.638381+00:00" hostname="agent-env-74eb99d3-918d-406b-9feb-8bbaf638e1c7"><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_bulk_export" time="1.350" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_bulk_import" time="0.054" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_auto_order_run" time="0.055" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_labels_generate" time="0.060" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_stocktake_flow" time="0.176" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_batches" time="0.146" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_recipes" time="0.118" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_schedule" time="0.122" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_performance_cashiers" time="0.067" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_forecast_sales" time="0.055" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_cross_sell" time="0.053" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_datev_export" time="0.056" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_lexoffice_export" time="0.053" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_pnl_today" time="0.058" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_public_catalog_no_auth" time="0.133" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_reservations" time="0.121" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_giftcards" time="0.118" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_marketing_campaign" time="0.066" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAdvanced" name="test_age_check_requires_cart" time="0.065" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAI" name="test_ocr_delivery_note" time="5.406" /><testcase classname="backend.tests.test_pos_advanced.TestPOSAI" name="test_voice_transcribe" time="5.298" /><testcase classname="backend.tests.test_pos_advanced" name="test_openapi_mounts_pos_advanced" time="0.316"><failure message="requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">/root/.venv/lib/python3.11/site-packages/requests/models.py:976: in json
+    return complexjson.loads(self.text, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+backend/tests/test_pos_advanced.py:300: in test_openapi_mounts_pos_advanced
+    paths = r.json().get("paths", {})
+            ^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/models.py:980: in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+E   requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</failure></testcase></testsuite></testsuites>

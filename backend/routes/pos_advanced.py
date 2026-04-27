@@ -38,21 +38,39 @@ async def ocr_delivery_note(req: OcrRequest, request: Request):
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
         import os, re, json
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise RuntimeError("EMERGENT_LLM_KEY fehlt in .env")
         chat = LlmChat(
-            api_key=os.environ.get("EMERGENT_LLM_KEY"),
+            api_key=api_key,
             session_id=f"pos-ocr-{secrets.token_hex(4)}",
             system_message=(
-                "Du bist ein Lieferschein-Parser. Extrahiere alle Artikel als JSON: "
-                '[{"name":"Coca-Cola 1L","quantity":24,"unit_price":1.20,"total":28.80,"barcode":"5449000054227"}]. '
-                "Nur JSON ohne Erklärung."
+                "Du bist ein deutscher Lieferschein- und Rechnungs-Parser. "
+                "Extrahiere ALLE Artikelzeilen als reines JSON-Array, ohne Erklärung. "
+                "Schema: "
+                '[{"name":"Coca-Cola 1L","quantity":24,"unit_price":1.20,"total":28.80,"barcode":"5449000054227","unit":"Stk"}]. '
+                "Wenn ein Wert fehlt, nutze null. Antworte AUSSCHLIESSLICH mit dem JSON-Array."
             ),
-        ).with_model("gemini", "gemini-2.0-flash")
-        msg = UserMessage(text="Extrahiere die Artikel:", file_contents=[ImageContent(image_base64=req.image_base64)])
+        ).with_model("gemini", "gemini-2.5-pro")
+        msg = UserMessage(
+            text="Extrahiere alle Artikel aus diesem Lieferschein/Beleg.",
+            file_contents=[ImageContent(image_base64=req.image_base64)],
+        )
         result = await chat.send_message(msg)
-        m = re.search(r"\[.*\]", result, re.DOTALL)
+        text = result if isinstance(result, str) else getattr(result, "text", str(result))
+        m = re.search(r"\[.*\]", text, re.DOTALL)
         items = json.loads(m.group(0)) if m else []
     except Exception as e:
+        log.exception("OCR failed")
         raise HTTPException(status_code=500, detail=f"OCR fehlgeschlagen: {e}")
+    if req.po_id and items:
+        try:
+            await db.pos_purchase_orders.update_one(
+                {"po_id": req.po_id},
+                {"$set": {"ocr_items": items, "ocr_at": now_iso()}},
+            )
+        except Exception:
+            pass
     return {"ok": True, "items": items, "count": len(items)}
 
 
@@ -66,17 +84,21 @@ class VoiceCommand(BaseModel):
 async def transcribe_voice(req: VoiceCommand, request: Request):
     await get_current_user(request)
     try:
-        import openai
+        from emergentintegrations.llm.openai import OpenAISpeechToText
         import os
         import base64 as b64
         import re
-        client = openai.OpenAI(api_key=os.environ.get("EMERGENT_LLM_KEY"))
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise RuntimeError("EMERGENT_LLM_KEY fehlt in .env")
         audio_bytes = b64.b64decode(req.audio_base64)
         buf = io.BytesIO(audio_bytes)
         buf.name = "voice.webm"
-        result = client.audio.transcriptions.create(model="whisper-1", file=buf, language="de")
-        text = result.text
+        stt = OpenAISpeechToText(api_key=api_key)
+        result = await stt.transcribe(file=buf, model="whisper-1", language="de", response_format="json")
+        text = getattr(result, "text", str(result))
     except Exception as e:
+        log.exception("Whisper failed")
         raise HTTPException(status_code=500, detail=f"Transcribe fehlgeschlagen: {e}")
     t = text.lower()
     cmd = {"action": "unknown"}

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { printReceipt, isBluetoothSupported } from "../utils/escposPrinter";
+import POSAdvancedTab from "./POSAdvancedTab";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -47,6 +48,7 @@ const TABS = [
   { id: "approvals", label: "Freigaben", icon: ShieldCheck },
   { id: "chat", label: "Team-Chat", icon: MessageCircle },
   { id: "reports", label: "Berichte", icon: BarChart3 },
+  { id: "advanced", label: "Mega-Tools", icon: Sparkles },
   { id: "admin", label: "Admin", icon: ShieldCheck },
 ];
 
@@ -170,6 +172,7 @@ export default function POSPage({ onBack }) {
         {tab === "approvals" && <ApprovalsTab storeId={storeId} />}
         {tab === "chat" && <ChatTab storeId={storeId} />}
         {tab === "reports" && <ReportsTab />}
+        {tab === "advanced" && <POSAdvancedTab storeId={storeId} registerId={registerId} />}
         {tab === "admin" && <AdminTab />}
       </div>
     </div>
