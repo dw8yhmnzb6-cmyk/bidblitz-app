@@ -68,7 +68,7 @@ async def create_refund_request(req: RefundRequestCreate, request: Request):
     await db.pos_refund_requests.insert_one(doc)
     doc.pop("_id", None)
 
-    # Notify managers (in-store notification)
+    # Notify managers (in-store notification + email + in-app push)
     if not auto_approve:
         await db.pos_chat_messages.insert_one({
             "msg_id": short_id("MSG", 8),
@@ -80,6 +80,52 @@ async def create_refund_request(req: RefundRequestCreate, request: Request):
             "system": True,
             "created_at": now_iso(),
         })
+
+        # Find store managers / merchant admins
+        managers = await db.pos_staff.find(
+            {"store_id": payment["store_id"], "active": True,
+             "role": {"$in": ["merchant_admin", "store_manager", "accountant"]}},
+            {"_id": 0, "user_id": 1, "user_email": 1},
+        ).to_list(50)
+
+        store = await db.pos_stores.find_one({"store_id": payment["store_id"]}, {"_id": 0})
+        store_name = store.get("name", "") if store else ""
+
+        for mgr in managers:
+            if mgr["user_id"] == user_id:
+                continue
+            # In-app notification
+            await db.notifications.insert_one({
+                "id": secrets.token_hex(8) if False else short_id("NTF", 8),
+                "user_id": mgr["user_id"],
+                "type": "pos_refund_request",
+                "title": "💸 Refund-Freigabe nötig",
+                "message": f"{user.get('name', 'Cashier')} hat €{amount:.2f} angefragt — {store_name}",
+                "data": {"request_id": rr_id, "store_id": payment["store_id"]},
+                "read": False,
+                "created_at": now_iso(),
+            })
+            # Email
+            email = mgr.get("user_email")
+            if email:
+                try:
+                    from core.email import send_email
+                    html = f"""
+                    <h2>POS Refund-Anfrage</h2>
+                    <p>Hi,</p>
+                    <p><b>{user.get('name', 'Ein Cashier')}</b> hat eine Refund-Anfrage gesendet:</p>
+                    <ul>
+                      <li>Betrag: <b>€{amount:.2f}</b></li>
+                      <li>Filiale: {store_name}</li>
+                      <li>Grund: {req.reason or '—'}</li>
+                      <li>Zahlungs-ID: {req.payment_id}</li>
+                    </ul>
+                    <p>Bitte prüfe und gib in der BidBlitz POS-App frei.</p>
+                    <p style="font-size:12px;color:#888">Anfrage-ID: {rr_id}</p>
+                    """
+                    send_email(email, f"POS Refund €{amount:.2f} — Freigabe nötig", html)
+                except Exception:
+                    pass
 
     await _audit(user_id, "refund.request", {"request_id": rr_id, "auto": auto_approve})
 
