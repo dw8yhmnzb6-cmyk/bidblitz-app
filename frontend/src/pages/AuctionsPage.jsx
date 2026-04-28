@@ -1469,7 +1469,23 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   const prevAuctionsRef = useRef([]);
   const pollRef = useRef(null);
 
-  const fetchAuctions = useCallback(async () => { try { const r = await api.getAuctions(); setAuctions(r.auctions || []); } catch {} }, []);
+  const fetchAuctions = useCallback(async () => {
+    try {
+      // Clear any cached auction data first
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        for (const key of cacheKeys) {
+          if (key.includes('auction') || key.includes('bidblitz-api')) {
+            await caches.delete(key);
+          }
+        }
+      }
+      const r = await api.getAuctions();
+      setAuctions(r.auctions || []);
+    } catch (e) {
+      console.error('Fetch auctions failed:', e);
+    }
+  }, []);
   const fetchCredits = useCallback(async () => { if (isGuest) return; try { const r = await api.getBidCredits(); setCredits(r.bid_credits || 0); } catch {} }, [isGuest]);
   const fetchWatchlist = useCallback(async () => { if (isGuest) return; try { const r = await api.getWatchlist(); setWatchlist(r.watchlist || []); } catch {} }, [isGuest]);
   const fetchNotifs = useCallback(async () => {
