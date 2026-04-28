@@ -294,8 +294,8 @@ export const api = {
   createSupportTicket: (body) => request("/api/support/tickets", { method: "POST", body: JSON.stringify(body) }),
 
   // Auctions
-  getAuctions: () => request("/api/auctions"),
-  getAuction: (auctionId) => request(`/api/auctions/${auctionId}`),
+  getAuctions: () => request(`/api/auctions?_t=${Date.now()}`),
+  getAuction: (auctionId) => request(`/api/auctions/${auctionId}?_t=${Date.now()}`),
   placeBid: (body) => request("/api/auctions/bid", { method: "POST", body: JSON.stringify(body) }),
   buyBidCredits: (body) => request("/api/auctions/buy-credits", { method: "POST", body: JSON.stringify(body) }),
   buyBidCreditsDirect: (body) => request("/api/auctions/buy-credits-direct", { method: "POST", body: JSON.stringify(body) }),

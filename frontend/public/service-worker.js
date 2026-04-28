@@ -3,8 +3,8 @@
 // - Auth, payments, admin, wallet, and all mutating requests bypass the SW entirely
 // - Prevents "object cannot be cloned" errors by never intercepting auth/mutations
 
-const CACHE_NAME = 'bidblitz-static-v12';
-const API_CACHE_NAME = 'bidblitz-api-v12';
+const CACHE_NAME = 'bidblitz-static-v13';  // Incremented for cache refresh
+const API_CACHE_NAME = 'bidblitz-api-v13';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -15,10 +15,9 @@ const STATIC_ASSETS = [
 // Explicit allow-list: ONLY these GET endpoints may be cached.
 // Anything not in this list is passed straight to the network.
 const CACHEABLE_API_ROUTES = [
-  '/api/auctions/active',
-  '/api/auctions/feed',
   '/api/food/restaurants',
   '/api/kids/children',
+  // NOTE: /api/auctions is REMOVED - must always be fresh (real-time data)
   // NOTE: Do NOT add wallet, transactions, auth, admin, payments, stripe, p2p,
   // notifications, flights, or hotels — they must always be fresh.
 ];
@@ -40,6 +39,7 @@ const NEVER_CACHE_PREFIXES = [
   '/api/topup',
   '/api/refund',
   '/api/checkout',
+  '/api/auctions',  // ADDED: Auctions must always be fresh
   '/login',
   '/logout',
   '/register',

@@ -7,7 +7,7 @@ import secrets
 import asyncio
 import random
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from typing import Optional
 from bson import ObjectId
@@ -33,7 +33,7 @@ CREDIT_PACKAGES = {
 
 # ── List auctions ──
 @router.get("")
-async def list_auctions(request: Request):
+async def list_auctions(request: Request, response: Response):
     """List active and upcoming auctions."""
     now = datetime.now(timezone.utc).isoformat()
 
@@ -100,6 +100,11 @@ async def list_auctions(request: Request):
         else:
             a["remaining_seconds"] = 0
             a["final_battle"] = False
+
+    # Set cache headers - NO CACHE for real-time data
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
 
     return {"auctions": auctions}
 
