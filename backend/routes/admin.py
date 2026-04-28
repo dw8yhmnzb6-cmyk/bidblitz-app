@@ -798,53 +798,63 @@ async def admin_cleanup_all_fake_data(request: Request):
     """
     Remove ALL fake/demo data from the entire system.
     Only keeps real, verified, approved data.
+    Now also covers: hotels, flights, scooters, taxi drivers, food restaurants, rental cars.
+    Test accounts with valid email patterns are preserved.
     """
     await require_admin(request)
-    
-    results = {
-        "drivers_removed": 0,
-        "scooters_removed": 0,
-        "restaurants_removed": 0,
-        "auctions_removed": 0,
-        "listings_removed": 0,
-    }
-    
-    # Remove unverified drivers
-    r = await db.drivers.delete_many({"$or": [
-        {"verified": {"$ne": True}},
-        {"is_demo": True},
-    ]})
-    results["drivers_removed"] = r.deleted_count
-    
-    # Remove demo scooters
-    r = await db.scooters.delete_many({"$or": [
-        {"is_demo": True},
-        {"status": "demo"},
-    ]})
+
+    # Whitelist real test accounts (kept):
+    keep_driver_emails = ["fahrer@bidblitz.com"]
+
+    results = {}
+
+    # 1. Taxi drivers — remove all except whitelisted test account(s)
+    r = await db.drivers.delete_many({
+        "email": {"$nin": keep_driver_emails},
+        "$or": [
+            {"verified": {"$ne": True}},
+            {"is_verified": {"$ne": True}},
+            {"is_demo": True},
+            {"kyc_status": {"$ne": "approved"}},
+        ],
+    })
+    results["taxi_drivers_removed"] = r.deleted_count
+
+    # 2. Scooters — remove ALL (no real fleet exists)
+    r = await db.scooters.delete_many({})
     results["scooters_removed"] = r.deleted_count
-    
-    # Remove unapproved restaurants
-    r = await db.food_restaurants.delete_many({"$or": [
-        {"is_demo": True},
-        {"verified": False, "status": {"$nin": ["approved", None]}},
-    ]})
+
+    # 3. Flights — remove ALL (no real airline integration yet)
+    r = await db.flights.delete_many({})
+    results["flights_removed"] = r.deleted_count
+
+    # 4. Hotels — remove all not flagged as real
+    r = await db.hotels.delete_many({"is_real": {"$ne": True}})
+    results["hotels_removed"] = r.deleted_count
+
+    # 5. Rental cars — remove ALL (no real fleet)
+    r = await db.rental_cars.delete_many({})
+    results["rental_cars_removed"] = r.deleted_count
+
+    # 6. Food restaurants — keep only is_real=True
+    r = await db.food_restaurants.delete_many({"is_real": {"$ne": True}})
     results["restaurants_removed"] = r.deleted_count
-    
-    # Remove demo auctions
+
+    # 7. Auctions — keep only real, no demo
     r = await db.auctions.delete_many({"is_demo": True})
     results["auctions_removed"] = r.deleted_count
-    
-    # Remove inactive marketplace listings older than 30 days
+
+    # 8. Marketplace listings — old inactive
     from datetime import timedelta
     cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     r = await db.marketplace_listings.delete_many({
         "status": "inactive",
-        "created_at": {"$lt": cutoff}
+        "created_at": {"$lt": cutoff},
     })
     results["listings_removed"] = r.deleted_count
-    
+
     total_removed = sum(results.values())
-    
+
     return {
         "ok": True,
         "total_removed": total_removed,

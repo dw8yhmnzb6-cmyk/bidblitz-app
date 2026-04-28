@@ -43,11 +43,27 @@ log = logging.getLogger("bidblitz.pos.pro")
 # ═══════════════════════════════════════════════════════════════════════
 
 
+@router.get("/tse/mode")
+async def tse_mode():
+    """Returns whether real Fiskaly cloud TSE is active or stub mode."""
+    from services.fiskaly_client import is_real_mode, FISKALY_BASE_URL
+    return {
+        "real_mode": is_real_mode(),
+        "provider": "fiskaly" if is_real_mode() else "stub",
+        "base_url": FISKALY_BASE_URL if is_real_mode() else None,
+        "info": (
+            "Setze FISKALY_API_KEY, FISKALY_API_SECRET und FISKALY_TSS_ID in /app/backend/.env "
+            "um echte Fiskaly Cloud-Signaturen zu nutzen."
+        ),
+    }
+
+
 @router.post("/tse/sign-sale/{sale_id}")
 async def sign_sale_tse(sale_id: str, request: Request):
     """KassenSichV-konforme TSE-Signatur für einen Sale (pos_sales).
-    Ergänzt den pos_extended /tse/sign-payment Flow (der auf pos_payments arbeitet)
-    und schreibt zusätzlich einen unveränderbaren GoBD-Archiv-Eintrag."""
+    Nutzt echte Fiskaly Cloud-TSS wenn FISKALY_API_KEY+FISKALY_API_SECRET+FISKALY_TSS_ID
+    in /app/backend/.env gesetzt sind, sonst HMAC-SHA256-Fallback (Dev-Mode).
+    Schreibt unveränderbaren GoBD-Archiv-Eintrag mit 10-Jahres-Aufbewahrung."""
     user = await get_current_user(request)
     merchant = await _require_merchant(user)
     sale = await db.pos_sales.find_one({"sale_id": sale_id, "merchant_id": merchant["merchant_id"]})
@@ -56,38 +72,31 @@ async def sign_sale_tse(sale_id: str, request: Request):
     if sale.get("tse_signature"):
         return {"ok": True, "already_signed": True,
                 "tse": {k: sale[k] for k in sale if k.startswith("tse_")}}
+
     cfg = await db.pos_tse_config.find_one({"merchant_id": merchant["merchant_id"]})
     if not cfg:
         raise HTTPException(status_code=400,
                             detail="TSE nicht konfiguriert. /api/pos/tse/configure aufrufen.")
-    serial = cfg.get("serial", "NO-TSE")
-    last = await db.pos_sales.find_one(
-        {"merchant_id": merchant["merchant_id"], "tse_signature": {"$exists": True}},
-        sort=[("paid_at", -1)],
-    )
-    prev_sig = last["tse_signature"] if last else "GENESIS"
+
+    from services.fiskaly_client import sign_transaction, is_real_mode
     counter = await db.pos_tse_counter.find_one_and_update(
         {"merchant_id": merchant["merchant_id"]},
         {"$inc": {"counter": 1}},
         upsert=True, return_document=True,
     )
-    txn = (counter or {}).get("counter", 1)
-    log_time = now_iso()
-    payload = (
-        f"{serial}|{sale_id}|{sale.get('total', 0):.2f}|"
-        f"{sale.get('vat_19', 0):.2f}|{sale.get('vat_7', 0):.2f}|"
-        f"{prev_sig}|{txn}|{log_time}"
+    txn_num = (counter or {}).get("counter", 1)
+
+    sig_result = await sign_transaction(
+        client_id=merchant["merchant_id"],
+        transaction_id=f"{sale_id}-{txn_num}",
+        sale_total=sale.get("total", 0) or 0,
+        vat_19=sale.get("vat_19", 0) or 0,
+        vat_7=sale.get("vat_7", 0) or 0,
+        vat_0=sale.get("vat_0", 0) or 0,
+        payment_method=sale.get("payment_method", "Bar"),
+        fallback_secret=cfg.get("api_key") or cfg.get("serial") or "dev-stub",
     )
-    sig = hashlib.sha256(payload.encode()).hexdigest()
-    qr_data = f"V0;{txn};Kassenbeleg-V1;Beleg^{sale.get('total', 0):.2f}^Bar:{sale.get('total', 0):.2f};{log_time};{sig[:32]}"
-    update = {
-        "tse_serial": serial,
-        "tse_signature": sig,
-        "tse_signature_counter": txn,
-        "tse_log_time": log_time,
-        "tse_qr_data": qr_data,
-        "tse_signed_at": log_time,
-    }
+    update = {**sig_result, "tse_signed_at": sig_result.get("tse_log_time")}
     await db.pos_sales.update_one({"sale_id": sale_id}, {"$set": update})
     await db.pos_gobd_archive.insert_one({
         "archive_id": short_id("GBD", 14),
@@ -95,10 +104,10 @@ async def sign_sale_tse(sale_id: str, request: Request):
         "sale_id": sale_id,
         "snapshot": {k: v for k, v in sale.items() if k != "_id"},
         "tse": update,
-        "archived_at": log_time,
+        "archived_at": sig_result.get("tse_log_time"),
         "retention_until": (datetime.now(timezone.utc) + timedelta(days=365 * 10)).isoformat(),
     })
-    return {"ok": True, "tse": update}
+    return {"ok": True, "tse": update, "real_mode": is_real_mode()}
 
 
 # ═══════════════════════════════════════════════════════════════════════

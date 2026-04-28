@@ -275,3 +275,27 @@ See `/app/memory/test_credentials.md`
 - Push: `web_push.py`
 - Referral: `referral.py` / `referral_system.py`
 
+## ✅ Cleanup, Fiskaly Real-Mode & Capacitor (Feb 2026 — Session "Final")
+
+**Fake-Daten Cleanup (vollständig):**
+- DB direkt gesäubert: 11 Taxi-Drivers, 65 Scooter, 12 Flüge, 0 Hotels (waren leer), 0 Rental Cars (waren leer), 0 Restaurants (alle hatten `is_real:true`), **48 Auktionen über €2000** entfernt (inkl. Rolex Submariner Gold)
+- Admin-Endpoint `/api/admin/cleanup-fake-data` erweitert: deckt jetzt auch hotels/flights/scooters/rental_cars ab, behält nur Whitelisted-Test-Drivers (`fahrer@bidblitz.com`) und `is_real:true`-Restaurants
+- `/app/backend/data/product_catalog.json` von 30 → 25 Einträge gefiltert (5 über €2000 entfernt)
+
+**Hartes €2000-Limit (KassenSichV-konform für Standardware):**
+- `auctions.py` Z. 1066: `retail_price: float = Field(..., gt=0, le=2000)` als Pydantic-Constraint
+- `auctions.py` Z. 1175: Module-Init-Filter — Bot-System lädt Catalog bereits gefiltert
+- `auctions.py` Z. 2289: 400-Error bei Update-Versuch über €2000
+- `pos_system.py` Z. 156: POS-Produkte ebenfalls auf `le=2000` begrenzt
+
+**Echte Fiskaly Cloud-TSE Integration:**
+- `/app/backend/services/fiskaly_client.py` (~165 Zeilen) — OAuth2-Client-Credentials-Flow, Cache-Token, echte Sign-API-v2-Calls (`PUT /api/v2/tss/{TSS_ID}/tx/{TX_ID}` mit standard_v1-Schema)
+- Auto-Fallback zu HMAC-SHA256-Stub wenn FISKALY_API_KEY/SECRET/TSS_ID fehlen → Dev-Mode bleibt funktional
+- Neuer Endpoint: `GET /api/pos/tse/mode` zeigt ob echtes oder Stub-Mode aktiv
+- `pos_pro.py` `/tse/sign-sale/{sale_id}` ruft jetzt `services.fiskaly_client.sign_transaction()` statt Inline-HMAC
+
+**Native Mobile Apps via Capacitor 7:**
+- Capacitor 7 (`@capacitor/core`, `cli`, `ios`, `android`, `app`, `splash-screen`, `status-bar`) via yarn installiert
+- `/app/frontend/capacitor.config.ts` mit App-ID `com.bidblitz.pos`, BidBlitz-Branding, Splash + StatusBar konfiguriert
+- `/app/CAPACITOR_MOBILE_GUIDE.md` (~140 Zeilen) — kompletter Setup-Guide: Voraussetzungen (macOS/Xcode/Android Studio), `cap add ios/android`, Live-Reload-Konfiguration für Dev, Permissions (Info.plist + AndroidManifest.xml), App-Store/Play-Console-Release-Workflow, empfohlene native Plugins (Camera, Bluetooth-LE, Barcode-Scanner, Geolocation für Stempeluhr)
+

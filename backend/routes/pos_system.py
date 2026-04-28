@@ -160,7 +160,7 @@ class ProductCreate(BaseModel):
     brand: Optional[str] = None
     barcode: Optional[str] = None
     sku: Optional[str] = None
-    price: float = Field(..., ge=0)
+    price: float = Field(..., ge=0, le=2000, description="Max €2000 pro Artikel")
     purchase_price: float = 0
     tax_rate: float = 0.19           # 19% DE Mehrwertsteuer
     category: str = ""

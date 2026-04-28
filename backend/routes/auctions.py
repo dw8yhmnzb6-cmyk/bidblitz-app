@@ -1063,7 +1063,7 @@ class CreateAuctionRequest(BaseModel):
     title: str = Field(..., min_length=2, max_length=200)
     description: Optional[str] = ""
     image_url: Optional[str] = ""
-    retail_price: float = Field(..., gt=0)
+    retail_price: float = Field(..., gt=0, le=2000, description="Max €2000 retail price")
     duration_seconds: int = Field(default=300, ge=60, le=3600)
     start_now: bool = True
 
@@ -1172,6 +1172,9 @@ from pathlib import Path
 _catalog_path = Path(__file__).parent.parent / "data" / "product_catalog.json"
 with open(_catalog_path, 'r', encoding='utf-8') as f:
     PRODUCT_CATALOG = json.load(f)
+
+# Enforce €2000 retail-price cap globally — no bot/seed/listing may exceed this.
+PRODUCT_CATALOG = [p for p in PRODUCT_CATALOG if (p.get("retail_price") or 0) <= 2000]
 
 
 # ── Seed demo auctions ──
@@ -2286,6 +2289,8 @@ async def update_auction(auction_id: str, req: UpdateAuctionRequest, request: Re
     if req.description is not None:
         updates["description"] = req.description.strip()
     if req.retail_price is not None and req.retail_price > 0:
+        if req.retail_price > 2000:
+            raise HTTPException(status_code=400, detail="Maximaler Verkaufspreis ist €2000")
         updates["retail_price"] = float(req.retail_price)
 
     if not updates:
