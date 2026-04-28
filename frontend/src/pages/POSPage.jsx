@@ -13,6 +13,7 @@ import {
   Package, Warehouse, Truck, FileText, RotateCcw, BarChart3, Home,
   ShieldCheck, Banknote, QrCode, CreditCard, Smartphone, Store,
   AlertTriangle, Edit3, Download, RefreshCw, MessageCircle, Send, Check as CheckIcon,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { printReceipt, isBluetoothSupported } from "../utils/escposPrinter";
