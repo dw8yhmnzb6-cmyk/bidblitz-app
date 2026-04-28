@@ -51,6 +51,32 @@ killTestingOverlays();
 const observer = new MutationObserver(killTestingOverlays);
 observer.observe(document.body, { childList: true, subtree: true });
 
+// Emergency: Unregister service worker and clear ALL caches
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    for (let registration of registrations) {
+      registration.unregister();
+    }
+  });
+}
+
+if ('caches' in window) {
+  caches.keys().then(keys => {
+    keys.forEach(key => caches.delete(key));
+  });
+}
+
+// Clear IndexedDB
+if ('indexedDB' in window) {
+  indexedDB.databases().then(dbs => {
+    dbs.forEach(db => {
+      if (db.name && (db.name.includes('bidblitz') || db.name.includes('auction'))) {
+        indexedDB.deleteDatabase(db.name);
+      }
+    });
+  }).catch(() => {});
+}
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <App />
