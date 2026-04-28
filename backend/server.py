@@ -239,6 +239,9 @@ app.include_router(kids_router)
 app.include_router(support_router)
 app.include_router(feedback_router)
 app.include_router(auctions_router)
+
+from routes.auction_push import router as auction_push_router
+app.include_router(auction_push_router)
 app.include_router(merchant_connect_router)
 app.include_router(influencer_router)
 app.include_router(investor_router)
