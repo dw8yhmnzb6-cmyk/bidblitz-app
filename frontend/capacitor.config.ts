@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     // For LIVE preview (development) you may set:
-    // url: 'https://kids-premium-live.preview.emergentagent.com',
+    // url: 'https://kassenpos-mobile.preview.emergentagent.com',
     // cleartext: true,
   },
   plugins: {

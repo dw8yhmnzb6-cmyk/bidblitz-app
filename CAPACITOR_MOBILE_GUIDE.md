@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://kids-premium-live.preview.emergentagent.com',
+  url: 'https://kassenpos-mobile.preview.emergentagent.com',
   cleartext: false,
 }
 ```

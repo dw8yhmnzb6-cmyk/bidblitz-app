@@ -304,7 +304,7 @@ class TestStripeAuditLogs:
         
         checkout_resp = customer_session.post(f"{BASE_URL}/api/stripe/checkout", json={
             "package_id": "10",
-            "origin_url": "https://kids-premium-live.preview.emergentagent.com"
+            "origin_url": "https://kassenpos-mobile.preview.emergentagent.com"
         })
         
         assert checkout_resp.status_code == 200, f"Checkout failed: {checkout_resp.text}"
