@@ -46,6 +46,8 @@ async def reorder(service_type: str, order_id: str, user=Depends(get_current_use
         }
         await db.food_orders.insert_one(new_order)
         return {"success": True, "order_id": new_order_id}
+    
+    raise HTTPException(400, "Invalid service_type. Must be 'taxi' or 'food'.")
 
 @router.post("/favorite")
 async def add_to_favorites(item_type: str, item_id: str, user=Depends(get_current_user)):

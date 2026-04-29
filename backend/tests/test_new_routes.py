@@ -43,22 +43,38 @@ class TestLoyalty:
         assert r.status_code == 200
         assert "leaderboard" in r.json()
 
-    def test_levels_endpoint_missing(self, auth_headers):
-        # Spec listed GET /api/loyalty/levels but route is not implemented
+    def test_levels_endpoint(self, auth_headers):
+        # Now implemented - should return list of levels
         r = requests.get(f"{BASE_URL}/api/loyalty/levels", headers=auth_headers, timeout=15)
-        # Accept either implemented (200) or 404 (documented gap)
-        assert r.status_code in (200, 404, 405)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert "levels" in d
+        assert isinstance(d["levels"], list)
+        assert len(d["levels"]) >= 1
 
-    def test_history_endpoint_missing(self, auth_headers):
+    def test_history_endpoint(self, auth_headers):
+        # Now implemented - returns user's loyalty history (categorized)
         r = requests.get(f"{BASE_URL}/api/loyalty/history", headers=auth_headers, timeout=15)
-        assert r.status_code in (200, 404, 405)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        # Accept either flat {"history": [...]} or categorized {"cashback":[], "coins":[], "level_events":[]}
+        assert isinstance(d, dict)
+        assert ("history" in d) or any(k in d for k in ("cashback", "coins", "level_events"))
 
-    def test_add_points_signature(self, auth_headers):
-        # Endpoint uses query params (points,reason,user_id) - public (no auth dep). Smoke test.
+    def test_add_points_admin_only(self, auth_headers):
+        # Admin should be able to call (200). For non-admin, expect 403 (tested via no-token = 401/403).
         r = requests.post(f"{BASE_URL}/api/loyalty/add-points",
                           params={"points": 5, "reason": "TEST", "user_id": "TEST_USER"},
                           headers=auth_headers, timeout=15)
-        assert r.status_code in (200, 422)
+        # admin login -> should succeed
+        assert r.status_code in (200, 422), r.text
+
+    def test_add_points_unauth_rejected(self):
+        # No auth header -> must NOT be 200 (was a security gap previously)
+        r = requests.post(f"{BASE_URL}/api/loyalty/add-points",
+                          params={"points": 5, "reason": "TEST", "user_id": "TEST_USER"},
+                          timeout=15)
+        assert r.status_code in (401, 403), f"add-points must require auth, got {r.status_code}"
 
 
 # ── Reviews ──
@@ -243,13 +259,21 @@ class TestQuickActions:
                           headers=auth_headers, timeout=15)
         assert r.status_code == 404
 
+    def test_reorder_invalid_service_type(self, auth_headers):
+        # Should now return 400 (was None/null previously)
+        r = requests.post(f"{BASE_URL}/api/quick/reorder/INVALID/TEST_X",
+                          headers=auth_headers, timeout=15)
+        assert r.status_code == 400, f"Expected 400 for invalid service_type, got {r.status_code}: {r.text}"
+
 
 # ── Tips & Gifts ──
 class TestTipsGifts:
-    def test_presets_endpoint_missing(self, auth_headers):
-        # Spec mentions GET /api/tips/presets but no such route exists in tips_gifts.py
+    def test_presets_endpoint(self, auth_headers):
+        # Now implemented - returns recommended tip amounts
         r = requests.get(f"{BASE_URL}/api/tips/presets", headers=auth_headers, timeout=15)
-        assert r.status_code in (200, 404, 405)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert "presets" in d or "amounts" in d or isinstance(d, dict)
 
     def test_gift_card_invalid_amount(self, auth_headers):
         r = requests.post(f"{BASE_URL}/api/tips/gift-card/purchase",

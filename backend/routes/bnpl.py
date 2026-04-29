@@ -38,10 +38,20 @@ async def get_bnpl_plans():
 async def check_bnpl_eligibility(amount: float, user=Depends(get_current_user)):
     """Check if user eligible for BNPL"""
     # Simple eligibility check (in production: credit score, payment history, etc.)
-    user_doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    user_doc = user  # already loaded by dep
     
     # Check account age
-    account_age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(user_doc["created_at"])).days
+    created_at_raw = user_doc.get("created_at") or ""
+    try:
+        if created_at_raw:
+            created_dt = datetime.fromisoformat(created_at_raw.replace("Z", "+00:00"))
+            if created_dt.tzinfo is None:
+                created_dt = created_dt.replace(tzinfo=timezone.utc)
+            account_age_days = (datetime.now(timezone.utc) - created_dt).days
+        else:
+            account_age_days = 999  # legacy users without created_at: treat as old
+    except Exception:
+        account_age_days = 999
     if account_age_days < 30:
         return {"eligible": False, "reason": "Account too new"}
     

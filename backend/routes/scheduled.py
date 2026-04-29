@@ -20,7 +20,12 @@ class ScheduleRequest(BaseModel):
 @router.post("/create")
 async def create_scheduled_booking(req: ScheduleRequest, user=Depends(get_current_user)):
     """Schedule a ride or food order"""
-    scheduled_dt = datetime.fromisoformat(req.scheduled_time.replace('Z', '+00:00'))
+    try:
+        scheduled_dt = datetime.fromisoformat(req.scheduled_time.replace('Z', '+00:00'))
+    except ValueError:
+        raise HTTPException(400, "Invalid scheduled_time format. Use ISO 8601.")
+    if scheduled_dt.tzinfo is None:
+        scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
     now = datetime.now(timezone.utc)
     
     if scheduled_dt <= now:

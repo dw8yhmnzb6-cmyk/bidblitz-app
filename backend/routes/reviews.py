@@ -51,12 +51,28 @@ async def create_review(req: ReviewRequest, user=Depends(get_current_user)):
     # Update average rating
     await update_average_rating(req.service_type, req.service_id)
     
-    # Award loyalty points
+    # Award loyalty points (best-effort)
     try:
-        from routes.loyalty import add_points
-        await add_points(10, f"Review for {req.service_type}", user["user_id"])
-    except:
-        pass
+        from datetime import datetime as _dt, timezone as _tz
+        existing_loyalty = await db.loyalty.find_one({"user_id": user["user_id"]})
+        if existing_loyalty:
+            await db.loyalty.update_one(
+                {"user_id": user["user_id"]},
+                {"$inc": {"points": 10},
+                 "$push": {"history": {"points": 10, "reason": f"Review for {req.service_type}", "timestamp": _dt.now(_tz.utc).isoformat()}}}
+            )
+        else:
+            await db.loyalty.insert_one({
+                "user_id": user["user_id"],
+                "points": 10,
+                "level": 0,
+                "stamps": {"taxi": 0, "scooter": 0, "food": 0},
+                "history": [{"points": 10, "reason": f"Review for {req.service_type}", "timestamp": _dt.now(_tz.utc).isoformat()}],
+                "created_at": _dt.now(_tz.utc).isoformat(),
+            })
+    except Exception as e:
+        import logging
+        logging.getLogger("bidblitz.reviews").exception("loyalty award failed: %s", e)
     
     return {"success": True, "review_id": review_id}
 

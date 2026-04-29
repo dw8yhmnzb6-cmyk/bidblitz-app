@@ -67,9 +67,9 @@ async def join_group(group_id: str, user=Depends(get_current_user)):
         {"$push": {"confirmed_by": user["user_id"]}}
     )
     
-    # Check if all confirmed
+    # Check if all confirmed (organizer is already in confirmed_by, participants is the invite list)
     updated = await db.group_orders.find_one({"group_id": group_id})
-    all_confirmed = len(updated["confirmed_by"]) == len(updated["participants"]) + 1  # +1 for organizer
+    all_confirmed = len(updated["confirmed_by"]) >= len(updated["participants"]) + 1  # +1 for organizer
     
     if all_confirmed:
         # Execute group order

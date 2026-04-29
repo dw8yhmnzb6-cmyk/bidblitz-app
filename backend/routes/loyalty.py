@@ -50,9 +50,22 @@ async def get_my_points(user=Depends(get_current_user)):
         "next_level": LOYALTY_LEVELS.get(level + 1, None),
     }
 
+@router.get("/levels")
+async def get_levels():
+    """Public list of loyalty levels and benefits"""
+    return {"levels": [{"level": lvl, **data} for lvl, data in sorted(LOYALTY_LEVELS.items())]}
+
+@router.get("/history")
+async def get_history(user=Depends(get_current_user)):
+    """Get loyalty point history for current user"""
+    loyalty = await db.loyalty.find_one({"user_id": user["user_id"]}, {"_id": 0}) or {}
+    return {"history": loyalty.get("history", [])}
+
 @router.post("/add-points")
-async def add_points(points: int, reason: str, user_id: str):
-    """Internal API to add points (called by other services)"""
+async def add_points(points: int, reason: str, user_id: str, user=Depends(get_current_user)):
+    """Internal API to add points - admin/system only"""
+    if user.get("role") not in ("admin", "system"):
+        raise HTTPException(403, "Admin only")
     loyalty = await db.loyalty.find_one({"user_id": user_id})
     
     if not loyalty:
@@ -163,12 +176,23 @@ async def get_leaderboard():
     
     leaderboard = []
     for idx, loyalty in enumerate(top_users):
-        user = await db.users.find_one({"user_id": loyalty["user_id"]}, {"_id": 0, "first_name": 1, "last_name": 1})
+        user_doc = None
+        try:
+            from bson import ObjectId
+            user_doc = await db.users.find_one({"_id": ObjectId(loyalty["user_id"])}, {"_id": 0, "name": 1, "first_name": 1, "last_name": 1})
+        except Exception:
+            user_doc = await db.users.find_one({"id": loyalty["user_id"]}, {"_id": 0, "name": 1, "first_name": 1, "last_name": 1})
+        first = (user_doc or {}).get("first_name") or ((user_doc or {}).get("name", "User").split() or ["User"])[0]
+        last = (user_doc or {}).get("last_name") or ""
+        last_initial = (last[0] + ".") if last else ""
+        points_val = loyalty.get("points", 0)
+        applicable = [lvl for lvl, data in LOYALTY_LEVELS.items() if points_val >= data["points"]]
+        level_name = LOYALTY_LEVELS[max(applicable) if applicable else 0]["name"]
         leaderboard.append({
             "rank": idx + 1,
-            "name": f"{user.get('first_name', '')} {user.get('last_name', '')[0]}." if user else "Unknown",
-            "points": loyalty.get("points", 0),
-            "level": LOYALTY_LEVELS[max(lvl for lvl, data in LOYALTY_LEVELS.items() if loyalty.get("points", 0) >= data["points"])]["name"],
+            "name": f"{first} {last_initial}".strip(),
+            "points": points_val,
+            "level": level_name,
         })
     
     return {"leaderboard": leaderboard}

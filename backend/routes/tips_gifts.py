@@ -9,6 +9,19 @@ from routes.auth import get_current_user
 
 router = APIRouter(prefix="/api/tips", tags=["Tips & Gifts"])
 
+TIP_PRESETS = {
+    "taxi":    [1.0, 2.0, 3.0, 5.0],
+    "food":    [1.0, 2.0, 3.0, 5.0],
+    "scooter": [0.5, 1.0, 2.0],
+}
+
+@router.get("/presets")
+async def get_tip_presets(service_type: Optional[str] = None):
+    """Recommended tip amounts for a service type"""
+    if service_type:
+        return {"service_type": service_type, "amounts": TIP_PRESETS.get(service_type, [1.0, 2.0, 3.0])}
+    return {"presets": TIP_PRESETS}
+
 class TipRequest(BaseModel):
     service_type: str  # taxi, food, scooter
     service_id: str

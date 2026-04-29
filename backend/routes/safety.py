@@ -131,9 +131,9 @@ async def verify_trip_pin(ride_id: str, pin: str):
 async def get_emergency_contacts(user=Depends(get_current_user)):
     """Get user's emergency contacts"""
     contacts = await db.users.find_one(
-        {"user_id": user["user_id"]},
+        {"_id": user["_id"]},
         {"_id": 0, "emergency_contacts": 1}
-    )
+    ) or {}
     
     return {"contacts": contacts.get("emergency_contacts", [])}
 
@@ -141,7 +141,7 @@ async def get_emergency_contacts(user=Depends(get_current_user)):
 async def add_emergency_contact(name: str, phone: str, user=Depends(get_current_user)):
     """Add emergency contact"""
     await db.users.update_one(
-        {"user_id": user["user_id"]},
+        {"_id": user["_id"]},
         {"$push": {"emergency_contacts": {"name": name, "phone": phone}}}
     )
     

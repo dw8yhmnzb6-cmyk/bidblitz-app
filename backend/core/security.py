@@ -124,6 +124,14 @@ async def get_current_user(request: Request) -> dict:
             )
         except Exception:
             pass
+        # Normalize user dict for downstream routes
+        user["user_id"] = str(user.get("_id", user.get("id", "")))
+        full_name = user.get("name", "") or ""
+        name_parts = full_name.split(" ", 1) if full_name else ["", ""]
+        if "first_name" not in user:
+            user["first_name"] = user.get("first_name") or (name_parts[0] if name_parts else "")
+        if "last_name" not in user:
+            user["last_name"] = user.get("last_name") or (name_parts[1] if len(name_parts) > 1 else "")
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
