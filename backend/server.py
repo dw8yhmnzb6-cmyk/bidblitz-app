@@ -660,6 +660,31 @@ app.include_router(kids_premium_router)
 from routes.instant_credit import router as instant_credit_router
 app.include_router(instant_credit_router)
 
+# NEW FEATURES - Konkurrenz Features
+from routes.split_payment import router as split_payment_router
+app.include_router(split_payment_router)
+
+from routes.loyalty import router as loyalty_router
+app.include_router(loyalty_router)
+
+from routes.reviews import router as reviews_router
+app.include_router(reviews_router)
+
+from routes.scheduled import router as scheduled_router
+app.include_router(scheduled_router)
+
+from routes.subscriptions import router as subscriptions_router
+app.include_router(subscriptions_router)
+
+from routes.safety import router as safety_router
+app.include_router(safety_router)
+
+from routes.promo import router as promo_router
+app.include_router(promo_router)
+
+from routes.filters import router as filters_router
+app.include_router(filters_router)
+
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
