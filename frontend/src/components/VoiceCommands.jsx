@@ -43,51 +43,64 @@ export default function VoiceCommands({ onCommand }) {
     setRecognition(recognitionInstance);
   }, []);
 
-  const processCommand = (text) => {
-    const lowerText = text.toLowerCase();
+  const processCommand = async (text) => {
+    // 1) LLM-basiert (Multi-Step) — bevorzugt
+    try {
+      const r = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/voice/parse`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: text }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const intents = (d.intents || []);
+        if (intents.length > 0) {
+          let i = 0;
+          for (const intent of intents) {
+            // Erste Intent sofort, weitere mit kleinem Delay damit UI Modals stacken kann
+            setTimeout(() => onCommand?.(intent), i * 800);
+            i++;
+          }
+          if (intents[0].action === 'book_taxi') speak('Taxi wird gebucht');
+          else if (intents[0].action === 'open_food') speak('Öffne Essen');
+          else if (intents[0].action === 'search_food') speak(`Suche ${intents[0].query || ''}`);
+          else if (intents[0].action === 'open_scooter') speak('Öffne Scooter');
+          else if (intents[0].action === 'open_wallet') speak('Öffne Wallet');
+          else if (intents[0].action === 'open_loyalty') speak('Punktestand');
+          else if (intents[0].action === 'open_split_pay') speak('Split-Zahlung wird vorbereitet');
+          return;
+        }
+      }
+    } catch (e) {
+      // Fall-through to local heuristic
+    }
 
-    // Taxi commands
+    // 2) Lokales Fallback (offline / kein LLM)
+    const lowerText = text.toLowerCase();
     if (lowerText.includes('taxi') || lowerText.includes('fahrt')) {
       if (lowerText.includes('buchen') || lowerText.includes('bestellen')) {
-        onCommand?.({ action: 'book_taxi', service: 'taxi' });
+        onCommand?.({ action: 'book_taxi' });
         speak('Taxi wird gebucht');
       }
-    }
-
-    // Food commands
-    if (lowerText.includes('essen') || lowerText.includes('bestellen')) {
+    } else if (lowerText.includes('essen') || lowerText.includes('bestellen')) {
       if (lowerText.includes('pizza')) {
         onCommand?.({ action: 'search_food', query: 'pizza' });
-        speak('Suche nach Pizza');
-      } else if (lowerText.includes('burger')) {
-        onCommand?.({ action: 'search_food', query: 'burger' });
-        speak('Suche nach Burger');
+        speak('Suche Pizza');
       } else {
         onCommand?.({ action: 'open_food' });
-        speak('Öffne Essen Bestellung');
+        speak('Öffne Essen');
       }
-    }
-
-    // Scooter commands
-    if (lowerText.includes('scooter') || lowerText.includes('roller')) {
+    } else if (lowerText.includes('scooter') || lowerText.includes('roller')) {
       onCommand?.({ action: 'open_scooter' });
       speak('Öffne Scooter');
-    }
-
-    // Wallet commands
-    if (lowerText.includes('guthaben') || lowerText.includes('wallet')) {
+    } else if (lowerText.includes('guthaben') || lowerText.includes('wallet')) {
       onCommand?.({ action: 'open_wallet' });
       speak('Öffne Wallet');
-    }
-
-    // Navigation
-    if (lowerText.includes('zurück') || lowerText.includes('back')) {
+    } else if (lowerText.includes('zurück') || lowerText.includes('back')) {
       onCommand?.({ action: 'go_back' });
-    }
-
-    // Help
-    if (lowerText.includes('hilfe') || lowerText.includes('help')) {
-      speak('Sie können sagen: Taxi buchen, Essen bestellen, Scooter öffnen, oder Guthaben anzeigen');
+    } else if (lowerText.includes('hilfe') || lowerText.includes('help')) {
+      speak('Sage zum Beispiel: Taxi buchen, Pizza bestellen, oder Punktestand anzeigen');
     }
   };
 

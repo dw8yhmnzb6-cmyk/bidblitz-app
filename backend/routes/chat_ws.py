@@ -4,18 +4,56 @@ Real-Time-Chat zwischen Passagier und Fahrer (Taxi/Scooter) sowie Kunde/Restaura
 Channel-ID = ride_id / rental_id / order_id.
 """
 from datetime import datetime, timezone
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from typing import Dict, Set
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
+from typing import Dict, Set, Optional
 import json
 import logging
 
 from core.database import db
+from core.security import get_current_user_from_token
 
 router = APIRouter()
 logger = logging.getLogger("bidblitz.chat_ws")
 
 # room_id (ride_id/rental_id/order_id) -> Set[WebSocket]
 active_rooms: Dict[str, Set[WebSocket]] = {}
+
+
+async def _check_room_membership(user_id: str, room_id: str) -> bool:
+    """Prüft, ob user_id Teilnehmer (passenger, driver, kunde, restaurant) eines Raums ist.
+    Match-Reihenfolge: taxi_rides -> scooter_rentals -> food_orders -> chats.
+    Admin/system bypass wenn role in user-doc admin/system.
+    """
+    # Admin bypass
+    user = await db.users.find_one({"_id": __import__("bson").ObjectId(user_id)}) if user_id else None
+    if user and user.get("role") in ("admin", "system"):
+        return True
+
+    # taxi_rides
+    if await db.taxi_rides.find_one({
+        "ride_id": room_id,
+        "$or": [{"customer_id": user_id}, {"driver_id": user_id}, {"user_id": user_id}],
+    }):
+        return True
+    # scooter rentals
+    if await db.scooter_rentals.find_one({
+        "$or": [{"rental_id": room_id}, {"ride_id": room_id}],
+        "user_id": user_id,
+    }):
+        return True
+    # food orders
+    if await db.food_orders.find_one({
+        "order_id": room_id,
+        "$or": [{"user_id": user_id}, {"driver_id": user_id}, {"restaurant_owner_id": user_id}],
+    }):
+        return True
+    # generic chats
+    if await db.chats.find_one({
+        "chat_id": room_id,
+        "$or": [{"user1_id": user_id}, {"user2_id": user_id}],
+    }):
+        return True
+    return False
 
 
 async def _persist_message(room_id: str, payload: dict) -> dict:
@@ -59,13 +97,34 @@ async def broadcast_to_room(room_id: str, message: dict, exclude: WebSocket | No
 
 
 @router.websocket("/api/chat/ws/{room_id}")
-async def chat_room(websocket: WebSocket, room_id: str, token: str | None = Query(None)):
-    """Chat-Raum pro ride/rental/order. Token optional (Cookie wäre 1st-class — Browser senden Cookies bei WS).
-    Auth-Hardening kann via JWT-Query-Param erfolgen, hier optional.
+async def chat_room(websocket: WebSocket, room_id: str, token: Optional[str] = Query(None)):
+    """Chat-Raum pro ride/rental/order. JWT-Token in Query erforderlich (Browser senden Cookies bei WS nicht zuverlässig in cross-origin Setup).
+    Validiert Token + Room-Membership bevor accept().
     """
+    # Token-Validation
+    if not token:
+        await websocket.close(code=4401, reason="token_required")
+        return
+    try:
+        user = await get_current_user_from_token(token)
+        user_id = str(user.get("_id", user.get("id", "")))
+        if not user_id:
+            raise HTTPException(401, "invalid_user")
+    except Exception as e:
+        logger.info(f"chat_ws auth failed: {e}")
+        await websocket.close(code=4401, reason="invalid_token")
+        return
+
+    # Room-Membership-Check
+    is_member = await _check_room_membership(user_id, room_id)
+    if not is_member:
+        logger.info(f"chat_ws membership denied user={user_id} room={room_id}")
+        await websocket.close(code=4403, reason="not_a_member")
+        return
+
     await websocket.accept()
     active_rooms.setdefault(room_id, set()).add(websocket)
-    logger.info(f"Chat WS connected room={room_id} clients={len(active_rooms[room_id])}")
+    logger.info(f"Chat WS connected room={room_id} user={user_id} clients={len(active_rooms[room_id])}")
 
     try:
         # 1) Letzte 50 Messages an Neuverbinder schicken (Replay)

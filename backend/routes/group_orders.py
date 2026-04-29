@@ -59,8 +59,9 @@ async def join_group(group_id: str, user=Depends(get_current_user)):
     if user["email"] not in group["participants"]:
         raise HTTPException(403, "Not invited")
     
-    if user["user_id"] in group["confirmed_by"]:
-        raise HTTPException(400, "Already joined")
+    # Idempotent: schon dabei = OK
+    if user["user_id"] in group.get("confirmed_by", []):
+        return {"success": True, "all_confirmed": False, "already_joined": True}
     
     await db.group_orders.update_one(
         {"group_id": group_id},
@@ -89,13 +90,19 @@ async def join_group(group_id: str, user=Depends(get_current_user)):
 
 @router.get("/my-groups")
 async def get_my_groups(user=Depends(get_current_user)):
-    """Get user's group orders"""
+    """Get user's group orders.
+    Each group enriched with my_email/my_user_id for One-Click-Confirm logic.
+    """
     groups = await db.group_orders.find({
         "$or": [
             {"organizer_id": user["user_id"]},
             {"participants": user["email"]}
         ]
     }, {"_id": 0}).sort("created_at", -1).to_list(50)
+    
+    for g in groups:
+        g["my_email"] = user.get("email", "")
+        g["my_user_id"] = user["user_id"]
     
     return {"groups": groups}
 

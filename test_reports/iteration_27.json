@@ -1,0 +1,66 @@
+{
+  "summary": "Iter27 backend sweep: 10/16 passed. WS auth hardening rejects all unauth/non-member traffic (admin bypass works, server logs show membership denied), but 3 tests FAIL because the close-code spec is not met — chat_ws.py calls websocket.close(code=4401) BEFORE accept(), which makes ASGI return HTTP 403 to the client instead of WS close frames with codes 4401/4403. /api/auth/ws-token works correctly (200, expires_in=300, 401 unauth). /api/voice/parse works end-to-end with Gemini (book_taxi single-step + multi-step search_food→open_split_pay verified, 401 unauth). /api/superapp-tips/presets works for taxi + no-service_type + unknown-service. /api/loyalty/levels and /api/loyalty/history FAIL because of an URL collision: routes/loyalty_system.py (registered first, line 306) shadows routes/loyalty.py (line 668) on the same prefix /api/loyalty — server returns the loyalty_system payload (5 levels Bronze/Silver/Gold/Platinum/VIP and history={cashback,coins,level_events}) instead of the new 4-level/{history,count} contract. /api/group/create returns 500 KeyError 'user_id' on the participant-notification loop (existing bug, not introduced by iter27 but blocks the new idempotency contract).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/chat/ws/{room_id} (WS)",
+        "issue": "close(code=4401|4403) called BEFORE accept() — ASGI sends HTTP 403 instead of WS close frame. Client cannot read the close code (4401/4403) per spec. Fix: call await websocket.accept() first, then await websocket.close(code=4401, reason=...). Functionally the rejection works (server log: 'chat_ws membership denied / chat_ws auth failed'), but the contract asked for visible 4401/4403 close codes.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "GET /api/loyalty/levels and /api/loyalty/history",
+        "issue": "Route collision: routes/loyalty_system.py (registered server.py line 306) and routes/loyalty.py (registered line 668) both use prefix='/api/loyalty' with paths /levels and /history. FastAPI keeps the first match → loyalty_system shadows loyalty. Result: /levels returns 5 entries (Bronze/Silver/Gold/Platinum/VIP) — not the 4 in the iter27 contract, and /history returns {cashback, coins, level_events} — not {history, count}. Either move the new endpoints to a dedicated prefix (e.g. /api/loyalty-basic) or move loyalty_system_router registration AFTER loyalty_router AND drop the duplicate paths from one of them.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "POST /api/group/create",
+        "issue": "Returns 500 with detail \"'user_id'\" — KeyError at routes/group_orders.py:41 when iterating participants: `\"user_id\": participant[\"user_id\"]`. db.users.find_one(..., {\"_id\":0}) does not project a user_id field on V2 users (their id lives in _id). Use str(participant['_id']) or participant.get('id') (and keep _id projection to extract it). Side effect: the iter27 idempotency check (POST /{group_id}/join twice) is unreachable because creation never succeeds with valid participant emails.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "/api/auth/ws-token",
+        "issue": "Returned token is created with create_access_token(user_id, email) which uses the global ACCESS_TOKEN_EXPIRE setting (likely > 5 minutes). Response advertises expires_in:300 but the actual JWT exp will be the default. Either pass an explicit ttl=300 or fix the response field to match real expiry."
+      },
+      {
+        "endpoint": "POST /api/voice/parse",
+        "issue": "On JSON decode error the route returns {intents:[], raw, error:'invalid_json'} with status 200. Consider 502 to make client-side fallback more explicit. Also: SYSTEM_PROMPT examples use a typo-tolerant 'Mario\\'s' — verified Gemini responds reasonably to both 'Marios' and 'Mario\\'s'."
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified_working": {
+    "GET /api/auth/ws-token": ["200 with token + expires_in=300 (authed)", "401 (unauth)"],
+    "WS /api/chat/ws/{room_id}": ["admin bypass: any room joinable + history frame received", "rejection paths all reject (just with wrong code: HTTP 403 instead of 4401/4403)"],
+    "POST /api/voice/parse": ["401 without auth", "single-step 'Buche ein Taxi' → intents contains book_taxi", "multi-step 'Bestelle Pizza Margherita von Marios und teile mit anna@example.com' → search_food + open_split_pay in correct order, both with action keys among the 11-allowlist"],
+    "GET /api/superapp-tips/presets": ["?service_type=taxi → {service_type, amounts:[1,2,3,5], currency:EUR}", "no service_type → {presets:{taxi,food,scooter}, currency:EUR}", "unknown service_type → falls back to default amounts with currency:EUR"]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter27_sweep.py",
+    "/app/test_reports/pytest/iter27_sweep.xml"
+  ],
+  "action_items": [
+    "FIX chat_ws.py: call await websocket.accept() before await websocket.close(code=4401|4403) so clients see the documented close codes (Starlette will otherwise downgrade to HTTP 403). Required by the iter27 contract.",
+    "FIX /api/loyalty route collision: loyalty_system_router and loyalty_router both bind /api/loyalty/levels and /api/loyalty/history. Either rename loyalty_router prefix (e.g. /api/loyalty-basic) or remove the duplicate paths from loyalty_system.py — currently the iter27 4-level / {history,count} contract is unreachable.",
+    "FIX /api/group/create participant lookup at group_orders.py:41 — use str(participant['_id']) (keep _id in projection) or participant.get('id'); without this, /api/group/create returns 500 for any real participant email and breaks the new idempotency test.",
+    "CONSIDER passing an explicit ttl=300 in /api/auth/ws-token's create_access_token call so expires_in matches the real JWT exp."
+  ],
+  "critical_code_review_comments": [
+    "chat_ws.py L106-122: close-before-accept. ASGI spec: a WS close before accept becomes a synthetic HTTP 403 response. To deliver 4401/4403 to JS clients, accept() first then close(code=...). The membership check itself is solid (taxi_rides/scooter_rentals/food_orders/chats with admin bypass).",
+    "loyalty.py and loyalty_system.py both declare `prefix='/api/loyalty'` with overlapping paths — classic registration-order shadowing. P1: pick a single source of truth; right now the new 4-level contract is dead code.",
+    "group_orders.py L37-41: db.users.find_one(..., {'_id':0}) drops the only id field on V2 user docs, then participant['user_id'] crashes. Same antipattern likely repeats anywhere participants are looked up by email.",
+    "voice.py: f-string in HTTPException(500, f'voice parse error: {e}') leaks the raw LLM/exception detail to clients. Mask in prod or return a generic message + log id.",
+    "auth.py /ws-token L293: create_access_token(...) ignores the documented 5-minute lifetime. The 300 in the JSON is currently a lie."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter27_sweep.py (NEW: 16 pytest tests covering WS auth, ws-token, voice, loyalty, tips, group idempotency)"
+  ],
+  "success_rate": {"backend": "62.5% (10/16) — 3 failures driven by 1 spec gap (WS close codes) + 1 route collision (2 loyalty failures) + 1 pre-existing KeyError (group join blocked by create failure)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! and kunde@bidblitz.com / Kunde2026! used (cookie-session via /api/auth/login).",
+  "seed_data_creation": "None permanent. test_join_idempotent_and_my_groups_enriched attempted to create a group with restaurant_id='TEST_iter27' but the create call 500s, so nothing persists.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "After main agent fixes (1) chat_ws accept-before-close, (2) loyalty route collision, (3) group_orders participant['_id'] usage, re-run pytest /app/backend/tests/test_iter27_sweep.py. The websockets handshake test catches both HTTP-status rejects and WS-close-code rejects via _ws_close_code() which inspects InvalidStatus.response.status_code first then ConnectionClosed.code; once the server calls accept-then-close, the assertion `code == 4401` will pass. The 11-action allowlist in voice.py was verified — Gemini was prompted with 'Bestelle Pizza Margherita von Marios und teile mit anna@example.com' and returned exactly [search_food, open_split_pay] in order, raw text included.",
+  "rca of the issue": "(1) WS close codes: Starlette's WebSocket.close() before accept() emits a 403 HTTP response to complete the abandoned handshake — the close code parameter is silently ignored because no WS frame channel was ever opened. Fix is two extra lines: accept() then close(code=...). (2) Loyalty collision: server.py imports loyalty_system_router at line 186 / includes at 306, then later imports loyalty_router at 667 / includes at 668. FastAPI's router resolution returns the first match for a given (method, path) pair, so loyalty.py's /levels + /history are unreachable. (3) Group create: V2 users have ObjectId in _id and no separate user_id field; the projection {'_id':0} strips the only id, and the subsequent participant['user_id'] raises KeyError, propagated to FastAPI as 500 with detail \"'user_id'\". This bug pre-dates iter27 but blocks verifying the iter27 idempotency contract for /api/group/{id}/join."
+}

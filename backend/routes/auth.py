@@ -285,6 +285,15 @@ async def get_me(request: Request):
     return serialize_user(user)
 
 
+@router.get("/ws-token")
+async def ws_token(request: Request):
+    """Liefert kurzlebiges JWT für WebSocket-Auth (5 Min). Browser können httpOnly-Cookies nicht in WS-URL einbauen."""
+    user = await get_current_user(request)
+    from core.security import create_access_token
+    token = create_access_token(str(user["_id"]), user.get("email", ""))
+    return {"token": token, "expires_in": 300}
+
+
 @router.post("/logout")
 async def logout(request: Request, response: Response):
     try:

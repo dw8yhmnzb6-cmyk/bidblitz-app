@@ -24,8 +24,17 @@ export default function LiveChat({ rideId, userRole = 'passenger', onClose }) {
     scrollToBottom();
   }, [messages]);
 
-  const connectWebSocket = () => {
-    const wsUrl = API.replace('http', 'ws') + `/api/chat/ws/${rideId}`;
+  const connectWebSocket = async () => {
+    // Hole WS-Token vom Server (httpOnly cookie ist nicht direkt lesbar)
+    let wsToken = '';
+    try {
+      const tr = await fetch(`${API}/api/auth/ws-token`, { credentials: 'include' });
+      if (tr.ok) {
+        const td = await tr.json();
+        wsToken = td.token || '';
+      }
+    } catch {}
+    const wsUrl = API.replace('http', 'ws') + `/api/chat/ws/${rideId}` + (wsToken ? `?token=${encodeURIComponent(wsToken)}` : '');
     const websocket = new WebSocket(wsUrl);
 
     websocket.onopen = () => {
@@ -105,7 +114,7 @@ export default function LiveChat({ rideId, userRole = 'passenger', onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-[#0B0B0F] flex flex-col"
+      className="fixed inset-0 z-[10010] bg-[#0B0B0F] flex flex-col"
     >
       {/* Header */}
       <div className="bg-[#121218] p-4 flex items-center justify-between border-b border-white/10">

@@ -151,7 +151,7 @@ export default function SuperAppOverlay({ currentPath, onNavigate, isAuthenticat
         {showLoyalty && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-[10010] bg-black/80 backdrop-blur-sm overflow-y-auto"
             onClick={() => setShowLoyalty(false)}
             data-testid="superapp-loyalty-modal"
           >
@@ -167,7 +167,7 @@ export default function SuperAppOverlay({ currentPath, onNavigate, isAuthenticat
         {showPlans && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-[10010] bg-black/80 backdrop-blur-sm overflow-y-auto"
             onClick={() => setShowPlans(false)}
             data-testid="superapp-plans-modal"
           >

@@ -704,6 +704,8 @@ from routes.pos_extras import router as pos_extras_router
 app.include_router(pos_extras_router)
 from routes.chat_ws import router as chat_ws_router
 app.include_router(chat_ws_router)
+from routes.voice import router as voice_router
+app.include_router(voice_router)
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

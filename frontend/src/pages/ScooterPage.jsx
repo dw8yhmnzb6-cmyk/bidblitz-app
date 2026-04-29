@@ -4,6 +4,8 @@ import { useI18n } from '../store/I18nContext';
 import MiniLeafletMap from '../components/MiniLeafletMap';
 import ARScooterFinder from '../components/ARScooterFinder';
 import ReviewModal from '../components/ReviewModal';
+import GroupOrderModal from '../components/GroupOrderModal';
+import GroupTrackerBanner from '../components/GroupTrackerBanner';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -60,6 +62,7 @@ export default function ScooterPage({ onNavigate }) {
   // Super-App parity
   const [showReview, setShowReview] = useState(false);
   const [reviewServiceId, setReviewServiceId] = useState(null);
+  const [showGroupRental, setShowGroupRental] = useState(false);
   
   // Refs
   const timerRef = useRef(null);
@@ -487,6 +490,12 @@ export default function ScooterPage({ onNavigate }) {
 
         {moduleEnabled && (
         <AnimatePresence mode="wait">
+          {/* GROUP-RENTAL LIVE-TRACKER */}
+          <GroupTrackerBanner
+            serviceType="scooter"
+            onOpenGroup={() => setShowGroupRental(true)}
+          />
+
           {/* MAP VIEW */}
           {view === 'map' && (
             <motion.div
@@ -1140,6 +1149,14 @@ export default function ScooterPage({ onNavigate }) {
         serviceType="scooter"
         serviceId={reviewServiceId}
         onSubmit={() => fetchHistory()}
+      />
+
+      {/* Group Rental Modal */}
+      <GroupOrderModal
+        isOpen={showGroupRental}
+        onClose={() => setShowGroupRental(false)}
+        serviceType="scooter"
+        details={{ scooter_id: selectedScooter?.scooter_id }}
       />
     </div>
   );

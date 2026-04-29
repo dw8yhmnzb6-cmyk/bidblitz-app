@@ -7,7 +7,7 @@ from uuid import uuid4
 from core.database import db
 from routes.auth import get_current_user
 
-router = APIRouter(prefix="/api/tips", tags=["Tips & Gifts"])
+router = APIRouter(prefix="/api/superapp-tips", tags=["Tips & Gifts"])
 
 TIP_PRESETS = {
     "taxi":    [1.0, 2.0, 3.0, 5.0],
@@ -17,10 +17,13 @@ TIP_PRESETS = {
 
 @router.get("/presets")
 async def get_tip_presets(service_type: Optional[str] = None):
-    """Recommended tip amounts for a service type"""
+    """Recommended tip amounts for a service type.
+    Response (with service_type): {"service_type": str, "amounts": [float], "currency": "EUR"}
+    Response (without): {"presets": {service_type: [float]}, "currency": "EUR"}
+    """
     if service_type:
-        return {"service_type": service_type, "amounts": TIP_PRESETS.get(service_type, [1.0, 2.0, 3.0])}
-    return {"presets": TIP_PRESETS}
+        return {"service_type": service_type, "amounts": TIP_PRESETS.get(service_type, [1.0, 2.0, 3.0]), "currency": "EUR"}
+    return {"presets": TIP_PRESETS, "currency": "EUR"}
 
 class TipRequest(BaseModel):
     service_type: str  # taxi, food, scooter

@@ -426,6 +426,18 @@ export function POSAdminFeatures() {
     } catch (e) { toast.error(e.message); }
   };
 
+  const resetTrial = async (feature_key) => {
+    if (!window.confirm(`Trial für "${feature_key}" wirklich zurücksetzen? Merchant kann erneut testen.`)) return;
+    try {
+      await apiCall("/api/pos/features/admin/trial-reset", {
+        method: "POST",
+        body: { merchant_id: selectedMerchant.merchant_id, feature_key },
+      });
+      toast.success("Trial zurückgesetzt");
+      loadMerchantFeatures(selectedMerchant.merchant_id);
+    } catch (e) { toast.error(e.message); }
+  };
+
   const filtered = merchants.filter((m) =>
     !search || (m.business_name || "").toLowerCase().includes(search.toLowerCase())
   );
@@ -478,6 +490,12 @@ export function POSAdminFeatures() {
                 <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
                   style={{ left: f.enabled ? "26px" : "2px" }} />
               </button>
+              {f.trial_used && (
+                <button onClick={() => resetTrial(f.key)}
+                  className="ml-2 px-2 py-1 rounded-md bg-yellow-500/20 text-yellow-300 text-[10px] font-bold"
+                  data-testid={`pos-admin-feat-trial-reset-${f.key}`}
+                  title="Trial zurücksetzen">↺ Trial</button>
+              )}
             </div>
           ))
         )}

@@ -41,6 +41,23 @@ export default function GroupTrackerBanner({ serviceType = 'food', onOpenGroup }
   const total = (group.participants?.length || 0) + 1; // +1 organizer
   const confirmed = group.confirmed_by?.length || 0;
   const allConfirmed = confirmed >= total;
+
+  // One-Click-Confirm: aktueller User ist Teilnehmer und hat noch nicht bestätigt?
+  const myEmail = (group.my_email || '').toLowerCase();
+  const isInvitee = (group.participants || []).some(p => (p || '').toLowerCase() === myEmail);
+  const myConfirmed = (group.confirmed_by || []).includes(group.my_user_id);
+  const canConfirm = isInvitee && !myConfirmed;
+
+  const handleConfirm = async (e) => {
+    e?.stopPropagation?.();
+    try {
+      const r = await fetch(`${API}/api/group/${group.group_id}/join`, {
+        method: 'POST', credentials: 'include',
+      });
+      if (r.ok) fetchActive();
+    } catch {}
+  };
+
   const initials = (email) => (email || '?').split('@')[0].slice(0, 2).toUpperCase();
 
   // Reihen-Avatare: Organizer + Participants
@@ -116,6 +133,15 @@ export default function GroupTrackerBanner({ serviceType = 'food', onOpenGroup }
         </div>
 
         <div className="flex items-center gap-1">
+          {canConfirm && (
+            <button
+              onClick={handleConfirm}
+              data-testid="group-tracker-confirm-btn"
+              className="px-3 py-2 bg-emerald-500 text-black rounded-xl text-xs font-bold flex items-center gap-1"
+            >
+              <Check size={12} /> Beitreten
+            </button>
+          )}
           <button
             onClick={() => onOpenGroup?.(group)}
             data-testid="group-tracker-open-btn"

@@ -52,14 +52,19 @@ async def get_my_points(user=Depends(get_current_user)):
 
 @router.get("/levels")
 async def get_levels():
-    """Public list of loyalty levels and benefits"""
+    """Public list of loyalty levels and benefits.
+    Response: {"levels": [{"level": int, "name": str, "points": int, "discount": int, "perks": [str]}]}
+    """
     return {"levels": [{"level": lvl, **data} for lvl, data in sorted(LOYALTY_LEVELS.items())]}
 
 @router.get("/history")
-async def get_history(user=Depends(get_current_user)):
-    """Get loyalty point history for current user"""
+async def get_history(limit: int = 50, user=Depends(get_current_user)):
+    """Get loyalty point history for current user.
+    Response: {"history": [{"points": int, "reason": str, "timestamp": iso8601}], "count": int}
+    """
     loyalty = await db.loyalty.find_one({"user_id": user["user_id"]}, {"_id": 0}) or {}
-    return {"history": loyalty.get("history", [])}
+    items = list(loyalty.get("history", []))[-limit:]
+    return {"history": items, "count": len(items)}
 
 @router.post("/add-points")
 async def add_points(points: int, reason: str, user_id: str, user=Depends(get_current_user)):
