@@ -2,6 +2,7 @@
 POS Public API v1 — externe Software-Integrationen
 Authentifizierung via API-Key (X-API-Key Header).
 Feature-Flag-Gating: Endpunkte nur verfügbar wenn Add-On aktiv.
+Rate-Limiting: Per-API-Key Limits via slowapi.
 """
 import hashlib
 from typing import Optional
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 from core.database import db
 from routes.pos_features import is_feature_enabled
+from core.rate_limit import limiter_api_key, RATE_POS_PUBLIC_READ, RATE_POS_PUBLIC_WRITE
 
 router = APIRouter(prefix="/api/pos/public/v1", tags=["POS Public API"])
 
@@ -52,7 +54,8 @@ async def _require_feature(merchant_id: str, feature_key: str):
 # META
 # ═══════════════════════════════════════════════════════════
 @router.get("/me")
-async def public_me(x_api_key: Optional[str] = Header(None, alias="X-API-Key")):
+@limiter_api_key.limit(RATE_POS_PUBLIC_READ)
+async def public_me(request: Request, x_api_key: Optional[str] = Header(None, alias="X-API-Key")):
     """Wer bin ich? Zeigt aktiven Merchant + Scopes + aktive Features."""
     ctx = await _auth_api_key(x_api_key)
     features = await db.pos_merchant_features.find(

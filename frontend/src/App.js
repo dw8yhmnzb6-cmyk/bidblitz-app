@@ -11,6 +11,7 @@ import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
 import ScannerPage from "./pages/ScannerPage";
 import MerchantPage from "./pages/MerchantPage";
+import MobileDashboard from "./pages/MobileDashboard";
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 import MorePage from "./pages/MorePage";
 import AuctionsPage from "./pages/AuctionsPage";
@@ -224,6 +225,7 @@ function AppContent() {
     if (hasKidsReturn) return "/more";
     if (hasStripeReturn) return "/wallet";
     const path = window.location.pathname;
+    console.log("🔍 Initial Path:", path);
     return path || "/";
   };
 
@@ -328,6 +330,12 @@ function AppContent() {
     setCurrentPath(path);
   };
 
+  // Standalone routes (no header/bottom nav) - bypass all checks
+  if (currentPath === "/mobile-dashboard") {
+    console.log("✅ Rendering MobileDashboard standalone");
+    return <MobileDashboard />;
+  }
+
   // Wait for session restore
   if (!user.sessionReady) {
     return (
@@ -400,6 +408,8 @@ function AppContent() {
     switch (currentPath) {
       case "/":
         return <HomePage {...homeProps} />;
+      case "/mobile-dashboard":
+        return <MobileDashboard />;
       case "/wallet":
         return <WalletPage {...pageProps} />;
       case "/scan":
@@ -856,7 +866,7 @@ function AppContent() {
     }
   };
 
-  const showBottomNav = currentPath !== "/merchant-landing" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
+  const showBottomNav = currentPath !== "/merchant-landing" && currentPath !== "/mobile-dashboard" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
     <div className="app-container" data-testid="app-container">

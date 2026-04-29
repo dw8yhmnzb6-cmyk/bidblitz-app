@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     // For LIVE preview (development) you may set:
-    // url: 'https://kassenpos-mobile.preview.emergentagent.com',
+    // url: 'https://kassensystem-preview.preview.emergentagent.com',
     // cleartext: true,
   },
   plugins: {
