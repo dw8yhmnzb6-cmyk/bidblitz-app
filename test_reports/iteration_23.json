@@ -1,0 +1,54 @@
+{
+  "summary": "Backend smoke + happy-path tests for 13 newly scaffolded route modules (split_payment, loyalty, reviews, scheduled, subscriptions, safety, promo, filters, group_orders, quick_actions, tips_gifts, delivery_options, bnpl). 22/39 passed, 17 FAILED with 500 KeyError 'user_id'. Root cause: ALL new routes reference user['user_id'] / user['first_name'] / user['last_name'] but core.security.get_current_user() returns the raw Mongo user document which only has '_id' (ObjectId) and 'name'. This is a systemic scaffolding bug affecting every auth-protected new endpoint.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "ALL new auth-protected routes", "issue": "user['user_id'] KeyError -> 500. get_current_user returns raw Mongo doc with '_id' (ObjectId), not 'user_id'. Must use str(user['_id']) or normalize the user dict in get_current_user.", "priority": "CRITICAL"},
+      {"endpoint": "/api/safety/*, /api/split-payment/*, /api/group/create, /api/tips/give", "issue": "Code uses user['first_name'] / user['last_name'] which don't exist on user docs (only 'name'). Will 500 even after user_id is fixed.", "priority": "HIGH"},
+      {"endpoint": "/api/loyalty/levels", "issue": "Endpoint specified in PRD but not implemented (returns 405). Only /my-points, /add-points, /stamp, /leaderboard exist.", "priority": "MEDIUM"},
+      {"endpoint": "/api/loyalty/history", "issue": "Endpoint specified in PRD but not implemented (returns 405). History array is stored on the loyalty doc but never exposed via GET.", "priority": "MEDIUM"},
+      {"endpoint": "/api/tips/presets", "issue": "Endpoint specified in PRD but not implemented in tips_gifts.py (returns 405). Only /give, /my-tips, /gift-card/* exist.", "priority": "MEDIUM"},
+      {"endpoint": "/api/loyalty/add-points", "issue": "Designed as 'internal API' but exposed publicly without auth – any unauthenticated caller can grant points to any user_id. Add admin/internal-only guard.", "priority": "HIGH"},
+      {"endpoint": "/api/safety/track/{share_id}", "issue": "Public endpoint leaks ride pickup/destination/rider_name without any access guard beyond knowing the share_id (UUID is fine but no expiry enforcement).", "priority": "MEDIUM"},
+      {"endpoint": "/api/quick/reorder/{service_type}/{order_id}", "issue": "If service_type is neither 'taxi' nor 'food' the function returns None (FastAPI yields 'null'). Should 400.", "priority": "LOW"},
+      {"endpoint": "/api/promo/available", "issue": "Build error if promo doc has no 'code' key when filtering one_per_user (KeyError); also lookups are O(N) per request.", "priority": "LOW"}
+    ],
+    "minor": [
+      {"endpoint": "/api/loyalty/leaderboard", "issue": "Crashes if any user has 0 points and last_name is empty: last_name[0] raises IndexError; also wraps {} dict for sorted level lookup that may pick wrong level when points exactly match boundary."},
+      {"endpoint": "/api/scheduled/create", "issue": "Accepts ISO without 'Z' but ambiguous timezone; relies on fromisoformat which differs across Python versions."},
+      {"endpoint": "/api/bnpl/check-eligibility", "issue": "user_doc['created_at'] required - registration may not always set it, raising KeyError."},
+      {"endpoint": "/api/reviews/create", "issue": "user.get('last_name', '')[0] crashes when last_name is empty string."},
+      {"endpoint": "/api/group/create", "issue": "all_confirmed math is wrong: len(confirmed_by) == len(participants)+1 but organizer is already in confirmed_by AND not in participants -> off-by-one when organizer self-joins."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_new_routes.py",
+    "/app/test_reports/pytest/iter23_results.xml"
+  ],
+  "action_items": [
+    "URGENT: Fix get_current_user (or all 13 new routes) so user['user_id'] resolves. Recommended: in core/security.py get_current_user, set user['user_id'] = str(user['_id']) before returning. This single change fixes 80% of failures.",
+    "Fix references to user['first_name'] / user['last_name'] in split_payment.py, safety.py, group_orders.py, tips_gifts.py, reviews.py, loyalty.py - admin/seeded users only have 'name'. Use user.get('name','User').split()[0] or user.get('first_name') or user.get('name','User').",
+    "Implement the 3 missing endpoints listed in PRD: GET /api/loyalty/levels, GET /api/loyalty/history, GET /api/tips/presets.",
+    "Add auth+admin guard on POST /api/loyalty/add-points (currently public, can be abused).",
+    "Fix off-by-one in group_orders.join confirmation count.",
+    "Re-run /app/backend/tests/test_new_routes.py after fixes - this regression suite covers smoke + happy paths."
+  ],
+  "critical_code_review_comments": [
+    "13 new route files were scaffolded against a non-existent user['user_id'] schema – appears nobody ran a single happy-path call before merging. Add a small auth-protected smoke test as CI gate.",
+    "Silent 'except: pass' in routes/reviews.py (after add_points) and routes/safety.py 'TODO send SMS' lines hide errors – replace with logger.exception.",
+    "routes/loyalty.add_points is declared as public POST but is described as 'Internal API' in docstring – security gap.",
+    "routes/safety.share-location and emergency hardcode bidblitz.ae URL and 'admin' user_id string – should use env config.",
+    "loyalty.LOYALTY_LEVELS leaderboard line 171 uses generator inside max() which is O(N*levels) per user – fine at small scale but inefficient.",
+    "delivery_options.upload_delivery_photo accepts photo_url as plain query param with no driver-role check – any auth user can mark any order delivered.",
+    "BNPL create accepts arbitrary order_id/service_type with no cross-check that the order exists or belongs to the user – allows fictitious BNPL records.",
+    "promo.create is gated by role==admin but uses query params – should be POST body for consistency."
+  ],
+  "updated_files": ["/app/backend/tests/test_new_routes.py"],
+  "success_rate": {"backend": "56% (22/39)", "frontend": "n/a (skipped per request)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (login via cookie; tests reuse cookie value as Bearer)",
+  "seed_data_creation": "None. Tests use TEST_-prefixed IDs and avoid persisting financial records (no real ride/order IDs available).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Root failure across new routes is user['user_id'] KeyError. Once main agent normalizes get_current_user to inject user_id=str(_id) (and adds first_name fallback to name), re-run pytest /app/backend/tests/test_new_routes.py. Then add deeper tests with real ride/order seed data for happy-path split-payment/tips/bnpl flows. Login uses httpOnly cookie 'access_token'; tests work around this by extracting cookie value and passing as Bearer.",
+  "rca of the issue": "core/security.py::get_current_user returns the raw users-collection document (keys: _id, email, name, role, ...). The 13 new route files were written assuming a normalized dict with keys user_id/first_name/last_name. Every protected endpoint that does user['user_id'] therefore raises KeyError and FastAPI's global exception handler converts it to 500 {'detail': \"'user_id'\"}. Mitigation: in get_current_user, just before return, do user['user_id'] = str(user['_id']) and split user.get('name','') into first_name/last_name. Single-point fix unblocks the majority of new routes."
+}

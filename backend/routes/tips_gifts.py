@@ -1,6 +1,7 @@
 # BidBlitz - Tips & Gifts
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime, timezone
 from uuid import uuid4
 from core.database import db

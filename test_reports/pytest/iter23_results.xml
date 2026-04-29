@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="17" skipped="0" tests="39" time="5.369" timestamp="2026-04-29T06:30:48.604664+00:00" hostname="agent-env-ee676029-c86f-4f2c-bc3c-5c2b3ac03e65"><testcase classname="backend.tests.test_new_routes.TestLoyalty" name="test_my_points" time="0.622"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:37: in test_my_points
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestLoyalty" name="test_leaderboard" time="0.154" /><testcase classname="backend.tests.test_new_routes.TestLoyalty" name="test_levels_endpoint_missing" time="0.130" /><testcase classname="backend.tests.test_new_routes.TestLoyalty" name="test_history_endpoint_missing" time="0.158" /><testcase classname="backend.tests.test_new_routes.TestLoyalty" name="test_add_points_signature" time="0.125" /><testcase classname="backend.tests.test_new_routes.TestReviews" name="test_create_and_get" time="0.119"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:71: in test_create_and_get
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestReviews" name="test_invalid_rating" time="0.113" /><testcase classname="backend.tests.test_new_routes.TestScheduled" name="test_create_and_cancel" time="0.124"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:100: in test_create_and_cancel
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestScheduled" name="test_past_time_rejected" time="0.111" /><testcase classname="backend.tests.test_new_routes.TestSubscriptions" name="test_plans" time="0.111" /><testcase classname="backend.tests.test_new_routes.TestSubscriptions" name="test_my_subs" time="0.117"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:129: in test_my_subs
+    assert r.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestSubscriptions" name="test_check_benefits" time="0.116"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:135: in test_check_benefits
+    assert r.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestSafety" name="test_get_emergency_contacts" time="0.112"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:144: in test_get_emergency_contacts
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestSafety" name="test_add_emergency_contact" time="0.117"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:151: in test_add_emergency_contact
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestSafety" name="test_share_location_no_ride" time="0.108"><failure message="assert 500 == 404&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:157: in test_share_location_no_ride
+    assert r.status_code == 404
+E   assert 500 == 404
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestSafety" name="test_emergency" time="0.113" /><testcase classname="backend.tests.test_new_routes.TestSafety" name="test_verify_pin_no_ride" time="0.117" /><testcase classname="backend.tests.test_new_routes.TestPromo" name="test_available" time="0.111" /><testcase classname="backend.tests.test_new_routes.TestPromo" name="test_apply_invalid" time="0.119" /><testcase classname="backend.tests.test_new_routes.TestFilters" name="test_restaurants" time="0.122" /><testcase classname="backend.tests.test_new_routes.TestFilters" name="test_cuisines" time="0.112" /><testcase classname="backend.tests.test_new_routes.TestFilters" name="test_with_filter_params" time="0.105" /><testcase classname="backend.tests.test_new_routes.TestGroupOrders" name="test_create_and_my_groups" time="0.111"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:213: in test_create_and_my_groups
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestQuickActions" name="test_favorite_flow" time="0.127"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:231: in test_favorite_flow
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestQuickActions" name="test_reorder_missing" time="0.119"><failure message="assert 500 == 404&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:244: in test_reorder_missing
+    assert r.status_code == 404
+E   assert 500 == 404
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestTipsGifts" name="test_presets_endpoint_missing" time="0.132" /><testcase classname="backend.tests.test_new_routes.TestTipsGifts" name="test_gift_card_invalid_amount" time="0.120" /><testcase classname="backend.tests.test_new_routes.TestDelivery" name="test_set_preferences" time="0.110"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:268: in test_set_preferences
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestDelivery" name="test_set_instructions_no_order" time="0.112"><failure message="assert 500 == 404&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:274: in test_set_instructions_no_order
+    assert r.status_code == 404
+E   assert 500 == 404
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestBNPL" name="test_plans" time="0.099" /><testcase classname="backend.tests.test_new_routes.TestBNPL" name="test_eligibility" time="0.112"><failure message="AssertionError: {&quot;detail&quot;:&quot;'user_id'&quot;}&#10;assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:287: in test_eligibility
+    assert r.status_code == 200, r.text
+E   AssertionError: {"detail":"'user_id'"}
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestBNPL" name="test_my_orders" time="0.121"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:293: in test_my_orders
+    assert r.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestBNPL" name="test_create_invalid_plan" time="0.128" /><testcase classname="backend.tests.test_new_routes.TestSplitPayment" name="test_my_requests" time="0.117" /><testcase classname="backend.tests.test_new_routes.TestSplitPayment" name="test_taxi_create_no_ride" time="0.110"><failure message="assert 500 == 404&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:316: in test_taxi_create_no_ride
+    assert r.status_code == 404
+E   assert 500 == 404
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestSplitPayment" name="test_food_create_no_order" time="0.111"><failure message="assert 500 == 404&#10; +  where 500 = &lt;Response [500]&gt;.status_code">backend/tests/test_new_routes.py:322: in test_food_create_no_order
+    assert r.status_code == 404
+E   assert 500 == 404
+E    +  where 500 = &lt;Response [500]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_new_routes.TestSplitPayment" name="test_accept_no_split" time="0.131" /><testcase classname="backend.tests.test_new_routes.TestAuthGating" name="test_protected_requires_token" time="0.150" /><testcase classname="backend.tests.test_new_routes.TestAuthGating" name="test_subscriptions_my_requires_token" time="0.102" /></testsuite></testsuites>
