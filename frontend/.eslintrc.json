@@ -1,8 +1,0 @@
-{
-  "extends": ["react-app"],
-  "rules": {
-    "no-undef": "error",
-    "react/jsx-no-undef": "error",
-    "no-unused-vars": "warn"
-  }
-}

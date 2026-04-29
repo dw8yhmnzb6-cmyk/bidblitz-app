@@ -97,6 +97,9 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - ✅ **Z-Index-Fix**: alle Super-App-Modals jetzt `z-[10010]` (war `z-50`/`z-[60]`, kollidierte mit BarcodeModal `z-[10000]`)
 - ✅ **ESLint Hardening**: `.eslintrc.json` mit `no-undef: error` + `react/jsx-no-undef: error`
 - ✅ **Capacitor 7** vollständig konfiguriert (`capacitor.config.ts`, Android/iOS Plattformen) — `yarn cap sync` ready
+- ✅ **`android/` + `ios/` Plattformen initialisiert** (29.04.2026) via `npx cap add android/ios` — Build-Output `android/app/build/outputs/apk/`. Anleitung: `/app/MOBILE_BUILD.md`
+- ✅ **Mobile UI-Fix iOS Safari**: Bottom-Nav `padding-bottom` jetzt `max(1.25rem, safe-area-inset)` damit URL-Bar nicht überlappt; KYC-Modal nutzt `100dvh` statt `100vh` (Dynamic Viewport Height)
+- ✅ **Production Build erfolgreich**: `yarn build` läuft sauber durch (TypeScript installiert, eslint-config korrigiert)
 
 ## Known Issues / Backlog
 
