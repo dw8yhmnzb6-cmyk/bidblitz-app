@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import ReviewModal from '../components/ReviewModal';
+import SplitPaymentModal from '../components/SplitPaymentModal';
+import LiveChat from '../components/LiveChat';
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -179,6 +182,14 @@ export default function TaxiPage({ onNavigate }) {
   const [userBalance, setUserBalance] = useState(0);
   const [moduleEnabled, setModuleEnabled] = useState(true);
   const [moduleMessage, setModuleMessage] = useState('');
+
+  // Super-App parity (review, split, live chat)
+  const [showReview, setShowReview] = useState(false);
+  const [reviewRideId, setReviewRideId] = useState(null);
+  const [showSplit, setShowSplit] = useState(false);
+  const [splitRideId, setSplitRideId] = useState(null);
+  const [splitTotal, setSplitTotal] = useState(0);
+  const [showLiveChat, setShowLiveChat] = useState(false);
 
   // Autocomplete state
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
@@ -1561,6 +1572,26 @@ export default function TaxiPage({ onNavigate }) {
                     </div>
                   )}
 
+                  {/* Live Chat + Split during active ride */}
+                  {!['completed', 'cancelled'].includes(activeRide.status) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        data-testid="taxi-livechat-btn"
+                        onClick={() => setShowLiveChat(true)}
+                        className="py-3 bg-[#121218] border border-[#00C2FF]/40 text-[#00C2FF] rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                      >💬 Chat mit Fahrer</button>
+                      <button
+                        data-testid="taxi-split-btn"
+                        onClick={() => {
+                          setSplitRideId(activeRide.ride_id);
+                          setSplitTotal(activeRide.final_fare || activeRide.fare_estimate || 0);
+                          setShowSplit(true);
+                        }}
+                        className="py-3 bg-[#121218] border border-purple-500/40 text-purple-300 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                      >👥 Split Pay</button>
+                    </div>
+                  )}
+
                   {/* Cancel Button */}
                   {!['completed', 'cancelled', 'started'].includes(activeRide.status) && (
                     <button
@@ -1578,12 +1609,17 @@ export default function TaxiPage({ onNavigate }) {
                       <div className="text-5xl mb-4">✅</div>
                       <h3 className="text-xl font-bold text-emerald-400">Fahrt abgeschlossen!</h3>
                       <p className="text-gray-400 mt-2">Bezahlt: €{(activeRide.final_fare || activeRide.fare_estimate).toFixed(2)}</p>
-                      <button
-                        onClick={() => { setActiveRide(null); setView('book'); }}
-                        className="mt-4 px-6 py-3 bg-cyan-500 rounded-xl text-black font-semibold"
-                      >
-                        Neue Fahrt buchen
-                      </button>
+                      <div className="grid grid-cols-2 gap-2 mt-4">
+                        <button
+                          data-testid="taxi-rate-after-btn"
+                          onClick={() => { setReviewRideId(activeRide.ride_id); setShowReview(true); }}
+                          className="px-4 py-3 bg-yellow-500/20 text-yellow-400 rounded-xl font-bold"
+                        >⭐ Bewerten</button>
+                        <button
+                          onClick={() => { setActiveRide(null); setView('book'); }}
+                          className="px-4 py-3 bg-cyan-500 rounded-xl text-black font-semibold"
+                        >Neue Fahrt</button>
+                      </div>
                     </div>
                   )}
                 </>
@@ -1648,9 +1684,18 @@ export default function TaxiPage({ onNavigate }) {
                         <span>•</span>
                         <span>{ride.distance_km} km</span>
                       </div>
-                      <span className="font-bold text-cyan-400">
-                        €{(ride.final_fare || ride.fare_estimate || 0).toFixed(2)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-cyan-400">
+                          €{(ride.final_fare || ride.fare_estimate || 0).toFixed(2)}
+                        </span>
+                        {ride.status === 'completed' && (
+                          <button
+                            data-testid={`taxi-review-btn-${ride.ride_id}`}
+                            onClick={() => { setReviewRideId(ride.ride_id); setShowReview(true); }}
+                            className="px-3 py-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg text-xs font-bold"
+                          >⭐</button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -1660,6 +1705,31 @@ export default function TaxiPage({ onNavigate }) {
         </AnimatePresence>
         )}
       </div>
+
+      {/* Super-App Parity Modals */}
+      <ReviewModal
+        isOpen={showReview}
+        onClose={() => setShowReview(false)}
+        serviceType="taxi"
+        serviceId={reviewRideId}
+        onSubmit={() => fetchHistory && fetchHistory()}
+      />
+      <SplitPaymentModal
+        isOpen={showSplit}
+        onClose={() => setShowSplit(false)}
+        type="taxi"
+        itemId={splitRideId}
+        totalAmount={splitTotal}
+      />
+      <AnimatePresence>
+        {showLiveChat && activeRide?.ride_id && (
+          <LiveChat
+            rideId={activeRide.ride_id}
+            userRole="passenger"
+            onClose={() => setShowLiveChat(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

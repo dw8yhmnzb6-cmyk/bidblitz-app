@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import MiniLeafletMap from '../components/MiniLeafletMap';
+import ARScooterFinder from '../components/ARScooterFinder';
+import ReviewModal from '../components/ReviewModal';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -54,6 +56,10 @@ export default function ScooterPage({ onNavigate }) {
   const [redeemResult, setRedeemResult] = useState(null);
   const [activeShares, setActiveShares] = useState([]);
   const sharePollingRef = useRef(null);
+
+  // Super-App parity
+  const [showReview, setShowReview] = useState(false);
+  const [reviewServiceId, setReviewServiceId] = useState(null);
   
   // Refs
   const timerRef = useRef(null);
@@ -984,9 +990,16 @@ export default function ScooterPage({ onNavigate }) {
                       <div className="flex items-center gap-2 text-sm text-gray-400">
                         <span>⏱️ {rental.total_minutes || 0} Min</span>
                       </div>
-                      <span className="font-bold text-green-400">
-                        €{(rental.total_cost || 0).toFixed(2)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-green-400">
+                          €{(rental.total_cost || 0).toFixed(2)}
+                        </span>
+                        <button
+                          data-testid={`scooter-review-btn-${rental.rental_id}`}
+                          onClick={() => { setReviewServiceId(rental.rental_id); setShowReview(true); }}
+                          className="px-3 py-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg text-xs font-bold"
+                        >⭐ Bewerten</button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -1113,6 +1126,21 @@ export default function ScooterPage({ onNavigate }) {
         </AnimatePresence>
         )}
       </div>
+
+      {/* AR Scooter Finder (camera-based) */}
+      <ARScooterFinder
+        scooters={scooters}
+        onSelectScooter={(s) => setSelectedScooter(s)}
+      />
+
+      {/* Review Modal (after rental) */}
+      <ReviewModal
+        isOpen={showReview}
+        onClose={() => setShowReview(false)}
+        serviceType="scooter"
+        serviceId={reviewServiceId}
+        onSubmit={() => fetchHistory()}
+      />
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
+import FoodFilters from '../components/FoodFilters';
+import ReviewModal from '../components/ReviewModal';
+import SplitPaymentModal from '../components/SplitPaymentModal';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -409,6 +412,13 @@ export default function FoodPage({ onNavigate }) {
                     <span>{f.icon}</span>{f.label}
                   </button>
                 ))}
+                <button
+                  data-testid="food-adv-filters-btn"
+                  onClick={() => setShowAdvFilters(true)}
+                  className={`shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all ${advFilters && (advFilters.cuisine?.length || advFilters.dietary?.length || advFilters.rating_min) ? "bg-[#00C2FF] text-white" : "bg-white/5 text-gray-400 border border-white/10"}`}
+                >
+                  <span>🎚️</span>Mehr Filter
+                </button>
               </div>
 
               {/* Categories */}
@@ -963,6 +973,19 @@ export default function FoodPage({ onNavigate }) {
               >
                 {loading ? 'Wird bestellt...' : userBalance < orderTotal ? 'Nicht genug Guthaben' : 'Jetzt bestellen'}
               </button>
+
+              {/* Split Payment Button */}
+              <button
+                data-testid="food-split-pay-btn"
+                onClick={() => {
+                  setSplitOrderId(activeOrder?.order_id || `cart_${Date.now()}`);
+                  setSplitTotal(orderTotal);
+                  setShowSplit(true);
+                }}
+                className="w-full py-3 bg-[#121218] border border-[#00C2FF]/40 text-[#00C2FF] rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+              >
+                👥 Mit Freunden teilen (Split Pay)
+              </button>
             </motion.div>
           )}
 
@@ -1141,7 +1164,20 @@ export default function FoodPage({ onNavigate }) {
                       <span className="text-sm text-gray-400">
                         {order.items?.length || 0} Artikel
                       </span>
-                      <span className="font-bold text-orange-400">€{order.total?.toFixed(2)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-orange-400">€{order.total?.toFixed(2)}</span>
+                        {order.status === 'delivered' && (
+                          <button
+                            data-testid={`food-review-btn-${order.order_id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReviewTarget({ service_type: 'food', service_id: order.order_id });
+                              setShowReview(true);
+                            }}
+                            className="px-3 py-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg text-xs font-bold"
+                          >⭐ Bewerten</button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -1150,6 +1186,34 @@ export default function FoodPage({ onNavigate }) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Super-App Modals */}
+      <AnimatePresence>
+        {showAdvFilters && (
+          <FoodFilters
+            onApply={(f) => {
+              setAdvFilters(f);
+              setShowAdvFilters(false);
+              fetchRestaurants(selectedCategory, searchQuery);
+            }}
+            onClose={() => setShowAdvFilters(false)}
+          />
+        )}
+      </AnimatePresence>
+      <ReviewModal
+        isOpen={showReview}
+        onClose={() => setShowReview(false)}
+        serviceType={reviewTarget?.service_type}
+        serviceId={reviewTarget?.service_id}
+        onSubmit={() => fetchOrderHistory()}
+      />
+      <SplitPaymentModal
+        isOpen={showSplit}
+        onClose={() => setShowSplit(false)}
+        type="food"
+        itemId={splitOrderId}
+        totalAmount={splitTotal}
+      />
     </div>
   );
 }

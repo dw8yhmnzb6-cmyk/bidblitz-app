@@ -1,0 +1,65 @@
+{
+  "summary": "Iteration 25: Tested 3 NEW backend endpoint groups (audit-log filters, qr-poster, pos extras: trial-reset/staff CRUD) and frontend wiring of SuperAppOverlay + page integrations on /taxi /scooter /food. Backend: 20/20 PASS. Frontend: /taxi and /scooter render SuperAppOverlay buttons (loyalty, plans, mic, safety) AND ARScooterFinder button correctly. /food CRASHES with runtime ReferenceError 'advFilters is not defined' — FoodPage.jsx is missing useState declarations for advFilters/setAdvFilters/showAdvFilters/setShowAdvFilters even though they are referenced at lines 415-421 and 1192-1196. This blocks rendering of the floating overlay AND the new food-adv-filters-btn / food-split-pay-btn / ReviewModal buttons on /food.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FoodPage.jsx",
+        "issue": "Runtime ReferenceError: 'advFilters is not defined'. Variables `advFilters`, `setAdvFilters`, `showAdvFilters`, `setShowAdvFilters` are USED (lines 415-421, 1192-1196) but never declared via useState. This crashes the entire FoodPage rendering tree, so SuperAppOverlay (loyalty/plans/safety/mic), `food-adv-filters-btn`, `food-split-pay-btn`, FoodFilters bottom-sheet and ReviewModal are all NOT visible on /food.",
+        "selector": "[data-testid='food-adv-filters-btn'], [data-testid='superapp-loyalty-btn'] (on /food only)",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Food page – Erweiterte Filter / Split Pay / Review",
+        "issue": "Cannot exercise FoodFilters bottom-sheet, SplitPaymentModal, or ReviewModal on /food because the page crashes before render due to the missing useState (above).",
+        "affected_selectors": [
+          "[data-testid='food-adv-filters-btn']",
+          "[data-testid='food-split-pay-btn']"
+        ]
+      }
+    ],
+    "design_issues": []
+  },
+  "verified_working": {
+    "/taxi": ["[data-testid='superapp-loyalty-btn']", "[data-testid='superapp-plans-btn']", "Voice Mic floating button", "SafetyButton (red, when applicable)"],
+    "/scooter": ["[data-testid='superapp-loyalty-btn']", "[data-testid='superapp-plans-btn']", "ARScooterFinder 'AR Finder' purple-pink button (top-right)", "Voice Mic floating button", "SafetyButton (red shield bottom)"],
+    "Backend GET /api/admin/audit-logs": ["basic shape with logs/total/skip/limit/available_events/available_severities", "date_from + date_to filtering", "email regex filter", "free-text search filter", "auth gating (401/403 unauth)"],
+    "Backend GET /api/pos/store/{id}/qr-poster": ["format=json (target_url+store_name+/selfcheckout)", "format=png (image/png + PNG magic bytes)", "format=svg (image/svg+xml + <svg)", "custom base_url honored", "404 for unknown store", "401/403 for unauth"],
+    "Backend POST /api/pos/features/admin/trial-reset": ["403 for unauth", "404 for unknown merchant_id+feature_key combination", "200 ok=true on success (idempotent on repeat call)"],
+    "Backend POST/GET /api/pos/staff/list|update|remove": ["staff list returns array (admin)", "staff update with invalid role -> 400", "staff update with no fields -> 400", "staff update non-existent -> 404", "staff remove non-existent -> 404", "staff list unauth -> 401/403"]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pos_extras_audit.py",
+    "/app/test_reports/pytest/iter25_results.xml"
+  ],
+  "action_items": [
+    "FoodPage.jsx: Add the missing useState declarations near line 69, e.g. `const [showAdvFilters, setShowAdvFilters] = useState(false);` and `const [advFilters, setAdvFilters] = useState(null);` (or {} matching FoodFilters initial shape). Verify by reloading /food in the browser and observing no ReferenceError plus visible food-adv-filters-btn + SuperAppOverlay buttons.",
+    "After the fix, retest /food for: food-adv-filters-btn opens FoodFilters bottom-sheet, food-split-pay-btn opens SplitPaymentModal, and ReviewModal launches from delivered orders.",
+    "Optional: Add a CI lint rule (no-undef via ESLint) — this class of bug should fail the build."
+  ],
+  "critical_code_review_comments": [
+    "FoodPage.jsx uses 4 undeclared identifiers (advFilters, setAdvFilters, showAdvFilters, setShowAdvFilters). ESLint with `react/jsx-no-undef` and `no-undef` would catch this immediately. Recommend adding lint to pre-commit/CI.",
+    "pos_extras.py uses HTTPException(status, 'msg') positional pattern — works but `status_code=` keyword is more conventional and matches the rest of the codebase.",
+    "qr-poster endpoint falls back to hardcoded 'https://app.bidblitz.ae' when no base_url provided — fine for production but consider reading from settings/env to avoid divergence.",
+    "Trial-reset writes to db.pos_audit_log with try/except: pass swallowing all errors. Per prior iteration's PRD action item, prefer logger.exception over silent pass for observability.",
+    "SuperAppOverlay correctly gates rendering via isAuthenticated && isOnSuperApp — verified that buttons do NOT appear on /, /login, /wallet etc. Good scope hygiene."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pos_extras_audit.py (NEW: 20 tests covering audit-logs filters, qr-poster json/png/svg, trial-reset, staff CRUD)"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20 new + 41/41 prior iteration regression unaffected)",
+    "frontend": "66% (2/3 routes – /taxi and /scooter green; /food crashes due to missing useState)"
+  },
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (login sets httpOnly cookie access_token; tests reuse cookie value as Bearer; merchant MER-520D937E02F3, store STR-34CCF1107F)",
+  "seed_data_creation": "None. Tests only assert against pre-existing audit_logs and the pre-seeded store STR-34CCF1107F. trial-reset test probes 4 candidate feature_keys and accepts 404 (no feature provisioned) as a valid documented state.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend new-route tests (test_pos_extras_audit.py) are 20/20 green. Only FoodPage.jsx has a blocking React crash – `advFilters` / `setAdvFilters` / `showAdvFilters` / `setShowAdvFilters` are referenced but never declared via useState. /taxi and /scooter floating overlays + ARScooterFinder button render correctly when authenticated. To repro frontend tests: API-login as admin (POST /api/auth/login) which sets access_token cookie automatically in playwright context, then navigate to /food (will throw 'advFilters is not defined' in pageerror), /taxi (clean), /scooter (clean – AR Finder visible top-right). LiveChat / SplitPaymentModal / ReviewModal on TaxiPage tracking view require an active ride which we did not seed; verifying button rendering would require seeding a ride or mocking activeRideId.",
+  "rca of the issue": "Main agent added new JSX referencing advFilters / showAdvFilters state at FoodPage.jsx lines 415-421 (button) and 1192-1196 (modal mount) but forgot to add the corresponding useState declarations near line 69 where all other FoodPage states are declared. Result: at first render, JS evaluates the button's className ternary which references `advFilters`, hitting a ReferenceError that unmounts the entire page tree. This is why the SuperAppOverlay also disappears on /food (it is rendered by AppContent which is fine, but the crashing FoodPage component throws before AppContent's tree mounts the overlay portal — actually the overlay is a sibling, so its non-rendering specifically on /food is because the ReferenceError originates inside the FoodPage subtree but there is no error boundary, causing the React app root to fail to commit). Fix: add `const [showAdvFilters, setShowAdvFilters] = useState(false);` and `const [advFilters, setAdvFilters] = useState(null);` (or `{}` matching whatever FoodFilters expects as initial value)."
+}

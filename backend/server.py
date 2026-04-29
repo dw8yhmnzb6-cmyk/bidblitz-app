@@ -700,6 +700,8 @@ app.include_router(delivery_options_router)
 
 from routes.bnpl import router as bnpl_router
 app.include_router(bnpl_router)
+from routes.pos_extras import router as pos_extras_router
+app.include_router(pos_extras_router)
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

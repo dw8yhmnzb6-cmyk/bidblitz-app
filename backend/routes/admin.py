@@ -360,7 +360,11 @@ async def get_audit_logs(
     request: Request,
     event: str = "",
     user_id: str = "",
+    email: str = "",
     severity: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    search: str = "",
     limit: int = 50,
     skip: int = 0,
 ):
@@ -372,17 +376,45 @@ async def get_audit_logs(
         query["event"] = event
     if user_id:
         query["user_id"] = user_id
+    if email:
+        query["email"] = {"$regex": email, "$options": "i"}
     if severity:
         query["severity"] = severity
+    # ISO date-range filter on timestamp
+    ts_filter = {}
+    if date_from:
+        ts_filter["$gte"] = date_from
+    if date_to:
+        ts_filter["$lte"] = date_to
+    if ts_filter:
+        query["timestamp"] = ts_filter
+    # Free-text search across event/email/ip
+    if search:
+        query["$or"] = [
+            {"event": {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}},
+            {"ip": {"$regex": search, "$options": "i"}},
+        ]
 
     logs = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
     total = await db.audit_logs.count_documents(query)
 
+    # Distinct values for client-side dropdowns
+    distinct_events = await db.audit_logs.distinct("event")
+    distinct_severities = await db.audit_logs.distinct("severity")
+
     await log_audit(AuditEvent.ADMIN_ACTION, user_id=str(admin["_id"]), email=admin.get("email", ""),
                     ip=ip, user_agent=ua,
-                    details={"action": "view_audit_logs", "filters": {"event": event, "user_id": user_id, "severity": severity}})
+                    details={"action": "view_audit_logs", "filters": {"event": event, "user_id": user_id, "email": email, "severity": severity, "date_from": date_from, "date_to": date_to, "search": search}})
 
-    return {"logs": logs, "total": total}
+    return {
+        "logs": logs,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "available_events": sorted([e for e in distinct_events if e]),
+        "available_severities": sorted([s for s in distinct_severities if s]),
+    }
 
 
 # ── Compliance Flags (Admin Review) ──

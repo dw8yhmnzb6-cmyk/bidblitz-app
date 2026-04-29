@@ -6,6 +6,7 @@ import "@/App.css";
 import { AppProvider, useUser, useI18n } from "./store";
 import { ThemeProvider, useTheme } from "./store/ThemeContext";
 import AIChatWidget from "./components/AIChatWidget";
+import SuperAppOverlay from "./components/SuperAppOverlay";
 
 import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
@@ -914,6 +915,13 @@ function AppContent() {
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
       {user.isAuthenticated && <AIChatWidget />}
+      {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
+      <SuperAppOverlay
+        currentPath={currentPath}
+        onNavigate={handleNavigate}
+        isAuthenticated={user.isAuthenticated}
+        activeRideId={navState?.activeRideId}
+      />
     </div>
   );
 }
