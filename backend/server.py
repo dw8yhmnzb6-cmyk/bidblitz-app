@@ -702,6 +702,8 @@ from routes.bnpl import router as bnpl_router
 app.include_router(bnpl_router)
 from routes.pos_extras import router as pos_extras_router
 app.include_router(pos_extras_router)
+from routes.chat_ws import router as chat_ws_router
+app.include_router(chat_ws_router)
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

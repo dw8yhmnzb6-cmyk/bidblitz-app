@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import ReviewModal from '../components/ReviewModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import LiveChat from '../components/LiveChat';
+import GroupOrderModal from '../components/GroupOrderModal';
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -190,6 +191,7 @@ export default function TaxiPage({ onNavigate }) {
   const [splitRideId, setSplitRideId] = useState(null);
   const [splitTotal, setSplitTotal] = useState(0);
   const [showLiveChat, setShowLiveChat] = useState(false);
+  const [showGroupRide, setShowGroupRide] = useState(false);
 
   // Autocomplete state
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
@@ -1424,6 +1426,16 @@ export default function TaxiPage({ onNavigate }) {
                   >
                     {loading ? 'Wird gebucht...' : 'Fahrt buchen'}
                   </button>
+
+                  {/* Group Ride Button (Bolt-Style) */}
+                  <button
+                    type="button"
+                    onClick={() => setShowGroupRide(true)}
+                    data-testid="taxi-group-ride-btn"
+                    className="w-full py-3 bg-[#121218] border border-emerald-500/40 text-emerald-300 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                  >
+                    👥 Group Ride starten
+                  </button>
                 </div>
               )}
 
@@ -1730,6 +1742,16 @@ export default function TaxiPage({ onNavigate }) {
           />
         )}
       </AnimatePresence>
+      <GroupOrderModal
+        isOpen={showGroupRide}
+        onClose={() => setShowGroupRide(false)}
+        serviceType="taxi"
+        details={{
+          pickup,
+          destination: dropoff,
+          vehicle_type: selectedVehicle,
+        }}
+      />
     </div>
   );
 }

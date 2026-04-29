@@ -4,6 +4,7 @@ import { useI18n } from '../store/I18nContext';
 import FoodFilters from '../components/FoodFilters';
 import ReviewModal from '../components/ReviewModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
+import GroupOrderModal from '../components/GroupOrderModal';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -76,6 +77,7 @@ export default function FoodPage({ onNavigate }) {
   const [showSplit, setShowSplit] = useState(false);
   const [splitOrderId, setSplitOrderId] = useState(null);
   const [splitTotal, setSplitTotal] = useState(0);
+  const [showGroupOrder, setShowGroupOrder] = useState(false);
   
   // Polling ref
   const pollingRef = React.useRef(null);
@@ -994,6 +996,15 @@ export default function FoodPage({ onNavigate }) {
                 className="w-full py-3 bg-[#121218] border border-[#00C2FF]/40 text-[#00C2FF] rounded-xl text-sm font-bold flex items-center justify-center gap-2"
               >
                 👥 Mit Freunden teilen (Split Pay)
+              </button>
+
+              {/* Group Order Button */}
+              <button
+                data-testid="food-group-order-btn"
+                onClick={() => setShowGroupOrder(true)}
+                className="w-full py-3 bg-[#121218] border border-emerald-500/40 text-emerald-300 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+              >
+                🍽️ Gemeinsam bestellen (Group Order)
               </button>
             </motion.div>
           )}
