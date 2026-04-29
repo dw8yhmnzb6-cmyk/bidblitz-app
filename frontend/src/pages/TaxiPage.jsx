@@ -7,6 +7,7 @@ import ReviewModal from '../components/ReviewModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import LiveChat from '../components/LiveChat';
 import GroupOrderModal from '../components/GroupOrderModal';
+import GroupTrackerBanner from '../components/GroupTrackerBanner';
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -862,6 +863,12 @@ export default function TaxiPage({ onNavigate }) {
 
         {moduleEnabled && (
         <AnimatePresence mode="wait">
+          {/* GROUP-RIDE LIVE-TRACKER BANNER (alle Views) */}
+          <GroupTrackerBanner
+            serviceType="taxi"
+            onOpenGroup={() => setShowGroupRide(true)}
+          />
+
           {/* BOOKING VIEW */}
           {view === 'book' && (
             <motion.div

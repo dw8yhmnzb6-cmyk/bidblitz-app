@@ -97,6 +97,7 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - ✅ **ScooterPage**: ARScooterFinder (Camera-AR mit Geolocation), ReviewModal, History-Review-Button
 - ✅ **FoodPage**: FoodFilters (Erweiterte Filter Bottom-Sheet), SplitPaymentModal (Cart), ReviewModal (delivered orders), **GroupOrderModal** (Group Order aus Cart)
 - ✅ **GroupOrderModal**: zentrale Komponente (Lieferando/Bolt-Style) mit E-Mail-Einladung, Erfolgsscreen + Copy-Link, "Deine aktiven Gruppen"-Liste
+- ✅ **GroupTrackerBanner**: Live-Tracker (WhatsApp-Read-Receipts-Stil) — Avatar-Reihe mit ✓ pro Bestätigung, "Warte auf …"-Liste, Polling alle 10s. Eingebunden in /taxi und /food als Top-Banner
 
 ## Known Issues / Backlog
 

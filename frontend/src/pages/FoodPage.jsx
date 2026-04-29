@@ -5,6 +5,7 @@ import FoodFilters from '../components/FoodFilters';
 import ReviewModal from '../components/ReviewModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import GroupOrderModal from '../components/GroupOrderModal';
+import GroupTrackerBanner from '../components/GroupTrackerBanner';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -380,6 +381,12 @@ export default function FoodPage({ onNavigate }) {
 
       <div className="max-w-lg mx-auto px-4 py-6">
         <AnimatePresence mode="wait">
+          {/* GROUP-ORDER LIVE-TRACKER BANNER (alle Views) */}
+          <GroupTrackerBanner
+            serviceType="food"
+            onOpenGroup={() => setShowGroupOrder(true)}
+          />
+
           {/* RESTAURANTS LIST */}
           {view === 'restaurants' && (
             <motion.div
