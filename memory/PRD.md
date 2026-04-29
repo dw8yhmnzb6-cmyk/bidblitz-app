@@ -18,6 +18,7 @@ BidBlitz ist eine voll-funktionsfähige React + FastAPI + MongoDB Super App mit 
 - ✅ **Compliance Tab**: Z-Bon, X-Bon, DSFinV-K Export, Kassenmeldepflicht (§146a AO)
 - ✅ **Add-On / Feature-Flag-System**: 18 Features pro Merchant zubuchbar (Tisch-Reservierung, QR-Bestellung, KDS, Loyalty, KI, Compliance, Self-Checkout, …) mit Trial + Admin-Toggle
 - ✅ **Public API v1** (`/api/pos/public/v1/*`) mit X-API-Key Auth, Scopes (read/write), Feature-Gating (HTTP 402 wenn Add-On nicht aktiv)
+- ✅ **Self-Checkout Customer-Route** (`/selfcheckout?store=...`): Kunde scannt QR → Session → Barcode-Scan → Cart → Wallet-Pay → Beleg. Endpunkte unter `/api/pos/selfcheckout/*`. Feature-Gated via `self_checkout` Add-On.
 - ✅ **Offline-Modus**: Cash-Verkäufe in localStorage Queue, Auto-Sync bei Online
 - ✅ TSE/Fiskaly, KDS, Tisch-QR, Pfand, Dynamic Pricing, Time-Clock, Tips
 - ✅ DATEV/Lexoffice Export, OCR Lieferschein, Voice Commands
@@ -60,7 +61,6 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 ## Known Issues / Backlog
 
 ### P1
-- Self-Checkout-Modus / Scan & Go Customer-Route (Backend Endpunkte vorhanden)
 - Native Mobile Build (Capacitor Node-Konflikt)
 - Echte Fiskaly-Cloud Credentials (Mock vorhanden)
 

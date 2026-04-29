@@ -455,6 +455,8 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
+      case "/selfcheckout":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SelfCheckoutPage onBack={() => handleNavigate("/")} navState={navState} />;
       case "/admin/old":
         return user.role === "admin"
           ? <AdminPage onNavigate={handleNavigate} />
