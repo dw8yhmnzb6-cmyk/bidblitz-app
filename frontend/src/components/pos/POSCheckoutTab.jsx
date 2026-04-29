@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { ScanLine, Search, Trash2, Loader2, Check, QrCode, CreditCard, Smartphone, Banknote, Download } from "lucide-react";
+import { ScanLine, Search, Trash2, Loader2, Check, QrCode, CreditCard, Smartphone, Banknote, Download, Gift, Wallet, Ticket, WifiOff, Wifi } from "lucide-react";
 import { toast } from "sonner";
 import { printReceipt } from "../../utils/escposPrinter";
+import { POSVoucherSale, POSWalletTopUp } from "./POSVoucherComponents";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -95,14 +96,71 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   const [cashReceived, setCashReceived] = useState("");
   const [cardRef, setCardRef] = useState("");
   const [discountPct, setDiscountPct] = useState(0);
+  const [specialMode, setSpecialMode] = useState(null); // null | "voucher" | "topup"
+  const [voucherPayCode, setVoucherPayCode] = useState("");
+  const [voucherChecking, setVoucherChecking] = useState(false);
+  const [appliedVouchers, setAppliedVouchers] = useState([]); // [{code, applied}]
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [queuedSales, setQueuedSales] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("pos_offline_queue") || "[]"); } catch { return []; }
+  });
   const scanRef = useRef(null);
   const pollRef = useRef(null);
+
+  // Online/offline detection + auto-sync
+  useEffect(() => {
+    const onOn = () => { setOnline(true); syncOfflineQueue(); };
+    const onOff = () => { setOnline(false); toast.warning("Offline-Modus aktiv — Verkäufe werden zwischengespeichert"); };
+    window.addEventListener("online", onOn);
+    window.addEventListener("offline", onOff);
+    return () => { window.removeEventListener("online", onOn); window.removeEventListener("offline", onOff); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persistQueue = (next) => {
+    setQueuedSales(next);
+    localStorage.setItem("pos_offline_queue", JSON.stringify(next));
+  };
+
+  const queueOfflineSale = (saleSnapshot) => {
+    const next = [...queuedSales, { ...saleSnapshot, queued_at: new Date().toISOString() }];
+    persistQueue(next);
+    toast.success(`Verkauf offline gespeichert (${next.length} in Warteschlange)`);
+  };
+
+  const syncOfflineQueue = useCallback(async () => {
+    let queue;
+    try { queue = JSON.parse(localStorage.getItem("pos_offline_queue") || "[]"); } catch { queue = []; }
+    if (!queue.length) return;
+    let synced = 0;
+    const remaining = [];
+    for (const q of queue) {
+      try {
+        const c = await apiCall("/api/pos/cart/create", {
+          method: "POST",
+          body: { register_id: q.register_id, items: q.items, discount_pct: q.discount_pct || 0 },
+        });
+        await apiCall("/api/pos/payment/create", {
+          method: "POST",
+          body: { cart_id: c.cart.cart_id, method: "cash", cash_received: q.total },
+        });
+        synced++;
+      } catch {
+        remaining.push(q);
+      }
+    }
+    persistQueue(remaining);
+    if (synced > 0) toast.success(`${synced} Offline-Verkäufe synchronisiert`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totals = useMemo(() => {
     const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
     const disc = sub * (discountPct / 100);
-    return { subtotal: sub, discount: disc, total: sub - disc };
-  }, [cart, discountPct]);
+    const voucherTotal = appliedVouchers.reduce((s, v) => s + (v.applied || 0), 0);
+    const grand = Math.max(0, sub - disc - voucherTotal);
+    return { subtotal: sub, discount: disc, voucher: voucherTotal, total: grand };
+  }, [cart, discountPct, appliedVouchers]);
 
   useEffect(() => { if (shift && scanRef.current) scanRef.current.focus(); }, [shift]);
 
@@ -183,14 +241,82 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
     product_id: c.product_id, quantity: c.quantity, discount_pct: c.discount_pct || 0,
   }));
 
+  const checkVoucher = async () => {
+    if (!voucherPayCode.trim()) return toast.error("Code eingeben");
+    setVoucherChecking(true);
+    try {
+      const code = voucherPayCode.trim().toUpperCase().replace("BIDBLITZ-VOUCHER:", "");
+      const v = await apiCall(`/api/pos/vouchers/check/${encodeURIComponent(code)}`);
+      if (!v.valid) return toast.error("Gutschein ungültig oder abgelaufen");
+      const remainingCart = totals.total;
+      const apply = Math.min(remainingCart, v.balance);
+      if (apply <= 0) return toast.error("Warenkorb ist bereits gedeckt");
+      setAppliedVouchers((prev) => [...prev, { code, applied: apply, balance: v.balance }]);
+      setVoucherPayCode("");
+      toast.success(`€${apply.toFixed(2)} vom Gutschein ${code} angewendet`);
+    } catch (e) { toast.error(e.message); }
+    setVoucherChecking(false);
+  };
+
+  const removeVoucher = (idx) => {
+    setAppliedVouchers((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const pay = async () => {
     if (cart.length === 0) return toast.error("Cart leer");
+
+    // Offline-Modus: Cash-Verkauf in Queue speichern
+    if (!online) {
+      if (paymentMethod !== "cash") return toast.error("Offline nur Bar möglich");
+      queueOfflineSale({
+        register_id: registerId,
+        items: buildItems(),
+        discount_pct: discountPct,
+        total: totals.total,
+        cart_snapshot: cart,
+      });
+      const fakeSale = {
+        receipt_id: `OFFLINE-${Date.now().toString(36).toUpperCase()}`,
+        total: totals.total,
+      };
+      setCart([]); setDiscountPct(0); setAppliedVouchers([]); setCashReceived("");
+      setActivePayment({ status: "paid", sale: fakeSale, is_offline: true });
+      return;
+    }
+
     try {
       const c = await apiCall("/api/pos/cart/create", {
         method: "POST",
         body: { register_id: registerId, items: buildItems(), discount_pct: discountPct },
       });
       const cart_id = c.cart.cart_id;
+
+      // Apply vouchers first (server-side)
+      for (const v of appliedVouchers) {
+        try {
+          await apiCall("/api/pos/vouchers/redeem-as-payment", {
+            method: "POST",
+            body: { voucher_code: v.code, cart_id },
+          });
+        } catch (e) {
+          toast.error(`Gutschein ${v.code}: ${e.message}`);
+          return;
+        }
+      }
+
+      // If vouchers covered everything, finalize with cash 0
+      if (totals.total <= 0.005) {
+        const p = await apiCall("/api/pos/payment/create", {
+          method: "POST",
+          body: { cart_id, method: "cash", cash_received: 0 },
+        });
+        if (p.sale) {
+          toast.success(`Bezahlt mit Gutschein — Beleg ${p.sale.receipt_id}`);
+          setCart([]); setDiscountPct(0); setAppliedVouchers([]); setCashReceived("");
+          setActivePayment({ ...p.payment, sale: p.sale });
+        }
+        return;
+      }
 
       const body = { cart_id, method: paymentMethod };
       if (paymentMethod === "cash") body.cash_received = parseFloat(cashReceived || totals.total);
@@ -201,7 +327,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
 
       if (p.sale) {
         toast.success(`Bezahlt — Beleg ${p.sale.receipt_id}`);
-        setCart([]); setDiscountPct(0); setCashReceived(""); setCustomerBarcode(""); setCardRef("");
+        setCart([]); setDiscountPct(0); setAppliedVouchers([]); setCashReceived(""); setCustomerBarcode(""); setCardRef("");
         setActivePayment({ ...p.payment, sale: p.sale });
         return;
       }
@@ -334,6 +460,47 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
 
   return (
     <div className="space-y-3">
+      {/* Online/Offline + Sonderverkauf Toggle */}
+      <div className="flex gap-2 items-center">
+        <div className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${online ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}
+          data-testid="pos-online-status">
+          {online ? <Wifi size={11} /> : <WifiOff size={11} />}
+          {online ? "Online" : "Offline"}
+          {queuedSales.length > 0 && <span>· {queuedSales.length} queued</span>}
+        </div>
+        {queuedSales.length > 0 && online && (
+          <button onClick={syncOfflineQueue} className="px-2 py-1 rounded-lg text-[10px] font-bold bg-blue-500/15 text-blue-300"
+            data-testid="pos-sync-queue">
+            Sync ({queuedSales.length})
+          </button>
+        )}
+        <div className="ml-auto flex gap-1">
+          <button onClick={() => setSpecialMode(specialMode === "voucher" ? null : "voucher")}
+            className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"
+            style={{ background: specialMode === "voucher" ? "rgba(255,64,96,0.2)" : "rgba(255,255,255,0.05)", color: specialMode === "voucher" ? "#FF4060" : "white" }}
+            data-testid="pos-toggle-voucher">
+            <Gift size={11} /> Gutschein
+          </button>
+          <button onClick={() => setSpecialMode(specialMode === "topup" ? null : "topup")}
+            className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"
+            style={{ background: specialMode === "topup" ? "rgba(0,194,255,0.2)" : "rgba(255,255,255,0.05)", color: specialMode === "topup" ? "#00C2FF" : "white" }}
+            data-testid="pos-toggle-topup">
+            <Wallet size={11} /> Aufladen
+          </button>
+        </div>
+      </div>
+
+      {specialMode === "voucher" && (
+        <Card title="Gutschein verkaufen" testid="pos-voucher-sale-card">
+          <POSVoucherSale storeId={storeId} registerId={registerId} onComplete={() => setSpecialMode(null)} />
+        </Card>
+      )}
+      {specialMode === "topup" && (
+        <Card title="Wallet aufladen" testid="pos-topup-card">
+          <POSWalletTopUp storeId={storeId} registerId={registerId} onComplete={() => setSpecialMode(null)} />
+        </Card>
+      )}
+
       <div className="flex gap-2">
         <div className="flex-1 flex items-center gap-2 bg-white/5 border-2 border-[#00C2FF]/40 rounded-xl px-3 py-2">
           <ScanLine size={16} className="text-[#00C2FF]" />
@@ -400,10 +567,32 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
                 className="w-16 px-1 py-0.5 bg-white/5 rounded text-right text-[11px]" />
             </div>
             <div className="flex justify-between text-amber-400"><span>Rabatt</span><span>−€{totals.discount.toFixed(2)}</span></div>
+            {appliedVouchers.length > 0 && (
+              <div className="border-t border-white/10 pt-1 mt-1 space-y-0.5">
+                {appliedVouchers.map((v, i) => (
+                  <div key={i} className="flex justify-between text-[10px] text-[#FF4060]">
+                    <span>🎁 {v.code}</span>
+                    <span>−€{v.applied.toFixed(2)} <button onClick={() => removeVoucher(i)} className="ml-1 text-white/40">×</button></span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex justify-between border-t border-white/10 pt-1.5 mt-1.5">
               <span className="font-bold">Gesamt</span>
               <span className="text-xl font-black text-[#00C2FF]" data-testid="pos-total">€{totals.total.toFixed(2)}</span>
             </div>
+          </div>
+
+          {/* Gutschein einlösen */}
+          <div className="flex gap-1 mb-3">
+            <input value={voucherPayCode} onChange={(e) => setVoucherPayCode(e.target.value)}
+              placeholder="Gutschein-Code (GS-XXXXXX)" className="flex-1 px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-[11px] font-mono"
+              data-testid="pos-voucher-code-input" />
+            <button onClick={checkVoucher} disabled={voucherChecking}
+              className="px-3 py-2 rounded-lg bg-[#FF4060]/20 text-[#FF4060] text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
+              data-testid="pos-voucher-apply">
+              <Ticket size={11} /> Anwenden
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mb-3">

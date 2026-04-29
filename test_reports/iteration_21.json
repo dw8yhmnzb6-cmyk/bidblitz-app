@@ -1,0 +1,37 @@
+{
+  "summary": "Backend-Only Tests fuer POS Voucher-Verkauf, Wallet-Topup, Voucher als Zahlung, Feature-Flags (18 Add-Ons), Public API v1 (X-API-Key + Scope + Feature-Gating 402), Kassenmeldepflicht, Z-Bon/DSFinV-K und Cart+Cash-Payment Regression. 29/29 Tests gruen.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pos_vouchers_features_publicapi.py",
+    "/app/test_reports/pytest/pos_v3_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "pos_features.py: _ensure_defaults wird bei jedem GET /features/me ausgefuehrt (kleiner Overhead, vertretbar). Idempotent.",
+    "pos_features.py: trial_used wird beim Admin-Toggle nicht zurueckgesetzt — gewollt (1 Trial pro Feature). Beim Admin-Toggle bleibt 'trial_used' jedoch, was ok ist.",
+    "pos_public_api.py: Kein per-key Rate-Limit auf Public-Endpoints — sollte spaeter mit slowapi pro key_id ergaenzt werden.",
+    "pos_public_api.py: scopes wird via comma-split aus pos_pro.create_api_key gespeichert (Liste). _require_scope vergleicht 'in scopes' korrekt. OK.",
+    "pos_vouchers.py: redeem-as-payment markiert Cart NICHT als bezahlt — nur Voucher wird verbraucht. Gewollt fuer Split-Payment, Aufruf ueber /payment/create folgt im Restbetrag.",
+    "pos_kassenmeldung.py: Kein Merchant-/Store-Owner-Check auf save/get — jeder eingeloggte User kann jeden store_id auslesen. Eventuell verschaerfen (Berechtigung pruefen).",
+    "server.py >840 lines, viele Imports. Sollte in Module split werden (Code-Quality, kein Bug).",
+    "Hinweis: Default-Features werden lazy beim ersten /features/me-Call angelegt — nicht beim Merchant-Onboarding. Wenn Merchant nie /features/me aufruft, bleibt loyalty/vouchers in DB nicht gespeichert (Frontend-Gating funktioniert dennoch via is_feature_enabled, das den Default jedoch NICHT konsultiert — also wuerden defaults ohne /me-Call als 'aus' gelten in Public-API). Empfehlung: _ensure_defaults zusaetzlich beim merchant_register aufrufen."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pos_vouchers_features_publicapi.py"
+  ],
+  "success_rate": {"backend": "100% (29/29)", "frontend": "n/a"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! — Cookie-Login via /api/auth/login",
+  "seed_data_creation": "Voucher GS-* (50 EUR), Wallet-Topup 25 EUR auf admin@bidblitz.com, Cart CRT-* mit Eis-Items, Kassenmeldung TEST_Eiscafe fuer Store, API-Key TEST_KEY (read,write).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Tests deckten alle vom main agent gelisteten Endpunkte ab inkl. 402-Gating fuer Public API (table_reservations enabled vs disabled). Falls Default-Features-bei-Onboarding-Fix vom main agent kommt: nochmal /features/me VOR jedem anderen Aufruf testen. test_pos_vouchers_features_publicapi.py kann als Regressions-Suite weitergenutzt werden — set REACT_APP_BACKEND_URL env var beim Aufruf.",
+  "rca of the issue": "Keine offenen Bugs."
+}

@@ -19,10 +19,12 @@ import { toast } from "sonner";
 import { printReceipt, isBluetoothSupported } from "../utils/escposPrinter";
 import POSAdvancedTab from "./POSAdvancedTab";
 import POSProTab from "./POSProTab";
+import POSComplianceTab from "./POSComplianceTab";
 import POSDashboardTab from "../components/pos/POSDashboardTab";
 import POSCheckoutTab from "../components/pos/POSCheckoutTab";
 import POSProductsTab from "../components/pos/POSProductsTab";
 import POSInventoryTab from "../components/pos/POSInventoryTab";
+import { POSMerchantFeatures, POSAdminFeatures } from "../components/pos/POSFeaturesComponents";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -56,6 +58,8 @@ const TABS = [
   { id: "reports", label: "Berichte", icon: BarChart3 },
   { id: "advanced", label: "Mega-Tools", icon: Sparkles },
   { id: "pro", label: "Pro / Compliance", icon: Sparkles },
+  { id: "compliance", label: "Compliance", icon: ShieldCheck },
+  { id: "addons", label: "Add-Ons", icon: Sparkles },
   { id: "admin", label: "Admin", icon: ShieldCheck },
 ];
 
@@ -181,6 +185,8 @@ export default function POSPage({ onBack }) {
         {tab === "reports" && <ReportsTab />}
         {tab === "advanced" && <POSAdvancedTab storeId={storeId} registerId={registerId} />}
         {tab === "pro" && <POSProTab storeId={storeId} registerId={registerId} />}
+        {tab === "compliance" && <POSComplianceTab storeId={storeId} />}
+        {tab === "addons" && <POSMerchantFeatures />}
         {tab === "admin" && <AdminTab />}
       </div>
     </div>
@@ -764,6 +770,12 @@ function AdminTab() {
   const [merchants, setMerchants] = useState([]);
   const [failed, setFailed] = useState([]);
   const [error, setError] = useState("");
+  const [auditQuery, setAuditQuery] = useState("");
+  const [auditAction, setAuditAction] = useState("");
+  const [auditDays, setAuditDays] = useState(7);
+  const [auditLog, setAuditLog] = useState([]);
+  const [auditTop, setAuditTop] = useState([]);
+  const [auditActions, setAuditActions] = useState([]);
   const load = useCallback(async () => {
     try {
       const o = await apiCall("/api/pos/admin/overview");
@@ -776,6 +788,35 @@ function AdminTab() {
     } catch (e) { setError(e.message); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // Audit log search
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: 200 });
+    apiCall(`/api/pos/audit-log?${params.toString()}`)
+      .then((d) => {
+        let entries = d.log || d.entries || [];
+        if (auditQuery) {
+          const qLow = auditQuery.toLowerCase();
+          entries = entries.filter((l) =>
+            (l.action || "").toLowerCase().includes(qLow) ||
+            (l.actor_id || "").toLowerCase().includes(qLow) ||
+            JSON.stringify(l.ref || {}).toLowerCase().includes(qLow)
+          );
+        }
+        if (auditAction) entries = entries.filter((l) => l.action === auditAction);
+        if (auditDays) {
+          const cutoff = Date.now() - auditDays * 24 * 60 * 60 * 1000;
+          entries = entries.filter((l) => new Date(l.ts).getTime() >= cutoff);
+        }
+        setAuditLog(entries);
+        const counts = {};
+        entries.forEach((l) => { counts[l.action] = (counts[l.action] || 0) + 1; });
+        const top = Object.entries(counts).map(([action, count]) => ({ action, count })).sort((a, b) => b.count - a.count);
+        setAuditTop(top);
+        setAuditActions(top.map((t) => t.action));
+      })
+      .catch(() => {});
+  }, [auditQuery, auditAction, auditDays]);
 
   if (error) return <Card title="Admin"><p className="text-[11px] text-red-400">{error}</p></Card>;
 
@@ -820,7 +861,11 @@ function AdminTab() {
         {failed.length === 0 && <p className="text-[11px] text-white/40 text-center py-3">Keine Fehler</p>}
       </Card>
 
-      {/* Audit-Log Suche */}
+      <Card title="Add-Ons / Feature-Verwaltung" testid="pos-admin-features-card">
+        <p className="text-[11px] text-white/60 mb-3">Pro Merchant Features (Tisch-Reservierung, QR-Bestellung, etc.) freischalten oder sperren.</p>
+        <POSAdminFeatures />
+      </Card>
+
       <Card title="Audit-Log Suche" testid="pos-audit-search">
         <div className="grid grid-cols-12 gap-2 mb-3">
           <input value={auditQuery} onChange={(e) => setAuditQuery(e.target.value)} placeholder="Such-Text (action, actor)"
@@ -850,13 +895,13 @@ function AdminTab() {
           </div>
         )}
         <div className="max-h-64 overflow-y-auto">
-          {auditLog.map((l) => (
-            <div key={l.audit_id} className="py-1.5 border-b border-white/5 last:border-0 text-[10px]">
+          {auditLog.map((l, i) => (
+            <div key={l.audit_id || `${l.ts}-${i}`} className="py-1.5 border-b border-white/5 last:border-0 text-[10px]">
               <div className="flex justify-between">
                 <span className="font-bold text-[#00C2FF]">{l.action}</span>
-                <span className="text-white/40">{new Date(l.ts).toLocaleString()}</span>
+                <span className="text-white/40">{l.ts ? new Date(l.ts).toLocaleString() : "—"}</span>
               </div>
-              <p className="text-white/60 truncate">{l.actor_id} · {JSON.stringify(l.ref)}</p>
+              <p className="text-white/60 truncate">{l.actor_id || "—"} · {JSON.stringify(l.ref || {})}</p>
             </div>
           ))}
           {auditLog.length === 0 && <p className="text-[11px] text-white/40 text-center py-3">Keine Treffer</p>}

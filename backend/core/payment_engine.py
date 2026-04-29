@@ -49,6 +49,8 @@ class TransactionType(str, Enum):
     SUBSCRIPTION = "subscription"
     SUBSCRIPTION_RENEWAL = "subscription_renewal"
     ADMIN_CREDIT = "admin_credit"  # Admin sends money without fees
+    VOUCHER_REDEMPTION = "voucher_redemption"  # POS Gutschein einlösen
+    WALLET_TOPUP_POS = "wallet_topup_pos"  # Wallet aufladen am POS
 
 
 # Idempotency cache (in-memory for this session, should be Redis in production)

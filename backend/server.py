@@ -166,6 +166,11 @@ from routes.pos_admin_self import router as pos_admin_self_router
 from routes.pos_extended import router as pos_extended_router
 from routes.pos_advanced import router as pos_advanced_router
 from routes.pos_pro import router as pos_pro_router
+from routes.pos_vouchers import router as pos_vouchers_router
+from routes.pos_kassenmeldung import router as pos_kassenmeldung_router
+from routes.pos_features import router as pos_features_router
+from routes.pos_public_api import router as pos_public_api_router
+
 from routes.mining import router as mining_router
 from routes.mining_phase2 import router as mining_phase2_router
 from routes.blitz_mine import router as blitz_mine_router
@@ -229,6 +234,11 @@ app.include_router(merchant_admin_router)
 app.include_router(blitz_transfer_router)
 app.include_router(smm_boost_router)
 app.include_router(export_router)
+app.include_router(pos_vouchers_router)
+app.include_router(pos_kassenmeldung_router)
+app.include_router(pos_features_router)
+app.include_router(pos_public_api_router)
+
 app.include_router(profile_router)
 app.include_router(sessions_router)
 app.include_router(referral_router)

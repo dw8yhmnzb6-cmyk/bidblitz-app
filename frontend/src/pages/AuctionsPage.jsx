@@ -858,7 +858,7 @@ const BidRow = ({ bid, isLatest }) => (
 /* ════════════════════════════════════════════
    AUCTION DETAIL
    ════════════════════════════════════════════ */
-const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits, onCreditsChanged }) => {
+const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits, onCreditsChanged, onBuyCredits }) => {
   const { t } = useI18n();
   const user = useUser();
   const [auction, setAuction] = useState(null);
@@ -869,6 +869,7 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
   const [bidMsg, setBidMsg] = useState(null);
   const [autoBid, setAutoBid] = useState(null);
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
+  const [showLocalCredits, setShowLocalCredits] = useState(false);
   const pollRef = useRef(null);
 
   const fetch = useCallback(async () => {
@@ -891,7 +892,11 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
 
   const handleBid = async () => {
     if (isGuest) { onAuthRequired(); return; }
-    if (userCredits < 1) { setBidMsg({ ok: false, text: t("auction.no_credits") }); return; }
+    if (userCredits < 1) {
+      setBidMsg({ ok: false, text: t("auction.no_credits") });
+      setShowLocalCredits(true);
+      return;
+    }
     setBidding(true); setBidMsg(null);
     try {
       const r = await api.placeBid({ auction_id: auctionId });
@@ -1074,6 +1079,9 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
 
       <AutoBidModal open={showAutoBidModal} onClose={() => setShowAutoBidModal(false)} auctionId={auctionId}
         onSet={(max) => setAutoBid({ active: true, max_bids: max, bids_placed: 0 })} />
+      <BuyCreditsModal open={showLocalCredits} onClose={() => setShowLocalCredits(false)}
+        onPurchased={(r) => { onCreditsChanged?.(r.total_credits); setShowLocalCredits(false); }}
+        balance={isGuest ? 0 : (user?.balance || 0)} />
     </motion.div>
   );
 };
@@ -1541,7 +1549,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     api.markAuctionNotificationsRead().catch(() => {});
   };
 
-  if (selected) return <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} />;
+  if (selected) return <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} onBuyCredits={() => setShowCredits(true)} />;
 
   // Apply search + category + sort
   const applyFiltersAndSort = (list) => {
