@@ -22,7 +22,7 @@ class DeliveryPreferences(BaseModel):
 async def set_delivery_preferences(prefs: DeliveryPreferences, user=Depends(get_current_user)):
     """Set default delivery preferences"""
     await db.users.update_one(
-        {"user_id": user["user_id"]},
+        {"_id": user["_id"]},
         {"$set": {"delivery_preferences": prefs.dict()}}
     )
     return {"success": True}
@@ -30,8 +30,8 @@ async def set_delivery_preferences(prefs: DeliveryPreferences, user=Depends(get_
 @router.get("/preferences")
 async def get_delivery_preferences(user=Depends(get_current_user)):
     """Get user's delivery preferences"""
-    user_doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    prefs = user_doc.get("delivery_preferences", {
+    user_doc = await db.users.find_one({"_id": user["_id"]}, {"_id": 0})
+    prefs = (user_doc or {}).get("delivery_preferences", {
         "contact_free": False,
         "leave_at_door": False,
         "doorbell": True,

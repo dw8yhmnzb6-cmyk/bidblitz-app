@@ -56,24 +56,53 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - `pages/AuctionsPage.jsx` — Auto-Redirect zu Credits-Kauf bei 0 Credits ✱
 
 ## Test-Status
-- Backend: **29/29 grün** (iteration_21.json) — Voucher Flows, Topup, Redeem-as-Payment, Feature-Catalog/Toggle/Trial, Public API v1 mit Feature-Gating (402), Kassenmeldung, Z-Bon/DSFinV-K, Cart+Cash-Payment Regression
+- Backend: **29/29 grün** (POS) — Voucher Flows, Topup, Redeem-as-Payment, Feature-Catalog/Toggle/Trial, Public API v1 mit Feature-Gating (402), Kassenmeldung, Z-Bon/DSFinV-K, Cart+Cash-Payment Regression
+- Backend Super-App neue Routes: **41/41 grün** (iteration_24.json) — split_payment, loyalty (+levels/history), reviews, scheduled, subscriptions, safety, promo, filters, group_orders, quick_actions, tips_gifts (+presets), delivery_options, bnpl
 - Frontend: Smoke-Test (Lint OK, kompiliert sauber)
 
+## Super-App Feature Parity (Uber/Bolt, Lime/Tier, Lieferando)
+
+### Backend (Stand 29.04.2026)
+- ✅ `/api/split-payment/*` — Taxi & Food split-payment
+- ✅ `/api/loyalty/*` — Punkte, Stempelkarte, Levels, Leaderboard, Verlauf
+- ✅ `/api/reviews/*` — Bewertungen mit Helpful-Count + Foto-Upload
+- ✅ `/api/scheduled/*` — Geplante Fahrten/Bestellungen (max 30 Tage)
+- ✅ `/api/subscriptions/*` — Scooter Pass, Food Plus, etc.
+- ✅ `/api/safety/*` — Notfall-Kontakte, Trip-Sharing, PIN-Verify
+- ✅ `/api/promo/*` — Promo-Codes & Voucher
+- ✅ `/api/filters/*` — Erweiterte Restaurant-Filter (Cuisine, Diet, Rating)
+- ✅ `/api/group/*` — Group Orders & Group Rides
+- ✅ `/api/quick/*` — Reorder, Favoriten, Wishlist
+- ✅ `/api/tips/*` — Trinkgeld, Gift Cards, Presets
+- ✅ `/api/delivery/*` — Kontaktlose Lieferung, Anweisungen
+- ✅ `/api/bnpl/*` — Buy Now Pay Later (Klarna-style)
+- ✅ Single-Point Fix: `core/security.py::get_current_user` normalisiert `user_id`/`first_name`/`last_name`
+
+### Frontend (Stand 29.04.2026)
+- ✅ Komponenten erstellt: `SplitPaymentModal`, `LoyaltyDashboard`, `ReviewModal`, `SubscriptionPlans`, `SafetyButton`, `PromoCodeInput`, `FoodFilters`, `VoiceCommands`, `ARScooterFinder`, `LiveChat`
+- ⏳ **OFFEN**: Wiring in `TaxiPage.jsx`, `ScooterPage.jsx`, `FoodPage.jsx` (orphaned components)
+
 ## Known Issues / Backlog
+
+### P0 (next)
+- Frontend-Wiring der neuen Komponenten in TaxiPage/ScooterPage/FoodPage
+- Audit-Log Server-Filter Endpoint
+- QR-Code-Generator pro Store für Eingangs-Plakate
 
 ### P1
 - Native Mobile Build (Capacitor Node-Konflikt)
 - Echte Fiskaly-Cloud Credentials (Mock vorhanden)
+- Mitarbeiter-Berechtigungen + Zeiterfassung (Clock in/out)
 
 ### P2
-- Per-API-Key Rate-Limiting auf Public API (slowapi)
 - Audit-Log Filter Endpoint (Backend) — Frontend filtert client-seitig
 - Trial-Workflow: Reset durch Admin
 - Self-Service Add-On Buchung mit Stripe-Checkout (statt nur Trial)
+- Response-Contract finalisieren für `/api/loyalty/history` und `/api/tips/presets`
 
 ## Credentials
 - POS Admin: `admin@bidblitz.com` / `BidBlitz2026!` (Merchant `MER-520D937E02F3` "Eiscafe", store_id `S1`, register_id `R1`)
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**29.04.2026** — Phase 1 (Bug-Fixes), Phase 2 (Compliance), Phase 3 (Add-Ons + API), Phase 4 (Offline + Auto-Redirect), Phase 5 (Self-Checkout), Mobile-UI App-Kontrolle verbessert.
+**29.04.2026** — Super-App Backend-Parity (13 neue Modules, 41/41 grün). Frontend-Wiring ausstehend.
