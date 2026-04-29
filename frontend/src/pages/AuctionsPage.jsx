@@ -893,8 +893,11 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
   const handleBid = async () => {
     if (isGuest) { onAuthRequired(); return; }
     if (userCredits < 1) {
+      // Zeige Fehler + öffne Credits-Kauf-Modal automatisch
       setBidMsg({ ok: false, text: t("auction.no_credits") });
-      setShowLocalCredits(true);
+      setTimeout(() => {
+        setShowLocalCredits(true); // Öffnet Credits-Kauf-Modal
+      }, 800);
       return;
     }
     setBidding(true); setBidMsg(null);
@@ -996,10 +999,23 @@ const AuctionDetail = ({ auctionId, onBack, isGuest, onAuthRequired, userCredits
             <AnimatePresence>{bidMsg && <motion.div className="px-3 py-2 rounded-xl text-[10px] font-medium bg-[#FF4060]/6 text-[#FF4060] border border-[#FF4060]/10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{bidMsg.text}</motion.div>}</AnimatePresence>
             <motion.button data-testid="place-bid-btn" onClick={handleBid} disabled={bidding}
               className="w-full py-3.5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2 relative overflow-hidden"
-              style={{ background: `linear-gradient(135deg, ${accentCyan}, #0090BB)`, boxShadow: `0 4px 24px rgba(0,224,255,0.2), inset 0 1px 0 rgba(255,255,255,0.08)` }}
+              style={{ 
+                background: userCredits < 1 
+                  ? `linear-gradient(135deg, ${accentRed}, #CC0033)` 
+                  : `linear-gradient(135deg, ${accentCyan}, #0090BB)`, 
+                boxShadow: userCredits < 1 
+                  ? `0 4px 24px rgba(255,64,96,0.25), inset 0 1px 0 rgba(255,255,255,0.08)`
+                  : `0 4px 24px rgba(0,224,255,0.2), inset 0 1px 0 rgba(255,255,255,0.08)` 
+              }}
               whileTap={{ scale: 0.97 }}>
               <motion.div className="absolute inset-0" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)" }} animate={{ x: ["-100%", "100%"] }} transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }} />
-              {bidding ? <Loader2 size={16} className="animate-spin text-white" /> : <><Zap size={16} className="text-white" /><span className="text-white relative z-10">{t("auction.place_bid")} (1 Credit)</span></>}
+              {bidding ? (
+                <Loader2 size={16} className="animate-spin text-white" />
+              ) : userCredits < 1 ? (
+                <><Wallet size={16} className="text-white" /><span className="text-white relative z-10">Credits kaufen</span></>
+              ) : (
+                <><Zap size={16} className="text-white" /><span className="text-white relative z-10">{t("auction.place_bid")} (1 Credit)</span></>
+              )}
             </motion.button>
             <div className="flex gap-2">
               {autoBid?.active ? (
