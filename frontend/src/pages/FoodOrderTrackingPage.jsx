@@ -76,10 +76,10 @@ export default function OrderTrackingPage({ orderId, onBack }) {
     }
   };
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 10 seconds (Lieferando-Style: häufiger für Live-Updates)
   useEffect(() => {
     fetchTracking();
-    intervalRef.current = setInterval(fetchTracking, 30000);
+    intervalRef.current = setInterval(fetchTracking, 10000);
     return () => clearInterval(intervalRef.current);
   }, [orderId]);
 
@@ -226,34 +226,45 @@ export default function OrderTrackingPage({ orderId, onBack }) {
         </MapContainer>
       </div>
 
-      {/* Circular Countdown */}
-      <div className="max-w-md mx-auto px-4 -mt-20 relative z-10">
+      {/* Circular Countdown (Lieferando-Style) */}
+      <div className="max-w-md mx-auto px-4 -mt-24 relative z-10">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="relative w-[280px] h-[280px] mx-auto"
+          className="relative w-[320px] h-[320px] mx-auto"
         >
-          {/* Progress Ring */}
+          {/* White Background Circle */}
+          <div className="absolute inset-0 rounded-full bg-white/95 shadow-2xl backdrop-blur-lg" />
+
+          {/* Progress Ring (Striped Pattern wie Lieferando) */}
           <svg className="absolute inset-0 w-full h-full -rotate-90">
+            {/* Background Circle */}
             <circle
-              cx="140"
-              cy="140"
-              r="120"
+              cx="160"
+              cy="160"
+              r="140"
               fill="none"
-              stroke="rgba(255,255,255,0.05)"
-              strokeWidth="12"
+              stroke="rgba(0,0,0,0.05)"
+              strokeWidth="16"
             />
+            {/* Animated Progress Ring mit Streifen-Pattern */}
+            <defs>
+              <pattern id="stripes" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="4" height="8" fill="#10B981" />
+                <rect x="4" width="4" height="8" fill="#059669" />
+              </pattern>
+            </defs>
             <motion.circle
-              cx="140"
-              cy="140"
-              r="120"
+              cx="160"
+              cy="160"
+              r="140"
               fill="none"
-              stroke="#10B981"
-              strokeWidth="12"
+              stroke="url(#stripes)"
+              strokeWidth="20"
               strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 120}
-              initial={{ strokeDashoffset: 2 * Math.PI * 120 }}
-              animate={{ strokeDashoffset: 2 * Math.PI * 120 * (1 - progressPct / 100) }}
+              strokeDasharray={2 * Math.PI * 140}
+              initial={{ strokeDashoffset: 2 * Math.PI * 140 }}
+              animate={{ strokeDashoffset: 2 * Math.PI * 140 * (1 - progressPct / 100) }}
               transition={{ duration: 1, ease: "easeOut" }}
             />
           </svg>
@@ -264,60 +275,63 @@ export default function OrderTrackingPage({ orderId, onBack }) {
               key={countdown}
               initial={{ scale: 1.2, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="text-7xl font-black text-white mb-2"
+              className="text-8xl font-black text-black mb-1"
+              style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
             >
               {minutes}
             </motion.div>
-            <div className="text-xl text-white/60">Minuten</div>
-            <div className="text-sm text-white/40 mt-1">verbleibende Zeit</div>
-            <div className="text-xs text-white/30 mt-1">bis zur Lieferung</div>
+            <div className="text-xl font-medium text-black/60">Minuten</div>
+            <div className="text-sm font-medium text-black/40 mt-2">verbleibende Zeit</div>
+            <div className="text-xs font-medium text-black/30 mt-1">bis zur Lieferung</div>
           </div>
         </motion.div>
 
-        {/* Chat Buttons */}
-        <div className="flex gap-3 justify-center mt-6">
+        {/* Chat Buttons (Lieferando-Style: prominent) */}
+        <div className="flex gap-3 justify-center mt-8">
           {driver && (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={() => handleStartChat("driver")}
-              className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition border border-white/10"
+              className="p-4 bg-black rounded-full transition shadow-lg border border-black/20 hover:bg-black/90"
+              data-testid="chat-driver-btn"
             >
-              <span className="text-2xl">💬</span>
-            </button>
+              <span className="text-3xl">💬</span>
+            </motion.button>
           )}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => handleStartChat("support")}
-            className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition border border-white/10"
+            className="p-4 bg-black rounded-full transition shadow-lg border border-black/20 hover:bg-black/90"
+            data-testid="chat-support-btn"
           >
-            <span className="text-2xl">🛟</span>
-          </button>
+            <span className="text-3xl">💬</span>
+          </motion.button>
         </div>
       </div>
 
-      {/* Order Status */}
+      {/* Order Status (Lieferando-Style prominent Banner) */}
       <div className="max-w-md mx-auto px-4 mt-8">
-        <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-3xl">{status_info.icon}</span>
-            <div className="flex-1">
-              <h3 className="text-lg font-bold">{status_info.label}</h3>
-              <p className="text-sm text-white/60">{status_info.description}</p>
-            </div>
-          </div>
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-2 border-emerald-500/30 rounded-2xl p-6 text-center"
+        >
+          <div className="text-5xl mb-3">{status_info.icon}</div>
+          <h3 className="text-xl font-bold text-white mb-1">{status_info.label}</h3>
+          <p className="text-sm text-white/70">{status_info.description}</p>
 
           {restaurant && (
-            <div className="mt-4 pt-4 border-t border-white/5">
-              <div className="flex justify-between text-sm">
-                <span className="text-white/60">Restaurant</span>
-                <span className="font-semibold">{restaurant.name}</span>
-              </div>
+            <div className="mt-5 pt-5 border-t border-white/10">
+              <p className="text-xs text-white/50 uppercase tracking-wider mb-1">Restaurant</p>
+              <p className="text-lg font-bold text-white">{restaurant.name}</p>
             </div>
           )}
 
-          <div className="mt-2 flex justify-between text-sm">
-            <span className="text-white/60">Geschätzte Lieferzeit</span>
-            <span className="font-semibold text-[#00E0FF]">{trackingData.estimated_delivery_time}</span>
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <p className="text-xs text-white/50 uppercase tracking-wider mb-1">Geschätzte Lieferzeit</p>
+            <p className="text-2xl font-black text-emerald-400">{trackingData.estimated_delivery_time}</p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Driver Info */}
         {driver && (
