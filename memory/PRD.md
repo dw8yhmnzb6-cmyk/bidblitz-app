@@ -62,48 +62,48 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 
 ## Super-App Feature Parity (Uber/Bolt, Lime/Tier, Lieferando)
 
-### Backend (Stand 29.04.2026)
+### Backend (Stand 29.04.2026 — Iter 28: 17/17 grün)
 - ✅ `/api/split-payment/*` — Taxi & Food split-payment
-- ✅ `/api/loyalty/*` — Punkte, Stempelkarte, Levels, Leaderboard, Verlauf
+- ✅ `/api/loyalty-superapp/*` — Punkte (Bronze/Silver/Gold/Platinum), Stempelkarte, Levels, Leaderboard, Verlauf (history+count)
+  - Prefix umbenannt von `/api/loyalty/*` (Collision mit `loyalty_system.py` aufgelöst)
 - ✅ `/api/reviews/*` — Bewertungen mit Helpful-Count + Foto-Upload
 - ✅ `/api/scheduled/*` — Geplante Fahrten/Bestellungen (max 30 Tage)
 - ✅ `/api/subscriptions/*` — Scooter Pass, Food Plus, etc.
 - ✅ `/api/safety/*` — Notfall-Kontakte, Trip-Sharing, PIN-Verify
 - ✅ `/api/promo/*` — Promo-Codes & Voucher
 - ✅ `/api/filters/*` — Erweiterte Restaurant-Filter (Cuisine, Diet, Rating)
-- ✅ `/api/group/*` — Group Orders & Group Rides (Frontend verkabelt in /food + /taxi)
+- ✅ `/api/group/*` — Group Orders & Group Rides (jetzt idempotent + participant._id Fix)
 - ✅ `/api/quick/*` — Reorder, Favoriten, Wishlist
-- ✅ `/api/tips/*` — Trinkgeld, Gift Cards, Presets
+- ✅ `/api/superapp-tips/*` — Trinkgeld, Gift Cards, Presets (Prefix umbenannt von `/api/tips`)
 - ✅ `/api/delivery/*` — Kontaktlose Lieferung, Anweisungen
 - ✅ `/api/bnpl/*` — Buy Now Pay Later (Klarna-style)
-- ✅ Single-Point Fix: `core/security.py::get_current_user` normalisiert `user_id`/`first_name`/`last_name`
-- ✅ `/api/admin/audit-logs` — erweitert um `date_from`/`date_to`/`email`/`search` Filter + `available_events`/`available_severities` Dropdowns
-- ✅ `/api/pos/store/{store_id}/qr-poster` — QR-Poster pro Store (PNG/SVG/JSON) für Self-Checkout-Eingang
-- ✅ `/api/pos/features/admin/trial-reset` — Admin kann Feature-Trial zurücksetzen
-- ✅ `/api/pos/staff/list` + `/staff/update` + `/staff/remove` — Staff-CRUD (Mitarbeiter-Berechtigungen)
-- ✅ `/api/pos/timeclock/*` — Zeiterfassung (Clock in/out, break)
-- ✅ **`/api/chat/ws/{room_id}` WebSocket** — Live-Chat zwischen Passagier/Fahrer mit History-Replay + Persistenz + Broadcast
-- ✅ `/api/chat/messages/{room_id}` REST-Bootstrap & `/api/chat/quick-reply` (arriving/waiting/thank_you Quick-Replies)
+- ✅ `/api/admin/audit-logs` — Filter `date_from`/`date_to`/`email`/`search` + dropdowns
+- ✅ `/api/pos/store/{id}/qr-poster` (PNG/SVG/JSON) für Self-Checkout-Eingang
+- ✅ `/api/pos/features/admin/trial-reset` (Admin-only)
+- ✅ `/api/pos/staff/list|update|remove` — Staff-CRUD
+- ✅ `/api/pos/timeclock/*` — Zeiterfassung
+- ✅ **`/api/chat/ws/{room_id}` WebSocket** — JWT-Auth + Room-Membership-Check + accept-then-close für korrekte 4401/4403 Close-Codes
+- ✅ `/api/chat/messages/{room_id}` REST-Bootstrap & `/api/chat/quick-reply` (DE)
+- ✅ **`/api/voice/parse`** — LLM-basiert (Gemini gemini-2.5-flash) Multi-Step-Intent-Parser für Voice-Commands
+- ✅ `/api/auth/ws-token` — Kurzlebiges JWT (300s) für WebSocket-Auth
 
-### Frontend (Stand 29.04.2026)
-- ✅ Komponenten erstellt: `SplitPaymentModal`, `LoyaltyDashboard`, `ReviewModal`, `SubscriptionPlans`, `SafetyButton`, `PromoCodeInput`, `FoodFilters`, `VoiceCommands`, `ARScooterFinder`, `LiveChat`
-- ✅ **`SuperAppOverlay`** — globaler Floating-Button-Hub (auf `/taxi`, `/scooter`, `/food`, **kontextabhängig**):
-  - SafetyButton (rot, Shield) — **NUR während aktiver Taxi/Scooter-Fahrt** (Polling alle 15s `/api/taxi/rides/active` + `/api/scooter/active`)
-  - VoiceCommands (Mic, Deutsch, mit Navigation-Callback)
-  - LiveChat Floating-Button — **NUR bei aktiver Fahrt ODER ungelesenen Nachrichten**, mit roter **Unread-Badge** (Polling `/api/chat/unread-count`)
-  - LoyaltyDashboard Quick-Access (Trophy)
-  - SubscriptionPlans Quick-Access (Crown)
-- ✅ **TaxiPage**: ReviewModal, SplitPaymentModal, LiveChat-Button (während aktiver Fahrt), Rate-Button nach Completion + History, **GroupOrderModal** (Group Ride aus dem book-View)
-- ✅ **ScooterPage**: ARScooterFinder (Camera-AR mit Geolocation), ReviewModal, History-Review-Button
-- ✅ **FoodPage**: FoodFilters (Erweiterte Filter Bottom-Sheet), SplitPaymentModal (Cart), ReviewModal (delivered orders), **GroupOrderModal** (Group Order aus Cart)
-- ✅ **GroupOrderModal**: zentrale Komponente (Lieferando/Bolt-Style) mit E-Mail-Einladung, Erfolgsscreen + Copy-Link, "Deine aktiven Gruppen"-Liste
-- ✅ **GroupTrackerBanner**: Live-Tracker (WhatsApp-Read-Receipts-Stil) — Avatar-Reihe mit ✓ pro Bestätigung, "Warte auf …"-Liste, Polling alle 10s. Eingebunden in /taxi und /food als Top-Banner
+### Frontend (Stand 29.04.2026 — Iter 28)
+- ✅ Komponenten erstellt: `SplitPaymentModal`, `LoyaltyDashboard`, `ReviewModal`, `SubscriptionPlans`, `SafetyButton`, `PromoCodeInput`, `FoodFilters`, `VoiceCommands`, `ARScooterFinder`, `LiveChat`, `GroupOrderModal`, `GroupTrackerBanner`
+- ✅ `SuperAppOverlay` (kontextabhängig) auf `/taxi`, `/scooter`, `/food`
+- ✅ TaxiPage / ScooterPage / FoodPage: alle Modals + Group-Order/Rental + GroupTrackerBanner mit One-Click-Confirm
+- ✅ **VoiceCommands LLM-Multi-Step**: ruft `/api/voice/parse` (Gemini), Multi-Step-Intents werden mit 800ms-Stagger ausgeführt; Fallback lokale Heuristik
+- ✅ **GroupTrackerBanner One-Click-Confirm**: "Beitreten"-Button für eingeladene User direkt aus dem Banner
+- ✅ **POSAdminFeatures Trial-Reset-UI**: "↺ Trial"-Button erscheint pro Feature wenn `trial_used=true`
+- ✅ **Z-Index-Fix**: alle Super-App-Modals jetzt `z-[10010]` (war `z-50`/`z-[60]`, kollidierte mit BarcodeModal `z-[10000]`)
+- ✅ **ESLint Hardening**: `.eslintrc.json` mit `no-undef: error` + `react/jsx-no-undef: error`
+- ✅ **Capacitor 7** vollständig konfiguriert (`capacitor.config.ts`, Android/iOS Plattformen) — `yarn cap sync` ready
 
 ## Known Issues / Backlog
 
 ### P0 (next)
-- (Frontend-Wiring + Audit-Log + QR-Generator + Live-Chat WS + Group-Orders Frontend: ✅ FERTIG)
-- Echte Fiskaly-Cloud Credentials einbauen (User-Input nötig: API_KEY/SECRET/TSS_ID)
+- (Frontend-Wiring + Audit-Log + QR-Generator + Live-Chat WS + Group-Orders Frontend + One-Click-Confirm Banner + WS-Auth + Voice-Multi-Step + ESLint-Hardening + Loyalty/Tips Contract + Trial-Reset-UI + Z-Index Fix + Group-Rental Scooter: ✅ FERTIG)
+- Echte Fiskaly-Cloud Credentials einbauen (User-Input nötig: API_KEY/SECRET/TSS_ID/ENV)
+- Native Mobile App Build & Deploy (Capacitor `yarn cap sync` + Android Studio / Xcode lokal — Setup ready, Build manuell)
 
 ### P1
 - WS-Auth-Hardening: `/api/chat/ws/{room_id}` validiert derzeit Token nicht — vor Production Pflicht (room-membership-Check)
