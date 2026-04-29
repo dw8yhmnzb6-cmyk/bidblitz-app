@@ -85,9 +85,10 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 
 ### Frontend (Stand 29.04.2026)
 - ✅ Komponenten erstellt: `SplitPaymentModal`, `LoyaltyDashboard`, `ReviewModal`, `SubscriptionPlans`, `SafetyButton`, `PromoCodeInput`, `FoodFilters`, `VoiceCommands`, `ARScooterFinder`, `LiveChat`
-- ✅ **`SuperAppOverlay`** — globaler Floating-Button-Hub (auf `/taxi`, `/scooter`, `/food`):
-  - SafetyButton (rot, Shield)
+- ✅ **`SuperAppOverlay`** — globaler Floating-Button-Hub (auf `/taxi`, `/scooter`, `/food`, **kontextabhängig**):
+  - SafetyButton (rot, Shield) — **NUR während aktiver Taxi/Scooter-Fahrt** (Polling alle 15s `/api/taxi/rides/active` + `/api/scooter/active`)
   - VoiceCommands (Mic, Deutsch, mit Navigation-Callback)
+  - LiveChat Floating-Button — **NUR bei aktiver Fahrt ODER ungelesenen Nachrichten**, mit roter **Unread-Badge** (Polling `/api/chat/unread-count`)
   - LoyaltyDashboard Quick-Access (Trophy)
   - SubscriptionPlans Quick-Access (Crown)
 - ✅ **TaxiPage**: ReviewModal, SplitPaymentModal, LiveChat-Button (während aktiver Fahrt), Rate-Button nach Completion + History
