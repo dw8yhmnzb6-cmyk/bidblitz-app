@@ -379,7 +379,7 @@ async def stripe_webhook(request: Request):
         event = await stripe_checkout.handle_webhook(body, signature)
 
         if event.payment_status == "paid" and event.session_id:
-            # Find and credit if not already done
+            # 1. Wallet-Topup
             payment = await db.payment_transactions.find_one({"session_id": event.session_id})
             if payment and payment["status"] not in ("completed", "credited"):
                 result = await db.payment_transactions.find_one_and_update(
@@ -406,6 +406,15 @@ async def stripe_webhook(request: Request):
                         "created_at": datetime.now(timezone.utc).isoformat(),
                     }
                     await db.transactions.insert_one(txn)
+
+            # 2. POS Feature-Purchase (Add-On Buchung)
+            try:
+                feature_purchase = await db.pos_feature_purchases.find_one({"session_id": event.session_id})
+                if feature_purchase and feature_purchase.get("status") != "completed":
+                    from routes.pos_features import activate_feature_after_payment
+                    await activate_feature_after_payment(event.session_id)
+            except Exception:
+                pass
 
         return {"received": True}
     except Exception:

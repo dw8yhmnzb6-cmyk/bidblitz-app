@@ -7,8 +7,12 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
+from emergentintegrations.payments.stripe.checkout import (
+    StripeCheckout, CheckoutSessionRequest,
+)
 from core.database import db
 from core.security import get_current_user
+from core.config import STRIPE_API_KEY
 
 router = APIRouter(prefix="/api/pos/features", tags=["POS Features"])
 
@@ -357,3 +361,194 @@ async def check_feature(feature_key: str, request: Request):
         return {"enabled": False, "reason": "no_merchant"}
     enabled = await is_feature_enabled(merchant["merchant_id"], feature_key)
     return {"feature_key": feature_key, "enabled": enabled}
+
+
+# ═══════════════════════════════════════════════════════════
+# STRIPE CHECKOUT — Feature kaufen (1 Monat)
+# ═══════════════════════════════════════════════════════════
+class FeatureCheckoutRequest(BaseModel):
+    feature_key: str
+    months: int = 1  # Monate (1, 3, 6, 12)
+    origin_url: str  # Frontend Origin für Success/Cancel Redirect
+
+
+@router.post("/checkout/create")
+async def create_feature_checkout(req: FeatureCheckoutRequest, request: Request):
+    """Erstelle Stripe-Checkout-Session für Feature-Buchung."""
+    user = await get_current_user(request)
+    merchant = await _get_merchant_for_user(user)
+    if not merchant:
+        raise HTTPException(404, "Kein Merchant-Profil")
+    if req.feature_key not in FEATURE_KEYS:
+        raise HTTPException(400, "Unbekanntes Feature")
+    if req.months not in (1, 3, 6, 12):
+        raise HTTPException(400, "Monate müssen 1, 3, 6 oder 12 sein")
+
+    feat = next(f for f in FEATURE_CATALOG if f["key"] == req.feature_key)
+    monthly = feat["monthly_price"]
+
+    # Mengenrabatt
+    discount_pct = {1: 0, 3: 5, 6: 10, 12: 20}[req.months]
+    base_total = monthly * req.months
+    discount = round(base_total * discount_pct / 100, 2)
+    total = round(base_total - discount, 2)
+
+    origin = req.origin_url.rstrip("/")
+    success_url = f"{origin}/pos?feature_purchase=success&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/pos?feature_purchase=cancelled"
+
+    host_url = str(request.base_url).rstrip("/")
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+
+    checkout_request = CheckoutSessionRequest(
+        amount=float(total),
+        currency="eur",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "type": "feature_purchase",
+            "user_id": str(user["_id"]),
+            "merchant_id": merchant["merchant_id"],
+            "feature_key": req.feature_key,
+            "months": str(req.months),
+            "amount": str(total),
+            "feature_name": feat["name"],
+        },
+    )
+    session = await stripe_checkout.create_checkout_session(checkout_request)
+
+    # Pending-Eintrag für Webhook
+    await db.pos_feature_purchases.insert_one({
+        "session_id": session.session_id,
+        "user_id": str(user["_id"]),
+        "merchant_id": merchant["merchant_id"],
+        "feature_key": req.feature_key,
+        "feature_name": feat["name"],
+        "months": req.months,
+        "amount": total,
+        "currency": "EUR",
+        "status": "pending",
+        "created_at": _now(),
+    })
+
+    return {
+        "checkout_url": session.url,
+        "session_id": session.session_id,
+        "amount": total,
+        "months": req.months,
+        "discount_pct": discount_pct,
+    }
+
+
+async def activate_feature_after_payment(session_id: str) -> bool:
+    """Wird vom Stripe-Webhook aufgerufen, sobald Payment 'paid' ist."""
+    purchase = await db.pos_feature_purchases.find_one({"session_id": session_id})
+    if not purchase:
+        return False
+    if purchase["status"] == "completed":
+        return True  # Already activated (idempotent)
+
+    feat = next((f for f in FEATURE_CATALOG if f["key"] == purchase["feature_key"]), None)
+    if not feat:
+        return False
+
+    # Bestehende Feature-Eintrag oder neu
+    existing = await db.pos_merchant_features.find_one({
+        "merchant_id": purchase["merchant_id"],
+        "feature_key": purchase["feature_key"],
+    })
+    # Verlängern statt überschreiben falls noch gültig
+    base_dt = datetime.now(timezone.utc)
+    if existing and existing.get("valid_until"):
+        try:
+            cur_end = datetime.fromisoformat(existing["valid_until"])
+            if cur_end > base_dt:
+                base_dt = cur_end
+        except ValueError:
+            pass
+    new_valid_until = (base_dt + timedelta(days=30 * purchase["months"])).isoformat()
+
+    payload = {
+        "merchant_id": purchase["merchant_id"],
+        "feature_key": purchase["feature_key"],
+        "enabled": True,
+        "trial": False,
+        "valid_until": new_valid_until,
+        "monthly_price": feat["monthly_price"],
+        "activated_at": _now(),
+        "activated_by": purchase["user_id"],
+        "last_purchase_session": session_id,
+    }
+    if existing:
+        await db.pos_merchant_features.update_one(
+            {"merchant_id": purchase["merchant_id"], "feature_key": purchase["feature_key"]},
+            {"$set": payload},
+        )
+    else:
+        await db.pos_merchant_features.insert_one(payload)
+
+    await db.pos_feature_purchases.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "completed", "completed_at": _now(), "valid_until": new_valid_until}},
+    )
+
+    try:
+        await db.pos_audit_log.insert_one({
+            "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
+            "actor_id": purchase["user_id"],
+            "action": "feature.purchase",
+            "ref": {
+                "merchant_id": purchase["merchant_id"],
+                "feature_key": purchase["feature_key"],
+                "months": purchase["months"],
+                "amount": purchase["amount"],
+                "session_id": session_id,
+            },
+            "ts": _now(),
+        })
+    except Exception:
+        pass
+
+    return True
+
+
+@router.get("/checkout/status/{session_id}")
+async def get_checkout_status(session_id: str, request: Request):
+    """Polling-Endpoint für Frontend nach Redirect von Stripe."""
+    user = await get_current_user(request)
+    purchase = await db.pos_feature_purchases.find_one(
+        {"session_id": session_id, "user_id": str(user["_id"])}, {"_id": 0}
+    )
+    if not purchase:
+        raise HTTPException(404, "Kauf nicht gefunden")
+
+    # Falls Webhook noch nicht durch ist: live von Stripe nachfragen
+    if purchase["status"] != "completed":
+        try:
+            host_url = str(request.base_url).rstrip("/")
+            webhook_url = f"{host_url}/api/webhook/stripe"
+            sc = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+            status = await sc.get_checkout_status(session_id)
+            if status.payment_status == "paid":
+                await activate_feature_after_payment(session_id)
+                purchase = await db.pos_feature_purchases.find_one(
+                    {"session_id": session_id}, {"_id": 0}
+                )
+        except Exception:
+            pass
+
+    return {"purchase": purchase}
+
+
+@router.get("/purchases/me")
+async def my_purchases(request: Request, limit: int = 20):
+    """Käufe des Merchants — Rechnungs-Historie."""
+    user = await get_current_user(request)
+    merchant = await _get_merchant_for_user(user)
+    if not merchant:
+        return {"purchases": []}
+    items = await db.pos_feature_purchases.find(
+        {"merchant_id": merchant["merchant_id"]}, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    return {"purchases": items}

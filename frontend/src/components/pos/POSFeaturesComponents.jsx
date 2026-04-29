@@ -1,10 +1,11 @@
 /**
  * POS Features / Add-Ons Management
- * - Merchant: sieht eigene Features, kann Trial starten
+ * - Merchant: sieht eigene Features, kann Trial starten ODER kostenpflichtig buchen
  * - Admin: kann alle Features pro Merchant freischalten/sperren
  */
 import { useState, useEffect } from "react";
-import { Check, Lock, Loader2, Sparkles, Search, ShieldCheck, Clock, Euro } from "lucide-react";
+import { motion } from "framer-motion";
+import { Check, Lock, Loader2, Sparkles, Search, ShieldCheck, Clock, Euro, ShoppingCart, X, Receipt, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -45,17 +46,48 @@ export function POSMerchantFeatures() {
   const [features, setFeatures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [buyFeature, setBuyFeature] = useState(null);
+  const [purchases, setPurchases] = useState([]);
 
   const load = async () => {
     setLoading(true);
     try {
       const d = await apiCall("/api/pos/features/me");
       setFeatures(d.features || []);
+      const p = await apiCall("/api/pos/features/purchases/me");
+      setPurchases(p.purchases || []);
     } catch (e) { toast.error(e.message); }
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  // Stripe Return Handler (?feature_purchase=success&session_id=...)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const fp = url.searchParams.get("feature_purchase");
+    const sid = url.searchParams.get("session_id");
+    if (fp === "success" && sid) {
+      pollStatus(sid, () => { load(); url.searchParams.delete("feature_purchase"); url.searchParams.delete("session_id"); window.history.replaceState({}, "", url.toString()); });
+    } else if (fp === "cancelled") {
+      toast.warning("Buchung abgebrochen");
+      url.searchParams.delete("feature_purchase");
+      window.history.replaceState({}, "", url.toString());
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pollStatus = async (sessionId, onSuccess, attempts = 0) => {
+    if (attempts >= 10) { toast.error("Timeout — bitte manuell prüfen"); return; }
+    try {
+      const r = await apiCall(`/api/pos/features/checkout/status/${sessionId}`);
+      if (r.purchase?.status === "completed") {
+        toast.success(`✅ ${r.purchase.feature_name || "Feature"} aktiviert!`);
+        onSuccess?.();
+        return;
+      }
+    } catch {}
+    setTimeout(() => pollStatus(sessionId, onSuccess, attempts + 1), 2000);
+  };
 
   const startTrial = async (feature_key) => {
     try {
@@ -102,21 +134,48 @@ export function POSMerchantFeatures() {
       </div>
 
       {visible.map((f) => (
-        <FeatureCard key={f.key} feature={f} onTrial={() => startTrial(f.key)} />
+        <FeatureCard key={f.key} feature={f}
+          onTrial={() => startTrial(f.key)}
+          onBuy={() => setBuyFeature(f)} />
       ))}
 
-      <div className="text-[10px] text-white/40 text-center py-2">
-        Add-Ons buchen oder erweitern? → Admin / Support kontaktieren
-      </div>
+      {/* Rechnungs-Historie */}
+      {purchases.length > 0 && (
+        <div className="mt-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Receipt size={13} className="text-[#00C2FF]" />
+            <h3 className="text-[12px] font-bold">Buchungs-Historie</h3>
+          </div>
+          <div className="space-y-1.5">
+            {purchases.slice(0, 8).map((p) => (
+              <div key={p.session_id} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0 text-[11px]">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{p.feature_name || p.feature_key}</p>
+                  <p className="text-[9px] text-white/40">{p.months} Monat(e) · {new Date(p.created_at).toLocaleDateString("de-DE")}</p>
+                </div>
+                <div className="text-right ml-2">
+                  <p className="font-black text-[#00C2FF]">€{p.amount.toFixed(2)}</p>
+                  <p className="text-[9px]" style={{ color: p.status === "completed" ? "#10B981" : p.status === "pending" ? "#F59E0B" : "#EF4444" }}>
+                    {p.status === "completed" ? "✓ Bezahlt" : p.status === "pending" ? "⏳ Pending" : "✗ Fehlgeschlagen"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <BuyFeatureModal feature={buyFeature} onClose={() => setBuyFeature(null)} />
     </div>
   );
 }
 
-function FeatureCard({ feature, onTrial }) {
+function FeatureCard({ feature, onTrial, onBuy }) {
   const isActive = feature.enabled;
   const isTrial = feature.trial && isActive;
   const categoryColor = CATEGORY_COLORS[feature.category] || "#888";
   const validUntil = feature.valid_until ? new Date(feature.valid_until) : null;
+  const expiringSoon = validUntil && (validUntil.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000);
 
   return (
     <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4"
@@ -124,7 +183,7 @@ function FeatureCard({ feature, onTrial }) {
       data-testid={`pos-feat-${feature.key}`}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase"
               style={{ background: `${categoryColor}22`, color: categoryColor }}>
               {CATEGORY_LABELS[feature.category] || feature.category}
@@ -145,8 +204,9 @@ function FeatureCard({ feature, onTrial }) {
           <p className="text-[13px] font-bold text-white">{feature.name}</p>
           <p className="text-[11px] text-white/60 mt-1">{feature.description}</p>
           {validUntil && (
-            <p className="text-[10px] text-amber-400 mt-1">
+            <p className="text-[10px] mt-1" style={{ color: expiringSoon ? "#F59E0B" : "#10B981" }}>
               Gültig bis {validUntil.toLocaleDateString("de-DE")}
+              {expiringSoon && " · läuft bald ab"}
             </p>
           )}
         </div>
@@ -155,14 +215,156 @@ function FeatureCard({ feature, onTrial }) {
           <p className="text-base font-black text-white">{feature.monthly_price.toFixed(2)}</p>
         </div>
       </div>
-      {!isActive && !feature.trial_used && (
-        <button onClick={onTrial}
-          className="w-full mt-2 py-2 rounded-xl bg-[#00C2FF]/15 text-[#00C2FF] text-[11px] font-bold flex items-center justify-center gap-1.5"
-          data-testid={`pos-feat-trial-${feature.key}`}>
-          <Sparkles size={11} /> 14 Tage gratis testen
+      <div className="flex gap-2 mt-2">
+        {!isActive && !feature.trial_used && (
+          <button onClick={onTrial}
+            className="flex-1 py-2 rounded-xl bg-[#00C2FF]/15 text-[#00C2FF] text-[11px] font-bold flex items-center justify-center gap-1.5"
+            data-testid={`pos-feat-trial-${feature.key}`}>
+            <Sparkles size={11} /> 14 Tage gratis
+          </button>
+        )}
+        <button onClick={onBuy}
+          className="flex-1 py-2 rounded-xl bg-gradient-to-r from-[#00C2FF] to-[#00E89D] text-black text-[11px] font-black flex items-center justify-center gap-1.5"
+          data-testid={`pos-feat-buy-${feature.key}`}>
+          <ShoppingCart size={11} /> {isActive ? "Verlängern" : "Buchen"}
         </button>
-      )}
+      </div>
     </div>
+  );
+}
+
+
+function BuyFeatureModal({ feature, onClose }) {
+  const [months, setMonths] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  if (!feature) return null;
+
+  const PLANS = [
+    { months: 1,  pct: 0,  label: "1 Monat" },
+    { months: 3,  pct: 5,  label: "3 Monate", badge: "5% Rabatt" },
+    { months: 6,  pct: 10, label: "6 Monate", badge: "10% Rabatt" },
+    { months: 12, pct: 20, label: "12 Monate", badge: "20% Rabatt", best: true },
+  ];
+
+  const buy = async () => {
+    setLoading(true);
+    try {
+      const r = await apiCall("/api/pos/features/checkout/create", {
+        method: "POST",
+        body: {
+          feature_key: feature.key,
+          months,
+          origin_url: window.location.origin,
+        },
+      });
+      if (r.checkout_url) {
+        window.location.href = r.checkout_url;
+      } else {
+        toast.error("Fehler beim Erstellen der Bezahlung");
+      }
+    } catch (e) { toast.error(e.message); setLoading(false); }
+  };
+
+  const monthly = feature.monthly_price;
+  const selectedPlan = PLANS.find((p) => p.months === months);
+  const baseTotal = monthly * months;
+  const discount = baseTotal * (selectedPlan.pct / 100);
+  const total = baseTotal - discount;
+  const categoryColor = CATEGORY_COLORS[feature.category] || "#00C2FF";
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[10001] bg-black/70 backdrop-blur-sm flex items-end justify-center"
+      onClick={onClose}
+      data-testid="pos-buy-modal">
+      <motion.div initial={{ y: "100%" }} animate={{ y: 0 }}
+        transition={{ type: "spring", damping: 25 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg bg-[#0A0A12] rounded-t-3xl border-t border-white/10 max-h-[92vh] overflow-y-auto">
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase"
+              style={{ background: `${categoryColor}22`, color: categoryColor }}>
+              {CATEGORY_LABELS[feature.category] || feature.category}
+            </span>
+            <h3 className="text-[18px] font-black text-white mt-2">{feature.name}</h3>
+            <p className="text-[12px] text-white/60 mt-1">{feature.description}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 ml-2 flex-shrink-0">
+            <X size={15} className="text-white/60" />
+          </button>
+        </div>
+
+        {/* Plan-Picker */}
+        <div className="px-5 pb-3 space-y-2">
+          <p className="text-[11px] text-white/50 uppercase tracking-wider mb-2">Laufzeit wählen</p>
+          {PLANS.map((p) => {
+            const active = months === p.months;
+            const planTotal = monthly * p.months * (1 - p.pct / 100);
+            return (
+              <button key={p.months} onClick={() => setMonths(p.months)}
+                className="w-full text-left p-3 rounded-xl border-2 transition-all"
+                style={{
+                  background: active ? `${categoryColor}11` : "rgba(255,255,255,0.02)",
+                  borderColor: active ? categoryColor : "rgba(255,255,255,0.06)",
+                }}
+                data-testid={`pos-buy-plan-${p.months}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center`}
+                      style={{ borderColor: active ? categoryColor : "rgba(255,255,255,0.2)" }}>
+                      {active && <div className="w-2 h-2 rounded-full" style={{ background: categoryColor }} />}
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-bold">{p.label}</p>
+                      {p.badge && (
+                        <p className="text-[9px] font-bold uppercase" style={{ color: p.best ? "#FBBF24" : "#10B981" }}>
+                          {p.best && "🔥 "}{p.badge}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[14px] font-black text-white">€{planTotal.toFixed(2)}</p>
+                    <p className="text-[9px] text-white/40">€{(planTotal / p.months).toFixed(2)}/Mo</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Total + CTA */}
+        <div className="px-5 pb-6 pt-2 border-t border-white/5 sticky bottom-0 bg-[#0A0A12]">
+          <div className="flex justify-between items-baseline mb-3">
+            <div>
+              <p className="text-[10px] text-white/50 uppercase">Gesamt</p>
+              <p className="text-3xl font-black text-white">€{total.toFixed(2)}</p>
+              {discount > 0 && (
+                <p className="text-[10px] text-[#10B981]">−€{discount.toFixed(2)} gespart</p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-white/40">Einmalzahlung</p>
+              <p className="text-[10px] text-white/40">{months} {months === 1 ? "Monat" : "Monate"}</p>
+            </div>
+          </div>
+          <button onClick={buy} disabled={loading}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00C2FF] to-[#00E89D] text-black font-black text-[14px] flex items-center justify-center gap-2 disabled:opacity-50"
+            data-testid="pos-buy-confirm">
+            {loading
+              ? <Loader2 size={14} className="animate-spin" />
+              : <>Mit Stripe bezahlen <ArrowRight size={14} /></>}
+          </button>
+          <p className="text-[9px] text-white/30 text-center mt-2">
+            Sicher bezahlen mit Karte, Apple Pay, Google Pay & Link.
+            Auto-Aktivierung nach Zahlung.
+          </p>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
