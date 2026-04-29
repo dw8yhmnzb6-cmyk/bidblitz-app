@@ -10,9 +10,9 @@ from routes.auth import get_current_user
 router = APIRouter(prefix="/api/group", tags=["Group Orders"])
 
 class CreateGroupRequest(BaseModel):
-    service_type: str  # taxi, food
+    service_type: str  # taxi, food, scooter
     participants: List[str]  # email addresses
-    details: dict  # pickup, destination, restaurant_id, etc.
+    details: dict  # pickup, destination, restaurant_id, scooter_id, etc.
 
 @router.post("/create")
 async def create_group_order(req: CreateGroupRequest, user=Depends(get_current_user)):
@@ -76,10 +76,13 @@ async def join_group(group_id: str, user=Depends(get_current_user)):
     if all_confirmed:
         # Execute group order
         if group["service_type"] == "taxi":
-            # Book taxi for group
+            # Book taxi for group (shared ride)
             pass
         elif group["service_type"] == "food":
-            # Place food order
+            # Place food order (split oder shared)
+            pass
+        elif group["service_type"] == "scooter":
+            # Group-Rental: Unlock Scooter für Gruppe (alle können fahren, Host zahlt)
             pass
         
         await db.group_orders.update_one(

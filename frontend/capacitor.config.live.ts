@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://kassensystem-preview.preview.emergentagent.com',
+    url: 'https://super-app-preview-3.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

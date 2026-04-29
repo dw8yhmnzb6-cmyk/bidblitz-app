@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
+import VoiceCommandPreview from './VoiceCommandPreview';
 
 export default function VoiceCommands({ onCommand }) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [recognition, setRecognition] = useState(null);
+  const [pendingIntent, setPendingIntent] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -78,15 +81,33 @@ export default function VoiceCommands({ onCommand }) {
 
     // 2) Lokales Fallback (offline / kein LLM)
     const lowerText = text.toLowerCase();
+    if (lowerText.includes('bestätigen') || lowerText.includes('ja') || lowerText.includes('ok')) {
+      if (pendingIntent) {
+        handleConfirmCommand();
+        return;
+      }
+    } else if (lowerText.includes('abbrechen') || lowerText.includes('nein') || lowerText.includes('stop')) {
+      if (pendingIntent) {
+        handleCancelCommand();
+        return;
+      }
+    }
+
     if (lowerText.includes('taxi') || lowerText.includes('fahrt')) {
       if (lowerText.includes('buchen') || lowerText.includes('bestellen')) {
-        onCommand?.({ action: 'book_taxi' });
-        speak('Taxi wird gebucht');
+        const intent = { action: 'book_taxi' };
+        setPendingIntent(intent);
+        setShowPreview(true);
+        speak('Taxi-Buchung — bitte bestätigen');
+        return;
       }
     } else if (lowerText.includes('essen') || lowerText.includes('bestellen')) {
       if (lowerText.includes('pizza')) {
-        onCommand?.({ action: 'search_food', query: 'pizza' });
-        speak('Suche Pizza');
+        const intent = { action: 'search_food', query: 'pizza' };
+        setPendingIntent(intent);
+        setShowPreview(true);
+        speak('Pizza-Suche — bitte bestätigen');
+        return;
       } else {
         onCommand?.({ action: 'open_food' });
         speak('Öffne Essen');
@@ -102,6 +123,21 @@ export default function VoiceCommands({ onCommand }) {
     } else if (lowerText.includes('hilfe') || lowerText.includes('help')) {
       speak('Sage zum Beispiel: Taxi buchen, Pizza bestellen, oder Punktestand anzeigen');
     }
+  };
+
+  const handleConfirmCommand = () => {
+    if (pendingIntent) {
+      onCommand?.(pendingIntent);
+      speak('Befehl wird ausgeführt');
+    }
+    setShowPreview(false);
+    setPendingIntent(null);
+  };
+
+  const handleCancelCommand = () => {
+    speak('Befehl abgebrochen');
+    setShowPreview(false);
+    setPendingIntent(null);
   };
 
   const speak = (text) => {
@@ -128,6 +164,14 @@ export default function VoiceCommands({ onCommand }) {
 
   return (
     <>
+      {/* Voice Command Preview Modal */}
+      <VoiceCommandPreview
+        intent={pendingIntent}
+        isOpen={showPreview}
+        onConfirm={handleConfirmCommand}
+        onCancel={handleCancelCommand}
+      />
+
       {/* Voice Button */}
       <motion.button
         whileTap={{ scale: 0.95 }}

@@ -7,6 +7,7 @@ import { AppProvider, useUser, useI18n } from "./store";
 import { ThemeProvider, useTheme } from "./store/ThemeContext";
 import AIChatWidget from "./components/AIChatWidget";
 import SuperAppOverlay from "./components/SuperAppOverlay";
+import InAppUpdateManager from "./components/InAppUpdateManager";
 
 import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
@@ -922,6 +923,8 @@ function AppContent() {
         isAuthenticated={user.isAuthenticated}
         activeRideId={navState?.activeRideId}
       />
+      {/* In-App Update Manager (Native Android/iOS) */}
+      <InAppUpdateManager />
     </div>
   );
 }
