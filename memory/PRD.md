@@ -71,7 +71,7 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - ✅ `/api/safety/*` — Notfall-Kontakte, Trip-Sharing, PIN-Verify
 - ✅ `/api/promo/*` — Promo-Codes & Voucher
 - ✅ `/api/filters/*` — Erweiterte Restaurant-Filter (Cuisine, Diet, Rating)
-- ✅ `/api/group/*` — Group Orders & Group Rides
+- ✅ `/api/group/*` — Group Orders & Group Rides (Frontend verkabelt in /food + /taxi)
 - ✅ `/api/quick/*` — Reorder, Favoriten, Wishlist
 - ✅ `/api/tips/*` — Trinkgeld, Gift Cards, Presets
 - ✅ `/api/delivery/*` — Kontaktlose Lieferung, Anweisungen
@@ -82,6 +82,8 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - ✅ `/api/pos/features/admin/trial-reset` — Admin kann Feature-Trial zurücksetzen
 - ✅ `/api/pos/staff/list` + `/staff/update` + `/staff/remove` — Staff-CRUD (Mitarbeiter-Berechtigungen)
 - ✅ `/api/pos/timeclock/*` — Zeiterfassung (Clock in/out, break)
+- ✅ **`/api/chat/ws/{room_id}` WebSocket** — Live-Chat zwischen Passagier/Fahrer mit History-Replay + Persistenz + Broadcast
+- ✅ `/api/chat/messages/{room_id}` REST-Bootstrap & `/api/chat/quick-reply` (arriving/waiting/thank_you Quick-Replies)
 
 ### Frontend (Stand 29.04.2026)
 - ✅ Komponenten erstellt: `SplitPaymentModal`, `LoyaltyDashboard`, `ReviewModal`, `SubscriptionPlans`, `SafetyButton`, `PromoCodeInput`, `FoodFilters`, `VoiceCommands`, `ARScooterFinder`, `LiveChat`
@@ -91,20 +93,21 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
   - LiveChat Floating-Button — **NUR bei aktiver Fahrt ODER ungelesenen Nachrichten**, mit roter **Unread-Badge** (Polling `/api/chat/unread-count`)
   - LoyaltyDashboard Quick-Access (Trophy)
   - SubscriptionPlans Quick-Access (Crown)
-- ✅ **TaxiPage**: ReviewModal, SplitPaymentModal, LiveChat-Button (während aktiver Fahrt), Rate-Button nach Completion + History
+- ✅ **TaxiPage**: ReviewModal, SplitPaymentModal, LiveChat-Button (während aktiver Fahrt), Rate-Button nach Completion + History, **GroupOrderModal** (Group Ride aus dem book-View)
 - ✅ **ScooterPage**: ARScooterFinder (Camera-AR mit Geolocation), ReviewModal, History-Review-Button
-- ✅ **FoodPage**: FoodFilters (Erweiterte Filter Bottom-Sheet), SplitPaymentModal (Cart), ReviewModal (delivered orders)
+- ✅ **FoodPage**: FoodFilters (Erweiterte Filter Bottom-Sheet), SplitPaymentModal (Cart), ReviewModal (delivered orders), **GroupOrderModal** (Group Order aus Cart)
+- ✅ **GroupOrderModal**: zentrale Komponente (Lieferando/Bolt-Style) mit E-Mail-Einladung, Erfolgsscreen + Copy-Link, "Deine aktiven Gruppen"-Liste
 
 ## Known Issues / Backlog
 
 ### P0 (next)
-- (Frontend-Wiring + Audit-Log + QR-Generator: ✅ FERTIG)
-- Live-Chat Backend-WebSocket-Endpoint validieren (`/api/chat/ws/{rideId}`)
+- (Frontend-Wiring + Audit-Log + QR-Generator + Live-Chat WS + Group-Orders Frontend: ✅ FERTIG)
+- Echte Fiskaly-Cloud Credentials einbauen (User-Input nötig: API_KEY/SECRET/TSS_ID)
 
 ### P1
+- WS-Auth-Hardening: `/api/chat/ws/{room_id}` validiert derzeit Token nicht — vor Production Pflicht (room-membership-Check)
 - Native Mobile Build (Capacitor Node-Konflikt)
-- Echte Fiskaly-Cloud Credentials (Mock vorhanden) — benötigt User-Credentials
-- Group-Orders Frontend-Wiring (Backend bereit)
+- ESLint `react/jsx-no-undef` + `no-undef` in CI verankern (zwei Iterationen lang an undeclared identifiers verloren)
 
 ### P2
 - Trial-Workflow: Reset durch Admin: ✅ FERTIG (Backend-Endpoint vorhanden)
