@@ -1,301 +1,78 @@
-# BidBlitz V2 — Product Requirements Document
+# BidBlitz Super App — PRD
 
 ## Original Problem Statement
-Build a complete production-ready Super App in German, combining payments (Wallet, BLZ tokens, Mining), penny auctions, lottery with real prizes, local services directory, bookings, ad campaigns, taxi/flights/streaming, and AI assistant features.
+BidBlitz ist eine voll-funktionsfähige React + FastAPI + MongoDB Super App mit Auctions, Wallet, Mining, POS/Kassensystem, Stripe-Integration, Loyalty, Crypto, Kids-Modus und vielem mehr. Sprache: Deutsch (Fast Mode). Ziel ist ein produktionsreifes POS-System auf REWE/Aldi-Niveau plus weitere Features.
 
-## Tech Stack
-- **Backend**: FastAPI, MongoDB (test_database), 180+ route files
-- **Frontend**: React, Tailwind, Leaflet maps, Framer Motion
-- **AI**: gpt-5.2 via Emergent LLM Key (emergentintegrations.LlmChat)
-- **Auth**: JWT cookies (HTTP-only)
-- **Payments**: Stripe (live key in env)
-- **Email**: Resend
+## Strikte Geschäftsregeln
+- **Auctions/Products: max. 2000 € retail_price**
+- **Vouchers: max. 2000 €**, **Wallet-Topup: max. 500 €**
+- Service Worker Caching ist DEAKTIVIERT (Mobile Cache-Probleme)
+- Production DB (bidblitz.ae) ist IP-whitelisted → Preview ist Source of Truth
 
-## Test Credentials
-See `/app/memory/test_credentials.md`
+## Implementiert (April 2026)
 
----
+### POS-System (Phase 1+2+3+4 abgeschlossen)
+- ✅ Modulares POS (Dashboard/Checkout/Products/Inventory Tabs)
+- ✅ **Vouchers**: Verkauf, Einlösung, Status-Check, als Zahlungsmethode (Split-Payment)
+- ✅ **Wallet-Topup am POS** (Kunde via E-Mail aufladen)
+- ✅ **Compliance Tab**: Z-Bon, X-Bon, DSFinV-K Export, Kassenmeldepflicht (§146a AO)
+- ✅ **Add-On / Feature-Flag-System**: 18 Features pro Merchant zubuchbar (Tisch-Reservierung, QR-Bestellung, KDS, Loyalty, KI, Compliance, Self-Checkout, …) mit Trial + Admin-Toggle
+- ✅ **Public API v1** (`/api/pos/public/v1/*`) mit X-API-Key Auth, Scopes (read/write), Feature-Gating (HTTP 402 wenn Add-On nicht aktiv)
+- ✅ **Offline-Modus**: Cash-Verkäufe in localStorage Queue, Auto-Sync bei Online
+- ✅ TSE/Fiskaly, KDS, Tisch-QR, Pfand, Dynamic Pricing, Time-Clock, Tips
+- ✅ DATEV/Lexoffice Export, OCR Lieferschein, Voice Commands
 
-## ✅ Completed Features (all implemented & tested)
+### Auctions
+- ✅ 30 realistische Auktionen <= 2000 € (Unsplash) mit Auto-Bidding-Bots
+- ✅ **Auto-Redirect zu Credits-Kauf-Modal** wenn User keine Bid-Credits hat
+- ✅ Auctions Push, Watchlist, AutoBid
 
-### Core (pre-existing)
-- Wallet, BLZ tokens, Mining, Auctions (penny), Bookings
-- Local Directory (Lokales Verzeichnis) with Maps + Photos
-- Field Agent Portal, Self-Service Ads, KYC system
-- 17 Admin Panels, Multi-language i18n (DE/EN/SQ/TR)
+### Auth / Wallet / Crypto / Stripe / etc.
+Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 
-### Lottery System (Apr 2026 — current session)
-- **Real product prizes** (not just BLZ): iPhone 17 Pro, MacBook Air M4, AirPods Pro 3, Amazon-Gutschein 250€, Restaurant-Gutscheine etc.
-- 4 Tiers: grand/big/small/mini with images, EUR values, descriptions
-- Hero shows EUR Sachwert (~5.112€) + countdown
-- Tap prize card → modal with "Jetzt mitspielen" CTA
-- Backend: `/api/lottery/current`, `/api/lottery/buy-tickets`, `/api/lottery/my-tickets`
+## Architektur
 
-### AI Features (Apr 2026 — current session) — gpt-5.2 via Emergent LLM Key
-1. **AI Chatbot** (floating widget bottom-right)
-   - Multi-turn conversation with persistent session
-   - German-only system prompt
-   - Endpoints: `POST /api/ai/chat`, `GET /api/ai/chat/history`, `DELETE /api/ai/chat/{id}`
-2. **AI Content Generator** (page at /ai/content, also in MorePage menu)
-   - 5 content types: listing, ad_headline, ad_body, email, push
-   - 4 tones, 4 languages (de/en/sq/tr)
-   - Returns 3 variations with copy buttons
-   - Endpoint: `POST /api/ai/content/generate`
-3. **Smart Recommendations** (on HomePage, above HomeRecommendations)
-   - Personalized AI-driven cards based on user activity (transactions, bookings, balance)
-   - 4 cards with category icon, title, reason, CTA
-   - Endpoint: `GET /api/ai/recommendations?limit=4`
+### Backend (`/app/backend/`)
+- `routes/pos_system.py` — Core POS (Merchants, Stores, Carts, Payments, Sales, Refunds)
+- `routes/pos_vouchers.py` — Gutscheine + Topup ✱ (Phase 1)
+- `routes/pos_features.py` — Feature-Flag-System (18 Add-Ons) ✱
+- `routes/pos_public_api.py` — Public API v1 mit X-API-Key Auth ✱
+- `routes/pos_kassenmeldung.py` — Kassenmeldepflicht §146a AO ✱
+- `routes/pos_extended.py` — Z-Bon/DSFinV-K, Tische, Loyalty, FX
+- `routes/pos_pro.py` — TSE, KDS, Pfand, KI, Pricing, Time-Clock, Tips, API-Keys
+- `routes/pos_advanced.py` — OCR, Voice, Stocktake, Recipes, Forecast, DATEV
+- `routes/pos_inventory.py` — Stock, Suppliers, POs, NFC, Reports
+- `routes/pos_payments.py` — Barcode/NFC-Pay, Vouchers (legacy), Receipts
+- `core/payment_engine.py` — TransactionType (neu: VOUCHER_REDEMPTION, WALLET_TOPUP_POS)
 
-### Auction System Refresh (Apr 2026 — current session)
-- **30 active auctions** at all times (was 50 with Rolex)
-- All goods ≤ 3000€ (removed Rolex 38900€, Omega 5700€, Sony A7R V 3899€, LG OLED 77" 3299€, Samsung 8K 4999€, Tesla Phone 1299€)
-- Added 8 new products under 3000€ (Bose QC Ultra, GoPro Hero 13, Kindle Scribe, Lego Millennium Falcon UCS, Bose Soundbar Ultra, Apple Vision Pro, Samsung Tab S10 Ultra, Roomba j7+)
-- **Live Viewer Counter** (`viewer_count` field) — auto-fluctuates with realistic surge near auction end
-- **Auto-Restart Loop** (`auction_maintenance_loop`) — runs every 20s:
-  - Marks expired auctions as ended
-  - Auto-spawns replacements to keep `TARGET_ACTIVE_AUCTIONS=30`
-  - Fluctuates viewer counts realistically
-- **Bot Loop** (`bot_bidding_loop`) — 3-Phase Strategy:
-  - Phase 1 (start): bots bid until €3-6 to generate activity
-  - Phase 2 (middle): bots stop, real customers bid
-  - Phase 3 (last 5min): bots resume until target reached
-- New Endpoints:
-  - `POST /api/auctions/{id}/view` — increment viewer count
-  - `POST /api/auctions/admin/reseed` — admin force re-seed
-- Frontend: Auction cards now show live viewer badge (top-left, pulsing green dot)
+### Frontend (`/app/frontend/src/`)
+- `pages/POSPage.jsx` — POS-Hub mit Tabs: Dashboard, Kasse, Produkte, Bestand, …, **Compliance**, **Add-Ons**, Admin
+- `pages/POSComplianceTab.jsx` — Z-Bon/DSFinV-K/Kassenmeldung ✱
+- `components/pos/POSCheckoutTab.jsx` — Checkout mit Voucher-Sale/Topup-Toggle, Voucher-Pay, Offline-Queue ✱
+- `components/pos/POSVoucherComponents.jsx` — Sell/Topup-UI
+- `components/pos/POSFeaturesComponents.jsx` — Merchant + Admin Feature-UI ✱
+- `pages/AuctionsPage.jsx` — Auto-Redirect zu Credits-Kauf bei 0 Credits ✱
 
----
+## Test-Status
+- Backend: **29/29 grün** (iteration_21.json) — Voucher Flows, Topup, Redeem-as-Payment, Feature-Catalog/Toggle/Trial, Public API v1 mit Feature-Gating (402), Kassenmeldung, Z-Bon/DSFinV-K, Cart+Cash-Payment Regression
+- Frontend: Smoke-Test (Lint OK, kompiliert sauber)
 
-## 🟡 Backlog / Future
+## Known Issues / Backlog
 
 ### P1
-- Live deployment to bidblitz.ae (deploy script at `/app/deploy/scripts/deploy.sh`)
-- App.js refactoring (~870 lines, switch/case routing)
+- Self-Checkout-Modus / Scan & Go Customer-Route (Backend Endpunkte vorhanden)
+- Native Mobile Build (Capacitor Node-Konflikt)
+- Echte Fiskaly-Cloud Credentials (Mock vorhanden)
 
 ### P2
-- Rich product detail pages
-- Bidding history per user view
-- Push notifications for outbid events
-- Auction filters (category, price range)
+- Per-API-Key Rate-Limiting auf Public API (slowapi)
+- Audit-Log Filter Endpoint (Backend) — Frontend filtert client-seitig
+- Trial-Workflow: Reset durch Admin
+- Self-Service Add-On Buchung mit Stripe-Checkout (statt nur Trial)
 
-### P3
-- More AI features (auto-generate auction listings, chat translation, voice input)
+## Credentials
+- POS Admin: `admin@bidblitz.com` / `BidBlitz2026!` (Merchant `MER-520D937E02F3` "Eiscafe", store_id `S1`, register_id `R1`)
+- Siehe `/app/memory/test_credentials.md`
 
----
-
-## Code Architecture
-
-### Key Backend Files
-- `/app/backend/server.py` — main, includes all routers, startup loops
-- `/app/backend/routes/auctions.py` — penny auction system, bot loop, maintenance loop
-- `/app/backend/routes/revenue2.py` — lottery, premium, marketplace fee
-- `/app/backend/routes/ai_chat.py` — AI Chatbot, Content Generator, Recommendations
-- `/app/backend/routes/directory.py`, `/app/backend/routes/advertising.py`, `/app/backend/routes/reservation_system.py`
-- `/app/backend/data/product_catalog.json` — 30 products ≤3000€
-
-### Key Frontend Files
-- `/app/frontend/src/App.js` — main app, routes
-- `/app/frontend/src/pages/LotteryPage.jsx` — prize showcase + modal
-- `/app/frontend/src/pages/AIContentGeneratorPage.jsx` — content gen UI
-- `/app/frontend/src/pages/AuctionsPage.jsx` — auction list with viewers
-- `/app/frontend/src/components/AIChatWidget.jsx` — floating chatbot
-- `/app/frontend/src/components/SmartRecommendations.jsx` — home reco
-
-### Background Loops Running
-1. `bot_bidding_loop` — places bot bids
-2. `auction_maintenance_loop` — keeps 30 active, viewer fluctuation
-3. `auto_reward_loop` — mining rewards
-4. `subscription_renewal_loop` — premium subs
-5. `credit_autopay_loop` — auto-payments
-
----
-
-## 3rd Party Integrations
-- OpenAI gpt-5.2 — Emergent LLM Key (`EMERGENT_LLM_KEY` in /app/backend/.env)
-- Stripe — live key configured
-- Resend — for emails
-- Sabre — for flights (CERT environment)
-
-## Last Session Notes (Apr 26 2026)
-- All 4 user-priorities completed: Lotterie-Verbesserung, AI-Chatbot, AI-Content Generator, Smart Recommendations
-- Auction overhaul: 30 fresh auctions ≤3000€, no Rolex, viewer counter, auto-restart loop, bot loop verified
-- Testing agent iteration_18: 100% pass on AI features
-- Backend logs show: "30 Auto-Restart Auctions + Viewer Tracking active"
-
-## Session Notes (Apr 26 2026 — late evening, FAST MODE)
-
-### OSM Real-World Nearby Places (DONE)
-- New endpoint `GET /api/osm/places?lat=&lng=&radius_m=&category=` (OpenStreetMap Overpass)
-- New endpoint `GET /api/osm/categories` (8 categories: food, shop, money, health, fuel, fun, transport, all)
-- 15-min in-memory cache, no API key required
-- File: `/app/backend/routes/nearby_osm.py`
-- Frontend: `NearbyPage.jsx` shows DB markers + OSM markers on Leaflet map (green pins, anrufbar/Website-Button)
-- Removed fake seed data block from `seed_real_data.py` (Rossmann/REWE/Aral etc.)
-
-### P0 Backend — Competitive feature parity (DONE)
-
-**Hotels (Booking.com-style)**
-- `GET /api/hotels/{id}/availability?days=90` — booked date ranges for calendar
-- `GET /api/hotels/{id}/quote?check_in=&check_out=&guests=` — itemized price breakdown (rate × nights + cleaning_fee + service_fee_pct)
-- `PropertyCreate` extended: `cleaning_fee`, `service_fee_pct`, `cancellation_policy`, `instant_book`
-- `/api/hotels/book` now uses subtotal + cleaning + service_fee = total
-
-**Food (Lieferando-style)**
-- `CartItem.options[]` — variants/add-ons with per-option price (Größe, Extras)
-- `OrderRequest.delivery_type` — "delivery" | "pickup" (skips delivery fee/small-order fee for pickup)
-- `OrderRequest.promo_code` — applies promo discount, validated against `db.food_promos`
-- `GET /api/food/promo/validate?code=&subtotal=` — pre-checkout promo validation
-
-**Taxi (Uber-style)**
-- `POST /api/taxi/sos` — emergency alert with location, notifies admin, returns 112/999 numbers
-- `GET /api/taxi/rides/{ride_id}/receipt` — itemized receipt (base+km+time+tip)
-- `POST /api/taxi/rides/tip` — add tip after ride, charges customer, credits driver
-
-**Scooter (TIER-style)**
-- `POST /api/scooter/unlock-qr` — unlock from QR content (URL or scooter_id)
-- `EndRideRequest.parking_photo_url` — proof of parking on end-ride
-- `POST /api/scooter/report-issue` — damage/issue report, auto-flags maintenance for high severity
-- `POST /api/scooter/reserve` — hold scooter for 10 min (€0.50)
-- `POST /api/scooter/reserve/cancel`
-
-### Email (Resend)
-- Already fully wired in `/app/backend/core/email.py` with templates: welcome, password_reset, payment_confirmation, receipt, KYC, OTP, topup, blitz_transfer
-- API key configured in `/app/backend/.env` as `RESEND_API_KEY`
-
-### POS Erweiterungen (Apr 26 2026 — Wizard, NFC, Chat, Approval)
-
-**Frontend** (`POSPage.jsx`)
-- **4-Schritt Onboarding-Wizard**: Profil → Filiale → Kasse → erstes Produkt (mit Progress-Bar, jeder Schritt überspringbar/zurücksetzbar)
-- **Web NFC API**: echte `NDEFReader` Integration für Android Chrome, automatischer QR-Fallback wenn Hardware fehlt
-- **Team-Chat Tab**: Threads pro Store + automatische System-Nachrichten bei Refund-Anfragen
-- **Freigaben Tab**: Manager sehen offene Refund-Requests, können freigeben oder ablehnen mit Notiz
-
-**Backend** (`pos_chat.py` — 7 neue Endpoints)
-- `POST /api/pos/refund-requests/create` (cashier requests, manager+ auto-approves)
-- `GET /api/pos/refund-requests` (filter by status)
-- `POST /api/pos/refund-requests/approve` + `/reject`
-- `POST /api/pos/chat/send` + `GET /api/pos/chat/messages` + `/threads`
-
-**E2E Tested**
-- Refund-Request als merchant_admin → auto-approved → wallet reverse + restock + system message
-- Chat send/receive funktioniert
-
-**Backend modules** (`/app/backend/routes/pos_system.py` + `pos_inventory.py`)
-- 57 production endpoints: merchants, stores, registers, staff, products, suppliers, purchase orders, stock movements, carts, payments (wallet QR / customer barcode / cash / card-external / NFC), refunds (full + item-level with restock), receipts (HTML + PDF), 4 reports (sales, inventory, tax, refunds) + CSV export, full admin panel
-- Production data: real wallet debit/credit (`payment_engine`), atomic wallet+stock updates, audit log (`pos_audit_log`), no fake data, role-based access (merchant_admin/store_manager/cashier/accountant/bidblitz_admin), prevent duplicate payments, expire windows (3 min QR, 60 s NFC)
-- E2E flow validated: customer `kunde@bidblitz.com` paid €4.98 via wallet QR → balance went 6878.41 → 6873.43, sale + receipt created, stock decremented from 100 → 97, fee 1.5% (0.07€) deducted, merchant settlement +4.91€
-
-**Frontend** (`/app/frontend/src/pages/POSPage.jsx`)
-- One unified POS hub at `/pos` with 11 tabs (Dashboard, Kasse, Produkte, Bestand, Bewegungen, Lieferanten, Bestellungen, Belege, Erstattungen, Berichte, Admin)
-- Cashier UI: barcode scan input (auto-focus), product search, cart with qty/discount, all 4 payment methods + NFC fallback
-- Live polling for QR/NFC payment status, auto-finalize on paid
-- Available via `/more → POS / Kasse` menu entry
-
-## ✅ Mega-Sprint Advanced POS (Feb 2026 — Session "C")
-
-**Backend** (`/app/backend/routes/pos_advanced.py`, 29 routes)
-- 1. **Lieferschein-OCR** — `POST /api/pos/ocr/delivery-note` — Foto → JSON-Artikel via Gemini 2.5 Pro Vision (`emergentintegrations.llm.chat.LlmChat` + `ImageContent`, Emergent LLM Key)
-- 2. **Voice Commands** — `POST /api/pos/voice/transcribe` — Audio (webm) → Text + Befehl (add_item / discount / cancel) via OpenAI Whisper (`emergentintegrations.llm.openai.OpenAISpeechToText`)
-- 3. **Etiketten-PDF** — `POST /api/pos/labels/generate` — generiert Preisschilder als A4-PDF (FPDF, 18 pro Seite)
-- 4. **Auto-Bestellung** — `POST /api/pos/auto-order/run` — erzeugt POs für alle Artikel unter Mindestbestand pro Lieferant
-- 5. **CSV Bulk-Import / Export** — `POST /api/pos/products/bulk-import` + `GET /api/pos/products/bulk-export`
-- 6. **Inventur** — start / count / finalize / list (`/api/pos/stocktake/*`) — automatische Bestand-Korrektur + Bewegung-Log
-- 7. **Chargen / MHD** — create + expiring (`/api/pos/batches/*`)
-- 8. **Rezepte (BOM)** — Stücklisten für Restaurants — `/api/pos/recipes/*` — Zutaten-Abzug bei Verkauf
-- 9. **Schichtplan** — `/api/pos/schedule/*` — Wochen-Übersicht
-- 10. **Kassierer-Performance** — `GET /api/pos/performance/cashiers`
-- 11. **KI-Umsatzprognose** — `GET /api/pos/forecast/sales` (basiert auf 28-Tage-Schnitt + Wochentag-Multiplikator)
-- 12. **Cross-Sell-Vorschläge** — `GET /api/pos/cross-sell/{product_id}`
-- 13. **DATEV-Export** — `GET /api/pos/accounting/datev/export` (CSV nach DATEV-Format)
-- 14. **Lexoffice-Export** — `GET /api/pos/accounting/lexoffice/export`
-- 15. **P&L heute** — `GET /api/pos/pnl/today` (Umsatz, COGS, Brutto-Gewinn, Marge)
-- 16. **Online-Katalog** — `GET /api/pos/public/catalog/{store_id}` (öffentlich, ohne Auth — für QR-Speisekarte)
-- 17. **Reservierungen** — `/api/pos/reservations/*` (Restaurant-Tische)
-- 18. **E-Mail-Kampagnen** — `POST /api/pos/marketing/campaigns/send` (Segmentierung nach Tier + Inaktivität)
-- 19. **Geschenkgutscheine** — create + redeem (`/api/pos/giftcards/*`)
-- 20. **Alterskontrolle** — `POST /api/pos/age-check/log` (Tabak/Alkohol-Compliance)
-
-**Frontend** (`/app/frontend/src/pages/POSAdvancedTab.jsx` + `POSPage.jsx` Tab "Mega-Tools")
-- 6 Sub-Sections: KI-Tools · Bestand+ · Rezepte & Cross-Sell · Schicht & Reservierung · Finanzen & DATEV · Marketing
-- Foto-Upload mit `capture="environment"` für mobile Kamera-OCR
-- Browser MediaRecorder → Whisper für Voice-Befehle
-- CSV-Drag-Drop-Import, automatischer Browser-Download für PDF/CSV
-- Vollständige Test-IDs (`adv-section-*`, `ocr-*`, `voice-*`, `csv-*`, `auto-order-btn`, `label-*`, `stk-*`, `recipe-*`, `cs-*`, `fc-*`, `sch-*`, `rsv-*`, `perf-*`, `datev-btn`, `lexoffice-btn`, `pnl-*`, `camp-*`, `gc-*`, `age-*`)
-
-**Test-Status**: 21/21 Backend-Endpoints geprüft (Iteration 19) — alle 200 OK gegen MongoDB. OCR/Voice korrekt verdrahtet (Library imports und Upstream-Calls bestätigt; 500 nur bei Dummy-Bildern wegen Gemini-Größenfilter).
-
-**Tech-Stack-Ergänzungen**: `emergentintegrations.llm.openai.OpenAISpeechToText` (Whisper), `emergentintegrations.llm.chat.LlmChat` mit `gemini-2.5-pro` für Vision, `fpdf2` (Etiketten).
-
-## ✅ Demo-Modus (One-Click Onboarding)
-
-- `POST /api/pos/demo/seed?store_id=…` — erzeugt mit einem Klick: 1 Test-Lieferant, 3 Demo-Produkte (Cola, Brötchen, Burger-Menü), 25 €-Gutschein, offene Inventur, Rezept (Burger = Brötchen + Cola), Reservierung morgen 19:00, Schicht heute. Alle mit Präfix `DEMO ` für leichte Identifikation.
-- `DELETE /api/pos/demo/clear?store_id=…` — löscht ALLE DEMO-Einträge der Filiale auf einen Schlag.
-- Frontend: neue Sub-Section "Demo-Modus" (Default-Tab beim Öffnen von Mega-Tools) mit `demo-seed-btn` + `demo-clear-btn` und Live-Result-Anzeige.
-- E2E getestet: Seed liefert alle 7 Entitäten, Clear räumt sauber auf.
-
-## ✅ POS Pro Suite — 16 Production-Features (Feb 2026 — Session "Alles")
-
-**Backend** (`/app/backend/routes/pos_pro.py`, 36 routes)
-
-**Compliance / DE-Pflicht:**
-- TSE Sign-Sale — `POST /api/pos/tse/sign-sale/{sale_id}` — KassenSichV-konforme Signatur jedes Bons mit verkettetem Hash + Counter + QR-Daten
-- GoBD-Archiv — `GET /api/pos/gobd/archive/list?year=&month=` + `GET /api/pos/gobd/integrity-check` (10-Jahre-Aufbewahrung, Compliance-Rate-Berechnung)
-
-**Restaurant-Killer-Features:**
-- KDS Stations — `/api/pos/kds/stations/*` + `/api/pos/kds/orders/*` (Küche/Bar/Pizza-Stationen mit Auto-Routing nach Kategorie)
-- QR-Tisch-Bestellung — `POST /api/pos/tables/{id}/qr-enable` + `GET /api/pos/public/order/{qr_token}` + `POST /api/pos/public/order/submit` (komplett ohne Auth, KDS-Auto-Routing)
-- Pfandsystem — `/api/pos/deposits/register|return|outstanding` (Mehrweg-Tracking)
-
-**KI & Automation:**
-- KI-Chat-Assistent für Händler — `POST /api/pos/assistant/ask` mit gpt-5.1 + Live-DB-Kontext (Umsatz heute, niedriger Bestand etc.)
-- Produkt-Bilderkennung ohne Barcode — `POST /api/pos/products/recognize` mit Gemini 2.5 Pro Vision
-- Dynamic Pricing — `/api/pos/pricing/rules/*` (Happy Hour, Zeitfenster, Stoßzeiten-Aufschlag, Lagerstand-basiert)
-
-**Operations:**
-- Kunden-Display — `GET /api/pos/customer-display/{register_id}` (Zweit-Bildschirm mit Live-Cart, ohne Auth)
-- Mitarbeiter-Stempeluhr — `/api/pos/timeclock/punch|me|store` (in/out/break_start/break_end)
-- Trinkgeld-Pool — `/api/pos/tips/add|pool/distribute|my-payouts` (gleichmäßige Verteilung an eingestempelte Mitarbeiter pro Tag)
-
-**Plattform:**
-- Public API + Webhooks — `/api/pos/api-keys/*` + `/api/pos/webhooks/*` (HMAC-SHA256-Signatur, async-Delivery via BackgroundTasks)
-
-**Frontend**
-- `/app/frontend/src/pages/POSProTab.jsx` (~600 Zeilen) — neuer Tab "Pro / Compliance" in POSPage mit 9 Sub-Sections
-- `/app/frontend/src/pages/KDSPage.jsx` — Standalone Kitchen-Display für Tablets unter `/kds/{station_id}` (Auto-Refresh 5s, Tap → Status)
-- `/app/frontend/src/pages/CustomerDisplayPage.jsx` — Zweit-Bildschirm unter `/customer-display/{register_id}` (Live-Cart-Polling)
-- `/app/frontend/src/pages/PublicTableOrderPage.jsx` — Gast-Self-Service-Bestellung unter `/order/{qr_token}` (kein Login, KDS-Auto-Routing)
-- App.js: Prefix-basiertes Dynamic Routing für `/kds/`, `/customer-display/`, `/order/`
-
-**Test-Status**: 19/19 Backend-Tests bestanden (Iteration 20 nach Sign-Sale-Fix). End-to-End validiert: Tisch-QR-Bestellung mit echter Auto-KDS-Verteilung, TSE-Signatur erzeugt 100% Compliance-Rate auf gesigneten Sales, KI-Assistent antwortet auf Deutsch mit Live-Kontextdaten.
-
-**Bestehende Module (NICHT neu, schon im Codebase, nur referenziert):**
-- TSE-Configure: `pos_extended.py` `/tse/configure`, `/tse/sign-payment`, `/tse/status`
-- Loyalty: `pos_extended.py` `/loyalty/*`
-- Z-Bon/DSFinV-K: `pos_extended.py` `/zbon/*`
-- Push: `web_push.py`
-- Referral: `referral.py` / `referral_system.py`
-
-## ✅ Cleanup, Fiskaly Real-Mode & Capacitor (Feb 2026 — Session "Final")
-
-**Fake-Daten Cleanup (vollständig):**
-- DB direkt gesäubert: 11 Taxi-Drivers, 65 Scooter, 12 Flüge, 0 Hotels (waren leer), 0 Rental Cars (waren leer), 0 Restaurants (alle hatten `is_real:true`), **48 Auktionen über €2000** entfernt (inkl. Rolex Submariner Gold)
-- Admin-Endpoint `/api/admin/cleanup-fake-data` erweitert: deckt jetzt auch hotels/flights/scooters/rental_cars ab, behält nur Whitelisted-Test-Drivers (`fahrer@bidblitz.com`) und `is_real:true`-Restaurants
-- `/app/backend/data/product_catalog.json` von 30 → 25 Einträge gefiltert (5 über €2000 entfernt)
-
-**Hartes €2000-Limit (KassenSichV-konform für Standardware):**
-- `auctions.py` Z. 1066: `retail_price: float = Field(..., gt=0, le=2000)` als Pydantic-Constraint
-- `auctions.py` Z. 1175: Module-Init-Filter — Bot-System lädt Catalog bereits gefiltert
-- `auctions.py` Z. 2289: 400-Error bei Update-Versuch über €2000
-- `pos_system.py` Z. 156: POS-Produkte ebenfalls auf `le=2000` begrenzt
-
-**Echte Fiskaly Cloud-TSE Integration:**
-- `/app/backend/services/fiskaly_client.py` (~165 Zeilen) — OAuth2-Client-Credentials-Flow, Cache-Token, echte Sign-API-v2-Calls (`PUT /api/v2/tss/{TSS_ID}/tx/{TX_ID}` mit standard_v1-Schema)
-- Auto-Fallback zu HMAC-SHA256-Stub wenn FISKALY_API_KEY/SECRET/TSS_ID fehlen → Dev-Mode bleibt funktional
-- Neuer Endpoint: `GET /api/pos/tse/mode` zeigt ob echtes oder Stub-Mode aktiv
-- `pos_pro.py` `/tse/sign-sale/{sale_id}` ruft jetzt `services.fiskaly_client.sign_transaction()` statt Inline-HMAC
-
-**Native Mobile Apps via Capacitor 7:**
-- Capacitor 7 (`@capacitor/core`, `cli`, `ios`, `android`, `app`, `splash-screen`, `status-bar`) via yarn installiert
-- `/app/frontend/capacitor.config.ts` mit App-ID `com.bidblitz.pos`, BidBlitz-Branding, Splash + StatusBar konfiguriert
-- `/app/CAPACITOR_MOBILE_GUIDE.md` (~140 Zeilen) — kompletter Setup-Guide: Voraussetzungen (macOS/Xcode/Android Studio), `cap add ios/android`, Live-Reload-Konfiguration für Dev, Permissions (Info.plist + AndroidManifest.xml), App-Store/Play-Console-Release-Workflow, empfohlene native Plugins (Camera, Bluetooth-LE, Barcode-Scanner, Geolocation für Stempeluhr)
-
+## Stand
+**29.04.2026** — Phase 1 (Bug-Fixes), Phase 2 (Compliance), Phase 3 (Add-Ons + API), Phase 4 (Offline + Auto-Redirect) komplett.

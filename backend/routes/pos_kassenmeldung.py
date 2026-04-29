@@ -22,9 +22,23 @@ class MeldungSave(BaseModel):
     notes: str = ""
 
 
+async def _check_store_access(user: dict, store_id: str):
+    """Nur Merchant-Owner oder Admin darf zugreifen."""
+    if user.get("role") in ("admin", "superadmin"):
+        return
+    user_id = str(user["_id"])
+    store = await db.pos_stores.find_one({"store_id": store_id})
+    if not store:
+        raise HTTPException(404, "Filiale nicht gefunden")
+    merchant = await db.pos_merchants.find_one({"merchant_id": store["merchant_id"]})
+    if not merchant or merchant.get("owner_id") != user_id:
+        raise HTTPException(403, "Keine Berechtigung für diese Filiale")
+
+
 @router.get("/get")
 async def get_meldung(store_id: str, request: Request):
-    await get_current_user(request)
+    user = await get_current_user(request)
+    await _check_store_access(user, store_id)
     m = await db.pos_kassenmeldung.find_one({"store_id": store_id}, {"_id": 0})
     return {"meldung": m}
 
@@ -32,6 +46,7 @@ async def get_meldung(store_id: str, request: Request):
 @router.post("/save")
 async def save_meldung(req: MeldungSave, request: Request):
     user = await get_current_user(request)
+    await _check_store_access(user, req.store_id)
     now = datetime.now(timezone.utc).isoformat()
     doc = req.dict()
     doc["updated_at"] = now

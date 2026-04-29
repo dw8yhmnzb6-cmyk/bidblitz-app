@@ -118,7 +118,11 @@ async def is_feature_enabled(merchant_id: str, feature_key: str) -> bool:
     f = await db.pos_merchant_features.find_one({
         "merchant_id": merchant_id, "feature_key": feature_key,
     })
-    if not f or not f.get("enabled"):
+    if f is None:
+        # Kein Eintrag: Default-Wert aus Catalog konsultieren
+        feat = next((x for x in FEATURE_CATALOG if x["key"] == feature_key), None)
+        return bool(feat and feat["default_enabled"])
+    if not f.get("enabled"):
         return False
     valid_until = f.get("valid_until")
     if valid_until:

@@ -264,6 +264,12 @@ async def register_pos_merchant(req: MerchantRegister, request: Request):
     await db.pos_merchants.insert_one(doc)
     doc.pop("_id", None)
     await _audit(user_id, "merchant.register", {"merchant_id": merchant_id})
+    # Default-Add-Ons aktivieren (loyalty, vouchers)
+    try:
+        from routes.pos_features import _ensure_defaults
+        await _ensure_defaults(merchant_id)
+    except Exception:
+        pass
     return {"ok": True, "merchant": doc}
 
 
