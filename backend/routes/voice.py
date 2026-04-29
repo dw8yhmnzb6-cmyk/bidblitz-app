@@ -100,4 +100,4 @@ async def voice_parse(req: VoiceParseRequest, user=Depends(get_current_user)):
         return {"intents": [], "raw": str(raw) if 'raw' in locals() else "", "error": "invalid_json"}
     except Exception as e:
         logger.exception("voice_parse failed: %s", e)
-        raise HTTPException(500, f"voice parse error: {e}")
+        raise HTTPException(500, "voice parse error")

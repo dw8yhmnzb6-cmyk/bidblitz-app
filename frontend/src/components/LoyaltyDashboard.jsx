@@ -23,7 +23,7 @@ export default function LoyaltyDashboard({ onClose }) {
 
   const fetchLoyalty = async () => {
     try {
-      const res = await fetch(`${API}/api/loyalty/my-points`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/loyalty-superapp/my-points`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setLoyalty(data);
@@ -34,7 +34,7 @@ export default function LoyaltyDashboard({ onClose }) {
 
   const fetchLeaderboard = async () => {
     try {
-      const res = await fetch(`${API}/api/loyalty/leaderboard`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/loyalty-superapp/leaderboard`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setLeaderboard(data.leaderboard || []);

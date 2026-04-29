@@ -1,0 +1,38 @@
+{
+  "summary": "Iter28 retest: all 4 fixes verified end-to-end. 17/17 pytest tests pass. (1) WS chat_ws now uses accept-then-close so clients see the documented close codes 4401 (no/invalid token) and 4403 (valid token, non-member room). (2) Loyalty router prefix renamed to /api/loyalty-superapp — /levels returns 4 entries [Bronze, Silver, Gold, Platinum] and /history?limit=10 returns {history: [...], count: int} with 401 for unauth. (3) /api/group/create no longer KeyError's on participant lookup — now uses str(participant.get('_id') or participant.get('id')); group create + idempotent join (first 200 success:true, second 200 already_joined:true) + my-groups enrichment all work. (4) /api/auth/ws-token now mints an explicit 300s JWT (decoded exp - now ≈ 300s, accepted within 290..310s window). Voice parse + super-app tips presets + admin WS bypass continue to work.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "websockets lib", "issue": "DeprecationWarning ConnectionClosed.code in test helper — non-blocking; can switch to e.rcvd.code in a follow-up."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified_working": {
+    "GET /api/auth/ws-token": ["200 + token + expires_in=300 (authed)", "JWT exp - now ≈ 300s (decoded)", "401 unauth"],
+    "WS /api/chat/ws/{room}": ["no token -> close code 4401", "invalid token -> close code 4401", "valid kunde token + random non-member room -> close code 4403", "admin token + any room -> accepted, history frame received"],
+    "POST /api/voice/parse": ["401 unauth", "single 'Buche ein Taxi' -> book_taxi", "multi 'Bestelle Pizza Margherita von Marios und teile mit anna@example.com' -> [search_food, open_split_pay] in order"],
+    "GET /api/loyalty-superapp/levels": ["200, 4 entries Bronze/Silver/Gold/Platinum, each with level/name/points/discount/perks"],
+    "GET /api/loyalty-superapp/history?limit=10": ["200 {history: list, count: int}, count == len(history), 401 unauth"],
+    "GET /api/superapp-tips/presets": ["taxi -> {service_type, amounts, currency:EUR}", "no param -> {presets:{taxi,food,scooter}, currency:EUR}", "unknown service_type -> default amounts, currency:EUR"],
+    "POST /api/group/create + /{group_id}/join": ["create 200 with group_id (no more KeyError)", "first join 200 success:true", "second join 200 already_joined:true (idempotent)", "/api/group/my-groups returns the group enriched with my_email + my_user_id"]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter27_sweep.py",
+    "/app/test_reports/pytest/iter28_sweep.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "All four iter27 root causes (WS close-before-accept, loyalty prefix collision, group_orders participant['_id'] KeyError, ws-token TTL mismatch) are fully addressed. No new findings.",
+    "Optional: bump websockets test helper to use ConnectionClosed.rcvd.code to silence the 13.1 deprecation warning. Cosmetic only."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter27_sweep.py (renamed loyalty calls to /api/loyalty-superapp, added test_ws_token_jwt_exp_is_300s, fixed _ws_close_code helper to read close code from inner ConnectionClosed instead of swallowing it)"
+  ],
+  "success_rate": {"backend": "100% (17/17)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! and kunde@bidblitz.com / Kunde2026! via /api/auth/login (cookie session)",
+  "seed_data_creation": "Test creates and persists a transient group_orders document with details.restaurant_id='TEST_iter27' (no cleanup hook). Volume is negligible; consider adding a teardown if this test runs in CI repeatedly.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend regression file is /app/backend/tests/test_iter27_sweep.py — keep using it for chat WS auth, ws-token, voice intents, loyalty-superapp, super-app tips and group idempotency contracts. The WS close-code helper (_ws_close_code) now correctly reports 4401/4403 because chat_ws.py does accept() before close(code=...) — do not regress this in chat_ws.py. Loyalty tests use /api/loyalty-superapp; /api/loyalty is the legacy loyalty_system and should not be touched.",
+  "rca of the issue": "All three iter27 root causes were resolved by the iter28 commits as expected: (1) chat_ws.py now calls websocket.accept() before websocket.close(code=4401|4403) so the close frame reaches the client; (2) routes/loyalty.py prefix changed to /api/loyalty-superapp, removing the route collision with loyalty_system_router; (3) group_orders.py now resolves participant id via str(participant.get('_id') or participant.get('id')) which works for V2 users whose id lives in _id; (4) auth.py /ws-token now builds the JWT inline with exp = now + 300s, matching the advertised expires_in:300."
+}

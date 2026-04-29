@@ -289,8 +289,16 @@ async def get_me(request: Request):
 async def ws_token(request: Request):
     """Liefert kurzlebiges JWT für WebSocket-Auth (5 Min). Browser können httpOnly-Cookies nicht in WS-URL einbauen."""
     user = await get_current_user(request)
-    from core.security import create_access_token
-    token = create_access_token(str(user["_id"]), user.get("email", ""))
+    import jwt as _jwt
+    from core.config import JWT_SECRET, JWT_ALGORITHM
+    from datetime import datetime, timedelta, timezone
+    payload = {
+        "sub": str(user["_id"]),
+        "email": user.get("email", ""),
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=300),
+        "type": "access",
+    }
+    token = _jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return {"token": token, "expires_in": 300}
 
 

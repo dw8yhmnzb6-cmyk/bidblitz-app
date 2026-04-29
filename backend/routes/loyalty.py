@@ -6,7 +6,7 @@ from uuid import uuid4
 from core.database import db
 from routes.auth import get_current_user
 
-router = APIRouter(prefix="/api/loyalty", tags=["Loyalty"])
+router = APIRouter(prefix="/api/loyalty-superapp", tags=["Loyalty Super-App"])
 
 # Loyalty levels & benefits
 LOYALTY_LEVELS = {

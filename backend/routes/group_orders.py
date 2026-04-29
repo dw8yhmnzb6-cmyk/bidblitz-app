@@ -34,11 +34,12 @@ async def create_group_order(req: CreateGroupRequest, user=Depends(get_current_u
     
     # Notify participants
     for email in req.participants:
-        participant = await db.users.find_one({"email": email}, {"_id": 0})
+        participant = await db.users.find_one({"email": email})
         if participant:
+            participant_uid = str(participant.get("_id") or participant.get("id") or "")
             await db.notifications.insert_one({
                 "notification_id": str(uuid4()),
-                "user_id": participant["user_id"],
+                "user_id": participant_uid,
                 "type": "group_invite",
                 "title": f"{user.get('first_name', '')} invited you to a group {req.service_type}",
                 "message": "Tap to join",

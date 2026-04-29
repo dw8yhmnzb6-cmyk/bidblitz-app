@@ -98,10 +98,13 @@ async def broadcast_to_room(room_id: str, message: dict, exclude: WebSocket | No
 
 @router.websocket("/api/chat/ws/{room_id}")
 async def chat_room(websocket: WebSocket, room_id: str, token: Optional[str] = Query(None)):
-    """Chat-Raum pro ride/rental/order. JWT-Token in Query erforderlich (Browser senden Cookies bei WS nicht zuverlässig in cross-origin Setup).
-    Validiert Token + Room-Membership bevor accept().
+    """Chat-Raum pro ride/rental/order. JWT-Token in Query erforderlich.
+    Validates token + Room-Membership and uses accept()-then-close() so the
+    client receives the documented close codes (4401/4403).
     """
-    # Token-Validation
+    # WS-Spec: accept first, then close mit code für sichtbares Close-Frame
+    await websocket.accept()
+
     if not token:
         await websocket.close(code=4401, reason="token_required")
         return
@@ -115,14 +118,12 @@ async def chat_room(websocket: WebSocket, room_id: str, token: Optional[str] = Q
         await websocket.close(code=4401, reason="invalid_token")
         return
 
-    # Room-Membership-Check
     is_member = await _check_room_membership(user_id, room_id)
     if not is_member:
         logger.info(f"chat_ws membership denied user={user_id} room={room_id}")
         await websocket.close(code=4403, reason="not_a_member")
         return
 
-    await websocket.accept()
     active_rooms.setdefault(room_id, set()).add(websocket)
     logger.info(f"Chat WS connected room={room_id} user={user_id} clients={len(active_rooms[room_id])}")
 

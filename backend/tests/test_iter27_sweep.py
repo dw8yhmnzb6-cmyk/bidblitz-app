@@ -68,26 +68,40 @@ class TestWsToken:
         r = requests.get(f"{BASE_URL}/api/auth/ws-token", timeout=15)
         assert r.status_code == 401
 
+    def test_ws_token_jwt_exp_is_300s(self, kunde_session):
+        """iter28: explicit ttl=300 — decoded JWT exp - now ≈ 300s"""
+        import jwt as _jwt
+        import time
+        r = kunde_session.get(f"{BASE_URL}/api/auth/ws-token", timeout=15)
+        assert r.status_code == 200
+        token = r.json()["token"]
+        # decode without verifying (we don't have the secret here)
+        payload = _jwt.decode(token, options={"verify_signature": False})
+        assert "exp" in payload
+        delta = payload["exp"] - int(time.time())
+        # Accept 290..310 to absorb network latency
+        assert 290 <= delta <= 310, f"expected ~300s, got {delta}"
+
 
 # ---------- /api/chat/ws/{room_id} security ----------
 async def _ws_close_code(url: str) -> int:
-    """Connect to WS and return the close code."""
+    """Connect to WS and return the close code (or 1000 if accepted cleanly)."""
     try:
         async with websockets.connect(url, open_timeout=10, close_timeout=5) as ws:
-            # If we did get accepted, try receive (will be history) and close
+            # If accept-then-close was used, recv() will raise ConnectionClosed with the code
             try:
-                await asyncio.wait_for(ws.recv(), timeout=2)
-            except Exception:
+                await asyncio.wait_for(ws.recv(), timeout=5)
+            except websockets.exceptions.ConnectionClosed as e:
+                return e.code
+            except asyncio.TimeoutError:
                 pass
+            # If we got here, server accepted and is alive
             await ws.close()
             return 1000
-    except websockets.exceptions.InvalidStatus as e:  # pre-handshake reject
+    except websockets.exceptions.InvalidStatus as e:  # pre-handshake reject (HTTP)
         return e.response.status_code
     except websockets.exceptions.ConnectionClosed as e:
         return e.code
-    except Exception as e:
-        # fallback: re-raise to see error
-        raise
 
 
 class TestWsAuthHardening:
@@ -165,8 +179,8 @@ class TestVoiceParse:
 # ---------- /api/loyalty ----------
 class TestLoyalty:
     def test_loyalty_levels(self):
-        # Public endpoint? It uses no Depends in code
-        r = requests.get(f"{BASE_URL}/api/loyalty/levels", timeout=15)
+        # iter28: prefix renamed to /api/loyalty-superapp
+        r = requests.get(f"{BASE_URL}/api/loyalty-superapp/levels", timeout=15)
         assert r.status_code == 200, r.text
         data = r.json()
         assert "levels" in data
@@ -180,7 +194,7 @@ class TestLoyalty:
             assert isinstance(lv["perks"], list)
 
     def test_loyalty_history_authed(self, kunde_session):
-        r = kunde_session.get(f"{BASE_URL}/api/loyalty/history?limit=10", timeout=15)
+        r = kunde_session.get(f"{BASE_URL}/api/loyalty-superapp/history?limit=10", timeout=15)
         assert r.status_code == 200, r.text
         data = r.json()
         assert "history" in data and isinstance(data["history"], list)
@@ -189,7 +203,7 @@ class TestLoyalty:
         assert len(data["history"]) <= 10
 
     def test_loyalty_history_unauth(self):
-        r = requests.get(f"{BASE_URL}/api/loyalty/history", timeout=15)
+        r = requests.get(f"{BASE_URL}/api/loyalty-superapp/history", timeout=15)
         assert r.status_code == 401
 
 
