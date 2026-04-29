@@ -685,6 +685,21 @@ app.include_router(promo_router)
 from routes.filters import router as filters_router
 app.include_router(filters_router)
 
+# P2 Features - Nice to Have
+from routes.group_orders import router as group_orders_router
+app.include_router(group_orders_router)
+
+from routes.quick_actions import router as quick_actions_router
+app.include_router(quick_actions_router)
+
+from routes.tips_gifts import router as tips_gifts_router
+app.include_router(tips_gifts_router)
+
+from routes.delivery_options import router as delivery_options_router
+app.include_router(delivery_options_router)
+
+from routes.bnpl import router as bnpl_router
+app.include_router(bnpl_router)
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles
