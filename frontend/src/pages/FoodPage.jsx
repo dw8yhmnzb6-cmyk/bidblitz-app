@@ -67,6 +67,15 @@ export default function FoodPage({ onNavigate }) {
   const [error, setError] = useState('');
   const [userBalance, setUserBalance] = useState(0);
   const [deliveryAddress, setDeliveryAddress] = useState({ street: '', city: '', zip: '', notes: '' });
+
+  // Super-App competitor parity modals
+  const [showAdvFilters, setShowAdvFilters] = useState(false);
+  const [advFilters, setAdvFilters] = useState(null);
+  const [showReview, setShowReview] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [showSplit, setShowSplit] = useState(false);
+  const [splitOrderId, setSplitOrderId] = useState(null);
+  const [splitTotal, setSplitTotal] = useState(0);
   
   // Polling ref
   const pollingRef = React.useRef(null);

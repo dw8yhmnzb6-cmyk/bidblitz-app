@@ -77,26 +77,36 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - ✅ `/api/delivery/*` — Kontaktlose Lieferung, Anweisungen
 - ✅ `/api/bnpl/*` — Buy Now Pay Later (Klarna-style)
 - ✅ Single-Point Fix: `core/security.py::get_current_user` normalisiert `user_id`/`first_name`/`last_name`
+- ✅ `/api/admin/audit-logs` — erweitert um `date_from`/`date_to`/`email`/`search` Filter + `available_events`/`available_severities` Dropdowns
+- ✅ `/api/pos/store/{store_id}/qr-poster` — QR-Poster pro Store (PNG/SVG/JSON) für Self-Checkout-Eingang
+- ✅ `/api/pos/features/admin/trial-reset` — Admin kann Feature-Trial zurücksetzen
+- ✅ `/api/pos/staff/list` + `/staff/update` + `/staff/remove` — Staff-CRUD (Mitarbeiter-Berechtigungen)
+- ✅ `/api/pos/timeclock/*` — Zeiterfassung (Clock in/out, break)
 
 ### Frontend (Stand 29.04.2026)
 - ✅ Komponenten erstellt: `SplitPaymentModal`, `LoyaltyDashboard`, `ReviewModal`, `SubscriptionPlans`, `SafetyButton`, `PromoCodeInput`, `FoodFilters`, `VoiceCommands`, `ARScooterFinder`, `LiveChat`
-- ⏳ **OFFEN**: Wiring in `TaxiPage.jsx`, `ScooterPage.jsx`, `FoodPage.jsx` (orphaned components)
+- ✅ **`SuperAppOverlay`** — globaler Floating-Button-Hub (auf `/taxi`, `/scooter`, `/food`):
+  - SafetyButton (rot, Shield)
+  - VoiceCommands (Mic, Deutsch, mit Navigation-Callback)
+  - LoyaltyDashboard Quick-Access (Trophy)
+  - SubscriptionPlans Quick-Access (Crown)
+- ✅ **TaxiPage**: ReviewModal, SplitPaymentModal, LiveChat-Button (während aktiver Fahrt), Rate-Button nach Completion + History
+- ✅ **ScooterPage**: ARScooterFinder (Camera-AR mit Geolocation), ReviewModal, History-Review-Button
+- ✅ **FoodPage**: FoodFilters (Erweiterte Filter Bottom-Sheet), SplitPaymentModal (Cart), ReviewModal (delivered orders)
 
 ## Known Issues / Backlog
 
 ### P0 (next)
-- Frontend-Wiring der neuen Komponenten in TaxiPage/ScooterPage/FoodPage
-- Audit-Log Server-Filter Endpoint
-- QR-Code-Generator pro Store für Eingangs-Plakate
+- (Frontend-Wiring + Audit-Log + QR-Generator: ✅ FERTIG)
+- Live-Chat Backend-WebSocket-Endpoint validieren (`/api/chat/ws/{rideId}`)
 
 ### P1
 - Native Mobile Build (Capacitor Node-Konflikt)
-- Echte Fiskaly-Cloud Credentials (Mock vorhanden)
-- Mitarbeiter-Berechtigungen + Zeiterfassung (Clock in/out)
+- Echte Fiskaly-Cloud Credentials (Mock vorhanden) — benötigt User-Credentials
+- Group-Orders Frontend-Wiring (Backend bereit)
 
 ### P2
-- Audit-Log Filter Endpoint (Backend) — Frontend filtert client-seitig
-- Trial-Workflow: Reset durch Admin
+- Trial-Workflow: Reset durch Admin: ✅ FERTIG (Backend-Endpoint vorhanden)
 - Self-Service Add-On Buchung mit Stripe-Checkout (statt nur Trial)
 - Response-Contract finalisieren für `/api/loyalty/history` und `/api/tips/presets`
 
