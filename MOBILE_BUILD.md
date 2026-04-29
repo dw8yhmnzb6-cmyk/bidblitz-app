@@ -54,10 +54,44 @@ App-Name: **BidBlitz** · App-ID: `com.bidblitz.pos` · Theme: dunkel `#060810` 
 
 ## App-Icons / Splash-Screens
 
-Die Default-Capacitor-Icons sind temporär. Für Release:
-1. Icon 1024x1024 → in `android/app/src/main/res/` (verschiedene Größen) und `ios/App/App/Assets.xcassets/AppIcon.appiconset/`
-2. Splash 2732x2732 → `android/app/src/main/res/drawable/splash.png` und `ios/App/App/Assets.xcassets/Splash.imageset/`
-3. Tool: https://capacitor-assets.com oder `npx @capacitor/assets generate`
+✅ **Bereits generiert (29.04.2026)**:
+- 100 Android-Assets (`android/app/src/main/res/mipmap-*` + `drawable-*-splash.png`)
+- 13 iOS-Assets (`ios/App/App/Assets.xcassets/AppIcon.appiconset` + `Splash.imageset`)
+- PWA-Icons (`public/icons/icon-*.png`, `apple-touch-icon.png`, `favicon-*`)
+- Source: `resources/icon.png` (1024×1024) + `resources/splash.png` (2732×2732)
+
+Logo: stylisiertes "B" in Cyan `#00C2FF` mit Lightning-Bolt-Akzent (Gold) auf dunklem Hintergrund `#060810`.
+
+Re-Generate (z.B. nach Logo-Änderung):
+```bash
+cd frontend
+# resources/icon.png + resources/splash.png aktualisieren, dann:
+npx @capacitor/assets generate \
+  --android --ios \
+  --iconBackgroundColor "#060810" \
+  --iconBackgroundColorDark "#060810" \
+  --splashBackgroundColor "#060810" \
+  --splashBackgroundColorDark "#060810"
+yarn build && npx cap sync
+```
+
+## Live-Reload (Development) ⚡
+
+Schnelles Mobile-Iterieren ohne `yarn build && npx cap sync` bei jedem Code-Change:
+
+```bash
+cd /app/frontend
+cp capacitor.config.live.ts capacitor.config.ts   # aktiviert Server-URL Mode
+npx cap sync
+npx cap run android   # oder ios
+
+# Code änderen → die App auf dem Handy lädt automatisch neu
+# (lädt von https://kassensystem-preview.preview.emergentagent.com)
+
+# Vor Release zurück:
+git checkout capacitor.config.ts
+yarn build && npx cap sync
+```
 
 ## Permissions
 

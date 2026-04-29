@@ -6,9 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    // For LIVE preview (development) you may set:
-    // url: 'https://kassensystem-preview.preview.emergentagent.com',
-    // cleartext: true,
+    // Live-Reload aktivieren: setze CAP_LIVE=1 oder nutze separate config (capacitor.config.live.ts).
+    // Production: alle web assets aus build/, kein Server-URL nötig.
   },
   plugins: {
     SplashScreen: {
