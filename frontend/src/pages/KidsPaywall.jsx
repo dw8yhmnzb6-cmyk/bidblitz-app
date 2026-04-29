@@ -1225,58 +1225,43 @@ const KidsDashboard = ({ onBack, t, subStatus }) => {
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 max-h-[85vh] flex flex-col">
-              <div className="p-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
-                <div>
-                  <h3 className="text-base font-bold text-white">App-Kontrolle</h3>
-                  <p className="text-[10px] text-gray-500">{appControlChild.name} — {appControlData.length} Apps</p>
+              className="w-full max-w-lg bg-[#0A0A12] rounded-t-3xl border-t border-white/10 max-h-[90vh] flex flex-col">
+              {/* Header */}
+              <div className="px-5 pt-5 pb-3 flex items-start justify-between flex-shrink-0">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[17px] font-black text-white leading-tight">App-Kontrolle</h3>
+                  <p className="text-[11px] text-white/50 mt-0.5">{appControlChild.name} · {appControlData.length} Apps</p>
                 </div>
-                <button onClick={() => setAppControlChild(null)} className="p-2 rounded-xl bg-white/5" data-testid="close-app-control">
-                  <X size={16} className="text-gray-400" />
+                <button onClick={() => setAppControlChild(null)} className="p-2 rounded-xl bg-white/5 ml-2 flex-shrink-0" data-testid="close-app-control">
+                  <X size={15} className="text-white/60" />
                 </button>
               </div>
-              <div className="overflow-y-auto flex-1 p-4 space-y-2">
-                {appControlLoading ? (
-                  <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-[#EF4444]" /></div>
-                ) : appControlData.map(app => (
-                  <div key={app.app_id} className={`p-3 rounded-xl border flex items-center justify-between ${app.blocked ? "bg-red-500/5 border-red-500/20" : "bg-white/[0.02] border-white/5"}`}
-                    data-testid={`app-row-${app.app_id}`}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                        {app.category === "social" ? <Users size={14} className="text-blue-400" /> :
-                         app.category === "games" ? <Gamepad2 size={14} className="text-purple-400" /> :
-                         app.category === "education" ? <Award size={14} className="text-green-400" /> :
-                         <Smartphone size={14} className="text-gray-400" />}
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-white">{app.name}</p>
-                        <p className="text-[9px] text-gray-500">
-                          {app.blocked ? "Gesperrt" : app.daily_limit_minutes ? `${app.daily_limit_minutes} Min/Tag` : "Unbegrenzt"}
-                          {app.usage_today > 0 && ` · ${app.usage_today} Min genutzt`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={app.daily_limit_minutes || ""}
-                        onChange={e => setAppTimeLimit(app.app_id, e.target.value ? parseInt(e.target.value) : null)}
-                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[9px] text-white outline-none"
-                        data-testid={`app-limit-${app.app_id}`}>
-                        <option value="">Unbegrenzt</option>
-                        <option value="15">15 Min</option>
-                        <option value="30">30 Min</option>
-                        <option value="60">1 Std</option>
-                        <option value="120">2 Std</option>
-                      </select>
-                      <motion.button whileTap={{ scale: 0.9 }}
-                        onClick={() => toggleAppBlock(app.app_id, !app.blocked)}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${app.blocked ? "bg-red-500/20" : "bg-white/5"}`}
-                        data-testid={`app-block-${app.app_id}`}>
-                        {app.blocked ? <Lock size={14} className="text-red-400" /> : <Unlock size={14} className="text-green-400" />}
-                      </motion.button>
-                    </div>
+
+              {/* Quick stats bar */}
+              {!appControlLoading && appControlData.length > 0 && (() => {
+                const blocked = appControlData.filter(a => a.blocked).length;
+                const limited = appControlData.filter(a => !a.blocked && a.daily_limit_minutes).length;
+                const free = appControlData.length - blocked - limited;
+                return (
+                  <div className="px-5 pb-3 grid grid-cols-3 gap-2 flex-shrink-0">
+                    <Stat label="Frei" value={free} color="#10B981" />
+                    <Stat label="Limit" value={limited} color="#F59E0B" />
+                    <Stat label="Gesperrt" value={blocked} color="#EF4444" />
                   </div>
-                ))}
+                );
+              })()}
+
+              {/* List */}
+              <div className="overflow-y-auto flex-1 px-3 pb-5">
+                {appControlLoading ? (
+                  <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-[#00C2FF]" /></div>
+                ) : (
+                  <AppControlGroupedList
+                    apps={appControlData}
+                    onLimit={setAppTimeLimit}
+                    onToggleBlock={toggleAppBlock}
+                  />
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -1707,3 +1692,164 @@ const KidsPaywall = ({ onBack, onSubscribed }) => {
 };
 
 export default KidsPaywall;
+
+// ═══════════════════════════════════════════════════════════
+// App-Kontrolle Helper Components
+// ═══════════════════════════════════════════════════════════
+const APP_BRAND = {
+  tiktok:       { bg: "linear-gradient(135deg,#FF0050,#000)", letter: "T" },
+  instagram:    { bg: "linear-gradient(135deg,#F58529,#DD2A7B,#8134AF)", letter: "Ig" },
+  snapchat:     { bg: "#FFFC00", letter: "S", dark: true },
+  whatsapp:     { bg: "#25D366", letter: "W" },
+  discord:      { bg: "#5865F2", letter: "D" },
+  telegram:     { bg: "#229ED9", letter: "T" },
+  facebook:     { bg: "#1877F2", letter: "f" },
+  twitter:      { bg: "#000", letter: "X" },
+  fortnite:     { bg: "#9D4DFF", letter: "F" },
+  roblox:       { bg: "#E2231A", letter: "R" },
+  minecraft:    { bg: "#62B47A", letter: "M" },
+  clash_royale: { bg: "#FFC700", letter: "C", dark: true },
+  brawl_stars:  { bg: "#FFD400", letter: "B", dark: true },
+  candy_crush:  { bg: "#FF4F8B", letter: "C" },
+  youtube:      { bg: "#FF0000", letter: "Y" },
+  netflix:      { bg: "#E50914", letter: "N" },
+  spotify:      { bg: "#1DB954", letter: "S" },
+  twitch:       { bg: "#9146FF", letter: "Tv" },
+  duolingo:     { bg: "#58CC02", letter: "D" },
+  khan_academy: { bg: "#14BF96", letter: "K" },
+};
+
+const CAT_META = {
+  social:        { label: "Soziale Netzwerke", color: "#3B82F6" },
+  games:         { label: "Spiele",           color: "#A855F7" },
+  entertainment: { label: "Unterhaltung",     color: "#EC4899" },
+  education:     { label: "Lernen",           color: "#10B981" },
+  other:         { label: "Sonstige",         color: "#94A3B8" },
+};
+
+const LIMIT_PRESETS = [
+  { v: "",    l: "∞" },
+  { v: "15",  l: "15m" },
+  { v: "30",  l: "30m" },
+  { v: "60",  l: "1h" },
+  { v: "120", l: "2h" },
+];
+
+function AppBrand({ app }) {
+  const b = APP_BRAND[app.app_id] || { bg: "rgba(255,255,255,0.08)", letter: app.name?.[0]?.toUpperCase() || "?" };
+  return (
+    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-[14px] tracking-tight flex-shrink-0"
+      style={{ background: b.bg, color: b.dark ? "#000" : "#fff", textShadow: b.dark ? "none" : "0 1px 2px rgba(0,0,0,0.3)" }}>
+      {b.letter}
+    </div>
+  );
+}
+
+function Stat({ label, value, color }) {
+  return (
+    <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] py-2 text-center">
+      <p className="text-[16px] font-black tabular-nums" style={{ color }}>{value}</p>
+      <p className="text-[9px] uppercase tracking-wide text-white/50">{label}</p>
+    </div>
+  );
+}
+
+function AppControlGroupedList({ apps, onLimit, onToggleBlock }) {
+  // Group by category
+  const groups = apps.reduce((acc, app) => {
+    const cat = app.category || "other";
+    (acc[cat] ||= []).push(app);
+    return acc;
+  }, {});
+  const order = ["social", "games", "entertainment", "education", "other"];
+
+  return (
+    <div className="space-y-4 pt-1">
+      {order.filter(c => groups[c]?.length).map(cat => {
+        const meta = CAT_META[cat] || CAT_META.other;
+        return (
+          <div key={cat}>
+            <div className="flex items-center gap-2 px-2 mb-2">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-white/60">{meta.label}</span>
+              <span className="text-[10px] text-white/30">· {groups[cat].length}</span>
+            </div>
+            <div className="space-y-1.5">
+              {groups[cat].map(app => (
+                <AppRow key={app.app_id} app={app} onLimit={onLimit} onToggleBlock={onToggleBlock} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AppRow({ app, onLimit, onToggleBlock }) {
+  const limitMin = app.daily_limit_minutes;
+  const usage = app.usage_today || 0;
+  const pct = limitMin ? Math.min(100, Math.round((usage / limitMin) * 100)) : 0;
+  const isOver = limitMin && usage >= limitMin;
+
+  return (
+    <div className={`px-3 py-2.5 rounded-xl border transition-colors ${app.blocked ? "bg-red-500/5 border-red-500/20" : "bg-white/[0.02] border-white/[0.06]"}`}
+      data-testid={`app-row-${app.app_id}`}>
+      <div className="flex items-center gap-3">
+        <AppBrand app={app} />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold text-white truncate">{app.name}</p>
+          <p className="text-[10px] text-white/50">
+            {app.blocked
+              ? <span className="text-red-400 font-medium">Gesperrt</span>
+              : limitMin
+                ? <><span className={isOver ? "text-amber-400" : "text-white/60"}>{usage} / {limitMin} Min</span></>
+                : usage > 0
+                  ? <>{usage} Min heute · <span className="text-white/40">unbegrenzt</span></>
+                  : <span className="text-white/40">Keine Limits</span>}
+          </p>
+        </div>
+        <motion.button whileTap={{ scale: 0.9 }}
+          onClick={() => onToggleBlock(app.app_id, !app.blocked)}
+          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${app.blocked ? "bg-red-500/20" : "bg-white/5"}`}
+          data-testid={`app-block-${app.app_id}`}>
+          {app.blocked ? <Lock size={14} className="text-red-400" /> : <Unlock size={14} className="text-emerald-400" />}
+        </motion.button>
+      </div>
+
+      {/* Progress bar (only if limit + usage) */}
+      {!app.blocked && limitMin && (
+        <div className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.4 }}
+            className="h-full rounded-full"
+            style={{ background: isOver ? "#EF4444" : pct > 75 ? "#F59E0B" : "#00C2FF" }} />
+        </div>
+      )}
+
+      {/* Limit chip selector */}
+      {!app.blocked && (
+        <div className="flex gap-1 mt-2 overflow-x-auto hide-scrollbar">
+          {LIMIT_PRESETS.map(p => {
+            const cur = String(limitMin || "");
+            const active = cur === p.v;
+            return (
+              <button key={p.v}
+                onClick={() => onLimit(app.app_id, p.v ? parseInt(p.v) : null)}
+                className="px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors"
+                style={{
+                  background: active ? "rgba(0,194,255,0.18)" : "rgba(255,255,255,0.04)",
+                  color: active ? "#00C2FF" : "rgba(255,255,255,0.55)",
+                  border: active ? "1px solid rgba(0,194,255,0.35)" : "1px solid transparent",
+                }}
+                data-testid={`app-preset-${app.app_id}-${p.v || "free"}`}>
+                {p.l}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+

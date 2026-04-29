@@ -75,4 +75,4 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**29.04.2026** — Phase 1 (Bug-Fixes), Phase 2 (Compliance), Phase 3 (Add-Ons + API), Phase 4 (Offline + Auto-Redirect) komplett.
+**29.04.2026** — Phase 1 (Bug-Fixes), Phase 2 (Compliance), Phase 3 (Add-Ons + API), Phase 4 (Offline + Auto-Redirect), Phase 5 (Self-Checkout), Mobile-UI App-Kontrolle verbessert.
