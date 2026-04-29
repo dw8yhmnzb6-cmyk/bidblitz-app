@@ -33,13 +33,10 @@ import NotificationsPage from "./pages/NotificationsPage";
 const InfluencerDashboard = lazy(() => import("./pages/InfluencerDashboard"));
 const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 import TaxiPage from "./pages/TaxiPage";
-import TaxiPageNew from "./pages/TaxiPageNew";
 const TaxiOperatorPage = lazy(() => import("./pages/TaxiOperatorPage"));
 const TaxiOperatorDashboard = lazy(() => import("./pages/TaxiOperatorDashboard"));
 import ScooterPage from "./pages/ScooterPage";
-import ScooterPageNew from "./pages/ScooterPageNew";
 import FoodPage from "./pages/FoodPage";
-import FoodPageNew from "./pages/FoodPageNew";
 const DriverDashboardPage = lazy(() => import("./pages/DriverDashboardPage"));
 const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
 const ChildModePage = lazy(() => import("./pages/ChildModePage"));
@@ -538,20 +535,14 @@ function AppContent() {
           ? <AuctionAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/taxi":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiPageNew onNavigate={handleNavigate} />;
-      case "/taxi-old":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiPage onNavigate={handleNavigate} />;
       case "/taxi-partner":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiOperatorPage onNavigate={handleNavigate} />;
       case "/taxi-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiOperatorDashboard onNavigate={handleNavigate} />;
       case "/scooter":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ScooterPageNew onNavigate={handleNavigate} />;
-      case "/scooter-old":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
       case "/food":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FoodPageNew onNavigate={handleNavigate} />;
-      case "/food-old":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FoodPage onNavigate={handleNavigate} />;
       case "/driver-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <DriverDashboardPage onNavigate={handleNavigate} />;
