@@ -50,6 +50,8 @@ export default function FoodPage({ onNavigate }) {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deliveryMode, setDeliveryMode] = useState('delivery'); // delivery, pickup
+  const [userAddress, setUserAddress] = useState('Barmer Straße 45');
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [cart, setCart] = useState([]);
   const [menuCat, setMenuCat] = useState("");
@@ -344,36 +346,42 @@ export default function FoodPage({ onNavigate }) {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-24">
-      {/* Header */}
+      {/* Header — Lieferando Style */}
       <div className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <button 
-              onClick={() => {
-                if (view === 'restaurant') setView('restaurants');
-                else if (view === 'cart' || view === 'checkout') setView('restaurant');
-                else navigate('/');
-              }} 
-              className="p-2 -ml-2 text-gray-400 hover:text-white"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        <div className="max-w-md mx-auto px-4 py-4">
+          {/* Address & Delivery Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <button className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
+              <span className="font-bold text-white text-lg">{userAddress}</span>
+              <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            <h1 className="text-xl font-bold">BidBlitz Food</h1>
+            
             <div className="flex items-center gap-3">
-              {cart.length > 0 && view !== 'cart' && view !== 'checkout' && (
-                <button
-                  onClick={() => setView('cart')}
-                  className="relative p-2 bg-orange-500/20 rounded-full"
-                >
-                  <span className="text-lg">🛒</span>
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full text-xs font-bold flex items-center justify-center text-black">
-                    {cart.reduce((sum, i) => sum + i.quantity, 0)}
+              <button
+                onClick={() => setDeliveryMode(deliveryMode === 'delivery' ? 'pickup' : 'delivery')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl font-semibold text-sm transition-colors ${
+                  deliveryMode === 'delivery' 
+                    ? 'bg-orange-500/20 text-orange-400' 
+                    : 'bg-white/5 text-white/60'
+                }`}
+              >
+                <span className="text-lg">🚴</span>
+                <span>Lieferung</span>
+              </button>
+              
+              <button
+                onClick={() => setView('cart')}
+                className="relative p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <span className="text-xl">🛒</span>
+                {cart.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {cart.length}
                   </span>
-                </button>
-              )}
-              <div className="text-sm text-orange-400 font-medium">€{userBalance.toFixed(2)}</div>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -397,70 +405,135 @@ export default function FoodPage({ onNavigate }) {
               className="space-y-6"
             >
               {/* Search */}
-              <div className="relative">
+              <div className="relative mb-4">
                 <input
                   type="text"
-                  placeholder="Restaurant oder Küche suchen..."
+                  placeholder="Du suchst Restaurants?"
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     fetchRestaurants(selectedCategory, e.target.value);
                   }}
-                  className="w-full pl-12 pr-4 py-4 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-orange-500/50 focus:outline-none"
+                  className="w-full pl-12 pr-12 py-4 bg-white/10 border border-white/10 rounded-2xl text-white placeholder-gray-400 focus:border-orange-500/50 focus:outline-none"
                 />
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔍</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-orange-500">🔍</span>
+                <button className="absolute right-4 top-1/2 -translate-y-1/2 text-xl">⚙️</button>
               </div>
 
-              {/* Quick Filters — Lieferando Style */}
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              {/* Top Categories — Lieferando Style */}
+              <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+                <div className="flex gap-4 pb-2">
+                  {[
+                    { id: 'restaurants', icon: '🍔', label: 'Restaurants' },
+                    { id: 'groceries', icon: '🍌', label: 'Lebensmittel' },
+                    { id: 'alcohol', icon: '🍷', label: 'Alkohol' },
+                    { id: 'kiosk', icon: '📦', label: 'Kioske' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      className="flex flex-col items-center shrink-0"
+                    >
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500/10 to-red-500/10 flex items-center justify-center mb-2 hover:scale-105 transition-transform">
+                        <span className="text-4xl">{cat.icon}</span>
+                      </div>
+                      <span className="text-xs text-white/60 font-medium">{cat.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Entdecke Küchen */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-white">Entdecke, was dir schmeckt</h2>
+                  <button className="text-sm text-orange-400 font-semibold">Alle anzeigen</button>
+                </div>
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { icon: '🍕', label: 'Italienisch', color: 'from-orange-500/20' },
+                    { icon: '🥘', label: 'Chinesisch', color: 'from-purple-500/20' },
+                    { icon: '🍔', label: 'Burger', color: 'from-pink-500/20' },
+                    { icon: '🍕', label: 'Pizza', color: 'from-orange-500/20' },
+                    { icon: '🍣', label: 'Sushi', color: 'from-blue-500/20' },
+                    { icon: '🌮', label: 'Mexikanisch', color: 'from-yellow-500/20' },
+                    { icon: '🍛', label: 'Indisch', color: 'from-red-500/20' },
+                    { icon: '🥗', label: 'Gesund', color: 'from-green-500/20' },
+                  ].map((cuisine, i) => (
+                    <button
+                      key={i}
+                      className="flex flex-col items-center"
+                    >
+                      <div className={`w-full aspect-square rounded-2xl bg-gradient-to-br ${cuisine.color} to-transparent flex items-center justify-center mb-2 hover:scale-105 transition-transform`}>
+                        <span className="text-4xl">{cuisine.icon}</span>
+                      </div>
+                      <span className="text-[10px] text-white/60 text-center font-medium">{cuisine.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filter-Badges */}
+              <div className="mb-6 flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4">
                 {[
-                  { id: "free", label: "Gratis Lieferung", icon: "🚚", active: filterFree },
-                  { id: "fast", label: "Unter 30 Min", icon: "⚡", active: filterFast },
+                  { id: "deals", label: "Angebote", icon: "🏷️", active: false },
+                  { id: "free", label: "Kostenlose Lieferung", icon: "🚚", active: filterFree },
+                  { id: "vegan", label: "Vegan", icon: "🌱", active: false },
                   { id: "top", label: "Top Bewertet", icon: "⭐", active: filterTop },
-                  { id: "new", label: "Neu", icon: "🆕", active: filterNew },
                 ].map(f => (
                   <button key={f.id}
                     onClick={() => {
                       if (f.id === "free") setFilterFree(!f.active);
-                      if (f.id === "fast") setFilterFast(!f.active);
                       if (f.id === "top") setFilterTop(!f.active);
-                      if (f.id === "new") setFilterNew(!f.active);
                     }}
-                    className={`shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all ${f.active ? "bg-orange-500 text-black" : "bg-white/5 text-gray-400 border border-white/10"}`}>
+                    className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border ${
+                      f.active 
+                        ? "bg-orange-500 text-white border-orange-500" 
+                        : "bg-transparent text-white/80 border-white/20"
+                    }`}>
                     <span>{f.icon}</span>{f.label}
                   </button>
                 ))}
-                <button
-                  data-testid="food-adv-filters-btn"
-                  onClick={() => setShowAdvFilters(true)}
-                  className={`shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition-all ${advFilters && (advFilters.cuisine?.length || advFilters.dietary?.length || advFilters.rating_min) ? "bg-[#00C2FF] text-white" : "bg-white/5 text-gray-400 border border-white/10"}`}
-                >
-                  <span>🎚️</span>Mehr Filter
-                </button>
               </div>
 
-              {/* Categories */}
-              <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                <button
-                  onClick={() => { setSelectedCategory(''); fetchRestaurants('', searchQuery); }}
-                  className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all ${
-                    !selectedCategory ? 'bg-orange-500 text-black' : 'bg-white/10 text-gray-400'
-                  }`}
-                >
-                  Alle
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => { setSelectedCategory(cat.id); fetchRestaurants(cat.id, searchQuery); }}
-                    className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all ${
-                      selectedCategory === cat.id ? 'bg-orange-500 text-black' : 'bg-white/10 text-gray-400'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
+              {/* Deals Banner — Champions League Style */}
+              <div className="mb-6 relative h-32 rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 to-blue-800">
+                <div className="absolute inset-0 flex items-center justify-between px-6">
+                  <div>
+                    <p className="text-white text-2xl font-black mb-1">Deals mit bis zu 50% Rabatt</p>
+                    <p className="text-white/80 text-sm mb-2">Heute UEFA Champions League</p>
+                    <button className="text-white font-bold flex items-center gap-1 text-sm">
+                      Jetzt bestellen →
+                    </button>
+                  </div>
+                  <div className="text-6xl">⚽</div>
+                </div>
               </div>
+
+              {/* Angebote des Tages */}
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  Angebote des Tages <span className="text-2xl">🔥</span>
+                </h2>
+                <div className="space-y-3">
+                  {[
+                    { restaurant: "Domino's Pizza", discount: "30%", tag: "AUF SALAMI IN SNACKFORM", logo: "🍕" },
+                    { restaurant: "Pizza Boy", discount: "30%", tag: "auf ausgewählte Pizzen", logo: "🍕" },
+                  ].map((deal, i) => (
+                    <div key={i} className="relative h-24 rounded-2xl overflow-hidden bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
+                      <div className="absolute inset-0 flex items-center justify-between px-4">
+                        <div>
+                          <p className="text-yellow-400 font-black text-lg mb-1">{deal.discount} Rabatt auf ausgewählte Artikel</p>
+                          <p className="text-white/80 text-xs">{deal.tag}</p>
+                        </div>
+                        <div className="text-5xl">{deal.logo}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Restaurants Label */}
+              <h3 className="text-lg font-bold text-white mb-4">Restaurants in deiner Nähe</h3>
 
               {/* Restaurant List */}
               <div className="space-y-4">
