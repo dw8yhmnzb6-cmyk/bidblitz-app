@@ -11,7 +11,6 @@ import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
 import ScannerPage from "./pages/ScannerPage";
 import MerchantPage from "./pages/MerchantPage";
-import MobileDashboard from "./pages/MobileDashboard";
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 import MorePage from "./pages/MorePage";
 import AuctionsPage from "./pages/AuctionsPage";
@@ -329,11 +328,6 @@ function AppContent() {
     setCurrentPath(path);
   };
 
-  // Standalone routes
-  if (currentPath === "/dashboard" || currentPath === "/mobile-dashboard") {
-    return <MobileDashboard />;
-  }
-
   // Wait for session restore
   if (!user.sessionReady) {
     return (
@@ -406,9 +400,6 @@ function AppContent() {
     switch (currentPath) {
       case "/":
         return <HomePage {...homeProps} />;
-      case "/mobile-dashboard":
-      case "/dashboard":
-        return <MobileDashboard />;
       case "/wallet":
         return <WalletPage {...pageProps} />;
       case "/scan":
