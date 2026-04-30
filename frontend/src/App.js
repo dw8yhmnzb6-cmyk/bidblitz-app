@@ -930,7 +930,7 @@ function AppContent() {
       
       {/* Push Notification Prompt */}
       {user.isAuthenticated && <PushNotificationPrompt />}
-    </AppProvider>
+    </div>
   );
 }
 

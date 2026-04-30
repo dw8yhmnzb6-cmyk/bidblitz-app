@@ -59,7 +59,7 @@ export const requestNotificationPermission = async () => {
       console.log('FCM Token:', token);
       
       // Send token to backend
-      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/push/subscribe`, {
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/fcm/subscribe`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

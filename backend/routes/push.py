@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 
-router = APIRouter(prefix="/api/push", tags=["push"])
+router = APIRouter(prefix="/api/fcm", tags=["fcm"])
 
 # Firebase Admin SDK
 try:
