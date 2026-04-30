@@ -243,7 +243,7 @@ const OrderTrackingPage = ({ orderId, onNavigate, onBack }) => {
               <motion.button
                 onClick={() => {
                   const { lat, lng } = tracking.restaurant;
-                  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, "_blank");
+                  window.open(`https://www.openstreetmap.org/directions?to=${lat},${lng}`, "_blank");
                 }}
                 className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center"
                 whileTap={{ scale: 0.9 }}

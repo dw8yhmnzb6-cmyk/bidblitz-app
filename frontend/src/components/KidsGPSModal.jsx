@@ -286,13 +286,13 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
                     )}
                     {/* Open in maps */}
                     <motion.a
-                      href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
+                      href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="absolute top-3 right-3 px-3 py-1.5 bg-blue-500/30 backdrop-blur-sm rounded-lg text-blue-300 text-[10px] font-medium flex items-center gap-1"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Map size={12} /> Google Maps
+                      <Map size={12} /> Karte öffnen
                     </motion.a>
                   </>
                 ) : (

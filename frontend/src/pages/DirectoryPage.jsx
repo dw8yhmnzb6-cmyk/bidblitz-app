@@ -348,7 +348,7 @@ export default function DirectoryPage({ onNavigate }) {
           {/* Actions */}
           <div className="grid grid-cols-2 gap-3">
             <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              href={`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
                 `${selectedListing.business_name} ${selectedListing.address || selectedListing.city}`
               )}`}
               target="_blank"

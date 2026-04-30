@@ -19,10 +19,10 @@ export default function AppleGooglePayButton({ amount, currency = 'eur', descrip
   const initializePaymentRequest = async () => {
     try {
       // Load Stripe (use your publishable key)
-      const stripe = await loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_51QdVlDE4hEPqvF5m9w8u0JLH6YxQcGa5qUJJh0123');
+      const stripe = await loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
       if (!stripe) {
-        console.error('Stripe failed to load');
+        console.error('Stripe publishable key missing (REACT_APP_STRIPE_PUBLISHABLE_KEY)');
         return;
       }
 

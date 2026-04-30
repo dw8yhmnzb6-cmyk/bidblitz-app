@@ -125,4 +125,24 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
+**30.04.2026** — **Cheap Architecture Pivot executed**: Firebase FCM, Twilio SMS, Google Maps JS stripped. Replaced by Web Push (VAPID), Email (Resend), Leaflet/OSM. Apple/Google Pay hardened (JWT auth, amount-cap, Stripe webhook signature, atomic wallet credit). Backend clean — all 225 routers load, no dead imports.
+
+### 30.04.2026 Changes
+**Removed:**
+- `backend/routes/push.py` (Firebase FCM) — replaced by `web_push.py` (VAPID)
+- `backend/routes/sms.py` (Twilio) — replaced by `email_service.py` (Resend)
+- `backend/firebase-service-account-demo.json`
+- `frontend/src/services/fcm.js`
+- `frontend/src/components/PushNotificationPrompt.jsx` (FCM-based)
+- `frontend/src/components/GoogleMapsLiveTracking.jsx` (unused, demo key)
+- Deps: `firebase_admin`, `twilio` (backend), `firebase` (frontend)
+
+**Hardened:**
+- `routes/apple_google_pay.py`: real JWT auth (was `demo_user`), amount 1–500 €, Stripe webhook signature verification (`STRIPE_PI_WEBHOOK_SECRET`), atomic `credit_wallet` with idempotency key `pi:{id}`, rate-limit 10/min
+- `components/AppleGooglePayButton.jsx`: removed hardcoded Stripe publishable fallback key
+- External Google-Maps `href` links → OpenStreetMap / Nominatim in `KidsGPSModal`, `OrderTrackingPage`, `DirectoryPage`
+
+**Added env key (optional):** `STRIPE_PI_WEBHOOK_SECRET` (set in Stripe Dashboard for `/api/payments/webhook/stripe-payment`)
+
+## Stand (previous)
 **29.04.2026** — Super-App Backend-Parity (13 neue Modules, 41/41 grün). Frontend-Wiring ausstehend.
