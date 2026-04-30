@@ -9,6 +9,7 @@ import AIChatWidget from "./components/AIChatWidget";
 import SuperAppOverlay from "./components/SuperAppOverlay";
 import InAppUpdateManager from "./components/InAppUpdateManager";
 
+import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
 import WalletPage from "./pages/WalletPage";
 import ScannerPage from "./pages/ScannerPage";

@@ -11,6 +11,7 @@ import {
 import { formatCurrency } from "../models";
 import { useI18n } from "../store";
 import { useNetwork } from "../store/NetworkContext";
+import AppleGooglePayButton from "./AppleGooglePayButton";
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
