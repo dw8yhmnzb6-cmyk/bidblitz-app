@@ -79,6 +79,25 @@ async def create_indexes():
     await safe_create_index(db.live_streams, "stream_id", unique=True)
     await safe_create_index(db.live_streams, [("status", 1), ("viewer_count", -1)])
     await safe_create_index(db.live_streams, "host_user_id")
+
+    # Gruppenchat (WeChat-style)
+    await safe_create_index(db.chat_groups, "group_id", unique=True)
+    await safe_create_index(db.chat_groups, [("member_ids", 1), ("last_message_at", -1)])
+    await safe_create_index(db.chat_group_messages, "message_id", unique=True)
+    await safe_create_index(db.chat_group_messages, [("group_id", 1), ("created_at", -1)])
+
+    # Round-up Savings
+    await safe_create_index(db.roundup_config, "user_id", unique=True)
+    await safe_create_index(db.roundup_entries, [("user_id", 1), ("created_at", -1)])
+    await safe_create_index(db.roundup_entries, [("user_id", 1), ("tx_id", 1)], unique=False)
+
+    # Apartments Marketplace (Airbnb-clone)
+    await safe_create_index(db.apartments, "apartment_id", unique=True)
+    await safe_create_index(db.apartments, [("status", 1), ("city", 1)])
+    await safe_create_index(db.apartments, "host_user_id")
+    await safe_create_index(db.apartment_bookings, "booking_id", unique=True)
+    await safe_create_index(db.apartment_bookings, [("guest_user_id", 1), ("booked_at", -1)])
+    await safe_create_index(db.apartment_bookings, "host_user_id")
     
     # Login attempts - brute force protection
     await safe_create_index(db.login_attempts, "identifier")

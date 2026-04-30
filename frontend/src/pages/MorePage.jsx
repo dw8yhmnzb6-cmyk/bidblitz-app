@@ -7,7 +7,7 @@ import {
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
   Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu, Car, Zap, ShoppingBag, Coins,
   Split, CreditCardIcon, PiggyBank, BadgePercent, Banknote, Bitcoin, GiftIcon, Gamepad2,
-  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2, Building2, Phone, AtSign, Radio, Heart
+  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2, Building2, Phone, AtSign, Radio, Heart, MessageSquare, Home
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -840,6 +840,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "p2p-handle", icon: AtSign, label: "Senden & Empfangen", desc: "Per @handle wie Venmo/Revolut", color: "#00E0FF", action: gatedAction(() => onNavigate("/p2p")) },
     { id: "card", icon: CreditCard, label: "BidBlitz Card", desc: "Virtuelle & physische Debit-Card", color: "#FFD166", action: gatedAction(() => onNavigate("/card")) },
     { id: "live", icon: Radio, label: "Live Shopping", desc: "Streams, Auktionen & Deals live", color: "#FF4060", action: () => onNavigate("/live") },
+    { id: "groupchat", icon: MessageSquare, label: "Gruppenchat", desc: "WeChat-style mit @handle-Invites", color: "#00E89D", action: gatedAction(() => onNavigate("/groupchat")) },
+    { id: "roundup", icon: PiggyBank, label: "Round-up Sparen", desc: "Auto-runden & beiseite legen", color: "#FF6B9D", action: gatedAction(() => onNavigate("/roundup")) },
+    { id: "apartments", icon: Home, label: "Apartments", desc: "Airbnb-Style Übernachtungen", color: "#F4A261", action: () => onNavigate("/apartments") },
     { id: "virtual-cards", icon: CreditCard, label: t("cards.title") || "Virtuelle Karten", desc: t("cards.menu_desc") || "Einmal-Karten für Online-Shopping", color: "#B068FF", action: gatedAction(() => onNavigate("/virtual-cards")) },
     { id: "savings", icon: PiggyBank, label: t("savings.title") || "Sparziele", desc: t("savings.menu_desc") || "Automatisch sparen", color: "#00E89D", action: gatedAction(() => onNavigate("/savings")) },
     { id: "bnpl", icon: BadgePercent, label: t("bnpl.title") || "Später zahlen", desc: t("bnpl.menu_desc") || "Buy now, pay later", color: "#00D4FF", action: gatedAction(() => onNavigate("/bnpl")) },

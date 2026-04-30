@@ -703,6 +703,16 @@ app.include_router(card_router)
 from routes.live import router as live_router
 app.include_router(live_router)
 
+# WeChat-style features (Gruppenchat, Round-up Sparen, Apartments)
+from routes.groupchat import router as groupchat_router
+app.include_router(groupchat_router)
+
+from routes.roundup import router as roundup_router
+app.include_router(roundup_router)
+
+from routes.apartments import router as apartments_router
+app.include_router(apartments_router)
+
 from routes.quick_actions import router as quick_actions_router
 app.include_router(quick_actions_router)
 

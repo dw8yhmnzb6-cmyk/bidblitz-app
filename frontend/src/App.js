@@ -171,6 +171,9 @@ import CreatorsPage from "./pages/CreatorsPage";
 import P2PPage from "./pages/P2PPage";
 import CardPage from "./pages/CardPage";
 import LivePage from "./pages/LivePage";
+import GroupChatPage from "./pages/GroupChatPage";
+import RoundupPage from "./pages/RoundupPage";
+import ApartmentsPage from "./pages/ApartmentsPage";
 import SkillsMarketPage from "./pages/SkillsMarketPage";
 import InvoicingPage from "./pages/InvoicingPage";
 import QRMenuPage from "./pages/QRMenuPage";
@@ -754,6 +757,12 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CardPage onNavigate={handleNavigate} />;
       case "/live":
         return <LivePage onNavigate={handleNavigate} />;
+      case "/groupchat":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <GroupChatPage onNavigate={handleNavigate} />;
+      case "/roundup":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RoundupPage onNavigate={handleNavigate} />;
+      case "/apartments":
+        return <ApartmentsPage onNavigate={handleNavigate} />;
       case "/skills-market":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SkillsMarketPage onBack={() => handleNavigate("/more")} />;
       case "/invoicing":
