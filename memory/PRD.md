@@ -125,7 +125,35 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**30.04.2026** — **Cheap Architecture Pivot executed**: Firebase FCM, Twilio SMS, Google Maps JS stripped. Replaced by Web Push (VAPID), Email (Resend), Leaflet/OSM. Apple/Google Pay hardened (JWT auth, amount-cap, Stripe webhook signature, atomic wallet credit). Backend clean — all 225 routers load, no dead imports.
+**30.04.2026 (2)** — **Refactor complete**: FoodPage 1319→515 lines (+ 7 modular components). AuctionsPage 1817→1388 lines (+ BuyCreditsModal, ReferralPanel, atoms.js). Backend 15/15 pass. Apple/Google Pay production-hardened with JWT auth + Stripe webhook signature + atomic wallet credit.
+
+### 30.04.2026 (2) — Modular Refactor
+**New components**:
+- `/app/frontend/src/components/food/foodConstants.js` — shared constants & getFoodImage helper
+- `/app/frontend/src/components/food/RestaurantListView.jsx` (197 LOC)
+- `/app/frontend/src/components/food/RestaurantDetailView.jsx` (144 LOC)
+- `/app/frontend/src/components/food/MenuItemExtrasModal.jsx` (98 LOC)
+- `/app/frontend/src/components/food/CartView.jsx` (86 LOC)
+- `/app/frontend/src/components/food/CheckoutView.jsx` (190 LOC)
+- `/app/frontend/src/components/food/OrderTrackingView.jsx` (127 LOC)
+- `/app/frontend/src/components/food/OrderHistoryView.jsx` (54 LOC)
+- `/app/frontend/src/components/auctions/atoms.js` — POLL_MS, glass, panelBg, accent*, PKGS, localized
+- `/app/frontend/src/components/auctions/BuyCreditsModal.jsx` (268 LOC) — 3-step select→confirm→success
+- `/app/frontend/src/components/auctions/ReferralPanel.jsx` (158 LOC) — referral + leaderboard
+
+**Backend test (iter 29): 15/15 PASS**
+- `POST /api/fcm/subscribe` → 404 (removed) ✅
+- `POST /api/sms/send` → 404 (removed) ✅
+- `GET /api/push/vapid-public-key` → 200 ✅
+- `POST /api/payments/create-payment-intent`: unauth→401, valid+10→200 (client_secret), >500→422, <1→400, =0→422 ✅
+
+**Known pre-existing frontend warnings** (not introduced by refactor; to fix in next iteration):
+- HIGH: `<button>` nested inside `<button>` hydration error in AuctionsPage (in untouched AuctionGridCard or similar action row)
+- MEDIUM: duplicate React keys in auction list
+- MEDIUM: empty string `img src=""` causes browser re-download
+
+## Stand
+**30.04.2026** — Cheap Architecture Pivot executed. Apple/Google Pay hardened.
 
 ### 30.04.2026 Changes
 **Removed:**
