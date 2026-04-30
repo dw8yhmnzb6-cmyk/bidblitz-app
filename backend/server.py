@@ -693,6 +693,16 @@ app.include_router(filters_router)
 from routes.group_orders import router as group_orders_router
 app.include_router(group_orders_router)
 
+# Super-App Revolut-killer additions (P2P handle, Debit Card waitlist, Live Shopping framework)
+from routes.p2p import router as p2p_router
+app.include_router(p2p_router)
+
+from routes.card import router as card_router
+app.include_router(card_router)
+
+from routes.live import router as live_router
+app.include_router(live_router)
+
 from routes.quick_actions import router as quick_actions_router
 app.include_router(quick_actions_router)
 

@@ -168,6 +168,9 @@ import P2PLendingPage from "./pages/P2PLendingPage";
 import TradingBotPage from "./pages/TradingBotPage";
 import LiveShoppingPage from "./pages/LiveShoppingPage";
 import CreatorsPage from "./pages/CreatorsPage";
+import P2PPage from "./pages/P2PPage";
+import CardPage from "./pages/CardPage";
+import LivePage from "./pages/LivePage";
 import SkillsMarketPage from "./pages/SkillsMarketPage";
 import InvoicingPage from "./pages/InvoicingPage";
 import QRMenuPage from "./pages/QRMenuPage";
@@ -745,6 +748,12 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveShoppingPage onBack={() => handleNavigate("/more")} />;
       case "/creators":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CreatorsPage onBack={() => handleNavigate("/more")} />;
+      case "/p2p":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <P2PPage onNavigate={handleNavigate} />;
+      case "/card":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CardPage onNavigate={handleNavigate} />;
+      case "/live":
+        return <LivePage onNavigate={handleNavigate} />;
       case "/skills-market":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SkillsMarketPage onBack={() => handleNavigate("/more")} />;
       case "/invoicing":

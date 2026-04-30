@@ -67,6 +67,18 @@ async def create_indexes():
     await safe_create_index(db.users, "email", unique=True)
     await safe_create_index(db.users, "role")
     await safe_create_index(db.users, "referred_by")
+    # P2P handle - unique, sparse (not all users claim one)
+    await safe_create_index(db.users, "handle", unique=True, sparse=True)
+
+    # Card applications (Revolut-style debit card waitlist)
+    await safe_create_index(db.card_applications, "application_id", unique=True)
+    await safe_create_index(db.card_applications, [("user_id", 1), ("status", 1)])
+    await safe_create_index(db.card_applications, "status")
+
+    # Live streams (Shopee/TikTok-Shop-style live shopping)
+    await safe_create_index(db.live_streams, "stream_id", unique=True)
+    await safe_create_index(db.live_streams, [("status", 1), ("viewer_count", -1)])
+    await safe_create_index(db.live_streams, "host_user_id")
     
     # Login attempts - brute force protection
     await safe_create_index(db.login_attempts, "identifier")
