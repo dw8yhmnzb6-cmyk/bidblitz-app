@@ -125,7 +125,33 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**30.04.2026 (4)** — **Revolut-Killer-Suite deployed**: P2P mit @handle + BidBlitz Debit-Card Waitlist + Live-Shopping Framework. Backend 37/37 PASS (pytest). Frontend smoke: alle 3 Tiles auf MorePage sichtbar + klickbar. Fixed pre-existing `Heart is not defined` bug in MorePage.
+**30.04.2026 (5)** — **Alle 5 offenen Super-App-Features deployed**: Gruppenchat (WeChat) + Round-up Sparen (Revolut) + Apartments-Marketplace (Airbnb). ETF/Aktien-Trading + KI-Budgetplaner waren bereits vorhanden (stocks.py, budget.py). Backend 29/29 PASS. Frontend 6 neue Tiles auf MorePage, alle Routes grün.
+
+### 30.04.2026 (5) — Letzter Feature-Sprint
+**Neue Backend-Routen**:
+- `/api/groupchat/*` — Create/Invite/List/Messages/Read/Leave. Collections `chat_groups` + `chat_group_messages` mit Indexes. Broadcast-Hook via `broadcast_group_message` (chat_ws optional).
+- `/api/roundup/*` — Config (enabled, round_to 1/5/10, multiplier 1-10, goal), Preview (stateless), Process-tx (idempotent on tx_id), History. Collections `roundup_config` + `roundup_entries`.
+- `/api/apartments/*` — Host listings CRUD, Search (city/country/price/guests/type), Detail, Book (atomic wallet-debit via payment_engine), My-Bookings, My-Hosting. Collections `apartments` + `apartment_bookings`.
+
+**Bereits vorhanden** (nur in Tiles verlinkt):
+- Stocks: `/api/stocks/*` (Universe, Quote, Portfolio, Order, Orders, Watchlist — DEMO-Prices)
+- Budget: `/api/budget/*` (Summary stateless + AI-Insights via Emergent LLM)
+
+**Neue Frontend-Pages**:
+- `GroupChatPage.jsx` — List + Chat + Create, @handle-Invites, Real-time-Polling 5s
+- `RoundupPage.jsx` — Toggle, Round-to-Buttons, Multiplier-Buttons, Goal (Name + Amount + Progress-Bar), Verlauf
+- `ApartmentsPage.jsx` — Search + City-Filter, Grid, Detail mit Check-In/Out + Guest-Form + Book
+
+**MorePage-Tiles**: Gruppenchat (MessageSquare #00E89D), Round-up Sparen (PiggyBank #FF6B9D), Apartments (Home #F4A261).
+
+**Bonus-Fixes**:
+- MorePage lucide-import duplicate `PiggyBank` gefixt (bereits in Zeile 9 vorhanden).
+- ESLint config aus package.json entfernt (conflicted with react-scripts internal config).
+
+**Testing (Iter 33)**: Backend 29/29 PASS pytest. Frontend alle 6 MorePage-Tiles sichtbar (Senden&Empfangen, BidBlitz Card, Live Shopping, Gruppenchat, Round-up Sparen, Apartments). Routes `/groupchat`, `/roundup`, `/apartments` laden ohne Errors. `retest_needed: false`.
+
+## Stand
+**30.04.2026 (4)** — Revolut-Killer-Suite (P2P + Card + Live Shopping).
 
 ### 30.04.2026 (4) — 3 Super-App-Features
 **Backend (neue Routen)**:
