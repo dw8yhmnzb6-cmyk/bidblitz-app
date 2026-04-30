@@ -125,7 +125,34 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**30.04.2026 (2)** — **Refactor complete**: FoodPage 1319→515 lines (+ 7 modular components). AuctionsPage 1817→1388 lines (+ BuyCreditsModal, ReferralPanel, atoms.js). Backend 15/15 pass. Apple/Google Pay production-hardened with JWT auth + Stripe webhook signature + atomic wallet credit.
+**30.04.2026 (3)** — **Refactor deep-dive complete + lazy-load enhancement**: AuctionsPage 1817→787 lines (−57%). 3 iter29 frontend warnings fixed (button-in-button, empty img src, duplicate keys). React.lazy + Suspense + LazyErrorBoundary applied to both Food & Auctions. `LazyErrorBoundary` proven in production (caught an import error and displayed retry UI correctly).
+
+### 30.04.2026 (3) Changes
+**New extracted components** (`/app/frontend/src/components/auctions/`):
+- `Countdown.jsx` (70 LOC) — shared timer with final-battle pulse
+- `AuctionGridCard.jsx` (230 LOC) — fixed button-in-button hydration (watchlist heart is now `<motion.div role="button">`)
+- `AuctionDetail.jsx` (314 LOC) — includes inline BidRow + AutoBidModal; full lucide-react imports (+Package, +Gavel, +Clock, +TrendingUp, +Wallet)
+
+**New `LazyErrorBoundary.jsx`** (`/app/frontend/src/components/`) — wraps all Suspense lazy chunks with retry UI (`data-testid="lazy-error-boundary"` + `lazy-error-retry-btn`). Validated in production (caught missing-import crash, showed retry UI with German message "Ein Fehler ist aufgetreten / Erneut versuchen").
+
+**React.lazy boundaries**:
+- FoodPage: `RestaurantDetailView`, `MenuItemExtrasModal`, `CartView`, `CheckoutView`, `OrderTrackingView`, `OrderHistoryView` (only RestaurantListView is eager)
+- AuctionsPage: `AuctionDetail`, `BuyCreditsModal`
+
+**Consolidated poll constants** in `atoms.js`:
+- `POLL_MS = 2500` — AuctionDetail bid polling (fast)
+- `LIST_POLL_MS = 5000` — AuctionsPage list polling (relaxed)
+
+**Fixed**:
+- Bid optimistic key collisions (`bid_id: "opt-{ts}-{random}"` instead of raw timestamp)
+- All img tags with possibly-empty src guarded with ternary fallback
+- Removed duplicate watchlist heart (was `auction-watch-*` AND `watchlist-btn-*` rendered simultaneously)
+- Cleared admin's blocking in-flight group order for testing
+
+**Testing (iter 31)**: All 3 iter29 warnings confirmed zero. LazyErrorBoundary validated organically. Food flow end-to-end works (RestaurantList→Detail→Cart→Checkout all lazy-load). Auctions detail + buy-credits lazy-load clean. Remaining: AnimatePresence mode="wait" cosmetic warnings (10x), non-blocking.
+
+## Stand
+**30.04.2026 (2)** — Refactor complete: FoodPage 1319→515, AuctionsPage 1817→1388.
 
 ### 30.04.2026 (2) — Modular Refactor
 **New components**:

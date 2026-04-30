@@ -114,7 +114,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
     try {
       const r = await api.placeBid({ auction_id: auctionId });
       setAuction(p => ({ ...p, current_price: r.new_price, ends_at: r.ends_at, total_bids: r.total_bids, last_bidder_id: user.id, last_bidder_name: user.name }));
-      setBids(p => [{ bid_id: Date.now().toString(), user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() }, ...p].slice(0, 30));
+      setBids(p => [{ bid_id: `opt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, user_name: user.name, bid_price: r.new_price, created_at: new Date().toISOString() }, ...p].slice(0, 30));
       onCreditsChanged(r.remaining_credits);
     } catch (e) { setBidMsg({ ok: false, text: e.message }); }
     setBidding(false);
@@ -259,7 +259,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
           <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.02] ${glass}`} style={{ background: panelBg, border: panelBorder }}>
             {bids.length === 0 ? (
               <div className="py-8 text-center"><Gavel size={16} className="text-white/5 mx-auto mb-2" /><p className="text-[10px] text-[#333]">{t("auction.no_bids_yet")}</p></div>
-            ) : bids.slice(0, 12).map((b, i) => <BidRow key={b.bid_id || i} bid={b} isLatest={i === 0} />)}
+            ) : bids.slice(0, 12).map((b, i) => <BidRow key={`bid-${b.bid_id || `fb-${i}`}`} bid={b} isLatest={i === 0} />)}
           </div>
         </motion.div>
 
