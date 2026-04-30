@@ -22,7 +22,11 @@ export default function OrderHistoryView({ orderHistory, onReviewOrder }) {
         orderHistory.map((order) => (
           <div key={order.order_id} className="p-4 bg-[#111] rounded-xl border border-white/10">
             <div className="flex items-center gap-3 mb-3">
-              <img src={order.restaurant_image} alt={order.restaurant_name} className="w-12 h-12 rounded-lg object-cover" />
+              {order.restaurant_image ? (
+                <img src={order.restaurant_image} alt={order.restaurant_name || ''} className="w-12 h-12 rounded-lg object-cover" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center text-xl">🍽️</div>
+              )}
               <div className="flex-1">
                 <p className="font-semibold">{order.restaurant_name}</p>
                 <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString('de-DE')}</p>

@@ -1,0 +1,59 @@
+{
+  "summary": "Iter30 frontend regression after lazy-loading refactor (React.lazy + Suspense applied to AuctionDetail, BuyCreditsModal on AuctionsPage; RestaurantDetailView/Cart/Checkout/Tracking/History/Extras on FoodPage) + AuctionsPage/FoodPage modular extraction. Three iter29 warnings (button-in-button hydration, duplicate keys, empty img src) all CONFIRMED FIXED on the auctions list. BUT the AuctionDetail lazy chunk crashed on open with ReferenceError for 3 missing lucide-react icons AND 1 missing atoms.js constant — testing agent patched these directly (import scope fix, in-scope) and re-verified no runtime errors. BuyCreditsModal lazy works (all 5 packages visible via data-testid credit-pkg-10..250). Food page mounts (food-page testid) but admin user has an in-flight Group Order from Luigi's Pizzeria, so OrderTrackingView (not RestaurantListView) is rendered by default — same behavior as iter29. Lazy loading of the food Cart/Checkout chunks could not be exercised end-to-end in this pass because the restaurant-list entry point is hidden behind the active tracker.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AuctionDetail.jsx",
+        "issue": "Lazy chunk threw ReferenceError on open — FIXED in this run. Missing imports were: `Gavel`, `TrendingUp`, `Wallet` (from lucide-react) and `accentPurple`, `accentGold`, `accentRed` (from ./atoms). Without these the entire auction-detail route is a white screen / CRA error-overlay. Extraction from AuctionsPage did not carry forward all icon / constant imports.",
+        "selector": "/app/frontend/src/components/auctions/AuctionDetail.jsx lines 3-7 & 13",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Food ordering lazy chunks (RestaurantDetailView / CartView / CheckoutView)",
+        "issue": "Admin account has an active in-flight Group Order, so FoodPage mounts OrderTrackingView rather than RestaurantListView. The restaurant list / menu / cart / checkout Suspense paths could not be exercised end-to-end without seeding a fresh user. Main agent should either seed a clean user or confirm via kunde@bidblitz.com which should not have an active order.",
+        "affected_selectors": ["[data-testid^='restaurant-card-']", "[data-testid='food-cart-icon']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "verified_fixed_from_iter29": [
+    "Button-in-button hydration: 0 console warnings across /auctions navigation. Watch-heart is now a <div role='button'> (confirmed via DOM tag=DIV role=button).",
+    "Duplicate React keys: 0 'Encountered two children with the same key' warnings on /auctions (was 10 in iter29 — those 10 were actually a cascading side-effect of the AuctionDetail runtime error re-mounting the Suspense tree; once AuctionDetail imports were fixed they disappeared entirely).",
+    "Empty img src: 0 'image with an empty src' warnings; confirmed DOM query finds 0 <img src=''>"
+  ],
+  "verified_working_frontend": [
+    "Guest landing page renders welcome onboarding and Anmelden/Konto-erstellen CTAs",
+    "Login form (data-testid=login-email-input/login-password-input/login-submit-btn) accepts admin@bidblitz.com + BidBlitz2026! and establishes session",
+    "/auctions renders with 50 active auction cards, Daily Reward + ReferralPanel (code BB-TO4DRM) + LiveActivity + 12 category chips + search + sort",
+    "AuctionGridCard watchlist heart (div role=button) is clickable and toggles without hydration warnings",
+    "BuyCreditsModal lazy-loads and opens with all 5 packages: credit-pkg-10, credit-pkg-25, credit-pkg-50, credit-pkg-100, credit-pkg-250",
+    "AuctionDetail lazy-loads after testing-agent import fix (no runtime errors, no error boundary triggered)",
+    "/food renders food-page testid; FoodPage orchestrator mounts without compile errors"
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "Accept the two testing-agent hot-fixes in /app/frontend/src/components/auctions/AuctionDetail.jsx (added Gavel, TrendingUp, Wallet imports + accentPurple/accentGold/accentRed from atoms.js). These are the ROOT CAUSE of the iter30 regression.",
+    "Main agent should run ESLint's 'no-undef' rule (or CRA default) against all 6 files in /components/auctions/ and all 8 files in /components/food/ to catch similar missing-import regressions introduced by future extractions. Currently CRA only surfaces them at runtime inside the lazy chunk.",
+    "To fully exercise food lazy chunks, either log in as kunde@bidblitz.com (no seeded in-flight order) OR clear Luigi's Pizzeria Group Order from admin's active orders. Current behavior masks RestaurantDetailView/CartView/CheckoutView verification.",
+    "Pre-existing 'AnimatePresence mode=wait with multiple children' warnings (6x) remain on auctions page — non-blocking, framer-motion best-practice cleanup (wrap each branch in one AnimatePresence child)."
+  ],
+  "critical_code_review_comments": [
+    "HIGH: Component-extraction PRs need a lint gate. AuctionDetail.jsx was shipped importing only ~22 of the ~26 lucide-react icons/atoms it references. Runtime-only detection is fragile for lazy chunks — the crash only appears the instant a user clicks a card.",
+    "MEDIUM: Lazy-loading fallback in AuctionsPage uses <Loader2> inline — good. But the outer selected-auction Suspense has no error boundary; any import failure in AuctionDetail kills the route silently for end users (only CRA dev overlay catches it). Wrap the Suspense with an ErrorBoundary that can trigger a retry / clear-selected.",
+    "LOW: AuctionsPage.jsx still contains dead ReferralPanel comment block (lines 429-432) and two duplicate identical card-grid renderers for active/ended — candidate for further DRY extraction.",
+    "LOW: The POLL_MS constant in atoms.js is 2500 but the interval in AuctionsPage.jsx uses a hard-coded 5000 on line 490. Consolidate."
+  ],
+  "updated_files": [
+    "/app/frontend/src/components/auctions/AuctionDetail.jsx (added missing lucide-react imports: Gavel, Clock, TrendingUp, Wallet; added missing atoms imports: accentGold, accentRed, accentPurple)"
+  ],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "~95% after hot-fix (all 3 iter29 warnings fixed; AuctionDetail now loads; food lazy chunks blocked by seeded in-flight order — not a regression)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (confirmed working)",
+  "seed_data_creation": "None. Admin still has seeded in-flight Group Order from Luigi's Pizzeria which blocks exercising food lazy chunks.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The AuctionDetail.jsx import fix is already applied in this iteration. When re-testing, login with admin@bidblitz.com, go to /auctions, click any card — AuctionDetail should mount via Suspense (brief <Loader2> spinner) with no runtime errors and show bids/bid button/countdown. For food lazy chunks (CartView/CheckoutView/RestaurantDetailView) log in as kunde@bidblitz.com which should not have the blocking active Group Order. Watchlist heart is now <div role='button'> inside the <motion.button> card — this is semantically still a button-in-button BUT React's dev warning specifically checks for nested <button> DOM nodes, which we no longer have, so the warning is gone.",
+  "rca_of_the_issue": "ROOT CAUSE of the AuctionDetail crash: the iter30 extraction split AuctionDetail out of AuctionsPage.jsx but only copied a subset of the original import block. AuctionsPage.jsx still imports `Gavel, Trophy, Timer, Package, Truck, Globe, Check, Shield, Lock, Activity, Flame, Gift, Bot, AlertTriangle, Users, Heart, Share2, Copy, Bell, Sparkles, PartyPopper, XCircle, Eye, Wallet, CreditCard, Mail, Smartphone, Link2, Award, Crown, ChevronDown, ChevronUp` — the new AuctionDetail.jsx kept only ~21 of these, silently losing Gavel, Clock, TrendingUp, Wallet. Same for atoms.js constants: accentCyan+accentGreen were imported but accentPurple/accentGold/accentRed (all used inside Detail markup) were dropped. Since the component is lazy, webpack dev-build emits the chunk without erroring, and the ReferenceError only fires when the user clicks. Mitigation applied: added missing imports. Long-term: enable eslint-plugin-react / no-undef in CI; wrap every Suspense boundary with an ErrorBoundary."
+}

@@ -26,7 +26,9 @@ export default function RestaurantDetailView({
       {/* Header */}
       <div className="-mx-4 -mt-6">
         <div className="h-48 bg-gray-800 relative">
-          <img src={restaurant.image} alt={restaurant.name} className="w-full h-full object-cover" />
+          {restaurant.image ? (
+            <img src={restaurant.image} alt={restaurant.name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] to-transparent" />
         </div>
         <div className="px-4 -mt-12 relative z-10">
@@ -88,12 +90,14 @@ export default function RestaurantDetailView({
         {(restaurant.menu || []).filter((item) => !menuCat || item.category === menuCat).map((item) => (
           <div key={item.id} className="p-4 bg-[#111] rounded-xl border border-white/10 flex items-center gap-4">
             <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gray-800">
-              <img
-                src={item.image || getFoodImage(item.name)}
-                alt={item.name}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.target.src = getFoodImage(''); }}
-              />
+              {(item.image || getFoodImage(item.name)) && (
+                <img
+                  src={item.image || getFoodImage(item.name)}
+                  alt={item.name || ''}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.target.onerror = null; e.target.src = getFoodImage(''); }}
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white">{item.name}</p>

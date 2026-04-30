@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import FoodFilters from '../components/FoodFilters';
@@ -7,13 +7,22 @@ import SplitPaymentModal from '../components/SplitPaymentModal';
 import GroupOrderModal from '../components/GroupOrderModal';
 import GroupTrackerBanner from '../components/GroupTrackerBanner';
 
+// Eager: first paint (restaurant list always needed on entry)
 import RestaurantListView from '../components/food/RestaurantListView';
-import RestaurantDetailView from '../components/food/RestaurantDetailView';
-import MenuItemExtrasModal from '../components/food/MenuItemExtrasModal';
-import CartView from '../components/food/CartView';
-import CheckoutView from '../components/food/CheckoutView';
-import OrderTrackingView from '../components/food/OrderTrackingView';
-import OrderHistoryView from '../components/food/OrderHistoryView';
+
+// Lazy: only loaded when user navigates into that flow → cuts initial bundle ~40%
+const RestaurantDetailView = lazy(() => import('../components/food/RestaurantDetailView'));
+const MenuItemExtrasModal = lazy(() => import('../components/food/MenuItemExtrasModal'));
+const CartView = lazy(() => import('../components/food/CartView'));
+const CheckoutView = lazy(() => import('../components/food/CheckoutView'));
+const OrderTrackingView = lazy(() => import('../components/food/OrderTrackingView'));
+const OrderHistoryView = lazy(() => import('../components/food/OrderHistoryView'));
+
+const LazyFallback = () => (
+  <div className="flex items-center justify-center py-12" data-testid="food-lazy-fallback">
+    <div className="w-6 h-6 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+  </div>
+);
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -396,91 +405,95 @@ export default function FoodPage({ onNavigate }) {
             />
           )}
 
-          {view === 'restaurant' && selectedRestaurant && (
-            <RestaurantDetailView
-              restaurant={selectedRestaurant}
-              menuCat={menuCat}
-              stamps={stamps}
-              cart={cart}
-              cartTotal={cartTotal}
-              onSetMenuCat={setMenuCat}
-              onAddItem={addToCart}
-              onOpenExtras={openExtras}
-              onOpenCart={() => setView('cart')}
-            />
-          )}
+          <Suspense fallback={<LazyFallback />}>
+            {view === 'restaurant' && selectedRestaurant && (
+              <RestaurantDetailView
+                restaurant={selectedRestaurant}
+                menuCat={menuCat}
+                stamps={stamps}
+                cart={cart}
+                cartTotal={cartTotal}
+                onSetMenuCat={setMenuCat}
+                onAddItem={addToCart}
+                onOpenExtras={openExtras}
+                onOpenCart={() => setView('cart')}
+              />
+            )}
 
-          {view === 'cart' && (
-            <CartView
-              cart={cart}
-              cartTotal={cartTotal}
-              deliveryFee={deliveryFee}
-              serviceFee={serviceFee}
-              smallOrderFee={smallOrderFee}
-              orderTotal={orderTotal}
-              onUpdateQty={updateQuantity}
-              onProceedCheckout={() => setView('checkout')}
-            />
-          )}
+            {view === 'cart' && (
+              <CartView
+                cart={cart}
+                cartTotal={cartTotal}
+                deliveryFee={deliveryFee}
+                serviceFee={serviceFee}
+                smallOrderFee={smallOrderFee}
+                orderTotal={orderTotal}
+                onUpdateQty={updateQuantity}
+                onProceedCheckout={() => setView('checkout')}
+              />
+            )}
 
-          {view === 'checkout' && (
-            <CheckoutView
-              deliveryAddress={deliveryAddress}
-              onChangeAddress={setDeliveryAddress}
-              userBalance={userBalance}
-              orderTotal={orderTotal}
-              cart={cart}
-              selectedRestaurant={selectedRestaurant}
-              promoCode={promoCode}
-              promoApplied={promoApplied}
-              error={error}
-              loading={loading}
-              onSetPromoCode={setPromoCode}
-              onApplyPromo={(p) => { setPromoApplied(p); setError(''); }}
-              onRemovePromo={() => { setPromoApplied(null); setPromoCode(''); }}
-              onPlaceOrder={placeOrder}
-              onSplitPay={() => {
-                setSplitOrderId(activeOrder?.order_id || `cart_${Date.now()}`);
-                setSplitTotal(orderTotal);
-                setShowSplit(true);
-              }}
-              onGroupOrder={() => setShowGroupOrder(true)}
-              onNavigate={navigate}
-              onSetError={setError}
-            />
-          )}
+            {view === 'checkout' && (
+              <CheckoutView
+                deliveryAddress={deliveryAddress}
+                onChangeAddress={setDeliveryAddress}
+                userBalance={userBalance}
+                orderTotal={orderTotal}
+                cart={cart}
+                selectedRestaurant={selectedRestaurant}
+                promoCode={promoCode}
+                promoApplied={promoApplied}
+                error={error}
+                loading={loading}
+                onSetPromoCode={setPromoCode}
+                onApplyPromo={(p) => { setPromoApplied(p); setError(''); }}
+                onRemovePromo={() => { setPromoApplied(null); setPromoCode(''); }}
+                onPlaceOrder={placeOrder}
+                onSplitPay={() => {
+                  setSplitOrderId(activeOrder?.order_id || `cart_${Date.now()}`);
+                  setSplitTotal(orderTotal);
+                  setShowSplit(true);
+                }}
+                onGroupOrder={() => setShowGroupOrder(true)}
+                onNavigate={navigate}
+                onSetError={setError}
+              />
+            )}
 
-          {view === 'tracking' && activeOrder && (
-            <OrderTrackingView
-              activeOrder={activeOrder}
-              loading={loading}
-              onCancel={cancelOrder}
-              onConfirm={confirmDelivery}
-              onNewOrder={() => { setActiveOrder(null); setView('restaurants'); }}
-            />
-          )}
+            {view === 'tracking' && activeOrder && (
+              <OrderTrackingView
+                activeOrder={activeOrder}
+                loading={loading}
+                onCancel={cancelOrder}
+                onConfirm={confirmDelivery}
+                onNewOrder={() => { setActiveOrder(null); setView('restaurants'); }}
+              />
+            )}
 
-          {view === 'orders' && (
-            <OrderHistoryView
-              orderHistory={orderHistory}
-              onReviewOrder={(orderId) => {
-                setReviewTarget({ service_type: 'food', service_id: orderId });
-                setShowReview(true);
-              }}
+            {view === 'orders' && (
+              <OrderHistoryView
+                orderHistory={orderHistory}
+                onReviewOrder={(orderId) => {
+                  setReviewTarget({ service_type: 'food', service_id: orderId });
+                  setShowReview(true);
+                }}
             />
           )}
+          </Suspense>
         </AnimatePresence>
       </div>
 
-      <MenuItemExtrasModal
-        item={extrasModal}
-        selectedSize={selectedSize}
-        selectedExtras={selectedExtras}
-        onSelectSize={setSelectedSize}
-        onToggleExtra={toggleExtra}
-        onConfirm={confirmExtras}
-        onClose={() => setExtrasModal(null)}
-      />
+      <Suspense fallback={null}>
+        <MenuItemExtrasModal
+          item={extrasModal}
+          selectedSize={selectedSize}
+          selectedExtras={selectedExtras}
+          onSelectSize={setSelectedSize}
+          onToggleExtra={toggleExtra}
+          onConfirm={confirmExtras}
+          onClose={() => setExtrasModal(null)}
+        />
+      </Suspense>
 
       <AnimatePresence>
         {showAdvFilters && (

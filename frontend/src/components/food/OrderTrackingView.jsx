@@ -71,7 +71,11 @@ export default function OrderTrackingView({ activeOrder, loading, onCancel, onCo
       {/* Order details */}
       <div className="p-4 bg-[#111] rounded-xl border border-white/10">
         <div className="flex items-center gap-3 mb-4">
-          <img src={activeOrder.restaurant_image} alt={activeOrder.restaurant_name} className="w-12 h-12 rounded-lg object-cover" />
+          {activeOrder.restaurant_image ? (
+            <img src={activeOrder.restaurant_image} alt={activeOrder.restaurant_name || ''} className="w-12 h-12 rounded-lg object-cover" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+          ) : (
+            <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center text-xl">🍽️</div>
+          )}
           <div>
             <p className="font-semibold">{activeOrder.restaurant_name}</p>
             <p className="text-sm text-gray-400">{activeOrder.items?.length} Artikel</p>

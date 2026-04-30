@@ -129,12 +129,16 @@ export default function RestaurantListView({
               whileTap={{ scale: 0.98 }}
             >
               <div className="h-32 bg-gray-800 relative">
-                <img
-                  src={r.image}
-                  alt={r.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.target.src = 'https://via.placeholder.com/400x200?text=Restaurant'; }}
-                />
+                {r.image ? (
+                  <img
+                    src={r.image}
+                    alt={r.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x200?text=Restaurant'; }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-orange-500/10 to-red-500/10 flex items-center justify-center text-4xl">🍽️</div>
+                )}
                 {!r.is_open && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                     <span className="text-red-400 font-bold">Geschlossen</span>
