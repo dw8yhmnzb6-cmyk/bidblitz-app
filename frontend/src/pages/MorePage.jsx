@@ -7,7 +7,7 @@ import {
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
   Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu, Car, Zap, ShoppingBag, Coins,
   Split, CreditCardIcon, PiggyBank, BadgePercent, Banknote, Bitcoin, GiftIcon, Gamepad2,
-  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2, Building2, Phone, AtSign, Radio
+  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2, Building2, Phone, AtSign, Radio, Heart
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";

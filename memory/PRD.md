@@ -125,7 +125,29 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**30.04.2026 (3)** — **Refactor deep-dive complete + lazy-load enhancement**: AuctionsPage 1817→787 lines (−57%). 3 iter29 frontend warnings fixed (button-in-button, empty img src, duplicate keys). React.lazy + Suspense + LazyErrorBoundary applied to both Food & Auctions. `LazyErrorBoundary` proven in production (caught an import error and displayed retry UI correctly).
+**30.04.2026 (4)** — **Revolut-Killer-Suite deployed**: P2P mit @handle + BidBlitz Debit-Card Waitlist + Live-Shopping Framework. Backend 37/37 PASS (pytest). Frontend smoke: alle 3 Tiles auf MorePage sichtbar + klickbar. Fixed pre-existing `Heart is not defined` bug in MorePage.
+
+### 30.04.2026 (4) — 3 Super-App-Features
+**Backend (neue Routen)**:
+- `/api/p2p/*` — claim handle (a-z0-9_.- 3-20 chars), lookup, send (1-5000€, rate-lim 10/min), history. Collection `users.handle` (unique sparse index).
+- `/api/card/*` — tiers (virtual_free, physical_standard €9.99, metal_premium €14.99/mo), apply, status, cancel. `is_demo=true` bis BaFin-Issuer live. Collection `card_applications`.
+- `/api/live/*` — create, start, join, leave, end, pin product, react. Viewer-count atomic. Room-key für Video-Provider (Agora/Mux/LiveKit-agnostisch). Collection `live_streams`.
+
+**Frontend (3 neue Pages)**:
+- `P2PPage.jsx` — home/send/receive/history mit handle-claim, lookup-preview, €-amount-input, note, Verlauf
+- `CardPage.jsx` — tier-selection mit Gradient-Karten, Shipping-Form (für physical), Consent-Gate, DEMO-Badge
+- `LivePage.jsx` — grid mit LIVE-badge + viewer-count, watch-view mit floating hearts animation, host-view, create-flow
+
+**MorePage.jsx**: 3 neue Tiles (AtSign/CreditCard/Radio icons).
+
+**Bonus-Fixes**:
+- `Heart is not defined` in MorePage (pre-existing, nie bemerkt weil tile lazy-rendered). Fixed by adding Heart to lucide-react import.
+- ESLint config in package.json: `no-undef: error` + `react/jsx-no-undef: error` gating future extractions.
+
+**Still MOCKED**: Card physical issuance (kein BaFin-Partner), Live-Video-Stream-Transport.
+
+## Stand
+**30.04.2026 (3)** — Refactor deep-dive + lazy-load.
 
 ### 30.04.2026 (3) Changes
 **New extracted components** (`/app/frontend/src/components/auctions/`):
