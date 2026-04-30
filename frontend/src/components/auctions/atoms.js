@@ -1,6 +1,7 @@
 /* Shared atoms & constants for the Auctions module */
 
-export const POLL_MS = 2500;
+export const POLL_MS = 2500;         // AuctionDetail — real-time bid polling (fast)
+export const LIST_POLL_MS = 5000;    // Auctions grid + notifs polling (relaxed)
 
 export const glass = "backdrop-blur-xl";
 export const panelBg = "rgba(8,12,20,0.65)";

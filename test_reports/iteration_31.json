@@ -1,0 +1,67 @@
+{
+  "summary": "Iter31 frontend regression after iter30 hot-fix landed. AuctionDetail.jsx lazy chunk STILL had ONE more missing lucide import (Package) that crashed the whole detail route → naturally triggered LazyErrorBoundary which displayed the retry UI exactly as designed (data-testid='lazy-error-boundary' visible with 'Erneut versuchen' retry button). After hot-fixing the Package import in this iteration, AuctionDetail mounts via Suspense without errors, and ALL food lazy chunks (RestaurantDetailView, CartView, CheckoutView) load end-to-end from a clean restaurant list. atoms.js LIST_POLL_MS=5000 + POLL_MS=2500 is in place. Iter29 button-in-button + empty img src warnings remain ZERO across the full nav flow. HOWEVER duplicate-React-key warnings are NOT fully gone — saw 16 'Encountered two children with the same key' console errors during the /food → restaurant → cart → checkout → /auctions → detail flow. Iter30 reported 0 because that pass only stayed on /auctions list (where they are indeed gone). The dups are emitted from a deeper page (likely RestaurantDetailView menu list, CheckoutView cart-summary, or AuctionDetail bid-history).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AuctionDetail.jsx",
+        "issue": "Lucide icon `Package` was used at line 292 (`{ icon: Package, color: accentGold, label: t('auction.shipping_packaging') }`) but NOT in the lucide-react import block. Caused ReferenceError on every auction-card click → entire detail route blank. LazyErrorBoundary correctly caught it and rendered retry UI. HOT-FIXED in this iteration by adding `Package` to the import list (line 7).",
+        "selector": "/app/frontend/src/components/auctions/AuctionDetail.jsx line 4-8",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Multiple (Food + AuctionDetail flow)",
+        "issue": "16 'Encountered two children with the same key, %s' React errors during cross-page navigation flow. Iter30 had reported 0 but only on the /auctions list. The dups appear after entering deeper pages (RestaurantDetailView menu items / CheckoutView line items / AuctionDetail bid-history are the most likely candidates). React's `%s` placeholder hides the actual key value in Playwright capture — main agent should reproduce locally with React DevTools to identify the exact .map(...) producing duplicates.",
+        "selector": "console.error stream during /food drill-down + /auctions drill-down",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Food active group-order banner",
+        "issue": "Admin still has a 'Group Order BEREIT' banner pinned at the top of /food (with Details + close X). It NO LONGER blocks RestaurantListView (12 cards render correctly), so this is non-blocking, but the iter30 ticket said /api/food/delivered cleared the order — visually the banner is still there. May be a different group-order entity or the cleanup endpoint didn't dismiss the BEREIT-state banner.",
+        "affected_selectors": ["[data-testid='food-active-order-banner']"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "/auctions",
+        "issues": ["10x framer-motion warning: 'You're attempting to animate multiple children within AnimatePresence, but its mode is set to wait'. Pre-existing from iter30. Non-blocking but should be cleaned up — wrap each conditional branch in a single child wrapper or remove mode='wait'."]
+      }
+    ]
+  },
+  "verified_fixed_this_iteration": [
+    "AuctionDetail lazy chunk loads cleanly after Package import added — no ReferenceError, no LazyErrorBoundary trigger on second pass",
+    "LazyErrorBoundary verified working organically: when AuctionDetail crashed pre-fix, the boundary rendered data-testid='lazy-error-boundary' + data-testid='lazy-error-retry-btn' with German message 'Ein Fehler ist aufgetreten' + 'Erneut versuchen' — exactly as designed. No blank screen.",
+    "Food lazy chunks all reachable end-to-end: clicked food-restaurant-rest-463eaf06 → RestaurantDetailView mounted (5 food-add-item-* buttons visible) → added Margherita → food-cart-preview-btn → CartView lazy-rendered (Warenkorb with €14.88 total visible) → checkout-btn → CheckoutView lazy-rendered (Lieferadresse form + €9003.08 wallet balance visible)",
+    "BuyCreditsModal lazy-loads with all 5 testids: credit-pkg-10, credit-pkg-25, credit-pkg-50, credit-pkg-100, credit-pkg-250",
+    "atoms.js exports POLL_MS=2500 and LIST_POLL_MS=5000 (line 3-4)",
+    "Iter29 button-in-button hydration warning: 0 occurrences (confirmed)",
+    "Iter29 empty img src warning: 0 occurrences (confirmed)"
+  ],
+  "still_failing_from_iter29": [
+    "Duplicate React key warnings — 16 occurrences in cross-page flow (iter29 was 10, was claimed FIXED in iter30 but iter30 only tested the /auctions list shallow; deeper drill-down still emits them)"
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "Accept the testing-agent hot-fix in /app/frontend/src/components/auctions/AuctionDetail.jsx (added `Package` to lucide-react imports). This is the third missing-import patch on this file in three iterations — main agent MUST add an ESLint no-undef gate before merging extraction PRs.",
+    "Investigate the remaining duplicate-key warnings (16 occurrences). Hottest suspects: (a) RestaurantDetailView menu item .map — check that menu items have stable unique IDs; (b) CheckoutView cart-summary line items keyed by index when dup items collapse; (c) AuctionDetail bid-history list keyed by bid amount instead of bid_id; (d) AuctionsPage 'Letzte Gewinner' / 'Live-Auktionen' lists.",
+    "Confirm whether /api/food/delivered should also dismiss the BEREIT group-order banner for admin, or whether that banner is a separate Group-Order entity unrelated to the cleared 'active food order'.",
+    "Optional cleanup: 10x AnimatePresence mode='wait' warnings on /auctions — wrap conditional children in a single fragment or drop mode='wait' on the lists."
+  ],
+  "critical_code_review_comments": [
+    "HIGH: Three iterations in a row (iter30, iter31) testing agents have hot-fixed missing lucide-react / atoms imports in AuctionDetail.jsx. This file was extracted from AuctionsPage.jsx but the import-discovery was incomplete each time. Add a CI step: `eslint --rule no-undef:error /app/frontend/src/components/auctions/*.jsx /app/frontend/src/components/food/*.jsx` to fail PRs at build time, not at runtime inside a lazy chunk.",
+    "MEDIUM: LazyErrorBoundary works as designed — confirmed it rescued the user from a blank screen when AuctionDetail crashed. Recommend documenting it in /app/README.md as the standard wrapper for any new React.lazy() route.",
+    "LOW: Duplicate React key warnings have masked themselves through three iterations because the testing agents kept measuring on different pages. Reproduce by walking the FULL nav flow (food drill-down + auction drill-down) before declaring fixed."
+  ],
+  "updated_files": [
+    "/app/frontend/src/components/auctions/AuctionDetail.jsx (added Package to lucide-react import to fix runtime ReferenceError on detail route)"
+  ],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "~92% — All 6 lazy chunks (AuctionDetail + BuyCreditsModal + RestaurantDetailView + CartView + CheckoutView + ExtrasModal indirectly) verified loadable end-to-end after Package hot-fix; LazyErrorBoundary verified working; LIST_POLL_MS verified. Two carry-over warnings remain: duplicate-key (medium) and AnimatePresence (low)."},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (working, has BEREIT group-order banner but does NOT block restaurant list render)",
+  "seed_data_creation": "None.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Three checkpoints: (1) After Package import patch applied this iter, AuctionDetail no longer crashes. Test by clicking any /auctions card and confirming no LazyErrorBoundary trigger. (2) Food drill-down flow works: /food → click food-restaurant-{id} → click food-add-item-{id} → click food-cart-preview-btn → CartView renders with totals → click checkout button → CheckoutView renders Lieferadresse form. Note: testid `cart-view` and `checkout-view` returned False but the views ARE rendering visually — main agent should add explicit data-testid='cart-view' / 'checkout-view' to those wrappers for cleaner regression testing. (3) Duplicate-key warnings still appear after deep drill-down — main agent must reproduce in dev mode to read the actual key value (Playwright sees only the React format-string '%s').",
+  "rca_of_the_issue": "The Package icon (lucide-react) is referenced on line 292 of /app/frontend/src/components/auctions/AuctionDetail.jsx but was missing from the import block on lines 4-8. Iter30 had patched four other missing icons (Gavel, Clock, TrendingUp, Wallet) but missed Package. Symptom: every click on an auction card emitted `ReferenceError: Package is not defined` → React unwound to the LazyErrorBoundary which rendered the retry UI (so the user wasn't stranded — boundary works). Mitigation applied in this iter: appended `Package` to the lucide-react named-import list. Long-term: enable eslint no-undef in CI for all extracted lazy components."
+}

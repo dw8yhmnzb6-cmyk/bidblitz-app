@@ -6,6 +6,7 @@ import ReviewModal from '../components/ReviewModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import GroupOrderModal from '../components/GroupOrderModal';
 import GroupTrackerBanner from '../components/GroupTrackerBanner';
+import LazyErrorBoundary from '../components/LazyErrorBoundary';
 
 // Eager: first paint (restaurant list always needed on entry)
 import RestaurantListView from '../components/food/RestaurantListView';
@@ -405,8 +406,9 @@ export default function FoodPage({ onNavigate }) {
             />
           )}
 
-          <Suspense fallback={<LazyFallback />}>
-            {view === 'restaurant' && selectedRestaurant && (
+          <LazyErrorBoundary onReset={() => setView('restaurants')}>
+            <Suspense fallback={<LazyFallback />}>
+              {view === 'restaurant' && selectedRestaurant && (
               <RestaurantDetailView
                 restaurant={selectedRestaurant}
                 menuCat={menuCat}
@@ -480,20 +482,23 @@ export default function FoodPage({ onNavigate }) {
             />
           )}
           </Suspense>
+          </LazyErrorBoundary>
         </AnimatePresence>
       </div>
 
-      <Suspense fallback={null}>
-        <MenuItemExtrasModal
-          item={extrasModal}
-          selectedSize={selectedSize}
-          selectedExtras={selectedExtras}
-          onSelectSize={setSelectedSize}
-          onToggleExtra={toggleExtra}
-          onConfirm={confirmExtras}
-          onClose={() => setExtrasModal(null)}
-        />
-      </Suspense>
+      <LazyErrorBoundary onReset={() => setExtrasModal(null)}>
+        <Suspense fallback={null}>
+          <MenuItemExtrasModal
+            item={extrasModal}
+            selectedSize={selectedSize}
+            selectedExtras={selectedExtras}
+            onSelectSize={setSelectedSize}
+            onToggleExtra={toggleExtra}
+            onConfirm={confirmExtras}
+            onClose={() => setExtrasModal(null)}
+          />
+        </Suspense>
+      </LazyErrorBoundary>
 
       <AnimatePresence>
         {showAdvFilters && (

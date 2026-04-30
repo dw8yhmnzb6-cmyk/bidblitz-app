@@ -11,10 +11,11 @@ import {
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
 import GuestCTABar from "../components/GuestCTABar";
+import LazyErrorBoundary from "../components/LazyErrorBoundary";
 import ReferralPanel from "../components/auctions/ReferralPanel";
 import Countdown from "../components/auctions/Countdown";
 import AuctionGridCard from "../components/auctions/AuctionGridCard";
-import { POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGold, accentGreen, accentRed, accentPurple, localized } from "../components/auctions/atoms";
+import { POLL_MS, LIST_POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGold, accentGreen, accentRed, accentPurple, localized } from "../components/auctions/atoms";
 
 // Lazy: only when user opens detail / credit-buy flow (saves ~50KB initial bundle)
 const AuctionDetail = lazy(() => import("../components/auctions/AuctionDetail"));
@@ -487,7 +488,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
 
   useEffect(() => {
     Promise.all([fetchAuctions(), fetchCredits(), fetchWatchlist()]).then(() => setLoading(false));
-    pollRef.current = setInterval(() => { fetchAuctions(); fetchNotifs(); }, 5000);
+    pollRef.current = setInterval(() => { fetchAuctions(); fetchNotifs(); }, LIST_POLL_MS);
     return () => clearInterval(pollRef.current);
   }, [fetchAuctions, fetchCredits, fetchWatchlist, fetchNotifs]);
 
@@ -526,9 +527,11 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   };
 
   if (selected) return (
-    <Suspense fallback={<AuctionLazyFallback />}>
-      <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} onBuyCredits={() => setShowCredits(true)} />
-    </Suspense>
+    <LazyErrorBoundary onReset={() => setSelected(null)}>
+      <Suspense fallback={<AuctionLazyFallback />}>
+        <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} onBuyCredits={() => setShowCredits(true)} />
+      </Suspense>
+    </LazyErrorBoundary>
   );
 
   // Apply search + category + sort
@@ -772,9 +775,11 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       </div>
 
       {!isGuest && <LowCreditsPopup credits={credits} onBuy={() => setShowCredits(true)} t={t} />}
-      <Suspense fallback={null}>
-        <BuyCreditsModal open={showCredits} onClose={() => setShowCredits(false)} onPurchased={r => setCredits(r.total_credits)} balance={isGuest ? 0 : (user?.balance || 0)} />
-      </Suspense>    </motion.div>
+      <LazyErrorBoundary onReset={() => setShowCredits(false)}>
+        <Suspense fallback={null}>
+          <BuyCreditsModal open={showCredits} onClose={() => setShowCredits(false)} onPurchased={r => setCredits(r.total_credits)} balance={isGuest ? 0 : (user?.balance || 0)} />
+        </Suspense>
+      </LazyErrorBoundary>    </motion.div>
   );
 };
 

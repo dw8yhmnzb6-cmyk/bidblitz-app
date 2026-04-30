@@ -4,7 +4,7 @@ import {
   ArrowLeft, Zap, ChevronRight, Coins, Loader2, X, User,
   Trophy, ShieldCheck, Timer, Truck, Globe, Check, Shield,
   Flame, Gift, Bot, AlertTriangle, Users, Sparkles, Eye, Gavel,
-  Clock, TrendingUp, Wallet,
+  Clock, TrendingUp, Wallet, Package,
 } from "lucide-react";
 import { useUser, useI18n } from "../../store";
 import { api } from "../../services/api";
