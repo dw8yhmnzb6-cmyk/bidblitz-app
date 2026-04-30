@@ -384,11 +384,12 @@ export default function FoodPage({ onNavigate }) {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
-        <AnimatePresence mode="wait">
-          <GroupTrackerBanner serviceType="food" onOpenGroup={() => setShowGroupOrder(true)} />
+        <GroupTrackerBanner serviceType="food" onOpenGroup={() => setShowGroupOrder(true)} />
 
+        <AnimatePresence mode="wait">
           {view === 'restaurants' && (
             <RestaurantListView
+              key="restaurants"
               loading={loading}
               restaurants={restaurants}
               searchQuery={searchQuery}
@@ -406,13 +407,14 @@ export default function FoodPage({ onNavigate }) {
             />
           )}
 
-          <LazyErrorBoundary onReset={() => setView('restaurants')}>
-            <Suspense fallback={<LazyFallback />}>
-              {view === 'restaurant' && selectedRestaurant && (
-              <RestaurantDetailView
-                restaurant={selectedRestaurant}
-                menuCat={menuCat}
-                stamps={stamps}
+          {view !== 'restaurants' && (
+            <LazyErrorBoundary key={`lazy-${view}`} onReset={() => setView('restaurants')}>
+              <Suspense fallback={<LazyFallback />}>
+                {view === 'restaurant' && selectedRestaurant && (
+                <RestaurantDetailView
+                  restaurant={selectedRestaurant}
+                  menuCat={menuCat}
+                  stamps={stamps}
                 cart={cart}
                 cartTotal={cartTotal}
                 onSetMenuCat={setMenuCat}
@@ -483,6 +485,7 @@ export default function FoodPage({ onNavigate }) {
           )}
           </Suspense>
           </LazyErrorBoundary>
+          )}
         </AnimatePresence>
       </div>
 
