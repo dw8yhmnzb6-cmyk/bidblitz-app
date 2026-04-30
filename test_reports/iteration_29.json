@@ -1,0 +1,67 @@
+{
+  "summary": "Iter29 regression after cheap-architecture pivot (Firebase FCM / Twilio SMS / Google Maps Live Tracking stripped) and modular refactor of FoodPage (1319->515 lines + 7 extracted components) and AuctionsPage (1817->1388 lines + BuyCreditsModal + ReferralPanel + atoms.js). Backend: 15/15 pytest tests pass (100%). Removed /api/fcm/* and /api/sms/* correctly return 404. /api/push/vapid-public-key still works. New /api/payments/create-payment-intent is correctly hardened: 401 unauth, 200+client_secret on valid JWT+amount=10, 422 on amount>500 (pydantic le=500), 400 on 0<amount<1 (custom MIN check), 422 on amount=0 (pydantic gt=0). Frontend: admin login works, AuctionsPage renders fully with LIVE auctions list, daily reward, ReferralPanel loads referral_code 'BB-TO4DRM' from /api/auctions/user/referral, leaderboard renders. FoodPage renders (testids food-page, food-cart-icon, group-tracker-banner present) — for admin user the OrderTrackingView was active because a Group Order from Luigi's Pizzeria was in flight (expected behavior, tracker progress bar visible, 'Lieferung bestätigen' button rendered). Two React warnings on auctions page: (1) duplicate children keys and (2) a button-nested-inside-button hydration error in AuctionsPage Suspense tree.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AuctionsPage", "issue": "Hydration error: '<button> cannot be a descendant of <button>'. React logs the AuctionsPage stack trace. Causes client/server DOM mismatch and invalid HTML; likely in the auction card / action row after the BuyCreditsModal / ReferralPanel extraction.", "selector": "AuctionsPage (Suspense fallback -> AuctionsPage)", "priority": "HIGH"},
+      {"component": "AuctionsPage", "issue": "Multiple 'Encountered two children with the same key' warnings — duplicate React keys in a list render (most likely the auction list, recent winners ticker, or category chips).", "selector": "auction list items", "priority": "MEDIUM"},
+      {"component": "AuctionsPage/FoodPage images", "issue": "An empty string ('') passed to <img src>. Browser re-downloads the page as the src. Guard with `src={url || undefined}` or conditional render.", "selector": "<img src=''>", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_working": {
+    "backend": [
+      "POST /api/auth/login — admin + kunde both 200, cookie session",
+      "GET /api/auth/ws-token — 300s JWT with type=access (used to drive payment-intent tests)",
+      "POST /api/fcm/subscribe -> 404 (router removed)",
+      "POST /api/sms/send     -> 404 (router removed)",
+      "GET  /api/push/vapid-public-key -> 200 with public_key (VAPID kept)",
+      "GET  /api/food/restaurants -> 200, list",
+      "GET  /api/food/categories  -> 200",
+      "GET  /api/auctions -> 200, list",
+      "GET  /api/auctions/user/referral (authed) -> 200 {referral_code, referral_count, bonus_per_referral}",
+      "GET  /api/auctions/referral-leaderboard -> 200",
+      "POST /api/payments/create-payment-intent unauth -> 401",
+      "POST /api/payments/create-payment-intent authed+amount=10 -> 200 {client_secret, payment_intent_id}",
+      "POST /api/payments/create-payment-intent amount=600 -> 422 (pydantic le=500)",
+      "POST /api/payments/create-payment-intent amount=0.5 -> 400 (custom MIN_AMOUNT_EUR=1)",
+      "POST /api/payments/create-payment-intent amount=0 -> 422 (pydantic gt=0)"
+    ],
+    "frontend": [
+      "Login form (data-testid=login-email-input / login-password-input) works with admin@bidblitz.com",
+      "AuctionsPage renders: daily reward, ReferralPanel with loaded referral_code (BB-TO4DRM), recent winners ticker, category chips, LIVE-AUKTIONEN list with price/bids/timer — network call /api/auctions/user/referral succeeded",
+      "FoodPage renders (data-testid food-page + group-tracker-banner + food-cart-icon) — for admin user an in-flight Group Order from Luigi's Pizzeria triggers OrderTrackingView; progress bar, ETA 00:47 and delivery confirmation button all render"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter29_regression.py",
+    "/app/test_reports/pytest/iter29.xml"
+  ],
+  "action_items": [
+    "Fix button-nested-in-button hydration error in AuctionsPage (inspect the auction card action area / BuyCreditsModal trigger — likely an <motion.button> rendered inside another <button> after the extraction).",
+    "Deduplicate React keys in AuctionsPage list renders (auctions list / categories / winners).",
+    "Guard <img> tags so src is never an empty string; use conditional render or src={url || undefined}.",
+    "Optional regression coverage: add a backend test that simulates a full Food checkout (already covered elsewhere) to ensure the orchestrator/extracted components keep posting to the same endpoints."
+  ],
+  "critical_code_review_comments": [
+    "/api/payments/create-payment-intent hardening is correct: JWT via core.security.get_current_user (cookie OR Bearer), rate limit 10/min, server-defined MIN/MAX (1€..500€), metadata carries user_id for the webhook. Good separation.",
+    "apple_google_pay.webhook/stripe-payment is idempotent (checks db.transactions.find_one({reference: pi_id})) and fails-closed when STRIPE_PI_WEBHOOK_SECRET missing — safe default.",
+    "server.py no longer mounts push_router/sms_router (FCM/SMS intentionally 404). web_push_router (VAPID) remains mounted — confirmed via /api/push/vapid-public-key 200.",
+    "FoodPage.jsx is now a thin orchestrator importing the 7 new modules from /components/food/*. Imports resolve and page renders, so the refactor did not break the route.",
+    "AuctionsPage.jsx still has a DOM invariant violation (button inside button) and duplicate-key warnings; not introduced by this test run but visible in console logs after the extraction. Treat as follow-up in the same refactor."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter29_regression.py (new — pytest class-based, 15 tests covering auth + removed FCM/SMS + kept VAPID + food/auctions list + referral + payment-intent hardening)"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "~90% (core routes render; two React DOM warnings on auctions)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! and kunde@bidblitz.com / Kunde2026! (cookie session via /api/auth/login; Bearer JWT via /api/auth/ws-token)",
+  "seed_data_creation": "No new seed. Admin account already has an active Group Order from Luigi's Pizzeria which drove the OrderTrackingView rendering path.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file is /app/backend/tests/test_iter29_regression.py — reuse it. Login on this deployment is cookie-based; for Bearer-token tests, call GET /api/auth/ws-token after login to mint a 300s access-type JWT that get_current_user accepts. Correct referral endpoint is /api/auctions/user/referral (NOT /api/auctions/referral — that 404s via the /{auction_id} catch-all). The main frontend bugs left are the hydration error (button-in-button) and duplicate-key warnings on AuctionsPage.",
+  "rca of the issue": "N/A — regression scope clean. The only functional concerns are React-level DOM invariant violations on AuctionsPage (invalid nested <button>, duplicate keys, empty img src). Likely root cause: after extracting BuyCreditsModal/ReferralPanel, a trigger using <motion.button>/<button> got wrapped inside an outer <button> or <a role=button>. Fix by swapping the outer container to a <div role='button'> or making the inner trigger a <span>."
+}
