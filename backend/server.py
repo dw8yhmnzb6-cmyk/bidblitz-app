@@ -669,8 +669,10 @@ app.include_router(loyalty_router)
 
 from routes.reviews import router as reviews_router
 from routes.apple_google_pay import router as apple_google_pay_router
+from routes.push import router as push_router
 app.include_router(reviews_router)
 app.include_router(apple_google_pay_router)
+app.include_router(push_router)
 
 from routes.scheduled import router as scheduled_router
 app.include_router(scheduled_router)

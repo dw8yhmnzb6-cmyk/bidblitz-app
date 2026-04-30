@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from "./store/ThemeContext";
 import AIChatWidget from "./components/AIChatWidget";
 import SuperAppOverlay from "./components/SuperAppOverlay";
 import InAppUpdateManager from "./components/InAppUpdateManager";
+import PushNotificationPrompt from "./components/PushNotificationPrompt";
 
 import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
@@ -926,7 +927,10 @@ function AppContent() {
       />
       {/* In-App Update Manager (Native Android/iOS) */}
       <InAppUpdateManager />
-    </div>
+      
+      {/* Push Notification Prompt */}
+      {user.isAuthenticated && <PushNotificationPrompt />}
+    </AppProvider>
   );
 }
 
