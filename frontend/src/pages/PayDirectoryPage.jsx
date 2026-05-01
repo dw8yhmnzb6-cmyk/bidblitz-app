@@ -20,16 +20,20 @@ const IND = {
 export default function PayDirectoryPage({ onBack, onNavigate }) {
   const [merchants, setMerchants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
+    setLoading(true); setLoadError("");
     fetch(`${API}/api/pay/directory`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => { if (alive) setMerchants(d.merchants || []); })
-      .catch(() => { /* noop */ })
+      .catch(e => { if (alive) setLoadError(e.message || "Netzwerkfehler"); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, []);
@@ -108,6 +112,13 @@ export default function PayDirectoryPage({ onBack, onNavigate }) {
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 size={28} className="animate-spin text-[#00E89D]" />
+          </div>
+        ) : loadError ? (
+          <div className="rounded-2xl p-6 text-center max-w-md mx-auto"
+            style={{ background: "rgba(255,71,87,0.05)", border: "1px solid rgba(255,71,87,0.2)" }}
+            data-testid="dir-error">
+            <p className="text-sm text-red-400 mb-1">Konnte Marketplace nicht laden</p>
+            <p className="text-[11px] text-white/40">{loadError}</p>
           </div>
         ) : merchants.length === 0 ? (
           <EmptyState onRegister={onNavigate ? () => onNavigate("/merchant-landing") : null} />
@@ -189,7 +200,7 @@ const MerchantCard = ({ m, idx, featured }) => {
       }}
       data-testid={`dir-merchant-${m.email.split('@')[0]}`}>
       {featured && (
-        <div className="absolute top-3 right-3 flex items-center gap-1 px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,184,0,0.15)" }}>
+        <div className="absolute top-3 right-3 flex items-center gap-1 px-1.5 py-0.5 rounded-full z-10" style={{ background: "rgba(255,184,0,0.15)" }}>
           <Crown size={8} className="text-[#FFB800]" />
           <span className="text-[8px] font-bold text-[#FFB800] uppercase tracking-wider">Top</span>
         </div>
@@ -204,7 +215,7 @@ const MerchantCard = ({ m, idx, featured }) => {
             {(m.business_name || "?").slice(0, 2).toUpperCase()}
           </div>
         )}
-        <div className="flex-1 min-w-0">
+        <div className={`flex-1 min-w-0 ${featured ? "pr-12" : ""}`}>
           <p className="text-[13px] font-bold text-white/90 truncate">{m.business_name}</p>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"

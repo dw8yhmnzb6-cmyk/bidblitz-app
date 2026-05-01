@@ -125,7 +125,42 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**01.05.2026 (5)** — Testimonials-System (Backend CRUD + Public + Admin + Production Deploy).
+**01.05.2026 (6)** — **BidBlitz Pay SDK + Marketplace** komplett.
+
+### Pay SDK (Iter 39 — 13/13 PASS)
+**Backend** `pay_sdk.py` (230+ LOC):
+- Admin: `POST /api/pay/admin/keys/create|keys|keys/{id}/revoke`
+- Merchant Self-Service: `POST /api/pay/my-keys/create` (max 5 aktive), `POST /api/pay/my-keys/{id}/revoke`
+- Session: `POST /session` (validiert pk_live_*), `confirm` (Wallet-Debit+Credit+30min-Expiry+HMAC-Webhook), `cancel`, `GET /session/{id}`, `GET /my-sessions`
+- SDK: Static `/api/pay.js` (auto-baseUrl-detect, iframe-overlay, polling)
+
+**Frontend**:
+- `/pay/checkout/{session_id}` — Stripe-style Checkout-Page mit Login-Flow + Wallet-Preview
+- Admin-Tab "Pay-SDK" in `/admin/old` mit Key-CRUD + One-Time-Secret-Display + Integration-Snippet
+- BottomNav/AI/Overlay auf `/pay/checkout/*` ausgeblendet
+
+### Pay Marketplace (Iter 40 — Backend 12/12 + Frontend 8/8 PASS)
+**Backend**:
+- `GET /api/pay/directory[?industry=]` — Aggregiert Händler (nur mit total_paid>0), Featured-first-sort, User-Profile-Enrichment
+- `POST /api/pay/admin/feature/{email}` — Admin togglet `pay_featured` auf User-Doc
+
+**Frontend**:
+- `/app/frontend/src/pages/PayDirectoryPage.jsx` (300 LOC) — Suche + 6 Industrie-Filter + Featured-Section mit Crown + Regular-Grid + Error-State + Empty-State + CTA-Footer
+- Routes: `/pay/directory` und `/marketplace`
+- MerchantLandingPage Section 6.7 "Werde Teil des Marketplace" mit CTA (landing-marketplace-cta)
+- BottomNav auf Directory ausgeblendet
+- Fix: Featured-Crown-Badge-Overlap mit pr-12 behoben
+
+**Pytest-Suites erstellt**: `/app/backend/tests/test_pay_sdk.py` + `test_pay_directory.py`.
+
+### Integration in 3 Zeilen (für Händler-Websites)
+```html
+<script src="https://bidblitz.ae/api/pay.js"></script>
+<div id="pay"></div>
+<script>BidBlitzPay.mount("#pay",{publicKey:"pk_live_xxx",amount:29.90,orderId:"123",successUrl:"/ok"});</script>
+```
+
+## Stand
 
 ### 01.05.2026 (5) Changes
 **Backend** (`/app/backend/routes/testimonials.py` NEW, 164 LOC):

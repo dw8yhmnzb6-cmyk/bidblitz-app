@@ -886,7 +886,7 @@ function AppContent() {
   };
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
-  const showBottomNav = !isCheckout && currentPath !== "/merchant-landing" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
+  const showBottomNav = !isCheckout && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
     <div className="app-container" data-testid="app-container">
