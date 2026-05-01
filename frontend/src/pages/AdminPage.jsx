@@ -287,6 +287,7 @@ const tabs = [
   { id: "promos", key: "admin.promos", icon: Gift },
   { id: "settings", key: "admin.config", icon: Settings },
   { id: "merchant-fees", key: "admin.merchant_fees", icon: CircleDollarSign },
+  { id: "pay-requests", key: "Pay Anträge", icon: Shield },
   { id: "auctions", key: "admin.auctions_tab", icon: Gavel },
   { id: "loyalty", key: "admin.loyalty", icon: Trophy },
   { id: "scooters", key: "Scooter-Flotte", icon: Zap },

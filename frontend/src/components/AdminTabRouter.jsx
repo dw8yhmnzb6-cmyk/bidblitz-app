@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Store, CreditCard, Search, Loader2, Check, X,
@@ -874,6 +874,10 @@ const PayRequestsTab = ({ t }) => {
   const [loading, setLoading] = useState(true);
   const [deciding, setDeciding] = useState(null);
 
+  useEffect(() => {
+    loadApps();
+  }, [filter]);
+
   const loadApps = async (status = filter) => {
     setLoading(true);
     try {
@@ -882,8 +886,6 @@ const PayRequestsTab = ({ t }) => {
     } catch (e) { console.error(e); }
     setLoading(false);
   };
-
-  useState(() => { loadApps(); }, [filter]);
 
   const decide = async (appId, decision, reason = "") => {
     setDeciding(appId);
