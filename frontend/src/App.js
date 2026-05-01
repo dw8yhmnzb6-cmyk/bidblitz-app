@@ -881,7 +881,8 @@ function AppContent() {
     }
   };
 
-  const showBottomNav = currentPath !== "/merchant-landing" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
+  const isCheckout = currentPath.startsWith("/pay/checkout/");
+  const showBottomNav = !isCheckout && currentPath !== "/merchant-landing" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -940,14 +941,16 @@ function AppContent() {
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && <AIChatWidget />}
+      {user.isAuthenticated && !isCheckout && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
-      <SuperAppOverlay
-        currentPath={currentPath}
-        onNavigate={handleNavigate}
-        isAuthenticated={user.isAuthenticated}
-        activeRideId={navState?.activeRideId}
-      />
+      {!isCheckout && (
+        <SuperAppOverlay
+          currentPath={currentPath}
+          onNavigate={handleNavigate}
+          isAuthenticated={user.isAuthenticated}
+          activeRideId={navState?.activeRideId}
+        />
+      )}
       {/* In-App Update Manager (Native Android/iOS) */}
       <InAppUpdateManager />
       

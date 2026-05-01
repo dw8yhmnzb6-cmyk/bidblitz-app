@@ -10,7 +10,7 @@ import {
   // Grid Menu Icons
   Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
   UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode,
-  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package
+  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ const AdminAuctionsTab = lazy(() => import("../components/admin/AdminAuctionsTab
 const AdminScootersTab = lazy(() => import("../components/admin/AdminScootersTab"));
 const AdminGutscheineTab = lazy(() => import("../components/admin/AdminGutscheineTab"));
 const AdminTestimonialsTab = lazy(() => import("../components/admin/AdminTestimonialsTab"));
+const AdminPaySdkTab = lazy(() => import("../components/admin/AdminPaySdkTab"));
 
 const LazyFallback = () => (
   <div className="flex items-center justify-center py-20">
@@ -291,6 +292,7 @@ const tabs = [
   { id: "credits", key: "Kreditanträge", icon: CreditCard },
   { id: "gutscheine", key: "Gutscheine", icon: Ticket },
   { id: "testimonials", key: "Testimonials", icon: Star },
+  { id: "pay_sdk", key: "Pay-SDK", icon: Code },
 ];
 
 export const AdminPage = ({ onNavigate, defaultTab }) => {
@@ -671,6 +673,15 @@ export const AdminPage = ({ onNavigate, defaultTab }) => {
             <LazyErrorBoundary>
               <Suspense fallback={<LazyFallback />}>
                 <AdminTestimonialsTab />
+              </Suspense>
+            </LazyErrorBoundary>
+          )}
+
+          {/* BidBlitz Pay SDK — Merchant API Keys */}
+          {tab === "pay_sdk" && (
+            <LazyErrorBoundary>
+              <Suspense fallback={<LazyFallback />}>
+                <AdminPaySdkTab />
               </Suspense>
             </LazyErrorBoundary>
           )}

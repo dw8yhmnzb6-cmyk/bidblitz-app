@@ -187,6 +187,13 @@ async def confirm_session(session_id: str, request: Request):
     if s["status"] != "pending":
         raise HTTPException(400, f"Session bereits {s['status']}")
 
+    # Session expiry check (30 min)
+    created = datetime.fromisoformat(s["created_at"].replace("Z", "+00:00"))
+    age_s = (datetime.now(timezone.utc) - created).total_seconds()
+    if age_s > 1800:
+        await db.pay_sessions.update_one({"session_id": session_id}, {"$set": {"status": "expired"}})
+        raise HTTPException(400, "Session abgelaufen")
+
     balance = float(user.get("balance", 0))
     if balance < s["amount"]:
         raise HTTPException(400, f"Unzureichendes Guthaben. Benötigt: €{s['amount']:.2f}, vorhanden: €{balance:.2f}")
