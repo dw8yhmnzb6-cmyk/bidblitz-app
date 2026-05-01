@@ -472,6 +472,18 @@ from routes.telemedizin import router as telemedizin_router
 app.include_router(telemedizin_router)
 from routes.testimonials import router as testimonials_router
 app.include_router(testimonials_router)
+from routes.pay_sdk import router as pay_sdk_router
+app.include_router(pay_sdk_router)
+
+# Serve pay.js SDK publicly at /pay.js (and /api/pay.js for ingress-prefix access)
+from pathlib import Path as _PayPath
+_PAY_JS = _PayPath(__file__).parent / "static" / "pay.js"
+from fastapi.responses import FileResponse as _PayFR
+
+@app.get("/pay.js", include_in_schema=False)
+@app.get("/api/pay.js", include_in_schema=False)
+async def _serve_pay_js():
+    return _PayFR(_PAY_JS, media_type="application/javascript", headers={"Cache-Control": "public, max-age=300"})
 
 from routes.dating import router as dating_router
 app.include_router(dating_router)
