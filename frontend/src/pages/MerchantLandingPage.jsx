@@ -521,6 +521,32 @@ const MerchantLandingPage = ({ onNavigate }) => {
       </Section>
 
       {/* ══════════════════════════════════════ */}
+      {/* 6.7 MARKETPLACE LINK (Pay by BidBlitz Directory) */}
+      {/* ══════════════════════════════════════ */}
+      <Section className="py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg, rgba(0,224,255,0.04), rgba(0,232,157,0.04))", border: "1px solid rgba(0,232,157,0.2)" }}>
+            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full" style={{ background: "#00E89D", filter: "blur(60px)", opacity: 0.15 }} />
+            <div className="relative grid sm:grid-cols-[1fr,auto] gap-5 items-center">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-[#00E89D]/70 mb-2">Pay by BidBlitz</p>
+                <h3 className="text-xl sm:text-2xl font-black text-white/95 mb-2">Werde Teil des Marketplace</h3>
+                <p className="text-[13px] text-white/50 max-w-md">
+                  Jeder Händler mit aktivem BidBlitz Pay erscheint auf unserem öffentlichen Directory — kostenlose Sichtbarkeit, organischer Traffic, Top-Umsätze bekommen "Featured"-Badge.
+                </p>
+              </div>
+              <motion.button onClick={() => onNavigate && onNavigate("/pay/directory")} whileTap={{ scale: 0.96 }}
+                className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#00E0FF] to-[#00E89D] text-[#020408] font-black text-[12px] shrink-0"
+                data-testid="landing-marketplace-cta">
+                Marketplace ansehen →
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* ══════════════════════════════════════ */}
       {/* 7. TRUST SECTION */}
       {/* ══════════════════════════════════════ */}
       <Section className="py-16 sm:py-20" style={{ background: "rgba(0,224,255,0.01)" }}>

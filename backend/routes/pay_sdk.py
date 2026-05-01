@@ -273,6 +273,55 @@ async def cancel_session(session_id: str, request: Request):
 
 
 # ─── MERCHANT: Own keys + sessions ───────────────────────────────────────────
+@router.post("/my-keys/create")
+async def merchant_create_key(payload: dict, request: Request):
+    """Merchant self-service key creation. Max 5 active keys per merchant."""
+    user = await get_current_user(request)
+    email = user.get("email", "")
+    if user.get("role") not in ("merchant", "admin"):
+        raise HTTPException(403, "Nur Händler-Konten können Keys erstellen")
+    active = await db.pay_merchant_keys.count_documents({"merchant_email": email, "revoked": False})
+    if active >= 5:
+        raise HTTPException(429, "Max. 5 aktive Keys pro Händler erreicht. Widerrufe einen, um neuen zu erstellen.")
+    label = (payload or {}).get("label", "Default")[:50] or "Default"
+    pk = _make_pk()
+    sk = _make_sk()
+    doc = {
+        "key_id": secrets.token_hex(8),
+        "merchant_email": email,
+        "merchant_name": user.get("business_name") or user.get("name", ""),
+        "public_key": pk,
+        "secret_key": sk,
+        "label": label,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": str(user.get("_id", "")),
+        "revoked": False,
+        "revoked_at": None,
+        "total_sessions": 0,
+        "total_paid": 0.0,
+    }
+    await db.pay_merchant_keys.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "keys": doc, "note": "Secret-Key wird nur hier einmal angezeigt — sichere ihn sofort ab!"}
+
+
+@router.post("/my-keys/{key_id}/revoke")
+async def merchant_revoke_key(key_id: str, request: Request):
+    user = await get_current_user(request)
+    k = await db.pay_merchant_keys.find_one({"key_id": key_id})
+    if not k:
+        raise HTTPException(404, "Key nicht gefunden")
+    if k["merchant_email"] != user.get("email"):
+        raise HTTPException(403, "Nicht dein Key")
+    if k.get("revoked"):
+        raise HTTPException(400, "Key bereits widerrufen")
+    await db.pay_merchant_keys.update_one(
+        {"key_id": key_id},
+        {"$set": {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"ok": True}
+
+
 @router.get("/my-keys")
 async def my_keys(request: Request):
     user = await get_current_user(request)
@@ -301,3 +350,73 @@ async def my_sessions(request: Request, limit: int = 50):
             "pending_count": sum(1 for i in items if i["status"] == "pending"),
         },
     }
+
+
+# ─── PUBLIC "Pay by BidBlitz" MARKETPLACE DIRECTORY ──────────────────────────
+@router.get("/directory")
+async def public_directory(industry: Optional[str] = None, limit: int = 60):
+    """Public list of merchants accepting BidBlitz Pay. Sorted by total_paid DESC.
+    Featured merchants (admin-toggled) come first."""
+    # Aggregate across merchant keys: one entry per merchant_email (sum totals)
+    pipeline = [
+        {"$match": {"revoked": False}},
+        {"$group": {
+            "_id": "$merchant_email",
+            "merchant_name": {"$last": "$merchant_name"},
+            "total_sessions": {"$sum": "$total_sessions"},
+            "total_paid": {"$sum": "$total_paid"},
+            "first_created": {"$min": "$created_at"},
+        }},
+        {"$match": {"total_paid": {"$gt": 0}}},  # only merchants with paid sessions
+        {"$sort": {"total_paid": -1}},
+        {"$limit": limit},
+    ]
+    agg = await db.pay_merchant_keys.aggregate(pipeline).to_list(limit)
+
+    # Enrich with user profile (industry + website + logo)
+    emails = [a["_id"] for a in agg]
+    users_map = {}
+    if emails:
+        async for u in db.users.find(
+            {"email": {"$in": emails}},
+            {"_id": 0, "email": 1, "industry": 1, "business_name": 1, "logo_url": 1, "website": 1, "shop_url": 1, "description": 1, "city": 1, "pay_featured": 1},
+        ):
+            users_map[u["email"]] = u
+
+    out = []
+    for a in agg:
+        u = users_map.get(a["_id"], {})
+        ind = u.get("industry") or "retail"
+        if industry and ind != industry:
+            continue
+        shop_url = u.get("shop_url") or u.get("website") or ""
+        out.append({
+            "email": a["_id"],
+            "business_name": u.get("business_name") or a.get("merchant_name") or a["_id"].split("@")[0],
+            "industry": ind,
+            "logo_url": u.get("logo_url") or "",
+            "shop_url": shop_url,
+            "description": u.get("description") or "",
+            "city": u.get("city") or "",
+            "featured": bool(u.get("pay_featured", False)),
+            "total_sessions": a["total_sessions"],
+            "total_paid": round(float(a["total_paid"]), 2),
+            "since": (a.get("first_created") or "")[:10],
+        })
+    # Featured first, then by total_paid
+    out.sort(key=lambda m: (not m["featured"], -m["total_paid"]))
+    return {"merchants": out, "count": len(out)}
+
+
+@router.post("/admin/feature/{email}")
+async def admin_toggle_featured(email: str, request: Request):
+    """Admin toggles merchant's 'pay_featured' flag on the user doc."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Nur Admins")
+    u = await db.users.find_one({"email": email})
+    if not u:
+        raise HTTPException(404, "Händler nicht gefunden")
+    new_val = not bool(u.get("pay_featured", False))
+    await db.users.update_one({"email": email}, {"$set": {"pay_featured": new_val}})
+    return {"ok": True, "featured": new_val}

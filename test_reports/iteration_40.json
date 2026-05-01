@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 40 — Pay by BidBlitz Marketplace (directory + admin feature toggle + self-service my-keys) fully tested. Backend 12/12 pytest PASS, frontend 8/8 UI scenarios PASS on mobile viewport.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/pay/directory", "issues": ["BottomNav (START/WALLET/QR/ENTDECKEN/MEHR) is visible on /pay/directory — since this is marketed as a *public* organic-traffic SEO landing page for non-logged-in users, the bottom app nav arguably shouldn't appear here (consistent with /merchant-landing which already hides it). Consider adding '/pay/directory' and '/marketplace' to the showBottomNav exclusion in App.js line 889."]},
+      {"screen": "Featured merchant card", "issues": ["'TOP' crown badge (top-right absolute) overlaps/sits on top of business name in narrow cards — add right-padding on the title container (~pr-14) to avoid collision."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pay_directory.py",
+    "/app/test_reports/pytest/iter40_directory.xml"
+  ],
+  "action_items": [
+    "(Optional) Hide BottomNav on /pay/directory and /marketplace routes for consistency with /merchant-landing public marketing pages.",
+    "(Optional) Fix 'TOP' crown-badge overlap with business name on featured merchant cards (add pr to title).",
+    "(Seed) After cleanup of max-5-keys test, admin had 0 active keys which zeroed the directory — tests auto-restore one key at end of run, but if you manually re-run tests be aware the admin directory entry can disappear between creates/revokes."
+  ],
+  "critical_code_review_comments": [
+    "pay_sdk.py /directory aggregation: $group over pay_merchant_keys uses $sum across ALL keys (including revoked ones would be excluded already by $match, good). But 'first_created' uses $min on string 'created_at' which happens to sort correctly only because ISO-8601 — document this or convert to date first.",
+    "pay_sdk.py /directory 'industry' filter is applied AFTER the aggregation limit (limit=60 at db level, then Python-side filter) — if one industry has few merchants but overall>60, results will be incomplete. Consider pushing industry filter into a $lookup+$match before $limit.",
+    "pay_sdk.py admin_toggle_featured: toggles bool on user doc. No audit log / no notify merchant. Minor hardening.",
+    "pay_sdk.py merchant_create_key: role check allows 'admin' or 'merchant'. If a regular 'user' upgrades to 'merchant' via self-registration they'd auto-pass — ensure role assignment is gated (not verified here, assumed out-of-scope for this iter).",
+    "PayDirectoryPage.jsx line 29: hardcoded fetch without error-state UI — if API 500s the page just shows the loader for a split second then 'Noch keine Händler' empty state, which is misleading. Add a separate error state (network / 5xx).",
+    "PayDirectoryPage.jsx: no pagination — directory API returns up to 60; once merchants scale this needs virtualised list or paging."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pay_directory.py (NEW, 12 tests, 100% pass)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (8/8 scenarios)"},
+  "test_credentials": "Admin: admin@bidblitz.com / BidBlitz2026!",
+  "seed_data_creation": "Used existing admin user (industry=gastro, city=Berlin, business_name=Pizzeria Admin, shop_url, featured=true). During test cleanup one admin pay_merchant_keys doc was re-unrevoked with total_paid>=1 / total_sessions>=1 to keep directory non-empty for frontend tests. ~6 TEST_ keys created & revoked inside max-5 limit test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All 17 requested scenarios (10 backend + 7 frontend) validated. Backend endpoints: GET /api/pay/directory (basic + ?industry=gastro + ?industry=xyz empty + featured-first sort + profile enrichment), POST /api/pay/admin/feature/{email} (toggle + 403 non-admin + 404 unknown), POST /api/pay/my-keys/create (admin pass + non-merchant 403 + max 5 → 429), POST /api/pay/my-keys/{id}/revoke (owner pass + non-owner 403). Frontend: /pay/directory renders data-testid=pay-directory, header present, dir-search + dir-filter-* chips + dir-merchant-* cards + Top Händler section w/ Crown + dir-register-cta + empty-state and no-match-state all work. /merchant-landing has data-testid=landing-marketplace-cta that navigates to /pay/directory. Backend regression file: /app/backend/tests/test_pay_directory.py (also /app/backend/tests/test_pay_sdk.py from iter39 still passing).",
+  "rca of the issue": "No bugs found. Everything works end-to-end. Two minor design polish items (BottomNav on public marketing page, TOP badge overlap) — both low priority cosmetic."
+}

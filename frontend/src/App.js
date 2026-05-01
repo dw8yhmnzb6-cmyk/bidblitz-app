@@ -30,6 +30,7 @@ import MerchantOnboardingPage from "./pages/MerchantOnboardingPage";
 import MerchantPricingPage from "./pages/MerchantPricingPage";
 import MerchantLandingPage from "./pages/MerchantLandingPage";
 import PayCheckoutPage from "./pages/PayCheckoutPage";
+import PayDirectoryPage from "./pages/PayDirectoryPage";
 import MiningPage from "./pages/MiningPage";
 const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 import AuthPage from "./pages/AuthPage";
@@ -409,6 +410,9 @@ function AppContent() {
     }
     if (currentPath.startsWith("/pay/checkout/")) {
       return <PayCheckoutPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
+    }
+    if (currentPath === "/pay/directory" || currentPath === "/marketplace") {
+      return <PayDirectoryPage onBack={() => handleNavigate("/merchant-landing")} onNavigate={handleNavigate} />;
     }
     switch (currentPath) {
       case "/":
@@ -936,7 +940,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory", "/marketplace"].includes(currentPath) &&
        !currentPath.startsWith("/pay/checkout/") && (
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
