@@ -1,0 +1,39 @@
+{
+  "summary": "Frontend-only regression test of AdminPage.jsx refactor (1472 → 672 LOC; 14 Tab-Bodies in neue AdminTabRouter.jsx (861 LOC) extrahiert). Login als admin@bidblitz.com, Navigation zu /admin/old, alle 17 Tabs angeklickt + Deep-Checks auf kritische Inhalte. 0 Page-Errors, 0 'is not defined', 0 'Cannot read properties of undefined', 0 AdminTabRouter-Crashes, keine 'No more changes should happen to Compilation.assets' Warnings. Refactoring hat NICHTS kaputt gemacht — PASS.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AdminPage.jsx (672 LOC) jetzt knapp unter 700-LOC Guideline — gutes Refactoring-Ergebnis.",
+    "AdminTabRouter.jsx (861 LOC) liegt selbst leicht über 700 — für zukünftige Iteration könnte man Users/Merchants/Payouts in eigene Files splitten (wie Auctions/Scooters/Gutscheine).",
+    "ctx-Prop-Pattern mit ~30+ state vars als einzelnes Objekt vermeidet Prop-Drilling, erzeugt aber implizites Interface — JSDoc/TypeScript wäre hilfreich für Wartbarkeit.",
+    "Zwei nicht-blockierende 500-Antworten beim Tab-Wechsel beobachtet (Failed to load resource 500); UI bleibt stabil, aber Endpoints sollten vom Main-Agent geprüft werden falls Funktionsverlust (nicht Teil dieses Scopes)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (skipped per request)", "frontend": "100%" },
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! — gültig, Login 200 + Cookies gesetzt.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Refactor ist sauber. /admin/old rendert <AdminPage> welches <AdminTabRouter ctx={...}/> einbindet. Alle 17 Tabs geprüft: Übersicht (Admin-Header, signup/topup/payment/referral Funnel, Tag 1/7/30 Retention), Benutzer, Rollen, Verifizierung (pending/approved/rejected/all Filter), Händler, Auszahlungen, Transaktionen, Feature-Flags, Audit-Protokolle, Compliance (flags+checks Sub-Tabs), Analytik, Aktionen (Create-Promo-Button öffnet Form mit [data-testid='promo-name']), Konfig, Händler-Gebühren (7 Payment-Method-Rows: NFC Wallet, Wallet, Barcode, NFC Card (leicht abweichendes Label), Apple Pay, Google Pay, Card), sowie Lazy-Tabs Auktionen, Scooter-Flotte (Button-Label 'Scooter-Flotte' statt 'E-Scooter'; [data-testid='add-scooter-btn'] vorhanden), Gutscheine.",
+  "test_results_detail": {
+    "tabs_clicked_without_crash": 17,
+    "page_errors_during_tab_clicks": 0,
+    "critical_console_errors": 0,
+    "overview_admin_header_present": true,
+    "promo_name_input_on_create_form": true,
+    "compliance_sub_tabs_flags_and_checks": true,
+    "merchant_fees_labels_rendered": {"NFC Wallet": true, "Wallet": true, "Barcode": true, "Apple Pay": true, "Google Pay": true, "Card": true, "NFC Card (exact)": false},
+    "verification_filters_pending_approved_rejected_all": true,
+    "analytics_retention_tag_1_7_30": true,
+    "lazy_tab_auctions_loaded": true,
+    "lazy_tab_scooters_loaded": true,
+    "lazy_tab_gutscheine_loaded": true,
+    "add_scooter_btn_testid_present": true
+  }
+}
