@@ -125,7 +125,24 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**01.05.2026** — Letzter Super-App-Sprint: Insurance Quote-Calculator + Claims, Telemedizin Slots/Cancel/Prescriptions.
+**01.05.2026 (2)** — AdminPage.jsx modularisiert (2094 → 1472 LOC, −30%).
+
+### 01.05.2026 (2) Changes
+**Neue Komponenten** (`/app/frontend/src/components/admin/`):
+- `adminHelpers.jsx` (58 LOC) — Skeleton, StatCard, adminApi, slide, statusColors (DRY-Extrakt)
+- `AdminAuctionsTab.jsx` (~260 LOC, lazy) — Bot-Control, Strategie/Aggression/Final-Battle Selector, Revenue-Rechner
+- `AdminScootersTab.jsx` (~175 LOC, lazy) — Fleet-Stats, Add-Form, Status-Toggle, Delete
+- `AdminGutscheineTab.jsx` (~130 LOC, lazy) — Coupon-Create, Balance-Grant
+
+`AdminPage.jsx` verwendet `React.lazy` + `<Suspense fallback={<LazyFallback/>}>` in `<LazyErrorBoundary>` — identisches Pattern wie Food/Auctions Refactor.
+
+**Testing (Iter 35)**: Frontend **100% PASS**. Admin-Login → alle 19 Tabs durchgeklickt, 0 kritische JS-Errors, 0 LazyErrorBoundary-Retries. 25 Bot-Toggles geprüft, alle Formulare öffnen korrekt.
+
+**Hinweis vom Testing Agent**: Route `/admin` rendert `AdminPanelFullPage`, der refaktorierte `AdminPage.jsx` ist unter `/admin/old` erreichbar — bereits so bestehend, keine Regression.
+
+**Known Minor**: i18n-Key `admin.loyalty` fehlt Übersetzung (kosmetisch).
+
+## Stand
 
 ### 01.05.2026 Changes
 **Backend (insurance.py)**:
