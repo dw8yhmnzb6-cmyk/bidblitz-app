@@ -76,14 +76,14 @@ export default function MerchantTestimonials() {
                   <p className="text-[11px] text-white/45 mt-0.5">
                     {tm.owner_name}{tm.role && ` · ${tm.role}`}
                   </p>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
                       style={{ background: `${color}15`, color }}>
                       {IND_LABELS[tm.industry] || tm.industry}
                     </span>
                     {tm.location && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-white/35">
-                        <MapPin size={9} /> {tm.location}
+                      <span className="flex items-center gap-0.5 text-[9px] text-white/35 truncate max-w-[120px]">
+                        <MapPin size={9} className="shrink-0" /> {tm.location}
                       </span>
                     )}
                     {tm.is_pilot && (

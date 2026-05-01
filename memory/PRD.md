@@ -125,7 +125,40 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**01.05.2026 (4)** — **Händler-Landing** um branchen-spezifische Sales-Section erweitert + in Production deployed.
+**01.05.2026 (5)** — Testimonials-System (Backend CRUD + Public + Admin + Production Deploy).
+
+### 01.05.2026 (5) Changes
+**Backend** (`/app/backend/routes/testimonials.py` NEW, 164 LOC):
+- `GET /api/testimonials[?industry=]` — Public, nur aktive
+- `GET /api/testimonials/admin/list` — Admin, alle inkl. inaktive
+- `POST /api/testimonials/admin/create` — Pydantic validation (quote >=20)
+- `PUT /api/testimonials/admin/{id}` — Partial Update (toggle active, sort_order)
+- `DELETE /api/testimonials/admin/{id}` — Hard delete
+- **Seed**: 4 realistische Pilot-Testimonials (Pizzeria Da Mario/Gastro, Hair & Style/Service, BioBack/Bakery, FitZone/Fitness) mit Stats & Photos
+
+**Frontend**:
+- `/app/frontend/src/components/MerchantTestimonials.jsx` (public) — dynamic fetch, responsive 2-col grid, Pilot-Badge, Rating-Stars, Stats-Preview
+- `/app/frontend/src/pages/MerchantLandingPage.jsx` — neue Section `#testimonials` (zwischen Industries und Trust)
+- `/app/frontend/src/components/admin/AdminTestimonialsTab.jsx` (NEW 220 LOC, lazy) — CRUD-UI mit Create-Form, Edit-Inline, Toggle-Visibility (Eye/EyeOff), Delete mit Confirm, Foto-Preview
+
+**Integration in AdminPage**: Neuer Tab "Testimonials" (Star-Icon) nach "Gutscheine" in `/admin/old`.
+
+**Testing (Iter 38)**: **Backend 10/10 PASS, Frontend 100% PASS**
+- pytest in `/app/backend/tests/test_testimonials.py` erstellt
+- Public list/filter, Admin-Auth, CRUD, Validation (quote<20 → 422), Toggle-visibility-hides-from-public alles validiert
+
+**Production deployed**:
+- Backup: `/var/www/bidblitz-backups/testimonials-20260501_181016/`
+- Backend: `testimonials_router` in prod `server.py` registriert, `bidblitz-backend` neugestartet
+- Frontend Build: `main.9e9c462e.js` (5.2 MB) live auf https://bidblitz.ae
+- API verifiziert: `https://bidblitz.ae/api/testimonials` → 4 Testimonials OK
+- **NICHT deployed zu prod**: `AdminTestimonialsTab.jsx` (Production nutzt `AdminPanelFullPage`, nicht refaktoriertes `AdminPage.jsx`). In prod CRUD via curl/Mongo bis Admin-Panel vereinheitlicht.
+
+**Offene Testing-Findings (kosmetisch)**:
+- Location-Badge Overflow bei engen Cards → **FIXED** (flex-wrap + truncate added)
+- `@router.on_event("startup")` deprecated → funktioniert, aber sollte in Lifespan migriert werden (Future)
+
+## Stand
 
 ### 01.05.2026 (4) Changes
 **Neu**: `/app/frontend/src/components/MerchantIndustriesSection.jsx` (361 LOC)
