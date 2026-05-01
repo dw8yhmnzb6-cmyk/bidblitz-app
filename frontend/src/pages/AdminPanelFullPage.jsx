@@ -2,7 +2,7 @@
  * BidBlitz V2 - Full Admin Panel (Grid Layout)
  * Matches BidBlitz.ae admin structure with all categories
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, BarChart3, Users, ShieldCheck, Briefcase, UserPlus,
@@ -13,8 +13,10 @@ import {
   Bug, Server, Package, Crown, Ticket, BarChart, UserCheck,
   Globe, Gavel, Bot, Percent, TrendingUp, AlertCircle, Check, DollarSign,
   Home, GraduationCap, Film, Stethoscope, Heart, CarFront, Sparkles,
-  Truck, Dog, Dumbbell, Palmtree, BatteryCharging, CalendarDays
+  Truck, Dog, Dumbbell, Palmtree, BatteryCharging, CalendarDays, LayoutGrid
 } from "lucide-react";
+
+const AdminPageGrid = lazy(() => import("./AdminPage"));
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -153,6 +155,15 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
   const [stats, setStats] = useState(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
+  const [layoutMode, setLayoutMode] = useState(() => {
+    return localStorage.getItem("admin_layout_mode") || "full";
+  });
+
+  const toggleLayout = () => {
+    const newMode = layoutMode === "full" ? "grid" : "full";
+    setLayoutMode(newMode);
+    localStorage.setItem("admin_layout_mode", newMode);
+  };
 
   // Load overview stats
   useEffect(() => {
@@ -363,6 +374,20 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
   })).filter(s => s.items.length > 0);
 
   return (
+    <>
+      {/* Grid Layout Mode - AdminPage */}
+      {layoutMode === "grid" && (
+        <Suspense fallback={
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <Loader2 className="animate-spin text-[#10B981]" size={32} />
+          </div>
+        }>
+          <AdminPageGrid onNavigate={onNavigate} />
+        </Suspense>
+      )}
+
+      {/* Standard Layout Mode - AdminPanelFullPage */}
+      {layoutMode === "full" && (
     <div className="min-h-screen bg-[#F0F4FA] text-[#111]" data-testid="admin-panel-full">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
@@ -382,6 +407,13 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
             className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium"
             data-testid="admin-menu-toggle">
             {menuOpen ? <X size={14} /> : <Menu size={14} />} Menü
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={toggleLayout}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-medium"
+            data-testid="layout-toggle"
+            title={layoutMode === "full" ? "Zu Grid-Layout wechseln" : "Zu Standard-Layout wechseln"}>
+            {layoutMode === "full" ? <LayoutGrid size={14} className="text-[#10B981]" /> : <LayoutDashboard size={14} className="text-[#3B82F6]" />}
+            <span className="text-gray-700">{layoutMode === "full" ? "Grid" : "Liste"}</span>
           </motion.button>
         </div>
 
@@ -1124,6 +1156,8 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
         </div>
       )}
     </div>
+      )}
+    </>
   );
 };
 
