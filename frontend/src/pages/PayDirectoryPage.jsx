@@ -193,8 +193,7 @@ const MerchantCard = ({ m, idx, featured, onNavigate }) => {
     if (onNavigate && m.slug) onNavigate(`/pay/merchant/${m.slug}`);
   };
   return (
-    <motion.a href={`/pay/merchant/${m.slug || ""}`}
-      onClick={navigate}
+    <motion.div
       initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
       transition={{ delay: idx * 0.03, duration: 0.3 }}
       className="rounded-2xl p-4 relative overflow-hidden block cursor-pointer hover:scale-[1.01] transition-transform"
@@ -204,6 +203,7 @@ const MerchantCard = ({ m, idx, featured, onNavigate }) => {
           : "rgba(255,255,255,0.018)",
         border: `1px solid ${featured ? `${ind.color}30` : "rgba(255,255,255,0.04)"}`,
       }}
+      onClick={navigate}
       data-testid={`dir-merchant-${m.email.split('@')[0]}`}>
       {featured && (
         <div className="absolute top-3 right-3 flex items-center gap-1 px-1.5 py-0.5 rounded-full z-10" style={{ background: "rgba(255,184,0,0.15)" }}>
@@ -246,6 +246,7 @@ const MerchantCard = ({ m, idx, featured, onNavigate }) => {
           <a href={m.shop_url} target="_blank" rel="noreferrer"
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold"
             style={{ background: `${ind.color}15`, color: ind.color, border: `1px solid ${ind.color}30` }}
+            onClick={(e) => e.stopPropagation()}
             data-testid={`dir-visit-${m.email.split('@')[0]}`}>
             Shop <ExternalLink size={9} />
           </a>

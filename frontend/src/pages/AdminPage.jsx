@@ -564,20 +564,74 @@ export const AdminPage = ({ onNavigate, defaultTab }) => {
         </div>
       </div>
 
-      {/* Tab Bar - Grid Layout for better overview */}
-      <div className="px-5 mb-4 relative z-10">
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
-          {tabs.map((tb) => (
-            <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }}
-              className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl text-[10px] font-medium transition-all ${
-                tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#555] border border-white/[0.04] hover:bg-white/[0.04]"
-              }`}>
-              <tb.icon size={16} />
-              <span className="truncate w-full text-center">{t(tb.key)?.split(" ")[0] || tb.key.split(" ")[0]}</span>
-            </motion.button>
-          ))}
+      {/* Grid Menu Toggle */}
+      {tab === "overview" && (
+        <div className="px-5 mb-4 relative z-10">
+          <motion.button 
+            onClick={() => setShowGridMenu(!showGridMenu)}
+            whileTap={{ scale: 0.95 }}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-gray-200 hover:border-gray-300 shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              {showGridMenu ? <ChevronUp size={18} className="text-gray-500" /> : <Menu size={18} className="text-gray-500" />}
+              <span className="text-sm font-semibold text-gray-700">
+                {showGridMenu ? "Menü schließen" : "Admin-Bereiche"}
+              </span>
+            </div>
+            <span className="text-xs text-gray-400">{ADMIN_SECTIONS.reduce((sum, s) => sum + s.items.length, 0)} Funktionen</span>
+          </motion.button>
         </div>
-      </div>
+      )}
+
+      {/* Grid Menu */}
+      <AnimatePresence>
+        {showGridMenu && tab === "overview" && (
+          <motion.div
+            className="px-5 mb-5"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {ADMIN_SECTIONS.map((section, sectionIndex) => {
+              const startIndex = ADMIN_SECTIONS.slice(0, sectionIndex).reduce((sum, s) => sum + s.items.length, 0);
+              return (
+                <AdminGridSection
+                  key={section.id}
+                  section={section}
+                  onItemClick={(targetTab) => {
+                    setTab(targetTab);
+                    setShowGridMenu(false);
+                  }}
+                  startIndex={startIndex}
+                />
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tab Bar - Compact Tabs for non-overview */}
+      {tab !== "overview" && (
+        <div className="px-5 mb-4 relative z-10">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {tabs.filter(tb => tb.id !== "overview").slice(0, 8).map((tb) => (
+              <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-medium whitespace-nowrap ${
+                  tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#555] border border-white/[0.04]"
+                }`}>
+                <tb.icon size={14} />
+                <span>{t(tb.key)?.split(" ")[0] || tb.key.split(" ")[0]}</span>
+              </motion.button>
+            ))}
+            <motion.button onClick={() => setTab("overview")} whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl text-[10px] font-medium bg-white/[0.04] text-[#444] border border-white/[0.05]">
+              <Menu size={14} />
+              <span>Alle</span>
+            </motion.button>
+          </div>
+        </div>
+      )}
 
       <div className="px-5 pb-8 relative z-10">
         {/* ── Error State ── */}
