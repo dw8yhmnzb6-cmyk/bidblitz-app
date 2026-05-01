@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
+import MerchantIndustriesSection from "../components/MerchantIndustriesSection";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -502,6 +503,13 @@ const MerchantLandingPage = ({ onNavigate }) => {
             </div>
           </div>
         </div>
+      </Section>
+
+      {/* ══════════════════════════════════════ */}
+      {/* 6.5 INDUSTRIES + QR + VOUCHER BUILDER (NEW) */}
+      {/* ══════════════════════════════════════ */}
+      <Section id="industries" className="py-16 sm:py-20">
+        <MerchantIndustriesSection onRegister={() => setAuthMode("register")} />
       </Section>
 
       {/* ══════════════════════════════════════ */}

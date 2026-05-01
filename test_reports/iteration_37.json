@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only test of new MerchantIndustriesSection on /merchant-landing. All 14 requested test points PASS after dismissing onboarding splash overlay. Section renders correctly, 6 industry tabs switch content reactively, VoucherBuilder updates live preview, QR-Flow steps and stats strip render as specified. No JS/console errors from the new component.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "MerchantIndustriesSection.jsx (320 LOC) is clean, under 700 LOC threshold, uses useState + framer-motion correctly.",
+    "All interactive elements have data-testid attributes (stat-0..3, industry-tab-<id>, industry-<id>, industry-cta-<id>, qr-step-0..4, vb-name, vb-type-<id>, vb-value, vb-min) — excellent testability.",
+    "Minor: On voucher 'points' type the label is 'x Punkte' (display uses `${vValue}x Punkte`) — works as intended but slightly inconsistent with other labels using singular units; purely cosmetic.",
+    "Pre-existing (NOT scope of this task): Global onboarding splash overlay (Willkommen bei BidBlitz!) intercepts pointer events on public pages like /merchant-landing on first visit. Users must click 'Überspringen' before they can interact with any landing-page content. This affects initial UX but is unrelated to the new section. Consider gating splash behind a localStorage check that respects public/marketing routes, or suppressing splash on /merchant-landing."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "None required — public route",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "MerchantIndustriesSection verified end-to-end. Validated: (1) /merchant-landing renders without JS errors; (2) #industries header 'Dein Business. Unser System.' visible; (3) 4 stats render (142+, 8.2K, 0.29%, 3 Min); (4) all 6 industry tabs (gastro/retail/service/fitness/fuel/bakery) present and switch active content via AnimatePresence — retail shows Einzelhandel + 210€→29€ + 86% savings, gastro shows Gastronomie + 380€→47€; (5) TableQRFlow shows ~45 SEK badge + qr-step-0..4; (6) VoucherBuilder reacts live — value=25 + type=amount shows '25€ geschenkt', type=percent shows '25% Rabatt'; (7) industry-cta-<id> buttons are visible and clickable. IMPORTANT for future runs: the global onboarding splash modal blocks pointer events on first load of /merchant-landing; Playwright must click 'Überspringen' (or set localStorage onboardingComplete) before testing any merchant-landing interactions. Force-clicks in Playwright fire events but do not dismiss the overlay; the state change appears to work only after overlay is gone.",
+  "rca_of_the_issue": "Initial false negatives (retail tab not switching, vb-type-amount not reacting) were caused by the BidBlitz onboarding splash overlay intercepting pointer events above the landing page. After clicking 'Überspringen', all state transitions and live updates worked as specified. No bug in MerchantIndustriesSection itself."
+}
