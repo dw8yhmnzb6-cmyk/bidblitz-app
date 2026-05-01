@@ -40,8 +40,9 @@ const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "Finanzen", color: "#10B981", count: 7,
+    title: "Finanzen", color: "#10B981", count: 8,
     items: [
+      { key: "pay-requests", icon: ShieldCheck, label: "Pay Anträge", highlight: true },
       { key: "payments", icon: DollarSign, label: "Zahlungen", nav: "/admin/payments" },
       { key: "wallet-topup", icon: Wallet, label: "Wallet Aufladen" },
       { key: "payouts", icon: Euro, label: "Wise Auszahlungen" },
@@ -212,6 +213,11 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
           break;
         }
         // ── Finanzen ──
+        case "pay-requests": {
+          const d = await api("/api/pay/admin/applications?status=pending");
+          setData({ type: "pay_requests", applications: d.applications || [], count: d.count || 0 });
+          break;
+        }
         case "payments": case "wallet-topup": case "payouts": case "sepa": case "wholesale": {
           const d = await api("/api/admin/stats");
           setData({ type: "finance_detail", subtype: item.key, stats: d });
@@ -642,6 +648,98 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
           )}
 
           {/* ══ API_KEYS ══ */}
+
+          {/* ══ PAY REQUESTS (BidBlitz Pay Merchant Applications) ══ */}
+          {data?.type === "pay_requests" && (
+            <div className="space-y-3" data-testid="admin-pay-requests">
+              <div className="flex gap-2 mb-3">
+                {["pending", "approved", "rejected", "all"].map(f => (
+                  <motion.button key={f} 
+                    onClick={async () => {
+                      setLoading(true);
+                      const d = await api(`/api/pay/admin/applications?status=${f}`);
+                      setData({ type: "pay_requests", applications: d.applications || [], count: d.count || 0, filter: f });
+                      setLoading(false);
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold ${
+                      (data.filter || "pending") === f 
+                        ? "bg-[#10B981] text-white" 
+                        : "bg-white text-gray-600 border border-gray-200"
+                    }`}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </motion.button>
+                ))}
+              </div>
+              {(data.applications || []).length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">Keine {data.filter || "pending"} Anträge</div>
+              ) : (data.applications || []).map((app, i) => (
+                <motion.div key={app.application_id} 
+                  initial={{ opacity: 0, y: 8 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: i * 0.05 }}
+                  className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="text-[13px] font-bold text-gray-800">{app.business_name}</p>
+                      <p className="text-[11px] text-gray-500">{app.email}</p>
+                      {app.website && <p className="text-[10px] text-[#10B981] truncate">{app.website}</p>}
+                    </div>
+                    <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                      app.status === "approved" ? "bg-[#10B981]/10 text-[#10B981]" :
+                      app.status === "rejected" ? "bg-red-100 text-red-600" :
+                      "bg-yellow-100 text-yellow-700"
+                    }`}>{app.status}</span>
+                  </div>
+                  {app.description && <p className="text-[11px] text-gray-600 mb-3">{app.description}</p>}
+                  <div className="flex items-center justify-between text-[9px] text-gray-400 mb-3">
+                    <span>{new Date(app.created_at).toLocaleDateString("de-DE")}</span>
+                    {app.reviewed_at && <span>Geprüft: {new Date(app.reviewed_at).toLocaleDateString("de-DE")}</span>}
+                  </div>
+                  {app.status === "pending" && (
+                    <div className="flex gap-2">
+                      <motion.button 
+                        onClick={async () => {
+                          try {
+                            await api("/api/pay/admin/applications/decide", {
+                              method: "POST",
+                              body: JSON.stringify({ application_id: app.application_id, decision: "approve" })
+                            });
+                            const d = await api("/api/pay/admin/applications?status=pending");
+                            setData({ type: "pay_requests", applications: d.applications || [], count: d.count || 0 });
+                          } catch (e) { alert(e.message); }
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">
+                        <Check size={12} className="inline mr-1" />Genehmigen
+                      </motion.button>
+                      <motion.button 
+                        onClick={async () => {
+                          const reason = prompt("Ablehnungsgrund (optional):");
+                          if (reason === null) return;
+                          try {
+                            await api("/api/pay/admin/applications/decide", {
+                              method: "POST",
+                              body: JSON.stringify({ application_id: app.application_id, decision: "reject", reason })
+                            });
+                            const d = await api("/api/pay/admin/applications?status=pending");
+                            setData({ type: "pay_requests", applications: d.applications || [], count: d.count || 0 });
+                          } catch (e) { alert(e.message); }
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-red-50 text-red-600 border border-red-200">
+                        <X size={12} className="inline mr-1" />Ablehnen
+                      </motion.button>
+                    </div>
+                  )}
+                  {app.status === "rejected" && app.rejection_reason && (
+                    <p className="text-[10px] text-red-500/70 mt-2">Grund: {app.rejection_reason}</p>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          )}
+
           {data?.type === "api_keys" && (
             <div className="space-y-3" data-testid="admin-detail-api-keys">
               <div className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm">
