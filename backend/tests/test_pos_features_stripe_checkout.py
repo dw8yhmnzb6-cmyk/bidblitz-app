@@ -10,10 +10,10 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://super-app-preview-3.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://hetzner-deploy-3.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
-ORIGIN_URL = "https://super-app-preview-3.preview.emergentagent.com"
+ORIGIN_URL = "https://hetzner-deploy-3.preview.emergentagent.com"
 
 # globals to share across tests (small suite, ok)
 SESSION_IDS = {}

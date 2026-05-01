@@ -448,4 +448,10 @@ export const api = {
     request(`/api/kids/children/${childId}/tasks`, { method: "POST", body: JSON.stringify({ name, reward }) }),
   completeChildTask: (childId, taskId) => 
     request(`/api/kids/children/${childId}/tasks/${taskId}/complete`, { method: "POST" }),
+  
+  // BidBlitz Pay SDK (Merchant Keys Self-Service)
+  getMyPayKeys: () => request("/api/pay/my-keys"),
+  createPayKey: (label) => request("/api/pay/my-keys/create", { method: "POST", body: JSON.stringify({ label }) }),
+  revokePayKey: (keyId) => request(`/api/pay/my-keys/${keyId}/revoke`, { method: "POST" }),
+  getMySessions: (limit = 50) => request(`/api/pay/my-sessions?limit=${limit}`),
 };

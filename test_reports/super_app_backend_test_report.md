@@ -1,7 +1,7 @@
 # BidBlitz Super-App Features Backend Test Report
 **Date:** 2026-04-26  
 **Tester:** Testing Agent  
-**Backend URL:** https://super-app-preview-3.preview.emergentagent.com/api
+**Backend URL:** https://hetzner-deploy-3.preview.emergentagent.com/api
 
 ## Test Summary
 - **Total Tests:** 10

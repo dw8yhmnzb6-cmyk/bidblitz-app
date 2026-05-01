@@ -37,6 +37,10 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [activeShift, setActiveShift] = useState(null);
   const [refunds, setRefunds] = useState([]);
   const [refundForm, setRefundForm] = useState(null);
+  const [payKeys, setPayKeys] = useState([]);
+  const [paySessions, setPaySessions] = useState([]);
+  const [payRevenue, setPayRevenue] = useState(null);
+  const [createdKey, setCreatedKey] = useState(null);
   const refreshRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -79,6 +83,15 @@ const MerchantDashboardPage = ({ onBack }) => {
     }
     if (tab === "refunds") {
       api.getRefunds().then(d => setRefunds(d.refunds || [])).catch(() => {});
+    }
+    if (tab === "pay-keys") {
+      api.getMyPayKeys().then(d => {
+        setPayKeys(d.keys || []);
+        const paid = (d.keys || []).reduce((sum, k) => sum + (k.total_paid || 0), 0);
+        const total = (d.keys || []).reduce((sum, k) => sum + (k.total_sessions || 0), 0);
+        setPayRevenue({ total_paid: paid, total_sessions: total });
+      }).catch(() => {});
+      api.getMySessions(30).then(d => setPaySessions(d.sessions || [])).catch(() => {});
     }
   }, [tab, selectedBranch]);
 
@@ -145,6 +158,7 @@ const MerchantDashboardPage = ({ onBack }) => {
     { id: "reports", label: t("merch.reports") || "Reports", icon: BarChart3 },
     { id: "shifts", label: t("merch.shifts") || "Shifts", icon: Clock },
     { id: "refunds", label: t("merch.refunds") || "Refunds", icon: RefreshCw },
+    { id: "pay-keys", label: "Pay Keys", icon: Wallet },
   ];
 
   if (loading) {
@@ -739,6 +753,121 @@ const MerchantDashboardPage = ({ onBack }) => {
                   <p className="text-[8px] text-white/10 mt-0.5">{t("merch.reason") || "Reason"}: {r.refund_reason || "—"}</p>
                 </div>
               )) : <Empty text={t("merch.no_refunds") || "No refunds yet"} />}
+            </Panel>
+          </>
+        )}
+
+        {/* ── PAY KEYS (BidBlitz Pay SDK) ── */}
+        {tab === "pay-keys" && (
+          <>
+            {payRevenue && (
+              <div className="grid grid-cols-2 gap-2">
+                <StatCard val={payRevenue.total_paid.toFixed(2)} label="Pay SDK Umsatz" color="#00E89D" />
+                <StatCard val={payRevenue.total_sessions} label="Pay Sessions" color="rgba(255,255,255,0.5)" />
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">BidBlitz Pay Keys</p>
+              <AddBtn data-testid="create-pay-key-btn" onClick={() => setShowAdd("pay-key")} label="Key erstellen" />
+            </div>
+            {showAdd === "pay-key" && (
+              <FormPanel>
+                <input data-testid="pay-key-label-input" value={form.payKeyLabel || ""} onChange={e => setForm(p => ({ ...p, payKeyLabel: e.target.value }))} placeholder="Key Label (z.B. Website Checkout)"
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-white/80 placeholder:text-white/15 outline-none" />
+                <div className="flex gap-2">
+                  <SaveBtn data-testid="save-pay-key-btn" onClick={async () => {
+                    setSaving(true);
+                    try {
+                      const res = await api.createPayKey(form.payKeyLabel || "Default");
+                      setCreatedKey(res.keys);
+                      setShowAdd("");
+                      setForm({});
+                      api.getMyPayKeys().then(d => {
+                        setPayKeys(d.keys || []);
+                        const paid = (d.keys || []).reduce((sum, k) => sum + (k.total_paid || 0), 0);
+                        const total = (d.keys || []).reduce((sum, k) => sum + (k.total_sessions || 0), 0);
+                        setPayRevenue({ total_paid: paid, total_sessions: total });
+                      });
+                    } catch {} setSaving(false);
+                  }} disabled={saving} saving={saving} />
+                  <CancelBtn onClick={() => { setShowAdd(""); setForm({}); }} />
+                </div>
+              </FormPanel>
+            )}
+            {createdKey && (
+              <motion.div data-testid="pay-key-success" className="rounded-2xl p-4 mb-3" style={{ background: "rgba(0,232,157,0.05)", border: "1px solid rgba(0,232,157,0.15)" }}
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Check size={14} className="text-[#00E89D]" />
+                  <span className="text-[12px] font-bold text-[#00E89D]">Key erstellt! Speichere Secret sofort ab.</span>
+                  <motion.button onClick={() => setCreatedKey(null)} whileTap={{ scale: 0.9 }} className="ml-auto"><X size={14} className="text-white/20" /></motion.button>
+                </div>
+                <div className="space-y-2 text-[10px]">
+                  <div>
+                    <p className="text-white/30 mb-1">Public Key (embed in frontend)</p>
+                    <div className="flex items-center gap-2 bg-black/20 rounded-lg px-2 py-1.5">
+                      <code className="text-[#00E0FF] flex-1 font-mono text-[9px] break-all">{createdKey.public_key}</code>
+                      <motion.button onClick={() => copyKey(createdKey.public_key)} whileTap={{ scale: 0.9 }} className="p-1"><Copy size={11} className="text-[#00E0FF]" /></motion.button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-white/30 mb-1">Secret Key (backend only, einmalig sichtbar)</p>
+                    <div className="flex items-center gap-2 bg-black/20 rounded-lg px-2 py-1.5">
+                      <code className="text-[#FFB800] flex-1 font-mono text-[9px] break-all">{createdKey.secret_key}</code>
+                      <motion.button onClick={() => copyKey(createdKey.secret_key)} whileTap={{ scale: 0.9 }} className="p-1"><Copy size={11} className="text-[#FFB800]" /></motion.button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            <Panel title={`Keys (${payKeys.length}/5)`}>
+              {payKeys.length > 0 ? payKeys.map((k, i) => (
+                <motion.div key={k.key_id} data-testid={`pay-key-${k.key_id}`} className="py-2.5 border-b border-white/[0.02] last:border-0" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Wallet size={12} className={k.revoked ? "text-[#FF4757]" : "text-[#00E89D]"} />
+                    <div className="flex-1">
+                      <p className="text-[11px] font-bold text-white/80">{k.label}</p>
+                      <code className="text-[8px] text-white/20 font-mono">{k.public_key}</code>
+                    </div>
+                    {!k.revoked ? (
+                      <motion.button onClick={async () => {
+                        if (!window.confirm(`Key "${k.label}" widerrufen?`)) return;
+                        try {
+                          await api.revokePayKey(k.key_id);
+                          api.getMyPayKeys().then(d => {
+                            setPayKeys(d.keys || []);
+                            const paid = (d.keys || []).reduce((sum, k) => sum + (k.total_paid || 0), 0);
+                            const total = (d.keys || []).reduce((sum, k) => sum + (k.total_sessions || 0), 0);
+                            setPayRevenue({ total_paid: paid, total_sessions: total });
+                          });
+                        } catch {}
+                      }} whileTap={{ scale: 0.9 }} className="px-2 py-0.5 rounded text-[7px] font-bold bg-[#FF4757]/10 text-[#FF4757] border border-[#FF4757]/20">
+                        Widerrufen
+                      </motion.button>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[7px] font-bold bg-[#FF4757]/10 text-[#FF4757]">Revoked</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[8px] text-white/15">
+                    <span>{k.total_sessions} sessions</span>
+                    <span className="text-[#00E0FF] font-mono font-bold">{(k.total_paid || 0).toFixed(2)} EUR</span>
+                  </div>
+                </motion.div>
+              )) : <Empty text="Noch keine Keys erstellt" />}
+            </Panel>
+            <Panel title={`Letzte Sessions (${paySessions.length})`}>
+              {paySessions.length > 0 ? (
+                <div className="space-y-1 max-h-56 overflow-y-auto">
+                  {paySessions.map((s, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5 border-b border-white/[0.02]">
+                      <div className={`w-2 h-2 rounded-full ${s.status === "paid" ? "bg-[#00E89D]" : s.status === "pending" ? "bg-[#FFB800]" : "bg-[#FF4757]"}`} />
+                      <span className="text-[9px] text-white/30 flex-1 truncate">{s.description || s.order_id || s.session_id.slice(0, 16)}</span>
+                      <span className="text-[10px] text-white/70 font-mono font-bold">{s.amount.toFixed(2)}</span>
+                      <span className="text-[7px] text-white/10">{s.created_at?.slice(0, 16)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <Empty text="Noch keine Transaktionen" />}
             </Panel>
           </>
         )}
