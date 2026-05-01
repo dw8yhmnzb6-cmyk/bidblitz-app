@@ -474,6 +474,8 @@ from routes.testimonials import router as testimonials_router
 app.include_router(testimonials_router)
 from routes.pay_sdk import router as pay_sdk_router
 app.include_router(pay_sdk_router)
+from routes.pay_merchant_requests import router as pay_merchant_requests_router
+app.include_router(pay_merchant_requests_router)
 
 # Serve pay.js SDK publicly at /pay.js (and /api/pay.js for ingress-prefix access)
 from pathlib import Path as _PayPath

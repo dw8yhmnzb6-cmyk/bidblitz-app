@@ -737,6 +737,12 @@ tab, t, loading,
 
         </AnimatePresence>
 
+          {/* ── Pay Requests Tab ── */}
+          {tab === "pay-requests" && (
+            <PayRequestsTab t={t} />
+          )}
+
+
           {/* Role Requests Tab */}
           {tab === "roles" && (
             <motion.div key="roles" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={slide}>
@@ -859,3 +865,94 @@ tab, t, loading,
     </>
   );
 }
+
+
+// ── Pay Requests Tab Component (BidBlitz Pay Merchant Applications) ──
+const PayRequestsTab = ({ t }) => {
+  const [apps, setApps] = useState([]);
+  const [filter, setFilter] = useState("pending");
+  const [loading, setLoading] = useState(true);
+  const [deciding, setDeciding] = useState(null);
+
+  const loadApps = async (status = filter) => {
+    setLoading(true);
+    try {
+      const res = await apiService.getPayApplications(status);
+      setApps(res.applications || []);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useState(() => { loadApps(); }, [filter]);
+
+  const decide = async (appId, decision, reason = "") => {
+    setDeciding(appId);
+    try {
+      await apiService.decidePayApplication(appId, decision, reason);
+      await loadApps();
+    } catch (e) { alert(e.message); }
+    setDeciding(null);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+      <div className="flex gap-2 mb-4">
+        {["pending", "approved", "rejected", "all"].map(f => (
+          <motion.button key={f} onClick={() => { setFilter(f); loadApps(f); }} whileTap={{ scale: 0.95 }}
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold ${filter === f ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#444] border border-white/[0.04]"}`}>
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </motion.button>
+        ))}
+      </div>
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-[100px]" />)}</div>
+      ) : apps.length === 0 ? (
+        <p className="text-center py-8 text-[12px] text-[#444]">Keine {filter} Anträge</p>
+      ) : (
+        <div className="space-y-3">
+          {apps.map((app, i) => (
+            <motion.div key={app.application_id} className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1">
+                  <p className="text-[13px] font-bold text-white/90">{app.business_name}</p>
+                  <p className="text-[11px] text-white/40">{app.email}</p>
+                  {app.website && <p className="text-[10px] text-[#00C2FF] truncate">{app.website}</p>}
+                </div>
+                <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                  app.status === "approved" ? "bg-[#00E89D]/10 text-[#00E89D]" :
+                  app.status === "rejected" ? "bg-[#FF4757]/10 text-[#FF4757]" :
+                  "bg-[#FFB800]/10 text-[#FFB800]"
+                }`}>{app.status}</span>
+              </div>
+              {app.description && <p className="text-[11px] text-white/50 mb-3">{app.description}</p>}
+              <div className="flex items-center justify-between text-[9px] text-white/30 mb-3">
+                <span>{new Date(app.created_at).toLocaleDateString("de-DE")}</span>
+                {app.reviewed_at && <span>Geprüft: {new Date(app.reviewed_at).toLocaleDateString("de-DE")}</span>}
+              </div>
+              {app.status === "pending" && (
+                <div className="flex gap-2">
+                  <motion.button onClick={() => decide(app.application_id, "approve")} disabled={deciding === app.application_id} whileTap={{ scale: 0.95 }}
+                    className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-[#00E89D]/10 text-[#00E89D] border border-[#00E89D]/20">
+                    {deciding === app.application_id ? <Loader2 size={12} className="animate-spin mx-auto" /> : <><Check size={12} className="inline mr-1" />Genehmigen</>}
+                  </motion.button>
+                  <motion.button onClick={() => {
+                    const reason = prompt("Ablehnungsgrund (optional):");
+                    if (reason !== null) decide(app.application_id, "reject", reason);
+                  }} disabled={deciding === app.application_id} whileTap={{ scale: 0.95 }}
+                    className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-[#FF4757]/10 text-[#FF4757] border border-[#FF4757]/20">
+                    <X size={12} className="inline mr-1" />Ablehnen
+                  </motion.button>
+                </div>
+              )}
+              {app.status === "rejected" && app.rejection_reason && (
+                <p className="text-[10px] text-[#FF4757]/70 mt-2">Grund: {app.rejection_reason}</p>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+

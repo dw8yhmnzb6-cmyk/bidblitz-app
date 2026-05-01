@@ -136,6 +136,7 @@ const ADMIN_SECTIONS = [
     label: "Finanzen",
     color: "#00D26A",
     items: [
+      { id: "pay-requests", icon: Shield, label: "Pay Anträge", tab: "pay-requests", highlight: true },
       { id: "payments", icon: DollarSign, label: "Zahlungen", tab: "transactions" },
       { id: "topup", icon: Wallet, label: "Wallet Aufladen", tab: "transactions" },
       { id: "wise-payouts", icon: CreditCard, label: "Wise Auszahlungen", tab: "payouts" },

@@ -31,6 +31,7 @@ import MerchantPricingPage from "./pages/MerchantPricingPage";
 import MerchantLandingPage from "./pages/MerchantLandingPage";
 import PayCheckoutPage from "./pages/PayCheckoutPage";
 import PayDirectoryPage from "./pages/PayDirectoryPage";
+import PayForBusinessPage from "./pages/PayForBusinessPage";
 import MiningPage from "./pages/MiningPage";
 const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 import AuthPage from "./pages/AuthPage";
@@ -416,6 +417,9 @@ function AppContent() {
     }
     if (currentPath === "/pay/directory" || currentPath === "/marketplace") {
       return <PayDirectoryPage onBack={() => handleNavigate("/merchant-landing")} onNavigate={handleNavigate} />;
+    }
+    if (currentPath === "/pay/for-business") {
+      return <PayForBusinessPage onNavigate={handleNavigate} />;
     }
     switch (currentPath) {
       case "/":

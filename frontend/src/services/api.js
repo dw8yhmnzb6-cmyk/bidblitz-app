@@ -454,4 +454,15 @@ export const api = {
   createPayKey: (label) => request("/api/pay/my-keys/create", { method: "POST", body: JSON.stringify({ label }) }),
   revokePayKey: (keyId) => request(`/api/pay/my-keys/${keyId}/revoke`, { method: "POST" }),
   getMySessions: (limit = 50) => request(`/api/pay/my-sessions?limit=${limit}`),
+  
+  // BidBlitz Pay - Merchant Applications (Public)
+  applyForPay: (data) => request("/api/pay/merchant/apply", { method: "POST", body: JSON.stringify(data) }),
+  
+  // BidBlitz Pay - Admin (Approve/Reject Requests)
+  getPayApplications: (status = "pending") => request(`/api/pay/admin/applications?status=${status}`),
+  decidePayApplication: (application_id, decision, reason = "") => 
+    request("/api/pay/admin/applications/decide", { 
+      method: "POST", 
+      body: JSON.stringify({ application_id, decision, reason }) 
+    }),
 };
