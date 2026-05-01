@@ -411,6 +411,9 @@ function AppContent() {
     if (currentPath.startsWith("/pay/checkout/")) {
       return <PayCheckoutPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
     }
+    if (currentPath.startsWith("/pay/merchant/")) {
+      return <PayMerchantDetailPage slug={currentPath.split("/")[3]} onBack={() => handleNavigate("/pay/directory")} onNavigate={handleNavigate} />;
+    }
     if (currentPath === "/pay/directory" || currentPath === "/marketplace") {
       return <PayDirectoryPage onBack={() => handleNavigate("/merchant-landing")} onNavigate={handleNavigate} />;
     }
@@ -886,7 +889,7 @@ function AppContent() {
   };
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
-  const showBottomNav = !isCheckout && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
+  const showBottomNav = !isCheckout && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -941,7 +944,8 @@ function AppContent() {
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
        !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory", "/marketplace"].includes(currentPath) &&
-       !currentPath.startsWith("/pay/checkout/") && (
+       !currentPath.startsWith("/pay/checkout/") &&
+       !currentPath.startsWith("/pay/merchant/") && (
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}

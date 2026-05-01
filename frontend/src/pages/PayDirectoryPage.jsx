@@ -136,7 +136,7 @@ export default function PayDirectoryPage({ onBack, onNavigate }) {
                   <h2 className="text-[11px] uppercase tracking-[0.15em] font-bold text-[#FFB800]">Top Händler</h2>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {featured.map((m, i) => <MerchantCard key={m.email} m={m} idx={i} featured />)}
+                  {featured.map((m, i) => <MerchantCard key={m.email} m={m} idx={i} featured onNavigate={onNavigate} />)}
                 </div>
               </section>
             )}
@@ -148,7 +148,7 @@ export default function PayDirectoryPage({ onBack, onNavigate }) {
                 </div>
               )}
               <div className="grid sm:grid-cols-2 gap-3">
-                {regular.map((m, i) => <MerchantCard key={m.email} m={m} idx={i} />)}
+                {regular.map((m, i) => <MerchantCard key={m.email} m={m} idx={i} onNavigate={onNavigate} />)}
               </div>
             </section>
 
@@ -185,13 +185,19 @@ const FilterChip = ({ active, onClick, label, color = "#00C2FF", icon: Icon, tes
   </motion.button>
 );
 
-const MerchantCard = ({ m, idx, featured }) => {
+const MerchantCard = ({ m, idx, featured, onNavigate }) => {
   const ind = IND[m.industry] || IND.retail;
   const Icon = ind.icon;
+  const navigate = (e) => {
+    e.preventDefault();
+    if (onNavigate && m.slug) onNavigate(`/pay/merchant/${m.slug}`);
+  };
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+    <motion.a href={`/pay/merchant/${m.slug || ""}`}
+      onClick={navigate}
+      initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
       transition={{ delay: idx * 0.03, duration: 0.3 }}
-      className="rounded-2xl p-4 relative overflow-hidden"
+      className="rounded-2xl p-4 relative overflow-hidden block cursor-pointer hover:scale-[1.01] transition-transform"
       style={{
         background: featured
           ? `linear-gradient(135deg, ${ind.color}06, rgba(8,12,20,0.95))`

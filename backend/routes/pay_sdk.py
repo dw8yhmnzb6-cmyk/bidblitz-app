@@ -56,6 +56,15 @@ def _make_pk(): return "pk_live_" + secrets.token_urlsafe(24)
 def _make_sk(): return "sk_live_" + secrets.token_urlsafe(32)
 
 
+import re as _re
+
+def _slugify(s: str) -> str:
+    s = (s or "").lower().strip()
+    s = _re.sub(r"[äöüß]", lambda m: {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"}[m.group(0)], s)
+    s = _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s[:60] or "merchant"
+
+
 async def _find_merchant_by_pk(pk: str):
     """Look up merchant_keys doc by public key and return it + the merchant user."""
     key_doc = await db.pay_merchant_keys.find_one({"public_key": pk, "revoked": False})
@@ -390,9 +399,11 @@ async def public_directory(industry: Optional[str] = None, limit: int = 60):
         if industry and ind != industry:
             continue
         shop_url = u.get("shop_url") or u.get("website") or ""
+        bname = u.get("business_name") or a.get("merchant_name") or a["_id"].split("@")[0]
         out.append({
             "email": a["_id"],
-            "business_name": u.get("business_name") or a.get("merchant_name") or a["_id"].split("@")[0],
+            "business_name": bname,
+            "slug": _slugify(f"{bname}-{u.get('city', '')}"),
             "industry": ind,
             "logo_url": u.get("logo_url") or "",
             "shop_url": shop_url,
@@ -420,3 +431,65 @@ async def admin_toggle_featured(email: str, request: Request):
     new_val = not bool(u.get("pay_featured", False))
     await db.users.update_one({"email": email}, {"$set": {"pay_featured": new_val}})
     return {"ok": True, "featured": new_val}
+
+
+# ─── SEO: merchant detail lookup by slug ─────────────────────────────────────
+@router.get("/merchant/{slug}")
+async def get_merchant_by_slug(slug: str):
+    """Public — find a directory merchant by its slug (business_name-city)."""
+    # Re-use directory aggregation then filter by slug match (inefficient at scale but simple)
+    agg = db.pay_merchant_keys.aggregate([
+        {"$match": {"revoked": False}},
+        {"$group": {
+            "_id": "$merchant_email",
+            "merchant_name": {"$last": "$merchant_name"},
+            "total_sessions": {"$sum": "$total_sessions"},
+            "total_paid": {"$sum": "$total_paid"},
+            "first_created": {"$min": "$created_at"},
+        }},
+        {"$match": {"total_paid": {"$gt": 0}}},
+    ])
+    async for a in agg:
+        u = await db.users.find_one(
+            {"email": a["_id"]},
+            {"_id": 0, "email": 1, "industry": 1, "business_name": 1, "logo_url": 1,
+             "website": 1, "shop_url": 1, "description": 1, "city": 1, "pay_featured": 1, "name": 1},
+        ) or {}
+        bname = u.get("business_name") or a.get("merchant_name") or a["_id"].split("@")[0]
+        test_slug = _slugify(f"{bname}-{u.get('city', '')}")
+        test_slug_noloc = _slugify(bname)
+        if slug in (test_slug, test_slug_noloc):
+            return {
+                "email": a["_id"],
+                "business_name": bname,
+                "industry": u.get("industry") or "retail",
+                "logo_url": u.get("logo_url") or "",
+                "shop_url": u.get("shop_url") or u.get("website") or "",
+                "description": u.get("description") or "",
+                "city": u.get("city") or "",
+                "featured": bool(u.get("pay_featured", False)),
+                "total_sessions": a["total_sessions"],
+                "total_paid": round(float(a["total_paid"]), 2),
+                "since": (a.get("first_created") or "")[:10],
+                "slug": test_slug,
+            }
+    raise HTTPException(404, "Händler nicht gefunden")
+
+
+@router.get("/sitemap")
+async def sitemap_merchants():
+    """Flat list of merchant slugs for sitemap generation. Cached 1h in prod."""
+    agg = db.pay_merchant_keys.aggregate([
+        {"$match": {"revoked": False}},
+        {"$group": {"_id": "$merchant_email", "merchant_name": {"$last": "$merchant_name"},
+                    "total_paid": {"$sum": "$total_paid"},
+                    "first_created": {"$min": "$created_at"}}},
+        {"$match": {"total_paid": {"$gt": 0}}},
+    ])
+    out = []
+    async for a in agg:
+        u = await db.users.find_one({"email": a["_id"]}, {"business_name": 1, "city": 1, "_id": 0}) or {}
+        bname = u.get("business_name") or a.get("merchant_name") or a["_id"].split("@")[0]
+        slug = _slugify(f"{bname}-{u.get('city', '')}")
+        out.append({"slug": slug, "updated_at": a.get("first_created", "")})
+    return {"merchants": out, "count": len(out)}
