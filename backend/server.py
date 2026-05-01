@@ -470,6 +470,8 @@ app.include_router(streaming_router)
 
 from routes.telemedizin import router as telemedizin_router
 app.include_router(telemedizin_router)
+from routes.testimonials import router as testimonials_router
+app.include_router(testimonials_router)
 
 from routes.dating import router as dating_router
 app.include_router(dating_router)

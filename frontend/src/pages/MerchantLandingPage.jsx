@@ -10,6 +10,7 @@ import {
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
 import MerchantIndustriesSection from "../components/MerchantIndustriesSection";
+import MerchantTestimonials from "../components/MerchantTestimonials";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -510,6 +511,13 @@ const MerchantLandingPage = ({ onNavigate }) => {
       {/* ══════════════════════════════════════ */}
       <Section id="industries" className="py-16 sm:py-20">
         <MerchantIndustriesSection onRegister={() => setAuthMode("register")} />
+      </Section>
+
+      {/* ══════════════════════════════════════ */}
+      {/* 6.6 TESTIMONIALS (dynamic from DB) */}
+      {/* ══════════════════════════════════════ */}
+      <Section id="testimonials" className="py-16 sm:py-20" style={{ background: "rgba(0,232,157,0.015)" }}>
+        <MerchantTestimonials />
       </Section>
 
       {/* ══════════════════════════════════════ */}

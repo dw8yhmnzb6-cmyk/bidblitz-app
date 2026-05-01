@@ -1,0 +1,40 @@
+{
+  "summary": "Tested Merchant Testimonials system end-to-end: 10 pytest backend tests (public list/filter, admin auth, CRUD, validation, toggle-via-update hides from public) + Playwright frontend checks on /merchant-landing public section and /admin/old AdminTestimonialsTab. All scenarios from review request pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/testimonials", "issue": "Response shape is {testimonials, count} — no explicit ok:true field as described in request wording. Not a functional bug; public consumer (MerchantTestimonials.jsx) reads testimonials array correctly."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/merchant-landing #testimonials", "issues": ["On first card (Pizzeria Da Mario) with business name wrapping, the Location chip 'Berlin-Kreuzberg' can visually overflow to the right outside card bounds at ~1280px; similar clipping visible on Hair & Style card ('München') and FitZone ('Köln'). Consider flex-wrap or truncate on location span in MerchantTestimonials.jsx meta row."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_testimonials.py",
+    "/app/test_reports/pytest/iter38_testimonials.xml"
+  ],
+  "action_items": [
+    "Optional: normalize public /api/testimonials response to include ok:true for consistency with admin endpoints (currently only returns {testimonials, count}).",
+    "Minor design polish: prevent location badge overflow in MerchantTestimonials card meta row (wrap/truncate)."
+  ],
+  "critical_code_review_comments": [
+    "routes/testimonials.py uses @router.on_event('startup') — deprecated in FastAPI in favor of lifespan handlers. Works but emits DeprecationWarning. Consider moving seed into server.py lifespan.",
+    "PUT /admin/{id} accepts raw dict without Pydantic validation — any unknown fields are persisted. Consider TestimonialUpdate Pydantic model with optional fields.",
+    "AdminTestimonialsTab.jsx: save() does not re-validate business_name emptiness before POST; server-side Pydantic catches it (422) but UX could show inline error earlier.",
+    "MerchantTestimonials.jsx falls back silently on fetch error (catch noop). Consider a small error state for debugging."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_testimonials.py (new)"
+  ],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100%"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "No seed creation needed; backend auto-seeds 4 testimonials on startup when collection is empty. Create test produced one TEST_ row which was deleted in the same test run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Testimonials CRUD + public list verified. Seed items are Pizzeria Da Mario (gastro), Hair & Style Studio (service), BioBack Bäckerei (bakery), FitZone Studio (fitness). Admin cookie-based auth via POST /api/auth/login works without 2FA for admin@bidblitz.com. Frontend admin route is /admin/old, tab id='testimonials'. Backend tests live at /app/backend/tests/test_testimonials.py.",
+  "rca of the issue": "N/A — no defects; all 10 backend tests and all frontend checks (public section + admin tab + Neu/Edit/Toggle) passed."
+}
