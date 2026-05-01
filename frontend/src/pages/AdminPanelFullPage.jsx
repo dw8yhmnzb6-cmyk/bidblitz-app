@@ -391,7 +391,8 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
     <div className="min-h-screen bg-[#F0F4FA] text-[#111]" data-testid="admin-panel-full">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between w-full">
+          {/* LEFT - Back + Title */}
           <div className="flex items-center gap-3">
             <motion.button whileTap={{ scale: 0.9 }} onClick={onBack || (() => onNavigate("/more"))}
               className="p-2 rounded-xl bg-gray-100" data-testid="admin-back">
@@ -402,19 +403,24 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
               <h1 className="text-[16px] font-bold">Admin Panel</h1>
             </div>
           </div>
-          <motion.button whileTap={{ scale: 0.9 }}
-            onClick={() => { setMenuOpen(!menuOpen); setActiveItem(null); }}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium"
-            data-testid="admin-menu-toggle">
-            {menuOpen ? <X size={14} /> : <Menu size={14} />} Menü
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={toggleLayout}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-medium"
-            data-testid="layout-toggle"
-            title={layoutMode === "full" ? "Zu Grid-Layout wechseln" : "Zu Standard-Layout wechseln"}>
-            {layoutMode === "full" ? <LayoutGrid size={14} className="text-[#10B981]" /> : <LayoutDashboard size={14} className="text-[#3B82F6]" />}
-            <span className="text-gray-700">{layoutMode === "full" ? "Grid" : "Liste"}</span>
-          </motion.button>
+          
+          {/* RIGHT - Toggle + Menu */}
+          <div className="flex items-center gap-3">
+            <motion.button whileTap={{ scale: 0.9 }} onClick={toggleLayout}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-medium"
+              data-testid="layout-toggle"
+              title={layoutMode === "full" ? "Zu Grid-Layout wechseln" : "Zu Standard-Layout wechseln"}>
+              {layoutMode === "full" ? <LayoutGrid size={14} className="text-[#10B981]" /> : <LayoutDashboard size={14} className="text-[#3B82F6]" />}
+              <span className="text-gray-700">{layoutMode === "full" ? "Grid" : "Liste"}</span>
+            </motion.button>
+            
+            <motion.button whileTap={{ scale: 0.9 }}
+              onClick={() => { setMenuOpen(!menuOpen); setActiveItem(null); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium"
+              data-testid="admin-menu-toggle">
+              {menuOpen ? <X size={14} /> : <Menu size={14} />} Menü
+            </motion.button>
+          </div>
         </div>
 
         {/* Search */}
