@@ -52,6 +52,34 @@ async def get_categories():
     return {"categories": CATEGORIES}
 
 
+SEED_PRODUCTS = [
+    {"category":"auto","title":"Kfz Basis","provider":"AllgemeinSchutz","description":"Haftpflicht für PKW bis 130 kW","coverage":"Bis 100 Mio. € pers. Schäden","monthly_price":29.90,"deductible":150,"features":["24/7 Schadenservice","Mallorca-Police","Werkstattbindung optional"],"image_url":"https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&q=80"},
+    {"category":"auto","title":"Kfz Premium Vollkasko","provider":"AutoPlus","description":"Vollkasko inkl. Diebstahl & Marderbiss","coverage":"Vollkasko + GAP + Neuwert 24 Mo.","monthly_price":68.50,"deductible":300,"features":["Werkstatt-Service","Mietwagen inkl.","E-Auto Akku Schutz"],"image_url":"https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&q=80"},
+    {"category":"travel","title":"Reise Welt 365","provider":"GlobeSafe","description":"Jahres-Auslandsreise inkl. Rücktransport","coverage":"Heilkosten unbegrenzt, Rücktransport","monthly_price":7.50,"deductible":0,"features":["365 Tage weltweit","COVID-Versorgung","Gepäck bis 2.000€"],"image_url":"https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80"},
+    {"category":"phone","title":"Smartphone Pro","provider":"DeviceCare","description":"Bruch-, Wasser-, Diebstahlschutz","coverage":"Neuwerterstattung bis 36 Mo.","monthly_price":9.90,"deductible":50,"features":["Express-Reparatur","Akku-Tausch","Daten-Backup"],"image_url":"https://images.unsplash.com/photo-1551355716-d99cdb39c5b9?w=400&q=80"},
+    {"category":"household","title":"Hausrat 70m²","provider":"HomeShield","description":"Hausrat & Glasbruch für Mietwohnung","coverage":"Bis 80.000€ Hausrat","monthly_price":11.20,"deductible":100,"features":["Fahrraddiebstahl 5%","Elementarschäden","Glasbruch inkl."],"image_url":"https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=400&q=80"},
+    {"category":"liability","title":"Privathaftpflicht Plus","provider":"SafetyFirst","description":"Privathaftpflicht für Familie","coverage":"50 Mio. € Personenschäden","monthly_price":4.90,"deductible":0,"features":["Schlüsselverlust","Mietsachschäden","Forderungsausfall"],"image_url":"https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&q=80"},
+    {"category":"health","title":"Zahn-Plus","provider":"DentaProtect","description":"Zahnzusatz: Prophylaxe + Zahnersatz","coverage":"90% Zahnersatz, 100% PZR","monthly_price":19.90,"deductible":0,"features":["Implantate inkl.","Kieferorthopädie","Keine Wartezeit auf Prophylaxe"],"image_url":"https://images.unsplash.com/photo-1606811971618-4486d14f3f99?w=400&q=80"},
+    {"category":"life","title":"Risikoleben 250k","provider":"VitaPrime","description":"Risikolebensversicherung 250.000€","coverage":"Auszahlung im Todesfall","monthly_price":14.50,"deductible":0,"features":["Steuerlich absetzbar","Konstante Beiträge","Hinterbliebenenschutz"],"image_url":"https://images.unsplash.com/photo-1518152006812-edab29b069ac?w=400&q=80"},
+    {"category":"pet","title":"Hund OP","provider":"PetCare","description":"OP-Versicherung für Hunde","coverage":"100% OP-Kosten 5.000€/Jahr","monthly_price":16.90,"deductible":0,"features":["Auch ältere Tiere","Keine Wartezeit Notfall","Heilbehandlung 1.500€"],"image_url":"https://images.unsplash.com/photo-1544568100-847a948585b9?w=400&q=80"},
+]
+
+
+@router.on_event("startup")
+async def seed_insurance():
+    if await db.insurance_products.count_documents({}) == 0:
+        now = datetime.now(timezone.utc).isoformat()
+        for p in SEED_PRODUCTS:
+            doc = dict(p)
+            doc["product_id"] = secrets.token_hex(8)
+            doc["yearly_price"] = round(p["monthly_price"] * 10.8, 2)
+            doc["purchase_count"] = 0
+            doc["rating"] = 4.5
+            doc["status"] = "active"
+            doc["created_at"] = now
+            await db.insurance_products.insert_one(doc)
+
+
 @router.get("/products")
 async def list_products(category: str = "", limit: int = 30):
     query = {"status": "active"}

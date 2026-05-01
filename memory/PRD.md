@@ -125,7 +125,48 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**30.04.2026 (5)** — **Alle 5 offenen Super-App-Features deployed**: Gruppenchat (WeChat) + Round-up Sparen (Revolut) + Apartments-Marketplace (Airbnb). ETF/Aktien-Trading + KI-Budgetplaner waren bereits vorhanden (stocks.py, budget.py). Backend 29/29 PASS. Frontend 6 neue Tiles auf MorePage, alle Routes grün.
+**01.05.2026** — Letzter Super-App-Sprint: Insurance Quote-Calculator + Claims, Telemedizin Slots/Cancel/Prescriptions.
+
+### 01.05.2026 Changes
+**Backend (insurance.py)**:
+- `POST /api/insurance/quote` — Schnellrechner für 8 Kategorien (auto/travel/phone/household/liability/health/life/pet) mit kategoriespezifischen Parametern (driver_age, vehicle_age, trip_days, device_value, living_sqm, age, coverage_amount, pet_age).
+- `POST /api/insurance/claim` — Schaden melden mit policy_id, claim_type (accident/theft/damage/illness/other), description (≥10 chars), incident_date, amount_estimate, photos[]. Reference `CLM-XXXX`.
+- `GET /api/insurance/my-claims` + `GET /api/insurance/claim/{id}` (Ownership).
+- `POST /api/insurance/admin/claim/{id}/review` (admin) — status approved/rejected/in_review/paid; bei `paid` automatische Wallet-Gutschrift + Transaction.
+- Seed: 9 Demo-Versicherungsprodukte (Kfz Basis/Premium, Reise, Handy, Hausrat, Haftpflicht, Zahn, Risikoleben, Hund OP) — auto-insert if collection empty.
+
+**Backend (telemedizin.py)**:
+- `GET /api/telemedizin/slots/{doctor_id}?date=` — verfügbare Time-Slots (16 Standard-Slots, blockiert wenn bereits gebucht).
+- `POST /api/telemedizin/cancel/{appointment_id}` — Patient-Cancel.
+- `POST /api/telemedizin/prescription` (admin/doctor) — E-Rezept mit medications[], diagnosis, notes.
+- `GET /api/telemedizin/my-prescriptions`.
+
+**Frontend**:
+- `InsurancePage.jsx`: 4 Tabs (Markt/Rechner/Policen/Schäden) + neuer Claim-Flow + Quote-Calculator UI.
+- `TelemedizinPage.jsx` rewritten: 3 Tabs (Ärzte/Termine/Rezepte) + Slot-Picker (date-bound, real-time-availability) + Cancel-Button + Video-Beitreten-Link.
+
+**Removed**: `backend/routes/reservation_system.py` (war Stub, 53 Zeilen, nie gemounted; Restaurant-Funktion läuft komplett über `restaurants.py`).
+
+**Testing (Iter 34)**: Backend 28/28 PASS — Insurance Quote (8 Kategorien + invalid 400), Insurance Products + Purchase + Cancel, Insurance Claim Create + List + Detail + Admin Review/Payout (Wallet-Credit verifiziert), Telemedizin Slots + Booking + Cancel + Prescription. `retest_needed: false`.
+
+**Frontend nicht getestet** (nur Backend-Endpoints neu) — TelemedizinPage komplett umgeschrieben, manuelles smoke recommended.
+
+## Backlog (P0/P1/P2)
+### P0
+- Stripe Live Keys, Fiskaly TSE, Coinbase Commerce — User muss API-Keys liefern
+- AdminPage.jsx (~2000 LOC) modularisieren — letzte Monolith-Datei
+
+### P1
+- Live-Video-Provider (Agora/Mux/LiveKit) für /live (aktuell metadata-only)
+- Card-Issuer (Weavr/Marqeta) — Waitlist → echte Karten-Ausgabe
+- WS-Auth Hardening für Group-Chat Real-time-Broadcast (aktuell 5s Polling)
+
+### P2
+- Hetzner-VPS Deploy (deploy.sh ready, SSH-Access nötig)
+- Insurance Photo-Upload (S3/Object Storage statt base64)
+- Telemedizin: Doktor verifiziert Appointment-Ownership beim Rezept
+
+## Stand
 
 ### 30.04.2026 (5) — Letzter Feature-Sprint
 **Neue Backend-Routen**:
