@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Store, CreditCard, Shield, BarChart3,
@@ -16,7 +16,18 @@ import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
 import ExportSection from "../components/ExportSection";
 import ErrorState from "../components/ErrorState";
+import LazyErrorBoundary from "../components/LazyErrorBoundary";
 import { api as apiService } from "../services/api";
+
+const AdminAuctionsTab = lazy(() => import("../components/admin/AdminAuctionsTab"));
+const AdminScootersTab = lazy(() => import("../components/admin/AdminScootersTab"));
+const AdminGutscheineTab = lazy(() => import("../components/admin/AdminGutscheineTab"));
+
+const LazyFallback = () => (
+  <div className="flex items-center justify-center py-20">
+    <Loader2 size={20} className="animate-spin text-[#00C2FF]" />
+  </div>
+);
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
@@ -1393,696 +1404,64 @@ export const AdminPage = ({ onNavigate, defaultTab }) => {
 
           {/* ── Auctions Bot Admin Tab ── */}
           {tab === "auctions" && (
-            <motion.div key="auctions-admin" data-testid="admin-auctions-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              {loading ? <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-[120px]" />)}</div> : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <Bot size={14} className="text-[#00E89D]" />
-                      <p className="text-[10px] text-[#444] uppercase tracking-[0.12em] font-semibold">{t("admin.auctions_title") || "Auction Bot Control"} ({adminAuctions.filter(a => a.status === "active").length} {t("admin.auctions_active") || "active"})</p>
-                    </div>
-                    <motion.button onClick={() => load("auctions")} whileTap={{ scale: 0.95 }}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-white/[0.03] text-[#555] border border-white/[0.05]">
-                      {t("admin.auctions_refresh") || "Refresh"}
-                    </motion.button>
-                  </div>
-
-                  {adminAuctions.filter(a => a.status === "active").length === 0 && (
-                    <p className="text-center py-10 text-[12px] text-[#333]">{t("admin.auctions_none") || "No active auctions"}</p>
-                  )}
-
-                  {adminAuctions.filter(a => a.status === "active").map((auc) => {
-                    const targetPrice = auc._bot_target_price || 0;
-                    const bidsNeeded = targetPrice > 0 ? Math.round(targetPrice / 0.01) : 0;
-                    const estimatedRevenue = bidsNeeded * 0.50;
-                    const progress = targetPrice > 0 ? Math.min(100, ((auc.current_price || 0) / targetPrice) * 100) : 0;
-
-                    return (
-                      <motion.div key={auc.auction_id} data-testid={`auction-bot-${auc.auction_id}`}
-                        className="rounded-2xl overflow-hidden"
-                        style={{ background: "rgba(255,255,255,0.015)", border: `1px solid ${auc._bot_enabled ? "rgba(0,232,157,0.12)" : "rgba(255,255,255,0.035)"}` }}
-                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-
-                        {/* Header */}
-                        <div className="px-4 py-3 flex items-center gap-3">
-                          {auc.image_url && (
-                            <img src={auc.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 bg-white/[0.02]" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-semibold text-white/90 truncate">{auc.title}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[10px] text-[#00E89D] font-bold font-mono">{"\u20AC"}{(auc.current_price || 0).toFixed(2)}</span>
-                              <span className="text-[8px] text-[#333]">{auc.total_bids || 0} {t("admin.auctions_bids") || "bids"}</span>
-                              {auc.bot_bids_placed > 0 && (
-                                <span className="text-[8px] text-[#A855F7] font-medium">{auc.bot_bids_placed} bot</span>
-                              )}
-                              <span className="text-[8px] text-[#444]">{Math.floor((auc.remaining_seconds || 0) / 60)}m {Math.floor((auc.remaining_seconds || 0) % 60)}s</span>
-                            </div>
-                          </div>
-                          {/* Bot Toggle */}
-                          <motion.button
-                            data-testid={`bot-toggle-${auc.auction_id}`}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => {
-                              setAdminAuctions(prev => prev.map(a =>
-                                a.auction_id === auc.auction_id ? { ...a, _bot_enabled: !a._bot_enabled } : a
-                              ));
-                            }}>
-                            {auc._bot_enabled ? <ToggleRight size={28} className="text-[#00E89D]" /> : <ToggleLeft size={28} className="text-[#333]" />}
-                          </motion.button>
-                        </div>
-
-                        {/* Bot Config Panel */}
-                        <AnimatePresence>
-                          {auc._bot_enabled && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden">
-                              <div className="px-4 pb-3 space-y-2.5 border-t border-white/[0.03] pt-3">
-
-                                {/* Target Price Input */}
-                                <div className="flex items-center gap-3">
-                                  <div className="flex-1">
-                                    <label className="text-[9px] text-[#444] font-medium block mb-1">
-                                      <Target size={9} className="inline mr-1 text-[#FFB800]" />{t("admin.auctions_target") || "Target Price"} ({"\u20AC"})
-                                    </label>
-                                    <input
-                                      data-testid={`bot-target-${auc.auction_id}`}
-                                      type="number" step="0.5" min="0" max="10000"
-                                      value={auc._bot_target_price}
-                                      onChange={e => {
-                                        const val = parseFloat(e.target.value) || 0;
-                                        setAdminAuctions(prev => prev.map(a =>
-                                          a.auction_id === auc.auction_id ? { ...a, _bot_target_price: val } : a
-                                        ));
-                                      }}
-                                      className="w-full px-3 py-2 rounded-xl text-[13px] text-white/90 font-bold font-mono outline-none bg-white/[0.03] border border-white/[0.06]"
-                                    />
-                                  </div>
-                                  <div className="flex-1">
-                                    <label className="text-[9px] text-[#444] font-medium block mb-1">
-                                      <Clock size={9} className="inline mr-1 text-[#00C2FF]" />{t("admin.auctions_window") || "Start (Sek. vor Ende)"}
-                                    </label>
-                                    <input
-                                      data-testid={`bot-window-${auc.auction_id}`}
-                                      type="number" step="60" min="0" max="86400"
-                                      value={auc._bot_min_seconds}
-                                      onChange={e => {
-                                        const val = parseInt(e.target.value) || 0;
-                                        setAdminAuctions(prev => prev.map(a =>
-                                          a.auction_id === auc.auction_id ? { ...a, _bot_min_seconds: val } : a
-                                        ));
-                                      }}
-                                      className="w-full px-3 py-2 rounded-xl text-[13px] text-white/90 font-bold font-mono outline-none bg-white/[0.03] border border-white/[0.06]"
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Revenue Calculation */}
-                                {targetPrice > 0 && (
-                                  <div className="rounded-xl p-2.5 flex items-center justify-between" style={{ background: "rgba(0,232,157,0.03)", border: "1px solid rgba(0,232,157,0.08)" }}>
-                                    <div className="flex items-center gap-2">
-                                      <DollarSign size={12} className="text-[#00E89D]" />
-                                      <div>
-                                        <p className="text-[9px] text-[#444]">{t("admin.auctions_math") || "Revenue Calculation"}</p>
-                                        <p className="text-[8px] text-white/20 font-mono">{targetPrice.toFixed(2)} / 0.01 × 0.50</p>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-[15px] font-bold font-outfit text-[#00E89D]">{"\u20AC"}{estimatedRevenue.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</p>
-                                      <p className="text-[8px] text-[#444]">{bidsNeeded.toLocaleString()} {t("admin.auctions_bids_needed") || "bids needed"}</p>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Progress bar */}
-                                {targetPrice > 0 && (
-                                  <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className="text-[9px] text-[#444]">{t("admin.auctions_progress") || "Progress"}</span>
-                                      <span className="text-[9px] text-white/40 font-mono">{(auc.current_price || 0).toFixed(2)} / {targetPrice.toFixed(2)} ({progress.toFixed(1)}%)</span>
-                                    </div>
-                                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
-                                      <motion.div className="h-full rounded-full" style={{ background: progress >= 100 ? "#00D26A" : "#00E89D" }}
-                                        initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Bot Strategy Selector */}
-                                <div className="pt-2 border-t border-white/[0.03]">
-                                  <label className="text-[9px] text-[#444] font-medium block mb-1.5">
-                                    <Cpu size={9} className="inline mr-1 text-[#A855F7]" />Bot-Strategie
-                                  </label>
-                                  <div className="grid grid-cols-3 gap-1.5">
-                                    {[
-                                      { id: "standard", name: "Standard", color: "#00E89D" },
-                                      { id: "sniper", name: "Sniper", color: "#FF6B6B" },
-                                      { id: "pressure", name: "Pressure", color: "#FFB800" },
-                                      { id: "marathon", name: "Marathon", color: "#00C2FF" },
-                                      { id: "whale", name: "Whale", color: "#A855F7" },
-                                    ].map(strat => (
-                                      <motion.button
-                                        key={strat.id}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => {
-                                          setAdminAuctions(prev => prev.map(a =>
-                                            a.auction_id === auc.auction_id ? { ...a, _bot_strategy: strat.id } : a
-                                          ));
-                                        }}
-                                        className="px-2 py-1.5 rounded-lg text-[9px] font-medium"
-                                        style={{
-                                          background: auc._bot_strategy === strat.id ? `${strat.color}15` : "rgba(255,255,255,0.02)",
-                                          border: `1px solid ${auc._bot_strategy === strat.id ? `${strat.color}40` : "rgba(255,255,255,0.04)"}`,
-                                          color: auc._bot_strategy === strat.id ? strat.color : "#555",
-                                        }}
-                                      >
-                                        {strat.name}
-                                      </motion.button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* Aggression Level */}
-                                <div>
-                                  <label className="text-[9px] text-[#444] font-medium block mb-1.5">
-                                    <Zap size={9} className="inline mr-1 text-[#FFB800]" />Aggressivität
-                                  </label>
-                                  <div className="grid grid-cols-4 gap-1">
-                                    {[
-                                      { id: "low", name: "Niedrig", color: "#00E89D" },
-                                      { id: "medium", name: "Mittel", color: "#FFB800" },
-                                      { id: "high", name: "Hoch", color: "#FF6B6B" },
-                                      { id: "extreme", name: "Extrem", color: "#A855F7" },
-                                    ].map(agg => (
-                                      <motion.button
-                                        key={agg.id}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => {
-                                          setAdminAuctions(prev => prev.map(a =>
-                                            a.auction_id === auc.auction_id ? { ...a, _bot_aggression: agg.id } : a
-                                          ));
-                                        }}
-                                        className="px-1.5 py-1 rounded-lg text-[8px] font-medium"
-                                        style={{
-                                          background: auc._bot_aggression === agg.id ? `${agg.color}15` : "rgba(255,255,255,0.02)",
-                                          border: `1px solid ${auc._bot_aggression === agg.id ? `${agg.color}40` : "rgba(255,255,255,0.04)"}`,
-                                          color: auc._bot_aggression === agg.id ? agg.color : "#555",
-                                        }}
-                                      >
-                                        {agg.name}
-                                      </motion.button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* Final Battle Mode */}
-                                <div>
-                                  <label className="text-[9px] text-[#444] font-medium block mb-1.5">
-                                    <Target size={9} className="inline mr-1 text-[#FF6B6B]" />Final Battle Modus
-                                  </label>
-                                  <div className="grid grid-cols-4 gap-1">
-                                    {[
-                                      { id: "passive", name: "Passiv" },
-                                      { id: "normal", name: "Normal" },
-                                      { id: "aggressive", name: "Aggro" },
-                                      { id: "berserker", name: "Berserker" },
-                                    ].map(fb => (
-                                      <motion.button
-                                        key={fb.id}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => {
-                                          setAdminAuctions(prev => prev.map(a =>
-                                            a.auction_id === auc.auction_id ? { ...a, _bot_final_battle: fb.id } : a
-                                          ));
-                                        }}
-                                        className="px-1.5 py-1 rounded-lg text-[8px] font-medium"
-                                        style={{
-                                          background: auc._bot_final_battle === fb.id ? "rgba(255,107,107,0.15)" : "rgba(255,255,255,0.02)",
-                                          border: `1px solid ${auc._bot_final_battle === fb.id ? "rgba(255,107,107,0.4)" : "rgba(255,255,255,0.04)"}`,
-                                          color: auc._bot_final_battle === fb.id ? "#FF6B6B" : "#555",
-                                        }}
-                                      >
-                                        {fb.name}
-                                      </motion.button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* Save Button */}
-                                <motion.button
-                                  data-testid={`bot-save-${auc.auction_id}`}
-                                  whileTap={{ scale: 0.96 }}
-                                  disabled={botSaving === auc.auction_id}
-                                  onClick={async () => {
-                                    setBotSaving(auc.auction_id);
-                                    try {
-                                      await api("/api/auctions/admin/bot-config", {
-                                        method: "POST",
-                                        body: JSON.stringify({
-                                          auction_id: auc.auction_id,
-                                          bot_enabled: auc._bot_enabled,
-                                          bot_target_price: auc._bot_target_price,
-                                          bot_min_seconds: auc._bot_min_seconds,
-                                          bot_aggression: auc._bot_aggression || "medium",
-                                          bot_final_battle_mode: auc._bot_final_battle || "normal",
-                                          bot_react_to_users: true,
-                                          bot_max_bids_per_minute: auc._bot_aggression === "extreme" ? 20 : auc._bot_aggression === "high" ? 12 : auc._bot_aggression === "low" ? 3 : 6,
-                                          bot_min_delay_seconds: auc._bot_aggression === "extreme" ? 1 : auc._bot_aggression === "high" ? 2 : auc._bot_aggression === "low" ? 10 : 5,
-                                          bot_max_delay_seconds: auc._bot_aggression === "extreme" ? 4 : auc._bot_aggression === "high" ? 8 : auc._bot_aggression === "low" ? 30 : 15,
-                                        }),
-                                      });
-                                    } catch {}
-                                    setBotSaving(null);
-                                  }}
-                                  className="w-full py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5"
-                                  style={{ background: "rgba(0,232,157,0.1)", color: "#00E89D", border: "1px solid rgba(0,232,157,0.15)" }}>
-                                  {botSaving === auc.auction_id ? <Loader2 size={12} className="animate-spin" /> : <><Zap size={11} /> {t("admin.auctions_save_bot") || "Bot speichern"}</>}
-                                </motion.button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    );
-                  })}
-
-                  {/* Ended auctions (collapsed) */}
-                  {adminAuctions.filter(a => a.status === "ended").length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-[9px] text-[#333] uppercase tracking-[0.12em] font-semibold mb-2">{t("admin.auctions_ended") || "Ended"} ({adminAuctions.filter(a => a.status === "ended").length})</p>
-                      <div className="space-y-1.5">
-                        {adminAuctions.filter(a => a.status === "ended").slice(0, 10).map(auc => (
-                          <div key={auc.auction_id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.025)" }}>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[11px] text-white/40 truncate">{auc.title}</p>
-                            </div>
-                            <div className="flex items-center gap-3 flex-shrink-0">
-                              <span className="text-[11px] font-mono text-white/30">{"\u20AC"}{(auc.current_price || 0).toFixed(2)}</span>
-                              <span className="text-[9px] text-[#333]">{auc.total_bids || 0} bids</span>
-                              {auc.bot_bids_placed > 0 && <span className="text-[8px] text-[#A855F7]/50">{auc.bot_bids_placed} bot</span>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </motion.div>
+            <LazyErrorBoundary>
+              <Suspense fallback={<LazyFallback />}>
+                <AdminAuctionsTab
+                  t={t}
+                  loading={loading}
+                  auctions={adminAuctions}
+                  setAuctions={setAdminAuctions}
+                  botSaving={botSaving}
+                  setBotSaving={setBotSaving}
+                  reload={() => load("auctions")}
+                />
+              </Suspense>
+            </LazyErrorBoundary>
           )}
 
-          {/* ═══════════════════════════════════════════════════════════════════════ */}
-          {/* SCOOTER FLEET MANAGEMENT TAB */}
-          {/* ═══════════════════════════════════════════════════════════════════════ */}
+          {/* Scooter Fleet Management */}
           {tab === "scooters" && (
-            <motion.div key="scooters" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              {/* Stats Cards */}
-              <div className="grid grid-cols-4 gap-2">
-                <StatCard icon={Zap} label="Gesamt" value={scooterStats?.total || 0} color="#00C2FF" delay={0} />
-                <StatCard icon={Check} label="Verfügbar" value={scooterStats?.available || 0} color="#00D26A" delay={0.05} />
-                <StatCard icon={Activity} label="In Benutzung" value={scooterStats?.in_use || 0} color="#FFB800" delay={0.1} />
-                <StatCard icon={AlertCircle} label="Wartung" value={scooterStats?.maintenance || 0} color="#FF4757" delay={0.15} />
-              </div>
-
-              {/* Add Scooter Button */}
-              <motion.button
-                data-testid="add-scooter-btn"
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setShowAddScooter(!showAddScooter)}
-                className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
-                style={{ background: "rgba(0,194,255,0.08)", color: "#00C2FF", border: "1px solid rgba(0,194,255,0.15)" }}
-              >
-                <Plus size={16} /> Neuen Scooter hinzufügen
-              </motion.button>
-
-              {/* Add Scooter Form */}
-              <AnimatePresence>
-                {showAddScooter && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden rounded-2xl p-4 space-y-3"
-                    style={{ background: "rgba(0,194,255,0.02)", border: "1px solid rgba(0,194,255,0.08)" }}
-                  >
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] text-[#444] font-medium block mb-1">Geräte-ID *</label>
-                        <input
-                          data-testid="scooter-device-id"
-                          value={newScooter.device_id}
-                          onChange={e => setNewScooter({ ...newScooter, device_id: e.target.value })}
-                          placeholder="z.B. DEV-12345"
-                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-[#444] font-medium block mb-1">QR-Code</label>
-                        <input
-                          data-testid="scooter-qr-code"
-                          value={newScooter.qr_code}
-                          onChange={e => setNewScooter({ ...newScooter, qr_code: e.target.value })}
-                          placeholder="QR-Code ID"
-                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] text-[#444] font-medium block mb-1">Modell</label>
-                        <select
-                          data-testid="scooter-model"
-                          value={newScooter.model}
-                          onChange={e => setNewScooter({ ...newScooter, model: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-medium outline-none bg-white/[0.03] border border-white/[0.05] cursor-pointer"
-                        >
-                          <option value="Ninebot Max G30">Ninebot Max G30</option>
-                          <option value="Xiaomi Pro 2">Xiaomi Pro 2</option>
-                          <option value="Segway E45">Segway E45</option>
-                          <option value="Bird One">Bird One</option>
-                          <option value="Lime S">Lime S</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-[#444] font-medium block mb-1">Batterie %</label>
-                        <input
-                          data-testid="scooter-battery"
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={newScooter.battery}
-                          onChange={e => setNewScooter({ ...newScooter, battery: parseInt(e.target.value) || 100 })}
-                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] text-[#444] font-medium block mb-1">Breitengrad (Lat)</label>
-                        <input
-                          data-testid="scooter-lat"
-                          type="number"
-                          step="0.0001"
-                          value={newScooter.lat}
-                          onChange={e => setNewScooter({ ...newScooter, lat: parseFloat(e.target.value) || 52.52 })}
-                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-mono font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-[#444] font-medium block mb-1">Längengrad (Lng)</label>
-                        <input
-                          data-testid="scooter-lng"
-                          type="number"
-                          step="0.0001"
-                          value={newScooter.lng}
-                          onChange={e => setNewScooter({ ...newScooter, lng: parseFloat(e.target.value) || 13.405 })}
-                          className="w-full px-3 py-2 rounded-xl text-[12px] text-white/90 font-mono font-medium outline-none bg-white/[0.03] border border-white/[0.05]"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <motion.button
-                        data-testid="scooter-submit"
-                        whileTap={{ scale: 0.97 }}
-                        disabled={savingScooter || !newScooter.device_id}
-                        onClick={async () => {
-                          setSavingScooter(true);
-                          try {
-                            await api("/api/scooter/admin/add", {
-                              method: "POST",
-                              body: JSON.stringify(newScooter),
-                            });
-                            setNewScooter({ device_id: "", qr_code: "", model: "Ninebot Max G30", lat: 52.52, lng: 13.405, battery: 100 });
-                            setShowAddScooter(false);
-                            load("scooters");
-                          } catch (e) {
-                            setError(e);
-                          }
-                          setSavingScooter(false);
-                        }}
-                        className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15 disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {savingScooter ? <Loader2 size={14} className="animate-spin" /> : <><Check size={14} /> Scooter hinzufügen</>}
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => setShowAddScooter(false)}
-                        className="px-4 py-2.5 rounded-xl text-[12px] font-medium text-[#444] bg-white/[0.02] border border-white/[0.04]"
-                      >
-                        Abbrechen
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Fleet List */}
-              {loading ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}
-                </div>
-              ) : scooterFleet.length === 0 ? (
-                <div className="text-center py-10">
-                  <Zap size={40} className="mx-auto text-[#333] mb-3" />
-                  <p className="text-[#444] text-[13px]">Keine Scooter in der Flotte</p>
-                  <p className="text-[#333] text-[11px] mt-1">Füge deinen ersten Scooter hinzu</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {scooterFleet.map((scooter, idx) => {
-                    const statusColor = scooter.status === "available" ? "#00D26A" : scooter.status === "in_use" ? "#FFB800" : scooter.status === "offline" ? "#FF4757" : "#666";
-                    const batteryColor = scooter.battery >= 50 ? "#00D26A" : scooter.battery >= 20 ? "#FFB800" : "#FF4757";
-                    
-                    return (
-                      <motion.div
-                        key={scooter.scooter_id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.03 }}
-                        className="rounded-2xl p-4 relative overflow-hidden"
-                        style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.04)" }}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Zap size={14} className="text-[#00C2FF]" />
-                              <span className="text-[13px] font-bold text-white/90">{scooter.scooter_id}</span>
-                              <span
-                                className="px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase"
-                                style={{ background: `${statusColor}15`, color: statusColor }}
-                              >
-                                {scooter.status === "available" ? "Verfügbar" : scooter.status === "in_use" ? "In Benutzung" : scooter.status === "offline" ? "Offline" : scooter.status}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[#444]">{scooter.model || scooter.name || "E-Scooter"}</p>
-                            <div className="flex items-center gap-4 mt-2 text-[10px] text-[#555]">
-                              <span className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full" style={{ background: batteryColor }} />
-                                {scooter.battery}% Batterie
-                              </span>
-                              {scooter.total_rides > 0 && (
-                                <span>{scooter.total_rides} Fahrten</span>
-                              )}
-                              {scooter.total_revenue > 0 && (
-                                <span className="text-[#00D26A]">€{scooter.total_revenue.toFixed(2)}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-1.5">
-                            <motion.button
-                              data-testid={`scooter-edit-${scooter.scooter_id}`}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={async () => {
-                                const newStatus = scooter.status === "available" ? "maintenance" : "available";
-                                try {
-                                  await api(`/api/scooter/admin/${scooter.scooter_id}`, {
-                                    method: "PUT",
-                                    body: JSON.stringify({ status: newStatus }),
-                                  });
-                                  load("scooters");
-                                } catch {}
-                              }}
-                              className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#00C2FF]"
-                            >
-                              <Settings size={14} />
-                            </motion.button>
-                            <motion.button
-                              data-testid={`scooter-delete-${scooter.scooter_id}`}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={async () => {
-                                if (window.confirm(`Scooter ${scooter.scooter_id} wirklich löschen?`)) {
-                                  try {
-                                    await api(`/api/scooter/admin/${scooter.scooter_id}`, { method: "DELETE" });
-                                    load("scooters");
-                                  } catch {}
-                                }
-                              }}
-                              className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[#666] hover:text-[#FF4757]"
-                            >
-                              <X size={14} />
-                            </motion.button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Revenue Summary */}
-              {scooterStats && scooterStats.total_revenue > 0 && (
-                <div className="rounded-2xl p-4" style={{ background: "rgba(0,210,106,0.02)", border: "1px solid rgba(0,210,106,0.08)" }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Euro size={16} className="text-[#00D26A]" />
-                      <span className="text-[12px] text-[#444]">Gesamtumsatz Scooter</span>
-                    </div>
-                    <span className="text-[18px] font-bold font-outfit text-[#00D26A]">€{scooterStats.total_revenue.toFixed(2)}</span>
-                  </div>
-                  <p className="text-[10px] text-[#555] mt-1">{scooterStats.total_rides || 0} Fahrten insgesamt</p>
-                </div>
-              )}
-            </motion.div>
+            <LazyErrorBoundary>
+              <Suspense fallback={<LazyFallback />}>
+                <AdminScootersTab
+                  loading={loading}
+                  scooterFleet={scooterFleet}
+                  scooterStats={scooterStats}
+                  showAdd={showAddScooter}
+                  setShowAdd={setShowAddScooter}
+                  newScooter={newScooter}
+                  setNewScooter={setNewScooter}
+                  saving={savingScooter}
+                  setSaving={setSavingScooter}
+                  reload={() => load("scooters")}
+                  setError={setError}
+                />
+              </Suspense>
+            </LazyErrorBoundary>
           )}
 
-          {/* ═══ GUTSCHEINE TAB ═══ */}
+          {/* Gutscheine */}
           {tab === "gutscheine" && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowCreateCoupon(true)}
-                  className="flex-1 py-3 rounded-xl bg-[#A855F7] text-white font-bold text-xs flex items-center justify-center gap-1.5"
-                  data-testid="create-coupon-btn">
-                  <Ticket size={14} /> Gutschein erstellen
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowGrant(true)}
-                  className="flex-1 py-3 rounded-xl bg-[#00C2FF] text-black font-bold text-xs flex items-center justify-center gap-1.5"
-                  data-testid="grant-balance-btn">
-                  <Euro size={14} /> Guthaben vergeben
-                </motion.button>
-              </div>
-
-              {/* Create Coupon Form */}
-              <AnimatePresence>
-                {showCreateCoupon && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden">
-                    <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)" }}>
-                      <h4 className="text-sm font-bold text-white">Neuer Gutschein</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <select value={couponForm.coupon_type} onChange={e => setCouponForm(p => ({ ...p, coupon_type: e.target.value }))}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" data-testid="coupon-type">
-                          <option value="eur">EUR Guthaben</option>
-                          <option value="coins">Coins</option>
-                          <option value="bid_credits">Bid Credits</option>
-                          <option value="blz">BLZ Token</option>
-                          <option value="kids_abo">Kids Abo (Monate)</option>
-                          <option value="premium_month">Premium (Monate)</option>
-                        </select>
-                        <input type="number" placeholder="Wert" value={couponForm.value}
-                          onChange={e => setCouponForm(p => ({ ...p, value: e.target.value }))}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" data-testid="coupon-value" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="text" placeholder="Code (auto)" value={couponForm.code}
-                          onChange={e => setCouponForm(p => ({ ...p, code: e.target.value.toUpperCase() }))}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" data-testid="coupon-code" />
-                        <input type="number" placeholder="Max. Einlösungen" value={couponForm.max_uses}
-                          onChange={e => setCouponForm(p => ({ ...p, max_uses: e.target.value }))}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
-                      </div>
-                      <input type="text" placeholder="Beschreibung" value={couponForm.description}
-                        onChange={e => setCouponForm(p => ({ ...p, description: e.target.value }))}
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
-                      <div className="flex gap-2">
-                        <motion.button whileTap={{ scale: 0.95 }} onClick={handleCreateCoupon} disabled={couponLoading || !couponForm.value}
-                          className="flex-1 py-3 rounded-xl bg-[#A855F7] text-white font-bold text-xs disabled:opacity-30 flex items-center justify-center gap-1"
-                          data-testid="save-coupon-btn">
-                          {couponLoading ? <Loader2 size={14} className="animate-spin" /> : "Erstellen"}
-                        </motion.button>
-                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowCreateCoupon(false)}
-                          className="px-4 py-3 rounded-xl bg-white/5 text-xs text-[#888]">Abbrechen</motion.button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Grant Balance Form */}
-              <AnimatePresence>
-                {showGrant && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden">
-                    <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(0,194,255,0.05)", border: "1px solid rgba(0,194,255,0.15)" }}>
-                      <h4 className="text-sm font-bold text-white">Guthaben vergeben</h4>
-                      <input type="email" placeholder="E-Mail des Users *" value={grantForm.user_email}
-                        onChange={e => setGrantForm(p => ({ ...p, user_email: e.target.value }))}
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" data-testid="grant-email" />
-                      <div className="grid grid-cols-2 gap-2">
-                        <select value={grantForm.grant_type} onChange={e => setGrantForm(p => ({ ...p, grant_type: e.target.value }))}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" data-testid="grant-type">
-                          <option value="eur">EUR</option>
-                          <option value="coins">Coins</option>
-                          <option value="bid_credits">Bid Credits</option>
-                          <option value="blz">BLZ Token</option>
-                        </select>
-                        <input type="number" placeholder="Betrag *" value={grantForm.amount}
-                          onChange={e => setGrantForm(p => ({ ...p, amount: e.target.value }))}
-                          className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" data-testid="grant-amount" />
-                      </div>
-                      <input type="text" placeholder="Grund (optional)" value={grantForm.reason}
-                        onChange={e => setGrantForm(p => ({ ...p, reason: e.target.value }))}
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white outline-none" />
-                      <div className="flex gap-2">
-                        <motion.button whileTap={{ scale: 0.95 }} onClick={handleGrantBalance} disabled={grantLoading || !grantForm.user_email || !grantForm.amount}
-                          className="flex-1 py-3 rounded-xl bg-[#00C2FF] text-black font-bold text-xs disabled:opacity-30 flex items-center justify-center gap-1"
-                          data-testid="send-grant-btn">
-                          {grantLoading ? <Loader2 size={14} className="animate-spin" /> : "Vergeben"}
-                        </motion.button>
-                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowGrant(false)}
-                          className="px-4 py-3 rounded-xl bg-white/5 text-xs text-[#888]">Abbrechen</motion.button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Coupon List */}
-              {coupons.length === 0 ? (
-                <div className="text-center py-12">
-                  <Ticket size={40} className="mx-auto text-[#333] mb-3" />
-                  <p className="text-[#666] text-sm">Keine Gutscheine erstellt</p>
-                </div>
-              ) : coupons.map((c, i) => (
-                <motion.div key={c.coupon_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className={`rounded-2xl p-4 border ${c.active ? "bg-white/[0.02] border-white/[0.06]" : "bg-red-500/5 border-red-500/10 opacity-50"}`}
-                  data-testid={`coupon-${c.coupon_id}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-lg bg-[#A855F7]/20 text-[#A855F7] text-[11px] font-mono font-bold tracking-wider">{c.code}</span>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${c.active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
-                        {c.active ? "AKTIV" : "DEAKTIVIERT"}
-                      </span>
-                    </div>
-                    {c.active && (
-                      <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleDeleteCoupon(c.coupon_id)}
-                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20" data-testid={`delete-coupon-${c.coupon_id}`}>
-                        <X size={12} className="text-red-400" />
-                      </motion.button>
-                    )}
-                  </div>
-                  <p className="text-xs text-white/80 mb-1">{c.description || `${c.value} ${c.coupon_type}`}</p>
-                  <div className="flex items-center gap-3 text-[10px] text-[#666]">
-                    <span>Typ: {c.coupon_type.toUpperCase()}</span>
-                    <span>Wert: {c.value}</span>
-                    <span>Eingelöst: {c.used_count}/{c.max_uses}</span>
-                    <span>Ablauf: {c.expires_at ? new Date(c.expires_at).toLocaleDateString("de-DE") : "—"}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+            <LazyErrorBoundary>
+              <Suspense fallback={<LazyFallback />}>
+                <AdminGutscheineTab
+                  coupons={coupons}
+                  showCreateCoupon={showCreateCoupon}
+                  setShowCreateCoupon={setShowCreateCoupon}
+                  couponForm={couponForm}
+                  setCouponForm={setCouponForm}
+                  couponLoading={couponLoading}
+                  handleCreateCoupon={handleCreateCoupon}
+                  handleDeleteCoupon={handleDeleteCoupon}
+                  showGrant={showGrant}
+                  setShowGrant={setShowGrant}
+                  grantForm={grantForm}
+                  setGrantForm={setGrantForm}
+                  grantLoading={grantLoading}
+                  handleGrantBalance={handleGrantBalance}
+                />
+              </Suspense>
+            </LazyErrorBoundary>
           )}
 
       </div>
