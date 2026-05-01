@@ -929,8 +929,9 @@ function AppContent() {
       <AnimatePresence>
         {showGlobalSearch && <GlobalSearch onNavigate={handleNavigate} onClose={() => setShowGlobalSearch(false)} />}
       </AnimatePresence>
-      {/* Onboarding Tour */}
-      {showOnboarding && !user.isAuthenticated && (
+      {/* Onboarding Tour — skip on public marketing/merchant routes */}
+      {showOnboarding && !user.isAuthenticated &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing"].includes(currentPath) && (
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}

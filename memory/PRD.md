@@ -125,7 +125,30 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**01.05.2026 (3)** — AdminPage Modularisierung **abgeschlossen**: 1473 → 672 LOC (Ziel <700 erreicht; vom ursprünglichen 2094 = **−67.8%**).
+**01.05.2026 (4)** — **Händler-Landing** um branchen-spezifische Sales-Section erweitert + in Production deployed.
+
+### 01.05.2026 (4) Changes
+**Neu**: `/app/frontend/src/components/MerchantIndustriesSection.jsx` (361 LOC)
+- **6 Branchen-Cards** mit klickbaren Tabs: Gastronomie, Einzelhandel, Dienstleistung, Fitness, Tankstelle, Bäckerei
+  - Pro Branche: 5 Feature-Bullets, konkrete Kostenrechnung (z.B. Restaurant 380€→47€, spart 88%), eigener CTA-Button
+- **Tisch-QR-Flow**: 5 nummerierte Schritte (Scan → Menü → Küche → Zahlung → Trinkgeld-Split) mit Icons + Farben
+- **Gutschein-Baukasten (interaktiv)**: Live-Preview-Card reagiert auf Eingaben — Typ-Switcher (%, €, ×Punkte), Wert-Input, Min-Input, QR-Code-Preview
+- **Stats-Strip**: 142+ Händler, 8.2K Tx/Tag, 0.29% Gebühr, 3 Min Onboarding
+- Alle Elemente mit `data-testid` (stat-0..3, industry-tab-<id>, qr-step-0..4, vb-*)
+
+**Geändert**:
+- `/app/frontend/src/pages/MerchantLandingPage.jsx`: Section zwischen Pricing (6) und Trust (7) eingefügt
+- `/app/frontend/src/App.js`: Onboarding-Splash-Overlay wird auf Marketing-Routes (`/merchant-landing`, `/merchant-pricing`, `/partners`, `/landing`) unterdrückt → Besucher sehen Inhalt sofort ohne blockierenden Modal
+
+**Testing (Iter 37)**: Frontend **14/14 PASS (100%)**. Alle 6 Industry-Tabs wechseln Content reaktiv, VoucherBuilder Preview aktualisiert live (Value 25 + Type=amount → "25€ geschenkt"). 0 JS-Console-Errors.
+
+**Production deployed**:
+- Backup: `/var/www/bidblitz-backups/industries-20260501_171923/`
+- Build: `main.bf95a83e.js` (5.4 MB)
+- Live auf https://bidblitz.ae/merchant-landing (HTTP 200 verified)
+- App.js auf Production minimal-gepatcht (sed statt full replace wegen AIChatWidget-Abwesenheit)
+
+## Stand
 
 ### 01.05.2026 (3) Changes
 **Neu**: `/app/frontend/src/components/AdminTabRouter.jsx` (861 LOC)
