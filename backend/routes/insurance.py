@@ -178,3 +178,158 @@ async def cancel_policy(policy_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Police bereits gekündigt")
     await db.insurance_policies.update_one({"policy_id": policy_id}, {"$set": {"status": "cancelled"}})
     return {"ok": True}
+
+
+# ─── QUOTE CALCULATOR ─────────────────────────────────────────────────────────
+QUOTE_BASE = {
+    "auto": {"base": 35, "per_year_age": -0.4, "per_year_old": 0.6, "label_age": "driver_age", "label_old": "vehicle_age"},
+    "travel": {"base": 8, "per_day": 1.2, "label_day": "trip_days"},
+    "phone": {"base": 6, "per_value": 0.012, "label_value": "device_value"},
+    "household": {"base": 9, "per_sqm": 0.18, "label_sqm": "living_sqm"},
+    "liability": {"base": 4, "fixed": True},
+    "health": {"base": 95, "per_year_age": 1.2, "label_age": "age"},
+    "life": {"base": 18, "per_value": 0.0009, "label_value": "coverage_amount", "per_year_age": 0.6, "label_age": "age"},
+    "pet": {"base": 12, "per_year_age": 0.4, "label_age": "pet_age"},
+}
+
+
+class QuoteRequest(BaseModel):
+    category: str
+    params: dict = {}
+
+
+@router.post("/quote")
+async def quote_insurance(req: QuoteRequest):
+    cfg = QUOTE_BASE.get(req.category)
+    if not cfg:
+        raise HTTPException(status_code=400, detail="Kategorie unbekannt")
+    p = req.params or {}
+    monthly = float(cfg["base"])
+    if req.category == "auto":
+        age = int(p.get("driver_age", 35) or 35)
+        v_age = int(p.get("vehicle_age", 5) or 5)
+        monthly += max(0, (35 - age)) * 0.8 + v_age * 0.6
+    elif req.category == "travel":
+        days = int(p.get("trip_days", 7) or 7)
+        monthly = cfg["base"] + days * cfg["per_day"]
+    elif req.category == "phone":
+        val = float(p.get("device_value", 600) or 600)
+        monthly = cfg["base"] + val * cfg["per_value"]
+    elif req.category == "household":
+        sqm = float(p.get("living_sqm", 60) or 60)
+        monthly = cfg["base"] + sqm * cfg["per_sqm"]
+    elif req.category in ("health",):
+        age = int(p.get("age", 30) or 30)
+        monthly = cfg["base"] + max(0, age - 25) * cfg["per_year_age"]
+    elif req.category == "life":
+        age = int(p.get("age", 30) or 30)
+        cov = float(p.get("coverage_amount", 100000) or 100000)
+        monthly = cfg["base"] + cov * cfg["per_value"] + max(0, age - 25) * cfg["per_year_age"]
+    elif req.category == "pet":
+        age = int(p.get("pet_age", 3) or 3)
+        monthly = cfg["base"] + age * cfg["per_year_age"]
+    monthly = round(max(2.0, monthly), 2)
+    yearly = round(monthly * 10.8, 2)
+    return {
+        "ok": True,
+        "category": req.category,
+        "monthly_price": monthly,
+        "yearly_price": yearly,
+        "yearly_savings": round(monthly * 12 - yearly, 2),
+        "currency": "EUR",
+    }
+
+
+# ─── CLAIMS ───────────────────────────────────────────────────────────────────
+class ClaimCreate(BaseModel):
+    policy_id: str
+    claim_type: str = ""  # accident, theft, damage, illness, other
+    description: str = Field(..., min_length=10)
+    incident_date: str = ""
+    amount_estimate: float = 0
+    photos: List[str] = []  # base64 or URLs
+
+
+@router.post("/claim")
+async def create_claim(req: ClaimCreate, request: Request):
+    user = await get_current_user(request)
+    policy = await db.insurance_policies.find_one({"policy_id": req.policy_id})
+    if not policy or policy["user_id"] != str(user["_id"]):
+        raise HTTPException(status_code=403, detail="Police nicht gefunden")
+    if policy["status"] != "active":
+        raise HTTPException(status_code=400, detail="Police nicht aktiv")
+    now = datetime.now(timezone.utc).isoformat()
+    cid = secrets.token_hex(8)
+    ref = f"CLM-{secrets.token_hex(4).upper()}"
+    claim = {
+        "claim_id": cid,
+        "reference": ref,
+        "policy_id": req.policy_id,
+        "policy_title": policy["product_title"],
+        "category": policy["category"],
+        "user_id": str(user["_id"]),
+        "user_name": user.get("name", ""),
+        "user_email": user.get("email", ""),
+        "claim_type": req.claim_type or "other",
+        "description": req.description,
+        "incident_date": req.incident_date or now[:10],
+        "amount_estimate": float(req.amount_estimate or 0),
+        "photos": req.photos[:6],
+        "status": "submitted",
+        "created_at": now,
+    }
+    await db.insurance_claims.insert_one(claim)
+    claim.pop("_id", None)
+    return {"ok": True, "claim": claim}
+
+
+@router.get("/my-claims")
+async def my_claims(request: Request):
+    user = await get_current_user(request)
+    claims = await db.insurance_claims.find(
+        {"user_id": str(user["_id"])}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return {"claims": claims}
+
+
+@router.get("/claim/{claim_id}")
+async def claim_detail(claim_id: str, request: Request):
+    user = await get_current_user(request)
+    c = await db.insurance_claims.find_one({"claim_id": claim_id}, {"_id": 0})
+    if not c or c["user_id"] != str(user["_id"]):
+        raise HTTPException(status_code=404, detail="Schaden nicht gefunden")
+    return c
+
+
+# Admin: review claim
+class ClaimReview(BaseModel):
+    status: str  # approved, rejected, in_review, paid
+    payout_amount: float = 0
+    notes: str = ""
+
+
+@router.post("/admin/claim/{claim_id}/review")
+async def admin_review_claim(claim_id: str, req: ClaimReview, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admins")
+    c = await db.insurance_claims.find_one({"claim_id": claim_id})
+    if not c:
+        raise HTTPException(status_code=404, detail="Schaden nicht gefunden")
+    update = {"status": req.status, "review_notes": req.notes,
+              "reviewed_at": datetime.now(timezone.utc).isoformat()}
+    if req.status == "paid" and req.payout_amount > 0:
+        update["payout_amount"] = req.payout_amount
+        # Credit user wallet
+        await db.users.update_one(
+            {"_id": ObjectId(c["user_id"])} if ObjectId.is_valid(c["user_id"]) else {"_id": c["user_id"]},
+            {"$inc": {"balance": req.payout_amount}},
+        )
+        await db.transactions.insert_one({
+            "id": secrets.token_hex(8), "user_id": c["user_id"], "type": "insurance_payout",
+            "amount": req.payout_amount, "description": f"Schadenauszahlung: {c['policy_title']}",
+            "status": "completed", "reference": c["reference"], "category": "insurance",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    await db.insurance_claims.update_one({"claim_id": claim_id}, {"$set": update})
+    return {"ok": True}

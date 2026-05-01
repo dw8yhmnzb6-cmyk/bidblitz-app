@@ -84,3 +84,67 @@ async def my_appointments(request: Request):
     user = await get_current_user(request)
     appts = await db.telemedizin_appointments.find({"patient_email":user.get("email","")},{"_id":0}).sort("created_at",-1).to_list(50)
     return {"appointments": appts}
+
+
+@router.get("/slots/{doctor_id}")
+async def doctor_slots(doctor_id: str, date: Optional[str] = None):
+    """Return available time slots for a given doctor on a given date."""
+    base_slots = ["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30"]
+    target = date or datetime.now(timezone.utc).date().isoformat()
+    booked = await db.telemedizin_appointments.find(
+        {"doctor_id": doctor_id, "date": target, "status": {"$ne": "cancelled"}}, {"_id":0,"time":1}
+    ).to_list(200)
+    taken = {b["time"] for b in booked}
+    return {"date": target, "slots": [{"time": s, "available": s not in taken} for s in base_slots]}
+
+
+@router.post("/cancel/{appointment_id}")
+async def cancel_appointment(appointment_id: str, request: Request):
+    user = await get_current_user(request)
+    a = await db.telemedizin_appointments.find_one({"appointment_id": appointment_id})
+    if not a or a.get("patient_email") != user.get("email",""):
+        raise HTTPException(403, "Nicht berechtigt")
+    if a.get("status") == "cancelled":
+        raise HTTPException(400, "Bereits storniert")
+    await db.telemedizin_appointments.update_one({"appointment_id": appointment_id}, {"$set":{"status":"cancelled","cancelled_at":datetime.now(timezone.utc).isoformat()}})
+    return {"ok": True}
+
+
+class PrescriptionCreate(BaseModel):
+    appointment_id: str
+    medications: list = []  # [{name, dosage, frequency}]
+    diagnosis: str = ""
+    notes: str = ""
+
+
+@router.post("/prescription")
+async def create_prescription(req: PrescriptionCreate, request: Request):
+    """Doctor-only: issue an e-prescription tied to an appointment."""
+    user = await get_current_user(request)
+    if user.get("role") not in ("admin","doctor"):
+        raise HTTPException(403, "Nur Ärzte")
+    a = await db.telemedizin_appointments.find_one({"appointment_id": req.appointment_id})
+    if not a:
+        raise HTTPException(404, "Termin nicht gefunden")
+    rx = {
+        "prescription_id": secrets.token_hex(8),
+        "appointment_id": req.appointment_id,
+        "patient_email": a.get("patient_email",""),
+        "doctor_id": a.get("doctor_id",""),
+        "doctor_name": a.get("doctor_name",""),
+        "medications": req.medications,
+        "diagnosis": req.diagnosis,
+        "notes": req.notes,
+        "issued_at": datetime.now(timezone.utc).isoformat(),
+        "code": f"RX-{secrets.token_hex(4).upper()}",
+    }
+    await db.telemedizin_prescriptions.insert_one(rx)
+    rx.pop("_id", None)
+    return {"ok": True, "prescription": rx}
+
+
+@router.get("/my-prescriptions")
+async def my_prescriptions(request: Request):
+    user = await get_current_user(request)
+    rx = await db.telemedizin_prescriptions.find({"patient_email": user.get("email","")},{"_id":0}).sort("issued_at",-1).to_list(50)
+    return {"prescriptions": rx}
