@@ -102,7 +102,32 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "BidBlitz V2 - Comprehensive Backend Testing for new features: Gamification System, Friends System, 2FA, Transaction Export, Support Tickets, KYC, and Super-App Features (Apple Pay, Firebase Push, Twilio SMS, Influencer Dashboard, Reviews)"
+user_problem_statement: "BidBlitz V2 - Comprehensive Backend Testing for new features: Gamification System, Friends System, 2FA, Transaction Export, Support Tickets, KYC, Super-App Features (Apple Pay, Firebase Push, Twilio SMS, Influencer Dashboard, Reviews), Admin Panel Grid Menu, and Merchant Dashboard Pay Keys"
+
+backend:
+  - task: "Admin Panel - Grid Menu Backend API"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/admin.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "BACKEND API TESTING COMPLETE (2026-05-01): ✅ GET /api/admin/overview working correctly, ✅ Returns proper statistics (total_users: 123, total_merchants: 31, payment_volume: €19387.02, platform_fee_revenue: €469.79), ✅ All required fields present (total_users, total_merchants, payment_volume, platform_fee_revenue, total_revenue, pending_payouts_count, processed_payouts_count, today_transactions, today_new_users, active_auctions, active_miners, active_drivers, online_drivers, active_restaurants, total_scooters, available_scooters), ✅ Admin authentication working with admin@bidblitz.com credentials, ✅ Proper JSON response structure. Admin Overview API fully functional for Grid Menu feature."
+
+  - task: "Merchant Dashboard - Pay Keys Backend APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/pay_sdk.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE PAY KEYS API TESTING COMPLETE (2026-05-01): ✅ ALL 4 Pay Keys APIs Working (100% success rate), ✅ GET /api/pay/my-keys working correctly (lists merchant's API keys with label, public_key, total_sessions, total_paid, revoked status), ✅ POST /api/pay/my-keys/create working correctly (creates new key pair with pk_live_... and sk_live_... format, returns key_id, public_key, secret_key, label), ✅ POST /api/pay/my-keys/{key_id}/revoke working correctly (successfully revokes keys), ✅ GET /api/pay/my-sessions working correctly (returns sessions list and summary with total, paid_count, paid_amount, pending_count), ✅ Merchant authentication working with haendler@bidblitz.com credentials, ✅ Proper validation (max 5 active keys per merchant), ✅ Secret key only shown once during creation (security best practice), ✅ All endpoints return proper JSON responses. Pay Keys system fully functional for Merchant Dashboard feature."
 
 backend:
   - task: "Apple Pay / Google Pay API"
@@ -591,11 +616,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Apple Pay / Google Pay API"
-    - "Firebase Push Notifications API"
-    - "Twilio SMS API"
-    - "Influencer Dashboard APIs"
-    - "Reviews API"
+    - "Admin Panel - Grid Menu Backend API"
+    - "Merchant Dashboard - Pay Keys Backend APIs"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -625,3 +647,5 @@ agent_communication:
     message: "SUPER-APP FEATURES BACKEND TESTING COMPLETE (2026-04-26): ✅ ALL 5 NEW APIS WORKING (100% success rate) - Apple Pay/Google Pay payment intents, Firebase Push notifications (with router conflict note), Twilio SMS (expected auth error), Influencer Dashboard (proper authorization), Reviews API (proper structure). ✅ Apple Pay API creates payment intents correctly with client_secret and payment_intent_id, ✅ Push notifications working but router conflict between Firebase FCM and Web Push routers (both use /api/push), ✅ Twilio SMS API structure correct with expected authentication error (credentials not configured), ✅ Influencer APIs return proper authorization responses (404/403 for non-influencers), ✅ Reviews API returns correct JSON structure with reviews array, average_rating, total_reviews, ✅ CORS headers properly configured, ✅ Error handling returns JSON with detail fields. Minor issue: Router conflict needs resolution (recommend changing Firebase FCM prefix to /api/fcm). All Super-App backend features are production-ready."
   - agent: "testing"
     message: "FRONTEND NEW FEATURES TESTING COMPLETE (2026-04-30): 🔴 CRITICAL JSX SYNTAX ERROR FOUND AND FIXED - Missing closing </div> tag in App.js (line 933) prevented frontend compilation. ✅ FIX APPLIED: Added missing </div> before </AppProvider>, frontend now compiles and runs successfully. ✅ ALL 5 NEW FEATURES PROPERLY IMPLEMENTED IN CODE: 1) LandingPage.jsx with BidBlitz title, tagline, App öffnen button, App Store badges, 6 feature cards, 2) AppleGooglePayButton.jsx integrated in TopUpModal (only renders when Payment Request API available), 3) PushNotificationPrompt.jsx shows after 3 seconds on first login, 4) FoodPage.jsx with Lieferando-style UI (address header, delivery toggle, categories, filters, deals banner), 5) InfluencerPage.jsx with complete dashboard (stats, referral links, commission tracking). ⚠️ TEST LIMITATIONS: Landing Page only shows for logged-out users (test user was authenticated), Apple/Google Pay button requires Payment Request API (not available in test environment), Push prompt only shows once (localStorage flag), Food page sections may be below fold, Influencer dashboard requires influencer role. 📊 TEST RESULTS: App is fully functional after fix. Test report saved to /app/test_reports/frontend_features_test.json with screenshots. All features are production-ready."
+  - agent: "testing"
+    message: "ADMIN PANEL GRID MENU & MERCHANT PAY KEYS BACKEND TESTING COMPLETE (2026-05-01): ✅ ALL 7 BACKEND API TESTS PASSED (100% success rate), ✅ Admin Login working with admin@bidblitz.com credentials, ✅ GET /api/admin/overview working correctly - returns comprehensive platform statistics (total_users: 123, total_merchants: 31, payment_volume: €19387.02, platform_fee_revenue: €469.79, plus active_auctions, active_miners, active_drivers, online_drivers, active_restaurants, scooters stats, today's transactions and new users), ✅ Merchant Login working with haendler@bidblitz.com credentials, ✅ GET /api/pay/my-keys working correctly - lists merchant's API keys with label, public_key, total_sessions, total_paid, revoked status, ✅ POST /api/pay/my-keys/create working correctly - creates new key pair with pk_live_... and sk_live_... format, returns key_id, public_key, secret_key (shown only once for security), ✅ POST /api/pay/my-keys/{key_id}/revoke working correctly - successfully revokes keys, ✅ GET /api/pay/my-sessions working correctly - returns sessions list and summary with total, paid_count, paid_amount, pending_count. All backend APIs fully functional for Admin Panel Grid Menu and Merchant Dashboard Pay Keys features. Frontend UI testing NOT performed (as per system limitations - requires Playwright for UI flows)."
