@@ -125,7 +125,45 @@ Alle bestehenden Features stabil (siehe Code-Architektur in Handoff-Summary).
 - Siehe `/app/memory/test_credentials.md`
 
 ## Stand
-**01.05.2026 (2)** — AdminPage.jsx modularisiert (2094 → 1472 LOC, −30%).
+**01.05.2026 (3)** — AdminPage Modularisierung **abgeschlossen**: 1473 → 672 LOC (Ziel <700 erreicht; vom ursprünglichen 2094 = **−67.8%**).
+
+### 01.05.2026 (3) Changes
+**Neu**: `/app/frontend/src/components/AdminTabRouter.jsx` (861 LOC)
+- Kapselt alle 14 verbleibenden Tab-Bodies (overview, users, merchants, payouts, transactions, settings, merchant-fees, promos, flags, audit, compliance, analytics, roles, verification)
+- CreatePromoForm migriert in Router-Datei
+- Erhält `ctx`-Prop mit ~30 state vars + handlers (Pattern: implizites Interface vermeidet Prop-Drilling)
+
+`AdminPage.jsx` jetzt 672 LOC = nur State-Verwaltung, Tab-Switcher, 3 Lazy-Wrapper (auctions/scooters/gutscheine) + ein `<AdminTabRouter ctx={...} />`.
+
+**Testing (Iter 36)**: Frontend **100% PASS**.
+- 17/17 Tabs gerendert, 0 Page-Errors, 0 JS-Console-Errors
+- Alle data-testids verifiziert: promo-name, add-scooter-btn, compliance Sub-Tabs (flags+checks), 7 merchant-fee labels, role/verification filter chips, analytics retention day_1/7/30
+- Hinweis Tester: AdminTabRouter.jsx (861 LOC) selbst über 700 — kann später weiter gesplittet werden (Users/Merchants/Payouts in eigene Files), aber funktional sauber.
+
+**Modul-Reduction Sprint Total** (alle Refactor-Schritte zusammen):
+- AuctionsPage 1800+ → 787 LOC
+- FoodPage 1300+ → 526 LOC
+- AdminPage 2094 → 672 LOC
+- Total entfernt: ~3200 LOC aus 3 monolithischen Dateien
+
+## Backlog (P0/P1/P2)
+### P0
+- Stripe Live Keys / Fiskaly TSE / Coinbase Commerce — User muss API-Keys liefern
+- AdminTabRouter.jsx (861 LOC) weiter splitten — optional
+
+### P1
+- Live-Video-Provider (Agora/Mux/LiveKit) — `/live` aktuell metadata-only
+- Card-Issuer (Weavr/Marqeta) — Waitlist → echte Karten
+- WS-Auth Hardening Group-Chat (5s Polling → real Broadcast)
+
+### P2
+- Off-Site Backup-Replikation (Hetzner Storage Box + rclone)
+- Hetzner-Server Migration (aktuell IONOS 212.227.20.190 — der "Hetzner"-Plan war Misnomer)
+- AdminPage `/admin` (= AdminPanelFullPage) ebenfalls modularisieren — anderer Code-Pfad
+- Insurance Photo-Upload (S3 statt base64)
+- i18n `admin.loyalty` Key
+
+## Stand
 
 ### 01.05.2026 (2) Changes
 **Neue Komponenten** (`/app/frontend/src/components/admin/`):
