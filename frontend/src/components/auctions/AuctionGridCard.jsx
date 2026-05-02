@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Gavel, Trophy, Timer, Package, Truck, Eye, Zap, Heart } from "lucide-react";
+import { Gavel, Trophy, Timer, Package, Truck, Eye, Zap, Heart, Bot } from "lucide-react";
 import { localized } from "./atoms";
 
 /**
@@ -55,7 +55,7 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
           <img 
             src={auction.image_url} 
             alt={loc.title} 
-            className={`w-full h-full object-contain p-3 transition-all duration-500 group-hover:scale-105 ${isEnded ? "opacity-25 grayscale" : ""}`} 
+            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${isEnded ? "opacity-25 grayscale" : ""}`} 
             loading="lazy" 
           />
         ) : (
@@ -82,8 +82,8 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
           </span>
         </div>
 
-        {/* Bid Count Badge — Top Right */}
-        {auction.total_bids > 0 && !isEnded && (
+        {/* Bid Count Badge — Top Right (hidden when Bot badge occupies this spot) */}
+        {auction.total_bids > 0 && !isEnded && !auction.bot_only && (
           <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-1.5 rounded-xl backdrop-blur-md"
             style={{ 
               background: isHot ? "rgba(255,138,66,0.15)" : "rgba(0,0,0,0.6)", 
@@ -91,6 +91,15 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
             }}>
             <Gavel size={10} className={isHot ? "text-[#FF8C42]" : "text-white/50"} />
             <span className={`text-[11px] font-bold tabular-nums ${isHot ? "text-[#FF8C42]" : "text-white/70"}`}>{auction.total_bids}</span>
+          </div>
+        )}
+
+        {/* Bid Count on Bot auctions — show next to Bot badge (slightly lower) */}
+        {auction.total_bids > 0 && !isEnded && auction.bot_only && (
+          <div className="absolute top-9 right-2.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md backdrop-blur-md z-10"
+            style={{ background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <Gavel size={8} className="text-white/50" />
+            <span className="text-[9px] font-bold tabular-nums text-white/70">{auction.total_bids}</span>
           </div>
         )}
 
@@ -129,8 +138,22 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
           </motion.div>
         )}
 
-        {/* Free Shipping Badge — Bottom Left */}
-        {!isEnded && (
+        {/* Bot-Only Badge — small, top-right below bid count (or alone) */}
+        {!isEnded && auction.bot_only && (
+          <div data-testid={`auction-bot-badge-${auction.auction_id}`}
+            className="absolute top-2.5 right-2.5 flex items-center gap-1 px-1.5 py-1 rounded-md backdrop-blur-md z-10"
+            style={{
+              background: "linear-gradient(135deg, rgba(168,85,247,0.92) 0%, rgba(99,102,241,0.92) 100%)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              boxShadow: "0 2px 8px rgba(168,85,247,0.35)"
+            }}>
+            <Bot size={9} className="text-white" />
+            <span className="text-[8px] font-black text-white tracking-wider uppercase leading-none">Bot</span>
+          </div>
+        )}
+
+        {/* Free Shipping Badge — Bottom Left (hidden for bot-only auctions) */}
+        {!isEnded && !auction.bot_only && (
           <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
             style={{ 
               background: "linear-gradient(135deg, rgba(0,232,157,0.9) 0%, rgba(0,200,140,0.9) 100%)", 
@@ -207,8 +230,8 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
           </div>
         </div>
 
-        {/* Bid Button */}
-        {!isEnded && (
+        {/* Bid Button (hidden for bot-only — spectator mode) */}
+        {!isEnded && !auction.bot_only && (
           <motion.div 
             className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl cursor-pointer"
             style={{ 
@@ -223,6 +246,19 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
               {t("auction.bid_now")} +0,01
             </span>
           </motion.div>
+        )}
+
+        {/* Bot-only spectator indicator */}
+        {!isEnded && auction.bot_only && (
+          <div
+            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl"
+            style={{
+              background: "linear-gradient(135deg, rgba(168,85,247,0.10) 0%, rgba(99,102,241,0.05) 100%)",
+              border: "1px solid rgba(168,85,247,0.20)",
+            }}>
+            <Eye size={13} className="text-[#A855F7]" />
+            <span className="text-[10px] font-bold text-[#A855F7]">Zuschauen — nur Bots bieten</span>
+          </div>
         )}
       </div>
     </motion.button>

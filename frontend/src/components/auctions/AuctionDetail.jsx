@@ -203,8 +203,25 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
           </div>
         </motion.div>
 
+        {/* Bot-Only: Hide bid buttons — humans are spectators */}
+        {isActive && auction.bot_only && (
+          <motion.div data-testid="auction-bot-only-notice"
+            className="rounded-2xl p-4 text-center"
+            style={{
+              background: "linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(99,102,241,0.04) 100%)",
+              border: "1px solid rgba(168,85,247,0.20)",
+            }}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            <Bot size={22} className="text-[#A855F7] mx-auto mb-2" />
+            <p className="text-[13px] font-bold text-[#A855F7] mb-0.5">Bot-Auktion</p>
+            <p className="text-[10px] text-white/50">
+              Nur Bots dürfen hier bieten. Schau zu, wie der Preis sich entwickelt!
+            </p>
+          </motion.div>
+        )}
+
         {/* Bid + Auto-Bid Buttons */}
-        {isActive && (
+        {isActive && !auction.bot_only && (
           <motion.div className="space-y-2" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
             <AnimatePresence>{bidMsg && <motion.div className="px-3 py-2 rounded-xl text-[10px] font-medium bg-[#FF4060]/6 text-[#FF4060] border border-[#FF4060]/10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>{bidMsg.text}</motion.div>}</AnimatePresence>
             <motion.button data-testid="place-bid-btn" onClick={handleBid} disabled={bidding}

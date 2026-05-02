@@ -510,6 +510,15 @@ async def place_bid(req: BidRequest, request: Request):
         raise HTTPException(status_code=400, detail="Auction is not active")
     if auction["ends_at"] < now_iso:
         raise HTTPException(status_code=400, detail="Auction has ended")
+    # Bot-only auctions: humans cannot bid
+    if auction.get("bot_only"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "bot_only_auction",
+                "message": "Diese Auktion ist nur für Bots — menschliche Gebote sind nicht erlaubt.",
+            },
+        )
 
     # Check user has credits
     credits = user.get("bid_credits", 0)
