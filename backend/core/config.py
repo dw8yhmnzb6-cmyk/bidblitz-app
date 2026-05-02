@@ -36,6 +36,11 @@ CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",") if IS_PRODUCTION e
 # ── Stripe ──
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_ISSUING_WEBHOOK_SECRET = os.environ.get("STRIPE_ISSUING_WEBHOOK_SECRET", "")
+# Master switch: only set to "true" once Stripe Issuing is approved & funded in your Dashboard
+STRIPE_ISSUING_ENABLED = os.environ.get("STRIPE_ISSUING_ENABLED", "false").lower() == "true"
+# Per-cardholder default daily spending limit (cents)
+STRIPE_ISSUING_DAILY_LIMIT_CENTS = int(os.environ.get("STRIPE_ISSUING_DAILY_LIMIT_CENTS", "50000"))
 
 # ── URLs ──
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")

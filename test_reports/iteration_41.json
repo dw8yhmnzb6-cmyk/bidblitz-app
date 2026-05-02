@@ -1,0 +1,52 @@
+{
+  "summary": "Iter41 - Tested refactored AdminPanelFullPage (frontend) + new Stripe Issuing routes gating (backend). Backend: 10/11 pytest tests passed - CRITICAL bug: GET /api/issuing/cards is NOT gated (returns 200 instead of 503). Frontend: admin panel sections, search, filter tabs, detail views all working. CRITICAL UX bug: after toggling to Grid layout mode, the grid view (AdminPage.jsx) is missing the layout-toggle button -> user stuck in grid mode unless localStorage is manually cleared.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/issuing/cards",
+        "issue": "Missing _require_enabled() guard. When STRIPE_ISSUING_ENABLED=false, endpoint returns 200 with empty {cards:[],count:0} instead of 503. Same issue also for GET /api/issuing/cardholders/me (no guard in code - returns 404 'Kein Cardholder vorhanden' if authenticated, leaking endpoint existence).",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminPage.jsx (Grid Layout Mode)",
+        "issue": "After user clicks layout-toggle in AdminPanelFullPage to switch to Grid, the rendered AdminPage grid view does NOT expose a data-testid='layout-toggle' button. AdminPage.jsx also does not accept/use the onToggleLayout prop passed by AdminPanelFullPage. Consequence: user is trapped in grid mode with no UI way back to list mode (must clear localStorage admin_layout_mode manually). Confirmed: after toggle, localStorage set to 'grid' but layout-toggle selector returns null in DOM.",
+        "selector": "[data-testid='layout-toggle']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_stripe_issuing_gated_iter41.py",
+    "/app/test_reports/pytest/iter41_stripe_issuing.xml"
+  ],
+  "action_items": [
+    "Add `_require_enabled()` call to `@router.get('/api/issuing/cards')` and `@router.get('/api/issuing/cardholders/me')` in /app/backend/routes/stripe_issuing.py so ALL /api/issuing/* endpoints return 503 when STRIPE_ISSUING_ENABLED=false (currently only the POSTs are gated).",
+    "Update /app/frontend/src/pages/AdminPage.jsx to (a) accept `layoutMode` and `onToggleLayout` props forwarded from AdminPanelFullPage, and (b) render a button with data-testid='layout-toggle' that calls onToggleLayout so user can switch back to list view. Without this, toggling to Grid is a one-way trap."
+  ],
+  "critical_code_review_comments": [
+    "stripe_issuing.py GET endpoints missing enablement gate — inconsistent with declared design (line 88-96 helper exists but unused on GETs).",
+    "AdminPanelFullPage.jsx passes onToggleLayout/layoutMode to <AdminPageGrid/> via Suspense lazy import (line 90), but AdminPage.jsx ignores those props — dead prop passing.",
+    "dataLoaders.js loadAdminDetail uses `onNavigate(item.nav)` which relies on state-based SPA router without URL change — testable only by component swap, not url. Works but harder to test via URL assertions.",
+    "Frontend logs show repeated 401 errors on initial load (pre-login) — likely /api/auth/me probe; consider suppressing noise or gating early network calls on auth state."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_stripe_issuing_gated_iter41.py (new)"
+  ],
+  "success_rate": {
+    "backend": "91% (10/11 pytest)",
+    "frontend": "90% (all section/testid checks pass; 1 UX trap in grid mode)"
+  },
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (cookie access_token set by /api/auth/login — verified working).",
+  "seed_data_creation": "None. POST /api/pay/merchant/apply with {business_name:'Test E2E', email:'e2e-test@example.com'} was executed as part of regression test and returned ok:true.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Re-run /app/backend/tests/test_stripe_issuing_gated_iter41.py after the main agent adds _require_enabled() to GET endpoints. Re-run the admin panel grid-toggle playwright scenario after AdminPage.jsx gets a layout-toggle button. All other AdminPanelFullPage flows verified passing: header, 10 sections rendered, search filter works (filters to 1 item 'Pay Anträge' when typing 'pay'), admin-item-pay-requests opens admin-pay-requests detail with 4 filter tabs, influencer opens admin-detail-user-filter, kyc opens admin-detail-kyc with no errors. Layout localStorage key 'admin_layout_mode' persists correctly. Backwards-compat confirmed: /api/auctions/active 200, /api/admin/stats with cookie 200, /api/pay/admin/applications 401 unauth / 200 admin, /api/pay/merchant/apply 200 ok:true, webhook without signature returns 500 (STRIPE_ISSUING_WEBHOOK_SECRET nicht konfiguriert — expected per spec). Stripe Issuing ENV: STRIPE_ISSUING_ENABLED currently unset -> default false (gated behavior).",
+  "rca of the issue": "GET /api/issuing/cards bug RCA: In /app/backend/routes/stripe_issuing.py line 222-227, the `list_my_cards` handler only calls `get_current_user(request)` but omits `_require_enabled()`, unlike the POST handlers (lines 120, 184, 237, 259) which correctly guard. GET /api/issuing/cardholders/me (line 169-176) has the same omission. Fix: prepend `_require_enabled()` as the first call inside both handlers. Grid toggle RCA: AdminPanelFullPage.jsx toggleLayout() writes localStorage and passes onToggleLayout to AdminPageGrid, but AdminPage.jsx (destination component) contains no 'layout-toggle' element and ignores the prop. Fix: add a toggle button in AdminPage's header that calls props.onToggleLayout when provided."
+}

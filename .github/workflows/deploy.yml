@@ -106,6 +106,12 @@ jobs:
             --exclude '.pytest_cache/' \
             backend/ "$VPS_USER@$VPS_HOST:${VPS_BACKEND_DIR}/"
 
+          echo "==> Rsync deploy scripts"
+          $SSH "$VPS_USER@$VPS_HOST" "mkdir -p /var/www/bidblitz/deploy"
+          rsync -az -e "$RSYNC_RSH" \
+            deploy/ "$VPS_USER@$VPS_HOST:/var/www/bidblitz/deploy/"
+          $SSH "$VPS_USER@$VPS_HOST" "chmod +x /var/www/bidblitz/deploy/*.sh 2>/dev/null || true"
+
       - name: Install backend deps & restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
