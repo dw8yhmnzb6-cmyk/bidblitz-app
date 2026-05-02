@@ -190,7 +190,8 @@ async def create_virtual_card(request: Request):
     now = datetime.now(timezone.utc).isoformat()
 
     label = (body.get("label") or "Virtuelle Karte")[:64]
-    limit_eur = float(body.get("limit") or 50.0)
+    raw_limit = body.get("limit")
+    limit_eur = float(raw_limit) if raw_limit is not None else 50.0
     if limit_eur < 1 or limit_eur > 5000:
         raise HTTPException(status_code=400, detail="Limit muss zwischen €1 und €5.000 liegen")
 
