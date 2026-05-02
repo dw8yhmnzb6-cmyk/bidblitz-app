@@ -455,9 +455,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                     {balanceHidden ? <EyeOff size={12} className="text-white/40" /> : <Eye size={12} className="text-white/40" />}
                   </motion.button>
                 </div>
-                <motion.div className="flex items-baseline gap-1 mb-3" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
-                  <span className="text-[22px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
-                  <span className="text-[42px] font-bold font-outfit text-white tracking-[-0.03em] leading-none">
+                <motion.div className="flex items-baseline gap-1 mb-3 min-w-0" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
+                  <span className="text-[18px] sm:text-[22px] text-[#2A2A2A] font-outfit font-light flex-shrink-0">{currency}</span>
+                  <span className="font-bold font-outfit text-white tracking-[-0.03em] leading-none truncate" style={{ fontSize: "clamp(26px, 8.5vw, 42px)" }}>
                     {balanceHidden ? "••••••" : displayBalance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                   </span>
                 </motion.div>

@@ -1,10 +1,10 @@
-// BidBlitz Service Worker — Hardened v12
+// BidBlitz Service Worker — Hardened v14
 // - Only caches explicitly safe GET endpoints
 // - Auth, payments, admin, wallet, and all mutating requests bypass the SW entirely
 // - Prevents "object cannot be cloned" errors by never intercepting auth/mutations
 
-const CACHE_NAME = 'bidblitz-static-v13';  // Incremented for cache refresh
-const API_CACHE_NAME = 'bidblitz-api-v13';
+const CACHE_NAME = 'bidblitz-static-v14';  // Incremented for cache refresh
+const API_CACHE_NAME = 'bidblitz-api-v14';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
