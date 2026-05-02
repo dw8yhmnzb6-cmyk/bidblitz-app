@@ -11,7 +11,15 @@ BidBlitz ist eine voll-funktionsfähige React + FastAPI + MongoDB Super App mit 
 
 ## Implementiert (Februar 2026)
 
-### Production Hot-Deploy (02.05.2026 / Feb 26 Session)
+### Admin Panel Refactor + Stripe Issuing Backend + Off-Site-Backup (02.05.2026)
+- ✅ `AdminPanelFullPage.jsx` von 1171 → ~230 Zeilen reduziert. Section-Daten in `frontend/src/components/admin/sections.js`, Detail-Loader in `dataLoaders.js`, Detail-Renderer in `AdminDetailRouter.jsx` (alle Detail-Sub-Komponenten).
+- ✅ Layout-Toggle Round-Trip Liste ↔ Grid funktioniert in beide Richtungen (data-testid `layout-toggle` ist in beiden Layouts vorhanden, persistiert in `localStorage.admin_layout_mode`).
+- ✅ **Stripe Issuing Backend**: `routes/stripe_issuing.py` — Cardholder/Card CRUD, Ephemeral Keys für sichere PAN-Anzeige, Real-Time Authorization Webhook (`/api/webhooks/stripe-issuing`) mit Wallet-Coverage-Check + Daily-Limit-Policy. Komplett gegated über `STRIPE_ISSUING_ENABLED` Feature-Flag (default false → 503).
+- ✅ **Off-Site-Backup-Skript**: `deploy/backup_offsite.sh` — täglicher mongodump + tar(.env, data, uploads) → rsync zur Hetzner Storage Box (oder beliebigem SSH-Endpunkt). Konfig via `/etc/bidblitz/backup.env`. Cron-Job-Template, SHA-256-Manifeste, 30-Tage-Retention. Doku in `deploy/BACKUP_OFFSITE.md`.
+- ✅ **GitHub Actions** funktionsfähig (`.github/workflows/deploy.yml`): Build im Runner → rsync Frontend + Backend + `deploy/` → `pm2 restart api` + nginx reload. 3 Secrets nötig: VPS_HOST/USER/PASSWORD.
+- ✅ Tests: 14/14 pytest (`tests/test_stripe_issuing_gated_iter41.py`), Playwright round-trip toggle green.
+
+### Production Hot-Deploy (Feb 26 Session)
 - ✅ Frontend Build (REACT_APP_BACKEND_URL=https://bidblitz.ae) → tar.gz → SCP → /var/www/bidblitz/frontend/build
 - ✅ Backend `pay_merchant_requests.py` deployed → /var/www/bidblitz/backend/routes/, server.py erweitert (PM2 `api`)
 - ✅ systemd `bidblitz-backend.service` deaktiviert (Port-Konflikt mit PM2 behoben), nur PM2 verwaltet Backend
