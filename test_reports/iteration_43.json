@@ -1,0 +1,39 @@
+{
+  "summary": "Tested Stripe Issuing dispatcher for /api/virtual-cards with STRIPE_ISSUING_ENABLED=false. 12/13 pytest tests passed. Mock fallback path works correctly (is_stripe:false, 16-digit PAN, VC- prefix, exp 12/2027). Direct /api/issuing/* endpoints still gated with 503. Webhook without signature returns 400. Admin auth + regression endpoints (/api/admin/stats, /api/auctions/active, /api/wallet, /api/wallet/balance/total, /api/auth/me) all green. One real validation bug found for limit=0.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/virtual-cards",
+        "issue": "limit=0 bypasses validation and returns 200 with default €50 card instead of HTTP 400. Root cause in /app/backend/routes/premium_finance.py line ~193: `limit_eur = float(body.get('limit') or 50.0)` — 0 is falsy in Python, so `0 or 50.0` silently substitutes 50.0 before the `< 1` check. Same risk with limit=None/null/missing (intended default, OK) but 0 should be explicit rejection per spec ('zwischen €1 und €5.000').",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_virtual_cards_dispatcher_iter43.py",
+    "/app/test_reports/pytest/iter43_virtual_cards.xml"
+  ],
+  "action_items": [
+    "Fix limit=0 validation in /app/backend/routes/premium_finance.py:193. Replace `limit_eur = float(body.get('limit') or 50.0)` with `raw = body.get('limit'); limit_eur = float(raw) if raw is not None else 50.0` — then the existing `if limit_eur < 1` guard will properly reject 0."
+  ],
+  "critical_code_review_comments": [
+    "premium_finance.py:193 — `body.get('limit') or 50.0` treats 0 as missing; use explicit `is None` check.",
+    "premium_finance.py:109 — `STRIPE_ISSUING_DAILY_LIMIT_CENTS` used as fallback when Stripe card lacks `daily_limit_cents`; fine, but division by 100.0 should be guarded if the env var is misconfigured as non-int.",
+    "premium_finance.py file is 353 lines — still within limit but contains 5 distinct feature areas (Split Bill, Virtual Cards, Savings, BNPL, Gift Cards). Consider splitting into separate route modules for maintainability.",
+    "No server-side auth/role check specific to admin on /api/virtual-cards — endpoint is currently authenticated-user scoped (user's own cards), which matches the frontend page usage. OK."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "92%", "frontend": "N/A (backend-only run)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (cookie auth) — confirmed working",
+  "seed_data_creation": "Created 1 mock virtual card (label='TestMock', limit=25) for admin user during test. Additionally, 1 card was created unintentionally via the limit=0 bug (label='BadLow', defaulted to €50).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iter43 regression file: /app/backend/tests/test_virtual_cards_dispatcher_iter43.py (13 tests). After main agent fixes the limit=0 `or`-fallback bug, rerun just TestVirtualCardsMock::test_validation_limit_too_low. STRIPE_ISSUING_ENABLED remains false; do NOT enable it (Stripe Dashboard activation pending). iter41 gating tests still pass.",
+  "rca of the issue": "POST /api/virtual-cards {limit:0} → expected 400, got 200. RCA: `float(body.get('limit') or 50.0)` in premium_finance.py line 193 — Python's `or` short-circuits on falsy values including 0, so limit=0 is replaced with default 50.0 BEFORE the range check. Reproduction: `curl -X POST .../api/virtual-cards -H 'Cookie: access_token=...' -d '{\"label\":\"x\",\"limit\":0}'` returns 200. Mitigation: `raw = body.get('limit'); limit_eur = float(raw) if raw is not None else 50.0`."
+}

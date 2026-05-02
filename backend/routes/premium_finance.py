@@ -6,9 +6,25 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from core.database import db
 from core.security import get_current_user
+from core.config import (
+    STRIPE_API_KEY,
+    STRIPE_ISSUING_ENABLED,
+    STRIPE_ISSUING_DAILY_LIMIT_CENTS,
+)
 import secrets
 import random
 import string
+import logging
+
+logger = logging.getLogger("bidblitz.premium_finance")
+
+# Stripe is optional — only required when STRIPE_ISSUING_ENABLED=true
+try:
+    import stripe as _stripe
+    if STRIPE_ISSUING_ENABLED and STRIPE_API_KEY:
+        _stripe.api_key = STRIPE_API_KEY
+except ImportError:
+    _stripe = None
 
 router = APIRouter(tags=["premium-finance"])
 
@@ -48,36 +64,188 @@ async def get_my_splits(request: Request):
 # ══════════════════════════════════════════════════════════════════════════════
 # VIRTUAL CARDS
 # ══════════════════════════════════════════════════════════════════════════════
+# When STRIPE_ISSUING_ENABLED=true, these endpoints provision REAL Stripe Issuing
+# virtual debit cards. Otherwise they fall back to local mock cards (4-prefixed
+# random PANs stored in DB) for demo / development.
+#
+# Frontend (/pages/VirtualCardsPage.jsx) gets a uniform shape:
+#   { cards: [{ card_id, label, number, last4, exp_month, exp_year, limit, spent,
+#               status, is_stripe: bool }] }
+#
+# For real Stripe cards `number` is masked ("•••• •••• •••• 4242") because the
+# raw PAN can only be displayed inside Stripe-hosted iframes via Stripe.js +
+# ephemeral keys (separate endpoint at /api/issuing/cards/{id}/ephemeral-key).
+
+
+def _serialize_local_card(card: dict) -> dict:
+    """Project a mock card document into the API response shape."""
+    return {
+        "card_id": card.get("card_id"),
+        "label": card.get("label", "Virtuelle Karte"),
+        "number": card.get("number", ""),
+        "last4": (card.get("number", "") or "")[-4:],
+        "cvv": card.get("cvv", ""),
+        "exp_month": card.get("exp_month", 12),
+        "exp_year": card.get("exp_year", 2027),
+        "limit": card.get("limit", 0),
+        "spent": card.get("spent", 0),
+        "status": card.get("status", "active"),
+        "is_stripe": False,
+        "created_at": card.get("created_at"),
+    }
+
+
+def _serialize_stripe_card(card: dict) -> dict:
+    """Project a Stripe Issuing card document into the API response shape."""
+    last4 = card.get("last4") or ""
+    return {
+        "card_id": card.get("stripe_card_id"),
+        "label": card.get("label", "BidBlitz Card"),
+        "number": f"•••• •••• •••• {last4}" if last4 else "•••• •••• •••• ••••",
+        "last4": last4,
+        "cvv": "•••",
+        "exp_month": card.get("exp_month"),
+        "exp_year": card.get("exp_year"),
+        "limit": card.get("daily_limit_cents", STRIPE_ISSUING_DAILY_LIMIT_CENTS) / 100.0,
+        "spent": card.get("spent_today_cents", 0) / 100.0,
+        "status": card.get("status", "active"),
+        "is_stripe": True,
+        "created_at": card.get("created_at"),
+    }
+
+
+async def _ensure_stripe_cardholder(user: dict) -> str:
+    """Get or auto-create a Stripe cardholder for the user. Returns cardholder ID."""
+    user_id = str(user["_id"])
+    existing = await db.issuing_cardholders.find_one({"user_id": user_id}, {"_id": 0})
+    if existing:
+        return existing["stripe_cardholder_id"]
+
+    # Auto-create with minimal data — production usage should call POST
+    # /api/issuing/cardholders explicitly with full billing address first.
+    name = (user.get("name") or "").strip() or "BidBlitz User"
+    # Stripe requires last_name; if only one word, duplicate it
+    if " " not in name:
+        name = f"{name} {name}"
+    name = name[:24]
+
+    try:
+        ch = _stripe.issuing.Cardholder.create(
+            type="individual",
+            name=name,
+            email=user.get("email"),
+            billing={
+                "address": {
+                    "line1": "Default Address",
+                    "city": "Berlin",
+                    "postal_code": "10115",
+                    "country": "DE",
+                }
+            },
+        )
+    except Exception as e:
+        logger.error("Stripe cardholder create failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Cardholder konnte nicht angelegt werden. "
+                "Bitte zuerst POST /api/issuing/cardholders mit vollständiger "
+                f"Rechnungsadresse aufrufen. Stripe-Fehler: {e}"
+            ),
+        )
+
+    await db.issuing_cardholders.insert_one({
+        "user_id": user_id,
+        "stripe_cardholder_id": ch.id,
+        "name": ch.name,
+        "email": ch.get("email"),
+        "status": ch.status,
+        "type": ch.type,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "daily_limit_cents": STRIPE_ISSUING_DAILY_LIMIT_CENTS,
+    })
+    return ch.id
+
 
 @router.get("/api/virtual-cards")
 async def get_virtual_cards(request: Request):
     user = await get_current_user(request)
-    cards = await db.virtual_cards.find({"user_id": str(user["_id"])}, {"_id": 0}).sort("created_at", -1).to_list(50)
-    return {"cards": cards}
+    user_id = str(user["_id"])
+
+    if STRIPE_ISSUING_ENABLED and _stripe and STRIPE_API_KEY:
+        cards = await db.issuing_cards.find({"user_id": user_id}, {"_id": 0}) \
+            .sort("created_at", -1).to_list(50)
+        return {"cards": [_serialize_stripe_card(c) for c in cards], "is_stripe": True}
+
+    cards = await db.virtual_cards.find({"user_id": user_id}, {"_id": 0}) \
+        .sort("created_at", -1).to_list(50)
+    return {"cards": [_serialize_local_card(c) for c in cards], "is_stripe": False}
 
 
 @router.post("/api/virtual-cards")
 async def create_virtual_card(request: Request):
     user = await get_current_user(request)
     body = await request.json()
+    user_id = str(user["_id"])
     now = datetime.now(timezone.utc).isoformat()
+
+    label = (body.get("label") or "Virtuelle Karte")[:64]
+    limit_eur = float(body.get("limit") or 50.0)
+    if limit_eur < 1 or limit_eur > 5000:
+        raise HTTPException(status_code=400, detail="Limit muss zwischen €1 und €5.000 liegen")
+
+    if STRIPE_ISSUING_ENABLED and _stripe and STRIPE_API_KEY:
+        cardholder_id = await _ensure_stripe_cardholder(user)
+        try:
+            stripe_card = _stripe.issuing.Card.create(
+                cardholder=cardholder_id,
+                currency="eur",
+                type="virtual",
+                status="active",
+                metadata={"label": label, "user_id": user_id},
+            )
+        except Exception as e:
+            logger.error("Stripe card create failed: %s", e)
+            raise HTTPException(status_code=502, detail=f"Stripe Issuing Fehler: {e}")
+
+        doc = {
+            "user_id": user_id,
+            "stripe_card_id": stripe_card.id,
+            "stripe_cardholder_id": cardholder_id,
+            "label": label,
+            "last4": stripe_card.last4,
+            "brand": stripe_card.brand,
+            "exp_month": stripe_card.exp_month,
+            "exp_year": stripe_card.exp_year,
+            "currency": stripe_card.currency,
+            "type": stripe_card.type,
+            "status": stripe_card.status,
+            "daily_limit_cents": int(round(limit_eur * 100)),
+            "spent_today_cents": 0,
+            "created_at": now,
+        }
+        await db.issuing_cards.insert_one(doc)
+        doc.pop("_id", None)
+        return {"ok": True, "card": _serialize_stripe_card(doc), "is_stripe": True}
+
+    # Local mock fallback
     number = "4" + "".join([str(random.randint(0, 9)) for _ in range(15)])
     card = {
         "card_id": f"VC-{secrets.token_hex(4).upper()}",
-        "user_id": str(user["_id"]),
-        "label": body.get("label", "Virtuelle Karte"),
+        "user_id": user_id,
+        "label": label,
         "number": number,
         "cvv": "".join([str(random.randint(0, 9)) for _ in range(3)]),
         "exp_month": 12,
         "exp_year": 2027,
-        "limit": body.get("limit", 50),
+        "limit": limit_eur,
         "spent": 0,
         "status": "active",
         "created_at": now,
     }
     await db.virtual_cards.insert_one(card)
     card.pop("_id", None)
-    return {"ok": True, "card": card}
+    return {"ok": True, "card": _serialize_local_card(card), "is_stripe": False}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

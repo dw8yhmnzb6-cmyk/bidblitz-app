@@ -97,23 +97,39 @@ const VirtualCardsPage = ({ onBack }) => {
           <motion.div key={c.card_id || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className="rounded-2xl p-4 border" style={{ background: "linear-gradient(135deg, rgba(176,104,255,0.08), rgba(0,194,255,0.04))", borderColor: "rgba(176,104,255,0.15)" }}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-bold">{c.label || "Virtuelle Karte"}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold">{c.label || "Virtuelle Karte"}</span>
+                {c.is_stripe && (
+                  <span className="px-1.5 py-0.5 rounded bg-[#635BFF]/15 text-[#635BFF] text-[9px] font-bold uppercase tracking-wider">Stripe</span>
+                )}
+              </div>
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${c.status === "active" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
                 {c.status === "active" ? "Aktiv" : "Gesperrt"}
               </span>
             </div>
             <div className="flex items-center gap-2 mb-3">
-              <p className="text-base font-mono text-white/70">{showNumber[c.card_id] ? c.number : maskCard(c.number)}</p>
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowNumber(s => ({ ...s, [c.card_id]: !s[c.card_id] }))}>
-                {showNumber[c.card_id] ? <EyeOff size={14} className="text-white/40" /> : <Eye size={14} className="text-white/40" />}
-              </motion.button>
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => copyNumber(c.number)}>
-                {copied === c.number ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-white/40" />}
-              </motion.button>
+              <p className="text-base font-mono text-white/70">
+                {c.is_stripe
+                  ? `•••• •••• •••• ${c.last4 || "••••"}`
+                  : (showNumber[c.card_id] ? c.number : maskCard(c.number))}
+              </p>
+              {!c.is_stripe && (
+                <>
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowNumber(s => ({ ...s, [c.card_id]: !s[c.card_id] }))}>
+                    {showNumber[c.card_id] ? <EyeOff size={14} className="text-white/40" /> : <Eye size={14} className="text-white/40" />}
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => copyNumber(c.number)}>
+                    {copied === c.number ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-white/40" />}
+                  </motion.button>
+                </>
+              )}
+              {c.is_stripe && (
+                <span className="text-[9px] text-white/40 italic ml-auto">Vollständige Daten in Stripe Wallet</span>
+              )}
             </div>
             <div className="flex justify-between text-xs text-[#888]">
-              <span>Limit: €{c.limit?.toFixed(2)}</span>
-              <span>Verbraucht: €{c.spent?.toFixed(2) || "0.00"}</span>
+              <span>Limit: €{(c.limit || 0).toFixed(2)}{c.is_stripe ? "/Tag" : ""}</span>
+              <span>Verbraucht: €{(c.spent || 0).toFixed(2) || "0.00"}</span>
             </div>
           </motion.div>
         ))}
