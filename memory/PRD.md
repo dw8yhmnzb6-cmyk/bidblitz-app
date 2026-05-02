@@ -9,6 +9,14 @@ BidBlitz ist eine voll-funktionsfähige React + FastAPI + MongoDB Super App mit 
 - Service Worker Caching ist DEAKTIVIERT (Mobile Cache-Probleme)
 - Production DB (bidblitz.ae) ist IP-whitelisted → Preview ist Source of Truth
 
+## Implementiert (Februar 2026)
+
+### Production Hot-Deploy (02.05.2026 / Feb 26 Session)
+- ✅ Frontend Build (REACT_APP_BACKEND_URL=https://bidblitz.ae) → tar.gz → SCP → /var/www/bidblitz/frontend/build
+- ✅ Backend `pay_merchant_requests.py` deployed → /var/www/bidblitz/backend/routes/, server.py erweitert (PM2 `api`)
+- ✅ systemd `bidblitz-backend.service` deaktiviert (Port-Konflikt mit PM2 behoben), nur PM2 verwaltet Backend
+- ✅ Live verifiziert: bidblitz.ae zeigt Super-App Onboarding "Willkommen bei BidBlitz!"; `/api/pay/merchant/apply` → 422/200, `/api/pay/admin/applications` → 401
+
 ## Implementiert (April 2026)
 
 ### POS-System (Phase 1+2+3+4+5+6 abgeschlossen)
