@@ -61,6 +61,7 @@ PRODUCTS = [
 ]
 
 PRICE_INCREMENT = 0.02  # EUR per bid (matches backend default)
+MAX_RETAIL_EUR = 2000   # Cap: no product above this retail price
 
 
 async def main():
@@ -68,6 +69,10 @@ async def main():
     now_iso = now.isoformat()
 
     print(f"[seed] {now_iso} starting …")
+
+    # 0. Enforce price cap on our seed list (defense-in-depth)
+    for title, retail, *_ in PRODUCTS:
+        assert retail <= MAX_RETAIL_EUR, f"{title} retail {retail} exceeds cap {MAX_RETAIL_EUR}"
 
     # 1. Close out legacy "active" auctions with expired end_time (wrong schema)
     legacy = await db.auctions.update_many(
