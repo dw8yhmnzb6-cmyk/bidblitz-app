@@ -26,11 +26,26 @@ def admin_session():
 # ─── Stripe Issuing Gating (STRIPE_ISSUING_ENABLED=false) ──────────────
 
 class TestStripeIssuingGated:
-    def test_get_cards_gated(self, admin_session):
+    def test_get_cards_gated_authed(self, admin_session):
         r = admin_session.get(f"{BASE_URL}/api/issuing/cards", timeout=15)
         assert r.status_code == 503, f"expected 503, got {r.status_code}: {r.text[:300]}"
         detail = r.json().get("detail", "")
         assert "Stripe Issuing nicht aktiviert" in detail, f"unexpected detail: {detail}"
+
+    def test_get_cards_gated_unauth(self):
+        r = requests.get(f"{BASE_URL}/api/issuing/cards", timeout=15)
+        assert r.status_code == 503, f"expected 503 (gate before auth), got {r.status_code}: {r.text[:300]}"
+        assert "Stripe Issuing nicht aktiviert" in r.json().get("detail", "")
+
+    def test_get_cardholders_me_gated_authed(self, admin_session):
+        r = admin_session.get(f"{BASE_URL}/api/issuing/cardholders/me", timeout=15)
+        assert r.status_code == 503, f"expected 503, got {r.status_code}: {r.text[:300]}"
+        assert "Stripe Issuing nicht aktiviert" in r.json().get("detail", "")
+
+    def test_get_cardholders_me_gated_unauth(self):
+        r = requests.get(f"{BASE_URL}/api/issuing/cardholders/me", timeout=15)
+        assert r.status_code == 503, f"expected 503 (gate before auth), got {r.status_code}: {r.text[:300]}"
+        assert "Stripe Issuing nicht aktiviert" in r.json().get("detail", "")
 
     def test_post_cardholders_gated(self, admin_session):
         body = {
@@ -98,9 +113,11 @@ class TestBackwardsCompat:
         assert r.status_code == 200, f"expected 200 with admin auth, got {r.status_code}: {r.text[:200]}"
 
     def test_pay_merchant_apply(self):
+        import uuid
+        unique_email = f"e2e-test-{uuid.uuid4().hex[:8]}@example.com"
         r = requests.post(
             f"{BASE_URL}/api/pay/merchant/apply",
-            json={"business_name": "Test E2E", "email": "e2e-test@example.com"},
+            json={"business_name": "Test E2E", "email": unique_email},
             timeout=20,
         )
         assert r.status_code == 200, f"got {r.status_code}: {r.text[:200]}"

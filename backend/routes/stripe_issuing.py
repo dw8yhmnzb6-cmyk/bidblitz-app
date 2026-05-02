@@ -168,6 +168,7 @@ async def create_or_get_cardholder(req: CreateCardholderRequest, request: Reques
 
 @router.get("/api/issuing/cardholders/me")
 async def get_my_cardholder(request: Request):
+    _require_enabled()
     user = await get_current_user(request)
     user_id = str(user["_id"])
     ch = await db.issuing_cardholders.find_one({"user_id": user_id}, {"_id": 0})
@@ -221,6 +222,7 @@ async def issue_card(req: CreateCardRequest, request: Request):
 
 @router.get("/api/issuing/cards")
 async def list_my_cards(request: Request):
+    _require_enabled()
     user = await get_current_user(request)
     user_id = str(user["_id"])
     cards = await db.issuing_cards.find({"user_id": user_id}, {"_id": 0}).to_list(50)

@@ -297,7 +297,7 @@ const tabs = [
   { id: "pay_sdk", key: "Pay-SDK", icon: Code },
 ];
 
-export const AdminPage = ({ onNavigate, defaultTab }) => {
+export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }) => {
   const user = useUser();
   const { t } = useI18n();
   const [tab, setTab] = useState(defaultTab || "overview");
@@ -560,9 +560,23 @@ export const AdminPage = ({ onNavigate, defaultTab }) => {
           <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">{t("admin.title")}</h1>
           <p className="text-[10px] text-[#333] font-medium">{t("admin.subtitle")}</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}>
-          <Shield size={10} className="text-[#FF4757]" />
-          <span className="text-[9px] text-[#FF4757] font-bold uppercase tracking-[0.1em]">Admin</span>
+        <div className="ml-auto flex items-center gap-2">
+          {onToggleLayout && (
+            <motion.button
+              data-testid="layout-toggle"
+              onClick={onToggleLayout}
+              whileTap={{ scale: 0.9 }}
+              title={layoutMode === "grid" ? "Zu Listen-Layout wechseln" : "Zu Grid-Layout wechseln"}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[10px] font-medium text-white/70"
+            >
+              <LayoutGrid size={11} className="text-[#10B981]" />
+              <span>Liste</span>
+            </motion.button>
+          )}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}>
+            <Shield size={10} className="text-[#FF4757]" />
+            <span className="text-[9px] text-[#FF4757] font-bold uppercase tracking-[0.1em]">Admin</span>
+          </div>
         </div>
       </div>
 

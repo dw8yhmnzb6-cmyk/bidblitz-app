@@ -1,0 +1,26 @@
+{
+  "summary": "Iter42 retest - Both HIGH-priority bugs from iter41 are VERIFIED FIXED. Backend: all /api/issuing/* endpoints (incl. GET /cards and GET /cardholders/me, authed + unauthed) correctly return 503 with 'Stripe Issuing nicht aktiviert' when STRIPE_ISSUING_ENABLED is unset. Frontend: the Grid-mode trap is resolved — AdminPage.jsx now exposes [data-testid='layout-toggle'] in Grid mode, round-trip Liste<->Grid works and persists to localStorage admin_layout_mode. 14/14 pytest tests pass. Full admin panel regression flows (search, Pay Anträge detail) still pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_stripe_issuing_gated_iter41.py",
+    "/app/test_reports/pytest/iter42_stripe_issuing.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "stripe_issuing.py — _require_enabled() now correctly called as first statement on both GET handlers (lines 171, 225) before get_current_user(), so unauth requests also return 503 (verified).",
+    "AdminPage.jsx destructures {onNavigate, defaultTab, layoutMode, onToggleLayout} and conditionally renders the layout-toggle button in the header when onToggleLayout prop is provided — verified 1 instance found in DOM in Grid mode.",
+    "AdminPanelFullPage.jsx correctly forwards layoutMode + onToggleLayout to <AdminPageGrid/> lazy component.",
+    "Minor: pre-login 401 console noise from /api/auth/me probe still present — pre-existing code quality item, low priority."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_stripe_issuing_gated_iter41.py (extended with 3 new tests: test_get_cards_gated_unauth, test_get_cardholders_me_gated_authed, test_get_cardholders_me_gated_unauth; made pay_merchant_apply use uuid email to avoid duplicate-application collision)"
+  ],
+  "success_rate": {"backend": "100% (14/14 pytest)", "frontend": "100% (all tested selectors + round-trip toggle pass)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (cookie auth via /api/auth/login — verified 200).",
+  "seed_data_creation": "POST /api/pay/merchant/apply was executed with a uuid-prefixed email e2e-test-<hex8>@example.com and returned ok:true. No other seed data created.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter41 HIGH bugs fully cleared. Backend Stripe Issuing gating verified for GET/POST, authed/unauth (503 w/ German detail). Frontend AdminPage Grid ↔ AdminPanelFullPage Liste toggle round-trip works via [data-testid='layout-toggle'] with persistence in localStorage 'admin_layout_mode'. Admin flows (Pay Anträge detail, search filter, dashboard stats) still work. STRIPE_ISSUING_ENABLED remains unset (gated). Login cookie must be established via page.request.post prior to goto('/admin') for SPA client-side guard to resolve.",
+  "rca of the issue": "Not applicable — bugs from iter41 resolved by main agent prior to this iteration. Verification performed end-to-end via pytest (14 cases) and Playwright round-trip click on layout-toggle across both layouts."
+}
