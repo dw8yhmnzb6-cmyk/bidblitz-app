@@ -6,7 +6,8 @@ import {
   Car, Zap, UtensilsCrossed, Gavel, ArrowUpRight, CreditCard,
   FlaskConical, LogIn, UserPlus, X, Sparkles,
   QrCode, Store, Lock, Globe, Users, BarChart3,
-  Cpu, Star, Smartphone, Gift, ShoppingBag, Rocket, Clock, Coins, Medal
+  Cpu, Star, Smartphone, Gift, ShoppingBag, Rocket, Clock, Coins, Medal,
+  Eye, EyeOff, Plus, Send
 } from "lucide-react";
 import { useUser, useWallet, useI18n } from "../store";
 import { useWalletStats } from "../hooks";
@@ -282,6 +283,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
   const [previewFeature, setPreviewFeature] = useState(null);
 
+  // Banking-app feel: allow user to hide balance (persists in localStorage)
+  const [balanceHidden, setBalanceHidden] = useState(() => {
+    try { return localStorage.getItem("bb_balance_hidden") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("bb_balance_hidden", balanceHidden ? "1" : "0"); } catch { /* ignore */ }
+  }, [balanceHidden]);
+
   // Track guest visit (once per session)
   useState(() => { if (isGuest) tracker.guestVisit(); });
 
@@ -404,29 +413,125 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           )}
         </AnimatePresence>
 
-        {/* ── Tagline ── */}
-        <motion.div className="mb-5" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
-          <h2 className="text-[20px] sm:text-[22px] font-outfit font-bold text-white leading-[1.25] tracking-tight mb-1.5 break-words">
-            {t("home.tagline_1")}{" "}
-            <span className="text-[#00C2FF]">{t("home.tagline_2")}</span>,{" "}
-            <span className="text-[#00C2FF]">{t("home.tagline_3")}</span> {t("home.tagline_more")}
-          </h2>
-          <p className="text-[12px] text-[#333] font-medium">{t("home.subtitle")}</p>
-        </motion.div>
+        {/* ── Tagline (nur für Gäste — angemeldete User sehen sofort den Wallet) ── */}
+        {isGuest && (
+          <motion.div className="mb-5" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
+            <h2 className="text-[20px] sm:text-[22px] font-outfit font-bold text-white leading-[1.25] tracking-tight mb-1.5 break-words">
+              {t("home.tagline_1")}{" "}
+              <span className="text-[#00C2FF]">{t("home.tagline_2")}</span>,{" "}
+              <span className="text-[#00C2FF]">{t("home.tagline_3")}</span> {t("home.tagline_more")}
+            </h2>
+            <p className="text-[12px] text-[#333] font-medium">{t("home.subtitle")}</p>
+          </motion.div>
+        )}
 
-        {/* ── KYC Verifizierungs-Banner (nur für eingeloggte unverifizierte User) ── */}
+        {/* ── BANKING-APP TOP: Wallet + Quick Actions (auth users only) ── */}
+        {!isGuest && (
+          <>
+            {/* Hero Balance Card */}
+            <motion.div
+              data-testid="hero-balance-card"
+              className="rounded-[22px] p-5 mb-3 relative overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", backdropFilter: "blur(24px)" }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, ...slide }}
+            >
+              <motion.div className="absolute -top-16 -right-16 w-44 h-44 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.15) 0%, transparent 70%)" }} animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Shield size={10} className="text-[#00C2FF]/50" />
+                    <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.12em] uppercase">{t("home.balance")}</p>
+                  </div>
+                  <motion.button
+                    data-testid="balance-toggle-visibility"
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => setBalanceHidden(v => !v)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    {balanceHidden ? <EyeOff size={12} className="text-white/40" /> : <Eye size={12} className="text-white/40" />}
+                  </motion.button>
+                </div>
+                <motion.div className="flex items-baseline gap-1 mb-3" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
+                  <span className="text-[22px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
+                  <span className="text-[42px] font-bold font-outfit text-white tracking-[-0.03em] leading-none">
+                    {balanceHidden ? "••••••" : displayBalance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
+                  </span>
+                </motion.div>
+
+                {hasCrypto && !balanceHidden && (
+                  <motion.div className="flex flex-col gap-1 mb-2 pb-2 border-b border-white/[0.03]" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ delay: 0.3 }}>
+                    <div className="flex items-center justify-between text-[9px]">
+                      <span className="text-white/30">EUR Wallet</span>
+                      <span className="text-white/50 font-mono">€{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[9px]">
+                      <span className="text-white/30">Crypto ({cryptoBreakdown.length} Coins)</span>
+                      <span className="text-[#00C2FF] font-mono">€{cryptoBalanceEur.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </motion.div>
+                )}
+
+                <motion.div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(0,210,106,0.06)", border: "1px solid rgba(0,210,106,0.12)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+                  <TrendingUp size={10} className="text-[#00D26A]" />
+                  <span className="text-[10px] text-[#00D26A] font-semibold">+{percentageChange}% {t("home.month")}</span>
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Quick Actions Row */}
+            <motion.div
+              data-testid="home-quick-actions"
+              className="grid grid-cols-4 gap-2 mb-5"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, ...slide }}
+            >
+              {[
+                { id: "topup", icon: Plus, label: "Aufladen", color: "#00C2FF", onClick: () => onNavigate("/wallet?action=topup") },
+                { id: "send", icon: Send, label: "Senden", color: "#00D26A", onClick: () => onNavigate("/wallet?action=send") },
+                { id: "scan", icon: QrCode, label: "Scannen", color: "#A855F7", onClick: () => onNavigate("/qr-scan") },
+                { id: "cards", icon: CreditCard, label: "Karten", color: "#FFB800", onClick: () => onNavigate("/cards") },
+              ].map((a, i) => (
+                <motion.button
+                  key={a.id}
+                  data-testid={`quick-action-${a.id}`}
+                  onClick={a.onClick}
+                  whileTap={{ scale: 0.93 }}
+                  className="flex flex-col items-center gap-1.5 py-2.5 rounded-2xl"
+                  style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.04)" }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.22 + i * 0.04 }}
+                >
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${a.color}10`, border: `1px solid ${a.color}20` }}>
+                    <a.icon size={15} strokeWidth={1.8} style={{ color: a.color }} />
+                  </div>
+                  <span className="text-[10px] font-semibold text-white/80 font-outfit">{a.label}</span>
+                </motion.button>
+              ))}
+            </motion.div>
+          </>
+        )}
+
+        {/* ── KYC Verifizierungs-Banner (kompakt, nur für eingeloggte unverifizierte User) ── */}
         {!isGuest && <KYCBanner />}
 
-        {/* ── Premium Launch-Event Banner (eingeloggt, nicht-Premium, dismissible) ── */}
-        <BirthdayBonusBanner isGuest={isGuest} />
-        <QuestsWidget isGuest={isGuest} onNavigate={onNavigate} />
-        <SponsoredAdSlot onNavigate={onNavigate} />
-        <PremiumLaunchBanner isGuest={isGuest} onNavigate={onNavigate} />
+        {/* ── Marketing-Widgets (gäste oben; auth-User kompakt nach Wallet-Block) ── */}
+        {isGuest && (
+          <>
+            <BirthdayBonusBanner isGuest={isGuest} />
+            <QuestsWidget isGuest={isGuest} onNavigate={onNavigate} />
+            <SponsoredAdSlot onNavigate={onNavigate} />
+            <PremiumLaunchBanner isGuest={isGuest} onNavigate={onNavigate} />
+            <RecommendAppCard isGuest={isGuest} onNavigate={onNavigate} />
+          </>
+        )}
 
-        {/* ── Freunde empfehlen — 5€ pro Anmeldung + 10% Provision ── */}
-        <RecommendAppCard isGuest={isGuest} onNavigate={onNavigate} />
-
-        {/* ── CTA Buttons ── */}
+        {/* ── CTA Buttons (Gäste sehen Login/Register; eingeloggte User haben oben Quick-Actions) ── */}
         {isGuest ? (
           <div className="mb-6">
             <motion.button data-testid="cta-register-btn" className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-2.5 relative overflow-hidden" style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, ...slide }} whileTap={{ scale: 0.96 }} onClick={onRegister}>
@@ -445,12 +550,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               )}
             </div>
           </div>
-        ) : (
-          <motion.button data-testid="get-started-btn" className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-7 relative overflow-hidden" style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, ...slide }} whileTap={{ scale: 0.96 }} onClick={() => onNavigate("/wallet")}>
-            {t("home.get_started")}
-            <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }}><ChevronRight size={16} strokeWidth={2.5} /></motion.div>
-          </motion.button>
-        )}
+        ) : null}
 
         {/* ═══════════ GUEST SECTIONS ═══════════ */}
         {isGuest && (
@@ -538,58 +638,20 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         {/* ═══════════ AUTHENTICATED SECTIONS ═══════════ */}
         {!isGuest && (
           <>
-            {/* Hero Balance Card */}
-            <motion.div
-              data-testid="hero-balance-card"
-              className="rounded-[22px] p-5 mb-6 relative overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", backdropFilter: "blur(24px)" }}
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08, ...slide }}
-            >
-              <motion.div className="absolute -top-16 -right-16 w-44 h-44 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.15) 0%, transparent 70%)" }} animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <Shield size={10} className="text-[#00C2FF]/50" />
-                  <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.12em] uppercase">{t("home.balance")}</p>
-                </div>
-                <motion.div className="flex items-baseline gap-1 mb-3" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
-                  <span className="text-[22px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
-                  <span className="text-[42px] font-bold font-outfit text-white tracking-[-0.03em] leading-none">{displayBalance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
-                </motion.div>
-                
-                {/* Crypto Breakdown */}
-                {hasCrypto && (
-                  <motion.div 
-                    className="flex flex-col gap-1 mb-2 pb-2 border-b border-white/[0.03]"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <div className="flex items-center justify-between text-[9px]">
-                      <span className="text-white/30">EUR Wallet</span>
-                      <span className="text-white/50 font-mono">€{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[9px]">
-                      <span className="text-white/30">Crypto ({cryptoBreakdown.length} Coins)</span>
-                      <span className="text-[#00C2FF] font-mono">€{cryptoBalanceEur.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  </motion.div>
-                )}
-                
-                <motion.div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(0,210,106,0.06)", border: "1px solid rgba(0,210,106,0.12)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-                  <TrendingUp size={10} className="text-[#00D26A]" />
-                  <span className="text-[10px] text-[#00D26A] font-semibold">+{percentageChange}% {t("home.month")}</span>
-                </motion.div>
-              </div>
-            </motion.div>
+            {/* (Hero Balance Card now rendered at the very top — banking-app feel) */}
 
             {/* ═══ Loyalty & Coins Card ═══ */}
             <LoyaltyCard onNavigate={onNavigate} t={t} />
 
             {/* ═══ Quick Access Shortcuts ═══ */}
             <QuickAccessBar onNavigate={onNavigate} />
+
+            {/* ═══ Compact Marketing-Widgets (nach den Hauptaktionen) ═══ */}
+            <QuestsWidget isGuest={isGuest} onNavigate={onNavigate} />
+            <BirthdayBonusBanner isGuest={isGuest} />
+            <SponsoredAdSlot onNavigate={onNavigate} />
+            <PremiumLaunchBanner isGuest={isGuest} onNavigate={onNavigate} />
+            <RecommendAppCard isGuest={isGuest} onNavigate={onNavigate} />
 
             {/* ═══ Alle Services Banner ═══ */}
             <motion.button
