@@ -1,0 +1,144 @@
+name: Deploy to Hetzner Production
+
+# This workflow builds the frontend in the GitHub runner and ships the
+# artifacts to the VPS via rsync over SSH. The VPS itself does NOT need
+# any GitHub credentials — it only needs SSH access from the runner.
+#
+# Required GitHub secrets:
+#   VPS_HOST            -> 212.227.20.190
+#   VPS_USER            -> root
+#   VPS_PASSWORD        -> SSH password for root
+#
+# Optional secrets (forwarded into the production frontend build):
+#   PROD_REACT_APP_BACKEND_URL          (default: https://bidblitz.ae)
+#   PROD_REACT_APP_MAPBOX_TOKEN
+#   PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      VPS_BACKEND_DIR: /var/www/bidblitz/backend
+      VPS_FRONTEND_BUILD_DIR: /var/www/bidblitz/frontend/build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
+          CI: "false"
+        run: |
+          # Write a clean production .env (overrides whatever is committed)
+          cat > .env <<EOF
+          REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+          REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
+          REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+          EOF
+          yarn install --frozen-lockfile
+          yarn build
+          ls -lh build/static/js/main.*.js | head -1
+
+      - name: Install sshpass + rsync
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass rsync
+
+      - name: Backup remote build & rsync new build
+        env:
+          SSHPASS: ${{ secrets.VPS_PASSWORD }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          RSYNC_RSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+          echo "==> Backup current build on VPS"
+          $SSH "$VPS_USER@$VPS_HOST" "
+            set -e
+            TS=\$(date +%Y%m%d_%H%M%S)
+            if [ -d ${VPS_FRONTEND_BUILD_DIR} ]; then
+              cp -r ${VPS_FRONTEND_BUILD_DIR} ${VPS_FRONTEND_BUILD_DIR}.bak.\$TS
+              ls -1dt ${VPS_FRONTEND_BUILD_DIR}.bak.* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+            fi
+            mkdir -p ${VPS_FRONTEND_BUILD_DIR}
+          "
+
+          echo "==> Rsync frontend build"
+          rsync -az --delete -e "$RSYNC_RSH" \
+            frontend/build/ "$VPS_USER@$VPS_HOST:${VPS_FRONTEND_BUILD_DIR}/"
+
+          echo "==> Rsync backend code (preserve venv, __pycache__, .env, logs, data)"
+          rsync -az -e "$RSYNC_RSH" \
+            --exclude 'venv/' \
+            --exclude '__pycache__/' \
+            --exclude '*.pyc' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            --exclude 'logs/' \
+            --exclude 'data/' \
+            --exclude 'core_backup/' \
+            --exclude '.pytest_cache/' \
+            backend/ "$VPS_USER@$VPS_HOST:${VPS_BACKEND_DIR}/"
+
+      - name: Install backend deps & restart services
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            cd /var/www/bidblitz/backend
+
+            echo "==> Backend deps"
+            if [ ! -d venv ]; then python3 -m venv venv; fi
+            source venv/bin/activate
+            pip install -q --upgrade pip
+            pip install -q -r requirements.txt
+            deactivate
+
+            echo "==> Restart PM2 backend"
+            pm2 restart api --update-env
+            sleep 3
+            pm2 list | grep -E '\bapi\b' || true
+
+            echo "==> Reload nginx"
+            nginx -t && systemctl reload nginx
+
+            echo "==> Health checks"
+            curl -fsS -o /dev/null -w 'WEB  HTTP %{http_code}\n' https://bidblitz.ae/ || true
+            curl -fsS -o /dev/null -w 'API  HTTP %{http_code}\n' https://bidblitz.ae/api/auctions || true
+            ls -lh /var/www/bidblitz/frontend/build/static/js/main.*.js | head -1
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "::notice::Deploy finished. Verify https://bidblitz.ae"
