@@ -138,16 +138,18 @@ export const api = {
 
   // Wallet
   getWallet: async () => {
-    // Fetch TOTAL balance (EUR + Crypto)
-    const totalBalance = await request("/api/wallet/balance/total");
-    // Fetch regular wallet data  
+    // Fetch regular wallet data (required)
     const wallet = await request("/api/wallet");
-    
-    // Merge both responses
-    return {
-      ...wallet,
-      ...totalBalance,
-    };
+    // Fetch optional total balance (EUR + Crypto). If this endpoint is missing
+    // or transiently fails, we MUST NOT zero the user's visible wallet —
+    // return base wallet only.
+    let totalBalance = {};
+    try {
+      totalBalance = await request("/api/wallet/balance/total");
+    } catch (_) {
+      totalBalance = {};
+    }
+    return { ...wallet, ...totalBalance };
   },
   getWalletBalance: () => request("/api/wallet/balance"),
   topUp: (body) => request("/api/wallet/topup", { method: "POST", body: JSON.stringify(body) }),

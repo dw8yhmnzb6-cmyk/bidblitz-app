@@ -161,6 +161,9 @@ export function WalletProvider({ children }) {
   const value = React.useMemo(() => ({
     balance: state.balance,
     currency: state.currency,
+    cryptoBalanceEur: state.cryptoBalanceEur,
+    totalBalanceEur: state.totalBalanceEur,
+    cryptoBreakdown: state.cryptoBreakdown,
     cardNumber: state.cardNumber,
     cardExpiry: state.cardExpiry,
     cardHolder: state.cardHolder,
