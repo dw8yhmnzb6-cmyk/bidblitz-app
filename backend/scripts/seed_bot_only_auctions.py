@@ -36,7 +36,7 @@ PRODUCTS = [
     ("PlayStation 5 Pro", 799, "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=600&h=400&fit=crop&q=80", "gaming"),
     ("Xbox Series X 2TB", 649, "https://images.unsplash.com/photo-1621259182978-fbf93132d53d?w=600&h=400&fit=crop&q=80", "gaming"),
     ("DJI Mavic 4 Pro", 1899, "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=400&fit=crop&q=80", "tech"),
-    ("GoPro Hero 14", 549, "https://images.unsplash.com/photo-1526178613658-3f1622045557?w=600&h=400&fit=crop&q=80", "tech"),
+    ("GoPro Hero 14", 549, "https://images.unsplash.com/photo-1564466809058-bf4114d55352?w=600&h=400&fit=crop&q=80", "tech"),
     ("Apple Watch Ultra 3", 899, "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=600&h=400&fit=crop&q=80", "tech"),
     ("Meta Quest 4", 599, "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=600&h=400&fit=crop&q=80", "tech"),
     ("Dyson V16 Absolute", 799, "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&h=400&fit=crop&q=80", "lifestyle"),
@@ -44,7 +44,7 @@ PRODUCTS = [
     ("Rolex Submariner Date", 1999, "https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=600&h=400&fit=crop&q=80", "luxury"),
     ("Gucci Marmont Tasche", 1599, "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&h=400&fit=crop&q=80", "fashion"),
     ("Louis Vuitton Speedy 30", 1799, "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=600&h=400&fit=crop&q=80", "fashion"),
-    ("Hermès Scarf", 499, "https://images.unsplash.com/photo-1601925240970-98447b463c7f?w=600&h=400&fit=crop&q=80", "fashion"),
+    ("Hermès Scarf", 499, "https://images.unsplash.com/photo-1606293459339-aa5d34a7b0e1?w=600&h=400&fit=crop&q=80", "fashion"),
     ("Nike Air Jordan 4 Retro", 249, "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=400&fit=crop&q=80", "fashion"),
     ("Ray-Ban Aviator Gold", 199, "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600&h=400&fit=crop&q=80", "fashion"),
     # Experiences / Vouchers
