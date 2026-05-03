@@ -174,6 +174,7 @@ import LiveShoppingPage from "./pages/LiveShoppingPage";
 const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
 const WalletDashboard = lazy(() => import("./components/WalletDashboard").then(m => ({ default: m.WalletDashboard })));
 const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
+import { LandingChatbot } from "./components/LandingChatbot";
 import CreatorsPage from "./pages/CreatorsPage";
 import P2PPage from "./pages/P2PPage";
 import CardPage from "./pages/CardPage";
@@ -428,6 +429,8 @@ function AppContent() {
     switch (currentPath) {
       case "/":
         return <HomePage {...homeProps} />;
+      case "/landing":
+        return <LandingPage onGetStarted={() => handleNavigate("/")} />;
       case "/wallet":
         return <WalletPage {...pageProps} />;
       case "/scan":
@@ -983,7 +986,10 @@ function AppContent() {
       )}
       {/* In-App Update Manager (Native Android/iOS) */}
       <InAppUpdateManager />
-      
+
+      {/* Landing Chatbot — Floating widget for guest visitors (always available) */}
+      {!user.isAuthenticated && !isCheckout && <LandingChatbot />}
+
       {/* Push Notification Prompt */}
       {/* PushNotificationPrompt (FCM) removed — use PushPermissionPrompt above */}
     </div>

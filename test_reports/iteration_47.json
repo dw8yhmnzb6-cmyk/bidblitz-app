@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 47 retest of iter46 frontend wiring gaps + age-verify backend schema extension. All 4 issues are RESOLVED. Backend: 19/19 pytest passed (extended with 3 new age-verify mode-2 tests). Frontend: LandingChatbot mounted globally for guests on every route (verified on / and /landing, full chat round-trip with /api/landing-chatbot/chat works); LiveKitStreamPage has data-testid='livekit-stream-page', 'livekit-create-btn' + create modal with 'livekit-room-name-input' and 'livekit-create-confirm'; POSPage RetailTab via tab id='retail' renders all 4 testid buttons (pos-retail-void/return/age/hardware-btn) and the hardware modal shows all 4 hardware tabs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/landing-chatbot/chat", "issue": "Still a hard-coded keyword matcher (no real LLM). Module docstring/comment promises Claude Sonnet 4 via emergentintegrations but only 5 keyword branches are implemented. Functional but not 'AI'."},
+      {"endpoint": "POST /api/pos/hardware/cash-drawer/open & GET /api/pos/hardware/scanner/test", "issue": "Use query-string params instead of JSON Pydantic body — inconsistent with other /api/pos/hardware/* endpoints."},
+      {"endpoint": "GET /api/super-app/wallet/balance", "issue": "Implicit insert_one on GET (side-effect on read). Prefer lazy-read returning 0 without insert."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "LiveKitStreamPage", "issues": ["data-testid='livekit-empty' not present when at least one room exists from prior runs — only renders on empty state. Optional: also expose 'livekit-list' testid on the populated list container so tests don't have to choose between empty/list states."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter46_livekit_hardware.py",
+    "/app/test_reports/pytest/iter47.xml"
+  ],
+  "action_items": [
+    "(Optional, non-blocking) Replace landing_chatbot.py keyword matcher with real emergentintegrations LlmChat call.",
+    "(Optional, non-blocking) Normalise /api/pos/hardware/cash-drawer/open and /scanner/test to JSON-body Pydantic models.",
+    "(Optional, non-blocking) Make GET /api/super-app/wallet/balance side-effect-free on read."
+  ],
+  "critical_code_review_comments": [
+    "pos_retail_enterprise.py age-verify cleanly supports both modes; mode-2 returns ok/allowed/age/required_age — solid. Consider validating birth_year range (e.g. 1900..current_year) to avoid junk ages.",
+    "App.js global LandingChatbot mounting is the right call; ensures guest entry-point on every route. Good UX win.",
+    "POSPage RetailTab buttons + POSHardwareModal tabs are correctly wired with data-testid; no further fixes needed.",
+    "LiveKitStreamPage testids present; consider exposing 'livekit-list' alongside 'livekit-empty' for symmetric assertions."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter46_livekit_hardware.py (added 3 age-verify mode-2 tests: birth_year_allowed, birth_year_underage, id_not_checked)"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% (3/3 wiring fixes verified)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (login via POST /api/auth/login returns user object incl. id, role=admin; no JWT token in this preview build — the tests use Session-based auth)",
+  "seed_data_creation": "1 LiveKit room per pytest run inserted into db.livekit_rooms. No corresponding delete-room endpoint exercised.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter46 wiring gaps + age-verify schema extension are fully verified PASS in iter47. Regression harness is /app/backend/tests/test_iter46_livekit_hardware.py (now 19 tests). For Playwright on this preview the auth flow is: (1) goto /, (2) click 'Überspringen' to dismiss the 4-step onboarding overlay, (3) POST /api/auth/login returns user object — there is NO JWT token in the response on this preview build, so navigating to authenticated routes works simply because the cookie/session is set by the API call (or the routes also accept guest demo). Direct goto /livekit-stream and /pos rendered the full UI without explicit token storage. The LandingChatbot floats globally for !user.isAuthenticated.",
+  "rca_of_the_issue": "Previous iter46 gaps were caused by: (a) LandingPage/LandingChatbot never being instantiated from App.js's switch — fixed by hoisting <LandingChatbot/> to root layout for guests + adding case '/landing' → <LandingPage/>; (b) LiveKitStreamPage testids genuinely missing — fixed in source; (c) POSPage RetailTab buttons living in a tab not shown by default — fixed by making tab id='retail' (label 'Retail Pro') reachable and rendering the 4-button action bar. Age-verify backend now branches on presence of birth_year (mode 2) vs cart_id (mode 1), with a 400 fallback if neither is provided."
+}

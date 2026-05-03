@@ -254,27 +254,63 @@ async def lookup_weighted(request: Request, plu_code: str, weight_kg: float, sto
 # ═══════════════════════════════════════════════════════════════════════
 
 class AgeVerification(BaseModel):
-    cart_id: str
-    verified_by: str  # user_id of staff who checked ID
+    cart_id: Optional[str] = None
+    verified_by: Optional[str] = None
+    # Alternative schema for ad-hoc product verification
+    product_id: Optional[str] = None
+    birth_year: Optional[int] = None
+    id_checked: Optional[bool] = None
+    required_age: Optional[int] = 18
 
 @router.post("/age-verify")
 async def age_verify(req: AgeVerification, request: Request):
-    """Freigabe für Alkohol/Tabak-Verkauf."""
+    """Freigabe für Alkohol/Tabak-Verkauf. Akzeptiert zwei Modi:
+    1) cart_id + verified_by (in-cart Verifikation)
+    2) birth_year + id_checked + required_age (Ad-hoc Produkt-Check)
+    """
     user = await get_current_user(request)
+
+    # Mode 2: Ad-hoc product verification (birth_year)
+    if req.birth_year is not None:
+        if not req.id_checked:
+            return {"ok": False, "allowed": False, "reason": "id_not_checked"}
+        from datetime import datetime as _dt
+        current_year = _dt.utcnow().year
+        age = current_year - req.birth_year
+        required = req.required_age or 18
+        allowed = age >= required
+        await _audit(str(user["_id"]), "age.verify.adhoc", {
+            "product_id": req.product_id,
+            "age": age,
+            "required": required,
+            "allowed": allowed,
+        })
+        return {
+            "ok": True,
+            "allowed": allowed,
+            "age": age,
+            "required_age": required,
+            "product_id": req.product_id,
+        }
+
+    # Mode 1: Cart-based verification
+    if not req.cart_id:
+        raise HTTPException(status_code=400, detail="cart_id oder birth_year erforderlich")
+
     cart = await db.pos_carts.find_one({"cart_id": req.cart_id})
     if not cart:
         raise HTTPException(status_code=404, detail="Cart nicht gefunden")
-    
+
     await db.pos_carts.update_one(
         {"cart_id": req.cart_id},
         {"$set": {
             "age_verified": True,
-            "verified_by": req.verified_by,
+            "verified_by": req.verified_by or str(user["_id"]),
             "verified_at": now_iso(),
         }}
     )
     await _audit(str(user["_id"]), "age.verify", {"cart_id": req.cart_id})
-    return {"ok": True, "cart_id": req.cart_id, "age_verified": True}
+    return {"ok": True, "allowed": True, "cart_id": req.cart_id, "age_verified": True}
 
 @router.get("/products/age-restricted")
 async def list_age_restricted(request: Request, store_id: str):

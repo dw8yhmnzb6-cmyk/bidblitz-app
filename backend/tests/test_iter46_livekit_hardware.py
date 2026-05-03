@@ -126,6 +126,37 @@ class TestPOSRetail:
                                      "verified_by": "staff-1"}, timeout=20)
         assert r.status_code == 404, f"{r.status_code}: {r.text[:300]}"
 
+    def test_age_verify_birth_year_allowed(self, admin_session):
+        # Mode 2: Ad-hoc — adult (born 2000, required 18) → allowed:true
+        r = admin_session.post(f"{BASE_URL}/api/pos/age-verify",
+                               json={"birth_year": 2000, "id_checked": True,
+                                     "required_age": 18}, timeout=20)
+        assert r.status_code == 200, f"{r.status_code}: {r.text[:300]}"
+        data = r.json()
+        assert data.get("ok") is True
+        assert data.get("allowed") is True
+        assert data.get("age") in (25, 26)
+        assert data.get("required_age") == 18
+
+    def test_age_verify_birth_year_underage(self, admin_session):
+        # Mode 2: born 2015 → age ~10/11 → not allowed
+        r = admin_session.post(f"{BASE_URL}/api/pos/age-verify",
+                               json={"birth_year": 2015, "id_checked": True,
+                                     "required_age": 18}, timeout=20)
+        assert r.status_code == 200, f"{r.status_code}: {r.text[:300]}"
+        data = r.json()
+        assert data.get("ok") is True
+        assert data.get("allowed") is False
+
+    def test_age_verify_birth_year_id_not_checked(self, admin_session):
+        r = admin_session.post(f"{BASE_URL}/api/pos/age-verify",
+                               json={"birth_year": 2000, "id_checked": False,
+                                     "required_age": 18}, timeout=20)
+        assert r.status_code == 200
+        data = r.json()
+        assert data.get("allowed") is False
+        assert data.get("reason") == "id_not_checked"
+
     def test_receipts_void_not_found(self, admin_session):
         r = admin_session.post(f"{BASE_URL}/api/pos/receipts/void",
                                json={"receipt_id": "TEST-NOBON-123",
