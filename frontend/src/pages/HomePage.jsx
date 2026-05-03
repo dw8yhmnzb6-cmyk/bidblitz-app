@@ -518,7 +518,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         )}
 
         {/* ── KYC Verifizierungs-Banner (kompakt, nur für eingeloggte unverifizierte User) ── */}
-        {!isGuest && <KYCBanner />}
+        {!isGuest && <KYCBanner onNavigate={onNavigate} />}
 
         {/* ── Marketing-Widgets (gäste oben; auth-User kompakt nach Wallet-Block) ── */}
         {isGuest && (

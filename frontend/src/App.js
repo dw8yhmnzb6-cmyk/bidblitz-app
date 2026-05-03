@@ -110,6 +110,7 @@ const MarketingHubPage = lazy(() => import("./pages/MarketingHubPage"));
 const AdminRevenueDashboardPage = lazy(() => import("./pages/AdminRevenueDashboardPage"));
 import NotificationCenterPage from "./pages/NotificationCenterPage";
 import KYCTestPage from "./pages/KYCTestPage";
+import KYCFlow from "./pages/KYCFlow";
 import ContactsPage from "./pages/ContactsPage";
 import UserStatsPage from "./pages/UserStatsPage";
 import CurrencyConverterPage from "./pages/CurrencyConverterPage";
@@ -487,6 +488,14 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/test/kyc":
         return <KYCTestPage />;
+      case "/kyc":
+      case "/kyc/start":
+      case "/kyc/upload":
+      case "/kyc/review":
+      case "/kyc/status":
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : <KYCFlow onBack={() => handleNavigate("/more")} onComplete={() => handleNavigate("/kyc/status")} />;
       case "/blitz-transfer":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzTransferPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-boost":

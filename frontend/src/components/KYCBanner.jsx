@@ -9,7 +9,7 @@ import KYCVerificationModal from "./KYCVerificationModal";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-const KYCBanner = ({ onVerified }) => {
+const KYCBanner = ({ onVerified, onNavigate }) => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -56,7 +56,7 @@ const KYCBanner = ({ onVerified }) => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         whileTap={{ scale: 0.98 }}
-        onClick={() => setShowModal(true)}
+        onClick={() => onNavigate ? onNavigate("/kyc") : setShowModal(true)}
         data-testid="kyc-banner"
         className={`w-full flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r ${c.bg} text-black shadow-lg`}
       >
