@@ -753,7 +753,11 @@ app.include_router(delivery_options_router)
 from routes.bnpl import router as bnpl_router
 app.include_router(bnpl_router)
 from routes.pos_extras import router as pos_extras_router
+from routes.pos_retail_enterprise import router as pos_retail_enterprise_router
+from routes.pos_retail_p1p2 import router as pos_retail_p1p2_router
 app.include_router(pos_extras_router)
+app.include_router(pos_retail_enterprise_router)
+app.include_router(pos_retail_p1p2_router)
 from routes.chat_ws import router as chat_ws_router
 app.include_router(chat_ws_router)
 from routes.voice import router as voice_router
