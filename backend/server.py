@@ -480,6 +480,12 @@ from routes.stripe_issuing import router as stripe_issuing_router
 app.include_router(stripe_issuing_router)
 from routes.cards_lifecycle import router as cards_lifecycle_router
 app.include_router(cards_lifecycle_router)
+from routes.referral_engine import router as referral_engine_router
+app.include_router(referral_engine_router)
+from routes.bot_personalization import router as bot_personalization_router
+app.include_router(bot_personalization_router)
+from routes.admin_viewers import router as admin_viewers_router
+app.include_router(admin_viewers_router)
 
 # Serve pay.js SDK publicly at /pay.js (and /api/pay.js for ingress-prefix access)
 from pathlib import Path as _PayPath
