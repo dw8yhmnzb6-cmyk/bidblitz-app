@@ -29,7 +29,7 @@ export function WalletDashboard() {
     }
   };
 
-  const handleTopup = async (amount: number, method: string) => {
+  const handleTopup = async (amount, method) => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(

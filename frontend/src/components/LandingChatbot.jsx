@@ -3,28 +3,15 @@ import axios from 'axios';
 import { MessageCircle, X, Send, Mail } from 'lucide-react';
 import './LandingChatbot.css';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-interface ChatResponse {
-  session_id: string;
-  message: string;
-  suggested_actions: string[];
-  requires_email: boolean;
-}
-
 export function LandingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [email, setEmail] = useState('');
   const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [loading, setLoading] = useState(false);
   const [showEmailInput, setShowEmailInput] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -48,7 +35,7 @@ export function LandingChatbot() {
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    const userMessage: Message = {
+    const userMessage = {
       role: 'user',
       content: inputMessage,
       timestamp: new Date().toISOString(),
@@ -59,7 +46,7 @@ export function LandingChatbot() {
     setLoading(true);
 
     try {
-      const response = await axios.post<ChatResponse>(
+      const response = await axios.post(
         `${process.env.REACT_APP_BACKEND_URL}/api/landing-chatbot/chat`,
         {
           session_id: sessionId,
@@ -68,7 +55,7 @@ export function LandingChatbot() {
         }
       );
 
-      const botMessage: Message = {
+      const botMessage = {
         role: 'assistant',
         content: response.data.message,
         timestamp: new Date().toISOString(),
