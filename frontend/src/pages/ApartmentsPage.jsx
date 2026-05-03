@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Home, Search, MapPin, Star } from 'lucide-react';
+import { CityAutocomplete } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -56,11 +57,14 @@ export default function ApartmentsPage({ onNavigate }) {
         {!selected ? (
           <>
             <div className="flex gap-2 mb-4">
-              <div className="relative flex-1">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                <input data-testid="apt-city-search" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()}
+              <div className="flex-1">
+                <CityAutocomplete
+                  value={cityFilter}
+                  onChange={setCityFilter}
+                  onSelect={(c) => { setCityFilter(c.name); }}
                   placeholder="Stadt suchen..."
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/5 border border-white/10 outline-none focus:border-rose-500/30 text-sm" />
+                  testId="apt-city-autocomplete"
+                />
               </div>
               <button data-testid="apt-search-btn" onClick={search} className="px-4 py-2.5 rounded-xl bg-rose-500 text-white font-bold text-sm">Suchen</button>
             </div>

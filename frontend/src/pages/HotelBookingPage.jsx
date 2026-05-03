@@ -2,13 +2,16 @@
  * BidBlitz V2 - Hotel & Unterkunft Buchung
  * Eigener Marktplatz: Unterkünfte suchen, buchen, verwalten
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, MapPin, Star, Users, Calendar, Bed, Bath,
   Wifi, Car, UtensilsCrossed, Wind, Loader2, X, Heart, ChevronRight,
-  Home, Building2, Hotel, Check, AlertCircle, Plus
+  Home, Building2, Hotel, Check, AlertCircle, Plus, Map as MapIcon, List
 } from "lucide-react";
+import {
+  CityAutocomplete, DateRangePicker, GuestSelector, FilterBar, MapResultsView,
+} from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -27,7 +30,10 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(1);
+  const [guestState, setGuestState] = useState({ adults: 2, children: 0, rooms: 1 });
   const [message, setMessage] = useState("");
+  const [filters, setFilters] = useState({});
+  const [resultsView, setResultsView] = useState("list"); // list | map
   const [booking, setBooking] = useState(false);
   const [bookResult, setBookResult] = useState(null);
   const [error, setError] = useState("");
@@ -137,11 +143,51 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
           </div>
         </div>
         {view === "list" && (
-          <div className="mt-3 relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
-            <input type="text" value={search} onChange={e => { setSearch(e.target.value); setLoading(true); }}
-              placeholder="Stadt suchen..." className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none"
-              data-testid="hotel-search" />
+          <div className="mt-3 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <CityAutocomplete
+                value={search}
+                onChange={(v) => { setSearch(v); setLoading(true); }}
+                onSelect={(c) => { setSearch(c.name); setLoading(true); }}
+                placeholder="Wohin?"
+                testId="hotel-city-autocomplete"
+              />
+              <DateRangePicker
+                from={checkIn}
+                to={checkOut}
+                onChange={({ from, to }) => { setCheckIn(from); setCheckOut(to); }}
+                testId="hotel-date-range"
+              />
+              <GuestSelector
+                value={guestState}
+                onChange={(v) => { setGuestState(v); setGuests(v.adults + v.children); }}
+                testId="hotel-guest-selector"
+              />
+            </div>
+            <FilterBar
+              testId="hotel-filter-bar"
+              value={filters}
+              onChange={setFilters}
+              filters={[
+                { key: "sort", type: "sort", label: "Sortieren", options: [
+                  { value: "price_asc", label: "Preis aufsteigend" },
+                  { value: "price_desc", label: "Preis absteigend" },
+                  { value: "rating", label: "Beste Bewertung" },
+                ] },
+                { key: "type", type: "multi", label: "Typ", options: [
+                  { value: "hotel", label: "Hotel" },
+                  { value: "apartment", label: "Apartment" },
+                  { value: "house", label: "Haus" },
+                  { value: "villa", label: "Villa" },
+                  { value: "room", label: "Zimmer" },
+                ] },
+                { key: "price", type: "range", label: "Preis €/N", min: 0, max: 1000, step: 10 },
+                { key: "rating_min", type: "select", label: "Min. Bewertung", options: [
+                  { value: 3, label: "3.0+" }, { value: 4, label: "4.0+" }, { value: 4.5, label: "4.5+" },
+                ] },
+                { key: "free_cancel", type: "toggle", label: "Kostenfrei stornierbar" },
+              ]}
+            />
           </div>
         )}
       </div>
@@ -151,13 +197,44 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
       {/* Property List */}
       {view === "list" && !loading && !selectedProp && (
         <div className="p-4 space-y-3">
-          {properties.length === 0 ? (
+          {/* List/Map toggle */}
+          <div className="flex justify-end">
+            <div className="inline-flex bg-white/5 border border-white/10 rounded-lg p-0.5">
+              {[{ k: "list", I: List, l: "Liste" }, { k: "map", I: MapIcon, l: "Karte" }].map(({ k, I, l }) => (
+                <button key={k} onClick={() => setResultsView(k)}
+                  className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 ${resultsView === k ? "bg-[#00C2FF] text-black" : "text-gray-400"}`}
+                  data-testid={`hotel-view-${k}`}>
+                  <I size={12} /> {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          {(() => {
+            // Apply filters client-side
+            let list = [...properties];
+            if (filters.type?.length) list = list.filter(p => filters.type.includes(p.property_type));
+            if (filters.price) list = list.filter(p => p.price_per_night >= filters.price[0] && p.price_per_night <= filters.price[1]);
+            if (filters.rating_min) list = list.filter(p => (p.rating || 0) >= filters.rating_min);
+            if (filters.free_cancel) list = list.filter(p => p.free_cancellation);
+            if (filters.sort === "price_asc") list.sort((a,b) => a.price_per_night - b.price_per_night);
+            if (filters.sort === "price_desc") list.sort((a,b) => b.price_per_night - a.price_per_night);
+            if (filters.sort === "rating") list.sort((a,b) => (b.rating||0) - (a.rating||0));
+            if (resultsView === "map") {
+              const mapResults = list.filter(p => p.lat && p.lon).map(p => ({
+                id: p.property_id, lat: p.lat, lon: p.lon,
+                title: p.title, subtitle: p.city, price: `€${p.price_per_night}`,
+                image: p.images?.[0],
+              }));
+              if (mapResults.length === 0) return <div className="text-center py-16"><MapIcon size={40} className="mx-auto text-[#333] mb-3" /><p className="text-sm text-gray-500">Keine Karten-Daten</p></div>;
+              return <MapResultsView results={mapResults} onMarkerClick={(r) => setSelectedProp(list.find(p => p.property_id === r.id))} testId="hotel-map" />;
+            }
+            return list.length === 0 ? (
             <div className="text-center py-16">
               <Hotel size={40} className="mx-auto text-[#333] mb-3" />
               <p className="text-sm text-gray-500">Keine Unterkünfte gefunden</p>
               <p className="text-[10px] text-gray-600 mt-1">Versuche eine andere Stadt</p>
             </div>
-          ) : properties.map((p, i) => {
+          ) : list.map((p, i) => {
             const Icon = TYPE_ICONS[p.property_type] || Hotel;
             return (
               <motion.div key={p.property_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
@@ -185,7 +262,8 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
                 </div>
               </motion.div>
             );
-          })}
+          });
+          })()}
         </div>
       )}
 

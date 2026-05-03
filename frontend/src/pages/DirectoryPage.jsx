@@ -11,6 +11,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { CityAutocomplete } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -504,11 +505,12 @@ export default function DirectoryPage({ onNavigate }) {
                         </option>
                       ))}
                     </select>
-                    <input
+                    <CityAutocomplete
                       value={selectedCity}
-                      onChange={(e) => setSelectedCity(e.target.value)}
+                      onChange={setSelectedCity}
+                      onSelect={(c) => setSelectedCity(c.name)}
                       placeholder="Stadt..."
-                      className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
+                      testId="directory-city"
                     />
                   </div>
 

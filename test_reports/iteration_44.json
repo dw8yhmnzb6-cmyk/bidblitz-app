@@ -1,0 +1,61 @@
+{
+  "summary": "Backend test for Geo autocomplete + referral_engine / bot_personalization / admin_viewers endpoints. 16/18 passed, 1 failed (route shadowing), 1 skipped (admin auth). All 6 geo test cases PASS as specified. Detected route-collision between legacy routes/referral.py and new routes/referral_engine.py.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/referral/leaderboard",
+        "issue": "Route collision: both routes/referral.py (registered line 246) and routes/referral_engine.py (registered line 484) define /api/referral/leaderboard with same prefix. FastAPI resolves to first-registered (referral.py), which calls get_current_user(request) and returns 401 despite docstring claiming 'public leaderboard'. The new referral_engine.leaderboard() (documented public) is SHADOWED and never reached. Fix: either change prefix of referral_engine_router (e.g. /api/referral/v2) OR remove duplicate endpoint from referral.py OR drop the auth call on the legacy leaderboard.",
+        "priority": "MEDIUM"
+      },
+      {
+        "endpoint": "POST /api/referral/apply",
+        "issue": "Same route-collision: /apply exists in BOTH referral.py and referral_engine.py. First-registered (referral.py) wins, so the new referral_engine.apply() handler is SHADOWED and unreachable. Tests pass on the shadow (both return auth-required), but behaviourally the engine-version is dead code. Recommend deduplicating.",
+        "priority": "MEDIUM"
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_results_by_case": {
+    "GET /api/geo/cities?q=ber&limit=5": "PASS 200 — Berlin present, schema {name,region,country_code,lat,lon} OK",
+    "GET /api/geo/cities?q=ber&country=DE": "PASS 200 — all results country_code=DE",
+    "GET /api/geo/cities?q=a (1 char)": "PASS 200 — results=[], count=0",
+    "GET /api/geo/cities?q=&limit=5": "PASS 200 — empty",
+    "GET /api/geo/airports?q=fra": "PASS 200 — FRA Frankfurt top",
+    "GET /api/geo/airports?q=BER": "PASS 200 — BER exact-IATA match top",
+    "GET /api/geo/airports?q=lon": "PASS 200 — LHR/LGW/STN/LCY/LTN all present",
+    "GET /api/geo/cities?limit=invalid": "PASS 422 — FastAPI validation error",
+    "Schema check cities/airports": "PASS — all required keys present",
+    "GET /api/referral/me (auth)": "PASS 401 — auth required",
+    "POST /api/referral/apply": "PASS (403/422) — endpoint exists (but see shadowing issue)",
+    "GET /api/referral/leaderboard": "FAIL — returns 401 (shadowed by legacy referral.py that calls get_current_user)",
+    "GET /api/bots/me (auth)": "PASS 401",
+    "POST /api/bots/me/setup": "PASS 401 — auth required",
+    "GET /api/bots/active-auctions": "PASS 200/401 — endpoint reachable",
+    "GET /api/admin/audit/list (admin auth)": "PASS 401 (unauth) — endpoint wired; admin-login skipped (no auth token available via /api/auth/login)",
+    "GET /api/admin/fraud/alerts": "PASS 401 — admin auth required",
+    "GET /api/admin/referrals/top": "PASS 401 — admin auth required"
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_geo_and_new_routers.py",
+    "/app/test_reports/pytest/iter44_geo.xml"
+  ],
+  "action_items": [
+    "Resolve route collision on /api/referral/leaderboard and /api/referral/apply between routes/referral.py (legacy) and routes/referral_engine.py (new). Recommended: change referral_engine prefix to /api/referral/v2 OR delete shadowed endpoints from referral.py.",
+    "routes/referral.py leaderboard calls get_current_user() despite docstring saying 'public'. Remove auth call if public intent, or update docstring."
+  ],
+  "critical_code_review_comments": [
+    "Route-prefix duplication: two different router files both register prefix='/api/referral'. FastAPI silently shadows later-registered duplicates; second handlers become dead code with no warning. Add a startup check or rename prefix.",
+    "routes/geo/__init__.py: clean, self-contained, no DB call, proper validation (Query ge/le/max_length). Good.",
+    "routes/geo/__init__.py: _score() tie-breaks by shorter string — returns 100-len(h) which can go negative for very long names; consider max(0, 100-len(h)) for predictability (cosmetic).",
+    "routes/referral_engine.py:128 imports ObjectId inside loop — should be at module top (minor perf/readability)."
+  ],
+  "updated_files": ["/app/backend/tests/test_geo_and_new_routers.py"],
+  "success_rate": {"backend": "89%", "frontend": "n/a"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (from /app/memory/test_credentials.md) — /api/auth/login did not return token during admin test; skipped admin-authenticated assertion.",
+  "seed_data_creation": "None — geo dataset is static in-memory.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Geo endpoints fully working. If route collision on /api/referral/* is fixed, rerun /app/backend/tests/test_geo_and_new_routers.py and assert leaderboard returns 200 without auth.",
+  "rca of the issue": "GET /api/referral/leaderboard returns 401 because FastAPI router registration order matters: routes/referral.py is registered at server.py L246 with prefix '/api/referral' and defines GET /leaderboard that calls get_current_user(request). The newer routes/referral_engine.py registered at L484 with the same prefix also defines GET /leaderboard (public) but is shadowed and never invoked. Mitigation: rename one of the prefixes (e.g., /api/referral/v2) or deduplicate the legacy handler."
+}

@@ -486,6 +486,8 @@ from routes.bot_personalization import router as bot_personalization_router
 app.include_router(bot_personalization_router)
 from routes.admin_viewers import router as admin_viewers_router
 app.include_router(admin_viewers_router)
+from routes.geo import router as geo_router
+app.include_router(geo_router)
 
 # Serve pay.js SDK publicly at /pay.js (and /api/pay.js for ingress-prefix access)
 from pathlib import Path as _PayPath

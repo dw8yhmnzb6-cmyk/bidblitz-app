@@ -10,6 +10,7 @@ import {
   Zap, ChevronRight, Filter, Eye, Users, Laptop, Home as HomeIcon,
   FileText
 } from "lucide-react";
+import { CityAutocomplete } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -316,7 +317,14 @@ const JobMarketplacePage = ({ onBack, onNavigate }) => {
             <input value={form.company_website} onChange={e => setForm({ ...form, company_website: e.target.value })} placeholder="Website" className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none" />
             <textarea value={form.company_description} onChange={e => setForm({ ...form, company_description: e.target.value })} placeholder="Über das Unternehmen" rows={2} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none resize-none" />
           </div>
-          <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="Stadt" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-xs outline-none" />
+          <CityAutocomplete
+            value={form.city}
+            onChange={(v) => setForm({ ...form, city: v })}
+            onSelect={(c) => setForm({ ...form, city: c.name })}
+            placeholder="Stadt"
+            testId="jobmkt-city"
+            className="w-full"
+          />
           <div className="grid grid-cols-3 gap-2">
             <input value={form.salary_min} onChange={e => setForm({ ...form, salary_min: e.target.value })} placeholder="Gehalt von" type="number" className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none" />
             <input value={form.salary_max} onChange={e => setForm({ ...form, salary_max: e.target.value })} placeholder="Gehalt bis" type="number" className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none" />

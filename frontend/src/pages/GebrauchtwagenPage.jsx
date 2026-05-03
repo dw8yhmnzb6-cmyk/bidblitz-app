@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, Star, Car, Fuel, Gauge, Calendar, Eye, MapPin, Phone, Send, CheckCircle, Crown, Filter, X, ChevronDown, Shield, Award, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { CityAutocomplete } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -28,6 +29,7 @@ export default function GebrauchtwagenPage({ onBack }) {
   
   // NEUE Filter
   const [carType, setCarType] = useState("all"); // all | new | used
+  const [cityFilter, setCityFilter] = useState("");
   const [country, setCountry] = useState("DE");
   const [brand, setBrand] = useState("Alle");
   const [fuelType, setFuelType] = useState("Alle");
@@ -67,6 +69,7 @@ export default function GebrauchtwagenPage({ onBack }) {
     if (search && !c.title?.toLowerCase().includes(search.toLowerCase()) && !c.brand?.toLowerCase().includes(search.toLowerCase())) return false;
     if (brand !== "Alle" && c.brand !== brand) return false;
     if (fuelType !== "Alle" && c.fuel !== fuelType) return false;
+    if (cityFilter && !c.city?.toLowerCase().includes(cityFilter.toLowerCase())) return false;
     return true;
   });
 
@@ -272,6 +275,17 @@ export default function GebrauchtwagenPage({ onBack }) {
               onChange={e => setSearch(e.target.value)}
               placeholder="Marke, Modell suchen..."
               className="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white"
+            />
+          </div>
+
+          {/* City filter */}
+          <div className="mb-3">
+            <CityAutocomplete
+              value={cityFilter || ""}
+              onChange={setCityFilter}
+              onSelect={(c) => setCityFilter(c.name)}
+              placeholder="Standort (optional)"
+              testId="gw-city"
             />
           </div>
 

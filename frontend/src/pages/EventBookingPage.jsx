@@ -8,6 +8,7 @@ import {
   Music, Trophy, Laugh, Drama, Tent, Loader2, Check, X, QrCode,
   Clock, Tag, Crown
 } from "lucide-react";
+import { CityAutocomplete } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -97,7 +98,17 @@ const EventBookingPage = ({ onBack, onNavigate }) => {
 
         {/* Category Filter */}
         {view === "list" && !selectedEvent && (
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+          <>
+            <div className="mt-3">
+              <CityAutocomplete
+                value={search}
+                onChange={setSearch}
+                onSelect={(c) => setSearch(c.name)}
+                placeholder="Stadt (z. B. Berlin)"
+                testId="events-city"
+              />
+            </div>
+            <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
             <motion.button whileTap={{ scale: 0.95 }} onClick={() => setCatFilter("")}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap ${!catFilter ? "bg-[#A855F7] text-white" : "bg-white/5 text-gray-500"}`}>
               Alle
@@ -112,7 +123,8 @@ const EventBookingPage = ({ onBack, onNavigate }) => {
                 </motion.button>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
 

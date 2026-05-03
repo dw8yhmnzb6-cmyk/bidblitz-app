@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, MapPin, Clock, Zap, Plus, Star, Briefcase, Send, Camera, X, Check, ChevronRight, ChevronLeft, Tag, DollarSign, Calendar, FileText, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { CityAutocomplete, FilterBar } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -375,12 +376,12 @@ export default function BlitzJobsPage({ onBack }) {
               <motion.div key="step5" initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-20}} className="space-y-4">
                 <div>
                   <label className="text-sm font-semibold text-white mb-2 block">Standort</label>
-                  <input
-                    type="text"
-                    placeholder="München, Berlin, Remote..."
+                  <CityAutocomplete
                     value={form.location}
-                    onChange={e => setForm({...form, location: e.target.value})}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm"
+                    onChange={(v) => setForm({...form, location: v})}
+                    onSelect={(c) => setForm({...form, location: c.name})}
+                    placeholder="München, Berlin, Remote..."
+                    testId="blitzjobs-wizard-city"
                   />
                 </div>
 
@@ -498,6 +499,33 @@ export default function BlitzJobsPage({ onBack }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm"
+            data-testid="blitzjobs-search-input"
+          />
+        </div>
+        <div className="mb-3">
+          <CityAutocomplete
+            value={locationFilter}
+            onChange={setLocationFilter}
+            onSelect={(c) => setLocationFilter(c.name)}
+            placeholder="Stadt (optional)"
+            testId="blitzjobs-city"
+          />
+        </div>
+        <div className="mb-3">
+          <FilterBar
+            testId="blitzjobs-filter-bar"
+            value={filters}
+            onChange={setFilters}
+            filters={[
+              { key: "sort", type: "sort", label: "Sortieren", options: [
+                { value: "newest", label: "Neueste" }, { value: "price_asc", label: "Preis ↑" }, { value: "price_desc", label: "Preis ↓" },
+              ]},
+              { key: "remote", type: "toggle", label: "Remote" },
+              { key: "urgent", type: "toggle", label: "Dringend" },
+              { key: "budget", type: "select", label: "Budget", options: [
+                { value: "low", label: "≤€100" }, { value: "mid", label: "€100–500" }, { value: "high", label: "€500+" },
+              ]},
+            ]}
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2">

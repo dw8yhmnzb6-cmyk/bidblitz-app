@@ -7,6 +7,7 @@ import {
   ArrowLeft, Search, Plane, MapPin, Clock, Calendar, Users,
   Loader2, Check, ChevronRight, ArrowRight, Zap
 } from "lucide-react";
+import { AirportAutocomplete, FilterBar } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -100,17 +101,23 @@ const FlightSearchPage = ({ onBack, onNavigate }) => {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[9px] text-gray-500 mb-1 block">Von</label>
-                <select value={origin} onChange={e => setOrigin(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none" data-testid="flight-origin">
-                  <option value="">Alle</option>
-                  {airports.map(a => <option key={a.code} value={a.code}>{a.code} — {a.city}</option>)}
-                </select>
+                <AirportAutocomplete
+                  value={origin}
+                  onChange={(v) => setOrigin(v.length === 3 ? v.toUpperCase() : v)}
+                  onSelect={(a) => setOrigin(a.iata)}
+                  placeholder="Abflug"
+                  testId="flight-origin-autocomplete"
+                />
               </div>
               <div>
                 <label className="text-[9px] text-gray-500 mb-1 block">Nach</label>
-                <select value={dest} onChange={e => setDest(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs outline-none" data-testid="flight-dest">
-                  <option value="">Alle</option>
-                  {airports.map(a => <option key={a.code} value={a.code}>{a.code} — {a.city}</option>)}
-                </select>
+                <AirportAutocomplete
+                  value={dest}
+                  onChange={(v) => setDest(v.length === 3 ? v.toUpperCase() : v)}
+                  onSelect={(a) => setDest(a.iata)}
+                  placeholder="Ankunft"
+                  testId="flight-dest-autocomplete"
+                />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -129,7 +136,27 @@ const FlightSearchPage = ({ onBack, onNavigate }) => {
               className="w-full py-3 rounded-xl bg-[#06B6D4] text-white font-bold text-sm flex items-center justify-center gap-2" data-testid="flight-search-btn">
               <Search size={16} /> Flüge suchen
             </motion.button>
-            
+
+            <FilterBar
+              testId="flight-filter-bar"
+              value={filters}
+              onChange={setFilters}
+              filters={[
+                { key: "sort", type: "sort", label: "Sortieren", options: [
+                  { value: "price_asc", label: "Preis ↑" },
+                  { value: "duration_asc", label: "Dauer ↑" },
+                  { value: "departure_asc", label: "Abflug früh" },
+                ] },
+                { key: "stops", type: "select", label: "Stopps", options: [
+                  { value: 0, label: "Direkt" }, { value: 1, label: "≤1 Stop" }, { value: 2, label: "≤2 Stops" },
+                ] },
+                { key: "price_max", type: "select", label: "Max. Preis", options: [
+                  { value: 100, label: "≤€100" }, { value: 250, label: "≤€250" },
+                  { value: 500, label: "≤€500" }, { value: 1000, label: "≤€1000" },
+                ] },
+              ]}
+            />
+
             {/* NEW: Direct Flights Filter (Google Flights Style) */}
             <div className="flex items-center justify-between pt-2 border-t border-white/5">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -142,7 +169,17 @@ const FlightSearchPage = ({ onBack, onNavigate }) => {
 
           {loading && <div className="flex justify-center py-10"><Loader2 size={24} className="animate-spin text-[#06B6D4]" /></div>}
 
-          {!loading && flights.filter(f => !directOnly || f.stops === 0).map((f, i) => (
+          {!loading && flights.filter(f => {
+            if (directOnly && f.stops !== 0) return false;
+            if (filters.stops !== undefined && filters.stops !== "" && f.stops > filters.stops) return false;
+            if (filters.price_max && (f.price_economy || 0) > filters.price_max) return false;
+            return true;
+          }).sort((a, b) => {
+            if (filters.sort === "price_asc") return (a.price_economy||0) - (b.price_economy||0);
+            if (filters.sort === "duration_asc") return String(a.duration||"").localeCompare(String(b.duration||""));
+            if (filters.sort === "departure_asc") return String(a.departure_time||"").localeCompare(String(b.departure_time||""));
+            return 0;
+          }).map((f, i) => (
             <motion.div key={f.flight_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
               onClick={() => { setSelected(f); setBookResult(null); setError(""); }}
               className="bg-[#111118] rounded-2xl border border-white/5 p-4 cursor-pointer hover:border-white/10" data-testid={`flight-${f.flight_id}`}>

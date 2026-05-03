@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, Heart, MapPin, Bed, Maximize2, Building2, Home, Users, Briefcase, Phone, Mail, Star, Eye, Filter, X, ChevronDown } from "lucide-react";
+import { CityAutocomplete } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -226,14 +227,12 @@ export default function RealEstatePage({ onBack }) {
         </div>
 
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-secondary, #666)" }} />
-          <input
+          <CityAutocomplete
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Stadt, Stadtteil oder Titel suchen..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
-            style={{ background: "var(--bg-card, #111)", color: "var(--text-primary, #fff)", border: "1px solid rgba(255,255,255,0.06)" }}
-            data-testid="re-search"
+            onChange={setSearch}
+            onSelect={(c) => setSearch(c.name)}
+            placeholder="Stadt, Stadtteil suchen..."
+            testId="re-city"
           />
         </div>
 

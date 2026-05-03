@@ -8,6 +8,7 @@ import {
   ArrowLeft, Search, MapPin, Star, Users, Clock, Calendar,
   UtensilsCrossed, Loader2, Check, X, Phone, ChevronRight, Heart
 } from "lucide-react";
+import { CityAutocomplete } from "../components/search";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -108,7 +109,17 @@ const RestaurantReservationPage = ({ onBack, onNavigate }) => {
 
         {/* Cuisine Filter */}
         {view === "list" && !selectedRest && (
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+          <>
+            <div className="mt-3">
+              <CityAutocomplete
+                value={search}
+                onChange={setSearch}
+                onSelect={(c) => setSearch(c.name)}
+                placeholder="Stadt suchen..."
+                testId="rest-city"
+              />
+            </div>
+            <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
             <motion.button whileTap={{ scale: 0.95 }} onClick={() => setCuisineFilter("")}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap ${!cuisineFilter ? "bg-[#F59E0B] text-black" : "bg-white/5 text-gray-500"}`}>
               Alle
@@ -119,7 +130,8 @@ const RestaurantReservationPage = ({ onBack, onNavigate }) => {
                 {c.label}
               </motion.button>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
 
