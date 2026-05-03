@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appIDs": ["REPLACE_TEAMID.com.bidblitz.pos"],
+        "appIDs": ["REPLACE_TEAMID.com.bidblitz.app"],
         "components": [
           { "/": "/pay/return*",   "comment": "Stripe 3DS/Checkout return" },
           { "/": "/pay/cancel*",   "comment": "Stripe cancelled checkout" },
@@ -14,5 +14,5 @@
       }
     ]
   },
-  "webcredentials": { "apps": ["REPLACE_TEAMID.com.bidblitz.pos"] }
+  "webcredentials": { "apps": ["REPLACE_TEAMID.com.bidblitz.app"] }
 }

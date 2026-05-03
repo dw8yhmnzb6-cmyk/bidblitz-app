@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.bidblitz.pos"
+    namespace "com.bidblitz.app"
     compileSdk rootProject.ext.compileSdkVersion
 
     // Release signing — reads from keystore.properties (gitignored).
@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.bidblitz.pos"
+        applicationId "com.bidblitz.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

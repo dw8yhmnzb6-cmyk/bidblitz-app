@@ -25,7 +25,7 @@ yarn cap open android       # or: yarn cap open ios
 ```
 
 The LIVE-RELOAD config (`capacitor.config.live.ts`) points the WebView
-at `https://hetzner-deploy-3.preview.emergentagent.com` so code changes
+at `https://bidblitz-release.preview.emergentagent.com` so code changes
 reflect instantly without rebuilding the native bundle.
 
 ## Production Build
@@ -99,7 +99,7 @@ yarn cap sync
 
 ## App ID & Name
 
-- **appId**: `com.bidblitz.pos`
+- **appId**: `com.bidblitz.app`
 - **appName**: `BidBlitz`
 - **webDir**: `build`
 
@@ -111,13 +111,13 @@ Change in `capacitor.config.ts` if you need a separate Play/App-Store listing.
 1. Produce **Android App Bundle (AAB)** — Android Studio → Build → Generate Signed Bundle.
 2. Upload to Google Play Console.
 3. Fill in store listing (screenshots 1080×1920, feature graphic 1024×500).
-4. `applicationId` = `com.bidblitz.pos`.
+4. `applicationId` = `com.bidblitz.app`.
 
 ### iOS (App Store)
 1. Xcode → Product → Archive.
 2. Distribute App → App Store Connect.
 3. App-Name, Beschreibung, Screenshots auf App Store Connect hochladen.
-4. `Bundle Identifier` = `com.bidblitz.pos`.
+4. `Bundle Identifier` = `com.bidblitz.app`.
 
 ## Troubleshooting
 

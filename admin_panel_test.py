@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://hetzner-deploy-3.preview.emergentagent.com/api"
+BASE_URL = "https://bidblitz-release.preview.emergentagent.com/api"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

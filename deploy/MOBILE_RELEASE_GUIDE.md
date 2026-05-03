@@ -1,11 +1,8 @@
 # BidBlitz Mobile Release Guide (Feb 2026)
 
-App package/bundle identifier: **`com.bidblitz.pos`**
+App package/bundle identifier: **`com.bidblitz.app`**
 (set in `/app/frontend/capacitor.config.ts` and
-`ios/App/App.xcodeproj/project.pbxproj` — **NOTE:** user initially asked
-for `com.bidblitz.app` but current code uses `com.bidblitz.pos`. If you
-want to rename, do it BEFORE first store upload — once published, the
-bundle id is frozen for life.)
+`ios/App/App.xcodeproj/project.pbxproj`.)
 
 ---
 
@@ -138,9 +135,9 @@ and replace the three `REPLACE_TEAMID` placeholders with your actual
 Team ID:
 
 ```json
-"appIDs": ["A1B2C3D4E5.com.bidblitz.pos"],
+"appIDs": ["A1B2C3D4E5.com.bidblitz.app"],
 ...
-"webcredentials": { "apps": ["A1B2C3D4E5.com.bidblitz.pos"] }
+"webcredentials": { "apps": ["A1B2C3D4E5.com.bidblitz.app"] }
 ```
 
 File must be served with `Content-Type: application/json` and **no
@@ -151,10 +148,10 @@ Rebuild frontend + deploy so nginx serves:
 
 ### 2.3 Verify iOS bundle identifier
 
-Currently: **`com.bidblitz.pos`** (NOT `com.bidblitz.app`).
+Currently: **`com.bidblitz.app`**.
 
-* `/app/frontend/capacitor.config.ts` → `appId: 'com.bidblitz.pos'`
-* `/app/frontend/ios/App/App.xcodeproj/project.pbxproj` → `PRODUCT_BUNDLE_IDENTIFIER = com.bidblitz.pos`
+* `/app/frontend/capacitor.config.ts` → `appId: 'com.bidblitz.app'`
+* `/app/frontend/ios/App/App.xcodeproj/project.pbxproj` → `PRODUCT_BUNDLE_IDENTIFIER = com.bidblitz.app`
 
 If you want to change it:
 

@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://hetzner-deploy-3.preview.emergentagent.com',
+    url: 'https://bidblitz-release.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {
