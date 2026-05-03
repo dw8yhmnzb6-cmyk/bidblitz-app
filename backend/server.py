@@ -919,9 +919,15 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 async def startup():
     await create_indexes()
     await seed_admin()
-    # Seed 30 product auctions if none exist
+    # Seed demo auctions only when explicitly enabled (DEMO_SEED=true)
+    import os as _os
+    _DEMO_SEED = _os.environ.get("DEMO_SEED", "false").lower() in ("1", "true", "yes")
     from routes.auctions import seed_demo_auctions, start_bot_loop, start_auction_maintenance_loop
-    await seed_demo_auctions()
+    if _DEMO_SEED:
+        await seed_demo_auctions()
+        logger.info("DEMO_SEED=true → demo auctions seeded")
+    else:
+        logger.info("DEMO_SEED disabled → skipping demo auction seeding")
     # Start bot bidding background loop (Admin-controlled bots)
     start_bot_loop()
     # Start auction maintenance: ends expired, auto-restarts to keep 30 active, fluctuates viewers

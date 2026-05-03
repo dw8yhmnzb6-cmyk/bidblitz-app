@@ -9,55 +9,55 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "de",
-  "categories": ["finance", "lifestyle", "shopping", "transportation", "food"],
+  "categories": [
+    "finance",
+    "lifestyle",
+    "shopping",
+    "transportation",
+    "food"
+  ],
   "icons": [
     {
-      "src": "/icons/icon-72x72.png",
+      "src": "../icons/icon-48.webp",
+      "type": "image/png",
+      "sizes": "48x48",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "../icons/icon-72.webp",
+      "type": "image/png",
       "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-96x96.png",
+      "src": "../icons/icon-96.webp",
+      "type": "image/png",
       "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-128x128.png",
+      "src": "../icons/icon-128.webp",
+      "type": "image/png",
       "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
+      "src": "../icons/icon-192.webp",
       "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
+      "src": "../icons/icon-256.webp",
       "type": "image/png",
-      "purpose": "maskable any"
+      "sizes": "256x256",
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "../icons/icon-512.webp",
+      "type": "image/png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
@@ -66,28 +66,48 @@
       "short_name": "Taxi",
       "description": "Schnell eine Fahrt buchen",
       "url": "/taxi",
-      "icons": [{ "src": "/icons/taxi-96x96.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/icons/taxi-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Essen bestellen",
       "short_name": "Food",
       "description": "Essen liefern lassen",
       "url": "/food",
-      "icons": [{ "src": "/icons/food-96x96.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/icons/food-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Scooter",
       "short_name": "Scooter",
       "description": "E-Scooter in der Nähe finden",
       "url": "/scooter",
-      "icons": [{ "src": "/icons/scooter-96x96.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/icons/scooter-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Wallet",
       "short_name": "Wallet",
       "description": "Guthaben & Transaktionen",
       "url": "/wallet",
-      "icons": [{ "src": "/icons/wallet-96x96.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/icons/wallet-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "screenshots": [

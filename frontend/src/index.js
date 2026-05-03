@@ -2,9 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@/index.css";
 import App from "@/App";
+import { initCapacitorBridge, isNativeApp } from "@/services/capacitorBridge";
 
 // ═══════════════════════════════════════════════════
-// PWA SERVICE WORKER REGISTRATION - DISABLED FOR DEBUGGING
+// PWA SERVICE WORKER — DISABLED GLOBALLY
+// (Was causing stale-cache issues on mobile. Also required
+// off for Capacitor native builds per Capacitor guidance.)
 // ═══════════════════════════════════════════════════
 if ('serviceWorker' in navigator) {
   // FORCE UNREGISTER ALL SERVICE WORKERS TO FIX CACHE ISSUE
@@ -81,3 +84,24 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <App />
 );
+
+// ═══════════════════════════════════════════════════
+// Capacitor native bridge (no-op on web)
+// ═══════════════════════════════════════════════════
+initCapacitorBridge({
+  onDeepLink: (path) => {
+    try { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); } catch {}
+  },
+  onPaymentReturn: (params) => {
+    // Refresh balance once the user returns from Stripe checkout
+    try { window.dispatchEvent(new CustomEvent("bidblitz:refresh-wallet", { detail: Object.fromEntries(params) })); } catch {}
+  },
+  onResume: () => {
+    try { window.dispatchEvent(new CustomEvent("bidblitz:app-resume")); } catch {}
+  },
+});
+
+// Tag body for native-only CSS tweaks
+if (isNativeApp()) {
+  document.documentElement.classList.add("capacitor-native");
+}

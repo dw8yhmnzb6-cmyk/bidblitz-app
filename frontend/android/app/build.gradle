@@ -3,6 +3,26 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.bidblitz.pos"
     compileSdk rootProject.ext.compileSdkVersion
+
+    // Release signing — reads from keystore.properties (gitignored).
+    // See /app/deploy/MOBILE_BUILD.md for keystore generation steps.
+    def keystorePropertiesFile = rootProject.file("keystore.properties")
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'] ?: 'bidblitz-upload.jks')
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     defaultConfig {
         applicationId "com.bidblitz.pos"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -20,6 +40,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

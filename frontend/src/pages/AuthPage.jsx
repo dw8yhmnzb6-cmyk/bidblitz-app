@@ -129,8 +129,28 @@ export const AuthPage = ({ onBack, initialMode }) => {
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    // TODO: Backend integration
-    setForgotSent(true);
+    setError("");
+    if (!email.trim()) {
+      setError("Bitte E-Mail eingeben");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      if (res.ok) {
+        setForgotSent(true);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setError(d.detail || "Fehler beim Senden");
+      }
+    } catch {
+      setError("Netzwerkfehler");
+    }
+    setLoading(false);
   };
 
   const switchMode = (m) => {

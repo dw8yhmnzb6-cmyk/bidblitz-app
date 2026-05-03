@@ -18,8 +18,8 @@ export default function BlitzHubPage({ onBack }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/cards/my-collection`, { credentials: "include" }).then(r => r.json()).then(d => setCollection(d.cards || [])).catch(() => {});
-    fetch(`${API}/api/cards/market`, { credentials: "include" }).then(r => r.json()).then(d => setMarket(d.listings || [])).catch(() => {});
+    fetch(`${API}/api/collectibles/my-collection`, { credentials: "include" }).then(r => r.json()).then(d => setCollection(d.cards || [])).catch(() => {});
+    fetch(`${API}/api/collectibles/market`, { credentials: "include" }).then(r => r.json()).then(d => setMarket(d.listings || [])).catch(() => {});
     fetch(`${API}/api/blitz/battles`, { credentials: "include" }).then(r => r.json()).then(d => setBattles(d.battles || [])).catch(() => {});
     fetch(`${API}/api/blitz/creator/gigs`, { credentials: "include" }).then(r => r.json()).then(d => setGigs(d.gigs || [])).catch(() => {});
     fetch(`${API}/api/blitz/boxes`, { credentials: "include" }).then(r => r.json()).then(d => setBoxes(d.boxes || [])).catch(() => {});
@@ -30,7 +30,7 @@ export default function BlitzHubPage({ onBack }) {
   const buyPack = async (type, series) => {
     setLoading(true);
     try {
-      const r = await fetch(`${API}/api/cards/buy-pack`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pack_type: type, series }) });
+      const r = await fetch(`${API}/api/collectibles/buy-pack`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pack_type: type, series }) });
       const d = await r.json();
       if (r.ok) { setMsg(`${d.cards?.length} Karten erhalten!`); setCollection(prev => [...(d.cards || []), ...prev]); }
       else setMsg(d.detail || "Fehler");

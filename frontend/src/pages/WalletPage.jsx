@@ -220,6 +220,18 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     return () => clearTimeout(t);
   }, []);
 
+  // Capacitor: refresh wallet when deep-link returns from Stripe checkout
+  useEffect(() => {
+    const onPay = () => { refreshWallet?.(); };
+    const onResume = () => { refreshWallet?.(); };
+    window.addEventListener("bidblitz:refresh-wallet", onPay);
+    window.addEventListener("bidblitz:app-resume", onResume);
+    return () => {
+      window.removeEventListener("bidblitz:refresh-wallet", onPay);
+      window.removeEventListener("bidblitz:app-resume", onResume);
+    };
+  }, [refreshWallet]);
+
   const handleTopUpSuccess = async () => {
     // Stripe already credited via backend — just refresh wallet data
     await refreshWallet();

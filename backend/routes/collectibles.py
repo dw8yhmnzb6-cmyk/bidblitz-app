@@ -9,7 +9,7 @@ from core.database import db
 from core.security import get_current_user
 import secrets, random
 
-router = APIRouter(prefix="/api/cards", tags=["collectibles"])
+router = APIRouter(prefix="/api/collectibles", tags=["collectibles"])
 
 TRADE_FEE = 0.05
 RARITIES = {"common": 60, "rare": 25, "epic": 10, "legendary": 5}

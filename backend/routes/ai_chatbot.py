@@ -84,13 +84,11 @@ async def send_chat_message(req: ChatMessageRequest, request: Request):
     # Generate session ID (or retrieve existing one)
     session_id = f"chat_{user_id}"
     
-    # Load chat history from database
+    # Load chat history from database (both user + assistant, chronological)
     history = await db.chatbot_messages.find(
         {"user_id": user_id},
         {"_id": 0}
-    ).sort("timestamp", -1).limit(10).to_list(10)
-    
-    # Reverse to get chronological order
+    ).sort("timestamp", -1).limit(20).to_list(20)
     history.reverse()
     
     # Enhance system prompt with user context
@@ -114,20 +112,36 @@ async def send_chat_message(req: ChatMessageRequest, request: Request):
         system_prompt += kb_block
 
     try:
-        # Initialize LlmChat with Claude Sonnet 4.5
+        # Initialize LlmChat with configured provider/model (fresh per request)
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=session_id,
             system_message=system_prompt
         ).with_model(LLM_PROVIDER, LLM_MODEL)
-        
-        # Restore history (if any)
-        for msg in history[-5:]:  # Last 5 messages for context
-            if msg["role"] == "user":
-                await chat.send_message(UserMessage(text=msg["content"]), store=False)
-        
-        # Send new message
-        user_message = UserMessage(text=req.message)
+
+        # Restore prior turn context by prepending past exchanges to the
+        # current user message. We pack the last 3 complete user/assistant
+        # pairs into a single multi-turn prompt so we only make ONE API call
+        # (avoids the prior bug of replaying history via extra send_message
+        # calls with an unsupported `store=` kwarg).
+        context_lines = []
+        pairs = []
+        last_user = None
+        for msg in history:
+            if msg.get("role") == "user":
+                last_user = msg.get("content", "")
+            elif msg.get("role") == "assistant" and last_user is not None:
+                pairs.append((last_user, msg.get("content", "")))
+                last_user = None
+        for u, a in pairs[-3:]:
+            context_lines.append(f"[Vorherige Nutzerfrage]: {u}")
+            context_lines.append(f"[Vorherige Antwort]: {a}")
+        if context_lines:
+            prompt_text = "\n".join(context_lines) + f"\n\n[Aktuelle Nachricht]: {req.message}"
+        else:
+            prompt_text = req.message
+
+        user_message = UserMessage(text=prompt_text)
         ai_response = await chat.send_message(user_message)
         
         # Save messages to database

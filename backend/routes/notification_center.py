@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, HTTPException
 from core.security import get_current_user
 from core.database import db
 
-router = APIRouter(prefix="/api/notifications", tags=["notifications"])
+router = APIRouter(prefix="/api/notifications/center", tags=["notifications-center"])
 
 
 @router.get("")
