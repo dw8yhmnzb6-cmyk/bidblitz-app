@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 
-router = APIRouter(prefix="/api/referral", tags=["referral"])
+router = APIRouter(prefix="/api/referrals", tags=["referrals-engine"])
 
 SIGNUP_BONUS_EUR = 5.00
 TOPUP_COMMISSION_PCT = 0.10  # 10%

@@ -11,6 +11,18 @@ BidBlitz ist eine voll-funktionsfähige React + FastAPI + MongoDB Super App mit 
 
 ## Implementiert (Februar 2026)
 
+### Universal Search UI + Geo API (03.02.2026)
+- ✅ **Backend `/api/geo/*`**: Curated dataset 247 Cities (DACH-heavy + EU + Global) + 203 IATA Airports. Endpunkte: `GET /cities?q=&limit=&country=`, `GET /airports?q=&limit=`. Fuzzy-Scoring mit Prefix > Substring > Word-Prefix Priorität, IATA-Direct-Match Bonus. In-Memory ~50KB, keine DB-Abhängigkeit, sub-ms Latenz. 9/9 Geo-Tests PASS (test_reports/iteration_44.json).
+- ✅ **6 Universal Search UI-Komponenten** (`/app/frontend/src/components/search/`):
+  - `CityAutocomplete.jsx` — Typeahead mit Caching, Country-Scope, Keyboard-Navigation
+  - `AirportAutocomplete.jsx` — IATA-Display, Flughafen+Stadt-Suche
+  - `DateRangePicker.jsx` — 2-Monats-Grid, blocked-dates, Mobile-friendly Popover
+  - `GuestSelector.jsx` — Adults/Children/Rooms Stepper Popover
+  - `FilterBar.jsx` — Schema-driven (sort/select/multi/range/toggle), Active-Count-Badge
+  - `MapResultsView.jsx` — Leaflet+OSM, Price-Pills oder Pins, Auto-FitBounds
+- ✅ **Marketplace-Integration in 10 Pages**: HotelBookingPage (volles Set + Map-Toggle), FlightSearchPage (Airport+Filter), BlitzJobsPage (City+Filter+Wizard), JobMarketplacePage (City), RealEstatePage (City), ApartmentsPage (City), EventBookingPage (City), RestaurantReservationPage (City), DirectoryPage (City), GebrauchtwagenPage (City+Filter-Logik).
+- ✅ **Route-Konflikt behoben**: `referral_engine.py` Prefix `/api/referral` → `/api/referrals` (war Shadow von Legacy-`referral.py`). Neue Endpunkte `/api/referrals/me`, `/api/referrals/apply`, `/api/referrals/leaderboard` jetzt erreichbar (public Leaderboard ohne Auth).
+
 ### Admin Panel Refactor + Stripe Issuing Backend + Off-Site-Backup (02.05.2026)
 - ✅ `AdminPanelFullPage.jsx` von 1171 → ~230 Zeilen reduziert. Section-Daten in `frontend/src/components/admin/sections.js`, Detail-Loader in `dataLoaders.js`, Detail-Renderer in `AdminDetailRouter.jsx` (alle Detail-Sub-Komponenten).
 - ✅ Layout-Toggle Round-Trip Liste ↔ Grid funktioniert in beide Richtungen (data-testid `layout-toggle` ist in beiden Layouts vorhanden, persistiert in `localStorage.admin_layout_mode`).
