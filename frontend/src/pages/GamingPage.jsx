@@ -12,6 +12,7 @@ import {
   ChevronRight, Lock, Unlock, Heart, X, Check
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
+import { isIOSBlocked } from "../utils/iosGuards";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -152,11 +153,13 @@ const GamingPage = ({ onNavigate, onBack }) => {
 
         {/* Coin Actions */}
         <div className="flex gap-2 mb-3">
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowBuyCoins(true)}
-            className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center justify-center gap-1.5"
-            data-testid="buy-coins-btn">
-            <Coins size={14} /> {t("gaming.buy_coins")}
-          </motion.button>
+          {!isIOSBlocked("gaming-buy-coins") && (
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowBuyCoins(true)}
+              className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center justify-center gap-1.5"
+              data-testid="buy-coins-btn">
+              <Coins size={14} /> {t("gaming.buy_coins")}
+            </motion.button>
+          )}
           <motion.button whileTap={{ scale: 0.95 }} onClick={handleRedeemCoins}
             disabled={userCoins < 500}
             className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20 flex items-center justify-center gap-1.5 disabled:opacity-30"

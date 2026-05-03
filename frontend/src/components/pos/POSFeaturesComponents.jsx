@@ -7,6 +7,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, Lock, Loader2, Sparkles, Search, ShieldCheck, Clock, Euro, ShoppingCart, X, Receipt, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { isIOSBlocked } from "../../utils/iosGuards";
+import { IOSNotAvailable } from "../IOSNotAvailable";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -351,17 +353,23 @@ function BuyFeatureModal({ feature, onClose }) {
               <p className="text-[10px] text-white/40">{months} {months === 1 ? "Monat" : "Monate"}</p>
             </div>
           </div>
-          <button onClick={buy} disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00C2FF] to-[#00E89D] text-black font-black text-[14px] flex items-center justify-center gap-2 disabled:opacity-50"
-            data-testid="pos-buy-confirm">
-            {loading
-              ? <Loader2 size={14} className="animate-spin" />
-              : <>Mit Stripe bezahlen <ArrowRight size={14} /></>}
-          </button>
-          <p className="text-[9px] text-white/30 text-center mt-2">
-            Sicher bezahlen mit Karte, Apple Pay, Google Pay & Link.
-            Auto-Aktivierung nach Zahlung.
-          </p>
+          {isIOSBlocked("pos-feature-addon") ? (
+            <IOSNotAvailable feature="POS-Feature-Kauf" testId="pos-buy-ios-blocked" />
+          ) : (
+            <>
+              <button onClick={buy} disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00C2FF] to-[#00E89D] text-black font-black text-[14px] flex items-center justify-center gap-2 disabled:opacity-50"
+                data-testid="pos-buy-confirm">
+                {loading
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <>Mit Stripe bezahlen <ArrowRight size={14} /></>}
+              </button>
+              <p className="text-[9px] text-white/30 text-center mt-2">
+                Sicher bezahlen mit Karte, Apple Pay, Google Pay & Link.
+                Auto-Aktivierung nach Zahlung.
+              </p>
+            </>
+          )}
         </div>
       </motion.div>
     </motion.div>

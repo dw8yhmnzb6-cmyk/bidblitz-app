@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Heart, Star, Users, Loader2, Send } from "lucide-react";
+import { isIOSBlocked } from "../utils/iosGuards";
+import { IOSNotAvailable } from "../components/IOSNotAvailable";
 const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function CreatorsPage({ onBack }) {
@@ -67,10 +69,17 @@ export default function CreatorsPage({ onBack }) {
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => subscribe(c.id)} disabled={loading === c.id}
-                className="flex-1 py-2.5 bg-pink-500 text-white rounded-xl text-xs font-bold disabled:opacity-50">
-                {loading === c.id ? <Loader2 size={14} className="animate-spin mx-auto" /> : `${c.monthly_price} EUR/Mo`}</button>
-              <button onClick={() => setTipCreator(c)} className="px-4 py-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400 text-xs font-bold">Tip</button>
+              {!isIOSBlocked("creator-subscribe") && (
+                <button onClick={() => subscribe(c.id)} disabled={loading === c.id}
+                  className="flex-1 py-2.5 bg-pink-500 text-white rounded-xl text-xs font-bold disabled:opacity-50">
+                  {loading === c.id ? <Loader2 size={14} className="animate-spin mx-auto" /> : `${c.monthly_price} EUR/Mo`}</button>
+              )}
+              {!isIOSBlocked("creator-tip") && (
+                <button onClick={() => setTipCreator(c)} className="px-4 py-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400 text-xs font-bold">Tip</button>
+              )}
+              {isIOSBlocked("creator-subscribe") && isIOSBlocked("creator-tip") && (
+                <span className="flex-1 text-center py-2.5 rounded-xl bg-white/5 text-[10px] text-yellow-400">Nur auf bidblitz.ae</span>
+              )}
             </div>
           </motion.div>
         ))}

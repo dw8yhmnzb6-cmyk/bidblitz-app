@@ -9,6 +9,8 @@ import {
   TrendingUp, Gift, Award, Wallet, AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
+import { isIOSBlocked } from "../utils/iosGuards";
+import { IOSNotAvailable } from "../components/IOSNotAvailable";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -80,6 +82,7 @@ export default function PremiumPage({ onBack, onNavigate }) {
 
   const isActive = data.active;
   const sub = data.subscription;
+  const iosLocked = isIOSBlocked("premium-upgrade") && !isActive;
 
   return (
     <div data-testid="premium-page" className="min-h-screen pb-24"
@@ -96,7 +99,9 @@ export default function PremiumPage({ onBack, onNavigate }) {
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
+      {iosLocked && <IOSNotAvailable feature="Premium-Kauf" testId="premium-ios-blocked" />}
+
+      <div className={`p-4 space-y-4 ${iosLocked ? "pointer-events-none opacity-40" : ""}`}>
         <motion.div
           className="rounded-3xl p-6 text-center relative overflow-hidden"
           style={{ background: "linear-gradient(135deg,#FFD700 0%,#FFB800 40%,#FF8C42 100%)" }}
