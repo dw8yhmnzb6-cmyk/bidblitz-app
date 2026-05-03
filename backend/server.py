@@ -757,11 +757,15 @@ from routes.pos_retail_enterprise import router as pos_retail_enterprise_router
 from routes.pos_retail_p1p2 import router as pos_retail_p1p2_router
 from routes.pos_hardware import router as pos_hardware_router
 from routes.livekit_streaming import router as livekit_streaming_router
+from routes.landing_chatbot import router as landing_chatbot_router
+from routes.super_app_features import router as super_app_features_router
 app.include_router(pos_extras_router)
 app.include_router(pos_retail_enterprise_router)
 app.include_router(pos_retail_p1p2_router)
 app.include_router(pos_hardware_router)
 app.include_router(livekit_streaming_router)
+app.include_router(landing_chatbot_router)
+app.include_router(super_app_features_router)
 from routes.chat_ws import router as chat_ws_router
 app.include_router(chat_ws_router)
 from routes.voice import router as voice_router
