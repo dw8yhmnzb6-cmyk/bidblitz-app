@@ -83,7 +83,7 @@ export function LandingChatbot() {
     }
   };
 
-  const handleQuickReply = (message: string) => {
+  const handleQuickReply = (message) => {
     setInputMessage(message);
     setTimeout(() => handleSendMessage(), 100);
   };

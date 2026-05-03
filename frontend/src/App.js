@@ -171,6 +171,9 @@ import CryptoLoansPage from "./pages/CryptoLoansPage";
 import P2PLendingPage from "./pages/P2PLendingPage";
 import TradingBotPage from "./pages/TradingBotPage";
 import LiveShoppingPage from "./pages/LiveShoppingPage";
+const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
+const WalletDashboard = lazy(() => import("./components/WalletDashboard").then(m => ({ default: m.WalletDashboard })));
+const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
 import CreatorsPage from "./pages/CreatorsPage";
 import P2PPage from "./pages/P2PPage";
 import CardPage from "./pages/CardPage";
@@ -773,6 +776,12 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TradingBotPage onBack={() => handleNavigate("/more")} />;
       case "/live-shopping":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveShoppingPage onBack={() => handleNavigate("/more")} />;
+      case "/livekit-stream":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveKitStreamPage onBack={() => handleNavigate("/more")} />;
+      case "/wallet-dashboard":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletDashboard />;
+      case "/super-marketplace":
+        return <SuperAppMarketplace />;
       case "/creators":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CreatorsPage onBack={() => handleNavigate("/more")} />;
       case "/p2p":

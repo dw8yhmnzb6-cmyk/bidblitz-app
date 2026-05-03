@@ -26,10 +26,13 @@ class CreateRoomRequest(BaseModel):
     room_name: str
     max_participants: Optional[int] = 100
     empty_timeout: Optional[int] = 300
+    is_live_shopping: Optional[bool] = False
 
 class TokenRequest(BaseModel):
     room_name: str
-    participant_name: str
+    participant_name: Optional[str] = None
+    identity: Optional[str] = None
+    is_publisher: Optional[bool] = True
 
 async def create_livekit_token(
     room_name: str,
@@ -84,6 +87,7 @@ async def create_streaming_room(req: CreateRoomRequest, request: Request):
             "creator_id": str(user["_id"]),
             "max_participants": req.max_participants,
             "status": "active",
+            "is_live_shopping": req.is_live_shopping,
             "created_at": now_iso(),
         })
         
@@ -102,28 +106,43 @@ async def create_streaming_room(req: CreateRoomRequest, request: Request):
 async def generate_streaming_token(req: TokenRequest, request: Request):
     """Generate LiveKit access token for participant."""
     user = await get_current_user(request)
-    
+
     try:
-        participant_identity = str(user["_id"])
-        
+        participant_identity = req.identity or str(user["_id"])
+        participant_name = req.participant_name or user.get("username") or participant_identity
+
         token = await create_livekit_token(
             room_name=req.room_name,
             participant_identity=participant_identity,
-            participant_name=req.participant_name,
-            can_publish=True,
+            participant_name=participant_name,
+            can_publish=req.is_publisher,
             can_subscribe=True,
         )
-        
+
         livekit_url = os.getenv('LIVEKIT_URL', 'ws://localhost:7880')
-        
+
         return {
             'server_url': livekit_url,
+            'url': livekit_url,
             'participant_token': token,
+            'token': token,
             'room_name': req.room_name,
+            'is_publisher': req.is_publisher,
         }
     except Exception as e:
         log.error(f"Token generation error: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate token")
+
+
+@router.get("/rooms")
+async def list_streaming_rooms(request: Request):
+    """List all active LiveKit streaming rooms."""
+    await get_current_user(request)
+    rooms = await db.livekit_rooms.find(
+        {"status": {"$ne": "ended"}},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(50).to_list(length=50)
+    return {"rooms": rooms, "total": len(rooms)}
 
 
 # ═══════════════════════════════════════════════════════════════════════

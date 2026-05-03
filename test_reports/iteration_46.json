@@ -1,0 +1,52 @@
+{
+  "summary": "Iteration 46 — Backend 16/16 PASS on LiveKit (create/list/token x2 + auth gate), POS Hardware (scanner, cash-drawer, printer 404, scale 404), POS age-verify/receipts-void regression, Landing Chatbot chat, Super App marketplace-categories (public) & wallet-balance (auth). Frontend: 3 critical wiring gaps — LandingChatbot not reachable (/ renders HomePage, not LandingPage), /livekit-stream renders but livekit-stream-page testid missing, POSPage retail action-bar testids not present on Dashboard tab.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/pos/age-verify", "issue": "Implementation contract (cart_id + verified_by) does NOT match review-request spec (birth_year + id_checked + required_age). If frontend AgeVerificationModal sends birth_year/id_checked payload, request body will 422. Decide canonical schema and align modal + backend."},
+      {"endpoint": "POST /api/pos/hardware/printer/print", "issue": "PrintRequest takes only receipt_id/printer_id/copies — review-request expected store_id + receipt object. Confirm intended contract; currently requires a pre-existing pos_sales document, so dev-mode direct-print of an ad-hoc receipt object is not possible."},
+      {"endpoint": "POST /api/pos/hardware/cash-drawer/open & GET /scanner/test", "issue": "Use query-string params (register_id / barcode) instead of JSON body — inconsistent with REST style used by the rest of /api/pos/hardware/*. Frontend must send as ?register_id=... / ?barcode=... — easy to get wrong."},
+      {"endpoint": "POST /api/landing-chatbot/chat", "issue": "LLM is NOT integrated — module comment still claims 'Claude Sonnet 4 via Emergent LLM Key', but code is a hard-coded rule-based keyword matcher. Only 5 keyword branches (was ist bidblitz, demo/testen, preis/kosten, kontakt, else). Swap in emergentintegrations.LlmChat like /api/chatbot/send already does. Also missing auth: endpoint is public which is fine for lead capture but rate-limit it."},
+      {"endpoint": "GET /api/super-app/wallet/balance", "issue": "Implicitly creates a wallet on GET (side-effect on read). Prefer explicit POST /wallets or lazy-read returning 0 without insert to keep GET idempotent."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "LandingChatbot / LandingPage", "issue": "LandingChatbot is imported and rendered inside LandingPage.jsx (line 244) BUT LandingPage is NOT wired into App.js router — case '/' returns <HomePage>, not <LandingPage>. Result: .chatbot-toggle-btn class is never in the DOM anywhere a user can reach. The 'dismissed onboarding → landing render' test confirmed the button element is absent (querySelector returned null).", "selector": ".chatbot-toggle-btn", "priority": "HIGH"},
+      {"component": "LiveKitStreamPage", "issue": "Navigating to /livekit-stream after admin login renders the page URL correctly, but no element with data-testid='livekit-stream-page' or data-testid='livekit-create-btn' is present in the DOM. Either the page is silently falling back to HomePage (isGuest check) or the testid attributes were never added to LiveKitStreamPage.jsx.", "selector": "[data-testid='livekit-stream-page']", "priority": "HIGH"},
+      {"component": "POSPage RetailTab", "issue": "On /pos (Eiscafe store), none of the four testids pos-retail-void-btn / return-btn / age-btn / hardware-btn are found. The RetailTab header is visible but the 4-button action-bar described in review (line 940) is not rendered in the current Dashboard sub-view. Likely the buttons live in a different POS sub-tab (e.g. 'Kasse' / 'Retail') and the review's path to reach them is unclear.", "selector": "[data-testid='pos-retail-hardware-btn']", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Landing → Chatbot → /api/landing-chatbot/chat", "issue": "Because LandingChatbot never mounts on any reachable route, the frontend integration with the (working) /api/landing-chatbot/chat endpoint cannot be exercised by an end user.", "affected_selectors": [".chatbot-toggle-btn", ".chatbot-input", ".chatbot-send-btn"]},
+      {"flow": "POS RetailTab → POSHardwareModal / AgeVerificationModal", "issue": "Entry-point buttons not reachable; modals cannot be opened via current Dashboard view.", "affected_selectors": ["[data-testid='pos-retail-hardware-btn']", "[data-testid='pos-retail-age-btn']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter46_livekit_hardware.py",
+    "/app/test_reports/pytest/iter46.xml"
+  ],
+  "action_items": [
+    "Wire LandingPage into the router: add case '/landing' (or change '/' for guest users) to return <LandingPage/> so LandingChatbot becomes reachable. OR render <LandingChatbot/> directly from App.js at the root layout level (outside the page switch) so it floats on every route.",
+    "Open /app/frontend/src/pages/LiveKitStreamPage.jsx and ensure the root element carries data-testid='livekit-stream-page', plus data-testid='livekit-create-btn', 'livekit-empty', 'livekit-create-confirm' on the corresponding elements. Also verify the guest fallback — admin login did not produce the page.",
+    "Open /app/frontend/src/pages/POSPage.jsx around line 940 and verify the 4 action-bar buttons (pos-retail-void-btn, pos-retail-return-btn, pos-retail-age-btn, pos-retail-hardware-btn) are rendered in the default RetailTab view (Dashboard). Currently none are found after /pos navigation.",
+    "Decide canonical schema for /api/pos/age-verify: either keep (cart_id, verified_by) and fix the AgeVerificationModal frontend + review spec, OR extend backend to accept (birth_year, id_checked, required_age) as alias fields. Today a frontend sending the latter will get 422.",
+    "Replace the hard-coded keyword matcher in /app/backend/routes/landing_chatbot.py with a real LlmChat call (emergentintegrations) — module docstring already promises Claude Sonnet 4."
+  ],
+  "critical_code_review_comments": [
+    "routes/landing_chatbot.py: line 14 comment '# from emergentintegrations.llm import LLM  # Not available, using mock response' — mock is shipped in main. Either integrate real LLM or remove the 'AI' branding from UI.",
+    "routes/pos_hardware.py: cash-drawer/open and scanner/test take query-string params instead of Pydantic body — break REST consistency. scanner/register similarly takes scanner_id & type as query. Normalise to BaseModel bodies.",
+    "routes/livekit_streaming.py: token generation never fails even when LIVEKIT_API_KEY is the placeholder 'devkey' — that's fine for dev, but add /health that checks real credentials so ops can see real-vs-stub state.",
+    "routes/super_app_features.py get_wallet_balance performs insert_one on GET — side-effect on read."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter46_livekit_hardware.py"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "~0% of iter46 features reachable end-to-end (chatbot/livekit/retail-buttons all missing testids or unwired)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (login succeeds, redirects to '/')",
+  "seed_data_creation": "1 LiveKit room inserted per test run (test-room-xxxx) in db.livekit_rooms. No delete endpoint exercised — will accumulate unless ops TTLs rooms.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend endpoints from iter46 review are all live and passing. Pytest file /app/backend/tests/test_iter46_livekit_hardware.py is the regression harness (export REACT_APP_BACKEND_URL before pytest). Frontend has 3 wiring/testid gaps that the main agent must fix: (1) LandingPage not routed anywhere under '/' — so LandingChatbot is DOM-absent; (2) LiveKitStreamPage missing data-testid attributes — cannot be detected by Playwright after /livekit-stream navigation even with admin auth; (3) POSPage RetailTab's 4 new buttons are not rendered on the default /pos Dashboard view (main agent claimed line 940). After these are fixed, rerun this Playwright flow: goto '/' → dismiss onboarding via localStorage → expect .chatbot-toggle-btn; goto '/livekit-stream' (authenticated) → expect livekit-stream-page; goto '/pos' → find pos-retail-hardware-btn.",
+  "rca of the issue": "Frontend wiring gap root cause: App.js:428-430 hardcodes case '/': return <HomePage/>. LandingPage.jsx (which embeds <LandingChatbot/>) is imported (App.js:12) but never referenced in the switch. Grep confirms: LandingPage JSX appears only in the import line; no `<LandingPage` instantiation anywhere in App.js. Fix: add a router case (e.g. '/landing', '/home-guest') returning <LandingPage/>, OR hoist <LandingChatbot/> to App.js's top-level layout so it floats everywhere. For /livekit-stream: App.js:779 correctly delegates to <LiveKitStreamPage onBack=...> for authenticated/demo users, so most likely the page source simply lacks data-testid='livekit-stream-page' and data-testid='livekit-create-btn' attributes on its root + CTA. For /pos retail buttons: the 4 testids are advertised at line 940 of POSPage.jsx but either (a) live inside a sub-route not active in Dashboard tab, or (b) the testids were never emitted — main agent must open POSPage.jsx and confirm."
+}

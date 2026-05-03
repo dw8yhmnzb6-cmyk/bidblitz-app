@@ -31,6 +31,8 @@ import {
   WeightedProductScanner, 
   SupervisorConsole 
 } from "../components/pos/POSRetailEnterpriseComponents";
+import { POSHardwareModal } from "../components/pos/POSHardwareModal";
+import { AgeVerificationModal } from "../components/pos/AgeVerificationModal";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -937,6 +939,8 @@ function Card({ title, children, testid, className = "" }) {
 function RetailTab({ storeId }) {
   const [voidModalOpen, setVoidModalOpen] = useState(false);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [hardwareModalOpen, setHardwareModalOpen] = useState(false);
+  const [ageModalOpen, setAgeModalOpen] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
   const handleVoid = (result) => {
@@ -952,9 +956,10 @@ function RetailTab({ storeId }) {
   return (
     <div className="space-y-6">
       <Card title="🏪 Retail Enterprise Features (REWE/Lidl-Niveau)">
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <button
             onClick={() => setVoidModalOpen(true)}
+            data-testid="pos-retail-void-btn"
             className="p-4 bg-red-600/10 border border-red-600/20 rounded-lg hover:bg-red-600/20 text-left"
           >
             <div className="text-2xl mb-2">❌</div>
@@ -963,6 +968,7 @@ function RetailTab({ storeId }) {
           </button>
           <button
             onClick={() => setReturnModalOpen(true)}
+            data-testid="pos-retail-return-btn"
             className="p-4 bg-orange-600/10 border border-orange-600/20 rounded-lg hover:bg-orange-600/20 text-left"
           >
             <div className="text-2xl mb-2">📦</div>
@@ -970,12 +976,22 @@ function RetailTab({ storeId }) {
             <div className="text-xs text-white/60">Geld, Gutschein, Umtausch</div>
           </button>
           <button
-            onClick={() => setTab('supervisor')}
-            className="p-4 bg-blue-600/10 border border-blue-600/20 rounded-lg hover:bg-blue-600/20 text-left"
+            onClick={() => setAgeModalOpen(true)}
+            data-testid="pos-retail-age-btn"
+            className="p-4 bg-amber-600/10 border border-amber-600/20 rounded-lg hover:bg-amber-600/20 text-left"
           >
-            <div className="text-2xl mb-2">👁️</div>
-            <div className="font-semibold text-sm">Supervisor Console</div>
-            <div className="text-xs text-white/60">Self-Checkout Überwachung</div>
+            <div className="text-2xl mb-2">🔞</div>
+            <div className="font-semibold text-sm">Altersverifikation</div>
+            <div className="text-xs text-white/60">FSK 16/18 Prüfung</div>
+          </button>
+          <button
+            onClick={() => setHardwareModalOpen(true)}
+            data-testid="pos-retail-hardware-btn"
+            className="p-4 bg-purple-600/10 border border-purple-600/20 rounded-lg hover:bg-purple-600/20 text-left"
+          >
+            <div className="text-2xl mb-2">🖨️</div>
+            <div className="font-semibold text-sm">Hardware-Test</div>
+            <div className="text-xs text-white/60">Drucker, Scanner, Waage</div>
           </button>
         </div>
 
@@ -995,6 +1011,17 @@ function RetailTab({ storeId }) {
 
       <VoidReceiptModal isOpen={voidModalOpen} onClose={() => setVoidModalOpen(false)} onVoid={handleVoid} />
       <ReturnModal isOpen={returnModalOpen} onClose={() => setReturnModalOpen(false)} onReturn={handleReturn} />
+      <POSHardwareModal isOpen={hardwareModalOpen} onClose={() => setHardwareModalOpen(false)} storeId={storeId} />
+      <AgeVerificationModal
+        isOpen={ageModalOpen}
+        onClose={() => setAgeModalOpen(false)}
+        productId="generic"
+        requiredAge={18}
+        onVerified={(d) => {
+          setLastResult(d);
+          toast.success('Altersfreigabe bestätigt');
+        }}
+      />
     </div>
   );
 }
