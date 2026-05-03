@@ -239,10 +239,13 @@ async def upsell_suggestions(request: Request, cart_id: str):
 @router.get("/public/product-info/{product_id}")
 async def public_product_info(product_id: str):
     """PUBLIC Produktinfo via QR-Code-Scan."""
-    p = await db.pos_products.find_one({"product_id": product_id, "active": True}, {"_id": 0, "purchase_price": 0})
+    p = await db.pos_products.find_one(
+        {"product_id": product_id, "active": True}, 
+        {"_id": 0, "purchase_price": 0, "merchant_id": 0}
+    )
     if not p:
         raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
-    return {"product": p, "qr_url": f"/public/product-info/{product_id}"}
+    return {"product": p, "qr_url": f"/api/pos/retail/public/product-info/{product_id}"}
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -274,7 +277,8 @@ async def create_pick_task(req: PickTask, request: Request, store_id: str):
 async def pending_pick_tasks(request: Request, store_id: str):
     await get_current_user(request)
     tasks = await db.pos_pick_tasks.find(
-        {"store_id": store_id, "status": "pending"}
+        {"store_id": store_id, "status": "pending"},
+        {"_id": 0}
     ).to_list(50)
     return {"tasks": tasks}
 
@@ -286,7 +290,13 @@ async def pending_pick_tasks(request: Request, store_id: str):
 @router.get("/video-replay/{receipt_id}")
 async def video_replay(receipt_id: str, request: Request):
     user = await get_current_user(request)
-    await _require_store_access(user, "STORE_ID_FROM_SALE", {"merchant_admin"})
+    
+    # Fetch sale to get store_id
+    sale = await db.pos_sales.find_one({"receipt_id": receipt_id}, {"_id": 0, "store_id": 1})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Beleg nicht gefunden")
+    
+    await _require_store_access(user, sale["store_id"], {"merchant_admin"})
     
     # Placeholder: In Production würde hier eine Kamera-Clip-URL zurückgegeben
     return {

@@ -1,0 +1,75 @@
+{
+  "test_run": "2026-05-03T20:31:26.805237",
+  "total_tests": 3,
+  "passed": 3,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "GET /api/pos/retail/pick/tasks/pending",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "tasks": [
+          {
+            "task_id": "PCK-86287F6345",
+            "order_id": "ORD-TEST-001",
+            "store_id": "STR-54C6A75BCA",
+            "items": [
+              {
+                "product_id": null,
+                "quantity": 2
+              }
+            ],
+            "status": "pending",
+            "assigned_to": null,
+            "created_at": "2026-05-03T20:25:05.048968+00:00"
+          }
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/pos/retail/video-replay/{receipt_id}",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "receipt_id": "RCP-2A2937B9B0",
+        "video_available": false,
+        "message": "Video-Integration erfordert Kamera-Hardware + Storage",
+        "placeholder_url": "/videos/RCP-2A2937B9B0.mp4"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/pos/retail/public/product-info/{product_id}",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "product": {
+          "product_id": "PRD-44E0C47FCF",
+          "store_id": "STR-54C6A75BCA",
+          "name": "Test Product for QR Scan",
+          "description": null,
+          "brand": null,
+          "barcode": null,
+          "sku": "TEST-QR-203127",
+          "price": 9.99,
+          "tax_rate": 0.19,
+          "category": "Test",
+          "unit": "Stk",
+          "stock": 99.0,
+          "minimum_stock": 0,
+          "track_stock": true,
+          "allow_negative_stock": false,
+          "supplier_id": null,
+          "image_url": null,
+          "active": true,
+          "created_at": "2026-05-03T20:31:27.527540+00:00",
+          "updated_at": "2026-05-03T20:31:27.977600+00:00"
+        },
+        "qr_url": "/api/pos/retail/public/product-info/PRD-44E0C47FCF"
+      },
+      "error": null
+    }
+  ]
+}
