@@ -131,7 +131,8 @@ async def get_wallet_balance(request: Request):
     
     # Get recent transactions
     transactions = await db.wallet_transactions.find(
-        {"user_id": str(user["_id"])}
+        {"user_id": str(user["_id"])},
+        {"_id": 0}  # Exclude _id field to avoid ObjectId serialization issues
     ).sort("created_at", -1).limit(10).to_list(10)
     
     return {
@@ -294,7 +295,7 @@ async def get_app_analytics(request: Request):
     """Get Super App usage analytics (Admin only)."""
     user = await get_current_user(request)
     
-    if not user.get("is_admin"):
+    if user.get("role") != "admin" and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     total_users = await db.users.count_documents({})

@@ -1,0 +1,388 @@
+{
+  "test_run": "2026-05-03T20:58:32.117993",
+  "total_tests": 25,
+  "passed": 25,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "POST /api/pos/hardware/printer/print",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": true,
+        "receipt_id": "RCP-2A2937B9B0",
+        "printer": "default"
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/pos/hardware/scanner/register",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": true,
+        "scanner_id": "SCN001"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/pos/hardware/scanner/test",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": false,
+        "error": "Produkt nicht gefunden",
+        "barcode": "4011"
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/pos/hardware/cash-drawer/open",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": true,
+        "drawer_opened": true
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/pos/hardware/tse/sign",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": true,
+        "tse_type": "cloud",
+        "message": "Using cloud TSE (Fiskaly)"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/pos/hardware/scale/weight",
+      "passed": true,
+      "status_code": 404,
+      "response": {
+        "note": "404 expected - no scale configured"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/pos/hardware/health",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "store_id": "STR-54C6A75BCA",
+        "printers": [],
+        "scanners": [],
+        "scales": [],
+        "status": "ok"
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/livekit/rooms",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "room_name": "test-stream-ec4496e0",
+        "max_participants": 100,
+        "created_at": "2026-05-03T20:58:33.917023+00:00"
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/livekit/token",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "server_url": "ws://localhost:7880",
+        "participant_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiVGVzdFVzZXIiLCJ2aWRlbyI6eyJyb29tSm9pbiI6dHJ1ZSwicm9vbSI6InRlc3Qtc3RyZWFtLWVjNDQ5NmUwIiwiY2FuUHVibGlzaCI6dHJ1ZSwiY2FuU3Vic2NyaWJlIjp0cnVlLCJjYW5QdWJsaXNoRGF0YSI6dHJ1ZX0sInN1YiI6IjY5ZTBhMjQ1NjljNWRhMWRkZjZlNmQyMyIsImlzcyI6ImRldmtleSIsIm5iZiI6MTc3Nzg0MTkxNCwiZXhwIjoxNzc3OTI4MzE0fQ.kmLwFU54LVVnOuitrJNpZVuLFRTLdps7sVUaPCl5LRs",
+        "room_name": "test-stream-ec4496e0"
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/livekit/rooms/{room}/products",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": true,
+        "product": {
+          "product_id": "PRD-TEST-001",
+          "name": "Test Product",
+          "price": 99.99,
+          "image": "https://example.com/image.jpg",
+          "description": "Test product for live stream"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/livekit/rooms/{room}/products",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "products": [
+          {
+            "room_name": "test-stream-ec4496e0",
+            "product_id": "PRD-TEST-001",
+            "name": "Test Product",
+            "price": 99.99,
+            "image": "https://example.com/image.jpg",
+            "description": "Test product for live stream",
+            "added_by": "69e0a24569c5da1ddf6e6d23",
+            "added_at": "2026-05-03T20:58:34.171509+00:00"
+          }
+        ],
+        "count": 1
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/livekit/rooms/{room}/recording/start",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "recording_id": "REC-C3FCBCA253",
+        "room_name": "test-stream-ec4496e0",
+        "status": "recording"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/livekit/rooms/{room}/analytics",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "room_name": "test-stream-ec4496e0",
+        "total_viewers": 0,
+        "peak_viewers": 0,
+        "duration_minutes": 0,
+        "products_shown": 1
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/landing-chatbot/chat",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "session_id": "sess-b7eb8dfd",
+        "message": "BidBlitz ist die ultimative Super App f\u00fcr Bezahlen, Einkaufen, Spielen und Verdienen! Mit BidBlitz Pay k\u00f6nnen Sie \u00fcberall bezahlen, im Marketplace einkaufen, bei Penny Auctions gewinnen und als Creator Geld verdienen. M\u00f6chten Sie mehr \u00fcber eine bestimmte Funktion erfahren?",
+        "suggested_actions": [],
+        "requires_email": false
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/landing-chatbot/leads",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": true,
+        "message": "Lead erfasst"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/landing-chatbot/leads",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "leads": [
+          {
+            "email": "test-05f0e8bd@test.com",
+            "captured_at": "2026-05-03T20:58:34.807914+00:00",
+            "interest": "demo",
+            "name": "Test User",
+            "session_id": null,
+            "source": "landing_page"
+          },
+          {
+            "email": "test-6b9b5c9e@test.com",
+            "captured_at": "2026-05-03T20:56:40.009028+00:00",
+            "interest": "demo",
+            "name": "Test User",
+            "session_id": null,
+            "source": "landing_page"
+          }
+        ],
+        "count": 2
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/landing-chatbot/analytics",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "total_sessions": 2,
+        "total_messages": 4,
+        "total_leads": 2,
+        "conversion_rate": 100.0
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/super-app/marketplace/items",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "ok": true,
+        "item_id": "MKT-30035D5E75"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/super-app/marketplace/categories",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "categories": [
+          {
+            "id": "flights",
+            "name": "Fl\u00fcge",
+            "icon": "\u2708\ufe0f",
+            "count": 0
+          },
+          {
+            "id": "hotels",
+            "name": "Hotels",
+            "icon": "\ud83c\udfe8",
+            "count": 0
+          },
+          {
+            "id": "shopping",
+            "name": "Shopping",
+            "icon": "\ud83d\udecd\ufe0f",
+            "count": 0
+          },
+          {
+            "id": "taxi",
+            "name": "Taxi",
+            "icon": "\ud83d\ude95",
+            "count": 0
+          },
+          {
+            "id": "food",
+            "name": "Food Delivery",
+            "icon": "\ud83c\udf54",
+            "count": 0
+          },
+          {
+            "id": "real_estate",
+            "name": "Immobilien",
+            "icon": "\ud83c\udfe0",
+            "count": 0
+          },
+          {
+            "id": "car_rental",
+            "name": "Mietwagen",
+            "icon": "\ud83d\ude97",
+            "count": 2
+          },
+          {
+            "id": "event_tickets",
+            "name": "Event-Tickets",
+            "icon": "\ud83c\udfab",
+            "count": 0
+          },
+          {
+            "id": "services",
+            "name": "Dienstleistungen",
+            "icon": "\ud83d\udd27",
+            "count": 0
+          },
+          {
+            "id": "education",
+            "name": "Kurse & Lernen",
+            "icon": "\ud83d\udcda",
+            "count": 0
+          }
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/super-app/wallet/topup",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "transaction_id": "TXN-1AB211CF91",
+        "status": "pending"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/super-app/wallet/balance",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "balance": 0.0,
+        "currency": "EUR",
+        "recent_transactions": [
+          {
+            "transaction_id": "TXN-1AB211CF91",
+            "user_id": "69e0a24569c5da1ddf6e6d23",
+            "type": "topup",
+            "amount": 100.0,
+            "method": "card",
+            "status": "pending",
+            "created_at": "2026-05-03T20:58:35.459888+00:00"
+          },
+          {
+            "transaction_id": "TXN-42768A1367",
+            "user_id": "69e0a24569c5da1ddf6e6d23",
+            "type": "topup",
+            "amount": 100.0,
+            "method": "card",
+            "status": "pending",
+            "created_at": "2026-05-03T20:56:40.816694+00:00"
+          }
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/super-app/gaming/session",
+      "passed": true,
+      "status_code": 400,
+      "response": {
+        "note": "400 expected - insufficient balance"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/super-app/gaming/leaderboard",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "leaderboard": []
+      },
+      "error": null
+    },
+    {
+      "name": "POST /api/super-app/creator/subscription-tiers",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "tier_id": "TIER-D1A6239556"
+      },
+      "error": null
+    },
+    {
+      "name": "GET /api/super-app/analytics/overview",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "total_users": 123,
+        "total_transactions": 2,
+        "total_marketplace_items": 2,
+        "total_game_sessions": 0,
+        "total_subscriptions": 9,
+        "total_revenue": 0
+      },
+      "error": null
+    }
+  ]
+}

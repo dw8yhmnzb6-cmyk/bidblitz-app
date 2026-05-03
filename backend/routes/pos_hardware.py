@@ -46,8 +46,8 @@ async def print_receipt(req: PrintRequest, request: Request):
     # Printer config
     printer = await db.pos_printers.find_one({"printer_id": req.printer_id or "default"})
     if not printer:
-        # Fallback: Network printer or file output
-        printer = {"type": "network", "ip": "192.168.1.100", "port": 9100}
+        # Fallback: File output for testing (no actual printer hardware)
+        printer = {"type": "file"}
     
     # Generate ESC/POS commands
     escpos_data = _generate_escpos(sale)

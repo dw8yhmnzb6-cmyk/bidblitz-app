@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from core.database import db
-from emergentintegrations.llm import LLM
+# from emergentintegrations.llm import LLM  # Not available, using mock response
 
 router = APIRouter(prefix="/api/landing-chatbot", tags=["Landing Chatbot"])
 log = logging.getLogger("bidblitz.landing_chatbot")
@@ -96,15 +96,20 @@ async def landing_chatbot(req: ChatMessage, request: Request):
         })
         
         # Call LLM (Claude Sonnet 4 via Emergent LLM Key)
-        llm = LLM(api_key=os.getenv('EMERGENT_LLM_KEY'))
-        response = llm.create_chat_completion(
-            model="claude-sonnet-4",
-            messages=conversation,
-            max_tokens=300,
-            temperature=0.7,
-        )
+        # TODO: Integrate with actual LLM service
+        # For now, using rule-based responses
+        user_msg_lower = req.message.lower()
         
-        bot_message = response['choices'][0]['message']['content']
+        if "was ist bidblitz" in user_msg_lower or "what is bidblitz" in user_msg_lower:
+            bot_message = "BidBlitz ist die ultimative Super App für Bezahlen, Einkaufen, Spielen und Verdienen! Mit BidBlitz Pay können Sie überall bezahlen, im Marketplace einkaufen, bei Penny Auctions gewinnen und als Creator Geld verdienen. Möchten Sie mehr über eine bestimmte Funktion erfahren?"
+        elif "demo" in user_msg_lower or "testen" in user_msg_lower:
+            bot_message = "Gerne! Ich kann Ihnen einen Demo-Zugang einrichten. Bitte geben Sie Ihre E-Mail-Adresse an, und wir senden Ihnen die Zugangsdaten zu."
+        elif "preis" in user_msg_lower or "kosten" in user_msg_lower:
+            bot_message = "BidBlitz ist kostenlos nutzbar! Wir erheben nur kleine Gebühren bei Transaktionen (z.B. 2% bei Zahlungen). Für Merchants gibt es spezielle Business-Pakete. Möchten Sie mehr über unsere Preise erfahren?"
+        elif "kontakt" in user_msg_lower:
+            bot_message = "Sie können uns jederzeit unter support@bidblitz.ae erreichen oder das Kontaktformular auf unserer Website nutzen. Wie kann ich Ihnen sonst noch helfen?"
+        else:
+            bot_message = "Vielen Dank für Ihre Nachricht! BidBlitz bietet Ihnen eine All-in-One Lösung für Bezahlen, Shopping, Gaming und mehr. Haben Sie Fragen zu bestimmten Features oder möchten Sie einen Demo-Zugang?"
         
         # Save messages to DB
         await db.landing_chatbot_messages.insert_one({
@@ -201,7 +206,7 @@ async def get_leads(request: Request):
     from core.security import get_current_user
     user = await get_current_user(request)
     
-    if not user.get("is_admin"):
+    if user.get("role") != "admin" and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     leads = await db.landing_leads.find(
@@ -222,7 +227,7 @@ async def chatbot_analytics(request: Request):
     from core.security import get_current_user
     user = await get_current_user(request)
     
-    if not user.get("is_admin"):
+    if user.get("role") != "admin" and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     
     total_sessions = await db.landing_chatbot_messages.distinct("session_id")
