@@ -1,6 +1,6 @@
 """
-BidBlitz V2 - AI Chatbot (GPT-5.1)
-Support & Recommendations via AI
+BidBlitz V2 - AI Chatbot (Claude Sonnet 4.5 + RAG)
+Support & Recommendations via AI with knowledge-base retrieval.
 """
 
 import os
@@ -15,11 +15,17 @@ load_dotenv()
 
 from core.database import db
 from core.security import get_current_user
+from data.bidblitz_kb import build_context_block
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 router = APIRouter()
 
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+# NOTE: Emergent Universal LLM Key supports OpenAI + Gemini models only.
+# Claude is NOT available via universal key — would require user-provided
+# ANTHROPIC_API_KEY. Using GPT-5.2 (current flagship OpenAI model via Emergent key).
+LLM_PROVIDER = "openai"
+LLM_MODEL = "gpt-5.2"
 
 # BidBlitz AI System Prompt
 BIDBLITZ_SYSTEM_PROMPT = """Du bist der offizielle AI-Assistent von BidBlitz, der ultimativen Super-App für Deutschland, Kosovo und VAE.
@@ -93,7 +99,7 @@ async def send_chat_message(req: ChatMessageRequest, request: Request):
         balance = req.context.get("balance", 0)
         services_used = req.context.get("services_used", [])
         system_prompt += f"\n\n## Aktueller User-Kontext:\n- Guthaben: €{balance}\n- Genutzte Services: {', '.join(services_used)}"
-    
+
     # Language-specific prompt
     if req.language == "en":
         system_prompt += "\n\n**Respond in English.**"
@@ -101,14 +107,19 @@ async def send_chat_message(req: ChatMessageRequest, request: Request):
         system_prompt += "\n\n**Respond in Arabic (العربية).**"
     else:
         system_prompt += "\n\n**Antworte auf Deutsch.**"
-    
+
+    # ── RAG: retrieve top-3 relevant KB docs and inject into system prompt ──
+    kb_block = build_context_block(req.message, top_k=3)
+    if kb_block:
+        system_prompt += kb_block
+
     try:
-        # Initialize LlmChat with GPT-5.1
+        # Initialize LlmChat with Claude Sonnet 4.5
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=session_id,
             system_message=system_prompt
-        ).with_model("openai", "gpt-5.1")
+        ).with_model(LLM_PROVIDER, LLM_MODEL)
         
         # Restore history (if any)
         for msg in history[-5:]:  # Last 5 messages for context

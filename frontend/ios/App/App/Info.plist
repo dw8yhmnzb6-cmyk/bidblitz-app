@@ -45,5 +45,22 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>BidBlitz benötigt die Kamera, um QR-Codes am POS zu scannen, Ausweis-Bilder für die KYC-Verifikation aufzunehmen und Profilbilder zu ändern.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BidBlitz speichert Belege und Auktionsbilder und lädt optional Fotos für Marketplace-Inserate hoch.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>BidBlitz speichert digitale Belege in deiner Fotomediathek.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BidBlitz nutzt deinen Standort für Taxi-Bestellungen, Händler in der Nähe, Stadt-Autocomplete und Lieferverfolgung.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>BidBlitz nutzt deinen Standort im Hintergrund, damit Kids-GPS-Tracking und Live-Lieferungen funktionieren.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>BidBlitz verwendet Face ID zur Absicherung deines Logins und Zahlungsbestätigungen.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
 </dict>
 </plist>

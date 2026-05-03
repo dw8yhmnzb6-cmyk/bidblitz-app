@@ -1,0 +1,61 @@
+{
+  "summary": "Backend test of AI Chatbot (gpt-5.2 + RAG) per iter45 review request. 10/10 spec tests PASS — RAG context injection verified end-to-end (KB facts 0,50€/0,01€/10s/Bot, 500€ wallet limit, 5€+10% referral all surfaced in LLM replies). Found ONE real bug: history-replay loop calls chat.send_message(store=False) but emergentintegrations LlmChat.send_message() does NOT accept that kwarg — every chatbot call AFTER the first one returns 500 'unexpected keyword argument store'.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/chatbot/send",
+        "issue": "500 'AI error: LlmChat.send_message() got an unexpected keyword argument store' on every call where chatbot_messages collection already has >=1 prior user message for this user. Root cause: routes/ai_chatbot.py line 127 — `await chat.send_message(UserMessage(text=msg['content']), store=False)`. Current emergentintegrations LlmChat.send_message() signature does not accept store. First-ever chat works (history empty), every subsequent chat 500s. Reproduced by xfailed test test_history_replay_bug_reproduces_500.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/chatbot/send",
+        "issue": "History-replay design issue: even if `store=False` is removed, the loop replays ONLY past user messages (without their assistant responses), causing the LLM to regenerate replies for old questions before answering the new one. This wastes tokens and pollutes context. Recommended: build LlmChat with full alternating user/assistant history via a proper messages list, not by re-calling send_message in a loop."
+      },
+      {
+        "endpoint": "POST /api/chatbot/feedback",
+        "issue": "Signature `submit_feedback(message_id: str, rating: int, comment: Optional[str]=None, request: Request = None)` mixes path/query and body params with no Pydantic body model. FastAPI will treat message_id and rating as query params (because they are simple types) — likely not the intended contract. Add a FeedbackRequest BaseModel."
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_results_by_case": {
+    "KB search('Auktion') first hit == auctions-basics": "PASS",
+    "KB search('Guthaben aufladen') first hit == wallet": "PASS",
+    "build_context_block contains 0,50 / 0,01 / 10 Sek": "PASS",
+    "POST /api/chatbot/send (no auth) -> 401": "PASS",
+    "POST /api/chatbot/send 'Penny-Auktionen' contains >=2 of [0,50, 0,01, 10 Sek, Bot]": "PASS — got 0,50€, 0,01€, 10 Sek, Bot",
+    "POST /api/chatbot/send 'Wallet-Topup max' contains 500": "PASS — '500 € pro Aufladung'",
+    "POST /api/chatbot/send 'Referral-Bonus' contains 5 € + 10%": "PASS — '5 € Signup-Bonus' + '10% Lifetime-Provision' + '50 € pro Einzel-Topup'",
+    "GET /api/chatbot/history (auth) returns messages array": "PASS",
+    "DELETE /api/chatbot/history (auth) clears": "PASS — verified total=0 after delete",
+    "GET /api/geo/cities?q=ber regression": "PASS — Berlin present",
+    "history-replay bug reproduction": "XFAIL (expected) — confirms 500 'store' kwarg bug"
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chatbot_rag_iter45.py",
+    "/app/test_reports/pytest/iter45_chatbot.xml"
+  ],
+  "action_items": [
+    "FIX routes/ai_chatbot.py L127: remove `store=False` from chat.send_message(...) — it's not a valid kwarg in current emergentintegrations and breaks every follow-up chat.",
+    "Refactor history-replay: instead of replaying only past USER messages via send_message in a loop (which makes the LLM regenerate old answers), pass full alternating user/assistant context to LlmChat through its proper history mechanism.",
+    "Add FeedbackRequest Pydantic model to POST /api/chatbot/feedback so message_id/rating/comment are read from JSON body, not query string."
+  ],
+  "critical_code_review_comments": [
+    "routes/ai_chatbot.py L19 docstring still says 'Claude Sonnet 4.5' but code uses gpt-5.2 — update for accuracy.",
+    "routes/ai_chatbot.py L117 comment 'Initialize LlmChat with Claude Sonnet 4.5' is stale; same fix.",
+    "data/bidblitz_kb.py: clean, focused module; keyword scoring is deterministic and adequate for current KB size (19 docs). For >100 docs consider a vector store.",
+    "RAG context block is appended to system_prompt AFTER language directive — fine, but if the user asks in EN/AR the KB block stays in German, which may make the LLM mix languages. Consider translating snippets or instructing the LLM to translate facts.",
+    "EMERGENT_LLM_KEY check returns 500 with detail 'AI service not configured' — should be 503 Service Unavailable for clearer semantics.",
+    "history fetched limit=10 but only history[-5:] actually replayed — fetch limit should match (limit=5) to save a DB read."
+  ],
+  "updated_files": ["/app/backend/tests/test_chatbot_rag_iter45.py"],
+  "success_rate": {"backend": "100% on spec tests (10/10); 1 xfail documents the history-replay bug", "frontend": "n/a"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (worked — JWT cookie set on /api/auth/login)",
+  "seed_data_creation": "None — chatbot_messages collection cleared per test class via DELETE /api/chatbot/history.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After main agent removes `store=False` from routes/ai_chatbot.py L127, rerun /app/backend/tests/test_chatbot_rag_iter45.py — the xfailed test 'test_history_replay_bug_reproduces_500' should turn into XPASS (or be flipped to a normal pass). RAG content tests already pass and prove KB injection works for at least 3 distinct topics (auctions, wallet, referral).",
+  "rca of the issue": "Bug: every chatbot follow-up call returns 500. Reproduce: (1) login admin (2) DELETE /api/chatbot/history (3) POST /api/chatbot/send {message:'Hallo'} -> 200 (4) POST /api/chatbot/send {message:'X'} -> 500 'AI error: LlmChat.send_message() got an unexpected keyword argument store'. Root cause: routes/ai_chatbot.py line 127 passes `store=False` to chat.send_message(); current emergentintegrations.llm.chat.LlmChat.send_message() signature does not accept that kwarg. Mitigation: drop the kwarg (`await chat.send_message(UserMessage(text=msg['content']))`) OR — better — stop replaying history via send_message and instead initialize LlmChat with full prior context using its native history API."
+}
