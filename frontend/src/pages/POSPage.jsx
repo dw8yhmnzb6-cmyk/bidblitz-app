@@ -25,6 +25,12 @@ import POSCheckoutTab from "../components/pos/POSCheckoutTab";
 import POSProductsTab from "../components/pos/POSProductsTab";
 import POSInventoryTab from "../components/pos/POSInventoryTab";
 import { POSMerchantFeatures, POSAdminFeatures } from "../components/pos/POSFeaturesComponents";
+import { 
+  VoidReceiptModal, 
+  ReturnModal, 
+  WeightedProductScanner, 
+  SupervisorConsole 
+} from "../components/pos/POSRetailEnterpriseComponents";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -55,6 +61,8 @@ const TABS = [
   { id: "refunds", label: "Erstattungen", icon: RotateCcw },
   { id: "approvals", label: "Freigaben", icon: ShieldCheck },
   { id: "chat", label: "Team-Chat", icon: MessageCircle },
+  { id: "retail", label: "Retail Pro", icon: Store },
+  { id: "supervisor", label: "Supervisor", icon: ShieldCheck },
   { id: "reports", label: "Berichte", icon: BarChart3 },
   { id: "advanced", label: "Mega-Tools", icon: Sparkles },
   { id: "pro", label: "Pro / Compliance", icon: Sparkles },
@@ -188,6 +196,8 @@ export default function POSPage({ onBack }) {
         {tab === "compliance" && <POSComplianceTab storeId={storeId} />}
         {tab === "addons" && <POSMerchantFeatures />}
         {tab === "admin" && <AdminTab />}
+        {tab === "retail" && <RetailTab storeId={storeId} />}
+        {tab === "supervisor" && <SupervisorTab storeId={storeId} />}
       </div>
     </div>
   );
@@ -917,6 +927,87 @@ function Card({ title, children, testid, className = "" }) {
     <div className={`rounded-2xl bg-white/[0.03] border border-white/[0.06] p-3.5 ${className}`} data-testid={testid}>
       {title && <p className="text-[11px] font-bold text-white/80 mb-2 uppercase tracking-wide">{title}</p>}
       {children}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RETAIL PRO TAB (Storno, Rückgabe, Gewichtsartikel)
+// ═══════════════════════════════════════════════════════════════════════
+function RetailTab({ storeId }) {
+  const [voidModalOpen, setVoidModalOpen] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
+
+  const handleVoid = (result) => {
+    setLastResult(result);
+    toast.success(`Bon storniert: ${result.void_receipt_id}`);
+  };
+
+  const handleReturn = (result) => {
+    setLastResult(result);
+    toast.success(`Rückgabe: €${result.total.toFixed(2)} ${result.return_type === 'voucher' ? '(Gutschein)' : ''}`);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card title="🏪 Retail Enterprise Features (REWE/Lidl-Niveau)">
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <button
+            onClick={() => setVoidModalOpen(true)}
+            className="p-4 bg-red-600/10 border border-red-600/20 rounded-lg hover:bg-red-600/20 text-left"
+          >
+            <div className="text-2xl mb-2">❌</div>
+            <div className="font-semibold text-sm">Bon stornieren</div>
+            <div className="text-xs text-white/60">Rechtskonforme Stornierung</div>
+          </button>
+          <button
+            onClick={() => setReturnModalOpen(true)}
+            className="p-4 bg-orange-600/10 border border-orange-600/20 rounded-lg hover:bg-orange-600/20 text-left"
+          >
+            <div className="text-2xl mb-2">📦</div>
+            <div className="font-semibold text-sm">Rückgabe / Umtausch</div>
+            <div className="text-xs text-white/60">Geld, Gutschein, Umtausch</div>
+          </button>
+          <button
+            onClick={() => setTab('supervisor')}
+            className="p-4 bg-blue-600/10 border border-blue-600/20 rounded-lg hover:bg-blue-600/20 text-left"
+          >
+            <div className="text-2xl mb-2">👁️</div>
+            <div className="font-semibold text-sm">Supervisor Console</div>
+            <div className="text-xs text-white/60">Self-Checkout Überwachung</div>
+          </button>
+        </div>
+
+        <WeightedProductScanner
+          storeId={storeId}
+          onAdd={(item) => {
+            toast.success(`Gewichtsartikel hinzugefügt: ${item.name}`);
+          }}
+        />
+
+        {lastResult && (
+          <Card title="Letztes Ergebnis" className="mt-4">
+            <pre className="text-xs text-white/60 overflow-auto">{JSON.stringify(lastResult, null, 2)}</pre>
+          </Card>
+        )}
+      </Card>
+
+      <VoidReceiptModal isOpen={voidModalOpen} onClose={() => setVoidModalOpen(false)} onVoid={handleVoid} />
+      <ReturnModal isOpen={returnModalOpen} onClose={() => setReturnModalOpen(false)} onReturn={handleReturn} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SUPERVISOR TAB (Multi-Station Self-Checkout Überwachung)
+// ═══════════════════════════════════════════════════════════════════════
+function SupervisorTab({ storeId }) {
+  return (
+    <div className="space-y-6">
+      <Card title="👁️ Supervisor Console — Self-Checkout Überwachung">
+        <SupervisorConsole storeId={storeId} />
+      </Card>
     </div>
   );
 }
