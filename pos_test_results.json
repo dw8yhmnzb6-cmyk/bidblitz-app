@@ -1,0 +1,147 @@
+[
+  {
+    "name": "Login",
+    "passed": true,
+    "details": ""
+  },
+  {
+    "name": "Get Merchant",
+    "passed": true,
+    "details": "Merchant: MER-789862F7371D"
+  },
+  {
+    "name": "Get Store",
+    "passed": true,
+    "details": "Store: STR-54C6A75BCA"
+  },
+  {
+    "name": "Get/Create Register",
+    "passed": false,
+    "details": "Register: None"
+  },
+  {
+    "name": "Create Product",
+    "passed": false,
+    "details": "Product: None"
+  },
+  {
+    "name": "Create Sale",
+    "passed": false,
+    "details": "Receipt: None"
+  },
+  {
+    "name": "P0-1: Receipt Void",
+    "passed": false,
+    "details": "Status: 422"
+  },
+  {
+    "name": "P0-2: Receipt Return",
+    "passed": false,
+    "details": "Status: 422"
+  },
+  {
+    "name": "P0-3: Weighted Product Create",
+    "passed": true,
+    "details": "Product ID: PRD-8595D3DD01"
+  },
+  {
+    "name": "P0-4: Weighted Product Lookup",
+    "passed": 1.5,
+    "details": "Price: \u20ac1.5"
+  },
+  {
+    "name": "P0-5: Age Verification",
+    "passed": false,
+    "details": "Status: 422"
+  },
+  {
+    "name": "P0-6a: Supervisor Alert Create",
+    "passed": false,
+    "details": "Status: 422"
+  },
+  {
+    "name": "P0-6b: Supervisor Dashboard",
+    "passed": true,
+    "details": "Alerts: 0"
+  },
+  {
+    "name": "P1-1a: Smart Cart Start",
+    "passed": "SCA-D493390070CA",
+    "details": "Session: SCA-D493390070CA"
+  },
+  {
+    "name": "P1-1b: Smart Cart Scan",
+    "passed": true,
+    "details": "Total: \u20ac2.99"
+  },
+  {
+    "name": "P1-1c: Smart Cart Checkout",
+    "passed": true,
+    "details": "Random check: False"
+  },
+  {
+    "name": "P1-2: Digital Receipt",
+    "passed": false,
+    "details": "Status: 422"
+  },
+  {
+    "name": "P1-3: Multi-Currency",
+    "passed": 1.08,
+    "details": "USD rate: 1.08"
+  },
+  {
+    "name": "P1-4: Loss Prevention",
+    "passed": true,
+    "details": "Voids: 0"
+  },
+  {
+    "name": "P1-5: Bulk Discount",
+    "passed": "BDR-F01B90840A",
+    "details": "Rule ID: BDR-F01B90840A"
+  },
+  {
+    "name": "P1-6: Employee Performance",
+    "passed": true,
+    "details": "Employees: 0"
+  },
+  {
+    "name": "P1-7a: Cash Change Suggestion",
+    "passed": 10.0,
+    "details": "Change: \u20ac10.0"
+  },
+  {
+    "name": "P1-7b: Cash Safedrop",
+    "passed": false,
+    "details": "No open shift (expected)"
+  },
+  {
+    "name": "P1-8: Vendor Return",
+    "passed": "VDR-3EBF057272",
+    "details": "Return ID: VDR-3EBF057272"
+  },
+  {
+    "name": "P2-1: AI Upsell",
+    "passed": false,
+    "details": "Status: 422"
+  },
+  {
+    "name": "P2-2: Shelf QR (PUBLIC)",
+    "passed": false,
+    "details": "Status: 404"
+  },
+  {
+    "name": "P2-3a: Pick Task Create",
+    "passed": "PCK-86287F6345",
+    "details": "Task ID: PCK-86287F6345"
+  },
+  {
+    "name": "P2-3b: Pick Tasks Pending",
+    "passed": false,
+    "details": "Status: 500"
+  },
+  {
+    "name": "P2-4: Video Replay",
+    "passed": false,
+    "details": "Status: 404"
+  }
+]
