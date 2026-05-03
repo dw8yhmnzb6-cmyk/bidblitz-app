@@ -478,6 +478,8 @@ from routes.pay_merchant_requests import router as pay_merchant_requests_router
 app.include_router(pay_merchant_requests_router)
 from routes.stripe_issuing import router as stripe_issuing_router
 app.include_router(stripe_issuing_router)
+from routes.cards_lifecycle import router as cards_lifecycle_router
+app.include_router(cards_lifecycle_router)
 
 # Serve pay.js SDK publicly at /pay.js (and /api/pay.js for ingress-prefix access)
 from pathlib import Path as _PayPath

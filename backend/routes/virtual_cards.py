@@ -161,22 +161,9 @@ async def get_card_details(card_id: str, request: Request):
 
 @router.post("/{card_id}/freeze")
 async def freeze_card(card_id: str, request: Request):
-    """Freeze/unfreeze a card"""
-    user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    card = await db.virtual_cards.find_one({"card_id": card_id, "user_id": user_id})
-    if not card:
-        raise HTTPException(status_code=404, detail="Karte nicht gefunden")
-    
-    new_status = "frozen" if card["status"] == "active" else "active"
-    
-    await db.virtual_cards.update_one(
-        {"card_id": card_id},
-        {"$set": {"status": new_status}}
-    )
-    
-    return {"success": True, "status": new_status}
+    """[DEPRECATED] Freeze a card. Use /api/cards/{id}/freeze (cards_lifecycle.py)."""
+    from routes.cards_lifecycle import freeze_card as _new_freeze
+    return await _new_freeze(card_id, request)
 
 
 @router.delete("/{card_id}")
