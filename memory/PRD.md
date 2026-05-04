@@ -84,9 +84,10 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
-- **Feb 2026 (iter49)**: Fix LiveKit env empty-string fallback (`os.getenv(k) or default`), fix LiveKitStreamPage response-body-double-read with safeJson helper. 16/16 backend + 100% frontend LiveKit flow PASS.
-- **Feb 2026 (iter48)**: P2 cleanup: wallet GET read-only, POS hardware JSON-body normalization (cash-drawer/scanner), age-verify birth_year range validation, AdminLandingLeadsPage `/admin/landing-leads`, livekit-client v2.5 web SDK + useLiveKitRoom hook + ParticipantTile (real WebRTC), /live-shopping → LiveKitStreamPage migration.
-- **Feb 2026 (iter48 P0 cont.)**: Landing-Chatbot LIVE LLM (gpt-4.1-mini multi-turn), Android keystore generated, LIVEKIT .env scaffolded, mobile build pipeline verified
-- **Feb 2026 (iter47)**: LandingChatbot global mount, LandingPage `/landing` route, age-verify dual-mode, POS RetailTab 4-button bar, LiveKit GET /rooms list endpoint, lucide-react icon fix
-- **Feb 2026 (iter46)**: Backend Phases A-E complete (43 endpoints, 16/16 tests)
-- **Feb 2026**: Bundle ID `com.bidblitz.app`, mobile build scripts, 18 POS Enterprise features
+- **Feb 2026 (iter50)**: P2-Batch — CSV-Export für Leads, LiveKit Recording mit MongoDB-GridFS (upload+stream-download), Sales-Call Invite mit Resend-Email + Custom-Message, Extended Chatbot-Analytics (14-Tage-Chart, Top-Themen aus User-Messages, unique_lead_emails), AdminLandingLeadsPage erweitert mit Charts/Topics/Demo-Buttons. 15/15 neue Backend-Tests + 100% Frontend Flow PASS.
+- **Feb 2026 (iter49)**: Fix LiveKit env empty-string fallback (`os.getenv(k) or default`), fix LiveKitStreamPage response-body-double-read with safeJson helper.
+- **Feb 2026 (iter48)**: P2 cleanup: wallet GET read-only, POS hardware JSON-body normalization (cash-drawer/scanner), age-verify birth_year range validation, AdminLandingLeadsPage `/admin/landing-leads`, livekit-client v2.5 web SDK + useLiveKitRoom hook + ParticipantTile, /live-shopping → LiveKitStreamPage.
+- **Feb 2026 (iter48 P0 cont.)**: Landing-Chatbot LIVE LLM (gpt-4.1-mini multi-turn), Android keystore generated, LIVEKIT .env scaffolded, mobile build pipeline verified.
+- **Feb 2026 (iter47)**: LandingChatbot global mount, LandingPage `/landing` route, age-verify dual-mode, POS RetailTab 4-button bar, LiveKit GET /rooms list endpoint.
+- **Feb 2026 (iter46)**: Backend Phases A-E complete (43 endpoints, 16/16 tests).
+- **Feb 2026**: Bundle ID `com.bidblitz.app`, mobile build scripts, 18 POS Enterprise features.

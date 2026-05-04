@@ -96,9 +96,9 @@ class TestPOSHardware:
         assert "barcode" in data
 
     def test_cash_drawer_open(self, admin_session):
-        # Uses query param register_id
+        # JSON body since iter48 (was query param)
         r = admin_session.post(f"{BASE_URL}/api/pos/hardware/cash-drawer/open",
-                               params={"register_id": "TEST-REG-1"}, timeout=20)
+                               json={"register_id": "TEST-REG-1", "reason": "test"}, timeout=20)
         assert r.status_code == 200, f"{r.status_code}: {r.text[:300]}"
         data = r.json()
         assert data.get("ok") is True
