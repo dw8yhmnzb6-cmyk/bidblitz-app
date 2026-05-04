@@ -212,13 +212,170 @@ async def chatbot_analytics(request: Request):
     total_sessions = await db.landing_chatbot_messages.distinct("session_id")
     total_messages = await db.landing_chatbot_messages.count_documents({})
     total_leads = await db.landing_leads.count_documents({})
-    
+
+    # Time-series: messages per day (last 14 days)
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+    recent = await db.landing_chatbot_messages.find(
+        {"timestamp": {"$gte": cutoff}, "role": "user"},
+        {"_id": 0, "timestamp": 1, "content": 1}
+    ).to_list(5000)
+
+    daily = {}
+    word_freq = {}
+    stop_words = {"ich", "der", "die", "das", "und", "ist", "ein", "eine", "wie", "was", "von", "zu", "ihr", "wir", "mit", "auf", "für", "es", "im", "den", "dem", "kann", "bei", "an", "aus", "so", "auch", "wenn", "nicht", "or", "in"}
+
+    for m in recent:
+        try:
+            day = m["timestamp"][:10]
+            daily[day] = daily.get(day, 0) + 1
+            content = (m.get("content") or "").lower()
+            for w in content.split():
+                w = "".join(c for c in w if c.isalpha())
+                if len(w) >= 4 and w not in stop_words:
+                    word_freq[w] = word_freq.get(w, 0) + 1
+        except Exception:
+            continue
+
+    series = sorted([{"date": d, "count": c} for d, c in daily.items()], key=lambda x: x["date"])
+    top_topics = sorted(word_freq.items(), key=lambda x: -x[1])[:10]
+    top_topics = [{"word": w, "count": c} for w, c in top_topics]
+
+    # Lead funnel: sessions → had_email_request → captured_lead
+    lead_emails = set([
+        l.get("email")
+        for l in await db.landing_leads.find({}, {"_id": 0, "email": 1}).to_list(5000)
+        if l.get("email")
+    ])
+
     return {
         "total_sessions": len(total_sessions),
         "total_messages": total_messages,
         "total_leads": total_leads,
         "conversion_rate": round(total_leads / max(len(total_sessions), 1) * 100, 2),
+        "messages_per_day": series,
+        "top_topics": top_topics,
+        "unique_lead_emails": len(lead_emails),
     }
+
+
+@router.get("/leads/export")
+async def export_leads_csv(request: Request):
+    """Export all leads as CSV (admin only)."""
+    from core.security import get_current_user
+    from fastapi.responses import Response
+    user = await get_current_user(request)
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    leads = await db.landing_leads.find({}, {"_id": 0}).sort("captured_at", -1).to_list(10000)
+
+    import io
+    import csv
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["email", "name", "interest", "source", "session_id", "captured_at", "created_at"])
+    for l in leads:
+        writer.writerow([
+            l.get("email", ""),
+            l.get("name", ""),
+            l.get("interest", ""),
+            l.get("source", ""),
+            l.get("session_id", ""),
+            l.get("captured_at", ""),
+            l.get("created_at", ""),
+        ])
+
+    csv_content = buf.getvalue()
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="bidblitz-leads-{datetime.now(timezone.utc).strftime("%Y%m%d")}.csv"',
+        },
+    )
+
+
+class SalesInviteRequest(BaseModel):
+    email: str
+    lead_name: Optional[str] = None
+    custom_message: Optional[str] = None
+
+@router.post("/leads/sales-invite")
+async def create_sales_invite(req: SalesInviteRequest, request: Request):
+    """Generate 1:1 LiveKit room + send invite email to lead (admin only)."""
+    from core.security import get_current_user
+    from core.email import send_email, get_base_template
+    user = await get_current_user(request)
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    # Generate unique room name
+    import secrets as _secrets
+    room_name = f"sales-{_secrets.token_urlsafe(8)}"
+
+    # Insert into livekit_rooms collection
+    await db.livekit_rooms.insert_one({
+        "room_id": "SAL" + _secrets.token_urlsafe(7),
+        "room_name": room_name,
+        "creator_id": str(user["_id"]),
+        "max_participants": 2,
+        "status": "active",
+        "is_live_shopping": False,
+        "is_sales_call": True,
+        "lead_email": req.email,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    # Build join URL (lead lands on /livekit-stream and sees the room)
+    frontend_url = os.environ.get("FRONTEND_URL") or "https://bidblitz.com"
+    join_url = f"{frontend_url}/livekit-stream"
+
+    # Mark lead as contacted
+    await db.landing_leads.update_one(
+        {"email": req.email},
+        {"$set": {
+            "last_sales_call_at": datetime.now(timezone.utc).isoformat(),
+            "last_sales_call_room": room_name,
+        }},
+        upsert=False,
+    )
+
+    # Send invite email
+    greeting = f"Hallo {req.lead_name}," if req.lead_name else "Hallo,"
+    custom_block = (
+        f'<p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 20px;font-style:italic;">"{req.custom_message}"</p>'
+        if req.custom_message else ''
+    )
+    content = f"""
+        <h2 style="color:#fff;font-size:20px;margin:0 0 15px;">📹 Persönliche Demo bei BidBlitz</h2>
+        <p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 15px;">{greeting}</p>
+        <p style="color:#AAA;font-size:14px;line-height:1.6;margin:0 0 20px;">
+            Wir haben deine Anfrage erhalten und möchten dir BidBlitz live zeigen — kein Aufnahmegespräch, einfach 1:1 Video-Demo.
+        </p>
+        {custom_block}
+        <div style="background:#111;border-radius:12px;padding:20px;margin:0 0 25px;">
+            <p style="color:#fff;font-size:14px;margin:0 0 8px;font-weight:600;">Dein persönlicher Raum:</p>
+            <p style="color:#00C2FF;font-size:13px;font-family:monospace;margin:0;">{room_name}</p>
+        </div>
+        <a href="{join_url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#00C2FF,#0090FF);color:#000;text-decoration:none;border-radius:12px;font-weight:600;font-size:14px;">
+            Demo-Call starten
+        </a>
+        <p style="color:#666;font-size:12px;margin:25px 0 0;">
+            Klicke einfach den Button — du brauchst keinen Account, nur Kamera & Mikrofon.
+        </p>
+    """
+    html = get_base_template(content, "Persönliche Demo - BidBlitz")
+    sent = send_email(req.email, "📹 Persönliche BidBlitz Demo", html)
+
+    return {
+        "ok": True,
+        "room_name": room_name,
+        "join_url": join_url,
+        "email_sent": sent,
+        "lead_email": req.email,
+    }
+
 
 @router.get("/health")
 async def chatbot_health():

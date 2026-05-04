@@ -242,6 +242,103 @@ async def stop_stream_recording(room_name: str, recording_id: str, request: Requ
     return {"ok": True, "recording_id": recording_id}
 
 
+@router.get("/recordings")
+async def list_recordings(request: Request, room_name: Optional[str] = None):
+    """List all recordings, optional filter by room_name."""
+    user = await get_current_user(request)
+
+    query = {}
+    if room_name:
+        query["room_name"] = room_name
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        # Non-admins only see their own recordings
+        query["started_by"] = str(user["_id"])
+
+    recordings = await db.livekit_recordings.find(
+        query, {"_id": 0}
+    ).sort("started_at", -1).to_list(200)
+
+    return {"recordings": recordings, "total": len(recordings)}
+
+
+@router.post("/rooms/{room_name}/recording/upload")
+async def upload_recording_blob(room_name: str, recording_id: str, request: Request):
+    """Client-side MediaRecorder uploads recorded blob.
+    Stores raw bytes in MongoDB GridFS for later download.
+    """
+    from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+    user = await get_current_user(request)
+
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty body")
+
+    fs = AsyncIOMotorGridFSBucket(db)
+    file_id = await fs.upload_from_stream(
+        f"{recording_id}.webm",
+        body,
+        metadata={
+            "recording_id": recording_id,
+            "room_name": room_name,
+            "uploaded_by": str(user["_id"]),
+            "uploaded_at": now_iso(),
+            "size_bytes": len(body),
+        },
+    )
+
+    await db.livekit_recordings.update_one(
+        {"recording_id": recording_id, "room_name": room_name},
+        {"$set": {
+            "gridfs_file_id": str(file_id),
+            "size_bytes": len(body),
+            "uploaded_at": now_iso(),
+            "status": "uploaded",
+        }},
+        upsert=True,
+    )
+
+    return {"ok": True, "recording_id": recording_id, "size_bytes": len(body), "file_id": str(file_id)}
+
+
+@router.get("/recordings/{recording_id}/download")
+async def download_recording(recording_id: str, request: Request):
+    """Stream recording blob from GridFS."""
+    from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+    from fastapi.responses import StreamingResponse
+    user = await get_current_user(request)
+
+    rec = await db.livekit_recordings.find_one({"recording_id": recording_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    is_admin = user.get("role") == "admin" or user.get("is_admin")
+    if rec.get("started_by") != str(user["_id"]) and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    file_id = rec.get("gridfs_file_id")
+    if not file_id:
+        raise HTTPException(status_code=404, detail="Blob not uploaded yet")
+
+    from bson import ObjectId
+    fs = AsyncIOMotorGridFSBucket(db)
+
+    async def iter_blob():
+        stream = await fs.open_download_stream(ObjectId(file_id))
+        while True:
+            chunk = await stream.readchunk()
+            if not chunk:
+                break
+            yield chunk
+
+    return StreamingResponse(
+        iter_blob(),
+        media_type="video/webm",
+        headers={
+            "Content-Disposition": f'attachment; filename="{recording_id}.webm"',
+        },
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # STREAM ANALYTICS
 # ═══════════════════════════════════════════════════════════════════════

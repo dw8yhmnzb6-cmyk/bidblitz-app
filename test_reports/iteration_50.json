@@ -1,0 +1,34 @@
+{
+  "summary": "Iter50 P2 batch — full backend + frontend verification PASSED. New /app/backend/tests/test_iter50_features.py (15 tests) covers: extended chatbot analytics (admin/non-admin/unauth), CSV leads export (admin returns text/csv with bidblitz-leads-YYYYMMDD.csv filename + content includes seeded TEST_iter50_* lead, non-admin → 403), POST /leads/sales-invite (creates sales-* room, returns ok+room_name+join_url+email_sent+lead_email, room appears in livekit_rooms list, non-admin → 403), GET /livekit/recordings (admin/user filter), POST /rooms/{name}/recording/upload (raw bytes → GridFS with file_id+size_bytes+status='uploaded' verified via list), GET /recordings/{id}/download (200 + video/webm + content matches), 404 for missing recording, 400 for empty body. All 15/15 PASS in 2.75s. Iter46/48 regression: 34/35 PASS (only failure is pre-existing unrelated TestPOSHardware.test_cash_drawer_open from iter46). Frontend /admin/landing-leads: admin-landing-leads-page renders → 4 stat cards (sessions/nachrichten/leads/conversion — backward compatible IDs preserved) → admin-leads-chart + admin-leads-topics visible → admin-leads-export-csv triggered real browser download (filename: bidblitz-leads-2026-05-04.csv) → 4 lead rows with admin-lead-sales-btn-N → clicking btn-0 opened modal → filled admin-sales-message → admin-sales-send → admin-sales-result rendered 'Einladung versendet' with Lead email, Raum (sales-2w4R3bQMqDU) and Email status (⚠ nur geloggt — Resend not configured for test addresses, expected per context note) plus 'Zum LiveKit-Raum wechseln' deep-link button.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/landing-leads sales modal", "issues": ["When email_sent=false, UI text says 'Resend nicht konfiguriert' — but RESEND_API_KEY is actually set in .env (the failure is just because Resend rejects fake @example.com addresses). Consider phrasing as 'Email konnte nicht zugestellt werden — Lead-Kontakt protokolliert' to avoid misleading admin into thinking the integration is broken."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter50_features.py",
+    "/app/test_reports/pytest/iter50_results.xml"
+  ],
+  "action_items": [
+    "(Polish, low priority) Sales modal admin-sales-result copy: distinguish 'Resend not configured' (no API key) vs 'Resend rejected this address' (e.g. fake @example.com). Currently both render the same '⚠ nur geloggt (Resend nicht konfiguriert)' text.",
+    "(Pre-existing, not iter50) test_iter46_livekit_hardware.py::test_cash_drawer_open returns 422 because hardware/cash-drawer/open expects a JSON body that the test isn't sending — unrelated to iter50 features but worth fixing in a future cleanup."
+  ],
+  "critical_code_review_comments": [
+    "landing_chatbot.py /analytics: word_freq tokenizer is German-aware but stop_words list is small (~30 words) — top_topics on real data will likely be dominated by 'bidblitz', 'demo', 'gibt', 'mehr' etc. Acceptable for MVP but consider expanding stop_words or using a real tokenizer (e.g. spacy de_core_news_sm) before showing this to non-technical users.",
+    "landing_chatbot.py /leads/sales-invite: writes last_sales_call_at to landing_leads with upsert=False — that's correct (we don't want to create a fake lead from the invite call), but if the email isn't already in landing_leads the update silently no-ops and there's no warning to the admin. Consider returning {lead_was_existing: bool} so the UI can warn 'Lead nicht gefunden'.",
+    "livekit_streaming.py /recording/upload: passes raw request.body() to GridFS — fine for the dev/test sizes here, but for real WebM blobs (10s of MB) this loads the entire body into memory before writing. Consider streaming via fs.open_upload_stream() + iter chunks from request.stream() before going to production.",
+    "livekit_streaming.py /recording/upload uses upsert=True on the recordings update — that's a footgun: if recording_id is bogus, an empty doc gets inserted with no started_by/started_at fields. Validate the recording exists first (find_one) and 404 if not.",
+    "AdminLandingLeadsPage.jsx — backward-compatible testids (admin-leads-stat-sessions/nachrichten/leads/conversion) preserved as required. Chart appears to be a simple SVG (not Recharts) which keeps bundle size small — good choice."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter50_features.py"],
+  "success_rate": {"backend": "100% (15/15 iter50 + 34/35 regression — sole failure is pre-existing iter46 cash-drawer)", "frontend": "100% on /admin/landing-leads (page load, stat cards, chart, topics, CSV download, sales modal flow with result)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (cookie auth, no token field) ; kunde@bidblitz.com / Kunde2026! used to verify 403 on admin endpoints",
+  "seed_data_creation": "Each pytest run creates: TEST_iter50_<hex>@example.com (lead), TEST_iter50_sales_<hex>@example.com (lead w/ sales call), 2 livekit_rooms (rec-test-<hex>, rec-empty-<hex>), 2 livekit_recordings (one uploaded to GridFS as <recording_id>.webm, one stub) plus 1 sales-* room per sales-invite test. All prefixed for easy cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter50 P2 batch fully verified — both backend and frontend green. /app/backend/tests/test_iter50_features.py is the new regression harness (15 tests, ~3s). Run with REACT_APP_BACKEND_URL env var. The pre-existing test_iter46_livekit_hardware.py::test_cash_drawer_open 422 failure is unrelated to iter50 and existed before this iteration. Admin /admin/landing-leads route flow is rock-solid — login via fetch + cookie set, then navigate works reliably. Note: sales-invite email_sent will always be False for test/example.com addresses (Resend rejects them), the room+lead-update still happens — verified.",
+  "rca_of_the_issue": "N/A — no bugs found. All iter50 P2 features (extended analytics, CSV export, sales-invite, LiveKit GridFS recordings list/upload/download, frontend admin charts/topics/CSV/sales-modal) work as specified."
+}
