@@ -142,7 +142,7 @@ async def create_checkout(req: CheckoutRequest, request: Request):
     # Supports Card + Apple Pay + Google Pay + Crypto (USDC Stablecoins)
     session_params = {
         "mode": "payment",
-        "payment_method_types": ["card", "apple_pay", "google_pay", "link"],
+        "payment_method_types": ["card", "link"],
         "line_items": [{
             "price_data": {
                 "currency": "eur",
