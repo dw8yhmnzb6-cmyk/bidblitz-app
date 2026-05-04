@@ -173,9 +173,13 @@ import TradingBotPage from "./pages/TradingBotPage";
 import LiveShoppingPage from "./pages/LiveShoppingPage";
 const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
 const AdminLandingLeadsPage = lazy(() => import("./pages/AdminLandingLeadsPage"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
 const WalletDashboard = lazy(() => import("./components/WalletDashboard").then(m => ({ default: m.WalletDashboard })));
 const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
 import { LandingChatbot } from "./components/LandingChatbot";
+import CookieBanner from "./components/CookieBanner";
+import { initSentryIfConsented } from "./utils/sentry";
 import CreatorsPage from "./pages/CreatorsPage";
 import P2PPage from "./pages/P2PPage";
 import CardPage from "./pages/CardPage";
@@ -234,6 +238,11 @@ function AppContent() {
         }).catch(() => {});
       }
     } catch {}
+  }, []);
+
+  // Initialize Sentry once (only fires if user opted in via CookieBanner)
+  useEffect(() => {
+    initSentryIfConsented();
   }, []);
   
   // Get initial path from URL
@@ -787,6 +796,12 @@ function AppContent() {
         return user.role === "admin"
           ? <AdminLandingLeadsPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
+      case "/datenschutz":
+      case "/privacy":
+        return <PrivacyPolicyPage onBack={() => handleNavigate("/")} />;
+      case "/agb":
+      case "/terms":
+        return <TermsPage onBack={() => handleNavigate("/")} />;
       case "/wallet-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletDashboard />;
       case "/super-marketplace":
@@ -995,6 +1010,9 @@ function AppContent() {
 
       {/* Landing Chatbot — Floating widget for guest visitors (always available) */}
       {!user.isAuthenticated && !isCheckout && <LandingChatbot />}
+
+      {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
+      <CookieBanner onNavigate={handleNavigate} />
 
       {/* Push Notification Prompt */}
       {/* PushNotificationPrompt (FCM) removed — use PushPermissionPrompt above */}

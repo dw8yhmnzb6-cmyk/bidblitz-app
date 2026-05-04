@@ -233,8 +233,8 @@ export default function LandingPage({ onGetStarted }) {
         <div className="max-w-6xl mx-auto text-center text-white/40 text-sm">
           <p>© 2026 BidBlitz. Alle Rechte vorbehalten.</p>
           <div className="flex items-center justify-center gap-6 mt-4">
-            <a href="#" className="hover:text-white/80 transition-colors">Datenschutz</a>
-            <a href="#" className="hover:text-white/80 transition-colors">AGB</a>
+            <a href="/datenschutz" className="hover:text-white/80 transition-colors" data-testid="footer-privacy-link">Datenschutz</a>
+            <a href="/agb" className="hover:text-white/80 transition-colors" data-testid="footer-terms-link">AGB</a>
             <a href="#" className="hover:text-white/80 transition-colors">Impressum</a>
           </div>
         </div>
