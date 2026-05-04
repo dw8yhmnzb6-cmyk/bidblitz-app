@@ -460,7 +460,7 @@ async def create_sales_invite(req: SalesInviteRequest, request: Request):
     })
 
     # Build join URL (lead lands on /livekit-stream and sees the room)
-    frontend_url = os.environ.get("FRONTEND_URL") or "https://bidblitz.com"
+    frontend_url = os.environ.get("FRONTEND_URL") or "https://bidblitz.ae"
     join_url = f"{frontend_url}/livekit-stream"
 
     # Mark lead as contacted

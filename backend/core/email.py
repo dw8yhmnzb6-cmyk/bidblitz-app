@@ -24,8 +24,8 @@ except ImportError:
     EMAIL_ENABLED = False
     logger.warning("Resend not installed - emails will be logged only")
 
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "BidBlitz <noreply@bidblitz.com>")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://bidblitz.com")
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "BidBlitz <noreply@bidblitz.ae>")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://bidblitz.ae")
 
 
 def send_email(to: str, subject: str, html: str) -> bool:

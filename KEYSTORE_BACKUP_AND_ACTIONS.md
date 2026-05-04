@@ -74,24 +74,22 @@ cat /app/keystore_backup/bidblitz-upload.jks.base64
 ## ✅ Resend-Domain Verifizieren
 
 **Status:** RESEND_API_KEY ist gesetzt: `re_GfVbS3eF_MWWk7iq37YTMFVBiDYCCpsS7`
-**Problem:** `bidblitz.com` Domain ist NICHT verifiziert → Resend lehnt alle Mails ab.
+**Aktive FROM_EMAIL**: `BidBlitz <noreply@bidblitz.ae>`
+**Problem:** `bidblitz.ae` Domain ist NICHT auf Resend verifiziert → Resend lehnt alle Mails ab.
 
 ### Steps
 
 1. Login: https://resend.com → Dashboard
 2. Sidebar → **Domains** → **Add Domain**
-3. Domain eingeben: `bidblitz.com` (oder deine echte Domain)
+3. Domain eingeben: `bidblitz.ae`
 4. Resend zeigt dir **3 DNS-Records** (TXT + CNAME):
-   - `MX` Record für `send.bidblitz.com`
+   - `MX` Record für `send.bidblitz.ae`
    - `TXT` Record für SPF (`v=spf1 include:amazonses.com ~all`)
    - `CNAME` Records für DKIM (3 Stück)
-5. Trage diese Records bei deinem **Domain-Registrar** ein (z.B. Cloudflare, GoDaddy, Strato, IONOS)
+5. Trage diese Records bei deinem **Domain-Registrar** ein (z.B. Cloudflare, GoDaddy, Strato, IONOS, Etisalat, du)
 6. Zurück zu Resend → "Verify DNS Records" Button
 7. Status muss auf **"Verified"** (grün) wechseln (kann 5-60 Min dauern)
-8. **Wichtig:** Stelle sicher, dass `FROM_EMAIL` in `/app/backend/.env` deine verifizierte Domain nutzt:
-   ```
-   FROM_EMAIL=BidBlitz <noreply@DEINE-VERIFIZIERTE-DOMAIN.com>
-   ```
+8. **Wichtig:** `FROM_EMAIL` in `/app/backend/.env` ist bereits auf `noreply@bidblitz.ae` gesetzt — keine weitere Anpassung nötig nach Verifizierung.
 
 ### Test
 ```bash
@@ -99,7 +97,7 @@ curl -X POST https://api.resend.com/emails \
   -H "Authorization: Bearer re_GfVbS3eF_MWWk7iq37YTMFVBiDYCCpsS7" \
   -H "Content-Type: application/json" \
   -d '{
-    "from": "BidBlitz <noreply@bidblitz.com>",
+    "from": "BidBlitz <noreply@bidblitz.ae>",
     "to": ["DEINE-EMAIL@example.com"],
     "subject": "Test",
     "html": "<p>Domain verified ✓</p>"
