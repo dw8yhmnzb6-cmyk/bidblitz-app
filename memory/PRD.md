@@ -84,6 +84,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **04.05.2026 (iter56 — Legal/Compliance Smoke-Test)**:
+  - ✅ Smoke-Test verifiziert: `/privacy`, `/terms`, `CookieBanner` rendern korrekt ohne JS-Errors. Layout intakt, Bottom-Nav unverdeckt.
+  - ✅ JSX-Syntax-Fix `<10%` → `&lt;10%` in `TermsPage.jsx` Zeile 32 (verifiziert via Lint + Render).
+  - ✅ `STORE_SUBMISSION_CHECKLIST.md` erstellt — komplette App Store + Play Store Submission-Checklist (DSGVO/UAE-konform, KYC-Banner, Legal-URLs).
+  - User-Aktion offen: Resend DNS, Stripe Live-Keys, AAB-Build extern, Apple+Google Account.
 - **Feb 2026 (iter53 — Bug Hotfix)**: 
   - 🔴 **Stripe Checkout BROKEN**: `/api/auctions/buy-credits-stripe` nutzte direktes `stripe_mod` mit ungültigem `sk_live_...` Key → "Invalid API Key" 500-Error im Frontend als "Server error". Fix: Refactored auf `emergentintegrations.payments.stripe.checkout.StripeCheckout` (Emergent-Proxy) + `STRIPE_API_KEY=sk_test_emergent` in `/app/backend/.env`. Test-Checkout-Session erfolgreich erstellt (`cs_test_...`).
   - 🔴 **"Access denied" / "Server error" englisch**: `services/api.js` formatApiError ignorierte dict-details mit `.message` → fiel zurück auf String(detail) = `[object Object]`, dann generische englische Fallbacks. Fix: formatApiError parst jetzt `.message`, `.msg`, `.detail`, `.error` Felder. Alle Fallback-Strings ins Deutsche übersetzt (timeout, offline, network, 401-500). KYC-Block-Error zeigt nun "Bitte verifiziere zuerst deinen Ausweis…" statt "Access denied".
