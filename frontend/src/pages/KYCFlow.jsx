@@ -114,7 +114,11 @@ export default function KYCFlow({ onBack, onComplete }) {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setError(typeof d.detail === "string" ? d.detail : "Übermittlung fehlgeschlagen");
+        let errMsg = "Übermittlung fehlgeschlagen";
+        if (typeof d.detail === "string") errMsg = d.detail;
+        else if (d.detail && typeof d.detail.message === "string") errMsg = d.detail.message;
+        else if (d.detail && typeof d.detail.msg === "string") errMsg = d.detail.msg;
+        setError(errMsg);
         setSubmitting(false);
         return;
       }

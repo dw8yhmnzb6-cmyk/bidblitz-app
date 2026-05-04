@@ -416,6 +416,63 @@ async def stripe_webhook(request: Request):
             except Exception:
                 pass
 
+            # 3. Auction Bid-Credits Purchase
+            try:
+                meta = (event.metadata or {}) if hasattr(event, "metadata") else {}
+                # Some emergentintegrations versions return metadata under .metadata, else fetch transaction row
+                txn_doc = await db.payment_transactions.find_one({"session_id": event.session_id})
+                if txn_doc and (txn_doc.get("metadata", {}).get("type") == "bid_credits" or meta.get("type") == "bid_credits"):
+                    if txn_doc.get("payment_status") != "credited":
+                        m = txn_doc.get("metadata", {}) or meta
+                        credits_to_add = int(m.get("credits", 0))
+                        pending_id = m.get("pending_id")
+                        user_id = txn_doc.get("user_id")
+                        if credits_to_add and user_id:
+                            # Idempotent: only credit if not already done
+                            updated = await db.payment_transactions.find_one_and_update(
+                                {"session_id": event.session_id, "payment_status": {"$ne": "credited"}},
+                                {"$set": {
+                                    "payment_status": "credited",
+                                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                                }},
+                            )
+                            if updated:
+                                from bson import ObjectId
+                                user_query = {"$or": [{"_id": user_id}]}
+                                try:
+                                    user_query["$or"].append({"_id": ObjectId(user_id)})
+                                except Exception:
+                                    pass
+                                await db.users.update_one(user_query, {"$inc": {"bid_credits": credits_to_add}})
+                                if pending_id:
+                                    await db.pending_credit_purchases.update_one(
+                                        {"pending_id": pending_id},
+                                        {"$set": {
+                                            "status": "completed",
+                                            "completed_at": datetime.now(timezone.utc).isoformat(),
+                                            "session_id": event.session_id,
+                                        }},
+                                    )
+                                # Audit
+                                await db.transactions.insert_one({
+                                    "id": secrets.token_hex(8),
+                                    "user_id": user_id,
+                                    "type": "bid_credits_purchase",
+                                    "amount": txn_doc.get("amount", 0),
+                                    "credits": credits_to_add,
+                                    "description": f"{credits_to_add}x Gebot-Credits",
+                                    "merchant_name": "BidBlitz",
+                                    "status": "completed",
+                                    "reference": f"BIDS-{event.session_id[:12].upper()}",
+                                    "payment_method": "stripe",
+                                    "category": "auction_credits",
+                                    "stripe_session_id": event.session_id,
+                                    "created_at": datetime.now(timezone.utc).isoformat(),
+                                })
+            except Exception as e:
+                import logging as _logging
+                _logging.getLogger("bidblitz.stripe").error(f"bid_credits webhook handling failed: {e}", exc_info=True)
+
         return {"received": True}
     except Exception:
         return {"received": True}

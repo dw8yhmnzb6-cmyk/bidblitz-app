@@ -497,6 +497,8 @@ function AppContent() {
         return <KYCTestPage />;
       case "/kyc":
       case "/kyc/start":
+      case "/kyc":
+      case "/profile/kyc":
       case "/kyc/upload":
       case "/kyc/review":
       case "/kyc/status":

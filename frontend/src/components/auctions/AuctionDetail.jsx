@@ -68,7 +68,7 @@ const AutoBidModal = ({ open, onClose, auctionId, onSet }) => {
   );
 };
 
-export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequired, userCredits, onCreditsChanged, onBuyCredits }) {
+export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequired, userCredits, onCreditsChanged, onBuyCredits, onNavigate }) {
   const { t } = useI18n();
   const user = useUser();
   const [auction, setAuction] = useState(null);
@@ -217,6 +217,32 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
             <p className="text-[10px] text-white/50">
               Nur Bots dürfen hier bieten. Schau zu, wie der Preis sich entwickelt!
             </p>
+          </motion.div>
+        )}
+
+        {/* KYC Banner — show BEFORE bid attempt if KYC not approved */}
+        {isActive && !auction.bot_only && !isGuest && user.kyc_status !== "approved" && user.role !== "admin" && (
+          <motion.div
+            data-testid="kyc-required-banner"
+            className="px-4 py-3 rounded-2xl text-center mb-2"
+            style={{
+              background: "linear-gradient(135deg, rgba(245,158,11,0.10) 0%, rgba(217,119,6,0.05) 100%)",
+              border: "1px solid rgba(245,158,11,0.30)",
+            }}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          >
+            <ShieldCheck size={18} className="text-[#F59E0B] mx-auto mb-1.5" />
+            <p className="text-[12px] font-bold text-[#F59E0B] mb-0.5">Identität verifizieren</p>
+            <p className="text-[10px] text-white/60 mb-2">
+              Um an Auktionen teilzunehmen, musst du dich einmalig verifizieren (~2 Min).
+            </p>
+            <button
+              data-testid="kyc-verify-btn"
+              onClick={() => onNavigate?.("/profile/kyc") || (window.location.href = "/profile/kyc")}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-[#F59E0B] text-black hover:bg-[#FBBF24] transition-colors"
+            >
+              Jetzt verifizieren →
+            </button>
           </motion.div>
         )}
 

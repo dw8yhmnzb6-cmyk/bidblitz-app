@@ -1075,6 +1075,69 @@ async def confirm_credit_purchase(pending_id: str, request: Request):
     }
 
 
+@router.get("/credits-purchase-status/{session_id}")
+async def get_credits_purchase_status(session_id: str, request: Request):
+    """Poll endpoint for frontend to check if a Stripe Checkout completed.
+    Verifies payment status via Stripe + falls back to local DB state.
+    """
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    from core.config import STRIPE_API_KEY
+
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    txn = await db.payment_transactions.find_one({"session_id": session_id, "user_id": user_id})
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaktion nicht gefunden")
+
+    # Already credited locally → return success without hitting Stripe
+    if txn.get("payment_status") == "credited":
+        return {
+            "status": "completed",
+            "payment_status": "paid",
+            "credits_added": int(txn.get("metadata", {}).get("credits", 0)),
+            "amount": txn.get("amount", 0),
+        }
+
+    # Otherwise check Stripe live to avoid waiting for webhook
+    try:
+        host_url = str(request.base_url).rstrip("/")
+        webhook_url = f"{host_url}/api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+        status = await stripe_checkout.get_checkout_status(session_id)
+
+        # Manually credit if Stripe confirms paid + not yet credited (idempotent)
+        if status.payment_status == "paid":
+            updated = await db.payment_transactions.find_one_and_update(
+                {"session_id": session_id, "payment_status": {"$ne": "credited"}},
+                {"$set": {
+                    "payment_status": "credited",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            if updated:
+                m = updated.get("metadata", {}) or {}
+                credits_to_add = int(m.get("credits", 0))
+                if credits_to_add:
+                    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": credits_to_add}})
+                    if m.get("pending_id"):
+                        await db.pending_credit_purchases.update_one(
+                            {"pending_id": m["pending_id"]},
+                            {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
+                        )
+
+        return {
+            "status": "completed" if status.payment_status == "paid" else "pending",
+            "payment_status": status.payment_status,
+            "credits_added": int(txn.get("metadata", {}).get("credits", 0)) if status.payment_status == "paid" else 0,
+            "amount": txn.get("amount", 0),
+        }
+    except Exception as e:
+        import logging as _logging
+        _logging.getLogger("bidblitz.auctions").error(f"Status check failed: {e}")
+        return {"status": "pending", "payment_status": "unknown", "error": str(e)[:200]}
+
+
 # ── Admin: Create auction ──
 class CreateAuctionRequest(BaseModel):
     title: str = Field(..., min_length=2, max_length=200)
