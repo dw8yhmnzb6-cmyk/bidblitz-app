@@ -13,18 +13,21 @@ class ApiError extends Error {
 }
 
 function formatApiError(detail) {
-  if (detail == null) return "Something went wrong. Please try again.";
+  if (detail == null) return "Etwas ist schiefgelaufen. Bitte erneut versuchen.";
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail))
-    return detail.map((e) => (e && typeof e.msg === "string" ? e.msg : JSON.stringify(e))).filter(Boolean).join(" ");
+    return detail.map((e) => (e && typeof e.msg === "string" ? e.msg : (e && typeof e.message === "string" ? e.message : JSON.stringify(e)))).filter(Boolean).join(" ");
+  if (detail && typeof detail.message === "string") return detail.message;
   if (detail && typeof detail.msg === "string") return detail.msg;
+  if (detail && typeof detail.detail === "string") return detail.detail;
+  if (detail && typeof detail.error === "string") return detail.error;
   return String(detail);
 }
 
 async function request(path, options = {}) {
   // Block if offline
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    throw new ApiError("You are offline. Please check your connection.", { code: "offline", retryable: true });
+    throw new ApiError("Du bist offline. Bitte Verbindung prüfen.", { code: "offline", retryable: true });
   }
 
   const url = `${API_URL}${path}`;
@@ -66,13 +69,13 @@ async function request(path, options = {}) {
       data = text ? JSON.parse(text) : {};
     } catch (parseError) {
       if (!res.ok) {
-        if (res.status === 401) throw new ApiError("Session abgelaufen", { status: 401, code: "auth" });
-        if (res.status === 400) throw new ApiError("Bad request. Please check your input.", { status: 400, code: "validation" });
-        if (res.status === 404) throw new ApiError("Resource not found", { status: 404, code: "not_found" });
-        if (res.status === 429) throw new ApiError("Too many requests. Please try again later.", { status: 429, code: "rate_limit", retryable: true });
-        if (res.status === 403) throw new ApiError("Access denied", { status: 403, code: "forbidden" });
-        if (res.status >= 500) throw new ApiError("Server error. Please try again later.", { status: res.status, code: "server", retryable: true });
-        throw new ApiError(`Request failed (${res.status})`, { status: res.status, code: "unknown", retryable: true });
+        if (res.status === 401) throw new ApiError("Session abgelaufen. Bitte erneut anmelden.", { status: 401, code: "auth" });
+        if (res.status === 400) throw new ApiError("Ungültige Anfrage. Bitte Eingaben prüfen.", { status: 400, code: "validation" });
+        if (res.status === 404) throw new ApiError("Nicht gefunden.", { status: 404, code: "not_found" });
+        if (res.status === 429) throw new ApiError("Zu viele Anfragen. Bitte später erneut versuchen.", { status: 429, code: "rate_limit", retryable: true });
+        if (res.status === 403) throw new ApiError("Zugriff verweigert. Bitte anmelden oder Berechtigung prüfen.", { status: 403, code: "forbidden" });
+        if (res.status >= 500) throw new ApiError("Serverfehler. Bitte später erneut versuchen.", { status: res.status, code: "server", retryable: true });
+        throw new ApiError(`Anfrage fehlgeschlagen (${res.status})`, { status: res.status, code: "unknown", retryable: true });
       }
       return {};
     }
@@ -88,12 +91,12 @@ async function request(path, options = {}) {
     clearTimeout(timeout);
     if (error instanceof ApiError) throw error;
     if (error.name === "AbortError") {
-      throw new ApiError("Request timed out. Please try again.", { code: "timeout", retryable: true });
+      throw new ApiError("Zeitüberschreitung. Bitte erneut versuchen.", { code: "timeout", retryable: true });
     }
     if (error.name === "TypeError" && error.message === "Failed to fetch") {
-      throw new ApiError("Cannot reach server. Please check your connection.", { code: "network", retryable: true });
+      throw new ApiError("Server nicht erreichbar. Bitte Verbindung prüfen.", { code: "network", retryable: true });
     }
-    throw new ApiError(error.message || "Request failed.", { code: "unknown", retryable: true });
+    throw new ApiError(error.message || "Anfrage fehlgeschlagen.", { code: "unknown", retryable: true });
   }
 }
 
@@ -102,9 +105,9 @@ async function downloadCSV(path, filename) {
   const url = `${API_URL}${path}`;
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) {
-    if (res.status === 401) throw new Error("Not authenticated");
-    if (res.status === 403) throw new Error("Access denied");
-    throw new Error("Export failed");
+    if (res.status === 401) throw new Error("Nicht angemeldet");
+    if (res.status === 403) throw new Error("Zugriff verweigert");
+    throw new Error("Export fehlgeschlagen");
   }
   const blob = await res.blob();
   const link = document.createElement("a");

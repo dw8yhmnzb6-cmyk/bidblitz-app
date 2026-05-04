@@ -951,9 +951,8 @@ class BuyCreditsStripeRequest(BaseModel):
 @router.post("/buy-credits-stripe")
 async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
     """Create Stripe Checkout Session for buying bid credits with a new card."""
-    import stripe as stripe_mod
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
     from core.config import STRIPE_API_KEY
-    stripe_mod.api_key = STRIPE_API_KEY
 
     user = await get_current_user(request)
     user_id = str(user["_id"])
@@ -962,19 +961,8 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
         raise HTTPException(status_code=400, detail="Invalid package")
 
     pkg = CREDIT_PACKAGES[req.package_id]
-    price = pkg["price"]
+    price = float(pkg["price"])
     credits_amount = pkg["credits"]
-
-    # Get or create Stripe customer
-    cust_id = user.get("stripe_customer_id")
-    if not cust_id:
-        customer = stripe_mod.Customer.create(
-            email=user.get("email", ""),
-            name=user.get("name", ""),
-            metadata={"user_id": user_id},
-        )
-        cust_id = customer.id
-        await db.users.update_one({"_id": user["_id"]}, {"$set": {"stripe_customer_id": cust_id}})
 
     # Store pending purchase info
     pending_id = secrets.token_hex(8)
@@ -988,28 +976,21 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
-    # Create Checkout Session
-    origin = str(request.base_url).rstrip("/")
-    # Use the frontend URL from referrer or a sensible default
-    frontend_url = request.headers.get("origin", origin)
+    # Build success/cancel URLs from frontend origin (security: never trust client amount)
+    origin = request.headers.get("origin") or request.headers.get("referer") or "https://bidblitz.ae"
+    origin = origin.rstrip("/")
+    success_url = f"{origin}/auctions?credit_purchase={pending_id}&status=success&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/auctions?credit_purchase={pending_id}&status=cancel"
 
-    session = stripe_mod.checkout.Session.create(
-        customer=cust_id,
-        payment_method_types=["card"],
-        line_items=[{
-            "price_data": {
-                "currency": "eur",
-                "product_data": {
-                    "name": f"{credits_amount}x Gebot-Credits",
-                    "description": "BidBlitz Auktions-Credits",
-                },
-                "unit_amount": int(price * 100),
-            },
-            "quantity": 1,
-        }],
-        mode="payment",
-        success_url=f"{frontend_url}?credit_purchase={pending_id}&status=success",
-        cancel_url=f"{frontend_url}?credit_purchase={pending_id}&status=cancel",
+    host_url = str(request.base_url).rstrip("/")
+    webhook_url = f"{host_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+
+    checkout_req = CheckoutSessionRequest(
+        amount=price,
+        currency="eur",
+        success_url=success_url,
+        cancel_url=cancel_url,
         metadata={
             "type": "bid_credits",
             "user_id": user_id,
@@ -1018,8 +999,30 @@ async def buy_credits_stripe(req: BuyCreditsStripeRequest, request: Request):
             "credits": str(credits_amount),
         },
     )
+    try:
+        session = await stripe_checkout.create_checkout_session(checkout_req)
+    except Exception as e:
+        import logging as _logging
+        _logging.getLogger("bidblitz.auctions").error(f"Stripe checkout creation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Stripe-Fehler: {str(e)[:200]}")
 
-    return {"checkout_url": session.url, "session_id": session.id, "pending_id": pending_id}
+    # Persist payment_transactions row (mandatory per playbook)
+    await db.payment_transactions.insert_one({
+        "session_id": session.session_id,
+        "pending_id": pending_id,
+        "user_id": user_id,
+        "amount": price,
+        "currency": "eur",
+        "metadata": {
+            "type": "bid_credits",
+            "package_id": req.package_id,
+            "credits": str(credits_amount),
+        },
+        "payment_status": "initiated",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"checkout_url": session.url, "session_id": session.session_id, "pending_id": pending_id}
 
 
 @router.post("/buy-credits-confirm/{pending_id}")

@@ -84,8 +84,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
-- **Feb 2026 (iter51)**: Differentiated Resend email status (sent/logged_only/rejected with error detail) + LLM-based automatic lead scoring (gpt-4.1-mini parses chat → score 0-100 + hot/warm/cold + reason + tags). AdminLandingLeadsPage shows 🔥 hot leads at top with red border, score badge, reason, tag chips. 10/10 new + 15/15 regression PASS.
-- **Feb 2026 (iter50)**: P2-Batch — CSV-Export für Leads, LiveKit Recording mit MongoDB-GridFS, Sales-Call Invite, Extended Chatbot-Analytics (14-Tage-Chart, Top-Themen).
+- **Feb 2026 (iter53 — Bug Hotfix)**: 
+  - 🔴 **Stripe Checkout BROKEN**: `/api/auctions/buy-credits-stripe` nutzte direktes `stripe_mod` mit ungültigem `sk_live_...` Key → "Invalid API Key" 500-Error im Frontend als "Server error". Fix: Refactored auf `emergentintegrations.payments.stripe.checkout.StripeCheckout` (Emergent-Proxy) + `STRIPE_API_KEY=sk_test_emergent` in `/app/backend/.env`. Test-Checkout-Session erfolgreich erstellt (`cs_test_...`).
+  - 🔴 **"Access denied" / "Server error" englisch**: `services/api.js` formatApiError ignorierte dict-details mit `.message` → fiel zurück auf String(detail) = `[object Object]`, dann generische englische Fallbacks. Fix: formatApiError parst jetzt `.message`, `.msg`, `.detail`, `.error` Felder. Alle Fallback-Strings ins Deutsche übersetzt (timeout, offline, network, 401-500). KYC-Block-Error zeigt nun "Bitte verifiziere zuerst deinen Ausweis…" statt "Access denied".
+- **Feb 2026 (iter52)**: Slack/Discord Webhooks für Hot-Leads (>80), Score-Refresh + Score-Historie (immutable timeline), Lead-Funnel-Tracking (5 Stages), LiveKit Egress server-side recording.
+- **Feb 2026 (iter51)**: Differentiated Resend status, automatic LLM lead scoring.
+- **Feb 2026 (iter50)**: P2-Batch CSV-Export, GridFS Recording, Sales-Call Invite, Extended Analytics.
 - **Feb 2026 (iter49)**: Fix LiveKit env empty-string fallback, fix LiveKitStreamPage response-body-double-read.
 - **Feb 2026 (iter48)**: P2 cleanup, livekit-client v2.5 web SDK, /live-shopping → LiveKitStreamPage.
 - **Feb 2026 (iter48 P0)**: Landing-Chatbot LIVE LLM (gpt-4.1-mini), Android keystore, LIVEKIT .env, build pipeline verified.
