@@ -134,6 +134,13 @@ async def landing_chatbot(req: ChatMessage, request: Request):
 
         log.info(f"Chatbot session {req.session_id}: {req.message[:50]}")
 
+        # Async lead-scoring: don't block response, but trigger if email known
+        try:
+            import asyncio
+            asyncio.create_task(_score_session_lead(req.session_id, api_key))
+        except Exception as score_err:
+            log.warning(f"Lead-scoring task failed: {score_err}")
+
         return ChatResponse(
             session_id=req.session_id,
             message=bot_message,
@@ -146,6 +153,125 @@ async def landing_chatbot(req: ChatMessage, request: Request):
     except Exception as e:
         log.error(f"Chatbot error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chatbot-Fehler: {str(e)[:200]}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# LEAD SCORING (LLM-based hot-lead detection)
+# ═══════════════════════════════════════════════════════════════════════
+
+LEAD_SCORING_SYSTEM_PROMPT = """Du bist ein Lead-Qualifikations-Experte für BidBlitz (B2C+B2B Super-App).
+Analysiere die Konversation und gib einen Score 0-100 basierend auf:
+- Buying-Intent (konkrete Demo/Preis-Fragen → hoch)
+- Use-Case Klarheit (Branche, Größe, konkretes Problem → hoch)
+- Engagement-Tiefe (mehrere Turns, spezifische Features → hoch)
+- Lead-Daten (Name, Firma, Email genannt → hoch)
+
+Antworte AUSSCHLIESSLICH im exakten Format:
+SCORE: <Zahl 0-100>
+CATEGORY: <hot|warm|cold>
+REASON: <max 80 Zeichen, deutsch>
+TAGS: <komma-getrennt, max 4 Tags wie 'restaurant', 'pos', 'enterprise', 'demo-anfrage'>"""
+
+
+async def _score_session_lead(session_id: str, api_key: str):
+    """Background task: score a chat session's lead using LLM."""
+    try:
+        history = await db.landing_chatbot_messages.find(
+            {"session_id": session_id}
+        ).sort("timestamp", 1).to_list(50)
+
+        if len(history) < 2:
+            return  # Not enough conversation yet
+
+        # Find associated lead (if email captured)
+        lead = await db.landing_leads.find_one({"session_id": session_id})
+
+        # Build conversation summary for scoring
+        convo_text = "\n".join([
+            f"{m['role'].upper()}: {m.get('content', '')[:300]}"
+            for m in history[-20:]  # last 20 turns
+        ])
+
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        scorer = LlmChat(
+            api_key=api_key,
+            session_id=f"score_{session_id}",
+            system_message=LEAD_SCORING_SYSTEM_PROMPT,
+        ).with_model("openai", "gpt-4.1-mini")
+
+        response = await scorer.send_message(UserMessage(text=convo_text))
+
+        # Parse response
+        score = 0
+        category = "cold"
+        reason = ""
+        tags = []
+        for line in response.split("\n"):
+            line = line.strip()
+            if line.startswith("SCORE:"):
+                try:
+                    score = int("".join(c for c in line[6:] if c.isdigit()) or "0")
+                    score = max(0, min(100, score))
+                except Exception:
+                    score = 0
+            elif line.startswith("CATEGORY:"):
+                category = line[9:].strip().lower() or "cold"
+            elif line.startswith("REASON:"):
+                reason = line[7:].strip()[:200]
+            elif line.startswith("TAGS:"):
+                tags = [t.strip().lower() for t in line[5:].split(",") if t.strip()][:4]
+
+        scored_at = datetime.now(timezone.utc).isoformat()
+        score_doc = {
+            "session_id": session_id,
+            "score": score,
+            "category": category,
+            "reason": reason,
+            "tags": tags,
+            "scored_at": scored_at,
+            "model": "gpt-4.1-mini",
+        }
+
+        # Upsert into lead_scores collection (one doc per session)
+        await db.landing_lead_scores.update_one(
+            {"session_id": session_id},
+            {"$set": score_doc},
+            upsert=True,
+        )
+
+        # If a lead exists for this session, also write directly on the lead doc
+        if lead:
+            await db.landing_leads.update_one(
+                {"_id": lead["_id"]},
+                {"$set": {
+                    "lead_score": score,
+                    "lead_category": category,
+                    "lead_score_reason": reason,
+                    "lead_tags": tags,
+                    "lead_scored_at": scored_at,
+                }},
+            )
+
+        log.info(f"Lead scored for session {session_id}: {score}/{category}")
+    except Exception as e:
+        log.warning(f"_score_session_lead failed for {session_id}: {e}")
+
+
+@router.post("/score-session")
+async def score_session_now(session_id: str, request: Request):
+    """Manually re-score a session (admin only)."""
+    from core.security import get_current_user
+    user = await get_current_user(request)
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    api_key = os.environ.get('EMERGENT_LLM_KEY')
+    if not api_key:
+        raise HTTPException(status_code=500, detail="LLM key not configured")
+
+    await _score_session_lead(session_id, api_key)
+    score = await db.landing_lead_scores.find_one({"session_id": session_id}, {"_id": 0})
+    return {"ok": True, "session_id": session_id, "score": score}
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -191,8 +317,14 @@ async def get_leads(request: Request):
     leads = await db.landing_leads.find(
         {},
         {"_id": 0}
-    ).sort("captured_at", -1).to_list(500)
-    
+    ).to_list(500)
+
+    # Sort: score desc first, then captured_at desc
+    leads.sort(key=lambda l: (
+        -(l.get("lead_score") or 0),
+        -(0 if not l.get("captured_at") else int(l.get("captured_at", "")[:10].replace("-", "") or 0)),
+    ))
+
     return {"leads": leads, "count": len(leads)}
 
 
@@ -305,7 +437,7 @@ class SalesInviteRequest(BaseModel):
 async def create_sales_invite(req: SalesInviteRequest, request: Request):
     """Generate 1:1 LiveKit room + send invite email to lead (admin only)."""
     from core.security import get_current_user
-    from core.email import send_email, get_base_template
+    from core.email import send_email, send_email_detailed, get_base_template
     user = await get_current_user(request)
     if user.get("role") != "admin" and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -366,13 +498,16 @@ async def create_sales_invite(req: SalesInviteRequest, request: Request):
         </p>
     """
     html = get_base_template(content, "Persönliche Demo - BidBlitz")
-    sent = send_email(req.email, "📹 Persönliche BidBlitz Demo", html)
+    email_result = send_email_detailed(req.email, "📹 Persönliche BidBlitz Demo", html)
 
     return {
         "ok": True,
         "room_name": room_name,
         "join_url": join_url,
-        "email_sent": sent,
+        "email_sent": email_result["sent"],
+        "email_reason": email_result["reason"],
+        "email_error": email_result.get("error"),
+        "resend_enabled": email_result["resend_enabled"],
         "lead_email": req.email,
     }
 

@@ -242,14 +242,33 @@ export default function AdminLandingLeadsPage({ onBack }) {
             </div>
           ) : (
             <div className="divide-y divide-white/5">
-              {filtered.map((lead, idx) => (
+              {filtered.map((lead, idx) => {
+                const score = lead.lead_score;
+                const cat = lead.lead_category;
+                const isHot = score >= 70;
+                const isWarm = score >= 40 && score < 70;
+                const scoreColor = isHot ? '#EF4444' : isWarm ? '#F59E0B' : '#6B7280';
+                const scoreEmoji = isHot ? '🔥' : isWarm ? '✨' : '❄️';
+                return (
                 <div
                   key={lead.email || idx}
                   data-testid={`admin-lead-row-${idx}`}
-                  className="px-4 py-3 hover:bg-white/[0.02] flex items-center justify-between gap-3"
+                  className={`px-4 py-3 hover:bg-white/[0.02] flex items-center justify-between gap-3 ${
+                    isHot ? 'border-l-2 border-red-500' : ''
+                  }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm truncate" data-testid={`admin-lead-email-${idx}`}>
+                    <div className="font-semibold text-sm truncate flex items-center gap-2" data-testid={`admin-lead-email-${idx}`}>
+                      {score !== undefined && score !== null && (
+                        <span
+                          data-testid={`admin-lead-score-${idx}`}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1"
+                          style={{ background: `${scoreColor}20`, color: scoreColor }}
+                          title={lead.lead_score_reason || ''}
+                        >
+                          {scoreEmoji} {score}
+                        </span>
+                      )}
                       {lead.email}
                     </div>
                     <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
@@ -257,12 +276,25 @@ export default function AdminLandingLeadsPage({ onBack }) {
                         {lead.interest || 'unknown'}
                       </span>
                       <span className="text-gray-500">{lead.source}</span>
+                      {cat && (
+                        <span className="px-2 py-0.5 rounded bg-white/5 text-gray-300 capitalize">{cat}</span>
+                      )}
+                      {(lead.lead_tags || []).slice(0, 3).map((t) => (
+                        <span key={t} className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300">
+                          {t}
+                        </span>
+                      ))}
                       {lead.last_sales_call_at && (
                         <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex items-center gap-1">
                           <Check size={10} /> kontaktiert
                         </span>
                       )}
                     </div>
+                    {lead.lead_score_reason && (
+                      <div className="text-[10px] text-gray-500 mt-1 italic truncate" data-testid={`admin-lead-reason-${idx}`}>
+                        {lead.lead_score_reason}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => { setSalesModal({ email: lead.email, lead_name: lead.name }); setSalesMsg(''); setSalesResult(null); }}
@@ -280,7 +312,7 @@ export default function AdminLandingLeadsPage({ onBack }) {
                     <Mail size={14} />
                   </a>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>
@@ -302,12 +334,25 @@ export default function AdminLandingLeadsPage({ onBack }) {
             {salesResult ? (
               <div data-testid="admin-sales-result">
                 <div className="flex items-center gap-2 text-emerald-400 mb-3">
-                  <Check size={18} /> <span className="font-semibold">Einladung versendet</span>
+                  <Check size={18} /> <span className="font-semibold">Einladung erstellt</span>
                 </div>
                 <div className="bg-black/40 rounded-lg p-3 text-xs space-y-1">
                   <div><span className="text-gray-400">Lead:</span> {salesResult.lead_email}</div>
                   <div><span className="text-gray-400">Raum:</span> <span className="font-mono text-blue-400">{salesResult.room_name}</span></div>
-                  <div><span className="text-gray-400">Email:</span> {salesResult.email_sent ? '✓ versendet' : '⚠ nur geloggt (Resend nicht konfiguriert)'}</div>
+                  <div><span className="text-gray-400">Email-Status:</span>{' '}
+                    {salesResult.email_reason === 'sent' && <span className="text-emerald-400">✓ versendet via Resend</span>}
+                    {salesResult.email_reason === 'logged_only' && <span className="text-amber-400">⚠ Resend nicht konfiguriert (nur geloggt)</span>}
+                    {salesResult.email_reason === 'rejected' && (
+                      <span className="text-red-400" title={salesResult.email_error}>
+                        ✗ Resend lehnte Adresse ab
+                      </span>
+                    )}
+                  </div>
+                  {salesResult.email_error && (
+                    <div className="text-red-400 text-[10px] truncate" title={salesResult.email_error}>
+                      {salesResult.email_error.slice(0, 120)}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => { window.location.href = '/livekit-stream'; }}

@@ -29,12 +29,16 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://bidblitz.com")
 
 
 def send_email(to: str, subject: str, html: str) -> bool:
-    """Send email via Resend or log if not configured."""
+    """Send email via Resend or log if not configured.
+
+    Returns True on success or when Resend is disabled (logged-only).
+    Returns False if Resend is enabled but rejected the message.
+    """
     if not EMAIL_ENABLED:
         logger.info(f"[EMAIL LOG] To: {to}, Subject: {subject}")
         logger.debug(f"[EMAIL CONTENT] {html[:200]}...")
         return True
-    
+
     try:
         resend.Emails.send({
             "from": FROM_EMAIL,
@@ -47,6 +51,36 @@ def send_email(to: str, subject: str, html: str) -> bool:
     except Exception as e:
         logger.error(f"Failed to send email to {to}: {e}")
         return False
+
+
+def send_email_detailed(to: str, subject: str, html: str) -> dict:
+    """Same as send_email() but returns a structured result with reason on failure.
+
+    Returns dict: {sent: bool, reason: str, resend_enabled: bool, error?: str}
+    Reasons: 'sent' | 'logged_only' | 'rejected'
+    """
+    if not EMAIL_ENABLED:
+        logger.info(f"[EMAIL LOG] To: {to}, Subject: {subject}")
+        return {"sent": True, "reason": "logged_only", "resend_enabled": False}
+
+    try:
+        resend.Emails.send({
+            "from": FROM_EMAIL,
+            "to": [to],
+            "subject": subject,
+            "html": html,
+        })
+        logger.info(f"Email sent to {to}: {subject}")
+        return {"sent": True, "reason": "sent", "resend_enabled": True}
+    except Exception as e:
+        err_msg = str(e)
+        logger.error(f"Failed to send email to {to}: {err_msg}")
+        return {
+            "sent": False,
+            "reason": "rejected",
+            "resend_enabled": True,
+            "error": err_msg[:300],
+        }
 
 
 # ═══════════════════════════════════════════════════
