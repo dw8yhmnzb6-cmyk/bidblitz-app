@@ -172,6 +172,7 @@ import P2PLendingPage from "./pages/P2PLendingPage";
 import TradingBotPage from "./pages/TradingBotPage";
 import LiveShoppingPage from "./pages/LiveShoppingPage";
 const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
+const AdminLandingLeadsPage = lazy(() => import("./pages/AdminLandingLeadsPage"));
 const WalletDashboard = lazy(() => import("./components/WalletDashboard").then(m => ({ default: m.WalletDashboard })));
 const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
 import { LandingChatbot } from "./components/LandingChatbot";
@@ -778,9 +779,13 @@ function AppContent() {
       case "/trading-bot":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TradingBotPage onBack={() => handleNavigate("/more")} />;
       case "/live-shopping":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveShoppingPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveKitStreamPage onBack={() => handleNavigate("/more")} />;
       case "/livekit-stream":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveKitStreamPage onBack={() => handleNavigate("/more")} />;
+      case "/admin/landing-leads":
+        return user.role === "admin"
+          ? <AdminLandingLeadsPage onBack={() => handleNavigate("/admin")} />
+          : <HomePage {...homeProps} />;
       case "/wallet-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletDashboard />;
       case "/super-marketplace":

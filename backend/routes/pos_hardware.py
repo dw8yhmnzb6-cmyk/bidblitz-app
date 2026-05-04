@@ -143,33 +143,45 @@ async def _send_to_usb_printer(device: str, data: bytes):
 # BARCODE-SCANNER (USB/Bluetooth HID)
 # ═══════════════════════════════════════════════════════════════════════
 
+class ScannerRegisterRequest(BaseModel):
+    scanner_id: str
+    type: str = "usb"
+
 @router.post("/scanner/register")
-async def register_scanner(request: Request, scanner_id: str, type: str = "usb"):
+async def register_scanner(req: ScannerRegisterRequest, request: Request):
     """Registriert Barcode-Scanner (Honeywell, Zebra, Datalogic)."""
-    user = await get_current_user(request)
-    
+    await get_current_user(request)
+
     await db.pos_scanners.update_one(
-        {"scanner_id": scanner_id},
+        {"scanner_id": req.scanner_id},
         {"$set": {
-            "scanner_id": scanner_id,
-            "type": type,
+            "scanner_id": req.scanner_id,
+            "type": req.type,
             "status": "active",
             "registered_at": now_iso(),
         }},
         upsert=True
     )
-    return {"ok": True, "scanner_id": scanner_id}
+    return {"ok": True, "scanner_id": req.scanner_id}
+
+class ScannerTestRequest(BaseModel):
+    barcode: Optional[str] = None
 
 @router.get("/scanner/test")
-async def test_scanner(request: Request, barcode: str):
-    """Test-Endpoint: Scanner sendet Barcode an Backend (via Webhook/WebSocket)."""
+async def test_scanner(request: Request, barcode: Optional[str] = None):
+    """Test-Endpoint: Scanner sendet Barcode an Backend.
+    Wenn kein Barcode: liefert ok:true zurück (Heartbeat).
+    Wenn Barcode: schlägt Produkt in pos_products nach.
+    """
     await get_current_user(request)
-    
-    # Lookup product
+
+    if not barcode:
+        return {"ok": True, "scanner_status": "ready", "message": "Scanner heartbeat OK"}
+
     product = await db.pos_products.find_one({"barcode": barcode, "active": True}, {"_id": 0})
     if not product:
         return {"ok": False, "error": "Produkt nicht gefunden", "barcode": barcode}
-    
+
     return {"ok": True, "product": product}
 
 
@@ -177,15 +189,19 @@ async def test_scanner(request: Request, barcode: str):
 # KASSEN-SCHUBLADE (Cash Drawer — RJ11/12 Pulse)
 # ═══════════════════════════════════════════════════════════════════════
 
+class CashDrawerOpenRequest(BaseModel):
+    register_id: Optional[str] = None
+    store_id: Optional[str] = None
+    reason: Optional[str] = "manual"
+
 @router.post("/cash-drawer/open")
-async def open_cash_drawer(request: Request, register_id: str):
+async def open_cash_drawer(req: CashDrawerOpenRequest, request: Request):
     """Öffnet Kassen-Schublade via ESC/POS-Befehl (angeschlossen an Bondrucker)."""
     user = await get_current_user(request)
-    
-    # ESC/POS command to open drawer (DLE DC1 p m t)
+
+    register_id = req.register_id or req.store_id or "default"
     open_cmd = b'\x10\x14\x01\x00\x05'
-    
-    # Send to printer (drawer connected to printer's RJ11 port)
+
     printer = await db.pos_printers.find_one({"register_id": register_id})
     if printer:
         try:
@@ -196,15 +212,16 @@ async def open_cash_drawer(request: Request, register_id: str):
         except Exception as e:
             log.error(f"Cash drawer error: {e}")
             raise HTTPException(status_code=500, detail=str(e))
-    
+
     await db.pos_cash_drawer_events.insert_one({
         "event_id": short_id("DRW", 10),
         "register_id": register_id,
+        "reason": req.reason,
         "opened_by": str(user["_id"]),
         "created_at": now_iso(),
     })
-    
-    return {"ok": True, "drawer_opened": True}
+
+    return {"ok": True, "drawer_opened": True, "register_id": register_id}
 
 
 # ═══════════════════════════════════════════════════════════════════════

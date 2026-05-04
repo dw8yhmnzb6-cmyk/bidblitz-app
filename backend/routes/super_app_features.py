@@ -111,34 +111,22 @@ async def wallet_topup(req: WalletTopup, request: Request):
 
 @router.get("/wallet/balance")
 async def get_wallet_balance(request: Request):
-    """Get user wallet balance."""
+    """Get user wallet balance (read-only, no side-effects)."""
     user = await get_current_user(request)
-    
-    # Fetch from wallet collection
-    wallet = await db.wallets.find_one({"user_id": str(user["_id"])})
-    
-    if not wallet:
-        # Create wallet if doesn't exist
-        await db.wallets.insert_one({
-            "user_id": str(user["_id"]),
-            "balance": 0.0,
-            "currency": "EUR",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
-        balance = 0.0
-    else:
-        balance = wallet.get("balance", 0.0)
-    
-    # Get recent transactions
+
+    wallet = await db.wallets.find_one({"user_id": str(user["_id"])}, {"_id": 0})
+    balance = wallet.get("balance", 0.0) if wallet else 0.0
+
     transactions = await db.wallet_transactions.find(
         {"user_id": str(user["_id"])},
-        {"_id": 0}  # Exclude _id field to avoid ObjectId serialization issues
+        {"_id": 0}
     ).sort("created_at", -1).limit(10).to_list(10)
-    
+
     return {
         "balance": balance,
         "currency": "EUR",
         "recent_transactions": transactions,
+        "wallet_exists": wallet is not None,
     }
 
 

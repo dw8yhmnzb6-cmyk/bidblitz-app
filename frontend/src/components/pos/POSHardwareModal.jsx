@@ -50,7 +50,7 @@ export function POSHardwareModal({ isOpen, onClose, storeId = 'default' }) {
   const testScanner = () => callApi('/api/pos/hardware/scanner/test', null, 'GET');
 
   const openCashDrawer = () =>
-    callApi('/api/pos/hardware/cash-drawer/open', { store_id: storeId, reason: 'test' });
+    callApi('/api/pos/hardware/cash-drawer/open', { register_id: storeId, store_id: storeId, reason: 'manual' });
 
   const readScale = () => callApi('/api/pos/hardware/scale/weight', null, 'GET');
 

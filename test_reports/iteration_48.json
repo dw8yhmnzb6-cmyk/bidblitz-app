@@ -1,0 +1,46 @@
+{
+  "summary": "Iter48 P2 cleanup + new features tested. Backend pytest 14/16 passed. All P2 cleanup targets PASS: wallet GET is now read-only with wallet_exists flag (idempotent), POS hardware cash-drawer/open + scanner/register + scanner/test all accept JSON body + optional barcode, age-verify rejects birth_year 1850 & 2099 with 400 'Geburtsjahr außerhalb gültigem Bereich' and accepts 2000 with id_checked=true. Landing chatbot + POS receipts/void regressions PASS. However, 2 LiveKit regressions FAIL with HTTP 500 because /app/backend/.env now contains LIVEKIT_URL=/ LIVEKIT_API_KEY=/ LIVEKIT_API_SECRET= as EMPTY strings, which defeats os.getenv('X', 'default') fallback (empty string is truthy-ish, returned as-is). This breaks POST /api/livekit/rooms and /api/livekit/token — and in turn cascades into the frontend LiveKit flow (see frontend issues). Frontend: /admin/landing-leads page, 4 stat cards, search, refresh, 2 lead rows all present with correct testids. /livekit-stream has livekit-stream-page + livekit-list + livekit-create-btn + modal name-input/confirm; /live-shopping correctly renders LiveKitStreamPage. After clicking create with a new room name, the room does NOT appear (because POST /api/livekit/rooms 500s) and livekit-error shows 'Failed to execute 'json' on 'Response': body stream already read' instead of the expected 'LiveKit-Server nicht konfiguriert' — so the frontend also has a response-body-consumed-twice bug in the error path.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/livekit/rooms", "issue": "500 'url must be set' — root cause: LIVEKIT_URL in /app/backend/.env is an EMPTY STRING. os.getenv('LIVEKIT_URL', 'ws://localhost:7880') returns '' (empty), bypassing the fallback. The LiveKit SDK rejects empty URL.", "priority": "HIGH"},
+      {"endpoint": "POST /api/livekit/token", "issue": "500 'api_key and api_secret must be set' — same root cause. LIVEKIT_API_KEY and LIVEKIT_API_SECRET in .env are empty strings, defaults in os.getenv never kick in. Blocks the full livekit-stream host/join flow (frontend can't fetch token).", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "LiveKitStreamPage", "issue": "Error toast shows 'Failed to execute json on Response: body stream already read' on failed room creation instead of the planned 'LiveKit-Server nicht konfiguriert'. Indicates the response body is being consumed twice (e.g., .json() called after .text() or in a catch branch).", "selector": "[data-testid=\"livekit-error\"]", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "LiveKit create room → host/join", "issue": "Because POST /api/livekit/rooms 500s (backend env bug), the new room never appears in the list and livekit-host-{name}/livekit-join-{name} buttons are never rendered. Cannot complete the full create→join/host loop. Pre-existing rooms (from iter46/47) still show Zuschauen/Streamen buttons — but clicking them would also 500 on /api/livekit/token for the same reason.", "affected_selectors": ["[data-testid=\"livekit-create-confirm\"]", "[data-testid^=\"livekit-host-\"]", "[data-testid^=\"livekit-join-\"]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter48_p2_cleanup.py",
+    "/app/test_reports/pytest/iter48.xml"
+  ],
+  "action_items": [
+    "FIX LIVEKIT ENV: Either (a) delete empty LIVEKIT_URL/LIVEKIT_API_KEY/LIVEKIT_API_SECRET lines from /app/backend/.env so the os.getenv defaults ('ws://localhost:7880', 'devkey', 'secret') kick in; OR (b) change livekit_streaming.py lines 45-46, 68-70, 122, 271 from os.getenv('X', 'default') to os.getenv('X') or 'default' so empty strings also fall back. Then `sudo supervisorctl restart backend`.",
+    "FIX LiveKitStreamPage error handler: In the catch branch for create-room / token-fetch, do not call both response.json() and response.text() — pick one, or clone the response before reading. Expected graceful message 'LiveKit-Server nicht konfiguriert' is not reachable today.",
+    "(Nice-to-have) If LIVEKIT_URL is a placeholder like ws://localhost:7880, wrap the LiveKitAPI().create_room() call so it tolerates unreachable servers and still inserts the room record locally (currently the whole endpoint 500s before the DB insert)."
+  ],
+  "critical_code_review_comments": [
+    "livekit_streaming.py uses os.getenv('LIVEKIT_URL', 'ws://localhost:7880') — this is the classic 'empty string defeats default' pitfall. Recommend `os.getenv('LIVEKIT_URL') or 'ws://localhost:7880'` pattern across all 3 env reads.",
+    "super_app_features.py get_wallet_balance is now clean + idempotent — good refactor, wallet_exists flag is correctly False for users with no wallet doc and True after first topup.",
+    "pos_hardware.py cash-drawer/open, scanner/register, scanner/test: JSON body + optional ?barcode migration is clean. All 3 endpoints still require auth — confirmed with 401 on no-auth.",
+    "pos_retail_enterprise.py age-verify birth_year range validation is correctly implemented (1850 → 400, 2099 → 400, 2000 → allowed). German error message is user-friendly.",
+    "AdminLandingLeadsPage.jsx testids are all present and consistent — 4 stat cards, search input, refresh btn, per-row admin-lead-row-N work as designed.",
+    "LiveKitStreamPage response-body-double-read is a real bug — the 500 surfaces as a misleading 'body stream already read' instead of the intended user-facing error string. Needs fixing independently of the env issue."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter48_p2_cleanup.py (new, 16 tests)"
+  ],
+  "success_rate": {"backend": "87.5% (14/16)", "frontend": "75% (admin-leads OK, /live-shopping→LiveKitStreamPage OK, /livekit-stream page+list+create-modal OK, create→join/host flow BLOCKED by backend env bug, chatbot toggle not explored in detail)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! — /api/auth/login returns full user object (id, role='admin', email, ...) with status 200 and sets session cookie. No JWT in response body.",
+  "seed_data_creation": "2 scanner registrations, several cash-drawer events, age-verify audit rows. No LiveKit rooms created this iter (blocked by 500). Admin landing-leads shows 2 pre-existing test leads from earlier iter.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Fix LiveKit env handling first (see action_items), then re-run `python -m pytest /app/backend/tests/test_iter48_p2_cleanup.py -v` — expect all 16 tests green. Frontend: after the backend fix, also fix the LiveKitStreamPage double-read bug so livekit-error shows the German text instead of the JS internal error. Landing chatbot (gpt-4.1-mini) flow was NOT end-to-end tested this iteration — the floating toggle is visible on / (bottom-right sparkle icon with badge '1') but my automation couldn't open it reliably; a manual check or a better selector (the toggle button likely needs a data-testid like 'landing-chatbot-toggle') is recommended. Regression harness is /app/backend/tests/test_iter48_p2_cleanup.py — keep it, iter46/47 tests remain at /app/backend/tests/test_iter46_livekit_hardware.py.",
+  "rca_of_the_issue": "ROOT CAUSE of the 2 livekit 500s: /app/backend/.env has `LIVEKIT_URL=`, `LIVEKIT_API_KEY=`, `LIVEKIT_API_SECRET=` with EMPTY values. Python's os.getenv(key, default) returns the default ONLY if key is absent — an empty-string value is returned verbatim. Downstream, livekit.api.LiveKitAPI('') raises 'url must be set' and api.AccessToken('','') raises 'api_key and api_secret must be set'. Reproduction: `curl -X POST /api/livekit/rooms -H 'cookie: session=...' -d '{\"room_name\":\"x\"}'` → 500. Mitigation: either remove the empty lines from .env (preferred, smallest diff — defaults already exist) OR switch all 5 os.getenv calls in livekit_streaming.py to `os.getenv(k) or default` idiom so empty strings trigger fallback too. Frontend double-read bug in LiveKitStreamPage compounds the UX: the user sees 'body stream already read' which is a JS DOM error, NOT the designed German fallback message."
+}

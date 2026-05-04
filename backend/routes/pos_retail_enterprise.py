@@ -272,10 +272,12 @@ async def age_verify(req: AgeVerification, request: Request):
 
     # Mode 2: Ad-hoc product verification (birth_year)
     if req.birth_year is not None:
-        if not req.id_checked:
-            return {"ok": False, "allowed": False, "reason": "id_not_checked"}
         from datetime import datetime as _dt
         current_year = _dt.utcnow().year
+        if req.birth_year < 1900 or req.birth_year > current_year:
+            raise HTTPException(status_code=400, detail=f"Geburtsjahr außerhalb gültigem Bereich (1900–{current_year})")
+        if not req.id_checked:
+            return {"ok": False, "allowed": False, "reason": "id_not_checked"}
         age = current_year - req.birth_year
         required = req.required_age or 18
         allowed = age >= required

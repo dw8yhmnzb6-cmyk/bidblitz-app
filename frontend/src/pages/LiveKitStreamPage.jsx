@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Radio, Play, Plus, Eye, Loader2, Video } from 'lucide-react';
+import { ArrowLeft, Radio, Play, Plus, Eye, Loader2, Video, Mic, MicOff, VideoOff, PhoneOff } from 'lucide-react';
+import { useLiveKitRoom } from '../hooks/useLiveKitRoom';
+import { ParticipantTile } from '../components/livekit/ParticipantTile';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -8,23 +10,31 @@ export default function LiveKitStreamPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState('');
-  const [tokenInfo, setTokenInfo] = useState(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [activeRoomLabel, setActiveRoomLabel] = useState('');
+
+  const {
+    status: lkStatus,
+    error: lkError,
+    participants,
+    cameraOn,
+    micOn,
+    connect,
+    disconnect,
+    toggleCamera,
+    toggleMic,
+  } = useLiveKitRoom();
 
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   };
 
-  useEffect(() => {
-    loadRooms();
-  }, []);
-
   const loadRooms = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/livekit/rooms`, { headers });
+      const res = await fetch(`${API}/api/livekit/rooms`, { headers, credentials: 'include' });
       if (res.ok) {
         const d = await res.json();
         setRooms(d.rooms || []);
@@ -36,6 +46,12 @@ export default function LiveKitStreamPage({ onBack }) {
     }
   };
 
+  // Initial load
+  useEffect(() => {
+    loadRooms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const createRoom = async () => {
     if (!roomName.trim()) return;
     setCreating(true);
@@ -44,6 +60,7 @@ export default function LiveKitStreamPage({ onBack }) {
       const res = await fetch(`${API}/api/livekit/rooms`, {
         method: 'POST',
         headers,
+        credentials: 'include',
         body: JSON.stringify({ room_name: roomName, is_live_shopping: true }),
       });
       const data = await res.json();
@@ -58,38 +75,113 @@ export default function LiveKitStreamPage({ onBack }) {
     }
   };
 
-  const joinRoom = async (room, asHost = false) => {
+  const joinRoom = async (room, asPublisher = false) => {
     setError('');
     try {
       const res = await fetch(`${API}/api/livekit/token`, {
         method: 'POST',
         headers,
+        credentials: 'include',
         body: JSON.stringify({
           room_name: room.room_name,
           identity: localStorage.getItem('user_id') || `viewer_${Date.now()}`,
-          is_publisher: asHost,
+          is_publisher: asPublisher,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Token-Fehler');
-      setTokenInfo({ ...data, room_name: room.room_name, asHost });
+
+      const url = data.url || data.server_url;
+      const token = data.token || data.participant_token;
+
+      if (!url || url.includes('localhost')) {
+        setError('LiveKit-Server nicht konfiguriert. Bitte LIVEKIT_URL in backend/.env setzen.');
+        return;
+      }
+
+      setActiveRoomLabel(`${room.room_name} (${asPublisher ? 'Host' : 'Viewer'})`);
+      await connect({ url, token, asPublisher });
     } catch (e) {
       setError(e.message);
     }
   };
 
+  const leaveRoom = async () => {
+    await disconnect();
+    setActiveRoomLabel('');
+  };
+
+  // Connected state — show video grid
+  if (lkStatus === 'connected' || lkStatus === 'reconnecting') {
+    return (
+      <div className="min-h-screen bg-black text-white" data-testid="livekit-active-room">
+        <div className="sticky top-0 z-20 bg-black/90 backdrop-blur-xl border-b border-white/10 px-4 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold flex items-center gap-2">
+              <Radio size={18} className="text-rose-400 animate-pulse" />
+              {activeRoomLabel}
+            </h1>
+            <p className="text-[10px] text-gray-400">{participants.length} Teilnehmer · {lkStatus}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleMic}
+              data-testid="livekit-toggle-mic"
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                micOn ? 'bg-white/10 hover:bg-white/20' : 'bg-red-500 hover:bg-red-600'
+              }`}
+            >
+              {micOn ? <Mic size={18} /> : <MicOff size={18} />}
+            </button>
+            <button
+              onClick={toggleCamera}
+              data-testid="livekit-toggle-camera"
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                cameraOn ? 'bg-white/10 hover:bg-white/20' : 'bg-red-500 hover:bg-red-600'
+              }`}
+            >
+              {cameraOn ? <Video size={18} /> : <VideoOff size={18} />}
+            </button>
+            <button
+              onClick={leaveRoom}
+              data-testid="livekit-leave-btn"
+              className="w-10 h-10 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center"
+            >
+              <PhoneOff size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {participants.map((p) => (
+            <ParticipantTile
+              key={p.identity}
+              participant={p.participant}
+              isLocal={p.isLocal}
+              label={p.identity}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24" data-testid="livekit-stream-page">
       <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center" data-testid="livekit-back">
+          <button
+            onClick={onBack}
+            className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center"
+            data-testid="livekit-back"
+          >
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1">
             <h1 className="text-base font-bold flex items-center gap-2">
               <Radio size={18} className="text-rose-400" /> LiveKit Live-Shopping
             </h1>
-            <p className="text-[10px] text-rose-400">WebRTC Streaming · Host & Viewer</p>
+            <p className="text-[10px] text-rose-400">WebRTC · Host & Viewer · Capacitor-ready</p>
           </div>
           <button
             onClick={() => setCreateOpen(true)}
@@ -101,13 +193,13 @@ export default function LiveKitStreamPage({ onBack }) {
         </div>
       </div>
 
-      {error && (
+      {(error || lkError) && (
         <div className="mx-4 mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400" data-testid="livekit-error">
-          {error}
+          {error || lkError}
         </div>
       )}
 
-      <div className="px-4 pt-4 space-y-3">
+      <div className="px-4 pt-4 space-y-3" data-testid="livekit-list">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-gray-400">
             <Loader2 className="w-6 h-6 animate-spin" />
@@ -127,15 +219,10 @@ export default function LiveKitStreamPage({ onBack }) {
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${room.status === 'live' ? 'bg-red-500 animate-pulse' : 'bg-gray-500'}`} />
+                  <span className={`w-2 h-2 rounded-full ${room.status === 'active' ? 'bg-red-500 animate-pulse' : 'bg-gray-500'}`} />
                   <span className="text-[10px] font-bold text-red-400">
-                    {room.status === 'live' ? 'LIVE' : 'OFFLINE'}
+                    {room.status === 'active' ? 'LIVE' : 'OFFLINE'}
                   </span>
-                  {room.viewers !== undefined && (
-                    <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                      <Eye size={10} /> {room.viewers}
-                    </span>
-                  )}
                 </div>
                 {room.is_live_shopping && (
                   <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-400">
@@ -195,35 +282,6 @@ export default function LiveKitStreamPage({ onBack }) {
                 Erstellen
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {tokenInfo && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a1f] border border-white/10 rounded-2xl p-6 w-full max-w-lg">
-            <h3 className="text-lg font-bold mb-3">
-              {tokenInfo.asHost ? '🎥 Host-Zugang' : '👀 Viewer-Zugang'}: {tokenInfo.room_name}
-            </h3>
-            <div className="bg-black/40 rounded-lg p-3 mb-4 text-xs font-mono break-all max-h-40 overflow-auto" data-testid="livekit-token">
-              <div className="text-gray-400 mb-1">Token:</div>
-              <div className="text-green-400">{tokenInfo.token}</div>
-              {tokenInfo.url && (
-                <>
-                  <div className="text-gray-400 mt-2 mb-1">URL:</div>
-                  <div className="text-blue-400">{tokenInfo.url}</div>
-                </>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 mb-4">
-              Token in LiveKit Client SDK einfügen, um Stream beizutreten. Native iOS/Android via Capacitor LiveKit-Plugin.
-            </p>
-            <button
-              onClick={() => setTokenInfo(null)}
-              className="w-full py-2 bg-rose-500 hover:bg-rose-600 rounded-lg font-bold"
-            >
-              Schließen
-            </button>
           </div>
         </div>
       )}
