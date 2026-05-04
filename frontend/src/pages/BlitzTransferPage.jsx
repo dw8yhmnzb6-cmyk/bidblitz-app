@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import KYCBanner from "../components/KYCBanner";
 import {
   Upload, Send, FileText, Image, Music, Film, Archive, Code,
   ChevronLeft, X, Download, Clock, Link2, Copy, Check, Trash2,
@@ -228,6 +229,7 @@ const BlitzTransferPage = ({ onNavigate, onBack }) => {
       </div>
 
       <div className="px-4 pt-4">
+        <div className="mb-3"><KYCBanner onNavigate={onNavigate} /></div>
         {tab === "upload" && !result && (
           <div className="space-y-4">
             {/* Drop Zone */}

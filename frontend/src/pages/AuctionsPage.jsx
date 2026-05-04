@@ -15,6 +15,7 @@ import LazyErrorBoundary from "../components/LazyErrorBoundary";
 import ReferralPanel from "../components/auctions/ReferralPanel";
 import Countdown from "../components/auctions/Countdown";
 import AuctionGridCard from "../components/auctions/AuctionGridCard";
+import KYCBanner from "../components/KYCBanner";
 import { POLL_MS, LIST_POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGold, accentGreen, accentRed, accentPurple, localized } from "../components/auctions/atoms";
 
 // Lazy: only when user opens detail / credit-buy flow (saves ~50KB initial bundle)
@@ -492,6 +493,59 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     return () => clearInterval(pollRef.current);
   }, [fetchAuctions, fetchCredits, fetchWatchlist, fetchNotifs]);
 
+  // Stripe Success Redirect Handler — poll /credits-purchase-status when URL has ?status=success&session_id=
+  useEffect(() => {
+    if (isGuest) return;
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    const sessionId = params.get("session_id");
+    const purchaseId = params.get("credit_purchase");
+    if (!sessionId || !purchaseId) return;
+
+    const cleanupUrl = () => {
+      const url = new URL(window.location.href);
+      ["status", "session_id", "credit_purchase"].forEach((k) => url.searchParams.delete(k));
+      window.history.replaceState({}, "", url.toString());
+    };
+
+    if (status === "cancel") {
+      import("sonner").then(({ toast }) => toast.info("Zahlung abgebrochen"));
+      cleanupUrl();
+      return;
+    }
+
+    if (status !== "success") return;
+
+    let attempts = 0;
+    let cancelled = false;
+    const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+    const poll = async () => {
+      if (cancelled) return;
+      attempts++;
+      try {
+        const r = await fetch(`${API_URL}/api/auctions/credits-purchase-status/${sessionId}`, { credentials: "include" });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.status === "completed" && d.credits_added > 0) {
+            const { toast } = await import("sonner");
+            toast.success(`✓ ${d.credits_added} Credits gutgeschrieben!`);
+            await fetchCredits();
+            cleanupUrl();
+            return;
+          }
+        }
+      } catch {}
+      if (attempts < 12) setTimeout(poll, 1500);
+      else {
+        import("sonner").then(({ toast }) => toast.info("Zahlung wird verarbeitet… Du erhältst eine E-Mail."));
+        cleanupUrl();
+      }
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [isGuest, fetchCredits]);
+
   // Detect win/lose when auctions transition from active to ended
   useEffect(() => {
     if (isGuest || !user?.id) return;
@@ -616,6 +670,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
         <TrustBar t={t} recentWinners={winners} />
 
         {/* Premium How It Works — DealDash Style */}
+        {!isGuest && <div className="px-4"><KYCBanner onNavigate={onNavigate} /></div>}
         <motion.div className="rounded-2xl overflow-hidden" 
           style={{ 
             background: "linear-gradient(180deg, rgba(12,16,28,0.9) 0%, rgba(8,12,22,0.95) 100%)", 

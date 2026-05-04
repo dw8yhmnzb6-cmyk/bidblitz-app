@@ -7,6 +7,7 @@ import {
   CreditCard, Loader2, X
 } from "lucide-react";
 import { useWallet } from "../store";
+import KYCBanner from "../components/KYCBanner";
 import { useGroupedTransactions, useWalletStats } from "../hooks";
 import { PremiumCard } from "../components/PremiumCard";
 import { TransactionItem } from "../components/TransactionItem";
@@ -303,6 +304,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
       {/* Content - extra padding bottom for mobile nav */}
       <div className="px-5 pb-28 sm:pb-8 relative z-10">
+        {!isGuest && <div className="pt-2 pb-1"><KYCBanner onNavigate={onNavigate} /></div>}
 
         {/* ── Balance Hero ── */}
         <motion.div

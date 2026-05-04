@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
+import KYCBanner from '../components/KYCBanner';
 import { Search, Plus, Heart, MapPin, ChevronLeft, X, Send, Sparkles, Filter, Grid, List } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -287,6 +288,7 @@ export default function MarketplacePage({ onNavigate }) {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="mb-3"><KYCBanner onNavigate={onNavigate} /></div>
         <AnimatePresence mode="wait">
           {/* BROWSE VIEW */}
           {view === 'browse' && (

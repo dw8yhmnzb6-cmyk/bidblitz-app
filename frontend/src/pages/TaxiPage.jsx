@@ -8,6 +8,7 @@ import SplitPaymentModal from '../components/SplitPaymentModal';
 import LiveChat from '../components/LiveChat';
 import GroupOrderModal from '../components/GroupOrderModal';
 import GroupTrackerBanner from '../components/GroupTrackerBanner';
+import KYCBanner from '../components/KYCBanner';
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -836,6 +837,7 @@ export default function TaxiPage({ onNavigate }) {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
+        <KYCBanner onNavigate={onNavigate} />
         {/* MODULE DISABLED NOTICE */}
         {!moduleEnabled && (
           <motion.div
