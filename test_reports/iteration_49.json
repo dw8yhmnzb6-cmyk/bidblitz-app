@@ -1,0 +1,36 @@
+{
+  "summary": "Iter48 retest: BOTH reported fixes verified. Backend LiveKit endpoints (POST /api/livekit/rooms, POST /api/livekit/token, GET /api/livekit/rooms) all return 200 — the `os.getenv(k) or default` idiom correctly falls back to defaults ('ws://localhost:7880', 'devkey', 'secret') even when .env has empty-string values (confirmed: LIVEKIT_URL=, LIVEKIT_API_KEY=, LIVEKIT_API_SECRET= in /app/backend/.env). Pytest /app/backend/tests/test_iter48_p2_cleanup.py: 16/16 PASSED (was 14/16 in iter48). Also verified via curl: POST /rooms → {room_name, max_participants:100, created_at}; POST /token → valid JWT + server_url:'ws://localhost:7880' + is_publisher; GET /rooms lists the test_iter48_fix room. Frontend /livekit-stream: admin login via fetch + cookie set → livekit-stream-page + livekit-list render; clicked livekit-create-btn → entered room name → livekit-create-confirm → new room appears in list (no error toast). Then clicked livekit-host-{name} → as designed, frontend detects url.includes('localhost') and shows the GRACEFUL livekit-error 'LiveKit-Server nicht konfiguriert. Bitte LIVEKIT_URL in backend/.env setzen.' — the old 'body stream already read' regression is GONE. safeJson(res) helper working correctly. Iter48 P2 regressions (wallet read-only, hardware JSON body, age-verify range, scanner with optional barcode, landing chatbot, pos receipts/void) all still PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/livekit-stream room list", "issues": ["React console warning: 'Encountered two children with the same key' — LiveKitStreamPage uses key={room.room_name}, but multiple rooms can share the same name (list currently has two 'test_iter48_fix' entries). Use key={room.room_id} (already returned by GET /rooms) instead."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter48_p2_cleanup.py",
+    "/app/test_reports/pytest/iter48_retest.xml"
+  ],
+  "action_items": [
+    "(Low priority) LiveKitStreamPage.jsx line 225: change `key={room.room_name}` to `key={room.room_id}` to silence the duplicate-key React warning when users create rooms with the same display name.",
+    "(Nice-to-have) Consider a cleanup endpoint or TTL index on db.livekit_rooms to prune old test rooms that accumulate across iterations."
+  ],
+  "critical_code_review_comments": [
+    "livekit_streaming.py — all 5 os.getenv calls (lines 45, 46, 68, 69, 70, 125, 274) now use the `or default` fallback idiom. This is the correct fix for the 'empty string defeats default' pitfall. Consistent across token gen, create_room, token endpoint and health.",
+    "LiveKitStreamPage.jsx safeJson(res) is a clean implementation — does res.text() exactly once, then attempts JSON.parse, falling back to {detail: text || `HTTP ${status}`}. Used in both createRoom and joinRoom. No more double-read.",
+    "Backend gracefully skips the remote LiveKit create_room SDK call when devkey/localhost is detected (line 74), so the DB record is still created locally. Good defensive coding for dev/preview environments.",
+    "Minor: LiveKitStreamPage room list key collision on room_name when the same name is reused — swap to room_id (server-generated unique). Non-blocking."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (16/16 iter48 pytest)", "frontend": "100% on LiveKit flow (page load, create, list, host click → graceful error)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! — /api/auth/login returns user object (id, role=admin, ...) + sets session cookie. No token field in response — cookie auth only.",
+  "seed_data_creation": "Created rooms: test_iter48_fix (via curl), test-room-iter48-<hex> (via pytest), ui_iter48_<ts> (via UI).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter48/49 fixes complete. LiveKit create→list→host/join→graceful error flow is fully green. Only remaining polish: duplicate React key warning on /livekit-stream (use room_id as key). The backend intentionally keeps ws://localhost:7880 as fallback, so any join attempt will always show the 'LiveKit-Server nicht konfiguriert' toast until a real LiveKit server is configured in backend/.env — this is by design and not a bug. test_iter48_p2_cleanup.py remains the regression harness for wallet/hardware/age-verify/livekit/chatbot.",
+  "rca_of_the_issue": "Both iter48 RCAs validated as fixed. (1) Backend: empty-string env vars no longer defeat defaults because `os.getenv(k) or default` treats '' as falsy and falls through. (2) Frontend: single res.text() read in safeJson() prevents the 'body stream already read' TypeError that previously surfaced when the error handler tried res.json() after res.text() (or vice-versa)."
+}

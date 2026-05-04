@@ -52,6 +52,15 @@ export default function LiveKitStreamPage({ onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const safeJson = async (res) => {
+    const text = await res.text();
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return { detail: text || `HTTP ${res.status}` };
+    }
+  };
+
   const createRoom = async () => {
     if (!roomName.trim()) return;
     setCreating(true);
@@ -63,7 +72,7 @@ export default function LiveKitStreamPage({ onBack }) {
         credentials: 'include',
         body: JSON.stringify({ room_name: roomName, is_live_shopping: true }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.detail || 'Fehler beim Erstellen');
       await loadRooms();
       setCreateOpen(false);
@@ -88,7 +97,7 @@ export default function LiveKitStreamPage({ onBack }) {
           is_publisher: asPublisher,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.detail || 'Token-Fehler');
 
       const url = data.url || data.server_url;

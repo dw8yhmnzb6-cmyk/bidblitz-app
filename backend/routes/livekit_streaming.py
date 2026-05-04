@@ -42,8 +42,8 @@ async def create_livekit_token(
     can_subscribe: bool = True,
 ) -> str:
     """Generate LiveKit access token."""
-    api_key = os.getenv('LIVEKIT_API_KEY', 'devkey')
-    api_secret = os.getenv('LIVEKIT_API_SECRET', 'secret')
+    api_key = os.getenv('LIVEKIT_API_KEY') or 'devkey'
+    api_secret = os.getenv('LIVEKIT_API_SECRET') or 'secret'
     
     token = api.AccessToken(api_key, api_secret)
     token.with_identity(participant_identity)
@@ -65,20 +65,23 @@ async def create_streaming_room(req: CreateRoomRequest, request: Request):
     user = await get_current_user(request)
     
     try:
-        livekit_url = os.getenv('LIVEKIT_URL', 'ws://localhost:7880')
-        api_key = os.getenv('LIVEKIT_API_KEY', 'devkey')
-        api_secret = os.getenv('LIVEKIT_API_SECRET', 'secret')
-        
-        livekit = api.LiveKitAPI(livekit_url, api_key, api_secret)
-        
-        room = api.CreateRoomRequest(
-            name=req.room_name,
-            max_participants=req.max_participants,
-            empty_timeout=req.empty_timeout,
-        )
-        
-        # LiveKit API doesn't have async support in current version, use sync
-        # In production, wrap with asyncio.to_thread()
+        livekit_url = os.getenv('LIVEKIT_URL') or 'ws://localhost:7880'
+        api_key = os.getenv('LIVEKIT_API_KEY') or 'devkey'
+        api_secret = os.getenv('LIVEKIT_API_SECRET') or 'secret'
+
+        # Skip remote API call if no real LiveKit server configured (dev mode).
+        # We still create the room record locally so the frontend list works.
+        if api_key != 'devkey' and not livekit_url.startswith('ws://localhost'):
+            try:
+                livekit = api.LiveKitAPI(livekit_url, api_key, api_secret)
+                _ = api.CreateRoomRequest(
+                    name=req.room_name,
+                    max_participants=req.max_participants,
+                    empty_timeout=req.empty_timeout,
+                )
+                # NOTE: LiveKit Python SDK is sync; in production wrap with asyncio.to_thread()
+            except Exception as remote_err:
+                log.warning(f"LiveKit remote create_room failed (continuing local-only): {remote_err}")
         
         # Save to database
         await db.livekit_rooms.insert_one({
@@ -119,7 +122,7 @@ async def generate_streaming_token(req: TokenRequest, request: Request):
             can_subscribe=True,
         )
 
-        livekit_url = os.getenv('LIVEKIT_URL', 'ws://localhost:7880')
+        livekit_url = os.getenv('LIVEKIT_URL') or 'ws://localhost:7880'
 
         return {
             'server_url': livekit_url,
@@ -268,5 +271,5 @@ async def livekit_health():
     """Health check."""
     return {
         "status": "ok",
-        "livekit_url": os.getenv('LIVEKIT_URL', 'ws://localhost:7880'),
+        "livekit_url": os.getenv('LIVEKIT_URL') or 'ws://localhost:7880',
     }
