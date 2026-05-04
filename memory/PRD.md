@@ -69,12 +69,10 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - admin@bidblitz.com / BidBlitz2026!
 
 ## P2 Backlog (Optional, non-blocking)
-- Replace landing_chatbot keyword matcher with real `emergentintegrations.LlmChat` (Claude Sonnet)
-- Normalise `/api/pos/hardware/cash-drawer/open` + `/scanner/test` to JSON-body Pydantic models
-- Make `GET /api/super-app/wallet/balance` side-effect-free (currently insert_one on read)
-- Native LiveKit client SDK integration (Capacitor plugin) for actual WebRTC streaming
-- Validate birth_year range in age-verify (1900..current_year)
-- Expose `data-testid="livekit-list"` alongside `livekit-empty` for symmetric tests
+- LandingChatbot Claude Sonnet 4.5 (sobald Emergent-Key Anthropic-Zugriff bekommt)
+- LiveKit Recording → S3/local storage
+- birth_year range error i18n + better UX
+- AdminLandingLeadsPage Lead-Export als CSV
 
 ## P0 — User Action Required (External)
 - Generate Android Release Keystore via `/app/frontend/build-mobile-final.sh`
@@ -86,7 +84,9 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
-- **Feb 2026 (iter48)**: Landing-Chatbot LIVE LLM (gpt-4.1-mini multi-turn), Android keystore generated, LIVEKIT .env scaffolded, mobile build pipeline verified
-- **Feb 2026 (iter47)**: LandingChatbot global mount, LandingPage `/landing` route, age-verify dual-mode, POS RetailTab 4-button bar, LiveKit GET /rooms list endpoint, lucide-react icon fix (Taxi→Car, UtensilsCrossed→Utensils)
+- **Feb 2026 (iter49)**: Fix LiveKit env empty-string fallback (`os.getenv(k) or default`), fix LiveKitStreamPage response-body-double-read with safeJson helper. 16/16 backend + 100% frontend LiveKit flow PASS.
+- **Feb 2026 (iter48)**: P2 cleanup: wallet GET read-only, POS hardware JSON-body normalization (cash-drawer/scanner), age-verify birth_year range validation, AdminLandingLeadsPage `/admin/landing-leads`, livekit-client v2.5 web SDK + useLiveKitRoom hook + ParticipantTile (real WebRTC), /live-shopping → LiveKitStreamPage migration.
+- **Feb 2026 (iter48 P0 cont.)**: Landing-Chatbot LIVE LLM (gpt-4.1-mini multi-turn), Android keystore generated, LIVEKIT .env scaffolded, mobile build pipeline verified
+- **Feb 2026 (iter47)**: LandingChatbot global mount, LandingPage `/landing` route, age-verify dual-mode, POS RetailTab 4-button bar, LiveKit GET /rooms list endpoint, lucide-react icon fix
 - **Feb 2026 (iter46)**: Backend Phases A-E complete (43 endpoints, 16/16 tests)
 - **Feb 2026**: Bundle ID `com.bidblitz.app`, mobile build scripts, 18 POS Enterprise features
