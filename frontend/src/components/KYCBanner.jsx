@@ -16,6 +16,16 @@ const KYCBanner = ({ onVerified, onNavigate }) => {
 
   const load = async () => {
     try {
+      // Admin-bypass: don't show banner for admin users
+      const meRes = await fetch(`${API}/api/auth/me`, { credentials: "include" });
+      if (meRes.ok) {
+        const me = await meRes.json();
+        if (me.role === "admin" || me.is_admin) {
+          setStatus({ kyc_verified: true, _admin_bypass: true });
+          setLoading(false);
+          return;
+        }
+      }
       const res = await fetch(`${API}/api/kyc/status`, { credentials: "include" });
       if (res.ok) setStatus(await res.json());
     } catch {}
