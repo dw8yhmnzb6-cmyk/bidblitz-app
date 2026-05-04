@@ -84,6 +84,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **04.05.2026 (iter57 — P2 Bündel a+b+c+d)**:
+  - **(a)** Apple Privacy Manifest erstellt: `/app/frontend/ios/App/App/PrivacyInfo.xcprivacy` mit allen Datenkategorien (Email, Name, Phone, Photos/KYC, Location, Purchase, Payment, Crash, UserID) + Required-Reason-APIs (UserDefaults, FileTimestamp, BootTime, DiskSpace) — iOS17+ App Store-konform.
+  - **(b)** LandingChatbot/Lead-Scoring **upgraded gpt-4.1-mini → gpt-5** (Claude Sonnet 4.5 nicht via Emergent-Key zugänglich, gpt-5 ist top-tier verfügbar). Health endpoint: `{"model":"gpt-5","provider":"openai"}`. End-to-End-Smoke-Test ✅ erfolgreich (echte qualitativ-höhere Antwort generiert).
+  - **(c)** LiveKit S3 Egress-Recording: Code bereits vorhanden in `livekit_streaming.py:253-330`. Doku `/app/LIVEKIT_S3_RECORDING_SETUP.md` erstellt — AWS-Bucket, IAM-Policy, ENV-Vars, API-Beispiele, Costs.
+  - **(d)** Age-Verification-Modal UX verbessert: Live-Alter-Berechnung mit Farbindikator (✓/min Age), Range-Validation 1900–`currentYear`, bessere Error-Messages (4-stellig + Range + Mindestalter), Alter-vorab-Check vor API-Call (kein wasted Network-Roundtrip), object-detail.message Parsing.
 - **04.05.2026 (iter56 — Legal/Compliance Smoke-Test)**:
   - ✅ Smoke-Test verifiziert: `/privacy`, `/terms`, `CookieBanner` rendern korrekt ohne JS-Errors. Layout intakt, Bottom-Nav unverdeckt.
   - ✅ JSX-Syntax-Fix `<10%` → `&lt;10%` in `TermsPage.jsx` Zeile 32 (verifiziert via Lint + Render).

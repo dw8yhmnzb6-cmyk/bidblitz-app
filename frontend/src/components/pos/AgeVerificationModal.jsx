@@ -15,12 +15,23 @@ export function AgeVerificationModal({ isOpen, onClose, productId, requiredAge =
   const [verified, setVerified] = useState(false);
 
   const handleVerify = async () => {
-    if (!birthYear || birthYear.length !== 4) {
-      setError('Geburtsjahr (4-stellig) erforderlich');
+    const yearNum = parseInt(birthYear, 10);
+    const currentYear = new Date().getFullYear();
+    if (!birthYear || birthYear.length !== 4 || isNaN(yearNum)) {
+      setError('Bitte 4-stelliges Geburtsjahr eingeben (z.B. 2000)');
+      return;
+    }
+    if (yearNum < 1900 || yearNum > currentYear) {
+      setError(`Geburtsjahr muss zwischen 1900 und ${currentYear} liegen`);
+      return;
+    }
+    const calculatedAge = currentYear - yearNum;
+    if (calculatedAge < requiredAge) {
+      setError(`Mindestalter ${requiredAge} nicht erreicht (errechnetes Alter: ${calculatedAge})`);
       return;
     }
     if (!idChecked) {
-      setError('Ausweis muss bestätigt werden');
+      setError('Ausweis muss vom Personal geprüft und bestätigt werden');
       return;
     }
     setLoading(true);
@@ -34,13 +45,16 @@ export function AgeVerificationModal({ isOpen, onClose, productId, requiredAge =
         },
         body: JSON.stringify({
           product_id: productId,
-          birth_year: parseInt(birthYear, 10),
+          birth_year: yearNum,
           id_checked: idChecked,
           required_age: requiredAge,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Verifizierung fehlgeschlagen');
+      if (!res.ok) {
+        const detail = typeof data.detail === 'object' ? data.detail.message || JSON.stringify(data.detail) : data.detail;
+        throw new Error(detail || 'Verifizierung fehlgeschlagen');
+      }
       if (data.allowed) {
         setVerified(true);
         onVerified?.(data);
@@ -81,15 +95,31 @@ export function AgeVerificationModal({ isOpen, onClose, productId, requiredAge =
               Dieses Produkt ist altersbeschränkt. Bitte Ausweis prüfen!
             </div>
 
-            <label className="block text-sm text-gray-300 mb-1">Geburtsjahr</label>
+            <label className="block text-sm text-gray-300 mb-1">
+              Geburtsjahr
+              {birthYear && birthYear.length === 4 && (() => {
+                const yr = parseInt(birthYear, 10);
+                const cy = new Date().getFullYear();
+                if (yr >= 1900 && yr <= cy) {
+                  const age = cy - yr;
+                  return (
+                    <span className={`ml-2 text-xs font-semibold ${age >= requiredAge ? 'text-green-400' : 'text-red-400'}`} data-testid="age-verify-calculated">
+                      → Alter: {age} {age >= requiredAge ? '✓' : `(min ${requiredAge})`}
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </label>
             <input
               type="number"
               value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
-              maxLength={4}
+              onChange={(e) => setBirthYear(e.target.value.slice(0, 4))}
+              min={1900}
+              max={new Date().getFullYear()}
               data-testid="age-verify-birthyear"
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="JJJJ"
+              placeholder="JJJJ (z.B. 2000)"
             />
 
             <label className="flex items-start gap-2 mb-4 cursor-pointer">

@@ -82,7 +82,7 @@ async def landing_chatbot(req: ChatMessage, request: Request):
             api_key=api_key,
             session_id=req.session_id,
             system_message=LANDING_CHATBOT_CONTEXT,
-        ).with_model("openai", "gpt-4.1-mini")
+        ).with_model("openai", "gpt-5")
 
         # Send only the latest user message; LlmChat keeps in-process history per session_id
         # Persistent history is in MongoDB and was already used to seed previous calls
@@ -253,7 +253,7 @@ async def _score_session_lead(session_id: str, api_key: str):
             "reason": reason,
             "tags": tags,
             "scored_at": scored_at,
-            "model": "gpt-4.1-mini",
+            "model": "gpt-5",
         }
 
         # Upsert into lead_scores collection (one doc per session for current state)
@@ -678,4 +678,4 @@ async def track_funnel_event(stage: str, session_id: str, email: Optional[str] =
 
 @router.get("/health")
 async def chatbot_health():
-    return {"status": "ok", "model": "gpt-4.1-mini", "provider": "openai"}
+    return {"status": "ok", "model": "gpt-5", "provider": "openai"}
