@@ -27,7 +27,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - `/api/pos/hardware/tse/sign`
 
 ### Phase C — Landing-Page Chatbot
-- `/api/landing-chatbot/chat|leads|analytics` (currently keyword-based, P2: swap for LlmChat)
+- `/api/landing-chatbot/chat|leads|analytics` (gpt-4.1-mini via Emergent LLM Key, multi-turn session memory)
 
 ### Phase D — LiveKit Live-Streaming
 - `/api/livekit/rooms` POST (create) + GET (list)
@@ -82,10 +82,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Submit to App Store + Play Store (guides in `/app/frontend/deploy/`)
 
 ## Mocked Integrations
-- LiveKit: API keys are dev placeholders (`devkey`/`secret`). Token JWT-signing works locally; real WebRTC streaming requires real keys.
-- Landing chatbot: keyword matcher (not real LLM yet)
+- LiveKit: `.env` placeholder structure prepared. User must fill real keys from cloud.livekit.io before live streaming works.
+- Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **Feb 2026 (iter48)**: Landing-Chatbot LIVE LLM (gpt-4.1-mini multi-turn), Android keystore generated, LIVEKIT .env scaffolded, mobile build pipeline verified
 - **Feb 2026 (iter47)**: LandingChatbot global mount, LandingPage `/landing` route, age-verify dual-mode, POS RetailTab 4-button bar, LiveKit GET /rooms list endpoint, lucide-react icon fix (Taxi→Car, UtensilsCrossed→Utensils)
 - **Feb 2026 (iter46)**: Backend Phases A-E complete (43 endpoints, 16/16 tests)
 - **Feb 2026**: Bundle ID `com.bidblitz.app`, mobile build scripts, 18 POS Enterprise features

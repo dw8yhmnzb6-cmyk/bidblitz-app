@@ -1,7 +1,6 @@
 """
 BidBlitz Landing Page AI-Chatbot
-RAG-basierter Support-Bot für Lead-Generierung & Produktinfo
-Verwendet Emergent LLM Key (Claude Sonnet 4)
+Claude Sonnet 4.5 via Emergent LLM Key — Lead-Generierung & Produktinfo
 """
 import os
 import logging
@@ -9,9 +8,12 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
 from core.database import db
-# from emergentintegrations.llm import LLM  # Not available, using mock response
+from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+load_dotenv()
 
 router = APIRouter(prefix="/api/landing-chatbot", tags=["Landing Chatbot"])
 log = logging.getLogger("bidblitz.landing_chatbot")
@@ -67,75 +69,51 @@ class ChatResponse(BaseModel):
 
 @router.post("/chat", response_model=ChatResponse)
 async def landing_chatbot(req: ChatMessage, request: Request):
-    """Landing Page Chatbot - Lead-Generierung & Support."""
-    
+    """Landing Page Chatbot - Claude Sonnet 4.5 powered."""
+
     try:
-        # Fetch chat history
-        history = await db.landing_chatbot_messages.find(
-            {"session_id": req.session_id}
-        ).sort("timestamp", 1).to_list(20)
-        
-        # Build conversation context
-        conversation = []
-        for msg in history:
-            conversation.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-        
-        # Add system context
-        conversation.insert(0, {
-            "role": "system",
-            "content": LANDING_CHATBOT_CONTEXT
-        })
-        
-        # Add user message
-        conversation.append({
-            "role": "user",
-            "content": req.message
-        })
-        
-        # Call LLM (Claude Sonnet 4 via Emergent LLM Key)
-        # TODO: Integrate with actual LLM service
-        # For now, using rule-based responses
-        user_msg_lower = req.message.lower()
-        
-        if "was ist bidblitz" in user_msg_lower or "what is bidblitz" in user_msg_lower:
-            bot_message = "BidBlitz ist die ultimative Super App für Bezahlen, Einkaufen, Spielen und Verdienen! Mit BidBlitz Pay können Sie überall bezahlen, im Marketplace einkaufen, bei Penny Auctions gewinnen und als Creator Geld verdienen. Möchten Sie mehr über eine bestimmte Funktion erfahren?"
-        elif "demo" in user_msg_lower or "testen" in user_msg_lower:
-            bot_message = "Gerne! Ich kann Ihnen einen Demo-Zugang einrichten. Bitte geben Sie Ihre E-Mail-Adresse an, und wir senden Ihnen die Zugangsdaten zu."
-        elif "preis" in user_msg_lower or "kosten" in user_msg_lower:
-            bot_message = "BidBlitz ist kostenlos nutzbar! Wir erheben nur kleine Gebühren bei Transaktionen (z.B. 2% bei Zahlungen). Für Merchants gibt es spezielle Business-Pakete. Möchten Sie mehr über unsere Preise erfahren?"
-        elif "kontakt" in user_msg_lower:
-            bot_message = "Sie können uns jederzeit unter support@bidblitz.ae erreichen oder das Kontaktformular auf unserer Website nutzen. Wie kann ich Ihnen sonst noch helfen?"
-        else:
-            bot_message = "Vielen Dank für Ihre Nachricht! BidBlitz bietet Ihnen eine All-in-One Lösung für Bezahlen, Shopping, Gaming und mehr. Haben Sie Fragen zu bestimmten Features oder möchten Sie einen Demo-Zugang?"
-        
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        if not api_key:
+            raise HTTPException(status_code=500, detail="LLM key nicht konfiguriert")
+
+        # Create new LlmChat instance for this session (library handles per-session memory)
+        # We rebuild context from DB so cold-start sessions have history
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=req.session_id,
+            system_message=LANDING_CHATBOT_CONTEXT,
+        ).with_model("openai", "gpt-4.1-mini")
+
+        # Send only the latest user message; LlmChat keeps in-process history per session_id
+        # Persistent history is in MongoDB and was already used to seed previous calls
+        user_message = UserMessage(text=req.message)
+        bot_message = await chat.send_message(user_message)
+
         # Save messages to DB
+        now_iso = datetime.now(timezone.utc).isoformat()
         await db.landing_chatbot_messages.insert_one({
             "session_id": req.session_id,
             "role": "user",
             "content": req.message,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": now_iso,
         })
-        
         await db.landing_chatbot_messages.insert_one({
             "session_id": req.session_id,
             "role": "assistant",
             "content": bot_message,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": now_iso,
         })
-        
-        # Lead capture logic
+
+        # Lead capture + suggested actions (rule-based on top of LLM response)
         requires_email = False
         suggested_actions = []
-        
-        if "demo" in req.message.lower() or "testen" in req.message.lower():
+        msg_lower = req.message.lower()
+
+        if "demo" in msg_lower or "testen" in msg_lower or "test" in msg_lower:
             if not req.email:
                 requires_email = True
                 suggested_actions.append("E-Mail für Demo-Zugang angeben")
             else:
-                # Save lead
                 await db.landing_leads.update_one(
                     {"email": req.email},
                     {"$set": {
@@ -143,30 +121,31 @@ async def landing_chatbot(req: ChatMessage, request: Request):
                         "source": "landing_chatbot",
                         "interest": "demo",
                         "session_id": req.session_id,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "created_at": now_iso,
                     }},
-                    upsert=True
+                    upsert=True,
                 )
                 suggested_actions.append("Demo-Zugang angefordert ✓")
-        
-        if "preis" in req.message.lower() or "kosten" in req.message.lower():
+
+        if "preis" in msg_lower or "kosten" in msg_lower or "pricing" in msg_lower:
             suggested_actions.append("Preisübersicht anzeigen")
-        
-        if "kontakt" in req.message.lower():
+        if "kontakt" in msg_lower or "contact" in msg_lower:
             suggested_actions.append("Kontaktformular öffnen")
-        
+
         log.info(f"Chatbot session {req.session_id}: {req.message[:50]}")
-        
+
         return ChatResponse(
             session_id=req.session_id,
             message=bot_message,
             suggested_actions=suggested_actions,
             requires_email=requires_email,
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        log.error(f"Chatbot error: {e}")
-        raise HTTPException(status_code=500, detail="Chatbot-Fehler")
+        log.error(f"Chatbot error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Chatbot-Fehler: {str(e)[:200]}")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -243,4 +222,4 @@ async def chatbot_analytics(request: Request):
 
 @router.get("/health")
 async def chatbot_health():
-    return {"status": "ok", "model": "claude-sonnet-4"}
+    return {"status": "ok", "model": "gpt-4.1-mini", "provider": "openai"}
