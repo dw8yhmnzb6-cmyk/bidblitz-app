@@ -1,72 +1,113 @@
-# BidBlitz — DNS Setup für bidblitz.ae auf Resend
+# BidBlitz — Resend DNS Setup für `bidblitz.ae`
 
-## Schritte beim `.ae`-Registrar (vermutlich Etisalat / du / GoDaddy)
+Stand: 04.05.2026
 
-### 1. Resend Dashboard öffnen
-https://resend.com/domains → "Add Domain" → `bidblitz.ae` → "Add"
+---
 
-### 2. Resend zeigt 4-5 DNS-Records. Diese eintragen:
+## ⚠️ Wichtiger Hinweis: `bidblitz.ae` Apex-Domain bereits registriert
 
-#### Record 1: SPF (TXT)
-```
-Type:   TXT
-Name:   @  (oder leer / bidblitz.ae)
-Value:  v=spf1 include:amazonses.com ~all
-TTL:    Auto / 3600
+Beim Versuch, `bidblitz.ae` über die Resend-API zur Verifizierung hinzuzufügen, gibt Resend zurück:
+
+```json
+{ "statusCode": 403, "message": "The bidblitz.ae domain has been registered already." }
 ```
 
-#### Record 2-4: DKIM (3× CNAME)
-Resend liefert dir 3 eindeutige Selectors wie z.B. `resend._domainkey`, `s1._domainkey`, `s2._domainkey`. Beispiel:
-```
-Type:   CNAME
-Name:   resend._domainkey
-Value:  resend._domainkey.us-east-1.amazonses.com
-TTL:    Auto
+Resend erlaubt **eine Domain global nur in einem Account**. Drei Lösungswege:
 
-Type:   CNAME
-Name:   s1._domainkey
-Value:  s1.domainkey.u123456.xx.amazonses.com
-TTL:    Auto
+### Option A (empfohlen): Subdomain `mail.bidblitz.ae`
+Bereits in Resend angelegt (`id: 9bd2361b-f481-40d3-bc9b-92ba27089da8`).
+**Sende-Adresse:** `noreply@mail.bidblitz.ae`
+DNS-Records siehe unten.
 
-Type:   CNAME
-Name:   s2._domainkey
-Value:  s2.domainkey.u123456.xx.amazonses.com
-TTL:    Auto
+### Option B: Apex `bidblitz.ae` aus dem alten Resend-Account löschen
+Login bei dem alten Resend-Konto, das die Domain hält → "Remove Domain" → danach kann sie hier neu hinzugefügt werden.
+Falls Zugriff verloren: Resend-Support kontaktieren (`support@resend.com`) mit Domain-Ownership-Beweis.
+
+### Option C: Sandbox-Sender (Testbetrieb)
+`FROM_EMAIL=BidBlitz <onboarding@resend.dev>` — funktioniert sofort, aber Spam-Risiko + "via resend.dev"-Anzeige.
+
+---
+
+## DNS-Records für `mail.bidblitz.ae` (Option A)
+
+Beim `.ae`-Registrar (z.B. Etisalat / du / GoDaddy / Cloudflare) folgende Records eintragen:
+
+### Record 1: DKIM (TXT)
+```
+Type:     TXT
+Name:     resend._domainkey.mail
+Value:    p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDGjYQxh3rSrrvtMOhZWL70sqCCiWkEbRIdZ39Bb8J6ITraewwdLlxA1cCwSirJL6D0SSWu6CIVPhQfG1QJ5q8fik6POeweQr6lWfy79KetMV12O0he6ayxeQna/+kMcFehIvu+oejA6XKT+ZvEu4i0L+s2VE9T2j3Gujxbv/xT+wIDAQAB
+TTL:      Auto / 3600
 ```
 
-#### Record 5: DMARC (TXT, empfohlen)
+### Record 2: SPF Bounce-MX
 ```
-Type:   TXT
-Name:   _dmarc
-Value:  v=DMARC1; p=none; rua=mailto:dmarc@bidblitz.ae
-TTL:    Auto / 3600
+Type:     MX
+Name:     send.mail
+Value:    feedback-smtp.eu-west-1.amazonses.com
+Priority: 10
+TTL:      Auto / 3600
 ```
 
-### 3. DNS-Propagation prüfen (5-60 Min)
+### Record 3: SPF (TXT)
+```
+Type:     TXT
+Name:     send.mail
+Value:    v=spf1 include:amazonses.com ~all
+TTL:      Auto / 3600
+```
+
+### Record 4 (empfohlen): DMARC (TXT)
+```
+Type:     TXT
+Name:     _dmarc.mail
+Value:    v=DMARC1; p=none; rua=mailto:dmarc@bidblitz.ae
+TTL:      Auto / 3600
+```
+
+---
+
+## Verifizierung
+
+### 1. DNS-Propagation prüfen (5–60 Min)
 ```bash
-dig TXT bidblitz.ae +short
-dig CNAME resend._domainkey.bidblitz.ae +short
-dig TXT _dmarc.bidblitz.ae +short
+dig TXT resend._domainkey.mail.bidblitz.ae +short
+dig MX  send.mail.bidblitz.ae +short
+dig TXT send.mail.bidblitz.ae +short
 ```
-Online-Tool: https://dnschecker.org/#TXT/bidblitz.ae
+Online-Tool: https://dnschecker.org/
 
-### 4. Resend Verifizierung anstoßen
-Resend Dashboard → bidblitz.ae → "Verify DNS Records" → grüner Haken
-
-### 5. Test-Email senden
+### 2. Resend-Verifizierung anstoßen (API)
 ```bash
-curl -X POST https://api.resend.com/emails \
-  -H "Authorization: Bearer re_GfVbS3eF_MWWk7iq37YTMFVBiDYCCpsS7" \
+curl -X POST "https://api.resend.com/domains/9bd2361b-f481-40d3-bc9b-92ba27089da8/verify" \
+  -H "Authorization: Bearer $RESEND_API_KEY"
+```
+
+### 3. Test-Email senden
+```bash
+curl -X POST "https://api.resend.com/emails" \
+  -H "Authorization: Bearer $RESEND_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "from": "BidBlitz <noreply@bidblitz.ae>",
+    "from": "BidBlitz <noreply@mail.bidblitz.ae>",
     "to": ["DEINE-EMAIL@example.com"],
     "subject": "Domain verified ✓",
-    "html": "<p>Wenn du diese Email siehst, läuft alles!</p>"
+    "html": "<p>Wenn du diese Email siehst, läuft Resend live!</p>"
   }'
 ```
-→ Erfolg: `{"id":"..."}` zurück
-→ Fehler: `{"name":"validation_error","message":"...domain is not verified..."}` → 5 Min warten und nochmal verifizieren
+
+→ Erfolg: `{"id":"..."}`
+→ Fehler: `"...domain is not verified..."` → 5 Min warten + nochmal Step 2.
+
+---
+
+## Backend-Anpassung (nach DNS-Setup)
+
+In `/app/backend/.env`:
+```bash
+FROM_EMAIL=BidBlitz <noreply@mail.bidblitz.ae>
+```
+Dann: `sudo supervisorctl restart backend`.
 
 ---
 
@@ -74,28 +115,7 @@ curl -X POST https://api.resend.com/emails \
 
 | Registrar | Hinweis |
 |-----------|---------|
-| **Etisalat / du** | Nur 1 TXT pro Hostname → DMARC + SPF auf separaten Hostnames eintragen (`@` für SPF, `_dmarc` für DMARC) |
-| **GoDaddy `.ae`** | DKIM-CNAMEs ohne `bidblitz.ae`-Suffix einfügen — System hängt es automatisch dran |
-| **Cloudflare** | Bei DKIM CNAMEs **Proxy-Modus deaktivieren** (graues Wölkchen) — sonst broken |
-| **AE Domain Administration** | Nutze ein Self-Service-Tool wie Cloudflare als Nameserver, dort sind Records einfacher |
-
----
-
-## Schnelltest mit Sandbox-Sender (sofort)
-
-Wenn du noch keine Domain verifizierst, kannst du JETZT schon Resend nutzen mit:
-```
-FROM: BidBlitz <onboarding@resend.dev>
-```
-
-Setze in `/app/backend/.env`:
-```
-FROM_EMAIL=BidBlitz <onboarding@resend.dev>
-```
-
-Sales-Invites kommen damit sofort raus, aber:
-- Sender-Reputation ist generisch (Spam-Risiko)
-- DKIM/SPF auf `resend.dev` (nicht deine Domain)
-- Empfänger sehen "via resend.dev" im Email-Header
-
-→ NUR für Tests / Demo / interne Beta. Für Production unbedingt eigene Domain verifizieren.
+| **Etisalat / du** | Nur 1 TXT pro Hostname → SPF + DMARC auf separaten Hostnames eintragen |
+| **GoDaddy `.ae`** | Hostname **ohne** `.bidblitz.ae`-Suffix eintragen (System hängt es automatisch dran) |
+| **Cloudflare** | Bei DKIM-TXT **Proxy-Modus deaktivieren** (graues Wölkchen) — sonst broken |
+| **AE Domain Administration** | Ggf. Cloudflare als Nameserver setzen — dann sind Records einfacher |
