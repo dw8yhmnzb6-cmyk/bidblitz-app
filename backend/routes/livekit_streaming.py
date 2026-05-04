@@ -242,6 +242,145 @@ async def stop_stream_recording(room_name: str, recording_id: str, request: Requ
     return {"ok": True, "recording_id": recording_id}
 
 
+class EgressStartRequest(BaseModel):
+    room_name: str
+    output_type: str = "file"  # "file" | "s3" | "stream"
+    s3_bucket: Optional[str] = None
+    s3_key: Optional[str] = None
+    layout: Optional[str] = "grid"  # "grid" | "speaker"
+
+
+@router.post("/rooms/{room_name}/egress/start")
+async def start_egress_recording(room_name: str, req: EgressStartRequest, request: Request):
+    """Start LiveKit server-side egress (room composite) recording.
+    Requires real LiveKit deployment with Egress service running.
+    """
+    user = await get_current_user(request)
+    livekit_url = os.getenv("LIVEKIT_URL") or "ws://localhost:7880"
+    api_key = os.getenv("LIVEKIT_API_KEY") or "devkey"
+    api_secret = os.getenv("LIVEKIT_API_SECRET") or "secret"
+    egress_id = short_id("EGR", 12)
+
+    # Initial DB record
+    record = {
+        "egress_id": egress_id,
+        "room_name": room_name,
+        "started_by": str(user["_id"]),
+        "output_type": req.output_type,
+        "s3_bucket": req.s3_bucket,
+        "s3_key": req.s3_key,
+        "layout": req.layout,
+        "status": "starting",
+        "started_at": now_iso(),
+        "is_egress": True,
+    }
+
+    # Try to start real egress if LiveKit is configured
+    egress_real_id = None
+    egress_error = None
+    if api_key != "devkey" and not livekit_url.startswith("ws://localhost"):
+        try:
+            # Lazy import — egress only available with real LiveKit
+            from livekit import api as lk_api
+            client = lk_api.LiveKitAPI(livekit_url, api_key, api_secret)
+
+            file_output = None
+            if req.output_type == "s3" and req.s3_bucket:
+                file_output = lk_api.EncodedFileOutput(
+                    file_type=lk_api.EncodedFileType.MP4,
+                    filepath=req.s3_key or f"recordings/{egress_id}.mp4",
+                    s3=lk_api.S3Upload(
+                        bucket=req.s3_bucket,
+                        access_key=os.getenv("S3_ACCESS_KEY", ""),
+                        secret=os.getenv("S3_SECRET_KEY", ""),
+                        region=os.getenv("S3_REGION", "us-east-1"),
+                    ),
+                )
+            else:
+                file_output = lk_api.EncodedFileOutput(
+                    file_type=lk_api.EncodedFileType.MP4,
+                    filepath=f"/recordings/{egress_id}.mp4",
+                )
+
+            req_obj = lk_api.RoomCompositeEgressRequest(
+                room_name=room_name,
+                layout=req.layout,
+                file_outputs=[file_output],
+            )
+            res = await client.egress.start_room_composite_egress(req_obj)
+            egress_real_id = res.egress_id
+            record["livekit_egress_id"] = egress_real_id
+            record["status"] = "active"
+        except Exception as e:
+            egress_error = str(e)[:300]
+            record["status"] = "failed"
+            record["error"] = egress_error
+            log.warning(f"LiveKit Egress start failed: {e}")
+    else:
+        record["status"] = "mock"
+        record["note"] = "LIVEKIT_URL/API_KEY not configured — egress mocked"
+
+    await db.livekit_egress.insert_one(record)
+    return {
+        "egress_id": egress_id,
+        "livekit_egress_id": egress_real_id,
+        "status": record["status"],
+        "error": egress_error,
+        "note": record.get("note"),
+    }
+
+
+@router.post("/egress/{egress_id}/stop")
+async def stop_egress_recording(egress_id: str, request: Request):
+    """Stop a running egress."""
+    user = await get_current_user(request)
+    livekit_url = os.getenv("LIVEKIT_URL") or "ws://localhost:7880"
+    api_key = os.getenv("LIVEKIT_API_KEY") or "devkey"
+    api_secret = os.getenv("LIVEKIT_API_SECRET") or "secret"
+
+    record = await db.livekit_egress.find_one({"egress_id": egress_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Egress not found")
+
+    is_admin = user.get("role") == "admin" or user.get("is_admin")
+    if record.get("started_by") != str(user["_id"]) and not is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    error = None
+    if record.get("livekit_egress_id") and api_key != "devkey":
+        try:
+            from livekit import api as lk_api
+            client = lk_api.LiveKitAPI(livekit_url, api_key, api_secret)
+            await client.egress.stop_egress(lk_api.StopEgressRequest(egress_id=record["livekit_egress_id"]))
+        except Exception as e:
+            error = str(e)[:300]
+            log.warning(f"LiveKit Egress stop failed: {e}")
+
+    await db.livekit_egress.update_one(
+        {"egress_id": egress_id},
+        {"$set": {"status": "stopped", "stopped_at": now_iso(), "stop_error": error}},
+    )
+    return {"ok": True, "egress_id": egress_id, "error": error}
+
+
+@router.get("/egress")
+async def list_egress(request: Request, room_name: Optional[str] = None):
+    """List server-side egress recordings."""
+    user = await get_current_user(request)
+
+    query = {}
+    if room_name:
+        query["room_name"] = room_name
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        query["started_by"] = str(user["_id"])
+
+    items = await db.livekit_egress.find(
+        query, {"_id": 0}
+    ).sort("started_at", -1).to_list(200)
+
+    return {"egress": items, "total": len(items)}
+
+
 @router.get("/recordings")
 async def list_recordings(request: Request, room_name: Optional[str] = None):
     """List all recordings, optional filter by room_name."""

@@ -104,6 +104,18 @@ async def landing_chatbot(req: ChatMessage, request: Request):
             "timestamp": now_iso,
         })
 
+        # Funnel: track first message of session as 'chat_started' event
+        existing = await db.landing_funnel_events.find_one({
+            "session_id": req.session_id,
+            "stage": "chat_started",
+        })
+        if not existing:
+            await db.landing_funnel_events.insert_one({
+                "session_id": req.session_id,
+                "stage": "chat_started",
+                "timestamp": now_iso,
+            })
+
         # Lead capture + suggested actions (rule-based on top of LLM response)
         requires_email = False
         suggested_actions = []
@@ -113,6 +125,12 @@ async def landing_chatbot(req: ChatMessage, request: Request):
             if not req.email:
                 requires_email = True
                 suggested_actions.append("E-Mail für Demo-Zugang angeben")
+                # Funnel: email_requested
+                await db.landing_funnel_events.update_one(
+                    {"session_id": req.session_id, "stage": "email_requested"},
+                    {"$setOnInsert": {"timestamp": now_iso}},
+                    upsert=True,
+                )
             else:
                 await db.landing_leads.update_one(
                     {"email": req.email},
@@ -123,6 +141,12 @@ async def landing_chatbot(req: ChatMessage, request: Request):
                         "session_id": req.session_id,
                         "created_at": now_iso,
                     }},
+                    upsert=True,
+                )
+                # Funnel: email_captured
+                await db.landing_funnel_events.update_one(
+                    {"session_id": req.session_id, "stage": "email_captured"},
+                    {"$setOnInsert": {"timestamp": now_iso, "email": req.email}},
                     upsert=True,
                 )
                 suggested_actions.append("Demo-Zugang angefordert ✓")
@@ -232,12 +256,19 @@ async def _score_session_lead(session_id: str, api_key: str):
             "model": "gpt-4.1-mini",
         }
 
-        # Upsert into lead_scores collection (one doc per session)
+        # Upsert into lead_scores collection (one doc per session for current state)
         await db.landing_lead_scores.update_one(
             {"session_id": session_id},
             {"$set": score_doc},
             upsert=True,
         )
+
+        # Append to score history (immutable timeline)
+        await db.landing_lead_score_history.insert_one({
+            **score_doc,
+            "session_id": session_id,
+            "lead_email": lead.get("email") if lead else None,
+        })
 
         # If a lead exists for this session, also write directly on the lead doc
         if lead:
@@ -251,6 +282,29 @@ async def _score_session_lead(session_id: str, api_key: str):
                     "lead_scored_at": scored_at,
                 }},
             )
+
+        # Hot-lead webhook (Slack + Discord) — fire-and-forget if score >= 80
+        if score >= 80 and lead and lead.get("email"):
+            try:
+                from core.webhooks import notify_hot_lead
+                result = await notify_hot_lead(
+                    lead_email=lead["email"],
+                    score=score,
+                    category=category,
+                    reason=reason,
+                    tags=tags,
+                    session_id=session_id,
+                )
+                # Mark lead as notified
+                await db.landing_leads.update_one(
+                    {"_id": lead["_id"]},
+                    {"$set": {
+                        "hot_alert_sent_at": scored_at,
+                        "hot_alert_channels": [k for k, v in result.items() if v],
+                    }},
+                )
+            except Exception as wh_err:
+                log.warning(f"Hot-lead webhook failed: {wh_err}")
 
         log.info(f"Lead scored for session {session_id}: {score}/{category}")
     except Exception as e:
@@ -287,7 +341,8 @@ class LeadCapture(BaseModel):
 @router.post("/leads")
 async def capture_lead(lead: LeadCapture):
     """Capture lead from landing page."""
-    
+    now = datetime.now(timezone.utc).isoformat()
+
     await db.landing_leads.update_one(
         {"email": lead.email},
         {"$set": {
@@ -296,13 +351,21 @@ async def capture_lead(lead: LeadCapture):
             "interest": lead.interest,
             "session_id": lead.session_id,
             "source": "landing_page",
-            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "captured_at": now,
         }},
         upsert=True
     )
-    
+
+    # Funnel: email_captured
+    if lead.session_id:
+        await db.landing_funnel_events.update_one(
+            {"session_id": lead.session_id, "stage": "email_captured"},
+            {"$setOnInsert": {"timestamp": now, "email": lead.email}},
+            upsert=True,
+        )
+
     log.info(f"Lead captured: {lead.email} (interest: {lead.interest})")
-    
+
     return {"ok": True, "message": "Lead erfasst"}
 
 @router.get("/leads")
@@ -464,14 +527,26 @@ async def create_sales_invite(req: SalesInviteRequest, request: Request):
     join_url = f"{frontend_url}/livekit-stream"
 
     # Mark lead as contacted
+    now = datetime.now(timezone.utc).isoformat()
     await db.landing_leads.update_one(
         {"email": req.email},
         {"$set": {
-            "last_sales_call_at": datetime.now(timezone.utc).isoformat(),
+            "last_sales_call_at": now,
             "last_sales_call_room": room_name,
         }},
         upsert=False,
     )
+
+    # Funnel: sales_call_sent (resolve session_id from existing lead if available)
+    lead_doc = await db.landing_leads.find_one({"email": req.email}, {"session_id": 1})
+    sess_id = lead_doc.get("session_id") if lead_doc else f"sales_invite_{room_name}"
+    await db.landing_funnel_events.insert_one({
+        "session_id": sess_id,
+        "stage": "sales_call_sent",
+        "timestamp": now,
+        "email": req.email,
+        "room_name": room_name,
+    })
 
     # Send invite email
     greeting = f"Hallo {req.lead_name}," if req.lead_name else "Hallo,"
@@ -510,6 +585,95 @@ async def create_sales_invite(req: SalesInviteRequest, request: Request):
         "resend_enabled": email_result["resend_enabled"],
         "lead_email": req.email,
     }
+
+
+@router.get("/score-history/{session_id}")
+async def get_score_history(session_id: str, request: Request):
+    """Get scoring timeline for a chat session (admin only)."""
+    from core.security import get_current_user
+    user = await get_current_user(request)
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    history = await db.landing_lead_score_history.find(
+        {"session_id": session_id},
+        {"_id": 0}
+    ).sort("scored_at", 1).to_list(100)
+
+    return {"session_id": session_id, "history": history, "count": len(history)}
+
+
+@router.get("/leads/score-history-by-email/{email}")
+async def get_score_history_by_email(email: str, request: Request):
+    """Get scoring timeline for a lead's email (admin only)."""
+    from core.security import get_current_user
+    user = await get_current_user(request)
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    history = await db.landing_lead_score_history.find(
+        {"lead_email": email},
+        {"_id": 0}
+    ).sort("scored_at", 1).to_list(100)
+
+    return {"email": email, "history": history, "count": len(history)}
+
+
+@router.get("/analytics/funnel")
+async def get_funnel_analytics(request: Request):
+    """Lead-funnel: stage counts + conversion rates (admin only)."""
+    from core.security import get_current_user
+    user = await get_current_user(request)
+    if user.get("role") != "admin" and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    stages = ["chat_started", "email_requested", "email_captured", "sales_call_sent", "sales_call_accepted"]
+    counts = {}
+    for stage in stages:
+        sessions = await db.landing_funnel_events.distinct("session_id", {"stage": stage})
+        counts[stage] = len(sessions)
+
+    # Conversion rates (each stage relative to previous non-zero base)
+    funnel = []
+    base = counts.get("chat_started", 0) or 1
+    prev_count = base
+    for stage in stages:
+        c = counts.get(stage, 0)
+        funnel.append({
+            "stage": stage,
+            "count": c,
+            "from_top_pct": round(c / base * 100, 1) if base else 0,
+            "from_prev_pct": round(c / prev_count * 100, 1) if prev_count else 0,
+        })
+        if c > 0:
+            prev_count = c
+
+    # Hot-alert stats
+    hot_alerts = await db.landing_leads.count_documents({"hot_alert_sent_at": {"$exists": True}})
+    hot_leads = await db.landing_leads.count_documents({"lead_score": {"$gte": 80}})
+
+    return {
+        "funnel": funnel,
+        "stage_counts": counts,
+        "hot_leads_total": hot_leads,
+        "hot_alerts_sent": hot_alerts,
+    }
+
+
+@router.post("/funnel/track")
+async def track_funnel_event(stage: str, session_id: str, email: Optional[str] = None):
+    """Public endpoint to track a funnel stage from frontend (e.g. sales_call_accepted)."""
+    valid_stages = ["chat_started", "email_requested", "email_captured", "sales_call_sent", "sales_call_accepted"]
+    if stage not in valid_stages:
+        raise HTTPException(status_code=400, detail=f"Invalid stage. Must be one of: {valid_stages}")
+
+    await db.landing_funnel_events.insert_one({
+        "session_id": session_id,
+        "stage": stage,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "email": email,
+    })
+    return {"ok": True, "stage": stage}
 
 
 @router.get("/health")

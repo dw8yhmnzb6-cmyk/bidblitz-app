@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Mail, MessageSquare, TrendingUp, Users, RefreshCw,
-  Loader2, Search, Download, Video, Send, X, Check
+  Loader2, Search, Download, Video, Send, X, Check, Clock, RotateCw, GitBranch
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -17,6 +17,9 @@ export default function AdminLandingLeadsPage({ onBack }) {
   const [salesMsg, setSalesMsg] = useState('');
   const [salesLoading, setSalesLoading] = useState(false);
   const [salesResult, setSalesResult] = useState(null);
+  const [funnel, setFunnel] = useState(null);
+  const [historyModal, setHistoryModal] = useState(null); // { email, history, loading }
+  const [rescoring, setRescoring] = useState({}); // { session_id: bool }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -27,19 +30,49 @@ export default function AdminLandingLeadsPage({ onBack }) {
     setLoading(true);
     setError('');
     try {
-      const [aRes, lRes] = await Promise.all([
+      const [aRes, lRes, fRes] = await Promise.all([
         fetch(`${API}/api/landing-chatbot/analytics`, { headers, credentials: 'include' }),
         fetch(`${API}/api/landing-chatbot/leads`, { headers, credentials: 'include' }),
+        fetch(`${API}/api/landing-chatbot/analytics/funnel`, { headers, credentials: 'include' }),
       ]);
       if (!aRes.ok) throw new Error('Analytics fehlgeschlagen');
       if (!lRes.ok) throw new Error('Leads fehlgeschlagen');
       setAnalytics(await aRes.json());
       const lj = await lRes.json();
       setLeads(lj.leads || []);
+      if (fRes.ok) setFunnel(await fRes.json());
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const rescoreLead = async (sessionId) => {
+    if (!sessionId) return;
+    setRescoring((r) => ({ ...r, [sessionId]: true }));
+    try {
+      await fetch(`${API}/api/landing-chatbot/score-session?session_id=${encodeURIComponent(sessionId)}`, {
+        method: 'POST', headers, credentials: 'include',
+      });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setRescoring((r) => ({ ...r, [sessionId]: false }));
+    }
+  };
+
+  const openHistory = async (email) => {
+    setHistoryModal({ email, history: [], loading: true });
+    try {
+      const res = await fetch(`${API}/api/landing-chatbot/leads/score-history-by-email/${encodeURIComponent(email)}`, {
+        headers, credentials: 'include',
+      });
+      const data = await res.json();
+      setHistoryModal({ email, history: data.history || [], loading: false });
+    } catch (e) {
+      setHistoryModal({ email, history: [], loading: false, error: e.message });
     }
   };
 
@@ -173,6 +206,48 @@ export default function AdminLandingLeadsPage({ onBack }) {
           })}
         </div>
 
+        {/* Lead Funnel */}
+        {funnel?.funnel?.length > 0 && (
+          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5" data-testid="admin-leads-funnel">
+            <h3 className="text-sm font-bold mb-3 text-emerald-400 flex items-center gap-2">
+              <GitBranch size={16} /> Lead-Funnel
+            </h3>
+            <div className="space-y-2">
+              {funnel.funnel.map((stage, idx) => {
+                const labels = {
+                  chat_started: 'Chat gestartet',
+                  email_requested: 'Email angefordert',
+                  email_captured: 'Email erfasst',
+                  sales_call_sent: 'Sales-Call versendet',
+                  sales_call_accepted: 'Sales-Call angenommen',
+                };
+                const colors = ['#3B82F6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'];
+                const color = colors[idx] || '#6B7280';
+                return (
+                  <div key={stage.stage} data-testid={`admin-funnel-stage-${stage.stage}`} className="flex items-center gap-3">
+                    <div className="w-32 text-xs font-semibold text-gray-300">{labels[stage.stage] || stage.stage}</div>
+                    <div className="flex-1 relative h-7 bg-white/5 rounded-md overflow-hidden">
+                      <div
+                        className="h-full transition-all flex items-center px-2"
+                        style={{ width: `${stage.from_top_pct}%`, background: `${color}40`, borderRight: `2px solid ${color}` }}
+                      >
+                        <span className="text-xs font-bold" style={{ color }}>{stage.count}</span>
+                      </div>
+                    </div>
+                    <div className="w-16 text-right text-[10px] text-gray-400">
+                      {stage.from_prev_pct}%
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-4 mt-3 pt-3 border-t border-white/5 text-[10px] text-gray-400">
+              <span>🔥 Hot leads: <strong className="text-red-400">{funnel.hot_leads_total}</strong></span>
+              <span>📡 Alerts gesendet: <strong className="text-amber-400">{funnel.hot_alerts_sent}</strong></span>
+            </div>
+          </div>
+        )}
+
         {/* Time-series Chart */}
         {series.length > 0 && (
           <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5" data-testid="admin-leads-chart">
@@ -297,6 +372,23 @@ export default function AdminLandingLeadsPage({ onBack }) {
                     )}
                   </div>
                   <button
+                    onClick={() => rescoreLead(lead.session_id)}
+                    disabled={!lead.session_id || rescoring[lead.session_id]}
+                    data-testid={`admin-lead-rescore-${idx}`}
+                    className="p-2 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 disabled:opacity-30"
+                    title="Score neu berechnen"
+                  >
+                    {rescoring[lead.session_id] ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} />}
+                  </button>
+                  <button
+                    onClick={() => openHistory(lead.email)}
+                    data-testid={`admin-lead-history-${idx}`}
+                    className="p-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400"
+                    title="Score-Historie"
+                  >
+                    <Clock size={14} />
+                  </button>
+                  <button
                     onClick={() => { setSalesModal({ email: lead.email, lead_name: lead.name }); setSalesMsg(''); setSalesResult(null); }}
                     data-testid={`admin-lead-sales-btn-${idx}`}
                     className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 flex items-center gap-1 text-xs font-bold"
@@ -319,8 +411,7 @@ export default function AdminLandingLeadsPage({ onBack }) {
       </div>
 
       {/* Sales Invite Modal */}
-      {salesModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      {salesModal && (        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1a1a1f] border border-white/10 rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold flex items-center gap-2">
@@ -394,6 +485,58 @@ export default function AdminLandingLeadsPage({ onBack }) {
                   </button>
                 </div>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Score History Modal */}
+      {historyModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" data-testid="admin-history-modal">
+          <div className="bg-[#1a1a1f] border border-white/10 rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Clock className="w-5 h-5 text-cyan-400" /> Score-Historie
+              </h3>
+              <button onClick={() => setHistoryModal(null)} className="text-gray-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mb-3 break-all">{historyModal.email}</p>
+
+            {historyModal.loading ? (
+              <div className="flex items-center justify-center py-8 text-gray-400">
+                <Loader2 className="w-5 h-5 animate-spin" />
+              </div>
+            ) : historyModal.history.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6 text-center">Noch keine Score-Einträge.</p>
+            ) : (
+              <div className="space-y-2">
+                {historyModal.history.map((h, idx) => {
+                  const isHot = h.score >= 70;
+                  const color = isHot ? '#EF4444' : h.score >= 40 ? '#F59E0B' : '#6B7280';
+                  return (
+                    <div key={idx} data-testid={`admin-history-entry-${idx}`} className="p-3 rounded-lg bg-white/5 border-l-2" style={{ borderColor: color }}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-lg" style={{ color }}>
+                          {h.score}/100 · {h.category}
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          {new Date(h.scored_at).toLocaleString('de-DE')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-300 italic mb-2">{h.reason}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {(h.tags || []).map((t) => (
+                          <span key={t} className="px-2 py-0.5 rounded-full text-[10px] bg-purple-500/20 text-purple-300">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
