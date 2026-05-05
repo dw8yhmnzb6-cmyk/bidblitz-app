@@ -324,6 +324,7 @@ body {
 /* Premium credit card - Ultra luxury design */
 .premium-card {
   position: relative;
+  min-height: 220px;
   aspect-ratio: 1.586 / 1;
   border-radius: 1.25rem;
   background: 
@@ -333,10 +334,11 @@ body {
       rgba(20, 20, 25, 1) 100%
     );
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.75rem;
+  padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 0.5rem;
   overflow: hidden;
   box-shadow: 
     0 25px 50px -12px rgba(0, 0, 0, 0.8),
@@ -344,6 +346,14 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transform-style: preserve-3d;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+@media (min-width: 640px) {
+  .premium-card {
+    padding: 1.75rem;
+    min-height: unset;
+    gap: 0;
+  }
 }
 
 .premium-card:hover {

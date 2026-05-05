@@ -323,28 +323,45 @@ export default function NfcPayPage({ onBack }) {
                     }
                     setLoading(true);
                     try {
-                      const res = await fetch(`${API}/api/wallet/transfer`, {
+                      // 1) Lookup recipient by BLZ-ID / email / phone / username
+                      const lookupRes = await fetch(`${API}/api/p2p/lookup`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ query: recipientCode, type: 'auto' }),
+                      });
+                      if (!lookupRes.ok) {
+                        const err = await lookupRes.json();
+                        throw new Error(err.detail || 'Empfänger nicht gefunden');
+                      }
+                      const lookup = await lookupRes.json();
+                      const recipientId = lookup?.recipient?.user_id;
+                      if (!recipientId) throw new Error('Empfänger-ID fehlt');
+
+                      // 2) Instant P2P Transfer (zero-fee)
+                      const res = await fetch(`${API}/api/p2p/transfer`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
                         body: JSON.stringify({
-                          to_identifier: recipientCode,
+                          recipient_id: recipientId,
                           amount: parseFloat(amount),
-                          description: 'NFC Quick Transfer'
+                          message: 'NFC Quick Transfer',
+                          transfer_method: 'nfc',
                         })
                       });
                       const data = await res.json();
-                      if (res.ok && data.ok) {
+                      if (res.ok && (data.success || data.ok || data.transaction_id)) {
                         toast.success(`€${amount} erfolgreich gesendet!`);
                         setView('main');
                         setAmount('');
                         setRecipientCode('');
-                        setBalance(data.new_balance || balance - parseFloat(amount));
+                        setBalance(data.sender_new_balance || data.new_balance || balance - parseFloat(amount));
                       } else {
                         toast.error(data.detail || 'Überweisung fehlgeschlagen');
                       }
                     } catch (e) {
-                      toast.error('Verbindungsfehler');
+                      toast.error(e.message || 'Verbindungsfehler');
                     }
                     setLoading(false);
                   }}

@@ -85,9 +85,9 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
       </div>
 
       {/* Card chip - Ultra realistic */}
-      <div className="relative z-10 my-4">
+      <div className="relative z-10 my-1 sm:my-4">
         <motion.div 
-          className="w-12 h-9 rounded-md overflow-hidden"
+          className="w-9 h-6 sm:w-12 sm:h-9 rounded-md overflow-hidden"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
@@ -114,22 +114,22 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
 
       {/* Card number */}
       <motion.div 
-        className="relative z-10 flex items-center gap-4 mb-4"
+        className="relative z-10 flex items-center gap-2 sm:gap-4 mb-2 sm:mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
         {[1, 2, 3].map((group) => (
-          <div key={group} className="flex gap-1.5">
+          <div key={group} className="flex gap-1 sm:gap-1.5">
             {[1, 2, 3, 4].map((dot) => (
               <div
                 key={dot}
-                className="w-2 h-2 rounded-full bg-white/30"
+                className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white/30"
               />
             ))}
           </div>
         ))}
-        <span className="text-xl font-medium tracking-[0.15em] text-white font-outfit">
+        <span className="text-base sm:text-xl font-medium tracking-[0.15em] text-white font-outfit">
           {cardNumber.split(" ").pop()}
         </span>
       </motion.div>
@@ -141,27 +141,27 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
       >
-        <div>
+        <div className="min-w-0 flex-1 mr-2">
           <span className="text-[9px] uppercase tracking-[0.2em] text-[#666] block mb-1 font-semibold">
             Card Holder
           </span>
-          <span className="text-white font-medium text-sm tracking-wide font-outfit">
+          <span className="text-white font-medium text-xs sm:text-sm tracking-wide font-outfit truncate block">
             {holder}
           </span>
         </div>
-        <div className="text-right">
+        <div className="text-right mr-2">
           <span className="text-[9px] uppercase tracking-[0.2em] text-[#666] block mb-1 font-semibold">
             Valid Thru
           </span>
-          <span className="text-white font-medium text-sm tracking-wide font-outfit">
+          <span className="text-white font-medium text-xs sm:text-sm tracking-wide font-outfit whitespace-nowrap">
             {expiry}
           </span>
         </div>
         
         {/* Card network logo */}
-        <div className="flex -space-x-2">
-          <div className="w-8 h-8 rounded-full bg-[#EB001B]/90" />
-          <div className="w-8 h-8 rounded-full bg-[#F79E1B]/90" />
+        <div className="flex -space-x-2 shrink-0">
+          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#EB001B]/90" />
+          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#F79E1B]/90" />
         </div>
       </motion.div>
     </motion.div>
