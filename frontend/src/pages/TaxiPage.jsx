@@ -907,7 +907,7 @@ export default function TaxiPage({ onNavigate }) {
                       <p className="text-xs text-gray-400 mb-3">{modeSettings.business.description || 'Professionelle Taxiunternehmen mit Lizenz'}</p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-cyan-400 font-medium">
-                          {businessDrivers > 0 ? `${businessDrivers} verfügbar` : 'Bald verfügbar'}
+                          {businessDrivers > 0 ? `${businessDrivers} verfügbar` : 'Buchung anfragen'}
                         </span>
                       </div>
                       {businessDrivers > 0 && (
@@ -934,7 +934,7 @@ export default function TaxiPage({ onNavigate }) {
                       <p className="text-xs text-gray-400 mb-3">{modeSettings.private.description || 'Private Fahrer in deiner Nähe'}</p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-purple-400 font-medium">
-                          {privateDrivers > 0 ? `${privateDrivers} verfügbar` : 'Bald verfügbar'}
+                          {privateDrivers > 0 ? `${privateDrivers} verfügbar` : 'Buchung anfragen'}
                         </span>
                       </div>
                       {privateDrivers > 0 && (

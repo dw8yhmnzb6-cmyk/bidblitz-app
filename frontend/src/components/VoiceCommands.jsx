@@ -3,12 +3,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 import VoiceCommandPreview from './VoiceCommandPreview';
 
-export default function VoiceCommands({ onCommand }) {
+export default function VoiceCommands({ onCommand, hidden = false }) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [recognition, setRecognition] = useState(null);
   const [pendingIntent, setPendingIntent] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Allow external triggers via custom event (used by SuperAppOverlay hub)
+  useEffect(() => {
+    const handler = () => {
+      if (recognition && !listening) {
+        try { recognition.start(); setListening(true); } catch {}
+      }
+    };
+    document.addEventListener('superapp:open-voice', handler);
+    return () => document.removeEventListener('superapp:open-voice', handler);
+  }, [recognition, listening]);
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -172,18 +183,20 @@ export default function VoiceCommands({ onCommand }) {
         onCancel={handleCancelCommand}
       />
 
-      {/* Voice Button */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={toggleListening}
-        className={`fixed bottom-32 right-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center ${
-          listening 
-            ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' 
-            : 'bg-gradient-to-br from-[#00C2FF] to-[#7B2CFF]'
-        }`}
-      >
-        {listening ? <MicOff size={24} className="text-white" /> : <Mic size={24} className="text-white" />}
-      </motion.button>
+      {/* Voice Button — versteckt, wenn `hidden` Prop gesetzt (SuperAppOverlay-Hub-Modus) */}
+      {!hidden && (
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={toggleListening}
+          className={`fixed bottom-32 right-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center ${
+            listening 
+              ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' 
+              : 'bg-gradient-to-br from-[#00C2FF] to-[#7B2CFF]'
+          }`}
+        >
+          {listening ? <MicOff size={24} className="text-white" /> : <Mic size={24} className="text-white" />}
+        </motion.button>
+      )}
 
       {/* Listening Indicator */}
       <AnimatePresence>
