@@ -361,10 +361,11 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 transition={{ duration: 0.2 }}
               >
                 {showBalance ? (
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-[24px] text-[#2A2A2A] font-outfit font-light">{currency}</span>
+                  <div className="flex items-baseline justify-center gap-1 px-2 max-w-full overflow-hidden">
+                    <span className="text-[18px] sm:text-[24px] text-[#2A2A2A] font-outfit font-light flex-shrink-0">{currency}</span>
                     <motion.span
-                      className="text-[48px] font-bold font-outfit text-white tracking-[-0.03em] leading-none"
+                      className="font-bold font-outfit text-white tracking-[-0.03em] leading-none truncate min-w-0"
+                      style={{ fontSize: "clamp(28px, 9vw, 48px)" }}
                       key={balance}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -374,7 +375,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                     </motion.span>
                   </div>
                 ) : (
-                  <p className="text-[48px] font-bold font-outfit text-[#1A1A1A] tracking-[-0.03em] leading-none">
+                  <p className="font-bold font-outfit text-[#1A1A1A] tracking-[-0.03em] leading-none text-center" style={{ fontSize: "clamp(28px, 9vw, 48px)" }}>
                     {currency}
                     <span className="text-[#1A1A1A]">{"••••••"}</span>
                   </p>
