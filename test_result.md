@@ -321,6 +321,18 @@ backend:
         comment: "COMPREHENSIVE KYC SYSTEM TESTING COMPLETE (2026-04-26): ✅ KYC Status endpoint working correctly (returns kyc_verified, kyc_status, can_use_features), ✅ KYC Submit endpoint validation working (correctly rejects empty submissions with 422), ✅ Wallet KYC gating working (topup and send blocked with 403 + kyc_required error), ✅ Auction KYC gating working (bidding blocked with 403 + kyc_required error), ✅ Admin KYC endpoints working (list reviews), ✅ Authentication required (401 for unauthenticated requests), ✅ All 9 backend tests passed (100% success rate). KYC system fully functional with proper gating."
 
 frontend:
+  - task: "Taxi Driver Onboarding Modal - /taxi"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/TaxiPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL ROUTING/AUTHENTICATION ISSUE (2026-05-07): Taxi Driver Onboarding Modal is FULLY IMPLEMENTED in TaxiPage.jsx (lines 1786-2010) with complete form (name, email, phone, license, vehicle type, city, message fields), all data-testid attributes present (driver-onboard-name, driver-onboard-email, driver-onboard-phone, driver-onboard-license, driver-vehicle-standard/premium/van, driver-onboard-city, driver-onboard-message, driver-onboard-submit), modal opens when clicking taxi-type-business or taxi-type-private buttons (lines 912-918, 946-952), form validation implemented (line 1942-1945), success screen with 'Bewerbung erfolgreich!' message (lines 1986-2006). Backend API working (confirmed in backend test). BUT /taxi page is NOT ACCESSIBLE on preview environment (https://taxi-streaming.preview.emergentagent.com/taxi). Issue: App.js routing logic (line 588) requires (!isGuest || isDemoMode) to render TaxiPage, but demo mode is not persisting across navigation. After clicking 'Try Demo' button, navigating to /taxi still shows landing page. Console shows repeated 401 errors for /api/auth/me. Cannot test modal UI flow because page is not rendering. REQUIRED: Fix demo mode persistence OR provide test credentials OR fix routing to allow taxi page access."
+
   - task: "Werbeplattform (Ads Platform) - /ads"
     implemented: true
     working: false
@@ -756,7 +768,8 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Taxi Driver Onboarding Modal - /taxi"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -774,3 +787,6 @@ agent_communication:
 
   - agent: "testing"
     message: "TAXI DRIVER ONBOARDING API TESTING COMPLETE (2026-05-07): ✅ ALL 9 TEST SCENARIOS PASSED (100% success rate) - Comprehensive testing of POST /api/taxi/driver/onboard endpoint at https://taxi-streaming.preview.emergentagent.com. ✅ SUCCESSFUL APPLICATIONS: Business driver application (Max Mustermann, Berlin, standard vehicle) returns 200 OK with application_id bd63de949dc67643 and status=pending, Private driver application (Anna Schmidt, München, premium vehicle) returns 200 OK with application_id 00a8b4cb10d51199. ✅ DUPLICATE DETECTION: Duplicate email submission correctly returns 400 with German error message 'Deine Bewerbung wird bereits geprüft' (proves database persistence working). ✅ VALIDATION WORKING: All field validations return 422 errors - empty name (min 2 chars), invalid email (regex pattern), short phone (min 8 chars), short license (min 5 chars), invalid vehicle_type (must be standard|premium|van), invalid driver_type (must be business|private). ✅ DATABASE PERSISTENCE: Confirmed working via duplicate check test - applications are saved to taxi_driver_applications collection with proper structure (application_id, name, email, phone, license_number, vehicle_type, driver_type, city, status, created_at). ✅ RESPONSE STRUCTURE: All responses match specification with proper fields (ok, application_id, message, status) and German user-facing messages. Taxi Driver Onboarding API is fully functional and production-ready. Test results saved to /app/taxi_driver_onboard_test_results.json"
+
+  - agent: "testing"
+    message: "TAXI DRIVER ONBOARDING MODAL FRONTEND TESTING (2026-05-07): ❌ CRITICAL ROUTING/AUTHENTICATION ISSUE FOUND - Cannot access /taxi page on preview environment (https://taxi-streaming.preview.emergentagent.com/taxi). ✅ FRONTEND CODE VERIFIED: TaxiPage.jsx contains complete Driver Onboarding Modal implementation with all required data-testid attributes (driver-onboard-name, driver-onboard-email, driver-onboard-phone, driver-onboard-license, driver-vehicle-standard/premium/van, driver-onboard-city, driver-onboard-message, driver-onboard-submit), modal opens when clicking taxi-type-business or taxi-type-private buttons, form validation implemented ('Bitte alle Pflichtfelder ausfüllen'), success screen shows 'Bewerbung erfolgreich!' and 'Wir prüfen deine Angaben' messages. ❌ ROUTING ISSUE: App.js line 588 shows taxi page requires (!isGuest || isDemoMode) to render, but demo mode is not persisting across navigation. After clicking 'Try Demo' button, navigating to /taxi still shows landing page instead of taxi page. Console logs show repeated 401 errors for /api/auth/me and /api/auth/refresh even in demo mode. ❌ ROOT CAUSE: Demo mode state (isDemoMode) is set to true but currentPath is reset to '/' (line 391 in App.js), causing navigation issues. The taxi page is not accessible without proper authentication or working demo mode. ⚠️ IMPACT: Cannot test Driver Onboarding Modal UI flow (form filling, submission, validation, success screen) because taxi page is not rendering. Backend API is working (confirmed in previous test), but frontend UI is inaccessible. 🔧 REQUIRED FIX: Fix demo mode persistence across navigation OR provide test credentials for authentication OR fix routing logic to allow taxi page access in demo mode."
