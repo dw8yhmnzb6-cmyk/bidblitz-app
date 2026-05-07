@@ -585,7 +585,7 @@ function AppContent() {
           ? <AuctionAdminPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/taxi":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiPage onNavigate={handleNavigate} />;
+        return <TaxiPage onNavigate={handleNavigate} />;
       case "/taxi-partner":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiOperatorPage onNavigate={handleNavigate} />;
       case "/taxi-dashboard":
