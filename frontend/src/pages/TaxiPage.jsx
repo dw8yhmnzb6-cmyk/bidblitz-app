@@ -373,7 +373,16 @@ export default function TaxiPage({ onNavigate }) {
       },
       (error) => {
         console.error('❌ Geolocation error:', error);
-        setCurrentAddress('Standort konnte nicht ermittelt werden');
+        // Provide more helpful error message based on error code
+        let errorMsg = 'Standort konnte nicht ermittelt werden';
+        if (error.code === 1) {
+          errorMsg = 'Standortzugriff verweigert. Bitte Berechtigung in Einstellungen aktivieren.';
+        } else if (error.code === 2) {
+          errorMsg = 'Standort nicht verfügbar. GPS-Signal prüfen.';
+        } else if (error.code === 3) {
+          errorMsg = 'Standortabfrage Timeout. Erneut versuchen.';
+        }
+        setCurrentAddress(errorMsg);
         setLoadingLocation(false);
       },
       {
@@ -388,7 +397,12 @@ export default function TaxiPage({ onNavigate }) {
   const reverseGeocode = async (lat, lng) => {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=de`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=de`,
+        {
+          headers: {
+            'User-Agent': 'BidBlitz-Taxi-App/1.0'
+          }
+        }
       );
       if (!response.ok) throw new Error('Reverse geocoding failed');
       const data = await response.json();
@@ -403,14 +417,26 @@ export default function TaxiPage({ onNavigate }) {
         const cityLine = `${postcode} ${city}`.trim();
         const fullAddress = [streetLine, cityLine].filter(Boolean).join(', ');
 
-        setCurrentAddress(fullAddress);
-        setPickup(prev => ({ ...prev, address: fullAddress }));
-
-        console.log('✓ Address:', fullAddress);
+        if (fullAddress) {
+          setCurrentAddress(fullAddress);
+          setPickup(prev => ({ ...prev, address: fullAddress }));
+          console.log('✓ Address:', fullAddress);
+        } else {
+          // Fallback if address extraction fails
+          setCurrentAddress(`${lat.toFixed(4)}°, ${lng.toFixed(4)}°`);
+          setPickup(prev => ({ ...prev, address: `${lat.toFixed(4)}°, ${lng.toFixed(4)}°` }));
+        }
+      } else {
+        // No address data returned
+        setCurrentAddress(`Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`);
+        setPickup(prev => ({ ...prev, address: `Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°` }));
       }
     } catch (error) {
       console.error('❌ Reverse geocoding error:', error);
-      setCurrentAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      // Show coordinates as fallback
+      const coordsText = `Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+      setCurrentAddress(coordsText);
+      setPickup(prev => ({ ...prev, address: coordsText }));
     }
   };
 
@@ -1144,6 +1170,9 @@ export default function TaxiPage({ onNavigate }) {
                   <div className="absolute top-3 left-3 right-16 bg-black/70 backdrop-blur-md px-3 py-2 rounded-xl z-10 border border-white/10" data-testid="taxi-current-address">
                     <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider">Dein Standort</p>
                     <p className="text-xs text-white truncate">{currentAddress}</p>
+                    {currentAddress.includes('Standortzugriff verweigert') && (
+                      <p className="text-[9px] text-yellow-400 mt-1">💡 Tipp: Standort in Browser-Einstellungen aktivieren</p>
+                    )}
                   </div>
                 )}
 
