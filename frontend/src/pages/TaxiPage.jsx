@@ -1937,6 +1937,11 @@ export default function TaxiPage({ onNavigate }) {
                     </div>
 
                     {/* Submit Button */}
+                    {error && (
+                      <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">
+                        {error}
+                      </div>
+                    )}
                     <button
                       onClick={async () => {
                         if (!onboardingForm.name || !onboardingForm.email || !onboardingForm.phone || !onboardingForm.license_number) {
