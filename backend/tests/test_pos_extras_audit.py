@@ -9,7 +9,7 @@ import requests
 
 BASE_URL = os.environ.get(
     "REACT_APP_BACKEND_URL",
-    "https://bidblitz-release.preview.emergentagent.com",
+    "https://taxi-streaming.preview.emergentagent.com",
 ).rstrip("/")
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"

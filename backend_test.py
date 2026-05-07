@@ -1,491 +1,442 @@
 #!/usr/bin/env python3
 """
-BidBlitz POS P2 Features - Retest Script
-Tests 3 previously failed endpoints after bug fixes:
-1. GET /api/pos/retail/pick/tasks/pending
-2. GET /api/pos/retail/video-replay/{receipt_id}
-3. GET /api/pos/retail/public/product-info/{product_id}
+Backend API Testing Script for Taxi Driver Onboarding
+Tests all scenarios specified in the review request
 """
 
 import requests
 import json
 from datetime import datetime
 
-# Backend URL from frontend/.env
-BASE_URL = "https://bidblitz-release.preview.emergentagent.com/api"
+# Configuration
+BASE_URL = "https://taxi-streaming.preview.emergentagent.com"
+API_ENDPOINT = f"{BASE_URL}/api/taxi/driver/onboard"
 
-# Test credentials
-ADMIN_EMAIL = "admin@bidblitz.ae"
-ADMIN_PASSWORD = "BidBlitz2026!"
+# Test results storage
+test_results = []
 
-# Test results
-results = {
-    "test_run": datetime.now().isoformat(),
-    "total_tests": 3,
-    "passed": 0,
-    "failed": 0,
-    "tests": []
-}
-
-def log_test(name, passed, status_code, response_data, error=None):
+def log_test(test_name, passed, status_code, response_data, expected, actual):
     """Log test result"""
     result = {
-        "name": name,
+        "test_name": test_name,
         "passed": passed,
         "status_code": status_code,
         "response": response_data,
-        "error": error
+        "expected": expected,
+        "actual": actual,
+        "timestamp": datetime.now().isoformat()
     }
-    results["tests"].append(result)
-    if passed:
-        results["passed"] += 1
-        print(f"✅ {name} - PASSED (Status: {status_code})")
-    else:
-        results["failed"] += 1
-        print(f"❌ {name} - FAILED (Status: {status_code})")
-        if error:
-            print(f"   Error: {error}")
-    if response_data:
-        print(f"   Response: {json.dumps(response_data, indent=2)[:200]}...")
-    print()
-
-def login():
-    """Login and get session cookies"""
-    print("=" * 80)
-    print("STEP 1: LOGIN")
-    print("=" * 80)
+    test_results.append(result)
     
-    url = f"{BASE_URL}/auth/login"
+    status = "✅ PASS" if passed else "❌ FAIL"
+    print(f"\n{status} - {test_name}")
+    print(f"   Status Code: {status_code} (Expected: {expected})")
+    if not passed:
+        print(f"   Expected: {expected}")
+        print(f"   Actual: {actual}")
+    print(f"   Response: {json.dumps(response_data, indent=2)}")
+
+def test_1_successful_business_driver():
+    """Test 1: Successful Driver Application (Business Type)"""
+    print("\n" + "="*80)
+    print("TEST 1: Successful Driver Application (Business Type)")
+    print("="*80)
+    
     payload = {
-        "email": ADMIN_EMAIL,
-        "password": ADMIN_PASSWORD
+        "name": "Max Mustermann",
+        "email": "max.business@test.de",
+        "phone": "+49 123 456789",
+        "license_number": "B1234567890",
+        "vehicle_type": "standard",
+        "driver_type": "business",
+        "city": "Berlin"
     }
     
     try:
-        response = requests.post(url, json=payload)
-        print(f"Login Status: {response.status_code}")
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
         
-        if response.status_code == 200:
-            cookies = response.cookies
-            data = response.json()
-            print(f"✅ Login successful as: {data.get('user', {}).get('email')}")
-            print(f"   Role: {data.get('user', {}).get('role')}")
-            print(f"   Cookies: {list(cookies.keys())}")
-            return cookies
-        else:
-            print(f"❌ Login failed: {response.text}")
-            return None
-    except Exception as e:
-        print(f"❌ Login error: {str(e)}")
-        return None
-
-def create_test_product(cookies, store_id):
-    """Create a test product for product-info endpoint"""
-    print("=" * 80)
-    print("STEP 2: CREATE TEST PRODUCT")
-    print("=" * 80)
-    
-    if not store_id:
-        print("⚠️ No store_id available, cannot create product")
-        return None
-    
-    url = f"{BASE_URL}/pos/products/create"
-    payload = {
-        "store_id": store_id,
-        "name": "Test Product for QR Scan",
-        "sku": f"TEST-QR-{datetime.now().strftime('%H%M%S')}",
-        "price": 9.99,
-        "purchase_price": 5.00,
-        "category": "Test",
-        "stock": 100,
-        "track_stock": True,
-        "allow_negative_stock": False
-    }
-    
-    try:
-        response = requests.post(url, json=payload, cookies=cookies)
-        print(f"Create Product Status: {response.status_code}")
+        # Check status code
+        status_ok = response.status_code == 200
         
-        if response.status_code == 200:
-            data = response.json()
-            product = data.get("product", {})
-            product_id = product.get("product_id")
-            print(f"✅ Product created: {product_id}")
-            print(f"   Name: {product.get('name')}")
-            print(f"   SKU: {product.get('sku')}")
-            return product_id
-        else:
-            print(f"⚠️ Product creation failed: {response.text}")
-            return None
-    except Exception as e:
-        print(f"⚠️ Product creation error: {str(e)}")
-        return None
-
-def get_store_and_register(cookies):
-    """Get existing store and register for testing"""
-    print("=" * 80)
-    print("STEP 2A: GET STORE AND REGISTER")
-    print("=" * 80)
-    
-    try:
-        # Get existing stores
-        stores_url = f"{BASE_URL}/pos/stores"
-        stores_response = requests.get(stores_url, cookies=cookies)
-        print(f"Get Stores Status: {stores_response.status_code}")
+        # Check response structure
+        has_ok = "ok" in data and data["ok"] == True
+        has_application_id = "application_id" in data and len(data["application_id"]) > 0
+        has_status = "status" in data and data["status"] == "pending"
         
-        if stores_response.status_code == 200:
-            stores = stores_response.json().get("stores", [])
-            if stores:
-                store_id = stores[0].get("store_id")
-                print(f"✅ Using existing store: {store_id}")
-                
-                # Get registers for this store
-                registers_url = f"{BASE_URL}/pos/registers"
-                registers_response = requests.get(registers_url, params={"store_id": store_id}, cookies=cookies)
-                print(f"Get Registers Status: {registers_response.status_code}")
-                
-                if registers_response.status_code == 200:
-                    registers = registers_response.json().get("registers", [])
-                    if registers:
-                        register_id = registers[0].get("register_id")
-                        print(f"✅ Using existing register: {register_id}")
-                        return store_id, register_id
-                    else:
-                        print(f"⚠️ No registers found for store")
-                        return store_id, None
-                else:
-                    print(f"⚠️ Failed to get registers: {registers_response.text}")
-                    return store_id, None
-            else:
-                print(f"❌ No stores available")
-                return None, None
-        else:
-            print(f"❌ Failed to get stores: {stores_response.text}")
-            return None, None
-            
+        all_checks = status_ok and has_ok and has_application_id and has_status
+        
+        log_test(
+            "Test 1: Successful Business Driver Application",
+            all_checks,
+            response.status_code,
+            data,
+            "200 with ok=true, application_id, status=pending",
+            f"Status: {response.status_code}, ok={data.get('ok')}, has_id={has_application_id}, status={data.get('status')}"
+        )
+        
+        return data.get("application_id"), data.get("email", payload["email"])
+        
     except Exception as e:
-        print(f"❌ Error getting store/register: {str(e)}")
+        log_test(
+            "Test 1: Successful Business Driver Application",
+            False,
+            0,
+            {"error": str(e)},
+            "200 with ok=true, application_id, status=pending",
+            f"Exception: {str(e)}"
+        )
         return None, None
 
-def get_existing_sale(cookies):
-    """Try to get an existing sale for video-replay testing"""
-    print("=" * 80)
-    print("STEP 3A: GET EXISTING SALE")
-    print("=" * 80)
+def test_2_successful_private_driver():
+    """Test 2: Successful Driver Application (Private Type)"""
+    print("\n" + "="*80)
+    print("TEST 2: Successful Driver Application (Private Type)")
+    print("="*80)
+    
+    payload = {
+        "name": "Anna Schmidt",
+        "email": "anna.private@test.de",
+        "phone": "+49 987 654321",
+        "license_number": "P9876543210",
+        "vehicle_type": "premium",
+        "driver_type": "private",
+        "city": "München"
+    }
     
     try:
-        # Try to get sales from the system
-        sales_url = f"{BASE_URL}/pos/sales"
-        sales_response = requests.get(sales_url, cookies=cookies)
-        print(f"Get Sales Status: {sales_response.status_code}")
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
         
-        if sales_response.status_code == 200:
-            data = sales_response.json()
-            sales = data.get("sales", [])
-            if sales:
-                receipt_id = sales[0].get("receipt_id")
-                print(f"✅ Using existing sale: {receipt_id}")
-                return receipt_id
-            else:
-                print(f"⚠️ No existing sales found")
-                return None
-        else:
-            print(f"⚠️ Failed to get sales: {sales_response.text}")
-            return None
-            
-    except Exception as e:
-        print(f"⚠️ Error getting sales: {str(e)}")
-        return None
-
-def open_shift_and_create_sale(cookies, store_id, register_id, product_id):
-    """Open a shift and create a test sale for video-replay endpoint"""
-    print("=" * 80)
-    print("STEP 3B: OPEN SHIFT AND CREATE SALE")
-    print("=" * 80)
-    
-    if not store_id or not register_id:
-        print("⚠️ Missing store_id or register_id, cannot create sale")
-        return None
-    
-    try:
-        # Open a shift first
-        shift_url = f"{BASE_URL}/pos/shift/open"
-        shift_payload = {
-            "register_id": register_id,
-            "starting_cash": 100.00
-        }
+        # Check status code
+        status_ok = response.status_code == 200
         
-        shift_response = requests.post(shift_url, json=shift_payload, cookies=cookies)
-        print(f"Open Shift Status: {shift_response.status_code}")
+        # Check response structure
+        has_ok = "ok" in data and data["ok"] == True
+        has_application_id = "application_id" in data and len(data["application_id"]) > 0
         
-        if shift_response.status_code == 200:
-            shift_data = shift_response.json()
-            shift_id = shift_data.get("shift", {}).get("shift_id")
-            print(f"✅ Shift opened: {shift_id}")
-        elif shift_response.status_code == 400 and "bereits offen" in shift_response.text:
-            print(f"✅ Shift already open")
-        else:
-            print(f"⚠️ Failed to open shift: {shift_response.text}")
-            # Continue anyway, maybe shift is already open
+        all_checks = status_ok and has_ok and has_application_id
         
-        # Now try to create a sale via checkout
-        checkout_url = f"{BASE_URL}/pos/checkout"
-        checkout_payload = {
-            "register_id": register_id,
-            "items": [
-                {
-                    "product_id": product_id if product_id else "PRD-TEST-001",
-                    "name": "Test Item for Video Replay",
-                    "quantity": 1,
-                    "price": 10.00
-                }
-            ],
-            "method": "cash",
-            "cash_received": 20.00,
-            "discount_pct": 0
-        }
+        log_test(
+            "Test 2: Successful Private Driver Application",
+            all_checks,
+            response.status_code,
+            data,
+            "200 with ok=true, application_id",
+            f"Status: {response.status_code}, ok={data.get('ok')}, has_id={has_application_id}"
+        )
         
-        checkout_response = requests.post(checkout_url, json=checkout_payload, cookies=cookies)
-        print(f"Checkout Status: {checkout_response.status_code}")
-        
-        if checkout_response.status_code == 200:
-            data = checkout_response.json()
-            sale = data.get("sale", {})
-            receipt_id = sale.get("receipt_id")
-            print(f"✅ Sale created: {receipt_id}")
-            print(f"   Store ID: {store_id}")
-            return receipt_id
-        else:
-            print(f"⚠️ Checkout failed: {checkout_response.text}")
-            return None
-            
-    except Exception as e:
-        print(f"⚠️ Sale creation error: {str(e)}")
-        return None
-
-def test_pick_tasks_pending(cookies, store_id):
-    """Test GET /api/pos/retail/pick/tasks/pending"""
-    print("=" * 80)
-    print("TEST 1: GET /api/pos/retail/pick/tasks/pending")
-    print("=" * 80)
-    
-    if not store_id:
-        print("⚠️ No store_id available, using placeholder")
-        store_id = "STR-TEST-001"
-    
-    url = f"{BASE_URL}/pos/retail/pick/tasks/pending"
-    params = {"store_id": store_id}
-    
-    try:
-        response = requests.get(url, params=params, cookies=cookies)
-        
-        if response.status_code == 200:
-            data = response.json()
-            # Check if response has expected structure
-            if "tasks" in data and isinstance(data["tasks"], list):
-                log_test(
-                    "GET /api/pos/retail/pick/tasks/pending",
-                    True,
-                    response.status_code,
-                    data
-                )
-            else:
-                log_test(
-                    "GET /api/pos/retail/pick/tasks/pending",
-                    False,
-                    response.status_code,
-                    data,
-                    "Response missing 'tasks' array"
-                )
-        else:
-            log_test(
-                "GET /api/pos/retail/pick/tasks/pending",
-                False,
-                response.status_code,
-                response.text,
-                f"Expected 200, got {response.status_code}"
-            )
     except Exception as e:
         log_test(
-            "GET /api/pos/retail/pick/tasks/pending",
+            "Test 2: Successful Private Driver Application",
             False,
             0,
-            None,
-            str(e)
+            {"error": str(e)},
+            "200 with ok=true, application_id",
+            f"Exception: {str(e)}"
         )
 
-def test_video_replay(cookies, receipt_id):
-    """Test GET /api/pos/retail/video-replay/{receipt_id}"""
-    print("=" * 80)
-    print("TEST 2: GET /api/pos/retail/video-replay/{receipt_id}")
-    print("=" * 80)
+def test_3_duplicate_application(email):
+    """Test 3: Duplicate Application - Email Already Exists (Pending)"""
+    print("\n" + "="*80)
+    print("TEST 3: Duplicate Application - Email Already Exists")
+    print("="*80)
     
-    if not receipt_id:
-        print("⚠️ No receipt_id available, skipping test")
-        log_test(
-            "GET /api/pos/retail/video-replay/{receipt_id}",
-            False,
-            0,
-            None,
-            "No receipt_id available from setup"
-        )
-        return
-    
-    url = f"{BASE_URL}/pos/retail/video-replay/{receipt_id}"
+    payload = {
+        "name": "Max Mustermann",
+        "email": email,
+        "phone": "+49 123 456789",
+        "license_number": "B1234567890",
+        "vehicle_type": "standard",
+        "driver_type": "business",
+        "city": "Berlin"
+    }
     
     try:
-        response = requests.get(url, cookies=cookies)
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
         
-        if response.status_code == 200:
-            data = response.json()
-            # Check if response has expected structure
-            expected_fields = ["receipt_id", "video_available", "placeholder_url"]
-            has_all_fields = all(field in data for field in expected_fields)
-            
-            if has_all_fields:
-                log_test(
-                    "GET /api/pos/retail/video-replay/{receipt_id}",
-                    True,
-                    response.status_code,
-                    data
-                )
-            else:
-                log_test(
-                    "GET /api/pos/retail/video-replay/{receipt_id}",
-                    False,
-                    response.status_code,
-                    data,
-                    f"Response missing expected fields: {expected_fields}"
-                )
-        else:
-            log_test(
-                "GET /api/pos/retail/video-replay/{receipt_id}",
-                False,
-                response.status_code,
-                response.text,
-                f"Expected 200, got {response.status_code}"
-            )
+        # Should return 400 with error message
+        status_ok = response.status_code == 400
+        has_error = "detail" in data and "bereits geprüft" in data["detail"]
+        
+        all_checks = status_ok and has_error
+        
+        log_test(
+            "Test 3: Duplicate Application Error",
+            all_checks,
+            response.status_code,
+            data,
+            "400 with 'Deine Bewerbung wird bereits geprüft'",
+            f"Status: {response.status_code}, detail={data.get('detail')}"
+        )
+        
     except Exception as e:
         log_test(
-            "GET /api/pos/retail/video-replay/{receipt_id}",
+            "Test 3: Duplicate Application Error",
             False,
             0,
-            None,
-            str(e)
+            {"error": str(e)},
+            "400 with error message",
+            f"Exception: {str(e)}"
         )
 
-def test_public_product_info(cookies, product_id):
-    """Test GET /api/pos/retail/public/product-info/{product_id}"""
-    print("=" * 80)
-    print("TEST 3: GET /api/pos/retail/public/product-info/{product_id}")
-    print("=" * 80)
+def test_4_validation_errors():
+    """Test 4: Validation Errors - Missing/Invalid Fields"""
+    print("\n" + "="*80)
+    print("TEST 4: Validation Errors - Missing/Invalid Fields")
+    print("="*80)
     
-    if not product_id:
-        print("⚠️ No product_id available, skipping test")
-        log_test(
-            "GET /api/pos/retail/public/product-info/{product_id}",
-            False,
-            0,
-            None,
-            "No product_id available from setup"
-        )
-        return
-    
-    url = f"{BASE_URL}/pos/retail/public/product-info/{product_id}"
+    # Test 4a: Empty name
+    print("\n--- Test 4a: Empty Name ---")
+    payload = {
+        "name": "",
+        "email": "test@test.de",
+        "phone": "+49 123 456789",
+        "license_number": "B1234567890",
+        "vehicle_type": "standard",
+        "driver_type": "business"
+    }
     
     try:
-        # This is a PUBLIC endpoint, so we don't need cookies
-        response = requests.get(url)
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
         
-        if response.status_code == 200:
-            data = response.json()
-            # Check if response has expected structure
-            if "product" in data and "qr_url" in data:
-                log_test(
-                    "GET /api/pos/retail/public/product-info/{product_id}",
-                    True,
-                    response.status_code,
-                    data
-                )
-            else:
-                log_test(
-                    "GET /api/pos/retail/public/product-info/{product_id}",
-                    False,
-                    response.status_code,
-                    data,
-                    "Response missing 'product' or 'qr_url' fields"
-                )
-        else:
-            log_test(
-                "GET /api/pos/retail/public/product-info/{product_id}",
-                False,
-                response.status_code,
-                response.text,
-                f"Expected 200, got {response.status_code}"
-            )
+        status_ok = response.status_code == 422
+        
+        log_test(
+            "Test 4a: Empty Name Validation",
+            status_ok,
+            response.status_code,
+            data,
+            "422 validation error",
+            f"Status: {response.status_code}"
+        )
+    except Exception as e:
+        log_test("Test 4a: Empty Name Validation", False, 0, {"error": str(e)}, "422", f"Exception: {str(e)}")
+    
+    # Test 4b: Invalid email
+    print("\n--- Test 4b: Invalid Email ---")
+    payload = {
+        "name": "Test User",
+        "email": "invalid-email",
+        "phone": "+49 123 456789",
+        "license_number": "B1234567890",
+        "vehicle_type": "standard",
+        "driver_type": "business"
+    }
+    
+    try:
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
+        
+        status_ok = response.status_code == 422
+        
+        log_test(
+            "Test 4b: Invalid Email Validation",
+            status_ok,
+            response.status_code,
+            data,
+            "422 validation error",
+            f"Status: {response.status_code}"
+        )
+    except Exception as e:
+        log_test("Test 4b: Invalid Email Validation", False, 0, {"error": str(e)}, "422", f"Exception: {str(e)}")
+    
+    # Test 4c: Short phone
+    print("\n--- Test 4c: Short Phone ---")
+    payload = {
+        "name": "Test User",
+        "email": "test@test.de",
+        "phone": "123",
+        "license_number": "B1234567890",
+        "vehicle_type": "standard",
+        "driver_type": "business"
+    }
+    
+    try:
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
+        
+        status_ok = response.status_code == 422
+        
+        log_test(
+            "Test 4c: Short Phone Validation",
+            status_ok,
+            response.status_code,
+            data,
+            "422 validation error",
+            f"Status: {response.status_code}"
+        )
+    except Exception as e:
+        log_test("Test 4c: Short Phone Validation", False, 0, {"error": str(e)}, "422", f"Exception: {str(e)}")
+    
+    # Test 4d: Short license
+    print("\n--- Test 4d: Short License ---")
+    payload = {
+        "name": "Test User",
+        "email": "test@test.de",
+        "phone": "+49 123 456789",
+        "license_number": "B12",
+        "vehicle_type": "standard",
+        "driver_type": "business"
+    }
+    
+    try:
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
+        
+        status_ok = response.status_code == 422
+        
+        log_test(
+            "Test 4d: Short License Validation",
+            status_ok,
+            response.status_code,
+            data,
+            "422 validation error",
+            f"Status: {response.status_code}"
+        )
+    except Exception as e:
+        log_test("Test 4d: Short License Validation", False, 0, {"error": str(e)}, "422", f"Exception: {str(e)}")
+
+def test_5_invalid_vehicle_type():
+    """Test 5: Invalid Vehicle Type"""
+    print("\n" + "="*80)
+    print("TEST 5: Invalid Vehicle Type")
+    print("="*80)
+    
+    payload = {
+        "name": "Test User",
+        "email": "test5@test.de",
+        "phone": "+49 123 456789",
+        "license_number": "B1234567890",
+        "vehicle_type": "invalid",
+        "driver_type": "business",
+        "city": "Berlin"
+    }
+    
+    try:
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
+        
+        status_ok = response.status_code == 422
+        
+        log_test(
+            "Test 5: Invalid Vehicle Type",
+            status_ok,
+            response.status_code,
+            data,
+            "422 validation error",
+            f"Status: {response.status_code}"
+        )
+        
     except Exception as e:
         log_test(
-            "GET /api/pos/retail/public/product-info/{product_id}",
+            "Test 5: Invalid Vehicle Type",
             False,
             0,
-            None,
-            str(e)
+            {"error": str(e)},
+            "422 validation error",
+            f"Exception: {str(e)}"
         )
+
+def test_6_invalid_driver_type():
+    """Test 6: Invalid Driver Type"""
+    print("\n" + "="*80)
+    print("TEST 6: Invalid Driver Type")
+    print("="*80)
+    
+    payload = {
+        "name": "Test User",
+        "email": "test6@test.de",
+        "phone": "+49 123 456789",
+        "license_number": "B1234567890",
+        "vehicle_type": "standard",
+        "driver_type": "unknown",
+        "city": "Berlin"
+    }
+    
+    try:
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        data = response.json()
+        
+        status_ok = response.status_code == 422
+        
+        log_test(
+            "Test 6: Invalid Driver Type",
+            status_ok,
+            response.status_code,
+            data,
+            "422 validation error",
+            f"Status: {response.status_code}"
+        )
+        
+    except Exception as e:
+        log_test(
+            "Test 6: Invalid Driver Type",
+            False,
+            0,
+            {"error": str(e)},
+            "422 validation error",
+            f"Exception: {str(e)}"
+        )
+
+def print_summary():
+    """Print test summary"""
+    print("\n" + "="*80)
+    print("TEST SUMMARY")
+    print("="*80)
+    
+    total_tests = len(test_results)
+    passed_tests = sum(1 for t in test_results if t["passed"])
+    failed_tests = total_tests - passed_tests
+    
+    print(f"\nTotal Tests: {total_tests}")
+    print(f"Passed: {passed_tests} ✅")
+    print(f"Failed: {failed_tests} ❌")
+    print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+    
+    if failed_tests > 0:
+        print("\n❌ FAILED TESTS:")
+        for test in test_results:
+            if not test["passed"]:
+                print(f"  - {test['test_name']}")
+                print(f"    Expected: {test['expected']}")
+                print(f"    Actual: {test['actual']}")
+    
+    print("\n" + "="*80)
 
 def main():
-    """Main test execution"""
-    print("\n" + "=" * 80)
-    print("BidBlitz POS P2 Features - Retest After Bug Fixes")
-    print("=" * 80)
-    print(f"Backend URL: {BASE_URL}")
-    print(f"Test User: {ADMIN_EMAIL}")
-    print(f"Test Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 80)
-    print()
+    """Run all tests"""
+    print("\n" + "="*80)
+    print("TAXI DRIVER ONBOARDING API - BACKEND TESTING")
+    print("="*80)
+    print(f"Base URL: {BASE_URL}")
+    print(f"Endpoint: {API_ENDPOINT}")
+    print(f"Started: {datetime.now().isoformat()}")
     
-    # Step 1: Login
-    cookies = login()
-    if not cookies:
-        print("\n❌ CRITICAL: Login failed. Cannot proceed with tests.")
-        return
+    # Run tests in sequence
+    application_id, email = test_1_successful_business_driver()
+    test_2_successful_private_driver()
     
-    print()
+    # Test 3 requires email from test 1
+    if email:
+        test_3_duplicate_application(email)
+    else:
+        print("\n⚠️  Skipping Test 3 - No email from Test 1")
     
-    # Step 2A: Get store and register
-    store_id, register_id = get_store_and_register(cookies)
-    print()
-    
-    # Step 2B: Create test product
-    product_id = create_test_product(cookies, store_id)
-    print()
-    
-    # Step 3A: Try to get existing sale first
-    receipt_id = get_existing_sale(cookies)
-    
-    # Step 3B: If no existing sale, open shift and create one
-    if not receipt_id:
-        receipt_id = open_shift_and_create_sale(cookies, store_id, register_id, product_id)
-    print()
-    
-    # Run tests
-    test_pick_tasks_pending(cookies, store_id)
-    test_video_replay(cookies, receipt_id)
-    test_public_product_info(cookies, product_id)
+    test_4_validation_errors()
+    test_5_invalid_vehicle_type()
+    test_6_invalid_driver_type()
     
     # Print summary
-    print("\n" + "=" * 80)
-    print("TEST SUMMARY")
-    print("=" * 80)
-    print(f"Total Tests: {results['total_tests']}")
-    print(f"✅ Passed: {results['passed']}")
-    print(f"❌ Failed: {results['failed']}")
-    print(f"Success Rate: {(results['passed'] / results['total_tests'] * 100):.1f}%")
-    print("=" * 80)
+    print_summary()
     
     # Save results to file
-    with open("/app/pos_p2_retest_results.json", "w") as f:
-        json.dump(results, f, indent=2)
-    print(f"\n📄 Detailed results saved to: /app/pos_p2_retest_results.json")
+    with open("/app/taxi_driver_onboard_test_results.json", "w") as f:
+        json.dump(test_results, f, indent=2)
+    
+    print(f"\n✅ Test results saved to: /app/taxi_driver_onboard_test_results.json")
 
 if __name__ == "__main__":
     main()

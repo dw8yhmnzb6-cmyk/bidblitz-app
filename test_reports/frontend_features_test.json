@@ -1,7 +1,7 @@
 {
   "test_name": "BidBlitz Frontend Features Test - New Features",
   "test_date": "2026-04-30",
-  "app_url": "https://bidblitz-release.preview.emergentagent.com",
+  "app_url": "https://taxi-streaming.preview.emergentagent.com",
   "viewport": "390x844 (mobile)",
   "test_results": {
     "landing_page": {

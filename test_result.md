@@ -129,6 +129,19 @@ backend:
         agent: "testing"
         comment: "COMPREHENSIVE PAY KEYS API TESTING COMPLETE (2026-05-01): ✅ ALL 4 Pay Keys APIs Working (100% success rate), ✅ GET /api/pay/my-keys working correctly (lists merchant's API keys with label, public_key, total_sessions, total_paid, revoked status), ✅ POST /api/pay/my-keys/create working correctly (creates new key pair with pk_live_... and sk_live_... format, returns key_id, public_key, secret_key, label), ✅ POST /api/pay/my-keys/{key_id}/revoke working correctly (successfully revokes keys), ✅ GET /api/pay/my-sessions working correctly (returns sessions list and summary with total, paid_count, paid_amount, pending_count), ✅ Merchant authentication working with haendler@bidblitz.com credentials, ✅ Proper validation (max 5 active keys per merchant), ✅ Secret key only shown once during creation (security best practice), ✅ All endpoints return proper JSON responses. Pay Keys system fully functional for Merchant Dashboard feature."
 
+
+  - task: "Taxi Driver Onboarding API"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/taxi.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "TAXI DRIVER ONBOARDING API TESTING COMPLETE (2026-05-07): ✅ ALL 9 TEST SCENARIOS PASSED (100% success rate), ✅ Test 1: Successful Business Driver Application - POST /api/taxi/driver/onboard returns 200 OK with ok=true, application_id (bd63de949dc67643), status=pending, proper German success message, ✅ Test 2: Successful Private Driver Application - POST with driver_type='private' and vehicle_type='premium' returns 200 OK with application_id (00a8b4cb10d51199), ✅ Test 3: Duplicate Application Error - POST with same email returns 400 with error message 'Deine Bewerbung wird bereits geprüft' (proves data persistence working), ✅ Test 4a-4d: Validation Errors - Empty name (422), invalid email (422), short phone (422), short license (422) all return proper Pydantic validation errors with detailed field-level messages, ✅ Test 5: Invalid Vehicle Type - POST with vehicle_type='invalid' returns 422 with pattern mismatch error (valid: standard|premium|van), ✅ Test 6: Invalid Driver Type - POST with driver_type='unknown' returns 422 with pattern mismatch error (valid: business|private), ✅ All validation rules working correctly (name min 2 chars, email regex pattern, phone min 8 chars, license min 5 chars), ✅ Database persistence confirmed (duplicate check in Test 3 proves applications are saved to taxi_driver_applications collection), ✅ Proper HTTP status codes (200 for success, 400 for business logic errors, 422 for validation errors), ✅ Response structure matches specification with ok, application_id, message, status fields. Taxi Driver Onboarding API is fully functional and production-ready. External API URL: https://taxi-streaming.preview.emergentagent.com"
+
 backend:
   - task: "Apple Pay / Google Pay API"
     implemented: true
@@ -738,8 +751,8 @@ agent_communication:
 
 metadata:
   created_by: "testing_agent"
-  version: "1.2"
-  test_sequence: 5
+  version: "1.3"
+  test_sequence: 6
   run_ui: false
 
 test_plan:
@@ -757,3 +770,7 @@ agent_communication:
   
   - agent: "testing"
     message: "NEW FEATURES BACKEND TESTING COMPLETE (2026-05-03): ✅ ALL 25 NEW BACKEND ENDPOINTS WORKING (100% success rate) - Tested 4 feature groups: POS Hardware (7 endpoints), LiveKit Streaming (6 endpoints), Landing Chatbot (4 endpoints), Super App Extensions (8 endpoints). ✅ POS Hardware: Printer print, scanner register/test, cash drawer open, TSE sign, scale weight (404 expected), hardware health all working. ✅ LiveKit Streaming: Room creation, token generation, product showcase, recording, analytics all working. ✅ Landing Chatbot: Chat messages (using rule-based responses - LLM integration mocked), lead capture, admin endpoints all working. ✅ Super App Extensions: Marketplace items, categories, wallet topup/balance, gaming session/leaderboard, creator subscriptions, analytics all working. 🔧 FIXES APPLIED: 1) Fixed landing_chatbot.py LLM import error (emergentintegrations.llm.LLM not available - replaced with rule-based responses), 2) Fixed admin authorization checks (changed is_admin to role=='admin'), 3) Fixed wallet balance ObjectId serialization (added {'_id': 0} projection), 4) Fixed printer endpoint timeout (changed default from network to file mode). All new backend features are production-ready."
+
+
+  - agent: "testing"
+    message: "TAXI DRIVER ONBOARDING API TESTING COMPLETE (2026-05-07): ✅ ALL 9 TEST SCENARIOS PASSED (100% success rate) - Comprehensive testing of POST /api/taxi/driver/onboard endpoint at https://taxi-streaming.preview.emergentagent.com. ✅ SUCCESSFUL APPLICATIONS: Business driver application (Max Mustermann, Berlin, standard vehicle) returns 200 OK with application_id bd63de949dc67643 and status=pending, Private driver application (Anna Schmidt, München, premium vehicle) returns 200 OK with application_id 00a8b4cb10d51199. ✅ DUPLICATE DETECTION: Duplicate email submission correctly returns 400 with German error message 'Deine Bewerbung wird bereits geprüft' (proves database persistence working). ✅ VALIDATION WORKING: All field validations return 422 errors - empty name (min 2 chars), invalid email (regex pattern), short phone (min 8 chars), short license (min 5 chars), invalid vehicle_type (must be standard|premium|van), invalid driver_type (must be business|private). ✅ DATABASE PERSISTENCE: Confirmed working via duplicate check test - applications are saved to taxi_driver_applications collection with proper structure (application_id, name, email, phone, license_number, vehicle_type, driver_type, city, status, created_at). ✅ RESPONSE STRUCTURE: All responses match specification with proper fields (ok, application_id, message, status) and German user-facing messages. Taxi Driver Onboarding API is fully functional and production-ready. Test results saved to /app/taxi_driver_onboard_test_results.json"

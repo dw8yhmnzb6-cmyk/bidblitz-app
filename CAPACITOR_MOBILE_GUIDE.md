@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://bidblitz-release.preview.emergentagent.com',
+  url: 'https://taxi-streaming.preview.emergentagent.com',
   cleartext: false,
 }
 ```

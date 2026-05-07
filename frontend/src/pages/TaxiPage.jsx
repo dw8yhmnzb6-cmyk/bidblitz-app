@@ -194,6 +194,21 @@ export default function TaxiPage({ onNavigate }) {
   const [splitTotal, setSplitTotal] = useState(0);
   const [showLiveChat, setShowLiveChat] = useState(false);
   const [showGroupRide, setShowGroupRide] = useState(false);
+  
+  // Driver Onboarding Modal
+  const [showDriverOnboarding, setShowDriverOnboarding] = useState(false);
+  const [onboardingType, setOnboardingType] = useState(''); // 'business' or 'private'
+  const [onboardingForm, setOnboardingForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    license_number: '',
+    vehicle_type: 'standard',
+    city: '',
+    message: '',
+  });
+  const [onboardingSubmitting, setOnboardingSubmitting] = useState(false);
+  const [onboardingSuccess, setOnboardingSuccess] = useState(false);
 
   // Autocomplete state
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
@@ -894,7 +909,14 @@ export default function TaxiPage({ onNavigate }) {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setTaxiType('business')}
+                      onClick={() => {
+                        if (businessDrivers > 0) {
+                          setTaxiType('business');
+                        } else {
+                          setOnboardingType('business');
+                          setShowDriverOnboarding(true);
+                        }
+                      }}
                       className="relative bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-2 border-cyan-500/30 rounded-2xl p-5 text-left hover:border-cyan-400/60 transition-all"
                       data-testid="taxi-type-business"
                     >
@@ -921,7 +943,14 @@ export default function TaxiPage({ onNavigate }) {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setTaxiType('private')}
+                      onClick={() => {
+                        if (privateDrivers > 0) {
+                          setTaxiType('private');
+                        } else {
+                          setOnboardingType('private');
+                          setShowDriverOnboarding(true);
+                        }
+                      }}
                       className="relative bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 rounded-2xl p-5 text-left hover:border-purple-400/60 transition-all"
                       data-testid="taxi-type-private"
                     >
@@ -1749,6 +1778,235 @@ export default function TaxiPage({ onNavigate }) {
             userRole="passenger"
             onClose={() => setShowLiveChat(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Driver Onboarding Modal */}
+      <AnimatePresence>
+        {showDriverOnboarding && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              if (!onboardingSubmitting) {
+                setShowDriverOnboarding(false);
+                setOnboardingSuccess(false);
+                setOnboardingForm({ name: '', email: '', phone: '', license_number: '', vehicle_type: 'standard', city: '', message: '' });
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0A0A0F] border border-white/10 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6"
+            >
+              {!onboardingSuccess ? (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-white">Als Fahrer bewerben</h2>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {onboardingType === 'business' ? 'Unternehmer-Taxi' : 'Privat-Taxi'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!onboardingSubmitting) {
+                          setShowDriverOnboarding(false);
+                          setOnboardingForm({ name: '', email: '', phone: '', license_number: '', vehicle_type: 'standard', city: '', message: '' });
+                        }
+                      }}
+                      className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+                      disabled={onboardingSubmitting}
+                    >
+                      <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Name */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Vollständiger Name</label>
+                      <input
+                        type="text"
+                        placeholder="Max Mustermann"
+                        value={onboardingForm.name}
+                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                        data-testid="driver-onboard-name"
+                        disabled={onboardingSubmitting}
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">E-Mail</label>
+                      <input
+                        type="email"
+                        placeholder="max@example.com"
+                        value={onboardingForm.email}
+                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                        data-testid="driver-onboard-email"
+                        disabled={onboardingSubmitting}
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Telefonnummer</label>
+                      <input
+                        type="tel"
+                        placeholder="+49 123 456789"
+                        value={onboardingForm.phone}
+                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                        data-testid="driver-onboard-phone"
+                        disabled={onboardingSubmitting}
+                      />
+                    </div>
+
+                    {/* License */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Führerscheinnummer</label>
+                      <input
+                        type="text"
+                        placeholder="B1234567890"
+                        value={onboardingForm.license_number}
+                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, license_number: e.target.value }))}
+                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                        data-testid="driver-onboard-license"
+                        disabled={onboardingSubmitting}
+                      />
+                    </div>
+
+                    {/* Vehicle Type */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Fahrzeugtyp</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['standard', 'premium', 'van'].map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => setOnboardingForm(prev => ({ ...prev, vehicle_type: type }))}
+                            disabled={onboardingSubmitting}
+                            className={`py-2 px-3 rounded-xl text-xs font-medium transition-all ${
+                              onboardingForm.vehicle_type === type
+                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                            }`}
+                            data-testid={`driver-vehicle-${type}`}
+                          >
+                            {type === 'standard' ? 'Standard' : type === 'premium' ? 'Premium' : 'Van'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* City (optional) */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Stadt (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="z.B. Berlin"
+                        value={onboardingForm.city}
+                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, city: e.target.value }))}
+                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                        data-testid="driver-onboard-city"
+                        disabled={onboardingSubmitting}
+                      />
+                    </div>
+
+                    {/* Message (optional) */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Nachricht (optional)</label>
+                      <textarea
+                        placeholder="Zusätzliche Informationen..."
+                        value={onboardingForm.message}
+                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, message: e.target.value }))}
+                        rows={3}
+                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none"
+                        data-testid="driver-onboard-message"
+                        disabled={onboardingSubmitting}
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      onClick={async () => {
+                        if (!onboardingForm.name || !onboardingForm.email || !onboardingForm.phone || !onboardingForm.license_number) {
+                          setError('Bitte alle Pflichtfelder ausfüllen');
+                          return;
+                        }
+                        setOnboardingSubmitting(true);
+                        setError('');
+                        try {
+                          const res = await fetch(`${API}/api/taxi/driver/onboard`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              ...onboardingForm,
+                              driver_type: onboardingType,
+                            }),
+                          });
+                          if (res.ok) {
+                            setOnboardingSuccess(true);
+                          } else {
+                            const errData = await res.json();
+                            setError(errData.detail || 'Fehler bei der Bewerbung');
+                          }
+                        } catch (err) {
+                          setError('Netzwerkfehler');
+                        } finally {
+                          setOnboardingSubmitting(false);
+                        }
+                      }}
+                      disabled={onboardingSubmitting}
+                      className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-semibold text-black disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
+                      data-testid="driver-onboard-submit"
+                    >
+                      {onboardingSubmitting ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Wird gesendet...
+                        </span>
+                      ) : 'Bewerbung absenden'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Bewerbung erfolgreich!</h3>
+                  <p className="text-sm text-gray-400 mb-6">
+                    Wir prüfen deine Angaben und melden uns innerhalb von 24 Stunden.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowDriverOnboarding(false);
+                      setOnboardingSuccess(false);
+                      setOnboardingForm({ name: '', email: '', phone: '', license_number: '', vehicle_type: 'standard', city: '', message: '' });
+                    }}
+                    className="px-6 py-3 bg-cyan-500 rounded-xl font-semibold text-black hover:bg-cyan-400 transition-colors"
+                  >
+                    Schließen
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
       <GroupOrderModal

@@ -1,7 +1,7 @@
 # BidBlitz Super-App Features Backend Test Report
 **Date:** 2026-04-26  
 **Tester:** Testing Agent  
-**Backend URL:** https://bidblitz-release.preview.emergentagent.com/api
+**Backend URL:** https://taxi-streaming.preview.emergentagent.com/api
 
 ## Test Summary
 - **Total Tests:** 10

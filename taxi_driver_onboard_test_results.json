@@ -1,0 +1,191 @@
+[
+  {
+    "test_name": "Test 1: Successful Business Driver Application",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "application_id": "bd63de949dc67643",
+      "message": "Bewerbung erfolgreich eingereicht! Wir pr\u00fcfen deine Angaben und melden uns innerhalb von 24 Stunden.",
+      "status": "pending"
+    },
+    "expected": "200 with ok=true, application_id, status=pending",
+    "actual": "Status: 200, ok=True, has_id=True, status=pending",
+    "timestamp": "2026-05-07T19:06:13.232100"
+  },
+  {
+    "test_name": "Test 2: Successful Private Driver Application",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "application_id": "00a8b4cb10d51199",
+      "message": "Bewerbung erfolgreich eingereicht! Wir pr\u00fcfen deine Angaben und melden uns innerhalb von 24 Stunden.",
+      "status": "pending"
+    },
+    "expected": "200 with ok=true, application_id",
+    "actual": "Status: 200, ok=True, has_id=True",
+    "timestamp": "2026-05-07T19:06:13.385676"
+  },
+  {
+    "test_name": "Test 3: Duplicate Application Error",
+    "passed": true,
+    "status_code": 400,
+    "response": {
+      "detail": "Deine Bewerbung wird bereits gepr\u00fcft"
+    },
+    "expected": "400 with 'Deine Bewerbung wird bereits gepr\u00fcft'",
+    "actual": "Status: 400, detail=Deine Bewerbung wird bereits gepr\u00fcft",
+    "timestamp": "2026-05-07T19:06:13.527782"
+  },
+  {
+    "test_name": "Test 4a: Empty Name Validation",
+    "passed": true,
+    "status_code": 422,
+    "response": {
+      "detail": [
+        {
+          "type": "string_too_short",
+          "loc": [
+            "body",
+            "name"
+          ],
+          "msg": "String should have at least 2 characters",
+          "input": "",
+          "ctx": {
+            "min_length": 2
+          },
+          "url": "https://errors.pydantic.dev/2.12/v/string_too_short"
+        }
+      ]
+    },
+    "expected": "422 validation error",
+    "actual": "Status: 422",
+    "timestamp": "2026-05-07T19:06:13.686568"
+  },
+  {
+    "test_name": "Test 4b: Invalid Email Validation",
+    "passed": true,
+    "status_code": 422,
+    "response": {
+      "detail": [
+        {
+          "type": "string_pattern_mismatch",
+          "loc": [
+            "body",
+            "email"
+          ],
+          "msg": "String should match pattern '^[^@]+@[^@]+\\.[^@]+$'",
+          "input": "invalid-email",
+          "ctx": {
+            "pattern": "^[^@]+@[^@]+\\.[^@]+$"
+          },
+          "url": "https://errors.pydantic.dev/2.12/v/string_pattern_mismatch"
+        }
+      ]
+    },
+    "expected": "422 validation error",
+    "actual": "Status: 422",
+    "timestamp": "2026-05-07T19:06:13.842415"
+  },
+  {
+    "test_name": "Test 4c: Short Phone Validation",
+    "passed": true,
+    "status_code": 422,
+    "response": {
+      "detail": [
+        {
+          "type": "string_too_short",
+          "loc": [
+            "body",
+            "phone"
+          ],
+          "msg": "String should have at least 8 characters",
+          "input": "123",
+          "ctx": {
+            "min_length": 8
+          },
+          "url": "https://errors.pydantic.dev/2.12/v/string_too_short"
+        }
+      ]
+    },
+    "expected": "422 validation error",
+    "actual": "Status: 422",
+    "timestamp": "2026-05-07T19:06:13.995613"
+  },
+  {
+    "test_name": "Test 4d: Short License Validation",
+    "passed": true,
+    "status_code": 422,
+    "response": {
+      "detail": [
+        {
+          "type": "string_too_short",
+          "loc": [
+            "body",
+            "license_number"
+          ],
+          "msg": "String should have at least 5 characters",
+          "input": "B12",
+          "ctx": {
+            "min_length": 5
+          },
+          "url": "https://errors.pydantic.dev/2.12/v/string_too_short"
+        }
+      ]
+    },
+    "expected": "422 validation error",
+    "actual": "Status: 422",
+    "timestamp": "2026-05-07T19:06:14.132942"
+  },
+  {
+    "test_name": "Test 5: Invalid Vehicle Type",
+    "passed": true,
+    "status_code": 422,
+    "response": {
+      "detail": [
+        {
+          "type": "string_pattern_mismatch",
+          "loc": [
+            "body",
+            "vehicle_type"
+          ],
+          "msg": "String should match pattern '^(standard|premium|van)$'",
+          "input": "invalid",
+          "ctx": {
+            "pattern": "^(standard|premium|van)$"
+          },
+          "url": "https://errors.pydantic.dev/2.12/v/string_pattern_mismatch"
+        }
+      ]
+    },
+    "expected": "422 validation error",
+    "actual": "Status: 422",
+    "timestamp": "2026-05-07T19:06:14.262261"
+  },
+  {
+    "test_name": "Test 6: Invalid Driver Type",
+    "passed": true,
+    "status_code": 422,
+    "response": {
+      "detail": [
+        {
+          "type": "string_pattern_mismatch",
+          "loc": [
+            "body",
+            "driver_type"
+          ],
+          "msg": "String should match pattern '^(business|private)$'",
+          "input": "unknown",
+          "ctx": {
+            "pattern": "^(business|private)$"
+          },
+          "url": "https://errors.pydantic.dev/2.12/v/string_pattern_mismatch"
+        }
+      ]
+    },
+    "expected": "422 validation error",
+    "actual": "Status: 422",
+    "timestamp": "2026-05-07T19:06:14.432970"
+  }
+]

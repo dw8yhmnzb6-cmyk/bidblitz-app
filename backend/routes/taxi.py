@@ -190,6 +190,65 @@ async def get_operator_status(request: Request):
     }
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# DRIVER ONBOARDING (For "Buchung anfragen" button)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class DriverOnboardRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
+    phone: str = Field(..., min_length=8, max_length=20)
+    license_number: str = Field(..., min_length=5, max_length=50)
+    vehicle_type: str = Field(..., pattern=r'^(standard|premium|van)$')
+    driver_type: str = Field(..., pattern=r'^(business|private)$')  # business or private
+    city: Optional[str] = None
+    message: Optional[str] = None
+
+
+@router.post("/driver/onboard")
+async def onboard_driver(req: DriverOnboardRequest):
+    """
+    Driver onboarding form submission.
+    Saves driver application to pending queue for admin approval.
+    """
+    # Check if already registered
+    existing = await db.taxi_driver_applications.find_one({"email": req.email.lower()})
+    if existing:
+        if existing.get("status") == "pending":
+            raise HTTPException(status_code=400, detail="Deine Bewerbung wird bereits geprüft")
+        elif existing.get("status") == "approved":
+            raise HTTPException(status_code=400, detail="Du bist bereits als Fahrer registriert")
+    
+    now = datetime.now(timezone.utc)
+    application_id = secrets.token_hex(8)
+    
+    application = {
+        "application_id": application_id,
+        "name": req.name,
+        "email": req.email.lower(),
+        "phone": req.phone,
+        "license_number": req.license_number,
+        "vehicle_type": req.vehicle_type,
+        "driver_type": req.driver_type,
+        "city": req.city or "N/A",
+        "message": req.message or "",
+        "status": "pending",  # pending, approved, rejected
+        "created_at": now.isoformat(),
+        "reviewed_at": None,
+        "reviewed_by": None,
+    }
+    
+    await db.taxi_driver_applications.insert_one(application)
+    logger.info(f"New driver application: {req.name} ({req.driver_type} - {req.vehicle_type})")
+    
+    return {
+        "ok": True,
+        "application_id": application_id,
+        "message": "Bewerbung erfolgreich eingereicht! Wir prüfen deine Angaben und melden uns innerhalb von 24 Stunden.",
+        "status": "pending",
+    }
+
+
 @router.get("/operator/earnings")
 async def get_operator_earnings(request: Request, period: str = "month"):
     """Get operator earnings breakdown."""
