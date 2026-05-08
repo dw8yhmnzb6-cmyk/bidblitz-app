@@ -351,61 +351,51 @@ export default function TaxiPage({ onNavigate }) {
     );
   };
   
-  // Reverse Geocoding: GPS → Adresse (Nominatim / OpenStreetMap)
+  // Reverse Geocoding: GPS → Adresse (Mapbox)
   const reverseGeocode = async (lat, lng) => {
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=de`,
-        {
-          headers: {
-            'User-Agent': 'BidBlitz-Taxi-App/1.0'
-          }
-        }
-      );
+      const token = mapboxgl.accessToken;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=de&types=address,poi,place&limit=1`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Reverse geocoding failed');
       const data = await response.json();
-      if (data && data.address) {
-        const addr = data.address;
-        const street = addr.road || addr.pedestrian || addr.footway || '';
-        const houseNumber = addr.house_number || '';
-        const postcode = addr.postcode || '';
-        const city = addr.city || addr.town || addr.village || addr.suburb || '';
-
-        const streetLine = `${street} ${houseNumber}`.trim();
+      const f = (data.features || [])[0];
+      if (f) {
+        const ctx = f.context || [];
+        const postcode = (ctx.find(c => (c.id || '').startsWith('postcode')) || {}).text || '';
+        const city = (ctx.find(c => (c.id || '').startsWith('place')) || ctx.find(c => (c.id || '').startsWith('locality')) || {}).text || '';
+        const houseNo = f.address ? ` ${f.address}` : '';
+        const streetLine = `${f.text || ''}${houseNo}`.trim();
         const cityLine = `${postcode} ${city}`.trim();
-        const fullAddress = [streetLine, cityLine].filter(Boolean).join(', ');
-
+        const fullAddress = [streetLine, cityLine].filter(Boolean).join(', ') || f.place_name;
         if (fullAddress) {
           setCurrentAddress(fullAddress);
           setPickup(prev => ({ ...prev, address: fullAddress }));
           console.log('✓ Address:', fullAddress);
         } else {
-          // Fallback if address extraction fails
           setCurrentAddress(`${lat.toFixed(4)}°, ${lng.toFixed(4)}°`);
           setPickup(prev => ({ ...prev, address: `${lat.toFixed(4)}°, ${lng.toFixed(4)}°` }));
         }
       } else {
-        // No address data returned
         setCurrentAddress(`Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`);
         setPickup(prev => ({ ...prev, address: `Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°` }));
       }
     } catch (error) {
       console.error('❌ Reverse geocoding error:', error);
-      // Show coordinates as fallback
       const coordsText = `Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
       setCurrentAddress(coordsText);
       setPickup(prev => ({ ...prev, address: coordsText }));
     }
   };
 
-  // Update markers when pickup/dropoff changes (Leaflet)
+  // Update markers when pickup/dropoff changes (Mapbox GL)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     // Pickup marker – just update position (don't recreate, to preserve draggable handler)
     if (pickupMarkerRef.current && pickup.lat && pickup.lng) {
-      pickupMarkerRef.current.setLatLng([pickup.lat, pickup.lng]);
+      pickupMarkerRef.current.setLngLat([pickup.lng, pickup.lat]);
     }
 
     // Dropoff marker
@@ -414,22 +404,22 @@ export default function TaxiPage({ onNavigate }) {
       dropoffMarkerRef.current = null;
     }
     if (dropoff.lat && dropoff.lng && dropoff.lat !== 0) {
-      const dropoffIcon = L.divIcon({
-        className: 'custom-dropoff-marker',
-        html: '<div style="width:22px;height:22px;background:#EF4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(239,68,68,0.8)"></div>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-      });
-      dropoffMarkerRef.current = L.marker([dropoff.lat, dropoff.lng], { icon: dropoffIcon }).addTo(map);
+      const el = document.createElement('div');
+      el.className = 'custom-dropoff-marker';
+      el.style.cssText = 'width:22px;height:22px;background:#EF4444;border:3px solid #fff;border-radius:50%;box-shadow:0 0 12px rgba(239,68,68,0.8)';
+      dropoffMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([dropoff.lng, dropoff.lat])
+        .addTo(map);
 
       // Fit bounds to show both markers
-      const bounds = L.latLngBounds([
-        [pickup.lat, pickup.lng],
-        [dropoff.lat, dropoff.lng],
-      ]);
-      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+      const bounds = new mapboxgl.LngLatBounds(
+        [pickup.lng, pickup.lat],
+        [pickup.lng, pickup.lat]
+      );
+      bounds.extend([dropoff.lng, dropoff.lat]);
+      map.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 800 });
     } else if (pickup.lat) {
-      map.setView([pickup.lat, pickup.lng], 14);
+      map.flyTo({ center: [pickup.lng, pickup.lat], zoom: 14, duration: 600 });
     }
   }, [pickup.lat, pickup.lng, dropoff.lat, dropoff.lng]);
 
@@ -465,24 +455,28 @@ export default function TaxiPage({ onNavigate }) {
   const geocodeSearch = async (query, setter, showSetter) => {
     if (!query || query.length < 2) { setter([]); showSetter(false); return; }
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&accept-language=de&countrycodes=de,at,ch`
-      );
+      const token = mapboxgl.accessToken;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&country=de,at,ch&language=de&limit=6&types=address,poi,place,locality,neighborhood`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        const results = (data || []).map(f => {
-          const addr = f.address || {};
-          const name = addr.road
-            ? `${addr.road}${addr.house_number ? ' ' + addr.house_number : ''}`
-            : (f.name || f.display_name.split(',')[0]);
+        const results = (data.features || []).map(f => {
+          const ctx = f.context || [];
+          const postcode = (ctx.find(c => (c.id || '').startsWith('postcode')) || {}).text || '';
+          const city = (ctx.find(c => (c.id || '').startsWith('place')) || ctx.find(c => (c.id || '').startsWith('locality')) || {}).text || '';
+          const country = (ctx.find(c => (c.id || '').startsWith('country')) || {}).short_code?.toUpperCase() || '';
+          const houseNo = f.address ? ` ${f.address}` : '';
+          const name = `${f.text || ''}${houseNo}`.trim() || (f.place_name || '').split(',')[0];
+          const cityZip = [postcode, city].filter(Boolean).join(' ') + (country ? `, ${country}` : '');
           return {
             name,
-            address: f.display_name,
-            lat: parseFloat(f.lat),
-            lng: parseFloat(f.lon),
-            type: f.type || 'address',
+            cityZip: cityZip.trim(),
+            address: f.place_name,
+            lat: f.center?.[1],
+            lng: f.center?.[0],
+            type: (f.place_type && f.place_type[0]) || 'address',
           };
-        });
+        }).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
         setter(results);
         showSetter(results.length > 0);
       }
@@ -507,13 +501,13 @@ export default function TaxiPage({ onNavigate }) {
     const setter = type === 'pickup' ? setPickup : setDropoff;
     if (target.address && (!target.lat || target.lat === 0 || target.lat === 52.52)) {
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(target.address)}&limit=1&accept-language=de&countrycodes=de,at,ch`
-        );
+        const token = mapboxgl.accessToken;
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(target.address)}.json?access_token=${token}&country=de,at,ch&language=de&limit=1`;
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          const f = data?.[0];
-          if (f) setter({ lat: parseFloat(f.lat), lng: parseFloat(f.lon), address: f.display_name || target.address });
+          const f = (data.features || [])[0];
+          if (f && f.center) setter({ lat: f.center[1], lng: f.center[0], address: f.place_name || target.address });
         }
       } catch {}
     }
@@ -699,13 +693,13 @@ export default function TaxiPage({ onNavigate }) {
     // Auto-geocode dropoff if needed
     if (dropoff.address && (!dropoff.lat || dropoff.lat === 0)) {
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dropoff.address)}&limit=1&accept-language=de&countrycodes=de,at,ch`
-        );
+        const token = mapboxgl.accessToken;
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(dropoff.address)}.json?access_token=${token}&country=de,at,ch&language=de&limit=1`;
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          const f = data?.[0];
-          if (f) { setDropoff({ lat: parseFloat(f.lat), lng: parseFloat(f.lon), address: f.display_name || dropoff.address }); }
+          const f = (data.features || [])[0];
+          if (f && f.center) { setDropoff({ lat: f.center[1], lng: f.center[0], address: f.place_name || dropoff.address }); }
           else { setError('Ziel nicht gefunden. Bitte Vorschlag auswählen.'); return; }
         }
       } catch { setError('Geocoding-Fehler'); return; }
@@ -1109,7 +1103,7 @@ export default function TaxiPage({ onNavigate }) {
                     </button>
                   </div>
 
-              {/* Interactive Map (Leaflet / OpenStreetMap) */}
+              {/* Interactive Map (Mapbox GL JS) */}
               <div className="relative h-56 bg-[#0A0A0F] rounded-2xl overflow-hidden border border-white/10">
                 <div
                   ref={mapContainerRef}
@@ -1287,7 +1281,7 @@ export default function TaxiPage({ onNavigate }) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-white truncate">{s.name}</div>
-                            <div className="text-[10px] text-gray-500 truncate">{s.address}</div>
+                            <div className="text-[11px] text-gray-400 truncate">{s.cityZip || s.address}</div>
                           </div>
                         </button>
                       ))}
@@ -1322,7 +1316,7 @@ export default function TaxiPage({ onNavigate }) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-white truncate">{s.name}</div>
-                            <div className="text-[10px] text-gray-500 truncate">{s.address}</div>
+                            <div className="text-[11px] text-gray-400 truncate">{s.cityZip || s.address}</div>
                           </div>
                         </button>
                       ))}

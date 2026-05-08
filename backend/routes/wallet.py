@@ -165,6 +165,13 @@ async def get_wallet(request: Request):
         "card_number": user.get("card_number", ""),
         "card_expiry": user.get("card_expiry", ""),
         "card_holder": user.get("name", ""),
+        "user_number": user.get("user_number"),
+        "user": {
+            "id": user_id,
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "user_number": user.get("user_number"),
+        },
         "transactions": transactions,
     }
 
@@ -296,36 +303,49 @@ from typing import Optional
 from core.payment_engine import transfer_between_wallets, TransactionType
 
 class SendMoneyRequest(BaseModel):
-    recipient_email: str
+    recipient_email: Optional[str] = None
+    recipient_number: Optional[str] = None
+    recipient: Optional[str] = None  # generic: email OR user_number (auto-detect)
     amount: float
     note: Optional[str] = None
 
 
 @router.post("/send")
 async def send_money(req: SendMoneyRequest, request: Request):
-    """P2P transfer between BidBlitz wallet users - atomic & safe"""
+    """P2P transfer between BidBlitz wallet users - atomic & safe.
+    Accepts either recipient_email, recipient_number (e.g. BE12345), or recipient (auto-detect)."""
     user = await get_current_user(request)
     _ensure_kyc(user)
     sender_id = str(user["_id"])
-    
+
     # Validate amount
     if req.amount < 0.01:
         raise HTTPException(status_code=400, detail="Mindestbetrag: €0.01")
     if req.amount > 10000:
         raise HTTPException(status_code=400, detail="Maximalbetrag: €10.000")
-    
-    # Find recipient
-    recipient_email = req.recipient_email.lower().strip()
-    recipient = await db.users.find_one({"email": recipient_email})
+
+    # Resolve recipient identifier (priority: number > email > generic)
+    recipient = None
+    raw = (req.recipient_number or req.recipient or req.recipient_email or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empfänger fehlt")
+
+    # Auto-detect: contains '@' → email, else user_number
+    if "@" in raw:
+        recipient = await db.users.find_one({"email": raw.lower()})
+    else:
+        recipient = await db.users.find_one({"user_number": raw.upper()})
+
     if not recipient:
-        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden. Bitte E-Mail überprüfen.")
-    
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden. Bitte Nummer oder E-Mail prüfen.")
+
     recipient_id = str(recipient["_id"])
-    
+    recipient_email = recipient.get("email", "")
+
     # Cannot send to self
     if recipient_id == sender_id:
         raise HTTPException(status_code=400, detail="Du kannst kein Geld an dich selbst senden")
-    
+
     # Use Payment Engine for atomic transfer
     result = await transfer_between_wallets(
         from_user_id=sender_id,
@@ -333,18 +353,24 @@ async def send_money(req: SendMoneyRequest, request: Request):
         amount=req.amount,
         tx_type=TransactionType.TRANSFER,
         description=f"Transfer to {recipient.get('name', recipient_email)}",
-        metadata={"note": req.note, "recipient_email": recipient_email}
+        metadata={
+            "note": req.note,
+            "recipient_email": recipient_email,
+            "recipient_number": recipient.get("user_number"),
+        },
     )
-    
+
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
-    
+
     return {
         "success": True,
         "message": f"€{req.amount:.2f} an {recipient.get('name', recipient_email)} gesendet",
         "new_balance": result.new_balance,
         "reference": result.reference,
         "transaction_id": result.transaction_id,
+        "recipient_name": recipient.get("name", recipient_email),
+        "recipient_number": recipient.get("user_number"),
     }
 
 
@@ -427,6 +453,33 @@ async def get_saved_recipients(request: Request):
     ).sort("last_used", -1).to_list(100)
     
     return {"recipients": recipients, "count": len(recipients)}
+
+
+@router.get("/lookup-recipient")
+async def lookup_recipient(request: Request, q: str = ""):
+    """Resolve a user_number or email into recipient name/avatar (for Quick Send preview)."""
+    user = await get_current_user(request)
+    raw = (q or "").strip()
+    if not raw or len(raw) < 3:
+        raise HTTPException(status_code=400, detail="Bitte mind. 3 Zeichen eingeben")
+
+    if "@" in raw:
+        target = await db.users.find_one({"email": raw.lower()}, {"_id": 0, "password": 0})
+    else:
+        target = await db.users.find_one({"user_number": raw.upper()}, {"_id": 0, "password": 0})
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Kein Nutzer gefunden")
+
+    if target.get("email") == user.get("email"):
+        raise HTTPException(status_code=400, detail="Das bist du selbst")
+
+    return {
+        "user_number": target.get("user_number"),
+        "name": target.get("name") or target.get("email"),
+        "email": target.get("email"),
+        "avatar": target.get("avatar") or target.get("profile_picture"),
+    }
 
 
 @router.post("/saved-recipients")
