@@ -84,6 +84,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **08.05.2026 (iter57b — P0 Crash-Fixes + Mapbox Migration finalisiert)**:
+  - 🔴 **WalletPage JSX-Crash** behoben: Quick-Actions-Grid `<motion.div>` war kaputt (User-Number-Card + QuickSend in Tag-Attribute reingeschrieben + Duplikat-Block). Sauberer Rewrite: User-Number-Card und QuickSend-Section stehen jetzt VOR dem Quick-Actions-Grid.
+  - 🔴 **WalletContext** erweitert: `userNumber` jetzt Teil des State (initialState, SET_WALLET reducer, context value) — WalletPage liest `wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number`. Behebt "Laden..." Bug.
+  - 🔴 **TaxiPage mapStyle ReferenceError** behoben: fehlende `useState` Hooks für `mapStyle` und `showMapStyles` (mit localStorage-Initialisierung) hinzugefügt.
+  - 🔴 **TaxiPage getGreeting ReferenceError** behoben: durch Inline-IIFE für Begrüßung (Guten Morgen/Tag/Abend/Nacht) ersetzt.
+  - 🟡 **Leaflet → Mapbox Migration finalisiert**: alle `L.divIcon`, `L.marker`, `L.latLngBounds`, `setLatLng`, `setView` durch `mapboxgl.Marker`, `mapboxgl.LngLatBounds`, `flyTo` ersetzt. Geocoding (Forward + Reverse + onBlur) auf Mapbox API umgestellt — Autocomplete liefert jetzt PLZ + Stadt + Country-Code als Subtitle (taxi.eu Parität).
+  - 🟡 **Backend `/api/wallet/send`** akzeptiert nun `recipient_email`, `recipient_number` (BE-XXXXX), oder `recipient` (auto-detect via "@"). Neuer Endpoint `/api/wallet/lookup-recipient?q=...` zur Empfänger-Validierung. `/api/wallet/` Response liefert nun `user_number` und `user`-Objekt.
+  - 🟡 **Backend `/api/taxi/status`**: private_drivers Counter toleriert nun `driver_online` ODER `driver_active` ODER `driver_status='online'` Flag.
+  - 🟡 **Frontend `/api/taxi/driver/status` → `/api/taxi/status`**: TaxiPage rief falschen Endpoint für Driver-Counts.
+  - ✅ Verifiziert: Wallet zeigt `BE94874` für Admin korrekt, Taxi-Map rendert mit Pickup-Input + 6 Mapbox-Suggestions für "Berlin" (Berlin-Neukölln, Berlin-Mitte, Berlin-Wilmersdorf, etc. mit "Berlin, DE" Subtitle), keine Runtime-Errors.
 - **04.05.2026 (iter57 — P2 Bündel a+b+c+d)**:
   - **(a)** Apple Privacy Manifest erstellt: `/app/frontend/ios/App/App/PrivacyInfo.xcprivacy` mit allen Datenkategorien (Email, Name, Phone, Photos/KYC, Location, Purchase, Payment, Crash, UserID) + Required-Reason-APIs (UserDefaults, FileTimestamp, BootTime, DiskSpace) — iOS17+ App Store-konform.
   - **(b)** LandingChatbot/Lead-Scoring **upgraded gpt-4.1-mini → gpt-5** (Claude Sonnet 4.5 nicht via Emergent-Key zugänglich, gpt-5 ist top-tier verfügbar). Health endpoint: `{"model":"gpt-5","provider":"openai"}`. End-to-End-Smoke-Test ✅ erfolgreich (echte qualitativ-höhere Antwort generiert).

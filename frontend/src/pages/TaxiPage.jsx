@@ -625,7 +625,7 @@ export default function TaxiPage({ onNavigate }) {
 
   const checkModuleStatus = async () => {
     try {
-      const res = await fetch(`${API}/api/taxi/driver/status`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/taxi/status`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         if (data.module_enabled === false) {
@@ -1228,7 +1228,15 @@ export default function TaxiPage({ onNavigate }) {
                 {/* Personalized Greeting Overlay */}
                 <div className="absolute bottom-20 left-0 right-0 px-3 z-10 pointer-events-none">
                   <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-md border border-cyan-500/20 rounded-2xl p-4">
-                    <p className="text-lg font-bold text-white mb-1">{getGreeting()}</p>
+                    <p className="text-lg font-bold text-white mb-1">
+                      {(() => {
+                        const h = new Date().getHours();
+                        if (h < 5) return 'Gute Nacht';
+                        if (h < 12) return 'Guten Morgen';
+                        if (h < 18) return 'Guten Tag';
+                        return 'Guten Abend';
+                      })()}
+                    </p>
                     <p className="text-xs text-gray-400">Wohin möchtest du fahren?</p>
                   </div>
                 </div>

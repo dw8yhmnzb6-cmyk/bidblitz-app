@@ -64,10 +64,14 @@ async def get_module_status():
             if driver.get("is_online") and driver.get("status") == "active":
                 business_drivers += 1
     
-    # Count private drivers (users with is_private_driver flag)
+    # Count private drivers (users with is_private_driver flag, online OR active)
     private_drivers = await db.users.count_documents({
         "is_private_driver": True,
-        "driver_online": True
+        "$or": [
+            {"driver_online": True},
+            {"driver_active": True},
+            {"driver_status": "online"},
+        ],
     })
     
     return {
