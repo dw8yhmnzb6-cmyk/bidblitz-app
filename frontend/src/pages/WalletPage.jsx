@@ -498,7 +498,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                     }
                   }}
                   className="px-4 py-2.5 rounded-xl bg-[#00C2FF]/20 text-[#00C2FF] text-sm font-semibold hover:bg-[#00C2FF]/30 active:scale-95 transition-all"
-
+                >
+                  Kopieren
+                </button>
+              </div>
+              <p className="text-xs text-white/40 mt-2">💡 Teile diese Nummer, um Geld zu empfangen</p>
+            </motion.div>
+          )}
 
           {/* Quick Send to Saved Recipients */}
           {!isGuest && savedRecipients.length > 0 && (

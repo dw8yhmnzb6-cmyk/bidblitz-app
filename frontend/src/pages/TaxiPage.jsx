@@ -227,7 +227,7 @@ export default function TaxiPage({ onNavigate }) {
         container: mapContainerRef.current,
         style: mapStyle === 'light' ? 'mapbox://styles/mapbox/light-v11' : 
                mapStyle === 'satellite' ? 'mapbox://styles/mapbox/satellite-streets-v12' :
-               'mapbox://styles/mapbox/streets-v12', // Professional default
+               'mapbox://styles/mapbox/dark-v11', // DARK by default like taxi.eu
         center: [pickup.lng, pickup.lat],
         zoom: 14,
         language: 'de',
