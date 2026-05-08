@@ -409,3 +409,177 @@ async def admin_send_money(req: AdminSendRequest, request: Request):
         "transaction_id": result.transaction_id,
     }
 
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SAVED RECIPIENTS (Gespeicherte Empfänger)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/saved-recipients")
+async def get_saved_recipients(request: Request):
+    """Get all saved recipients for current user"""
+    user = await get_current_user(request)
+    user_id = user.get("email")
+    
+    recipients = await db.saved_recipients.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("last_used", -1).to_list(100)
+    
+    return {"recipients": recipients, "count": len(recipients)}
+
+
+@router.post("/saved-recipients")
+async def add_saved_recipient(request: Request):
+    """Add new saved recipient"""
+    user = await get_current_user(request)
+    user_id = user.get("email")
+    body = await request.json()
+    
+    recipient_number = body.get("recipient_number")
+    nickname = body.get("nickname", "")
+    icon = body.get("icon", "user")
+    
+    if not recipient_number:
+        raise HTTPException(status_code=400, detail="Empfänger-Nummer fehlt")
+    
+    # Find recipient by number
+    recipient_user = await db.users.find_one(
+        {"user_number": recipient_number}, {"_id": 0}
+    )
+    
+    if not recipient_user:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    
+    if recipient_user.get("email") == user_id:
+        raise HTTPException(status_code=400, detail="Du kannst dich nicht selbst speichern")
+    
+    # Check if already saved
+    existing = await db.saved_recipients.find_one({
+        "user_id": user_id,
+        "recipient_id": recipient_user.get("email")
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Empfänger bereits gespeichert")
+    
+    now = datetime.now(timezone.utc)
+    saved_id = secrets.token_hex(8)
+    
+    saved_recipient = {
+        "id": saved_id,
+        "user_id": user_id,
+        "recipient_id": recipient_user.get("email"),
+        "recipient_name": recipient_user.get("name") or recipient_user.get("email"),
+        "recipient_number": recipient_number,
+        "nickname": nickname or recipient_user.get("name"),
+        "icon": icon,
+        "created_at": now.isoformat(),
+        "last_used": now.isoformat(),
+        "transfer_count": 0,
+        "total_amount_sent": 0.0
+    }
+    
+    await db.saved_recipients.insert_one(saved_recipient)
+    
+    return {"ok": True, "recipient": saved_recipient}
+
+
+@router.delete("/saved-recipients/{recipient_id}")
+async def delete_saved_recipient(recipient_id: str, request: Request):
+    """Delete saved recipient"""
+    user = await get_current_user(request)
+    user_id = user.get("email")
+    
+    result = await db.saved_recipients.delete_one({
+        "id": recipient_id,
+        "user_id": user_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    
+    return {"ok": True}
+
+
+@router.post("/transfer-by-number")
+async def transfer_by_number(request: Request):
+    """Transfer money by recipient number"""
+    user = await get_current_user(request)
+    _ensure_kyc(user)
+    
+    body = await request.json()
+    recipient_number = body.get("recipient_number")
+    amount = float(body.get("amount", 0))
+    
+    if not recipient_number:
+        raise HTTPException(status_code=400, detail="Empfänger-Nummer fehlt")
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Ungültiger Betrag")
+    
+    if user.get("balance", 0) < amount:
+        raise HTTPException(status_code=400, detail="Unzureichendes Guthaben")
+    
+    # Find recipient
+    recipient = await db.users.find_one(
+        {"user_number": recipient_number}, {"_id": 0}
+    )
+    
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+    
+    sender_email = user.get("email")
+    recipient_email = recipient.get("email")
+    
+    if sender_email == recipient_email:
+        raise HTTPException(status_code=400, detail="Selbstüberweisung nicht möglich")
+    
+    # Execute transfer
+    await db.users.update_one(
+        {"email": sender_email},
+        {"$inc": {"balance": -amount}}
+    )
+    
+    await db.users.update_one(
+        {"email": recipient_email},
+        {"$inc": {"balance": amount}}
+    )
+    
+    # Create transaction record
+    now = datetime.now(timezone.utc)
+    transaction_id = secrets.token_hex(8)
+    
+    transaction = {
+        "transaction_id": transaction_id,
+        "type": "transfer",
+        "from": sender_email,
+        "to": recipient_email,
+        "amount": amount,
+        "currency": "EUR",
+        "status": "completed",
+        "created_at": now.isoformat(),
+        "method": "user_number"
+    }
+    
+    await db.transactions.insert_one(transaction)
+    
+    # Update saved recipient stats if exists
+    await db.saved_recipients.update_one(
+        {"user_id": sender_email, "recipient_id": recipient_email},
+        {
+            "$set": {"last_used": now.isoformat()},
+            "$inc": {"transfer_count": 1, "total_amount_sent": amount}
+        }
+    )
+    
+    # Invalidate caches
+    invalidate_user_cache(sender_email)
+    invalidate_user_cache(recipient_email)
+    
+    return {
+        "ok": True,
+        "transaction_id": transaction_id,
+        "new_balance": round(user.get("balance", 0) - amount, 2),
+        "recipient_name": recipient.get("name") or recipient_email
+    }
