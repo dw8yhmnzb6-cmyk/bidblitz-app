@@ -482,14 +482,15 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <div>
                 <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Deine Nummer</p>
                 <p className="text-xl font-bold text-white" data-testid="user-number-value">
-                  {wallet?.user?.user_number || "Laden..."}
+                  {wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number || "Laden..."}
                 </p>
               </div>
               <button
                 data-testid="copy-user-number-btn"
                 onClick={() => {
-                  if (wallet?.user?.user_number) {
-                    navigator.clipboard.writeText(wallet.user.user_number);
+                  const num = wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number;
+                  if (num) {
+                    navigator.clipboard.writeText(num);
                     toast.success("Nummer kopiert");
                   }
                 }}

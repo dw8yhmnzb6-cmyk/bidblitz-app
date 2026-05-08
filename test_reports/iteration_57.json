@@ -1,0 +1,33 @@
+{
+  "summary": "Iter57 frontend retest of iter56 P0 fixes — BOTH CONFIRMED RESOLVED. (1) WalletPage user-number-value renders 'BE94874' for admin@bidblitz.com after login (no longer permanent 'Laden...'). Verified via Playwright assertion + screenshot — text appears within ~1s of /api/wallet/ resolving (initial 'Laden...' state during fetch is acceptable). WalletContext L48 maps user_number correctly, exposes userNumber on context value (L172), WalletPage L485 reads wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number — all good. (2) TaxiPage NO LONGER crashes with mapStyle ReferenceError. useState hooks at L163-164 added correctly. /taxi route renders cleanly: BidBlitz Taxi header, Buchen/Live/Verlauf tabs, taxi-type-private + taxi-type-business cards both visible, no red runtime overlay, no PAGEERROR in console. NEW BLOCKER for autocomplete test: /api/taxi/status returns {private_drivers:0, business_drivers:0} so clicking either taxi-type card opens the Driver-Onboarding-Modal (Als Fahrer bewerben) — pickup-input never mounts → Mapbox autocomplete (Berlin → suggestions w/ PLZ+Stadt subtitle) could NOT be exercised end-to-end. The seeded fahrer@bidblitz.com (is_private_driver=true, driver_active=true) is not being counted by /api/taxi/status. Onboarding-Modal opening itself is correct UX (no crash) per request notes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/taxi/status", "issue": "Returns private_drivers:0 even though fahrer@bidblitz.com has is_private_driver=true AND driver_active=true in DB per main-agent context. The status query likely also requires additional flags (e.g., is_approved, online, kyc_verified) — investigate and align with DB seed so privateDrivers count = 1 and Privat-Taxi card opens the Map+Pickup flow instead of the Onboarding modal. Blocks Mapbox autocomplete UI test."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Taxi Mapbox pickup autocomplete (Berlin → PLZ+Stadt suggestions)", "issue": "Cannot be tested — pickup-input never renders because /api/taxi/status reports 0 private and 0 business drivers, so both taxi-type cards open the Driver-Onboarding modal instead of the Map+Pickup flow. Code path itself looks intact; needs backend driver count fix to validate.", "affected_selectors": ["[data-testid='taxi-pickup-input']","[data-testid='taxi-type-private']","[data-testid='taxi-type-business']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iter56_wallet_features.py"],
+  "action_items": [
+    "MEDIUM — Fix /api/taxi/status driver counting so the seeded fahrer@bidblitz.com with is_private_driver=true + driver_active=true contributes to private_drivers count (currently returns 0). Without this, the Privat-Taxi Map+Pickup flow + Mapbox autocomplete cannot be reached by any user.",
+    "LOW (carry-over from iter55/56) — WalletPage React warning 'Each child in a list should have a unique key prop' still logged in console. Add stable keys in transactions list."
+  ],
+  "critical_code_review_comments": [
+    "Both iter56 P0 fixes are clean: (a) WalletContext.jsx L48 user_number mapping + L172 userNumber on context value + WalletPage.jsx L485 triple-fallback is robust against future shape drift. (b) TaxiPage.jsx L163-164 useState additions resolve the runtime crash without other dangling Leaflet→Mapbox refactor leftovers (no other ReferenceErrors observed during /taxi load).",
+    "/api/taxi/status driver counting logic should be reviewed — front-end gates on (privateDrivers > 0) to decide between Onboarding modal and Map flow, so the boolean flags it relies on must align with the backend aggregation."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only retest)", "frontend": "Wallet 100% (BE94874 renders correctly), Taxi 80% (renders + cards visible + no crash; autocomplete sub-flow blocked by backend driver-count, not a UI bug)"},
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! (BE94874) — used for retest. /api/taxi/status responds {module_enabled:true, operators_active:1, business_drivers:0, private_drivers:0}",
+  "seed_data_creation": "None this iteration.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter56 P0 bugs (WalletPage 'Laden...' + TaxiPage mapStyle ReferenceError) are FIXED and verified. The remaining open item is /api/taxi/status returning 0 private/business drivers despite a seeded private driver — once main agent fixes the driver count, re-run a quick Playwright test: login as admin → /taxi → click [data-testid='taxi-type-private'] → expect [data-testid='taxi-pickup-input'] visible → fill 'Berlin' → expect autocomplete suggestions list with name + PLZ/Stadt subtitle. Login flow used: home → click 'Anmelden' button → fill email/password → submit → click 'Überspringen' on onboarding wizard up to 4× → page.goto('/wallet' or '/taxi'). 401 errors on home pre-login are normal (auth-gated GETs).",
+  "rca_of_the_issue": "WalletPage user-number 'Laden...' RCA: WalletContext only stored balance/transactions and never persisted user_number from the /api/wallet/ payload — fixed by adding userNumber to initialState (L23), populating it in SET_WALLET reducer (L48), and exposing on context value (L172). WalletPage now reads wallet?.userNumber primarily with fallback chain (L485). TaxiPage mapStyle ReferenceError RCA: Leaflet→Mapbox migration omitted the useState declarations for mapStyle/setMapStyle and showMapStyles/setShowMapStyles — fixed by adding them at L163-164 with localStorage initializer."
+}

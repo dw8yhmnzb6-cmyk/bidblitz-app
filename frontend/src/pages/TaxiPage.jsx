@@ -160,6 +160,8 @@ export default function TaxiPage({ onNavigate }) {
   const [userBalance, setUserBalance] = useState(0);
   const [moduleEnabled, setModuleEnabled] = useState(true);
   const [moduleMessage, setModuleMessage] = useState('');
+  const [mapStyle, setMapStyle] = useState(typeof window !== 'undefined' ? (window.localStorage.getItem('bidblitz_map_style') || 'streets') : 'streets');
+  const [showMapStyles, setShowMapStyles] = useState(false);
 
   // Super-App parity (review, split, live chat)
   const [showReview, setShowReview] = useState(false);
