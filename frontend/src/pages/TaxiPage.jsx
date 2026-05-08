@@ -13,14 +13,6 @@ import KYCBanner from '../components/KYCBanner';
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
-// Fix Leaflet default icon paths
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
-
 const API = process.env.REACT_APP_BACKEND_URL;
 
 // Mapbox Styles
@@ -216,11 +208,6 @@ export default function TaxiPage({ onNavigate }) {
   // Current address (Reverse Geocoded)
   const [currentAddress, setCurrentAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
-
-  // Map style picker (Uber/Bolt style)
-  const [mapStyle, setMapStyle] = useState(() => localStorage.getItem('bidblitz_map_style') || 'dark');
-  const [showMapStyles, setShowMapStyles] = useState(false);
-  const tileLayerRef = useRef(null);
 
   // Interactive map refs
   const mapContainerRef = useRef(null);
