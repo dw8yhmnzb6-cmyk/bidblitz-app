@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
+import { useUser } from '../store/UserContext';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ReviewModal from '../components/ReviewModal';
@@ -853,7 +854,19 @@ export default function TaxiPage({ onNavigate }) {
               </svg>
             </button>
             <h1 className="text-xl font-bold">BidBlitz Taxi</h1>
-            <div className="text-sm text-cyan-400 font-medium">€{userBalance.toFixed(2)}</div>
+            <div className="flex items-center gap-2">
+              {/* Zentrale anrufen Button */}
+              <a 
+                href="tel:+49305806" 
+                className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
+                title="Zentrale anrufen"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </a>
+              <div className="text-sm text-cyan-400 font-medium">€{userBalance.toFixed(2)}</div>
+            </div>
           </div>
           
           {/* Tab Navigation */}
@@ -928,6 +941,21 @@ export default function TaxiPage({ onNavigate }) {
                   animate={{ opacity: 1, scale: 1 }}
                   className="space-y-4"
                 >
+                  {/* Hero Image */}
+                  <div className="relative w-full h-48 rounded-2xl overflow-hidden -mt-2">
+                    <img 
+                      src="https://images.unsplash.com/photo-1758179128122-6079c9cb3e4e?w=800&q=80" 
+                      alt="BidBlitz Taxi" 
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <h2 className="text-2xl font-bold text-white mb-1">BidBlitz Taxi</h2>
+                      <p className="text-sm text-gray-300">Professionelle Fahrten in deiner Stadt</p>
+                    </div>
+                  </div>
+
                   <h2 className="text-lg font-semibold text-center">Wähle deinen Taxi-Typ</h2>
                   <div className={`grid gap-4 ${modeSettings.business.enabled && modeSettings.private.enabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     {/* Business/Company Taxi */}
@@ -1175,6 +1203,14 @@ export default function TaxiPage({ onNavigate }) {
                     )}
                   </div>
                 )}
+
+                {/* Personalized Greeting Overlay */}
+                <div className="absolute bottom-20 left-0 right-0 px-3 z-10 pointer-events-none">
+                  <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-md border border-cyan-500/20 rounded-2xl p-4">
+                    <p className="text-lg font-bold text-white mb-1">{getGreeting()}</p>
+                    <p className="text-xs text-gray-400">Wohin möchtest du fahren?</p>
+                  </div>
+                </div>
 
                 {/* Route info overlay */}
                 {dropoff.lat !== 0 && estimates.length > 0 && (

@@ -148,6 +148,120 @@ async def register_taxi_operator(req: OperatorRegistration, request: Request):
 
 
 @router.get("/operator/status")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FAVORITE LOCATIONS (User saved addresses)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class FavoriteLocationRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50)
+    address: str = Field(..., min_length=1)
+    latitude: float
+    longitude: float
+    icon: str = Field(default="star", pattern=r'^(home|work|star|heart|pin)$')
+
+
+@router.get("/user/favorite-locations")
+async def get_favorite_locations(request: Request):
+    """Get all favorite locations for authenticated user"""
+    user = await get_current_user(request)
+    user_id = user.get("email") or user.get("id")
+    
+    favorites = await db.user_favorite_locations.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("last_used", -1).to_list(50)
+    
+    return {"favorites": favorites, "count": len(favorites)}
+
+
+@router.post("/user/favorite-locations")
+async def add_favorite_location(req: FavoriteLocationRequest, request: Request):
+    """Add new favorite location"""
+    user = await get_current_user(request)
+    user_id = user.get("email") or user.get("id")
+    now = datetime.now(timezone.utc)
+    
+    # Check if address already saved
+    existing = await db.user_favorite_locations.find_one({
+        "user_id": user_id,
+        "address": req.address
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Diese Adresse ist bereits gespeichert")
+    
+    favorite_id = secrets.token_hex(8)
+    favorite = {
+        "id": favorite_id,
+        "user_id": user_id,
+        "name": req.name,
+        "address": req.address,
+        "latitude": req.latitude,
+        "longitude": req.longitude,
+        "icon": req.icon,
+        "created_at": now.isoformat(),
+        "last_used": now.isoformat(),
+        "use_count": 0
+    }
+    
+    await db.user_favorite_locations.insert_one(favorite)
+    logger.info(f"Favorite location added: {req.name} for user {user_id}")
+    
+    return {"ok": True, "favorite": favorite}
+
+
+@router.delete("/user/favorite-locations/{favorite_id}")
+async def delete_favorite_location(favorite_id: str, request: Request):
+    """Remove favorite location"""
+    user = await get_current_user(request)
+    user_id = user.get("email") or user.get("id")
+    
+    result = await db.user_favorite_locations.delete_one({
+        "id": favorite_id,
+        "user_id": user_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Favorit nicht gefunden")
+    
+    return {"ok": True, "message": "Favorit gelöscht"}
+
+
+@router.put("/user/favorite-locations/{favorite_id}")
+async def update_favorite_location(favorite_id: str, req: FavoriteLocationRequest, request: Request):
+    """Update favorite location name/icon"""
+    user = await get_current_user(request)
+    user_id = user.get("email") or user.get("id")
+    
+    result = await db.user_favorite_locations.update_one(
+        {"id": favorite_id, "user_id": user_id},
+        {"$set": {"name": req.name, "icon": req.icon}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Favorit nicht gefunden")
+    
+    return {"ok": True, "message": "Favorit aktualisiert"}
+
+
+@router.post("/user/favorite-locations/{favorite_id}/use")
+async def mark_favorite_used(favorite_id: str, request: Request):
+    """Mark favorite as used (increment counter, update last_used)"""
+    user = await get_current_user(request)
+    user_id = user.get("email") or user.get("id")
+    now = datetime.now(timezone.utc)
+    
+    await db.user_favorite_locations.update_one(
+        {"id": favorite_id, "user_id": user_id},
+        {
+            "$set": {"last_used": now.isoformat()},
+            "$inc": {"use_count": 1}
+        }
+    )
+    
+    return {"ok": True}
+
 async def get_operator_status(request: Request):
     """Get current operator status and earnings."""
     user = await get_current_user(request)
