@@ -19,6 +19,7 @@ import ExportSection from "../components/ExportSection";
 import ErrorState from "../components/ErrorState";
 import BarcodeModal from "../components/BarcodeModal";
 import SendMoneyModal from "../components/SendMoneyModal";
+import QuickSendButton from "../components/QuickSendButton";
 import { api } from "../services/api";
 import { useI18n } from "../store";
 import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
@@ -125,6 +126,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const [isLoading, setIsLoading] = useState(true);
   const [savedCard, setSavedCard] = useState(null);
   const [cardSaving, setCardSaving] = useState(false);
+  const [savedRecipients, setSavedRecipients] = useState([]);
 
   const wallet = useWallet();
   const realGrouped = useGroupedTransactions();
@@ -148,14 +150,20 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     }
   }, [hasCardSaved, isGuest]);
 
-  // Load saved card
+  // Load saved card and saved recipients
   useEffect(() => {
     if (isGuest) return;
     const API = process.env.REACT_APP_BACKEND_URL;
-    fetch(`${API}/api/stripe/saved-method`, { credentials: "include" })
-      .then(r => r.json())
-      .then(d => { if (d.has_saved_method) setSavedCard({ brand: d.card_brand, last4: d.card_last4, exp: `${d.card_exp_month}/${d.card_exp_year}` }); })
-      .catch(() => {});
+    Promise.all([
+      fetch(`${API}/api/stripe/saved-method`, { credentials: "include" })
+        .then(r => r.json())
+        .then(d => { if (d.has_saved_method) setSavedCard({ brand: d.card_brand, last4: d.card_last4, exp: `${d.card_exp_month}/${d.card_exp_year}` }); })
+        .catch(() => {}),
+      fetch(`${API}/api/wallet/saved-recipients`, { credentials: "include" })
+        .then(r => r.json())
+        .then(d => { setSavedRecipients(d.recipients || []); })
+        .catch(() => {})
+    ]);
   }, [isGuest]);
 
   const handleSaveCard = async () => {
@@ -490,6 +498,40 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                     }
                   }}
                   className="px-4 py-2.5 rounded-xl bg-[#00C2FF]/20 text-[#00C2FF] text-sm font-semibold hover:bg-[#00C2FF]/30 active:scale-95 transition-all"
+
+
+          {/* Quick Send to Saved Recipients */}
+          {!isGuest && savedRecipients.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.24 }}
+              className="mb-6"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-white">Schnell senden</h3>
+                <button
+                  onClick={() => setShowSendMoney(true)}
+                  className="text-xs text-[#00C2FF] font-semibold"
+                >
+                  Alle →
+                </button>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                {savedRecipients.slice(0, 4).map((saved) => (
+                  <QuickSendButton
+                    key={saved.id}
+                    savedRecipient={saved}
+                    onSendComplete={(data) => {
+                      refreshWallet();
+                      toast.success('✅ Erfolgreich gesendet!');
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+
                 >
                   Kopieren
                 </button>
