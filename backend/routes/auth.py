@@ -59,11 +59,22 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     # 🎁 WELCOME BONUS: 5€ EUR + 10 BLZ für jeden neuen User
     WELCOME_EUR = 5.0
     WELCOME_BLZ = 10.0
+    
+    # Generate unique user number (BE + 5 digits)
+    user_number = None
+    while True:
+        potential_number = f"BE{random.randint(10000, 99999)}"
+        existing = await db.users.find_one({"user_number": potential_number})
+        if not existing:
+            user_number = potential_number
+            break
+    
     user_doc = {
         "email": email,
         "password_hash": hash_password(req.password),
         "name": req.name.strip(),
         "role": role,
+        "user_number": user_number,
         "balance": WELCOME_EUR,
         "balance_blz": WELCOME_BLZ,
         "currency": "EUR",

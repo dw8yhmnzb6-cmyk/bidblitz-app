@@ -21,6 +21,9 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recentContacts, setRecentContacts] = useState([]);
+  const [savedRecipients, setSavedRecipients] = useState([]);
+  const [showSaveRecipient, setShowSaveRecipient] = useState(false);
+  const [saveRecipientForm, setSaveRecipientForm] = useState({ nickname: '', icon: 'user' });
   const [recipient, setRecipient] = useState(null);
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
@@ -55,12 +58,15 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
 
   const loadData = async () => {
     try {
-      // Load wallet balance using correct API call
-      const [balanceRes, recentRes] = await Promise.all([
+      // Load wallet balance, recent contacts, and saved recipients
+      const [balanceRes, recentRes, savedRes] = await Promise.all([
         fetch(`${process.env.REACT_APP_BACKEND_URL}/api/wallet/balance`, { credentials: 'include' })
           .then(r => r.ok ? r.json() : null)
           .catch(() => null),
         fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/recipients/recent`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : { recipients: [] })
+          .catch(() => ({ recipients: [] })),
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/wallet/saved-recipients`, { credentials: 'include' })
           .then(r => r.ok ? r.json() : { recipients: [] })
           .catch(() => ({ recipients: [] })),
       ]);
@@ -73,6 +79,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
       }
       
       setRecentContacts(recentRes?.recipients || []);
+      setSavedRecipients(savedRes?.recipients || []);
     } catch (err) {
       console.error('LoadData error:', err);
       // Fallback to user store balance
