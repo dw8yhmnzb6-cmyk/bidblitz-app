@@ -1,0 +1,132 @@
+[
+  {
+    "test_name": "Test 1: GET Empty Favorites",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "favorites": [
+        {
+          "id": "e12be9313ea00237",
+          "user_id": "admin@bidblitz.ae",
+          "name": "Test Zuhause",
+          "address": "Alexanderplatz 1, 10178 Berlin",
+          "latitude": 52.5219,
+          "longitude": 13.4132,
+          "icon": "home",
+          "created_at": "2026-05-08T10:46:46.351591+00:00",
+          "last_used": "2026-05-08T10:46:46.351591+00:00",
+          "use_count": 0
+        }
+      ],
+      "count": 1
+    },
+    "expected": "200 with favorites array and count",
+    "actual": "Status: 200, has_favorites=True, has_count=True, is_list=True",
+    "timestamp": "2026-05-08T10:48:24.179994"
+  },
+  {
+    "test_name": "Test 2: POST Add New Favorite",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "favorite": {
+        "id": "17609a5c288c6584",
+        "user_id": "admin@bidblitz.ae",
+        "name": "Test Zuhause",
+        "address": "Alexanderplatz 1, 10178 Berlin (Test 20260508104824)",
+        "latitude": 52.5219,
+        "longitude": 13.4132,
+        "icon": "home",
+        "created_at": "2026-05-08T10:48:24.216724+00:00",
+        "last_used": "2026-05-08T10:48:24.216724+00:00",
+        "use_count": 0
+      }
+    },
+    "expected": "200 with ok=true, favorite object with id",
+    "actual": "Status: 200, ok=True, has_favorite=True, has_id=True",
+    "timestamp": "2026-05-08T10:48:24.234416"
+  },
+  {
+    "test_name": "Test 3: Duplicate Address Error",
+    "passed": true,
+    "status_code": 400,
+    "response": {
+      "detail": "Diese Adresse ist bereits gespeichert"
+    },
+    "expected": "400 with 'Diese Adresse ist bereits gespeichert'",
+    "actual": "Status: 400, detail=Diese Adresse ist bereits gespeichert",
+    "timestamp": "2026-05-08T10:48:24.336104"
+  },
+  {
+    "test_name": "Test 4: GET Favorites with Items",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "favorites": [
+        {
+          "id": "17609a5c288c6584",
+          "user_id": "admin@bidblitz.ae",
+          "name": "Test Zuhause",
+          "address": "Alexanderplatz 1, 10178 Berlin (Test 20260508104824)",
+          "latitude": 52.5219,
+          "longitude": 13.4132,
+          "icon": "home",
+          "created_at": "2026-05-08T10:48:24.216724+00:00",
+          "last_used": "2026-05-08T10:48:24.216724+00:00",
+          "use_count": 0
+        },
+        {
+          "id": "e12be9313ea00237",
+          "user_id": "admin@bidblitz.ae",
+          "name": "Test Zuhause",
+          "address": "Alexanderplatz 1, 10178 Berlin",
+          "latitude": 52.5219,
+          "longitude": 13.4132,
+          "icon": "home",
+          "created_at": "2026-05-08T10:46:46.351591+00:00",
+          "last_used": "2026-05-08T10:46:46.351591+00:00",
+          "use_count": 0
+        }
+      ],
+      "count": 2
+    },
+    "expected": "200 with count >= 1",
+    "actual": "Status: 200, count=2",
+    "timestamp": "2026-05-08T10:48:24.387166"
+  },
+  {
+    "test_name": "Test 5: POST Mark as Used",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "ok": true
+    },
+    "expected": "200 with ok=true",
+    "actual": "Status: 200, ok=True",
+    "timestamp": "2026-05-08T10:48:24.437589"
+  },
+  {
+    "test_name": "Test 6: DELETE Favorite",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "message": "Favorit gel\u00f6scht"
+    },
+    "expected": "200 with ok=true",
+    "actual": "Status: 200, ok=True",
+    "timestamp": "2026-05-08T10:48:24.488773"
+  },
+  {
+    "test_name": "Test 7: DELETE Non-Existent Error",
+    "passed": true,
+    "status_code": 404,
+    "response": {
+      "detail": "Favorit nicht gefunden"
+    },
+    "expected": "404 Not Found",
+    "actual": "Status: 404",
+    "timestamp": "2026-05-08T10:48:24.540062"
+  }
+]

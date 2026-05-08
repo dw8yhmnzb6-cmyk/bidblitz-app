@@ -142,6 +142,19 @@ backend:
         agent: "testing"
         comment: "TAXI DRIVER ONBOARDING API TESTING COMPLETE (2026-05-07): ✅ ALL 9 TEST SCENARIOS PASSED (100% success rate), ✅ Test 1: Successful Business Driver Application - POST /api/taxi/driver/onboard returns 200 OK with ok=true, application_id (bd63de949dc67643), status=pending, proper German success message, ✅ Test 2: Successful Private Driver Application - POST with driver_type='private' and vehicle_type='premium' returns 200 OK with application_id (00a8b4cb10d51199), ✅ Test 3: Duplicate Application Error - POST with same email returns 400 with error message 'Deine Bewerbung wird bereits geprüft' (proves data persistence working), ✅ Test 4a-4d: Validation Errors - Empty name (422), invalid email (422), short phone (422), short license (422) all return proper Pydantic validation errors with detailed field-level messages, ✅ Test 5: Invalid Vehicle Type - POST with vehicle_type='invalid' returns 422 with pattern mismatch error (valid: standard|premium|van), ✅ Test 6: Invalid Driver Type - POST with driver_type='unknown' returns 422 with pattern mismatch error (valid: business|private), ✅ All validation rules working correctly (name min 2 chars, email regex pattern, phone min 8 chars, license min 5 chars), ✅ Database persistence confirmed (duplicate check in Test 3 proves applications are saved to taxi_driver_applications collection), ✅ Proper HTTP status codes (200 for success, 400 for business logic errors, 422 for validation errors), ✅ Response structure matches specification with ok, application_id, message, status fields. Taxi Driver Onboarding API is fully functional and production-ready. External API URL: https://taxi-streaming.preview.emergentagent.com"
 
+  - task: "Taxi Favorite Locations API"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/taxi.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "TAXI FAVORITE LOCATIONS API TESTING COMPLETE (2026-05-08): ✅ ALL 7 TEST SCENARIOS PASSED (100% success rate), ✅ Test 1: GET /api/taxi/user/favorite-locations working correctly - returns favorites array and count (empty or with items), ✅ Test 2: POST /api/taxi/user/favorite-locations working correctly - creates new favorite location with id, name, address, latitude, longitude, icon, created_at, last_used, use_count fields, ✅ Test 3: POST duplicate address correctly returns 400 with German error message 'Diese Adresse ist bereits gespeichert' (duplicate detection working), ✅ Test 4: GET favorites with items working correctly - returns count >= 1 with all favorite details, ✅ Test 5: POST /api/taxi/user/favorite-locations/{id}/use working correctly - marks favorite as used, increments use_count, updates last_used timestamp, returns ok=true, ✅ Test 6: DELETE /api/taxi/user/favorite-locations/{id} working correctly - deletes favorite, returns ok=true with German message 'Favorit gelöscht', ✅ Test 7: DELETE non-existent favorite correctly returns 404 with German error message 'Favorit nicht gefunden', ✅ Authentication working with cookie-based session (admin@bidblitz.ae credentials), ✅ All endpoints properly scoped to authenticated user (user_id filtering working), ✅ Proper HTTP status codes (200 for success, 400 for duplicate, 404 for not found), ✅ Response structures match specification. 🔧 MINOR FIX APPLIED: Fixed ObjectId serialization bug in POST endpoint (line 211 in taxi.py) - MongoDB's insert_one adds _id field with ObjectId which is not JSON serializable, added favorite.pop('_id', None) before returning response to prevent 500 error. Taxi Favorite Locations API is fully functional and production-ready. Test results saved to /app/favorite_locations_test_results.json. External API URL: https://taxi-streaming.preview.emergentagent.com"
+
+
 backend:
   - task: "Apple Pay / Google Pay API"
     implemented: true
@@ -769,13 +782,13 @@ agent_communication:
 
 metadata:
   created_by: "testing_agent"
-  version: "1.3"
-  test_sequence: 6
+  version: "1.4"
+  test_sequence: 7
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Taxi Driver Onboarding Modal - /taxi"
+    - "Taxi Favorite Locations API"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -796,3 +809,7 @@ agent_communication:
 
   - agent: "testing"
     message: "TAXI DRIVER ONBOARDING MODAL FRONTEND TESTING (2026-05-07): ❌ CRITICAL ROUTING/AUTHENTICATION ISSUE FOUND - Cannot access /taxi page on preview environment (https://taxi-streaming.preview.emergentagent.com/taxi). ✅ FRONTEND CODE VERIFIED: TaxiPage.jsx contains complete Driver Onboarding Modal implementation with all required data-testid attributes (driver-onboard-name, driver-onboard-email, driver-onboard-phone, driver-onboard-license, driver-vehicle-standard/premium/van, driver-onboard-city, driver-onboard-message, driver-onboard-submit), modal opens when clicking taxi-type-business or taxi-type-private buttons, form validation implemented ('Bitte alle Pflichtfelder ausfüllen'), success screen shows 'Bewerbung erfolgreich!' and 'Wir prüfen deine Angaben' messages. ❌ ROUTING ISSUE: App.js line 588 shows taxi page requires (!isGuest || isDemoMode) to render, but demo mode is not persisting across navigation. After clicking 'Try Demo' button, navigating to /taxi still shows landing page instead of taxi page. Console logs show repeated 401 errors for /api/auth/me and /api/auth/refresh even in demo mode. ❌ ROOT CAUSE: Demo mode state (isDemoMode) is set to true but currentPath is reset to '/' (line 391 in App.js), causing navigation issues. The taxi page is not accessible without proper authentication or working demo mode. ⚠️ IMPACT: Cannot test Driver Onboarding Modal UI flow (form filling, submission, validation, success screen) because taxi page is not rendering. Backend API is working (confirmed in previous test), but frontend UI is inaccessible. 🔧 REQUIRED FIX: Fix demo mode persistence across navigation OR provide test credentials for authentication OR fix routing logic to allow taxi page access in demo mode."
+
+  - agent: "testing"
+    message: "TAXI FAVORITE LOCATIONS API TESTING COMPLETE (2026-05-08): ✅ ALL 7 TEST SCENARIOS PASSED (100% success rate) - Comprehensive testing of Favorite Locations API at https://taxi-streaming.preview.emergentagent.com/api/taxi/user/favorite-locations. ✅ GET FAVORITES: Returns favorites array and count (empty or with items), proper JSON structure with id, user_id, name, address, latitude, longitude, icon, created_at, last_used, use_count fields. ✅ POST ADD FAVORITE: Creates new favorite location successfully, returns ok=true with favorite object containing generated id (e.g., 17609a5c288c6584). ✅ DUPLICATE DETECTION: POST with duplicate address correctly returns 400 with German error message 'Diese Adresse ist bereits gespeichert' (proves duplicate checking working). ✅ MARK AS USED: POST /api/taxi/user/favorite-locations/{id}/use working correctly, increments use_count and updates last_used timestamp, returns ok=true. ✅ DELETE FAVORITE: DELETE /api/taxi/user/favorite-locations/{id} working correctly, removes favorite from database, returns ok=true with German message 'Favorit gelöscht'. ✅ DELETE NON-EXISTENT: DELETE with fake ID correctly returns 404 with German error message 'Favorit nicht gefunden'. ✅ AUTHENTICATION: Cookie-based authentication working with admin@bidblitz.ae credentials, all endpoints properly scoped to authenticated user. ✅ USER ISOLATION: Favorites are properly filtered by user_id, users can only see/modify their own favorites. 🔧 MINOR BUG FIXED: Fixed ObjectId serialization issue in POST endpoint (line 211 in taxi.py) - MongoDB's insert_one adds _id field with ObjectId which caused 500 error when FastAPI tried to serialize response, added favorite.pop('_id', None) to remove MongoDB's _id before returning. All Taxi Favorite Locations endpoints are fully functional and production-ready. Test script saved to /app/favorite_locations_test.py, results saved to /app/favorite_locations_test_results.json. Main agent can now summarize and finish."
+

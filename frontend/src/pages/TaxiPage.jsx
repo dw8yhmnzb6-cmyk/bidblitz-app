@@ -210,6 +210,12 @@ export default function TaxiPage({ onNavigate }) {
   });
   const [onboardingSubmitting, setOnboardingSubmitting] = useState(false);
   const [onboardingSuccess, setOnboardingSuccess] = useState(false);
+  
+  // Favoriten / Saved Addresses
+  const [favorites, setFavorites] = useState([]);
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showSaveFavorite, setShowSaveFavorite] = useState(false);
+  const [favoriteForm, setFavoriteForm] = useState({ name: '', icon: 'star' });
 
   // Autocomplete state
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
@@ -587,10 +593,78 @@ export default function TaxiPage({ onNavigate }) {
     checkActiveRide();
     checkModuleStatus();
     fetchModeSettings();
+    fetchFavorites();
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, []);
+
+  const fetchFavorites = async () => {
+    try {
+      const res = await fetch(`${API}/api/user/favorite-locations`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setFavorites(data.favorites || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch favorites:', err);
+    }
+  };
+
+  const saveFavorite = async (locationData, name, icon) => {
+    try {
+      const res = await fetch(`${API}/api/user/favorite-locations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name,
+          address: locationData.address,
+          latitude: locationData.lat,
+          longitude: locationData.lng,
+          icon
+        })
+      });
+      if (res.ok) {
+        await fetchFavorites();
+        setShowSaveFavorite(false);
+        setFavoriteForm({ name: '', icon: 'star' });
+      } else {
+        const errData = await res.json();
+        setError(errData.detail || 'Fehler beim Speichern');
+      }
+    } catch (err) {
+      setError('Netzwerkfehler');
+    }
+  };
+
+  const deleteFavorite = async (favoriteId) => {
+    try {
+      const res = await fetch(`${API}/api/user/favorite-locations/${favoriteId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        await fetchFavorites();
+      }
+    } catch (err) {
+      console.error('Failed to delete favorite:', err);
+    }
+  };
+
+  const selectFavorite = async (favorite) => {
+    setPickup({ lat: favorite.latitude, lng: favorite.longitude, address: favorite.address });
+    setShowFavorites(false);
+    
+    // Mark as used
+    try {
+      await fetch(`${API}/api/user/favorite-locations/${favorite.id}/use`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      await fetchFavorites();
+    } catch (err) {}
+  };
 
   const fetchModeSettings = async () => {
     try {
@@ -1229,6 +1303,18 @@ export default function TaxiPage({ onNavigate }) {
                     <div className="w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-cyan-500/20" />
                   </div>
                   <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider z-10">ABHOLUNG</div>
+                  
+                  {/* Favoriten Button */}
+                  <button
+                    onClick={() => setShowFavorites(!showFavorites)}
+                    className="absolute right-14 top-1/2 -translate-y-1/2 z-10 p-2 text-yellow-400 hover:text-yellow-300 transition-colors"
+                    title="Gespeicherte Orte"
+                  >
+                    <svg className="w-5 h-5" fill={favorites.length > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                  </button>
+                  
                   <input
                     type="text"
                     placeholder="Aktueller Standort"
@@ -2079,6 +2165,7 @@ export default function TaxiPage({ onNavigate }) {
           </motion.div>
         )}
       </AnimatePresence>
+      
       <GroupOrderModal
         isOpen={showGroupRide}
         onClose={() => setShowGroupRide(false)}
@@ -2089,6 +2176,206 @@ export default function TaxiPage({ onNavigate }) {
           vehicle_type: selectedVehicle,
         }}
       />
+
+      {/* Favoriten Modal */}
+      <AnimatePresence>
+        {showFavorites && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setShowFavorites(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0A0A0F] w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl max-h-[80vh] overflow-y-auto"
+            >
+              <div className="sticky top-0 bg-[#0A0A0F] border-b border-white/10 p-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-white">Gespeicherte Orte</h2>
+                <button
+                  onClick={() => setShowFavorites(false)}
+                  className="p-2 rounded-full bg-white/5 hover:bg-white/10"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="p-4">
+                {favorites.length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="w-16 h-16 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    <p className="text-gray-400 text-sm">Keine gespeicherten Orte</p>
+                    <p className="text-gray-500 text-xs mt-1">Tippe auf ⭐ beim Adress-Eingabefeld</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {favorites.map((fav) => {
+                      const iconMap = {
+                        home: '🏠',
+                        work: '💼',
+                        star: '⭐',
+                        heart: '❤️',
+                        pin: '📍'
+                      };
+                      
+                      return (
+                        <div
+                          key={fav.id}
+                          className="bg-white/5 border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-all group"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="text-2xl">{iconMap[fav.icon] || '⭐'}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-white text-sm">{fav.name}</p>
+                              <p className="text-xs text-gray-400 truncate">{fav.address}</p>
+                              {fav.use_count > 0 && (
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                  {fav.use_count}x verwendet
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => selectFavorite(fav)}
+                                className="p-2 text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition-colors"
+                                title="Verwenden"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`"${fav.name}" löschen?`)) {
+                                    deleteFavorite(fav.id);
+                                  }
+                                }}
+                                className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                title="Löschen"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {pickup.address && (
+                  <button
+                    onClick={() => {
+                      setShowSaveFavorite(true);
+                      setShowFavorites(false);
+                    }}
+                    className="w-full mt-4 py-3 bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-yellow-400 rounded-xl font-semibold hover:bg-yellow-500/30 transition-all"
+                  >
+                    ⭐ Aktuelle Adresse speichern
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Save Favorite Modal */}
+      <AnimatePresence>
+        {showSaveFavorite && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowSaveFavorite(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0A0A0F] border border-white/10 rounded-2xl p-6 max-w-sm w-full"
+            >
+              <h3 className="text-lg font-bold text-white mb-4">Ort speichern</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">Name</label>
+                  <input
+                    type="text"
+                    placeholder="z.B. Zuhause, Arbeit..."
+                    value={favoriteForm.name}
+                    onChange={(e) => setFavoriteForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">Icon</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[
+                      { icon: 'home', emoji: '🏠' },
+                      { icon: 'work', emoji: '💼' },
+                      { icon: 'star', emoji: '⭐' },
+                      { icon: 'heart', emoji: '❤️' },
+                      { icon: 'pin', emoji: '📍' }
+                    ].map((item) => (
+                      <button
+                        key={item.icon}
+                        onClick={() => setFavoriteForm(prev => ({ ...prev, icon: item.icon }))}
+                        className={`p-3 rounded-xl text-2xl transition-all ${
+                          favoriteForm.icon === item.icon
+                            ? 'bg-cyan-500/20 border-2 border-cyan-500/50'
+                            : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                        }`}
+                      >
+                        {item.emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
+                  📍 {pickup.address}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowSaveFavorite(false)}
+                    className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!favoriteForm.name) {
+                        setError('Bitte Name eingeben');
+                        return;
+                      }
+                      saveFavorite(pickup, favoriteForm.name, favoriteForm.icon);
+                    }}
+                    disabled={!favoriteForm.name}
+                    className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-semibold disabled:opacity-50"
+                  >
+                    Speichern
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

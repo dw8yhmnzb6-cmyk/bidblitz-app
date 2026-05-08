@@ -208,6 +208,8 @@ async def add_favorite_location(req: FavoriteLocationRequest, request: Request):
     await db.user_favorite_locations.insert_one(favorite)
     logger.info(f"Favorite location added: {req.name} for user {user_id}")
     
+    # Remove MongoDB's _id field before returning (not JSON serializable)
+    favorite.pop("_id", None)
     return {"ok": True, "favorite": favorite}
 
 
