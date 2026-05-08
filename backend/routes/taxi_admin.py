@@ -497,3 +497,175 @@ async def switch_driver_type(req: DriverTypeSwitch, request: Request):
     })
 
     return {"ok": True, "driver_id": req.driver_id, "driver_type": req.new_type}
+
+
+
+# ═══════════════════════════════════════════════════════════
+# DRIVER APPLICATIONS MANAGEMENT
+# ═══════════════════════════════════════════════════════════
+
+@router.get("/driver-applications")
+async def get_driver_applications(
+    request: Request,
+    status: Optional[str] = None,
+    limit: int = 100
+):
+    """Get all driver applications with optional status filter"""
+    await _require_admin(request)
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    applications = await db.taxi_driver_applications.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Count by status
+    pending_count = await db.taxi_driver_applications.count_documents({"status": "pending"})
+    approved_count = await db.taxi_driver_applications.count_documents({"status": "approved"})
+    rejected_count = await db.taxi_driver_applications.count_documents({"status": "rejected"})
+    
+    return {
+        "applications": applications,
+        "total": len(applications),
+        "stats": {
+            "pending": pending_count,
+            "approved": approved_count,
+            "rejected": rejected_count,
+        }
+    }
+
+
+class ApplicationAction(BaseModel):
+    reason: Optional[str] = ""
+
+
+@router.post("/driver-applications/{application_id}/approve")
+async def approve_driver_application(
+    application_id: str,
+    request: Request
+):
+    """Approve a driver application"""
+    admin = await _require_admin(request)
+    now = datetime.now(timezone.utc)
+    
+    # Find application
+    application = await db.taxi_driver_applications.find_one(
+        {"application_id": application_id}
+    )
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    
+    if application.get("status") == "approved":
+        raise HTTPException(status_code=400, detail="Bewerbung bereits genehmigt")
+    
+    # Update application status
+    await db.taxi_driver_applications.update_one(
+        {"application_id": application_id},
+        {"$set": {
+            "status": "approved",
+            "reviewed_at": now.isoformat(),
+            "reviewed_by": admin.get("email"),
+        }}
+    )
+    
+    # Log activity
+    await db.taxi_activity_logs.insert_one({
+        "user_id": str(admin.get("_id") or admin.get("id")),
+        "role": "admin",
+        "action": "driver_application_approved",
+        "application_id": application_id,
+        "driver_email": application.get("email"),
+        "created_at": now.isoformat(),
+    })
+    
+    logger.info(f"Admin {admin.get('email')} approved driver application {application_id}")
+    
+    return {
+        "ok": True,
+        "application_id": application_id,
+        "status": "approved",
+        "message": "Bewerbung genehmigt"
+    }
+
+
+@router.post("/driver-applications/{application_id}/reject")
+async def reject_driver_application(
+    application_id: str,
+    req: ApplicationAction,
+    request: Request
+):
+    """Reject a driver application"""
+    admin = await _require_admin(request)
+    now = datetime.now(timezone.utc)
+    
+    # Find application
+    application = await db.taxi_driver_applications.find_one(
+        {"application_id": application_id}
+    )
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    
+    if application.get("status") == "rejected":
+        raise HTTPException(status_code=400, detail="Bewerbung bereits abgelehnt")
+    
+    # Update application status
+    await db.taxi_driver_applications.update_one(
+        {"application_id": application_id},
+        {"$set": {
+            "status": "rejected",
+            "reviewed_at": now.isoformat(),
+            "reviewed_by": admin.get("email"),
+            "rejection_reason": req.reason or "Keine Angabe",
+        }}
+    )
+    
+    # Log activity
+    await db.taxi_activity_logs.insert_one({
+        "user_id": str(admin.get("_id") or admin.get("id")),
+        "role": "admin",
+        "action": "driver_application_rejected",
+        "application_id": application_id,
+        "driver_email": application.get("email"),
+        "metadata": {"reason": req.reason},
+        "created_at": now.isoformat(),
+    })
+    
+    logger.info(f"Admin {admin.get('email')} rejected driver application {application_id}")
+    
+    return {
+        "ok": True,
+        "application_id": application_id,
+        "status": "rejected",
+        "message": "Bewerbung abgelehnt"
+    }
+
+
+@router.delete("/driver-applications/{application_id}")
+async def delete_driver_application(
+    application_id: str,
+    request: Request
+):
+    """Delete a driver application (admin only)"""
+    admin = await _require_admin(request)
+    
+    result = await db.taxi_driver_applications.delete_one(
+        {"application_id": application_id}
+    )
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    
+    # Log activity
+    await db.taxi_activity_logs.insert_one({
+        "user_id": str(admin.get("_id") or admin.get("id")),
+        "role": "admin",
+        "action": "driver_application_deleted",
+        "application_id": application_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    
+    return {"ok": True, "message": "Bewerbung gelöscht"}

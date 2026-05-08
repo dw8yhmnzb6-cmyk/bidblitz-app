@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Loader2, Users, Car, DollarSign, Settings,
   Check, X, AlertCircle, Clock, MapPin, Euro, Save,
-  RefreshCw, Ban, UserCheck, Pause
+  RefreshCw, Ban, UserCheck, Pause, FileText, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -551,6 +551,253 @@ const FareSettingsTab = () => {
   );
 };
 
+
+// ═══════════ Driver Applications Tab ═══════════
+
+const ApplicationsTab = () => {
+  const [applications, setApplications] = useState([]);
+  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [filter, setFilter] = useState("pending");
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api(`/api/admin/taxi/driver-applications${filter !== 'all' ? `?status=${filter}` : ''}`);
+      setApplications(data.applications || []);
+      if (data.stats) setStats(data.stats);
+    } catch (e) {
+      toast.error(e.message);
+    }
+    setLoading(false);
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleApprove = async (appId) => {
+    setActionLoading(appId);
+    try {
+      await api(`/api/admin/taxi/driver-applications/${appId}/approve`, { method: 'POST' });
+      toast.success("Bewerbung genehmigt");
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+    setActionLoading(null);
+  };
+
+  const handleReject = async (appId, reason = "") => {
+    const confirmed = window.confirm("Bewerbung ablehnen?");
+    if (!confirmed) return;
+
+    setActionLoading(appId);
+    try {
+      await api(`/api/admin/taxi/driver-applications/${appId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason })
+      });
+      toast.success("Bewerbung abgelehnt");
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+    setActionLoading(null);
+  };
+
+  const handleDelete = async (appId) => {
+    const confirmed = window.confirm("Bewerbung endgültig löschen?");
+    if (!confirmed) return;
+
+    setActionLoading(appId);
+    try {
+      await api(`/api/admin/taxi/driver-applications/${appId}`, { method: 'DELETE' });
+      toast.success("Bewerbung gelöscht");
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+    setActionLoading(null);
+  };
+
+  return (
+    <div className="space-y-4" data-testid="admin-taxi-applications">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl p-3" style={{ background: panelBg, border: panelBorder }}>
+          <p className="text-[9px] text-white/40 uppercase tracking-wider">Ausstehend</p>
+          <p className="text-[20px] font-black text-[#FFB800] tabular-nums mt-1">{stats.pending}</p>
+        </div>
+        <div className="rounded-2xl p-3" style={{ background: panelBg, border: panelBorder }}>
+          <p className="text-[9px] text-white/40 uppercase tracking-wider">Genehmigt</p>
+          <p className="text-[20px] font-black text-[#00D26A] tabular-nums mt-1">{stats.approved}</p>
+        </div>
+        <div className="rounded-2xl p-3" style={{ background: panelBg, border: panelBorder }}>
+          <p className="text-[9px] text-white/40 uppercase tracking-wider">Abgelehnt</p>
+          <p className="text-[20px] font-black text-[#EF4444] tabular-nums mt-1">{stats.rejected}</p>
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div className="flex gap-2">
+        {[
+          { id: 'pending', label: 'Ausstehend', color: '#FFB800' },
+          { id: 'approved', label: 'Genehmigt', color: '#00D26A' },
+          { id: 'rejected', label: 'Abgelehnt', color: '#EF4444' },
+          { id: 'all', label: 'Alle', color: '#fff' },
+        ].map(f => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className="flex-1 py-2 rounded-xl text-[11px] font-bold"
+            style={{
+              background: filter === f.id ? `${f.color}20` : 'transparent',
+              color: filter === f.id ? f.color : 'rgba(255,255,255,0.5)',
+              border: filter === f.id ? `1px solid ${f.color}40` : '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Applications List */}
+      {loading && applications.length === 0 ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="animate-spin text-white/40" />
+        </div>
+      ) : applications.length === 0 ? (
+        <div className="text-center py-8 text-white/40 text-sm">Keine Bewerbungen</div>
+      ) : (
+        <div className="space-y-2">
+          {applications.map(app => {
+            const statusColors = {
+              pending: { bg: 'rgba(255,184,0,0.1)', border: 'rgba(255,184,0,0.3)', text: '#FFB800' },
+              approved: { bg: 'rgba(0,210,106,0.1)', border: 'rgba(0,210,106,0.3)', text: '#00D26A' },
+              rejected: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', text: '#EF4444' },
+            };
+            const colors = statusColors[app.status] || statusColors.pending;
+
+            return (
+              <div
+                key={app.application_id}
+                className="rounded-2xl p-4"
+                style={{ background: panelBg, border: panelBorder }}
+              >
+                {/* Status Badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <div
+                    className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase"
+                    style={{ background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text }}
+                  >
+                    {app.status === 'pending' ? 'Ausstehend' : app.status === 'approved' ? 'Genehmigt' : 'Abgelehnt'}
+                  </div>
+                  <p className="text-[10px] text-white/40">
+                    {new Date(app.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </p>
+                </div>
+
+                {/* Driver Info */}
+                <div className="space-y-2 mb-3">
+                  <div>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider">Name</p>
+                    <p className="text-[13px] text-white font-bold">{app.name}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider">Email</p>
+                      <p className="text-[11px] text-white/70">{app.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider">Telefon</p>
+                      <p className="text-[11px] text-white/70">{app.phone}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider">Führerschein</p>
+                      <p className="text-[11px] text-white/70">{app.license_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider">Fahrzeug</p>
+                      <p className="text-[11px] text-white/70 capitalize">{app.vehicle_type}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider">Typ</p>
+                      <p className="text-[11px] text-white/70 capitalize">
+                        {app.driver_type === 'business' ? 'Unternehmer' : 'Privat'}
+                      </p>
+                    </div>
+                    {app.city && (
+                      <div>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">Stadt</p>
+                        <p className="text-[11px] text-white/70">{app.city}</p>
+                      </div>
+                    )}
+                  </div>
+                  {app.message && (
+                    <div>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider">Nachricht</p>
+                      <p className="text-[11px] text-white/70">{app.message}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Review Info */}
+                {app.reviewed_at && (
+                  <div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/10">
+                    <p className="text-[10px] text-white/40">
+                      Geprüft am {new Date(app.reviewed_at).toLocaleDateString('de-DE')} von {app.reviewed_by}
+                    </p>
+                    {app.rejection_reason && (
+                      <p className="text-[10px] text-red-400 mt-1">Grund: {app.rejection_reason}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                {app.status === 'pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(app.application_id)}
+                      disabled={actionLoading === app.application_id}
+                      className="flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 bg-[#00D26A]/20 text-[#00D26A] border border-[#00D26A]/30 hover:bg-[#00D26A]/30 disabled:opacity-50"
+                    >
+                      {actionLoading === app.application_id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                      Genehmigen
+                    </button>
+                    <button
+                      onClick={() => handleReject(app.application_id)}
+                      disabled={actionLoading === app.application_id}
+                      className="flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30 hover:bg-[#EF4444]/30 disabled:opacity-50"
+                    >
+                      {actionLoading === app.application_id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                      Ablehnen
+                    </button>
+                  </div>
+                )}
+
+                {app.status !== 'pending' && (
+                  <button
+                    onClick={() => handleDelete(app.application_id)}
+                    disabled={actionLoading === app.application_id}
+                    className="w-full py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 bg-white/5 text-white/40 border border-white/10 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 disabled:opacity-50"
+                  >
+                    {actionLoading === app.application_id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                    Löschen
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ═══════════ Main ═══════════
 
 export default function AdminTaxiPage({ onNavigate }) {
@@ -568,6 +815,7 @@ export default function AdminTaxiPage({ onNavigate }) {
         <div className="flex gap-1 px-3 pb-2 overflow-x-auto">
           {[
             { id: "overview", label: "Übersicht", icon: DollarSign },
+            { id: "applications", label: "Bewerbungen", icon: FileText },
             { id: "modes", label: "Modi", icon: UserCheck },
             { id: "drivers", label: "Fahrer", icon: Users },
             { id: "rides", label: "Fahrten", icon: Car },
@@ -590,6 +838,7 @@ export default function AdminTaxiPage({ onNavigate }) {
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
             {tab === "overview" && <OverviewTab/>}
+            {tab === "applications" && <ApplicationsTab/>}
             {tab === "modes" && <ModesTab/>}
             {tab === "drivers" && <DriversTab/>}
             {tab === "rides" && <RidesTab/>}
