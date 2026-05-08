@@ -467,6 +467,37 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, ...slide }}
+
+
+          {/* User Number Card */}
+          {!isGuest && wallet?.balance !== undefined && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-[#00C2FF]/10 to-[#8B5CF6]/10 border border-[#00C2FF]/20"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Deine Nummer</p>
+                  <p className="text-xl font-bold text-white">{wallet?.user?.user_number || 'Laden...'}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (wallet?.user?.user_number) {
+                      navigator.clipboard.writeText(wallet.user.user_number);
+                      toast.success('📋 Nummer kopiert!');
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-[#00C2FF]/20 text-[#00C2FF] text-sm font-semibold hover:bg-[#00C2FF]/30 active:scale-95 transition-all"
+                >
+                  Kopieren
+                </button>
+              </div>
+              <p className="text-xs text-white/40 mt-2">💡 Teile diese Nummer, um Geld zu empfangen</p>
+            </motion.div>
+          )}
+
         >
           <WalletAction
             testId="quick-action-add"

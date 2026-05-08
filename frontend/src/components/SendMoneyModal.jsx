@@ -315,6 +315,55 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   )}
                 </AnimatePresence>
                 
+                {/* Tabs: Gespeicherte | Kürzlich */}
+                <div className="px-6 pb-4">
+                  <div className="flex gap-2 bg-white/[0.04] p-1 rounded-2xl">
+                    <button
+                      onClick={() => {}}
+                      className="flex-1 py-3 rounded-xl bg-[#00C2FF]/20 text-[#00C2FF] font-semibold text-[13px]"
+                    >
+                      ⭐ Gespeicherte
+                    </button>
+                    <button
+                      onClick={() => {}}
+                      className="flex-1 py-3 rounded-xl text-white/50 font-semibold text-[13px]"
+                    >
+                      🕐 Kürzlich
+                    </button>
+                  </div>
+                </div>
+
+                {/* Saved Recipients */}
+                {savedRecipients.length > 0 && (
+                  <div className="px-6 pb-6 overflow-y-auto max-h-[40vh]">
+                    <div className="grid grid-cols-2 gap-3">
+                      {savedRecipients.map((saved) => {
+                        const iconMap = { family: '👨‍👩‍👧', friend: '👤', work: '💼', star: '⭐', user: '👤' };
+                        return (
+                          <motion.button
+                            key={saved.id}
+                            onClick={() => selectRecipient({ 
+                              user_id: saved.recipient_id, 
+                              name: saved.recipient_name,
+                              email: saved.recipient_id,
+                              bidblitz_id: saved.recipient_number 
+                            })}
+                            className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <div className="text-3xl mb-2">{iconMap[saved.icon] || '👤'}</div>
+                            <p className="text-sm font-semibold text-white truncate">{saved.nickname}</p>
+                            <p className="text-xs text-white/40 truncate">{saved.recipient_number}</p>
+                            {saved.transfer_count > 0 && (
+                              <p className="text-[10px] text-[#00C2FF] mt-1">{saved.transfer_count}x gesendet</p>
+                            )}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Recent Contacts */}
                 <div className="px-6 pb-8">
                   <div className="flex items-center gap-2 mb-4">
