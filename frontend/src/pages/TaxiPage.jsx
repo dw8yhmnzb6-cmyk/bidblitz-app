@@ -2,14 +2,16 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import { useUser } from '../store/UserContext';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import ReviewModal from '../components/ReviewModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import LiveChat from '../components/LiveChat';
 import GroupOrderModal from '../components/GroupOrderModal';
 import GroupTrackerBanner from '../components/GroupTrackerBanner';
 import KYCBanner from '../components/KYCBanner';
+
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -21,32 +23,12 @@ L.Icon.Default.mergeOptions({
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-// Map Style Tile-Provider (CartoDB + ESRI) — Apple Maps-ähnliche Auswahl
+// Mapbox Styles
 const MAP_STYLES = {
-  dark: {
-    name: 'Hell',
-    description: 'Apple-Maps Stil',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OSM &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20,
-  },
-  light: {
-    name: 'Hell',
-    description: 'Apple-Maps Stil',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OSM &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20,
-  },
-  satellite: {
-    name: 'Satellit',
-    description: 'Luftbild',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri',
-    subdomains: '',
-    maxZoom: 19,
-  },
+  streets: { name: 'Streets', style: 'mapbox://styles/mapbox/streets-v12' },
+  light: { name: 'Hell', style: 'mapbox://styles/mapbox/light-v11' },
+  dark: { name: 'Dunkel', style: 'mapbox://styles/mapbox/dark-v11' },
+  satellite: { name: 'Satellit', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
 };
 
 // Status badge colors
@@ -246,74 +228,69 @@ export default function TaxiPage({ onNavigate }) {
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
 
-  // Initialize Leaflet Map (CartoDB Dark Matter – Uber/Bolt-Style) — re-runs when container becomes visible
+  // Initialize Mapbox GL Map
   useEffect(() => {
-    // Wait for container (it's conditionally rendered after taxiType is selected)
     if (!mapContainerRef.current) return;
-    if (mapRef.current) {
-      // Already initialized – just make sure size is correct after layout change
-      setTimeout(() => mapRef.current && mapRef.current.invalidateSize(), 100);
-      return;
-    }
+    if (mapRef.current) return; // Already initialized
 
-    console.log('✓ Initializing Leaflet (CartoDB Dark) map...');
+    console.log('✓ Initializing Mapbox GL map...');
 
     try {
-      const map = L.map(mapContainerRef.current, {
-        center: [pickup.lat, pickup.lng],
-        zoom: 15,
-        zoomControl: false,
-        attributionControl: false,
-        preferCanvas: true,
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: mapStyle === 'light' ? 'mapbox://styles/mapbox/light-v11' : 
+               mapStyle === 'satellite' ? 'mapbox://styles/mapbox/satellite-streets-v12' :
+               'mapbox://styles/mapbox/streets-v12', // Professional default
+        center: [pickup.lng, pickup.lat],
+        zoom: 14,
+        language: 'de',
+        attributionControl: false
       });
 
-      // Apply current map style (dark/light/satellite)
-      const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
-      tileLayerRef.current = L.tileLayer(styleConfig.url, {
-        attribution: styleConfig.attribution,
-        subdomains: styleConfig.subdomains,
-        maxZoom: styleConfig.maxZoom,
-        crossOrigin: true,
-      }).addTo(map);
+      // Add zoom controls
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-      // Professional pulsing pickup marker (cyan glow, Uber-style)
-      const pickupIcon = L.divIcon({
-        className: 'taxi-pickup-pulse',
-        html: `
-          <div style="position:relative;width:24px;height:24px;">
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(0,194,255,0.25);animation:taxi-pulse 2s ease-out infinite;"></div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#00C2FF;border:3px solid #fff;box-shadow:0 0 12px rgba(0,194,255,0.9),0 2px 6px rgba(0,0,0,0.5);"></div>
-          </div>
-        `,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
+      // Pickup marker (draggable cyan pin)
+      const pickupEl = document.createElement('div');
+      pickupEl.className = 'mapbox-marker-pickup';
+      pickupEl.style.cssText = `
+        width: 32px;
+        height: 32px;
+        background: #00C2FF;
+        border: 4px solid white;
+        border-radius: 50%;
+        box-shadow: 0 0 16px rgba(0,194,255,0.6), 0 4px 8px rgba(0,0,0,0.3);
+        cursor: move;
+      `;
 
-      const pickupMarker = L.marker([pickup.lat, pickup.lng], {
-        draggable: true,
-        icon: pickupIcon,
-      }).addTo(map);
+      const pickupMarker = new mapboxgl.Marker({
+        element: pickupEl,
+        draggable: true
+      })
+      .setLngLat([pickup.lng, pickup.lat])
+      .addTo(map);
+
       pickupMarkerRef.current = pickupMarker;
 
-      pickupMarker.on('dragend', async (e) => {
-        const { lat, lng } = e.target.getLatLng();
-        setPickup(prev => ({ ...prev, lat, lng }));
-        await reverseGeocode(lat, lng);
+      pickupMarker.on('dragend', async () => {
+        const lngLat = pickupMarker.getLngLat();
+        setPickup(prev => ({ ...prev, lat: lngLat.lat, lng: lngLat.lng }));
+        await reverseGeocode(lngLat.lat, lngLat.lng);
       });
-
-      // Subtle attribution bottom-right
-      L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(map);
 
       mapRef.current = map;
 
-      // Force size recalculation after container animation finishes
-      setTimeout(() => map.invalidateSize(), 150);
-      setTimeout(() => map.invalidateSize(), 500);
-
-      console.log('✓ Leaflet Dark map loaded successfully');
+      console.log('✓ Mapbox GL map loaded successfully');
     } catch (error) {
-      console.error('❌ Map initialization error:', error);
+      console.error('❌ Mapbox initialization error:', error);
     }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, [taxiType]);
 
   // Cleanup map on unmount
@@ -326,23 +303,11 @@ export default function TaxiPage({ onNavigate }) {
     };
   }, []);
 
-  // Switch tile layer when user picks a different map style
+  // Switch map style when user picks different option
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
-
-    if (tileLayerRef.current) {
-      map.removeLayer(tileLayerRef.current);
-    }
-    tileLayerRef.current = L.tileLayer(styleConfig.url, {
-      attribution: styleConfig.attribution,
-      subdomains: styleConfig.subdomains,
-      maxZoom: styleConfig.maxZoom,
-      crossOrigin: true,
-    }).addTo(map);
-
-    // Persist user preference
+    if (!mapRef.current) return;
+    const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.streets;
+    mapRef.current.setStyle(styleConfig.style);
     localStorage.setItem('bidblitz_map_style', mapStyle);
   }, [mapStyle]);
   
@@ -365,13 +330,12 @@ export default function TaxiPage({ onNavigate }) {
 
         setPickup(prev => ({ ...prev, lat: latitude, lng: longitude }));
 
-        // Update map center & pickup marker
+        // Update map center & pickup marker (Mapbox)
         if (mapRef.current) {
-          mapRef.current.setView([latitude, longitude], 15);
-          mapRef.current.invalidateSize();
+          mapRef.current.flyTo({ center: [longitude, latitude], zoom: 14 });
         }
         if (pickupMarkerRef.current) {
-          pickupMarkerRef.current.setLatLng([latitude, longitude]);
+          pickupMarkerRef.current.setLngLat([longitude, latitude]);
         }
 
         // Reverse geocode to get address
