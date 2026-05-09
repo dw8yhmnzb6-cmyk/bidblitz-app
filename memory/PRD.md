@@ -84,6 +84,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **08.05.2026 (iter57d — Resend DNS Tools + GitHub Actions CI + Taxi Code-Splitting Phase 1)**:
+  - 🟢 **Resend DNS-Endpoints (Admin-only)**: `GET /api/admin/test-email/dns-status` (live DNS-Check), `POST /api/admin/test-email` (Smoketest-Mail) — verifiziert: Domain `bidblitz.ae` ist im Resend-Dashboard noch nicht verifiziert + `TXT send.bidblitz.ae` SPF-Record fehlt. Komplette Anleitung in `/app/RESEND_DNS_FIX.md`.
+  - 🟢 **GitHub Actions CI-Workflow** `.github/workflows/ci.yml` hinzugefügt: Frontend-Lint+Build + Backend-Ruff+Pytest auf jedem Push/PR (kein Setup nötig). Ergänzend zur bestehenden `deploy.yml` für Hetzner-Auto-Deploy.
+  - 🟢 **TaxiPage Code-Splitting Phase 1**: extrahiert in `/app/frontend/src/components/taxi/`:
+    - `TaxiConstants.js` (MAP_STYLES, STATUS_COLORS/LABELS, VEHICLE_ICONS, POI_CATEGORIES)
+    - `TaxiVehicleIcon.jsx` (Standard/Premium/Van SVG-Silhouetten)
+    - `TaxiHistoryView.jsx` (komplette Verlauf-Tab UI als stateless Komponente)
+  - `TaxiPage.jsx` von 2438 → **2323 Zeilen** reduziert (–115 Zeilen). Verifiziert: Verlauf-Tab rendert mit extrahierter Komponente, alle Tabs funktional, kein Crash.
 - **08.05.2026 (iter57c — Taxi POI Filter + Ride-History UI Polish)**:
   - 🟢 **POI-Filter (Mapbox Tilequery API)** für taxi.eu Parität: Floating Button "In der Nähe" links unten auf der Map. Bottom-Sheet mit 6 Kategorien (Restaurants, Supermärkte, Tankstellen, Apotheken, Geldautomat, Bahnhöfe). Ergebnisse als Custom Mapbox-Marker mit Category-Farbe + Emoji + Popup "Als Ziel setzen". Verifiziert: 13 Restaurant-Marker laden für Berlin Mitte.
   - 🟢 **Taxi Ride-History UI** komplett neu gestaltet: Stats-Header (Fahrten-Anzahl + Ausgaben), Pickup→Ziel Route mit Connection-Dots, Status-Badge, Vehicle-Icon + Distanz, Bewerten-Button, Refresh-Button, professioneller Empty-State.

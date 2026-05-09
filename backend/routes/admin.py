@@ -893,3 +893,82 @@ async def admin_cleanup_all_fake_data(request: Request):
         "details": results,
         "message": f"Aufräumung abgeschlossen! {total_removed} Einträge entfernt."
     }
+
+
+
+# ─── Email Dispatch Smoketest (Resend DNS-Verifikation) ───────────────────
+class EmailTestRequest(BaseModel):
+    to: str
+    subject: Optional[str] = "BidBlitz Resend Smoketest"
+
+
+@router.post("/test-email")
+async def admin_test_email(req: EmailTestRequest, request: Request):
+    """Admin-only: löst eine Test-Email via Resend aus. Nutzbar nach DNS-Updates."""
+    await require_admin(request)
+    from routes.email_service import send_email, RESEND_KEY, SENDER
+
+    if not req.to or "@" not in req.to:
+        raise HTTPException(status_code=400, detail="Ungültige Empfänger-Adresse")
+
+    html = f"""
+    <h2>Resend DNS Smoketest</h2>
+    <p>Diese E-Mail wurde von der BidBlitz Backend-Instanz gesendet.</p>
+    <ul>
+      <li>Sender: <code>{SENDER}</code></li>
+      <li>Resend-Key gesetzt: {bool(RESEND_KEY)}</li>
+      <li>Zeitstempel: {datetime.now(timezone.utc).isoformat()}</li>
+    </ul>
+    <p>Wenn diese Mail im Posteingang erscheint, ist die DNS-Konfiguration vollständig.</p>
+    """
+    sent = await send_email(req.to, req.subject, html, "admin_test")
+    return {
+        "ok": sent,
+        "via": "resend" if sent else "logged",
+        "to": req.to,
+        "sender": SENDER,
+        "resend_configured": bool(RESEND_KEY),
+        "hint": None if sent else "Resend-Antwort: Domain-Verifikation fehlt. Siehe /app/RESEND_DNS_FIX.md",
+    }
+
+
+@router.get("/test-email/dns-status")
+async def admin_email_dns_status(request: Request):
+    """Admin-only: prüft kritische DNS-Records für Resend-Setup."""
+    await require_admin(request)
+    import dns.resolver
+
+    domain = "bidblitz.ae"
+    checks = {}
+
+    queries = [
+        ("MX", domain),
+        ("TXT", domain),
+        ("TXT", f"_dmarc.{domain}"),
+        ("TXT", f"resend._domainkey.{domain}"),
+        ("TXT", f"send.{domain}"),
+        ("MX", f"send.{domain}"),
+    ]
+
+    for rec_type, name in queries:
+        key = f"{rec_type} {name}"
+        try:
+            ans = dns.resolver.resolve(name, rec_type)
+            checks[key] = [str(r) for r in ans]
+        except Exception as e:
+            checks[key] = {"error": str(e)[:120]}
+
+    spf_send = checks.get(f"TXT send.{domain}", {})
+    spf_send_ok = isinstance(spf_send, list) and any("amazonses" in s for s in spf_send)
+    dkim_ok = bool(checks.get(f"TXT resend._domainkey.{domain}"))
+
+    return {
+        "domain": domain,
+        "checks": checks,
+        "summary": {
+            "dkim_published": dkim_ok and "error" not in str(checks.get(f"TXT resend._domainkey.{domain}")),
+            "spf_subdomain_resend_ok": spf_send_ok,
+            "all_ready": dkim_ok and spf_send_ok,
+        },
+        "next_step": None if spf_send_ok else "TXT-Record auf send.bidblitz.ae anlegen: 'v=spf1 include:amazonses.com ~all'",
+    }

@@ -10,132 +10,13 @@ import LiveChat from '../components/LiveChat';
 import GroupOrderModal from '../components/GroupOrderModal';
 import GroupTrackerBanner from '../components/GroupTrackerBanner';
 import KYCBanner from '../components/KYCBanner';
+import { MAP_STYLES, STATUS_COLORS, STATUS_LABELS, VEHICLE_ICONS, POI_CATEGORIES } from '../components/taxi/TaxiConstants';
+import { VehicleIcon } from '../components/taxi/TaxiVehicleIcon';
+import TaxiHistoryView from '../components/taxi/TaxiHistoryView';
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
 const API = process.env.REACT_APP_BACKEND_URL;
-
-// Mapbox Styles
-const MAP_STYLES = {
-  streets: { name: 'Streets', style: 'mapbox://styles/mapbox/streets-v12' },
-  light: { name: 'Hell', style: 'mapbox://styles/mapbox/light-v11' },
-  dark: { name: 'Dunkel', style: 'mapbox://styles/mapbox/dark-v11' },
-  satellite: { name: 'Satellit', style: 'mapbox://styles/mapbox/satellite-streets-v12' },
-};
-
-// Status badge colors
-const STATUS_COLORS = {
-  requested: 'bg-yellow-500/20 text-yellow-400',
-  accepted: 'bg-blue-500/20 text-blue-400',
-  arriving: 'bg-cyan-500/20 text-cyan-400',
-  started: 'bg-green-500/20 text-green-400',
-  completed: 'bg-emerald-500/20 text-emerald-400',
-  cancelled: 'bg-red-500/20 text-red-400',
-};
-
-const STATUS_LABELS = {
-  requested: 'Suche Fahrer...',
-  accepted: 'Fahrer gefunden',
-  arriving: 'Fahrer kommt',
-  started: 'Fahrt läuft',
-  completed: 'Abgeschlossen',
-  cancelled: 'Storniert',
-};
-
-// Professional vehicle SVG icons (Uber/Bolt-style silhouettes)
-const VehicleIcon = ({ type, className = '', active = false }) => {
-  const color = active ? '#00C2FF' : '#8B95A5';
-  const accent = active ? '#00E5FF' : '#B8C1CC';
-
-  if (type === 'premium') {
-    // Sleek luxury sedan silhouette (Mercedes E-Class / BMW 5 style)
-    return (
-      <svg viewBox="0 0 64 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id={`premGrad-${active ? 'on' : 'off'}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={accent} stopOpacity="0.9"/>
-            <stop offset="100%" stopColor={color} stopOpacity="1"/>
-          </linearGradient>
-        </defs>
-        {/* Body */}
-        <path d="M4 22 L8 14 C10 10 14 8 20 7 L44 7 C50 8 54 10 56 14 L60 22 L60 26 L4 26 Z"
-              fill={`url(#premGrad-${active ? 'on' : 'off'})`} stroke={accent} strokeWidth="0.5"/>
-        {/* Windows */}
-        <path d="M14 13 L18 9 L38 9 L46 13 L44 15 L16 15 Z" fill="#0A1420" opacity="0.85"/>
-        <path d="M32 9 L32 15" stroke={color} strokeWidth="0.4" opacity="0.6"/>
-        {/* Headlight */}
-        <circle cx="58" cy="17" r="1.2" fill="#FFF8DC"/>
-        {/* Wheels */}
-        <circle cx="16" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
-        <circle cx="16" cy="26" r="2" fill="#2A2A2A"/>
-        <circle cx="48" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
-        <circle cx="48" cy="26" r="2" fill="#2A2A2A"/>
-      </svg>
-    );
-  }
-
-  if (type === 'van') {
-    // Minivan / 7-seater silhouette (VW Sharan / Mercedes V-Class style)
-    return (
-      <svg viewBox="0 0 64 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id={`vanGrad-${active ? 'on' : 'off'}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={accent} stopOpacity="0.9"/>
-            <stop offset="100%" stopColor={color} stopOpacity="1"/>
-          </linearGradient>
-        </defs>
-        {/* Body – taller roof for van */}
-        <path d="M4 24 L5 10 C5 8 7 7 10 7 L52 7 C56 7 58 9 59 12 L60 24 L60 26 L4 26 Z"
-              fill={`url(#vanGrad-${active ? 'on' : 'off'})`} stroke={accent} strokeWidth="0.5"/>
-        {/* Windows */}
-        <path d="M9 11 L9 17 L27 17 L27 9 L12 9 Z" fill="#0A1420" opacity="0.85"/>
-        <path d="M30 9 L30 17 L50 17 L49 11 L30 9 Z" fill="#0A1420" opacity="0.85"/>
-        <path d="M29 9 L29 17" stroke={color} strokeWidth="0.4" opacity="0.6"/>
-        {/* Headlight */}
-        <rect x="57" y="16" width="2.5" height="2" rx="0.5" fill="#FFF8DC"/>
-        {/* Wheels */}
-        <circle cx="16" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
-        <circle cx="16" cy="26" r="2" fill="#2A2A2A"/>
-        <circle cx="48" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
-        <circle cx="48" cy="26" r="2" fill="#2A2A2A"/>
-      </svg>
-    );
-  }
-
-  // Standard – compact hatchback/sedan (VW Golf / Toyota Prius style)
-  return (
-    <svg viewBox="0 0 64 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id={`stdGrad-${active ? 'on' : 'off'}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={accent} stopOpacity="0.9"/>
-          <stop offset="100%" stopColor={color} stopOpacity="1"/>
-        </linearGradient>
-      </defs>
-      {/* Body */}
-      <path d="M4 23 L9 15 C11 12 15 10 20 9 L42 9 C48 10 53 13 56 16 L60 23 L60 26 L4 26 Z"
-            fill={`url(#stdGrad-${active ? 'on' : 'off'})`} stroke={accent} strokeWidth="0.5"/>
-      {/* Windshield + rear window */}
-      <path d="M14 15 L20 11 L38 11 L45 15 L43 17 L16 17 Z" fill="#0A1420" opacity="0.85"/>
-      <path d="M30 11 L30 17" stroke={color} strokeWidth="0.4" opacity="0.6"/>
-      {/* Headlight */}
-      <circle cx="58" cy="18" r="1.1" fill="#FFF8DC"/>
-      {/* Door handle */}
-      <rect x="25" y="19" width="4" height="0.8" rx="0.4" fill={accent} opacity="0.5"/>
-      {/* Wheels */}
-      <circle cx="16" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
-      <circle cx="16" cy="26" r="2" fill="#2A2A2A"/>
-      <circle cx="48" cy="26" r="4.5" fill="#0F0F0F" stroke={accent} strokeWidth="1"/>
-      <circle cx="48" cy="26" r="2" fill="#2A2A2A"/>
-    </svg>
-  );
-};
-
-// Legacy mapping (kept for history list fallback)
-const VEHICLE_ICONS = {
-  standard: 'standard',
-  premium: 'premium',
-  van: 'van',
-};
 
 export default function TaxiPage({ onNavigate }) {
   const { t } = useI18n();
@@ -461,15 +342,6 @@ export default function TaxiPage({ onNavigate }) {
   };
 
   // ─── POI Filter (Mapbox Tilequery API) ─────────────────────────────────
-  const POI_CATEGORIES = {
-    restaurant: { label: 'Restaurants', color: '#F97316', icon: '🍽', filter: ['restaurant', 'fast_food', 'cafe', 'food'] },
-    supermarket: { label: 'Supermärkte', color: '#10B981', icon: '🛒', filter: ['grocery', 'supermarket', 'convenience', 'department_store'] },
-    fuel: { label: 'Tankstellen', color: '#EF4444', icon: '⛽', filter: ['fuel'] },
-    pharmacy: { label: 'Apotheken', color: '#22C55E', icon: '💊', filter: ['pharmacy'] },
-    atm: { label: 'Geldautomat', color: '#FBBF24', icon: '🏧', filter: ['atm', 'bank'] },
-    station: { label: 'Bahnhöfe', color: '#8B5CF6', icon: '🚉', filter: ['rail_station', 'station', 'bus_station'] },
-  };
-
   const clearPoiMarkers = () => {
     poiMarkersRef.current.forEach(m => { try { m.remove(); } catch {} });
     poiMarkersRef.current = [];
@@ -1967,125 +1839,11 @@ export default function TaxiPage({ onNavigate }) {
 
           {/* HISTORY VIEW */}
           {view === 'history' && (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-4"
-              data-testid="taxi-history-view"
-            >
-              {/* Stats Header */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20">
-                  <p className="text-[10px] text-cyan-400/70 uppercase tracking-wider font-semibold mb-1">Fahrten gesamt</p>
-                  <p className="text-2xl font-bold text-white">{rideHistory.length}</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20">
-                  <p className="text-[10px] text-purple-400/70 uppercase tracking-wider font-semibold mb-1">Ausgegeben</p>
-                  <p className="text-2xl font-bold text-white">
-                    €{rideHistory
-                        .filter(r => r.status === 'completed')
-                        .reduce((sum, r) => sum + (r.final_fare || r.fare_estimate || 0), 0)
-                        .toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <h3 className="text-sm font-bold text-white">Deine Fahrten</h3>
-                <button
-                  data-testid="taxi-history-refresh"
-                  onClick={fetchHistory}
-                  className="text-xs text-cyan-400 font-semibold"
-                >
-                  ↻ Aktualisieren
-                </button>
-              </div>
-
-              {rideHistory.length === 0 ? (
-                <div className="text-center py-12 rounded-2xl border border-white/5 bg-white/[0.02]">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.5">
-                      <path d="M3 6h18M3 12h18M3 18h12"/>
-                    </svg>
-                  </div>
-                  <p className="text-gray-300 text-sm font-medium mb-1">Noch keine Fahrten</p>
-                  <p className="text-xs text-gray-500">Deine abgeschlossenen Fahrten erscheinen hier</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {rideHistory.map((ride, idx) => {
-                    const dateStr = ride.created_at
-                      ? new Date(ride.created_at).toLocaleDateString('de-DE', {
-                          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-                        })
-                      : '—';
-                    const fare = ride.final_fare || ride.fare_estimate || 0;
-                    const rideKey = ride.ride_id || ride.id || `ride-${idx}-${ride.created_at || ''}`;
-                    return (
-                      <div
-                        key={rideKey}
-                        className="p-4 rounded-2xl bg-[#0e0e10] border border-white/5 hover:border-cyan-500/20 transition-colors"
-                        data-testid={`taxi-history-card-${idx}`}
-                      >
-                        {/* Header: Date + Status */}
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[11px] text-gray-500">{dateStr}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${STATUS_COLORS[ride.status] || 'bg-gray-500/20 text-gray-400'}`}>
-                            {STATUS_LABELS[ride.status] || ride.status}
-                          </span>
-                        </div>
-
-                        {/* Route */}
-                        <div className="flex gap-3 mb-3">
-                          <div className="flex flex-col items-center pt-1">
-                            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-                            <div className="w-px flex-1 bg-white/10 my-1" />
-                            <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="mb-2">
-                              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Start</p>
-                              <p className="text-sm text-white truncate">{ride.pickup?.address || '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Ziel</p>
-                              <p className="text-sm text-white truncate">{ride.dropoff?.address || '—'}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Footer: Vehicle + Distance + Fare + Action */}
-                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
-                            <span>{VEHICLE_ICONS[ride.vehicle_type] || ''}</span>
-                            <span className="font-medium">{ride.vehicle_name || ride.vehicle_type || 'Standard'}</span>
-                            {ride.distance_km != null && (
-                              <>
-                                <span className="text-gray-600">•</span>
-                                <span>{Number(ride.distance_km).toFixed(1)} km</span>
-                              </>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-base font-bold text-cyan-400">€{fare.toFixed(2)}</span>
-                            {ride.status === 'completed' && (
-                              <button
-                                data-testid={`taxi-review-btn-${rideKey}`}
-                                onClick={() => { setReviewRideId(ride.ride_id); setShowReview(true); }}
-                                className="w-8 h-8 rounded-lg bg-yellow-500/15 text-yellow-400 text-sm flex items-center justify-center hover:bg-yellow-500/25 transition-colors"
-                                title="Bewerten"
-                              >★</button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </motion.div>
+            <TaxiHistoryView
+              rideHistory={rideHistory}
+              onRefresh={fetchHistory}
+              onReview={(rideId) => { setReviewRideId(rideId); setShowReview(true); }}
+            />
           )}
         </AnimatePresence>
         )}

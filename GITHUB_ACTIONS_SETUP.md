@@ -172,3 +172,21 @@ ls -la /var/www/bidblitz/backend/
 - **"Beides"** → Jetzt manuell + dann GitHub Actions
 
 Was möchtest du? 🚀
+
+
+
+---
+
+## 🆕 CI-Workflow zusätzlich (08.05.2026)
+
+Neue Datei: `.github/workflows/ci.yml`
+
+Läuft automatisch bei jedem Push & Pull Request gegen `main`/`develop`:
+
+- **Frontend**: `yarn install` + `yarn lint` + `yarn build` (Smoketest)
+- **Backend**: `pip install` + `ruff check` + `pytest -k "not integration"`
+
+**Wozu?** Verhindert dass ein kaputter Commit nach `main` ge-merge'd wird und dann den Auto-Deploy bricht. **Keine Secrets nötig** — der CI-Workflow läuft komplett offline.
+
+Den Skip-Mechanismus für Hotfixes nutzen: Commit-Message mit `[skip ci]` ergänzen.
+
