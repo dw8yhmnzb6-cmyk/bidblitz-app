@@ -67,6 +67,26 @@ jobs:
           yarn build
           ls -lh build/static/js/main.*.js | head -1
 
+      - name: Verify deployment secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          MISSING=0
+          if [ -z "${VPS_HOST}" ]; then echo "::error::VPS_HOST secret is missing or empty"; MISSING=1; fi
+          if [ -z "${VPS_USER}" ]; then echo "::error::VPS_USER secret is missing or empty"; MISSING=1; fi
+          if [ -z "${VPS_PASSWORD}" ]; then echo "::error::VPS_PASSWORD secret is missing or empty"; MISSING=1; fi
+          if [ "$MISSING" = "1" ]; then
+            echo "::error::Open GitHub repo → Settings → Secrets and variables → Actions and add the missing secrets."
+            echo "::error::Required: VPS_HOST (e.g. 212.227.20.190), VPS_USER (e.g. root), VPS_PASSWORD"
+            exit 1
+          fi
+          echo "✓ All deployment secrets are present"
+          echo "  VPS_HOST length: ${#VPS_HOST}"
+          echo "  VPS_USER:        ${VPS_USER}"
+          echo "  VPS_PASSWORD:    [${#VPS_PASSWORD} chars]"
+
       - name: Install sshpass + rsync
         run: |
           sudo apt-get update -qq
