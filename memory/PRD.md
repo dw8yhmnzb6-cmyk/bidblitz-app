@@ -84,6 +84,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **08.05.2026 (iter57c — Taxi POI Filter + Ride-History UI Polish)**:
+  - 🟢 **POI-Filter (Mapbox Tilequery API)** für taxi.eu Parität: Floating Button "In der Nähe" links unten auf der Map. Bottom-Sheet mit 6 Kategorien (Restaurants, Supermärkte, Tankstellen, Apotheken, Geldautomat, Bahnhöfe). Ergebnisse als Custom Mapbox-Marker mit Category-Farbe + Emoji + Popup "Als Ziel setzen". Verifiziert: 13 Restaurant-Marker laden für Berlin Mitte.
+  - 🟢 **Taxi Ride-History UI** komplett neu gestaltet: Stats-Header (Fahrten-Anzahl + Ausgaben), Pickup→Ziel Route mit Connection-Dots, Status-Badge, Vehicle-Icon + Distanz, Bewerten-Button, Refresh-Button, professioneller Empty-State.
+  - 🟢 **Wallet React "unique key prop" Warning** behoben: defensive Key-Fallback im Transaction-List Mapping.
+  - 🟢 **Pre-Deploy-Check** für bidblitz.ae: PASS. `.gitignore` von 156 blockierenden `.env`-Zeilen bereinigt (656 → 500 Zeilen).
 - **08.05.2026 (iter57b — P0 Crash-Fixes + Mapbox Migration finalisiert)**:
   - 🔴 **WalletPage JSX-Crash** behoben: Quick-Actions-Grid `<motion.div>` war kaputt (User-Number-Card + QuickSend in Tag-Attribute reingeschrieben + Duplikat-Block). Sauberer Rewrite: User-Number-Card und QuickSend-Section stehen jetzt VOR dem Quick-Actions-Grid.
   - 🔴 **WalletContext** erweitert: `userNumber` jetzt Teil des State (initialState, SET_WALLET reducer, context value) — WalletPage liest `wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number`. Behebt "Laden..." Bug.

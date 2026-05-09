@@ -216,6 +216,12 @@ export default function TaxiPage({ onNavigate }) {
   const mapRef = useRef(null);
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
+  const poiMarkersRef = useRef([]);
+
+  // POI Filter (Supermärkte, Restaurants etc. — taxi.eu Parität)
+  const [activePoiCategory, setActivePoiCategory] = useState(null);
+  const [showPoiFilter, setShowPoiFilter] = useState(false);
+  const [poiLoading, setPoiLoading] = useState(false);
 
   // Initialize Mapbox GL Map
   useEffect(() => {
@@ -453,6 +459,89 @@ export default function TaxiPage({ onNavigate }) {
       loadSavedPlaces();
     } catch {}
   };
+
+  // ─── POI Filter (Mapbox Tilequery API) ─────────────────────────────────
+  const POI_CATEGORIES = {
+    restaurant: { label: 'Restaurants', color: '#F97316', icon: '🍽', filter: ['restaurant', 'fast_food', 'cafe', 'food'] },
+    supermarket: { label: 'Supermärkte', color: '#10B981', icon: '🛒', filter: ['grocery', 'supermarket', 'convenience', 'department_store'] },
+    fuel: { label: 'Tankstellen', color: '#EF4444', icon: '⛽', filter: ['fuel'] },
+    pharmacy: { label: 'Apotheken', color: '#22C55E', icon: '💊', filter: ['pharmacy'] },
+    atm: { label: 'Geldautomat', color: '#FBBF24', icon: '🏧', filter: ['atm', 'bank'] },
+    station: { label: 'Bahnhöfe', color: '#8B5CF6', icon: '🚉', filter: ['rail_station', 'station', 'bus_station'] },
+  };
+
+  const clearPoiMarkers = () => {
+    poiMarkersRef.current.forEach(m => { try { m.remove(); } catch {} });
+    poiMarkersRef.current = [];
+  };
+
+  const loadPOIs = async (categoryKey) => {
+    const map = mapRef.current;
+    if (!map) return;
+    clearPoiMarkers();
+    if (!categoryKey) { setActivePoiCategory(null); return; }
+    setActivePoiCategory(categoryKey);
+    setPoiLoading(true);
+    try {
+      const center = map.getCenter();
+      const cat = POI_CATEGORIES[categoryKey];
+      const token = mapboxgl.accessToken;
+      const url = `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/${center.lng},${center.lat}.json?radius=2500&limit=40&dedupe=true&layers=poi_label&access_token=${token}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      const features = (data.features || []).filter(f => {
+        const cls = (f.properties?.class || '').toLowerCase();
+        const maki = (f.properties?.maki || '').toLowerCase();
+        return cat.filter.some(t => cls.includes(t) || maki.includes(t));
+      });
+      features.slice(0, 30).forEach(f => {
+        const [lng, lat] = f.geometry.coordinates;
+        const el = document.createElement('div');
+        el.className = 'mapbox-poi-marker';
+        el.style.cssText = `
+          width:30px;height:30px;border-radius:50%;background:${cat.color};
+          border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);
+          display:flex;align-items:center;justify-content:center;
+          font-size:14px;cursor:pointer;
+        `;
+        el.textContent = cat.icon;
+        const popup = new mapboxgl.Popup({ offset: 18, closeButton: false }).setHTML(`
+          <div style="font-family:system-ui;color:#0A0A0F;padding:2px 4px;min-width:160px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${(f.properties?.name_de || f.properties?.name || cat.label)}</div>
+            <button onclick="window.__taxiSetDropoffPOI(${lng},${lat},'${(f.properties?.name_de || f.properties?.name || '').replace(/'/g, "\\'")}')"
+              style="background:#00C2FF;color:white;border:none;padding:6px 10px;border-radius:8px;font-weight:600;font-size:11px;cursor:pointer;width:100%;">Als Ziel setzen</button>
+          </div>
+        `);
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map);
+        poiMarkersRef.current.push(marker);
+      });
+    } catch (err) {
+      console.error('POI load failed:', err);
+    } finally {
+      setPoiLoading(false);
+    }
+  };
+
+  // Bridge global handler for the popup HTML "Als Ziel setzen" button
+  useEffect(() => {
+    window.__taxiSetDropoffPOI = (lng, lat, name) => {
+      setDropoff({ lat: Number(lat), lng: Number(lng), address: name || `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}` });
+      clearPoiMarkers();
+      setActivePoiCategory(null);
+    };
+    return () => { delete window.__taxiSetDropoffPOI; };
+  }, []);
+
+  // Cleanup POIs when leaving taxi flow
+  useEffect(() => {
+    if (!taxiType) clearPoiMarkers();
+  }, [taxiType]);
+  // ───────────────────────────────────────────────────────────────────────
+
 
   const geocodeSearch = async (query, setter, showSetter) => {
     if (!query || query.length < 2) { setter([]); showSetter(false); return; }
@@ -1133,6 +1222,88 @@ export default function TaxiPage({ onNavigate }) {
                     </svg>
                   )}
                 </button>
+
+                {/* POI Filter Button (Restaurants/Supermärkte/etc — taxi.eu Parität) */}
+                <button
+                  onClick={() => setShowPoiFilter(true)}
+                  className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md border border-white/10 text-white px-3 py-2.5 rounded-full shadow-lg z-20 flex items-center gap-2 hover:bg-black/90 transition-colors"
+                  title="In der Nähe anzeigen"
+                  data-testid="taxi-poi-filter-btn"
+                >
+                  {activePoiCategory ? (
+                    <>
+                      <span className="text-base leading-none">{POI_CATEGORIES[activePoiCategory]?.icon}</span>
+                      <span className="text-xs font-semibold">{POI_CATEGORIES[activePoiCategory]?.label}</span>
+                      <span
+                        role="button"
+                        aria-label="Filter entfernen"
+                        onClick={(e) => { e.stopPropagation(); loadPOIs(null); }}
+                        className="ml-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center text-[10px]"
+                      >×</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                      <span className="text-xs font-semibold">In der Nähe</span>
+                    </>
+                  )}
+                </button>
+
+                {/* POI Filter Sheet */}
+                <AnimatePresence>
+                  {showPoiFilter && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setShowPoiFilter(false)}
+                      className="absolute inset-0 bg-black/50 backdrop-blur-sm z-30 flex items-end"
+                      data-testid="taxi-poi-filter-sheet"
+                    >
+                      <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full bg-[#0A0A0F]/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 p-4"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-white font-bold text-sm">Was suchst du in der Nähe?</h3>
+                          <button onClick={() => setShowPoiFilter(false)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center" data-testid="taxi-poi-close">
+                            <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {Object.entries(POI_CATEGORIES).map(([key, cat]) => {
+                            const isActive = activePoiCategory === key;
+                            return (
+                              <button
+                                key={key}
+                                data-testid={`taxi-poi-cat-${key}`}
+                                onClick={() => { loadPOIs(isActive ? null : key); setShowPoiFilter(false); }}
+                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
+                                  isActive ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_12px_rgba(0,194,255,0.3)]' : 'border-white/10 bg-white/5 hover:border-white/20'
+                                }`}
+                                style={{ minHeight: 76 }}
+                              >
+                                <div
+                                  className="w-9 h-9 rounded-full flex items-center justify-center text-base"
+                                  style={{ background: `${cat.color}20`, color: cat.color }}
+                                >{cat.icon}</div>
+                                <span className="text-[11px] font-semibold text-white text-center leading-tight">{cat.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {poiLoading && (
+                          <p className="text-center text-[11px] text-cyan-400 mt-3">Lade in der Nähe…</p>
+                        )}
+                        <p className="text-center text-[10px] text-gray-500 mt-3">Marker antippen → "Als Ziel setzen"</p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Map Style Switcher (Apple Maps-style) */}
                 <button
