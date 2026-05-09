@@ -716,7 +716,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                   >
                     {txns.map((txn, i) => (
                       <TransactionItem
-                        key={txn.id}
+                        key={txn.id || `${date}-${i}-${txn.amount}-${txn.date || ''}`}
                         transaction={txn}
                         index={i}
                         isLast={i === txns.length - 1}
