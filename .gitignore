@@ -172,18 +172,12 @@ frontend/node_modules/.cache/default-development/62.pack
 frontend/node_modules/.cache/default-development/63.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
@@ -192,18 +186,12 @@ frontend/node_modules/.cache/default-development/70.pack
 frontend/node_modules/.cache/default-development/73.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
@@ -213,27 +201,18 @@ frontend/node_modules/.cache/default-development/77.pack
 frontend/node_modules/.cache/default-development/78.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
@@ -245,18 +224,12 @@ frontend/node_modules/.cache/default-development/88.pack
 frontend/node_modules/.cache/default-development/92.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
@@ -266,9 +239,6 @@ frontend/node_modules/.cache/default-development/100.pack
 frontend/node_modules/.cache/default-development/97.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
@@ -276,126 +246,84 @@ credentials.json
 frontend/node_modules/.cache/default-development/102.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
@@ -403,153 +331,102 @@ credentials.json
 frontend/node_modules/.cache/default-development/12.pack
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
@@ -557,99 +434,66 @@ credentials.json
 frontend/node_modules/.cache/default-development/7.pack_
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
 .credentials
 -e 
 # Environment and credential files
-.env
-.env.*
-*.env
 credentials.json
 *.pem
 *.key
