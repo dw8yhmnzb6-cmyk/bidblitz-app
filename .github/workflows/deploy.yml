@@ -42,8 +42,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
-          cache-dependency-path: frontend/yarn.lock
 
       - name: Build frontend
         working-directory: frontend
@@ -59,7 +57,13 @@ jobs:
           REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
           REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
           EOF
-          yarn install --frozen-lockfile
+          # Use --frozen-lockfile only if yarn.lock exists, otherwise allow yarn to resolve.
+          if [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile --network-timeout 600000
+          else
+            echo "WARN: frontend/yarn.lock missing — running yarn install without lockfile"
+            yarn install --network-timeout 600000
+          fi
           yarn build
           ls -lh build/static/js/main.*.js | head -1
 
