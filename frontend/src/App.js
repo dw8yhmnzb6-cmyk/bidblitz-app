@@ -37,6 +37,7 @@ const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 import AuthPage from "./pages/AuthPage";
 import EVStartChargingPage from "./pages/EVStartChargingPage";
 import EVLiveSessionPage from "./pages/EVLiveSessionPage";
+import EVChargingMapPage from "./pages/EVChargingMapPage";
 import AdminEVOverviewPage from "./pages/AdminEVOverviewPage";
 import AdminEVOperatorsPage from "./pages/AdminEVOperatorsPage";
 import AdminEVHardwareVendorsPage from "./pages/AdminEVHardwareVendorsPage";
@@ -435,6 +436,9 @@ function AppContent() {
     }
     if (currentPath.startsWith("/order/")) {
       return <PublicTableOrderPage qrToken={currentPath.split("/")[2]} />;
+    }
+    if (currentPath === "/ev" || currentPath === "/ev/map") {
+      return <EVChargingMapPage onNavigate={handleNavigate} />;
     }
     if (currentPath.startsWith("/ev/start/")) {
       const parts = currentPath.split("/");
