@@ -32,6 +32,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **EVOperatorLayout angereichert**: Live-Online-Counter, eigene Stationen mit Reset/Unlock-Steuerung, Sessions-Filter, Umsatz-Breakdown (€/Session, €/kWh), neuer Tab **Mitarbeiter** mit RFID-Karten Add-Form via `/api/ev/operator/staff`.
 - ✅ Verifiziert: Lint clean (Python + JS), Backend reload OK, Admin-UI Smoketest (Tarif-Form rendert mit allen Feldern).
 
+### 10.05.2026 (iter61 — TaxiPage Code-Splitting Phase 2)
+- 🟢 **5 Modale extrahiert** in `/components/taxi/`:
+  - `TaxiPoiFilterSheet.jsx` (71 LOC) — POI-Filter Bottom-Sheet (Restaurants/Supermärkte/etc.)
+  - `TaxiMapStylePicker.jsx` (78 LOC) — Apple-Maps-style Map-Style-Switcher
+  - `TaxiSavePlaceModal.jsx` (73 LOC) — Inline Ort-speichern Modal
+  - `TaxiFavoritesModal.jsx` (108 LOC) — Favoriten-Liste Full-Screen Overlay
+  - `TaxiSaveFavoriteModal.jsx` (91 LOC) — Save-Favorite Center Modal
+- 🟢 **TaxiPage.jsx 2323 → 2019 Zeilen** (–304, ~13%). Komponenten via Props (isOpen, onClose, callbacks) gekoppelt — keine Logik-Änderung.
+- ✅ Verifiziert: Lint clean, Login + Privat-Taxi-Auswahl OK, Map-Style-Modal öffnet, Streets/Hell/Dunkel/Satellit Vorschauen rendern, POI-Filter-Button im DOM präsent.
+
 ### Phase A — Mobile Build Automation
 - Bundle ID migration to `com.bidblitz.app` (iOS, Android, Capacitor, Deep Links)
 - `build-mobile-final.sh` script + ANDROID_SIGNING_STEPS.md + IOS_RELEASE_STEPS.md

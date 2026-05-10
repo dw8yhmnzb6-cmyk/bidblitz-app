@@ -13,6 +13,11 @@ import KYCBanner from '../components/KYCBanner';
 import { MAP_STYLES, STATUS_COLORS, STATUS_LABELS, VEHICLE_ICONS, POI_CATEGORIES } from '../components/taxi/TaxiConstants';
 import { VehicleIcon } from '../components/taxi/TaxiVehicleIcon';
 import TaxiHistoryView from '../components/taxi/TaxiHistoryView';
+import TaxiPoiFilterSheet from '../components/taxi/TaxiPoiFilterSheet';
+import TaxiMapStylePicker from '../components/taxi/TaxiMapStylePicker';
+import TaxiSavePlaceModal from '../components/taxi/TaxiSavePlaceModal';
+import TaxiFavoritesModal from '../components/taxi/TaxiFavoritesModal';
+import TaxiSaveFavoriteModal from '../components/taxi/TaxiSaveFavoriteModal';
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
@@ -1122,60 +1127,13 @@ export default function TaxiPage({ onNavigate }) {
                 </button>
 
                 {/* POI Filter Sheet */}
-                <AnimatePresence>
-                  {showPoiFilter && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setShowPoiFilter(false)}
-                      className="absolute inset-0 bg-black/50 backdrop-blur-sm z-30 flex items-end"
-                      data-testid="taxi-poi-filter-sheet"
-                    >
-                      <motion.div
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-[#0A0A0F]/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 p-4"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-white font-bold text-sm">Was suchst du in der Nähe?</h3>
-                          <button onClick={() => setShowPoiFilter(false)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center" data-testid="taxi-poi-close">
-                            <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {Object.entries(POI_CATEGORIES).map(([key, cat]) => {
-                            const isActive = activePoiCategory === key;
-                            return (
-                              <button
-                                key={key}
-                                data-testid={`taxi-poi-cat-${key}`}
-                                onClick={() => { loadPOIs(isActive ? null : key); setShowPoiFilter(false); }}
-                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
-                                  isActive ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_12px_rgba(0,194,255,0.3)]' : 'border-white/10 bg-white/5 hover:border-white/20'
-                                }`}
-                                style={{ minHeight: 76 }}
-                              >
-                                <div
-                                  className="w-9 h-9 rounded-full flex items-center justify-center text-base"
-                                  style={{ background: `${cat.color}20`, color: cat.color }}
-                                >{cat.icon}</div>
-                                <span className="text-[11px] font-semibold text-white text-center leading-tight">{cat.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {poiLoading && (
-                          <p className="text-center text-[11px] text-cyan-400 mt-3">Lade in der Nähe…</p>
-                        )}
-                        <p className="text-center text-[10px] text-gray-500 mt-3">Marker antippen → "Als Ziel setzen"</p>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <TaxiPoiFilterSheet
+                  isOpen={showPoiFilter}
+                  onClose={() => setShowPoiFilter(false)}
+                  activeCategory={activePoiCategory}
+                  onPick={loadPOIs}
+                  loading={poiLoading}
+                />
 
                 {/* Map Style Switcher (Apple Maps-style) */}
                 <button
@@ -1191,71 +1149,12 @@ export default function TaxiPage({ onNavigate }) {
                 </button>
 
                 {/* Map Style Picker Modal (Apple Maps-style) */}
-                <AnimatePresence>
-                  {showMapStyles && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setShowMapStyles(false)}
-                      className="absolute inset-0 bg-black/50 backdrop-blur-sm z-30 flex items-end"
-                      data-testid="taxi-map-style-modal"
-                    >
-                      <motion.div
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-[#0A0A0F]/95 backdrop-blur-xl rounded-t-3xl border-t border-white/10 p-4"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-white font-bold text-sm">Kartenmodus</h3>
-                          <button onClick={() => setShowMapStyles(false)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
-                            <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {Object.entries(MAP_STYLES).map(([key, style]) => {
-                            const isActive = mapStyle === key;
-                            const previewBg = {
-                              dark: 'linear-gradient(135deg, #1A1D2E 0%, #0A0C1A 100%)',
-                              light: 'linear-gradient(135deg, #E8ECF0 0%, #C8D0D8 100%)',
-                              satellite: 'linear-gradient(135deg, #3A5A3C 0%, #2A4A2C 60%, #5A7A5C 100%)',
-                            }[key];
-                            return (
-                              <button
-                                key={key}
-                                onClick={() => { setMapStyle(key); setShowMapStyles(false); }}
-                                className={`flex flex-col items-center gap-1.5 p-1 rounded-xl transition-all ${
-                                  isActive ? '' : 'opacity-70 hover:opacity-100'
-                                }`}
-                                data-testid={`map-style-${key}`}
-                              >
-                                <div
-                                  className={`w-full h-16 rounded-xl border-2 transition-all ${
-                                    isActive ? 'border-cyan-400 shadow-[0_0_16px_rgba(0,194,255,0.4)]' : 'border-white/10'
-                                  }`}
-                                  style={{ background: previewBg }}
-                                >
-                                  {/* Mini roads preview */}
-                                  <svg viewBox="0 0 80 60" className="w-full h-full" preserveAspectRatio="none">
-                                    <path d="M0,40 Q20,30 40,35 T80,30" stroke={key === 'light' ? '#B8C5D0' : '#4A5568'} strokeWidth="2" fill="none" opacity="0.6"/>
-                                    <path d="M20,0 L35,60" stroke={key === 'light' ? '#D0D8E0' : '#3A4258'} strokeWidth="1.5" fill="none" opacity="0.5"/>
-                                    <circle cx="40" cy="35" r="3" fill="#00C2FF"/>
-                                  </svg>
-                                </div>
-                                <span className={`text-[11px] font-semibold ${isActive ? 'text-cyan-400' : 'text-white/70'}`}>
-                                  {style.name}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <TaxiMapStylePicker
+                  isOpen={showMapStyles}
+                  onClose={() => setShowMapStyles(false)}
+                  mapStyle={mapStyle}
+                  onPick={setMapStyle}
+                />
 
                 {/* Current Address Overlay (Straße + Hausnummer) */}
                 {currentAddress && (
@@ -1489,46 +1388,16 @@ export default function TaxiPage({ onNavigate }) {
                 </div>
 
                 {/* Save Place Modal */}
-                {showSaveModal && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    className="p-4 bg-[#1a1a1f] border border-cyan-500/20 rounded-xl space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-white">Ort speichern</span>
-                      <button onClick={() => setShowSaveModal(false)} className="text-gray-500 hover:text-white">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                      </button>
-                    </div>
-                    <div className="text-[10px] text-gray-500 truncate">{dropoff.address}</div>
-                    <div className="flex gap-2">
-                      {[
-                        { id: 'home', label: '🏠 Zuhause' },
-                        { id: 'work', label: '💼 Arbeit' },
-                        { id: 'gym', label: '🏋️ Gym' },
-                        { id: 'school', label: '🎓 Schule' },
-                        { id: 'star', label: '⭐ Andere' },
-                      ].map(ic => (
-                        <button key={ic.id} onClick={() => { setSaveIcon(ic.id); if (!saveName || ['Zuhause','Arbeit','Gym','Schule','Andere'].includes(saveName)) setSaveName(ic.id === 'home' ? 'Zuhause' : ic.id === 'work' ? 'Arbeit' : ic.id === 'gym' ? 'Gym' : ic.id === 'school' ? 'Schule' : 'Andere'); }}
-                          className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all ${saveIcon === ic.id ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-gray-400 border border-white/5'}`}
-                          data-testid={`taxi-save-icon-${ic.id}`}
-                        >{ic.label}</button>
-                      ))}
-                    </div>
-                    <input
-                      value={saveName}
-                      onChange={e => setSaveName(e.target.value)}
-                      placeholder="Name (z.B. Zuhause)"
-                      className="w-full px-3 py-2 bg-[#111] border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:border-cyan-500/50 outline-none"
-                      data-testid="taxi-save-name"
-                    />
-                    <button
-                      onClick={() => savePlace(dropoff.address, dropoff.lat, dropoff.lng)}
-                      disabled={!saveName}
-                      className="w-full py-2.5 bg-cyan-500 text-black rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-cyan-400 transition-all"
-                      data-testid="taxi-save-confirm"
-                    >Speichern</button>
-                  </motion.div>
-                )}
+                <TaxiSavePlaceModal
+                  isOpen={showSaveModal}
+                  onClose={() => setShowSaveModal(false)}
+                  address={dropoff.address}
+                  saveIcon={saveIcon}
+                  setSaveIcon={setSaveIcon}
+                  saveName={saveName}
+                  setSaveName={setSaveName}
+                  onSave={() => savePlace(dropoff.address, dropoff.lat, dropoff.lng)}
+                />
                 
                 <button
                   onClick={getEstimates}
@@ -2120,204 +1989,31 @@ export default function TaxiPage({ onNavigate }) {
       />
 
       {/* Favoriten Modal */}
-      <AnimatePresence>
-        {showFavorites && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={() => setShowFavorites(false)}
-          >
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#0A0A0F] w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl max-h-[80vh] overflow-y-auto"
-            >
-              <div className="sticky top-0 bg-[#0A0A0F] border-b border-white/10 p-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white">Gespeicherte Orte</h2>
-                <button
-                  onClick={() => setShowFavorites(false)}
-                  className="p-2 rounded-full bg-white/5 hover:bg-white/10"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="p-4">
-                {favorites.length === 0 ? (
-                  <div className="text-center py-8">
-                    <svg className="w-16 h-16 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                    </svg>
-                    <p className="text-gray-400 text-sm">Keine gespeicherten Orte</p>
-                    <p className="text-gray-500 text-xs mt-1">Tippe auf ⭐ beim Adress-Eingabefeld</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {favorites.map((fav) => {
-                      const iconMap = {
-                        home: '🏠',
-                        work: '💼',
-                        star: '⭐',
-                        heart: '❤️',
-                        pin: '📍'
-                      };
-                      
-                      return (
-                        <div
-                          key={fav.id}
-                          className="bg-white/5 border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-all group"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="text-2xl">{iconMap[fav.icon] || '⭐'}</div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-white text-sm">{fav.name}</p>
-                              <p className="text-xs text-gray-400 truncate">{fav.address}</p>
-                              {fav.use_count > 0 && (
-                                <p className="text-[10px] text-gray-500 mt-1">
-                                  {fav.use_count}x verwendet
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => selectFavorite(fav)}
-                                className="p-2 text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition-colors"
-                                title="Verwenden"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (window.confirm(`"${fav.name}" löschen?`)) {
-                                    deleteFavorite(fav.id);
-                                  }
-                                }}
-                                className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                title="Löschen"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {pickup.address && (
-                  <button
-                    onClick={() => {
-                      setShowSaveFavorite(true);
-                      setShowFavorites(false);
-                    }}
-                    className="w-full mt-4 py-3 bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-yellow-400 rounded-xl font-semibold hover:bg-yellow-500/30 transition-all"
-                  >
-                    ⭐ Aktuelle Adresse speichern
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <TaxiFavoritesModal
+        isOpen={showFavorites}
+        onClose={() => setShowFavorites(false)}
+        favorites={favorites}
+        onSelect={selectFavorite}
+        onDelete={deleteFavorite}
+        pickupAddress={pickup.address}
+        onSaveCurrentAddress={() => { setShowSaveFavorite(true); setShowFavorites(false); }}
+      />
 
       {/* Save Favorite Modal */}
-      <AnimatePresence>
-        {showSaveFavorite && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowSaveFavorite(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#0A0A0F] border border-white/10 rounded-2xl p-6 max-w-sm w-full"
-            >
-              <h3 className="text-lg font-bold text-white mb-4">Ort speichern</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">Name</label>
-                  <input
-                    type="text"
-                    placeholder="z.B. Zuhause, Arbeit..."
-                    value={favoriteForm.name}
-                    onChange={(e) => setFavoriteForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">Icon</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {[
-                      { icon: 'home', emoji: '🏠' },
-                      { icon: 'work', emoji: '💼' },
-                      { icon: 'star', emoji: '⭐' },
-                      { icon: 'heart', emoji: '❤️' },
-                      { icon: 'pin', emoji: '📍' }
-                    ].map((item) => (
-                      <button
-                        key={item.icon}
-                        onClick={() => setFavoriteForm(prev => ({ ...prev, icon: item.icon }))}
-                        className={`p-3 rounded-xl text-2xl transition-all ${
-                          favoriteForm.icon === item.icon
-                            ? 'bg-cyan-500/20 border-2 border-cyan-500/50'
-                            : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                        }`}
-                      >
-                        {item.emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
-                  📍 {pickup.address}
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowSaveFavorite(false)}
-                    className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10"
-                  >
-                    Abbrechen
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!favoriteForm.name) {
-                        setError('Bitte Name eingeben');
-                        return;
-                      }
-                      saveFavorite(pickup, favoriteForm.name, favoriteForm.icon);
-                    }}
-                    disabled={!favoriteForm.name}
-                    className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-semibold disabled:opacity-50"
-                  >
-                    Speichern
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <TaxiSaveFavoriteModal
+        isOpen={showSaveFavorite}
+        onClose={() => setShowSaveFavorite(false)}
+        form={favoriteForm}
+        setForm={setFavoriteForm}
+        address={pickup.address}
+        onSubmit={() => {
+          if (!favoriteForm.name) {
+            setError('Bitte Name eingeben');
+            return;
+          }
+          saveFavorite(pickup, favoriteForm.name, favoriteForm.icon);
+        }}
+      />
     </div>
   );
 }
