@@ -18,6 +18,7 @@ import TaxiMapStylePicker from '../components/taxi/TaxiMapStylePicker';
 import TaxiSavePlaceModal from '../components/taxi/TaxiSavePlaceModal';
 import TaxiFavoritesModal from '../components/taxi/TaxiFavoritesModal';
 import TaxiSaveFavoriteModal from '../components/taxi/TaxiSaveFavoriteModal';
+import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
@@ -25,6 +26,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function TaxiPage({ onNavigate }) {
   const { t } = useI18n();
+  const { search: geocodeSearch, geocodeOnBlur: geocodeOnBlurHook } = useTaxiGeocoder();
   
   // Navigation helper (replaces useNavigate)
   const navigate = (path) => {
@@ -84,8 +86,6 @@ export default function TaxiPage({ onNavigate }) {
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
   const [showPickupSugg, setShowPickupSugg] = useState(false);
   const [showDropoffSugg, setShowDropoffSugg] = useState(false);
-  const pickupTimer = useRef(null);
-  const dropoffTimer = useRef(null);
 
   // Saved places
   const [savedPlaces, setSavedPlaces] = useState([]);
@@ -420,65 +420,21 @@ export default function TaxiPage({ onNavigate }) {
   // ───────────────────────────────────────────────────────────────────────
 
 
-  const geocodeSearch = async (query, setter, showSetter) => {
-    if (!query || query.length < 2) { setter([]); showSetter(false); return; }
-    try {
-      const token = mapboxgl.accessToken;
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&country=de,at,ch&language=de&limit=6&types=address,poi,place,locality,neighborhood`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const results = (data.features || []).map(f => {
-          const ctx = f.context || [];
-          const postcode = (ctx.find(c => (c.id || '').startsWith('postcode')) || {}).text || '';
-          const city = (ctx.find(c => (c.id || '').startsWith('place')) || ctx.find(c => (c.id || '').startsWith('locality')) || {}).text || '';
-          const country = (ctx.find(c => (c.id || '').startsWith('country')) || {}).short_code?.toUpperCase() || '';
-          const houseNo = f.address ? ` ${f.address}` : '';
-          const name = `${f.text || ''}${houseNo}`.trim() || (f.place_name || '').split(',')[0];
-          const cityZip = [postcode, city].filter(Boolean).join(' ') + (country ? `, ${country}` : '');
-          return {
-            name,
-            cityZip: cityZip.trim(),
-            address: f.place_name,
-            lat: f.center?.[1],
-            lng: f.center?.[0],
-            type: (f.place_type && f.place_type[0]) || 'address',
-          };
-        }).filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng));
-        setter(results);
-        showSetter(results.length > 0);
-      }
-    } catch { setter([]); showSetter(false); }
-  };
-
   const handlePickupChange = (text) => {
     setPickup(p => ({ ...p, address: text }));
-    if (pickupTimer.current) clearTimeout(pickupTimer.current);
-    pickupTimer.current = setTimeout(() => geocodeSearch(text, setPickupSuggestions, setShowPickupSugg), 300);
+    geocodeSearch('pickup', text, setPickupSuggestions, setShowPickupSugg);
   };
 
   const handleDropoffChange = (text) => {
     setDropoff(p => ({ ...p, address: text }));
-    if (dropoffTimer.current) clearTimeout(dropoffTimer.current);
-    dropoffTimer.current = setTimeout(() => geocodeSearch(text, setDropoffSuggestions, setShowDropoffSugg), 300);
+    geocodeSearch('dropoff', text, setDropoffSuggestions, setShowDropoffSugg);
   };
 
   // Auto-geocode on blur if no coords yet
   const geocodeOnBlur = async (type) => {
     const target = type === 'pickup' ? pickup : dropoff;
     const setter = type === 'pickup' ? setPickup : setDropoff;
-    if (target.address && (!target.lat || target.lat === 0 || target.lat === 52.52)) {
-      try {
-        const token = mapboxgl.accessToken;
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(target.address)}.json?access_token=${token}&country=de,at,ch&language=de&limit=1`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          const f = (data.features || [])[0];
-          if (f && f.center) setter({ lat: f.center[1], lng: f.center[0], address: f.place_name || target.address });
-        }
-      } catch {}
-    }
+    await geocodeOnBlurHook(target, setter);
   };
 
   const selectPickupSugg = (s) => {

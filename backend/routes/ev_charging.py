@@ -839,6 +839,147 @@ async def admin_get_base_report(charge_point_id: str, request: Request,
     )
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# ISO-15118 Plug & Charge — admin PKI endpoints (OCPP 2.0.1)
+# ══════════════════════════════════════════════════════════════════════════════
+from services import ev_pki  # noqa: E402
+
+
+@router.get("/admin/pki/csrs")
+async def admin_list_pending_csrs(request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return {"csrs": await ev_pki.list_pending_csrs()}
+
+
+@router.post("/admin/pki/sign-csr/{request_id}")
+async def admin_sign_csr(request_id: str, request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Sign a queued CSR. body: { signed_chain: <PEM>, certificate_type? }
+    Pushes the signed chain to the station via OCPP CertificateSigned.
+    """
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    signed_chain = body.get("signed_chain") or ""
+    if not signed_chain:
+        raise HTTPException(400, "signed_chain (PEM) erforderlich")
+    rec = await ev_pki.mark_csr_signed(request_id, signed_chain, signed_by=user.get("email", str(user["_id"])))
+    if not rec:
+        raise HTTPException(404, "CSR nicht gefunden oder bereits signiert")
+    cert_type = body.get("certificate_type") or rec.get("certificate_type", "ChargingStationCertificate")
+    try:
+        push = await ocpp_v201.certificate_signed(
+            rec["charge_point_id"], signed_chain, certificate_type=cert_type,
+        )
+    except Exception as exc:
+        return {"signed": True, "delivered": False, "error": str(exc), "csr": rec}
+    return {"signed": True, "delivered": True, "result": push, "csr": rec}
+
+
+@router.post("/admin/pki/trust-anchors")
+async def admin_add_trust_anchor(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    if not body.get("name") or not body.get("certificate"):
+        raise HTTPException(400, "name + certificate erforderlich")
+    anchor_id = await ev_pki.add_trust_anchor(
+        name=body["name"],
+        certificate_type=body.get("certificate_type", "V2GRootCertificate"),
+        certificate=body["certificate"],
+        added_by=user.get("email", str(user["_id"])),
+    )
+    return {"anchor_id": anchor_id}
+
+
+@router.get("/admin/pki/trust-anchors")
+async def admin_list_trust_anchors(request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return {"anchors": await ev_pki.list_trust_anchors()}
+
+
+@router.post("/admin/pki/revocations")
+async def admin_revoke_cert(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    serial = body.get("serial_number")
+    if not serial:
+        raise HTTPException(400, "serial_number erforderlich")
+    await ev_pki.revoke_certificate(serial, body.get("reason", "Unspecified"),
+                                    revoked_by=user.get("email", str(user["_id"])))
+    return {"revoked": True, "serial_number": serial}
+
+
+@router.get("/admin/pki/revocations")
+async def admin_list_revocations(request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return {"revocations": await ev_pki.list_revocations()}
+
+
+@router.post("/admin/pki/emaid-contracts")
+async def admin_upsert_emaid(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    emaid = body.get("emaid")
+    if not emaid:
+        raise HTTPException(400, "emaid erforderlich")
+    await ev_pki.upsert_emaid_contract(
+        emaid=emaid,
+        user_id=body.get("user_id"),
+        mobility_operator=body.get("mobility_operator", "BidBlitz"),
+        expires_at=body.get("expires_at"),
+    )
+    return {"upserted": True, "emaid": emaid}
+
+
+@router.get("/admin/pki/emaid-contracts")
+async def admin_list_emaid(request: Request, active_only: bool = True) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return {"contracts": await ev_pki.list_emaid_contracts(active_only=active_only)}
+
+
+@router.post("/admin/cp/{charge_point_id}/v201/install-certificate")
+async def admin_install_certificate(charge_point_id: str, request: Request,
+                                    body: Dict[str, Any]):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    if not body.get("certificate") or not body.get("certificate_type"):
+        raise HTTPException(400, "certificate + certificate_type erforderlich")
+    return await ocpp_v201.install_certificate(
+        charge_point_id, body["certificate_type"], body["certificate"],
+    )
+
+
+@router.post("/admin/cp/{charge_point_id}/v201/delete-certificate")
+async def admin_delete_certificate(charge_point_id: str, request: Request,
+                                   body: Dict[str, Any]):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    if not body.get("certificate_hash_data"):
+        raise HTTPException(400, "certificate_hash_data erforderlich")
+    return await ocpp_v201.delete_certificate(charge_point_id, body["certificate_hash_data"])
+
+
+@router.get("/admin/cp/{charge_point_id}/v201/installed-certificates")
+async def admin_list_installed_certs(charge_point_id: str, request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return await ocpp_v201.get_installed_certificate_ids(charge_point_id)
+
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Receipts (customer + operator + admin)

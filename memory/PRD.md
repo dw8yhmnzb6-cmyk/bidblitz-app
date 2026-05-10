@@ -42,6 +42,26 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **TaxiPage.jsx 2323 → 2019 Zeilen** (–304, ~13%). Komponenten via Props (isOpen, onClose, callbacks) gekoppelt — keine Logik-Änderung.
 - ✅ Verifiziert: Lint clean, Login + Privat-Taxi-Auswahl OK, Map-Style-Modal öffnet, Streets/Hell/Dunkel/Satellit Vorschauen rendern, POI-Filter-Button im DOM präsent.
 
+### 10.05.2026 (iter62 — ISO-15118 Plug & Charge + TaxiPage Custom Hook)
+- 🟢 **ISO-15118 Plug & Charge auf OCPP 2.0.1** (`backend/services/ev_pki.py`, ~210 Zeilen + 4 neue Inbound-Handler in `ocpp_v201.py`):
+  - **PnC `Authorize`** mit `iso15118CertificateHashData[]` + `certificate` + eMAID-Token-Type. Trust-Store-Mode (`EV_PNC_MODE=trust_store`) prüft Revocations + eMAID-Contracts; `permissive` (default) akzeptiert für QA; `delegated` für externe V2G-PKI (z.B. Hubject).
+  - **`SignCertificate`** (CP→CSMS): CSR-Queue + `requestId`. Admin signiert via `POST /api/ev/admin/pki/sign-csr/{request_id}` → CSMS pusht **`CertificateSigned`** an CP.
+  - **`Get15118EVCertificate`** (CP→CSMS): EV-Zertifikats-Anfrage (Install/Update) persistiert für PKI-Forwarding.
+  - **`GetCertificateStatus`** (CP→CSMS): OCSP-style Status mit Revocation-Liste (`good`/`revoked`).
+  - **Server-initiierte Calls**: `CertificateSigned`, `InstallCertificate`, `DeleteCertificate`, `GetInstalledCertificateIds`.
+- 🟢 **REST-Admin-API**: `/api/ev/admin/pki/csrs` (GET pending), `/sign-csr/{id}` (POST), `/trust-anchors` (GET/POST), `/revocations` (GET/POST), `/emaid-contracts` (GET/POST), `/admin/cp/{id}/v201/install-certificate|delete-certificate|installed-certificates`.
+- 🟢 **DB-Collections neu**: `ev_pki_csr_queue`, `ev_pki_trust_store`, `ev_pki_revocations`, `ev_pki_authz_log`, `ev_pki_ev_cert_requests`, `ev_emaid_contracts`.
+- ✅ **End-to-End-Test** (`/tmp/test_iso15118.py`): PnC-Authorize(eMAID) → Accepted → SignCertificate → CSR queued → Admin signiert → CertificateSigned an CP delivered → Get15118EVCertificate persistiert → GetCertificateStatus(good) → Revocation → GetCertificateStatus(revoked). **PASS**.
+
+- 🟢 **TaxiPage Custom Hook** `useTaxiGeocoder` (`/components/taxi/useTaxiGeocoder.js`, 116 LOC):
+  - Encapsulates Mapbox forward-geocoding, debounce-Timer-Management (per-key), `geocodeOnBlur` Coord-Fixup. Wiederverwendbar für andere Map-Module.
+- 🟢 **TaxiPage.jsx 2019 → 1975 Zeilen** (–44 weitere). Inline `geocodeSearch`/`geocodeOnBlur` (~70 LOC) + 2 useRef-Timer entfernt.
+- ✅ Verifiziert (Playwright): "Berlin Hauptbahnhof" → 6 Suggestions geladen ("Berlin", "Berlin-Neukölln", "Berlin Mitte" mit Berlin/DE Subtitle).
+
+### Status (10.05.2026)
+- **LiveKit Streaming**: Code bereit; LIVEKIT_URL+LIVEKIT_API_KEY/SECRET in `/app/backend/.env` LEER. **User-Aktion**: Credentials von LiveKit Cloud Dashboard eintragen.
+- **Landing Chatbot**: läuft live (`gpt-5`, openai). Health: `{"status":"ok","model":"gpt-5"}`.
+
 ### Phase A — Mobile Build Automation
 - Bundle ID migration to `com.bidblitz.app` (iOS, Android, Capacitor, Deep Links)
 - `build-mobile-final.sh` script + ANDROID_SIGNING_STEPS.md + IOS_RELEASE_STEPS.md

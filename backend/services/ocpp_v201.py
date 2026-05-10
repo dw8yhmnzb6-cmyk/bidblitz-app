@@ -187,14 +187,90 @@ async def handle_StatusNotification(charge_point_id: str, payload: Dict[str, Any
 async def handle_Authorize(charge_point_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     2.0.1 payload:
-      { idToken: {idToken, type: "Central"|"eMAID"|"ISO14443"|"ISO15693"|"KeyCode"|"Local"|"NoAuthorization"} }
+      { idToken: {idToken, type: "Central"|"eMAID"|"ISO14443"|"ISO15693"|"KeyCode"|"Local"|"NoAuthorization"},
+        certificate?: <PEM>,                                          # ISO-15118 PnC
+        iso15118CertificateHashData?: [{hashAlgorithm, issuerNameHash,
+                                         issuerKeyHash, serialNumber,
+                                         responderURL?}]               # OCSP cert chain
+      }
     """
     id_token_obj = payload.get("idToken") or {}
     id_token = id_token_obj.get("idToken", "")
+    id_token_type = id_token_obj.get("type", "Central")
+
+    # ── ISO-15118 Plug & Charge (eMAID + cert chain) ────────────────────────
+    if id_token_type == "eMAID" or payload.get("certificate") or payload.get("iso15118CertificateHashData"):
+        from services.ev_pki import verify_iso15118_authorize
+        result = await verify_iso15118_authorize(
+            charge_point_id=charge_point_id,
+            emaid=id_token,
+            certificate=payload.get("certificate"),
+            cert_hash_data=payload.get("iso15118CertificateHashData") or [],
+        )
+        await db.ev_activity_logs.insert_one({
+            "charge_point_id": charge_point_id,
+            "protocol": "ocpp2.0.1",
+            "action": "Authorize.PnC",
+            "emaid": id_token,
+            "result": result,
+            "ts": _utcnow_iso(),
+        })
+        return result
+
+    # ── Standard token-based auth ───────────────────────────────────────────
     auth = await db.ev_authorizations.find_one({"id_tag": id_token, "active": True})
     if not auth:
         return {"idTokenInfo": {"status": "Invalid"}}
     return {"idTokenInfo": {"status": "Accepted"}}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ISO-15118 / Plug & Charge handlers (Part 2 v2.0.1 §K01-K17)
+# ──────────────────────────────────────────────────────────────────────────────
+async def handle_SignCertificate(charge_point_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    CP → CSMS:  request CSMS to sign a CSR (PEM PKCS#10).
+    payload: { csr: <PEM>, certificateType?: "ChargingStationCertificate"|"V2GCertificate" }
+    response: { status: "Accepted"|"Rejected" }
+    Real signing is performed by an admin via /api/ev/admin/pki/sign-csr.
+    """
+    from services.ev_pki import enqueue_csr
+    request_id = await enqueue_csr(
+        charge_point_id=charge_point_id,
+        csr=payload.get("csr", ""),
+        certificate_type=payload.get("certificateType", "ChargingStationCertificate"),
+    )
+    return {"status": "Accepted", "requestId": request_id}
+
+
+async def handle_Get15118EVCertificate(charge_point_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    CP → CSMS: forward an EV certificate request (Install or Update) to V2G PKI.
+    payload: { iso15118SchemaVersion, action: "Install"|"Update",
+               exiRequest: <base64> }
+    response: { status: "Accepted"|"Failed", exiResponse: <base64> }
+    """
+    from services.ev_pki import handle_ev_certificate_request
+    return await handle_ev_certificate_request(
+        charge_point_id=charge_point_id,
+        action=payload.get("action", "Install"),
+        schema_version=payload.get("iso15118SchemaVersion", "urn:iso:15118:2:2013:MsgDef"),
+        exi_request=payload.get("exiRequest", ""),
+    )
+
+
+async def handle_GetCertificateStatus(charge_point_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    CP → CSMS: OCSP-style certificate revocation status.
+    payload: { ocspRequestData: {hashAlgorithm, issuerNameHash, issuerKeyHash,
+                                  serialNumber, responderURL} }
+    response: { status: "Accepted"|"Failed", ocspResult?: <DER base64> }
+    """
+    from services.ev_pki import check_certificate_status
+    return await check_certificate_status(
+        charge_point_id=charge_point_id,
+        ocsp_request=payload.get("ocspRequestData") or {},
+    )
 
 
 async def _persist_meter_values(charge_point_id: str, transaction_id: Optional[str],
@@ -456,6 +532,10 @@ _HANDLERS = {
     "SecurityEventNotification": handle_SecurityEventNotification,
     "DataTransfer": handle_DataTransfer,
     "LogStatusNotification": handle_LogStatusNotification,
+    # ISO-15118 / Plug & Charge
+    "SignCertificate": handle_SignCertificate,
+    "Get15118EVCertificate": handle_Get15118EVCertificate,
+    "GetCertificateStatus": handle_GetCertificateStatus,
 }
 
 
@@ -630,3 +710,64 @@ async def get_base_report(charge_point_id: str, request_id: int,
         "requestId": int(request_id),
         "reportBase": report_base,
     })
+
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ISO-15118 / Plug & Charge — server-initiated CALLs
+# ──────────────────────────────────────────────────────────────────────────────
+async def certificate_signed(charge_point_id: str, certificate_chain: str,
+                             certificate_type: str = "ChargingStationCertificate") -> Dict[str, Any]:
+    """
+    CSMS → CP: deliver a signed PEM certificate chain (response to SignCertificate).
+    certificate_type: 'ChargingStationCertificate' | 'V2GCertificateChain'
+    """
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline (2.0.1)")
+    return await sess.send_call("CertificateSigned", {
+        "certificateChain": certificate_chain,
+        "certificateType": certificate_type,
+    })
+
+
+async def install_certificate(charge_point_id: str, certificate_type: str,
+                              certificate: str) -> Dict[str, Any]:
+    """
+    CSMS → CP: install a root CA certificate.
+    certificate_type: 'V2GRootCertificate' | 'MORootCertificate' |
+                       'CSMSRootCertificate' | 'ManufacturerRootCertificate'
+    certificate: PEM-encoded.
+    """
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline (2.0.1)")
+    return await sess.send_call("InstallCertificate", {
+        "certificateType": certificate_type,
+        "certificate": certificate,
+    })
+
+
+async def delete_certificate(charge_point_id: str, certificate_hash_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    CSMS → CP: delete an installed root certificate by hash.
+    certificate_hash_data: {hashAlgorithm, issuerNameHash, issuerKeyHash, serialNumber}
+    """
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline (2.0.1)")
+    return await sess.send_call("DeleteCertificate", {
+        "certificateHashData": certificate_hash_data,
+    })
+
+
+async def get_installed_certificate_ids(charge_point_id: str,
+                                        certificate_type: Optional[list] = None) -> Dict[str, Any]:
+    """CSMS → CP: list installed root certificates."""
+    sess = get_session(charge_point_id)
+    if not sess:
+        raise RuntimeError(f"Charge point {charge_point_id} is offline (2.0.1)")
+    payload: Dict[str, Any] = {}
+    if certificate_type:
+        payload["certificateType"] = certificate_type
+    return await sess.send_call("GetInstalledCertificateIds", payload)
