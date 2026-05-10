@@ -168,6 +168,7 @@ from routes.pos_advanced import router as pos_advanced_router
 from routes.pos_pro import router as pos_pro_router
 from routes.pos_vouchers import router as pos_vouchers_router
 from routes.pos_kassenmeldung import router as pos_kassenmeldung_router
+from routes.pos_rksv import router as pos_rksv_router
 from routes.pos_features import router as pos_features_router
 from routes.pos_public_api import router as pos_public_api_router
 from routes.pos_selfcheckout import router as pos_selfcheckout_router
@@ -237,6 +238,7 @@ app.include_router(smm_boost_router)
 app.include_router(export_router)
 app.include_router(pos_vouchers_router)
 app.include_router(pos_kassenmeldung_router)
+app.include_router(pos_rksv_router)
 app.include_router(pos_features_router)
 app.include_router(pos_public_api_router)
 app.include_router(pos_selfcheckout_router)

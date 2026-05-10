@@ -18,6 +18,9 @@ import TaxiMapStylePicker from '../components/taxi/TaxiMapStylePicker';
 import TaxiSavePlaceModal from '../components/taxi/TaxiSavePlaceModal';
 import TaxiFavoritesModal from '../components/taxi/TaxiFavoritesModal';
 import TaxiSaveFavoriteModal from '../components/taxi/TaxiSaveFavoriteModal';
+import TaxiDriverOnboardingModal from '../components/taxi/TaxiDriverOnboardingModal';
+import TaxiVehiclePicker from '../components/taxi/TaxiVehiclePicker';
+import TaxiAddressInput from '../components/taxi/TaxiAddressInput';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -63,17 +66,6 @@ export default function TaxiPage({ onNavigate }) {
   // Driver Onboarding Modal
   const [showDriverOnboarding, setShowDriverOnboarding] = useState(false);
   const [onboardingType, setOnboardingType] = useState(''); // 'business' or 'private'
-  const [onboardingForm, setOnboardingForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    license_number: '',
-    vehicle_type: 'standard',
-    city: '',
-    message: '',
-  });
-  const [onboardingSubmitting, setOnboardingSubmitting] = useState(false);
-  const [onboardingSuccess, setOnboardingSuccess] = useState(false);
   
   // Favoriten / Saved Addresses
   const [favorites, setFavorites] = useState([]);
@@ -1151,86 +1143,36 @@ export default function TaxiPage({ onNavigate }) {
               {/* Location Inputs */}
               <div className="space-y-3">
                 {/* ABHOLUNG */}
-                <div className="relative z-20">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center z-10">
-                    <div className="w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-cyan-500/20" />
-                  </div>
-                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider z-10">ABHOLUNG</div>
-                  
-                  {/* Favoriten Button */}
-                  <button
-                    onClick={() => setShowFavorites(!showFavorites)}
-                    className="absolute right-14 top-1/2 -translate-y-1/2 z-10 p-2 text-yellow-400 hover:text-yellow-300 transition-colors"
-                    title="Gespeicherte Orte"
-                  >
-                    <svg className="w-5 h-5" fill={favorites.length > 0 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                    </svg>
-                  </button>
-                  
-                  <input
-                    type="text"
-                    placeholder="Aktueller Standort"
-                    value={pickup.address}
-                    onChange={(e) => handlePickupChange(e.target.value)}
-                    onFocus={() => { if (pickupSuggestions.length > 0) setShowPickupSugg(true); }}
-                    onBlur={() => { setTimeout(() => setShowPickupSugg(false), 200); geocodeOnBlur('pickup'); }}
-                    className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                    data-testid="taxi-pickup-input"
-                  />
-                  {showPickupSugg && pickupSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1f] border border-white/10 rounded-xl overflow-hidden shadow-2xl" style={{ zIndex: 50 }}>
-                      {pickupSuggestions.map((s, i) => (
-                        <button key={i} onMouseDown={() => selectPickupSugg(s)}
-                          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-cyan-500/10 transition-colors text-left border-b border-white/5 last:border-0"
-                          data-testid={`pickup-sugg-${i}`}>
-                          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-white truncate">{s.name}</div>
-                            <div className="text-[11px] text-gray-400 truncate">{s.cityZip || s.address}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <TaxiAddressInput
+                  variant="pickup"
+                  zIndexClass="z-20"
+                  testId="taxi-pickup-input"
+                  placeholder="Aktueller Standort"
+                  value={pickup.address}
+                  onChange={handlePickupChange}
+                  onBlur={() => geocodeOnBlur('pickup')}
+                  suggestions={pickupSuggestions}
+                  showSuggestions={showPickupSugg}
+                  setShowSuggestions={setShowPickupSugg}
+                  onSuggestionClick={selectPickupSugg}
+                  favoritesCount={favorites.length}
+                  onFavoritesClick={() => setShowFavorites(!showFavorites)}
+                />
 
                 {/* ZIEL */}
-                <div className="relative z-10">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center z-10">
-                    <div className="w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-500/20" />
-                  </div>
-                  <div className="absolute left-4 top-[58px] -translate-y-1/2 text-[8px] text-gray-500 uppercase tracking-wider z-10">ZIEL</div>
-                  <input
-                    type="text"
-                    placeholder="Wohin möchtest du?"
-                    value={dropoff.address}
-                    onChange={(e) => handleDropoffChange(e.target.value)}
-                    onFocus={() => { if (dropoffSuggestions.length > 0) setShowDropoffSugg(true); }}
-                    onBlur={() => { setTimeout(() => setShowDropoffSugg(false), 200); geocodeOnBlur('dropoff'); }}
-                    className="w-full pl-10 pr-4 pt-6 pb-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-red-500/50 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all cursor-text"
-                    data-testid="taxi-dropoff-input"
-                  />
-                  {showDropoffSugg && dropoffSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1f] border border-white/10 rounded-xl overflow-hidden shadow-2xl" style={{ zIndex: 50 }}>
-                      {dropoffSuggestions.map((s, i) => (
-                        <button key={i} onMouseDown={() => selectDropoffSugg(s)}
-                          className="w-full flex items-start gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-left border-b border-white/5 last:border-0"
-                          data-testid={`dropoff-sugg-${i}`}>
-                          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-white truncate">{s.name}</div>
-                            <div className="text-[11px] text-gray-400 truncate">{s.cityZip || s.address}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <TaxiAddressInput
+                  variant="dropoff"
+                  zIndexClass="z-10"
+                  testId="taxi-dropoff-input"
+                  placeholder="Wohin möchtest du?"
+                  value={dropoff.address}
+                  onChange={handleDropoffChange}
+                  onBlur={() => geocodeOnBlur('dropoff')}
+                  suggestions={dropoffSuggestions}
+                  showSuggestions={showDropoffSugg}
+                  setShowSuggestions={setShowDropoffSugg}
+                  onSuggestionClick={selectDropoffSugg}
+                />
                 
                 {/* Saved Places */}
                 {savedPlaces.length > 0 && (
@@ -1388,47 +1330,12 @@ export default function TaxiPage({ onNavigate }) {
               {/* Vehicle Options */}
               {estimates.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wider">Wähle dein Fahrzeug</h3>
-                  {estimates.map((est) => {
-                    const isActive = selectedVehicle === est.vehicle_type;
-                    return (
-                      <motion.button
-                        key={est.vehicle_type}
-                        onClick={() => setSelectedVehicle(est.vehicle_type)}
-                        className={`w-full p-4 rounded-2xl border-2 transition-all ${
-                          isActive
-                            ? 'bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border-cyan-400/70 shadow-[0_0_24px_rgba(0,194,255,0.15)]'
-                            : 'bg-[#0F1218] border-white/5 hover:border-white/15'
-                        }`}
-                        whileTap={{ scale: 0.98 }}
-                        data-testid={`vehicle-card-${est.vehicle_type}`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className={`shrink-0 w-20 h-12 rounded-xl flex items-center justify-center ${
-                              isActive ? 'bg-cyan-500/10' : 'bg-white/[0.03]'
-                            }`}>
-                              <VehicleIcon type={est.vehicle_type} className="w-16 h-8" active={isActive} />
-                            </div>
-                            <div className="text-left min-w-0 flex-1">
-                              <p className={`font-bold text-base ${isActive ? 'text-white' : 'text-gray-200'}`}>{est.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{est.description}</p>
-                              <p className="text-[11px] text-gray-600 mt-0.5">
-                                {est.capacity} Pers. · {est.eta_minutes} Min
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className={`text-lg font-bold ${isActive ? 'text-cyan-400' : 'text-gray-300'}`}>€{est.fare.toFixed(2)}</p>
-                            <p className="text-[10px] text-gray-600">
-                              €{est.fare_range?.min.toFixed(2)}–€{est.fare_range?.max.toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                  
+                  <TaxiVehiclePicker
+                    estimates={estimates}
+                    selectedVehicle={selectedVehicle}
+                    onSelect={setSelectedVehicle}
+                  />
+
                   {/* Book Button */}
                   <button
                     onClick={bookRide}
@@ -1700,238 +1607,11 @@ export default function TaxiPage({ onNavigate }) {
       </AnimatePresence>
 
       {/* Driver Onboarding Modal */}
-      <AnimatePresence>
-        {showDriverOnboarding && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => {
-              if (!onboardingSubmitting) {
-                setShowDriverOnboarding(false);
-                setOnboardingSuccess(false);
-                setOnboardingForm({ name: '', email: '', phone: '', license_number: '', vehicle_type: 'standard', city: '', message: '' });
-              }
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#0A0A0F] border border-white/10 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6"
-            >
-              {!onboardingSuccess ? (
-                <>
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-xl font-bold text-white">Als Fahrer bewerben</h2>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {onboardingType === 'business' ? 'Unternehmer-Taxi' : 'Privat-Taxi'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (!onboardingSubmitting) {
-                          setShowDriverOnboarding(false);
-                          setOnboardingForm({ name: '', email: '', phone: '', license_number: '', vehicle_type: 'standard', city: '', message: '' });
-                        }
-                      }}
-                      className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
-                      disabled={onboardingSubmitting}
-                    >
-                      <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Name */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-2">Vollständiger Name</label>
-                      <input
-                        type="text"
-                        placeholder="Max Mustermann"
-                        value={onboardingForm.name}
-                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                        data-testid="driver-onboard-name"
-                        disabled={onboardingSubmitting}
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-2">E-Mail</label>
-                      <input
-                        type="email"
-                        placeholder="max@example.com"
-                        value={onboardingForm.email}
-                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                        data-testid="driver-onboard-email"
-                        disabled={onboardingSubmitting}
-                      />
-                    </div>
-
-                    {/* Phone */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-2">Telefonnummer</label>
-                      <input
-                        type="tel"
-                        placeholder="+49 123 456789"
-                        value={onboardingForm.phone}
-                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                        data-testid="driver-onboard-phone"
-                        disabled={onboardingSubmitting}
-                      />
-                    </div>
-
-                    {/* License */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-2">Führerscheinnummer</label>
-                      <input
-                        type="text"
-                        placeholder="B1234567890"
-                        value={onboardingForm.license_number}
-                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, license_number: e.target.value }))}
-                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                        data-testid="driver-onboard-license"
-                        disabled={onboardingSubmitting}
-                      />
-                    </div>
-
-                    {/* Vehicle Type */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-2">Fahrzeugtyp</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {['standard', 'premium', 'van'].map((type) => (
-                          <button
-                            key={type}
-                            onClick={() => setOnboardingForm(prev => ({ ...prev, vehicle_type: type }))}
-                            disabled={onboardingSubmitting}
-                            className={`py-2 px-3 rounded-xl text-xs font-medium transition-all ${
-                              onboardingForm.vehicle_type === type
-                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
-                            }`}
-                            data-testid={`driver-vehicle-${type}`}
-                          >
-                            {type === 'standard' ? 'Standard' : type === 'premium' ? 'Premium' : 'Van'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* City (optional) */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-2">Stadt (optional)</label>
-                      <input
-                        type="text"
-                        placeholder="z.B. Berlin"
-                        value={onboardingForm.city}
-                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, city: e.target.value }))}
-                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                        data-testid="driver-onboard-city"
-                        disabled={onboardingSubmitting}
-                      />
-                    </div>
-
-                    {/* Message (optional) */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-2">Nachricht (optional)</label>
-                      <textarea
-                        placeholder="Zusätzliche Informationen..."
-                        value={onboardingForm.message}
-                        onChange={(e) => setOnboardingForm(prev => ({ ...prev, message: e.target.value }))}
-                        rows={3}
-                        className="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none"
-                        data-testid="driver-onboard-message"
-                        disabled={onboardingSubmitting}
-                      />
-                    </div>
-
-                    {/* Submit Button */}
-                    {error && (
-                      <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">
-                        {error}
-                      </div>
-                    )}
-                    <button
-                      onClick={async () => {
-                        if (!onboardingForm.name || !onboardingForm.email || !onboardingForm.phone || !onboardingForm.license_number) {
-                          setError('Bitte alle Pflichtfelder ausfüllen');
-                          return;
-                        }
-                        setOnboardingSubmitting(true);
-                        setError('');
-                        try {
-                          const res = await fetch(`${API}/api/taxi/driver/onboard`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              ...onboardingForm,
-                              driver_type: onboardingType,
-                            }),
-                          });
-                          if (res.ok) {
-                            setOnboardingSuccess(true);
-                          } else {
-                            const errData = await res.json();
-                            setError(errData.detail || 'Fehler bei der Bewerbung');
-                          }
-                        } catch (err) {
-                          setError('Netzwerkfehler');
-                        } finally {
-                          setOnboardingSubmitting(false);
-                        }
-                      }}
-                      disabled={onboardingSubmitting}
-                      className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-semibold text-black disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
-                      data-testid="driver-onboard-submit"
-                    >
-                      {onboardingSubmitting ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          Wird gesendet...
-                        </span>
-                      ) : 'Bewerbung absenden'}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Bewerbung erfolgreich!</h3>
-                  <p className="text-sm text-gray-400 mb-6">
-                    Wir prüfen deine Angaben und melden uns innerhalb von 24 Stunden.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setShowDriverOnboarding(false);
-                      setOnboardingSuccess(false);
-                      setOnboardingForm({ name: '', email: '', phone: '', license_number: '', vehicle_type: 'standard', city: '', message: '' });
-                    }}
-                    className="px-6 py-3 bg-cyan-500 rounded-xl font-semibold text-black hover:bg-cyan-400 transition-colors"
-                  >
-                    Schließen
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <TaxiDriverOnboardingModal
+        isOpen={showDriverOnboarding}
+        onClose={() => setShowDriverOnboarding(false)}
+        onboardingType={onboardingType}
+      />
       
       <GroupOrderModal
         isOpen={showGroupRide}

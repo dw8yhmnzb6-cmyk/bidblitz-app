@@ -957,6 +957,140 @@ async def list_dispatches(request: Request, store_id: str,
     return {"dispatches": rows}
 
 
+# ─── Auto-Dispatch: category → route mapping (Müller-style) ─────────────
+class CategoryRouteMap(BaseModel):
+    store_id: str
+    category: str   # e.g. "speisen", "getraenke", "eis"
+    route_id: str
+
+
+@router.post("/bonweiterleitung/category-map")
+async def upsert_category_map(req: CategoryRouteMap, request: Request):
+    user = await get_current_user(request)
+    await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})
+    route = await db.pos_bon_routes.find_one({"route_id": req.route_id, "active": True})
+    if not route:
+        raise HTTPException(404, "Route nicht gefunden")
+    await db.pos_bon_category_map.update_one(
+        {"store_id": req.store_id, "category": req.category},
+        {"$set": {"store_id": req.store_id, "category": req.category,
+                  "route_id": req.route_id, "updated_at": now_iso()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@router.get("/bonweiterleitung/category-map")
+async def list_category_map(request: Request, store_id: str):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    rows = await db.pos_bon_category_map.find(
+        {"store_id": store_id}, {"_id": 0}
+    ).to_list(100)
+    return {"map": rows}
+
+
+class AutoDispatchCart(BaseModel):
+    cart_id: str
+
+
+@router.post("/bonweiterleitung/auto-dispatch")
+async def auto_dispatch_cart(req: AutoDispatchCart, request: Request):
+    """Müller-style auto-dispatcher: groups cart items by `category` and sends
+    each group to the route configured in pos_bon_category_map.
+    Items WITHOUT a category map are ignored.
+    Returns a per-route summary of dispatch status."""
+    user = await get_current_user(request)
+    cart = await db.pos_carts.find_one({"cart_id": req.cart_id}, {"_id": 0})
+    if not cart:
+        raise HTTPException(404, "Cart nicht gefunden")
+    await _require_store_access(user, cart["store_id"])
+
+    mapping = await db.pos_bon_category_map.find(
+        {"store_id": cart["store_id"]}, {"_id": 0}
+    ).to_list(100)
+    cat_to_route = {m["category"]: m["route_id"] for m in mapping}
+
+    # Group items by category → route
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    skipped: List[Dict[str, Any]] = []
+    for item in cart.get("items", []):
+        if item.get("voided"):
+            continue
+        cat = (item.get("category") or "").lower()
+        route_id = cat_to_route.get(cat)
+        if not route_id:
+            skipped.append(item)
+            continue
+        groups.setdefault(route_id, []).append(item)
+
+    results = []
+    import httpx
+    for route_id, items in groups.items():
+        route = await db.pos_bon_routes.find_one(
+            {"route_id": route_id, "active": True}
+        )
+        if not route:
+            results.append({"route_id": route_id, "status": "route_missing"})
+            continue
+        serial = int(route.get("serial_number", 0)) + 1
+        payload = {
+            "route_id": route_id,
+            "route_name": route["name"],
+            "mode": route["mode"],
+            "serial_number": serial,
+            "external_number": route.get("external_number"),
+            "betrieb": route.get("betrieb"),
+            "cart_id": req.cart_id,
+            "store_id": cart.get("store_id"),
+            "table_id": cart.get("table_id"),
+            "waiter_id": cart.get("waiter_id"),
+            "items": items,
+            "ts": now_iso(),
+            "auto_dispatch": True,
+        }
+        status_str = "queued"
+        response_data = None
+        error = None
+        if route.get("request_url"):
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as cli:
+                    r = await cli.post(route["request_url"], json=payload)
+                    response_data = {"status": r.status_code, "body": r.text[:500]}
+                    status_str = "delivered" if r.status_code < 400 else "http_error"
+            except Exception as exc:
+                error = str(exc)[:300]
+                status_str = "network_error"
+        await db.pos_bon_routes.update_one(
+            {"route_id": route_id}, {"$set": {"serial_number": serial}}
+        )
+        await db.pos_bon_dispatches.insert_one({
+            "route_id": route_id,
+            "store_id": route["store_id"],
+            "serial_number": serial,
+            "cart_id": req.cart_id,
+            "payload": payload,
+            "status": status_str,
+            "response": response_data,
+            "error": error,
+            "auto_dispatch": True,
+            "ts": now_iso(),
+        })
+        results.append({
+            "route_id": route_id,
+            "route_name": route["name"],
+            "item_count": len(items),
+            "status": status_str,
+            "serial_number": serial,
+        })
+
+    return {
+        "ok": True,
+        "dispatched": results,
+        "skipped_items": len(skipped),
+    }
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # 5. KITCHEN DISPLAY SYSTEM (KDS)
 # ═══════════════════════════════════════════════════════════════════════

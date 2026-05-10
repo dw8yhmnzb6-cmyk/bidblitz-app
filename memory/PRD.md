@@ -48,6 +48,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - **`SignCertificate`** (CP→CSMS): CSR-Queue + `requestId`. Admin signiert via `POST /api/ev/admin/pki/sign-csr/{request_id}` → CSMS pusht **`CertificateSigned`** an CP.
   - **`Get15118EVCertificate`** (CP→CSMS): EV-Zertifikats-Anfrage (Install/Update) persistiert für PKI-Forwarding.
   - **`GetCertificateStatus`** (CP→CSMS): OCSP-style Status mit Revocation-Liste (`good`/`revoked`).
+### 10.05.2026 (iter63 — POS Restaurant Features P1+P2 — Müller/Aures Parität)
   - **Server-initiierte Calls**: `CertificateSigned`, `InstallCertificate`, `DeleteCertificate`, `GetInstalledCertificateIds`.
 - 🟢 **REST-Admin-API**: `/api/ev/admin/pki/csrs` (GET pending), `/sign-csr/{id}` (POST), `/trust-anchors` (GET/POST), `/revocations` (GET/POST), `/emaid-contracts` (GET/POST), `/admin/cp/{id}/v201/install-certificate|delete-certificate|installed-certificates`.
 - 🟢 **DB-Collections neu**: `ev_pki_csr_queue`, `ev_pki_trust_store`, `ev_pki_revocations`, `ev_pki_authz_log`, `ev_pki_ev_cert_requests`, `ev_emaid_contracts`.
@@ -62,7 +63,29 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - **LiveKit Streaming**: Code bereit; LIVEKIT_URL+LIVEKIT_API_KEY/SECRET in `/app/backend/.env` LEER. **User-Aktion**: Credentials von LiveKit Cloud Dashboard eintragen.
 - **Landing Chatbot**: läuft live (`gpt-5`, openai). Health: `{"status":"ok","model":"gpt-5"}`.
 
-### 10.05.2026 (iter63 — POS Restaurant Features P1+P2 — Müller/Aures Parität)
+### 10.05.2026 (iter64 — TaxiPage Integration + Auto-Dispatch + RKSV)
+- 🟢 **TaxiPage Komponenten-Integration** abgeschlossen:
+  - `TaxiAddressInput` ersetzt 2 große Inline-Forms für Pickup/Dropoff mit Suggestion-Dropdown
+  - `TaxiVehiclePicker` ersetzt Inline-Vehicle-Cards-Loop
+  - `TaxiDriverOnboardingModal` ersetzt komplettes 7-Feld-Inline-Modal mit Erfolgs-State
+  - **TaxiPage.jsx 1975 → 1655 Zeilen** (–320 weitere, gesamt von 2323 → 1655 = –29%)
+  - 4 obsolete useState entfernt: `onboardingForm`, `setOnboardingForm`, `onboardingSubmitting`, `onboardingSuccess`
+- ✅ Smoketest: Pickup + Dropoff Inputs sichtbar, Geocoder liefert "Berlin, DE" Suggestion bei Dropoff-Eingabe.
+
+- 🟢 **POS Auto-Dispatcher** (Müller-style category→route mapping):
+  - `POST /api/pos/bonweiterleitung/category-map` (upsert)
+  - `GET /api/pos/bonweiterleitung/category-map?store_id=X`
+  - `POST /api/pos/bonweiterleitung/auto-dispatch` (cart_id → gruppiert Items nach `category`, sendet jede Gruppe an die konfigurierte Route)
+  - Voided Items werden ignoriert, Items ohne Category werden als `skipped` zurückgegeben
+
+- 🟢 **RKSV (Österreich)** — `pos_rksv.py` (~280 LOC):
+  - `/api/pos/rksv/state` — Kassen-Status (Kassen-ID, Umsatzzähler, aktiv/inaktiv)
+  - `/api/pos/rksv/start-beleg|null-beleg|monats-beleg|jahres-beleg|schluss-beleg`
+  - `/api/pos/rksv/sign-sale` — Standard-Verkaufsbeleg mit verketteter HMAC-SHA-256-Signatur
+  - `/api/pos/rksv/dep` + `/api/pos/rksv/dep/verify` — Datenerfassungsprotokoll export & Chain-Verify
+  - Per-Store HMAC-Secret aus `RKSV_SECRET` env-var (oder default seed)
+- ✅ **End-to-End-Test** `/tmp/test_rksv_autodispatch.py`: Start-Beleg → 3× sign-sale → Null/Monats/Jahres-Beleg → DEP-Verify (7 Belege chain-valid) → Schluss-Beleg → Auto-Dispatch routes + category-map setup. **PASS**.
+
 - 🟢 **Sections** (Restaurant/Terrasse/Außer Haus): `/api/pos/sections/create|list` mit Farbe+sort_order.
 - 🟢 **Tisch-Rename** `/api/pos/tables/rename` (Audit-trailed, role-checked).
 - 🟢 **Tisch-Verschieben/Merge** `/api/pos/tables/move` mit `merge=true` für Cart-Zusammenführung. Aktualisiert pos_tables (src→available, dst→occupied) + pos_carts.table_id.
