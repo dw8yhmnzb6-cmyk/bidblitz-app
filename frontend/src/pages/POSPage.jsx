@@ -13,13 +13,14 @@ import {
   Package, Warehouse, Truck, FileText, RotateCcw, BarChart3, Home,
   ShieldCheck, Banknote, QrCode, CreditCard, Smartphone, Store,
   AlertTriangle, Edit3, Download, RefreshCw, MessageCircle, Send, Check as CheckIcon,
-  Sparkles,
+  Sparkles, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { printReceipt, isBluetoothSupported } from "../utils/escposPrinter";
 import POSAdvancedTab from "./POSAdvancedTab";
 import POSProTab from "./POSProTab";
 import POSComplianceTab from "./POSComplianceTab";
+import POSRestaurantTab from "./POSRestaurantTab";
 import POSDashboardTab from "../components/pos/POSDashboardTab";
 import POSCheckoutTab from "../components/pos/POSCheckoutTab";
 import POSProductsTab from "../components/pos/POSProductsTab";
@@ -64,6 +65,7 @@ const TABS = [
   { id: "approvals", label: "Freigaben", icon: ShieldCheck },
   { id: "chat", label: "Team-Chat", icon: MessageCircle },
   { id: "retail", label: "Retail Pro", icon: Store },
+  { id: "restaurant", label: "Restaurant", icon: Users },
   { id: "supervisor", label: "Supervisor", icon: ShieldCheck },
   { id: "reports", label: "Berichte", icon: BarChart3 },
   { id: "advanced", label: "Mega-Tools", icon: Sparkles },
@@ -200,6 +202,7 @@ export default function POSPage({ onBack }) {
         {tab === "admin" && <AdminTab />}
         {tab === "retail" && <RetailTab storeId={storeId} />}
         {tab === "supervisor" && <SupervisorTab storeId={storeId} />}
+        {tab === "restaurant" && <POSRestaurantTab storeId={storeId} />}
       </div>
     </div>
   );

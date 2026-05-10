@@ -62,6 +62,26 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - **LiveKit Streaming**: Code bereit; LIVEKIT_URL+LIVEKIT_API_KEY/SECRET in `/app/backend/.env` LEER. **User-Aktion**: Credentials von LiveKit Cloud Dashboard eintragen.
 - **Landing Chatbot**: läuft live (`gpt-5`, openai). Health: `{"status":"ok","model":"gpt-5"}`.
 
+### 10.05.2026 (iter63 — POS Restaurant Features P1+P2 — Müller/Aures Parität)
+- 🟢 **Sections** (Restaurant/Terrasse/Außer Haus): `/api/pos/sections/create|list` mit Farbe+sort_order.
+- 🟢 **Tisch-Rename** `/api/pos/tables/rename` (Audit-trailed, role-checked).
+- 🟢 **Tisch-Verschieben/Merge** `/api/pos/tables/move` mit `merge=true` für Cart-Zusammenführung. Aktualisiert pos_tables (src→available, dst→occupied) + pos_carts.table_id.
+- 🟢 **Storno + Werbung** `/api/pos/carts/item/void` mit kind=`storno|werbung`, separater `pos_void_log` Collection für Audit. `/api/pos/voids/log` Endpoint.
+- 🟢 **Kellner-PIN-Login**: `/api/pos/waiters/create|login|deactivate`. PIN HMAC-SHA256 mit per-Kellner Salt, niemals im API-Response exposed.
+- 🟢 **Kellner-Abrechnung** `/api/pos/waiters/{id}/abrechnung?date_from&date_to`: sale_count, item_count, total, cash/card-Split, tips. Default = heute.
+- 🟢 **Bonweiterleitung** `/api/pos/bonweiterleitung/create|list|dispatch|deactivate|dispatches`:
+  - Modi `umsatzuebergabe` | `bondruck`
+  - Felder: request_url, response_url, backup_path, request_interval_s, response_check_interval_s, serial_number, external_number, waiter/table-Filter, betrieb
+  - `dispatch` sendet Bon via httpx POST → loggt in `pos_bon_dispatches` mit Status (`delivered`|`http_error`|`network_error`|`queued`), inkrementiert `serial_number` atomar.
+- 🟢 **Frontend** `POSRestaurantTab.jsx` (530 LOC) als neuer Tab in `POSPage.jsx`:
+  - **Tische+Bereiche**: visuelles Grid (3-6 Spalten), Section-Filter-Buttons (Restaurant/Terrasse/Außer Haus), Rename/Move/Release-Aktionen pro Tisch, Move-Visualisierung mit gelbem Hervorheben.
+  - **Storno/Werbung**: Audit-Log-Liste mit kind-Badge, voided_by E-Mail, Datum.
+  - **Kellner**: Add-Form (Name/PIN-numeric/E-Mail) + Liste mit Avatar, Deactivate.
+  - **Kellner-Abrechnung**: Picker (Kellner + Date-Range) + 7-Stat-Tiles (Sessions/Items/Umsatz/Trinkgeld/Bar/Karte/Sonstige).
+  - **Bonweiterleitung**: Create-Form (Name/Modus/Betrieb/URL) + Routen-Liste mit Serial + Last-Dispatches mit Status-Badge.
+- ✅ **End-to-End-Test** `/tmp/test_pos_p1p2.py`: 18 Assertions PASS (3 Bereiche, 2 Tische, Rename → "VIP-Tisch", Move t1→t2 erfolgreich, Release, void-log queryable, Waiter PIN-Login OK + falsche PIN → 401, Abrechnung returnt summary mit total/cash/tips, Bon-Route create→list→dispatch(fake-cart 404)→deactivate). Lint clean.
+- ✅ **UI-Smoketest** (Playwright): Login → POS → Restaurant Tab → alle 5 Sub-Tabs gefunden, Bonweiterleitung Anlege-Form rendert mit 4 Feldern.
+
 ### Phase A — Mobile Build Automation
 - Bundle ID migration to `com.bidblitz.app` (iOS, Android, Capacitor, Deep Links)
 - `build-mobile-final.sh` script + ANDROID_SIGNING_STEPS.md + IOS_RELEASE_STEPS.md

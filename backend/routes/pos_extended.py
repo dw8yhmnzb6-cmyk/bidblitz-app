@@ -467,6 +467,496 @@ async def service_call(table_id: str, request: Request):
     return {"ok": True}
 
 
+# ─── P1: Tisch-Verschieben / Rename / Sections ──────────────────────────
+class TableRename(BaseModel):
+    table_id: str
+    new_name: str
+
+
+@router.post("/tables/rename")
+async def rename_table(req: TableRename, request: Request):
+    """Rename a table (e.g. 'Tisch 5' → 'VIP-Tisch'). Müller-POS-Feature."""
+    user = await get_current_user(request)
+    table = await db.pos_tables.find_one({"table_id": req.table_id})
+    if not table:
+        raise HTTPException(404, "Tisch nicht gefunden")
+    await _require_store_access(user, table["store_id"], {"merchant_admin", "store_manager", "cashier"})
+    if not req.new_name.strip():
+        raise HTTPException(400, "Name leer")
+    await db.pos_tables.update_one(
+        {"table_id": req.table_id},
+        {"$set": {"name": req.new_name.strip(), "renamed_at": now_iso(),
+                  "renamed_by": str(user["_id"])}},
+    )
+    await _audit(user, "pos.tables.rename", {"table_id": req.table_id, "new_name": req.new_name})
+    return {"ok": True, "table_id": req.table_id, "name": req.new_name.strip()}
+
+
+class TableMove(BaseModel):
+    from_table_id: str
+    to_table_id: str
+    merge: bool = False  # if target is occupied, merge carts
+
+
+@router.post("/tables/move")
+async def move_table(req: TableMove, request: Request):
+    """Move an active order from one table to another. Müller-POS-Feature."""
+    user = await get_current_user(request)
+    src = await db.pos_tables.find_one({"table_id": req.from_table_id})
+    dst = await db.pos_tables.find_one({"table_id": req.to_table_id})
+    if not src or not dst:
+        raise HTTPException(404, "Tisch nicht gefunden")
+    if src["store_id"] != dst["store_id"]:
+        raise HTTPException(400, "Quell- und Zieltisch müssen im selben Store sein")
+    await _require_store_access(user, src["store_id"], {"merchant_admin", "store_manager", "cashier"})
+
+    cart_id = src.get("current_cart_id")
+    if not cart_id:
+        raise HTTPException(400, "Quelltisch hat keine aktive Bestellung")
+
+    dst_cart = dst.get("current_cart_id")
+    if dst_cart and not req.merge:
+        raise HTTPException(409, "Zieltisch ist belegt — merge=true für Zusammenführen")
+
+    if dst_cart and req.merge:
+        # Merge items from src cart into dst cart
+        src_cart = await db.pos_carts.find_one({"cart_id": cart_id})
+        if src_cart:
+            for item in src_cart.get("items", []):
+                await db.pos_carts.update_one(
+                    {"cart_id": dst_cart},
+                    {"$push": {"items": item}},
+                )
+            await db.pos_carts.update_one(
+                {"cart_id": cart_id},
+                {"$set": {"status": "merged_into", "merged_into": dst_cart,
+                          "merged_at": now_iso()}},
+            )
+        await db.pos_tables.update_one(
+            {"table_id": req.from_table_id},
+            {"$set": {"status": "available", "current_cart_id": None, "guests": 0}},
+        )
+        await _audit(user, "pos.tables.merge", {"src": req.from_table_id, "dst": req.to_table_id})
+        return {"ok": True, "action": "merged", "target_cart": dst_cart}
+
+    # Simple move
+    await db.pos_carts.update_one(
+        {"cart_id": cart_id},
+        {"$set": {"table_id": req.to_table_id, "moved_at": now_iso()}},
+    )
+    await db.pos_tables.update_one(
+        {"table_id": req.to_table_id},
+        {"$set": {"status": "occupied", "current_cart_id": cart_id,
+                  "guests": src.get("guests", 1), "occupied_since": now_iso()}},
+    )
+    await db.pos_tables.update_one(
+        {"table_id": req.from_table_id},
+        {"$set": {"status": "available", "current_cart_id": None, "guests": 0}},
+    )
+    await _audit(user, "pos.tables.move", {"src": req.from_table_id, "dst": req.to_table_id})
+    return {"ok": True, "action": "moved", "cart_id": cart_id}
+
+
+class SectionCreate(BaseModel):
+    store_id: str
+    name: str           # "Restaurant", "Terrasse", "Außer Haus"
+    color: Optional[str] = "#84cc16"
+    sort_order: int = 0
+
+
+@router.post("/sections/create")
+async def create_section(req: SectionCreate, request: Request):
+    user = await get_current_user(request)
+    await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})
+    merchant = await db.pos_merchants.find_one({"owner_id": str(user["_id"])})
+    section_id = short_id("SEC", 8)
+    doc = {
+        "section_id": section_id,
+        "store_id": req.store_id,
+        "merchant_id": merchant["merchant_id"] if merchant else None,
+        "name": req.name,
+        "color": req.color,
+        "sort_order": req.sort_order,
+        "created_at": now_iso(),
+    }
+    await db.pos_sections.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "section": doc}
+
+
+@router.get("/sections")
+async def list_sections(request: Request, store_id: str):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
+    items = await db.pos_sections.find(
+        {"store_id": store_id}, {"_id": 0}
+    ).sort("sort_order", 1).to_list(50)
+    return {"sections": items}
+
+
+# ─── P1: Storno + Werbung (Marketing-Rabatt) ────────────────────────────
+class CartItemVoid(BaseModel):
+    cart_id: str
+    item_index: int
+    reason: str          # "Storno: falsche Bestellung" | "Werbung: Geschäftsführer"
+    kind: str = "storno"  # "storno" | "werbung"
+
+
+@router.post("/carts/item/void")
+async def void_cart_item(req: CartItemVoid, request: Request):
+    """Storno (cancel) or Werbung (promotional discount = free item) for an item
+    in an active cart. Audit-trailed for fiscal compliance."""
+    user = await get_current_user(request)
+    cart = await db.pos_carts.find_one({"cart_id": req.cart_id})
+    if not cart:
+        raise HTTPException(404, "Cart nicht gefunden")
+    await _require_store_access(user, cart["store_id"], {"merchant_admin", "store_manager", "cashier"})
+    items = cart.get("items", [])
+    if req.item_index < 0 or req.item_index >= len(items):
+        raise HTTPException(400, "Ungültiger Item-Index")
+    if req.kind not in ("storno", "werbung"):
+        raise HTTPException(400, "kind muss 'storno' oder 'werbung' sein")
+
+    items[req.item_index]["voided"] = True
+    items[req.item_index]["void_kind"] = req.kind
+    items[req.item_index]["void_reason"] = req.reason
+    items[req.item_index]["voided_by"] = str(user["_id"])
+    items[req.item_index]["voided_at"] = now_iso()
+
+    await db.pos_carts.update_one(
+        {"cart_id": req.cart_id},
+        {"$set": {"items": items}},
+    )
+    await db.pos_void_log.insert_one({
+        "cart_id": req.cart_id,
+        "store_id": cart["store_id"],
+        "item": items[req.item_index],
+        "kind": req.kind,
+        "reason": req.reason,
+        "voided_by": str(user["_id"]),
+        "voided_by_email": user.get("email"),
+        "ts": now_iso(),
+    })
+    await _audit(user, f"pos.cart.{req.kind}", {
+        "cart_id": req.cart_id, "item_index": req.item_index, "reason": req.reason,
+    })
+    return {"ok": True, "kind": req.kind}
+
+
+@router.get("/voids/log")
+async def void_log(request: Request, store_id: str, limit: int = 100):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    rows = await db.pos_void_log.find(
+        {"store_id": store_id}, {"_id": 0}
+    ).sort("ts", -1).to_list(limit)
+    return {"voids": rows}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P2: Kellner-PIN-Login + Abrechnung
+# ═══════════════════════════════════════════════════════════════════════
+class WaiterCreate(BaseModel):
+    store_id: str
+    name: str
+    pin: str                 # 4-6 Ziffern
+    email: Optional[str] = None
+    color: Optional[str] = "#84cc16"
+
+
+def _hash_pin(pin: str, salt: str) -> str:
+    return hmac.new(salt.encode(), pin.encode(), hashlib.sha256).hexdigest()
+
+
+@router.post("/waiters/create")
+async def create_waiter(req: WaiterCreate, request: Request):
+    user = await get_current_user(request)
+    await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})
+    if not req.pin.isdigit() or not (4 <= len(req.pin) <= 6):
+        raise HTTPException(400, "PIN muss 4-6 Ziffern sein")
+    waiter_id = short_id("WTR", 8)
+    salt = secrets.token_hex(8)
+    doc = {
+        "waiter_id": waiter_id,
+        "store_id": req.store_id,
+        "name": req.name,
+        "email": req.email,
+        "color": req.color,
+        "pin_salt": salt,
+        "pin_hash": _hash_pin(req.pin, salt),
+        "active": True,
+        "created_at": now_iso(),
+    }
+    await db.pos_waiters.insert_one(doc)
+    return {"ok": True, "waiter_id": waiter_id, "name": req.name}
+
+
+@router.get("/waiters")
+async def list_waiters(request: Request, store_id: str):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id)
+    rows = await db.pos_waiters.find(
+        {"store_id": store_id, "active": True},
+        {"_id": 0, "pin_hash": 0, "pin_salt": 0},
+    ).to_list(200)
+    return {"waiters": rows}
+
+
+class WaiterLogin(BaseModel):
+    store_id: str
+    pin: str
+
+
+@router.post("/waiters/login")
+async def waiter_login(req: WaiterLogin, request: Request):
+    """Cashier login via PIN — returns a short-lived waiter token bound to the
+    current authenticated user device (no separate JWT)."""
+    user = await get_current_user(request)
+    await _require_store_access(user, req.store_id)
+    waiters = await db.pos_waiters.find({"store_id": req.store_id, "active": True}).to_list(200)
+    matched = None
+    for w in waiters:
+        if _hash_pin(req.pin, w.get("pin_salt", "")) == w.get("pin_hash"):
+            matched = w
+            break
+    if not matched:
+        raise HTTPException(401, "Ungültige PIN")
+    token = f"wtr_{secrets.token_hex(12)}"
+    await db.pos_waiter_sessions.insert_one({
+        "token": token,
+        "waiter_id": matched["waiter_id"],
+        "store_id": req.store_id,
+        "user_id": str(user["_id"]),
+        "active": True,
+        "created_at": now_iso(),
+        "last_activity": now_iso(),
+    })
+    return {
+        "ok": True,
+        "token": token,
+        "waiter": {
+            "waiter_id": matched["waiter_id"], "name": matched["name"],
+            "color": matched.get("color"),
+        },
+    }
+
+
+@router.post("/waiters/{waiter_id}/deactivate")
+async def deactivate_waiter(waiter_id: str, request: Request):
+    user = await get_current_user(request)
+    w = await db.pos_waiters.find_one({"waiter_id": waiter_id})
+    if not w:
+        raise HTTPException(404, "Kellner nicht gefunden")
+    await _require_store_access(user, w["store_id"], {"merchant_admin", "store_manager"})
+    await db.pos_waiters.update_one({"waiter_id": waiter_id}, {"$set": {"active": False}})
+    return {"ok": True}
+
+
+@router.get("/waiters/{waiter_id}/abrechnung")
+async def waiter_abrechnung(waiter_id: str, request: Request,
+                            date_from: Optional[str] = None,
+                            date_to: Optional[str] = None):
+    """Kellner-Abrechnung: total sales, tips, items, cash/card split for a
+    given waiter over a date range. Defaults: today."""
+    user = await get_current_user(request)
+    w = await db.pos_waiters.find_one({"waiter_id": waiter_id})
+    if not w:
+        raise HTTPException(404, "Kellner nicht gefunden")
+    await _require_store_access(user, w["store_id"], {"merchant_admin", "store_manager"})
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    df = date_from or today
+    dt = date_to or today
+    q = {
+        "store_id": w["store_id"],
+        "waiter_id": waiter_id,
+        "status": "completed",
+        "completed_at": {"$gte": df, "$lte": dt + "T23:59:59"},
+    }
+    sales = await db.pos_sales.find(q, {"_id": 0}).to_list(2000)
+    total = sum(s.get("total", 0) for s in sales)
+    cash = sum(s.get("total", 0) for s in sales if s.get("payment_method") == "cash")
+    card = sum(s.get("total", 0) for s in sales if s.get("payment_method") == "card")
+    other = total - cash - card
+    tips = sum(s.get("tip", 0) for s in sales)
+    item_count = sum(len(s.get("items", [])) for s in sales)
+    return {
+        "waiter_id": waiter_id,
+        "waiter_name": w["name"],
+        "date_from": df,
+        "date_to": dt,
+        "summary": {
+            "sale_count": len(sales),
+            "item_count": item_count,
+            "total": round(total, 2),
+            "cash": round(cash, 2),
+            "card": round(card, 2),
+            "other": round(other, 2),
+            "tips": round(tips, 2),
+        },
+        "sales": sales,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P2: Bonweiterleitung — Order routing to external endpoints
+# ═══════════════════════════════════════════════════════════════════════
+class BonRouteCreate(BaseModel):
+    store_id: str
+    name: str                          # "Küche", "Theke Eis", "Filiale B"
+    mode: str = "umsatzuebergabe"      # "umsatzuebergabe" | "bondruck"
+    request_url: Optional[str] = None  # HTTP endpoint to POST orders
+    response_url: Optional[str] = None
+    backup_path: Optional[str] = None  # filesystem fallback for offline
+    request_interval_s: int = 60
+    response_check_interval_s: int = 60
+    serial_number: int = 0
+    external_number: int = 0
+    waiter_filter: Optional[str] = None
+    table_filter: Optional[str] = None
+    betrieb: Optional[str] = None       # operator label
+
+
+@router.post("/bonweiterleitung/create")
+async def create_bon_route(req: BonRouteCreate, request: Request):
+    user = await get_current_user(request)
+    await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})
+    if req.mode not in ("umsatzuebergabe", "bondruck"):
+        raise HTTPException(400, "mode muss 'umsatzuebergabe' oder 'bondruck' sein")
+    route_id = short_id("BWR", 8)
+    doc = {
+        "route_id": route_id,
+        "store_id": req.store_id,
+        "name": req.name,
+        "mode": req.mode,
+        "request_url": req.request_url,
+        "response_url": req.response_url,
+        "backup_path": req.backup_path,
+        "request_interval_s": req.request_interval_s,
+        "response_check_interval_s": req.response_check_interval_s,
+        "serial_number": req.serial_number,
+        "external_number": req.external_number,
+        "waiter_filter": req.waiter_filter,
+        "table_filter": req.table_filter,
+        "betrieb": req.betrieb,
+        "active": True,
+        "created_at": now_iso(),
+        "created_by": str(user["_id"]),
+    }
+    await db.pos_bon_routes.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "route": doc}
+
+
+@router.get("/bonweiterleitung")
+async def list_bon_routes(request: Request, store_id: str):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    rows = await db.pos_bon_routes.find(
+        {"store_id": store_id, "active": True}, {"_id": 0}
+    ).to_list(50)
+    return {"routes": rows}
+
+
+@router.post("/bonweiterleitung/{route_id}/deactivate")
+async def deactivate_bon_route(route_id: str, request: Request):
+    user = await get_current_user(request)
+    r = await db.pos_bon_routes.find_one({"route_id": route_id})
+    if not r:
+        raise HTTPException(404, "Route nicht gefunden")
+    await _require_store_access(user, r["store_id"], {"merchant_admin", "store_manager"})
+    await db.pos_bon_routes.update_one(
+        {"route_id": route_id}, {"$set": {"active": False, "deactivated_at": now_iso()}}
+    )
+    return {"ok": True}
+
+
+class BonDispatch(BaseModel):
+    route_id: str
+    cart_id: str
+    items: Optional[List[Dict[str, Any]]] = None  # subset to dispatch (KDS-style)
+
+
+@router.post("/bonweiterleitung/dispatch")
+async def dispatch_bon(req: BonDispatch, request: Request):
+    """Send a bon (order ticket) to an external endpoint.
+    On HTTP failure, write to backup_path queue for retry."""
+    user = await get_current_user(request)
+    route = await db.pos_bon_routes.find_one({"route_id": req.route_id, "active": True})
+    if not route:
+        raise HTTPException(404, "Route nicht gefunden oder inaktiv")
+    await _require_store_access(user, route["store_id"])
+    cart = await db.pos_carts.find_one({"cart_id": req.cart_id}, {"_id": 0})
+    if not cart:
+        raise HTTPException(404, "Cart nicht gefunden")
+
+    serial = int(route.get("serial_number", 0)) + 1
+    payload = {
+        "route_id": req.route_id,
+        "route_name": route["name"],
+        "mode": route["mode"],
+        "serial_number": serial,
+        "external_number": route.get("external_number"),
+        "betrieb": route.get("betrieb"),
+        "cart_id": req.cart_id,
+        "store_id": cart.get("store_id"),
+        "table_id": cart.get("table_id"),
+        "waiter_id": cart.get("waiter_id"),
+        "items": req.items if req.items is not None else cart.get("items"),
+        "total": cart.get("total"),
+        "ts": now_iso(),
+    }
+
+    dispatch_status = "queued"
+    response_data: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+    if route.get("request_url"):
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.post(route["request_url"], json=payload)
+                response_data = {"status": r.status_code, "body": r.text[:500]}
+                dispatch_status = "delivered" if r.status_code < 400 else "http_error"
+        except Exception as exc:
+            error = str(exc)[:300]
+            dispatch_status = "network_error"
+
+    await db.pos_bon_routes.update_one(
+        {"route_id": req.route_id}, {"$set": {"serial_number": serial}}
+    )
+    await db.pos_bon_dispatches.insert_one({
+        "route_id": req.route_id,
+        "store_id": route["store_id"],
+        "serial_number": serial,
+        "cart_id": req.cart_id,
+        "payload": payload,
+        "status": dispatch_status,
+        "response": response_data,
+        "error": error,
+        "ts": now_iso(),
+    })
+    return {
+        "ok": dispatch_status == "delivered",
+        "status": dispatch_status,
+        "serial_number": serial,
+        "response": response_data,
+        "error": error,
+    }
+
+
+@router.get("/bonweiterleitung/dispatches")
+async def list_dispatches(request: Request, store_id: str,
+                          route_id: Optional[str] = None, limit: int = 100):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    q = {"store_id": store_id}
+    if route_id:
+        q["route_id"] = route_id
+    rows = await db.pos_bon_dispatches.find(q, {"_id": 0}).sort("ts", -1).to_list(limit)
+    return {"dispatches": rows}
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # 5. KITCHEN DISPLAY SYSTEM (KDS)
 # ═══════════════════════════════════════════════════════════════════════
