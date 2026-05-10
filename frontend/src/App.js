@@ -35,6 +35,8 @@ const PayForBusinessPage = lazy(() => import("./pages/PayForBusinessPage"));
 const MiningPage = lazy(() => import("./pages/MiningPage"));
 const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 import AuthPage from "./pages/AuthPage";
+import EVStartChargingPage from "./pages/EVStartChargingPage";
+import EVLiveSessionPage from "./pages/EVLiveSessionPage";
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const InfluencerDashboard = lazy(() => import("./pages/InfluencerDashboard"));
 const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
@@ -423,6 +425,13 @@ function AppContent() {
     }
     if (currentPath.startsWith("/order/")) {
       return <PublicTableOrderPage qrToken={currentPath.split("/")[2]} />;
+    }
+    if (currentPath.startsWith("/ev/start/")) {
+      const parts = currentPath.split("/");
+      return <EVStartChargingPage chargePointId={parts[3]} connectorId={parts[4] || "1"} onNavigate={handleNavigate} />;
+    }
+    if (currentPath.startsWith("/ev/session/")) {
+      return <EVLiveSessionPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
     }
     if (currentPath.startsWith("/pay/checkout/")) {
       return <PayCheckoutPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;

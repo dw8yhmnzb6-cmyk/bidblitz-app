@@ -84,6 +84,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **10.05.2026 (iter58 — EV Charging Module komplett: echtes OCPP-1.6J CSMS)**:
+  - 🟢 **Backend**: `services/ocpp_csms.py` (~360 Zeilen) — vollständige OCPP-1.6J CSMS-Implementierung. WebSocket-Endpoint `/api/ev/ocpp/v16/{charge_point_id}` mit Subprotocol-Negotiation `ocpp1.6`. Wire-Format `[2,id,action,payload]` / `[3,id,result]` / `[4,id,error,desc,details]` korrekt implementiert. In-Memory-Registry für aktive Verbindungen.
+  - 🟢 **OCPP-Messages eingehend**: BootNotification, Heartbeat, Authorize, StartTransaction, StopTransaction, MeterValues, StatusNotification.
+  - 🟢 **OCPP-Messages serverseitig**: RemoteStartTransaction, RemoteStopTransaction, ChangeAvailability, Reset, UnlockConnector — mit Future/Promise-basiertem CALL-Tracking + Timeout.
+  - 🟢 **REST API** (`routes/ev_charging.py`, ~520 Zeilen): Customer-Endpunkte `/api/ev/stations`, `/api/ev/station/{id}`, `/api/ev/start`, `/api/ev/stop/{session_id}`, `/api/ev/session/{id}`, `/api/ev/history`. Operator-Endpunkte (Stations/Sessions/Revenue). Admin-Endpunkte (HardwareVendors, ChargePoints, Tariffs, Sessions, Overview, Availability/Reset/Unlock-Befehle).
+  - 🟢 **Wallet-Integration**: `core/payment_engine.TransactionType.EV_CHARGING` neu hinzugefügt. `finalize_session()` führt atomaren `transfer_between_wallets(user → operator)` durch. **Verifiziert**: 3 kWh × €0.45 + €1 = €2.35 wurden vom User abgezogen + an Operator gutgeschrieben (`TRF-FBE1F1AD`, status `completed`).
+  - 🟢 **DB-Collections**: ev_charge_points, ev_connectors, ev_charging_sessions, ev_meter_values, ev_tariffs, ev_authorizations, ev_hardware_vendors, ev_activity_logs (komplette Audit-Trail jeder OCPP-Message persistiert).
+  - 🟢 **Security**: nur registrierte charge_point_ids dürfen sich verbinden (1008 Policy Violation bei unbekannten), Single-Use id_tags (BB-XXX), kein doppeltes Charging pro User, KYC-Wallet-Pre-Check vor Start, server-side Preisberechnung.
+  - 🟢 **QR/NFC/Deeplink**: `bidblitz://ev/start/{cp}/{c}` + `https://bidblitz.ae/ev/start/{cp}/{c}` automatisch beim Onboarding generiert.
+  - 🟢 **Frontend**: `EVStartChargingPage` (lädt Station/Tarif/Wallet, Reservierungsbetrag editierbar, "Jetzt laden"-Button) + `EVLiveSessionPage` (Live-kWh-Anzeige, Power, Live-Kosten, Pulse-Animation, Stop-Button). Routes `/ev/start/:cp/:c` und `/ev/session/:id` in App.js verdrahtet.
+  - 🟢 **End-to-End Smoketest** (`/tmp/test_ocpp.py`): WebSocket-Charge-Point-Simulator führt komplettes Szenario durch — Boot/Status/Heartbeat → REST `/api/ev/start` → CSMS sendet RemoteStart → CP antwortet mit Accepted → CP sendet StartTransaction → MeterValues 3 kWh + 22 kW → REST `/api/ev/stop` → CSMS sendet RemoteStop → CP sendet StopTransaction → finalize_session() → Wallet-Settlement OK. **Status: completed, final_cost €2.35**.
+  - **Keine Fake-Simulation**: Hardware muss physikalisch via OCPP-1.6 verbunden werden. Backend wartet auf reale Charge-Points.
 - **08.05.2026 (iter57d — Resend DNS Tools + GitHub Actions CI + Taxi Code-Splitting Phase 1)**:
   - 🟢 **Resend DNS-Endpoints (Admin-only)**: `GET /api/admin/test-email/dns-status` (live DNS-Check), `POST /api/admin/test-email` (Smoketest-Mail) — verifiziert: Domain `bidblitz.ae` ist im Resend-Dashboard noch nicht verifiziert + `TXT send.bidblitz.ae` SPF-Record fehlt. Komplette Anleitung in `/app/RESEND_DNS_FIX.md`.
   - 🟢 **GitHub Actions CI-Workflow** `.github/workflows/ci.yml` hinzugefügt: Frontend-Lint+Build + Backend-Ruff+Pytest auf jedem Push/PR (kein Setup nötig). Ergänzend zur bestehenden `deploy.yml` für Hetzner-Auto-Deploy.

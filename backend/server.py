@@ -770,6 +770,8 @@ from routes.chat_ws import router as chat_ws_router
 app.include_router(chat_ws_router)
 from routes.voice import router as voice_router
 app.include_router(voice_router)
+from routes.ev_charging import router as ev_charging_router
+app.include_router(ev_charging_router)
 
 # Static file serving for uploads
 from fastapi.staticfiles import StaticFiles

@@ -51,6 +51,8 @@ class TransactionType(str, Enum):
     ADMIN_CREDIT = "admin_credit"  # Admin sends money without fees
     VOUCHER_REDEMPTION = "voucher_redemption"  # POS Gutschein einlösen
     WALLET_TOPUP_POS = "wallet_topup_pos"  # Wallet aufladen am POS
+    EV_CHARGING = "ev_charging"  # EV Charging session payment
+    EV_CHARGING_REVENUE = "ev_charging_revenue"  # Operator/Merchant revenue from EV charging
 
 
 # Idempotency cache (in-memory for this session, should be Redis in production)
