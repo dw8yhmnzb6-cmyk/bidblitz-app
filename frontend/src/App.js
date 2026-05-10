@@ -37,6 +37,16 @@ const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 import AuthPage from "./pages/AuthPage";
 import EVStartChargingPage from "./pages/EVStartChargingPage";
 import EVLiveSessionPage from "./pages/EVLiveSessionPage";
+import AdminEVOverviewPage from "./pages/AdminEVOverviewPage";
+import AdminEVOperatorsPage from "./pages/AdminEVOperatorsPage";
+import AdminEVHardwareVendorsPage from "./pages/AdminEVHardwareVendorsPage";
+import AdminEVTariffsPage from "./pages/AdminEVTariffsPage";
+import AdminEVPayoutsPage from "./pages/AdminEVPayoutsPage";
+import EVOperatorDashboardPage from "./pages/EVOperatorDashboardPage";
+import EVOperatorStationsPage from "./pages/EVOperatorStationsPage";
+import EVOperatorSessionsPage from "./pages/EVOperatorSessionsPage";
+import EVOperatorRevenuePage from "./pages/EVOperatorRevenuePage";
+import EVOperatorPayoutsPage from "./pages/EVOperatorPayoutsPage";
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const InfluencerDashboard = lazy(() => import("./pages/InfluencerDashboard"));
 const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
@@ -433,6 +443,16 @@ function AppContent() {
     if (currentPath.startsWith("/ev/session/")) {
       return <EVLiveSessionPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
     }
+    if (currentPath === "/admin/ev" || currentPath === "/admin/ev/overview") return <AdminEVOverviewPage onNavigate={handleNavigate} />;
+    if (currentPath === "/admin/ev/operators") return <AdminEVOperatorsPage onNavigate={handleNavigate} />;
+    if (currentPath === "/admin/ev/vendors") return <AdminEVHardwareVendorsPage onNavigate={handleNavigate} />;
+    if (currentPath === "/admin/ev/tariffs") return <AdminEVTariffsPage onNavigate={handleNavigate} />;
+    if (currentPath === "/admin/ev/payouts") return <AdminEVPayoutsPage onNavigate={handleNavigate} />;
+    if (currentPath === "/operator/ev" || currentPath === "/operator/ev/dashboard") return <EVOperatorDashboardPage onNavigate={handleNavigate} />;
+    if (currentPath === "/operator/ev/stations") return <EVOperatorStationsPage onNavigate={handleNavigate} />;
+    if (currentPath === "/operator/ev/sessions") return <EVOperatorSessionsPage onNavigate={handleNavigate} />;
+    if (currentPath === "/operator/ev/revenue") return <EVOperatorRevenuePage onNavigate={handleNavigate} />;
+    if (currentPath === "/operator/ev/payouts") return <EVOperatorPayoutsPage onNavigate={handleNavigate} />;
     if (currentPath.startsWith("/pay/checkout/")) {
       return <PayCheckoutPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
     }

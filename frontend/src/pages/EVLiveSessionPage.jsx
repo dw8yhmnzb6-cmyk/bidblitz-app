@@ -118,6 +118,17 @@ export default function EVLiveSessionPage({ sessionId, onNavigate }) {
             <p className="text-xs text-gray-400 mt-1">
               {kwh.toFixed(2)} kWh · {Math.round(session.duration_min || 0)} Min · Ref. {session.settlement_ref}
             </p>
+            {session.receipt_no && (
+              <a
+                href={`${API}/api/ev/receipt/${sessionId}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="ev-receipt-pdf"
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/30 transition-colors"
+              >
+                Quittung PDF · {session.receipt_no}
+              </a>
+            )}
           </div>
         )}
       </div>

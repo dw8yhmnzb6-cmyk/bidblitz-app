@@ -84,6 +84,19 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Landing-Chatbot: NOW LIVE with gpt-4.1-mini (was keyword matcher in iter47)
 
 ## Changelog
+- **10.05.2026 (iter59 — EV Charging Business Layer komplett)**:
+  - 🟢 **Operator-Modell**: `ev_operators` mit pending/active/suspended-Workflow, Staff-Sub-Collection (`ev_operator_staff` mit viewer/manager-Rollen), Payouts-Pipeline (`ev_operator_payouts` mit requested→approved→paid), Commission-Logs (`ev_operator_commissions`).
+  - 🟢 **Settlement mit Commission-Split**: `finalize_session()` rechnet Brutto/Netto/MwSt sauber, zieht Gesamtbetrag vom User, transferiert auf Operator-Wallet, dann zweite Buchung Operator→Plattform-Pool für Commission. Verifiziert: 5.5 kWh × €0.50 + €1 = €3.75 → Net €3.15 + VAT €0.60 (19%) → Platform-Fee €0.56 (15%) + Operator-Share €3.19.
+  - 🟢 **Commission-System**: Default 12%, override per Operator (`ev_operators.commission_pct`), override per Charge-Point (`ev_charge_points.commission_pct_override`).
+  - 🟢 **Tariff-Erweiterung**: `vat_rate`, `time_rules` (Zeit-basierte Tarife), `idle_fee_per_minute`, `minimum_fee` — PUT `/api/ev/admin/tariffs/{id}` zum Editieren.
+  - 🟢 **Hardware-Vendor-Onboarding**: `ev_station_models` mit OCPP-Version, `max_power_kw`, `connector_types`, `firmware_versions`. Endpoints: `POST /api/ev/admin/hardware-vendors/models`, `GET /api/ev/admin/hardware-vendors/{vendor_id}/models`.
+  - 🟢 **Receipt + PDF**: `services/ev_receipt.py` mit reportlab, generiert produktionsreifes PDF (A4) mit Header, Kunde/Station, Fahrtdaten, Pricing-Breakdown (Energie/Zeit/Sessiongebühr), Net/VAT/Total. Sequentielle Receipt-No `BB-EV-{YYYY}-{seq:06d}` via MongoDB-Counter. Endpoints: `GET /api/ev/receipt/{session_id}` (JSON) + `GET /api/ev/receipt/{session_id}/pdf` (3.2 KB PDF). Verifiziert: PDF erfolgreich erzeugt + heruntergeladen.
+  - 🟢 **Admin-Endpoints**: Operator-Status-Toggle, Commission setzen, Payout-Decisions (approved/rejected/paid mit SEPA-External-Ref → Operator-Wallet wird beim "paid" um den Betrag reduziert + transactions-record).
+  - 🟢 **Operator-Endpoints**: Register, Profile, Stations/Sessions/Revenue, Payout-Request, Staff-Management.
+  - 🟢 **Frontend (10 neue Pages)**: 5 Admin-Pages (`AdminEVOverviewPage`, `AdminEVOperatorsPage`, `AdminEVHardwareVendorsPage`, `AdminEVTariffsPage`, `AdminEVPayoutsPage`) + 5 Operator-Pages (`EVOperatorDashboardPage`, `EVOperatorStationsPage`, `EVOperatorSessionsPage`, `EVOperatorRevenuePage`, `EVOperatorPayoutsPage`). Alle als dünne Wrapper über zwei Shared-Layouts (`EVAdminLayout`, `EVOperatorLayout`) — DRY ohne Code-Duplikation. Routes wired in App.js: `/admin/ev/*` und `/operator/ev/*`.
+  - 🟢 **Receipt-Download im Customer-Flow**: `EVLiveSessionPage` zeigt nach Abschluss "Quittung PDF · BB-EV-2026-XXXXXX"-Link.
+  - 🟢 **End-to-End-Test** (`/tmp/test_ev_business.py`): Admin → Operator-Approval → 15% Commission → CP-Erstellung → Hardware-Model → CP-Connect → Customer-Charge → Settlement → PDF-Download → Operator-Payout-Request → Admin-Approve → Admin-Mark-Paid (SEPA-Ref). Alle Schritte erfolgreich, alle 8 Acceptance-Criteria YES.
+  - 🟢 **Live-Verifikation**: Admin-EV-Page rendert mit echten DB-Daten (7 Stationen, €6.10 Lifetime-Umsatz, 8.5 kWh).
 - **10.05.2026 (iter58 — EV Charging Module komplett: echtes OCPP-1.6J CSMS)**:
   - 🟢 **Backend**: `services/ocpp_csms.py` (~360 Zeilen) — vollständige OCPP-1.6J CSMS-Implementierung. WebSocket-Endpoint `/api/ev/ocpp/v16/{charge_point_id}` mit Subprotocol-Negotiation `ocpp1.6`. Wire-Format `[2,id,action,payload]` / `[3,id,result]` / `[4,id,error,desc,details]` korrekt implementiert. In-Memory-Registry für aktive Verbindungen.
   - 🟢 **OCPP-Messages eingehend**: BootNotification, Heartbeat, Authorize, StartTransaction, StopTransaction, MeterValues, StatusNotification.

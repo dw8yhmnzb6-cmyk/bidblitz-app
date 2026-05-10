@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request, WebSocket
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from core.database import db
@@ -22,6 +23,7 @@ from core.payment_engine import (
     generate_reference,
 )
 from services import ocpp_csms
+from services.ev_receipt import render_receipt
 
 router = APIRouter(prefix="/api/ev", tags=["ev_charging"])
 
@@ -32,6 +34,11 @@ def _utcnow_iso() -> str:
 
 def _is_admin(user: Dict[str, Any]) -> bool:
     return user.get("role") == "admin" or user.get("is_admin") is True
+
+
+# Default platform commission applied to operator revenue (override per operator).
+DEFAULT_PLATFORM_COMMISSION_PCT = 12.0
+DEFAULT_VAT_RATE_PCT = 19.0  # German VAT default; per-tariff override possible
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -180,6 +187,7 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
             "idle_fee_per_minute": float(tariff.get("idle_fee_per_minute", 0)),
             "minimum_fee": float(tariff.get("minimum_fee", 0)),
             "currency": tariff.get("currency", "EUR"),
+            "vat_rate": float(tariff.get("vat_rate", DEFAULT_VAT_RATE_PCT)),
         },
         "reserved_amount": req.max_amount,
         "currency": "EUR",
@@ -264,7 +272,8 @@ async def my_history(request: Request, limit: int = 50) -> Dict[str, Any]:
 # Final settlement — called by ocpp_csms after StopTransaction
 # ══════════════════════════════════════════════════════════════════════════════
 async def finalize_session(session_id: str) -> None:
-    """Atomic: deduct from user wallet, credit operator wallet, write txn record."""
+    """Atomic close-out: compute net/VAT/commission, deduct from user, credit
+    operator (minus platform commission), persist receipt + line items."""
     sess = await db.ev_charging_sessions.find_one({"session_id": session_id})
     if not sess or sess.get("status") == "completed":
         return
@@ -280,33 +289,57 @@ async def finalize_session(session_id: str) -> None:
         except Exception:
             pass
 
-    final_cost = (
-        kwh * float(tariff.get("price_per_kwh", 0))
-        + duration_min * float(tariff.get("price_per_minute", 0))
-        + float(tariff.get("session_fee", 0))
-    )
-    final_cost = max(final_cost, float(tariff.get("minimum_fee", 0)))
-    final_cost = round(final_cost, 2)
+    energy_amt = kwh * float(tariff.get("price_per_kwh", 0))
+    minute_amt = duration_min * float(tariff.get("price_per_minute", 0))
+    session_fee = float(tariff.get("session_fee", 0))
+    minimum_fee = float(tariff.get("minimum_fee", 0))
+
+    gross = energy_amt + minute_amt + session_fee
+    if gross < minimum_fee:
+        gross = minimum_fee
+    gross = round(gross, 2)
+
+    vat_rate = float(tariff.get("vat_rate", DEFAULT_VAT_RATE_PCT))
+    net = round(gross / (1 + vat_rate / 100.0), 2) if vat_rate > 0 else gross
+    vat = round(gross - net, 2)
 
     user_id = sess.get("user_id")
     if not user_id:
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
-            {"$set": {"final_cost": final_cost, "status": "completed",
+            {"$set": {"final_cost": gross, "status": "completed",
                       "duration_min": round(duration_min, 1)}},
         )
         return
 
+    # Resolve operator: charge_point.owner_merchant_id / operator_user_id
     cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]})
     operator_user_id = (cp or {}).get("operator_user_id") or (cp or {}).get("owner_merchant_id")
 
-    # Deduct from user → operator using payment_engine
+    # Commission: operator-specific override → operator-record default → platform default
+    commission_pct = DEFAULT_PLATFORM_COMMISSION_PCT
+    if cp and cp.get("commission_pct_override") is not None:
+        commission_pct = float(cp["commission_pct_override"])
+    elif operator_user_id:
+        op = await db.ev_operators.find_one({"user_id": str(operator_user_id)})
+        if op and op.get("commission_pct") is not None:
+            commission_pct = float(op["commission_pct"])
+
+    platform_fee = round(gross * commission_pct / 100.0, 2)
+    operator_share = round(gross - platform_fee, 2)
+
+    # Wallet transfer (user → operator). Platform commission is collected by
+    # the operator first then we move the platform_fee to the platform wallet
+    # in a second transfer. Two atomic operations keep the audit trail clean.
     txn_ref = generate_reference("EV")
-    if operator_user_id and final_cost > 0:
+    primary_ok = True
+    primary_err = None
+
+    if operator_user_id and gross > 0:
         result = await transfer_between_wallets(
             from_user_id=user_id,
             to_user_id=str(operator_user_id),
-            amount=final_cost,
+            amount=gross,
             tx_type=TransactionType.EV_CHARGING,
             description=f"EV-Ladung {sess['charge_point_id']} — {kwh:.2f} kWh",
             metadata={
@@ -315,48 +348,131 @@ async def finalize_session(session_id: str) -> None:
                 "connector_id": sess.get("connector_id"),
                 "kwh": kwh,
                 "duration_min": round(duration_min, 1),
+                "vat_rate": vat_rate,
+                "net": net,
+                "vat": vat,
+                "gross": gross,
+                "commission_pct": commission_pct,
+                "platform_fee": platform_fee,
+                "operator_share": operator_share,
             },
         )
-        success = result.success
-        error = result.error if not success else None
+        primary_ok = result.success
+        primary_err = result.error if not primary_ok else None
+
+        # Move platform commission from operator → platform pool wallet (admin)
+        if primary_ok and platform_fee > 0:
+            platform_user_id = await _platform_pool_user_id()
+            if platform_user_id and platform_user_id != str(operator_user_id):
+                comm_res = await transfer_between_wallets(
+                    from_user_id=str(operator_user_id),
+                    to_user_id=platform_user_id,
+                    amount=platform_fee,
+                    tx_type=TransactionType.EV_CHARGING_REVENUE,
+                    description=f"EV-Plattformprovision {sess['charge_point_id']} ({commission_pct}%)",
+                    metadata={"session_id": session_id, "settlement_ref": txn_ref},
+                )
+                await db.ev_operator_commissions.insert_one({
+                    "session_id": session_id,
+                    "charge_point_id": sess["charge_point_id"],
+                    "operator_user_id": str(operator_user_id),
+                    "gross": gross,
+                    "commission_pct": commission_pct,
+                    "platform_fee": platform_fee,
+                    "operator_share": operator_share,
+                    "ref": comm_res.reference if comm_res.success else None,
+                    "success": comm_res.success,
+                    "created_at": _utcnow_iso(),
+                })
     else:
-        # No operator linked — just deduct from user (platform keeps the fee).
-        from core.payment_engine import deduct_balance
-        # Some setups expose a different helper; fall back to direct DB op if missing.
-        try:
-            from core.payment_engine import process_payment as _pp  # type: ignore
-            _ = _pp
-        except Exception:
-            pass
-        success, error = True, None
-        if final_cost > 0:
-            await db.users.update_one({"_id": _to_objectid(user_id)},
-                                      {"$inc": {"balance": -final_cost}})
+        # No operator wired: deduct gross from user; platform keeps everything.
+        if gross > 0:
+            from bson import ObjectId
+            try:
+                _id = ObjectId(user_id)
+            except Exception:
+                _id = user_id
+            await db.users.update_one({"_id": _id}, {"$inc": {"balance": -gross}})
+
+    # Build receipt + line items
+    receipt_no = await _next_receipt_no()
+    line_items = [
+        {"label": "Energie", "calc": f"{kwh:.3f} kWh × €{tariff.get('price_per_kwh', 0):.2f}", "amount": round(energy_amt, 2)},
+    ]
+    if minute_amt > 0:
+        line_items.append({"label": "Zeit", "calc": f"{duration_min:.1f} min × €{tariff.get('price_per_minute', 0):.2f}", "amount": round(minute_amt, 2)})
+    if session_fee > 0:
+        line_items.append({"label": "Sessiongebühr", "calc": "pauschal", "amount": round(session_fee, 2)})
+    if gross == minimum_fee and energy_amt + minute_amt + session_fee < minimum_fee:
+        line_items.append({"label": "Mindestbetrag-Aufschlag", "calc": f"€{minimum_fee:.2f} min.", "amount": round(minimum_fee - (energy_amt + minute_amt + session_fee), 2)})
+
+    receipt_doc = {
+        "receipt_no": receipt_no,
+        "session_id": session_id,
+        "user_id": user_id,
+        "charge_point_id": sess["charge_point_id"],
+        "operator_user_id": str(operator_user_id) if operator_user_id else None,
+        "vat_rate": vat_rate,
+        "net_amount": net,
+        "vat_amount": vat,
+        "total_amount": gross,
+        "platform_fee": platform_fee,
+        "operator_share": operator_share,
+        "commission_pct": commission_pct,
+        "currency": "EUR",
+        "settlement_ref": txn_ref,
+        "line_items": line_items,
+        "issued_at": _utcnow_iso(),
+    }
+    await db.ev_receipts.insert_one(receipt_doc)
 
     update = {
-        "status": "completed" if success else "settle_failed",
-        "final_cost": final_cost,
+        "status": "completed" if primary_ok else "settle_failed",
+        "final_cost": gross,
+        "net_amount": net,
+        "vat_amount": vat,
+        "platform_fee": platform_fee,
+        "operator_share": operator_share,
         "duration_min": round(duration_min, 1),
         "settlement_ref": txn_ref,
         "settled_at": _utcnow_iso(),
+        "receipt_no": receipt_no,
     }
-    if not success:
-        update["settlement_error"] = error
+    if not primary_ok:
+        update["settlement_error"] = primary_err
     await db.ev_charging_sessions.update_one({"session_id": session_id}, {"$set": update})
 
-    # Mark id_tag inactive — single-use
     if sess.get("id_tag"):
         await db.ev_authorizations.update_one(
             {"id_tag": sess["id_tag"]}, {"$set": {"active": False, "used_at": _utcnow_iso()}}
         )
 
 
-def _to_objectid(s: str):
-    from bson import ObjectId
-    try:
-        return ObjectId(s)
-    except Exception:
-        return s
+async def _next_receipt_no() -> str:
+    """Sequential receipt number per UTC year, format BB-EV-{YYYY}-{seq:06d}."""
+    year = datetime.now(timezone.utc).year
+    counter = await db.counters.find_one_and_update(
+        {"_id": f"ev_receipt_{year}"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    seq = (counter or {}).get("seq", 1)
+    return f"BB-EV-{year}-{seq:06d}"
+
+
+async def _platform_pool_user_id() -> Optional[str]:
+    """User-ID of the platform commission pool. Returns the admin user ID
+    associated with email matching env var PLATFORM_POOL_EMAIL, falling back to
+    the first user with role=='admin'."""
+    import os
+    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.com")
+    pool = await db.users.find_one({"email": email})
+    if pool:
+        return str(pool["_id"])
+    pool = await db.users.find_one({"role": "admin"})
+    return str(pool["_id"]) if pool else None
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -510,6 +626,8 @@ class TariffBody(BaseModel):
     idle_fee_per_minute: float = 0.0
     minimum_fee: float = 0.0
     currency: str = "EUR"
+    vat_rate: float = DEFAULT_VAT_RATE_PCT
+    time_rules: Optional[List[Dict[str, Any]]] = None  # [{"hours":[6,18],"price_per_kwh":0.55}]
 
 
 @router.post("/admin/tariffs")
@@ -594,3 +712,350 @@ async def admin_unlock(charge_point_id: str, connector_id: int, request: Request
     if not _is_admin(user):
         raise HTTPException(403, "Admin only")
     return await ocpp_csms.unlock_connector(charge_point_id, connector_id)
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Receipts (customer + operator + admin)
+# ══════════════════════════════════════════════════════════════════════════════
+@router.get("/receipt/{session_id}")
+async def get_receipt(session_id: str, request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    rec = await db.ev_receipts.find_one({"session_id": session_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(404, "Quittung nicht gefunden")
+    sess = await db.ev_charging_sessions.find_one({"session_id": session_id}, {"_id": 0})
+    if (sess or {}).get("user_id") != str(user["_id"]) and not _is_admin(user):
+        cp = await db.ev_charge_points.find_one({"charge_point_id": (sess or {}).get("charge_point_id")})
+        if not (cp and str(cp.get("operator_user_id")) == str(user["_id"])):
+            raise HTTPException(403, "Nicht berechtigt")
+    return {"receipt": rec, "session": sess}
+
+
+@router.get("/receipt/{session_id}/pdf")
+async def receipt_pdf(session_id: str, request: Request):
+    user = await get_current_user(request)
+    rec = await db.ev_receipts.find_one({"session_id": session_id})
+    sess = await db.ev_charging_sessions.find_one({"session_id": session_id})
+    if not rec or not sess:
+        raise HTTPException(404, "Quittung nicht gefunden")
+    if str(sess.get("user_id")) != str(user["_id"]) and not _is_admin(user):
+        cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]})
+        if not (cp and str(cp.get("operator_user_id")) == str(user["_id"])):
+            raise HTTPException(403, "Nicht berechtigt")
+    cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]}) or {}
+    cust = await db.users.find_one({"_id": _to_obj(sess.get("user_id"))}) or {}
+    pdf = render_receipt(
+        receipt={k: v for k, v in rec.items() if k != "_id"},
+        session={k: v for k, v in sess.items() if k != "_id"},
+        station={k: v for k, v in cp.items() if k != "_id"},
+        user={"name": cust.get("name"), "email": cust.get("email"),
+              "user_number": cust.get("user_number")},
+    )
+    fname = f"BB-EV-Receipt-{rec.get('receipt_no')}.pdf"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+def _to_obj(s: Any):
+    from bson import ObjectId
+    if isinstance(s, ObjectId):
+        return s
+    try:
+        return ObjectId(str(s))
+    except Exception:
+        return s
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Operator registration + payouts + staff
+# ══════════════════════════════════════════════════════════════════════════════
+class OperatorRegisterBody(BaseModel):
+    company_name: str
+    legal_name: Optional[str] = None
+    contact_email: str
+    contact_phone: Optional[str] = None
+    vat_id: Optional[str] = None
+    iban: Optional[str] = None
+    address: Optional[str] = None
+
+
+@router.post("/operator/register")
+async def operator_register(body: OperatorRegisterBody, request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    existing = await db.ev_operators.find_one({"user_id": user_id})
+    if existing:
+        raise HTTPException(409, "Du bist bereits als EV-Betreiber registriert")
+    op_id = f"evop_{secrets.token_hex(4)}"
+    doc = {
+        "operator_id": op_id, "user_id": user_id, "user_email": user.get("email"),
+        "company_name": body.company_name, "legal_name": body.legal_name,
+        "contact_email": body.contact_email, "contact_phone": body.contact_phone,
+        "vat_id": body.vat_id, "iban": body.iban, "address": body.address,
+        "status": "pending", "commission_pct": None,
+        "created_at": _utcnow_iso(),
+    }
+    await db.ev_operators.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.get("/operator/me")
+async def operator_me(request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    op = await db.ev_operators.find_one({"user_id": str(user["_id"])}, {"_id": 0})
+    if not op:
+        raise HTTPException(404, "Kein Betreiber-Profil")
+    return op
+
+
+class PayoutRequestBody(BaseModel):
+    amount: float = Field(..., gt=0, le=100000)
+    note: Optional[str] = None
+
+
+@router.post("/operator/payouts/request")
+async def operator_payout_request(body: PayoutRequestBody, request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    op = await db.ev_operators.find_one({"user_id": str(user["_id"])})
+    if not op:
+        raise HTTPException(403, "Kein Betreiber-Profil")
+    if op.get("status") != "active":
+        raise HTTPException(403, f"Betreiber-Status: {op.get('status')}")
+    if not op.get("iban"):
+        raise HTTPException(400, "IBAN nicht hinterlegt")
+    balance = float(user.get("balance") or 0)
+    if balance < body.amount:
+        raise HTTPException(402, f"Wallet-Saldo unzureichend (€{balance:.2f})")
+    payout_id = f"pay_{secrets.token_hex(5)}"
+    doc = {
+        "payout_id": payout_id, "operator_id": op["operator_id"],
+        "user_id": str(user["_id"]), "amount": round(body.amount, 2),
+        "currency": "EUR", "iban": op.get("iban"), "note": body.note,
+        "status": "requested", "created_at": _utcnow_iso(),
+    }
+    await db.ev_operator_payouts.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.get("/operator/payouts")
+async def operator_payouts(request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    docs = await db.ev_operator_payouts.find(
+        {"user_id": str(user["_id"])}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    return {"payouts": docs}
+
+
+class StaffInvite(BaseModel):
+    email: str
+    role: str = "viewer"
+
+
+@router.post("/operator/staff")
+async def operator_add_staff(body: StaffInvite, request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    op = await db.ev_operators.find_one({"user_id": str(user["_id"])})
+    if not op:
+        raise HTTPException(403, "Kein Betreiber-Profil")
+    target = await db.users.find_one({"email": body.email.lower()})
+    if not target:
+        raise HTTPException(404, "User mit dieser E-Mail nicht gefunden")
+    if body.role not in ("viewer", "manager"):
+        raise HTTPException(400, "Ungültige Rolle")
+    doc = {
+        "operator_id": op["operator_id"], "user_id": str(target["_id"]),
+        "email": target.get("email"), "role": body.role, "added_at": _utcnow_iso(),
+    }
+    await db.ev_operator_staff.update_one(
+        {"operator_id": op["operator_id"], "user_id": str(target["_id"])},
+        {"$set": doc}, upsert=True,
+    )
+    return doc
+
+
+@router.get("/operator/staff")
+async def operator_list_staff(request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    op = await db.ev_operators.find_one({"user_id": str(user["_id"])})
+    if not op:
+        raise HTTPException(403, "Kein Betreiber-Profil")
+    rows = await db.ev_operator_staff.find(
+        {"operator_id": op["operator_id"]}, {"_id": 0}
+    ).to_list(100)
+    return {"staff": rows}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Admin: operator approval, commission override, payout management
+# ══════════════════════════════════════════════════════════════════════════════
+@router.get("/admin/operators")
+async def admin_list_operators(request: Request) -> Dict[str, Any]:
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    docs = await db.ev_operators.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return {"operators": docs}
+
+
+class OperatorStatusBody(BaseModel):
+    status: str
+
+
+@router.post("/admin/operators/{operator_id}/status")
+async def admin_set_operator_status(operator_id: str, body: OperatorStatusBody, request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    if body.status not in ("active", "suspended", "pending"):
+        raise HTTPException(400, "Ungültiger Status")
+    res = await db.ev_operators.update_one(
+        {"operator_id": operator_id},
+        {"$set": {"status": body.status, "status_changed_at": _utcnow_iso()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Betreiber nicht gefunden")
+    return {"ok": True, "operator_id": operator_id, "status": body.status}
+
+
+class CommissionBody(BaseModel):
+    commission_pct: float = Field(..., ge=0, le=50)
+
+
+@router.post("/admin/operators/{operator_id}/commission")
+async def admin_set_commission(operator_id: str, body: CommissionBody, request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    res = await db.ev_operators.update_one(
+        {"operator_id": operator_id}, {"$set": {"commission_pct": body.commission_pct}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Betreiber nicht gefunden")
+    return {"ok": True, "commission_pct": body.commission_pct}
+
+
+class CPCommissionBody(BaseModel):
+    commission_pct_override: Optional[float] = Field(default=None, ge=0, le=50)
+
+
+@router.post("/admin/charge-points/{charge_point_id}/commission")
+async def admin_cp_commission(charge_point_id: str, body: CPCommissionBody, request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    update = {"commission_pct_override": body.commission_pct_override}
+    res = await db.ev_charge_points.update_one({"charge_point_id": charge_point_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "CP nicht gefunden")
+    return {"ok": True, **update}
+
+
+@router.get("/admin/payouts")
+async def admin_list_payouts(request: Request, status: Optional[str] = None):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    q: Dict[str, Any] = {}
+    if status:
+        q["status"] = status
+    docs = await db.ev_operator_payouts.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return {"payouts": docs}
+
+
+class PayoutDecisionBody(BaseModel):
+    decision: str
+    note: Optional[str] = None
+    external_ref: Optional[str] = None
+
+
+@router.post("/admin/payouts/{payout_id}/decision")
+async def admin_payout_decision(payout_id: str, body: PayoutDecisionBody, request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    if body.decision not in ("approved", "rejected", "paid"):
+        raise HTTPException(400, "Ungültige Entscheidung")
+    payout = await db.ev_operator_payouts.find_one({"payout_id": payout_id})
+    if not payout:
+        raise HTTPException(404, "Payout nicht gefunden")
+    update = {
+        "status": body.decision, "admin_note": body.note,
+        "external_ref": body.external_ref, "decided_at": _utcnow_iso(),
+        "decided_by": str(user["_id"]),
+    }
+    if body.decision == "paid":
+        from bson import ObjectId
+        try:
+            uid = ObjectId(payout["user_id"])
+        except Exception:
+            uid = payout["user_id"]
+        bal_user = await db.users.find_one({"_id": uid}, {"balance": 1})
+        if (bal_user or {}).get("balance", 0) < payout["amount"]:
+            raise HTTPException(402, "Operator-Wallet hat nicht genug Guthaben")
+        await db.users.update_one({"_id": uid}, {"$inc": {"balance": -payout["amount"]}})
+        await db.transactions.insert_one({
+            "user_id": payout["user_id"], "type": "payout",
+            "amount": -payout["amount"], "currency": "EUR",
+            "description": f"EV-Auszahlung {payout_id} → {payout.get('iban', 'IBAN')}",
+            "reference": payout_id, "status": "completed",
+            "created_at": _utcnow_iso(),
+        })
+    await db.ev_operator_payouts.update_one({"payout_id": payout_id}, {"$set": update})
+    return {"ok": True, "payout_id": payout_id, **update}
+
+
+# ── Tariff: extend with VAT + time rules ─────────────────────────────────────
+@router.put("/admin/tariffs/{tariff_id}")
+async def admin_update_tariff(tariff_id: str, body: Dict[str, Any], request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    from bson import ObjectId
+    update = {k: v for k, v in body.items()
+              if k in ("name", "price_per_kwh", "price_per_minute", "session_fee",
+                       "idle_fee_per_minute", "minimum_fee", "currency",
+                       "vat_rate", "time_rules")}
+    try:
+        oid = ObjectId(tariff_id)
+    except Exception:
+        raise HTTPException(400, "Ungültige Tariff-ID")
+    res = await db.ev_tariffs.update_one({"_id": oid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Tarif nicht gefunden")
+    return {"ok": True, **update}
+
+
+# ── Hardware vendor: register station model ──────────────────────────────────
+class StationModelBody(BaseModel):
+    vendor_id: str
+    model_name: str
+    ocpp_version: str = "1.6"
+    max_power_kw: float
+    connector_types: List[str]
+    firmware_versions: List[str] = []
+    notes: Optional[str] = None
+
+
+@router.post("/admin/hardware-vendors/models")
+async def admin_create_station_model(body: StationModelBody, request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    vendor = await db.ev_hardware_vendors.find_one({"vendor_id": body.vendor_id})
+    if not vendor:
+        raise HTTPException(404, "Vendor nicht gefunden")
+    model_id = f"model_{secrets.token_hex(4)}"
+    doc = {"model_id": model_id, **body.dict(), "created_at": _utcnow_iso()}
+    await db.ev_station_models.insert_one(doc)
+    return {**body.dict(), "model_id": model_id}
+
+
+@router.get("/admin/hardware-vendors/{vendor_id}/models")
+async def admin_list_station_models(vendor_id: str, request: Request):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return {"models": await db.ev_station_models.find({"vendor_id": vendor_id}, {"_id": 0}).to_list(200)}
