@@ -23,6 +23,7 @@ from core.payment_engine import (
     generate_reference,
 )
 from services import ocpp_csms
+from services import ocpp_v201
 from services.ev_receipt import render_receipt
 
 router = APIRouter(prefix="/api/ev", tags=["ev_charging"])
@@ -47,6 +48,24 @@ DEFAULT_VAT_RATE_PCT = 19.0  # German VAT default; per-tariff override possible
 @router.websocket("/ocpp/v16/{charge_point_id}")
 async def ocpp_v16(websocket: WebSocket, charge_point_id: str):
     await ocpp_csms.serve(websocket, charge_point_id)
+
+
+@router.websocket("/ocpp/v201/{charge_point_id}")
+async def ocpp_v201_ws(websocket: WebSocket, charge_point_id: str):
+    """OCPP-2.0.1 entry point. Subprotocol negotiated as 'ocpp2.0.1'."""
+    await ocpp_v201.serve(websocket, charge_point_id)
+
+
+def _cp_protocol(cp: Dict[str, Any]) -> str:
+    """Resolve the OCPP protocol of a charge point ('ocpp1.6' default)."""
+    p = (cp or {}).get("protocol") or "ocpp1.6"
+    return "ocpp2.0.1" if str(p).startswith("ocpp2") else "ocpp1.6"
+
+
+def _cp_is_online(charge_point_id: str, protocol: str) -> bool:
+    if protocol == "ocpp2.0.1":
+        return ocpp_v201.is_online(charge_point_id)
+    return ocpp_csms.is_online(charge_point_id)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -88,7 +107,8 @@ async def station_detail(charge_point_id: str) -> Dict[str, Any]:
         "station": cp,
         "connectors": connectors,
         "tariff": tariff,
-        "online": ocpp_csms.is_online(charge_point_id),
+        "online": _cp_is_online(charge_point_id, _cp_protocol(cp)),
+        "protocol": _cp_protocol(cp),
     }
 
 
@@ -130,7 +150,8 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
     cp = await db.ev_charge_points.find_one({"charge_point_id": req.charge_point_id, "active": True})
     if not cp:
         raise HTTPException(404, "Ladestation nicht gefunden")
-    if not ocpp_csms.is_online(req.charge_point_id):
+    protocol = _cp_protocol(cp)
+    if not _cp_is_online(req.charge_point_id, protocol):
         raise HTTPException(409, "Ladestation ist offline")
 
     connector = await db.ev_connectors.find_one(
@@ -197,9 +218,15 @@ async def start_charging(req: StartChargingRequest, request: Request) -> Dict[st
         "created_at": _utcnow_iso(),
     })
 
-    # Send RemoteStartTransaction to the charge point
+    # Send RemoteStart / RequestStartTransaction depending on protocol
     try:
-        result = await ocpp_csms.remote_start(req.charge_point_id, req.connector_id, id_tag)
+        if protocol == "ocpp2.0.1":
+            result = await ocpp_v201.request_start_transaction(
+                req.charge_point_id, req.connector_id, id_tag,
+                remote_start_id=secrets.randbelow(1_000_000) + 1,
+            )
+        else:
+            result = await ocpp_csms.remote_start(req.charge_point_id, req.connector_id, id_tag)
     except Exception as exc:
         await db.ev_charging_sessions.update_one(
             {"session_id": session_id},
@@ -252,7 +279,12 @@ async def stop_charging(session_id: str, request: Request) -> Dict[str, Any]:
         return {"session_id": session_id, "status": "cancelled"}
 
     try:
-        await ocpp_csms.remote_stop(sess["charge_point_id"], txn_id)
+        cp = await db.ev_charge_points.find_one({"charge_point_id": sess["charge_point_id"]})
+        protocol = _cp_protocol(cp or {})
+        if protocol == "ocpp2.0.1":
+            await ocpp_v201.request_stop_transaction(sess["charge_point_id"], txn_id)
+        else:
+            await ocpp_csms.remote_stop(sess["charge_point_id"], txn_id)
     except Exception as exc:
         raise HTTPException(502, f"Stop-Befehl fehlgeschlagen: {exc}")
     return {"session_id": session_id, "status": "stopping"}
@@ -484,6 +516,10 @@ async def operator_stations(request: Request) -> Dict[str, Any]:
     docs = await db.ev_charge_points.find(
         {"operator_user_id": str(user["_id"])}, {"_id": 0}
     ).to_list(200)
+    for d in docs:
+        proto = _cp_protocol(d)
+        d["protocol"] = proto
+        d["online"] = _cp_is_online(d["charge_point_id"], proto)
     return {"stations": docs}
 
 
@@ -528,6 +564,7 @@ async def operator_revenue(request: Request) -> Dict[str, Any]:
 class HardwareVendorBody(BaseModel):
     name: str
     contact_email: Optional[str] = None
+    website: Optional[str] = None
     ocpp_versions: List[str] = ["1.6"]
     notes: Optional[str] = None
 
@@ -554,11 +591,14 @@ async def admin_list_vendors(request: Request) -> Dict[str, Any]:
 class ChargePointBody(BaseModel):
     charge_point_id: str
     hardware_vendor_id: Optional[str] = None
+    vendor_id: Optional[str] = None  # alias accepted from UI
     operator_user_id: Optional[str] = None  # merchant/operator who earns revenue
     tariff_id: Optional[str] = None
     name: str
     location: Dict[str, Any]  # {address, city, country, lat, lng}
     connector_count: int = 1
+    connectors: Optional[List[Dict[str, Any]]] = None
+    protocol: str = "ocpp1.6"  # "ocpp1.6" | "ocpp2.0.1"
 
 
 @router.post("/admin/charge-points")
@@ -569,40 +609,47 @@ async def admin_create_cp(body: ChargePointBody, request: Request) -> Dict[str, 
     existing = await db.ev_charge_points.find_one({"charge_point_id": body.charge_point_id})
     if existing:
         raise HTTPException(409, "charge_point_id existiert bereits")
+    protocol = "ocpp2.0.1" if str(body.protocol or "").startswith("ocpp2") else "ocpp1.6"
+    connector_count = len(body.connectors) if body.connectors else max(body.connector_count, 1)
     doc = {
         "charge_point_id": body.charge_point_id,
-        "hardware_vendor_id": body.hardware_vendor_id,
-        "operator_user_id": body.operator_user_id,
-        "tariff_id": body.tariff_id,
+        "hardware_vendor_id": body.hardware_vendor_id or body.vendor_id,
+        "operator_user_id": body.operator_user_id or None,
+        "tariff_id": body.tariff_id or None,
         "name": body.name,
         "location": body.location,
+        "protocol": protocol,
         "active": True,
         "online": False,
         "status": "Unavailable",
         "created_at": _utcnow_iso(),
     }
     await db.ev_charge_points.insert_one(doc)
-    # Pre-create connector rows
-    for i in range(1, body.connector_count + 1):
+    # Pre-create connector rows (use list if provided, else fall back to count)
+    rows = body.connectors or [{"connector_id": i + 1} for i in range(connector_count)]
+    for r in rows:
+        cid = int(r.get("connector_id") or 1)
         await db.ev_connectors.update_one(
-            {"charge_point_id": body.charge_point_id, "connector_id": i},
+            {"charge_point_id": body.charge_point_id, "connector_id": cid},
             {"$setOnInsert": {
                 "charge_point_id": body.charge_point_id,
-                "connector_id": i,
+                "connector_id": cid,
+                "type": r.get("type"),
+                "max_power_kw": r.get("max_power_kw"),
                 "status": "Unavailable",
                 "created_at": _utcnow_iso(),
             }},
             upsert=True,
         )
-    # Generate QR/NFC URLs (returned for printing on the unit)
     base = "https://bidblitz.ae/ev/start"
     return {
         "charge_point_id": body.charge_point_id,
+        "protocol": protocol,
         "qr_urls": [
-            {"connector_id": i,
-             "deep_link": f"bidblitz://ev/start/{body.charge_point_id}/{i}",
-             "web_url": f"{base}/{body.charge_point_id}/{i}"}
-            for i in range(1, body.connector_count + 1)
+            {"connector_id": int(r.get("connector_id") or i + 1),
+             "deep_link": f"bidblitz://ev/start/{body.charge_point_id}/{int(r.get('connector_id') or i + 1)}",
+             "web_url": f"{base}/{body.charge_point_id}/{int(r.get('connector_id') or i + 1)}"}
+            for i, r in enumerate(rows)
         ],
     }
 
@@ -614,8 +661,15 @@ async def admin_list_cp(request: Request) -> Dict[str, Any]:
         raise HTTPException(403, "Admin only")
     docs = await db.ev_charge_points.find({}, {"_id": 0}).to_list(500)
     for d in docs:
-        d["online_now"] = ocpp_csms.is_online(d["charge_point_id"])
-    return {"charge_points": docs, "online_count": ocpp_csms.online_count()}
+        proto = _cp_protocol(d)
+        d["protocol"] = proto
+        d["online_now"] = _cp_is_online(d["charge_point_id"], proto)
+    return {
+        "charge_points": docs,
+        "online_count": ocpp_csms.online_count() + ocpp_v201.online_count(),
+        "online_v16": ocpp_csms.online_count(),
+        "online_v201": ocpp_v201.online_count(),
+    }
 
 
 class TariffBody(BaseModel):
@@ -668,7 +722,9 @@ async def admin_overview(request: Request) -> Dict[str, Any]:
     if not _is_admin(user):
         raise HTTPException(403, "Admin only")
     total_cp = await db.ev_charge_points.count_documents({})
-    online_cp = ocpp_csms.online_count()
+    online_cp = ocpp_csms.online_count() + ocpp_v201.online_count()
+    online_v16 = ocpp_csms.online_count()
+    online_v201 = ocpp_v201.online_count()
     active_sess = await db.ev_charging_sessions.count_documents({"status": "active"})
     completed_today = await db.ev_charging_sessions.count_documents({
         "status": "completed",
@@ -681,6 +737,8 @@ async def admin_overview(request: Request) -> Dict[str, Any]:
     return {
         "charge_points": total_cp,
         "online": online_cp,
+        "online_v16": online_v16,
+        "online_v201": online_v201,
         "active_sessions": active_sess,
         "sessions_today": completed_today,
         "lifetime_revenue_eur": round((rev[0]["rev"] if rev else 0), 2),
@@ -695,6 +753,13 @@ async def admin_change_availability(charge_point_id: str, request: Request,
     user = await get_current_user(request)
     if not _is_admin(user):
         raise HTTPException(403, "Admin only")
+    cp = await db.ev_charge_points.find_one({"charge_point_id": charge_point_id})
+    if not cp:
+        raise HTTPException(404, "Charge point nicht gefunden")
+    if _cp_protocol(cp) == "ocpp2.0.1":
+        return await ocpp_v201.change_availability(
+            charge_point_id, mode, evse_id=connector_id or None
+        )
     return await ocpp_csms.change_availability(charge_point_id, connector_id, mode)
 
 
@@ -703,6 +768,13 @@ async def admin_reset(charge_point_id: str, request: Request, kind: str = "Soft"
     user = await get_current_user(request)
     if not _is_admin(user):
         raise HTTPException(403, "Admin only")
+    cp = await db.ev_charge_points.find_one({"charge_point_id": charge_point_id})
+    if not cp:
+        raise HTTPException(404, "Charge point nicht gefunden")
+    if _cp_protocol(cp) == "ocpp2.0.1":
+        # Translate 1.6 names → 2.0.1 names if needed.
+        kind_201 = {"Soft": "OnIdle", "Hard": "Immediate"}.get(kind, kind)
+        return await ocpp_v201.reset(charge_point_id, kind_201)
     return await ocpp_csms.reset(charge_point_id, kind)
 
 
@@ -711,7 +783,60 @@ async def admin_unlock(charge_point_id: str, connector_id: int, request: Request
     user = await get_current_user(request)
     if not _is_admin(user):
         raise HTTPException(403, "Admin only")
+    cp = await db.ev_charge_points.find_one({"charge_point_id": charge_point_id})
+    if not cp:
+        raise HTTPException(404, "Charge point nicht gefunden")
+    if _cp_protocol(cp) == "ocpp2.0.1":
+        return await ocpp_v201.unlock_connector(charge_point_id, evse_id=1, connector_id=connector_id)
     return await ocpp_csms.unlock_connector(charge_point_id, connector_id)
+
+
+# ── OCPP 2.0.1 specific admin commands ──────────────────────────────────────
+@router.post("/admin/cp/{charge_point_id}/v201/get-variables")
+async def admin_get_variables(charge_point_id: str, request: Request,
+                              body: Dict[str, Any]):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return await ocpp_v201.get_variables(
+        charge_point_id, body.get("getVariableData") or []
+    )
+
+
+@router.post("/admin/cp/{charge_point_id}/v201/set-variables")
+async def admin_set_variables(charge_point_id: str, request: Request,
+                              body: Dict[str, Any]):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return await ocpp_v201.set_variables(
+        charge_point_id, body.get("setVariableData") or []
+    )
+
+
+@router.post("/admin/cp/{charge_point_id}/v201/trigger")
+async def admin_trigger_message(charge_point_id: str, request: Request,
+                                body: Dict[str, Any]):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return await ocpp_v201.trigger_message(
+        charge_point_id, body.get("requestedMessage", "Heartbeat"),
+        evse_id=body.get("evseId"),
+    )
+
+
+@router.post("/admin/cp/{charge_point_id}/v201/get-base-report")
+async def admin_get_base_report(charge_point_id: str, request: Request,
+                                body: Dict[str, Any]):
+    user = await get_current_user(request)
+    if not _is_admin(user):
+        raise HTTPException(403, "Admin only")
+    return await ocpp_v201.get_base_report(
+        charge_point_id,
+        request_id=int(body.get("requestId", secrets.randbelow(1_000_000))),
+        report_base=body.get("reportBase", "ConfigurationInventory"),
+    )
 
 
 

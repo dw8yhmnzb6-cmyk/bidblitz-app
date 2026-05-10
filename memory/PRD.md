@@ -21,6 +21,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 "Historie"-Button im Top-Bar von `EVChargingMapPage.jsx` ergänzt.
 - ✅ Verifiziert: Lint clean, Page rendert (`data-testid="ev-history-title"` im DOM gefunden), Backend `/api/ev/history` (auth via Cookie) liefert `{"sessions": []}` für kunde@bidblitz.com.
 
+### 10.05.2026 (iter60 — OCPP 2.0.1 + Admin/Operator UI angereichert)
+- 🟢 **OCPP 2.0.1 CSMS** (`backend/services/ocpp_v201.py`, ~470 Zeilen): vollständige 2.0.1-Implementierung. WebSocket-Endpoint `/api/ev/ocpp/v201/{cp_id}` mit Subprotocol-Negotiation `ocpp2.0.1`.
+- 🟢 **OCPP-2.0.1 Inbound-Messages**: BootNotification (neue `chargingStation`-Struct + `reason`), Heartbeat, StatusNotification (evseId+connectorId), Authorize (idToken-Object), TransactionEvent (Started/Updated/Ended ersetzt 1.6 Start/Stop/MeterValues), MeterValues, NotifyReport, NotifyEvent, FirmwareStatusNotification, SecurityEventNotification, DataTransfer, LogStatusNotification.
+- 🟢 **OCPP-2.0.1 Outbound-Calls**: RequestStartTransaction, RequestStopTransaction, ChangeAvailability, Reset (Immediate/OnIdle), UnlockConnector, GetVariables, SetVariables, TriggerMessage, GetBaseReport.
+- 🟢 **REST protokoll-aware**: `/api/ev/start` und `/api/ev/stop` erkennen `cp.protocol` und routen automatisch zu v1.6 oder v2.0.1. Admin Reset/Unlock/Availability ebenso. Neue Endpunkte `/api/ev/admin/cp/{id}/v201/get-variables|set-variables|trigger|get-base-report`.
+- 🟢 **Admin Overview**: zeigt `online_v16` und `online_v201` separat. `ChargePointBody` akzeptiert `protocol` und `connectors[]`.
+- 🟢 **End-to-End-Test** (`/tmp/test_ocpp_v201.py`): Boot → Status → /api/ev/start → CSMS RequestStartTransaction → CP Accepted → TransactionEvent(Started) → Updated 1.5 kWh → /api/ev/stop → CSMS RequestStopTransaction → TransactionEvent(Ended) 3 kWh → Wallet-Settlement **€2.35** (3 kWh × €0.45 + €1) ✅ PASS.
+- 🟢 **EVAdminLayout angereichert**: Stat-Tiles mit OCPP-Version-Split, Stations-Tabelle mit Such-Input + Protokoll-Badge + Reset/Unlock/Availability/Trigger-Buttons, Inline-CRUD-Forms für Hersteller / Ladestation / Tarif, Sessions-Filter (active/completed/cancelled/failed), Payouts-Approval.
+- 🟢 **EVOperatorLayout angereichert**: Live-Online-Counter, eigene Stationen mit Reset/Unlock-Steuerung, Sessions-Filter, Umsatz-Breakdown (€/Session, €/kWh), neuer Tab **Mitarbeiter** mit RFID-Karten Add-Form via `/api/ev/operator/staff`.
+- ✅ Verifiziert: Lint clean (Python + JS), Backend reload OK, Admin-UI Smoketest (Tarif-Form rendert mit allen Feldern).
+
 ### Phase A — Mobile Build Automation
 - Bundle ID migration to `com.bidblitz.app` (iOS, Android, Capacitor, Deep Links)
 - `build-mobile-final.sh` script + ANDROID_SIGNING_STEPS.md + IOS_RELEASE_STEPS.md
