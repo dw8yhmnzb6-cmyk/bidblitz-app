@@ -131,6 +131,11 @@ export default function EVChargingMapPage({ onNavigate }) {
             className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white"
           >←</button>
           <h1 className="text-lg font-bold text-white flex-1">EV Ladestationen</h1>
+          <button
+            onClick={() => onNavigate("/ev/history")}
+            data-testid="ev-map-history-btn"
+            className="px-3 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs text-white font-semibold hover:bg-white/10 transition-colors"
+          >Historie</button>
           <span className="text-xs text-gray-400" data-testid="ev-map-count">{stations.length}</span>
         </div>
 

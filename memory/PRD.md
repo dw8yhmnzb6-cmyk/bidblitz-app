@@ -15,6 +15,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 10.05.2026 (iter59 — EV Charging Customer History UI)
+- 🟢 `EVChargingHistoryPage.jsx` (Customer-Liste): Stats-Header (Sessions/Total kWh/Total €), Empty-State, Error-State, Session-Cards mit Status-Badge, Station, Stecker, Datum, Dauer, kWh, Kosten, Settlement-Ref, PDF-Download (`/api/ev/receipt/:id/pdf`) und Detail-Link auf `/ev/session/:id`.
+- 🟢 Route `/ev/history` in `App.js` verdrahtet.
+- 🟢 "Historie"-Button im Top-Bar von `EVChargingMapPage.jsx` ergänzt.
+- ✅ Verifiziert: Lint clean, Page rendert (`data-testid="ev-history-title"` im DOM gefunden), Backend `/api/ev/history` (auth via Cookie) liefert `{"sessions": []}` für kunde@bidblitz.com.
+
 ### Phase A — Mobile Build Automation
 - Bundle ID migration to `com.bidblitz.app` (iOS, Android, Capacitor, Deep Links)
 - `build-mobile-final.sh` script + ANDROID_SIGNING_STEPS.md + IOS_RELEASE_STEPS.md

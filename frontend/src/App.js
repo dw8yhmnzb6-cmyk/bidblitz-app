@@ -38,6 +38,7 @@ import AuthPage from "./pages/AuthPage";
 import EVStartChargingPage from "./pages/EVStartChargingPage";
 import EVLiveSessionPage from "./pages/EVLiveSessionPage";
 import EVChargingMapPage from "./pages/EVChargingMapPage";
+import EVChargingHistoryPage from "./pages/EVChargingHistoryPage";
 import AdminEVOverviewPage from "./pages/AdminEVOverviewPage";
 import AdminEVOperatorsPage from "./pages/AdminEVOperatorsPage";
 import AdminEVHardwareVendorsPage from "./pages/AdminEVHardwareVendorsPage";
@@ -446,6 +447,9 @@ function AppContent() {
     }
     if (currentPath.startsWith("/ev/session/")) {
       return <EVLiveSessionPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
+    }
+    if (currentPath === "/ev/history") {
+      return <EVChargingHistoryPage onNavigate={handleNavigate} />;
     }
     if (currentPath === "/admin/ev" || currentPath === "/admin/ev/overview") return <AdminEVOverviewPage onNavigate={handleNavigate} />;
     if (currentPath === "/admin/ev/operators") return <AdminEVOperatorsPage onNavigate={handleNavigate} />;
