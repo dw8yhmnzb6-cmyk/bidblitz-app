@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import { useUser } from '../store/UserContext';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import ReviewModal from '../components/ReviewModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import LiveChat from '../components/LiveChat';
@@ -23,7 +21,23 @@ import TaxiVehiclePicker from '../components/taxi/TaxiVehiclePicker';
 import TaxiAddressInput from '../components/taxi/TaxiAddressInput';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
+// Lazy-load mapbox-gl (~800KB) only when the map is actually rendered.
+// This dramatically improves initial paint of the taxi-type selection screen.
+let mapboxgl = null;
+let mapboxLoadPromise = null;
+const loadMapbox = () => {
+  if (mapboxgl) return Promise.resolve(mapboxgl);
+  if (mapboxLoadPromise) return mapboxLoadPromise;
+  mapboxLoadPromise = Promise.all([
+    import(/* webpackChunkName: "mapbox-gl" */ 'mapbox-gl'),
+    import(/* webpackChunkName: "mapbox-gl" */ 'mapbox-gl/dist/mapbox-gl.css'),
+  ]).then(([mod]) => {
+    mapboxgl = mod.default;
+    mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
+    return mapboxgl;
+  });
+  return mapboxLoadPromise;
+};
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -101,64 +115,66 @@ export default function TaxiPage({ onNavigate }) {
   const [showPoiFilter, setShowPoiFilter] = useState(false);
   const [poiLoading, setPoiLoading] = useState(false);
 
-  // Initialize Mapbox GL Map
+  // Initialize Mapbox GL Map (lazy-load mapbox-gl on first map render)
   useEffect(() => {
     if (!mapContainerRef.current) return;
     if (mapRef.current) return; // Already initialized
 
-    console.log('✓ Initializing Mapbox GL map...');
+    let cancelled = false;
+    console.log('✓ Loading Mapbox GL library...');
 
-    try {
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: mapStyle === 'light' ? 'mapbox://styles/mapbox/light-v11' : 
-               mapStyle === 'satellite' ? 'mapbox://styles/mapbox/satellite-streets-v12' :
-               'mapbox://styles/mapbox/dark-v11', // DARK by default like taxi.eu
-        center: [pickup.lng, pickup.lat],
-        zoom: 14,
-        language: 'de',
-        attributionControl: false
-      });
+    loadMapbox().then((mb) => {
+      if (cancelled || !mapContainerRef.current || mapRef.current) return;
+      try {
+        const map = new mb.Map({
+          container: mapContainerRef.current,
+          style: mapStyle === 'light' ? 'mapbox://styles/mapbox/light-v11' :
+                 mapStyle === 'satellite' ? 'mapbox://styles/mapbox/satellite-streets-v12' :
+                 'mapbox://styles/mapbox/dark-v11',
+          center: [pickup.lng, pickup.lat],
+          zoom: 14,
+          language: 'de',
+          attributionControl: false
+        });
 
-      // Add zoom controls
-      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.addControl(new mb.NavigationControl(), 'top-right');
 
-      // Pickup marker (draggable cyan pin)
-      const pickupEl = document.createElement('div');
-      pickupEl.className = 'mapbox-marker-pickup';
-      pickupEl.style.cssText = `
-        width: 32px;
-        height: 32px;
-        background: #00C2FF;
-        border: 4px solid white;
-        border-radius: 50%;
-        box-shadow: 0 0 16px rgba(0,194,255,0.6), 0 4px 8px rgba(0,0,0,0.3);
-        cursor: move;
-      `;
+        const pickupEl = document.createElement('div');
+        pickupEl.className = 'mapbox-marker-pickup';
+        pickupEl.style.cssText = `
+          width: 32px;
+          height: 32px;
+          background: #00C2FF;
+          border: 4px solid white;
+          border-radius: 50%;
+          box-shadow: 0 0 16px rgba(0,194,255,0.6), 0 4px 8px rgba(0,0,0,0.3);
+          cursor: move;
+        `;
 
-      const pickupMarker = new mapboxgl.Marker({
-        element: pickupEl,
-        draggable: true
-      })
-      .setLngLat([pickup.lng, pickup.lat])
-      .addTo(map);
+        const pickupMarker = new mb.Marker({
+          element: pickupEl,
+          draggable: true
+        })
+        .setLngLat([pickup.lng, pickup.lat])
+        .addTo(map);
 
-      pickupMarkerRef.current = pickupMarker;
+        pickupMarkerRef.current = pickupMarker;
 
-      pickupMarker.on('dragend', async () => {
-        const lngLat = pickupMarker.getLngLat();
-        setPickup(prev => ({ ...prev, lat: lngLat.lat, lng: lngLat.lng }));
-        await reverseGeocode(lngLat.lat, lngLat.lng);
-      });
+        pickupMarker.on('dragend', async () => {
+          const lngLat = pickupMarker.getLngLat();
+          setPickup(prev => ({ ...prev, lat: lngLat.lat, lng: lngLat.lng }));
+          await reverseGeocode(lngLat.lat, lngLat.lng);
+        });
 
-      mapRef.current = map;
-
-      console.log('✓ Mapbox GL map loaded successfully');
-    } catch (error) {
-      console.error('❌ Mapbox initialization error:', error);
-    }
+        mapRef.current = map;
+        console.log('✓ Mapbox GL map loaded successfully');
+      } catch (error) {
+        console.error('❌ Mapbox initialization error:', error);
+      }
+    });
 
     return () => {
+      cancelled = true;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -240,7 +256,7 @@ export default function TaxiPage({ onNavigate }) {
   // Reverse Geocoding: GPS → Adresse (Mapbox)
   const reverseGeocode = async (lat, lng) => {
     try {
-      const token = mapboxgl.accessToken;
+      const token = process.env.REACT_APP_MAPBOX_TOKEN;
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=de&types=address,poi,place&limit=1`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Reverse geocoding failed');
@@ -354,7 +370,7 @@ export default function TaxiPage({ onNavigate }) {
     try {
       const center = map.getCenter();
       const cat = POI_CATEGORIES[categoryKey];
-      const token = mapboxgl.accessToken;
+      const token = process.env.REACT_APP_MAPBOX_TOKEN;
       const url = `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/${center.lng},${center.lat}.json?radius=2500&limit=40&dedupe=true&layers=poi_label&access_token=${token}`;
       const res = await fetch(url);
       if (!res.ok) return;
@@ -609,7 +625,7 @@ export default function TaxiPage({ onNavigate }) {
     // Auto-geocode dropoff if needed
     if (dropoff.address && (!dropoff.lat || dropoff.lat === 0)) {
       try {
-        const token = mapboxgl.accessToken;
+        const token = process.env.REACT_APP_MAPBOX_TOKEN;
         const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(dropoff.address)}.json?access_token=${token}&country=de,at,ch&language=de&limit=1`;
         const res = await fetch(url);
         if (res.ok) {
@@ -898,14 +914,7 @@ export default function TaxiPage({ onNavigate }) {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        if (businessDrivers > 0) {
-                          setTaxiType('business');
-                        } else {
-                          setOnboardingType('business');
-                          setShowDriverOnboarding(true);
-                        }
-                      }}
+                      onClick={() => setTaxiType('business')}
                       className="relative bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-2 border-cyan-500/30 rounded-2xl p-5 text-left hover:border-cyan-400/60 transition-all"
                       data-testid="taxi-type-business"
                     >
@@ -932,14 +941,7 @@ export default function TaxiPage({ onNavigate }) {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        if (privateDrivers > 0) {
-                          setTaxiType('private');
-                        } else {
-                          setOnboardingType('private');
-                          setShowDriverOnboarding(true);
-                        }
-                      }}
+                      onClick={() => setTaxiType('private')}
                       className="relative bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 rounded-2xl p-5 text-left hover:border-purple-400/60 transition-all"
                       data-testid="taxi-type-private"
                     >

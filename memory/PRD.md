@@ -15,6 +15,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 11.05.2026 (iter64 — TaxiPage UX-Bug + Mapbox Lazy-Load)
+- 🔴 **UX-Bug**: Klick auf "Unternehmer-Taxi"/"Privat-Taxi" Karten öffnete bei `businessDrivers === 0` (oder `privateDrivers === 0`) das **Fahrer-Bewerbungsformular** statt das Taxi-Bestellformular. User-Frustration: "ich will Taxi bestellen, nicht Fahrer werden".
+- 🟢 **Fix**: onClick in `TaxiPage.jsx` Lines 901-908 + 935-942 vereinfacht zu `setTaxiType('business' | 'private')`. Driver-Onboarding ist nur noch über expliziten Eintrag (z.B. Mehr-Tab) erreichbar.
+- 🔴 **Performance**: `mapbox-gl` (~800KB) wurde als Top-Level `import` eager in den TaxiPage-Chunk gepackt → blockierte First-Paint der Type-Selection (Map wird auf dieser Stufe nicht gebraucht).
+- 🟢 **Fix**: `mapbox-gl` + CSS via dynamic `import()` mit `webpackChunkName: "mapbox-gl"`. Modul-Level Promise-Gate (`loadMapbox()`) verhindert doppelte Loads. Erst bei `taxiType` !== '' → `mapContainerRef` rendert → `loadMapbox()` lädt das Bundle → Map initialisiert. Initial Type-Selection-Render jetzt ohne Map-JS.
+- 🟢 **Cleanup**: 3 Stellen `mapboxgl.accessToken` durch `process.env.REACT_APP_MAPBOX_TOKEN` ersetzt (kein Library-Zugriff mehr für Geocoding/Tilequery-Token).
+- ✅ Lint clean. Production läuft (`https://bidblitz.ae/api/auctions` HTTP 200, 700ms).
+
+
 ### 11.05.2026 (iter63 — Production 502 Fix + LandingChatbot)
 - 🔴 **Root Cause Pass 1**: `--exclude 'data/'` in rsync → `data/bidblitz_kb.py` fehlte → ImportError `ai_chatbot`.
 - 🔴 **Root Cause Pass 2**: `livekit-api` Package fehlte in `requirements.txt` → ModuleNotFoundError.
