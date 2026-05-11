@@ -15,6 +15,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 11.05.2026 (iter68 — API Layer + BookingForm Sub-Components)
+- 🟢 **Neuer Service**: `services/taxiApi.js` (165 Z.) — Zentrale Fetch-Helpers: `fetchMe`, `fetchTaxiStatus`, `fetchModeSettings`, `fetch/save/deleteFavorite`, `fetch/save/deletePlace`, `fetchActiveRide/fetchRide/fetchRideHistory`, `estimateRide`, `bookRideApi`, `cancelRideApi`, `setDriverStatus`, `forwardGeocode`. Konsistente Error-Handling-Konvention (`{ ok, error }`).
+- 🟢 **TaxiPage.jsx**: Alle 13 inline `fetch()`-Aufrufe + Error-Handling durch API-Service ersetzt. Hooks wie `fetchUserData`, `refreshFavorites`, `refreshSavedPlaces`, `checkModuleStatus`, `loadModeSettings`, `startPolling`, `checkActiveRide` jetzt `useCallback`-stabilisiert.
+- 🟢 **BookingForm Splitting**:
+  - `TaxiSavedPlacesRow.jsx` (32 Z.) — Chip-Reihe für gespeicherte Orte
+  - `TaxiQuickDestinations.jsx` (114 Z.) — Schnellauswahl + Prishtina + Dubai mit `ChipGroup`-Sub-Component
+- 📉 `TaxiPage.jsx`: 702 → **538 Zeilen** (−23%). `TaxiBookingForm.jsx`: 405 → 311 (−23%).
+- 📉 **Gesamt seit iter65**: 1588 → 538 (−66%, −1050 Zeilen). 9 neue Module + 1 Service-Layer.
+- ✅ Verifiziert: Schnellauswahl Click → Dropoff fills → Save-Btn appears, alle 3 Tabs funktional, Mapbox-Autocomplete intakt, Lint clean.
+
 ### 11.05.2026 (iter67 — useTaxiMap Hook + TaxiTypeSelector Extraction)
 - 🟢 **Neuer Hook**: `hooks/useTaxiMap.js` (266 Zeilen) — kapselt Mapbox-Lazy-Load, Map-Init (keyed off `taxiType`), Pickup-Marker (draggable + inline reverse-geocode), Dropoff-Marker, Style-Switch, POI-Tilequery (`loadPOIs` + `clearPoiMarkers`), Popup-Bridge (`window.__taxiSetDropoffPOI`), Unmount-Cleanup. Returns `{ mapContainerRef, mapRef, pickupMarkerRef, loadPOIs }`.
 - 🟢 **Neue Komponente**: `components/taxi/TaxiTypeSelector.jsx` (139 Zeilen) — Hero-Image + Business/Private-Cards + Info-Box, `TypeCard` sub-component für Card-Logik, Driver-Counts + Mode-Settings als Props. Alte unbenutzte 1.0-Version überschrieben.

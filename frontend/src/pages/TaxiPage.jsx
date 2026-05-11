@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import { useUser } from '../store/UserContext';
@@ -20,8 +20,7 @@ import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 import { useTaxiState } from '../hooks/useTaxiState';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useTaxiMap } from '../hooks/useTaxiMap';
-
-const API = process.env.REACT_APP_BACKEND_URL;
+import * as api from '../services/taxiApi';
 
 export default function TaxiPage({ onNavigate }) {
   const { t } = useI18n();
@@ -143,338 +142,175 @@ export default function TaxiPage({ onNavigate }) {
     business: { enabled: true, label: 'Unternehmer-Taxi', description: '' },
     private: { enabled: true, label: 'Privat-Taxi', description: '' },
   });
-  
-  // Refs
+
   const pollingRef = useRef(null);
 
-  // Fetch user data
+  // ─── API-backed actions ──────────────────────────────────────────────────
+  const fetchUserData = useCallback(async () => {
+    const data = await api.fetchMe();
+    if (data) setUserBalance(data.balance || 0);
+  }, [setUserBalance]);
+
+  const refreshFavorites = useCallback(async () => {
+    setFavorites(await api.fetchFavorites());
+  }, [setFavorites]);
+
+  const refreshSavedPlaces = useCallback(async () => {
+    setSavedPlaces(await api.fetchSavedPlaces());
+  }, [setSavedPlaces]);
+
+  const checkModuleStatus = useCallback(async () => {
+    const data = await api.fetchTaxiStatus();
+    if (!data) return;
+    if (data.module_enabled === false) {
+      setModuleEnabled(false);
+      setModuleMessage(data.message || 'Taxi-Modul wird derzeit vorbereitet');
+    } else {
+      setBusinessDrivers(data.business_drivers || 0);
+      setPrivateDrivers(data.private_drivers || 0);
+    }
+  }, [setModuleEnabled, setModuleMessage]);
+
+  const loadModeSettings = useCallback(async () => {
+    const data = await api.fetchModeSettings();
+    if (data) setModeSettings(data);
+  }, []);
+
+  const startPolling = useCallback((rideId) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(async () => {
+      const data = await api.fetchRide(rideId);
+      if (!data?.ride) return;
+      setActiveRide(data.ride);
+      if (['completed', 'cancelled'].includes(data.ride.status)) {
+        clearInterval(pollingRef.current);
+        fetchUserData();
+      }
+    }, 3000);
+  }, [setActiveRide, fetchUserData]);
+
+  const checkActiveRide = useCallback(async () => {
+    const data = await api.fetchActiveRide();
+    if (data?.has_active_ride && data.ride) {
+      setActiveRide(data.ride);
+      setView('tracking');
+      startPolling(data.ride.ride_id);
+    }
+  }, [setActiveRide, setView, startPolling]);
+
   useEffect(() => {
     fetchUserData();
     checkActiveRide();
     checkModuleStatus();
-    fetchModeSettings();
-    fetchFavorites();
+    loadModeSettings();
+    refreshFavorites();
+    refreshSavedPlaces();
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchFavorites = async () => {
-    try {
-      const res = await fetch(`${API}/api/user/favorite-locations`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setFavorites(data.favorites || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch favorites:', err);
-    }
-  };
-
   const saveFavorite = async (locationData, name, icon) => {
-    try {
-      const res = await fetch(`${API}/api/user/favorite-locations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name,
-          address: locationData.address,
-          latitude: locationData.lat,
-          longitude: locationData.lng,
-          icon
-        })
-      });
-      if (res.ok) {
-        await fetchFavorites();
-        setShowSaveFavorite(false);
-        setFavoriteForm({ name: '', icon: 'star' });
-      } else {
-        const errData = await res.json();
-        setError(errData.detail || 'Fehler beim Speichern');
-      }
-    } catch (err) {
-      setError('Netzwerkfehler');
+    const result = await api.saveFavoriteApi({
+      name, address: locationData.address, latitude: locationData.lat, longitude: locationData.lng, icon,
+    });
+    if (result.ok) {
+      await refreshFavorites();
+      setShowSaveFavorite(false);
+      setFavoriteForm({ name: '', icon: 'star' });
+    } else {
+      setError(result.error);
     }
   };
 
   const deleteFavorite = async (favoriteId) => {
-    try {
-      const res = await fetch(`${API}/api/user/favorite-locations/${favoriteId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (res.ok) {
-        await fetchFavorites();
-      }
-    } catch (err) {
-      console.error('Failed to delete favorite:', err);
-    }
+    if (await api.deleteFavoriteApi(favoriteId)) await refreshFavorites();
   };
 
   const selectFavorite = async (favorite) => {
     setPickup({ lat: favorite.latitude, lng: favorite.longitude, address: favorite.address });
     setShowFavorites(false);
-    
-    // Mark as used
-    try {
-      await fetch(`${API}/api/user/favorite-locations/${favorite.id}/use`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      await fetchFavorites();
-    } catch (err) {}
+    await api.markFavoriteUsed(favorite.id);
+    await refreshFavorites();
   };
 
-  const fetchModeSettings = async () => {
-    try {
-      const res = await fetch(`${API}/api/admin/taxi/public/mode-settings`);
-      if (res.ok) {
-        const data = await res.json();
-        setModeSettings(data);
-      }
-    } catch (err) {}
-  };
-
-  const checkModuleStatus = async () => {
-    try {
-      const res = await fetch(`${API}/api/taxi/status`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.module_enabled === false) {
-          setModuleEnabled(false);
-          setModuleMessage(data.message || 'Taxi-Modul wird derzeit vorbereitet');
-        } else {
-          // Get driver counts by type
-          setBusinessDrivers(data.business_drivers || 0);
-          setPrivateDrivers(data.private_drivers || 0);
-        }
-      }
-    } catch (err) {}
-  };
-
-  const fetchUserData = async () => {
-    try {
-      const res = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setUserBalance(data.balance || 0);
-      }
-    } catch (err) {
-      console.error('Failed to fetch user:', err);
+  const savePlace = async (address, lat, lng) => {
+    if (!saveName || !address) return;
+    if (await api.savePlaceApi({ name: saveName, icon: saveIcon, address, lat, lng })) {
+      refreshSavedPlaces();
+      setShowSaveModal(false); setSaveName(''); setSaveIcon('star');
     }
   };
 
-  const checkActiveRide = async () => {
-    try {
-      const res = await fetch(`${API}/api/taxi/rides/active`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.has_active_ride && data.ride) {
-          setActiveRide(data.ride);
-          setView('tracking');
-          startPolling(data.ride.ride_id);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to check active ride:', err);
-    }
-  };
-
-  const startPolling = (rideId) => {
-    if (pollingRef.current) clearInterval(pollingRef.current);
-    pollingRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`${API}/api/taxi/ride/${rideId}`, { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          setActiveRide(data.ride);
-          if (['completed', 'cancelled'].includes(data.ride.status)) {
-            clearInterval(pollingRef.current);
-            fetchUserData();
-          }
-        }
-      } catch (err) {
-        console.error('Polling error:', err);
-      }
-    }, 3000);
-  };
-
-  // NOTE: getCurrentLocation is already defined at line 143 with GPS + Geocoding
-  // This old version has been removed to fix duplicate declaration error
-
-  // Get fare estimates
   const getEstimates = async () => {
     // Auto-geocode dropoff if needed
     if (dropoff.address && (!dropoff.lat || dropoff.lat === 0)) {
-      try {
-        const token = process.env.REACT_APP_MAPBOX_TOKEN;
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(dropoff.address)}.json?access_token=${token}&country=de,at,ch&language=de&limit=1`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          const f = (data.features || [])[0];
-          if (f && f.center) { setDropoff({ lat: f.center[1], lng: f.center[0], address: f.place_name || dropoff.address }); }
-          else { setError('Ziel nicht gefunden. Bitte Vorschlag auswählen.'); return; }
-        }
-      } catch { setError('Geocoding-Fehler'); return; }
+      const geo = await api.forwardGeocode(dropoff.address);
+      if (!geo) { setError('Ziel nicht gefunden. Bitte Vorschlag auswählen.'); return; }
+      setDropoff(geo);
     }
     if (!pickup.lat || !dropoff.address) {
       setError('Bitte Start und Ziel eingeben');
       return;
     }
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const res = await fetch(`${API}/api/taxi/estimate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ pickup, dropoff }),
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setEstimates(data.estimates || []);
-        setSurge(data.surge || { active: false, multiplier: 1.0 });
-      } else {
-        const err = await res.json();
-        setError(err.detail || 'Fehler beim Laden der Preise');
-      }
-    } catch (err) {
-      setError('Netzwerkfehler');
-    } finally {
-      setLoading(false);
+    setLoading(true); setError('');
+    const result = await api.estimateRide({ pickup, dropoff });
+    if (result.ok) {
+      setEstimates(result.estimates);
+      setSurge(result.surge);
+    } else {
+      setError(result.error);
     }
+    setLoading(false);
   };
 
-  // Book ride
   const bookRide = async () => {
     const estimate = estimates.find(e => e.vehicle_type === selectedVehicle);
     if (!estimate) return;
-    
     if (userBalance < estimate.fare) {
       setError(`Nicht genug Guthaben. Benötigt: €${estimate.fare.toFixed(2)}`);
       return;
     }
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const res = await fetch(`${API}/api/taxi/book`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          pickup,
-          dropoff,
-          vehicle_type: selectedVehicle,
-          payment_method: 'wallet',
-        }),
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setActiveRide(data.ride);
-        setView('tracking');
-        startPolling(data.ride.ride_id);
-      } else {
-        const err = await res.json();
-        setError(err.detail || 'Buchung fehlgeschlagen');
-      }
-    } catch (err) {
-      setError('Netzwerkfehler');
-    } finally {
-      setLoading(false);
+    setLoading(true); setError('');
+    const result = await api.bookRideApi({ pickup, dropoff, vehicleType: selectedVehicle });
+    if (result.ok) {
+      setActiveRide(result.ride);
+      setView('tracking');
+      startPolling(result.ride.ride_id);
+    } else {
+      setError(result.error);
     }
+    setLoading(false);
   };
 
-  // Cancel ride
   const cancelRide = async () => {
     if (!activeRide) return;
-    
     setLoading(true);
-    try {
-      const res = await fetch(`${API}/api/taxi/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ride_id: activeRide.ride_id }),
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        setActiveRide(null);
-        setView('book');
-        fetchUserData();
-      } else {
-        const err = await res.json();
-        setError(err.detail || 'Stornierung fehlgeschlagen');
-      }
-    } catch (err) {
-      setError('Netzwerkfehler');
-    } finally {
-      setLoading(false);
+    const result = await api.cancelRideApi(activeRide.ride_id);
+    if (result.ok) {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      setActiveRide(null);
+      setView('book');
+      fetchUserData();
+    } else {
+      setError(result.error);
     }
+    setLoading(false);
   };
 
-  // Fetch ride history
   const fetchHistory = async () => {
-    try {
-      const res = await fetch(`${API}/api/taxi/rides/history`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setRideHistory(data.rides || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch history:', err);
-    }
+    setRideHistory(await api.fetchRideHistory());
   };
 
   useEffect(() => {
     if (view === 'history') fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
-  // Simulate driver for demo
-  const simulateDriverArrival = async () => {
-    if (!activeRide) return;
-    try {
-      await fetch(`${API}/api/taxi/driver/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ride_id: activeRide.ride_id, status: 'arriving' }),
-      });
-    } catch (err) {}
-  };
-
-  const simulateStartTrip = async () => {
-    if (!activeRide) return;
-    try {
-      await fetch(`${API}/api/taxi/driver/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ride_id: activeRide.ride_id, status: 'started' }),
-      });
-    } catch (err) {}
-  };
-
-  const simulateCompleteTrip = async () => {
-    if (!activeRide) return;
-    try {
-      await fetch(`${API}/api/taxi/driver/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ride_id: activeRide.ride_id, status: 'completed' }),
-      });
-    } catch (err) {}
-  };
+  const simulateDriverArrival = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'arriving');
+  const simulateStartTrip     = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'started');
+  const simulateCompleteTrip  = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'completed');
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-24">
