@@ -125,7 +125,6 @@ jobs:
             --exclude '.env' \
             --exclude '.env.*' \
             --exclude 'logs/' \
-            --exclude 'data/' \
             --exclude 'core_backup/' \
             --exclude '.pytest_cache/' \
             backend/ "$VPS_USER@$VPS_HOST:${VPS_BACKEND_DIR}/"

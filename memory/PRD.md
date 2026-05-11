@@ -15,6 +15,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 11.05.2026 (iter63 — Production 502 Fix + LandingChatbot)
+- 🔴 **Root Cause**: `.github/workflows/deploy.yml` rsync excluded `data/` → `data/bidblitz_kb.py` & `data/airports.py` fehlten auf VPS → `from routes.ai_chatbot import router` schlug fehl (ImportError) → PM2 `api` crashte → Nginx 502.
+- 🟢 **Fix**: `--exclude 'data/'` aus `deploy.yml` entfernt. Andere Excludes (`venv/`, `__pycache__/`, `.env`, `logs/`, `core_backup/`) bleiben erhalten.
+- ✅ Lokaler Smoke-Test: `python -c "from server import app"` → 2241 routes loaded.
+- ✅ E2E-Test Landing-Chatbot: `POST /api/landing-chatbot/chat` (unauth, sess `test123`, msg "Was ist BidBlitz?") → 200 mit korrekter LLM-Antwort.
+- ✅ Frontend-Screenshot: `LandingChatbot` Widget rendert (Toggle-Button mit Badge "1", Header "BidBlitz AI-Assistent ● Online", Quick-Replies "Was ist BidBlitz?", "Demo anfordern", "Preise", Greeting-Message).
+- 🟡 **User Action**: "Save to GitHub" Push erforderlich, damit Production-Deploy mit korrektem deploy.yml triggert. Nach Push wird `data/` mitdeployt und backend bootet sauber.
+
+
 ### 10.05.2026 (iter59 — EV Charging Customer History UI)
 - 🟢 `EVChargingHistoryPage.jsx` (Customer-Liste): Stats-Header (Sessions/Total kWh/Total €), Empty-State, Error-State, Session-Cards mit Status-Badge, Station, Stecker, Datum, Dauer, kWh, Kosten, Settlement-Ref, PDF-Download (`/api/ev/receipt/:id/pdf`) und Detail-Link auf `/ev/session/:id`.
 - 🟢 Route `/ev/history` in `App.js` verdrahtet.
