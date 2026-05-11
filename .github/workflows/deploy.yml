@@ -1,4 +1,4 @@
-name: Deploy to Hetzner Production
+name: Deploy to IONOS Production
 
 # This workflow builds the frontend in the GitHub runner and ships the
 # artifacts to the VPS via rsync over SSH. The VPS itself does NOT need
