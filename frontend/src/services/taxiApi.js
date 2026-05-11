@@ -181,3 +181,17 @@ export async function forwardGeocode(query) {
   if (!f?.center) return null;
   return { lat: f.center[1], lng: f.center[0], address: f.place_name || query };
 }
+
+export async function reverseGeocode(lat, lng, signal) {
+  if (!MAPBOX_TOKEN) return null;
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
+  try {
+    const res = await fetch(url, { signal });
+    if (!res.ok) return null;
+    const data = await readJson(res);
+    const f = data?.features?.[0];
+    return f?.place_name || null;
+  } catch {
+    return null;
+  }
+}
