@@ -20,6 +20,8 @@ import TaxiDriverOnboardingModal from '../components/taxi/TaxiDriverOnboardingMo
 import TaxiVehiclePicker from '../components/taxi/TaxiVehiclePicker';
 import TaxiAddressInput from '../components/taxi/TaxiAddressInput';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
+import { useTaxiState } from '../hooks/useTaxiState';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 // Lazy-load mapbox-gl (~800KB) only when the map is actually rendered.
 // This dramatically improves initial paint of the taxi-type selection screen.
@@ -50,58 +52,55 @@ export default function TaxiPage({ onNavigate }) {
     if (onNavigate) onNavigate(path);
   };
   
-  // State
-  const [view, setView] = useState('book'); // book, tracking, history
-  const [taxiType, setTaxiType] = useState(''); // '' = not selected, 'business' = Unternehmer, 'private' = Privat
-  const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
-  const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
-  const [estimates, setEstimates] = useState([]);
-  const [selectedVehicle, setSelectedVehicle] = useState('standard');
-  const [loading, setLoading] = useState(false);
-  const [activeRide, setActiveRide] = useState(null);
-  const [rideHistory, setRideHistory] = useState([]);
-  const [error, setError] = useState('');
-  const [surge, setSurge] = useState({ active: false, multiplier: 1.0 });
-  const [userBalance, setUserBalance] = useState(0);
-  const [moduleEnabled, setModuleEnabled] = useState(true);
-  const [moduleMessage, setModuleMessage] = useState('');
-  const [mapStyle, setMapStyle] = useState(typeof window !== 'undefined' ? (window.localStorage.getItem('bidblitz_map_style') || 'streets') : 'streets');
-  const [showMapStyles, setShowMapStyles] = useState(false);
-
-  // Super-App parity (review, split, live chat)
-  const [showReview, setShowReview] = useState(false);
-  const [reviewRideId, setReviewRideId] = useState(null);
-  const [showSplit, setShowSplit] = useState(false);
-  const [splitRideId, setSplitRideId] = useState(null);
-  const [splitTotal, setSplitTotal] = useState(0);
-  const [showLiveChat, setShowLiveChat] = useState(false);
-  const [showGroupRide, setShowGroupRide] = useState(false);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HOOKS: Extracted State Management
+  // ═══════════════════════════════════════════════════════════════════════════
   
-  // Driver Onboarding Modal
-  const [showDriverOnboarding, setShowDriverOnboarding] = useState(false);
-  const [onboardingType, setOnboardingType] = useState(''); // 'business' or 'private'
+  const state = useTaxiState();
   
-  // Favoriten / Saved Addresses
-  const [favorites, setFavorites] = useState([]);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [showSaveFavorite, setShowSaveFavorite] = useState(false);
-  const [favoriteForm, setFavoriteForm] = useState({ name: '', icon: 'star' });
-
-  // Autocomplete state
-  const [pickupSuggestions, setPickupSuggestions] = useState([]);
-  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
-  const [showPickupSugg, setShowPickupSugg] = useState(false);
-  const [showDropoffSugg, setShowDropoffSugg] = useState(false);
-
-  // Saved places
-  const [savedPlaces, setSavedPlaces] = useState([]);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [saveName, setSaveName] = useState("");
-  const [saveIcon, setSaveIcon] = useState("star");
-
-  // Current address (Reverse Geocoded)
-  const [currentAddress, setCurrentAddress] = useState('');
-  const [loadingLocation, setLoadingLocation] = useState(false);
+  // Destructure commonly used state
+  const {
+    view, setView,
+    taxiType, setTaxiType,
+    pickup, setPickup,
+    dropoff, setDropoff,
+    estimates, setEstimates,
+    selectedVehicle, setSelectedVehicle,
+    loading, setLoading,
+    error, setError,
+    activeRide, setActiveRide,
+    rideHistory, setRideHistory,
+    moduleEnabled, setModuleEnabled,
+    moduleMessage, setModuleMessage,
+    surge, setSurge,
+    userBalance, setUserBalance,
+    mapStyle, setMapStyle,
+    showMapStyles, setShowMapStyles,
+    showReview, setShowReview,
+    reviewRideId, setReviewRideId,
+    showSplit, setShowSplit,
+    splitRideId, setSplitRideId,
+    splitTotal, setSplitTotal,
+    showLiveChat, setShowLiveChat,
+    showGroupRide, setShowGroupRide,
+    showDriverOnboarding, setShowDriverOnboarding,
+    onboardingType, setOnboardingType,
+    favorites, setFavorites,
+    showFavorites, setShowFavorites,
+    showSaveFavorite, setShowSaveFavorite,
+    favoriteForm, setFavoriteForm,
+    pickupSuggestions, setPickupSuggestions,
+    dropoffSuggestions, setDropoffSuggestions,
+    showPickupSugg, setShowPickupSugg,
+    showDropoffSugg, setShowDropoffSugg,
+    savedPlaces, setSavedPlaces,
+    showSaveModal, setShowSaveModal,
+    saveName, setSaveName,
+    saveIcon, setSaveIcon,
+    activePoiCategory, setActivePoiCategory,
+    showPoiFilter, setShowPoiFilter,
+    poiLoading, setPoiLoading,
+  } = state;
 
   // Interactive map refs
   const mapContainerRef = useRef(null);
@@ -109,11 +108,15 @@ export default function TaxiPage({ onNavigate }) {
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
   const poiMarkersRef = useRef([]);
-
-  // POI Filter (Supermärkte, Restaurants etc. — taxi.eu Parität)
-  const [activePoiCategory, setActivePoiCategory] = useState(null);
-  const [showPoiFilter, setShowPoiFilter] = useState(false);
-  const [poiLoading, setPoiLoading] = useState(false);
+  
+  // Geolocation Hook
+  const {
+    currentAddress,
+    setCurrentAddress,
+    loadingLocation,
+    getCurrentLocation,
+    reverseGeocode,
+  } = useGeolocation({ setPickup, mapRef, pickupMarkerRef });
 
   // Initialize Mapbox GL Map (lazy-load mapbox-gl on first map render)
   useEffect(() => {
@@ -200,110 +203,12 @@ export default function TaxiPage({ onNavigate }) {
     localStorage.setItem('bidblitz_map_style', mapStyle);
   }, [mapStyle]);
   
-  // Get current GPS location
+  // Get current GPS location on mount
   useEffect(() => {
     getCurrentLocation();
-  }, []);
+  }, [getCurrentLocation]);
+
   
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setCurrentAddress('Geolocation wird nicht unterstützt');
-      // Fallback to default location (Berlin center)
-      setPickup(prev => ({ ...prev, lat: 52.52, lng: 13.405, address: '' }));
-      return;
-    }
-
-    setLoadingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        console.log('✓ GPS Position:', latitude, longitude);
-
-        setPickup(prev => ({ ...prev, lat: latitude, lng: longitude }));
-
-        // Update map center & pickup marker (Mapbox)
-        if (mapRef.current) {
-          mapRef.current.flyTo({ center: [longitude, latitude], zoom: 14 });
-        }
-        if (pickupMarkerRef.current) {
-          pickupMarkerRef.current.setLngLat([longitude, latitude]);
-        }
-
-        // Reverse geocode to get address
-        await reverseGeocode(latitude, longitude);
-        setLoadingLocation(false);
-      },
-      (error) => {
-        console.error('❌ Geolocation error:', error);
-        // Provide more helpful error message based on error code
-        let errorMsg = 'Standort konnte nicht ermittelt werden';
-        if (error.code === 1) {
-          errorMsg = 'Standortzugriff verweigert. Bitte Berechtigung in den Geräte-Einstellungen aktivieren.';
-        } else if (error.code === 2) {
-          errorMsg = 'Standort nicht verfügbar. Bitte GPS-Signal prüfen.';
-        } else if (error.code === 3) {
-          errorMsg = 'Standortabfrage Timeout. Bitte erneut versuchen.';
-        }
-        setCurrentAddress(errorMsg);
-        
-        // Fallback: Set pickup to default location (Berlin center) so user can continue
-        // User can manually enter address or drag marker
-        setPickup(prev => ({ ...prev, lat: 52.52, lng: 13.405, address: '' }));
-        
-        // Update map to default location
-        if (mapRef.current) {
-          mapRef.current.flyTo({ center: [13.405, 52.52], zoom: 12 });
-        }
-        if (pickupMarkerRef.current) {
-          pickupMarkerRef.current.setLngLat([13.405, 52.52]);
-        }
-        
-        setLoadingLocation(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  };
-  
-  // Reverse Geocoding: GPS → Adresse (Mapbox)
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const token = process.env.REACT_APP_MAPBOX_TOKEN;
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=de&types=address,poi,place&limit=1`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Reverse geocoding failed');
-      const data = await response.json();
-      const f = (data.features || [])[0];
-      if (f) {
-        const ctx = f.context || [];
-        const postcode = (ctx.find(c => (c.id || '').startsWith('postcode')) || {}).text || '';
-        const city = (ctx.find(c => (c.id || '').startsWith('place')) || ctx.find(c => (c.id || '').startsWith('locality')) || {}).text || '';
-        const houseNo = f.address ? ` ${f.address}` : '';
-        const streetLine = `${f.text || ''}${houseNo}`.trim();
-        const cityLine = `${postcode} ${city}`.trim();
-        const fullAddress = [streetLine, cityLine].filter(Boolean).join(', ') || f.place_name;
-        if (fullAddress) {
-          setCurrentAddress(fullAddress);
-          setPickup(prev => ({ ...prev, address: fullAddress }));
-          console.log('✓ Address:', fullAddress);
-        } else {
-          setCurrentAddress(`${lat.toFixed(4)}°, ${lng.toFixed(4)}°`);
-          setPickup(prev => ({ ...prev, address: `${lat.toFixed(4)}°, ${lng.toFixed(4)}°` }));
-        }
-      } else {
-        setCurrentAddress(`Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`);
-        setPickup(prev => ({ ...prev, address: `Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°` }));
-      }
-    } catch (error) {
-      console.error('❌ Reverse geocoding error:', error);
-      const coordsText = `Position: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-      setCurrentAddress(coordsText);
-      setPickup(prev => ({ ...prev, address: coordsText }));
-    }
-  };
 
   // Update markers when pickup/dropoff changes (Mapbox GL)
   useEffect(() => {
