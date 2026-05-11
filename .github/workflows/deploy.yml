@@ -168,27 +168,34 @@ jobs:
             fi
             deactivate
 
-            echo "==> Start or restart PM2 backend"
-            if pm2 describe api > /dev/null 2>&1; then
-              echo "  -> existing process, restart"
-              pm2 restart api --update-env
-            else
-              echo "  -> first start"
-              pm2 start venv/bin/uvicorn \
-                --name api \
-                --interpreter none \
-                --cwd /var/www/bidblitz/backend \
-                -- server:app --host 127.0.0.1 --port 8001 --workers 2
-              pm2 save
+            echo "==> Clean PM2 restart (delete + start to guarantee fresh args)"
+            pm2 delete api 2>/dev/null || true
+            pm2 start venv/bin/uvicorn \
+              --name api \
+              --interpreter none \
+              --cwd /var/www/bidblitz/backend \
+              -- server:app --host 127.0.0.1 --port 8001 --workers 1
+            pm2 save
+
+            echo "==> Wait up to 60s for port 8001 to become listening"
+            PORT_OK=0
+            for i in $(seq 1 30); do
+              if ss -tlnp 2>/dev/null | grep -q ':8001'; then
+                echo "  -> port 8001 listening after ${i}*2=$((i*2))s"
+                PORT_OK=1
+                break
+              fi
+              sleep 2
+            done
+            if [ "$PORT_OK" != "1" ]; then
+              echo "::error::Port 8001 NOT listening after 60s — dumping logs"
+              pm2 logs api --lines 100 --nostream
+              exit 1
             fi
-            sleep 5
 
             echo "==> Backend status"
-            pm2 list | grep -E '\bapi\b' || (echo "PM2 api process NOT FOUND" && exit 1)
-            pm2 logs api --lines 20 --nostream || true
-
-            echo "==> Verify backend port 8001 is listening"
-            ss -tlnp 2>/dev/null | grep -E ':8001' || (echo "Port 8001 NOT listening" && pm2 logs api --lines 50 --nostream && exit 1)
+            pm2 list | grep -E '\bapi\b'
+            pm2 logs api --lines 30 --nostream || true
 
             echo "==> Reload nginx"
             nginx -t && systemctl reload nginx

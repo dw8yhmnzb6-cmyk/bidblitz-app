@@ -16,15 +16,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 ## Implemented Features (current Sprint, Feb 2026)
 
 ### 11.05.2026 (iter63 — Production 502 Fix + LandingChatbot)
-- 🔴 **Root Cause Pass 1**: `.github/workflows/deploy.yml` rsync excluded `data/` → `data/bidblitz_kb.py` & `data/airports.py` fehlten auf VPS → `from routes.ai_chatbot import router` ImportError.
-- 🔴 **Root Cause Pass 2** (nach Push): `livekit-api` Package nicht in `requirements.txt` → `from livekit import api` in `routes/livekit_streaming.py` → `ModuleNotFoundError: No module named 'livekit'` → PM2 `api` crashte erneut.
+- 🔴 **Root Cause Pass 1**: `--exclude 'data/'` in rsync → `data/bidblitz_kb.py` fehlte → ImportError `ai_chatbot`.
+- 🔴 **Root Cause Pass 2**: `livekit-api` Package fehlte in `requirements.txt` → ModuleNotFoundError.
+- 🔴 **Root Cause Pass 3**: `pm2 restart api --update-env` behält ALTE Args → neuer Code lief auf `--host 0.0.0.0` statt `--host 127.0.0.1`. Mit `--workers 2` lief Auctions-Background-Loop in BEIDEN Workers parallel → Race-Condition + Port-Bind-Konflikt während alter Prozess noch shutdownte → Worker Exit Status 1.
 - 🟢 **Strukturelle Fixes**:
   1. `--exclude 'data/'` aus `deploy.yml` entfernt.
-  2. `livekit-api==1.1.0` + `livekit-protocol==1.1.7` zu `requirements.txt` hinzugefügt.
-  3. **Pre-Boot Import-Validation Step** in `deploy.yml` eingebaut: NACH `pip install`, VOR PM2-Restart wird `python -c "from server import app"` ausgeführt. Bei ImportError/ModuleNotFoundError → Deploy bricht ab, alter Build bleibt live → **kein 502 mehr durch fehlende Imports**.
-- ✅ Lokale Smoke-Tests: `from server import app` → 2241 routes loaded. `from routes.livekit_streaming` → router `/api/livekit` OK.
-- ✅ E2E Landing-Chatbot lokal: `POST /api/landing-chatbot/chat` → 200 mit LLM-Antwort.
-- 🟡 **User Action**: "Save to GitHub" für Push erforderlich. Nächster Deploy wird sich selbst validieren.
+  2. `livekit-api==1.1.0` + `livekit-protocol==1.1.7` in `requirements.txt` gepinnt.
+  3. Pre-Boot Import-Validation (`python -c "from server import app"`) nach pip install.
+  4. **Clean PM2 Restart**: `pm2 delete api` → `pm2 start ... --workers 1` statt `pm2 restart --update-env`. Garantiert frische Args + Singleton Background-Tasks.
+  5. **Port-Polling-Loop** (bis 60s) statt fixed `sleep 5`. Wartet aktiv auf Port-Bind, dumpt sinnvolle Logs bei Timeout.
+- ✅ Lokale Smoke-Tests: `from server import app` → 2241 routes loaded. `routes.livekit_streaming` → router OK.
+- 🟡 **User Action**: "Save to GitHub" Push.
 
 
 ### 10.05.2026 (iter59 — EV Charging Customer History UI)
