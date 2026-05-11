@@ -208,6 +208,8 @@ export default function TaxiPage({ onNavigate }) {
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setCurrentAddress('Geolocation wird nicht unterstützt');
+      // Fallback to default location (Berlin center)
+      setPickup(prev => ({ ...prev, lat: 52.52, lng: 13.405, address: '' }));
       return;
     }
 
@@ -236,13 +238,26 @@ export default function TaxiPage({ onNavigate }) {
         // Provide more helpful error message based on error code
         let errorMsg = 'Standort konnte nicht ermittelt werden';
         if (error.code === 1) {
-          errorMsg = 'Standortzugriff verweigert. Bitte Berechtigung in Einstellungen aktivieren.';
+          errorMsg = 'Standortzugriff verweigert. Bitte Berechtigung in den Geräte-Einstellungen aktivieren.';
         } else if (error.code === 2) {
-          errorMsg = 'Standort nicht verfügbar. GPS-Signal prüfen.';
+          errorMsg = 'Standort nicht verfügbar. Bitte GPS-Signal prüfen.';
         } else if (error.code === 3) {
-          errorMsg = 'Standortabfrage Timeout. Erneut versuchen.';
+          errorMsg = 'Standortabfrage Timeout. Bitte erneut versuchen.';
         }
         setCurrentAddress(errorMsg);
+        
+        // Fallback: Set pickup to default location (Berlin center) so user can continue
+        // User can manually enter address or drag marker
+        setPickup(prev => ({ ...prev, lat: 52.52, lng: 13.405, address: '' }));
+        
+        // Update map to default location
+        if (mapRef.current) {
+          mapRef.current.flyTo({ center: [13.405, 52.52], zoom: 12 });
+        }
+        if (pickupMarkerRef.current) {
+          pickupMarkerRef.current.setLngLat([13.405, 52.52]);
+        }
+        
         setLoadingLocation(false);
       },
       {
@@ -1109,10 +1124,20 @@ export default function TaxiPage({ onNavigate }) {
                 {/* Current Address Overlay (Straße + Hausnummer) */}
                 {currentAddress && (
                   <div className="absolute top-3 left-3 right-16 bg-black/70 backdrop-blur-md px-3 py-2 rounded-xl z-10 border border-white/10" data-testid="taxi-current-address">
-                    <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider">Dein Standort</p>
-                    <p className="text-xs text-white truncate">{currentAddress}</p>
-                    {currentAddress.includes('Standortzugriff verweigert') && (
-                      <p className="text-[9px] text-yellow-400 mt-1">💡 Tipp: Standort in Browser-Einstellungen aktivieren</p>
+                    <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider">
+                      {currentAddress.includes('verweigert') || currentAddress.includes('nicht verfügbar') || currentAddress.includes('Timeout') ? '⚠️ Standortfehler' : 'Dein Standort'}
+                    </p>
+                    <p className="text-xs text-white">{currentAddress}</p>
+                    {(currentAddress.includes('Standortzugriff verweigert') || currentAddress.includes('nicht verfügbar') || currentAddress.includes('Timeout')) && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-[9px] text-yellow-300">💡 Gib deine Adresse manuell im Feld unten ein</p>
+                        <button
+                          onClick={getCurrentLocation}
+                          className="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium underline"
+                        >
+                          🔄 Standort erneut abfragen
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1149,7 +1174,7 @@ export default function TaxiPage({ onNavigate }) {
                   variant="pickup"
                   zIndexClass="z-20"
                   testId="taxi-pickup-input"
-                  placeholder="Aktueller Standort"
+                  placeholder={pickup.address || currentAddress.includes('verweigert') || currentAddress.includes('nicht verfügbar') ? "📍 Abholadresse eingeben" : "Aktueller Standort"}
                   value={pickup.address}
                   onChange={handlePickupChange}
                   onBlur={() => geocodeOnBlur('pickup')}
