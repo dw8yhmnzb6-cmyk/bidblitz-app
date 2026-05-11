@@ -6,15 +6,15 @@
  *  - geocodeOnBlur({address, lat, lng}): coordinate fix-up if user typed
  *    a free-form address without selecting a suggestion.
  *
- * Returns: { search, geocodeOnBlur }.
- *
- * The hook owns a debounce timer per-call so each consumer (pickup, dropoff)
- * can keep its own latency without colliding.
+ * Uses REACT_APP_MAPBOX_TOKEN directly so it works BEFORE the lazy-loaded
+ * Mapbox GL library finishes initializing (fixes race condition where users
+ * type pickup/dropoff before the map mounts).
  */
 import { useCallback, useRef, useEffect } from "react";
-import mapboxgl from "mapbox-gl";
 
-const FORWARD_PARAMS = "country=de,at,ch&language=de&limit=6&types=address,poi,place,locality,neighborhood";
+const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
+const FORWARD_PARAMS =
+  "country=de,at,ch&language=de&limit=6&types=address,poi,place,locality,neighborhood,postcode,district";
 
 function parseFeature(f) {
   const ctx = f.context || [];
@@ -37,14 +37,16 @@ function parseFeature(f) {
   };
 }
 
-export function useTaxiGeocoder({ debounceMs = 300 } = {}) {
-  // One timer per logical input (we keep refs by string key)
+export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
   const timersRef = useRef({});
+  const abortersRef = useRef({});
 
   useEffect(() => {
     const timers = timersRef.current;
+    const aborters = abortersRef.current;
     return () => {
       Object.values(timers).forEach((t) => t && clearTimeout(t));
+      Object.values(aborters).forEach((a) => a && a.abort());
     };
   }, []);
 
@@ -55,19 +57,31 @@ export function useTaxiGeocoder({ debounceMs = 300 } = {}) {
   const search = useCallback(
     (key, query, setSuggestions, setVisibility) => {
       const timers = timersRef.current;
+      const aborters = abortersRef.current;
       if (timers[key]) clearTimeout(timers[key]);
-      if (!query || query.length < 2) {
+      if (aborters[key]) aborters[key].abort();
+
+      const q = (query || "").trim();
+      if (q.length < 2) {
         setSuggestions([]);
         setVisibility(false);
         return;
       }
+      if (!MAPBOX_TOKEN) {
+        console.warn("⚠️ REACT_APP_MAPBOX_TOKEN missing — autocomplete disabled");
+        setSuggestions([]);
+        setVisibility(false);
+        return;
+      }
+
       timers[key] = setTimeout(async () => {
+        const controller = new AbortController();
+        aborters[key] = controller;
         try {
-          const token = mapboxgl.accessToken;
           const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-            query,
-          )}.json?access_token=${token}&${FORWARD_PARAMS}`;
-          const res = await fetch(url);
+            q,
+          )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true`;
+          const res = await fetch(url, { signal: controller.signal });
           if (!res.ok) {
             setSuggestions([]);
             setVisibility(false);
@@ -79,7 +93,10 @@ export function useTaxiGeocoder({ debounceMs = 300 } = {}) {
             .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
           setSuggestions(results);
           setVisibility(results.length > 0);
-        } catch {
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            console.error("Geocode search error:", err);
+          }
           setSuggestions([]);
           setVisibility(false);
         }
@@ -95,11 +112,11 @@ export function useTaxiGeocoder({ debounceMs = 300 } = {}) {
   const geocodeOnBlur = useCallback(async (target, setter, fallbackLat = 52.52) => {
     if (!target || !target.address) return;
     if (target.lat && target.lat !== 0 && target.lat !== fallbackLat) return;
+    if (!MAPBOX_TOKEN) return;
     try {
-      const token = mapboxgl.accessToken;
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         target.address,
-      )}.json?access_token=${token}&country=de,at,ch&language=de&limit=1`;
+      )}.json?access_token=${MAPBOX_TOKEN}&country=de,at,ch&language=de&limit=1`;
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();

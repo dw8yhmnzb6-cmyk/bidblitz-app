@@ -15,6 +15,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 11.05.2026 (iter65 — Mapbox Autocomplete Fix + Booking Form Extraction)
+- 🔴 **Bug**: Pickup/Dropoff Eingabe zeigte KEINE Mapbox-Vorschläge. Root Cause: `useTaxiGeocoder.js` las `mapboxgl.accessToken`, der erst nach asynchronem `loadMapbox()` gesetzt wird → User tippte vor Map-Init → API call mit `access_token=undefined` → 401 → leere Suggestions.
+- 🟢 **Fix**: `useTaxiGeocoder.js` nutzt jetzt `process.env.REACT_APP_MAPBOX_TOKEN` direkt. Static `import mapboxgl from "mapbox-gl"` entfernt (bessere Lazy-Load). Zusätzlich: `AbortController`-Cleanup für race-freie Tipp-Sessions, `autocomplete=true` & `postcode,district` in types.
+- 🟢 **Refactor**: Booking Form (~390 Zeilen JSX) extrahiert aus `TaxiPage.jsx` in neue Komponente `components/taxi/TaxiBookingForm.jsx`. TaxiPage.jsx von 1588 → 1251 Zeilen (-21%).
+- ✅ Verifiziert via Playwright: "Fahltskamp" → 1 Vorschlag (25421 Pinneberg), "Hauptstr" → 5 Vorschläge.
+
 ### 11.05.2026 (iter64 — TaxiPage UX-Bug + Mapbox Lazy-Load)
 - 🔴 **UX-Bug**: Klick auf "Unternehmer-Taxi"/"Privat-Taxi" Karten öffnete bei `businessDrivers === 0` (oder `privateDrivers === 0`) das **Fahrer-Bewerbungsformular** statt das Taxi-Bestellformular. User-Frustration: "ich will Taxi bestellen, nicht Fahrer werden".
 - 🟢 **Fix**: onClick in `TaxiPage.jsx` Lines 901-908 + 935-942 vereinfacht zu `setTaxiType('business' | 'private')`. Driver-Onboarding ist nur noch über expliziten Eintrag (z.B. Mehr-Tab) erreichbar.
