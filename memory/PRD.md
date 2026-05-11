@@ -50,6 +50,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - **`GetCertificateStatus`** (CP→CSMS): OCSP-style Status mit Revocation-Liste (`good`/`revoked`).
 ### 10.05.2026 (iter63 — POS Restaurant Features P1+P2 — Müller/Aures Parität)
   - **Server-initiierte Calls**: `CertificateSigned`, `InstallCertificate`, `DeleteCertificate`, `GetInstalledCertificateIds`.
+### 10.05.2026 (iter64 — TaxiPage Integration + Auto-Dispatch + RKSV)
 - 🟢 **REST-Admin-API**: `/api/ev/admin/pki/csrs` (GET pending), `/sign-csr/{id}` (POST), `/trust-anchors` (GET/POST), `/revocations` (GET/POST), `/emaid-contracts` (GET/POST), `/admin/cp/{id}/v201/install-certificate|delete-certificate|installed-certificates`.
 - 🟢 **DB-Collections neu**: `ev_pki_csr_queue`, `ev_pki_trust_store`, `ev_pki_revocations`, `ev_pki_authz_log`, `ev_pki_ev_cert_requests`, `ev_emaid_contracts`.
 - ✅ **End-to-End-Test** (`/tmp/test_iso15118.py`): PnC-Authorize(eMAID) → Accepted → SignCertificate → CSR queued → Admin signiert → CertificateSigned an CP delivered → Get15118EVCertificate persistiert → GetCertificateStatus(good) → Revocation → GetCertificateStatus(revoked). **PASS**.

@@ -5,7 +5,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, ArrowRightLeft, Users, Send, Trash2, RefreshCw, KeyRound, Receipt } from "lucide-react";
+import { Plus, Pencil, ArrowRightLeft, Users, Send, Trash2, RefreshCw, KeyRound, Receipt, FileText, Download, Zap } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -22,6 +22,8 @@ const SUB_TABS = [
   { key: "waiters", label: "Kellner" },
   { key: "abrechnung", label: "Kellner-Abrechnung" },
   { key: "bon", label: "Bonweiterleitung" },
+  { key: "autodispatch", label: "Auto-Dispatch" },
+  { key: "rksv", label: "RKSV (AT)" },
 ];
 
 export default function POSRestaurantTab({ storeId }) {
@@ -51,6 +53,8 @@ export default function POSRestaurantTab({ storeId }) {
       {tab === "waiters" && <WaitersView storeId={storeId} />}
       {tab === "abrechnung" && <AbrechnungView storeId={storeId} />}
       {tab === "bon" && <BonRouteView storeId={storeId} />}
+      {tab === "autodispatch" && <AutoDispatchView storeId={storeId} />}
+      {tab === "rksv" && <RksvView storeId={storeId} />}
     </div>
   );
 }
@@ -567,3 +571,282 @@ function BonRouteView({ storeId }) {
     </div>
   );
 }
+
+// ─── Auto-Dispatch (category → route mapping) ───────────────────────────
+function AutoDispatchView({ storeId }) {
+  const [routes, setRoutes] = useState([]);
+  const [map, setMap] = useState([]);
+  const [form, setForm] = useState({ category: "", route_id: "" });
+  const reload = async () => {
+    const [r, m] = await Promise.all([
+      api(`/api/pos/bonweiterleitung?store_id=${storeId}`),
+      api(`/api/pos/bonweiterleitung/category-map?store_id=${storeId}`),
+    ]);
+    setRoutes(r.routes || []);
+    setMap(m.map || []);
+  };
+  useEffect(() => { reload(); }, [storeId]); // eslint-disable-line
+  const submit = async () => {
+    if (!form.category || !form.route_id) return toast.error("Kategorie + Route nötig");
+    try {
+      await api("/api/pos/bonweiterleitung/category-map", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store_id: storeId, ...form }),
+      });
+      toast.success("Mapping gespeichert");
+      setForm({ category: "", route_id: "" });
+      reload();
+    } catch (e) { toast.error(e.message); }
+  };
+  return (
+    <div className="space-y-4">
+      <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/20">
+        <h3 className="text-sm font-bold text-cyan-300 mb-1 flex items-center gap-1.5">
+          <Zap className="w-4 h-4" /> Automatische Bon-Verteilung
+        </h3>
+        <p className="text-[11px] text-gray-400 mb-3">
+          Beim Cart-Senden werden Items automatisch nach <code>category</code> auf konfigurierte Routen verteilt. Speisen → Küche, Getränke → Theke, Eis → Eis-Theke etc.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <input
+            placeholder="Kategorie (z.B. speisen)"
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value.toLowerCase() })}
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm outline-none focus:border-cyan-500"
+            data-testid="autodisp-category"
+          />
+          <select
+            value={form.route_id}
+            onChange={(e) => setForm({ ...form, route_id: e.target.value })}
+            className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm outline-none focus:border-cyan-500"
+            data-testid="autodisp-route"
+          >
+            <option value="">— Route wählen —</option>
+            {routes.map((r) => (
+              <option key={r.route_id} value={r.route_id}>{r.name} · {r.mode}</option>
+            ))}
+          </select>
+          <button onClick={submit} className="py-2 rounded-lg bg-cyan-500 text-black text-sm font-bold" data-testid="autodisp-save">
+            Mapping speichern
+          </button>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400">{map.length} Mappings konfiguriert</p>
+      {map.length === 0 && (
+        <p className="text-center text-gray-500 text-sm py-6">Noch keine Mappings — Kategorie + Route oben hinzufügen.</p>
+      )}
+      {map.map((m, i) => {
+        const route = routes.find((r) => r.route_id === m.route_id);
+        return (
+          <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3" data-testid={`autodisp-map-${m.category}`}>
+            <span className="px-3 py-1.5 rounded-lg bg-purple-500/15 text-purple-300 text-xs font-bold">
+              {m.category}
+            </span>
+            <ArrowRightLeft className="w-4 h-4 text-gray-500" />
+            <span className="text-sm text-white">{route?.name || m.route_id}</span>
+            <span className="ml-auto text-[11px] text-gray-500">
+              {m.updated_at && new Date(m.updated_at).toLocaleString("de-DE")}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+// ─── RKSV (AT-Compliance) ───────────────────────────────────────────────
+function RksvView({ storeId }) {
+  const [state, setState] = useState(null);
+  const [dep, setDep] = useState([]);
+  const [verify, setVerify] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const reload = async () => {
+    const settle = async (p) => {
+      try { return await p; } catch { return null; }
+    };
+    const [s, d, v] = await Promise.all([
+      settle(api(`/api/pos/rksv/state?store_id=${storeId}`)),
+      settle(api(`/api/pos/rksv/dep?store_id=${storeId}&limit=200`)),
+      settle(api(`/api/pos/rksv/dep/verify?store_id=${storeId}`)),
+    ]);
+    if (s) {
+      setState(s);
+    } else {
+      toast.error("RKSV-Status konnte nicht geladen werden");
+    }
+    setDep((d && d.dep) || []);
+    setVerify(v);
+  };
+  useEffect(() => { reload(); }, [storeId]); // eslint-disable-line
+
+  const action = async (path, label) => {
+    if (!window.confirm(`"${label}" jetzt erzeugen?`)) return;
+    setBusy(true);
+    try {
+      await api(`/api/pos/rksv/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store_id: storeId }),
+      });
+      toast.success(`${label} erfolgreich`);
+      reload();
+    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  };
+
+  const dl = (kind) => {
+    window.open(`${API}/api/pos/rksv/dep.${kind}?store_id=${storeId}`, "_blank");
+  };
+
+  if (!state) {
+    return <p className="text-center text-gray-500 text-sm py-8">Lade RKSV-Status…</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Status header */}
+      <div className={`p-4 rounded-2xl border ${
+        state.active
+          ? "bg-emerald-500/5 border-emerald-500/20"
+          : "bg-amber-500/5 border-amber-500/30"
+      }`}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400">Kassen-ID</p>
+            <p className="font-bold text-white" data-testid="rksv-kassen-id">{state.kassen_id}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400">Umsatzzähler</p>
+            <p className="font-bold text-cyan-400" data-testid="rksv-umsatz">€ {Number(state.umsatzzaehler || 0).toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400">Status</p>
+            <p className={`font-bold ${state.active ? "text-emerald-400" : "text-amber-400"}`} data-testid="rksv-status">
+              {state.active ? "● AKTIV" : "○ INAKTIV"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400">Belege</p>
+            <p className="font-bold text-white">{state.last_receipt_no || 0}</p>
+          </div>
+          {verify && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">Chain-Integrität</p>
+              <p className={`font-bold ${verify.valid ? "text-emerald-400" : "text-red-400"}`} data-testid="rksv-chain-valid">
+                {verify.valid ? "✓ OK" : `✗ defekt @ #${verify.broken_at}`}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Belege actions */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {!state.active && (
+          <button
+            onClick={() => action("start-beleg", "Start-Beleg")}
+            disabled={busy}
+            className="p-3 rounded-xl bg-emerald-500 text-black text-sm font-bold disabled:opacity-50"
+            data-testid="rksv-start"
+          >Start-Beleg</button>
+        )}
+        <button
+          onClick={() => action("null-beleg", "Null-Beleg")}
+          disabled={busy || !state.active}
+          className="p-3 rounded-xl bg-white/10 text-gray-200 text-sm font-bold disabled:opacity-50 hover:bg-white/20"
+          data-testid="rksv-null"
+        >Null-Beleg</button>
+        <button
+          onClick={() => action("monats-beleg", "Monats-Beleg")}
+          disabled={busy}
+          className="p-3 rounded-xl bg-white/10 text-gray-200 text-sm font-bold disabled:opacity-50 hover:bg-white/20"
+          data-testid="rksv-monats"
+        >Monats-Beleg</button>
+        <button
+          onClick={() => action("jahres-beleg", "Jahres-Beleg")}
+          disabled={busy}
+          className="p-3 rounded-xl bg-white/10 text-gray-200 text-sm font-bold disabled:opacity-50 hover:bg-white/20"
+          data-testid="rksv-jahres"
+        >Jahres-Beleg</button>
+        {state.active && (
+          <button
+            onClick={() => action("schluss-beleg", "Schluss-Beleg")}
+            disabled={busy}
+            className="p-3 rounded-xl bg-red-500/20 text-red-300 text-sm font-bold disabled:opacity-50 hover:bg-red-500/30"
+            data-testid="rksv-schluss"
+          >Schluss-Beleg</button>
+        )}
+      </div>
+
+      {/* DEP export */}
+      <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+            <FileText className="w-4 h-4" /> DEP-Export (Finanzamt)
+          </h3>
+          <button
+            onClick={reload}
+            className="p-1.5 rounded bg-white/5 border border-white/10 hover:bg-white/10"
+            data-testid="rksv-reload"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => dl("pdf")}
+            className="px-3 py-2 rounded-lg bg-cyan-500/15 text-cyan-400 text-xs font-bold hover:bg-cyan-500/25 inline-flex items-center gap-1.5"
+            data-testid="rksv-dl-pdf"
+          ><Download className="w-3.5 h-3.5" />PDF</button>
+          <button
+            onClick={() => dl("csv")}
+            className="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 inline-flex items-center gap-1.5"
+            data-testid="rksv-dl-csv"
+          ><Download className="w-3.5 h-3.5" />CSV</button>
+          <span className="text-[11px] text-gray-500 ml-auto self-center">
+            {dep.length} Belege geladen (max. 200) · Vollständige Liste via CSV
+          </span>
+        </div>
+      </div>
+
+      {/* DEP table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs" data-testid="rksv-dep-table">
+          <thead>
+            <tr className="border-b border-white/10 text-gray-400">
+              <th className="text-left py-2 px-2">Nr.</th>
+              <th className="text-left py-2 px-2">Typ</th>
+              <th className="text-left py-2 px-2">Zeit</th>
+              <th className="text-right py-2 px-2">Brutto</th>
+              <th className="text-right py-2 px-2">Umsatz</th>
+              <th className="text-left py-2 px-2">Signatur</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dep.slice().reverse().slice(0, 100).map((r) => (
+              <tr key={r.receipt_no} className="border-b border-white/5 hover:bg-white/5">
+                <td className="py-1.5 px-2 font-mono">{r.receipt_no}</td>
+                <td className="py-1.5 px-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    r.beleg_typ === "START" ? "bg-emerald-500/20 text-emerald-400"
+                    : r.beleg_typ === "SCHLUSS" ? "bg-red-500/20 text-red-400"
+                    : r.beleg_typ === "NORMAL" ? "bg-cyan-500/20 text-cyan-300"
+                    : "bg-purple-500/20 text-purple-300"
+                  }`}>{r.beleg_typ}</span>
+                </td>
+                <td className="py-1.5 px-2 text-gray-400">{(r.ts || "").slice(0, 19).replace("T", " ")}</td>
+                <td className="py-1.5 px-2 text-right">€ {Number(r.payload?.brutto || 0).toFixed(2)}</td>
+                <td className="py-1.5 px-2 text-right">€ {Number(r.umsatzzaehler_nach || 0).toFixed(2)}</td>
+                <td className="py-1.5 px-2 font-mono text-[10px] text-gray-500">{(r.signature || "").slice(0, 22)}…</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+

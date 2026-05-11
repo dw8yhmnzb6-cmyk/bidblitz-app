@@ -252,6 +252,116 @@ async def dep_export(request: Request, store_id: str, limit: int = 1000):
     return {"store_id": store_id, "dep": rows, "count": len(rows)}
 
 
+@router.get("/dep.csv")
+async def dep_csv(request: Request, store_id: str):
+    """RKSV DEP export as CSV (Finanzamt-konform)."""
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    rows = await db.pos_rksv_dep.find(
+        {"store_id": store_id}, {"_id": 0}
+    ).sort("receipt_no", 1).to_list(50000)
+
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow([
+        "Belegnummer", "BelegTyp", "Kassen-ID", "Zeitstempel",
+        "Brutto", "Netto", "UmsatzzaehlerVor", "UmsatzzaehlerNach",
+        "VorherigeSignatur", "Signatur",
+    ])
+    for r in rows:
+        p = r.get("payload") or {}
+        w.writerow([
+            r.get("receipt_no"), r.get("beleg_typ"), r.get("kassen_id"), r.get("ts"),
+            p.get("brutto", 0), p.get("netto", 0),
+            r.get("umsatzzaehler_vor"), r.get("umsatzzaehler_nach"),
+            r.get("previous_signature"), r.get("signature"),
+        ])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="rksv_dep_{store_id}.csv"',
+        },
+    )
+
+
+@router.get("/dep.pdf")
+async def dep_pdf(request: Request, store_id: str):
+    """RKSV DEP export as PDF (Sammelbeleg / Behörden-konform)."""
+    from fastapi.responses import StreamingResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    )
+    import io
+
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    rows = await db.pos_rksv_dep.find(
+        {"store_id": store_id}, {"_id": 0}
+    ).sort("receipt_no", 1).to_list(50000)
+    state = await _get_or_init_state(store_id)
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=24, rightMargin=24,
+                            topMargin=28, bottomMargin=24, title="RKSV DEP")
+    styles = getSampleStyleSheet()
+    elements = []
+    elements.append(Paragraph(
+        "<b>RKSV Datenerfassungsprotokoll (DEP)</b>", styles["Title"]))
+    elements.append(Paragraph(
+        f"Store: {store_id} · Kassen-ID: {state['kassen_id']} · "
+        f"Belege: {len(rows)} · Umsatzzähler: € {state.get('umsatzzaehler', 0):.2f}",
+        styles["Normal"]))
+    elements.append(Spacer(1, 10))
+
+    header = [
+        "Nr.", "Typ", "Zeit", "Brutto €", "Umsatz €",
+        "Signatur (Anfang)",
+    ]
+    data = [header]
+    for r in rows[:1200]:
+        p = r.get("payload") or {}
+        data.append([
+            r.get("receipt_no"),
+            r.get("beleg_typ", ""),
+            (r.get("ts") or "")[:19],
+            f"{float(p.get('brutto', 0)):.2f}",
+            f"{float(r.get('umsatzzaehler_nach', 0)):.2f}",
+            (r.get("signature") or "")[:24] + "...",
+        ])
+    tbl = Table(data, repeatRows=1, colWidths=[35, 55, 95, 60, 70, 200])
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#00C2FF")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 7),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F5F5")]),
+    ]))
+    elements.append(tbl)
+    if len(rows) > 1200:
+        elements.append(Paragraph(
+            "<i>(Anzeige auf 1200 Belege gekürzt — CSV-Export für vollständige Liste verwenden)</i>",
+            styles["Italic"],
+        ))
+    doc.build(elements)
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="rksv_dep_{store_id}.pdf"',
+        },
+    )
+
+
 @router.get("/dep/verify")
 async def dep_verify(request: Request, store_id: str):
     """Verify the integrity of the entire DEP chain."""
