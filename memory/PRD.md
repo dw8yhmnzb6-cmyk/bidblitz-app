@@ -15,6 +15,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 11.05.2026 (iter66 — TaxiPage Header + Tracking Extraction)
+- 🟢 **Refactor**: `TaxiHeader.jsx` (Sticky-Header, Balance, Tab-Nav) und `TaxiTrackingView.jsx` (Live-Map, Driver-Info, Route, Fare, Demo-Controls, Cancel/Complete) extrahiert.
+- 🟢 **Cleanup**: Unbenutzte Imports entfernt (`STATUS_COLORS`, `STATUS_LABELS`, `VEHICLE_ICONS`, `VehicleIcon` — gehören jetzt nur in TrackingView).
+- 📉 `TaxiPage.jsx` 1251 → 1034 Zeilen (−17%). Gesamt seit iter65: 1588 → 1034 (−35%).
+- ✅ Verifiziert via Playwright: Header, alle 3 Tabs (Buchen/Live/Verlauf), Type-Selection rendern korrekt; Lint clean.
+
 ### 11.05.2026 (iter65 — Mapbox Autocomplete Fix + Booking Form Extraction)
 - 🔴 **Bug**: Pickup/Dropoff Eingabe zeigte KEINE Mapbox-Vorschläge. Root Cause: `useTaxiGeocoder.js` las `mapboxgl.accessToken`, der erst nach asynchronem `loadMapbox()` gesetzt wird → User tippte vor Map-Init → API call mit `access_token=undefined` → 401 → leere Suggestions.
 - 🟢 **Fix**: `useTaxiGeocoder.js` nutzt jetzt `process.env.REACT_APP_MAPBOX_TOKEN` direkt. Static `import mapboxgl from "mapbox-gl"` entfernt (bessere Lazy-Load). Zusätzlich: `AbortController`-Cleanup für race-freie Tipp-Sessions, `autocomplete=true` & `postcode,district` in types.
