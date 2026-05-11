@@ -9,13 +9,32 @@ import math
 import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
 from typing import Optional, List
 from enum import Enum
 from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from models.taxi import (
+    OperatorRegistration,
+    FavoriteLocationRequest,
+    DriverOnboardRequest,
+    AddDriverRequest,
+    DriverRegisterRequest,
+    PrivateDriverRegistration,
+    LocationUpdate,
+    BookRideRequest,
+    EstimateRequest,
+    FlexBookRequest,
+    RideActionRequest,
+    SavePlaceReq,
+    VehicleCreateRequest,
+    VehicleUpdateRequest,
+    SosRequest,
+    TipRequest,
+    VehicleType,
+    DriverType,
+)
 
 router = APIRouter(prefix="/api/taxi", tags=["Taxi"])
 logger = logging.getLogger("bidblitz.taxi")
@@ -84,20 +103,8 @@ async def get_module_status():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAXI OPERATOR REGISTRATION & MANAGEMENT
+# TAXI OPERATOR REGISTRATION & MANAGEMENT  
 # ══════════════════════════════════════════════════════════════════════════════
-
-class OperatorRegistration(BaseModel):
-    company_name: str = Field(..., min_length=2, max_length=100)
-    contact_name: str = Field(..., min_length=2, max_length=100)
-    email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
-    phone: str = Field(..., min_length=8, max_length=20)
-    city: str = Field(..., min_length=2, max_length=50)
-    country: str = Field(default="Deutschland")
-    fleet_size: int = Field(..., ge=1, le=500)
-    license_number: str = Field(..., min_length=5, max_length=50)
-    tax_id: Optional[str] = None
-
 
 @router.post("/operator/register")
 async def register_taxi_operator(req: OperatorRegistration, request: Request):
@@ -157,14 +164,7 @@ async def register_taxi_operator(req: OperatorRegistration, request: Request):
 # ══════════════════════════════════════════════════════════════════════════════
 # FAVORITE LOCATIONS (User saved addresses)
 # ══════════════════════════════════════════════════════════════════════════════
-
-class FavoriteLocationRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
-    address: str = Field(..., min_length=1)
-    latitude: float
-    longitude: float
-    icon: str = Field(default="star", pattern=r'^(home|work|star|heart|pin)$')
-
+# Favorite Locations APIs
 
 @router.get("/user/favorite-locations")
 async def get_favorite_locations(request: Request):
@@ -314,17 +314,6 @@ async def get_operator_status(request: Request):
 # DRIVER ONBOARDING (For "Buchung anfragen" button)
 # ══════════════════════════════════════════════════════════════════════════════
 
-class DriverOnboardRequest(BaseModel):
-    name: str = Field(..., min_length=2, max_length=100)
-    email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
-    phone: str = Field(..., min_length=8, max_length=20)
-    license_number: str = Field(..., min_length=5, max_length=50)
-    vehicle_type: str = Field(..., pattern=r'^(standard|premium|van)$')
-    driver_type: str = Field(..., pattern=r'^(business|private)$')  # business or private
-    city: Optional[str] = None
-    message: Optional[str] = None
-
-
 @router.post("/driver/onboard")
 async def onboard_driver(req: DriverOnboardRequest):
     """
@@ -425,13 +414,6 @@ async def get_operator_earnings(request: Request, period: str = "month"):
         "is_trial": operator["is_trial"],
         "trial_savings": round(total_revenue * get_commission_rate(operator["total_revenue"]), 2) if operator["is_trial"] else 0,
     }
-
-
-class AddDriverRequest(BaseModel):
-    driver_user_id: str
-    vehicle_plate: str
-    vehicle_model: str
-    car_type: str = "standard"
 
 
 @router.post("/operator/add-driver")
@@ -800,15 +782,6 @@ async def remove_driver(driver_id: str, request: Request):
 # PRIVATE DRIVER REGISTRATION
 # ══════════════════════════════════════════════════════════════════════════════
 
-class PrivateDriverRegistration(BaseModel):
-    vehicle_plate: str = Field(..., min_length=3, max_length=15)
-    vehicle_model: str = Field(..., min_length=2, max_length=50)
-    vehicle_year: int = Field(..., ge=2000, le=2030)
-    car_type: str = Field(default="standard")
-    license_number: str = Field(..., min_length=5, max_length=30)
-    city: str = Field(..., min_length=2, max_length=50)
-
-
 @router.post("/private/register")
 async def register_private_driver(req: PrivateDriverRegistration, request: Request):
     """Register as a private taxi driver."""
@@ -971,11 +944,6 @@ async def approve_private_driver(driver_id: str, request: Request):
 # ══════════════════════════════════════════════════════════════════════════════
 # DRIVER LOCATION UPDATES
 # ══════════════════════════════════════════════════════════════════════════════
-
-class LocationUpdate(BaseModel):
-    lat: float
-    lng: float
-
 
 @router.post("/driver/location")
 async def update_driver_location(req: LocationUpdate, request: Request):
@@ -1244,16 +1212,6 @@ def calculate_fare(distance_km: float, duration_minutes: float, car_type: str, r
 # DRIVER REGISTRATION & MANAGEMENT
 # ══════════════════════════════════════════════════════════════════════════════
 
-class DriverRegisterRequest(BaseModel):
-    car_brand: str
-    car_model: str
-    car_year: int = Field(..., ge=2010, le=2030)
-    car_color: str
-    license_plate: str
-    car_type: str = "standard"  # standard, premium, van
-    license_number: str
-
-
 @router.post("/driver/register")
 async def register_as_driver(req: DriverRegisterRequest, request: Request):
     """User applies to become a driver."""
@@ -1465,38 +1423,6 @@ async def get_nearby_drivers(lat: float = 52.52, lng: float = 13.405, radius: fl
 # ══════════════════════════════════════════════════════════════════════════════
 # CUSTOMER: BOOK RIDE
 # ══════════════════════════════════════════════════════════════════════════════
-
-class BookRideRequest(BaseModel):
-    pickup_lat: float
-    pickup_lng: float
-    pickup_address: str = ""
-    dropoff_lat: float
-    dropoff_lng: float
-    dropoff_address: str = ""
-    car_type: str = "standard"
-
-
-class EstimateRequest(BaseModel):
-    pickup_lat: Optional[float] = None
-    pickup_lng: Optional[float] = None
-    pickup_address: Optional[str] = ""
-    dropoff_lat: Optional[float] = None
-    dropoff_lng: Optional[float] = None
-    dropoff_address: Optional[str] = ""
-    # Support nested format from frontend
-    pickup: Optional[dict] = None
-    dropoff: Optional[dict] = None
-
-    def get_coords(self):
-        p_lat = self.pickup_lat or (self.pickup.get("lat") if self.pickup else None) or 0
-        p_lng = self.pickup_lng or (self.pickup.get("lng") if self.pickup else None) or 0
-        d_lat = self.dropoff_lat or (self.dropoff.get("lat") if self.dropoff else None) or 0
-        d_lng = self.dropoff_lng or (self.dropoff.get("lng") if self.dropoff else None) or 0
-        p_addr = self.pickup_address or (self.pickup.get("address", "") if self.pickup else "")
-        d_addr = self.dropoff_address or (self.dropoff.get("address", "") if self.dropoff else "")
-        return p_lat, p_lng, d_lat, d_lng, p_addr, d_addr
-
-
 @router.post("/estimate")
 async def get_ride_estimate(req: EstimateRequest):
     """Get price estimates for all vehicle types."""
@@ -1549,30 +1475,6 @@ async def get_ride_estimate(req: EstimateRequest):
         "region": region,
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
     }
-
-
-class FlexBookRequest(BaseModel):
-    pickup_lat: Optional[float] = None
-    pickup_lng: Optional[float] = None
-    pickup_address: Optional[str] = ""
-    dropoff_lat: Optional[float] = None
-    dropoff_lng: Optional[float] = None
-    dropoff_address: Optional[str] = ""
-    pickup: Optional[dict] = None
-    dropoff: Optional[dict] = None
-    car_type: Optional[str] = "standard"
-    vehicle_type: Optional[str] = None
-    payment_method: Optional[str] = "wallet"
-
-    def get_coords(self):
-        p_lat = self.pickup_lat or (self.pickup.get("lat") if self.pickup else None) or 0
-        p_lng = self.pickup_lng or (self.pickup.get("lng") if self.pickup else None) or 0
-        d_lat = self.dropoff_lat or (self.dropoff.get("lat") if self.dropoff else None) or 0
-        d_lng = self.dropoff_lng or (self.dropoff.get("lng") if self.dropoff else None) or 0
-        p_addr = self.pickup_address or (self.pickup.get("address", "") if self.pickup else "")
-        d_addr = self.dropoff_address or (self.dropoff.get("address", "") if self.dropoff else "")
-        ct = self.vehicle_type or self.car_type or "standard"
-        return p_lat, p_lng, d_lat, d_lng, p_addr, d_addr, ct
 
 
 @router.post("/book")
@@ -1735,10 +1637,6 @@ async def get_driver_active_ride(request: Request):
 # ══════════════════════════════════════════════════════════════════════════════
 # DRIVER: ACCEPT / REJECT RIDE
 # ══════════════════════════════════════════════════════════════════════════════
-
-class RideActionRequest(BaseModel):
-    ride_id: str
-
 
 @router.post("/driver/accept")
 async def driver_accept_ride(req: RideActionRequest, request: Request):
@@ -2222,13 +2120,6 @@ async def get_pricing():
 # SAVED PLACES (Gespeicherte Orte: Zuhause, Arbeit, etc.)
 # ══════════════════════════════════════════════════════════════════════════════
 
-class SavePlaceReq(BaseModel):
-    name: str
-    icon: str = "star"
-    address: str
-    lat: float
-    lng: float
-
 @router.get("/saved-places")
 async def get_saved_places(request: Request):
     user = await get_current_user(request)
@@ -2273,25 +2164,6 @@ async def delete_saved_place(place_id: str, request: Request):
 # TAXI COMPANY VEHICLES (fleet management)
 # ══════════════════════════════════════════════════════════════════════════════
 
-class VehicleCreateRequest(BaseModel):
-    vehicle_type: str = Field(..., pattern="^(standard|premium|van)$")
-    brand: str
-    model: str
-    plate_number: str
-    driver_id: Optional[str] = None
-    year: Optional[int] = None
-    color: Optional[str] = None
-
-
-async def _get_operator(request: Request):
-    user = await get_current_user(request)
-    email = (user.get("email") or "").lower()
-    op = await db.taxi_operators.find_one({"email": email})
-    if not op:
-        raise HTTPException(404, "Nicht als Taxi-Unternehmen registriert")
-    return op, user
-
-
 @router.get("/operator/vehicles")
 async def list_company_vehicles(request: Request):
     op, _ = await _get_operator(request)
@@ -2331,12 +2203,6 @@ async def add_company_vehicle(req: VehicleCreateRequest, request: Request):
     await db.taxi_company_vehicles.insert_one(doc)
     doc.pop("_id", None)
     return {"ok": True, "vehicle": doc}
-
-
-class VehicleUpdateRequest(BaseModel):
-    driver_id: Optional[str] = None
-    status: Optional[str] = Field(None, pattern="^(active|inactive|maintenance)$")
-    vehicle_type: Optional[str] = Field(None, pattern="^(standard|premium|van)$")
 
 
 @router.patch("/operator/vehicles/{vehicle_id}")
@@ -2451,13 +2317,6 @@ async def get_nearby_drivers_for_map(lat: float = 25.2048, lng: float = 55.2708,
 # SOS / EMERGENCY  (P0 — Safety Feature)
 # ══════════════════════════════════════════════════════════════════════════════
 
-class SosRequest(BaseModel):
-    ride_id: Optional[str] = None
-    lat: float
-    lng: float
-    note: Optional[str] = ""
-
-
 @router.post("/sos")
 async def trigger_sos(req: SosRequest, request: Request):
     """
@@ -2570,11 +2429,6 @@ async def get_ride_receipt(ride_id: str, request: Request):
 # ══════════════════════════════════════════════════════════════════════════════
 # ADD TIP AFTER RIDE  (P0)
 # ══════════════════════════════════════════════════════════════════════════════
-
-class TipRequest(BaseModel):
-    ride_id: str
-    amount: float = Field(..., ge=0, le=200)
-
 
 @router.post("/rides/tip")
 async def add_ride_tip(req: TipRequest, request: Request):

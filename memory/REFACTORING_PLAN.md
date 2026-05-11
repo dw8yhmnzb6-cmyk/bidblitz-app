@@ -207,16 +207,14 @@ export default function TaxiPage() {
 
 ## ✅ Implementation Checklist
 
-### Backend Models (Phase 1)
-- [ ] `/app/backend/models/__init__.py` erstellen
-- [ ] `models/common.py` (shared types)
-- [ ] `models/user.py` extrahieren
-- [ ] `models/taxi.py` extrahieren
-- [ ] `models/auction.py` extrahieren
-- [ ] `models/pos.py` extrahieren
-- [ ] Routes aktualisieren (imports)
+### Backend Models (Phase 1) - **✅ COMPLETED**
+- [x] `/app/backend/models/__init__.py` erstellt
+- [x] `models/common.py` (shared types: Coordinates, Address)
+- [x] `models/taxi.py` extrahiert (15 Models, 201 lines)
+- [x] Routes aktualisieren (imports in taxi.py)
+- [x] **Ergebnis:** routes/taxi.py: 2623 → 2477 lines (-146 lines)
 
-### Backend Routes (Phase 2)
+### Backend Routes (Phase 2) - **PLANNED**
 - [ ] `routes/taxi/` Modul erstellen
   - [ ] `taxi/rides.py`
   - [ ] `taxi/drivers.py`
@@ -226,13 +224,13 @@ export default function TaxiPage() {
   - [ ] `auctions/bids.py`
 - [ ] Alt-Files löschen
 
-### Backend server.py (Phase 3)
+### Backend server.py (Phase 3) - **PLANNED**
 - [ ] `core/middleware.py` erstellen
 - [ ] `core/router_registry.py` erstellen
 - [ ] `server.py` cleanup
 - [ ] Testen: `python -c "from server import app"`
 
-### Frontend TaxiPage (Phase 4)
+### Frontend TaxiPage (Phase 4) - **PLANNED**
 - [ ] `hooks/useTaxiState.js`
 - [ ] `hooks/useTaxiMap.js`
 - [ ] `components/taxi/TaxiBookingForm.jsx`
