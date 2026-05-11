@@ -67,6 +67,20 @@ export function useTaxiState() {
   const [activePoiCategory, setActivePoiCategory] = useState(null);
   const [showPoiFilter, setShowPoiFilter] = useState(false);
   const [poiLoading, setPoiLoading] = useState(false);
+
+  // Order options (taxi.eu parity)
+  const [orderOptions, setOrderOptions] = useState({
+    language: 'de',
+    withPet: false,
+    luggage: 'none',     // 'none' | 'small' | 'much' | 'much_combi'
+    assistance: false,
+    notes: '',
+    scheduledAt: null,   // null => Jetzt; ISO string otherwise
+  });
+  const [showOrderOptions, setShowOrderOptions] = useState(false);
+
+  // Address Search Sheet (fullscreen overlay)
+  const [searchSheetMode, setSearchSheetMode] = useState(null); // null | 'pickup' | 'dropoff'
   
   return {
     // Core
@@ -126,5 +140,10 @@ export function useTaxiState() {
     activePoiCategory, setActivePoiCategory,
     showPoiFilter, setShowPoiFilter,
     poiLoading, setPoiLoading,
+
+    // Order Options & Search Sheet
+    orderOptions, setOrderOptions,
+    showOrderOptions, setShowOrderOptions,
+    searchSheetMode, setSearchSheetMode,
   };
 }

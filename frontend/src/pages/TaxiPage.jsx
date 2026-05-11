@@ -13,6 +13,10 @@ import TaxiFavoritesModal from '../components/taxi/TaxiFavoritesModal';
 import TaxiSaveFavoriteModal from '../components/taxi/TaxiSaveFavoriteModal';
 import TaxiDriverOnboardingModal from '../components/taxi/TaxiDriverOnboardingModal';
 import TaxiBookingForm from '../components/taxi/TaxiBookingForm';
+import TaxiBookingSheet from '../components/taxi/TaxiBookingSheet';
+import TaxiBottomSheet from '../components/taxi/TaxiBottomSheet';
+import TaxiAddressSearchSheet from '../components/taxi/TaxiAddressSearchSheet';
+import TaxiOrderOptions from '../components/taxi/TaxiOrderOptions';
 import TaxiHeader from '../components/taxi/TaxiHeader';
 import TaxiTrackingView from '../components/taxi/TaxiTrackingView';
 import TaxiTypeSelector from '../components/taxi/TaxiTypeSelector';
@@ -79,6 +83,9 @@ export default function TaxiPage({ onNavigate }) {
     activePoiCategory, setActivePoiCategory,
     showPoiFilter, setShowPoiFilter,
     poiLoading, setPoiLoading,
+    orderOptions, setOrderOptions,
+    showOrderOptions, setShowOrderOptions,
+    searchSheetMode, setSearchSheetMode,
   } = state;
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -273,7 +280,10 @@ export default function TaxiPage({ onNavigate }) {
       return;
     }
     setLoading(true); setError('');
-    const result = await api.bookRideApi({ pickup, dropoff, vehicleType: selectedVehicle });
+    const result = await api.bookRideApi({
+      pickup, dropoff, vehicleType: selectedVehicle,
+      options: orderOptions,
+    });
     if (result.ok) {
       setActiveRide(result.ride);
       setView('tracking');
@@ -312,16 +322,138 @@ export default function TaxiPage({ onNavigate }) {
   const simulateStartTrip     = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'started');
   const simulateCompleteTrip  = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'completed');
 
-  return (
-    <div className="min-h-screen bg-[#050505] text-white pb-24">
-      <TaxiHeader
-        onBack={() => navigate('/')}
-        view={view}
-        setView={setView}
-        moduleEnabled={moduleEnabled}
-        userBalance={userBalance}
-      />
+  // Order options summary text for the sheet button
+  const optionsSummary = (() => {
+    const tags = [];
+    if (orderOptions.scheduledAt) {
+      const d = new Date(orderOptions.scheduledAt);
+      tags.push(d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }));
+    } else {
+      tags.push('Jetzt');
+    }
+    if (orderOptions.withPet) tags.push('🐾');
+    if (orderOptions.luggage === 'much' || orderOptions.luggage === 'much_combi') tags.push('🧳');
+    if (orderOptions.assistance) tags.push('♿');
+    if (orderOptions.language && orderOptions.language !== 'de') tags.push(orderOptions.language.toUpperCase());
+    return tags.join(' · ');
+  })();
+  const scheduledLabel = orderOptions.scheduledAt
+    ? new Date(orderOptions.scheduledAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : null;
 
+  // taxi.eu-style: render map full-screen with bottom-sheet when in booking flow
+  const inMapBookingFlow = view === 'book' && taxiType && moduleEnabled;
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white" data-mapflow={inMapBookingFlow ? '1' : '0'}>
+      {!inMapBookingFlow && (
+        <TaxiHeader
+          onBack={() => navigate('/')}
+          view={view}
+          setView={setView}
+          moduleEnabled={moduleEnabled}
+          userBalance={userBalance}
+        />
+      )}
+
+      {/* FULL-SCREEN MAP BOOKING FLOW (taxi.eu parity) */}
+      {inMapBookingFlow && (
+        <div className="fixed inset-0 z-10">
+          {/* Map fills entire viewport */}
+          <div
+            ref={mapContainerRef}
+            className="absolute inset-0"
+            data-testid="taxi-map-container"
+          />
+
+          {/* Top bar overlay */}
+          <div className="absolute top-0 inset-x-0 z-40 px-4 pt-3 pb-2 bg-gradient-to-b from-black/80 to-transparent">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => navigate('/')}
+                className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center"
+                data-testid="map-flow-back"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m15 6-6 6 6 6" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={getCurrentLocation}
+                  disabled={loadingLocation}
+                  className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center disabled:opacity-50"
+                  data-testid="map-flow-locate"
+                  title="Standort"
+                >
+                  {loadingLocation ? (
+                    <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Draggable Bottom Sheet */}
+          <TaxiBottomSheet defaultSnap="half">
+            <TaxiBookingSheet
+              taxiType={taxiType}
+              onChangeType={() => setTaxiType('')}
+              pickup={pickup}
+              dropoff={dropoff}
+              onTapPickup={() => setSearchSheetMode('pickup')}
+              onTapDropoff={() => setSearchSheetMode('dropoff')}
+              onClearDropoff={() => { setDropoff({ lat: 0, lng: 0, address: '' }); setEstimates([]); }}
+              savedPlaces={savedPlaces}
+              onPickSavedPlace={(p) => setDropoff({ lat: p.lat, lng: p.lng, address: p.address })}
+              estimates={estimates}
+              selectedVehicle={selectedVehicle}
+              setSelectedVehicle={setSelectedVehicle}
+              surge={surge}
+              loading={loading}
+              error={error}
+              optionsSummary={optionsSummary}
+              onOpenOptions={() => setShowOrderOptions(true)}
+              noDriversAvailable={false}
+              onGetEstimates={getEstimates}
+              onBook={bookRide}
+              scheduledLabel={scheduledLabel}
+            />
+          </TaxiBottomSheet>
+
+          {/* Address search overlay */}
+          <TaxiAddressSearchSheet
+            mode={searchSheetMode}
+            onClose={() => setSearchSheetMode(null)}
+            currentLocation={currentAddress ? { address: currentAddress, lat: pickup.lat, lng: pickup.lng } : null}
+            pickup={pickup}
+            dropoff={dropoff}
+            onSelectPickup={(p) => setPickup({ ...p })}
+            onSelectDropoff={(d) => setDropoff({ ...d })}
+            onUseCurrentLocation={getCurrentLocation}
+            onPickOnMap={() => setSearchSheetMode(null)}
+            favorites={favorites}
+            savedPlaces={savedPlaces}
+          />
+
+          {/* Order options overlay */}
+          <TaxiOrderOptions
+            isOpen={showOrderOptions}
+            onClose={() => setShowOrderOptions(false)}
+            options={orderOptions}
+            setOptions={setOrderOptions}
+          />
+        </div>
+      )}
+
+      {!inMapBookingFlow && (
       <div className="max-w-lg mx-auto px-4 py-6">
         <KYCBanner onNavigate={onNavigate} />
         {/* MODULE DISABLED NOTICE */}
@@ -463,6 +595,7 @@ export default function TaxiPage({ onNavigate }) {
         </AnimatePresence>
         )}
       </div>
+      )}
 
       {/* Super-App Parity Modals */}
       <ReviewModal

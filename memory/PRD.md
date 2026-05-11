@@ -15,6 +15,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 11.05.2026 (iter69 — taxi.eu UI Parität: Bottom-Sheet + Fullscreen Search + Bestelloptionen)
+- 🎯 **Vollständige UX-Neuordnung des Buchungsflows nach taxi.eu-Referenz** (Screen-Recording vom User).
+- 🟢 **Backend**: `FlexBookRequest` (models/taxi.py) erweitert um `language`, `with_pet`, `luggage`, `assistance`, `scheduled_at`. `book_ride` (routes/taxi.py) persistiert diese als `ride.options`. Backwards-compatible (defaults). Pydantic-Validierung clean.
+- 🟢 **Frontend Service**: `bookRideApi` (taxiApi.js) sendet jetzt flache `FlexBookRequest`-Felder + `options.*` (pet/luggage/assistance/notes/scheduledAt/language). **Bugfix mit eingebaut**: alte Implementierung sendete nested `{pickup, dropoff}` → schlug auf Backend mit FlexBookRequest fehl.
+- 🟢 **Neue Komponenten**:
+  - `TaxiBottomSheet.jsx` (88 Z.) — draggable Bottom-Sheet mit 3 Snap-Points (collapsed 28% / half 55% / full 92%). `framer-motion` `useMotionValue` + Velocity-Projection für natürliches Snap-Verhalten.
+  - `TaxiAddressSearchSheet.jsx` (320 Z.) — Fullscreen-Suche, zwei aktive Inputs (Pickup + Dropoff), Live-Mapbox-Suggestions, "Aktueller Standort", Favoriten, gespeicherte Orte, POI-Quick-Tiles (Flughafen/Bahnhof/Hotel/Krankenhaus), "Standort auf Karte festlegen".
+  - `TaxiOrderOptions.jsx` (282 Z.) — Bestelloptionen-Sheet mit `Picker`-Sub-Component (Sprache DE/EN/TR/AR/SQ), `Toggle` (Pet, Assistance), Picker (Gepäck none/small/much/much_combi), `ScheduleSheet` (Jetzt / Vorbestellen + datetime-local Input), Sonderwünsche Textarea.
+  - `TaxiBookingSheet.jsx` (194 Z.) — taxi.eu-style Sheet-Content: Type-Pill + Ändern, Greeting, tap-able Address-Rows, gespeicherte Orte Chips, Bestelloptionen-Button mit Live-Summary (`Jetzt · 🐾 · 🧳 · EN`), Surge-Warning, "Keine Taxis verfügbar"-Banner, Preise-Anzeigen / Buchen CTA mit `Bestellen für DD.MM HH:MM` bei Vorbestellung.
+- 🟢 **TaxiPage.jsx**: Conditional Layout — wenn `view==='book' && taxiType && moduleEnabled` → Vollbild-Map + draggable Bottom-Sheet + Top-Bar (Back/Locate). Andernfalls klassisches Header+Container-Layout (Tracking/History/TypeSelector). `useTaxiState` erweitert um `orderOptions`, `showOrderOptions`, `searchSheetMode`.
+- ✅ Playwright-verifiziert: Bottom-Sheet rendert, Adress-Row öffnet Search-Sheet, Mapbox-Vorschläge erscheinen (1 für "Fahltskamp"), Options-Sheet öffnet, Pet-Toggle aktivierbar, Language-Picker (EN) → Summary "Jetzt · 🐾 · EN", Schedule-Sheet vorhanden. Lint clean.
+
 ### 11.05.2026 (iter68 — API Layer + BookingForm Sub-Components)
 - 🟢 **Neuer Service**: `services/taxiApi.js` (165 Z.) — Zentrale Fetch-Helpers: `fetchMe`, `fetchTaxiStatus`, `fetchModeSettings`, `fetch/save/deleteFavorite`, `fetch/save/deletePlace`, `fetchActiveRide/fetchRide/fetchRideHistory`, `estimateRide`, `bookRideApi`, `cancelRideApi`, `setDriverStatus`, `forwardGeocode`. Konsistente Error-Handling-Konvention (`{ ok, error }`).
 - 🟢 **TaxiPage.jsx**: Alle 13 inline `fetch()`-Aufrufe + Error-Handling durch API-Service ersetzt. Hooks wie `fetchUserData`, `refreshFavorites`, `refreshSavedPlaces`, `checkModuleStatus`, `loadModeSettings`, `startPolling`, `checkActiveRide` jetzt `useCallback`-stabilisiert.

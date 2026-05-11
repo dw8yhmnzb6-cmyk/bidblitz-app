@@ -142,6 +142,13 @@ class FlexBookRequest(BaseModel):
     notes: Optional[str] = None
     rider_email: Optional[str] = None  # Book for another user
     rider_phone: Optional[str] = None
+
+    # taxi.eu-parity order options
+    language: Optional[str] = Field(None, max_length=10)  # "de" | "en" | ...
+    with_pet: bool = False
+    luggage: Optional[str] = Field(None, max_length=20)  # "none" | "small" | "much" | "much_combi"
+    assistance: bool = False
+    scheduled_at: Optional[str] = None  # ISO datetime; None => "Jetzt"
     
     def get_coords(self):
         """Helper method for backward compatibility with taxi.py route"""

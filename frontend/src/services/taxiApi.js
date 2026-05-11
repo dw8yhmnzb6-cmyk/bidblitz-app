@@ -120,11 +120,29 @@ export async function estimateRide({ pickup, dropoff }) {
     : { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
 }
 
-export async function bookRideApi({ pickup, dropoff, vehicleType, paymentMethod = "wallet" }) {
+export async function bookRideApi({
+  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {},
+}) {
+  const body = {
+    pickup_address: pickup.address || "",
+    pickup_lat: pickup.lat,
+    pickup_lng: pickup.lng,
+    dropoff_address: dropoff.address || "",
+    dropoff_lat: dropoff.lat,
+    dropoff_lng: dropoff.lng,
+    vehicle_type: vehicleType,
+    payment_method: paymentMethod,
+    language: options.language || "de",
+    with_pet: !!options.withPet,
+    luggage: options.luggage || "none",
+    assistance: !!options.assistance,
+    notes: options.notes || "",
+    scheduled_at: options.scheduledAt || null,
+  };
   const res = await fetch(`${API}/api/taxi/book`, {
     ...credJson,
     method: "POST",
-    body: JSON.stringify({ pickup, dropoff, vehicle_type: vehicleType, payment_method: paymentMethod }),
+    body: JSON.stringify(body),
   });
   const data = await readJson(res);
   return res.ok ? { ok: true, ride: data?.ride } : { ok: false, error: data?.detail || "Buchung fehlgeschlagen" };

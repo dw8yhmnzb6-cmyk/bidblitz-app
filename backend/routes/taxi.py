@@ -1535,6 +1535,14 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "duration_estimate_minutes": round(duration_minutes),
         "fare_estimate": fare_estimate["total"],
         "status": RideStatus.REQUESTED.value,
+        "options": {
+            "language": req.language or "de",
+            "with_pet": bool(req.with_pet),
+            "luggage": req.luggage or "none",
+            "assistance": bool(req.assistance),
+            "notes": req.notes or "",
+            "scheduled_at": req.scheduled_at,  # None = now
+        },
         "created_at": now.isoformat(),
         "status_history": [{"status": "requested", "at": now.isoformat()}],
     }
