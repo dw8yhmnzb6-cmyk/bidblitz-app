@@ -15,6 +15,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 11.05.2026 (iter67 — useTaxiMap Hook + TaxiTypeSelector Extraction)
+- 🟢 **Neuer Hook**: `hooks/useTaxiMap.js` (266 Zeilen) — kapselt Mapbox-Lazy-Load, Map-Init (keyed off `taxiType`), Pickup-Marker (draggable + inline reverse-geocode), Dropoff-Marker, Style-Switch, POI-Tilequery (`loadPOIs` + `clearPoiMarkers`), Popup-Bridge (`window.__taxiSetDropoffPOI`), Unmount-Cleanup. Returns `{ mapContainerRef, mapRef, pickupMarkerRef, loadPOIs }`.
+- 🟢 **Neue Komponente**: `components/taxi/TaxiTypeSelector.jsx` (139 Zeilen) — Hero-Image + Business/Private-Cards + Info-Box, `TypeCard` sub-component für Card-Logik, Driver-Counts + Mode-Settings als Props. Alte unbenutzte 1.0-Version überschrieben.
+- 🟢 **TaxiPage.jsx aufgeräumt**: 5× Map-`useEffect`, 5× Refs, `loadPOIs`, `clearPoiMarkers`, `loadMapbox`, alle `mapboxgl`-Imports/Aufrufe entfernt. `MAP_STYLES`, `POI_CATEGORIES`, `TaxiPoiFilterSheet`, `TaxiMapStylePicker`, `TaxiSavePlaceModal`, `TaxiVehiclePicker`, `TaxiAddressInput` Imports entfernt (gehören jetzt in BookingForm).
+- 📉 `TaxiPage.jsx`: 1034 → 702 Zeilen (−32%). **Gesamt seit iter65**: 1588 → 702 (−56%).
+- ✅ Verifiziert via Playwright: Type-Selector (Hero + Cards + Info-Box), Map-Mount beim Type-Pick, Pickup-Autocomplete (Mapbox), "Ändern"-Button (zurück zum Selector). Lint clean.
+
 ### 11.05.2026 (iter66 — TaxiPage Header + Tracking Extraction)
 - 🟢 **Refactor**: `TaxiHeader.jsx` (Sticky-Header, Balance, Tab-Nav) und `TaxiTrackingView.jsx` (Live-Map, Driver-Info, Route, Fare, Demo-Controls, Cancel/Complete) extrahiert.
 - 🟢 **Cleanup**: Unbenutzte Imports entfernt (`STATUS_COLORS`, `STATUS_LABELS`, `VEHICLE_ICONS`, `VehicleIcon` — gehören jetzt nur in TrackingView).
