@@ -104,6 +104,17 @@ class EstimateRequest(BaseModel):
     pickup_lng: float = Field(..., ge=-180, le=180)
     dropoff_lat: float = Field(..., ge=-90, le=90)
     dropoff_lng: float = Field(..., ge=-180, le=180)
+    
+    def get_coords(self):
+        """Helper method for backward compatibility with taxi.py route"""
+        return (
+            self.pickup_lat,
+            self.pickup_lng,
+            self.dropoff_lat,
+            self.dropoff_lng,
+            "",  # pickup_address (not in EstimateRequest)
+            ""   # dropoff_address (not in EstimateRequest)
+        )
 
 
 class BookRideRequest(BaseModel):
@@ -131,6 +142,18 @@ class FlexBookRequest(BaseModel):
     notes: Optional[str] = None
     rider_email: Optional[str] = None  # Book for another user
     rider_phone: Optional[str] = None
+    
+    def get_coords(self):
+        """Helper method for backward compatibility with taxi.py route"""
+        return (
+            self.pickup_lat,
+            self.pickup_lng,
+            self.dropoff_lat,
+            self.dropoff_lng,
+            self.pickup_address,
+            self.dropoff_address,
+            self.vehicle_type.value  # Return string value of enum
+        )
 
 
 class RideActionRequest(BaseModel):
