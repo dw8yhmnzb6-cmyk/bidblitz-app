@@ -159,6 +159,13 @@ jobs:
             source venv/bin/activate
             pip install -q --upgrade pip
             pip install --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ -r requirements.txt
+
+            echo "==> Pre-boot import validation (catch ImportError before PM2 restart)"
+            if ! python -c "import sys; sys.path.insert(0, '.'); from server import app; print(f'IMPORT_OK: {len(app.routes)} routes')"; then
+              echo "::error::Backend import failed — aborting deploy. Old version stays live."
+              deactivate
+              exit 1
+            fi
             deactivate
 
             echo "==> Start or restart PM2 backend"

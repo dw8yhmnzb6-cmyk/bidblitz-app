@@ -16,12 +16,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 ## Implemented Features (current Sprint, Feb 2026)
 
 ### 11.05.2026 (iter63 — Production 502 Fix + LandingChatbot)
-- 🔴 **Root Cause**: `.github/workflows/deploy.yml` rsync excluded `data/` → `data/bidblitz_kb.py` & `data/airports.py` fehlten auf VPS → `from routes.ai_chatbot import router` schlug fehl (ImportError) → PM2 `api` crashte → Nginx 502.
-- 🟢 **Fix**: `--exclude 'data/'` aus `deploy.yml` entfernt. Andere Excludes (`venv/`, `__pycache__/`, `.env`, `logs/`, `core_backup/`) bleiben erhalten.
-- ✅ Lokaler Smoke-Test: `python -c "from server import app"` → 2241 routes loaded.
-- ✅ E2E-Test Landing-Chatbot: `POST /api/landing-chatbot/chat` (unauth, sess `test123`, msg "Was ist BidBlitz?") → 200 mit korrekter LLM-Antwort.
-- ✅ Frontend-Screenshot: `LandingChatbot` Widget rendert (Toggle-Button mit Badge "1", Header "BidBlitz AI-Assistent ● Online", Quick-Replies "Was ist BidBlitz?", "Demo anfordern", "Preise", Greeting-Message).
-- 🟡 **User Action**: "Save to GitHub" Push erforderlich, damit Production-Deploy mit korrektem deploy.yml triggert. Nach Push wird `data/` mitdeployt und backend bootet sauber.
+- 🔴 **Root Cause Pass 1**: `.github/workflows/deploy.yml` rsync excluded `data/` → `data/bidblitz_kb.py` & `data/airports.py` fehlten auf VPS → `from routes.ai_chatbot import router` ImportError.
+- 🔴 **Root Cause Pass 2** (nach Push): `livekit-api` Package nicht in `requirements.txt` → `from livekit import api` in `routes/livekit_streaming.py` → `ModuleNotFoundError: No module named 'livekit'` → PM2 `api` crashte erneut.
+- 🟢 **Strukturelle Fixes**:
+  1. `--exclude 'data/'` aus `deploy.yml` entfernt.
+  2. `livekit-api==1.1.0` + `livekit-protocol==1.1.7` zu `requirements.txt` hinzugefügt.
+  3. **Pre-Boot Import-Validation Step** in `deploy.yml` eingebaut: NACH `pip install`, VOR PM2-Restart wird `python -c "from server import app"` ausgeführt. Bei ImportError/ModuleNotFoundError → Deploy bricht ab, alter Build bleibt live → **kein 502 mehr durch fehlende Imports**.
+- ✅ Lokale Smoke-Tests: `from server import app` → 2241 routes loaded. `from routes.livekit_streaming` → router `/api/livekit` OK.
+- ✅ E2E Landing-Chatbot lokal: `POST /api/landing-chatbot/chat` → 200 mit LLM-Antwort.
+- 🟡 **User Action**: "Save to GitHub" für Push erforderlich. Nächster Deploy wird sich selbst validieren.
 
 
 ### 10.05.2026 (iter59 — EV Charging Customer History UI)
