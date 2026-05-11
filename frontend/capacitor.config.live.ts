@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://taxi-streaming.preview.emergentagent.com',
+    url: 'https://ocpp-csms-platform.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

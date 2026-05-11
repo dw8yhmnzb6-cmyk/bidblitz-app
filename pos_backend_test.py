@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from frontend/.env
-BASE_URL = "https://taxi-streaming.preview.emergentagent.com"
+BASE_URL = "https://ocpp-csms-platform.preview.emergentagent.com"
 API_URL = f"{BASE_URL}/api"
 
 # Test credentials

@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://taxi-streaming.preview.emergentagent.com',
+  url: 'https://ocpp-csms-platform.preview.emergentagent.com',
   cleartext: false,
 }
 ```

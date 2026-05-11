@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://taxi-streaming.preview.emergentagent.com"
+BASE_URL = "https://ocpp-csms-platform.preview.emergentagent.com"
 API_ENDPOINT = f"{BASE_URL}/api/taxi/driver/onboard"
 
 # Test results storage

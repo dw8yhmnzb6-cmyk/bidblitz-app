@@ -10,7 +10,7 @@ import sys
 from typing import Dict, Optional
 
 # Configuration
-BACKEND_URL = "https://taxi-streaming.preview.emergentagent.com"
+BACKEND_URL = "https://ocpp-csms-platform.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 MERCHANT_EMAIL = "haendler@bidblitz.com"
