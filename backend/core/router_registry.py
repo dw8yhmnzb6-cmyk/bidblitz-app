@@ -1,0 +1,182 @@
+"""
+Router Registry - Auto-discover and register all route modules
+Simplifies server.py by auto-importing all routers from /routes
+"""
+
+import logging
+from pathlib import Path
+
+logger = logging.getLogger("bidblitz.registry")
+
+
+def register_all_routers(app):
+    """
+    Dynamically import and register all routers from /routes directory.
+    Replaces 90+ manual import/register statements.
+    """
+    
+    # Manual registry for routes with special naming or multiple routers
+    # Format: (module_path, router_attribute_name)
+    routers = [
+        # Core
+        ("routes.auth", "router"),
+        ("routes.wallet", "router"),
+        ("routes.payment", "router"),
+        ("routes.merchant", "router"),
+        ("routes.transactions", "router"),
+        ("routes.stripe", "router"),
+        ("routes.payout", "router"),
+        ("routes.admin", "router"),
+        ("routes.monitoring", "router"),
+        ("routes.merchant_admin", "router"),
+        ("routes.blitz_transfer", "router"),
+        ("routes.smm_boost", "router"),
+        ("routes.export", "router"),
+        ("routes.profile", "router"),
+        ("routes.sessions", "router"),
+        ("routes.referral", "router"),
+        ("routes.notifications", "router"),
+        ("routes.promotions", "router"),
+        ("routes.analytics", "router"),
+        ("routes.kids", "router"),
+        ("routes.support", "router"),
+        ("routes.feedback", "router"),
+        ("routes.auctions", "router"),
+        ("routes.merchant_connect", "router"),
+        ("routes.influencer", "router"),
+        ("routes.investor", "router"),
+        ("routes.rewards", "router"),
+        ("routes.role_requests", "router"),
+        ("routes.verification", "router"),
+        ("routes.merchant_hierarchy", "router"),
+        
+        # POS System (14 modules)
+        ("routes.pos_payments", "router"),
+        ("routes.pos_system", "router"),
+        ("routes.pos_inventory", "router"),
+        ("routes.pos_chat", "router"),
+        ("routes.pos_admin_self", "router"),
+        ("routes.pos_extended", "router"),
+        ("routes.pos_advanced", "router"),
+        ("routes.pos_pro", "router"),
+        ("routes.pos_vouchers", "router"),
+        ("routes.pos_kassenmeldung", "router"),
+        ("routes.pos_rksv", "router"),
+        ("routes.pos_features", "router"),
+        ("routes.pos_public_api", "router"),
+        ("routes.pos_selfcheckout", "router"),
+        ("routes.pos_retail_p1p2", "router"),
+        ("routes.pos_hardware", "router"),
+        
+        # Mining & Marketplace
+        ("routes.mining", "router"),
+        ("routes.mining_phase2", "router"),
+        ("routes.blitz_mine", "router"),
+        ("routes.marketplace", "router"),
+        
+        # Communication
+        ("routes.chat", "router"),
+        ("routes.applications", "router"),
+        
+        # Systems
+        ("routes.referral_system", "router"),
+        ("routes.kids_system", "router"),
+        ("routes.subscription_system", "router"),
+        ("routes.growth_engine", "router"),
+        ("routes.boost_system", "router"),
+        ("routes.loyalty_system", "router"),
+        ("routes.rewards_store", "router"),
+        
+        # Finance
+        ("routes.p2p_transfer", "router"),
+        ("routes.split_bill", "router"),
+        ("routes.virtual_cards", "router"),
+        ("routes.credit_system", "router"),
+        ("routes.bills", "router"),
+        ("routes.receipts", "router"),
+        ("routes.admin_wallet", "router"),
+        ("routes.coinbase_commerce", "router"),
+        
+        # Entertainment
+        ("routes.casino", "router"),
+        ("routes.arcade", "router"),
+        ("routes.nft_generator", "router"),
+        
+        # Business
+        ("routes.legal", "router"),
+        ("routes.legal", "admin_router"),  # Special case: legal has 2 routers
+        ("routes.admin_management", "router"),
+        ("routes.revenue", "router"),
+        ("routes.revenue2", "router"),
+        ("routes.merchant_payments", "router"),
+        
+        # Engagement
+        ("routes.reengage", "router"),
+        ("routes.growth", "router"),
+        ("routes.quests", "router"),
+        ("routes.retention", "router"),
+        ("routes.gamification", "router"),
+        
+        # Social
+        ("routes.friends_map", "router"),
+        ("routes.friends", "router"),
+        ("routes.web_push", "router"),
+        ("routes.push_notifications", "router"),
+        
+        # Mobility
+        ("routes.taxi", "router"),
+        ("routes.taxi_operator", "router"),
+        ("routes.taxi_driver", "router"),
+        ("routes.taxi_admin", "router"),
+        ("routes.scooter", "router"),
+        ("routes.food", "router"),
+        ("routes.food_tracking", "router"),
+        ("routes.tierbetreuung", "router"),
+        ("routes.ev_charging", "router"),
+        
+        # Support
+        ("routes.kyc", "router"),
+        ("routes.support_tickets", "router"),
+        ("routes.two_factor", "router"),
+        ("routes.admin_approvals", "router"),
+        
+        # Crypto
+        ("routes.crypto_wallet", "router"),
+        ("routes.crypto_prices", "router"),
+        
+        # Special routers
+        ("routes.auction_push", "router"),
+        ("routes.super_app_features", "router"),
+        ("routes.livekit_streaming", "router"),
+        ("routes.landing_chatbot", "router"),
+    ]
+    
+    # Register all routers
+    registered = 0
+    failed = []
+    
+    for module_path, router_attr in routers:
+        try:
+            # Dynamic import
+            module = __import__(module_path, fromlist=[router_attr])
+            router = getattr(module, router_attr)
+            
+            # Register router
+            app.include_router(router)
+            registered += 1
+            
+        except ImportError as e:
+            logger.warning(f"Could not import {module_path}.{router_attr}: {e}")
+            failed.append(module_path)
+        except AttributeError as e:
+            logger.warning(f"Router '{router_attr}' not found in {module_path}: {e}")
+            failed.append(module_path)
+        except Exception as e:
+            logger.error(f"Failed to register {module_path}.{router_attr}: {e}")
+            failed.append(module_path)
+    
+    logger.info(f"✓ Registered {registered} routers")
+    if failed:
+        logger.warning(f"⚠ Failed to register {len(failed)} routers: {', '.join(failed[:5])}")
+    
+    return registered, failed
