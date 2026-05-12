@@ -1,0 +1,45 @@
+{
+  "summary": "E2E validation of BidBlitz Staff Subscription/Paywall (Pricing, Trial, Plan Limits, Admin Override, Stripe Placeholder Checkout, Paywall Gate). Backend 13/14 tests passed via pytest; Frontend upgrade page + paywall flow validated via Playwright.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/staff/subscription/admin/override",
+        "issue": "When admin sets status='trialing' with extend_trial_days on a subscription that has NO existing trial_end (e.g. previously activated via checkout), trial_end remains None. Then GET /status returns trial_days_left=None even though status=trialing. Edge case but causes inconsistent UI badge."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_subscription.py",
+    "/app/test_reports/pytest/staff_subscription.xml"
+  ],
+  "action_items": [
+    "Minor: In admin_override_subscription (staff_subscription.py), when req.status='trialing' is set but no extend_trial_days or sub has no existing trial_end, automatically set trial_end to now+TRIAL_DAYS so the trial_days_left calc works. Currently leaves trial_end None.",
+    "Consider: /merchant/staff currently shows the upgrade marketing page directly as the paywall (no separate paywall screen with 'subscription required' messaging). Acceptable but could be a dedicated paywall component with clearer CTA."
+  ],
+  "critical_code_review_comments": [
+    "staff.py: getActionLabel uses camelCase (JS-style) in Python - functional but non-Pythonic; rename to get_action_label",
+    "staff_subscription.py: STAFF_PLANS, TRIAL_DAYS are duplicated between routes/staff.py logic and frontend StaffUpgradeScreen PLANS const - prices/limits could drift. Consider /plans endpoint as single source of truth and frontend fetches it instead of hardcoding 4,99€/9,99€",
+    "staff_subscription.py: get_current_user imports inside function call on every request - acceptable but adds overhead",
+    "Frontend StaffUpgradeScreen: hardcoded prices/features 4,99€/9,99€ should be fetched from /api/staff/subscription/plans for consistency",
+    "staff.py: routes/staff.py file is >1000 lines - should be split into modules (staff_members, staff_clock, staff_shifts, staff_leave, staff_reports, staff_qr)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_staff_subscription.py (new)"
+  ],
+  "success_rate": {
+    "backend": "93% (13/14)",
+    "frontend": "100% (visual + functional validation)"
+  },
+  "test_credentials": "Merchant haendler@bidblitz.com/Haendler2026!, Admin admin@bidblitz.com/BidBlitz2026! - both working",
+  "seed_data_creation": "Tests create TEST_member_* staff entries and clean up at end via test_14_cleanup_members. Subscription is cancelled at end of suite to leave merchant in clean state.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Test suite at /app/backend/tests/test_staff_subscription.py is module-scoped with autouse cleanup. Trial-start fresh path cannot be reliably tested because merchant trial is one-shot (trial_start persists across runs) - we instead validate trialing state via admin_override with extend_trial_days, then test member creation. If you need a true fresh-trial test, you must drop the staff_subscriptions doc directly in Mongo or seed a fresh merchant.",
+  "rca of the issue": "test_07 fail: status endpoint returns trial_days_left=None because admin override's extend_trial_days path conditionally requires existing sub.trial_end. If previous test run ended with create-checkout (which doesn't set trial_end), the next admin override 'trialing' status leaves trial_end=None. Mitigation: in admin_override_subscription, when status='trialing' is requested and trial_end is missing, default trial_end := now + 30 days. Reproduction: cancel sub → create-checkout pro → admin override status=trialing extend=30 → GET /status → trial_days_left is None."
+}

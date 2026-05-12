@@ -9,17 +9,23 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Clock, Calendar, UmbrellaIcon, FileText, Plus,
   CheckCircle, XCircle, Loader2, MapPin, AlertCircle, Download,
-  Edit, Trash2, Play, Pause, Square, TrendingUp, Award, QrCode
+  Edit, Trash2, Play, Pause, Square, TrendingUp, Award, QrCode,
+  Crown, Sparkles, Settings, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode.react";
 import QrCheckinScanner from "../components/QrCheckinScanner";
+import StaffUpgradeScreen from "./StaffUpgradeScreen";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-export default function StaffManagementPage({ onBack }) {
+export default function StaffManagementPage({ onBack, onNavigate }) {
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(false);
+  
+  // Subscription State
+  const [subscription, setSubscription] = useState(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   
   // Data State
   const [members, setMembers] = useState([]);
@@ -36,12 +42,33 @@ export default function StaffManagementPage({ onBack }) {
   const [selectedStaff, setSelectedStaff] = useState(null);
 
   // ═════════════════════════════════════════════════════════════════════════
+  // Subscription Loading
+  // ═════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    loadSubscription();
+  }, []);
+
+  const loadSubscription = async () => {
+    setSubscriptionLoading(true);
+    try {
+      const res = await fetch(`${API}/api/staff/subscription/status`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscription(data);
+      }
+    } catch (e) {
+      console.error("Subscription load failed:", e);
+    }
+    setSubscriptionLoading(false);
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════
   // Data Fetching
   // ═════════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
-    loadData();
-  }, [tab]);
+    if (subscription?.active) loadData();
+  }, [tab, subscription?.active]);
 
   const loadData = async () => {
     setLoading(true);
@@ -102,12 +129,25 @@ export default function StaffManagementPage({ onBack }) {
         credentials: "include",
         body: JSON.stringify(formData)
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         toast.success("Mitarbeiter hinzugefügt");
         setShowAddMember(false);
         loadData();
+        loadSubscription();
       } else {
-        toast.error("Fehler beim Hinzufügen");
+        // Limit reached or no subscription
+        const detail = data.detail;
+        if (typeof detail === "object" && detail?.code === "limit_reached") {
+          toast.error(detail.message, {
+            action: { label: "Upgrade", onClick: () => onNavigate && onNavigate("/merchant/staff/upgrade") },
+          });
+        } else if (typeof detail === "object" && (detail?.code === "no_subscription" || detail?.code === "subscription_inactive")) {
+          toast.error(detail.message);
+          onNavigate && onNavigate("/merchant/staff/upgrade");
+        } else {
+          toast.error(typeof detail === "string" ? detail : "Fehler beim Hinzufügen");
+        }
       }
     } catch (err) {
       toast.error("Netzwerkfehler");
@@ -169,6 +209,33 @@ export default function StaffManagementPage({ onBack }) {
     { id: "reports", label: "Reports", icon: FileText }
   ];
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // PAYWALL GATE
+  // ═════════════════════════════════════════════════════════════════════════
+  if (subscriptionLoading) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <Loader2 size={28} className="animate-spin text-[#00C2FF]" />
+      </div>
+    );
+  }
+  if (!subscription?.active) {
+    return (
+      <StaffUpgradeScreen
+        onBack={onBack}
+        onSuccess={() => loadSubscription()}
+      />
+    );
+  }
+
+  const isTrialing = subscription?.status === "trialing";
+  const trialDaysLeft = subscription?.trial_days_left;
+  const currentPlan = subscription?.plan;
+  const maxStaff = subscription?.max_staff || 0;
+  const currentCount = subscription?.current_staff_count || 0;
+  const planColors = { basic: "#00C2FF", pro: "#A855F7", enterprise: "#F59E0B" };
+  const planColor = planColors[currentPlan] || "#00C2FF";
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white pb-24">
       {/* Header */}
@@ -177,6 +244,7 @@ export default function StaffManagementPage({ onBack }) {
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
+              data-testid="staff-back-btn"
               className="p-2 rounded-xl hover:bg-white/5 transition-colors"
             >
               <ArrowLeft size={20} />
@@ -186,14 +254,67 @@ export default function StaffManagementPage({ onBack }) {
               <p className="text-[10px] text-white/40">Zeiterfassung & Mitarbeiter</p>
             </div>
           </div>
-          
-          <button
-            onClick={() => setShowAddMember(true)}
-            className="px-3 py-1.5 bg-[#00C2FF] text-black rounded-lg text-xs font-semibold hover:bg-[#00A8E0] transition-colors flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            Mitarbeiter
-          </button>
+
+          <div className="flex items-center gap-2">
+            {/* Trial / Plan Badge */}
+            {isTrialing ? (
+              <button
+                onClick={() => onNavigate && onNavigate("/merchant/staff/upgrade")}
+                data-testid="staff-trial-badge-header"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/30 text-[10px] font-semibold text-[#00C2FF]"
+                title="Trial endet bald — upgraden"
+              >
+                <Sparkles size={11} />
+                Trial · {trialDaysLeft}T
+              </button>
+            ) : currentPlan ? (
+              <span
+                data-testid="staff-plan-badge-header"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase"
+                style={{ background: `${planColor}22`, border: `1px solid ${planColor}55`, color: planColor }}
+              >
+                <Crown size={11} /> {currentPlan}
+              </span>
+            ) : null}
+
+            {/* Limit Display */}
+            <span
+              data-testid="staff-limit-display"
+              className="hidden md:inline-flex items-center px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-white/70"
+            >
+              {currentCount}/{maxStaff === 9999 ? "∞" : maxStaff}
+            </span>
+
+            {/* Settings */}
+            <button
+              onClick={() => onNavigate && onNavigate("/staff/settings")}
+              data-testid="staff-settings-btn"
+              className="p-2 rounded-xl hover:bg-white/5 transition-colors"
+              title="Einstellungen"
+            >
+              <Settings size={16} className="text-white/60" />
+            </button>
+
+            {/* Upgrade Button (only on trial or basic) */}
+            {(isTrialing || currentPlan === "basic") && (
+              <button
+                onClick={() => onNavigate && onNavigate("/merchant/staff/upgrade")}
+                data-testid="staff-upgrade-cta"
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#00C2FF] to-[#A855F7] text-white text-[11px] font-semibold"
+              >
+                Upgrade <ArrowRight size={11} />
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowAddMember(true)}
+              data-testid="staff-add-member-btn"
+              className="px-3 py-1.5 bg-[#00C2FF] text-black rounded-lg text-xs font-semibold hover:bg-[#00A8E0] transition-colors flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              <span className="hidden sm:inline">Mitarbeiter</span>
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}

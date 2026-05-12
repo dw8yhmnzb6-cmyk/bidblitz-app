@@ -98,6 +98,8 @@ const AdminQrManagementPage = lazy(() => import("./pages/AdminQrManagementPage")
 const StaffManagementPage = lazy(() => import("./pages/StaffManagementPage"));
 const StaffLoginPage = lazy(() => import("./pages/StaffLoginPage"));
 const StaffPortalPage = lazy(() => import("./pages/StaffPortalPage"));
+const StaffUpgradeScreen = lazy(() => import("./pages/StaffUpgradeScreen"));
+const StaffSettingsPage = lazy(() => import("./pages/StaffSettingsPage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
 const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
@@ -555,12 +557,19 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/merchant/staff":
         return user.role === "merchant" || user.role === "admin"
-          ? <StaffManagementPage onBack={() => handleNavigate("/more")} />
+          ? <StaffManagementPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/staff/login":
         return <StaffLoginPage onBack={() => handleNavigate("/")} onLoginSuccess={() => handleNavigate("/staff/portal")} />;
       case "/staff/portal":
         return <StaffPortalPage onBack={() => handleNavigate("/")} />;
+      case "/merchant/staff/upgrade":
+      case "/staff/upgrade":
+        return <StaffUpgradeScreen onSuccess={() => handleNavigate("/merchant/staff")} onBack={() => handleNavigate("/merchant/staff")} />;
+      case "/staff/settings":
+        return user.role === "merchant" || user.role === "admin"
+          ? <StaffSettingsPage onBack={() => handleNavigate("/merchant/staff")} />
+          : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
       case "/selfcheckout":

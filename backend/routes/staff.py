@@ -83,11 +83,38 @@ class StaffLogin(BaseModel):
     password: str
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Auth Helper (Mock - replace with your actual auth)
+# Auth Helper (uses BidBlitz Core Auth)
 # ═══════════════════════════════════════════════════════════════════════════
-async def get_merchant_id(merchant_id: str = "test-merchant"):
-    """Replace with actual auth dependency"""
-    return merchant_id
+async def get_merchant_id(request: Request) -> str:
+    """Resolve merchant_id from authenticated user (merchant or admin)."""
+    from routes.auth import get_current_user as auth_user
+    user = await auth_user(request)
+    if user.get("role") not in ("merchant", "admin"):
+        raise HTTPException(403, "Nur für Händler oder Administratoren")
+    return str(user.get("user_id") or user.get("id") or user.get("_id"))
+
+
+async def require_active_subscription(merchant_id: str) -> dict:
+    """Ensure merchant has an active or trialing Staff subscription."""
+    from routes.staff_subscription import get_subscription_for_merchant
+    sub = await get_subscription_for_merchant(merchant_id)
+    if not sub:
+        raise HTTPException(402, detail={
+            "code": "no_subscription",
+            "message": "Staff-Modul nicht aktiviert. Bitte Trial starten oder Plan wählen.",
+        })
+    if not sub.get("enabled", True):
+        raise HTTPException(403, detail={
+            "code": "module_disabled",
+            "message": "Staff-Modul wurde vom Administrator deaktiviert.",
+        })
+    if sub.get("status") not in ("trialing", "active"):
+        raise HTTPException(402, detail={
+            "code": "subscription_inactive",
+            "message": "Subscription abgelaufen oder gekündigt. Bitte upgraden.",
+            "status": sub.get("status"),
+        })
+    return sub
 
 async def get_staff_from_session(request: Request):
     """Get staff_id from session cookie"""
@@ -169,7 +196,20 @@ async def create_staff_member(
     data: StaffMemberCreate,
     merchant_id: str = Depends(get_merchant_id)
 ):
-    """Mitarbeiter erstellen"""
+    """Mitarbeiter erstellen (mit Plan-Limit-Check)"""
+    # Subscription check
+    sub = await require_active_subscription(merchant_id)
+    max_staff = sub.get("max_staff_override") or sub.get("max_staff", 0)
+    current_count = await db.staff_members.count_documents({"merchant_id": merchant_id, "active": True})
+    if current_count >= max_staff:
+        raise HTTPException(403, detail={
+            "code": "limit_reached",
+            "message": f"Mitarbeiter-Limit erreicht ({current_count}/{max_staff}). Bitte Plan upgraden.",
+            "current_count": current_count,
+            "max_staff": max_staff,
+            "plan": sub.get("plan"),
+        })
+
     member = {
         "id": str(uuid4()),
         "merchant_id": merchant_id,
