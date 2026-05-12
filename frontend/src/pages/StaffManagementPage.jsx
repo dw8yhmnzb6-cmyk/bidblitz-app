@@ -21,6 +21,7 @@ import StaffWarningsList from "../components/staff/StaffWarningsList";
 import StaffExportButtons from "../components/staff/StaffExportButtons";
 import StaffWalletPanel from "../components/staff/StaffWalletPanel";
 import ManagerTeamTimesheet from "../components/staff/ManagerTeamTimesheet";
+import MerchantLiveOverview from "../components/staff/MerchantLiveOverview";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -380,7 +381,16 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
           </div>
         ) : (
           <>
-            {tab === "overview" && <OverviewTab summary={summary} members={members} todayEvents={todayEvents} />}
+            {tab === "overview" && (
+              <OverviewTab
+                summary={summary}
+                members={members}
+                todayEvents={todayEvents}
+                onAddMember={() => setShowAddMember(true)}
+                onCreateShift={() => setTab("shifts")}
+                onOpenTimesheet={() => setTab("timesheet")}
+              />
+            )}
             {tab === "members" && <MembersTab members={members} onReload={loadData} onClockAction={handleClockAction} />}
             {tab === "clock" && <ClockTab todayEvents={todayEvents} members={members} onClockAction={handleClockAction} />}
             {tab === "timesheet" && <ManagerTeamTimesheet />}
@@ -405,76 +415,18 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
 // Overview Tab
 // ═════════════════════════════════════════════════════════════════════════
 
-function OverviewTab({ summary, members, todayEvents }) {
-  const stats = [
-    { label: "Aktive Mitarbeiter", value: summary.active_members || 0, icon: Users, color: "#00C2FF" },
-    { label: "Heute eingecheckt", value: summary.today_checkins || 0, icon: CheckCircle, color: "#10B981" },
-    { label: "Offene Anträge", value: summary.pending_leave || 0, icon: AlertCircle, color: "#F59E0B" },
-    { label: "Heutige Schichten", value: summary.today_shifts || 0, icon: Calendar, color: "#A855F7" }
-  ];
-
+function OverviewTab({ summary, members, todayEvents, onAddMember, onCreateShift, onOpenTimesheet }) {
   return (
     <div className="space-y-5">
-      {/* Premium Live Dashboard */}
-      <StaffDashboardCards />
-
-      {/* Warnings */}
+      <MerchantLiveOverview
+        summary={summary}
+        members={members}
+        todayEvents={todayEvents}
+        onAddMember={onAddMember}
+        onCreateShift={onCreateShift}
+        onOpenTimesheet={onOpenTimesheet}
+      />
       <StaffWarningsList />
-
-      {/* Stats Grid (Legacy summary) */}
-      <div className="grid grid-cols-2 gap-3">
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="p-4 rounded-2xl bg-white/[0.02] border border-white/5"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${stat.color}15` }}>
-                  <Icon size={16} style={{ color: stat.color }} />
-                </div>
-              </div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-[10px] text-white/40 mt-0.5">{stat.label}</p>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Recent Activity */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Clock size={16} className="text-[#00C2FF]" />
-          Letzte Aktivitäten
-        </h3>
-        {todayEvents.length === 0 ? (
-          <p className="text-xs text-white/40 py-4 text-center">Noch keine Aktivitäten heute</p>
-        ) : (
-          <div className="space-y-2">
-            {todayEvents.slice(0, 5).map((event, i) => {
-              const member = members.find((m) => m.id === event.staff_id);
-              return (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-semibold">
-                      {member?.name?.charAt(0) || "?"}
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium">{member?.name || "Unbekannt"}</p>
-                      <p className="text-[10px] text-white/40">{getActionLabel(event.action)}</p>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-white/40">{new Date(event.timestamp).toLocaleTimeString("de-DE")}</p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

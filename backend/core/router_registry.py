@@ -97,6 +97,7 @@ def register_all_routers(app):
         ("routes.staff_wallet", "router"),
         ("routes.staff_push", "router"),
         ("routes.staff_timesheet", "router"),
+        ("routes.staff_tasks", "router"),
         
         # Mining & Marketplace
         ("routes.mining", "router"),

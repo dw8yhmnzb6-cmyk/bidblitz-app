@@ -1,0 +1,49 @@
+{
+  "summary": "Iter 85 — Staff Tasks API + Mobile Premium UX Polish. Backend 11/11 tests pass (Tasks CRUD + 5 staff-endpoint smoke regression). Frontend mobile staff portal flows verified end-to-end: BottomNav nav-buttons all present (home/shifts/tasks/wallet/profile), tab transitions work for tasks/wallet/profile/home, Tasks tab loads 3 demo cards + filter buttons + optimistic complete (3→2 cards after click), Wallet tab balance/bonus/tips/open-full all rendered, Profile hero/lang/pin/logout all present, Language sheet opens with staff-lang-de visible. KPI grid (kpi-today/week/overtime/wallet) and staff-live-status-card render correctly on Home. Merchant Overview testids verified in source (merchant-live-status, merchant-quick-actions, merchant-activity-feed, merchant-kpi-active/break/leave/month).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/staff/tasks/create", "issue": "TaskCreate.title has no min_length/strip; empty-string title is accepted (would create task with empty title). Add Pydantic validator."},
+      {"endpoint": "POST /api/staff/tasks/{id}/complete", "issue": "Idempotency not enforced — re-completing an already-done task still returns 200 and overwrites completed_at. Consider returning current state if status already done."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "StaffShifts.jsx", "issue": "When shifts list is empty, component returns <EmptyState/> directly WITHOUT wrapping in `data-testid=staff-shifts-tab`. Test for tab transition staff-nav-shifts → staff-shifts-tab fails when no shifts exist. staff-empty-state IS rendered but the tab container testid is missing.", "selector": "[data-testid=staff-shifts-tab]", "priority": "MEDIUM"},
+      {"component": "StaffHome.jsx + StaffMobilePage.jsx", "issue": "Click on staff-attachment-checkin-btn did not surface staff-attachment-sheet within 900ms. The button is in StaffHome (child) but the sheet is rendered in StaffMobilePage (parent). State-bridging via prop callback may not be wired correctly for mobile viewport, OR the sheet expects an active clock-in session before opening.", "selector": "[data-testid=staff-attachment-sheet]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Task Optimistic Complete", "issue": "Works correctly: clicking staff-task-complete-{id} removes the card from open list within ~1s (3→2). Backend update confirmed via test.", "affected_selectors": []}
+    ],
+    "design_issues": [
+      {"screen": "/staff/mobile after login", "issues": ["Embedded Emergent chat-widget (bottom-right) overlaps the rightmost BottomNav tab (Profile) at viewport 414×896 and can intercept clicks/auto-expand fullscreen on stray tap. In test had to inject CSS to hide. Recommend giving the BottomNav a higher z-index or hiding chat widget on /staff/mobile route."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter85_tasks.py",
+    "/app/test_reports/pytest/iter85_tasks.xml"
+  ],
+  "action_items": [
+    "Wrap StaffShifts empty-state render in <div data-testid=\"staff-shifts-tab\">...<EmptyState/></div> so the tab testid is always present (currently fails when 0 shifts).",
+    "Investigate why clicking staff-attachment-checkin-btn does not open staff-attachment-sheet within ~1s — check that the callback passed from StaffMobilePage to StaffHome correctly toggles the sheet state (and that the sheet isn't gated on active clock-in).",
+    "Hide the Emergent chat-widget overlay on /staff/mobile (or raise BottomNav z-index above it) — overlay covers Profile tab and easily opens full-screen on accidental tap.",
+    "(Backend, minor) Add Pydantic validator (min_length=1, strip_whitespace) to TaskCreate.title and idempotency check in /complete."
+  ],
+  "critical_code_review_comments": [
+    "routes/staff_tasks.py is clean and minimal — uses uuid4 id, ISO datetime, excludes _id, role check on merchant endpoints, ownership check (staff_id == member.id) on complete. All correct.",
+    "Frontend StaffProfile.jsx PinChangeSheet uses BottomSheet with backdrop click-to-close — no Escape-key binding. Minor UX: add Escape handler for keyboard accessibility.",
+    "StaffMobilePage.jsx is >380 lines and contains login/PIN/main shell + attachment sheet rendering — consider splitting attachment-sheet into its own component for clarity and to avoid prop-drilling that may be causing the attachment-sheet bug.",
+    "StaffBottomNav: all 5 nav testids correctly rendered (staff-nav-{id}); the active-state styling and safe-area handling look good. Badge wiring (staff-nav-task-badge) is in place.",
+    "MerchantLiveOverview.jsx: testids merchant-live-status / merchant-quick-actions / merchant-activity-feed / merchant-kpi-active/break/leave/month all present in source — not directly clicked in this run due to time, but source code matches review_request spec."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter85_tasks.py (new)"
+  ],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "85% (3 minor issues: shifts empty-state testid, attachment-sheet open, chat-widget z-index)"},
+  "test_credentials": "Merchant haendler@bidblitz.com / Haendler2026!  |  Staff TEST_magic_1778611082@example.com / test123 (PIN-Login Toggle 'staff-mobile-pin-toggle' required)",
+  "seed_data_creation": "Test created 1 'TEST_iter85 task' via /api/staff/tasks/create and marked it done. 3 demo tasks for staff_id ad382529-eafc-42f6-aa8a-4dcd16686327 were already seeded by main agent; one was completed during UI test (now 2 open).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Staff PIN-login form: click [data-testid=staff-mobile-pin-toggle] → 2 inputs appear (email + password) → click button with text 'Anmelden'. Hide chat widget BEFORE testing via page.add_style_tag with `iframe { display:none } [class*=chat-widget],[class*=emergent-chat] { display:none !important }`. BottomNav buttons require force=True click. Optimistic update: cards reduce within ~1s after staff-task-complete-{id} click. Shifts tab CURRENTLY shows EmptyState (no shifts seeded) — staff-shifts-tab testid is therefore missing in the empty state.",
+  "rca of the issue": "1) staff-shifts-tab missing → root cause: StaffShifts.jsx line 62-69 returns EmptyState directly when shifts.length===0; the outer div with data-testid=staff-shifts-tab is on line 75 (only rendered when shifts exist). Fix: wrap EmptyState in <div data-testid=staff-shifts-tab>. 2) staff-attachment-sheet not opening → likely state-bridging issue (StaffHome triggers callback that should toggle parent state in StaffMobilePage, but sheet did not appear within 900ms). Reproduce: login as staff → click staff-attachment-checkin-btn on Home → expect staff-attachment-sheet to appear. Investigate prop callback path or check if sheet is gated on clock state."
+}
