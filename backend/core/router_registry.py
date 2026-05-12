@@ -92,6 +92,10 @@ def register_all_routers(app):
         ("routes.staff_analytics", "router"),
         ("routes.staff_demo", "router"),
         ("routes.staff_system", "router"),
+        ("routes.staff_stripe", "router"),
+        ("routes.staff_stripe", "webhook_router"),
+        ("routes.staff_wallet", "router"),
+        ("routes.staff_push", "router"),
         
         # Mining & Marketplace
         ("routes.mining", "router"),

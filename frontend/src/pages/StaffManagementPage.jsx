@@ -19,6 +19,7 @@ import StaffUpgradeScreen from "./StaffUpgradeScreen";
 import StaffDashboardCards from "../components/staff/StaffDashboardCards";
 import StaffWarningsList from "../components/staff/StaffWarningsList";
 import StaffExportButtons from "../components/staff/StaffExportButtons";
+import StaffWalletPanel from "../components/staff/StaffWalletPanel";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -49,7 +50,34 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
   // ═════════════════════════════════════════════════════════════════════════
   useEffect(() => {
     loadSubscription();
+    // Handle Stripe return: ?session_id=cs_test_...
+    const url = new URL(window.location.href);
+    const sessionId = url.searchParams.get("session_id");
+    if (sessionId) {
+      pollStripe(sessionId);
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.toString());
+    }
   }, []);
+
+  const pollStripe = async (sessionId, attempts = 0) => {
+    if (attempts >= 5) {
+      toast.error("Zahlungsstatus-Check Timeout");
+      return;
+    }
+    try {
+      const r = await fetch(`${API}/api/staff/subscription/checkout-status/${sessionId}`, { credentials: "include" });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.payment_status === "paid") {
+          toast.success("Zahlung erfolgreich! Plan aktiviert.");
+          loadSubscription();
+          return;
+        }
+      }
+    } catch (e) {}
+    setTimeout(() => pollStripe(sessionId, attempts + 1), 2000);
+  };
 
   const loadSubscription = async () => {
     setSubscriptionLoading(true);
@@ -751,6 +779,9 @@ function ReportsTab({ members }) {
         <h3 className="text-sm font-semibold mb-3">Exporte</h3>
         <StaffExportButtons period="monthly" />
       </div>
+
+      {/* Wallet Panel: Bonus & Trinkgeld */}
+      <StaffWalletPanel members={members} />
 
       {/* Member Selection */}
       <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">

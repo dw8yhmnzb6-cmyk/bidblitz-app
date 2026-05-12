@@ -74,11 +74,11 @@ async def system_status(request: Request):
     }
 
     integrations = {
-        "stripe_keys_present": bool(os.getenv("STRIPE_SECRET_KEY")),
-        "stripe_live_mode": (os.getenv("STRIPE_SECRET_KEY") or "").startswith("sk_live_"),
+        "stripe_keys_present": bool(os.getenv("STRIPE_API_KEY") or os.getenv("STRIPE_SECRET_KEY")),
+        "stripe_live_mode": (os.getenv("STRIPE_API_KEY") or os.getenv("STRIPE_SECRET_KEY") or "").startswith("sk_live_"),
         "resend_configured": bool(os.getenv("RESEND_API_KEY")),
         "twilio_configured": bool(os.getenv("TWILIO_ACCOUNT_SID")),
-        "onesignal_configured": bool(os.getenv("ONESIGNAL_APP_ID")),
+        "onesignal_configured": bool(os.getenv("ONESIGNAL_APP_ID") and os.getenv("ONESIGNAL_API_KEY")),
         "livekit_configured": bool(os.getenv("LIVEKIT_API_KEY")),
     }
 

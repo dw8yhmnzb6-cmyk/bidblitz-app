@@ -1,0 +1,45 @@
+{
+  "summary": "Phase 4 (P0+P1+P2) backend integration: Stripe REAL Checkout, Wallet (Bonus+Tips+Payout), OneSignal Push, System-Status. 16/16 backend tests PASSED. Frontend partially verified: upgrade page renders with required testids and Pro CTA correctly calls /api/staff/subscription/checkout-real (and falls back to /create-checkout) - both blocked at 401 because Playwright UI login form could not be reached (login route returns public home).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "/merchant/staff/upgrade -> Pro plan click", "issue": "Network confirmed call to /api/staff/subscription/checkout-real (correct endpoint), but UI auth could not be established by Playwright (login route /login and /anmelden render the public home page). Manual verification recommended: when authenticated, the Pro CTA should redirect to checkout.stripe.com.", "affected_selectors": ["staff-plan-cta-pro"]},
+      {"flow": "/merchant/staff/upgrade -> Enterprise CTA", "issue": "data-testid=staff-plan-cta-enterprise is a <button> with onclick handler (NOT an <a href='mailto:'>). Spec asks for mailto:sales@bidblitz.com. Likely uses window.location.href='mailto:...' in JS - acceptable but cannot be statically asserted via DOM href. Recommend adding href attribute for native mailto handling.", "affected_selectors": ["staff-plan-cta-enterprise"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter82_phase4.py",
+    "/app/test_reports/pytest/iter82_phase4.xml"
+  ],
+  "action_items": [
+    "Optional: convert staff-plan-cta-enterprise to <a href='mailto:sales@bidblitz.com'> instead of <button onclick> for cleaner verification + better fallback if JS fails.",
+    "Manual verification by main agent recommended: log in as haendler@bidblitz.com via UI, navigate to /merchant/staff/upgrade, click Pro plan, confirm checkout.stripe.com redirect; then navigate to /merchant/staff Reports tab to verify staff-wallet-panel + staff-wallet-grant-bonus-btn + staff-wallet-tip-pot-btn + staff-wallet-balances-table render; and /staff/mobile WalletBalanceCard with staff_session cookie."
+  ],
+  "critical_code_review_comments": [
+    "staff_stripe.py: _activate_subscription is correctly guarded with txn.get('processed') flag in BOTH checkout-status polling AND webhook handler -> no double-activation.",
+    "staff_stripe.py: webhook signature verification raises HTTPException(400) on invalid signature - meets spec.",
+    "staff_wallet.py: bonus type='tip' uses 'credited' status and is summed into tips_credited_eur; bonus types (shift_bonus/performance/manual/etc.) summed into bonus_credited_eur = credited - tips - correct accounting.",
+    "staff_wallet.py: tip pot equal_hours handles single-worker case correctly (full amount to one staff). Tip pot equal_staff and equal_hours both return 400 'Niemand hat gearbeitet' / 'Keine Arbeitszeit' when no clock events - meets spec.",
+    "staff_wallet.py /payout: ONLY marks credited->wallet_paid; MOCKED no real BidBlitz Wallet transfer (explicit in response 'todo' field). Confirmed as mocked behavior.",
+    "staff_push.py /test: returns 503 when OneSignal not configured - meets spec. /register correctly upserts to staff_push_devices keyed by player_id.",
+    "staff_system.py /system-status: integrations.stripe_keys_present=True, resend_configured=True, onesignal_configured=False - matches ENV state."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter82_phase4.py (NEW - 16 tests, all pass)"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "partial - testids verified, full flow blocked by UI auth"},
+  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026!",
+  "seed_data_creation": "Created 1 staff_clock_events pair (clock_in+clock_out) under active staff for TestTipPot.test_tip_pot_equal_hours_with_events. Created staff_bonus_events (performance bonus 25 EUR + tip pot 100 EUR distribution) for haendler merchant. Created 1 staff_push_devices entry. All under merchant_id=69d0126144299a2e0d94c788 (haendler). No payment_transactions cleanup performed - new test session creates new Stripe cs_test_ id each run.",
+  "mocked_apis_confirmed": [
+    "OneSignal push: /status returns configured=false, /test returns 503 (no ENV keys) - graceful no-op as designed",
+    "/api/staff/wallet/payout: only marks status='wallet_paid' in staff_bonus_events; no real money transfer (response includes 'todo' field acknowledging this)"
+  ],
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend Phase 4 100% verified via /app/backend/tests/test_iter82_phase4.py. Frontend UI auth path (/login, /anmelden) does NOT render a login form via Playwright - the route resolves to public home. Main agent should either expose a deterministic login endpoint with predictable URL or seed a cookie-based session for testing. Stripe checkout-real generates real cs_test_ sessions against test mode key sk_test_emergent - the Stripe URL/session pattern is verified correct. Enterprise CTA implemented as button+onclick instead of <a href='mailto:'> - functional but harder to test statically."
+}

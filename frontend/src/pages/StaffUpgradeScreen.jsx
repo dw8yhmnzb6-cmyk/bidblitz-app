@@ -148,6 +148,21 @@ export default function StaffUpgradeScreen({ onBack, onSuccess }) {
     }
     setActionLoading(plan);
     try {
+      // Try REAL Stripe Checkout first
+      const realRes = await fetch(`${API}/api/staff/subscription/checkout-real`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, origin_url: window.location.origin }),
+      });
+      if (realRes.ok) {
+        const data = await realRes.json();
+        if (data.checkout_url) {
+          window.location.href = data.checkout_url;
+          return;
+        }
+      }
+      // Fallback to placeholder
       const res = await fetch(`${API}/api/staff/subscription/create-checkout`, {
         method: "POST",
         credentials: "include",

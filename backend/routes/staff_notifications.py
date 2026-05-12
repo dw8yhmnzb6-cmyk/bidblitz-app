@@ -78,6 +78,22 @@ async def create_notification(merchant_id: str, staff_id: str, ntype: str, title
     }
     await db.staff_notifications.insert_one(doc)
     doc.pop("_id", None)
+
+    # OneSignal Push (best-effort, no-op if not configured)
+    try:
+        from utils.onesignal_push import send_to_staff, is_configured
+        if is_configured():
+            await send_to_staff(
+                staff_id=staff_id,
+                title=title,
+                body=body or "",
+                data={"type": ntype, "notification_id": doc["id"], "link": link or ""},
+                url=link,
+            )
+            doc["push_attempted"] = True
+    except Exception as e:
+        pass
+
     return doc
 
 

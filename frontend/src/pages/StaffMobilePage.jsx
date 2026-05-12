@@ -21,6 +21,32 @@ import {
 import { t, getStaffLang, setStaffLang, STAFF_LANGUAGES } from "../i18n/staff";
 import StaffNotificationCenter from "../components/staff/StaffNotificationCenter";
 
+function WalletBalanceCard() {
+  const [data, setData] = React.useState(null);
+  React.useEffect(() => {
+    fetch(`${API}/api/staff/wallet/me/balance`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setData(d))
+      .catch(() => {});
+  }, []);
+  if (!data) return null;
+  return (
+    <div
+      data-testid="staff-wallet-balance-card"
+      className="p-4 rounded-2xl bg-gradient-to-br from-[#10B981]/15 to-transparent border border-[#10B981]/30 flex items-center gap-3"
+    >
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-[#10B981]/20 text-[#10B981]">
+        <span className="text-lg">€</span>
+      </div>
+      <div className="flex-1">
+        <p className="text-[10px] uppercase tracking-widest text-white/40">Wallet (Bonus + Trinkgeld)</p>
+        <p className="text-base font-bold">€{(data.balance_eur ?? 0).toFixed(2)}</p>
+        <p className="text-[10px] text-white/50">{data.events?.length || 0} Buchung(en)</p>
+      </div>
+    </div>
+  );
+}
+
 const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function StaffMobilePage({ onBack }) {
@@ -334,6 +360,7 @@ export default function StaffMobilePage({ onBack }) {
           sub="Restlicher Jahresurlaub"
           testId="staff-vacation-card"
         />
+        <WalletBalanceCard />
       </section>
 
       {/* Settings sheet */}
