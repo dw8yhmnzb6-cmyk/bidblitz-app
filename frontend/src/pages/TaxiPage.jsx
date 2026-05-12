@@ -135,10 +135,52 @@ export default function TaxiPage({ onNavigate }) {
     getCurrentLocation,
   } = useGeolocation({ setPickup, mapRef, pickupMarkerRef });
 
-  // Get current GPS location on mount
+  // Get current GPS location on mount + fetch recent addresses
   useEffect(() => {
     getCurrentLocation();
-  }, [getCurrentLocation]);
+    (async () => {
+      try {
+        const recent = await api.fetchRecentAddresses(10);
+        setRecentAddresses(recent);
+      } catch {}
+    })();
+  }, [getCurrentLocation, setRecentAddresses]);
+
+  // City detection from pickup address (used for City-Defaults feature)
+  useEffect(() => {
+    if (!pickup?.address) { setPickupCity(''); return; }
+    // Cheap heuristic: city is usually 2nd-to-last comma segment, or zip+city
+    const parts = pickup.address.split(',').map(s => s.trim()).filter(Boolean);
+    let city = '';
+    for (const p of parts) {
+      const m = p.match(/^\d{4,5}\s+(.+)$/);
+      if (m) { city = m[1]; break; }
+    }
+    if (!city && parts.length >= 2) {
+      city = parts[parts.length - 2].replace(/^\d{4,5}\s+/, '');
+    }
+    setPickupCity(city.split(' ')[0] || '');
+  }, [pickup?.address]);
+
+  // Load saved city defaults whenever pickupCity changes
+  useEffect(() => {
+    if (!pickupCity) { setCitySaved(false); return; }
+    (async () => {
+      const saved = await api.fetchCityDefault(pickupCity);
+      if (saved?.options) {
+        setOrderOptions((prev) => ({ ...prev, ...saved.options }));
+        setCitySaved(true);
+      } else {
+        setCitySaved(false);
+      }
+    })();
+  }, [pickupCity, setOrderOptions]);
+
+  const handleSaveCityDefault = async () => {
+    if (!pickupCity) return;
+    const ok = await api.saveCityDefault(pickupCity, orderOptions);
+    if (ok) setCitySaved(true);
+  };
 
   const handlePickupChange = (text) => {
     setPickup(p => ({ ...p, address: text }));
@@ -306,11 +348,14 @@ export default function TaxiPage({ onNavigate }) {
     const result = await api.bookRideApi({
       pickup, dropoff, vehicleType: selectedVehicle,
       options: orderOptions,
+      stops: waypoints,
     });
     if (result.ok) {
       setActiveRide(result.ride);
       setView('tracking');
       startPolling(result.ride.ride_id);
+      // Refresh recent addresses (newly-used pickup/dropoff/stops now tracked)
+      api.fetchRecentAddresses(10).then(setRecentAddresses).catch(() => {});
     } else {
       setError(result.error);
     }
@@ -448,6 +493,16 @@ export default function TaxiPage({ onNavigate }) {
               onTapPickup={() => setSearchSheetMode('pickup')}
               onTapDropoff={() => setSearchSheetMode('dropoff')}
               onClearDropoff={() => { setDropoff({ lat: 0, lng: 0, address: '' }); setEstimates([]); }}
+              onEditPickupNotes={() => setNoteTarget({ type: 'pickup' })}
+              onEditDropoffNotes={() => setNoteTarget({ type: 'dropoff' })}
+              waypoints={waypoints}
+              onAddWaypoint={() => {
+                setWaypoints((prev) => [...prev, { lat: 0, lng: 0, address: '', notes: '' }]);
+                setSearchSheetMode(`waypoint:${waypoints.length}`);
+              }}
+              onTapWaypoint={(idx) => setSearchSheetMode(`waypoint:${idx}`)}
+              onRemoveWaypoint={(idx) => setWaypoints((prev) => prev.filter((_, i) => i !== idx))}
+              onEditWaypointNotes={(idx) => setNoteTarget({ type: 'waypoint', index: idx })}
               savedPlaces={savedPlaces}
               onPickSavedPlace={(p) => setDropoff({ lat: p.lat, lng: p.lng, address: p.address })}
               estimates={estimates}
@@ -462,6 +517,9 @@ export default function TaxiPage({ onNavigate }) {
               onGetEstimates={getEstimates}
               onBook={bookRide}
               scheduledLabel={scheduledLabel}
+              pickupCity={pickupCity}
+              citySaved={citySaved}
+              onSaveCityDefault={handleSaveCityDefault}
             />
           </TaxiBottomSheet>
 
@@ -474,10 +532,46 @@ export default function TaxiPage({ onNavigate }) {
             dropoff={dropoff}
             onSelectPickup={(p) => setPickup({ ...p })}
             onSelectDropoff={(d) => setDropoff({ ...d })}
+            onSelectWaypoint={(idx, sel) => {
+              setWaypoints((prev) => {
+                const next = [...prev];
+                next[idx] = { ...next[idx], lat: sel.lat, lng: sel.lng, address: sel.address };
+                return next;
+              });
+            }}
             onUseCurrentLocation={getCurrentLocation}
             onPickOnMap={() => setSearchSheetMode(null)}
             favorites={favorites}
             savedPlaces={savedPlaces}
+            recentAddresses={recentAddresses}
+          />
+
+          {/* Per-address driver notes modal */}
+          <TaxiNoteModal
+            isOpen={Boolean(noteTarget)}
+            title={
+              noteTarget?.type === 'pickup' ? 'Hinweis für Abholung' :
+              noteTarget?.type === 'dropoff' ? 'Hinweis für Ziel' :
+              `Hinweis für Stop ${(noteTarget?.index ?? 0) + 1}`
+            }
+            initialValue={
+              noteTarget?.type === 'pickup' ? (pickup.notes || '') :
+              noteTarget?.type === 'dropoff' ? (dropoff.notes || '') :
+              noteTarget?.type === 'waypoint' ? (waypoints[noteTarget.index]?.notes || '') : ''
+            }
+            onClose={() => setNoteTarget(null)}
+            onSave={(text) => {
+              if (!noteTarget) return;
+              if (noteTarget.type === 'pickup')      setPickup((p) => ({ ...p, notes: text }));
+              else if (noteTarget.type === 'dropoff') setDropoff((d) => ({ ...d, notes: text }));
+              else {
+                setWaypoints((prev) => {
+                  const next = [...prev];
+                  if (next[noteTarget.index]) next[noteTarget.index] = { ...next[noteTarget.index], notes: text };
+                  return next;
+                });
+              }
+            }}
           />
 
           {/* Order options overlay */}

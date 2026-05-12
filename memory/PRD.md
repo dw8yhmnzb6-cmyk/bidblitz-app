@@ -15,6 +15,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter72 — Wiring Komplett: Recent / City-Defaults / Notes / Waypoints)
+- 🟢 **Recent Addresses UI**: Server-tracked Adressen werden beim Mount geladen, im Search-Sheet als eigene Sektion "Letzte Adressen" mit Use-Count gezeigt. Nach jeder Buchung automatischer Refresh.
+- 🟢 **City-Defaults**: Pickup-Adresse → Heuristisches City-Extract (ZIP + Stadt-Pattern). Auto-Load gespeicherter Optionen für diese Stadt. Inline-Banner "Als Standard für [Stadt] speichern" / "✓ Standard-Optionen für [Stadt] aktiv".
+- 🟢 **Per-Address Driver Notes**: `TaxiNoteModal` verdrahtet an Pickup/Dropoff/Waypoint-Rows. Tap-Edit-Icon → Modal → 280-char Textarea → speichert in `pickup.notes` / `dropoff.notes` / `waypoint.notes`. Sichtbar als italic cyan-Hint unter der Adresse.
+- 🟢 **Waypoints Vollintegration**: `+ Zwischenstopp hinzufügen` → öffnet Search-Sheet mit `mode='waypoint:N'` → `onSelectWaypoint(idx, sel)` setzt Lat/Lng/Address im State-Array. Max 3 Stops. `bookRideApi` sendet komplettes `stops[]`-Array. Backend route: pickup → stops[] → dropoff, Total-Distanz aus haversine summiert.
+- ✅ Verifiziert E2E: Waypoint hinzufügen → Search-Sheet → "Hauptbahnhof Berlin" → Auswahl → amber Waypoint-Row mit Edit+Clear. Console clean.
+
 ### 12.05.2026 (iter71 — Bug-Fix: PWA-Prompt + Estimate API)
 - 🔴 **Bug 1**: PWA-Install-Prompt erschien über dem Bottom-Sheet im Booking-Flow. Fix: `[data-testid="pwa-install-prompt"]` + `[data-testid="ios-add-to-home"]` zu CSS-Cloak hinzugefügt.
 - 🔴 **Bug 2**: "Fehler beim Laden der Preise" — Frontend Service `estimateRide` sendete nested Body `{pickup, dropoff}` statt der flachen `EstimateRequest`-Felder (`pickup_lat/lng`, `dropoff_lat/lng`). Backend antwortete mit Pydantic 422. Fix in `services/taxiApi.js`.
