@@ -5,9 +5,10 @@
  */
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Circle, Clock, MessageSquare, Paperclip, Loader2, ListChecks, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, MessageSquare, Paperclip, Loader2, ListChecks, AlertTriangle, Tag as TagIcon } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "./StaffShifts";
+import TaskDetailSheet from "../../components/staff/TaskDetailSheet";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -27,6 +28,7 @@ export default function StaffTasks() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("open");
   const [busy, setBusy] = useState(null);
+  const [openTaskId, setOpenTaskId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,18 +96,36 @@ export default function StaffTasks() {
         <div className="space-y-2.5">
           <AnimatePresence initial={false}>
             {tasks.map((t) => (
-              <TaskCard key={t.id} task={t} onComplete={complete} busy={busy === t.id} />
+              <TaskCard
+                key={t.id} task={t}
+                onComplete={complete} busy={busy === t.id}
+                onOpen={() => setOpenTaskId(t.id)}
+              />
             ))}
           </AnimatePresence>
         </div>
       )}
+
+      <AnimatePresence>
+        {openTaskId && (
+          <TaskDetailSheet
+            taskId={openTaskId}
+            onClose={() => setOpenTaskId(null)}
+            onChange={load}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function TaskCard({ task, onComplete, busy }) {
+function TaskCard({ task, onComplete, busy, onOpen }) {
   const prio = priorityOf(task);
   const done = task.status === "done";
+  const commentCount = task.comment_count || 0;
+  const photoCount = (task.attachments || []).length;
+  const subTotal = (task.subtasks || []).length;
+  const subDone = (task.subtasks || []).filter((s) => s.done).length;
   return (
     <motion.div
       layout
@@ -123,7 +143,7 @@ function TaskCard({ task, onComplete, busy }) {
       )}
       <div className="flex items-start gap-3">
         <button
-          onClick={() => !done && onComplete(task.id)}
+          onClick={(e) => { e.stopPropagation(); !done && onComplete(task.id); }}
           disabled={done || busy}
           data-testid={`staff-task-complete-${task.id}`}
           className="mt-0.5 w-7 h-7 rounded-full flex items-center justify-center transition-transform active:scale-90"
@@ -132,7 +152,7 @@ function TaskCard({ task, onComplete, busy }) {
                 : done ? <CheckCircle2 size={24} className="text-[#10B981]" />
                        : <Circle size={24} className="text-white/30 hover:text-[#00D4FF]" />}
         </button>
-        <div className="flex-1 min-w-0">
+        <button onClick={onOpen} data-testid={`staff-task-open-${task.id}`} className="flex-1 min-w-0 text-left">
           <div className="flex items-start justify-between gap-2">
             <p className={`text-sm font-bold ${done ? "line-through text-white/50" : ""}`}>{task.title}</p>
             {!done && (
@@ -142,7 +162,36 @@ function TaskCard({ task, onComplete, busy }) {
               >{prio.label}</span>
             )}
           </div>
-          {task.description && <p className={`text-[12px] mt-0.5 ${done ? "text-white/30" : "text-white/55"}`}>{task.description}</p>}
+          {task.description && <p className={`text-[12px] mt-0.5 line-clamp-2 ${done ? "text-white/30" : "text-white/55"}`}>{task.description}</p>}
+
+          {/* Tags */}
+          {(task.tags || []).length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {task.tags.slice(0, 3).map((t) => (
+                <span key={t} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/30">
+                  <TagIcon size={8} /> {t}
+                </span>
+              ))}
+              {task.tags.length > 3 && <span className="text-[9px] text-white/40">+{task.tags.length - 3}</span>}
+            </div>
+          )}
+
+          {/* Sub-Task progress */}
+          {subTotal > 0 && (
+            <div className="mt-2">
+              <div className="flex items-center justify-between text-[10px] text-white/45 mb-0.5">
+                <span>Sub-Tasks</span>
+                <span className="tabular-nums">{subDone}/{subTotal}</span>
+              </div>
+              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{
+                  width: `${(subDone / subTotal) * 100}%`,
+                  background: "linear-gradient(90deg, #00D4FF, #7E5BF6)",
+                }} />
+              </div>
+            </div>
+          )}
+
           <div className="mt-2 flex items-center gap-3 text-[10px] text-white/40">
             {task.due_date && (
               <span className={`flex items-center gap-1 ${prio.priority === 3 ? "text-[#EF4444]" : ""}`}>
@@ -150,11 +199,14 @@ function TaskCard({ task, onComplete, busy }) {
                 {new Date(task.due_date).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
               </span>
             )}
-            {/* Placeholder counters */}
-            <span className="flex items-center gap-1"><MessageSquare size={10} /> 0</span>
-            <span className="flex items-center gap-1"><Paperclip size={10} /> 0</span>
+            <span data-testid="task-comment-count" className={`flex items-center gap-1 ${commentCount > 0 ? "text-[#10D981]" : ""}`}>
+              <MessageSquare size={10} /> {commentCount}
+            </span>
+            <span data-testid="task-photo-count" className={`flex items-center gap-1 ${photoCount > 0 ? "text-[#A855F7]" : ""}`}>
+              <Paperclip size={10} /> {photoCount}
+            </span>
           </div>
-        </div>
+        </button>
       </div>
     </motion.div>
   );
