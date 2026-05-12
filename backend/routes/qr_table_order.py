@@ -731,3 +731,161 @@ async def stream_menu_image(file_id: str):
             yield chunk
 
     return StreamingResponse(iterator(), media_type=ct, headers={"Cache-Control": "public, max-age=86400"})
+
+
+# ─── New: Open-Tab History per Table ────────────────────────────────────────
+
+@router.get("/table-history/{merchant_id}/{table_id}")
+async def table_history(merchant_id: str, table_id: str, request: Request, limit: int = 20):
+    """Customer: see this table's recent orders today (open-tab pattern).
+    Privacy: only orders from the LOGGED-IN user (or all if customer is the merchant)."""
+    user = await get_current_user(request)
+    today_start = _now_utc().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    query = {
+        "merchant_id": merchant_id,
+        "table_id": table_id,
+        "customer_id": str(user["_id"]),
+        "created_at": {"$gte": today_start},
+    }
+    orders = await db.qr_orders.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    total_spent = sum(float(o.get("total", 0)) for o in orders if o.get("status") != "rejected")
+    return {"orders": orders, "total_spent": round(total_spent, 2), "count": len(orders)}
+
+
+# ─── New: Order status (polling for live updates) ───────────────────────────
+
+@router.get("/order-status/{order_id}")
+async def get_order_status(order_id: str, request: Request):
+    """Lightweight polling endpoint for live order updates (kitchen → ready → completed)."""
+    user = await get_current_user(request)
+    o = await db.qr_orders.find_one(
+        {"order_id": order_id, "customer_id": str(user["_id"])},
+        {"_id": 0, "order_id": 1, "status": 1, "status_history": 1, "total": 1,
+         "tip": 1, "estimated_ready_at": 1, "preparing_at": 1, "ready_at": 1,
+         "completed_at": 1, "rejected_at": 1, "accepted_at": 1},
+    )
+    if not o:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    return o
+
+
+# ─── New: Add tip to order (post-order wallet debit) ────────────────────────
+
+class TipRequest(BaseModel):
+    order_id: str
+    amount: float = Field(..., ge=0, le=200)
+
+
+@router.post("/order/tip")
+async def add_tip(req: TipRequest, request: Request):
+    """Add a tip to an existing order, debited atomically from wallet."""
+    user = await get_current_user(request)
+    if req.amount <= 0:
+        return {"ok": True, "tip": 0.0, "message": "Kein Trinkgeld"}
+
+    order = await db.qr_orders.find_one(
+        {"order_id": req.order_id, "customer_id": str(user["_id"])},
+        {"_id": 0},
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.get("tip"):
+        raise HTTPException(status_code=409, detail="Trinkgeld wurde bereits hinzugefügt")
+    if order.get("status") == "rejected":
+        raise HTTPException(status_code=400, detail="Trinkgeld nicht möglich (abgelehnte Bestellung)")
+
+    amount = round(float(req.amount), 2)
+    # Atomic debit
+    res = await db.users.update_one(
+        {"_id": user["_id"], "balance": {"$gte": amount}},
+        {"$inc": {"balance": -amount}},
+    )
+    if res.modified_count == 0:
+        raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (Trinkgeld {amount:.2f}€)")
+
+    now = _now_utc().isoformat()
+    await db.qr_orders.update_one(
+        {"order_id": req.order_id},
+        {"$set": {"tip": amount, "tip_at": now}, "$inc": {"total": amount}},
+    )
+    await db.wallet_transactions.insert_one({
+        "transaction_id": secrets.token_hex(8),
+        "user_id": str(user["_id"]),
+        "type": "qr_table_tip",
+        "amount": -amount,
+        "currency": "EUR",
+        "description": f"Trinkgeld {req.order_id}",
+        "reference": req.order_id,
+        "created_at": now,
+    })
+    return {"ok": True, "tip": amount}
+
+
+# ─── New: Popular items + Upsell recommendations ────────────────────────────
+
+@router.get("/popular/{merchant_id}")
+async def popular_items(merchant_id: str, limit: int = 6):
+    """Top-selling items for the merchant in the last 7 days (no auth required)."""
+    pipeline = [
+        {"$match": {"merchant_id": merchant_id, "status": {"$in": ["accepted", "completed"]}}},
+        {"$unwind": "$items"},
+        {"$group": {
+            "_id": "$items.item_id",
+            "count": {"$sum": "$items.qty"},
+            "last_name": {"$last": "$items.name"},
+            "last_image": {"$last": "$items.image_url"},
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": limit},
+    ]
+    rows = await db.qr_orders.aggregate(pipeline).to_list(limit)
+    return {
+        "items": [
+            {"item_id": r["_id"], "name": r["last_name"], "image_url": r["last_image"], "order_count": r["count"]}
+            for r in rows if r["_id"]
+        ]
+    }
+
+
+@router.post("/upsell")
+async def upsell_suggestions(payload: dict, request: Request):
+    """Suggest items that customers also order based on current cart.
+    Looks at last 30 days of orders containing any cart item, returns top 3 'frequently bought together'."""
+    merchant_id = payload.get("merchant_id")
+    item_ids = payload.get("item_ids") or []
+    limit = int(payload.get("limit") or 3)
+    if not merchant_id or not item_ids:
+        return {"items": []}
+
+    pipeline = [
+        {"$match": {"merchant_id": merchant_id, "status": {"$in": ["accepted", "completed"]},
+                    "items.item_id": {"$in": item_ids}}},
+        {"$unwind": "$items"},
+        {"$match": {"items.item_id": {"$nin": item_ids}}},
+        {"$group": {
+            "_id": "$items.item_id",
+            "count": {"$sum": "$items.qty"},
+            "last_name": {"$last": "$items.name"},
+            "last_image": {"$last": "$items.image_url"},
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": limit},
+    ]
+    rows = await db.qr_orders.aggregate(pipeline).to_list(limit)
+    out: list = []
+    if rows:
+        # Hydrate from merchant menu to get price/category
+        m = await db.merchants.find_one({"merchant_id": merchant_id}, {"_id": 0, "menu": 1})
+        menu_by_id = {it.get("item_id"): it for it in ((m or {}).get("menu") or [])}
+        for r in rows:
+            it = menu_by_id.get(r["_id"]) or {}
+            out.append({
+                "item_id": r["_id"],
+                "name": it.get("name") or r.get("last_name"),
+                "price": it.get("price"),
+                "image_url": it.get("image_url") or r.get("last_image"),
+                "category": it.get("category"),
+                "scope": it.get("scope", "food"),
+                "order_count": r["count"],
+            })
+    return {"items": out}

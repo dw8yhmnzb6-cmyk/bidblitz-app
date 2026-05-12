@@ -7,7 +7,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, X, ChevronLeft, ChevronRight, Flame, Star, Leaf, AlertTriangle,
-  ShoppingBag, Plus, Minus, Globe,
+  ShoppingBag, Plus, Minus, Globe, Receipt, Clock, ChefHat, CheckCircle,
+  Users, Sparkles, History,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -31,6 +32,14 @@ const T = {
     contains: "Enthält:", min_select: "Mindestens", max_select: "Maximal",
     cart_empty: "Wähle deine Lieblings-Gerichte", choose_size: "Wähle Größe",
     sold_out: "Nicht verfügbar",
+    popular_section: "Beliebt im Restaurant", suggest: "Häufig dazu bestellt", add_to_cart: "Hinzufügen",
+    tip: "Trinkgeld", tip_desc: "Möchten Sie dem Service ein Trinkgeld geben?",
+    tip_none: "Kein Trinkgeld", tip_custom: "Eigener Betrag", tip_thanks: "Vielen Dank für Ihr Trinkgeld!",
+    history: "Bestellverlauf", today_total: "Heute am Tisch", no_history: "Noch keine Bestellungen heute",
+    status_submitted: "Eingegangen", status_accepted: "Bestätigt", status_preparing: "In Zubereitung",
+    status_ready: "Bereit zur Abholung", status_completed: "Abgeschlossen", status_rejected: "Abgelehnt",
+    split_bill: "Rechnung teilen", split_persons: "Personen", split_each: "Pro Person",
+    skip: "Überspringen", view_orders: "Meine Bestellungen",
   },
   en: {
     menu: "Menu", search: "Search...", food: "Food", drinks: "Drinks",
@@ -47,6 +56,14 @@ const T = {
     contains: "Contains:", min_select: "At least", max_select: "At most",
     cart_empty: "Pick your favourites", choose_size: "Choose size",
     sold_out: "Sold out",
+    popular_section: "Popular here", suggest: "Frequently added together", add_to_cart: "Add",
+    tip: "Tip", tip_desc: "Would you like to leave a tip?",
+    tip_none: "No tip", tip_custom: "Custom amount", tip_thanks: "Thanks for the tip!",
+    history: "Order history", today_total: "Today at this table", no_history: "No orders yet today",
+    status_submitted: "Received", status_accepted: "Accepted", status_preparing: "Preparing",
+    status_ready: "Ready", status_completed: "Completed", status_rejected: "Rejected",
+    split_bill: "Split bill", split_persons: "People", split_each: "Per person",
+    skip: "Skip", view_orders: "My orders",
   },
   tr: {
     menu: "Menü", search: "Ara...", food: "Yemekler", drinks: "İçecekler",
@@ -63,6 +80,14 @@ const T = {
     contains: "İçerir:", min_select: "En az", max_select: "En fazla",
     cart_empty: "Favorilerini seç", choose_size: "Boyut seç",
     sold_out: "Tükendi",
+    popular_section: "Burada popüler", suggest: "Sıkça birlikte sipariş edilir", add_to_cart: "Ekle",
+    tip: "Bahşiş", tip_desc: "Servise bahşiş vermek ister misiniz?",
+    tip_none: "Bahşiş yok", tip_custom: "Özel tutar", tip_thanks: "Bahşiş için teşekkürler!",
+    history: "Sipariş geçmişi", today_total: "Bugün masada", no_history: "Bugün henüz sipariş yok",
+    status_submitted: "Alındı", status_accepted: "Onaylandı", status_preparing: "Hazırlanıyor",
+    status_ready: "Hazır", status_completed: "Tamamlandı", status_rejected: "Reddedildi",
+    split_bill: "Hesabı böl", split_persons: "Kişi", split_each: "Kişi başı",
+    skip: "Atla", view_orders: "Siparişlerim",
   },
 };
 
@@ -119,6 +144,16 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
   const [submitting, setSubmitting] = useState(false);
   const [orderError, setOrderError] = useState(null);
   const [successOrder, setSuccessOrder] = useState(null);
+  // New: live status polling for successful order
+  const [liveOrder, setLiveOrder] = useState(null);
+  // New: open-tab history per table
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState({ orders: [], total_spent: 0 });
+  // New: popular + upsell
+  const [popular, setPopular] = useState([]);
+  const [upsell, setUpsell] = useState([]);
+  // New: tip + split
+  const [tipDone, setTipDone] = useState(false);
 
   const t = T[lang] || T.de;
 
@@ -151,6 +186,54 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
     return () => { cancelled = true; };
     // eslint-disable-next-line
   }, []);
+
+  // 2. Load popular items for hero suggestion
+  useEffect(() => {
+    if (!resolved?.merchant_id) return;
+    fetch(`${API}/api/qr/popular/${resolved.merchant_id}`).then(readJson).then((d) => {
+      if (d?.items) setPopular(d.items);
+    });
+  }, [resolved]);
+
+  // 3. Load upsell when cart changes
+  useEffect(() => {
+    if (!resolved?.merchant_id || cart.length === 0) { setUpsell([]); return; }
+    const ids = [...new Set(cart.map((c) => c.item_id))];
+    const ctrl = new AbortController();
+    fetch(`${API}/api/qr/upsell`, {
+      ...credJson, method: "POST", signal: ctrl.signal,
+      body: JSON.stringify({ merchant_id: resolved.merchant_id, item_ids: ids, limit: 3 }),
+    }).then(readJson).then((d) => {
+      if (d?.items) setUpsell(d.items);
+    }).catch(() => {});
+    return () => ctrl.abort();
+    // eslint-disable-next-line
+  }, [cart.length, resolved?.merchant_id]);
+
+  // 4. Live status polling for placed order
+  useEffect(() => {
+    if (!successOrder?.order_id) return;
+    setLiveOrder({ status: successOrder.status, order_id: successOrder.order_id, total: successOrder.total });
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API}/api/qr/order-status/${successOrder.order_id}`, cred);
+        const d = await readJson(r);
+        if (r.ok && d?.order_id) setLiveOrder((p) => ({ ...(p || {}), ...d }));
+      } catch {}
+    };
+    poll();
+    const iv = setInterval(poll, 5000);
+    return () => clearInterval(iv);
+  }, [successOrder?.order_id]);
+
+  // 5. Load table history
+  const loadHistory = useCallback(async () => {
+    if (!resolved?.merchant_id || !resolved?.table_id) return;
+    const r = await fetch(`${API}/api/qr/table-history/${resolved.merchant_id}/${resolved.table_id}`, cred);
+    const d = await readJson(r);
+    if (r.ok && d) setHistory(d);
+  }, [resolved]);
+  useEffect(() => { if (historyOpen) loadHistory(); }, [historyOpen, loadHistory]);
 
   // Filter & sort items
   const visibleItems = useMemo(() => {
@@ -191,6 +274,18 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
     });
   };
 
+  // Quick add (no modifiers) — for popular & upsell tiles
+  const quickAdd = (item) => {
+    const fullItem = (menu.items || []).find((it) => it.item_id === item.item_id) || item;
+    // If item has required modifiers, open detail-sheet instead
+    const hasRequired = (fullItem.modifier_groups || []).some((g) => g.required || (g.min_select || 0) > 0);
+    if (hasRequired) {
+      setDetail(fullItem);
+      return;
+    }
+    addToCart(fullItem, [], "", 1);
+  };
+
   const updateCartQty = (key, delta) => {
     setCart((prev) => prev.flatMap((c) => {
       if (c.key !== key) return [c];
@@ -222,6 +317,8 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
       } else {
         setSuccessOrder(data);
         setCart([]);
+        setTipDone(false);
+        loadHistory();
       }
     } catch (e) {
       setOrderError(String(e));
@@ -255,24 +352,32 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
     );
   }
 
+  const sendTip = async (amount) => {
+    if (!successOrder?.order_id) return;
+    try {
+      const r = await fetch(`${API}/api/qr/order/tip`, {
+        ...credJson, method: "POST",
+        body: JSON.stringify({ order_id: successOrder.order_id, amount }),
+      });
+      const d = await readJson(r);
+      if (r.ok) {
+        setTipDone(true);
+        setLiveOrder((p) => ({ ...(p || {}), tip: d.tip }));
+      }
+    } catch {}
+  };
+
   if (successOrder) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-6" data-testid="qr-success">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          className="max-w-sm w-full text-center bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-8">
-          <div className="text-6xl mb-4">✅</div>
-          <h1 className="text-xl font-bold text-emerald-400 mb-2">
-            {successOrder.status === "accepted" ? t.success : t.pending}
-          </h1>
-          <p className="text-sm text-gray-400 mb-4">{successOrder.message}</p>
-          <p className="text-xs text-gray-500 mb-1">{t.order_id}</p>
-          <p className="font-mono font-bold text-cyan-400 mb-6">{successOrder.order_id}</p>
-          <p className="text-3xl font-bold text-white mb-6">{fmt(successOrder.total, menu.currency)}</p>
-          <button onClick={() => setSuccessOrder(null)} className="w-full py-3 bg-cyan-500 rounded-xl text-black font-bold" data-testid="qr-order-again">
-            {t.new_order}
-          </button>
-        </motion.div>
-      </div>
+      <SuccessScreen
+        order={successOrder}
+        live={liveOrder}
+        t={t}
+        currency={menu.currency}
+        tipDone={tipDone}
+        onTip={sendTip}
+        onNew={() => { setSuccessOrder(null); setLiveOrder(null); setTipDone(false); }}
+      />
     );
   }
 
@@ -293,11 +398,18 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
             <p className="text-xs text-cyan-400 font-semibold tracking-wider" data-testid="qr-table-label">
               📍 {resolved?.table_label}
             </p>
-            <button onClick={() => setShowLangMenu((p) => !p)}
-              className="px-2.5 py-1.5 bg-white/10 backdrop-blur rounded-lg text-xs font-bold flex items-center gap-1"
-              data-testid="qr-lang-toggle">
-              <Globe size={11} /> {lang.toUpperCase()}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setHistoryOpen(true)}
+                className="px-2.5 py-1.5 bg-white/10 backdrop-blur rounded-lg text-xs font-bold flex items-center gap-1"
+                data-testid="qr-history-toggle">
+                <History size={11}/> {t.history}
+              </button>
+              <button onClick={() => setShowLangMenu((p) => !p)}
+                className="px-2.5 py-1.5 bg-white/10 backdrop-blur rounded-lg text-xs font-bold flex items-center gap-1"
+                data-testid="qr-lang-toggle">
+                <Globe size={11} /> {lang.toUpperCase()}
+              </button>
+            </div>
           </div>
           <h1 className="text-2xl font-black tracking-tight">{menu.name}</h1>
         </div>
@@ -365,6 +477,38 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
 
       {/* Grid */}
       <div className="px-3 py-4">
+        {/* Popular suggestion carousel */}
+        {popular.length > 0 && category === "all" && !search && !tagFilter && (
+          <div className="mb-4" data-testid="qr-popular-section">
+            <p className="text-[11px] uppercase tracking-wider text-amber-300/80 mb-2 px-1 flex items-center gap-1">
+              <Sparkles size={11}/> {t.popular_section}
+            </p>
+            <div className="flex gap-2 overflow-x-auto -mx-3 px-3 pb-1 hide-scrollbar">
+              {popular.slice(0,6).map((p) => {
+                const full = (menu.items || []).find((it) => it.item_id === p.item_id);
+                if (!full) return null;
+                const img = buildImg(p.image_url || full.image_url);
+                return (
+                  <button key={p.item_id} onClick={() => setDetail(full)}
+                    data-testid={`qr-popular-${p.item_id}`}
+                    className="shrink-0 w-32 bg-[#141414] rounded-2xl overflow-hidden border border-amber-500/20 text-left">
+                    <div className="relative h-20 bg-white/5">
+                      {img && <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover"/>}
+                      <span className="absolute top-1 right-1 px-1 py-0.5 bg-amber-500 text-black rounded-md text-[8px] font-black flex items-center gap-0.5">
+                        <Star size={7}/> {p.order_count}×
+                      </span>
+                    </div>
+                    <div className="p-1.5">
+                      <p className="text-[11px] font-bold leading-tight line-clamp-1">{i18nField(full,"name",lang)}</p>
+                      <p className="text-[11px] font-black text-cyan-400 mt-0.5">{fmt(full.price, menu.currency)}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {visibleItems.length === 0 ? (
           <div className="text-center py-16 opacity-60">
             <p className="text-3xl mb-2">🍽️</p>
@@ -380,28 +524,61 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
         )}
       </div>
 
-      {/* Cart CTA */}
+      {/* Cart CTA + Upsell */}
       <AnimatePresence>
         {cartCount > 0 && (
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-            className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-[#0a0a0a]/95 backdrop-blur-xl px-4 pt-3 pb-6 border-t border-white/10"
+          <motion.div initial={{ y: 200 }} animate={{ y: 0 }} exit={{ y: 200 }}
+            className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-[#0a0a0a]/95 backdrop-blur-xl border-t border-white/10"
             data-testid="qr-cart-cta">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-white/60">
-                {cartCount} {t.cart_items} · {t.pay_wallet}
-              </span>
-              <span className="text-lg font-black text-cyan-400" data-testid="qr-cart-total">
-                {fmt(cartTotal, menu.currency)}
-              </span>
+            {/* Upsell strip */}
+            {upsell.length > 0 && (
+              <div className="px-4 pt-2 pb-1" data-testid="qr-upsell-section">
+                <p className="text-[10px] uppercase tracking-wider text-cyan-300/70 mb-1.5 flex items-center gap-1">
+                  <Sparkles size={9}/> {t.suggest}
+                </p>
+                <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 pb-1.5 hide-scrollbar">
+                  {upsell.map((u) => (
+                    <button key={u.item_id} onClick={() => quickAdd(u)}
+                      data-testid={`qr-upsell-${u.item_id}`}
+                      className="shrink-0 flex items-center gap-2 bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/30 rounded-xl px-2 py-1.5 max-w-[200px]">
+                      {u.image_url && (
+                        <img src={buildImg(u.image_url)} alt="" className="w-7 h-7 rounded-md object-cover shrink-0"/>
+                      )}
+                      <div className="text-left min-w-0">
+                        <p className="text-[11px] font-bold truncate">{u.name}</p>
+                        <p className="text-[10px] text-cyan-300 font-bold">+ {fmt(u.price || 0, menu.currency)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="px-4 pt-3 pb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-white/60">
+                  {cartCount} {t.cart_items} · {t.pay_wallet}
+                </span>
+                <span className="text-lg font-black text-cyan-400" data-testid="qr-cart-total">
+                  {fmt(cartTotal, menu.currency)}
+                </span>
+              </div>
+              <button onClick={submit} disabled={submitting}
+                className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 rounded-2xl font-black text-black text-base disabled:opacity-50 shadow-[0_8px_32px_rgba(0,194,255,0.4)] flex items-center justify-center gap-2"
+                data-testid="qr-submit-btn">
+                <ShoppingBag size={16}/>
+                {submitting ? t.submitting : t.submit}
+              </button>
+              {orderError && <p className="text-xs text-red-400 mt-2 text-center" data-testid="qr-order-error">{orderError}</p>}
             </div>
-            <button onClick={submit} disabled={submitting}
-              className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 rounded-2xl font-black text-black text-base disabled:opacity-50 shadow-[0_8px_32px_rgba(0,194,255,0.4)] flex items-center justify-center gap-2"
-              data-testid="qr-submit-btn">
-              <ShoppingBag size={16}/>
-              {submitting ? t.submitting : t.submit}
-            </button>
-            {orderError && <p className="text-xs text-red-400 mt-2 text-center" data-testid="qr-order-error">{orderError}</p>}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* History sheet */}
+      <AnimatePresence>
+        {historyOpen && (
+          <HistorySheet history={history} t={t} currency={menu.currency} lang={lang} onClose={() => setHistoryOpen(false)} />
         )}
       </AnimatePresence>
 
@@ -690,6 +867,204 @@ function DetailSheet({ item, lang, t, currency, onClose, onAdd }) {
             </button>
           </div>
         </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── SuccessScreen with live status + tip + split-bill ───────────────────
+
+const STATUS_STEPS = [
+  { id: "submitted", icon: <CheckCircle size={14}/>, key: "status_submitted" },
+  { id: "accepted",  icon: <ChefHat size={14}/>,     key: "status_accepted" },
+  { id: "preparing", icon: <Clock size={14}/>,       key: "status_preparing" },
+  { id: "ready",     icon: <Sparkles size={14}/>,    key: "status_ready" },
+  { id: "completed", icon: <CheckCircle size={14}/>, key: "status_completed" },
+];
+
+function SuccessScreen({ order, live, t, currency, tipDone, onTip, onNew }) {
+  const [splitN, setSplitN] = useState(1);
+  const [customTip, setCustomTip] = useState("");
+  const status = live?.status || order.status;
+  const total = (live?.total ?? order.total) || 0;
+  const tip = live?.tip || 0;
+
+  const stepIndex = STATUS_STEPS.findIndex((s) => s.id === status);
+  const isFinal = status === "completed" || status === "rejected";
+
+  const tipPresets = [
+    { label: "5%", v: total * 0.05 },
+    { label: "10%", v: total * 0.10 },
+    { label: "15%", v: total * 0.15 },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 pb-32" data-testid="qr-success">
+      <div className="max-w-md mx-auto">
+        <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          className="bg-emerald-500/8 border border-emerald-500/25 rounded-3xl p-6 text-center mt-2">
+          <div className="text-5xl mb-3">{status === "rejected" ? "❌" : "✅"}</div>
+          <h1 className="text-lg font-black mb-1">
+            {status === "rejected" ? t.status_rejected : (status === "accepted" || status === "submitted" ? t.success : t[STATUS_STEPS.find(s=>s.id===status)?.key || "success"])}
+          </h1>
+          <p className="text-[11px] text-white/40 font-mono mt-1" data-testid="qr-success-order-id">{order.order_id}</p>
+          <p className="text-3xl font-black text-cyan-400 mt-3">{fmt(total, currency)}</p>
+          {tip > 0 && (
+            <p className="text-[11px] text-emerald-400 mt-1" data-testid="qr-tip-applied">
+              + {fmt(tip, currency)} {t.tip}
+            </p>
+          )}
+        </motion.div>
+
+        {/* Live status timeline */}
+        {!isFinal && status !== "rejected" && (
+          <div className="mt-5 bg-[#101010] border border-white/5 rounded-2xl p-4" data-testid="qr-status-tracker">
+            <p className="text-[11px] uppercase tracking-wider text-white/40 mb-3">Live-Status</p>
+            <div className="flex items-center justify-between">
+              {STATUS_STEPS.slice(0, 4).map((s, i) => {
+                const active = i <= stepIndex;
+                return (
+                  <React.Fragment key={s.id}>
+                    <div className="flex flex-col items-center gap-1">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${active ? "bg-cyan-500 text-black" : "bg-white/5 text-white/30"}`}>
+                        {s.icon}
+                      </div>
+                      <p className={`text-[9px] ${active ? "text-cyan-300" : "text-white/30"} text-center max-w-[60px]`}>
+                        {t[s.key]}
+                      </p>
+                    </div>
+                    {i < 3 && (
+                      <div className={`flex-1 h-0.5 ${i < stepIndex ? "bg-cyan-500" : "bg-white/5"}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Tip selector */}
+        {status !== "rejected" && !tipDone && (
+          <div className="mt-4 bg-[#101010] border border-white/5 rounded-2xl p-4" data-testid="qr-tip-section">
+            <p className="text-base font-bold mb-1">💝 {t.tip}</p>
+            <p className="text-xs text-white/50 mb-3">{t.tip_desc}</p>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {tipPresets.map((p) => (
+                <button key={p.label} onClick={() => onTip(round2(p.v))}
+                  data-testid={`qr-tip-${p.label.replace("%","")}`}
+                  className="py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-bold">
+                  {p.label}<br/><span className="text-[10px] opacity-70">{fmt(p.v, currency)}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input type="number" min="0" step="0.5" value={customTip}
+                onChange={(e) => setCustomTip(e.target.value)}
+                placeholder={t.tip_custom}
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm outline-none"
+                data-testid="qr-tip-custom"/>
+              <button onClick={() => customTip && onTip(parseFloat(customTip))}
+                className="px-4 py-2 bg-cyan-500 text-black rounded-xl text-sm font-bold"
+                data-testid="qr-tip-custom-send">
+                {t.add}
+              </button>
+            </div>
+            <button onClick={() => onTip(0)} className="w-full mt-2 py-2 text-xs text-white/40" data-testid="qr-tip-skip">
+              {t.skip} · {t.tip_none}
+            </button>
+          </div>
+        )}
+        {tipDone && (
+          <div className="mt-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center">
+            <p className="text-sm font-semibold text-emerald-300">💚 {t.tip_thanks}</p>
+          </div>
+        )}
+
+        {/* Split bill */}
+        {status !== "rejected" && (
+          <div className="mt-4 bg-[#101010] border border-white/5 rounded-2xl p-4" data-testid="qr-split-section">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-base font-bold flex items-center gap-2">
+                <Users size={15}/> {t.split_bill}
+              </p>
+              <div className="flex items-center gap-2 bg-white/5 rounded-xl">
+                <button onClick={() => setSplitN(Math.max(1, splitN-1))} className="w-8 h-8" data-testid="qr-split-dec">−</button>
+                <span className="text-sm font-bold w-6 text-center" data-testid="qr-split-count">{splitN}</span>
+                <button onClick={() => setSplitN(Math.min(20, splitN+1))} className="w-8 h-8" data-testid="qr-split-inc">+</button>
+              </div>
+            </div>
+            <div className="flex items-end justify-between">
+              <span className="text-xs text-white/50">{t.split_each} ({splitN} {t.split_persons}):</span>
+              <span className="text-xl font-black text-cyan-400" data-testid="qr-split-each">
+                {fmt((total + tip) / splitN, currency)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <button onClick={onNew}
+          className="w-full mt-5 py-3.5 bg-cyan-500 hover:bg-cyan-400 rounded-2xl text-black font-black shadow-[0_8px_32px_rgba(0,194,255,0.4)]"
+          data-testid="qr-order-again">
+          {t.new_order}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function round2(n) { return Math.round(n * 100) / 100; }
+
+// ─── HistorySheet: open-tab orders for this table today ──────────────────
+
+function HistorySheet({ history, t, currency, lang, onClose }) {
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      className="fixed inset-0 z-50 bg-black/80 flex items-end" onClick={onClose}>
+      <motion.div initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
+        onClick={(e)=>e.stopPropagation()}
+        data-testid="qr-history-sheet"
+        className="w-full bg-[#0e0e0e] rounded-t-3xl max-h-[85vh] overflow-y-auto p-5">
+        <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3"/>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-base font-bold flex items-center gap-2">
+            <Receipt size={16}/> {t.history}
+          </h2>
+          <button onClick={onClose} className="text-white/40"><X size={18}/></button>
+        </div>
+        <p className="text-xs text-white/50 mb-4">
+          {t.today_total}: <span className="text-cyan-400 font-bold" data-testid="qr-history-total">{fmt(history.total_spent || 0, currency)}</span>
+        </p>
+        {(!history.orders || history.orders.length === 0) ? (
+          <p className="text-center text-sm text-white/40 py-10">{t.no_history}</p>
+        ) : (
+          <div className="space-y-2">
+            {history.orders.map((o) => (
+              <div key={o.order_id} className="bg-[#141414] border border-white/5 rounded-xl p-3" data-testid={`qr-history-order-${o.order_id}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-[10px] text-white/40">{o.order_id}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    o.status === "completed" ? "bg-emerald-500/15 text-emerald-300" :
+                    o.status === "accepted" ? "bg-cyan-500/15 text-cyan-300" :
+                    o.status === "pending" ? "bg-amber-500/15 text-amber-300" :
+                    "bg-red-500/15 text-red-300"
+                  }`}>{t[`status_${o.status}`] || o.status}</span>
+                </div>
+                <div className="text-xs text-white/70">
+                  {(o.items || []).map((it, idx) => (
+                    <div key={idx} className="flex justify-between py-0.5">
+                      <span>{it.qty}× {it.name}</span>
+                      <span className="text-white/40 tabular-nums">{fmt(it.line_total, currency)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between mt-2 pt-2 border-t border-white/5">
+                  <span className="text-xs text-white/40">{new Date(o.created_at).toLocaleTimeString(lang, {hour:"2-digit", minute:"2-digit"})}</span>
+                  <span className="text-sm font-black text-cyan-400">{fmt(o.total, currency)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
