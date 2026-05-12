@@ -1,0 +1,36 @@
+{
+  "summary": "QR-Tisch v2 (Mr-Yum-Parität) E2E complete: 22/22 backend pytest + full Playwright frontend E2E PASS. Public endpoints (popular/upsell/combos/reviews/menu/menu-image) all functional. Customer-auth flows (table-history, order-status, tip atomic-debit, double-tip 409, review with status gate, review 409) all green. Modifier validation rejects unknown options. Merchant menu/combo upsert+delete + image upload (GridFS streamable) all work. Frontend: hero, scope-tabs (Food/Drinks), categories (7), tag filters, Combo Deals & Popular Here carousels, detail-sheet with modifier groups + size=m selection + notes + qty stepper + Add CTA, cart-cta total (8,50€), upsell strip when cart non-empty, EN/DE language switch live, submit → success-screen with status-tracker (Received→Accepted), tip-section (5% applied: 0,43€ → wallet debited), split-bill (2 people = 4,68€ per-person after tip), review-cta → review-sheet with star ratings.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "QrOrderPage detail-sheet", "issues": ["Detail-sheet on 390x844 viewport can extend slightly off-screen on small phones; modifier options/Add button require scroll-into-view. Functional but minor UX polish (e.g., make sheet body scrollable or limit max-height)."]},
+      {"screen": "QrOrderPage history-sheet", "issues": ["Clicking qr-history-toggle did not show qr-history-sheet on first try in one test run (cart may have been empty / no orders yet at toggle time). Re-test after first order — flow recovered. Could be timing/state race, not a hard bug."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/qr_v2/test_qr_v2_backend.py",
+    "/app/tests/qr_v2/playwright_qr_v2_e2e.py",
+    "/app/test_reports/pytest/iter_qr_v2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "qr_table_order.py /upsell endpoint allows any cart input (no auth) — fine for anonymous suggestions but consider rate-limiting to prevent scraping merchants' frequently-bought-together graph.",
+    "/api/qr/order/tip uses atomic update_one({_id, balance>=amount}) → correct; double-tip blocked via order.tip pre-check (race window negligible).",
+    "/api/qr/reviews/{merchant_id} returns recent[] only when item_id filter is provided — if caller wants merchant-wide recent reviews, currently returns []. Consider adding limit-based fallback.",
+    "QrOrderPage detail-sheet has no internal max-height — on small viewports modifier sections + Add button push beyond fold (tests had to scroll_into_view).",
+    "Test note: rotate endpoint returns 'token' (not 'qr_token') — keep this in mind for future agents."
+  ],
+  "updated_files": [
+    "/app/tests/qr_v2/test_qr_v2_backend.py",
+    "/app/tests/qr_v2/playwright_qr_v2_e2e.py"
+  ],
+  "success_rate": {"backend": "100% (22/22)", "frontend": "100% (all critical flows)"},
+  "test_credentials": "Merchant haendler@bidblitz.com / Haendler2026!, Customer kunde@bidblitz.com / Kunde2026! (cookie-based auth via /api/auth/login).",
+  "seed_data_creation": "Used existing seed: 14 demo menu items, 3 combos (incl. cmb_pizza_night), 13 pre-seeded reviews. Created/deleted TEST_Combo_v2 and TEST_V2_Item during test (cleaned up).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Rotate endpoint returns {'ok':True,'token':...,'expires_at':...} — token field is named 'token' NOT 'qr_token'. After rotate, call /api/qr/resolve/{token} to get next_token. Order with pizza-margherita REQUIRES size modifier (Pflichtauswahl: Größe). Use {'group_id':'size','option_id':'m','price_delta':0.0}. Customer wallet field is 'balance' (not wallet_balance). For Playwright detail-sheet on 390x844 use scroll_into_view_if_needed() on modifier options and Add button. Frontend i18n switch (EN/DE/TR) works in real-time via qr-lang-toggle + qr-lang-{LANG} buttons.",
+  "rca of the issue": "No bugs — full v2 (Mr-Yum-parity) suite verified end-to-end."
+}

@@ -256,6 +256,22 @@ async def get_merchant_menu(merchant_id: str):
 
     norm.sort(key=lambda x: (x.get("sort_order", 0), x.get("name", "")))
 
+    # Hydrate ratings averages
+    if norm and merchant:
+        try:
+            ratings = await db.qr_reviews.aggregate([
+                {"$match": {"merchant_id": merchant_id}},
+                {"$group": {"_id": "$item_id", "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}},
+            ]).to_list(500)
+            rmap = {r["_id"]: r for r in ratings}
+            for it in norm:
+                r = rmap.get(it["item_id"])
+                if r:
+                    it["rating_avg"] = round(r["avg"], 2)
+                    it["rating_count"] = r["count"]
+        except Exception:
+            pass
+
     return {
         "name": (merchant or {}).get("name", ""),
         "logo_url": (merchant or {}).get("logo_url"),
@@ -889,3 +905,141 @@ async def upsell_suggestions(payload: dict, request: Request):
                 "order_count": r["count"],
             })
     return {"items": out}
+
+
+# ─── New: Item Ratings & Reviews ────────────────────────────────────────────
+
+class ReviewRequest(BaseModel):
+    order_id: str
+    ratings: List[dict] = Field(default_factory=list)  # [{item_id, rating(1-5), comment?}]
+
+
+@router.post("/order/review")
+async def submit_review(req: ReviewRequest, request: Request):
+    user = await get_current_user(request)
+    order = await db.qr_orders.find_one(
+        {"order_id": req.order_id, "customer_id": str(user["_id"])},
+        {"_id": 0, "merchant_id": 1, "items": 1, "status": 1, "review_done": 1},
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Bestellung nicht gefunden")
+    if order.get("review_done"):
+        raise HTTPException(status_code=409, detail="Bereits bewertet")
+    if order["status"] not in {"accepted", "completed"}:
+        raise HTTPException(status_code=400, detail="Bewertung erst nach Annahme möglich")
+
+    valid_items = {it["item_id"] for it in order.get("items", [])}
+    now = _now_utc().isoformat()
+    inserts = []
+    for r in req.ratings:
+        iid = r.get("item_id")
+        rt = int(r.get("rating", 0))
+        if iid not in valid_items or rt < 1 or rt > 5:
+            continue
+        inserts.append({
+            "review_id": secrets.token_hex(8),
+            "merchant_id": order["merchant_id"],
+            "item_id": iid,
+            "order_id": req.order_id,
+            "user_id": str(user["_id"]),
+            "user_name": user.get("name", "")[:40],
+            "rating": rt,
+            "comment": (r.get("comment") or "")[:300],
+            "created_at": now,
+        })
+    if inserts:
+        await db.qr_reviews.insert_many(inserts)
+    await db.qr_orders.update_one({"order_id": req.order_id}, {"$set": {"review_done": True, "reviewed_at": now}})
+    return {"ok": True, "count": len(inserts)}
+
+
+@router.get("/reviews/{merchant_id}")
+async def get_reviews(merchant_id: str, item_id: Optional[str] = None, limit: int = 20):
+    """Public: averages per item + recent reviews."""
+    pipeline = [{"$match": {"merchant_id": merchant_id}}]
+    if item_id:
+        pipeline[0]["$match"]["item_id"] = item_id
+    # Averages per item
+    avgs = await db.qr_reviews.aggregate([
+        {"$match": {"merchant_id": merchant_id}},
+        {"$group": {
+            "_id": "$item_id",
+            "avg": {"$avg": "$rating"},
+            "count": {"$sum": 1},
+        }},
+    ]).to_list(500)
+    avg_map = {a["_id"]: {"avg": round(a["avg"], 2), "count": a["count"]} for a in avgs}
+
+    recent = []
+    if item_id:
+        recent = await db.qr_reviews.find(
+            {"merchant_id": merchant_id, "item_id": item_id},
+            {"_id": 0, "user_id": 0},
+        ).sort("created_at", -1).limit(limit).to_list(limit)
+    return {"averages": avg_map, "reviews": recent}
+
+
+# ─── New: Combos / Bundles ──────────────────────────────────────────────────
+
+class ComboRequest(BaseModel):
+    merchant_id: str
+    combo_id: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=120)
+    description: Optional[str] = Field(None, max_length=300)
+    image_url: Optional[str] = None
+    item_ids: List[str] = Field(..., min_length=2, max_length=10)
+    bundle_price: float = Field(..., ge=0)
+    is_active: bool = True
+
+
+@router.get("/combos/{merchant_id}")
+async def get_combos(merchant_id: str):
+    """Public: list active combo bundles."""
+    m = await db.merchants.find_one({"merchant_id": merchant_id}, {"_id": 0, "combos": 1, "menu": 1})
+    if not m:
+        return {"combos": []}
+    menu_by_id = {it.get("item_id"): it for it in (m.get("menu") or [])}
+    combos = []
+    for c in (m.get("combos") or []):
+        if not c.get("is_active", True):
+            continue
+        items_full = [menu_by_id.get(i) for i in (c.get("item_ids") or [])]
+        items_full = [i for i in items_full if i]
+        full_price = round(sum(float(i.get("price", 0) or 0) for i in items_full), 2)
+        combos.append({
+            **c,
+            "items": [{"item_id": i["item_id"], "name": i["name"], "image_url": i.get("image_url"), "price": i.get("price")} for i in items_full],
+            "full_price": full_price,
+            "save": round(max(0, full_price - float(c.get("bundle_price", 0))), 2),
+        })
+    return {"combos": combos}
+
+
+@admin_router.post("/combos")
+async def upsert_combo(req: ComboRequest, request: Request):
+    await _require_merchant(request)
+    combo = req.model_dump()
+    combo["combo_id"] = combo.get("combo_id") or f"cmb_{secrets.token_hex(5)}"
+    combo.pop("merchant_id", None)
+    combo["updated_at"] = _now_utc().isoformat()
+
+    merchant = await db.merchants.find_one({"merchant_id": req.merchant_id}, {"_id": 1, "combos": 1})
+    if not merchant:
+        await db.merchants.insert_one({"merchant_id": req.merchant_id, "combos": [combo]})
+        return {"ok": True, "combo": combo}
+    existing = [c for c in (merchant.get("combos") or []) if c.get("combo_id") == combo["combo_id"]]
+    if existing:
+        await db.merchants.update_one(
+            {"_id": merchant["_id"], "combos.combo_id": combo["combo_id"]},
+            {"$set": {"combos.$": combo}},
+        )
+    else:
+        await db.merchants.update_one({"_id": merchant["_id"]}, {"$push": {"combos": combo}})
+    return {"ok": True, "combo": combo}
+
+
+@admin_router.delete("/combos/{merchant_id}/{combo_id}")
+async def delete_combo(merchant_id: str, combo_id: str, request: Request):
+    await _require_merchant(request)
+    await db.merchants.update_one({"merchant_id": merchant_id}, {"$pull": {"combos": {"combo_id": combo_id}}})
+    return {"ok": True}

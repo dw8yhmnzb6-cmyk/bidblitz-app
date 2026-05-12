@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, X, ChevronLeft, ChevronRight, Flame, Star, Leaf, AlertTriangle,
   ShoppingBag, Plus, Minus, Globe, Receipt, Clock, ChefHat, CheckCircle,
-  Users, Sparkles, History,
+  Users, Sparkles, History, Gift, MessageSquare,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -40,6 +40,10 @@ const T = {
     status_ready: "Bereit zur Abholung", status_completed: "Abgeschlossen", status_rejected: "Abgelehnt",
     split_bill: "Rechnung teilen", split_persons: "Personen", split_each: "Pro Person",
     skip: "Überspringen", view_orders: "Meine Bestellungen",
+    combos: "Combo-Angebote", combo_save: "Du sparst", combo_includes: "Enthält",
+    rate_title: "Wie hat es geschmeckt?", rate_desc: "Bewerte die Artikel — hilft anderen Gästen",
+    rate_btn: "Bewerten", rate_thanks: "Danke fürs Bewerten!",
+    optional_comment: "Kommentar (optional)", reviews: "Bewertungen",
   },
   en: {
     menu: "Menu", search: "Search...", food: "Food", drinks: "Drinks",
@@ -64,6 +68,10 @@ const T = {
     status_ready: "Ready", status_completed: "Completed", status_rejected: "Rejected",
     split_bill: "Split bill", split_persons: "People", split_each: "Per person",
     skip: "Skip", view_orders: "My orders",
+    combos: "Combo Deals", combo_save: "You save", combo_includes: "Includes",
+    rate_title: "How was it?", rate_desc: "Rate the items — helps other guests",
+    rate_btn: "Rate", rate_thanks: "Thanks for your review!",
+    optional_comment: "Comment (optional)", reviews: "Reviews",
   },
   tr: {
     menu: "Menü", search: "Ara...", food: "Yemekler", drinks: "İçecekler",
@@ -88,6 +96,10 @@ const T = {
     status_ready: "Hazır", status_completed: "Tamamlandı", status_rejected: "Reddedildi",
     split_bill: "Hesabı böl", split_persons: "Kişi", split_each: "Kişi başı",
     skip: "Atla", view_orders: "Siparişlerim",
+    combos: "Combo Fırsatları", combo_save: "Tasarruf", combo_includes: "İçerir",
+    rate_title: "Nasıldı?", rate_desc: "Ürünleri değerlendir — diğer misafirlere yardımcı olur",
+    rate_btn: "Değerlendir", rate_thanks: "Değerlendirmen için teşekkürler!",
+    optional_comment: "Yorum (opsiyonel)", reviews: "Yorumlar",
   },
 };
 
@@ -152,8 +164,13 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
   // New: popular + upsell
   const [popular, setPopular] = useState([]);
   const [upsell, setUpsell] = useState([]);
+  // New: combos
+  const [combos, setCombos] = useState([]);
   // New: tip + split
   const [tipDone, setTipDone] = useState(false);
+  // New: review
+  const [showReview, setShowReview] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
 
   const t = T[lang] || T.de;
 
@@ -192,6 +209,9 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
     if (!resolved?.merchant_id) return;
     fetch(`${API}/api/qr/popular/${resolved.merchant_id}`).then(readJson).then((d) => {
       if (d?.items) setPopular(d.items);
+    });
+    fetch(`${API}/api/qr/combos/${resolved.merchant_id}`).then(readJson).then((d) => {
+      if (d?.combos) setCombos(d.combos);
     });
   }, [resolved]);
 
@@ -286,6 +306,21 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
     addToCart(fullItem, [], "", 1);
   };
 
+  // Combo add: 1 line per combo, price = bundle_price, items reference
+  const addCombo = (combo) => {
+    const key = `combo|${combo.combo_id}`;
+    setCart((prev) => {
+      const exist = prev.find((c) => c.key === key);
+      if (exist) return prev.map((c) => c.key === key ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, {
+        key, item_id: `combo_${combo.combo_id}`, name: `🎁 ${combo.name}`,
+        price: combo.bundle_price, modPrice: 0,
+        modifiers: [], note: `Combo: ${(combo.items || []).map(i => i.name).join(", ")}`, qty: 1,
+        image_url: combo.image_url, is_combo: true, combo_id: combo.combo_id,
+      }];
+    });
+  };
+
   const updateCartQty = (key, delta) => {
     setCart((prev) => prev.flatMap((c) => {
       if (c.key !== key) return [c];
@@ -369,15 +404,29 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
 
   if (successOrder) {
     return (
-      <SuccessScreen
-        order={successOrder}
-        live={liveOrder}
-        t={t}
-        currency={menu.currency}
-        tipDone={tipDone}
-        onTip={sendTip}
-        onNew={() => { setSuccessOrder(null); setLiveOrder(null); setTipDone(false); }}
-      />
+      <>
+        <SuccessScreen
+          order={successOrder}
+          live={liveOrder}
+          t={t}
+          currency={menu.currency}
+          tipDone={tipDone}
+          reviewDone={reviewDone}
+          onTip={sendTip}
+          onReview={() => setShowReview(true)}
+          onNew={() => { setSuccessOrder(null); setLiveOrder(null); setTipDone(false); setReviewDone(false); }}
+        />
+        <AnimatePresence>
+          {showReview && (
+            <ReviewSheet
+              order={successOrder}
+              t={t}
+              onClose={() => setShowReview(false)}
+              onSubmitted={() => { setShowReview(false); setReviewDone(true); }}
+            />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
@@ -477,6 +526,37 @@ export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequir
 
       {/* Grid */}
       <div className="px-3 py-4">
+        {/* Combo deals */}
+        {combos.length > 0 && category === "all" && !search && !tagFilter && (
+          <div className="mb-4" data-testid="qr-combos-section">
+            <p className="text-[11px] uppercase tracking-wider text-pink-300/80 mb-2 px-1 flex items-center gap-1">
+              <Gift size={11}/> {t.combos}
+            </p>
+            <div className="flex gap-2 overflow-x-auto -mx-3 px-3 pb-1 hide-scrollbar">
+              {combos.map((c) => (
+                <button key={c.combo_id} onClick={() => addCombo(c)}
+                  data-testid={`qr-combo-${c.combo_id}`}
+                  className="shrink-0 w-56 bg-gradient-to-br from-pink-500/10 to-purple-500/10 rounded-2xl overflow-hidden border border-pink-500/30 text-left">
+                  <div className="relative h-24 bg-white/5">
+                    {c.image_url && <img src={c.image_url} alt="" className="absolute inset-0 w-full h-full object-cover"/>}
+                    <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-pink-500 text-white rounded-md text-[9px] font-black">
+                      −{fmt(c.save, menu.currency)}
+                    </span>
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-xs font-bold leading-tight line-clamp-1">{c.name}</p>
+                    <p className="text-[10px] text-white/50 line-clamp-1 mt-0.5">{(c.items || []).map(i => i.name).join(" + ")}</p>
+                    <div className="flex items-baseline gap-1.5 mt-1.5">
+                      <span className="text-sm font-black text-cyan-400">{fmt(c.bundle_price, menu.currency)}</span>
+                      <span className="text-[10px] text-white/30 line-through">{fmt(c.full_price, menu.currency)}</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Popular suggestion carousel */}
         {popular.length > 0 && category === "all" && !search && !tagFilter && (
           <div className="mb-4" data-testid="qr-popular-section">
@@ -687,6 +767,13 @@ function MenuCard({ item, lang, t, currency, onTap }) {
       </div>
       <div className="p-2.5 flex-1 flex flex-col">
         <p className="text-sm font-bold leading-tight line-clamp-1">{name}</p>
+        {item.rating_avg && (
+          <div className="flex items-center gap-1 mt-0.5" data-testid={`qr-rating-${item.item_id}`}>
+            <Star size={10} className="text-amber-400 fill-amber-400"/>
+            <span className="text-[10px] font-bold text-amber-300">{item.rating_avg}</span>
+            <span className="text-[9px] text-white/30">({item.rating_count})</span>
+          </div>
+        )}
         {desc && <p className="text-[10px] text-white/40 line-clamp-2 mt-0.5">{desc}</p>}
         <div className="flex items-center justify-between mt-2">
           <span className="text-base font-black text-cyan-400">{fmt(item.price, currency)}</span>
@@ -772,6 +859,15 @@ function DetailSheet({ item, lang, t, currency, onClose, onAdd }) {
 
         <div className="px-5 pt-2">
           <h2 className="text-xl font-black">{name}</h2>
+          {item.rating_avg && (
+            <div className="flex items-center gap-1 mt-1">
+              {[1,2,3,4,5].map((n) => (
+                <Star key={n} size={12} className={n <= Math.round(item.rating_avg) ? "text-amber-400 fill-amber-400" : "text-white/15"}/>
+              ))}
+              <span className="text-xs text-amber-300 font-bold ml-1">{item.rating_avg}</span>
+              <span className="text-[10px] text-white/40">({item.rating_count} {t.reviews})</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {(item.tags || []).map((tg) => {
               const m = TAG_META[tg]; if (!m) return null;
@@ -882,7 +978,7 @@ const STATUS_STEPS = [
   { id: "completed", icon: <CheckCircle size={14}/>, key: "status_completed" },
 ];
 
-function SuccessScreen({ order, live, t, currency, tipDone, onTip, onNew }) {
+function SuccessScreen({ order, live, t, currency, tipDone, reviewDone, onTip, onReview, onNew }) {
   const [splitN, setSplitN] = useState(1);
   const [customTip, setCustomTip] = useState("");
   const status = live?.status || order.status;
@@ -1007,6 +1103,19 @@ function SuccessScreen({ order, live, t, currency, tipDone, onTip, onNew }) {
           data-testid="qr-order-again">
           {t.new_order}
         </button>
+
+        {/* Review CTA */}
+        {!reviewDone && status !== "rejected" && (status === "accepted" || status === "completed") && (
+          <button onClick={onReview} data-testid="qr-review-cta"
+            className="w-full mt-3 py-3 bg-white/5 hover:bg-white/10 border border-amber-500/30 rounded-2xl text-amber-200 font-bold text-sm flex items-center justify-center gap-2">
+            <Star size={14} className="text-amber-400 fill-amber-400"/> {t.rate_btn}
+          </button>
+        )}
+        {reviewDone && (
+          <div className="w-full mt-3 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-300 text-center text-sm">
+            💚 {t.rate_thanks}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1065,6 +1174,83 @@ function HistorySheet({ history, t, currency, lang, onClose }) {
             ))}
           </div>
         )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── ReviewSheet: rate each item with stars + optional comment ───────────
+
+function ReviewSheet({ order, t, onClose, onSubmitted }) {
+  const items = (order.items || []).filter((i) => !i.item_id?.startsWith("combo_"));
+  const [ratings, setRatings] = useState(() => items.map((it) => ({ item_id: it.item_id, name: it.name, rating: 0, comment: "" })));
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const setRating = (idx, r) => setRatings((p) => p.map((x, i) => i === idx ? { ...x, rating: r } : x));
+  const setComment = (idx, c) => setRatings((p) => p.map((x, i) => i === idx ? { ...x, comment: c.slice(0, 300) } : x));
+
+  const submit = async () => {
+    const filtered = ratings.filter((r) => r.rating > 0);
+    if (filtered.length === 0) { setErr("Bitte mindestens 1 Stern wählen"); return; }
+    setSubmitting(true);
+    setErr(null);
+    try {
+      const res = await fetch(`${API}/api/qr/order/review`, {
+        ...credJson, method: "POST",
+        body: JSON.stringify({ order_id: order.order_id, ratings: filtered }),
+      });
+      const d = await readJson(res);
+      if (!res.ok) { setErr(d?.detail || "Fehler"); setSubmitting(false); return; }
+      onSubmitted();
+    } catch (e) {
+      setErr(String(e));
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      className="fixed inset-0 z-50 bg-black/80 flex items-end" onClick={onClose}>
+      <motion.div initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
+        onClick={(e)=>e.stopPropagation()}
+        data-testid="qr-review-sheet"
+        className="w-full bg-[#0e0e0e] rounded-t-3xl max-h-[88vh] overflow-y-auto p-5">
+        <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3"/>
+        <h2 className="text-lg font-bold mb-1">{t.rate_title}</h2>
+        <p className="text-xs text-white/50 mb-4">{t.rate_desc}</p>
+        {err && <p className="mb-3 text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg p-2">{err}</p>}
+        <div className="space-y-3">
+          {ratings.map((r, idx) => (
+            <div key={r.item_id + idx} className="bg-[#141414] border border-white/5 rounded-xl p-3" data-testid={`qr-review-item-${r.item_id}`}>
+              <p className="text-sm font-bold mb-1">{r.name}</p>
+              <div className="flex gap-1 mb-2">
+                {[1,2,3,4,5].map((n) => (
+                  <button key={n} onClick={() => setRating(idx, n)}
+                    data-testid={`qr-review-star-${r.item_id}-${n}`}
+                    className="p-1">
+                    <Star size={22} className={n <= r.rating ? "text-amber-400 fill-amber-400" : "text-white/15"}/>
+                  </button>
+                ))}
+              </div>
+              {r.rating > 0 && (
+                <textarea value={r.comment} onChange={(e)=>setComment(idx, e.target.value)}
+                  placeholder={t.optional_comment}
+                  rows={1}
+                  className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs outline-none resize-none"
+                  data-testid={`qr-review-comment-${r.item_id}`}/>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-5">
+          <button onClick={onClose} className="px-4 py-3 rounded-xl bg-white/10 text-sm font-bold">{t.skip}</button>
+          <button onClick={submit} disabled={submitting}
+            className="flex-1 py-3 rounded-xl bg-amber-500 text-black text-sm font-bold disabled:opacity-50"
+            data-testid="qr-review-submit">
+            {submitting ? "..." : t.rate_btn}
+          </button>
+        </div>
       </motion.div>
     </motion.div>
   );
