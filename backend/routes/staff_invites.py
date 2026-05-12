@@ -160,6 +160,20 @@ async def accept_invite(req: InviteAccept):
         pass
 
     name = req.name or inv.get("name") or "Mitarbeiter"
+
+    # Re-check subscription limits at accept time (merchant may have downgraded)
+    from routes.staff_subscription import get_subscription_for_merchant
+    sub = await get_subscription_for_merchant(inv["merchant_id"])
+    if not sub or sub.get("status") not in ("trialing", "active"):
+        raise HTTPException(402, "Subscription nicht aktiv. Bitte mit dem Händler Kontakt aufnehmen.")
+    max_staff = sub.get("max_staff_override") or sub.get("max_staff", 0)
+    active_count = await db.staff_members.count_documents({"merchant_id": inv["merchant_id"], "active": True})
+    if active_count >= max_staff:
+        raise HTTPException(403, detail={
+            "code": "limit_reached",
+            "message": f"Mitarbeiter-Limit erreicht ({active_count}/{max_staff}). Bitte Händler kontaktieren.",
+        })
+
     member_doc = {
         "id": str(uuid4()),
         "merchant_id": inv["merchant_id"],

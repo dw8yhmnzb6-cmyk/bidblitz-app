@@ -1024,7 +1024,8 @@ function AppContent() {
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
   const isQrOrder = currentPath.startsWith("/order/qr/");
-  const showBottomNav = !isCheckout && !isQrOrder && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
+  const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite";
+  const showBottomNav = !isCheckout && !isQrOrder && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -1101,7 +1102,7 @@ function AppContent() {
       {!user.isAuthenticated && !isCheckout && !isQrOrder && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
-      {!isQrOrder && <CookieBanner onNavigate={handleNavigate} />}
+      {!isQrOrder && !isStaffEmployeeShell && <CookieBanner onNavigate={handleNavigate} />}
 
       {/* Push Notification Prompt */}
       {/* PushNotificationPrompt (FCM) removed — use PushPermissionPrompt above */}

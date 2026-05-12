@@ -1,0 +1,52 @@
+{
+  "summary": "Retest of 6 fixes from iteration_79 for BidBlitz Staff Phase 2. All 4 backend fixes + 2 frontend shell fixes VERIFIED. Backend: 5/5 pytest passed. Frontend: /staff/mobile and /staff/invite both clean (no BottomNav, no CookieBanner).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/staff/subscription/admin/override",
+        "issue": "If admin passes max_staff_override greater than current active count is fine, but if admin passes a value smaller than current active count, the system silently stores it (in run: status returned max_staff=13 with current_staff_count=13 even when override=5 was sent). Worth a server-side floor at active_count or at least a warning in response. Not a regression — same behaviour observed in iteration_79."
+      },
+      {
+        "endpoint": "GET /api/staff/subscription/status",
+        "issue": "Field `max_staff` follows logic `max_staff_override or max_staff` — if admin sets override to 0 explicitly (downgrade-to-zero), the OR collapses to plan max instead. Recommend explicit None check."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_results": {
+    "GPS_geofence_warning_visible": "PASSED — staff_locations.validate_geofence now writes resolved=False, created_at, message. GET /api/staff/warnings/list?resolved=false returns the gps_out_of_range warning.",
+    "magic_url_gated_by_env": "PASSED — magic_url returned in body by default (STAFF_DEV_RETURN_MAGIC_URL defaults to true). Code path correctly gated. Note: env=false branch not exercised at runtime (would require backend env mutation + restart) but code review confirms gating logic is correct.",
+    "invite_accept_limit_check": "PASSED — staff_invites.accept_invite re-checks subscription + active_count < max_staff. Verified both via (a) create-time block at 13/13 with code=limit_reached and (b) explicit accept-time block via downgrade between create and accept (raised limit -> created invite -> downgraded -> accept returned 403 limit_reached).",
+    "admin_override_trial_default": "PASSED — Override with status=trialing and no extend_trial_days auto-sets trial_end. GET /status returned trial_days_left=30.",
+    "staff_mobile_clean_shell": "PASSED — /staff/mobile renders login UI without BottomNav (Start/Wallet/Entdecken/Mehr) and without CookieBanner. Only the global chat widget remains (out of scope).",
+    "staff_invite_clean_shell": "PASSED — /staff/invite renders 'Mitarbeiter-Einladung' shell without BottomNav and without CookieBanner."
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_phase2_retest.py",
+    "/app/test_reports/pytest/staff_phase2_retest.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "admin_override.max_staff_override accepts values < active_count silently — consider validating or warning in response.",
+    "max_staff computation in /status uses Python `or` which treats 0 as falsy — explicit None check is safer.",
+    "STAFF_DEV_RETURN_MAGIC_URL default is 'true' — for production deploy ensure it is explicitly set to false in /var/www/bidblitz/backend/.env.",
+    "Each staff_*.py route module still instantiates its own AsyncIOMotorClient (already flagged in iteration_79) — connection-pool sprawl risk persists."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_staff_phase2_retest.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (5/5)",
+    "frontend": "100% on tested routes (/staff/mobile, /staff/invite)"
+  },
+  "test_credentials": "Merchant haendler@bidblitz.com/Haendler2026! and Admin admin@bidblitz.com/BidBlitz2026! both working.",
+  "seed_data_creation": "Created several TEST_-prefixed staff_members and invites on haendler@bidblitz.com (active count now ~14). Recommend a cleanup script to remove TEST_ members; non-blocking for further tests.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All Phase 2 fixes from iteration_79 verified. Backend tests at /app/backend/tests/test_staff_phase2_retest.py are idempotent (raise limit before creating invites). Note: haendler test account has accumulated ~14 TEST_-prefixed members. The subscription doc currently has max_staff_override=13 (from last downgrade) and plan=basic — restore to pro/50 if running full Phase 2 regression: POST /api/staff/subscription/admin/override {merchant_id, plan:'pro', max_staff_override:50, status:'active'}."
+}

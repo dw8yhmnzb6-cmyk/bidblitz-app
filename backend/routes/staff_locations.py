@@ -79,6 +79,9 @@ async def validate_geofence(merchant_id: str, staff_id: str, lat: Optional[float
             "lng": lng,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "id": str(uuid4()),
+            "resolved": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "message": f"Check-in {int(closest_dist)}m außerhalb '{closest['name']}' (Radius {closest['radius_m']}m)",
         }
         try:
             await db.staff_warnings.insert_one(warn.copy())

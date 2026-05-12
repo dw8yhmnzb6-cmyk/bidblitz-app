@@ -55,14 +55,18 @@ async def request_magic_link(req: MagicLinkRequest, request: Request):
     })
     base = os.getenv("APP_PUBLIC_URL", "")
     magic_url = f"{base}/staff/mobile?token={token}" if base else f"/staff/mobile?token={token}"
+    # Dev flag controls whether the URL is returned in body (production should send only via SMS/Email channel)
+    dev_return = os.getenv("STAFF_DEV_RETURN_MAGIC_URL", "true").lower() == "true"
     # TODO: hook up actual SMS/Email provider (Resend/Twilio)
-    return {
+    resp = {
         "success": True,
         "sent": True,
         "expires_minutes": TOKEN_TTL_MIN,
         "delivery_method": "email" if req.email else "sms",
-        "magic_url": magic_url,  # Dev: returned directly; in production, only send via channel
     }
+    if dev_return:
+        resp["magic_url"] = magic_url
+    return resp
 
 
 @router.get("/verify-token")
