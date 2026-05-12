@@ -3,8 +3,8 @@
  * Bonus vergeben, Trinkgeld-Pott verteilen, Balances anzeigen
  */
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Wallet, Plus, Coins, Loader2, ChevronRight, CheckCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Wallet, Plus, Coins, Loader2, Landmark, X, Banknote, CheckCircle2, AlertCircle, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -20,7 +20,6 @@ const BONUS_TYPES = [
 export default function StaffWalletPanel({ members = [] }) {
   const [balances, setBalances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("balances");
 
   // Bonus modal
   const [showBonus, setShowBonus] = useState(false);
@@ -29,6 +28,14 @@ export default function StaffWalletPanel({ members = [] }) {
   // Tip modal
   const [showTip, setShowTip] = useState(false);
   const [tipForm, setTipForm] = useState({ total_amount_eur: 100, distribution: "equal_hours", note: "" });
+
+  // Payout/Bank modal
+  const [payoutTarget, setPayoutTarget] = useState(null); // {staff_id, name, balance}
+  const [bankForm, setBankForm] = useState({ iban: "", account_holder: "", bic: "" });
+  const [bankExisting, setBankExisting] = useState(null);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [payoutBusy, setPayoutBusy] = useState(false);
+  const [payoutMethod, setPayoutMethod] = useState("sepa_manual");
 
   const load = async () => {
     setLoading(true);
