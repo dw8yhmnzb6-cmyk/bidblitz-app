@@ -1,0 +1,48 @@
+{
+  "summary": "Iter 86 — Staff Mobile Premium WOW UI Pass. Backend regression 11/11 PASS (test_iter85_tasks.py — Tasks CRUD + 5 staff-endpoint smoke). Frontend mobile (viewport 414x896): iter85 FIX-1 verified PASS, iter85 FIX-2 verified functionally PASS (sheet opens correctly when click is dispatched) — but Playwright real-mouse click intercepted by Emergent chat-widget overlay sitting above the button. All 7 Polish items verified: live-status-card visible, primary-shift-btn exactly 256x256, floating bottom-nav with 5 working tabs, all 4 KPI cards present, profile-hero+pin-sheet (pin-old/pin-new) functional, wallet (balance/bonus/tips) present, 5 task cards with optimistic complete (5→4). Chat-widget overlay remains the only blocker — same issue flagged in iter85 design_issues.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/staff/tasks/create", "issue": "(carry-over from iter85) TaskCreate.title has no min_length/strip — empty title accepted. Add Pydantic validator(min_length=1, strip_whitespace=True)."},
+      {"endpoint": "POST /api/staff/tasks/{id}/complete", "issue": "(carry-over from iter85) Idempotency not enforced — re-completing an already-done task returns 200 and overwrites completed_at."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "StaffMobilePage / Emergent chat-widget overlay", "issue": "The embedded Emergent chat-widget iframe at bottom-right of the page intercepts real mouse clicks on the staff-attachment-checkin-btn (and overlaps the rightmost BottomNav tab Profile) at viewport 414x896. Functionally the openAttachmentSheet wiring is CORRECT — JS .click() opens the sheet within 100ms. But user-level taps may be swallowed by the widget. Recommend hiding chat-widget on /staff/mobile route OR raising z-index of staff UI above ~99999.", "selector": "[data-testid=staff-attachment-checkin-btn]", "priority": "MEDIUM"},
+      {"component": "StaffMobilePage subtree (React hydration warning)", "issue": "Console: '<button> cannot be a descendant of <button>' / '<button> cannot contain a nested <button>'. There is a nested <button> somewhere in the staff mobile subtree — likely in StaffProfile or a Primitive component. Not breaking UX but should be fixed (hydration error potential).", "selector": "n/a (React DOM warning)", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/staff/mobile (viewport 414x896)", "issues": ["Emergent chat-widget bottom-right covers approximately bottom 60% of screen when auto-expanded; on /staff/mobile route this consistently interferes with the floating bottom-nav and the attachment-checkin button. Carry-over from iter85."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter85_tasks.py",
+    "/app/test_reports/pytest/iter86_regression.xml"
+  ],
+  "action_items": [
+    "Hide Emergent chat-widget on the /staff/mobile route (preferred) OR raise z-index of staff-bottom-nav AND the StaffHome action buttons above the chat-widget z-index. This is a recurring blocker that affects real-user tap reliability for staff-attachment-checkin-btn and the Profile nav tab.",
+    "Find and fix the nested <button> hydration warning in the staff mobile subtree (search StaffProfile.jsx and StaffPrimitives for <button> wrapping another <button>).",
+    "(Carry-over, optional) Add Pydantic validator to TaskCreate.title (min_length=1, strip_whitespace=True) and idempotency check on /complete."
+  ],
+  "critical_code_review_comments": [
+    "iter86 FIX-1 (StaffShifts empty wraps in staff-shifts-tab): correctly implemented in StaffShifts.jsx lines 67-81. PASS.",
+    "iter86 FIX-2 (stable openAttachmentSheet ref): correctly implemented in StaffMobilePage.jsx line 151. setShowAttachmentSheet(true) toggles the AnimatePresence sheet rendering. The 'fail' observed by Playwright was overlay-intercept, not functional. Recommend tracking sheet-open in analytics so we can detect this real-user issue.",
+    "Primary circle button is exactly 256x256 (verified in DOM). Success-burst animation visible on click. PASS.",
+    "Bottom-nav rendered as 414x69 floating pill with rounded styling — visually matches Connecteam/Revolut spec. PASS.",
+    "All 4 KPI testids (kpi-today/week/overtime/wallet) verified rendered. PASS.",
+    "StaffProfile staff-profile-hero with avatar+online-dot present (line 44 in StaffProfile.jsx). PIN-sheet opens via staff-profile-pin button and renders staff-pin-old + staff-pin-new inputs. PASS.",
+    "Tasks tab: 5 cards, 5 complete buttons, optimistic remove confirmed (5→4 within 1.5s). PASS.",
+    "Wallet tab: staff-wallet-balance / wallet-bonus / wallet-tips all rendered. PASS.",
+    "Live status card staff-live-status-card visible on Home tab. PASS."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "95% (all functional items pass; chat-widget overlay intercepts real-mouse click on one button — functional code is correct)"},
+  "test_credentials": "Merchant haendler@bidblitz.com / Haendler2026!  |  Staff TEST_magic_1778611082@example.com / test123 (PIN-Login Toggle staff-mobile-pin-toggle required)",
+  "seed_data_creation": "Re-used 5 demo tasks already seeded for staff. One task was completed during UI optimistic-remove verification (now 4 open).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "When Playwright clicks on /staff/mobile fail mysteriously (e.g. staff-attachment-checkin-btn not opening sheet), use page.evaluate(el => el.click()) to bypass the Emergent chat-widget iframe overlay. The widget sits above many staff UI elements at viewport 414x896. Also hide it BEFORE login with add_init_script + MutationObserver because it is injected after page load. PIN-login flow: staff-mobile-pin-toggle → staff-mobile-pin-input → staff-mobile-pin-login-btn.",
+  "rca of the issue": "iter85 FIX-2 root cause was correctly identified by main agent as inline-function instability — fix (openAttachmentSheet stable arrow at StaffMobilePage.jsx:151) IS working. The remaining 1500ms-timeout 'failure' in this iteration is NOT a functional bug — it is the Emergent chat-widget iframe (z-index ~9999) overlapping the bottom area of the 414-wide viewport and absorbing the click event. Verified by re-firing the click via element.click() in page.evaluate which bypassed the overlay and opened the sheet within ~100ms. Mitigation: hide the chat-widget on /staff/mobile route OR push staff UI z-index above the widget. Same observation was noted in iter85 design_issues."
+}

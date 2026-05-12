@@ -6,7 +6,8 @@
  */
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, MapPin, Clock, ChevronRight, Loader2 } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, Loader2 } from "lucide-react";
+import { PremiumEmpty } from "../../components/staff/StaffPrimitives";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -56,16 +57,26 @@ export default function StaffShifts() {
   }, []);
 
   if (loading) {
-    return <div className="py-20 flex justify-center"><Loader2 size={22} className="animate-spin text-[#00D4FF]" /></div>;
+    return (
+      <div data-testid="staff-shifts-tab" className="py-20 flex justify-center">
+        <Loader2 size={22} className="animate-spin text-[#00D4FF]" />
+      </div>
+    );
   }
 
   if (shifts.length === 0) {
     return (
-      <EmptyState
-        icon={Calendar}
-        title="Keine Schichten geplant"
-        sub="Sobald dein Manager Schichten zuweist, erscheinen sie hier."
-      />
+      <div data-testid="staff-shifts-tab" className="px-5 pt-6 pb-2">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold">Schichten</p>
+          <h2 className="text-2xl font-bold mt-1 font-outfit">Deine Einsätze</h2>
+        </div>
+        <PremiumEmpty
+          icon={Calendar}
+          title="Keine Schichten geplant"
+          sub="Sobald dein Manager Schichten zuweist, erscheinen sie hier."
+        />
+      </div>
     );
   }
 
@@ -74,7 +85,7 @@ export default function StaffShifts() {
   return (
     <div data-testid="staff-shifts-tab" className="px-5 pt-6 pb-2 space-y-6">
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-white/40">Schichten</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-white/40 font-semibold">Schichten</p>
         <h2 className="text-2xl font-bold mt-1 font-outfit">Deine Einsätze</h2>
       </div>
       <Section title="Heute" items={g.today} highlight />
@@ -145,14 +156,5 @@ function ShiftCard({ shift, highlight }) {
 }
 
 export function EmptyState({ icon: Icon, title, sub, action }) {
-  return (
-    <div className="px-5 py-20 flex flex-col items-center text-center" data-testid="staff-empty-state">
-      <div className="w-20 h-20 rounded-3xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mb-4">
-        <Icon size={32} className="text-white/30" strokeWidth={1.6} />
-      </div>
-      <h3 className="text-base font-bold">{title}</h3>
-      {sub && <p className="text-[12px] text-white/40 mt-1 max-w-[260px]">{sub}</p>}
-      {action}
-    </div>
-  );
+  return <PremiumEmpty icon={Icon} title={title} sub={sub} action={action} />;
 }

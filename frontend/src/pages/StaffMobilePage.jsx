@@ -20,6 +20,7 @@ import StaffShifts from "./staff/StaffShifts";
 import StaffTasks from "./staff/StaffTasks";
 import StaffWalletTab from "./staff/StaffWalletTab";
 import StaffProfile from "./staff/StaffProfile";
+import "../styles/staff-tokens.css";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -140,16 +141,18 @@ export default function StaffMobilePage({ onBack }) {
   };
 
   const submitAttachmentCheckin = async () => {
-    const status = dashboard?.status || "off";
-    const action = status === "off" ? "clock_in" : status === "working" ? "clock_out" : "break_end";
+    const st = dashboard?.status || "off";
+    const action = st === "off" ? "clock_in" : st === "working" ? "clock_out" : "break_end";
     setShowAttachmentSheet(false);
     await doClock(action, attachmentDraft);
     setAttachmentDraft({ customer: "", project: "", equipment: "", kilometers: "", note: "" });
   };
 
+  const openAttachmentSheet = () => setShowAttachmentSheet(true);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center" data-testid="staff-mobile-loading">
+      <div className="staff-app min-h-screen flex items-center justify-center" data-testid="staff-mobile-loading">
         <Loader2 size={28} className="animate-spin text-[#00D4FF]" />
       </div>
     );
@@ -161,45 +164,53 @@ export default function StaffMobilePage({ onBack }) {
 
   const status = dashboard?.status || "off";
   const primaryLabel = status === "off" ? "Schicht starten" : status === "working" ? "Schicht beenden" : "Pause beenden";
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? "Gute Nacht" : hour < 11 ? "Guten Morgen" : hour < 18 ? "Hallo" : "Guten Abend";
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white pb-24" data-testid="staff-mobile-page">
-      {/* Top Bar */}
-      <div className="sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
+    <div className="staff-app min-h-screen text-white pb-28" data-testid="staff-mobile-page">
+      {/* Premium Top Bar */}
+      <div className="sticky top-0 z-30 bb-safe-top backdrop-blur-2xl bg-[var(--bb-bg-1)]/80 border-b border-[var(--bb-border)]">
         <div className="px-5 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
-              style={{ background: "linear-gradient(135deg, #00D4FF 0%, #A855F7 100%)" }}
-            >
-              {staff.name?.slice(0, 1)?.toUpperCase()}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold"
+                style={{ background: "var(--bb-brand-grad)", boxShadow: "var(--bb-shadow-glow)" }}
+              >
+                {staff.name?.slice(0, 1)?.toUpperCase()}
+              </div>
+              <span
+                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[var(--bb-bg-1)]"
+                style={{ background: status === "working" ? "var(--bb-success)" : status === "break" ? "var(--bb-warning)" : "var(--bb-neutral)" }}
+              />
             </div>
-            <div>
-              <p className="text-sm font-semibold leading-tight">{staff.name}</p>
-              <p className="text-[10px] text-white/40">{staff.email || staff.phone}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-widest text-white/40">{greeting}</p>
+              <p className="text-sm font-semibold leading-tight truncate">{staff.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {online ? <Wifi size={14} className="text-green-400" /> : <WifiOff size={14} className="text-orange-400" data-testid="staff-offline-indicator" />}
+            {online ? <Wifi size={14} className="text-[var(--bb-success)]" /> : <WifiOff size={14} className="text-[var(--bb-warning)]" data-testid="staff-offline-indicator" />}
             {queuedCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 text-[10px] font-bold" data-testid="staff-queue-count">
+              <span className="px-1.5 py-0.5 rounded-full bg-[var(--bb-warning)]/20 text-[var(--bb-warning)] text-[10px] font-bold" data-testid="staff-queue-count">
                 {queuedCount}
               </span>
             )}
             <button
               onClick={() => setShowNotifications(true)}
               data-testid="staff-mobile-notif-btn"
-              className="relative p-2 rounded-xl hover:bg-white/5 transition-colors"
+              className="relative p-2 rounded-xl hover:bg-white/[0.06] transition-colors active:scale-90"
             >
               <Bell size={16} className="text-white/70" />
               {unreadNotif > 0 && (
-                <span data-testid="staff-mobile-notif-badge" className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center">
+                <span data-testid="staff-mobile-notif-badge" className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--bb-danger)] text-white text-[9px] font-bold flex items-center justify-center">
                   {unreadNotif > 9 ? "9+" : unreadNotif}
                 </span>
               )}
             </button>
             {onBack && (
-              <button onClick={onBack} data-testid="staff-mobile-exit" className="p-2 rounded-xl hover:bg-white/5">
+              <button onClick={onBack} data-testid="staff-mobile-exit" className="p-2 rounded-xl hover:bg-white/[0.06] active:scale-90 transition-all">
                 <ArrowLeft size={16} className="text-white/50" />
               </button>
             )}
@@ -224,7 +235,7 @@ export default function StaffMobilePage({ onBack }) {
                 status={status}
                 acting={acting}
                 onClock={doClock}
-                onOpenAttachments={() => setShowAttachmentSheet(true)}
+                onOpenAttachments={openAttachmentSheet}
                 openTasksCount={openTasksCount}
                 walletBalance={walletBalance}
                 overtimeHours={overtimeHours}
