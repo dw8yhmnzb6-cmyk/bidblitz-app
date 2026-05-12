@@ -15,6 +15,37 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter78–80 — BidBlitz Staff Business + Mobile + Phase 2)
+- 🟢 **Subscription/Paywall** (`routes/staff_subscription.py`):
+  - Plans Basic 4,99 € (5 MA) / Pro 9,99 € (20 MA) / Enterprise (∞)
+  - 30-Tage Free Trial (Pro Features), Status `trialing/active/expired/cancelled`
+  - Endpoints `/plans`, `/status`, `/start-trial`, `/create-checkout` (Stripe Placeholder), `/cancel`, `/feature-flags`, `/admin/list`, `/admin/override`, `/admin/toggle-module`
+  - Limit-Check in `POST /api/staff/members` (402/403 mit Code `limit_reached`/`no_subscription`)
+  - Admin Override: trial extend, plan/status change, max_staff_override, enable/disable
+- 🟢 **Branchen-Vorlagen** (`routes/staff_templates.py`): 7 Industrien (Gastronomie, Eiscafé, Retail, Friseur, Bau, Reinigung, Lieferdienst) mit Shifts/Pausen/Rollen/Check-in-Methode/Urlaubstagen
+- 🟢 **Rollen & Rechte** (`routes/staff_roles.py`): Owner/Manager/Schichtleiter/Mitarbeiter/Aushilfe, 9 Permissions, `role_has_permission()`
+- 🟢 **GPS-Standorte** (`routes/staff_locations.py`): Lat/Lng/Radius, Haversine-Geofence, `validate_geofence()` automatisch bei Clock-Event aufgerufen → `staff_warnings` doc mit `resolved=False`
+- 🟢 **Auto-Warnings** (`routes/staff_warnings.py`): no_clock_out (>12h), duplicate_clock_in (<5min), missing_break (>6h), overtime (>10h), shift_no_checkin, gps_out_of_range
+- 🟢 **Reports/Exports** (`routes/staff_reports_extended.py`): daily/weekly/monthly/by-location/warnings, CSV-Export, DATEV-CSV
+- 🟢 **Magic Login** (`routes/staff_magic_link.py`): Token-based Login (30 Min TTL), single-use, anti-enumeration, env-gated magic_url
+- 🟢 **Invite Flow** (`routes/staff_invites.py`): `staff_invites` mit pending/accepted/expired/revoked, 7-Tage TTL, Limit-Check beim Create UND Accept
+- 🟢 **Employee Profile** (`routes/staff_profile.py`): `/me/profile`, `/me/change-pin` (bcrypt), `/me/dashboard` (status, today/week hours, next_shift, vacation)
+- 🟢 **Admin SaaS Metrics** (`routes/staff_metrics.py`): MRR/ARR Placeholder, Churn Risk, by-plan, avg_staff/merchant
+- 🟢 **Frontend Marketing Page** (`pages/StaffUpgradeScreen.jsx`): Hero, Vorteile, Crewmeister/Papershift Vergleichstabelle, Pricing Cards mit `data-testid=staff-plan-card-*`, Trial-CTA, Industries
+- 🟢 **Frontend Paywall Gate** (`pages/StaffManagementPage.jsx`): zeigt Upgrade-Screen wenn keine aktive Sub, Trial/Plan Badge, Limit-Display, Upgrade-CTA, Limit-Error-Toast bei Member-Create
+- 🟢 **Employee Mobile UI** (`pages/StaffMobilePage.jsx`): Magic-Link Auth via URL `?token=`, PIN-Login Fallback, Big-Buttons (Check-in/out/Pause), Status-Badge (working/break/off), Today/Week Hours, Next Shift, Vacation. Settings-Sheet mit Language Switcher + Logout. Offline-Indicator + Queue-Count.
+- 🟢 **Invite Accept Page** (`pages/StaffInvitePage.jsx`): Public Token-Preview + Name + optionale PIN
+- 🟢 **Dashboard Cards** (`components/staff/StaffDashboardCards.jsx`): Anwesend/Pause/Verspätet/Fehlt/Schichten/Warnungen/Monatskosten
+- 🟢 **Warnings List** (`components/staff/StaffWarningsList.jsx`): mit Scan-Button + Resolve
+- 🟢 **Export Buttons** (`components/staff/StaffExportButtons.jsx`): CSV/PDF/Payroll/DATEV
+- 🟢 **Admin SaaS Metrics UI** (`components/AdminStaffMetrics.jsx`): Tiles + Plan-Tabelle
+- 🟢 **i18n Stub** (`i18n/staff.js`): DE/EN/SQ/TR mit `t()` helper + Language Persistence in localStorage
+- 🟢 **Offline Queue** (`utils/staffOfflineQueue.js`): Auto-Sync bei `online`-Event, Device-Info Helper (device_type/browser/platform/app_version)
+- 🟢 **App Store Texts** (`/app/memory/app_store_descriptions.md`): DE/EN/SQ Long+Short Description, Keywords, Feature-List
+- 🟢 **App.js Routes**: `/merchant/staff/upgrade` (auth), `/staff/mobile` (public, no chrome), `/staff/invite` (public, no chrome) — BottomNav & CookieBanner unterdrückt für Employee Shell
+- 🟢 **Schema Erweiterungen**: ClockEvent enthält jetzt `device_type/browser/platform/app_version`, audit_log doc in `staff_audit_log` für clock_event + magic_login
+- 🧪 **Testing**: iter78 (Subscription) 93%/100%, iter79 (Phase 2) 95.8%/100%, iter80 (Fixes) 100%/100% — alle HIGH-Issues gefixt
+
 ### 12.05.2026 (iter77 — QR-Bestellung v2: Mr-Yum-Parität, Ratings, Combos, Live-Status, Tip, Split)
 - 🟢 **Backend** (`routes/qr_table_order.py` ~860 Z., 1274 routes total):
   - Menu-CRUD (`POST/GET/DELETE /api/merchant/menu/items` + `bulk-import`)
