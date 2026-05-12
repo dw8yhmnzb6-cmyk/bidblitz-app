@@ -93,6 +93,7 @@ def register_all_routers(app):
         ("routes.rewards_store", "router"),
         
         # Finance
+        ("routes.p2p", "router"),
         ("routes.p2p_transfer", "router"),
         ("routes.split_bill", "router"),
         ("routes.virtual_cards", "router"),
