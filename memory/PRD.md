@@ -15,6 +15,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter87 — Investor/Customer WOW Pass: Terminal Mode + Landing Showcase)
+- 🎨 **NEW: Staff Terminal / Kiosk Page** (`/staff/terminal`, `StaffTerminalPage.jsx`): Fullscreen-Tablet-Modus für geteiltes Gerät am Empfang. Member-Tiles mit Live-Status (Working/Pause/Bereit), Premium PIN-Pad Modal (PIN-Dots + 3×4 Grid), QR-Code Bereich (rechts), NFC-Zone (Placeholder für native App), Success-Flash bei Aktion, Auto-Refresh alle 30s. Optimal für Café/Restaurant/Friseur/Händler.
+- 🎨 **Landing Page Polish** (`StaffUpgradeScreen.jsx`):
+  - Social-Proof-Strip (30 Tage gratis · 4,99 € · DSGVO · DATEV)
+  - **App Showcase**: 3 große Karten "Eine App. Drei Modi." (Mitarbeiter App / Manager Dashboard / Terminal Kiosk) mit Gradient-Glow und Feature-Bullets, klickbar → live ansehen
+- 🔧 Chat-Widget auch auf `/staff/terminal` ausgeblendet (Click-Interception vermeiden)
+- 📦 Backend unverändert (132 Router), keine neuen Backend-Features
+
+
 ### 12.05.2026 (iter83–86 — BidBlitz Staff Connecteam-Style Premium Mobile UX)
 - 🟢 **Connecteam-Style Timesheet Backend** (`routes/staff_timesheet.py`): `/team-overview` (Connecteam-Tabelle: Regular/ÜS/Pause/Abwesenheit/Total/Kosten), `/me/weekly`, `/me/day`, `/me/month`, `/manager/day-detail`, CSV-Export (`/team-overview.csv`).
 - 🟢 **Check-in Attachments**: `POST /api/staff/clock/self` akzeptiert nun JSON-Body mit `customer`, `project`, `equipment`, `kilometers`, `note`, `photo_url`. Schema `SelfClockEvent`. Legacy Query-Params bleiben kompatibel.

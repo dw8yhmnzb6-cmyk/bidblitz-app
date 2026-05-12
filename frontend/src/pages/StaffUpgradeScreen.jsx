@@ -309,6 +309,59 @@ export default function StaffUpgradeScreen({ onBack, onSuccess }) {
         </div>
       </section>
 
+      {/* SOCIAL PROOF STRIP */}
+      <section className="px-4 py-6 border-y border-white/[0.06] bg-white/[0.015]">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          {[
+            { v: "30 Tage", k: "Gratis Testphase" },
+            { v: "4,99 €", k: "Einstiegspreis / Monat" },
+            { v: "DSGVO", k: "konform & sicher" },
+            { v: "DATEV", k: "LBN Export inklusive" },
+          ].map((s) => (
+            <div key={s.k}>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums bg-gradient-to-r from-[#00C2FF] to-[#A855F7] bg-clip-text text-transparent">{s.v}</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/40 mt-1 font-semibold">{s.k}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* APP SHOWCASE */}
+      <section className="relative px-4 py-16 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none opacity-50"
+          style={{ background: "radial-gradient(700px circle at 30% 50%, #00C2FF15, transparent 60%), radial-gradient(700px circle at 70% 50%, #A855F715, transparent 60%)" }}/>
+        <div className="relative max-w-5xl mx-auto text-center mb-10">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-[#00C2FF] font-semibold mb-2">Mobile-First</p>
+          <h2 className="text-2xl sm:text-3xl font-bold font-outfit">Eine App. Drei Modi.</h2>
+          <p className="text-sm sm:text-base text-white/55 mt-3 max-w-xl mx-auto">
+            Mitarbeiter, Manager und Terminal arbeiten Hand in Hand — alles in BidBlitz.
+          </p>
+        </div>
+        <div className="relative max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5">
+          <ShowcaseCard
+            tag="Mitarbeiter App"
+            title="Schicht starten in 1 Tap"
+            features={["Großer Gradient Action Button", "Live Timer", "Pause / Beenden", "Wallet · Bonus + Trinkgeld"]}
+            color="#00C2FF"
+            href="/staff/mobile"
+          />
+          <ShowcaseCard
+            tag="Manager Dashboard"
+            title="Wer arbeitet gerade?"
+            features={["Live Status Grid", "Connecteam-Timesheet", "Aktivitäts-Feed", "DATEV CSV Export"]}
+            color="#A855F7"
+            href="/merchant/staff"
+          />
+          <ShowcaseCard
+            tag="Terminal / Kiosk"
+            title="Geteiltes Tablet am Empfang"
+            features={["PIN-Pad in Sekunden", "QR-Code Bereich", "NFC-Stempelkarten (native)", "Fullscreen Kiosk Modus"]}
+            color="#10D981"
+            href="/staff/terminal"
+          />
+        </div>
+      </section>
+
       {/* ADVANTAGES */}
       <section className="px-4 py-10 max-w-5xl mx-auto">
         <h2 className="text-lg sm:text-xl font-bold mb-6 text-white/90">
@@ -477,5 +530,43 @@ export default function StaffUpgradeScreen({ onBack, onSuccess }) {
         </p>
       </section>
     </div>
+  );
+}
+
+
+function ShowcaseCard({ tag, title, features, color, href }) {
+  return (
+    <motion.a
+      href={href}
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      whileHover={{ y: -4 }}
+      data-testid={`showcase-card-${tag.toLowerCase().replace(/\s/g, "-")}`}
+      className="relative overflow-hidden rounded-3xl p-6 border block transition-shadow"
+      style={{
+        background: `linear-gradient(180deg, ${color}10 0%, rgba(255,255,255,0.02) 100%)`,
+        borderColor: `${color}33`,
+        boxShadow: `0 18px 50px -20px ${color}55`,
+      }}
+    >
+      <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl opacity-25 pointer-events-none" style={{ background: color }} />
+      <div className="relative">
+        <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+          style={{ background: `${color}1F`, color }}>{tag}</span>
+        <h3 className="text-lg font-bold mt-3 mb-3 font-outfit">{title}</h3>
+        <ul className="space-y-1.5">
+          {features.map((f) => (
+            <li key={f} className="text-[13px] text-white/65 flex items-start gap-2">
+              <Check size={13} className="mt-0.5 flex-shrink-0" style={{ color }} />
+              <span>{f}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-[11px] font-semibold flex items-center gap-1" style={{ color }}>
+          Live ansehen <ArrowRight size={11} />
+        </p>
+      </div>
+    </motion.a>
   );
 }

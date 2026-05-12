@@ -99,6 +99,7 @@ const StaffManagementPage = lazy(() => import("./pages/StaffManagementPage"));
 const StaffLoginPage = lazy(() => import("./pages/StaffLoginPage"));
 const StaffPortalPage = lazy(() => import("./pages/StaffPortalPage"));
 const StaffUpgradeScreen = lazy(() => import("./pages/StaffUpgradeScreen"));
+const StaffTerminalPage = lazy(() => import("./pages/StaffTerminalPage"));
 const StaffSettingsPage = lazy(() => import("./pages/StaffSettingsPage"));
 const StaffMobilePage = lazy(() => import("./pages/StaffMobilePage"));
 const StaffInvitePage = lazy(() => import("./pages/StaffInvitePage"));
@@ -447,6 +448,9 @@ function AppContent() {
     }
     if (currentPath === "/staff/mobile") {
       return <StaffMobilePage onBack={() => handleNavigate("/")} />;
+    }
+    if (currentPath === "/staff/terminal") {
+      return <StaffTerminalPage onBack={() => handleNavigate("/")} />;
     }
     if (currentPath === "/staff/invite") {
       return <StaffInvitePage onSuccess={() => handleNavigate("/staff/mobile")} />;
@@ -1028,7 +1032,7 @@ function AppContent() {
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
   const isQrOrder = currentPath.startsWith("/order/qr/");
-  const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite";
+  const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal";
   const showBottomNav = !isCheckout && !isQrOrder && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
