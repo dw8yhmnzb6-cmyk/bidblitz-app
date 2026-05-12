@@ -15,6 +15,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter73 — Tracking Sheet im Fullscreen-Layout + Driver-Filter Backend)
+- 🟢 **TaxiTrackingSheet.jsx** (260 Z.) — neue Komponente: Status-Badge, Driver-Card (Avatar/Rating/Vehicle/Plate/Call), Route-Liste (cyan/amber/red dots inkl. **Waypoints + per-Address Notes**), Fare-Card, Demo-Buttons, Chat/Split-Grid, Cancel, Completed-Success-State.
+- 🟢 **TaxiPage**: `inMapBookingFlow` triggert jetzt sowohl bei `view==='book' && taxiType` ALS AUCH `view==='tracking' && activeRide` → Map+Bottom-Sheet bleiben durchgehend sichtbar während ride. Sheet zeigt je nach `view` `<TaxiBookingSheet>` oder `<TaxiTrackingSheet>`. Tracking startet bei `half`-Snap (statt collapsed).
+- 🟢 **Old `TaxiTrackingView` aus der TaxiPage entfernt** — nicht mehr referenziert. Import + Container-Block raus. Datei bleibt für andere Konsumenten erhalten.
+- 🟢 **Backend Driver-Matching erweitert** (`routes/taxi.py`):
+  - `book_ride`: Driver-Query enthält jetzt `car.pet_friendly`, `car.luggage_class` (Stufen-Match: `much_combi` ⊇ `combi/wagon/much`), `car.assistance`. So werden nur passende Fahrer benachrichtigt.
+  - `get_nearby_drivers` (öffentlich): neue Query-Params `with_pet`, `luggage`, `assistance` → UI kann Live-Verfügbarkeit *vor* der Buchung anzeigen (z.B. "0 Fahrer für 'Viel Gepäck Kombi'").
+- ✅ Verifiziert: Map full-screen rendert, Sheet draggable, `data-snap="collapsed"`, Backend Query mit allen 4 neuen Params HTTP 200. Lint clean.
+
 ### 12.05.2026 (iter72 — Wiring Komplett: Recent / City-Defaults / Notes / Waypoints)
 - 🟢 **Recent Addresses UI**: Server-tracked Adressen werden beim Mount geladen, im Search-Sheet als eigene Sektion "Letzte Adressen" mit Use-Count gezeigt. Nach jeder Buchung automatischer Refresh.
 - 🟢 **City-Defaults**: Pickup-Adresse → Heuristisches City-Extract (ZIP + Stadt-Pattern). Auto-Load gespeicherter Optionen für diese Stadt. Inline-Banner "Als Standard für [Stadt] speichern" / "✓ Standard-Optionen für [Stadt] aktiv".

@@ -1386,12 +1386,28 @@ async def driver_update_location(request: Request):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/drivers/nearby")
-async def get_nearby_drivers(lat: float = 52.52, lng: float = 13.405, radius: float = 10.0, car_type: Optional[str] = None):
+async def get_nearby_drivers(
+    lat: float = 52.52,
+    lng: float = 13.405,
+    radius: float = 10.0,
+    car_type: Optional[str] = None,
+    with_pet: bool = False,
+    luggage: Optional[str] = None,
+    assistance: bool = False,
+):
     """Get online drivers near location (public)."""
     
     query = {"online": True, "verified": True, "status": "approved"}
     if car_type:
         query["car.type"] = car_type
+    if with_pet:
+        query["car.pet_friendly"] = True
+    if luggage == "much_combi":
+        query["car.luggage_class"] = {"$in": ["much_combi", "combi", "wagon", "much"]}
+    elif luggage == "much":
+        query["car.luggage_class"] = {"$in": ["much", "much_combi", "combi", "wagon", "large"]}
+    if assistance:
+        query["car.assistance"] = True
     
     drivers = await db.drivers.find(
         query,
@@ -1583,13 +1599,25 @@ async def book_ride(req: FlexBookRequest, request: Request):
     for s in waypoints:
         await _track_recent(s["address"], s["lat"], s["lng"])
     
-    # Find nearby drivers and notify them (in real app, use push notifications)
-    nearby_drivers = await db.drivers.find({
+    # Find nearby drivers and notify them (in real app, use push notifications).
+    # Filter by ride options: vehicle must be pet-friendly if requested, and have
+    # sufficient luggage capacity (combi/wagon for 'much_combi', any for 'much', etc.).
+    driver_query = {
         "online": True,
         "verified": True,
         "status": "approved",
         "car.type": car_type,
-    }).to_list(20)
+    }
+    if req.with_pet:
+        driver_query["car.pet_friendly"] = True
+    if req.luggage == "much_combi":
+        driver_query["car.luggage_class"] = {"$in": ["much_combi", "combi", "wagon", "much"]}
+    elif req.luggage == "much":
+        driver_query["car.luggage_class"] = {"$in": ["much", "much_combi", "combi", "wagon", "large"]}
+    if req.assistance:
+        driver_query["car.assistance"] = True
+    
+    nearby_drivers = await db.drivers.find(driver_query).to_list(50)
     
     # Filter by distance from pickup
     matching_drivers = []

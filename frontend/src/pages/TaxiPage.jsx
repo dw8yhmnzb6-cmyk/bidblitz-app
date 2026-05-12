@@ -12,15 +12,14 @@ import TaxiHistoryView from '../components/taxi/TaxiHistoryView';
 import TaxiFavoritesModal from '../components/taxi/TaxiFavoritesModal';
 import TaxiSaveFavoriteModal from '../components/taxi/TaxiSaveFavoriteModal';
 import TaxiDriverOnboardingModal from '../components/taxi/TaxiDriverOnboardingModal';
-import TaxiBookingForm from '../components/taxi/TaxiBookingForm';
 import TaxiBookingSheet from '../components/taxi/TaxiBookingSheet';
+import TaxiTrackingSheet from '../components/taxi/TaxiTrackingSheet';
 import TaxiBottomSheet from '../components/taxi/TaxiBottomSheet';
 import TaxiAddressSearchSheet from '../components/taxi/TaxiAddressSearchSheet';
 import TaxiOrderOptions from '../components/taxi/TaxiOrderOptions';
 import TaxiSideMenu from '../components/taxi/TaxiSideMenu';
 import TaxiNoteModal from '../components/taxi/TaxiNoteModal';
 import TaxiHeader from '../components/taxi/TaxiHeader';
-import TaxiTrackingView from '../components/taxi/TaxiTrackingView';
 import TaxiTypeSelector from '../components/taxi/TaxiTypeSelector';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 import { useTaxiState } from '../hooks/useTaxiState';
@@ -102,14 +101,17 @@ export default function TaxiPage({ onNavigate }) {
 
   // Toggle body class for fullscreen booking mode (hides BottomNav, AIChat, FAB-cluster, cookie banner)
   useEffect(() => {
-    const inMapFlow = view === 'book' && taxiType && moduleEnabled;
+    const inMapFlow = moduleEnabled && (
+      (view === 'book' && taxiType) ||
+      (view === 'tracking' && activeRide)
+    );
     if (inMapFlow) {
       document.body.classList.add('taxi-fullscreen-mode');
     } else {
       document.body.classList.remove('taxi-fullscreen-mode');
     }
     return () => document.body.classList.remove('taxi-fullscreen-mode');
-  }, [view, taxiType, moduleEnabled]);
+  }, [view, taxiType, moduleEnabled, activeRide]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // HOOKS: Map + Geolocation
@@ -409,8 +411,11 @@ export default function TaxiPage({ onNavigate }) {
     ? new Date(orderOptions.scheduledAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     : null;
 
-  // taxi.eu-style: render map full-screen with bottom-sheet when in booking flow
-  const inMapBookingFlow = view === 'book' && taxiType && moduleEnabled;
+  // taxi.eu-style: render map full-screen with bottom-sheet during booking OR active tracking
+  const inMapBookingFlow = moduleEnabled && (
+    (view === 'book' && taxiType) ||
+    (view === 'tracking' && activeRide)
+  );
 
   return (
     <div className="min-h-screen bg-[#050505] text-white" data-mapflow={inMapBookingFlow ? '1' : '0'}>
@@ -484,43 +489,62 @@ export default function TaxiPage({ onNavigate }) {
           </div>
 
           {/* Draggable Bottom Sheet (starts collapsed for max map area) */}
-          <TaxiBottomSheet defaultSnap="collapsed">
-            <TaxiBookingSheet
-              taxiType={taxiType}
-              onChangeType={() => setTaxiType('')}
-              pickup={pickup}
-              dropoff={dropoff}
-              onTapPickup={() => setSearchSheetMode('pickup')}
-              onTapDropoff={() => setSearchSheetMode('dropoff')}
-              onClearDropoff={() => { setDropoff({ lat: 0, lng: 0, address: '' }); setEstimates([]); }}
-              onEditPickupNotes={() => setNoteTarget({ type: 'pickup' })}
-              onEditDropoffNotes={() => setNoteTarget({ type: 'dropoff' })}
-              waypoints={waypoints}
-              onAddWaypoint={() => {
-                setWaypoints((prev) => [...prev, { lat: 0, lng: 0, address: '', notes: '' }]);
-                setSearchSheetMode(`waypoint:${waypoints.length}`);
-              }}
-              onTapWaypoint={(idx) => setSearchSheetMode(`waypoint:${idx}`)}
-              onRemoveWaypoint={(idx) => setWaypoints((prev) => prev.filter((_, i) => i !== idx))}
-              onEditWaypointNotes={(idx) => setNoteTarget({ type: 'waypoint', index: idx })}
-              savedPlaces={savedPlaces}
-              onPickSavedPlace={(p) => setDropoff({ lat: p.lat, lng: p.lng, address: p.address })}
-              estimates={estimates}
-              selectedVehicle={selectedVehicle}
-              setSelectedVehicle={setSelectedVehicle}
-              surge={surge}
-              loading={loading}
-              error={error}
-              optionsSummary={optionsSummary}
-              onOpenOptions={() => setShowOrderOptions(true)}
-              noDriversAvailable={false}
-              onGetEstimates={getEstimates}
-              onBook={bookRide}
-              scheduledLabel={scheduledLabel}
-              pickupCity={pickupCity}
-              citySaved={citySaved}
-              onSaveCityDefault={handleSaveCityDefault}
-            />
+          <TaxiBottomSheet defaultSnap={view === 'tracking' ? 'half' : 'collapsed'}>
+            {view === 'tracking' ? (
+              <TaxiTrackingSheet
+                activeRide={activeRide}
+                loading={loading}
+                cancelRide={cancelRide}
+                simulateDriverArrival={simulateDriverArrival}
+                simulateStartTrip={simulateStartTrip}
+                simulateCompleteTrip={simulateCompleteTrip}
+                onOpenLiveChat={() => setShowLiveChat(true)}
+                onOpenSplit={() => {
+                  setSplitRideId(activeRide.ride_id);
+                  setSplitTotal(activeRide.final_fare || activeRide.fare_estimate || 0);
+                  setShowSplit(true);
+                }}
+                onOpenReview={() => { setReviewRideId(activeRide.ride_id); setShowReview(true); }}
+                onResetToBook={() => { setActiveRide(null); setView('book'); }}
+              />
+            ) : (
+              <TaxiBookingSheet
+                taxiType={taxiType}
+                onChangeType={() => setTaxiType('')}
+                pickup={pickup}
+                dropoff={dropoff}
+                onTapPickup={() => setSearchSheetMode('pickup')}
+                onTapDropoff={() => setSearchSheetMode('dropoff')}
+                onClearDropoff={() => { setDropoff({ lat: 0, lng: 0, address: '' }); setEstimates([]); }}
+                onEditPickupNotes={() => setNoteTarget({ type: 'pickup' })}
+                onEditDropoffNotes={() => setNoteTarget({ type: 'dropoff' })}
+                waypoints={waypoints}
+                onAddWaypoint={() => {
+                  setWaypoints((prev) => [...prev, { lat: 0, lng: 0, address: '', notes: '' }]);
+                  setSearchSheetMode(`waypoint:${waypoints.length}`);
+                }}
+                onTapWaypoint={(idx) => setSearchSheetMode(`waypoint:${idx}`)}
+                onRemoveWaypoint={(idx) => setWaypoints((prev) => prev.filter((_, i) => i !== idx))}
+                onEditWaypointNotes={(idx) => setNoteTarget({ type: 'waypoint', index: idx })}
+                savedPlaces={savedPlaces}
+                onPickSavedPlace={(p) => setDropoff({ lat: p.lat, lng: p.lng, address: p.address })}
+                estimates={estimates}
+                selectedVehicle={selectedVehicle}
+                setSelectedVehicle={setSelectedVehicle}
+                surge={surge}
+                loading={loading}
+                error={error}
+                optionsSummary={optionsSummary}
+                onOpenOptions={() => setShowOrderOptions(true)}
+                noDriversAvailable={false}
+                onGetEstimates={getEstimates}
+                onBook={bookRide}
+                scheduledLabel={scheduledLabel}
+                pickupCity={pickupCity}
+                citySaved={citySaved}
+                onSaveCityDefault={handleSaveCityDefault}
+              />
+            )}
           </TaxiBottomSheet>
 
           {/* Address search overlay */}
@@ -710,25 +734,7 @@ export default function TaxiPage({ onNavigate }) {
             </motion.div>
           )}
 
-          {/* TRACKING VIEW */}
-          {view === 'tracking' && (
-            <TaxiTrackingView
-              activeRide={activeRide}
-              loading={loading}
-              cancelRide={cancelRide}
-              simulateDriverArrival={simulateDriverArrival}
-              simulateStartTrip={simulateStartTrip}
-              simulateCompleteTrip={simulateCompleteTrip}
-              onOpenLiveChat={() => setShowLiveChat(true)}
-              onOpenSplit={() => {
-                setSplitRideId(activeRide.ride_id);
-                setSplitTotal(activeRide.final_fare || activeRide.fare_estimate || 0);
-                setShowSplit(true);
-              }}
-              onOpenReview={() => { setReviewRideId(activeRide.ride_id); setShowReview(true); }}
-              onResetToBook={() => { setActiveRide(null); setView('book'); }}
-            />
-          )}
+          {/* TRACKING VIEW now lives inside fullscreen Map+Sheet (see inMapBookingFlow above) */}
 
           {/* HISTORY VIEW */}
           {view === 'history' && (
