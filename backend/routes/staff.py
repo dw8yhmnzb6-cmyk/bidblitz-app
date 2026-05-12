@@ -63,6 +63,12 @@ class ClockEvent(BaseModel):
     browser: Optional[str] = None
     platform: Optional[str] = None
     app_version: Optional[str] = None
+    # Connecteam-Style Attachments
+    customer: Optional[str] = None
+    equipment: Optional[str] = None
+    kilometers: Optional[float] = None
+    photo_url: Optional[str] = None
+    project: Optional[str] = None
 
 class ShiftCreate(BaseModel):
     staff_id: str
@@ -85,6 +91,22 @@ class LeaveApproval(BaseModel):
 class StaffLogin(BaseModel):
     email: str
     password: str
+
+class SelfClockEvent(BaseModel):
+    action: Literal["clock_in", "clock_out", "break_start", "break_end"]
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    note: Optional[str] = None
+    customer: Optional[str] = None
+    equipment: Optional[str] = None
+    kilometers: Optional[float] = None
+    photo_url: Optional[str] = None
+    project: Optional[str] = None
+    source: str = "self_service"
+    device_type: Optional[str] = None
+    browser: Optional[str] = None
+    platform: Optional[str] = None
+    app_version: Optional[str] = None
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Auth Helper (uses BidBlitz Core Auth)
@@ -302,29 +324,51 @@ async def delete_staff_member(
 
 @router.post("/clock/self")
 async def self_clock_event(
-    action: Literal["clock_in", "clock_out", "break_start", "break_end"],
+    data: Optional[SelfClockEvent] = None,
+    action: Optional[Literal["clock_in", "clock_out", "break_start", "break_end"]] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
     note: Optional[str] = None,
+    customer: Optional[str] = None,
+    equipment: Optional[str] = None,
+    kilometers: Optional[float] = None,
+    photo_url: Optional[str] = None,
+    project: Optional[str] = None,
     staff = Depends(get_staff_from_session)
 ):
-    """Self Check-in/out für Mitarbeiter"""
+    """Self Check-in/out für Mitarbeiter inkl. Attachments (Kunde, Gerät, KM, Foto, Notiz).
+    Akzeptiert JSON-Body (bevorzugt) oder Query-Parameter (legacy)."""
+    if data is None:
+        if not action:
+            raise HTTPException(422, "action erforderlich (Body oder Query)")
+        data = SelfClockEvent(
+            action=action, lat=lat, lng=lng, note=note,
+            customer=customer, equipment=equipment, kilometers=kilometers,
+            photo_url=photo_url, project=project,
+        )
     event = {
         "id": str(uuid4()),
         "merchant_id": staff["merchant_id"],
         "staff_id": staff["id"],
-        "action": action,
+        "action": data.action,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "lat": lat,
-        "lng": lng,
-        "note": note,
-        "source": "self_service",
+        "lat": data.lat,
+        "lng": data.lng,
+        "note": data.note,
+        "customer": data.customer,
+        "equipment": data.equipment,
+        "kilometers": data.kilometers,
+        "photo_url": data.photo_url,
+        "project": data.project,
+        "source": data.source or "self_service",
+        "device_type": data.device_type,
+        "browser": data.browser,
+        "platform": data.platform,
+        "app_version": data.app_version,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    
     await db.staff_clock_events.insert_one(event)
     event.pop("_id", None)
-    
     return {"success": True, "event": event}
 
 @router.post("/clock")
@@ -349,6 +393,11 @@ async def clock_event(
         "lat": data.lat,
         "lng": data.lng,
         "note": data.note,
+        "customer": data.customer,
+        "equipment": data.equipment,
+        "kilometers": data.kilometers,
+        "photo_url": data.photo_url,
+        "project": data.project,
         "source": data.source,
         "device_type": data.device_type,
         "browser": data.browser,

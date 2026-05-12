@@ -40,11 +40,15 @@ export function getDeviceInfo() {
 
 export async function sendClockEvent(payload) {
   const enriched = { ...payload, ...getDeviceInfo() };
+  // Self-service nutzt /clock/self (staff_session-based auth)
+  const endpoint = enriched.source === "self_service" || enriched.source === "mobile"
+    ? `${API}/api/staff/clock/self`
+    : `${API}/api/staff/clock`;
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    return queueLocally(enriched);
+    return queueLocally({ ...enriched, _endpoint: endpoint });
   }
   try {
-    const res = await fetch(`${API}/api/staff/clock`, {
+    const res = await fetch(endpoint, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -53,7 +57,7 @@ export async function sendClockEvent(payload) {
     if (!res.ok) throw new Error("Network error");
     return { ok: true, queued: false, response: await res.json() };
   } catch (e) {
-    return queueLocally(enriched);
+    return queueLocally({ ...enriched, _endpoint: endpoint });
   }
 }
 
@@ -75,11 +79,13 @@ export async function flushQueue() {
   let synced = 0;
   for (const item of queue) {
     try {
-      const res = await fetch(`${API}/api/staff/clock`, {
+      const endpoint = item._endpoint || `${API}/api/staff/clock`;
+      const { _endpoint, ...payload } = item;
+      const res = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(item),
+        body: JSON.stringify(payload),
       });
       if (res.ok) synced++;
       else remaining.push(item);

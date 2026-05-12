@@ -1,0 +1,40 @@
+{
+  "summary": "Iter 84 validation: BidBlitz Staff Timesheet (Connecteam-Style) + Check-in Attachments. Backend 14/14 tests pass; Frontend mobile staff portal + merchant timesheet tab fully functional. No password_hash/pin_hash leak in any tested endpoint.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/staff/timesheet/me/month", "issue": "Month range defaults to current month, but `_compute_per_day` rolls overtime split at 8h/day; weekly endpoint advertises 40h-Regular limit (WEEKLY_REGULAR_LIMIT constant in code) but actually uses 8h/day cap. Constant is unused dead code — minor naming inconsistency, no functional impact."},
+      {"endpoint": "GET /api/staff/timesheet/team-overview", "issue": "Leave matching only checks start_date equality. Multi-day leaves are counted only on start day (absence_days under-counted for leaves spanning multiple days)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter84_timesheet.py",
+    "/app/test_reports/pytest/iter84_timesheet.xml"
+  ],
+  "action_items": [
+    "(Minor) Remove unused WEEKLY_REGULAR_LIMIT constant in routes/staff_timesheet.py OR align overtime logic to weekly threshold per the comment.",
+    "(Minor) team-overview leave query: expand to include leaves where start_date <= day <= end_date for accurate absence_days per multi-day leave."
+  ],
+  "critical_code_review_comments": [
+    "routes/staff.py POST /clock/self correctly accepts both JSON body and legacy query-params for backwards compat — clean fix.",
+    "routes/staff_timesheet.py consistently strips password_hash / pin_hash from staff_members projection. Verified on team-overview, manager/day-detail and _staff_session helper.",
+    "GET /api/staff/timesheet/me/day returns full events including attachment fields (customer, project, equipment, kilometers, note) — exactly what UI uses.",
+    "ManagerTeamTimesheet.jsx: testid `manager-pick-day-{date}` (NOT `manager-day-picker-day-*` as written in review_request). Day-picker → day-detail flow works end-to-end.",
+    "StaffWeeklyTimesheet.jsx: testid `staff-week-day-{date}` (NOT `staff-weekly-day-*`). Click opens `staff-day-detail-sheet` correctly."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter84_timesheet.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Merchant haendler@bidblitz.com / Haendler2026!  |  Staff TEST_magic_1778611082@example.com / test123",
+  "seed_data_creation": "Test created a few clock_in/out events with TEST_ prefixed customer/project on TEST_MagicUser staff_member via /api/staff/clock/self. No member-level seed needed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All Iter 84 endpoints (POST /clock/self JSON, /timesheet/me/weekly, /me/day, /me/month, /team-overview, /team-overview.csv, /manager/day-detail) are healthy. Test data uses TEST_ prefix on customer/project/note to allow easy cleanup. Frontend testids in StaffWeeklyTimesheet are `staff-week-day-{date}` and in ManagerTeamTimesheet are `manager-pick-day-{date}` (slightly different from review_request wording but functionality is correct).",
+  "rca of the issue": "n/a — no critical issue found"
+}

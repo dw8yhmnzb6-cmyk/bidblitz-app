@@ -20,6 +20,7 @@ import {
 } from "../utils/staffOfflineQueue";
 import { t, getStaffLang, setStaffLang, STAFF_LANGUAGES } from "../i18n/staff";
 import StaffNotificationCenter from "../components/staff/StaffNotificationCenter";
+import StaffWeeklyTimesheet from "../components/staff/StaffWeeklyTimesheet";
 
 function WalletBalanceCard() {
   const [data, setData] = React.useState(null);
@@ -60,6 +61,8 @@ export default function StaffMobilePage({ onBack }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadNotif, setUnreadNotif] = useState(0);
+  const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+  const [attachmentDraft, setAttachmentDraft] = useState({ customer: "", project: "", equipment: "", kilometers: "", note: "" });
 
   const reload = useCallback(async () => {
     try {
@@ -137,7 +140,7 @@ export default function StaffMobilePage({ onBack }) {
     };
   }, [reload]);
 
-  const doClock = async (action) => {
+  const doClock = async (action, attachments = null) => {
     if (!staff) {
       toast.error("Bitte zuerst anmelden");
       return;
@@ -152,13 +155,24 @@ export default function StaffMobilePage({ onBack }) {
       lat = pos.coords.latitude;
       lng = pos.coords.longitude;
     } catch (e) {}
-    const res = await sendClockEvent({
+    const payload = {
       staff_id: staff.id,
       action,
       lat,
       lng,
-      source: "mobile",
-    });
+      source: "self_service",
+    };
+    if (attachments) {
+      if (attachments.customer) payload.customer = attachments.customer;
+      if (attachments.project) payload.project = attachments.project;
+      if (attachments.equipment) payload.equipment = attachments.equipment;
+      if (attachments.kilometers !== "" && attachments.kilometers != null) {
+        const km = parseFloat(attachments.kilometers);
+        if (!Number.isNaN(km)) payload.kilometers = km;
+      }
+      if (attachments.note) payload.note = attachments.note;
+    }
+    const res = await sendClockEvent(payload);
     if (res.queued) {
       toast.message(t("saved_offline"), { description: t("offline_notice") });
       setQueuedCount(getQueueLength());
@@ -171,6 +185,12 @@ export default function StaffMobilePage({ onBack }) {
     }
     await reload();
     setActing(null);
+  };
+
+  const submitAttachmentCheckin = async () => {
+    await doClock(primaryAction, attachmentDraft);
+    setShowAttachmentSheet(false);
+    setAttachmentDraft({ customer: "", project: "", equipment: "", kilometers: "", note: "" });
   };
 
   const handleLangChange = (code) => {
@@ -384,6 +404,23 @@ export default function StaffMobilePage({ onBack }) {
         <WalletBalanceCard />
       </section>
 
+      {/* Optional Attachments Button */}
+      <section className="px-4 pb-3">
+        <button
+          onClick={() => setShowAttachmentSheet(true)}
+          disabled={acting !== null}
+          data-testid="staff-attachment-checkin-btn"
+          className="w-full py-3 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-white/70 hover:bg-white/[0.07]"
+        >
+          + {primaryLabel} mit Notiz / Kunde / KM
+        </button>
+      </section>
+
+      {/* Weekly Timesheet (Connecteam-Style) */}
+      <section className="px-4 pb-4">
+        <StaffWeeklyTimesheet />
+      </section>
+
       {/* Settings sheet */}
       <AnimatePresence>
         {showSettings && (
@@ -443,6 +480,89 @@ export default function StaffMobilePage({ onBack }) {
         open={showNotifications}
         onClose={() => { setShowNotifications(false); reload(); }}
       />
+
+      {/* Attachment Check-in Sheet */}
+      <AnimatePresence>
+        {showAttachmentSheet && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center"
+            onClick={() => setShowAttachmentSheet(false)}
+            data-testid="staff-attachment-sheet"
+          >
+            <motion.div
+              initial={{ y: 200 }}
+              animate={{ y: 0 }}
+              exit={{ y: 200 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-md bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl p-5 space-y-3 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-white/40">Buchung mit Details</p>
+                  <p className="text-lg font-bold">{primaryLabel}</p>
+                </div>
+                <button onClick={() => setShowAttachmentSheet(false)} className="p-2 rounded-lg hover:bg-white/5">
+                  <span className="text-white/60">✕</span>
+                </button>
+              </div>
+              <label className="block text-[10px] uppercase tracking-widest text-white/40">Kunde</label>
+              <input
+                value={attachmentDraft.customer}
+                onChange={(e) => setAttachmentDraft((d) => ({ ...d, customer: e.target.value }))}
+                placeholder="z.B. Müller GmbH"
+                data-testid="staff-attachment-customer"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm"
+              />
+              <label className="block text-[10px] uppercase tracking-widest text-white/40">Projekt / Auftrag</label>
+              <input
+                value={attachmentDraft.project}
+                onChange={(e) => setAttachmentDraft((d) => ({ ...d, project: e.target.value }))}
+                placeholder="z.B. Büroumzug"
+                data-testid="staff-attachment-project"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm"
+              />
+              <label className="block text-[10px] uppercase tracking-widest text-white/40">Gerät / Equipment</label>
+              <input
+                value={attachmentDraft.equipment}
+                onChange={(e) => setAttachmentDraft((d) => ({ ...d, equipment: e.target.value }))}
+                placeholder="z.B. Sprinter L3H2"
+                data-testid="staff-attachment-equipment"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm"
+              />
+              <label className="block text-[10px] uppercase tracking-widest text-white/40">Kilometer</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={attachmentDraft.kilometers}
+                onChange={(e) => setAttachmentDraft((d) => ({ ...d, kilometers: e.target.value }))}
+                placeholder="z.B. 42.5"
+                data-testid="staff-attachment-kilometers"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm"
+              />
+              <label className="block text-[10px] uppercase tracking-widest text-white/40">Notiz</label>
+              <textarea
+                rows={3}
+                value={attachmentDraft.note}
+                onChange={(e) => setAttachmentDraft((d) => ({ ...d, note: e.target.value }))}
+                placeholder="optional"
+                data-testid="staff-attachment-note"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm resize-none"
+              />
+              <button
+                onClick={submitAttachmentCheckin}
+                disabled={acting !== null}
+                data-testid="staff-attachment-submit"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00C2FF] to-[#A855F7] text-white font-semibold text-sm disabled:opacity-60"
+              >
+                {acting ? <Loader2 size={16} className="animate-spin mx-auto" /> : `${primaryLabel} jetzt speichern`}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

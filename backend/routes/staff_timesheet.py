@@ -34,7 +34,7 @@ async def _staff_session(request: Request) -> dict:
     sid = request.cookies.get("staff_session")
     if not sid:
         raise HTTPException(401, "Nicht angemeldet")
-    m = await db.staff_members.find_one({"id": sid, "active": True}, {"_id": 0, "pin_hash": 0})
+    m = await db.staff_members.find_one({"id": sid, "active": True}, {"_id": 0, "pin_hash": 0, "password_hash": 0})
     if not m:
         raise HTTPException(401, "Session ungültig")
     return m
@@ -75,7 +75,7 @@ async def team_overview(request: Request, days: int = 7):
     now = datetime.now(timezone.utc)
     start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    members = await db.staff_members.find({"merchant_id": mid, "active": True}, {"_id": 0, "pin_hash": 0}).to_list(length=500)
+    members = await db.staff_members.find({"merchant_id": mid, "active": True}, {"_id": 0, "pin_hash": 0, "password_hash": 0}).to_list(length=500)
     if not members:
         return {"success": True, "rows": [], "totals": {"work": 0, "break": 0, "regular": 0, "overtime": 0, "absence_days": 0}, "period_days": days}
 
@@ -88,7 +88,7 @@ async def team_overview(request: Request, days: int = 7):
         {"merchant_id": mid, "status": "approved", "start_date": {"$gte": start.date().isoformat()}},
         {"_id": 0},
     ).to_list(length=1000)
-    leave_set = {(l["staff_id"], l.get("start_date", "")) for l in leaves}
+    leave_set = {(lv["staff_id"], lv.get("start_date", "")) for lv in leaves}
 
     by_staff: dict = defaultdict(list)
     for ev in events:
@@ -162,7 +162,7 @@ async def my_weekly(request: Request, weeks_back: int = 0, member=Depends(_staff
          "start_date": {"$gte": monday.date().isoformat()}},
         {"_id": 0},
     ).to_list(length=50)
-    leave_set = {l["start_date"] for l in leaves}
+    leave_set = {lv["start_date"] for lv in leaves}
 
     days_data = _compute_per_day(events, leave_set)
 
@@ -193,5 +193,155 @@ async def my_weekly(request: Request, weeks_back: int = 0, member=Depends(_staff
             "break_hours": round(sum(d["break_min"] for d in days_data.values()) / 60.0, 2),
             "total_hours": round(total_work / 60.0, 2),
             "absence_days": sum(1 for d in days_data.values() if d["absence"]),
+        },
+    }
+
+
+
+@router.get("/me/day")
+async def my_day_detail(date: str, member=Depends(_staff_session)):
+    """Connecteam-Style: alle Events eines Tages für eigenen MA (mit Attachments)."""
+    try:
+        d = datetime.fromisoformat(date).replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(400, "Ungültiges Datum (YYYY-MM-DD)")
+    start = d.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
+    events = await db.staff_clock_events.find(
+        {"merchant_id": member["merchant_id"], "staff_id": member["id"],
+         "timestamp": {"$gte": start.isoformat(), "$lt": end.isoformat()}},
+        {"_id": 0},
+    ).sort("timestamp", 1).to_list(length=500)
+
+    summary = _compute_per_day(events, set()).get(start.date().isoformat(), {
+        "work_min": 0, "break_min": 0, "regular_min": 0, "overtime_min": 0
+    })
+    return {
+        "success": True,
+        "date": start.date().isoformat(),
+        "events": events,
+        "summary": {
+            "total_hours": round(summary["work_min"] / 60.0, 2),
+            "regular_hours": round(summary.get("regular_min", 0) / 60.0, 2),
+            "overtime_hours": round(summary.get("overtime_min", 0) / 60.0, 2),
+            "break_hours": round(summary["break_min"] / 60.0, 2),
+            "event_count": len(events),
+        },
+    }
+
+
+@router.get("/manager/day-detail")
+async def manager_day_detail(staff_id: str, date: str, request: Request):
+    """Manager Day-Detail: alle Events eines MA an einem Tag."""
+    mid = await _merchant_id(request)
+    member = await db.staff_members.find_one(
+        {"id": staff_id, "merchant_id": mid}, {"_id": 0, "pin_hash": 0, "password_hash": 0}
+    )
+    if not member:
+        raise HTTPException(404, "Mitarbeiter nicht gefunden")
+    try:
+        d = datetime.fromisoformat(date).replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(400, "Ungültiges Datum (YYYY-MM-DD)")
+    start = d.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
+    events = await db.staff_clock_events.find(
+        {"merchant_id": mid, "staff_id": staff_id,
+         "timestamp": {"$gte": start.isoformat(), "$lt": end.isoformat()}},
+        {"_id": 0},
+    ).sort("timestamp", 1).to_list(length=500)
+    summary = _compute_per_day(events, set()).get(start.date().isoformat(), {
+        "work_min": 0, "break_min": 0, "regular_min": 0, "overtime_min": 0
+    })
+    return {
+        "success": True,
+        "member": member,
+        "date": start.date().isoformat(),
+        "events": events,
+        "summary": {
+            "total_hours": round(summary["work_min"] / 60.0, 2),
+            "regular_hours": round(summary.get("regular_min", 0) / 60.0, 2),
+            "overtime_hours": round(summary.get("overtime_min", 0) / 60.0, 2),
+            "break_hours": round(summary["break_min"] / 60.0, 2),
+        },
+    }
+
+
+@router.get("/team-overview.csv")
+async def team_overview_csv(request: Request, days: int = 7):
+    """CSV Export Team-Übersicht für Buchhaltung/Lohn."""
+    from fastapi.responses import PlainTextResponse
+    data = await team_overview(request, days)
+    rows = data["rows"]
+    lines = [
+        "Name;Rolle;Stundensatz;Regulär (h);Überstunden (h);Pause (h);Gesamt (h);Abwesenheiten;Kosten EUR"
+    ]
+    for r in rows:
+        lines.append(
+            f"{r['name']};{r.get('staff_role') or ''};{r['hourly_rate']:.2f};"
+            f"{r['regular_hours']:.2f};{r['overtime_hours']:.2f};{r['break_hours']:.2f};"
+            f"{r['total_hours']:.2f};{r['absence_days']};{r['cost_eur']:.2f}"
+        )
+    csv = "\n".join(lines)
+    return PlainTextResponse(csv, media_type="text/csv; charset=utf-8")
+
+
+@router.get("/me/month")
+async def my_month(month: Optional[str] = None, member=Depends(_staff_session)):
+    """Monats-Timesheet (Tag für Tag) für eigenen MA."""
+    if month:
+        try:
+            anchor = datetime.fromisoformat(month + "-01").replace(tzinfo=timezone.utc)
+        except Exception:
+            raise HTTPException(400, "Ungültiger Monat (YYYY-MM)")
+    else:
+        anchor = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    if anchor.month == 12:
+        next_month = anchor.replace(year=anchor.year + 1, month=1)
+    else:
+        next_month = anchor.replace(month=anchor.month + 1)
+
+    events = await db.staff_clock_events.find(
+        {"merchant_id": member["merchant_id"], "staff_id": member["id"],
+         "timestamp": {"$gte": anchor.isoformat(), "$lt": next_month.isoformat()}},
+        {"_id": 0, "action": 1, "timestamp": 1},
+    ).sort("timestamp", 1).to_list(length=5000)
+
+    leaves = await db.staff_leave_requests.find(
+        {"merchant_id": member["merchant_id"], "staff_id": member["id"], "status": "approved"},
+        {"_id": 0, "start_date": 1},
+    ).to_list(length=100)
+    leave_set = {lv["start_date"] for lv in leaves}
+
+    days_data = _compute_per_day(events, leave_set)
+
+    day_count = (next_month - anchor).days
+    days_list = []
+    weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    for i in range(day_count):
+        dt = (anchor + timedelta(days=i))
+        day_iso = dt.date().isoformat()
+        d = days_data.get(day_iso, {"work_min": 0, "break_min": 0, "regular_min": 0, "overtime_min": 0, "absence": False})
+        days_list.append({
+            "date": day_iso,
+            "weekday": weekdays[dt.weekday()],
+            "total_hours": round(d["work_min"] / 60.0, 2),
+            "regular_hours": round(d.get("regular_min", 0) / 60.0, 2),
+            "overtime_hours": round(d.get("overtime_min", 0) / 60.0, 2),
+            "break_hours": round(d["break_min"] / 60.0, 2),
+            "absence": d.get("absence", False),
+        })
+    total = sum(d["work_min"] for d in days_data.values())
+    return {
+        "success": True,
+        "month": anchor.strftime("%Y-%m"),
+        "days": days_list,
+        "totals": {
+            "total_hours": round(total / 60.0, 2),
+            "regular_hours": round(sum(d["regular_min"] for d in days_data.values()) / 60.0, 2),
+            "overtime_hours": round(sum(d["overtime_min"] for d in days_data.values()) / 60.0, 2),
+            "break_hours": round(sum(d["break_min"] for d in days_data.values()) / 60.0, 2),
+            "absence_days": sum(1 for d in days_data.values() if d.get("absence")),
         },
     }

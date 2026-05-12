@@ -96,6 +96,7 @@ def register_all_routers(app):
         ("routes.staff_stripe", "webhook_router"),
         ("routes.staff_wallet", "router"),
         ("routes.staff_push", "router"),
+        ("routes.staff_timesheet", "router"),
         
         # Mining & Marketplace
         ("routes.mining", "router"),

@@ -20,6 +20,7 @@ import StaffDashboardCards from "../components/staff/StaffDashboardCards";
 import StaffWarningsList from "../components/staff/StaffWarningsList";
 import StaffExportButtons from "../components/staff/StaffExportButtons";
 import StaffWalletPanel from "../components/staff/StaffWalletPanel";
+import ManagerTeamTimesheet from "../components/staff/ManagerTeamTimesheet";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -235,6 +236,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
     { id: "overview", label: "Übersicht", icon: TrendingUp },
     { id: "members", label: "Mitarbeiter", icon: Users },
     { id: "clock", label: "Zeiterfassung", icon: Clock },
+    { id: "timesheet", label: "Timesheet", icon: FileText },
     { id: "shifts", label: "Schichtplan", icon: Calendar },
     { id: "leave", label: "Urlaub/Krank", icon: UmbrellaIcon },
     { id: "reports", label: "Reports", icon: FileText }
@@ -381,6 +383,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
             {tab === "overview" && <OverviewTab summary={summary} members={members} todayEvents={todayEvents} />}
             {tab === "members" && <MembersTab members={members} onReload={loadData} onClockAction={handleClockAction} />}
             {tab === "clock" && <ClockTab todayEvents={todayEvents} members={members} onClockAction={handleClockAction} />}
+            {tab === "timesheet" && <ManagerTeamTimesheet />}
             {tab === "shifts" && <ShiftsTab shifts={shifts} members={members} onReload={loadData} />}
             {tab === "leave" && <LeaveTab requests={leaveRequests} members={members} onApprove={handleApproveLeave} />}
             {tab === "reports" && <ReportsTab members={members} />}
