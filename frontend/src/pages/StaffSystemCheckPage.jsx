@@ -94,10 +94,10 @@ export default function StaffSystemCheckPage({ onBack }) {
           <h2 className="text-sm font-bold mb-3 flex items-center gap-2">
             <Database size={14} className="text-[#A855F7]" /> Datenbestand
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
             {Object.entries(data?.collections || {}).map(([k, v]) => (
               <div key={k} className="px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase">{k}</p>
+                <p className="text-[10px] text-white/40 uppercase truncate">{k}</p>
                 <p className="text-base font-bold mt-0.5">{v}</p>
               </div>
             ))}
