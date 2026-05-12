@@ -9,9 +9,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Clock, Calendar, UmbrellaIcon, FileText, Plus,
   CheckCircle, XCircle, Loader2, MapPin, AlertCircle, Download,
-  Edit, Trash2, Play, Pause, Square, TrendingUp, Award
+  Edit, Trash2, Play, Pause, Square, TrendingUp, Award, QrCode
 } from "lucide-react";
 import { toast } from "sonner";
+import QRCode from "qrcode.react";
+import QrCheckinScanner from "../components/QrCheckinScanner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 

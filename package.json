@@ -1,0 +1,1 @@
+{"name":"bidblitz-mobile","version":"1.0.0","scripts":{"build":"cd frontend && yarn build","cap:sync":"npx cap sync","cap:ios":"npx cap open ios","cap:android":"npx cap open android"}}

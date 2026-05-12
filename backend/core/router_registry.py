@@ -72,6 +72,7 @@ def register_all_routers(app):
         
         # Staff Management
         ("routes.staff", "router"),
+        ("routes.staff_multi_merchant", "router"),
         
         # Mining & Marketplace
         ("routes.mining", "router"),

@@ -1,0 +1,24 @@
+{
+  "appId": "com.bidblitz.staff",
+  "appName": "BidBlitz Staff",
+  "webDir": "frontend/build",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0A0A0A",
+      "showSpinner": true,
+      "spinnerColor": "#00C2FF"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Geolocation": {
+      "permissions": ["location"]
+    }
+  },
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https"
+  }
+}

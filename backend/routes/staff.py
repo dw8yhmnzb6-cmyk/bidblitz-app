@@ -710,7 +710,113 @@ async def get_staff_summary(
     }
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 6. BONUS FEATURES (QR, Export Placeholders)
+# 6. QR CHECK-IN (Full Implementation)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.get("/qr/generate/{staff_id}")
+async def generate_qr_checkin(
+    staff_id: str,
+    merchant_id: str = Depends(get_merchant_id)
+):
+    """QR Check-in Code generieren (Merchant)"""
+    # Verify staff belongs to merchant
+    staff = await db.staff_members.find_one({
+        "id": staff_id,
+        "merchant_id": merchant_id,
+        "active": True
+    })
+    if not staff:
+        raise HTTPException(404, "Mitarbeiter nicht gefunden")
+    
+    # Generate unique token (valid for 5 minutes)
+    token = f"qr-{staff_id}-{datetime.now(timezone.utc).timestamp()}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    
+    # Store token in DB
+    await db.staff_qr_tokens.insert_one({
+        "token": token,
+        "staff_id": staff_id,
+        "merchant_id": merchant_id,
+        "expires_at": expires_at.isoformat(),
+        "used": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "success": True,
+        "token": token,
+        "qr_url": f"/staff/qr-scan?token={token}",
+        "expires_in": 300,
+        "staff_name": staff["name"]
+    }
+
+@router.post("/qr/scan")
+async def qr_checkin_scan(
+    token: str,
+    action: Literal["clock_in", "clock_out", "break_start", "break_end"],
+    lat: Optional[float] = None,
+    lng: Optional[float] = None
+):
+    """QR Code scannen und automatisch ein-/auschecken"""
+    # Validate token
+    token_doc = await db.staff_qr_tokens.find_one({"token": token})
+    
+    if not token_doc:
+        raise HTTPException(404, "Ungültiger QR Code")
+    
+    if token_doc.get("used"):
+        raise HTTPException(410, "QR Code bereits verwendet")
+    
+    # Check expiry
+    expires_at = datetime.fromisoformat(token_doc["expires_at"])
+    if datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(410, "QR Code abgelaufen")
+    
+    # Create clock event
+    event = {
+        "id": str(uuid4()),
+        "merchant_id": token_doc["merchant_id"],
+        "staff_id": token_doc["staff_id"],
+        "action": action,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "lat": lat,
+        "lng": lng,
+        "note": "QR Check-in",
+        "source": "qr_scan",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.staff_clock_events.insert_one(event)
+    
+    # Mark token as used
+    await db.staff_qr_tokens.update_one(
+        {"token": token},
+        {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    event.pop("_id", None)
+    
+    # Get staff info
+    staff = await db.staff_members.find_one({"id": token_doc["staff_id"]}, {"_id": 0, "name": 1})
+    
+    return {
+        "success": True,
+        "event": event,
+        "staff_name": staff.get("name", "Unknown") if staff else "Unknown",
+        "message": f"{getActionLabel(action)} erfolgreich"
+    }
+
+def getActionLabel(action):
+    labels = {
+        "clock_in": "Eingecheckt",
+        "clock_out": "Ausgecheckt",
+        "break_start": "Pause gestartet",
+        "break_end": "Pause beendet"
+    }
+    return labels.get(action, action)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. BONUS FEATURES (QR, Export Placeholders) - LEGACY
 # ═══════════════════════════════════════════════════════════════════════════
 
 @router.get("/qr/{staff_id}")
@@ -726,6 +832,132 @@ async def generate_qr_token(
         "token": token,
         "qr_url": f"/staff/qr-checkin/{token}",
         "expires_in": 300  # 5 minutes
+    }
+
+@router.get("/export/pdf/{staff_id}")
+async def export_pdf_payslip(
+    staff_id: str,
+    start_date: str,
+    end_date: str,
+    merchant_id: str = Depends(get_merchant_id)
+):
+    """PDF Lohnzettel Export"""
+    from utils.pdf_generator import generate_payslip_pdf
+    from fastapi.responses import StreamingResponse
+    
+    # Get staff member
+    staff = await db.staff_members.find_one(
+        {"id": staff_id, "merchant_id": merchant_id},
+        {"_id": 0}
+    )
+    if not staff:
+        raise HTTPException(404, "Mitarbeiter nicht gefunden")
+    
+    # Calculate work hours
+    events = await db.staff_clock_events.find({
+        "staff_id": staff_id,
+        "timestamp": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0}).sort("timestamp", 1).to_list(10000)
+    
+    # Calculate hours (same logic as reports/hours)
+    total_hours = 0.0
+    break_hours = 0.0
+    current_shift_start = None
+    current_break_start = None
+    
+    for event in events:
+        ts = datetime.fromisoformat(event["timestamp"])
+        
+        if event["action"] == "clock_in":
+            current_shift_start = ts
+        elif event["action"] == "clock_out" and current_shift_start:
+            shift_duration = (ts - current_shift_start).total_seconds() / 3600
+            total_hours += shift_duration
+            current_shift_start = None
+        elif event["action"] == "break_start":
+            current_break_start = ts
+        elif event["action"] == "break_end" and current_break_start:
+            break_duration = (ts - current_break_start).total_seconds() / 3600
+            break_hours += break_duration
+            current_break_start = None
+    
+    net_hours = max(0, total_hours - break_hours)
+    days_in_period = (datetime.fromisoformat(end_date) - datetime.fromisoformat(start_date)).days + 1
+    expected_hours = (days_in_period / 7) * 40
+    overtime_hours = max(0, net_hours - expected_hours)
+    
+    work_hours_data = {
+        "total_hours": total_hours,
+        "break_hours": break_hours,
+        "net_hours": net_hours,
+        "overtime_hours": overtime_hours
+    }
+    
+    # Generate PDF
+    pdf_buffer = generate_payslip_pdf(
+        staff=staff,
+        period_start=start_date,
+        period_end=end_date,
+        work_hours_data=work_hours_data,
+        hourly_rate=staff.get("hourly_rate", 12.0)
+    )
+    
+    filename = f"lohnzettel_{staff['name'].replace(' ', '_')}_{start_date}_{end_date}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+# Geofencing GPS Validation
+@router.post("/geofence/validate")
+async def validate_geofence(
+    lat: float,
+    lng: float,
+    merchant_id: str = Depends(get_merchant_id)
+):
+    """Validiere ob GPS-Koordinaten innerhalb erlaubter Bereiche liegen"""
+    # Get merchant locations
+    merchant = await db.users.find_one({"id": merchant_id}, {"_id": 0, "business_locations": 1})
+    
+    if not merchant or not merchant.get("business_locations"):
+        # No geofencing configured - allow all
+        return {"success": True, "valid": True, "message": "Kein Geofencing konfiguriert"}
+    
+    # Check if coordinates are within any allowed location (radius check)
+    from math import radians, cos, sin, asin, sqrt
+    
+    def haversine(lon1, lat1, lon2, lat2):
+        """Calculate distance between two points in km"""
+        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a))
+        km = 6371 * c
+        return km
+    
+    for location in merchant["business_locations"]:
+        loc_lat = location.get("lat")
+        loc_lng = location.get("lng")
+        radius_km = location.get("radius_km", 0.1)  # Default 100m
+        
+        if loc_lat and loc_lng:
+            distance = haversine(lng, lat, loc_lng, loc_lat)
+            if distance <= radius_km:
+                return {
+                    "success": True,
+                    "valid": True,
+                    "message": f"Standort OK ({location.get('name', 'Unbekannt')})",
+                    "distance_km": round(distance, 3)
+                }
+    
+    return {
+        "success": True,
+        "valid": False,
+        "message": "Außerhalb erlaubter Standorte",
+        "nearest_location": None
     }
 
 @router.get("/export/datev")

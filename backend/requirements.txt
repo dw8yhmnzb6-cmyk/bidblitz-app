@@ -47,6 +47,7 @@ google-genai==1.68.0
 google-generativeai==0.8.6
 google-resumable-media==2.8.2
 googleapis-common-protos==1.73.0
+greenlet==3.5.0
 grpcio==1.78.0
 grpcio-status==1.71.2
 h11==0.16.0
@@ -94,6 +95,7 @@ pathspec==1.0.4
 peewee==4.0.4
 pillow==12.1.1
 platformdirs==4.9.4
+playwright==1.59.0
 pluggy==1.6.0
 propcache==0.4.1
 proto-plus==1.27.1
@@ -105,6 +107,7 @@ pycodestyle==2.14.0
 pycparser==3.0
 pydantic==2.12.5
 pydantic_core==2.41.5
+pyee==13.0.1
 pyflakes==3.4.0
 Pygments==2.19.2
 PyJWT==2.12.1
@@ -144,7 +147,9 @@ tenacity==9.1.4
 tiktoken==0.12.0
 tokenizers==0.22.2
 tqdm==4.67.3
+twilio==9.10.5
 typer==0.24.1
+types-protobuf==7.34.1.20260503
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.3
