@@ -15,6 +15,23 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter88 — Demo Polish + Real Payouts + NFC + Push Preferences)
+- 🟢 **Demo Seed (Investor-Grade)**: 30 Tage realistische Aktivität mit Archetypen (Schichtleiter/Koch/Kellner mit eigenen Patterns morning/evening/weekend). Generiert pro Seed: **10 Mitarbeiter · 613 Clock-Events · 55 Schichten · 50 Tasks (15 open / 35 done) · 50 Wallet-Bonus/Trinkgeld-Events · 10 Notifications · 4 Warnings · 2 Locations**. Ein Klick = perfekte Pitch-Deck-Daten.
+- 🟢 **Wallet Real-Payouts** (`staff_wallet.py`):
+  - `POST /bank/save` (Merchant) speichert IBAN — masked storage (`DE89••••3000`), Validierung
+  - `GET /bank/me` (Staff) — Bankdaten masked, **kein iban_full Leak**
+  - `POST /payout` mit zwei Methoden:
+    - **SEPA Manual**: `status=pending` + Reference `BB-XXXXXXXX` + IBAN masked, Merchant überweist via Banking-Portal
+    - **Stripe Connect**: live `stripe.Transfer.create` zu connected account (graceful Fallback bei fehlender Onboarding)
+  - `POST /payouts/{id}/confirm` (Merchant), `GET /payouts`, `GET /payouts/me`
+  - Bonus-Events werden mit `payout_id` verknüpft und `status=wallet_paid` markiert
+- 🟢 **NFC Native Service** (`utils/nfcService.js`): Capacitor `@capacitor-community/nfc` Plugin Wrapper mit Web-NFC Fallback (Android Chrome). `isNFCAvailable()` + `scanNFC()`. Terminal Page hat jetzt einen funktionalen `terminal-nfc-scan-btn` mit Loader + Toast-Fallback bei fehlender Verfügbarkeit.
+- 🟢 **OneSignal Push UI Vertiefung**:
+  - Backend: `GET/POST /api/staff/push/preferences` (4 Kategorien: shift_reminders, task_assigned, bonus_received, warnings), `GET /devices/me`
+  - Frontend: Profile Tab → "Benachrichtigungen" öffnet jetzt BottomSheet mit 4 Toggle-Rows + "Test-Push senden" Button
+- 🧪 Testing iter87/iter88: **14/14 Backend-Tests ✅** · 0 UI-Bugs · 0 Action Items
+
+
 ### 12.05.2026 (iter87 — Investor/Customer WOW Pass: Terminal Mode + Landing Showcase)
 - 🎨 **NEW: Staff Terminal / Kiosk Page** (`/staff/terminal`, `StaffTerminalPage.jsx`): Fullscreen-Tablet-Modus für geteiltes Gerät am Empfang. Member-Tiles mit Live-Status (Working/Pause/Bereit), Premium PIN-Pad Modal (PIN-Dots + 3×4 Grid), QR-Code Bereich (rechts), NFC-Zone (Placeholder für native App), Success-Flash bei Aktion, Auto-Refresh alle 30s. Optimal für Café/Restaurant/Friseur/Händler.
 - 🎨 **Landing Page Polish** (`StaffUpgradeScreen.jsx`):
