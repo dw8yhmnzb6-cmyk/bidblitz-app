@@ -19,6 +19,34 @@ export default function StaffProfile({ staff, onLoggedOut }) {
   const [pinModal, setPinModal] = useState(false);
   const [langModal, setLangModal] = useState(false);
   const [notif, setNotif] = useState(true);
+  const [pushPanel, setPushPanel] = useState(false);
+  const [prefs, setPrefs] = useState({ shift_reminders: true, task_assigned: true, bonus_received: true, warnings: true });
+
+  useEffect(() => {
+    fetch(`${API}/api/staff/push/preferences`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((j) => { if (j?.preferences) setPrefs((p) => ({ ...p, ...j.preferences })); })
+      .catch(() => {});
+  }, []);
+
+  const updatePref = async (key, value) => {
+    setPrefs((p) => ({ ...p, [key]: value }));
+    try {
+      await fetch(`${API}/api/staff/push/preferences`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+    } catch (e) {}
+  };
+
+  const sendTestPush = async () => {
+    try {
+      const r = await fetch(`${API}/api/staff/push/test`, { method: "POST", credentials: "include" });
+      if (r.ok) toast.success("Test-Push gesendet 📨");
+      else toast.error("OneSignal nicht konfiguriert");
+    } catch (e) { toast.error("Fehler"); }
+  };
 
   const logout = async () => {
     try {
@@ -77,9 +105,8 @@ export default function StaffProfile({ staff, onLoggedOut }) {
         <Row
           icon={Bell} color="#F59E0B"
           label="Benachrichtigungen"
-          rightSlot={
-            <Toggle on={notif} onChange={(v) => { setNotif(v); toast.message(v ? "Benachrichtigungen aktiv" : "Stumm geschaltet"); }} />
-          }
+          value="Push-Einstellungen verwalten"
+          onClick={() => setPushPanel(true)}
           testId="staff-profile-notifications"
         />
         <Row icon={Shield} color="#10B981" label="Datenschutz" value="Privatsphäre & Sicherheit" testId="staff-profile-privacy" />
@@ -116,6 +143,31 @@ export default function StaffProfile({ staff, onLoggedOut }) {
         </BottomSheet>
       )}
       {pinModal && <PinChangeSheet onClose={() => setPinModal(false)} />}
+      {pushPanel && (
+        <BottomSheet onClose={() => setPushPanel(false)} title="Push-Benachrichtigungen">
+          <div className="space-y-1">
+            {[
+              { k: "shift_reminders", label: "Schicht-Erinnerungen", sub: "Vor jeder Schicht informiert werden" },
+              { k: "task_assigned",   label: "Neue Aufgaben",        sub: "Sobald du eine Aufgabe bekommst" },
+              { k: "bonus_received",  label: "Bonus & Trinkgeld",    sub: "Wenn dir Geld gutgeschrieben wird" },
+              { k: "warnings",        label: "Wichtige Hinweise",    sub: "Überstunden, Pausenregel etc." },
+            ].map((p) => (
+              <div key={p.k} className="flex items-center gap-3 p-3 rounded-xl">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{p.label}</p>
+                  <p className="text-[11px] text-white/40">{p.sub}</p>
+                </div>
+                <Toggle on={!!prefs[p.k]} onChange={(v) => updatePref(p.k, v)} />
+              </div>
+            ))}
+            <button
+              onClick={sendTestPush}
+              data-testid="staff-profile-push-test"
+              className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#A855F7] text-sm font-bold"
+            >Test-Push senden</button>
+          </div>
+        </BottomSheet>
+      )}
     </div>
   );
 }

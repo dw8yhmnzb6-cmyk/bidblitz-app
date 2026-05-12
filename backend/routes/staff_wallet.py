@@ -261,22 +261,163 @@ async def my_balance(member=Depends(_staff_session)):
 
 
 # ───────────────────────────────────────────────────────────────────────
-# Payout Placeholder (echte Auszahlung via BidBlitz Wallet später)
+# Real Payout — Stripe Connect Express (mit Fallback auf SEPA-Manual)
 # ───────────────────────────────────────────────────────────────────────
+class BankDetails(BaseModel):
+    iban: str
+    account_holder: str
+    bic: Optional[str] = None
+
+
 class PayoutReq(BaseModel):
     staff_id: str
+    method: Optional[Literal["stripe_connect", "sepa_manual"]] = "sepa_manual"
+
+
+@router.post("/bank/save")
+async def save_bank_details(req: BankDetails, staff_id: str, request: Request):
+    """Merchant speichert Bankdaten eines MA (verschlüsselt-at-rest später)."""
+    mid = await _merchant_id(request)
+    member = await db.staff_members.find_one({"id": staff_id, "merchant_id": mid})
+    if not member:
+        raise HTTPException(404, "Mitarbeiter nicht gefunden")
+    # Masked storage — last 4 only visible in API responses
+    iban_clean = req.iban.replace(" ", "").upper()
+    if len(iban_clean) < 15:
+        raise HTTPException(400, "Ungültige IBAN")
+    await db.staff_bank_details.update_one(
+        {"merchant_id": mid, "staff_id": staff_id},
+        {"$set": {
+            "merchant_id": mid, "staff_id": staff_id,
+            "iban_full": iban_clean,  # in production: encrypted
+            "iban_masked": f"{iban_clean[:4]}••••{iban_clean[-4:]}",
+            "account_holder": req.account_holder,
+            "bic": req.bic,
+            "verified": False,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return {"success": True, "iban_masked": f"{iban_clean[:4]}••••{iban_clean[-4:]}"}
+
+
+@router.get("/bank/me")
+async def get_my_bank_details(member=Depends(_staff_session)):
+    """Mitarbeiter sieht eigene Bankdaten (masked)."""
+    b = await db.staff_bank_details.find_one(
+        {"merchant_id": member["merchant_id"], "staff_id": member["id"]},
+        {"_id": 0, "iban_full": 0},
+    )
+    return {"success": True, "bank": b}
 
 
 @router.post("/payout")
 async def request_payout(req: PayoutReq, request: Request):
-    """Markiert alle credited Beträge als wallet_paid (Auszahlung über BidBlitz Wallet TODO)."""
+    """Echte Auszahlung. SEPA manual: erzeugt Payout-Job, Merchant überweist via Banking-Portal.
+    Stripe Connect: TODO — erzeugt Stripe Transfer (benötigt connected account)."""
     mid = await _merchant_id(request)
-    res = await db.staff_bonus_events.update_many(
-        {"merchant_id": mid, "staff_id": req.staff_id, "status": "credited"},
-        {"$set": {"status": "wallet_paid", "paid_at": datetime.now(timezone.utc).isoformat()}},
-    )
-    return {
-        "success": True,
-        "marked_paid": res.modified_count,
-        "todo": "Echte BidBlitz Wallet-Auszahlung muss in /api/wallet/transfer integriert werden",
+    member = await db.staff_members.find_one({"id": req.staff_id, "merchant_id": mid}, {"_id": 0})
+    if not member:
+        raise HTTPException(404, "Mitarbeiter nicht gefunden")
+
+    # Sum credited (unpaid)
+    pipe = [
+        {"$match": {"merchant_id": mid, "staff_id": req.staff_id, "status": "credited"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount_eur"}, "count": {"$sum": 1}}},
+    ]
+    agg = await db.staff_bonus_events.aggregate(pipe).to_list(length=1)
+    total = float(agg[0]["total"]) if agg else 0.0
+    count = int(agg[0]["count"]) if agg else 0
+    if total <= 0:
+        raise HTTPException(400, "Kein auszahlbares Guthaben")
+
+    bank = await db.staff_bank_details.find_one({"merchant_id": mid, "staff_id": req.staff_id}, {"_id": 0})
+    if not bank or not bank.get("iban_full"):
+        raise HTTPException(400, "Keine Bankverbindung hinterlegt. Bitte zuerst IBAN speichern.")
+
+    payout_id = str(uuid4())
+    now = datetime.now(timezone.utc)
+    payout_doc = {
+        "id": payout_id,
+        "merchant_id": mid,
+        "staff_id": req.staff_id,
+        "amount_eur": total,
+        "event_count": count,
+        "method": req.method,
+        "status": "pending",
+        "iban_masked": bank.get("iban_masked"),
+        "account_holder": bank.get("account_holder"),
+        "reference": f"BB-{payout_id[:8].upper()}",
+        "created_at": now.isoformat(),
+        "completed_at": None,
     }
+
+    # Stripe Connect path (optional)
+    if req.method == "stripe_connect":
+        try:
+            stripe_account_id = bank.get("stripe_account_id")
+            if not stripe_account_id:
+                payout_doc["status"] = "needs_stripe_onboarding"
+                payout_doc["error"] = "Mitarbeiter hat keinen Stripe Connect Account"
+            else:
+                # Real Stripe transfer
+                import stripe
+                stripe.api_key = os.getenv("STRIPE_API_KEY")
+                if not stripe.api_key:
+                    raise RuntimeError("STRIPE_API_KEY fehlt")
+                transfer = stripe.Transfer.create(
+                    amount=int(total * 100),
+                    currency="eur",
+                    destination=stripe_account_id,
+                    description=f"BidBlitz Wallet-Auszahlung {payout_doc['reference']}",
+                    metadata={"merchant_id": mid, "staff_id": req.staff_id, "payout_id": payout_id},
+                )
+                payout_doc["status"] = "processing"
+                payout_doc["stripe_transfer_id"] = transfer.id
+        except Exception as e:
+            payout_doc["status"] = "failed"
+            payout_doc["error"] = str(e)
+
+    await db.staff_payouts.insert_one(payout_doc)
+
+    # Mark bonus events as wallet_paid (linked to this payout)
+    await db.staff_bonus_events.update_many(
+        {"merchant_id": mid, "staff_id": req.staff_id, "status": "credited"},
+        {"$set": {"status": "wallet_paid", "paid_at": now.isoformat(), "payout_id": payout_id}},
+    )
+
+    payout_doc.pop("_id", None)
+    return {"success": True, "payout": payout_doc, "next_step":
+            ("Stripe Transfer wird in 1-3 Werktagen ausgeführt" if req.method == "stripe_connect"
+             else f"SEPA-Überweisung {payout_doc['reference']} an {bank.get('iban_masked')} – bitte im Banking-Portal ausführen")}
+
+
+@router.get("/payouts")
+async def list_payouts(request: Request, staff_id: Optional[str] = None, limit: int = 50):
+    mid = await _merchant_id(request)
+    q: dict = {"merchant_id": mid}
+    if staff_id: q["staff_id"] = staff_id
+    items = await db.staff_payouts.find(q, {"_id": 0}).sort("created_at", -1).to_list(length=limit)
+    return {"success": True, "payouts": items, "count": len(items)}
+
+
+@router.get("/payouts/me")
+async def my_payouts(member=Depends(_staff_session), limit: int = 30):
+    items = await db.staff_payouts.find(
+        {"merchant_id": member["merchant_id"], "staff_id": member["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(length=limit)
+    return {"success": True, "payouts": items, "count": len(items)}
+
+
+@router.post("/payouts/{payout_id}/confirm")
+async def confirm_payout(payout_id: str, request: Request):
+    """Merchant markiert SEPA-Auszahlung als erfolgt (manuelle Bestätigung)."""
+    mid = await _merchant_id(request)
+    res = await db.staff_payouts.update_one(
+        {"id": payout_id, "merchant_id": mid, "status": "pending"},
+        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.modified_count == 0:
+        raise HTTPException(404, "Payout nicht gefunden oder nicht im pending-Status")
+    return {"success": True}

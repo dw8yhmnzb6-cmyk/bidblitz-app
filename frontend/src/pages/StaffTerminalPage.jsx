@@ -8,9 +8,10 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Loader2, Play, Square, Coffee, Wifi, ArrowLeft, X, Delete, ScanLine, Smartphone, CheckCircle2, LogIn, LogOut,
+  Loader2, Coffee, Wifi, X, Delete, ScanLine, Smartphone, CheckCircle2, LogIn, LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
+import { isNFCAvailable, scanNFC } from "../utils/nfcService";
 import "../styles/staff-tokens.css";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -24,6 +25,28 @@ export default function StaffTerminalPage({ onBack }) {
   const [statusByMember, setStatusByMember] = useState({});
   const [search, setSearch] = useState("");
   const [success, setSuccess] = useState(null); // {name, action}
+  const [nfcState, setNfcState] = useState({ available: false, mode: "none" });
+  const [nfcScanning, setNfcScanning] = useState(false);
+
+  useEffect(() => {
+    (async () => setNfcState(await isNFCAvailable()))();
+  }, []);
+
+  const doNfcScan = async () => {
+    if (!nfcState.available) {
+      toast.message("NFC nicht verfügbar", { description: nfcState.reason || "In nativer App verfügbar." });
+      return;
+    }
+    setNfcScanning(true);
+    toast.message("NFC Scan gestartet", { description: "Halte den NFC-Tag an das Gerät" });
+    const r = await scanNFC({ timeout: 12000 });
+    setNfcScanning(false);
+    if (!r.ok) return toast.error(r.error || "Scan fehlgeschlagen");
+    // Resolve NFC payload → matching staff_member by external_id or name
+    const target = members.find((m) => (r.payload || "").includes(m.id) || (r.payload || "").toLowerCase().includes((m.name || "").toLowerCase()));
+    if (!target) return toast.error(`NFC erkannt aber kein Mitarbeiter zugeordnet: ${r.payload}`);
+    setPinPad(target);
+  };
 
   const loadMembers = useCallback(async () => {
     setLoading(true);
@@ -194,12 +217,34 @@ export default function StaffTerminalPage({ onBack }) {
             <div className="flex items-center gap-2 mb-3">
               <Smartphone size={16} className="text-[#7E5BF6]" />
               <p className="text-[11px] uppercase tracking-[0.2em] text-white/60 font-semibold">NFC Tag</p>
+              {nfcState.available && (
+                <span className="ml-auto text-[10px] text-[#10D981] font-semibold">Verfügbar ({nfcState.mode})</span>
+              )}
             </div>
             <p className="text-sm font-bold mb-1">Karte oder Handy auflegen</p>
-            <p className="text-[12px] text-white/50 leading-relaxed">NFC-Stempelkarten werden hier erkannt (verfügbar in der nativen App).</p>
-            <div className="mt-4 h-24 rounded-2xl flex items-center justify-center border border-dashed border-white/15">
-              <Smartphone size={32} className="text-white/30" />
-            </div>
+            <p className="text-[12px] text-white/50 leading-relaxed">
+              {nfcState.available
+                ? "Tippe auf den Bereich und halte den NFC-Tag ans Gerät."
+                : "NFC ist in der nativen App verfügbar (iOS/Android). Web-NFC nur auf Android Chrome."}
+            </p>
+            <button
+              onClick={doNfcScan}
+              disabled={!nfcState.available || nfcScanning}
+              data-testid="terminal-nfc-scan-btn"
+              className="mt-4 w-full h-24 rounded-2xl flex items-center justify-center border border-dashed border-white/20 hover:border-[#7E5BF6]/50 hover:bg-[#7E5BF6]/5 transition-all disabled:opacity-50"
+            >
+              {nfcScanning ? (
+                <div className="flex flex-col items-center gap-1.5">
+                  <Loader2 size={28} className="animate-spin text-[#7E5BF6]" />
+                  <span className="text-[11px] text-white/60">Scan läuft…</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1">
+                  <Smartphone size={32} className="text-white/30" />
+                  <span className="text-[11px] text-white/40">{nfcState.available ? "Scan starten" : "Nicht verfügbar"}</span>
+                </div>
+              )}
+            </button>
           </div>
         </aside>
       </div>
