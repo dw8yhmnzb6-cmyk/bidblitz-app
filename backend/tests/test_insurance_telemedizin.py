@@ -9,7 +9,7 @@ import pytest
 import requests
 from pymongo import MongoClient
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://ocpp-csms-platform.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://qr-checkout-20.preview.emergentagent.com").rstrip("/")
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "test_database"
 

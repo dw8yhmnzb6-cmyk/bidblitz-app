@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://ocpp-csms-platform.preview.emergentagent.com',
+    url: 'https://qr-checkout-20.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {
