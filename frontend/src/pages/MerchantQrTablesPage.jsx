@@ -8,9 +8,10 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Printer, Check, X as XIcon, Plus, RotateCw, Settings, ListChecks,
+  UtensilsCrossed, Image as ImageIcon, Trash2, Save,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -21,6 +22,7 @@ async function readJson(res) { try { return await res.json(); } catch { return n
 
 const tabs = [
   { id: "tables", label: "Tische", icon: <ListChecks size={14} /> },
+  { id: "menu", label: "Speisekarte", icon: <UtensilsCrossed size={14} /> },
   { id: "orders", label: "Bestellungen", icon: <RefreshCw size={14} /> },
   { id: "settings", label: "Einstellungen", icon: <Settings size={14} /> },
 ];
@@ -159,6 +161,9 @@ export default function MerchantQrTablesPage({ onBack, user }) {
             createTable={createTable}
             rotateToken={rotateToken}
           />
+        )}
+        {tab === "menu" && (
+          <MenuTab merchantId={merchantId} />
         )}
         {tab === "orders" && (
           <OrdersTab orders={orders} onAction={orderAction} />
@@ -426,6 +431,317 @@ function SettingsTab({ settings, setSettings, onSave }) {
       <button onClick={onSave} className="w-full py-3 bg-cyan-500 text-black rounded-2xl font-bold" data-testid="qr-settings-save">
         Einstellungen speichern
       </button>
+    </div>
+  );
+}
+
+// ─── MenuTab: visual menu editor with image upload + tags + modifiers ────
+
+const TAG_OPTIONS = [
+  { id: "popular", label: "🔥 Beliebt" },
+  { id: "vegan", label: "🌱 Vegan" },
+  { id: "vegetarian", label: "🥦 Vegetarisch" },
+  { id: "spicy", label: "🌶️ Scharf" },
+  { id: "healthy", label: "💚 Gesund" },
+  { id: "new", label: "✨ Neu" },
+];
+const ALLERGEN_OPTIONS = [
+  { id: "gluten", label: "🌾 Gluten" },
+  { id: "milk", label: "🥛 Milch" },
+  { id: "egg", label: "🥚 Ei" },
+  { id: "nuts", label: "🥜 Nüsse" },
+  { id: "soy", label: "🌱 Soja" },
+  { id: "fish", label: "🐟 Fisch" },
+  { id: "shellfish", label: "🦐 Krustent." },
+  { id: "sesame", label: "🌰 Sesam" },
+  { id: "sulfites", label: "🍷 Sulfite" },
+  { id: "celery", label: "🌿 Sellerie" },
+];
+
+const buildImg = (u) => (!u ? null : (u.startsWith("/") ? `${API}${u}` : u));
+
+function MenuTab({ merchantId }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(null);  // item or null
+
+  const load = useCallback(async () => {
+    if (!merchantId) return;
+    setLoading(true);
+    const res = await fetch(`${API}/api/merchant/menu/${merchantId}`, cred);
+    const data = await readJson(res);
+    if (res.ok) setItems(data?.items || []);
+    setLoading(false);
+  }, [merchantId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const delItem = async (item_id) => {
+    if (!window.confirm("Artikel wirklich löschen?")) return;
+    const res = await fetch(`${API}/api/merchant/menu/items/${merchantId}/${item_id}`, {
+      ...credJson, method: "DELETE",
+    });
+    if (res.ok) load();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-wider text-white/40">{items.length} Artikel</p>
+        <button onClick={() => setEditing({})}
+          className="px-3 py-2 rounded-xl bg-cyan-500 text-black text-xs font-bold flex items-center gap-1"
+          data-testid="qr-menu-new">
+          <Plus size={12}/> Neuer Artikel
+        </button>
+      </div>
+      {loading && items.length === 0 && (
+        <p className="text-xs text-white/40 text-center py-8">Lade...</p>
+      )}
+      {!loading && items.length === 0 && (
+        <div className="text-center py-12 bg-[#0C0C0C] border border-white/5 rounded-2xl">
+          <UtensilsCrossed size={28} className="mx-auto text-white/20 mb-2"/>
+          <p className="text-sm text-white/60">Speisekarte ist leer</p>
+          <p className="text-xs text-white/30 mt-1">Lege deinen ersten Artikel an.</p>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {items.map((it) => (
+          <button key={it.item_id} onClick={() => setEditing(it)}
+            className="bg-[#0C0C0C] border border-white/5 rounded-xl p-2.5 flex gap-2.5 text-left hover:border-white/15"
+            data-testid={`qr-menu-edit-${it.item_id}`}>
+            <div className="w-16 h-16 rounded-lg bg-white/5 shrink-0 overflow-hidden flex items-center justify-center">
+              {it.image_url ? (
+                <img src={buildImg(it.image_url)} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <ImageIcon size={20} className="text-white/20"/>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold truncate">{it.name}</p>
+              <p className="text-[10px] text-white/40">{it.category} · {it.scope === "food" ? "Speisen" : "Getränke"}</p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-sm font-bold text-cyan-400">€{Number(it.price).toFixed(2)}</span>
+                {(it.tags || []).length > 0 && (
+                  <span className="text-[9px] text-white/40">{(it.tags || []).slice(0,2).join(", ")}</span>
+                )}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+      <AnimatePresence>
+        {editing !== null && (
+          <ItemEditor
+            initial={editing}
+            merchantId={merchantId}
+            onClose={() => setEditing(null)}
+            onSaved={() => { load(); setEditing(null); }}
+            onDelete={editing?.item_id ? () => { delItem(editing.item_id); setEditing(null); } : null}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ItemEditor({ initial, merchantId, onClose, onSaved, onDelete }) {
+  const [f, setF] = useState({
+    item_id: initial?.item_id || undefined,
+    name: initial?.name || "",
+    description: initial?.description || "",
+    price: initial?.price ?? "",
+    category: initial?.category || "Hauptgericht",
+    scope: initial?.scope || "food",
+    image_url: initial?.image_url || "",
+    tags: initial?.tags || [],
+    allergens: initial?.allergens || [],
+    calories: initial?.calories ?? "",
+    is_popular: initial?.is_popular || false,
+    is_available: initial?.is_available !== false,
+    sort_order: initial?.sort_order || 0,
+    modifier_groups: initial?.modifier_groups || [],
+  });
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const upload = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    setErr(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${API}/api/merchant/menu/upload-image`, {
+        method: "POST", credentials: "include", body: fd,
+      });
+      const data = await readJson(res);
+      if (!res.ok) {
+        setErr(data?.detail || "Upload fehlgeschlagen");
+      } else {
+        setF((p) => ({ ...p, image_url: data.url }));
+      }
+    } finally { setUploading(false); }
+  };
+
+  const save = async () => {
+    if (!f.name.trim() || !f.price) { setErr("Name + Preis erforderlich"); return; }
+    setSaving(true);
+    setErr(null);
+    const payload = {
+      merchant_id: merchantId,
+      ...f,
+      price: parseFloat(f.price),
+      calories: f.calories === "" ? null : parseInt(f.calories, 10),
+      sort_order: parseInt(f.sort_order || 0, 10),
+    };
+    const res = await fetch(`${API}/api/merchant/menu/items`, {
+      ...credJson, method: "POST", body: JSON.stringify(payload),
+    });
+    const data = await readJson(res);
+    if (!res.ok) {
+      setErr(data?.detail || "Speichern fehlgeschlagen");
+      setSaving(false);
+    } else {
+      onSaved(data?.item);
+    }
+  };
+
+  const toggleTag = (id) => setF((p) => ({ ...p, tags: p.tags.includes(id) ? p.tags.filter(x=>x!==id) : [...p.tags, id] }));
+  const toggleAllergen = (id) => setF((p) => ({ ...p, allergens: p.allergens.includes(id) ? p.allergens.filter(x=>x!==id) : [...p.allergens, id] }));
+
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end" onClick={onClose}>
+      <motion.div initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
+        onClick={(e)=>e.stopPropagation()}
+        className="w-full bg-[#0e0e0e] rounded-t-3xl max-h-[92vh] overflow-y-auto p-5"
+        data-testid="qr-item-editor">
+        <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4"/>
+        <h2 className="text-lg font-bold mb-4">{f.item_id ? "Artikel bearbeiten" : "Neuer Artikel"}</h2>
+
+        {err && <p className="mb-3 text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg p-2">{err}</p>}
+
+        {/* Image */}
+        <div className="mb-4">
+          <p className="text-[11px] uppercase tracking-wider text-white/40 mb-2">Bild</p>
+          {f.image_url ? (
+            <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-white/5">
+              <img src={buildImg(f.image_url)} alt="" className="w-full h-full object-cover" />
+              <button onClick={()=>setF((p)=>({...p,image_url:""}))}
+                className="absolute top-2 right-2 w-8 h-8 bg-black/70 rounded-full flex items-center justify-center"
+                data-testid="qr-item-img-clear"><XIcon size={14}/></button>
+            </div>
+          ) : (
+            <div className="aspect-[16/10] rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-1 p-3">
+              <ImageIcon size={24} className="text-white/30 mb-1"/>
+              <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-cyan-500 text-black text-xs font-bold">
+                {uploading ? "Lade hoch..." : "Bild hochladen"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                  onChange={(e)=>upload(e.target.files?.[0])}
+                  data-testid="qr-item-img-upload"/>
+              </label>
+              <p className="text-[10px] text-white/30 mt-1">oder URL einfügen ↓</p>
+            </div>
+          )}
+          <input value={f.image_url} onChange={(e)=>setF((p)=>({...p,image_url:e.target.value}))}
+            placeholder="https://... (oder /api/qr/menu/image/...)"
+            className="mt-2 w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs outline-none"
+            data-testid="qr-item-img-url"/>
+        </div>
+
+        {/* Name + Price */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <Field label="Name" required>
+            <input value={f.name} onChange={(e)=>setF((p)=>({...p,name:e.target.value}))}
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm outline-none"
+              data-testid="qr-item-name"/>
+          </Field>
+          <Field label="Preis (€)" required>
+            <input type="number" step="0.10" min="0" value={f.price}
+              onChange={(e)=>setF((p)=>({...p,price:e.target.value}))}
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm outline-none"
+              data-testid="qr-item-price"/>
+          </Field>
+        </div>
+
+        <Field label="Beschreibung">
+          <textarea value={f.description} onChange={(e)=>setF((p)=>({...p,description:e.target.value.slice(0,400)}))}
+            rows={2}
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm outline-none resize-none"
+            data-testid="qr-item-desc"/>
+        </Field>
+
+        <div className="grid grid-cols-3 gap-2 my-3">
+          <Field label="Kategorie">
+            <input value={f.category} onChange={(e)=>setF((p)=>({...p,category:e.target.value}))}
+              className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-xs outline-none"
+              data-testid="qr-item-cat"/>
+          </Field>
+          <Field label="Bereich">
+            <select value={f.scope} onChange={(e)=>setF((p)=>({...p,scope:e.target.value}))}
+              className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-xs outline-none">
+              <option value="food">Speisen</option>
+              <option value="drinks">Getränke</option>
+            </select>
+          </Field>
+          <Field label="Kalorien">
+            <input type="number" min="0" value={f.calories}
+              onChange={(e)=>setF((p)=>({...p,calories:e.target.value}))}
+              className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-xs outline-none"/>
+          </Field>
+        </div>
+
+        <Field label="Tags">
+          <div className="flex flex-wrap gap-1.5">
+            {TAG_OPTIONS.map((tg) => (
+              <button key={tg.id} onClick={()=>toggleTag(tg.id)}
+                data-testid={`qr-item-tag-${tg.id}`}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                  f.tags.includes(tg.id) ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40" : "bg-white/5 text-white/60 border border-white/10"
+                }`}>{tg.label}</button>
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Allergene">
+          <div className="flex flex-wrap gap-1.5">
+            {ALLERGEN_OPTIONS.map((al) => (
+              <button key={al.id} onClick={()=>toggleAllergen(al.id)}
+                data-testid={`qr-item-allergen-${al.id}`}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                  f.allergens.includes(al.id) ? "bg-red-500/15 text-red-200 border border-red-500/30" : "bg-white/5 text-white/60 border border-white/10"
+                }`}>{al.label}</button>
+            ))}
+          </div>
+        </Field>
+
+        {/* Actions */}
+        <div className="flex gap-2 mt-5 pt-3 border-t border-white/10">
+          {onDelete && (
+            <button onClick={onDelete} className="px-3 py-2.5 rounded-xl bg-red-500/15 text-red-300 text-sm font-bold flex items-center gap-1" data-testid="qr-item-delete">
+              <Trash2 size={14}/>
+            </button>
+          )}
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-white/10 text-sm font-bold">Abbrechen</button>
+          <button onClick={save} disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-cyan-500 text-black text-sm font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+            data-testid="qr-item-save">
+            <Save size={14}/> {saving ? "Speichert..." : "Speichern"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function Field({ label, required, children }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </p>
+      {children}
     </div>
   );
 }
