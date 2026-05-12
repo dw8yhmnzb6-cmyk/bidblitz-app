@@ -38,7 +38,7 @@ function ChipGroup({ label, items, suffix = "", colorClass, testidPrefix, onPick
   return (
     <div className="mb-2">
       <span className="text-[9px] text-gray-600 uppercase tracking-wider">{label}</span>
-      <div className="flex gap-1.5 flex-wrap mt-1">
+      <div className="flex gap-2 flex-wrap mt-1">
         {items.map((dest) => (
           <button
             key={dest.name}
@@ -79,7 +79,7 @@ export default function TaxiQuickDestinations({
         )}
       </div>
 
-      <div className="flex gap-2 flex-wrap mb-3">
+      <div className="flex gap-2.5 flex-wrap mb-3">
         {SCHNELLAUSWAHL.map((dest) => (
           <button
             key={dest.name}

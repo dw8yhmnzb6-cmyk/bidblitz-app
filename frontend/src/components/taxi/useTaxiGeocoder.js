@@ -14,7 +14,7 @@ import { useCallback, useRef, useEffect } from "react";
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 const FORWARD_PARAMS =
-  "country=de,at,ch&language=de&limit=6&types=address,poi,place,locality,neighborhood,postcode,district";
+  "language=de&limit=8&types=address,poi,place,locality,neighborhood,postcode,district";
 
 function parseFeature(f) {
   const ctx = f.context || [];
@@ -116,7 +116,7 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
     try {
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         target.address,
-      )}.json?access_token=${MAPBOX_TOKEN}&country=de,at,ch&language=de&limit=1`;
+      )}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
