@@ -19,6 +19,7 @@ import {
   sendClockEvent, getQueueLength, flushQueue, startOnlineSync, getDeviceInfo,
 } from "../utils/staffOfflineQueue";
 import { t, getStaffLang, setStaffLang, STAFF_LANGUAGES } from "../i18n/staff";
+import StaffNotificationCenter from "../components/staff/StaffNotificationCenter";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -31,6 +32,8 @@ export default function StaffMobilePage({ onBack }) {
   const [queuedCount, setQueuedCount] = useState(0);
   const [lang, setLang] = useState(getStaffLang());
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotif, setUnreadNotif] = useState(0);
 
   const reload = useCallback(async () => {
     try {
@@ -48,6 +51,14 @@ export default function StaffMobilePage({ onBack }) {
         const dj = await d.json();
         setDashboard(dj);
       }
+      // Notifications count
+      try {
+        const nr = await fetch(`${API}/api/staff/notifications/list?only_unread=true&limit=1`, { credentials: "include" });
+        if (nr.ok) {
+          const nj = await nr.json();
+          setUnreadNotif(nj.unread_count || 0);
+        }
+      } catch (e) {}
     } catch (e) {
       console.error(e);
     }
@@ -184,6 +195,21 @@ export default function StaffMobilePage({ onBack }) {
                 {queuedCount}
               </span>
             )}
+            <button
+              onClick={() => setShowNotifications(true)}
+              data-testid="staff-mobile-notif-btn"
+              className="relative p-2 rounded-lg hover:bg-white/5"
+            >
+              <Bell size={16} className="text-white/70" />
+              {unreadNotif > 0 && (
+                <span
+                  data-testid="staff-mobile-notif-badge"
+                  className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center"
+                >
+                  {unreadNotif > 9 ? "9+" : unreadNotif}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setShowSettings(true)}
               data-testid="staff-mobile-settings-btn"
@@ -364,6 +390,11 @@ export default function StaffMobilePage({ onBack }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <StaffNotificationCenter
+        open={showNotifications}
+        onClose={() => { setShowNotifications(false); reload(); }}
+      />
     </div>
   );
 }

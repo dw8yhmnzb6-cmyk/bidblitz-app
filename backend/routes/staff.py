@@ -448,7 +448,19 @@ async def create_shift(
     
     await db.staff_shifts.insert_one(shift)
     shift.pop("_id", None)
-    
+
+    # Auto-Notification: new_shift
+    try:
+        from routes.staff_notifications import create_notification
+        await create_notification(
+            merchant_id, data.staff_id, "new_shift",
+            title=f"Neue Schicht: {data.title}",
+            body=f"{data.start_time.strftime('%d.%m.%Y %H:%M')} – {data.end_time.strftime('%H:%M')}",
+            meta={"shift_id": shift["id"]},
+        )
+    except Exception:
+        pass
+
     return {"success": True, "shift": shift}
 
 @router.get("/shifts")
@@ -597,7 +609,22 @@ async def approve_leave_request(
                 {"id": req["staff_id"], "merchant_id": merchant_id},
                 {"$inc": {"vacation_days_used": days}}
             )
-    
+
+    # Auto-Notification: leave_approved / leave_rejected
+    try:
+        leave = await db.staff_leave_requests.find_one({"id": request_id}, {"_id": 0})
+        if leave:
+            from routes.staff_notifications import create_notification
+            await create_notification(
+                merchant_id, leave["staff_id"],
+                "leave_approved" if data.status == "approved" else "leave_rejected",
+                title="Urlaub genehmigt" if data.status == "approved" else "Urlaub abgelehnt",
+                body=data.admin_note or "",
+                meta={"leave_id": request_id},
+            )
+    except Exception:
+        pass
+
     return {"success": True, "approved": data.status == "approved"}
 
 # ═══════════════════════════════════════════════════════════════════════════
