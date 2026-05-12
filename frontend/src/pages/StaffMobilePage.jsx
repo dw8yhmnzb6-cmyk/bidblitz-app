@@ -195,6 +195,11 @@ export default function StaffMobilePage({ onBack }) {
   const status = dashboard?.status || "off";
   const statusLabel = status === "working" ? t("status_working", lang) : status === "break" ? t("status_break", lang) : t("status_off", lang);
   const statusColor = status === "working" ? "#10B981" : status === "break" ? "#F59E0B" : "#6B7280";
+  // Quick-Action: primary action based on current status
+  const primaryAction = status === "off" ? "clock_in" : status === "working" ? "clock_out" : "break_end";
+  const primaryLabel = status === "off" ? t("check_in", lang) : status === "working" ? t("check_out", lang) : t("end_break", lang);
+  const primaryColor = status === "off" ? "#10B981" : status === "working" ? "#EF4444" : "#10B981";
+  const primaryIcon = status === "off" ? LogIn : status === "working" ? LogOut : Play;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white pb-32" data-testid="staff-mobile-page">
@@ -247,12 +252,16 @@ export default function StaffMobilePage({ onBack }) {
         </div>
       </div>
 
-      {/* Status hero */}
+      {/* Status hero - Tap zum Schnell-Check-in */}
       <section className="px-4 pt-6 pb-4">
-        <motion.div
+        <motion.button
+          onClick={() => doClock(primaryAction)}
+          disabled={acting !== null}
+          data-testid="staff-quick-action-btn"
+          whileTap={{ scale: 0.97 }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl p-5 bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/10"
+          className="w-full text-left rounded-3xl p-5 bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/10 disabled:opacity-70"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -260,12 +269,24 @@ export default function StaffMobilePage({ onBack }) {
               <p className="text-2xl font-bold mt-1" data-testid="staff-status-label">
                 {statusLabel}
               </p>
+              <p className="text-[11px] text-white/50 mt-1">
+                Antippen: <span style={{ color: primaryColor }} className="font-semibold">{primaryLabel}</span>
+              </p>
             </div>
-            <div
-              className="w-3 h-3 rounded-full animate-pulse"
-              style={{ background: statusColor, boxShadow: `0 0 18px ${statusColor}` }}
-              data-testid="staff-status-dot"
-            />
+            <div className="flex flex-col items-end gap-2">
+              <div
+                className="w-3 h-3 rounded-full animate-pulse"
+                style={{ background: statusColor, boxShadow: `0 0 18px ${statusColor}` }}
+                data-testid="staff-status-dot"
+              />
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style={{ background: `${primaryColor}22`, color: primaryColor }}
+              >
+                {acting === primaryAction ? <Loader2 size={20} className="animate-spin" /> :
+                  React.createElement(primaryIcon, { size: 20 })}
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -284,7 +305,7 @@ export default function StaffMobilePage({ onBack }) {
               <p className="text-xl font-bold" data-testid="staff-week-hours">{dashboard?.week_hours ?? 0}h</p>
             </div>
           </div>
-        </motion.div>
+        </motion.button>
       </section>
 
       {/* Big action buttons */}

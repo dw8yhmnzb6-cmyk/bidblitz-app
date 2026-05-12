@@ -228,15 +228,15 @@ async def balances(request: Request):
         events = await db.staff_bonus_events.find(
             {"merchant_id": mid, "staff_id": m["id"]}, {"_id": 0, "amount_eur": 1, "type": 1, "status": 1}
         ).to_list(length=500)
-        credited = sum(e.get("amount_eur", 0) for e in events if e.get("status") == "credited")
+        pending = sum(e.get("amount_eur", 0) for e in events if e.get("status") == "credited")
         paid = sum(e.get("amount_eur", 0) for e in events if e.get("status") == "wallet_paid")
-        tips = sum(e.get("amount_eur", 0) for e in events if e.get("type") == "tip")
-        bonus = credited - tips
+        tips_pending = sum(e.get("amount_eur", 0) for e in events if e.get("type") == "tip" and e.get("status") == "credited")
+        bonus_pending = pending - tips_pending
         rows.append({
             "staff_id": m["id"], "name": m["name"],
-            "balance_eur": round(credited - paid, 2),
-            "tips_credited_eur": round(tips, 2),
-            "bonus_credited_eur": round(bonus, 2),
+            "balance_eur": round(pending, 2),
+            "tips_credited_eur": round(tips_pending, 2),
+            "bonus_credited_eur": round(bonus_pending, 2),
             "paid_out_eur": round(paid, 2),
             "wallet_enabled": bool(m.get("wallet_enabled", True)),
         })
@@ -249,11 +249,13 @@ async def my_balance(member=Depends(_staff_session)):
     events = await db.staff_bonus_events.find(
         {"merchant_id": member["merchant_id"], "staff_id": member["id"]}, {"_id": 0}
     ).sort("created_at", -1).to_list(length=200)
-    credited = sum(e.get("amount_eur", 0) for e in events if e.get("status") == "credited")
-    paid = sum(e.get("amount_eur", 0) for e in events if e.get("status") == "wallet_paid")
+    # Balance = nur credited (noch nicht ausgezahlt)
+    pending = sum(e.get("amount_eur", 0) for e in events if e.get("status") == "credited")
+    paid_total = sum(e.get("amount_eur", 0) for e in events if e.get("status") == "wallet_paid")
     return {
         "success": True,
-        "balance_eur": round(credited - paid, 2),
+        "balance_eur": round(pending, 2),
+        "paid_lifetime_eur": round(paid_total, 2),
         "events": events[:50],
     }
 

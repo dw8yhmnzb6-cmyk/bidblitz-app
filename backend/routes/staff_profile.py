@@ -56,9 +56,15 @@ async def update_my_profile(req: ProfileUpdate, member=Depends(get_staff_from_se
 
 
 @router.post("/change-pin")
-async def change_pin(req: PinChange, member=Depends(get_staff_from_session)):
-    if not (req.new_pin.isdigit() and 4 <= len(req.new_pin) <= 8):
-        raise HTTPException(400, "PIN muss 4-8 Ziffern lang sein")
+async def change_pin(req: PinChange, request: Request, member=Depends(get_staff_from_session)):
+    from utils.rate_limit import enforce_rate_limit, reset_rate_limit
+    rl_key = enforce_rate_limit(request, f"change_pin:{member['id']}", max_attempts=5, window_sec=900, lockout_sec=900)
+
+    if not (req.new_pin.isdigit() and 6 <= len(req.new_pin) <= 8):
+        raise HTTPException(400, "PIN muss 6-8 Ziffern lang sein")
+    # Schwache PINs ablehnen
+    if req.new_pin in ("000000", "111111", "123456", "654321", "12345678", "87654321"):
+        raise HTTPException(400, "PIN ist zu unsicher. Bitte eine weniger offensichtliche PIN wählen.")
     # Validate current PIN if previously set
     raw = await db.staff_members.find_one({"id": member["id"]})
     if raw and raw.get("pin_hash"):
@@ -68,6 +74,7 @@ async def change_pin(req: PinChange, member=Depends(get_staff_from_session)):
     await db.staff_members.update_one(
         {"id": member["id"]}, {"$set": {"pin_hash": new_hash, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
+    reset_rate_limit(rl_key)
     return {"success": True, "message": "PIN aktualisiert"}
 
 

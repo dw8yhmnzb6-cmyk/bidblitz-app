@@ -53,6 +53,41 @@ async def validate_geofence(merchant_id: str, staff_id: str, lat: Optional[float
     """Used by clock event to detect out-of-range check-ins. Returns warning dict or None."""
     if lat is None or lng is None:
         return None
+
+    # GPS Spoof Detection: Check last clock event speed
+    try:
+        prev = await db.staff_clock_events.find(
+            {"merchant_id": merchant_id, "staff_id": staff_id, "lat": {"$ne": None}, "lng": {"$ne": None}},
+            {"_id": 0, "lat": 1, "lng": 1, "timestamp": 1},
+        ).sort("timestamp", -1).limit(1).to_list(length=1)
+        if prev:
+            prev_lat, prev_lng = float(prev[0]["lat"]), float(prev[0]["lng"])
+            prev_t = datetime.fromisoformat(prev[0]["timestamp"].replace("Z", "+00:00"))
+            dt_sec = max(1, int((datetime.now(timezone.utc) - prev_t).total_seconds()))
+            dist_m = _haversine_m(lat, lng, prev_lat, prev_lng)
+            speed_kmh = (dist_m / dt_sec) * 3.6
+            # > 250 km/h impliziert Spoofing (Auto/Bahn max ~200)
+            if speed_kmh > 250 and dist_m > 5000:
+                spoof = {
+                    "id": str(uuid4()),
+                    "merchant_id": merchant_id,
+                    "staff_id": staff_id,
+                    "type": "gps_spoof_suspected",
+                    "severity": "high",
+                    "message": f"GPS-Sprung: {int(dist_m/1000)}km in {dt_sec}s ({int(speed_kmh)}km/h)",
+                    "speed_kmh": int(speed_kmh),
+                    "distance_m": int(dist_m),
+                    "resolved": False,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                try:
+                    await db.staff_warnings.insert_one(spoof.copy())
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     locs = await db.staff_locations.find(
         {"merchant_id": merchant_id, "active": True}, {"_id": 0}
     ).to_list(length=20)

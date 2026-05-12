@@ -152,17 +152,91 @@ async def export_csv(request: Request, period: str = "monthly"):
 
 @router.get("/export/datev")
 async def export_datev(request: Request, period: str = "monthly"):
-    """DATEV-Lohn Placeholder Export"""
+    """
+    DATEV-Lohn LBN konformer Export (Codepage 1252, Semikolon-Separator).
+    Format: DATEV-Lohn Bewegungsdaten (Stunden) — Header + Datenzeilen.
+    Spec: https://developer.datev.de/datev/platform/de/dtvf/formate/lohn
+    """
     mid = await _merchant_id(request)
     data = await monthly_report(request) if period == "monthly" else await weekly_report(request)
+
+    now = datetime.now(timezone.utc)
+    period_start = data.get("period_start", "")[:10].replace("-", "")
+    period_end = data.get("period_end", "")[:10].replace("-", "")
+
     buf = io.StringIO()
-    w = csv.writer(buf, delimiter=";")
-    # Simplified DATEV-Lohn LBN header (placeholder)
-    w.writerow(["Personalnummer", "Name", "Lohnart", "Stunden", "Betrag"])
+    w = csv.writer(buf, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+
+    # DATEV Header-Zeile (DTVF-Format vereinfacht für Lohn-Bewegungsdaten)
+    # Felder: Kennzeichen;Versionsnummer;DatenkategorieDATEV;Formatname;Formatversion;Erzeugt am;ImportiertAm;Herkunft;Exportiert von;...
+    w.writerow([
+        "EXTF", "700", "65", "Lohnbewegungsdaten", "1",
+        now.strftime("%Y%m%d%H%M%S") + "000",  # erzeugt am
+        "",  # importiert am
+        "BB",  # Herkunft (BidBlitz)
+        "BidBlitz Staff",  # exportiert von
+        "",  # importiert von
+        "",  # Berater
+        "",  # Mandant
+        period_start[:6] if period_start else "",  # WJ-Beginn (YYYYMM)
+        "",  # Sachkontenlänge
+        period_start, period_end,  # Datum von / bis
+        "Lohnabrechnung BidBlitz Staff",  # Bezeichnung
+        "DE",  # Diktatkürzel
+        "1",  # Buchungstyp (1=Finanzbuchführung)
+        "0",  # Rechnungslegungszweck
+        "0",  # Festschreibung
+        "EUR",  # WKZ
+    ])
+
+    # Spalten-Header für Bewegungsdaten
+    w.writerow([
+        "Pers-Nr", "Name", "Vorname", "Lohnart-Nr", "Lohnart-Bez",
+        "Stunden", "Stundensatz", "Betrag-EUR", "Anzahl-Tage",
+        "Abrechnungszeitraum-Von", "Abrechnungszeitraum-Bis",
+    ])
+
+    # Datenzeilen
     for row in data.get("rows", []):
-        w.writerow([row["staff_id"][:8], row["name"], "100", row["hours"], row["estimated_cost_eur"]])
+        # Name splitten (vorname nachname)
+        parts = (row.get("name") or "").rsplit(" ", 1)
+        vorname = parts[0] if len(parts) > 1 else ""
+        nachname = parts[-1] if parts else ""
+        pers_nr = (row.get("staff_id") or "")[:10]  # max 10 Stellen für DATEV
+
+        # Reguläre Stunden = Lohnart 100
+        hours = row.get("hours", 0)
+        rate = row.get("hourly_rate", 0)
+        amount = row.get("estimated_cost_eur", 0)
+        w.writerow([
+            pers_nr, nachname, vorname,
+            "100",  # DATEV Lohnart "Gehalt/Lohn Stunden"
+            "Arbeitsstunden",
+            f"{hours:.2f}".replace(".", ","),
+            f"{rate:.2f}".replace(".", ","),
+            f"{amount:.2f}".replace(".", ","),
+            "",
+            period_start, period_end,
+        ])
+
+    # Footer-Summe
+    w.writerow([])
+    w.writerow([
+        "", "Gesamt", "", "", "",
+        f"{data.get('total_hours', 0):.2f}".replace(".", ","),
+        "",
+        f"{data.get('total_cost_eur', 0):.2f}".replace(".", ","),
+        "", "", "",
+    ])
+
+    # ASCII / Codepage 1252 encoding (DATEV-konform)
+    content = buf.getvalue().encode("cp1252", errors="replace")
+    filename = f"DATEV_Lohn_{period_start}_{period_end}.csv"
     return Response(
-        content=buf.getvalue(),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="datev_lohn_{period}.csv"'},
+        content=content,
+        media_type="text/csv; charset=windows-1252",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-DATEV-Format": "DTVF-700-Lohnbewegungsdaten",
+        },
     )

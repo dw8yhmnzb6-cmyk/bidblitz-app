@@ -190,8 +190,12 @@ async def accept_invite(req: InviteAccept):
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    if req.pin and req.pin.isdigit() and 4 <= len(req.pin) <= 8:
+    if req.pin and req.pin.isdigit() and 6 <= len(req.pin) <= 8:
+        if req.pin in ("000000", "111111", "123456", "654321"):
+            raise HTTPException(400, "PIN ist zu unsicher")
         member_doc["pin_hash"] = bcrypt.hashpw(req.pin.encode(), bcrypt.gensalt()).decode()
+    elif req.pin:
+        raise HTTPException(400, "PIN muss 6-8 Ziffern haben")
     await db.staff_members.insert_one(member_doc)
     await db.staff_invites.update_one(
         {"token": req.token},
