@@ -65,6 +65,8 @@ def register_all_routers(app):
         ("routes.pos_features", "router"),
         ("routes.pos_public_api", "router"),
         ("routes.pos_selfcheckout", "router"),
+        ("routes.qr_table_order", "router"),
+        ("routes.qr_table_order", "admin_router"),
         ("routes.pos_retail_p1p2", "router"),
         ("routes.pos_hardware", "router"),
         
