@@ -96,6 +96,8 @@ const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
 const AdminQrManagementPage = lazy(() => import("./pages/AdminQrManagementPage"));
 const StaffManagementPage = lazy(() => import("./pages/StaffManagementPage"));
+const StaffLoginPage = lazy(() => import("./pages/StaffLoginPage"));
+const StaffPortalPage = lazy(() => import("./pages/StaffPortalPage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
 const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
@@ -555,6 +557,10 @@ function AppContent() {
         return user.role === "merchant" || user.role === "admin"
           ? <StaffManagementPage onBack={() => handleNavigate("/more")} />
           : <HomePage {...homeProps} />;
+      case "/staff/login":
+        return <StaffLoginPage onBack={() => handleNavigate("/")} onLoginSuccess={() => handleNavigate("/staff/portal")} />;
+      case "/staff/portal":
+        return <StaffPortalPage onBack={() => handleNavigate("/")} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
       case "/selfcheckout":

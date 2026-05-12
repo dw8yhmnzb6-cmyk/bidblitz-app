@@ -2,6 +2,7 @@
 BidBlitz Staff Management API
 ==============================
 Zeiterfassung, Mitarbeiterverwaltung, Schichtplanung für Merchants
++ Self-Service Portal für Mitarbeiter
 
 Collections:
 - staff_members
@@ -10,12 +11,13 @@ Collections:
 - staff_leave_requests
 - staff_reports
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import os
+import bcrypt
 
 router = APIRouter(prefix="/api/staff", tags=["staff"])
 
@@ -76,6 +78,10 @@ class LeaveApproval(BaseModel):
     status: Literal["approved", "rejected"]
     admin_note: Optional[str] = None
 
+class StaffLogin(BaseModel):
+    email: str
+    password: str
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Auth Helper (Mock - replace with your actual auth)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -83,8 +89,79 @@ async def get_merchant_id(merchant_id: str = "test-merchant"):
     """Replace with actual auth dependency"""
     return merchant_id
 
+async def get_staff_from_session(request: Request):
+    """Get staff_id from session cookie"""
+    session_cookie = request.cookies.get("staff_session")
+    if not session_cookie:
+        raise HTTPException(401, "Not authenticated")
+    
+    # Simple session validation (replace with proper session management)
+    staff = await db.staff_members.find_one({"id": session_cookie}, {"_id": 0})
+    if not staff or not staff.get("active"):
+        raise HTTPException(401, "Invalid session or inactive account")
+    
+    return staff
+
 # ═══════════════════════════════════════════════════════════════════════════
-# 1. MITARBEITER MANAGEMENT
+# 0. STAFF AUTH (Self-Service Login)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/auth/login")
+async def staff_login(data: StaffLogin, response: Response):
+    """Mitarbeiter Login für Self-Service Portal"""
+    # Find staff member by email
+    staff = await db.staff_members.find_one({"email": data.email}, {"_id": 0})
+    
+    if not staff:
+        raise HTTPException(401, "Ungültige E-Mail oder Passwort")
+    
+    if not staff.get("active"):
+        raise HTTPException(403, "Account deaktiviert. Kontaktiere deinen Arbeitgeber.")
+    
+    # Check password (if exists, otherwise allow login with any password for now)
+    if staff.get("password_hash"):
+        if not bcrypt.checkpw(data.password.encode(), staff["password_hash"].encode()):
+            raise HTTPException(401, "Ungültige E-Mail oder Passwort")
+    else:
+        # First login - set password
+        password_hash = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+        await db.staff_members.update_one(
+            {"id": staff["id"]},
+            {"$set": {"password_hash": password_hash}}
+        )
+    
+    # Set session cookie (simple implementation - use proper session management in production)
+    response.set_cookie(
+        key="staff_session",
+        value=staff["id"],
+        httponly=True,
+        max_age=86400 * 30,  # 30 days
+        samesite="lax"
+    )
+    
+    return {
+        "success": True,
+        "staff": {
+            "id": staff["id"],
+            "name": staff["name"],
+            "email": staff["email"],
+            "role": staff["role"]
+        }
+    }
+
+@router.post("/auth/logout")
+async def staff_logout(response: Response):
+    """Mitarbeiter Logout"""
+    response.delete_cookie("staff_session")
+    return {"success": True, "message": "Erfolgreich abgemeldet"}
+
+@router.get("/auth/me")
+async def get_current_staff(staff = Depends(get_staff_from_session)):
+    """Aktuell eingeloggter Mitarbeiter"""
+    return {"success": True, "staff": staff}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 1. MITARBEITER MANAGEMENT (Merchant Only)
 # ═══════════════════════════════════════════════════════════════════════════
 
 @router.post("/members")
@@ -178,6 +255,33 @@ async def delete_staff_member(
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. ZEITERFASSUNG (Clock-in/out, Pausen)
 # ═══════════════════════════════════════════════════════════════════════════
+
+@router.post("/clock/self")
+async def self_clock_event(
+    action: Literal["clock_in", "clock_out", "break_start", "break_end"],
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    note: Optional[str] = None,
+    staff = Depends(get_staff_from_session)
+):
+    """Self Check-in/out für Mitarbeiter"""
+    event = {
+        "id": str(uuid4()),
+        "merchant_id": staff["merchant_id"],
+        "staff_id": staff["id"],
+        "action": action,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "lat": lat,
+        "lng": lng,
+        "note": note,
+        "source": "self_service",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.staff_clock_events.insert_one(event)
+    event.pop("_id", None)
+    
+    return {"success": True, "event": event}
 
 @router.post("/clock")
 async def clock_event(
@@ -312,6 +416,44 @@ async def delete_shift(
 # 4. URLAUB / KRANKHEIT
 # ═══════════════════════════════════════════════════════════════════════════
 
+@router.post("/leave/self")
+async def self_create_leave_request(
+    type: Literal["vacation", "sick", "other"],
+    start_date: str,
+    end_date: str,
+    reason: Optional[str] = None,
+    staff = Depends(get_staff_from_session)
+):
+    """Self-Service Urlaubsantrag für Mitarbeiter"""
+    request = {
+        "id": str(uuid4()),
+        "merchant_id": staff["merchant_id"],
+        "staff_id": staff["id"],
+        "type": type,
+        "start_date": start_date,
+        "end_date": end_date,
+        "reason": reason,
+        "status": "pending",
+        "admin_note": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.staff_leave_requests.insert_one(request)
+    request.pop("_id", None)
+    
+    return {"success": True, "request": request}
+
+@router.get("/leave/self")
+async def get_my_leave_requests(staff = Depends(get_staff_from_session)):
+    """Meine Urlaubsanträge"""
+    requests = await db.staff_leave_requests.find(
+        {"staff_id": staff["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"success": True, "requests": requests, "count": len(requests)}
+
 @router.post("/leave")
 async def create_leave_request(
     data: LeaveRequest,
@@ -390,6 +532,77 @@ async def approve_leave_request(
 # ═══════════════════════════════════════════════════════════════════════════
 # 5. REPORTS (Arbeitszeit, Überstunden)
 # ═══════════════════════════════════════════════════════════════════════════
+
+@router.get("/reports/hours/self")
+async def get_my_work_hours(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    staff = Depends(get_staff_from_session)
+):
+    """Meine Arbeitsstunden (Self-Service)"""
+    # Default: aktuelle Woche
+    if not start_date:
+        now = datetime.now(timezone.utc)
+        start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0).isoformat()
+    if not end_date:
+        end_date = datetime.now(timezone.utc).isoformat()
+    
+    # Alle Events in Zeitraum holen
+    events = await db.staff_clock_events.find({
+        "staff_id": staff["id"],
+        "timestamp": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0}).sort("timestamp", 1).to_list(10000)
+    
+    # Berechnung (same logic as merchant report)
+    total_hours = 0.0
+    break_hours = 0.0
+    current_shift_start = None
+    current_break_start = None
+    
+    for event in events:
+        ts = datetime.fromisoformat(event["timestamp"])
+        
+        if event["action"] == "clock_in":
+            current_shift_start = ts
+        elif event["action"] == "clock_out" and current_shift_start:
+            shift_duration = (ts - current_shift_start).total_seconds() / 3600
+            total_hours += shift_duration
+            current_shift_start = None
+        elif event["action"] == "break_start":
+            current_break_start = ts
+        elif event["action"] == "break_end" and current_break_start:
+            break_duration = (ts - current_break_start).total_seconds() / 3600
+            break_hours += break_duration
+            current_break_start = None
+    
+    net_hours = max(0, total_hours - break_hours)
+    days_in_period = (datetime.fromisoformat(end_date) - datetime.fromisoformat(start_date)).days + 1
+    expected_hours = (days_in_period / 7) * 40
+    overtime_hours = max(0, net_hours - expected_hours)
+    
+    return {
+        "success": True,
+        "period": {"start": start_date, "end": end_date},
+        "total_hours": round(total_hours, 2),
+        "break_hours": round(break_hours, 2),
+        "net_hours": round(net_hours, 2),
+        "expected_hours": round(expected_hours, 2),
+        "overtime_hours": round(overtime_hours, 2),
+        "events_count": len(events),
+        "events": events
+    }
+
+@router.get("/shifts/self")
+async def get_my_shifts(staff = Depends(get_staff_from_session)):
+    """Meine Schichten (Self-Service)"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    shifts = await db.staff_shifts.find({
+        "staff_id": staff["id"],
+        "start_time": {"$gte": now}
+    }, {"_id": 0}).sort("start_time", 1).to_list(100)
+    
+    return {"success": True, "shifts": shifts, "count": len(shifts)}
 
 @router.get("/reports/hours")
 async def calculate_work_hours(
