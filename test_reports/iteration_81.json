@@ -1,0 +1,42 @@
+{
+  "summary": "Phase 3 validation (Insights, Alerts, Analytics, Costs, Demo, System Health + /staff/system-check page). All 19 backend tests PASSED and frontend page fully renders with all required elements.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/staff/analytics/admin/global", "issue": "Field is named 'trial_conversion_pct_placeholder' in backend response, but spec mentions 'trial_conversion_pct'. Frontend should be aware of the '_placeholder' suffix (matches the 'mrr_eur_placeholder' convention)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/staff/system-check - Datenbestand grid", "issues": ["Long label 'audit_log_entries' visually overlaps with 'notifications_unread' label on adjacent card (4-column grid is too narrow for the longest label). Cosmetic only."]},
+      {"screen": "/staff/system-check", "issues": ["Cookie consent banner overlaps the bottom navigation bar, partially covering the QR/Start/Wallet/Mehr icons. Not blocking, but reduces clickability of bottom nav until banner is dismissed."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_phase3.py",
+    "/app/test_reports/pytest/staff_phase3.xml"
+  ],
+  "action_items": [
+    "Optional: rename 'trial_conversion_pct_placeholder' to 'trial_conversion_pct' OR update spec/frontend to use the placeholder name consistently.",
+    "Optional cosmetic: widen the 'Datenbestand' grid to 2-3 columns on desktop OR truncate long collection labels to prevent overlap.",
+    "Optional UX: increase z-index of bottom nav above cookie banner OR move cookie banner above bottom nav."
+  ],
+  "critical_code_review_comments": [
+    "staff_demo.py seed is NOT fully idempotent for clock_events count: uses random.sample(members, 7) and random shift hours, so total counts of 196 events / 28 shifts hold only because lengths are deterministic (14 days * 7 samples * 2 events) - confirmed in test.",
+    "staff_demo.py /clear deletes data only for DEMO_MERCHANT_ID which is good isolation - no risk of touching production merchants.",
+    "staff_analytics.py /costs/by-location depends on routes.staff_locations._haversine_m import - if events have no lat/lng, location attribution falls back silently. Acceptable for analytics.",
+    "All Mongo _id fields are correctly excluded via projection {_id: 0}.",
+    "All 5 new modules properly registered in router_registry."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_staff_phase3.py (NEW)"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% (all UI assertions passed)"},
+  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026!  |  Admin: admin@bidblitz.com / BidBlitz2026!",
+  "seed_data_creation": "Demo data was seeded via POST /api/staff/demo/seed during testing (10 members, 196 clock_events, 28 shifts, 3 warnings under merchant_id='demo-merchant-bidblitz'). NOT cleared at end because the merchant session cannot clear (admin-only) - main agent can run DELETE /api/staff/demo/clear as admin to cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 3 complete and all 20 features validated. Demo data remains seeded under demo-merchant-bidblitz. The only minor finding is the 'trial_conversion_pct_placeholder' naming vs spec 'trial_conversion_pct' - non-blocking. Cosmetic overlap in Datenbestand grid labels noted."
+}

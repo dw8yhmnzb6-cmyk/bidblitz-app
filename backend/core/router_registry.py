@@ -87,6 +87,11 @@ def register_all_routers(app):
         ("routes.staff_profile", "router"),
         ("routes.staff_metrics", "router"),
         ("routes.staff_notifications", "router"),
+        ("routes.staff_insights", "router"),
+        ("routes.staff_alerts", "router"),
+        ("routes.staff_analytics", "router"),
+        ("routes.staff_demo", "router"),
+        ("routes.staff_system", "router"),
         
         # Mining & Marketplace
         ("routes.mining", "router"),

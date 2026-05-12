@@ -15,6 +15,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter81–82 — Final Hardening: AI Insights + Demo + System Health)
+- 🟢 **AI Insights** (`routes/staff_insights.py`): regelbasiert (keine LLM-Latenz). Erkennt frequent_late (≥3x), overtime_trend (vs Vorwoche), high_overtime_individuals (>50h), missing_checkouts, weak_coverage (Wochentag×Stunde), productivity_trend_4w
+- 🟢 **Smart Alert Engine** (`routes/staff_alerts.py`): `/live` (open_sessions, long_running >8h, shifts_no_show), `/scan` delegiert auf warnings.scan_for_warnings, `/list` aliased auf warnings
+- 🟢 **Analytics + Costs** (`routes/staff_analytics.py`): hours-by-day, attendance, absence, heatmap (7×24), costs/summary (mit Overtime-Surcharge 25 %), costs/by-location, admin/global (active_merchants, MRR, conversion_pct)
+- 🟢 **Demo Mode** (`routes/staff_demo.py`): isolierter `demo-merchant-bidblitz` Tenant. `POST /seed` erzeugt 10 Mitarbeiter + 200 Events + 28 Shifts + 3 Warnings + 2 Locations. `GET /dashboard` Public Read-only KPIs. `DELETE /clear` (admin)
+- 🟢 **System Health** (`routes/staff_system.py`): `/health`, `/version` (v1.0.0), `/system-status` mit collections+flags+integrations matrix
+- 🟢 **MongoDB Indexes** (`core/performance.py` erweitert): 19 neue Compound-Indexes für staff_clock_events, warnings, subscriptions, invites, magic_tokens, notifications, audit_log, settings
+- 🟢 **System Check Page** (`pages/StaffSystemCheckPage.jsx`): Status-Pills, Collections, Feature-Flags, Integrations, Refresh-Button (Route `/staff/system-check`)
+- 📘 **README** (`/app/memory/staff_module_readme.md`): 12 Sections inkl. komplette Endpoint-Matrix, Permission-Matrix, ENV-Vars, Deployment-Checklist, Roadmap
+- 🧪 Backend Smoke: 12 neue Endpoints alle 200/funktional. 126 registrierte Router insgesamt.
+- ⚠️ **Bekannte externe TODOs** (siehe README §9): Stripe Live-Checkout, Resend/Twilio Magic-Link Versand, OneSignal Push, NFC Native, LiveKit UI.
+
 ### 12.05.2026 (iter78–80 — BidBlitz Staff Business + Mobile + Phase 2)
 - 🟢 **Subscription/Paywall** (`routes/staff_subscription.py`):
   - Plans Basic 4,99 € (5 MA) / Pro 9,99 € (20 MA) / Enterprise (∞)

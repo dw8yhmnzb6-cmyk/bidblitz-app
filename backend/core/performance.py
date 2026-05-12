@@ -163,6 +163,50 @@ async def ensure_indexes():
     await db.auctions.create_index("auction_id")
     await db.auctions.create_index("status")
     await db.auctions.create_index("ends_at")
+
+    # ══════════════════════════════════════
+    # BidBlitz Staff (Phase 1-3)
+    # ══════════════════════════════════════
+    await db.staff_members.create_index("merchant_id")
+    await db.staff_members.create_index([("merchant_id", 1), ("active", 1)])
+    await db.staff_members.create_index("email")
+    await db.staff_members.create_index("phone")
+
+    await db.staff_clock_events.create_index("merchant_id")
+    await db.staff_clock_events.create_index("staff_id")
+    await db.staff_clock_events.create_index("timestamp")
+    await db.staff_clock_events.create_index([("merchant_id", 1), ("timestamp", -1)])
+    await db.staff_clock_events.create_index([("merchant_id", 1), ("staff_id", 1), ("timestamp", -1)])
+    await db.staff_clock_events.create_index([("merchant_id", 1), ("action", 1), ("timestamp", -1)])
+
+    await db.staff_shifts.create_index("merchant_id")
+    await db.staff_shifts.create_index([("merchant_id", 1), ("start_time", 1)])
+    await db.staff_shifts.create_index([("merchant_id", 1), ("staff_id", 1), ("start_time", 1)])
+
+    await db.staff_leave_requests.create_index([("merchant_id", 1), ("status", 1)])
+    await db.staff_leave_requests.create_index([("merchant_id", 1), ("staff_id", 1)])
+
+    await db.staff_subscriptions.create_index("merchant_id", unique=True)
+    await db.staff_subscriptions.create_index("status")
+
+    await db.staff_locations.create_index([("merchant_id", 1), ("active", 1)])
+
+    await db.staff_warnings.create_index([("merchant_id", 1), ("resolved", 1), ("created_at", -1)])
+    await db.staff_warnings.create_index([("merchant_id", 1), ("type", 1)])
+
+    await db.staff_invites.create_index("token", unique=True)
+    await db.staff_invites.create_index([("merchant_id", 1), ("status", 1)])
+    await db.staff_invites.create_index("expires_at")
+
+    await db.staff_magic_tokens.create_index("token", unique=True)
+    await db.staff_magic_tokens.create_index("expires_at")
+
+    await db.staff_notifications.create_index([("merchant_id", 1), ("staff_id", 1), ("read", 1), ("created_at", -1)])
+
+    await db.staff_audit_log.create_index([("merchant_id", 1), ("timestamp", -1)])
+    await db.staff_audit_log.create_index([("staff_id", 1), ("timestamp", -1)])
+
+    await db.staff_settings.create_index("merchant_id", unique=True)
     
     # Notifications
     await db.notifications.create_index([("user_id", 1), ("read", 1)])

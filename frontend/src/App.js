@@ -102,6 +102,7 @@ const StaffUpgradeScreen = lazy(() => import("./pages/StaffUpgradeScreen"));
 const StaffSettingsPage = lazy(() => import("./pages/StaffSettingsPage"));
 const StaffMobilePage = lazy(() => import("./pages/StaffMobilePage"));
 const StaffInvitePage = lazy(() => import("./pages/StaffInvitePage"));
+const StaffSystemCheckPage = lazy(() => import("./pages/StaffSystemCheckPage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
 const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
@@ -441,6 +442,9 @@ function AppContent() {
         });
       },
     };
+    if (currentPath === "/staff/system-check") {
+      return <StaffSystemCheckPage onBack={() => handleNavigate("/")} />;
+    }
     if (currentPath === "/staff/mobile") {
       return <StaffMobilePage onBack={() => handleNavigate("/")} />;
     }
