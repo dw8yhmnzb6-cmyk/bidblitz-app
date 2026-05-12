@@ -106,6 +106,8 @@ export default function TaxiBookingSheet({
   scheduledLabel,
   // City defaults
   pickupCity, citySaved, onSaveCityDefault,
+  // Favorite routes
+  favoriteRoutes, onPickFavoriteRoute,
 }) {
   return (
     <div className="space-y-4 pt-1">
@@ -129,11 +131,45 @@ export default function TaxiBookingSheet({
         </button>
       </div>
 
-      {/* Greeting (only when sheet expanded and nothing entered) */}
+      {/* Greeting + Favorite Routes (only when no destination chosen yet) */}
       {!dropoff?.address && (
         <div>
           <h2 className="text-xl font-bold text-white">{greet()}</h2>
           <p className="text-xs text-gray-400 mt-0.5">Wohin möchtest du fahren?</p>
+        </div>
+      )}
+
+      {!dropoff?.address && favoriteRoutes?.length > 0 && (
+        <div data-testid="taxi-favorite-routes">
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">
+            Lieblings-Routen
+          </p>
+          <div className="space-y-1.5">
+            {favoriteRoutes.slice(0, 5).map((r, i) => (
+              <button
+                key={i}
+                onClick={() => onPickFavoriteRoute?.(r)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-left active:scale-[0.98] transition-all"
+                data-testid={`taxi-fav-route-${i}`}
+              >
+                <div className="shrink-0 flex flex-col items-center pt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-500" />
+                  <span className="w-px h-3 bg-white/15 my-0.5" />
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-white truncate font-medium">{r.pickup?.address}</p>
+                  <p className="text-xs text-gray-400 truncate">{r.dropoff?.address}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] text-cyan-400 font-bold">{r.use_count}×</p>
+                  {r.avg_fare > 0 && (
+                    <p className="text-[10px] text-gray-500">~€{r.avg_fare?.toFixed(0)}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

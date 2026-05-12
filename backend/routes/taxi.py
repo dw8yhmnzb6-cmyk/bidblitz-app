@@ -2133,7 +2133,8 @@ async def admin_list_drivers(request: Request):
 
 @router.post("/admin/drivers/{driver_id}/approve")
 async def admin_approve_driver(driver_id: str, request: Request):
-    """Admin: Approve a driver."""
+    """Admin: Approve a driver. Also propagates vehicle_capabilities from
+    any matching driver-onboarding application (by email) into drivers.car.*."""
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -2142,14 +2143,42 @@ async def admin_approve_driver(driver_id: str, request: Request):
     if not driver:
         raise HTTPException(status_code=404, detail="Fahrer nicht gefunden")
     
+    # Look up matching onboarding application by driver's user email
+    car_patch = {}
+    driver_email = (driver.get("user_email") or "").lower()
+    if driver_email:
+        app = await db.taxi_driver_applications.find_one(
+            {"email": driver_email, "status": {"$in": ["pending", "approved"]}}
+        )
+        if app and app.get("vehicle_capabilities"):
+            caps = app["vehicle_capabilities"]
+            car_patch = {
+                "car.pet_friendly": bool(caps.get("pet_friendly", False)),
+                "car.luggage_class": caps.get("luggage_class", "small"),
+                "car.assistance": bool(caps.get("assistance", False)),
+            }
+            # Mark the application as approved if not yet
+            if app.get("status") != "approved":
+                await db.taxi_driver_applications.update_one(
+                    {"application_id": app["application_id"]},
+                    {"$set": {
+                        "status": "approved",
+                        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                        "reviewed_by": str(user["_id"]),
+                    }}
+                )
+    
+    update_set = {
+        "status": "approved",
+        "verified": True,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+        "approved_by": str(user["_id"]),
+        **car_patch,
+    }
+    
     await db.drivers.update_one(
         {"driver_id": driver_id},
-        {"$set": {
-            "status": "approved",
-            "verified": True,
-            "approved_at": datetime.now(timezone.utc).isoformat(),
-            "approved_by": str(user["_id"]),
-        }}
+        {"$set": update_set}
     )
     
     # Update user
@@ -2158,7 +2187,126 @@ async def admin_approve_driver(driver_id: str, request: Request):
         {"$set": {"driver_status": "approved"}}
     )
     
-    return {"ok": True, "message": "Fahrer freigegeben"}
+    return {
+        "ok": True,
+        "message": "Fahrer freigegeben",
+        "capabilities_propagated": bool(car_patch),
+    }
+
+
+# ── Driver Application Workflow (admin) ──────────────────────────────────────
+
+@router.get("/admin/applications")
+async def list_driver_applications(request: Request, status: Optional[str] = None):
+    """Admin: List all driver onboarding applications (filter by status)."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    query = {}
+    if status:
+        query["status"] = status
+    apps = await db.taxi_driver_applications.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    return {
+        "applications": apps,
+        "stats": {
+            "total": len(apps),
+            "pending": len([a for a in apps if a.get("status") == "pending"]),
+            "approved": len([a for a in apps if a.get("status") == "approved"]),
+            "rejected": len([a for a in apps if a.get("status") == "rejected"]),
+        },
+    }
+
+
+@router.post("/admin/applications/{application_id}/approve")
+async def approve_driver_application(application_id: str, request: Request):
+    """Admin: Approve an onboarding application. Creates a driver record
+    in db.drivers with vehicle_capabilities propagated to car.* fields."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    app = await db.taxi_driver_applications.find_one({"application_id": application_id})
+    if not app:
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    if app.get("status") == "approved" and app.get("driver_id"):
+        return {"ok": True, "message": "Bereits freigeschaltet", "driver_id": app["driver_id"]}
+    
+    caps = app.get("vehicle_capabilities") or {}
+    now = datetime.now(timezone.utc)
+    driver_id = secrets.token_hex(8)
+    
+    # Look up the user (driver may already have an account)
+    applicant_user = await db.users.find_one({"email": app["email"].lower()})
+    user_id = str(applicant_user["_id"]) if applicant_user else None
+    
+    driver = {
+        "driver_id": driver_id,
+        "user_id": user_id,
+        "user_email": app["email"],
+        "user_name": app["name"],
+        "phone": app["phone"],
+        "license_number": app["license_number"],
+        "driver_type": app.get("driver_type", "private"),
+        "car": {
+            "type": app.get("vehicle_type", "standard"),
+            "pet_friendly": bool(caps.get("pet_friendly", False)),
+            "luggage_class": caps.get("luggage_class", "small"),
+            "assistance": bool(caps.get("assistance", False)),
+        },
+        "verified": True,
+        "status": "approved",
+        "online": False,
+        "location": {"lat": 0, "lng": 0},
+        "rating": 5.0,
+        "total_rides": 0,
+        "total_earnings": 0,
+        "approved_at": now.isoformat(),
+        "approved_by": str(user["_id"]),
+        "created_at": now.isoformat(),
+    }
+    await db.drivers.insert_one(driver)
+    driver.pop("_id", None)
+    
+    # Mark application as approved + linked
+    await db.taxi_driver_applications.update_one(
+        {"application_id": application_id},
+        {"$set": {
+            "status": "approved",
+            "driver_id": driver_id,
+            "reviewed_at": now.isoformat(),
+            "reviewed_by": str(user["_id"]),
+        }}
+    )
+    
+    # Flag the user as a driver if they have an account
+    if applicant_user:
+        await db.users.update_one(
+            {"_id": applicant_user["_id"]},
+            {"$set": {"is_driver": True, "driver_status": "approved", "taxi_driver_id": driver_id}}
+        )
+    
+    return {"ok": True, "message": "Bewerbung freigeschaltet", "driver_id": driver_id, "driver": driver}
+
+
+@router.post("/admin/applications/{application_id}/reject")
+async def reject_driver_application(application_id: str, request: Request):
+    """Admin: Reject an onboarding application."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.taxi_driver_applications.update_one(
+        {"application_id": application_id},
+        {"$set": {
+            "status": "rejected",
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed_by": str(user["_id"]),
+        }}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Bewerbung nicht gefunden")
+    return {"ok": True, "message": "Bewerbung abgelehnt"}
 
 
 @router.post("/admin/drivers/{driver_id}/suspend")
@@ -2255,6 +2403,58 @@ async def clear_recent_addresses(request: Request):
     user_id = str(user["_id"])
     await db.taxi_recent_addresses.delete_many({"user_id": user_id})
     return {"ok": True}
+
+
+# ── Favorite Routes (Top pickup→dropoff pairs from ride history) ─────────────
+
+@router.get("/favorite-routes")
+async def list_favorite_routes(request: Request, limit: int = 5):
+    """Return the user's top N most-used pickup→dropoff routes, derived from
+    completed rides. Useful for one-tap rebooking on the home screen."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    limit = max(1, min(20, limit))
+    pipeline = [
+        {"$match": {
+            "customer_id": user_id,
+            "status": {"$in": ["completed", "started", "arriving", "accepted"]},
+            "pickup.address": {"$exists": True, "$ne": ""},
+            "dropoff.address": {"$exists": True, "$ne": ""},
+        }},
+        {"$group": {
+            "_id": {
+                "pickup_address": "$pickup.address",
+                "dropoff_address": "$dropoff.address",
+            },
+            "use_count": {"$sum": 1},
+            "last_used_at": {"$max": "$created_at"},
+            "avg_fare": {"$avg": "$fare_estimate"},
+            "pickup_lat": {"$last": "$pickup.lat"},
+            "pickup_lng": {"$last": "$pickup.lng"},
+            "dropoff_lat": {"$last": "$dropoff.lat"},
+            "dropoff_lng": {"$last": "$dropoff.lng"},
+        }},
+        {"$sort": {"use_count": -1, "last_used_at": -1}},
+        {"$limit": limit},
+        {"$project": {
+            "_id": 0,
+            "pickup": {
+                "address": "$_id.pickup_address",
+                "lat": "$pickup_lat",
+                "lng": "$pickup_lng",
+            },
+            "dropoff": {
+                "address": "$_id.dropoff_address",
+                "lat": "$dropoff_lat",
+                "lng": "$dropoff_lng",
+            },
+            "use_count": 1,
+            "last_used_at": 1,
+            "avg_fare": {"$round": ["$avg_fare", 2]},
+        }},
+    ]
+    routes = await db.taxi_rides.aggregate(pipeline).to_list(limit)
+    return {"routes": routes}
 
 
 # ── City Defaults (per-pickup-city ride options) ─────────────────────────────

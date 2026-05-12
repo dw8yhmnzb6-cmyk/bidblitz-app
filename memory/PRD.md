@@ -15,6 +15,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter75 — Driver Application Approval Workflow + Top-5 Lieblings-Routen)
+- 🟢 **Application-Workflow Backend** (`routes/taxi.py`):
+  - **Bestehender** `POST /admin/drivers/{driver_id}/approve` propagiert jetzt `vehicle_capabilities` aus dem matchenden Application-Datensatz (by email) in `drivers.car.{pet_friendly,luggage_class,assistance}` und markiert die Application als approved.
+  - **Neu**: `GET /admin/applications?status=pending` listet Applications mit Stats (total/pending/approved/rejected).
+  - **Neu**: `POST /admin/applications/{application_id}/approve` legt den `db.drivers`-Datensatz frisch an mit allen propagierten Capabilities, verlinkt Application↔Driver, flaggt den User (`is_driver=true`, `taxi_driver_id`).
+  - **Neu**: `POST /admin/applications/{application_id}/reject` mit Reviewer-Audit.
+- 🟢 **Top-5 Lieblings-Routen**:
+  - Backend: `GET /api/taxi/favorite-routes?limit=5` mit MongoDB-Aggregation über `taxi_rides` → gruppiert pickup×dropoff, sortiert nach `use_count`+`last_used_at`, liefert avg_fare und full coords.
+  - Service: `fetchFavoriteRoutes(limit)` in `taxiApi.js`.
+  - UI: Eigene Sektion "Lieblings-Routen" im BookingSheet (sichtbar wenn `!dropoff.address`). Klick → setzt Pickup+Dropoff in einem Schritt. Zeigt Use-Count (`5×`) und avg-Fare. Auto-Refresh nach jeder Buchung.
+- ✅ Backend startet clean (`from server import app` OK), Lint clean.
+
 ### 12.05.2026 (iter74 — Live Driver Count + Driver Onboarding Capabilities)
 - 🟢 **Live Driver Count im BookingSheet**: 
   - Neuer Service: `fetchNearbyDriversCount` (taxiApi.js) ruft `/api/taxi/drivers/nearby` mit allen taxi.eu-Filter-Params (`carType`, `withPet`, `luggage`, `assistance`).

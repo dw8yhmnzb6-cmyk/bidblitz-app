@@ -104,6 +104,14 @@ export async function clearRecentAddresses() {
   return res.ok;
 }
 
+// ── Favorite Routes (top-N pickup→dropoff pairs from ride history) ─────────
+export async function fetchFavoriteRoutes(limit = 5) {
+  const res = await fetch(`${API}/api/taxi/favorite-routes?limit=${limit}`, cred);
+  if (!res.ok) return [];
+  const data = await readJson(res);
+  return data?.routes || [];
+}
+
 // ── City Defaults ──────────────────────────────────────────────────────────
 export async function fetchCityDefault(city) {
   if (!city) return null;

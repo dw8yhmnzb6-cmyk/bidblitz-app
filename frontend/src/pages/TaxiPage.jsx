@@ -102,6 +102,9 @@ export default function TaxiPage({ onNavigate }) {
   // Live driver availability (count near pickup, filtered by options)
   const [nearbyCount, setNearbyCount] = useState(null); // null = unknown, 0+ = known
 
+  // Favorite routes (top pickup→dropoff pairs from ride history)
+  const [favoriteRoutes, setFavoriteRoutes] = useState([]);
+
   // Toggle body class for fullscreen booking mode (hides BottomNav, AIChat, FAB-cluster, cookie banner)
   useEffect(() => {
     const inMapFlow = moduleEnabled && (
@@ -140,13 +143,17 @@ export default function TaxiPage({ onNavigate }) {
     getCurrentLocation,
   } = useGeolocation({ setPickup, mapRef, pickupMarkerRef });
 
-  // Get current GPS location on mount + fetch recent addresses
+  // Get current GPS location on mount + fetch recent addresses + favorite routes
   useEffect(() => {
     getCurrentLocation();
     (async () => {
       try {
-        const recent = await api.fetchRecentAddresses(10);
+        const [recent, routes] = await Promise.all([
+          api.fetchRecentAddresses(10),
+          api.fetchFavoriteRoutes(5),
+        ]);
         setRecentAddresses(recent);
+        setFavoriteRoutes(routes);
       } catch {}
     })();
   }, [getCurrentLocation, setRecentAddresses]);
@@ -383,8 +390,9 @@ export default function TaxiPage({ onNavigate }) {
       setActiveRide(result.ride);
       setView('tracking');
       startPolling(result.ride.ride_id);
-      // Refresh recent addresses (newly-used pickup/dropoff/stops now tracked)
+      // Refresh recent addresses + favorite routes (newly-used pair tracked)
       api.fetchRecentAddresses(10).then(setRecentAddresses).catch(() => {});
+      api.fetchFavoriteRoutes(5).then(setFavoriteRoutes).catch(() => {});
     } else {
       setError(result.error);
     }
@@ -571,6 +579,11 @@ export default function TaxiPage({ onNavigate }) {
                 pickupCity={pickupCity}
                 citySaved={citySaved}
                 onSaveCityDefault={handleSaveCityDefault}
+                favoriteRoutes={favoriteRoutes}
+                onPickFavoriteRoute={(r) => {
+                  setPickup({ lat: r.pickup.lat, lng: r.pickup.lng, address: r.pickup.address });
+                  setDropoff({ lat: r.dropoff.lat, lng: r.dropoff.lng, address: r.dropoff.address });
+                }}
               />
             )}
           </TaxiBottomSheet>
