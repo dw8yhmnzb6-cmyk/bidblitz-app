@@ -15,6 +15,35 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter77 — QR-Bestellung v2: Mr-Yum-Parität, Ratings, Combos, Live-Status, Tip, Split)
+- 🟢 **Backend** (`routes/qr_table_order.py` ~860 Z., 1274 routes total):
+  - Menu-CRUD (`POST/GET/DELETE /api/merchant/menu/items` + `bulk-import`)
+  - Image-Upload (`POST /api/merchant/menu/upload-image` → GridFS-Bucket `menu_images`, public stream via `GET /api/qr/menu/image/{file_id}`)
+  - Modifier-Engine: `MenuItemRequest.modifier_groups[]` mit `required/min/max`, server-side reprice in `place_qr_order` mit `_validate_modifiers()` (rejects unknown options 400)
+  - Schema-Enrichment: `image_url`, `description`, `name_i18n`, `description_i18n`, `tags[]`, `allergens[]`, `calories`, `is_popular`, `sort_order`, `scope` (food/drinks)
+  - **Popular** (`GET /api/qr/popular/{merchant_id}`): Aggregation top-selling items über `qr_orders`
+  - **Upsell** (`POST /api/qr/upsell`): Frequently-bought-together graph hydrated mit Menu-Daten
+  - **Tip** (`POST /api/qr/order/tip`): atomic wallet-debit, blocks double-tip 409, updates `order.tip + total`
+  - **Live-Status** (`GET /api/qr/order-status/{order_id}`): polling endpoint mit `status_history`, `accepted_at`, etc.
+  - **Table-History** (`GET /api/qr/table-history/{merchant_id}/{table_id}`): heutige Bestellungen des Customers + Summe
+  - **Reviews** (`POST /api/qr/order/review` + `GET /api/qr/reviews/{merchant_id}`): 1-5 Star-Ratings, blocks double-review 409, status-gate accepted/completed
+  - **Combos** (`GET /api/qr/combos/{merchant_id}` + `POST/DELETE /api/merchant/combos`): bundle_price + auto-computed `full_price/save`
+  - Menu-Response inkludiert `rating_avg` + `rating_count` pro Item
+- 🟢 **Frontend Customer** (`QrOrderPage.jsx` ~1100 Z., komplett-Redesign):
+  - Hero-Image mit Bistro-Logo + Multi-Language-Toggle (DE/EN/TR mit 50+ Strings)
+  - Sticky-Header: Suche, Food/Drinks-Scope-Tabs, Kategorie-Chips, Tag-Filter (Popular/Vegan/Vegetarisch/Spicy), Allergen-Filter (10 Typen Sheet)
+  - **Combo Deals Carousel** mit Save-Badge + durchgestrichener Original-Preis
+  - **Popular Here Carousel** mit Order-Count-Badge
+  - **2-Spalten Foto-Grid** mit Hero-Image, Stars + Rating-Avg, Beschreibung, Tag-Badges, Price + Add-CTA
+  - **Detail-Bottom-Sheet**: Hero (16:9), Stars+Rating-Count, Tags, Kalorien, Allergene-Red-Box, Modifier-Groups (Radio für size, Checkbox für toppings, +/- Pricing live), Sonderwünsche-Textarea (200 chars), Sticky-Footer mit qty-Stepper + Add-CTA (line-total live)
+  - **Cart-CTA mit Upsell-Strip** "Häufig dazu bestellt"
+  - **Order-History Sheet** über Header-Button (heutige Tisch-Orders mit Status-Badges, Total)
+  - **Success-Screen**: Live-Status-Timeline (Received→Accepted→Preparing→Ready), Tip-Section (5/10/15%/custom), Split-Bill (stepper, per-person calc), Review-CTA → ReviewSheet mit per-item Star-Rating + optional Comment
+- 🟢 **Merchant** (`MerchantQrTablesPage.jsx`): Neuer Tab "Speisekarte" mit ItemEditor (Bild-Upload Drag&Drop ODER URL paste, Tags, Allergene, Kategorie, Scope-Toggle, Kalorien)
+- 🟢 **Demo-Seed**: 14 Items (Pizza/Burger/Pasta/Salat/Beilagen/Dessert/Drinks) mit Unsplash-Bildern, 3 Combos (Pizza Night Deal, Classic Burger Meal, Quinoa Lunch), 13 Reviews pre-seeded
+- ✅ **Testing**: **22/22 Backend Pytest passed** (`/app/tests/qr_v2/test_qr_v2_backend.py`), **100% Frontend E2E** (Playwright `/app/tests/qr_v2/playwright_qr_v2_e2e.py`): hero/tabs/categories/filters/combos/popular/detail-sheet/modifiers/cart/upsell/lang-switch/submit/success/tip/split/review — alle green.
+- 🟢 **UX-Fix nach Test**: Detail-Sheet auf flex-column umgebaut, Add-Button als sticky-footer **innerhalb** des Sheets statt fixed-position (kein Off-Screen mehr auf 390×844).
+
 ### 12.05.2026 (iter76 — QR-Tisch-Bestellung Komplett: Customer + Merchant + Test)
 - 🟢 **Backend** (`routes/qr_table_order.py` ~420 Z., bereits in iter75 scaffolded, jetzt verdrahtet):
   - Customer-Endpunkte: `GET /api/qr/resolve/{token}` (sliding-window TTL 5min, auto-rotate), `GET /api/qr/menu/{merchant_id}`, `POST /api/qr/order` (atomares `balance`-Debit, server-side Preisvalidierung, instant/waiter Mode), `GET /api/qr/order/{order_id}`.

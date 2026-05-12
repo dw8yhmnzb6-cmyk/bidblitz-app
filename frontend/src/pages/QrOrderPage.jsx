@@ -842,7 +842,9 @@ function DetailSheet({ item, lang, t, currency, onClose, onAdd }) {
         transition={{ type: "spring", damping: 28 }}
         onClick={(e)=>e.stopPropagation()}
         data-testid="qr-detail-sheet"
-        className="w-full bg-[#0e0e0e] rounded-t-3xl max-h-[92vh] overflow-y-auto pb-32">
+        className="w-full bg-[#0e0e0e] rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto pb-24" data-testid="qr-detail-scroll">
         {/* Hero image */}
         <div className="relative aspect-[16/10] bg-white/5">
           {img ? (
@@ -943,8 +945,10 @@ function DetailSheet({ item, lang, t, currency, onClose, onAdd }) {
           </div>
         </div>
 
-        {/* Bottom action */}
-        <div className="fixed inset-x-0 bottom-0 bg-[#0e0e0e] border-t border-white/10 px-5 pt-3 pb-6">
+        </div>{/* end scroll body */}
+
+        {/* Bottom action — sticky inside sheet */}
+        <div className="bg-[#0e0e0e] border-t border-white/10 px-5 pt-3 pb-5">
           <div className="flex items-center gap-3">
             <div className="flex items-center bg-white/5 rounded-2xl border border-white/10">
               <button onClick={() => setQty(Math.max(1, qty-1))} className="w-10 h-11 flex items-center justify-center" data-testid="qr-detail-dec">
