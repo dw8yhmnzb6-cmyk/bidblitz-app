@@ -1,63 +1,155 @@
 /**
  * TaxiVehiclePicker — list of vehicle estimate cards (Standard/Premium/Van/etc.)
- * with selectable highlight, fare display and price-range subtitle.
+ * with selectable highlight, fare display, price-range subtitle, and an
+ * expandable "Anpassen" sub-panel (taxi.eu-parity) showing fastest/cheapest
+ * priority + service speed metadata for the currently selected card.
  */
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { VehicleIcon } from "./TaxiVehicleIcon";
 
-export default function TaxiVehiclePicker({ estimates, selectedVehicle, onSelect }) {
+const PRIORITIES = [
+  { key: "fastest", label: "Schnellster", icon: "⚡" },
+  { key: "cheapest", label: "Günstigster", icon: "💰" },
+  { key: "rated", label: "Best bewertet", icon: "★" },
+];
+
+export default function TaxiVehiclePicker({
+  estimates, selectedVehicle, onSelect,
+  priority = "fastest", onChangePriority,
+}) {
+  const [expandedKey, setExpandedKey] = useState(null);
   if (!estimates || estimates.length === 0) return null;
   return (
     <div className="space-y-3" data-testid="taxi-vehicle-picker">
-      <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wider">
-        Wähle dein Fahrzeug
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wider">
+          {estimates.length === 1 ? "Ein Produkt verfügbar" : `${estimates.length} Produkte verfügbar`}
+        </h3>
+      </div>
+
       {estimates.map((est) => {
         const isActive = selectedVehicle === est.vehicle_type;
+        const isExpanded = expandedKey === est.vehicle_type && isActive;
         return (
-          <motion.button
-            key={est.vehicle_type}
-            onClick={() => onSelect(est.vehicle_type)}
-            whileTap={{ scale: 0.98 }}
-            data-testid={`vehicle-card-${est.vehicle_type}`}
-            className={`w-full p-4 rounded-2xl border-2 transition-all ${
-              isActive
-                ? "bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border-cyan-400/70 shadow-[0_0_24px_rgba(0,194,255,0.15)]"
-                : "bg-[#0F1218] border-white/5 hover:border-white/15"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div key={est.vehicle_type}>
+            <motion.button
+              onClick={() => onSelect(est.vehicle_type)}
+              whileTap={{ scale: 0.98 }}
+              data-testid={`vehicle-card-${est.vehicle_type}`}
+              className={`w-full p-4 rounded-2xl border-2 transition-all ${
+                isActive
+                  ? "bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border-cyan-400/70 shadow-[0_0_24px_rgba(0,194,255,0.15)]"
+                  : "bg-[#0F1218] border-white/5 hover:border-white/15"
+              } ${isExpanded ? "rounded-b-none" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div
+                    className={`shrink-0 w-20 h-12 rounded-xl flex items-center justify-center ${
+                      isActive ? "bg-cyan-500/10" : "bg-white/[0.03]"
+                    }`}
+                  >
+                    <VehicleIcon type={est.vehicle_type} className="w-16 h-8" active={isActive} />
+                  </div>
+                  <div className="text-left min-w-0 flex-1">
+                    <p className={`font-bold text-base ${isActive ? "text-white" : "text-gray-200"}`}>
+                      {est.name}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">{est.description}</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5 flex items-center gap-1.5">
+                      <span>{est.capacity} Pers.</span>
+                      <span>·</span>
+                      <span>{est.eta_minutes} Min</span>
+                      {isActive && priority === "fastest" && (
+                        <span className="text-cyan-400 font-medium">· schnellster</span>
+                      )}
+                      {isActive && priority === "cheapest" && (
+                        <span className="text-emerald-400 font-medium">· günstigster</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`text-lg font-bold ${isActive ? "text-cyan-400" : "text-gray-300"}`}>
+                    €{est.fare.toFixed(2)}
+                  </p>
+                  {est.fare_range && (
+                    <p className="text-[10px] text-gray-600">
+                      €{est.fare_range.min.toFixed(2)}–€{est.fare_range.max.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {isActive && (
                 <div
-                  className={`shrink-0 w-20 h-12 rounded-xl flex items-center justify-center ${
-                    isActive ? "bg-cyan-500/10" : "bg-white/[0.03]"
-                  }`}
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedKey(isExpanded ? null : est.vehicle_type);
+                  }}
+                  className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-cyan-400 hover:text-cyan-300"
+                  data-testid={`vehicle-customize-${est.vehicle_type}`}
                 >
-                  <VehicleIcon type={est.vehicle_type} className="w-16 h-8" active={isActive} />
+                  <span className="font-medium">Anpassen</span>
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                  >
+                    <path d="m9 6 6 6-6 6" />
+                  </svg>
                 </div>
-                <div className="text-left min-w-0 flex-1">
-                  <p className={`font-bold text-base ${isActive ? "text-white" : "text-gray-200"}`}>
-                    {est.name}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">{est.description}</p>
-                  <p className="text-[11px] text-gray-600 mt-0.5">
-                    {est.capacity} Pers. · {est.eta_minutes} Min
-                  </p>
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <p className={`text-lg font-bold ${isActive ? "text-cyan-400" : "text-gray-300"}`}>
-                  €{est.fare.toFixed(2)}
-                </p>
-                {est.fare_range && (
-                  <p className="text-[10px] text-gray-600">
-                    €{est.fare_range.min.toFixed(2)}–€{est.fare_range.max.toFixed(2)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </motion.button>
+              )}
+            </motion.button>
+
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden bg-[#0F1218] border-2 border-t-0 border-cyan-400/70 rounded-b-2xl"
+                >
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">
+                        Priorität
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {PRIORITIES.map((p) => (
+                          <button
+                            key={p.key}
+                            onClick={() => onChangePriority?.(p.key)}
+                            className={`py-2 rounded-xl text-xs font-medium transition-colors ${
+                              priority === p.key
+                                ? "bg-cyan-500 text-black"
+                                : "bg-white/5 text-gray-300 hover:bg-white/10"
+                            }`}
+                            data-testid={`priority-${p.key}`}
+                          >
+                            <span className="mr-1">{p.icon}</span>
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-white/5 rounded-xl px-3 py-2">
+                        <p className="text-gray-500 text-[10px]">Max. Sitzplätze</p>
+                        <p className="text-white font-semibold">{est.capacity}</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl px-3 py-2">
+                        <p className="text-gray-500 text-[10px]">Geschätzte Ankunft</p>
+                        <p className="text-white font-semibold">~{est.eta_minutes} Min</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         );
       })}
     </div>

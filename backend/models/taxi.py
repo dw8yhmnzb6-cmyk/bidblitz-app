@@ -4,7 +4,7 @@ Ride booking, driver management, operator registration
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
 
 
@@ -130,18 +130,30 @@ class BookRideRequest(BaseModel):
     notes: Optional[str] = Field(None, max_length=500)
 
 
+class Stop(BaseModel):
+    address: str
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    notes: Optional[str] = Field(None, max_length=300)
+
+
 class FlexBookRequest(BaseModel):
     """Flexible ride booking (can book for another user)"""
     pickup_address: str
     pickup_lat: float = Field(..., ge=-90, le=90)
     pickup_lng: float = Field(..., ge=-180, le=180)
+    pickup_notes: Optional[str] = Field(None, max_length=300)
     dropoff_address: str
     dropoff_lat: float = Field(..., ge=-90, le=90)
     dropoff_lng: float = Field(..., ge=-180, le=180)
+    dropoff_notes: Optional[str] = Field(None, max_length=300)
     vehicle_type: VehicleType = VehicleType.STANDARD
     notes: Optional[str] = None
     rider_email: Optional[str] = None  # Book for another user
     rider_phone: Optional[str] = None
+
+    # Multiple waypoints (between pickup and dropoff)
+    stops: List[Stop] = Field(default_factory=list)
 
     # taxi.eu-parity order options
     language: Optional[str] = Field(None, max_length=10)  # "de" | "en" | ...

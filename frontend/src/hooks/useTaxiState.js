@@ -80,7 +80,16 @@ export function useTaxiState() {
   const [showOrderOptions, setShowOrderOptions] = useState(false);
 
   // Address Search Sheet (fullscreen overlay)
-  const [searchSheetMode, setSearchSheetMode] = useState(null); // null | 'pickup' | 'dropoff'
+  const [searchSheetMode, setSearchSheetMode] = useState(null); // null | 'pickup' | 'dropoff' | 'waypoint:N'
+
+  // Waypoints (Mehrere Stops) — list between pickup and dropoff
+  const [waypoints, setWaypoints] = useState([]); // [{lat,lng,address,notes}]
+
+  // Recent addresses (auto-tracked server-side)
+  const [recentAddresses, setRecentAddresses] = useState([]);
+
+  // Side Menu
+  const [showSideMenu, setShowSideMenu] = useState(false);
   
   return {
     // Core
@@ -145,5 +154,10 @@ export function useTaxiState() {
     orderOptions, setOrderOptions,
     showOrderOptions, setShowOrderOptions,
     searchSheetMode, setSearchSheetMode,
+
+    // Waypoints + Recent + Side-Menu
+    waypoints, setWaypoints,
+    recentAddresses, setRecentAddresses,
+    showSideMenu, setShowSideMenu,
   };
 }

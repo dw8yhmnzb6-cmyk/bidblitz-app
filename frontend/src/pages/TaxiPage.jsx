@@ -17,6 +17,8 @@ import TaxiBookingSheet from '../components/taxi/TaxiBookingSheet';
 import TaxiBottomSheet from '../components/taxi/TaxiBottomSheet';
 import TaxiAddressSearchSheet from '../components/taxi/TaxiAddressSearchSheet';
 import TaxiOrderOptions from '../components/taxi/TaxiOrderOptions';
+import TaxiSideMenu from '../components/taxi/TaxiSideMenu';
+import TaxiNoteModal from '../components/taxi/TaxiNoteModal';
 import TaxiHeader from '../components/taxi/TaxiHeader';
 import TaxiTrackingView from '../components/taxi/TaxiTrackingView';
 import TaxiTypeSelector from '../components/taxi/TaxiTypeSelector';
@@ -86,7 +88,17 @@ export default function TaxiPage({ onNavigate }) {
     orderOptions, setOrderOptions,
     showOrderOptions, setShowOrderOptions,
     searchSheetMode, setSearchSheetMode,
+    waypoints, setWaypoints,
+    recentAddresses, setRecentAddresses,
+    showSideMenu, setShowSideMenu,
   } = state;
+
+  // Inline editor state for per-address notes
+  const [noteTarget, setNoteTarget] = useState(null); // null | { type: 'pickup' | 'dropoff' | 'waypoint', index?: number }
+  const [vehiclePriority, setVehiclePriority] = useState('fastest');
+  const [pickupCity, setPickupCity] = useState('');
+  const [citySaved, setCitySaved] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // HOOKS: Map + Geolocation

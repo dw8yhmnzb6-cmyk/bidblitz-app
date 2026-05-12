@@ -9,6 +9,7 @@ import math
 import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from enum import Enum
 from bson import ObjectId
@@ -1505,7 +1506,15 @@ async def book_ride(req: FlexBookRequest, request: Request):
     
     p_lat, p_lng, d_lat, d_lng, p_addr, d_addr, car_type = req.get_coords()
     
-    distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
+    # Build the full route: pickup -> stops[] -> dropoff. Total distance sums all legs.
+    waypoints = [
+        {"lat": s.lat, "lng": s.lng, "address": s.address, "notes": s.notes or ""}
+        for s in (req.stops or [])
+    ]
+    route_pts = [(p_lat, p_lng)] + [(s["lat"], s["lng"]) for s in waypoints] + [(d_lat, d_lng)]
+    distance_km = 0.0
+    for i in range(len(route_pts) - 1):
+        distance_km += haversine_distance(*route_pts[i], *route_pts[i + 1])
     duration_minutes = max(5, (distance_km / 30) * 60)
     region = detect_region(p_lat, p_lng)
     fare_estimate = calculate_fare(distance_km, duration_minutes, car_type, region)
@@ -1524,12 +1533,15 @@ async def book_ride(req: FlexBookRequest, request: Request):
             "lat": p_lat,
             "lng": p_lng,
             "address": p_addr,
+            "notes": (req.pickup_notes or "").strip(),
         },
         "dropoff": {
             "lat": d_lat,
             "lng": d_lng,
             "address": d_addr,
+            "notes": (req.dropoff_notes or "").strip(),
         },
+        "waypoints": waypoints,
         "car_type": car_type,
         "distance_km_estimate": round(distance_km, 2),
         "duration_estimate_minutes": round(duration_minutes),
@@ -1549,6 +1561,27 @@ async def book_ride(req: FlexBookRequest, request: Request):
     
     await db.taxi_rides.insert_one(ride)
     ride.pop("_id", None)
+    
+    # Track recent addresses (pickup + dropoff + any stops) so the search-sheet
+    # can show "Letzte Adressen" on the next booking.
+    async def _track_recent(addr, lat, lng):
+        if not (addr and lat and lng):
+            return
+        try:
+            await db.taxi_recent_addresses.update_one(
+                {"user_id": user_id, "address": addr},
+                {
+                    "$set": {"lat": lat, "lng": lng, "last_used_at": now.isoformat()},
+                    "$inc": {"use_count": 1},
+                },
+                upsert=True,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to track recent address: {e}")
+    await _track_recent(p_addr, p_lat, p_lng)
+    await _track_recent(d_addr, d_lat, d_lng)
+    for s in waypoints:
+        await _track_recent(s["address"], s["lat"], s["lng"])
     
     # Find nearby drivers and notify them (in real app, use push notifications)
     nearby_drivers = await db.drivers.find({
@@ -2164,6 +2197,78 @@ async def save_place(req: SavePlaceReq, request: Request):
 async def delete_saved_place(place_id: str, request: Request):
     user = await get_current_user(request)
     await db.taxi_saved_places.delete_one({"place_id": place_id, "user_email": user.get("email", "")})
+    return {"ok": True}
+
+
+# ── Recent Addresses (auto-tracked on each booking) ──────────────────────────
+
+@router.get("/recent-addresses")
+async def list_recent_addresses(request: Request, limit: int = 10):
+    """Return the user's most recently used addresses (pickup + dropoff + stops)."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    limit = max(1, min(50, limit))
+    cursor = db.taxi_recent_addresses.find(
+        {"user_id": user_id},
+        {"_id": 0, "user_id": 0},
+    ).sort("last_used_at", -1).limit(limit)
+    items = await cursor.to_list(limit)
+    return {"addresses": items}
+
+
+@router.delete("/recent-addresses")
+async def clear_recent_addresses(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    await db.taxi_recent_addresses.delete_many({"user_id": user_id})
+    return {"ok": True}
+
+
+# ── City Defaults (per-pickup-city ride options) ─────────────────────────────
+
+class CityDefaultRequest(BaseModel):
+    city: str = Field(..., min_length=1, max_length=120)
+    options: dict
+
+
+@router.get("/city-defaults/{city}")
+async def get_city_default(city: str, request: Request):
+    """Get saved default ride options for this pickup city."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    doc = await db.taxi_city_defaults.find_one(
+        {"user_id": user_id, "city": city.lower().strip()},
+        {"_id": 0, "user_id": 0},
+    )
+    return {"default": doc}
+
+
+@router.post("/city-defaults")
+async def save_city_default(req: CityDefaultRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now = datetime.now(timezone.utc).isoformat()
+    await db.taxi_city_defaults.update_one(
+        {"user_id": user_id, "city": req.city.lower().strip()},
+        {"$set": {
+            "user_id": user_id,
+            "city": req.city.lower().strip(),
+            "city_label": req.city,
+            "options": req.options or {},
+            "updated_at": now,
+        }},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@router.delete("/city-defaults/{city}")
+async def delete_city_default(city: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    await db.taxi_city_defaults.delete_one(
+        {"user_id": user_id, "city": city.lower().strip()}
+    )
     return {"ok": True}
 
 

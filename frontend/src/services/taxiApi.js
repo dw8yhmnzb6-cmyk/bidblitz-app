@@ -73,6 +73,37 @@ export async function fetchSavedPlaces() {
   return data?.places || [];
 }
 
+// ── Recent Addresses (auto-tracked on booking) ─────────────────────────────
+export async function fetchRecentAddresses(limit = 10) {
+  const res = await fetch(`${API}/api/taxi/recent-addresses?limit=${limit}`, cred);
+  if (!res.ok) return [];
+  const data = await readJson(res);
+  return data?.addresses || [];
+}
+
+export async function clearRecentAddresses() {
+  const res = await fetch(`${API}/api/taxi/recent-addresses`, { ...cred, method: "DELETE" });
+  return res.ok;
+}
+
+// ── City Defaults ──────────────────────────────────────────────────────────
+export async function fetchCityDefault(city) {
+  if (!city) return null;
+  const res = await fetch(`${API}/api/taxi/city-defaults/${encodeURIComponent(city)}`, cred);
+  if (!res.ok) return null;
+  const data = await readJson(res);
+  return data?.default || null;
+}
+
+export async function saveCityDefault(city, options) {
+  const res = await fetch(`${API}/api/taxi/city-defaults`, {
+    ...credJson,
+    method: "POST",
+    body: JSON.stringify({ city, options }),
+  });
+  return res.ok;
+}
+
 export async function savePlaceApi({ name, icon, address, lat, lng }) {
   const res = await fetch(`${API}/api/taxi/saved-places`, {
     ...credJson,
@@ -121,17 +152,22 @@ export async function estimateRide({ pickup, dropoff }) {
 }
 
 export async function bookRideApi({
-  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {},
+  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [],
 }) {
   const body = {
     pickup_address: pickup.address || "",
     pickup_lat: pickup.lat,
     pickup_lng: pickup.lng,
+    pickup_notes: pickup.notes || "",
     dropoff_address: dropoff.address || "",
     dropoff_lat: dropoff.lat,
     dropoff_lng: dropoff.lng,
+    dropoff_notes: dropoff.notes || "",
     vehicle_type: vehicleType,
     payment_method: paymentMethod,
+    stops: stops.filter((s) => s.address && s.lat).map((s) => ({
+      address: s.address, lat: s.lat, lng: s.lng, notes: s.notes || "",
+    })),
     language: options.language || "de",
     with_pet: !!options.withPet,
     luggage: options.luggage || "none",

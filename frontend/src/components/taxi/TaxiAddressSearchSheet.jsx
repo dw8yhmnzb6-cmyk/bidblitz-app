@@ -39,10 +39,12 @@ export default function TaxiAddressSearchSheet({
   currentLocation,
   pickup, dropoff,
   onSelectPickup, onSelectDropoff,
+  onSelectWaypoint,
   onUseCurrentLocation,
   onPickOnMap,
   favorites = [],
   savedPlaces = [],
+  recentAddresses = [],
 }) {
   const { search } = useTaxiGeocoder({ debounceMs: 200 });
   const [pickupVal, setPickupVal] = useState(pickup?.address || "");
@@ -76,22 +78,29 @@ export default function TaxiAddressSearchSheet({
     search("sheet-dropoff", v, setDropoffSugg, setShowDropoffSugg);
   };
 
-  const pickPickup = (s) => {
-    onSelectPickup({ lat: s.lat, lng: s.lng, address: s.address });
-    setPickupVal(s.address);
-    setShowPickupSugg(false);
-  };
-  const pickDropoff = (s) => {
-    onSelectDropoff({ lat: s.lat, lng: s.lng, address: s.address });
-    setDropoffVal(s.address);
-    setShowDropoffSugg(false);
+  // Universal "apply" — works for pickup, dropoff, or waypoint:N
+  const applySelection = (sel) => {
+    if (mode && mode.startsWith("waypoint:")) {
+      const idx = Number(mode.split(":")[1]);
+      onSelectWaypoint?.(idx, sel);
+      onClose();
+      return;
+    }
+    if (focused === "pickup") {
+      onSelectPickup(sel);
+      setPickupVal(sel.address);
+      setShowPickupSugg(false);
+      if (dropoff?.address) onClose();
+    } else {
+      onSelectDropoff(sel);
+      setDropoffVal(sel.address);
+      setShowDropoffSugg(false);
+      if (pickup?.lat) onClose();
+    }
   };
 
-  // Auto-close when both addresses are set and user just picked dropoff
-  const handleAutoCloseIfReady = (which, s) => {
-    if (which === "dropoff" && pickup?.lat) onClose();
-    if (which === "pickup" && dropoff?.address) onClose();
-  };
+  const pickSuggestion = (s) =>
+    applySelection({ lat: s.lat, lng: s.lng, address: s.address });
 
   const currentList = focused === "pickup" ? pickupSugg : dropoffSugg;
   const currentShow = focused === "pickup" ? showPickupSugg : showDropoffSugg;
@@ -177,10 +186,7 @@ export default function TaxiAddressSearchSheet({
                 {currentList.map((s, i) => (
                   <button
                     key={i}
-                    onClick={() => {
-                      if (focused === "pickup") { pickPickup(s); handleAutoCloseIfReady("pickup", s); }
-                      else { pickDropoff(s); handleAutoCloseIfReady("dropoff", s); }
-                    }}
+                    onClick={() => pickSuggestion(s)}
                     className="w-full flex items-start gap-3 px-4 py-3.5 border-b border-white/5 hover:bg-white/5 text-left"
                     data-testid={`search-sugg-${i}`}
                   >
@@ -233,19 +239,50 @@ export default function TaxiAddressSearchSheet({
                   </div>
                 </button>
 
+                {recentAddresses.length > 0 && (
+                  <div className="py-2 border-b border-white/5">
+                    <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold flex items-center justify-between">
+                      <span>Letzte Adressen</span>
+                      <span className="text-gray-600 normal-case tracking-normal text-[10px]">
+                        {recentAddresses.length} {recentAddresses.length === 1 ? "Eintrag" : "Einträge"}
+                      </span>
+                    </div>
+                    {recentAddresses.slice(0, 6).map((r, i) => (
+                      <button
+                        key={i}
+                        onClick={() => pickSuggestion({ lat: r.lat, lng: r.lng, name: r.address.split(",")[0], cityZip: r.address.split(",").slice(1).join(",").trim(), address: r.address })}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left"
+                        data-testid={`search-recent-${i}`}
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 6v6l4 2" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-white truncate">{r.address.split(",")[0]}</div>
+                          <div className="text-xs text-gray-400 truncate">
+                            {r.address.split(",").slice(1).join(",").trim()}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {favorites.length > 0 && (
                   <div className="py-2 border-b border-white/5">
-                    <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                      Favoriten
+                    <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold flex items-center justify-between">
+                      <span>Favoriten</span>
+                      <span className="text-cyan-400 normal-case tracking-normal text-[10px]">
+                        {favorites.length} {favorites.length === 1 ? "Ort" : "Orte"}
+                      </span>
                     </div>
                     {favorites.slice(0, 6).map((f) => (
                       <button
                         key={f.id}
-                        onClick={() => {
-                          const sel = { lat: f.latitude, lng: f.longitude, address: f.address };
-                          focused === "pickup" ? pickPickup(sel) : pickDropoff(sel);
-                          onClose();
-                        }}
+                        onClick={() => pickSuggestion({ lat: f.latitude, lng: f.longitude, address: f.address, name: f.name, cityZip: f.address })}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left"
                         data-testid={`search-fav-${f.id}`}
                       >
@@ -263,17 +300,16 @@ export default function TaxiAddressSearchSheet({
 
                 {savedPlaces.length > 0 && (
                   <div className="py-2 border-b border-white/5">
-                    <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                      Gespeicherte Orte
+                    <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold flex items-center justify-between">
+                      <span>Gespeicherte Orte</span>
+                      <span className="text-cyan-400 normal-case tracking-normal text-[10px]">
+                        {savedPlaces.length} {savedPlaces.length === 1 ? "Ort" : "Orte"}
+                      </span>
                     </div>
                     {savedPlaces.slice(0, 6).map((p) => (
                       <button
                         key={p.place_id}
-                        onClick={() => {
-                          const sel = { lat: p.lat, lng: p.lng, address: p.address };
-                          focused === "pickup" ? pickPickup(sel) : pickDropoff(sel);
-                          onClose();
-                        }}
+                        onClick={() => pickSuggestion({ lat: p.lat, lng: p.lng, address: p.address, name: p.name, cityZip: p.address })}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 text-left"
                         data-testid={`search-saved-${p.place_id}`}
                       >
@@ -290,8 +326,11 @@ export default function TaxiAddressSearchSheet({
                 )}
 
                 <div className="py-2">
-                  <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                    Points of Interest
+                  <div className="px-4 py-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold flex items-center justify-between">
+                    <span>Points of Interest</span>
+                    <span className="text-gray-600 normal-case tracking-normal text-[10px]">
+                      Schnellauswahl
+                    </span>
                   </div>
                   <div className="px-3 grid grid-cols-4 gap-2">
                     {POI_QUICKS.map((p) => (
