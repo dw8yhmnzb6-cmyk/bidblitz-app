@@ -6,20 +6,37 @@
  */
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, Euro, Gift, Coins, TrendingUp, ArrowDownLeft, Loader2, Clock, ChevronRight } from "lucide-react";
+import { Wallet, Gift, Coins, ArrowDownLeft, Loader2, Clock, ChevronRight, Landmark, CheckCircle2, AlertCircle, Banknote } from "lucide-react";
 import { EmptyState } from "./StaffShifts";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+const PAYOUT_STATUS = {
+  pending:    { label: "In Bearbeitung", color: "#F5A524", Icon: Clock },
+  processing: { label: "Wird ausgeführt", color: "#00D4FF", Icon: Loader2 },
+  completed:  { label: "Ausgezahlt",     color: "#10D981", Icon: CheckCircle2 },
+  failed:     { label: "Fehlgeschlagen", color: "#F31260", Icon: AlertCircle },
+  needs_stripe_onboarding: { label: "Setup nötig", color: "#F5A524", Icon: AlertCircle },
+};
+
 export default function StaffWalletTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [payouts, setPayouts] = useState([]);
+  const [bank, setBank] = useState(null);
+  const [showAllPayouts, setShowAllPayouts] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API}/api/staff/wallet/me/balance`, { credentials: "include" });
-        if (r.ok) setData(await r.json());
+        const [b, p, bk] = await Promise.all([
+          fetch(`${API}/api/staff/wallet/me/balance`, { credentials: "include" }),
+          fetch(`${API}/api/staff/wallet/payouts/me?limit=30`, { credentials: "include" }),
+          fetch(`${API}/api/staff/wallet/bank/me`, { credentials: "include" }),
+        ]);
+        if (b.ok) setData(await b.json());
+        if (p.ok) setPayouts((await p.json()).payouts || []);
+        if (bk.ok) setBank((await bk.json()).bank || null);
       } catch (e) {}
       setLoading(false);
     })();
@@ -116,6 +133,62 @@ export default function StaffWalletTab() {
       >
         Wallet öffnen <ChevronRight size={14} />
       </button>
+
+      {/* Bank Card */}
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 mb-2 font-semibold">Bankverbindung</p>
+        <div data-testid="wallet-bank-card" className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#00D4FF]/15 text-[#00D4FF] flex-shrink-0">
+            <Landmark size={16} />
+          </div>
+          <div className="flex-1 min-w-0">
+            {bank?.iban_masked ? (
+              <>
+                <p className="text-sm font-semibold truncate">{bank.account_holder || "Inhaber"}</p>
+                <p className="text-[11px] text-white/55 tabular-nums tracking-wider">{bank.iban_masked}</p>
+                {!bank.verified && (
+                  <p className="text-[10px] text-[#F5A524] mt-0.5">Noch nicht verifiziert</p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold">Keine Bankverbindung</p>
+                <p className="text-[11px] text-white/45">Bitten dein Chef, deine IBAN zu hinterlegen</p>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Payout History */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">Auszahlungen</p>
+          {payouts.length > 3 && (
+            <button
+              onClick={() => setShowAllPayouts((v) => !v)}
+              data-testid="wallet-toggle-payouts"
+              className="text-[10px] text-[#00D4FF] font-semibold"
+            >
+              {showAllPayouts ? "Weniger" : `Alle anzeigen (${payouts.length})`}
+            </button>
+          )}
+        </div>
+
+        {payouts.length === 0 ? (
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center" data-testid="wallet-no-payouts">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mb-2">
+              <Banknote size={22} className="text-white/30" strokeWidth={1.6} />
+            </div>
+            <p className="text-sm font-semibold">Noch keine Auszahlungen</p>
+            <p className="text-[11px] text-white/40 mt-0.5">Sobald dein Guthaben ausgezahlt wird, siehst du es hier.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {(showAllPayouts ? payouts : payouts.slice(0, 3)).map((p) => <PayoutRow key={p.id} payout={p} />)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -131,5 +204,46 @@ function SplitCard({ icon: Icon, color, label, value, testId }) {
       </div>
       <p className="text-2xl font-bold tabular-nums" style={{ color }}>{value}</p>
     </div>
+  );
+}
+
+
+function PayoutRow({ payout }) {
+  const meta = PAYOUT_STATUS[payout.status] || { label: payout.status, color: "#71717A", Icon: Clock };
+  const Icon = meta.Icon;
+  const isSpinner = payout.status === "processing";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      data-testid={`wallet-payout-${payout.id}`}
+      className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${meta.color}1F`, color: meta.color }}>
+          <Icon size={16} className={isSpinner ? "animate-spin" : ""} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-bold tabular-nums">€{payout.amount_eur.toFixed(2)}</p>
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+              style={{ background: `${meta.color}1F`, color: meta.color }}
+            >{meta.label}</span>
+          </div>
+          <p className="text-[11px] text-white/45 mt-0.5 truncate">
+            {payout.reference} · {payout.method === "stripe_connect" ? "Stripe" : "SEPA"}
+            {payout.iban_masked && <span className="ml-1 tabular-nums tracking-wider">{payout.iban_masked}</span>}
+          </p>
+          <p className="text-[10px] text-white/35 mt-0.5">
+            {new Date(payout.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+            {payout.completed_at && (
+              <span className="ml-1 text-[#10D981]"> · ausgezahlt {new Date(payout.completed_at).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}</span>
+            )}
+          </p>
+        </div>
+      </div>
+    </motion.div>
   );
 }
