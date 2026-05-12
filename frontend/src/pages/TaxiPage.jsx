@@ -100,6 +100,17 @@ export default function TaxiPage({ onNavigate }) {
   const [citySaved, setCitySaved] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Toggle body class for fullscreen booking mode (hides BottomNav, AIChat, FAB-cluster, cookie banner)
+  useEffect(() => {
+    const inMapFlow = view === 'book' && taxiType && moduleEnabled;
+    if (inMapFlow) {
+      document.body.classList.add('taxi-fullscreen-mode');
+    } else {
+      document.body.classList.remove('taxi-fullscreen-mode');
+    }
+    return () => document.body.classList.remove('taxi-fullscreen-mode');
+  }, [view, taxiType, moduleEnabled]);
+
   // ═══════════════════════════════════════════════════════════════════════════
   // HOOKS: Map + Geolocation
   // ═══════════════════════════════════════════════════════════════════════════
@@ -380,41 +391,55 @@ export default function TaxiPage({ onNavigate }) {
 
           {/* Top bar overlay */}
           <div className="absolute top-0 inset-x-0 z-40 px-4 pt-3 pb-2 bg-gradient-to-b from-black/80 to-transparent">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <button
-                onClick={() => navigate('/')}
-                className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center"
-                data-testid="map-flow-back"
+                onClick={() => setShowSideMenu(true)}
+                className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center shrink-0"
+                data-testid="map-flow-menu"
+                title="Menü"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="m15 6-6 6 6 6" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
               </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={getCurrentLocation}
-                  disabled={loadingLocation}
-                  className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center disabled:opacity-50"
-                  data-testid="map-flow-locate"
-                  title="Standort"
+
+              {currentAddress && (
+                <div
+                  className="flex-1 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 text-left min-w-0"
+                  data-testid="map-flow-current-address"
                 >
-                  {loadingLocation ? (
-                    <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581" />
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-                    </svg>
-                  )}
-                </button>
-              </div>
+                  <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider leading-none">
+                    Standort
+                  </p>
+                  <p className="text-xs text-white truncate leading-tight mt-0.5">{currentAddress}</p>
+                </div>
+              )}
+
+              <button
+                onClick={getCurrentLocation}
+                disabled={loadingLocation}
+                className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center disabled:opacity-50 shrink-0"
+                data-testid="map-flow-locate"
+                title="Standort"
+              >
+                {loadingLocation ? (
+                  <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Draggable Bottom Sheet */}
-          <TaxiBottomSheet defaultSnap="half">
+          {/* Draggable Bottom Sheet (starts collapsed for max map area) */}
+          <TaxiBottomSheet defaultSnap="collapsed">
             <TaxiBookingSheet
               taxiType={taxiType}
               onChangeType={() => setTaxiType('')}
@@ -461,6 +486,21 @@ export default function TaxiPage({ onNavigate }) {
             onClose={() => setShowOrderOptions(false)}
             options={orderOptions}
             setOptions={setOrderOptions}
+          />
+
+          {/* Side menu (hamburger) */}
+          <TaxiSideMenu
+            isOpen={showSideMenu}
+            onClose={() => setShowSideMenu(false)}
+            user={currentUser}
+            userBalance={userBalance}
+            favoritesCount={favorites.length}
+            recentAddressesCount={recentAddresses.length}
+            onOpenFavorites={() => setShowFavorites(true)}
+            onOpenHistory={() => setView('history')}
+            onOpenSaved={() => setShowFavorites(true)}
+            onOpenDriverOnboarding={() => setShowDriverOnboarding(true)}
+            onNavigate={onNavigate}
           />
         </div>
       )}

@@ -468,6 +468,24 @@ body {
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
 }
 
+/* ── Taxi fullscreen booking mode (taxi.eu/Uber parity) ─────────────────────
+   When body has class .taxi-fullscreen-mode, hide all "super app" chrome
+   so only the Map + Top-Bar + Bottom-Sheet are visible. */
+body.taxi-fullscreen-mode .bottom-nav,
+body.taxi-fullscreen-mode [data-testid="ai-chat-fab"],
+body.taxi-fullscreen-mode [data-testid="floating-chatbot-bubble"],
+body.taxi-fullscreen-mode [data-testid="superapp-hub"],
+body.taxi-fullscreen-mode [data-testid="cookie-banner"],
+body.taxi-fullscreen-mode [data-testid="demo-banner"],
+body.taxi-fullscreen-mode [data-testid="kyc-banner"],
+body.taxi-fullscreen-mode [data-testid="group-tracker-banner"],
+body.taxi-fullscreen-mode [data-testid="pwa-install-prompt"],
+body.taxi-fullscreen-mode [data-testid="ios-add-to-home"],
+body.taxi-fullscreen-mode .chatbot-toggle-btn,
+body.taxi-fullscreen-mode .chatbot-window {
+  display: none !important;
+}
+
 @media (max-width: 480px) {
   .bottom-nav {
     max-width: 100%;

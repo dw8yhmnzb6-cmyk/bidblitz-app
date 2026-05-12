@@ -2,9 +2,8 @@
  * TaxiSideMenu — Slide-in drawer from left (taxi.eu-style hamburger menu).
  * Contains profile card, balance, navigation links.
  */
-import React from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 
 function Item({ icon, label, badge, onClick, testId }) {
   return (
@@ -36,9 +35,14 @@ export default function TaxiSideMenu({
   onOpenHistory,
   onOpenSaved,
   onOpenDriverOnboarding,
+  onNavigate,
 }) {
-  const navigate = useNavigate();
   const initials = (user?.name || user?.email || "?").trim().slice(0, 2).toUpperCase();
+  const go = (path) => {
+    onClose();
+    if (onNavigate) onNavigate(path);
+    else window.dispatchEvent(new CustomEvent("bidblitz:navigate", { detail: path }));
+  };
 
   return (
     <AnimatePresence>
@@ -153,7 +157,7 @@ export default function TaxiSideMenu({
                   </svg>
                 }
                 label="Einstellungen"
-                onClick={() => { onClose(); navigate('/account'); }}
+                onClick={() => go('/account')}
                 testId="sm-settings"
               />
               <Item
@@ -164,7 +168,7 @@ export default function TaxiSideMenu({
                   </svg>
                 }
                 label="Hilfe & Support"
-                onClick={() => { onClose(); navigate('/contact'); }}
+                onClick={() => go('/contact')}
                 testId="sm-help"
               />
             </div>

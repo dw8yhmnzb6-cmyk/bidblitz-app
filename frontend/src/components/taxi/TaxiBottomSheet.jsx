@@ -10,7 +10,7 @@
 import React, { useState } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 
-const SNAPS = { collapsed: 0.28, half: 0.55, full: 0.92 };
+const SNAPS = { collapsed: 0.32, half: 0.62, full: 0.92 };
 
 export default function TaxiBottomSheet({
   defaultSnap = "half",

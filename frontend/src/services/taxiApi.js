@@ -140,10 +140,16 @@ export async function fetchRideHistory() {
 }
 
 export async function estimateRide({ pickup, dropoff }) {
+  const body = {
+    pickup_lat: pickup.lat,
+    pickup_lng: pickup.lng,
+    dropoff_lat: dropoff.lat,
+    dropoff_lng: dropoff.lng,
+  };
   const res = await fetch(`${API}/api/taxi/estimate`, {
     ...credJson,
     method: "POST",
-    body: JSON.stringify({ pickup, dropoff }),
+    body: JSON.stringify(body),
   });
   const data = await readJson(res);
   return res.ok

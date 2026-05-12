@@ -15,6 +15,25 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter71 — Bug-Fix: PWA-Prompt + Estimate API)
+- 🔴 **Bug 1**: PWA-Install-Prompt erschien über dem Bottom-Sheet im Booking-Flow. Fix: `[data-testid="pwa-install-prompt"]` + `[data-testid="ios-add-to-home"]` zu CSS-Cloak hinzugefügt.
+- 🔴 **Bug 2**: "Fehler beim Laden der Preise" — Frontend Service `estimateRide` sendete nested Body `{pickup, dropoff}` statt der flachen `EstimateRequest`-Felder (`pickup_lat/lng`, `dropoff_lat/lng`). Backend antwortete mit Pydantic 422. Fix in `services/taxiApi.js`.
+- ✅ Verifiziert E2E (Playwright): Berlin → Alexanderplatz Buchung lädt 3 Fahrzeuge mit korrekten Preisen (Standard €6.32, Premium €10, Van/XL €8). "Anpassen"-Sub-Panel an aktiver Karte sichtbar, Buchen-Button bereit. Keine Console-Errors mehr.
+
+### 12.05.2026 (iter70 — Uber/taxi.eu Profi-Layout: Chrome ausblenden, Hamburger, Sheet 32%)
+- 🎯 **User-Feedback aufgegriffen**: Bottom-Sheet konkurrierte mit Bottom-Nav, AI-Chat-FAB, Landing-Chatbot-Bubble, Cookie-Banner, SuperApp-Hub und KYC-/Demo-Banner → kein professioneller Look.
+- 🟢 **CSS-Cloak**: `body.taxi-fullscreen-mode` (in App.css) → blendet `.bottom-nav`, `[data-testid="ai-chat-fab"]`, `.chatbot-toggle-btn/.chatbot-window`, `[data-testid="superapp-hub|cookie-banner|kyc-banner|demo-banner|group-tracker-banner|floating-chatbot-bubble"]` aus. Toggle via `useEffect` in TaxiPage abhängig von `inMapBookingFlow`.
+- 🟢 **Top-Bar**: Pfeil-Zurück ersetzt durch **Hamburger-Menü** (öffnet `TaxiSideMenu`). Mittig Live-Standort-Pille (`Standort: ...`). Rechts Locate-Button.
+- 🟢 **SideMenu**: `TaxiSideMenu.jsx` (199 Z.) — Profile-Card mit Initialen, Wallet-Balance, Nav-Items (Letzte Adressen, Favoriten, Gespeicherte Orte, Verlauf, Fahrer-Onboarding, Einstellungen, Hilfe). `useNavigate`-Abhängigkeit entfernt (Component-agnostic via `onNavigate` prop + Custom-Event-Fallback).
+- 🟢 **Sheet Snap-Points** angepasst: collapsed 28% → 32%, half 55% → 62% (mehr Sheet-Content beim Drag). Default-Snap = `collapsed` damit Karte maximal sichtbar.
+- 🟢 **Backend-Erweiterungen** (vorgezogen für nächste Iterationen):
+  - `FlexBookRequest` + `Stop` Models: `stops[]`, `pickup_notes`, `dropoff_notes` (max 300 chars).
+  - `book_ride`: route = pickup → stops[] → dropoff, Total-Distanz aus haversine summiert. Auto-Tracking jeder genutzten Adresse in `taxi_recent_addresses`.
+  - Neue Endpoints: `GET/DELETE /api/taxi/recent-addresses`, `GET/POST/DELETE /api/taxi/city-defaults/{city}`.
+- 🟢 **Frontend Service**: `bookRideApi` sendet `pickup_notes`/`dropoff_notes`/`stops[]`. Neue Helpers: `fetchRecentAddresses`, `clearRecentAddresses`, `fetchCityDefault`, `saveCityDefault`.
+- 🟢 **Komponenten neu**: `TaxiNoteModal.jsx` (per-Adress-Hinweise), erweiterter `TaxiVehiclePicker` (Anpassen-Sub-Panel: Priorität fastest/cheapest/rated + Kapazität+ETA).
+- ✅ Verifiziert via Playwright: BottomNav weg, AIChat-FAB weg, LandingChatbot weg, Sheet bei `collapsed`-Snap, Hamburger öffnet SideMenu (Gast-Card sichtbar), Top-Bar Standort-Anzeige. Lint clean.
+
 ### 11.05.2026 (iter69 — taxi.eu UI Parität: Bottom-Sheet + Fullscreen Search + Bestelloptionen)
 - 🎯 **Vollständige UX-Neuordnung des Buchungsflows nach taxi.eu-Referenz** (Screen-Recording vom User).
 - 🟢 **Backend**: `FlexBookRequest` (models/taxi.py) erweitert um `language`, `with_pet`, `luggage`, `assistance`, `scheduled_at`. `book_ride` (routes/taxi.py) persistiert diese als `ride.options`. Backwards-compatible (defaults). Pydantic-Validierung clean.
