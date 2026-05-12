@@ -15,6 +15,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter76 — QR-Tisch-Bestellung Komplett: Customer + Merchant + Test)
+- 🟢 **Backend** (`routes/qr_table_order.py` ~420 Z., bereits in iter75 scaffolded, jetzt verdrahtet):
+  - Customer-Endpunkte: `GET /api/qr/resolve/{token}` (sliding-window TTL 5min, auto-rotate), `GET /api/qr/menu/{merchant_id}`, `POST /api/qr/order` (atomares `balance`-Debit, server-side Preisvalidierung, instant/waiter Mode), `GET /api/qr/order/{order_id}`.
+  - Merchant-Endpunkte: `POST/GET /api/merchant/qr-tables`, `POST /api/merchant/qr-tables/{id}/rotate`, `POST /api/merchant/qr-settings`, `GET /api/merchant/qr-orders/{merchant_id}`, `POST .../accept|reject|complete` (reject macht atomic refund auf User-Wallet).
+  - **Bugfix vor Tests**: Wallet-Feld korrigiert (`balance` statt `wallet_balance`).
+- 🟢 **Frontend Customer** (`pages/QrOrderPage.jsx`): Refactored von `react-router-dom` auf prop-basierte Navigation (`token`, `onNavigate`, `onAuthRequired`, `onLogin`) kompatibel mit App.js currentPath-Routing. Resolve + Menu-Load + Scope-Tabs (Speisen/Getränke) + Cart mit qty-Toggle + Submit-CTA + Success-Screen.
+- 🟢 **Frontend Merchant** (`pages/MerchantQrTablesPage.jsx` ~330 Z.): 3 Tabs (Tische/Bestellungen/Einstellungen). Tische: Anlegen (label+capacity), QR-Code-PNG via `qrcode.react`, Print-Window mit kompletter Layout, Token-Rotate-Button. Bestellungen: Live-Liste mit 5s-Polling, gruppiert nach Status (pending/accepted/completed/rejected), Accept/Reject/Complete-Buttons. Settings: instant/waiter + scopes (food/drinks).
+- 🟢 **App.js**: Lazy-Loaded `QrOrderPage`, `MerchantQrTablesPage`. Path-Handler `/order/qr/:token` (mit Guest-Auth-Fallback) + `/merchant/qr-tables`. **Chrome-Cloak**: BottomNav, AIChatWidget, SuperAppOverlay, LandingChatbot, CookieBanner werden auf `/order/qr/*` ausgeblendet für sauberes Customer-Erlebnis.
+- 🟢 **MorePage**: Eintrag "QR-Tisch-Bestellung" mit Store-Icon (Merchant/Admin sichtbar) → navigiert zu `/merchant/qr-tables`.
+- ✅ **Testing**: 10/10 Backend-Pytest passed (`/app/backend/tests/test_qr_table_order.py`). Frontend E2E (Playwright via testing-agent): Customer scannt → Menu rendert → Pizza €8.50 ins Cart → Submit → Success-Screen mit `qro_7a2caa93eaae`. Merchant-Page rendert 4 Tisch-Cards mit QR-Codes, alle 3 Tabs switchen, Cloak verifiziert. **Success: 100% backend, 100% frontend**.
+
 ### 12.05.2026 (iter75 — Driver Application Approval Workflow + Top-5 Lieblings-Routen)
 - 🟢 **Application-Workflow Backend** (`routes/taxi.py`):
   - **Bestehender** `POST /admin/drivers/{driver_id}/approve` propagiert jetzt `vehicle_capabilities` aus dem matchenden Application-Datensatz (by email) in `drivers.car.{pet_friendly,luggage_class,assistance}` und markiert die Application als approved.
