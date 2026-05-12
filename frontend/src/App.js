@@ -100,6 +100,8 @@ const StaffLoginPage = lazy(() => import("./pages/StaffLoginPage"));
 const StaffPortalPage = lazy(() => import("./pages/StaffPortalPage"));
 const StaffUpgradeScreen = lazy(() => import("./pages/StaffUpgradeScreen"));
 const StaffSettingsPage = lazy(() => import("./pages/StaffSettingsPage"));
+const StaffMobilePage = lazy(() => import("./pages/StaffMobilePage"));
+const StaffInvitePage = lazy(() => import("./pages/StaffInvitePage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
 const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
@@ -439,6 +441,12 @@ function AppContent() {
         });
       },
     };
+    if (currentPath === "/staff/mobile") {
+      return <StaffMobilePage onBack={() => handleNavigate("/")} />;
+    }
+    if (currentPath === "/staff/invite") {
+      return <StaffInvitePage onSuccess={() => handleNavigate("/staff/mobile")} />;
+    }
     // ─── Dynamic path handlers (must run before switch since switch uses exact match)
     if (currentPath.startsWith("/kds/")) {
       return <KDSPage stationId={currentPath.split("/")[2]} />;
@@ -563,6 +571,10 @@ function AppContent() {
         return <StaffLoginPage onBack={() => handleNavigate("/")} onLoginSuccess={() => handleNavigate("/staff/portal")} />;
       case "/staff/portal":
         return <StaffPortalPage onBack={() => handleNavigate("/")} />;
+      case "/staff/mobile":
+        return <StaffMobilePage onBack={() => handleNavigate("/")} />;
+      case "/staff/invite":
+        return <StaffInvitePage onSuccess={() => handleNavigate("/staff/mobile")} />;
       case "/merchant/staff/upgrade":
       case "/staff/upgrade":
         return <StaffUpgradeScreen onSuccess={() => handleNavigate("/merchant/staff")} onBack={() => handleNavigate("/merchant/staff")} />;

@@ -1,0 +1,64 @@
+{
+  "summary": "E2E tests for BidBlitz Staff Phase 2 (9 new backend modules + 3 frontend public routes). Backend: 23/24 pytest passed (95.8%). Frontend: /staff/mobile login + authenticated dashboard, /staff/invite preview/accept, magic-link verify cookie all validated via Playwright. One backend bug found: validate_geofence inserts gps_out_of_range warning WITHOUT 'resolved: False' field, so /warnings/list?resolved=false never returns those warnings.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/staff/clock + GET /api/staff/warnings/list?resolved=false",
+        "issue": "validate_geofence() in staff_locations.py inserts gps_out_of_range warning doc WITHOUT the 'resolved' field. /warnings/list filters strictly on {resolved: False} (exact match), so geofence warnings are stored but invisible until explicitly queried with no filter. Fix: in staff_locations.validate_geofence, add 'resolved': False to warn dict before insert (line ~80). Reproduce: create location, POST /clock with lat/lng far from location, then GET /warnings/list?resolved=false → empty; but db.staff_warnings has the doc.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/staff/auth/magic-link",
+        "issue": "magic_url is returned in JSON response body in production (intended dev-mode behaviour per problem statement). Acceptable while no SMS/Email provider is wired, but must be gated behind ENV flag (e.g. STAFF_DEV_RETURN_MAGIC_URL) before production launch — currently always exposed."
+      },
+      {
+        "endpoint": "Inherited from iteration_78",
+        "issue": "admin_override status=trialing without prior trial_end still does not auto-default trial_end → trial_days_left=None. Not retested here."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/staff/mobile (mobile 390x844)",
+        "issues": ["Login screen and authenticated dashboard show legacy bottom tab bar (Start/Wallet/Entdecken/Mehr) overlapping the staff content — visually odd for a 'mobile worker' shell. The cookie consent banner also overlaps the lower portion of the staff card on first load."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_phase2.py",
+    "/app/test_reports/pytest/staff_phase2.xml"
+  ],
+  "action_items": [
+    "FIX (HIGH): In /app/backend/routes/staff_locations.py validate_geofence, add 'resolved': False to the warn dict before db.staff_warnings.insert_one — otherwise geofence warnings are invisible via the warnings/list?resolved=false endpoint and are not actionable in UI.",
+    "Hide magic_url from API response body when not in DEV mode. Gate behind env var (e.g. STAFF_DEV_RETURN_MAGIC_URL=true).",
+    "Apply iteration_78 follow-up: in admin_override_subscription, when status='trialing' is set and trial_end is missing, default trial_end := now + 30 days.",
+    "Suppress global bottom tab bar + cookie banner on /staff/mobile and /staff/invite for a clean employee mobile experience.",
+    "Consider exposing /api/staff/warnings/list without forcing 'resolved' filter (allow resolved=null/all)."
+  ],
+  "critical_code_review_comments": [
+    "staff_locations.validate_geofence builds 'warn' dict but never sets resolved/source — schema drift vs staff_warnings._store_warning which sets resolved=False; standardise via a helper to keep schema consistent across all warning producers.",
+    "Every new staff_*.py module instantiates its own AsyncIOMotorClient — 9 new modules → 9 new clients on import, in addition to existing ones. Move to a shared singleton DB module to avoid connection-pool explosion.",
+    "staff_magic_link.py returns magic_url in response body unconditionally — fine for DEV but a security smell in production builds; gate behind env flag.",
+    "staff_invites.accept does NOT enforce subscription limit at accept time (only at create time). If merchant downgrades between create and accept, the accept can push them over the cap.",
+    "staff_profile.get_staff_from_session uses cookie value directly as id (sid = cookie). No signing/HMAC — anyone who knows a staff_id can forge a session by manually setting the staff_session cookie. Should sign the cookie value or store a server-side session token instead.",
+    "staff_metrics.PLAN_PRICES is duplicated from STAFF_PLANS in staff_subscription.py — single source of truth issue (also flagged in iteration_78)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_staff_phase2.py (new)"
+  ],
+  "success_rate": {
+    "backend": "95.8% (23/24)",
+    "frontend": "100% on tested public routes (/staff/mobile login + authed, /staff/invite preview/accept)"
+  },
+  "test_credentials": "Merchant haendler@bidblitz.com/Haendler2026! and Admin admin@bidblitz.com/BidBlitz2026! both working. Staff session via magic-link verified.",
+  "seed_data_creation": "Tests create TEST_HQ location, TEST_invite_<ts>@example.com invite + member, then clean up at end. One stray UITestUser member f91f27d6 + TEST_uifrag_1778610785 invite remains from manual Playwright UI test — main agent may want to purge.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file at /app/backend/tests/test_staff_phase2.py is idempotent and self-cleaning except for the magic-link cookie session. Set REACT_APP_BACKEND_URL env before running pytest. The merchant /merchant/staff UI tab cannot be reached via direct URL because the app uses internal handleNavigate (not react-router) — only /staff/mobile and /staff/invite are true public URLs. Test the merchant Overview/Reports tabs by simulating the Anmelden flow (click 'Anmelden' on landing → fill form → handleNavigate).",
+  "rca of the issue": "test_08_clock_geofence_out_of_range failure RCA: POST /api/staff/clock with lat/lng far from the registered location DOES correctly call validate_geofence and DOES insert a doc in db.staff_warnings with type='gps_out_of_range', distance_m=504415, radius_m=200. However the inserted doc lacks the 'resolved' field. GET /api/staff/warnings/list?resolved=false queries {merchant_id, resolved: False} which is an exact-match filter; a doc with no 'resolved' field does NOT match. Mitigation: add 'resolved': False to the warn dict in staff_locations.validate_geofence before insert_one (also good defensive practice is to migrate existing docs and/or change the list query to {$or: [{resolved: False}, {resolved: {$exists: False}}]})."
+}

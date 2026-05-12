@@ -59,6 +59,10 @@ class ClockEvent(BaseModel):
     lng: Optional[float] = None
     note: Optional[str] = None
     source: str = "web"
+    device_type: Optional[str] = None
+    browser: Optional[str] = None
+    platform: Optional[str] = None
+    app_version: Optional[str] = None
 
 class ShiftCreate(BaseModel):
     staff_id: str
@@ -346,12 +350,39 @@ async def clock_event(
         "lng": data.lng,
         "note": data.note,
         "source": data.source,
+        "device_type": data.device_type,
+        "browser": data.browser,
+        "platform": data.platform,
+        "app_version": data.app_version,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     await db.staff_clock_events.insert_one(event)
     event.pop("_id", None)
-    
+
+    # Audit log + Geofence validation (best-effort)
+    try:
+        from routes.staff_locations import validate_geofence
+        warn = await validate_geofence(merchant_id, data.staff_id, data.lat, data.lng)
+        if warn:
+            event["geofence_warning"] = warn
+    except Exception:
+        pass
+    try:
+        await db.staff_audit_log.insert_one({
+            "id": str(uuid4()),
+            "merchant_id": merchant_id,
+            "staff_id": data.staff_id,
+            "type": "clock_event",
+            "action": data.action,
+            "device_type": data.device_type,
+            "browser": data.browser,
+            "platform": data.platform,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception:
+        pass
+
     return {"success": True, "event": event}
 
 @router.get("/clock/today")

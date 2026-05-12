@@ -418,10 +418,19 @@ async def admin_override_subscription(req: AdminOverrideReq, request: Request):
                 te = datetime.fromisoformat(sub["trial_end"].replace("Z", "+00:00"))
             except Exception:
                 te = now
-            new_te = max(te, now) + timedelta(days=req.extend_trial_days)
-            update["trial_end"] = new_te.isoformat()
-            update["current_period_end"] = new_te.isoformat()
-            update["status"] = "trialing"
+        else:
+            te = now
+        new_te = max(te, now) + timedelta(days=req.extend_trial_days)
+        update["trial_end"] = new_te.isoformat()
+        update["current_period_end"] = new_te.isoformat()
+        update["status"] = "trialing"
+
+    # Edge-case: status=trialing without an existing trial_end → set default trial window
+    if req.status == "trialing" and not (sub and sub.get("trial_end")) and "trial_end" not in update:
+        new_te = now + timedelta(days=TRIAL_DAYS)
+        update["trial_end"] = new_te.isoformat()
+        update["current_period_end"] = new_te.isoformat()
+        update["trial_start"] = now.isoformat()
 
     if not sub:
         # Create new subscription via admin

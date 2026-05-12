@@ -16,6 +16,9 @@ import { toast } from "sonner";
 import QRCode from "qrcode.react";
 import QrCheckinScanner from "../components/QrCheckinScanner";
 import StaffUpgradeScreen from "./StaffUpgradeScreen";
+import StaffDashboardCards from "../components/staff/StaffDashboardCards";
+import StaffWarningsList from "../components/staff/StaffWarningsList";
+import StaffExportButtons from "../components/staff/StaffExportButtons";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -380,8 +383,14 @@ function OverviewTab({ summary, members, todayEvents }) {
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Stats Grid */}
+    <div className="space-y-5">
+      {/* Premium Live Dashboard */}
+      <StaffDashboardCards />
+
+      {/* Warnings */}
+      <StaffWarningsList />
+
+      {/* Stats Grid (Legacy summary) */}
       <div className="grid grid-cols-2 gap-3">
         {stats.map((stat, i) => {
           const Icon = stat.icon;
@@ -737,6 +746,12 @@ function ReportsTab({ members }) {
 
   return (
     <div className="space-y-4">
+      {/* Export Buttons */}
+      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+        <h3 className="text-sm font-semibold mb-3">Exporte</h3>
+        <StaffExportButtons period="monthly" />
+      </div>
+
       {/* Member Selection */}
       <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
         <h3 className="text-sm font-semibold mb-3">Mitarbeiter wählen</h3>

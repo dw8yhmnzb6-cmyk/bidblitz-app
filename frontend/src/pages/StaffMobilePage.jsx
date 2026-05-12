@@ -1,0 +1,540 @@
+/**
+ * BidBlitz Staff — Employee Mobile App Experience
+ * ================================================
+ * Route: /staff/mobile
+ * Mobile-first: Check-in, Check-out, Pause, heutige Stunden,
+ * Wochenstunden, nächste Schicht, Resturlaub.
+ *
+ * Supports magic-link token (?token=...) and existing staff_session cookie.
+ */
+import React, { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  LogIn, LogOut, Coffee, Play, Clock, Calendar, UmbrellaIcon,
+  Wifi, WifiOff, User, Settings, Loader2, AlertTriangle, Bell,
+  ChevronRight, Globe, RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  sendClockEvent, getQueueLength, flushQueue, startOnlineSync, getDeviceInfo,
+} from "../utils/staffOfflineQueue";
+import { t, getStaffLang, setStaffLang, STAFF_LANGUAGES } from "../i18n/staff";
+
+const API = process.env.REACT_APP_BACKEND_URL;
+
+export default function StaffMobilePage({ onBack }) {
+  const [loading, setLoading] = useState(true);
+  const [staff, setStaff] = useState(null);
+  const [dashboard, setDashboard] = useState(null);
+  const [acting, setActing] = useState(null);
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [lang, setLang] = useState(getStaffLang());
+  const [showSettings, setShowSettings] = useState(false);
+
+  const reload = useCallback(async () => {
+    try {
+      const [p, d] = await Promise.all([
+        fetch(`${API}/api/staff/me/profile`, { credentials: "include" }),
+        fetch(`${API}/api/staff/me/dashboard`, { credentials: "include" }),
+      ]);
+      if (p.ok) {
+        const pj = await p.json();
+        setStaff(pj.profile);
+      } else {
+        setStaff(null);
+      }
+      if (d.ok) {
+        const dj = await d.json();
+        setDashboard(dj);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // Magic-link token handling
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get("token");
+    (async () => {
+      if (token) {
+        try {
+          const r = await fetch(`${API}/api/staff/auth/verify-token?token=${encodeURIComponent(token)}`, {
+            credentials: "include",
+          });
+          if (r.ok) {
+            toast.success("Erfolgreich angemeldet");
+            url.searchParams.delete("token");
+            window.history.replaceState({}, "", url.toString());
+          } else {
+            toast.error("Magic Link ungültig oder abgelaufen");
+          }
+        } catch (e) {
+          toast.error("Login fehlgeschlagen");
+        }
+      }
+      await reload();
+      setLoading(false);
+    })();
+  }, [reload]);
+
+  // Online/offline + queue sync
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    const stop = startOnlineSync((r) => {
+      if (r?.synced > 0) {
+        toast.success(`${r.synced} Buchungen synchronisiert`);
+        reload();
+      }
+      setQueuedCount(getQueueLength());
+    });
+    setQueuedCount(getQueueLength());
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      stop();
+    };
+  }, [reload]);
+
+  const doClock = async (action) => {
+    if (!staff) {
+      toast.error("Bitte zuerst anmelden");
+      return;
+    }
+    setActing(action);
+    // Try to get location (best effort)
+    let lat = null, lng = null;
+    try {
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 })
+      );
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch (e) {}
+    const res = await sendClockEvent({
+      staff_id: staff.id,
+      action,
+      lat,
+      lng,
+      source: "mobile",
+    });
+    if (res.queued) {
+      toast.message(t("saved_offline"), { description: t("offline_notice") });
+      setQueuedCount(getQueueLength());
+    } else {
+      toast.success(
+        action === "clock_in" ? "Eingecheckt" :
+        action === "clock_out" ? "Ausgecheckt" :
+        action === "break_start" ? "Pause gestartet" : "Pause beendet"
+      );
+    }
+    await reload();
+    setActing(null);
+  };
+
+  const handleLangChange = (code) => {
+    setStaffLang(code);
+    setLang(code);
+    setShowSettings(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <Loader2 size={28} className="animate-spin text-[#00C2FF]" />
+      </div>
+    );
+  }
+
+  // Not authenticated → show login screen
+  if (!staff) {
+    return <StaffMobileLogin onSuccess={reload} onBack={onBack} />;
+  }
+
+  const status = dashboard?.status || "off";
+  const statusLabel = status === "working" ? t("status_working", lang) : status === "break" ? t("status_break", lang) : t("status_off", lang);
+  const statusColor = status === "working" ? "#10B981" : status === "break" ? "#F59E0B" : "#6B7280";
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] text-white pb-32" data-testid="staff-mobile-page">
+      {/* Top bar */}
+      <div className="sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#A855F7] flex items-center justify-center text-sm font-bold">
+              {staff.name?.slice(0, 1)?.toUpperCase()}
+            </div>
+            <div>
+              <p className="text-sm font-semibold leading-tight">{staff.name}</p>
+              <p className="text-[10px] text-white/40">{staff.email || staff.phone}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {online ? (
+              <Wifi size={14} className="text-green-400" />
+            ) : (
+              <WifiOff size={14} className="text-orange-400" data-testid="staff-offline-indicator" />
+            )}
+            {queuedCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 text-[10px] font-bold" data-testid="staff-queue-count">
+                {queuedCount}
+              </span>
+            )}
+            <button
+              onClick={() => setShowSettings(true)}
+              data-testid="staff-mobile-settings-btn"
+              className="p-2 rounded-lg hover:bg-white/5"
+            >
+              <Settings size={16} className="text-white/60" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Status hero */}
+      <section className="px-4 pt-6 pb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl p-5 bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/10"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-white/50">{t("today", lang)}</p>
+              <p className="text-2xl font-bold mt-1" data-testid="staff-status-label">
+                {statusLabel}
+              </p>
+            </div>
+            <div
+              className="w-3 h-3 rounded-full animate-pulse"
+              style={{ background: statusColor, boxShadow: `0 0 18px ${statusColor}` }}
+              data-testid="staff-status-dot"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-black/30 p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock size={12} className="text-[#00C2FF]" />
+                <p className="text-[10px] text-white/50">{t("today_hours", lang)}</p>
+              </div>
+              <p className="text-xl font-bold" data-testid="staff-today-hours">{dashboard?.today_hours ?? 0}h</p>
+            </div>
+            <div className="rounded-2xl bg-black/30 p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar size={12} className="text-[#A855F7]" />
+                <p className="text-[10px] text-white/50">{t("week_hours", lang)}</p>
+              </div>
+              <p className="text-xl font-bold" data-testid="staff-week-hours">{dashboard?.week_hours ?? 0}h</p>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Big action buttons */}
+      <section className="px-4 pb-2">
+        <div className="grid grid-cols-2 gap-3">
+          {status === "off" && (
+            <BigBtn
+              testId="staff-clock-in-btn"
+              icon={LogIn}
+              label={t("check_in", lang)}
+              color="#10B981"
+              loading={acting === "clock_in"}
+              onClick={() => doClock("clock_in")}
+            />
+          )}
+          {(status === "working" || status === "break") && (
+            <BigBtn
+              testId="staff-clock-out-btn"
+              icon={LogOut}
+              label={t("check_out", lang)}
+              color="#EF4444"
+              loading={acting === "clock_out"}
+              onClick={() => doClock("clock_out")}
+            />
+          )}
+          {status === "working" && (
+            <BigBtn
+              testId="staff-break-start-btn"
+              icon={Coffee}
+              label={t("start_break", lang)}
+              color="#F59E0B"
+              loading={acting === "break_start"}
+              onClick={() => doClock("break_start")}
+            />
+          )}
+          {status === "break" && (
+            <BigBtn
+              testId="staff-break-end-btn"
+              icon={Play}
+              label={t("end_break", lang)}
+              color="#10B981"
+              loading={acting === "break_end"}
+              onClick={() => doClock("break_end")}
+            />
+          )}
+          {status === "off" && (
+            <BigBtn
+              testId="staff-refresh-btn"
+              icon={RefreshCw}
+              label="Aktualisieren"
+              color="#6B7280"
+              onClick={reload}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* Info cards */}
+      <section className="px-4 py-4 space-y-3">
+        <InfoCard
+          icon={Calendar}
+          color="#A855F7"
+          label={t("next_shift", lang)}
+          value={dashboard?.next_shift?.title || "—"}
+          sub={dashboard?.next_shift?.start_time ? new Date(dashboard.next_shift.start_time).toLocaleString() : "Keine geplant"}
+          testId="staff-next-shift-card"
+        />
+        <InfoCard
+          icon={UmbrellaIcon}
+          color="#00C2FF"
+          label={t("vacation_remaining", lang)}
+          value={`${dashboard?.vacation_remaining ?? 0} / ${dashboard?.vacation_total ?? 0} Tage`}
+          sub="Restlicher Jahresurlaub"
+          testId="staff-vacation-card"
+        />
+      </section>
+
+      {/* Settings sheet */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center"
+            onClick={() => setShowSettings(false)}
+          >
+            <motion.div
+              initial={{ y: 200 }}
+              animate={{ y: 0 }}
+              exit={{ y: 200 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-md bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl p-6 space-y-3"
+              data-testid="staff-settings-sheet"
+            >
+              <p className="text-xs uppercase tracking-widest text-white/40 mb-2 flex items-center gap-2">
+                <Globe size={12} /> {t("language", lang)}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {STAFF_LANGUAGES.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => handleLangChange(l.code)}
+                    data-testid={`staff-lang-${l.code}`}
+                    className={`px-3 py-2.5 rounded-xl border text-sm flex items-center gap-2 transition-colors ${
+                      lang === l.code
+                        ? "bg-[#00C2FF]/10 border-[#00C2FF]/40 text-white"
+                        : "bg-white/[0.03] border-white/10 text-white/70 hover:bg-white/5"
+                    }`}
+                  >
+                    <span>{l.flag}</span>
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={async () => {
+                  await fetch(`${API}/api/staff/auth/logout`, { method: "POST", credentials: "include" });
+                  setShowSettings(false);
+                  setStaff(null);
+                }}
+                data-testid="staff-mobile-logout-btn"
+                className="w-full mt-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-semibold text-sm"
+              >
+                {t("logout", lang)}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function BigBtn({ icon: Icon, label, color, onClick, loading, testId }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      data-testid={testId}
+      className="aspect-square rounded-3xl bg-white/[0.04] border border-white/10 flex flex-col items-center justify-center gap-3 transition-all hover:bg-white/[0.07] active:scale-95 disabled:opacity-60"
+    >
+      <div
+        className="w-14 h-14 rounded-2xl flex items-center justify-center"
+        style={{ background: `${color}22`, color }}
+      >
+        {loading ? <Loader2 size={26} className="animate-spin" /> : <Icon size={26} />}
+      </div>
+      <p className="text-sm font-semibold">{label}</p>
+    </button>
+  );
+}
+
+function InfoCard({ icon: Icon, color, label, value, sub, testId }) {
+  return (
+    <div
+      data-testid={testId}
+      className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-3"
+    >
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: `${color}22`, color }}
+      >
+        <Icon size={18} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] uppercase tracking-widest text-white/40">{label}</p>
+        <p className="text-base font-bold truncate">{value}</p>
+        {sub && <p className="text-[10px] text-white/50 truncate">{sub}</p>}
+      </div>
+      <ChevronRight size={16} className="text-white/30" />
+    </div>
+  );
+}
+
+function StaffMobileLogin({ onSuccess, onBack }) {
+  const [identifier, setIdentifier] = useState("");
+  const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
+  const [magicUrl, setMagicUrl] = useState("");
+
+  const sendMagic = async () => {
+    if (!identifier) return toast.error("E-Mail oder Telefon eingeben");
+    setSending(true);
+    const isEmail = identifier.includes("@");
+    const res = await fetch(`${API}/api/staff/auth/magic-link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(isEmail ? { email: identifier } : { phone: identifier }),
+    });
+    setSending(false);
+    if (res.ok) {
+      const data = await res.json();
+      setMagicSent(true);
+      // Dev mode: show URL
+      if (data.magic_url) setMagicUrl(data.magic_url);
+      toast.success("Magic Link versandt");
+    } else {
+      toast.error("Fehler beim Versand");
+    }
+  };
+
+  const pinLogin = async () => {
+    if (!identifier || !pin) return toast.error("Bitte alle Felder ausfüllen");
+    const res = await fetch(`${API}/api/staff/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: identifier, password: pin }),
+    });
+    if (res.ok) {
+      toast.success("Erfolgreich angemeldet");
+      onSuccess();
+    } else {
+      toast.error("Login fehlgeschlagen");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] text-white px-4 pt-12 pb-8" data-testid="staff-mobile-login">
+      <div className="max-w-sm mx-auto">
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-[#00C2FF] to-[#A855F7] flex items-center justify-center mb-4">
+            <User size={28} />
+          </div>
+          <h1 className="text-2xl font-bold mb-1">BidBlitz Staff</h1>
+          <p className="text-xs text-white/50">Mitarbeiter-Login</p>
+        </div>
+
+        <input
+          type="text"
+          placeholder="E-Mail oder Telefon"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          data-testid="staff-mobile-identifier-input"
+          className="w-full px-4 py-3.5 rounded-xl bg-white/[0.05] border border-white/10 text-sm mb-3"
+        />
+
+        {!showPin ? (
+          <>
+            <button
+              onClick={sendMagic}
+              disabled={sending || magicSent}
+              data-testid="staff-magic-link-btn"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00C2FF] to-[#A855F7] font-semibold text-sm mb-3"
+            >
+              {sending ? <Loader2 size={16} className="animate-spin mx-auto" /> : magicSent ? "Link gesendet ✓" : "Magic Link senden"}
+            </button>
+            {magicUrl && (
+              <a
+                href={magicUrl}
+                data-testid="staff-magic-url-dev"
+                className="block text-[10px] text-[#00C2FF] underline truncate mb-3"
+              >
+                {magicUrl}
+              </a>
+            )}
+            <button
+              onClick={() => setShowPin(true)}
+              data-testid="staff-mobile-pin-toggle"
+              className="w-full py-2 text-xs text-white/60 hover:text-white"
+            >
+              Stattdessen mit PIN anmelden
+            </button>
+          </>
+        ) : (
+          <>
+            <input
+              type="password"
+              inputMode="numeric"
+              placeholder="PIN"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              data-testid="staff-mobile-pin-input"
+              className="w-full px-4 py-3.5 rounded-xl bg-white/[0.05] border border-white/10 text-sm mb-3"
+            />
+            <button
+              onClick={pinLogin}
+              data-testid="staff-mobile-pin-login-btn"
+              className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-semibold text-sm mb-3"
+            >
+              Anmelden
+            </button>
+            <button
+              onClick={() => setShowPin(false)}
+              className="w-full py-2 text-xs text-white/60"
+            >
+              Zurück zu Magic Link
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={onBack}
+          className="w-full mt-6 py-2 text-[11px] text-white/40"
+        >
+          Zurück zur App
+        </button>
+      </div>
+    </div>
+  );
+}
