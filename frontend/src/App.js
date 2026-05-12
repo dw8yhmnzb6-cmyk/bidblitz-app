@@ -94,6 +94,7 @@ const AdminCreditPage = lazy(() => import("./pages/AdminCreditPage"));
 const AdminPanelFullPage = lazy(() => import("./pages/AdminPanelFullPage"));
 const MonitoringDashboard = lazy(() => import("./pages/MonitoringDashboard"));
 const MerchantAdminPage = lazy(() => import("./pages/MerchantAdminPage"));
+const AdminQrManagementPage = lazy(() => import("./pages/AdminQrManagementPage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
 const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
@@ -544,6 +545,10 @@ function AppContent() {
       case "/admin/merchants":
         return user.role === "admin"
           ? <MerchantAdminPage onNavigate={handleNavigate} onBack={() => handleNavigate("/admin")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/qr-management":
+        return user.role === "admin"
+          ? <AdminQrManagementPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;

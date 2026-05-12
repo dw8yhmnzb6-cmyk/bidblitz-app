@@ -10,7 +10,7 @@ import {
   // Grid Menu Icons
   Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
   UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode,
-  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code
+  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code, UtensilsCrossed
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import ErrorState from "../components/ErrorState";
 import LazyErrorBoundary from "../components/LazyErrorBoundary";
 import AdminTabRouter from "../components/AdminTabRouter";
 import { api as apiService } from "../services/api";
+import AdminQrManagementPage from "./AdminQrManagementPage";
 
 const AdminAuctionsTab = lazy(() => import("../components/admin/AdminAuctionsTab"));
 const AdminScootersTab = lazy(() => import("../components/admin/AdminScootersTab"));
@@ -101,6 +102,7 @@ const ADMIN_SECTIONS = [
     items: [
       { id: "partner-portal", icon: Handshake, label: "Partner Portal", tab: "merchants" },
       { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
+      { id: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", tab: "qr-management", highlight: true },
     ]
   },
   {
@@ -303,6 +305,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
   const [tab, setTab] = useState(defaultTab || "overview");
   useEffect(() => { if (defaultTab) setTab(defaultTab); }, [defaultTab]);
   const [showGridMenu, setShowGridMenu] = useState(false);
+  const [showQrManagement, setShowQrManagement] = useState(false);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
@@ -454,6 +457,10 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
         const d = await api("/api/admin/grants/coupons");
         setCoupons(d.coupons || []);
       }
+      if (t === "qr-management") {
+        setShowQrManagement(true);
+        return;
+      }
     } catch (e) { setError(e); }
     setLoading(false);
   }, [search, payoutFilter, roleFilter, verFilter]);
@@ -534,6 +541,11 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
     setGrantLoading(false);
   };
 
+
+  // Render QR Management if active
+  if (showQrManagement) {
+    return <AdminQrManagementPage onBack={() => { setShowQrManagement(false); setTab("overview"); }} />;
+  }
 
   if (user.role !== "admin") {
     return (

@@ -9,7 +9,7 @@ import {
   BarChart, UserCheck, Gavel, Bot, Trophy, Percent, TrendingUp,
   Zap, Eye, Mail, Target, Gift, MessageCircle, Wrench, DollarSign,
   Home, GraduationCap, Film, Stethoscope, Heart, CarFront, Sparkles,
-  Truck, Dog, Dumbbell, Palmtree, BatteryCharging
+  Truck, Dog, Dumbbell, Palmtree, BatteryCharging, UtensilsCrossed
 } from "lucide-react";
 
 export const ADMIN_SECTIONS = [
@@ -27,10 +27,11 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "Partner & Händler", color: "#F59E0B", count: 2,
+    title: "Partner & Händler", color: "#F59E0B", count: 3,
     items: [
       { key: "partners", icon: Building2, label: "Partner Portal" },
       { key: "applications", icon: FileText, label: "Alte Bewerbungen" },
+      { key: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", highlight: true, nav: "/admin/qr-management" },
     ],
   },
   {
