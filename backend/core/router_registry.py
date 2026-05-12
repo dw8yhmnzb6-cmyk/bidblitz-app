@@ -70,6 +70,9 @@ def register_all_routers(app):
         ("routes.pos_retail_p1p2", "router"),
         ("routes.pos_hardware", "router"),
         
+        # Staff Management
+        ("routes.staff", "router"),
+        
         # Mining & Marketplace
         ("routes.mining", "router"),
         ("routes.mining_phase2", "router"),
