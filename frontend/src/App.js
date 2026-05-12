@@ -1102,8 +1102,8 @@ function AppContent() {
       {/* In-App Update Manager (Native Android/iOS) */}
       <InAppUpdateManager />
 
-      {/* Landing Chatbot — Floating widget for guest visitors (always available) */}
-      {!user.isAuthenticated && !isCheckout && !isQrOrder && <LandingChatbot />}
+      {/* Landing Chatbot — Floating widget for guest visitors (hidden on staff mobile) */}
+      {!user.isAuthenticated && !isCheckout && !isQrOrder && !isStaffEmployeeShell && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
       {!isQrOrder && !isStaffEmployeeShell && <CookieBanner onNavigate={handleNavigate} />}

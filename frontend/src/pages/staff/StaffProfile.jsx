@@ -197,12 +197,13 @@ function ProfileLine({ icon: Icon, label, value }) {
 }
 
 function Row({ icon: Icon, color, label, value, onClick, rightSlot, testId }) {
+  const isInteractive = !!onClick && !rightSlot;
+  const Wrapper = isInteractive ? "button" : "div";
+  const wrapperProps = isInteractive
+    ? { onClick, "data-testid": testId, className: "w-full flex items-center gap-3 p-4 hover:bg-white/[0.03] transition-colors text-left" }
+    : { "data-testid": testId, className: "w-full flex items-center gap-3 p-4" };
   return (
-    <button
-      onClick={onClick} disabled={!onClick && !rightSlot}
-      data-testid={testId}
-      className="w-full flex items-center gap-3 p-4 hover:bg-white/[0.03] transition-colors text-left disabled:cursor-default"
-    >
+    <Wrapper {...wrapperProps}>
       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F`, color }}>
         <Icon size={16} strokeWidth={2.2} />
       </div>
@@ -211,7 +212,7 @@ function Row({ icon: Icon, color, label, value, onClick, rightSlot, testId }) {
         {value && <p className="text-[11px] text-white/40 truncate">{value}</p>}
       </div>
       {rightSlot || (onClick && <ChevronRight size={16} className="text-white/30" />)}
-    </button>
+    </Wrapper>
   );
 }
 

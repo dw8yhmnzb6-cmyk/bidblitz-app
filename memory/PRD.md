@@ -15,6 +15,26 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter83–86 — BidBlitz Staff Connecteam-Style Premium Mobile UX)
+- 🟢 **Connecteam-Style Timesheet Backend** (`routes/staff_timesheet.py`): `/team-overview` (Connecteam-Tabelle: Regular/ÜS/Pause/Abwesenheit/Total/Kosten), `/me/weekly`, `/me/day`, `/me/month`, `/manager/day-detail`, CSV-Export (`/team-overview.csv`).
+- 🟢 **Check-in Attachments**: `POST /api/staff/clock/self` akzeptiert nun JSON-Body mit `customer`, `project`, `equipment`, `kilometers`, `note`, `photo_url`. Schema `SelfClockEvent`. Legacy Query-Params bleiben kompatibel.
+- 🟢 **Staff Tasks API** (`routes/staff_tasks.py`): Merchant erstellt Tasks (`/create`), Staff sieht eigene (`/me?status=open|done|all`), markiert erledigt (`/{id}/complete`). Team-Liste für Merchant (`/list`).
+- 🎨 **Premium Mobile UX Pass (Connecteam/Revolut/Stripe-Stil)**:
+  - **Global Design Tokens** (`/styles/staff-tokens.css`): Farben, Radius, Shadows, Spacing, Button-Heights, Animationen → `.staff-app` scope.
+  - **5-Tab Bottom Navigation** (Floating Pill mit Glass-Blur): Home / Schichten / Aufgaben / Wallet / Profil (`StaffBottomNav.jsx` rewrite, animated active indicator).
+  - **Home Tab**: Live Status Card mit Glow + Live-Timer (s-Genauigkeit), 256px Gradient Circle Action Button mit Success-Burst-Animation, KPI Grid (Heute/Woche/ÜS/Wallet), Next-Shift-Card, Tasks-Teaser.
+  - **Shifts Tab**: Heute/Morgen/Diese Woche/Später Karten mit großen Uhrzeiten + Status-Pills.
+  - **Tasks Tab**: Connecteam-Style Cards mit Priorität (Überfällig/Heute/Bald/Normal), Optimistic Complete, Filter Offen/Erledigt/Alle.
+  - **Wallet Tab**: Hero Balance + Bonus/Trinkgeld Split + Verlauf.
+  - **Profile Tab**: Premium Profile Hero, Sprachen-Sheet, PIN-Sheet, Notifications-Toggle, Logout.
+  - **Premium Primitives** (`StaffPrimitives.jsx`): `PremiumEmpty`, `Skeleton`, `StatusPill`, `GlowDot`.
+- 🎨 **Merchant Dashboard Polish** (`MerchantLiveOverview.jsx`): Cards statt Tabellen — Live-Status Grid (alle MA mit Online-Dot), Quick-Actions, Activity-Feed, KPI Hero (Aktiv/Pause/Anträge/Monatsstunden), Connecteam-Timesheet als neuer Tab.
+- 🔧 **Fixes**: Chat-Widget auf `/staff/mobile` ausgeblendet (Click-Interception), nested `<button>` warning in Profile-Row behoben, StaffShifts empty state wrapper, stable `openAttachmentSheet` function reference.
+- 🧪 Testing: iter84 ✅ 14/14, iter85 ✅ 11/11 (2 medium fixed in iter86), iter86 ✅ funktional verifiziert + Polish-Items.
+- 📦 132 Router insgesamt (staff_timesheet + staff_tasks neu).
+
+
+
 ### 12.05.2026 (iter81–82 — Final Hardening: AI Insights + Demo + System Health)
 - 🟢 **AI Insights** (`routes/staff_insights.py`): regelbasiert (keine LLM-Latenz). Erkennt frequent_late (≥3x), overtime_trend (vs Vorwoche), high_overtime_individuals (>50h), missing_checkouts, weak_coverage (Wochentag×Stunde), productivity_trend_4w
 - 🟢 **Smart Alert Engine** (`routes/staff_alerts.py`): `/live` (open_sessions, long_running >8h, shifts_no_show), `/scan` delegiert auf warnings.scan_for_warnings, `/list` aliased auf warnings
