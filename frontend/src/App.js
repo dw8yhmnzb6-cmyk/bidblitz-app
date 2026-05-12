@@ -98,6 +98,8 @@ const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
 const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
 const PublicTableOrderPage = lazy(() => import("./pages/PublicTableOrderPage"));
+const QrOrderPage = lazy(() => import("./pages/QrOrderPage"));
+const MerchantQrTablesPage = lazy(() => import("./pages/MerchantQrTablesPage"));
 const SelfCheckoutPage = lazy(() => import("./pages/SelfCheckoutPage"));
 const BlitzTransferPage = lazy(() => import("./pages/BlitzTransferPage"));
 const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
@@ -438,8 +440,17 @@ function AppContent() {
     if (currentPath.startsWith("/customer-display/")) {
       return <CustomerDisplayPage registerId={currentPath.split("/")[2]} />;
     }
+    if (currentPath.startsWith("/order/qr/")) {
+      if (isGuest) {
+        return <QrOrderPage onAuthRequired={requireAuth} onLogin={() => setShowFullAuth("login")} />;
+      }
+      return <QrOrderPage onNavigate={handleNavigate} />;
+    }
     if (currentPath.startsWith("/order/")) {
       return <PublicTableOrderPage qrToken={currentPath.split("/")[2]} />;
+    }
+    if (currentPath === "/merchant/qr-tables") {
+      return <MerchantQrTablesPage onBack={() => handleNavigate("/merchant-dashboard")} user={user} />;
     }
     if (currentPath === "/ev" || currentPath === "/ev/map") {
       return <EVChargingMapPage onNavigate={handleNavigate} />;
@@ -975,7 +986,8 @@ function AppContent() {
   };
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
-  const showBottomNav = !isCheckout && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
+  const isQrOrder = currentPath.startsWith("/order/qr/");
+  const showBottomNav = !isCheckout && !isQrOrder && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -1035,9 +1047,9 @@ function AppContent() {
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && !isCheckout && <AIChatWidget />}
+      {user.isAuthenticated && !isCheckout && !isQrOrder && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
-      {!isCheckout && (
+      {!isCheckout && !isQrOrder && (
         <SuperAppOverlay
           currentPath={currentPath}
           onNavigate={handleNavigate}
@@ -1049,10 +1061,10 @@ function AppContent() {
       <InAppUpdateManager />
 
       {/* Landing Chatbot — Floating widget for guest visitors (always available) */}
-      {!user.isAuthenticated && !isCheckout && <LandingChatbot />}
+      {!user.isAuthenticated && !isCheckout && !isQrOrder && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
-      <CookieBanner onNavigate={handleNavigate} />
+      {!isQrOrder && <CookieBanner onNavigate={handleNavigate} />}
 
       {/* Push Notification Prompt */}
       {/* PushNotificationPrompt (FCM) removed — use PushPermissionPrompt above */}

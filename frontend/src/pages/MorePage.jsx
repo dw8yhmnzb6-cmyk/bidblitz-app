@@ -852,6 +852,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "ai-assistant", icon: Sparkles, label: "BlitzBot", desc: "KI-Finanzassistent", color: "#A855F7", action: gatedAction(() => onNavigate("/ai-assistant")) },
     { id: "crypto", icon: TrendingUp, label: "Krypto Wallet", desc: "BTC, ETH, SOL kaufen & verkaufen", color: "#F7931A", action: gatedAction(() => onNavigate("/crypto")) },
     { id: "pos", icon: Store, label: "POS / Kasse", desc: "Warenwirtschaft, Kasse & Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pos")) },
+    { id: "qr-tables", icon: Store, label: "QR-Tisch-Bestellung", desc: "Tisch-QR-Codes · Auto-Bestellung · Wallet-Zahlung", color: "#00C2FF", action: gatedAction(() => onNavigate("/merchant/qr-tables")) },
     { id: "budget", icon: BarChart3, label: "Budgetplaner", desc: "Ausgaben & Limits", color: "#3B82F6", action: gatedAction(() => onNavigate("/budget")) },
   ];
 

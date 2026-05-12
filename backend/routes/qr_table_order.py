@@ -213,8 +213,8 @@ async def place_qr_order(req: QROrderRequest, request: Request):
     # 3. Wallet debit (atomic)
     user_id = user["_id"]
     update_res = await db.users.update_one(
-        {"_id": user_id, "wallet_balance": {"$gte": total}},
-        {"$inc": {"wallet_balance": -total}},
+        {"_id": user_id, "balance": {"$gte": total}},
+        {"$inc": {"balance": -total}},
     )
     if update_res.modified_count == 0:
         raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (benötigt: €{total:.2f})")
@@ -383,10 +383,15 @@ async def reject_qr_order(order_id: str, request: Request):
         return {"ok": True, "message": "Bereits final"}
     now = _now_utc().isoformat()
     refund = float(order.get("total", 0))
-    # Refund wallet
+    # Refund wallet (handle both ObjectId and UUID-string ids)
+    customer_id = order["customer_id"]
+    try:
+        cust_query = {"_id": ObjectId(customer_id)} if ObjectId.is_valid(customer_id) else {"id": customer_id}
+    except Exception:
+        cust_query = {"id": customer_id}
     await db.users.update_one(
-        {"_id": ObjectId(order["customer_id"])},
-        {"$inc": {"wallet_balance": refund}},
+        cust_query,
+        {"$inc": {"balance": refund}},
     )
     await db.wallet_transactions.insert_one({
         "transaction_id": secrets.token_hex(8),

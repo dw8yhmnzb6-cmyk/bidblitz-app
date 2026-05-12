@@ -11,7 +11,6 @@
  * Auth gate: if not logged in, redirects to /login?return=<current path>.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -20,9 +19,23 @@ const cred = { credentials: "include" };
 
 async function readJson(res) { try { return await res.json(); } catch { return null; } }
 
-export default function QrOrderPage() {
-  const { token: initialToken } = useParams();
-  const navigate = useNavigate();
+export default function QrOrderPage({ token: tokenProp, onNavigate, onAuthRequired, onLogin } = {}) {
+  // Fallback: read token from URL path /order/qr/:token
+  const initialToken = tokenProp || (typeof window !== "undefined"
+    ? window.location.pathname.split("/order/qr/")[1]?.split(/[/?#]/)[0]
+    : "");
+  const navigate = (path) => {
+    // Auth flow: route /login?return=... → trigger app's auth modal instead
+    if (path && path.startsWith("/login")) {
+      if (typeof onLogin === "function") return onLogin();
+      if (typeof onAuthRequired === "function") return onAuthRequired();
+    }
+    if (typeof onNavigate === "function") onNavigate(path);
+    else if (typeof window !== "undefined") {
+      window.history.pushState({}, "", path);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
+  };
 
   const [token, setToken] = useState(initialToken);
   const [loading, setLoading] = useState(true);
