@@ -52,6 +52,10 @@ class DriverOnboardRequest(BaseModel):
     driver_type: DriverType
     city: Optional[str] = Field(None, max_length=100)
     message: Optional[str] = Field(None, max_length=500, description="Additional info")
+    # Vehicle capability flags (taxi.eu options-matching)
+    pet_friendly: bool = False
+    luggage_class: Optional[str] = Field(None, max_length=20)  # 'small'|'much'|'much_combi'|'combi'|'wagon'|'large'
+    assistance: bool = False  # Helps passengers in/out (e.g. wheelchair-accessible)
 
 
 class AddDriverRequest(BaseModel):

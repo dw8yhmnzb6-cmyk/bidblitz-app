@@ -342,6 +342,11 @@ async def onboard_driver(req: DriverOnboardRequest):
         "driver_type": req.driver_type,
         "city": req.city or "N/A",
         "message": req.message or "",
+        "vehicle_capabilities": {
+            "pet_friendly": bool(req.pet_friendly),
+            "luggage_class": req.luggage_class or "small",
+            "assistance": bool(req.assistance),
+        },
         "status": "pending",  # pending, approved, rejected
         "created_at": now.isoformat(),
         "reviewed_at": None,

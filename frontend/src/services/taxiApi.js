@@ -13,6 +13,24 @@ async function readJson(res) {
   try { return await res.json(); } catch { return null; }
 }
 
+// ── Driver availability (taxi.eu live count) ─────────────────────────────
+export async function fetchNearbyDriversCount({
+  lat, lng, radius = 10, carType, withPet, luggage, assistance,
+}) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { count: 0, drivers: [] };
+  const qs = new URLSearchParams({
+    lat: String(lat), lng: String(lng), radius: String(radius),
+  });
+  if (carType) qs.set("car_type", carType);
+  if (withPet) qs.set("with_pet", "true");
+  if (luggage && luggage !== "none") qs.set("luggage", luggage);
+  if (assistance) qs.set("assistance", "true");
+  const res = await fetch(`${API}/api/taxi/drivers/nearby?${qs.toString()}`);
+  if (!res.ok) return { count: 0, drivers: [] };
+  const data = await readJson(res);
+  return { count: data?.total || 0, drivers: data?.drivers || [] };
+}
+
 // ── User / Module ──────────────────────────────────────────────────────────
 export async function fetchMe() {
   const res = await fetch(`${API}/api/auth/me`, cred);

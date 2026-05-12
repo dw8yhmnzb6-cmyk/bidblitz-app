@@ -15,6 +15,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 12.05.2026 (iter74 — Live Driver Count + Driver Onboarding Capabilities)
+- 🟢 **Live Driver Count im BookingSheet**: 
+  - Neuer Service: `fetchNearbyDriversCount` (taxiApi.js) ruft `/api/taxi/drivers/nearby` mit allen taxi.eu-Filter-Params (`carType`, `withPet`, `luggage`, `assistance`).
+  - TaxiPage: debounced (400ms) Refetch bei Änderung von `pickup.lat/lng`, `selectedVehicle`, `orderOptions.{withPet,luggage,assistance}`.
+  - BookingSheet zeigt grünen Pulse-Hint *"3 Taxis in der Nähe verfügbar"* wenn `count > 0`, ansonsten den **taxi.eu-style No-Drivers-Banner** *"Leider ist kein freies Taxi in Ihrer Nähe..."*.
+- 🟢 **Driver Onboarding Capabilities** (Backend + Frontend):
+  - `DriverOnboardRequest` Model erweitert um `pet_friendly`, `luggage_class` (small/much/much_combi/large), `assistance`.
+  - Application persistiert `vehicle_capabilities` Sub-Doc → wird beim Approval an `drivers.car.{pet_friendly,luggage_class,assistance}` propagiert → matched automatisch im `book_ride` Driver-Query.
+  - `TaxiDriverOnboardingModal.jsx` erweitert: Kapazitäten-Sub-Panel mit Pet-Checkbox, 4-Button Luggage-Grid, Assistance-Checkbox.
+- ✅ Verifiziert: API `POST /driver/onboard` mit allen 3 neuen Feldern → HTTP 200 (App-ID `5b530b13446de64e`). BookingSheet zeigt No-Drivers-Banner bei leerer DB. Lint clean.
+
 ### 12.05.2026 (iter73 — Tracking Sheet im Fullscreen-Layout + Driver-Filter Backend)
 - 🟢 **TaxiTrackingSheet.jsx** (260 Z.) — neue Komponente: Status-Badge, Driver-Card (Avatar/Rating/Vehicle/Plate/Call), Route-Liste (cyan/amber/red dots inkl. **Waypoints + per-Address Notes**), Fare-Card, Demo-Buttons, Chat/Split-Grid, Cancel, Completed-Success-State.
 - 🟢 **TaxiPage**: `inMapBookingFlow` triggert jetzt sowohl bei `view==='book' && taxiType` ALS AUCH `view==='tracking' && activeRide` → Map+Bottom-Sheet bleiben durchgehend sichtbar während ride. Sheet zeigt je nach `view` `<TaxiBookingSheet>` oder `<TaxiTrackingSheet>`. Tracking startet bei `half`-Snap (statt collapsed).

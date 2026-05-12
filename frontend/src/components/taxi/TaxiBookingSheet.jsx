@@ -101,6 +101,7 @@ export default function TaxiBookingSheet({
   surge, loading, error,
   optionsSummary, onOpenOptions,
   noDriversAvailable,
+  nearbyCount,
   onGetEstimates, onBook,
   scheduledLabel,
   // City defaults
@@ -226,6 +227,21 @@ export default function TaxiBookingSheet({
             <p className="text-sm font-medium text-yellow-400">Hohe Nachfrage</p>
             <p className="text-xs text-gray-400">Preise sind {surge.multiplier}× höher</p>
           </div>
+        </div>
+      )}
+
+      {/* Live driver availability hint (taxi.eu parity) */}
+      {nearbyCount != null && nearbyCount > 0 && (
+        <div className="flex items-center gap-2 text-xs text-emerald-400" data-testid="taxi-drivers-available">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span>
+            {nearbyCount === 1
+              ? "1 Taxi in der Nähe verfügbar"
+              : `${nearbyCount} Taxis in der Nähe verfügbar`}
+          </span>
         </div>
       )}
 

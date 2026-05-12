@@ -13,6 +13,7 @@ const VEHICLE_LABEL = { standard: "Standard", premium: "Premium", van: "Van" };
 const EMPTY_FORM = {
   name: "", email: "", phone: "", license_number: "",
   vehicle_type: "standard", city: "", message: "",
+  pet_friendly: false, luggage_class: "small", assistance: false,
 };
 
 export default function TaxiDriverOnboardingModal({
@@ -177,6 +178,60 @@ export default function TaxiDriverOnboardingModal({
                           {VEHICLE_LABEL[type]}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-2">Fahrzeug-Kapazitäten</label>
+                    <div className="space-y-2 bg-white/5 border border-white/10 rounded-xl p-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-sm text-white">🐾 Haustierfreundlich</span>
+                        <input
+                          type="checkbox"
+                          checked={form.pet_friendly}
+                          onChange={(e) => setForm((p) => ({ ...p, pet_friendly: e.target.checked }))}
+                          disabled={submitting}
+                          className="w-5 h-5 accent-cyan-500"
+                          data-testid="driver-onboard-pet"
+                        />
+                      </label>
+                      <div>
+                        <span className="text-sm text-white block mb-1.5">🧳 Gepäck-Klasse</span>
+                        <div className="grid grid-cols-4 gap-1">
+                          {[
+                            { v: "small", l: "Klein" },
+                            { v: "much", l: "Viel" },
+                            { v: "much_combi", l: "Kombi" },
+                            { v: "large", l: "XL/Van" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.v}
+                              type="button"
+                              onClick={() => setForm((p) => ({ ...p, luggage_class: opt.v }))}
+                              disabled={submitting}
+                              className={`py-1.5 px-2 rounded-lg text-[10px] font-medium transition-all ${
+                                form.luggage_class === opt.v
+                                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                                  : "bg-white/5 text-gray-400 border border-white/10"
+                              }`}
+                              data-testid={`driver-onboard-luggage-${opt.v}`}
+                            >
+                              {opt.l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <label className="flex items-center justify-between cursor-pointer pt-1">
+                        <span className="text-sm text-white">♿ Einstiegshilfe</span>
+                        <input
+                          type="checkbox"
+                          checked={form.assistance}
+                          onChange={(e) => setForm((p) => ({ ...p, assistance: e.target.checked }))}
+                          disabled={submitting}
+                          className="w-5 h-5 accent-cyan-500"
+                          data-testid="driver-onboard-assistance"
+                        />
+                      </label>
                     </div>
                   </div>
 

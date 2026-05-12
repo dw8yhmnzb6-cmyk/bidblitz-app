@@ -99,6 +99,9 @@ export default function TaxiPage({ onNavigate }) {
   const [citySaved, setCitySaved] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Live driver availability (count near pickup, filtered by options)
+  const [nearbyCount, setNearbyCount] = useState(null); // null = unknown, 0+ = known
+
   // Toggle body class for fullscreen booking mode (hides BottomNav, AIChat, FAB-cluster, cookie banner)
   useEffect(() => {
     const inMapFlow = moduleEnabled && (
@@ -183,6 +186,30 @@ export default function TaxiPage({ onNavigate }) {
     const ok = await api.saveCityDefault(pickupCity, orderOptions);
     if (ok) setCitySaved(true);
   };
+
+  // Live driver count: refetch when pickup coords or options change (debounced)
+  useEffect(() => {
+    if (!moduleEnabled || !taxiType) { setNearbyCount(null); return; }
+    if (!pickup?.lat || pickup.lat === 0) { setNearbyCount(null); return; }
+    const carType = selectedVehicle || 'standard';
+    const t = setTimeout(async () => {
+      const { count } = await api.fetchNearbyDriversCount({
+        lat: pickup.lat,
+        lng: pickup.lng,
+        carType,
+        withPet: orderOptions.withPet,
+        luggage: orderOptions.luggage,
+        assistance: orderOptions.assistance,
+      });
+      setNearbyCount(count);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [
+    moduleEnabled, taxiType,
+    pickup?.lat, pickup?.lng,
+    selectedVehicle,
+    orderOptions.withPet, orderOptions.luggage, orderOptions.assistance,
+  ]);
 
   const handlePickupChange = (text) => {
     setPickup(p => ({ ...p, address: text }));
@@ -536,7 +563,8 @@ export default function TaxiPage({ onNavigate }) {
                 error={error}
                 optionsSummary={optionsSummary}
                 onOpenOptions={() => setShowOrderOptions(true)}
-                noDriversAvailable={false}
+                noDriversAvailable={nearbyCount === 0}
+                nearbyCount={nearbyCount}
                 onGetEstimates={getEstimates}
                 onBook={bookRide}
                 scheduledLabel={scheduledLabel}
