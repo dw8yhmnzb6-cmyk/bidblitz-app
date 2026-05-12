@@ -627,6 +627,24 @@ async def list_leave_requests(
     requests = await db.staff_leave_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return {"success": True, "requests": requests, "count": len(requests)}
 
+@router.get("/leave/counts")
+async def leave_counts(merchant_id: str = Depends(get_merchant_id)):
+    """Zähler für Merchant-Header: pending / approved / rejected."""
+    pipe = [
+        {"$match": {"merchant_id": merchant_id}},
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+    ]
+    rows = await db.staff_leave_requests.aggregate(pipe).to_list(length=10)
+    counts = {r["_id"]: r["count"] for r in rows}
+    return {
+        "success": True,
+        "pending": counts.get("pending", 0),
+        "approved": counts.get("approved", 0),
+        "rejected": counts.get("rejected", 0),
+        "total": sum(counts.values()),
+    }
+
+
 @router.patch("/leave/{request_id}")
 async def approve_leave_request(
     request_id: str,

@@ -90,12 +90,17 @@ export default function ManagerTeamTimesheet() {
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(null); // {row, date}
   const [dayPickerRow, setDayPickerRow] = useState(null);
+  const [pending, setPending] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${API}/api/staff/timesheet/team-overview?days=${days}`, { credentials: "include" });
+      const [r, pc] = await Promise.all([
+        fetch(`${API}/api/staff/timesheet/team-overview?days=${days}`, { credentials: "include" }),
+        fetch(`${API}/api/staff/leave/counts`, { credentials: "include" }).catch(() => null),
+      ]);
       if (r.ok) setData(await r.json());
+      if (pc && pc.ok) setPending((await pc.json()).pending || 0);
     } catch (e) {}
     setLoading(false);
   }, [days]);
@@ -115,6 +120,20 @@ export default function ManagerTeamTimesheet() {
             <p className="text-[10px] uppercase tracking-widest text-white/40">Team Timesheet</p>
             <p className="text-base font-bold">Stundenübersicht (Connecteam-Style)</p>
           </div>
+          {pending > 0 && (
+            <button
+              data-testid="manager-pending-requests-badge"
+              className="ml-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F31260]/15 border border-[#F31260]/40 text-[#F31260] text-xs font-bold hover:bg-[#F31260]/20 transition-colors"
+              title="Offene Anträge bearbeiten"
+            >
+              <span className="relative flex w-2 h-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-[#F31260] opacity-70 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F31260]" />
+              </span>
+              <span className="tabular-nums">{pending}</span>
+              <span className="hidden sm:inline">Pending Requests</span>
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div className="flex bg-white/[0.04] border border-white/10 rounded-xl p-0.5">
