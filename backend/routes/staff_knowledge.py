@@ -264,7 +264,7 @@ async def upload_cover(request: Request, file: UploadFile = File(...)):
 # ─────────── AI Summary ───────────
 @router.post("/articles/{article_id}/summary")
 async def generate_summary(article_id: str, request: Request):
-    """Generate AI summary (Claude Sonnet 4.5) of article content. Persists to ai_summary field."""
+    """Generate AI summary (gpt-4.1-mini via Emergent LLM Key) of article content. Persists to ai_summary field."""
     mid = await _merchant_id(request)
     art = await db.staff_kb_articles.find_one({"id": article_id, "merchant_id": mid}, {"_id": 0})
     if not art:

@@ -15,6 +15,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 13.05.2026 (iter90 — Sprint A: Knowledge Base Extras + Schedule Editor Extras)
+- 🟢 **Knowledge Base — Cover-Image-Upload** (`POST /api/staff/knowledge/upload-cover`, multipart): jpg/png/webp, max 5MB. Wird unter `/uploads/knowledge/` gespeichert (StaticFiles).
+- 🟢 **Knowledge Base — AI-Summary** (`POST /articles/{id}/summary`): nutzt Emergent LLM Key + **openai/gpt-4.1-mini** (Claude/Anthropic war via EMERGENT_LLM_KEY nicht zugelassen — Fallback dokumentiert). Generiert 2-Satz-DE-Kurzfassung, persistiert `ai_summary`. Wird bei Content-Edit auto-invalidiert.
+- 🟢 **Knowledge Base — Quiz**: Article-Schema erweitert um `quiz:[{question, options[], correct}]`. Staff-Endpoint strippt `correct` (anti-cheat). `POST /me/articles/{id}/quiz-attempt` validiert Antworten, gibt score/total/passed (>=70%) + per-Question Results, schreibt in `staff_kb_quiz_attempts`. Manager kann via `GET /articles/{id}/quiz-attempts` Versuche einsehen.
+- 🟢 **Schedule-Editor — Konflikt-Detection**: POST + PATCH `/shifts` prüfen Overlap (server-side: `start_time < new_end AND end_time > new_start`). Liefern **409** mit `detail.conflicts[]`. `?force=true` überschreibt. Frontend: nativer confirm()-Dialog + force-Retry. Visuell: rote/amber Schichtkacheln + AlertTriangle bei Overlap im selben Tag.
+- 🟢 **Schedule-Editor — Resize-Handle**: 1.5px-Bar am unteren Rand jeder Schichtkachel → MouseDown+Drag passt `end_time` in 15-Min-Schritten an, MouseUp triggert PATCH mit Conflict-Handling.
+- 🟢 **Schedule-Editor — Weekly Repeat**: `POST /api/staff/shifts/repeat {week_start, weeks 1-12, skip_conflicts}` clont alle Schichten der Quellwoche um N Wochen nach vorn. Frontend: lila „Woche wiederholen"-Button öffnet Modal mit Wochen-Slider + skip-Toggle.
+- 🧪 Testing iter90: **23/23 Backend ✅** (Cover-Upload, AI-Summary, Quiz, Overlap-409, Force, Repeat). Frontend-Browser-Test sticky-session, aber alle testids quellverifiziert (Iter89-Regression bestanden). 0 Bugs.
+
+
 ### 13.05.2026 (iter89 — Knowledge Base + Visueller Drag&Drop Schedule-Editor)
 - 🟢 **Backend: Knowledge Base Modul** (`/app/backend/routes/staff_knowledge.py`, Router registriert):
   - Manager CRUD: `POST/GET/PATCH/DELETE /api/staff/knowledge/articles` mit title/slug/content (Markdown), category, tags[], pinned, published, view_count
