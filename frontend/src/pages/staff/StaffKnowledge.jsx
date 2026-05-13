@@ -5,7 +5,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Search, Loader2, ChevronRight, Pin, X, Eye, Calendar, Tag } from "lucide-react";
+import { BookOpen, Search, Loader2, ChevronRight, Pin, X, Eye, Calendar, Tag, Sparkles, HelpCircle, CheckCircle2, XCircle, Award } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "./StaffShifts";
 
@@ -86,16 +86,23 @@ export default function StaffKnowledge() {
             className="w-full p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05] text-left active:scale-[0.99] transition-all"
           >
             <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                   style={{ background: "rgba(0,212,255,0.12)", color: "#00D4FF" }}>
-                <BookOpen size={18} />
-              </div>
+              {a.cover_url ? (
+                <img src={`${API}${a.cover_url}`} alt="" className="w-12 h-12 rounded-2xl object-cover shrink-0 border border-white/10" />
+              ) : (
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                     style={{ background: "rgba(0,212,255,0.12)", color: "#00D4FF" }}>
+                  <BookOpen size={18} />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#00D4FF]/10 text-[#00D4FF] font-semibold uppercase tracking-wide">{a.category || "Allgemein"}</span>
                   {a.pinned && <Pin size={10} className="text-amber-400 fill-amber-400" />}
+                  {a.ai_summary && <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#A855F7]/15 text-[#A855F7] font-semibold flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                  {a.quiz_count > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#10D981]/15 text-[#10D981] font-semibold flex items-center gap-0.5"><HelpCircle size={8} /> Quiz</span>}
                 </div>
                 <p className="text-sm font-bold mt-1">{a.title}</p>
+                {a.ai_summary && <p className="text-[11px] text-white/55 mt-0.5 line-clamp-2">{a.ai_summary}</p>}
                 <div className="flex items-center gap-2 mt-1.5 text-[10px] text-white/45">
                   <span className="flex items-center gap-1"><Eye size={10} /> {a.view_count || 0}</span>
                   <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(a.updated_at || a.created_at).toLocaleDateString("de-DE")}</span>
@@ -172,13 +179,25 @@ function ArticleReader({ article, onClose }) {
           <div className="py-16 flex justify-center"><Loader2 size={22} className="animate-spin text-[#00D4FF]" /></div>
         ) : full ? (
           <div className="px-5 py-4 space-y-3">
+            {full.cover_url && (
+              <img src={`${API}${full.cover_url}`} alt="" className="w-full h-44 object-cover rounded-2xl border border-white/[0.06]" data-testid="staff-kb-reader-cover" />
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#00D4FF]/12 text-[#00D4FF] font-semibold uppercase">{full.category || "Allgemein"}</span>
               {full.pinned && <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-400/15 text-amber-400 font-semibold flex items-center gap-0.5"><Pin size={9} /> Pin</span>}
               <span className="text-[10px] text-white/40 ml-auto flex items-center gap-1"><Eye size={10} /> {full.view_count || 0}</span>
             </div>
             <h1 className="text-xl font-bold font-outfit">{full.title}</h1>
+            {full.ai_summary && (
+              <div className="rounded-2xl p-3 bg-gradient-to-br from-[#00D4FF]/10 to-[#A855F7]/10 border border-[#00D4FF]/20" data-testid="staff-kb-reader-ai-summary">
+                <p className="text-[10px] uppercase tracking-widest text-[#00D4FF] font-semibold flex items-center gap-1 mb-1"><Sparkles size={10} /> Kurzfassung (AI)</p>
+                <p className="text-[12.5px] leading-relaxed text-white/85">{full.ai_summary}</p>
+              </div>
+            )}
             <MarkdownLite text={full.content || ""} />
+            {full.quiz?.length > 0 && (
+              <QuizSection articleId={full.id} quiz={full.quiz} lastAttempt={full.last_quiz_attempt} />
+            )}
             {full.tags?.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/[0.06]">
                 {full.tags.map((t) => (
@@ -314,4 +333,109 @@ function inline(text) {
   }
   if (rest) parts.push(rest);
   return parts;
+}
+
+
+function QuizSection({ articleId, quiz, lastAttempt }) {
+  const [answers, setAnswers] = useState(() => Array(quiz.length).fill(-1));
+  const [result, setResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    if (answers.some((a) => a === -1)) {
+      toast.error("Bitte alle Fragen beantworten");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const r = await fetch(`${API}/api/staff/knowledge/me/articles/${articleId}/quiz-attempt`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers }),
+      });
+      const d = await r.json();
+      if (r.ok && d.success) {
+        setResult(d);
+        if (d.passed) toast.success(`Bestanden! ${d.score}/${d.total}`);
+        else toast(`${d.score}/${d.total} richtig — versuche es nochmal!`);
+      } else toast.error(d.detail || "Fehler");
+    } catch (e) { toast.error("Netzwerkfehler"); }
+    setSubmitting(false);
+  };
+
+  const reset = () => { setAnswers(Array(quiz.length).fill(-1)); setResult(null); };
+
+  return (
+    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 space-y-3" data-testid="staff-kb-quiz">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-widest text-white/55 font-semibold flex items-center gap-1.5">
+          <HelpCircle size={12} className="text-[#10D981]" /> Quiz · {quiz.length} Frage{quiz.length === 1 ? "" : "n"}
+        </p>
+        {lastAttempt && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${lastAttempt.passed ? "bg-[#10D981]/15 text-[#10D981]" : "bg-amber-400/15 text-amber-400"}`}>
+            Letzter Versuch: {lastAttempt.score}/{lastAttempt.total}
+          </span>
+        )}
+      </div>
+
+      {quiz.map((q, i) => {
+        const r = result?.results?.[i];
+        return (
+          <div key={i} className="rounded-xl bg-black/30 border border-white/[0.05] p-3" data-testid={`staff-kb-quiz-q-${i}`}>
+            <p className="text-[13px] font-semibold mb-2">{i + 1}. {q.question}</p>
+            <div className="space-y-1.5">
+              {q.options.map((opt, oIdx) => {
+                const selected = answers[i] === oIdx;
+                let cls = "border-white/[0.08] bg-white/[0.02] text-white/80";
+                if (result) {
+                  if (oIdx === r.correct) cls = "border-[#10D981]/50 bg-[#10D981]/12 text-white";
+                  else if (oIdx === r.given && !r.ok) cls = "border-red-500/50 bg-red-500/12 text-white";
+                } else if (selected) {
+                  cls = "border-[#00D4FF]/50 bg-[#00D4FF]/12 text-white";
+                }
+                return (
+                  <button
+                    key={oIdx}
+                    onClick={() => !result && setAnswers((a) => a.map((v, j) => j === i ? oIdx : v))}
+                    disabled={!!result}
+                    data-testid={`staff-kb-quiz-opt-${i}-${oIdx}`}
+                    className={`w-full text-left px-3 py-2 rounded-lg border text-[12px] flex items-center gap-2 ${cls}`}
+                  >
+                    <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] font-bold ${selected || (result && (oIdx === r.correct || oIdx === r.given)) ? "border-current" : "border-white/30"}`}>
+                      {String.fromCharCode(65 + oIdx)}
+                    </span>
+                    <span className="flex-1">{opt}</span>
+                    {result && oIdx === r.correct && <CheckCircle2 size={12} className="text-[#10D981]" />}
+                    {result && oIdx === r.given && !r.ok && <XCircle size={12} className="text-red-400" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {result ? (
+        <div className="rounded-xl bg-gradient-to-br from-[#10D981]/10 to-[#00D4FF]/10 border border-[#10D981]/25 p-3 flex items-center gap-3">
+          <Award size={22} className={result.passed ? "text-[#10D981]" : "text-amber-400"} />
+          <div className="flex-1">
+            <p className="text-sm font-bold">{result.passed ? "Quiz bestanden! 🎉" : "Knapp daneben"}</p>
+            <p className="text-[11px] text-white/60">{result.score}/{result.total} richtige Antworten</p>
+          </div>
+          <button onClick={reset} data-testid="staff-kb-quiz-retry" className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-semibold">
+            Nochmal
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={submit} disabled={submitting}
+          data-testid="staff-kb-quiz-submit"
+          className="w-full py-3 rounded-2xl text-white font-semibold text-sm disabled:opacity-60"
+          style={{ background: "linear-gradient(135deg, #00D4FF 0%, #A855F7 100%)" }}
+        >
+          {submitting ? <Loader2 size={14} className="animate-spin mx-auto" /> : "Antworten prüfen"}
+        </button>
+      )}
+    </div>
+  );
 }

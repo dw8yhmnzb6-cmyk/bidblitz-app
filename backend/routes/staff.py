@@ -484,19 +484,52 @@ async def get_clock_history(
 # 3. SCHICHTPLANUNG
 # ═══════════════════════════════════════════════════════════════════════════
 
+async def _find_shift_overlaps(merchant_id: str, staff_id: str, start_iso: str, end_iso: str, exclude_id: Optional[str] = None) -> list:
+    """Return list of existing shifts that overlap with [start, end] for same staff.
+    Overlap: existing.start < new.end AND existing.end > new.start.
+    """
+    q = {
+        "merchant_id": merchant_id,
+        "staff_id": staff_id,
+        "start_time": {"$lt": end_iso},
+        "end_time": {"$gt": start_iso},
+    }
+    if exclude_id:
+        q["id"] = {"$ne": exclude_id}
+    return await db.staff_shifts.find(q, {"_id": 0}).to_list(20)
+
+
 @router.post("/shifts")
 async def create_shift(
     data: ShiftCreate,
+    force: bool = False,
     merchant_id: str = Depends(get_merchant_id)
 ):
-    """Schicht erstellen"""
+    """Schicht erstellen. ?force=true überspringt Overlap-Check."""
+    start_iso = data.start_time.isoformat()
+    end_iso = data.end_time.isoformat()
+    if data.end_time <= data.start_time:
+        raise HTTPException(400, "Endzeit muss nach Startzeit liegen")
+
+    if not force:
+        conflicts = await _find_shift_overlaps(merchant_id, data.staff_id, start_iso, end_iso)
+        if conflicts:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "shift_conflict",
+                    "message": f"{len(conflicts)} überschneidende Schicht(en) für diesen Mitarbeiter.",
+                    "conflicts": conflicts,
+                },
+            )
+
     shift = {
         "id": str(uuid4()),
         "merchant_id": merchant_id,
         "staff_id": data.staff_id,
         "title": data.title,
-        "start_time": data.start_time.isoformat(),
-        "end_time": data.end_time.isoformat(),
+        "start_time": start_iso,
+        "end_time": end_iso,
         "location": data.location,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
@@ -556,9 +589,16 @@ async def delete_shift(
 async def update_shift(
     shift_id: str,
     data: ShiftUpdate,
+    force: bool = False,
     merchant_id: str = Depends(get_merchant_id)
 ):
-    """Schicht aktualisieren (für Drag&Drop Schedule-Editor: Verschieben/Neu-Zuweisen)."""
+    """Schicht aktualisieren (für Drag&Drop Schedule-Editor: Verschieben/Neu-Zuweisen).
+    ?force=true überspringt Overlap-Check.
+    """
+    existing = await db.staff_shifts.find_one({"id": shift_id, "merchant_id": merchant_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Schicht nicht gefunden")
+
     update: dict = {}
     raw = data.model_dump(exclude_none=True)
     if "staff_id" in raw:
@@ -573,15 +613,107 @@ async def update_shift(
         update["end_time"] = raw["end_time"].isoformat() if hasattr(raw["end_time"], "isoformat") else raw["end_time"]
     if not update:
         return {"success": True, "no_change": True}
+
+    # Validate time order
+    new_start = update.get("start_time", existing["start_time"])
+    new_end = update.get("end_time", existing["end_time"])
+    if new_end <= new_start:
+        raise HTTPException(400, "Endzeit muss nach Startzeit liegen")
+
+    # Overlap check
+    if not force:
+        check_staff = update.get("staff_id", existing["staff_id"])
+        conflicts = await _find_shift_overlaps(
+            merchant_id, check_staff, new_start, new_end, exclude_id=shift_id,
+        )
+        if conflicts:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "shift_conflict",
+                    "message": f"{len(conflicts)} überschneidende Schicht(en).",
+                    "conflicts": conflicts,
+                },
+            )
+
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
 
-    res = await db.staff_shifts.update_one(
+    await db.staff_shifts.update_one(
         {"id": shift_id, "merchant_id": merchant_id}, {"$set": update},
     )
-    if res.matched_count == 0:
-        raise HTTPException(404, "Schicht nicht gefunden")
     shift = await db.staff_shifts.find_one({"id": shift_id}, {"_id": 0})
     return {"success": True, "shift": shift}
+
+
+class ShiftRepeatBody(BaseModel):
+    week_start: str  # ISO date YYYY-MM-DD (Monday)
+    weeks: int = Field(1, ge=1, le=12)
+    staff_id: Optional[str] = None  # if set, only repeat shifts of this staff
+    skip_conflicts: bool = True  # if True, conflicts are skipped silently; else 409
+
+
+@router.post("/shifts/repeat")
+async def repeat_week(
+    body: ShiftRepeatBody,
+    merchant_id: str = Depends(get_merchant_id)
+):
+    """Klone alle Schichten einer Quellwoche um N Wochen nach vorn.
+    week_start = Montag YYYY-MM-DD. Erzeugt für jede der `weeks` Folgewochen einen Schichten-Klon.
+    """
+    try:
+        src_start = datetime.fromisoformat(f"{body.week_start}T00:00:00").replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(400, "week_start muss YYYY-MM-DD sein")
+    src_end = src_start.replace() 
+    from datetime import timedelta as _td
+    src_end = src_start + _td(days=7)
+
+    q = {
+        "merchant_id": merchant_id,
+        "start_time": {"$gte": src_start.isoformat(), "$lt": src_end.isoformat()},
+    }
+    if body.staff_id:
+        q["staff_id"] = body.staff_id
+    src_shifts = await db.staff_shifts.find(q, {"_id": 0}).to_list(2000)
+    if not src_shifts:
+        return {"success": True, "created": 0, "skipped": 0, "message": "Keine Schichten in der Quellwoche"}
+
+    created = 0
+    skipped = 0
+    skip_details = []
+    now = datetime.now(timezone.utc).isoformat()
+    for week_offset in range(1, body.weeks + 1):
+        for s in src_shifts:
+            try:
+                st = datetime.fromisoformat(s["start_time"].replace("Z", "+00:00"))
+                en = datetime.fromisoformat(s["end_time"].replace("Z", "+00:00"))
+            except Exception:
+                continue
+            new_st = (st + _td(days=7 * week_offset)).isoformat()
+            new_en = (en + _td(days=7 * week_offset)).isoformat()
+            # Conflict check
+            conflicts = await _find_shift_overlaps(merchant_id, s["staff_id"], new_st, new_en)
+            if conflicts:
+                if body.skip_conflicts:
+                    skipped += 1
+                    skip_details.append({"start_time": new_st, "staff_id": s["staff_id"], "title": s.get("title")})
+                    continue
+                raise HTTPException(409, detail={"code": "shift_conflict", "message": "Konflikt beim Wiederholen", "conflicts": conflicts})
+            doc = {
+                "id": str(uuid4()),
+                "merchant_id": merchant_id,
+                "staff_id": s["staff_id"],
+                "title": s.get("title") or "Schicht",
+                "start_time": new_st,
+                "end_time": new_en,
+                "location": s.get("location"),
+                "created_at": now,
+                "updated_at": now,
+            }
+            await db.staff_shifts.insert_one(doc)
+            created += 1
+
+    return {"success": True, "created": created, "skipped": skipped, "skip_details": skip_details[:50]}
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. URLAUB / KRANKHEIT

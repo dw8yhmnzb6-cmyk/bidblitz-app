@@ -17,7 +17,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, ChevronLeft, ChevronRight, Plus, X, Trash2, Save,
-  Loader2, Clock, MapPin, GripVertical,
+  Loader2, Clock, MapPin, GripVertical, AlertTriangle, CopyPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -60,6 +60,8 @@ export default function ScheduleGridEditor({ members = [], onMembersReload }) {
   const [editingCell, setEditingCell] = useState(null); // { staff_id, date, shift?, isNew }
   const [draggedShift, setDraggedShift] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null); // "staffId|YYYY-MM-DD"
+  const [resizingShift, setResizingShift] = useState(null); // {id, startY, originalEnd}
+  const [showRepeat, setShowRepeat] = useState(false);
 
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
@@ -109,25 +111,46 @@ export default function ScheduleGridEditor({ members = [], onMembersReload }) {
       return;
     }
 
+    const movingShift = draggedShift;
     // Optimistic update
-    setShifts((prev) => prev.map((s) => s.id === draggedShift.id
+    setShifts((prev) => prev.map((s) => s.id === movingShift.id
       ? { ...s, staff_id: staffId, start_time: newStart.toISOString(), end_time: newEnd.toISOString() }
       : s));
     setDraggedShift(null);
 
+    await patchShiftWithConflict(movingShift.id, {
+      staff_id: staffId,
+      start_time: newStart.toISOString(),
+      end_time: newEnd.toISOString(),
+    }, "Schicht verschoben");
+  };
+
+  const patchShiftWithConflict = async (shiftId, payload, successMsg) => {
     try {
-      const r = await fetch(`${API}/api/staff/shifts/${draggedShift.id}`, {
+      const r = await fetch(`${API}/api/staff/shifts/${shiftId}`, {
         method: "PATCH", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          staff_id: staffId,
-          start_time: newStart.toISOString(),
-          end_time: newEnd.toISOString(),
-        }),
+        body: JSON.stringify(payload),
       });
-      if (r.ok) toast.success("Schicht verschoben");
-      else { toast.error("Verschieben fehlgeschlagen"); load(); }
+      if (r.ok) { toast.success(successMsg || "Aktualisiert"); load(); return true; }
+      if (r.status === 409) {
+        const d = await r.json();
+        const ok = window.confirm(`⚠️ Konflikt: ${d.detail?.message || "Überschneidung."} Trotzdem zuweisen?`);
+        if (ok) {
+          const r2 = await fetch(`${API}/api/staff/shifts/${shiftId}?force=true`, {
+            method: "PATCH", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (r2.ok) { toast.success("Trotz Konflikt zugewiesen"); load(); return true; }
+        }
+        load();
+        return false;
+      }
+      toast.error("Aktualisieren fehlgeschlagen");
+      load();
     } catch (e) { toast.error("Netzwerkfehler"); load(); }
+    return false;
   };
 
   const openNew = (staff_id, date) => {
@@ -152,7 +175,15 @@ export default function ScheduleGridEditor({ members = [], onMembersReload }) {
             Visueller Schichtplan
           </h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowRepeat(true)}
+            data-testid="schedule-repeat-week-btn"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#A855F7]/15 border border-[#A855F7]/40 text-[#A855F7] text-xs font-semibold hover:bg-[#A855F7]/25"
+            title="Diese Woche in zukünftige Wochen klonen"
+          >
+            <CopyPlus size={12} /> Woche wiederholen
+          </button>
           <button
             onClick={() => setWeekStart(addDays(weekStart, -7))}
             data-testid="schedule-prev-week"
@@ -244,24 +275,31 @@ export default function ScheduleGridEditor({ members = [], onMembersReload }) {
                       }`}
                     >
                       <div className="space-y-1 pointer-events-none">
-                        {cellShifts.map((s) => (
-                          <button
+                        {cellShifts.map((s) => {
+                          // detect overlap warning (same staff, same day, overlapping interval)
+                          const others = cellShifts.filter((o) => o.id !== s.id && !(new Date(o.end_time) <= new Date(s.start_time) || new Date(o.start_time) >= new Date(s.end_time)));
+                          const hasOverlap = others.length > 0;
+                          return (
+                          <div
                             key={s.id}
                             draggable
                             onDragStart={(e) => { setDraggedShift(s); e.dataTransfer.effectAllowed = "move"; }}
                             onDragEnd={() => setDraggedShift(null)}
                             onClick={(e) => { e.stopPropagation(); openEdit(s); }}
                             data-testid={`schedule-shift-${s.id}`}
-                            className="block w-full text-left p-1.5 rounded-lg text-[10px] font-semibold pointer-events-auto cursor-grab active:cursor-grabbing"
+                            className="relative w-full text-left p-1.5 rounded-lg text-[10px] font-semibold pointer-events-auto cursor-grab active:cursor-grabbing"
                             style={{
-                              background: "linear-gradient(135deg, rgba(0,194,255,0.18), rgba(168,85,247,0.18))",
-                              border: "1px solid rgba(0,194,255,0.35)",
+                              background: hasOverlap
+                                ? "linear-gradient(135deg, rgba(248,113,113,0.20), rgba(245,158,11,0.20))"
+                                : "linear-gradient(135deg, rgba(0,194,255,0.18), rgba(168,85,247,0.18))",
+                              border: hasOverlap ? "1px solid rgba(248,113,113,0.45)" : "1px solid rgba(0,194,255,0.35)",
                               color: "#fff",
                             }}
                           >
                             <div className="flex items-center gap-1">
                               <GripVertical size={10} className="opacity-60 shrink-0" />
                               <span className="truncate">{s.title || "Schicht"}</span>
+                              {hasOverlap && <AlertTriangle size={10} className="text-amber-300 shrink-0" data-testid={`schedule-shift-conflict-${s.id}`} />}
                             </div>
                             <div className="text-[9px] opacity-80 ml-3.5 mt-0.5 flex items-center gap-1">
                               <Clock size={9} /> {fmtTime(s.start_time)}–{fmtTime(s.end_time)}
@@ -271,8 +309,39 @@ export default function ScheduleGridEditor({ members = [], onMembersReload }) {
                                 <MapPin size={9} /> {s.location}
                               </div>
                             )}
-                          </button>
-                        ))}
+                            {/* Resize handle (bottom) */}
+                            <div
+                              data-testid={`schedule-shift-resize-${s.id}`}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                const startY = e.clientY;
+                                const orig = new Date(s.end_time);
+                                let latestEnd = orig.toISOString();
+                                const onMove = (ev) => {
+                                  const dy = ev.clientY - startY;
+                                  // 1 px = 1 minute (round to 15)
+                                  const minutesAdded = Math.round(dy / 15) * 15;
+                                  const ne = new Date(orig.getTime() + minutesAdded * 60000);
+                                  if (ne <= new Date(s.start_time)) return;
+                                  latestEnd = ne.toISOString();
+                                  setShifts((prev) => prev.map((x) => x.id === s.id ? { ...x, end_time: latestEnd } : x));
+                                };
+                                const onUp = async () => {
+                                  window.removeEventListener("mousemove", onMove);
+                                  window.removeEventListener("mouseup", onUp);
+                                  if (latestEnd !== orig.toISOString()) {
+                                    await patchShiftWithConflict(s.id, { end_time: latestEnd }, "Schichtdauer angepasst");
+                                  }
+                                };
+                                window.addEventListener("mousemove", onMove);
+                                window.addEventListener("mouseup", onUp);
+                              }}
+                              className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize rounded-b-lg bg-white/15 hover:bg-[#00C2FF]/60"
+                              title="Ziehen, um Schichtdauer anzupassen"
+                            />
+                          </div>
+                        );})}
                       </div>
                       {cellShifts.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -295,6 +364,14 @@ export default function ScheduleGridEditor({ members = [], onMembersReload }) {
             members={members}
             onClose={() => setEditingCell(null)}
             onSaved={() => { setEditingCell(null); load(); }}
+          />
+        )}
+        {showRepeat && (
+          <RepeatWeekModal
+            weekStart={weekStart}
+            shiftCount={shifts.length}
+            onClose={() => setShowRepeat(false)}
+            onDone={() => { setShowRepeat(false); load(); }}
           />
         )}
       </AnimatePresence>
@@ -328,23 +405,35 @@ function ShiftEditor({ cell, members, onClose, onSaved }) {
     if (new Date(end_time) <= new Date(start_time)) return toast.error("Endzeit muss nach Startzeit liegen");
 
     setSaving(true);
-    try {
+    const payload = {
+      staff_id: form.staff_id,
+      title: form.title,
+      location: form.location || null,
+      start_time, end_time,
+    };
+    const doFetch = async (force) => {
       const url = isNew
-        ? `${API}/api/staff/shifts`
-        : `${API}/api/staff/shifts/${shift.id}`;
-      const r = await fetch(url, {
+        ? `${API}/api/staff/shifts${force ? "?force=true" : ""}`
+        : `${API}/api/staff/shifts/${shift.id}${force ? "?force=true" : ""}`;
+      return fetch(url, {
         method: isNew ? "POST" : "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          staff_id: form.staff_id,
-          title: form.title,
-          location: form.location || null,
-          start_time, end_time,
-        }),
+        body: JSON.stringify(payload),
       });
+    };
+    try {
+      const r = await doFetch(false);
       if (r.ok) { toast.success(isNew ? "Schicht erstellt" : "Aktualisiert"); onSaved(); }
-      else toast.error("Speichern fehlgeschlagen");
+      else if (r.status === 409) {
+        const d = await r.json();
+        const ok = window.confirm(`⚠️ Konflikt: ${d.detail?.message || "Überschneidung."} Trotzdem speichern?`);
+        if (ok) {
+          const r2 = await doFetch(true);
+          if (r2.ok) { toast.success("Trotz Konflikt gespeichert"); onSaved(); }
+          else toast.error("Speichern fehlgeschlagen");
+        }
+      } else toast.error("Speichern fehlgeschlagen");
     } catch (e) { toast.error("Netzwerkfehler"); }
     setSaving(false);
   };
@@ -465,4 +554,93 @@ function ShiftEditor({ cell, members, onClose, onSaved }) {
 
 function Lbl({ children }) {
   return <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{children}</label>;
+}
+
+
+function RepeatWeekModal({ weekStart, shiftCount, onClose, onDone }) {
+  const [weeks, setWeeks] = useState(1);
+  const [skipConflicts, setSkipConflicts] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch(`${API}/api/staff/shifts/repeat`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          week_start: weekStart.toISOString().slice(0, 10),
+          weeks,
+          skip_conflicts: skipConflicts,
+        }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        toast.success(`${d.created} Schicht(en) angelegt${d.skipped ? `, ${d.skipped} übersprungen` : ""}`);
+        onDone();
+      } else if (r.status === 409) {
+        toast.error('Konflikte vorhanden — aktiviere „Konflikte überspringen" oder bereinige sie.');
+      } else toast.error(d.detail || "Fehler");
+    } catch (e) { toast.error("Netzwerkfehler"); }
+    setBusy(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center"
+      onClick={onClose}
+      data-testid="schedule-repeat-overlay"
+    >
+      <motion.div
+        initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-md bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl p-5 space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold font-outfit flex items-center gap-2">
+            <CopyPlus size={16} className="text-[#A855F7]" /> Woche wiederholen
+          </h3>
+          <button onClick={onClose} data-testid="schedule-repeat-close" className="p-1.5 rounded-lg hover:bg-white/5">
+            <X size={16} />
+          </button>
+        </div>
+        <p className="text-[12px] text-white/55">
+          Quellwoche: <strong>{weekStart.toLocaleDateString("de-DE")}</strong> · {shiftCount} Schicht(en) in dieser Woche
+        </p>
+
+        <Lbl>Anzahl Folgewochen</Lbl>
+        <div className="flex items-center gap-2">
+          <input
+            type="number" min={1} max={12}
+            value={weeks}
+            onChange={(e) => setWeeks(Math.max(1, Math.min(12, parseInt(e.target.value || "1"))))}
+            data-testid="schedule-repeat-weeks"
+            className="w-24 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-sm outline-none"
+          />
+          <span className="text-[12px] text-white/50">Wochen (1–12)</span>
+        </div>
+
+        <label className="flex items-center gap-2 text-[12px] text-white/75 cursor-pointer">
+          <input
+            type="checkbox" checked={skipConflicts}
+            onChange={(e) => setSkipConflicts(e.target.checked)}
+            data-testid="schedule-repeat-skip-conflicts"
+            className="accent-[#00C2FF]"
+          />
+          Konflikte überspringen (statt Fehler werfen)
+        </label>
+
+        <button
+          onClick={submit} disabled={busy}
+          data-testid="schedule-repeat-submit"
+          className="w-full py-3 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+          style={{ background: "linear-gradient(135deg, #A855F7 0%, #00C2FF 100%)" }}
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <CopyPlus size={14} />}
+          {weeks} {weeks === 1 ? "Woche" : "Wochen"} klonen
+        </button>
+      </motion.div>
+    </motion.div>
+  );
 }

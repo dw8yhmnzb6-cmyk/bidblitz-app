@@ -7,7 +7,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Plus, Search, Pin, Eye, EyeOff, Edit3, Trash2, Loader2,
-  Tag, X, Save, Calendar, BookText,
+  Tag, X, Save, Calendar, BookText, Image as ImageIcon, Sparkles, HelpCircle, Trash,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -135,9 +135,11 @@ export default function KnowledgeBaseManager() {
                     <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#00C2FF]/10 text-[#00C2FF] font-semibold uppercase tracking-wide">{a.category || "—"}</span>
                     {a.pinned && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-400/15 text-amber-400 font-semibold flex items-center gap-0.5"><Pin size={9} /> Angepinnt</span>}
                     {!a.published && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-white/60 font-semibold">Entwurf</span>}
+                    {a.ai_summary && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#A855F7]/15 text-[#A855F7] font-semibold flex items-center gap-0.5"><Sparkles size={9} /> AI</span>}
+                    {a.quiz?.length > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#10D981]/15 text-[#10D981] font-semibold flex items-center gap-0.5"><HelpCircle size={9} /> {a.quiz.length} Q</span>}
                   </div>
                   <p className="text-sm font-bold mt-1.5 truncate">{a.title}</p>
-                  <p className="text-[11px] text-white/45 mt-1 line-clamp-2 whitespace-pre-line">{(a.content || "").slice(0, 140)}</p>
+                  <p className="text-[11px] text-white/45 mt-1 line-clamp-2 whitespace-pre-line">{(a.ai_summary || a.content || "").slice(0, 140)}</p>
                   <div className="flex items-center gap-2 mt-2 text-[10px] text-white/35">
                     <span className="flex items-center gap-1"><Eye size={10} /> {a.view_count || 0}</span>
                     {a.tags?.length > 0 && (
@@ -146,6 +148,9 @@ export default function KnowledgeBaseManager() {
                     <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(a.updated_at || a.created_at).toLocaleDateString("de-DE")}</span>
                   </div>
                 </div>
+                {a.cover_url && (
+                  <img src={`${API}${a.cover_url}`} alt="" className="w-16 h-16 rounded-lg object-cover border border-white/10 shrink-0" data-testid={`kb-card-cover-${a.id}`} />
+                )}
               </div>
               <div className="mt-3 flex items-center gap-1.5 flex-wrap">
                 <IconBtn onClick={() => setEditing(a)} testId={`kb-edit-${a.id}`} title="Bearbeiten"><Edit3 size={12} /></IconBtn>
@@ -193,17 +198,56 @@ function ArticleEditor({ article, categories, onClose, onSaved }) {
     content: article.content || "",
     category: article.category || "Allgemein",
     tags: article.tags || [],
+    cover_url: article.cover_url || "",
     pinned: !!article.pinned,
     published: article.published !== false,
+    quiz: article.quiz || [],
+    ai_summary: article.ai_summary || "",
   });
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [summarizing, setSummarizing] = useState(false);
 
   const addTag = () => {
     const t = tagInput.trim();
     if (!t) return;
     if (!form.tags.includes(t)) setForm((f) => ({ ...f, tags: [...f.tags, t] }));
     setTagInput("");
+  };
+
+  const uploadCover = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch(`${API}/api/staff/knowledge/upload-cover`, {
+        method: "POST", credentials: "include", body: fd,
+      });
+      const d = await r.json();
+      if (r.ok && d.url) {
+        setForm((f) => ({ ...f, cover_url: d.url }));
+        toast.success("Cover hochgeladen");
+      } else toast.error(d.detail || "Upload fehlgeschlagen");
+    } catch (e) { toast.error("Netzwerkfehler"); }
+    setUploading(false);
+  };
+
+  const generateSummary = async () => {
+    if (isNew) return toast.error("Bitte zuerst speichern, dann AI-Zusammenfassung");
+    setSummarizing(true);
+    try {
+      const r = await fetch(`${API}/api/staff/knowledge/articles/${article.id}/summary`, {
+        method: "POST", credentials: "include",
+      });
+      const d = await r.json();
+      if (r.ok && d.ai_summary) {
+        setForm((f) => ({ ...f, ai_summary: d.ai_summary }));
+        toast.success("AI-Zusammenfassung erstellt");
+      } else toast.error(d.detail || "AI-Service nicht verfügbar");
+    } catch (e) { toast.error("Netzwerkfehler"); }
+    setSummarizing(false);
   };
 
   const save = async () => {
@@ -216,11 +260,14 @@ function ArticleEditor({ article, categories, onClose, onSaved }) {
       const url = isNew
         ? `${API}/api/staff/knowledge/articles`
         : `${API}/api/staff/knowledge/articles/${article.id}`;
+      const payload = { ...form };
+      // ai_summary is server-managed; only include if explicitly set (for create case)
+      delete payload.ai_summary;
       const r = await fetch(url, {
         method: isNew ? "POST" : "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (r.ok) {
         toast.success(isNew ? "Artikel erstellt" : "Aktualisiert");
@@ -228,6 +275,37 @@ function ArticleEditor({ article, categories, onClose, onSaved }) {
       } else toast.error("Speichern fehlgeschlagen");
     } catch (e) { toast.error("Netzwerkfehler"); }
     setSaving(false);
+  };
+
+  // Quiz helpers
+  const addQuizQuestion = () => {
+    setForm((f) => ({
+      ...f,
+      quiz: [...f.quiz, { question: "", options: ["", ""], correct: 0 }],
+    }));
+  };
+  const updateQuizQ = (i, patch) => {
+    setForm((f) => {
+      const next = f.quiz.map((q, j) => j === i ? { ...q, ...patch } : q);
+      return { ...f, quiz: next };
+    });
+  };
+  const removeQuizQ = (i) => {
+    setForm((f) => ({ ...f, quiz: f.quiz.filter((_, j) => j !== i) }));
+  };
+  const updateQuizOption = (i, oIdx, value) => {
+    setForm((f) => {
+      const q = f.quiz[i];
+      const options = q.options.map((o, k) => k === oIdx ? value : o);
+      const next = f.quiz.map((qq, j) => j === i ? { ...qq, options } : qq);
+      return { ...f, quiz: next };
+    });
+  };
+  const addQuizOption = (i) => {
+    setForm((f) => {
+      const next = f.quiz.map((q, j) => j === i ? { ...q, options: [...q.options, ""] } : q);
+      return { ...f, quiz: next };
+    });
   };
 
   return (
@@ -311,6 +389,115 @@ function ArticleEditor({ article, categories, onClose, onSaved }) {
           placeholder={"# Überschrift\n\n- Schritt 1\n- Schritt 2\n\n**Wichtig:** …"}
           className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm font-mono resize-y outline-none focus:border-[#00C2FF]/40"
         />
+
+        {/* Cover Image */}
+        <Lbl>Cover-Bild (optional)</Lbl>
+        <div className="flex items-center gap-2">
+          <label
+            data-testid="kb-editor-cover-label"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10 cursor-pointer hover:bg-white/[0.08] text-xs"
+          >
+            {uploading ? <Loader2 size={12} className="animate-spin" /> : <ImageIcon size={12} />}
+            <span>{uploading ? "Lädt…" : "Bild hochladen"}</span>
+            <input
+              type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+              onChange={(e) => uploadCover(e.target.files?.[0])}
+              data-testid="kb-editor-cover-input"
+              disabled={uploading}
+            />
+          </label>
+          {form.cover_url && (
+            <>
+              <img src={`${API}${form.cover_url}`} alt="cover" className="h-10 w-16 object-cover rounded-md border border-white/10" data-testid="kb-editor-cover-preview" />
+              <button onClick={() => setForm({ ...form, cover_url: "" })} data-testid="kb-editor-cover-remove" className="text-[11px] text-red-400 hover:underline">entfernen</button>
+            </>
+          )}
+        </div>
+
+        {/* AI Summary */}
+        <div className="rounded-xl bg-gradient-to-br from-[#00C2FF]/8 to-[#A855F7]/8 border border-[#00C2FF]/15 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-widest text-[#00C2FF]/80 font-semibold flex items-center gap-1.5">
+              <Sparkles size={11} /> AI-Zusammenfassung
+            </p>
+            <button
+              onClick={generateSummary}
+              disabled={summarizing || isNew}
+              data-testid="kb-editor-ai-summary"
+              className="text-[11px] px-2.5 py-1 rounded-lg bg-[#00C2FF]/15 border border-[#00C2FF]/40 text-[#00C2FF] font-semibold flex items-center gap-1 disabled:opacity-50"
+              title={isNew ? "Bitte zuerst speichern" : "AI-Kurzfassung erstellen"}
+            >
+              {summarizing ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+              {form.ai_summary ? "Neu generieren" : "Erstellen"}
+            </button>
+          </div>
+          {form.ai_summary ? (
+            <p className="text-[12px] text-white/80 leading-relaxed" data-testid="kb-editor-ai-summary-text">{form.ai_summary}</p>
+          ) : (
+            <p className="text-[11px] text-white/45 italic">Noch keine Zusammenfassung — klicke „Erstellen" für eine 2-Satz-Kurzfassung.</p>
+          )}
+        </div>
+
+        {/* Quiz Builder */}
+        <div className="rounded-xl bg-white/[0.02] border border-white/10 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-widest text-white/50 font-semibold flex items-center gap-1.5">
+              <HelpCircle size={11} /> Quiz ({form.quiz.length})
+            </p>
+            <button
+              onClick={addQuizQuestion}
+              data-testid="kb-editor-quiz-add"
+              className="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.05] border border-white/10 hover:bg-white/[0.08] font-semibold flex items-center gap-1"
+            >
+              <Plus size={10} /> Frage
+            </button>
+          </div>
+          {form.quiz.length === 0 ? (
+            <p className="text-[11px] text-white/40 italic">Optional — füge ein kurzes Quiz hinzu, um das Verständnis zu prüfen.</p>
+          ) : (
+            form.quiz.map((q, i) => (
+              <div key={i} className="rounded-lg bg-black/30 border border-white/[0.06] p-2.5 space-y-1.5" data-testid={`kb-editor-quiz-q-${i}`}>
+                <div className="flex items-start gap-1.5">
+                  <span className="text-[10px] text-white/40 font-mono pt-2">#{i + 1}</span>
+                  <input
+                    value={q.question}
+                    onChange={(e) => updateQuizQ(i, { question: e.target.value })}
+                    placeholder="Frage"
+                    data-testid={`kb-editor-quiz-question-${i}`}
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/[0.05] border border-white/10 text-xs outline-none focus:border-[#00C2FF]/40"
+                  />
+                  <button onClick={() => removeQuizQ(i)} data-testid={`kb-editor-quiz-remove-${i}`} className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg">
+                    <Trash size={11} />
+                  </button>
+                </div>
+                {q.options.map((opt, oIdx) => (
+                  <div key={oIdx} className="flex items-center gap-1.5 pl-5">
+                    <input
+                      type="radio" name={`q-${i}-correct`} checked={q.correct === oIdx}
+                      onChange={() => updateQuizQ(i, { correct: oIdx })}
+                      data-testid={`kb-editor-quiz-correct-${i}-${oIdx}`}
+                      className="accent-[#00C2FF]"
+                    />
+                    <input
+                      value={opt}
+                      onChange={(e) => updateQuizOption(i, oIdx, e.target.value)}
+                      placeholder={`Option ${oIdx + 1}`}
+                      data-testid={`kb-editor-quiz-option-${i}-${oIdx}`}
+                      className="flex-1 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] text-[11px] outline-none focus:border-[#00C2FF]/40"
+                    />
+                  </div>
+                ))}
+                <button
+                  onClick={() => addQuizOption(i)}
+                  data-testid={`kb-editor-quiz-add-option-${i}`}
+                  className="ml-5 text-[10px] text-[#00C2FF] hover:underline"
+                >
+                  + Option
+                </button>
+              </div>
+            ))
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-3 pt-1">
           <ToggleChip on={form.pinned} onClick={() => setForm({ ...form, pinned: !form.pinned })} icon={Pin} label="Anpinnen" testId="kb-editor-pinned" />
