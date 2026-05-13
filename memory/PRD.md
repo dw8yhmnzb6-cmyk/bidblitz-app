@@ -15,6 +15,20 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 13.05.2026 (iter89 — Knowledge Base + Visueller Drag&Drop Schedule-Editor)
+- 🟢 **Backend: Knowledge Base Modul** (`/app/backend/routes/staff_knowledge.py`, Router registriert):
+  - Manager CRUD: `POST/GET/PATCH/DELETE /api/staff/knowledge/articles` mit title/slug/content (Markdown), category, tags[], pinned, published, view_count
+  - Suche: `?q=` (title/content/tag-regex) + `?category=` Filter
+  - Staff Read: `GET /me/articles` (nur published, ohne content für Liste), `GET /me/articles/{id}` (mit view_count++), `GET /me/categories`, `GET /categories` (Manager)
+  - Auth: Merchant via `get_current_user`, Staff via `staff_session` Cookie
+- 🟢 **Backend: Shift PATCH** (`/api/staff/shifts/{id}`) — neuer Endpoint für Drag&Drop Reassign (staff_id / start_time / end_time / title / location)
+- 🟢 **Frontend Manager** (`/merchant/staff`): 2 neue Tabs
+  - `Knowledge Base` (`KnowledgeBaseManager.jsx`): Suche, Kategorie-Filter, Artikel-Editor (Markdown), Tag-Picker, Pin/Publish Toggle, Liste mit View-Counter und Last-Updated
+  - `Schedule-Editor` (`ScheduleGridEditor.jsx`): Wochenraster Mitarbeiter × Mo–So, Click-to-Create, HTML5 native Drag&Drop zum Verschieben/Reassignen, Click-on-Shift öffnet Editor (Edit/Delete), Wochen-Navigation
+- 🟢 **Frontend Staff** (`/staff/mobile`): Profil-Tile „Knowledge Base" → `StaffKnowledge.jsx` mit Suche, Kategorie-Chips, Reader mit eigenem Markdown-Renderer (H1-H3, Listen, Code-Blöcke, Bold/Italic, Links, Blockquote)
+- 🧪 Testing iter89: **12/12 Backend ✅ · Frontend 100% (KB CRUD UI + Schedule Grid Editor UI verified)** · 0 Bugs · Drag&Drop fallback durch Click-to-Open Modal getestet (Playwright Drag flaky bei nativen HTML5 Events)
+
+
 ### 12.05.2026 (iter88 — Demo Polish + Real Payouts + NFC + Push Preferences)
 - 🟢 **Demo Seed (Investor-Grade)**: 30 Tage realistische Aktivität mit Archetypen (Schichtleiter/Koch/Kellner mit eigenen Patterns morning/evening/weekend). Generiert pro Seed: **10 Mitarbeiter · 613 Clock-Events · 55 Schichten · 50 Tasks (15 open / 35 done) · 50 Wallet-Bonus/Trinkgeld-Events · 10 Notifications · 4 Warnings · 2 Locations**. Ein Klick = perfekte Pitch-Deck-Daten.
 - 🟢 **Wallet Real-Payouts** (`staff_wallet.py`):
