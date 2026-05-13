@@ -86,6 +86,9 @@ function Pill({ label, value, c }) {
 
 export default function ManagerTeamTimesheet() {
   const [days, setDays] = useState(7);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [rangeMode, setRangeMode] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(null); // {row, date}
@@ -95,20 +98,26 @@ export default function ManagerTeamTimesheet() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const url = rangeMode && startDate && endDate
+        ? `${API}/api/staff/timesheet/team-overview?start_date=${startDate}&end_date=${endDate}`
+        : `${API}/api/staff/timesheet/team-overview?days=${days}`;
       const [r, pc] = await Promise.all([
-        fetch(`${API}/api/staff/timesheet/team-overview?days=${days}`, { credentials: "include" }),
+        fetch(url, { credentials: "include" }),
         fetch(`${API}/api/staff/leave/counts`, { credentials: "include" }).catch(() => null),
       ]);
       if (r.ok) setData(await r.json());
       if (pc && pc.ok) setPending((await pc.json()).pending || 0);
     } catch (e) {}
     setLoading(false);
-  }, [days]);
+  }, [days, startDate, endDate, rangeMode]);
 
   useEffect(() => { load(); }, [load]);
 
   const downloadCSV = () => {
-    window.open(`${API}/api/staff/timesheet/team-overview.csv?days=${days}`, "_blank");
+    const qs = rangeMode && startDate && endDate
+      ? `start_date=${startDate}&end_date=${endDate}`
+      : `days=${days}`;
+    window.open(`${API}/api/staff/timesheet/team-overview.csv?${qs}`, "_blank");
   };
 
   return (
@@ -135,17 +144,39 @@ export default function ManagerTeamTimesheet() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex bg-white/[0.04] border border-white/10 rounded-xl p-0.5">
             {[7, 14, 30].map((n) => (
               <button
                 key={n}
-                onClick={() => setDays(n)}
+                onClick={() => { setDays(n); setRangeMode(false); }}
                 data-testid={`manager-period-${n}`}
-                className={`px-3 py-1.5 text-xs rounded-lg ${days === n ? "bg-[#00C2FF] text-black font-semibold" : "text-white/60"}`}
+                className={`px-3 py-1.5 text-xs rounded-lg ${days === n && !rangeMode ? "bg-[#00C2FF] text-black font-semibold" : "text-white/60"}`}
               >{n}T</button>
             ))}
+            <button
+              onClick={() => setRangeMode((v) => !v)}
+              data-testid="manager-period-range"
+              className={`px-3 py-1.5 text-xs rounded-lg ${rangeMode ? "bg-[#A855F7] text-white font-semibold" : "text-white/60"}`}
+            >Zeitraum</button>
           </div>
+          {rangeMode && (
+            <>
+              <input
+                type="date" value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                data-testid="manager-period-start-date"
+                className="px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs text-white"
+              />
+              <span className="text-white/40 text-xs">bis</span>
+              <input
+                type="date" value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                data-testid="manager-period-end-date"
+                className="px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs text-white"
+              />
+            </>
+          )}
           <button
             onClick={downloadCSV}
             data-testid="manager-csv-export"
@@ -161,9 +192,10 @@ export default function ManagerTeamTimesheet() {
       {!loading && data && (
         <>
           {/* Totals */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-5">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-5">
             <Stat icon={Clock} label="Regular" value={`${data.totals.regular_hours}h`} c="#10B981" />
             <Stat icon={TrendingUp} label="Überstunden" value={`${data.totals.overtime_hours}h`} c="#F59E0B" />
+            <Stat icon={TrendingUp} label="Doppelt" value={`${data.totals.double_hours || 0}h`} c="#A855F7" />
             <Stat icon={Coffee} label="Pause" value={`${data.totals.break_hours}h`} c="#06B6D4" />
             <Stat icon={AlertCircle} label="Abwesend" value={`${data.totals.absence_days}T`} c="#EF4444" />
             <Stat icon={Users} label="Aktive MA" value={data.totals.active_staff} c="#00C2FF" />
@@ -178,6 +210,7 @@ export default function ManagerTeamTimesheet() {
                   <th className="py-2 px-2 text-right hidden sm:table-cell">€/h</th>
                   <th className="py-2 px-2 text-right">Regular</th>
                   <th className="py-2 px-2 text-right">Über</th>
+                  <th className="py-2 px-2 text-right hidden lg:table-cell">Doppelt</th>
                   <th className="py-2 px-2 text-right hidden sm:table-cell">Pause</th>
                   <th className="py-2 px-2 text-right hidden md:table-cell">Abw.</th>
                   <th className="py-2 px-2 text-right">Gesamt</th>
@@ -186,7 +219,7 @@ export default function ManagerTeamTimesheet() {
               </thead>
               <tbody>
                 {data.rows.length === 0 && (
-                  <tr><td colSpan={8} className="py-8 text-center text-white/40">Keine Daten im gewählten Zeitraum</td></tr>
+                  <tr><td colSpan={9} className="py-8 text-center text-white/40">Keine Daten im gewählten Zeitraum</td></tr>
                 )}
                 {data.rows.map((r) => (
                   <tr
@@ -209,6 +242,7 @@ export default function ManagerTeamTimesheet() {
                     <td className="py-3 px-2 text-right text-white/60 hidden sm:table-cell">€{r.hourly_rate.toFixed(2)}</td>
                     <td className="py-3 px-2 text-right text-[#10B981] font-semibold">{r.regular_hours}h</td>
                     <td className="py-3 px-2 text-right text-[#F59E0B] font-semibold">{r.overtime_hours}h</td>
+                    <td className="py-3 px-2 text-right text-[#A855F7] hidden lg:table-cell">{r.double_hours || 0}h</td>
                     <td className="py-3 px-2 text-right text-[#06B6D4] hidden sm:table-cell">{r.break_hours}h</td>
                     <td className="py-3 px-2 text-right text-[#EF4444] hidden md:table-cell">{r.absence_days}T</td>
                     <td className="py-3 px-2 text-right font-bold text-white">{r.total_hours}h</td>
@@ -220,7 +254,7 @@ export default function ManagerTeamTimesheet() {
           </div>
 
           <p className="mt-4 text-[10px] text-white/40 text-center">
-            Zeitraum: {data.period_start} – {data.period_end} · Überstunden ab 8h/Tag (1,25× Zuschlag in Kostenkalkulation)
+            Zeitraum: {data.period_start} – {data.period_end} · Überstunden ab 8h/Tag (1,25× Zuschlag) · Sonntag/Feiertag = 2× Lohn
           </p>
         </>
       )}

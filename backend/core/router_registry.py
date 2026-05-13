@@ -98,6 +98,8 @@ def register_all_routers(app):
         ("routes.staff_push", "router"),
         ("routes.staff_timesheet", "router"),
         ("routes.staff_tasks", "router"),
+        ("routes.staff_checklists", "router"),
+        ("routes.staff_training", "router"),
         
         # Mining & Marketplace
         ("routes.mining", "router"),

@@ -20,6 +20,8 @@ import StaffShifts from "./staff/StaffShifts";
 import StaffTasks from "./staff/StaffTasks";
 import StaffWalletTab from "./staff/StaffWalletTab";
 import StaffProfile from "./staff/StaffProfile";
+import StaffChecklists from "./staff/StaffChecklists";
+import StaffTraining from "./staff/StaffTraining";
 import "../styles/staff-tokens.css";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -243,8 +245,10 @@ export default function StaffMobilePage({ onBack }) {
             )}
             {tab === "shifts" && <StaffShifts />}
             {tab === "tasks" && <StaffTasks />}
+            {tab === "checklists" && <StaffChecklists />}
+            {tab === "training" && <StaffTraining />}
             {tab === "wallet" && <StaffWalletTab />}
-            {tab === "profile" && <StaffProfile staff={staff} onLoggedOut={() => setStaff(null)} />}
+            {tab === "profile" && <StaffProfile staff={staff} onLoggedOut={() => setStaff(null)} onNavigateTab={setTab} />}
           </motion.div>
         </AnimatePresence>
       </div>

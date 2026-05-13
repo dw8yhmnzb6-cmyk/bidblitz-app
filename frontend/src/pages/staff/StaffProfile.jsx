@@ -8,13 +8,13 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
   User, Bell, Globe, Lock, LogOut, ChevronRight, Loader2, Mail, Phone, Briefcase, MapPin,
-  Shield, FileText, Sun, Moon, CheckCircle2,
+  Shield, FileText, Sun, Moon, CheckCircle2, ClipboardCheck, GraduationCap,
 } from "lucide-react";
 import { t, getStaffLang, setStaffLang, STAFF_LANGUAGES } from "../../i18n/staff";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-export default function StaffProfile({ staff, onLoggedOut }) {
+export default function StaffProfile({ staff, onLoggedOut, onNavigateTab }) {
   const [lang, setLang] = useState(getStaffLang());
   const [pinModal, setPinModal] = useState(false);
   const [langModal, setLangModal] = useState(false);
@@ -89,6 +89,34 @@ export default function StaffProfile({ staff, onLoggedOut }) {
           {staff?.phone && <ProfileLine icon={Phone} label="Telefon" value={staff.phone} />}
         </div>
       </motion.div>
+
+      {/* Mehr-Tab Shortcuts */}
+      {onNavigateTab && (
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => onNavigateTab("checklists")}
+            data-testid="staff-profile-go-checklists"
+            className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] text-left hover:bg-white/[0.05] active:scale-[0.98] transition-all"
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#00D4FF]/15 text-[#00D4FF] mb-2">
+              <ClipboardCheck size={16} />
+            </div>
+            <p className="text-sm font-bold">Checklists</p>
+            <p className="text-[11px] text-white/45 mt-0.5">Daily Forms</p>
+          </button>
+          <button
+            onClick={() => onNavigateTab("training")}
+            data-testid="staff-profile-go-training"
+            className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] text-left hover:bg-white/[0.05] active:scale-[0.98] transition-all"
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#7E5BF6]/15 text-[#7E5BF6] mb-2">
+              <GraduationCap size={16} />
+            </div>
+            <p className="text-sm font-bold">Training</p>
+            <p className="text-[11px] text-white/45 mt-0.5">Kurse & Quizzes</p>
+          </button>
+        </div>
+      )}
 
       {/* Settings */}
       <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] divide-y divide-white/[0.05] overflow-hidden">

@@ -40,8 +40,28 @@ async def _staff_session(request: Request) -> dict:
     return m
 
 
+# Deutsche bundesweite Feiertage 2026 (statisch, Erweiterung möglich)
+DE_HOLIDAYS = {
+    "2026-01-01", "2026-04-03", "2026-04-06", "2026-05-01", "2026-05-14",
+    "2026-05-25", "2026-10-03", "2026-12-25", "2026-12-26",
+    "2027-01-01", "2027-03-26", "2027-03-29", "2027-05-01", "2027-05-06",
+    "2027-05-17", "2027-10-03", "2027-12-25", "2027-12-26",
+}
+
+
+def _is_double_day(day_iso: str) -> bool:
+    """Sonntag oder Feiertag → 2x Lohn (Connecteam "Double hours")."""
+    try:
+        d = datetime.fromisoformat(day_iso)
+        if d.weekday() == 6:  # Sunday
+            return True
+    except Exception:
+        pass
+    return day_iso in DE_HOLIDAYS
+
+
 def _compute_per_day(events: list, leaves_set: set) -> dict:
-    """Returns { day_iso: {work_min, break_min, regular_min, overtime_min, absence: bool} }"""
+    """Returns { day_iso: {work_min, break_min, regular_min, overtime_min, double_min, absence: bool} }"""
     by_day: dict = defaultdict(lambda: {"work_min": 0, "break_min": 0})
     last_in = None
     break_start = None
@@ -60,27 +80,41 @@ def _compute_per_day(events: list, leaves_set: set) -> dict:
             break_start = None
 
     # Split regular vs overtime: alles über 8h/Tag = overtime
+    # Double-Hours: Sonntag/Feiertag → wird separat ausgewiesen (100% der work_min sind double)
     for day, d in by_day.items():
         regular = min(d["work_min"], 8 * 60)
         d["regular_min"] = regular
         d["overtime_min"] = max(0, d["work_min"] - regular)
+        d["double_min"] = d["work_min"] if _is_double_day(day) else 0
         d["absence"] = day in leaves_set
     return dict(by_day)
 
 
 @router.get("/team-overview")
-async def team_overview(request: Request, days: int = 7):
-    """Connecteam-Style: alle Mitarbeiter mit Stunden-Aufschlüsselung."""
+async def team_overview(request: Request, days: int = 7,
+                        start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """Connecteam-Style: alle Mitarbeiter mit Stunden-Aufschlüsselung.
+    Entweder `days` (rolling) ODER `start_date`+`end_date` (YYYY-MM-DD inclusive)."""
     mid = await _merchant_id(request)
     now = datetime.now(timezone.utc)
-    start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    if start_date and end_date:
+        try:
+            start = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc, hour=0, minute=0, second=0, microsecond=0)
+            end = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        except Exception:
+            raise HTTPException(400, "Ungültige Datumsangaben")
+        period_days = (end - start).days
+    else:
+        start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now + timedelta(days=1)
+        period_days = days
 
     members = await db.staff_members.find({"merchant_id": mid, "active": True}, {"_id": 0, "pin_hash": 0, "password_hash": 0}).to_list(length=500)
     if not members:
-        return {"success": True, "rows": [], "totals": {"work": 0, "break": 0, "regular": 0, "overtime": 0, "absence_days": 0}, "period_days": days}
+        return {"success": True, "rows": [], "totals": {"work": 0, "break": 0, "regular": 0, "overtime": 0, "double": 0, "absence_days": 0, "active_staff": 0, "regular_hours": 0, "overtime_hours": 0, "double_hours": 0, "break_hours": 0}, "period_days": period_days, "period_start": start.date().isoformat(), "period_end": (end - timedelta(days=1)).date().isoformat()}
 
     events = await db.staff_clock_events.find(
-        {"merchant_id": mid, "timestamp": {"$gte": start.isoformat()}},
+        {"merchant_id": mid, "timestamp": {"$gte": start.isoformat(), "$lt": end.isoformat()}},
         {"_id": 0, "staff_id": 1, "action": 1, "timestamp": 1},
     ).sort("timestamp", 1).to_list(length=20000)
 
@@ -95,7 +129,7 @@ async def team_overview(request: Request, days: int = 7):
         by_staff[ev["staff_id"]].append(ev)
 
     rows = []
-    totals = {"work": 0, "break": 0, "regular": 0, "overtime": 0, "absence_days": 0}
+    totals = {"work": 0, "break": 0, "regular": 0, "overtime": 0, "double": 0, "absence_days": 0}
     for m in members:
         sid = m["id"]
         days_data = _compute_per_day(by_staff.get(sid, []), {d for s, d in leave_set if s == sid})
@@ -103,8 +137,11 @@ async def team_overview(request: Request, days: int = 7):
         brk = sum(d["break_min"] for d in days_data.values())
         reg = sum(d["regular_min"] for d in days_data.values())
         ot = sum(d["overtime_min"] for d in days_data.values())
+        dbl = sum(d.get("double_min", 0) for d in days_data.values())
         absences = sum(1 for d in days_data.values() if d["absence"])
         rate = float(m.get("hourly_rate") or 0)
+        # Kosten: regular + ot*1.25 + double*2 (zusätzlich auf die normalen Stunden)
+        cost = (reg / 60.0) * rate + (ot / 60.0) * rate * 1.25 + (dbl / 60.0) * rate
         rows.append({
             "staff_id": sid,
             "name": m["name"],
@@ -114,17 +151,20 @@ async def team_overview(request: Request, days: int = 7):
             "break_minutes": brk,
             "regular_minutes": reg,
             "overtime_minutes": ot,
+            "double_minutes": dbl,
             "absence_days": absences,
             "total_hours": round(work / 60.0, 2),
             "regular_hours": round(reg / 60.0, 2),
             "overtime_hours": round(ot / 60.0, 2),
+            "double_hours": round(dbl / 60.0, 2),
             "break_hours": round(brk / 60.0, 2),
-            "cost_eur": round((reg / 60.0) * rate + (ot / 60.0) * rate * 1.25, 2),
+            "cost_eur": round(cost, 2),
         })
         totals["work"] += work
         totals["break"] += brk
         totals["regular"] += reg
         totals["overtime"] += ot
+        totals["double"] += dbl
         totals["absence_days"] += absences
 
     return {
@@ -135,12 +175,13 @@ async def team_overview(request: Request, days: int = 7):
             "break_hours": round(totals["break"] / 60.0, 2),
             "regular_hours": round(totals["regular"] / 60.0, 2),
             "overtime_hours": round(totals["overtime"] / 60.0, 2),
+            "double_hours": round(totals["double"] / 60.0, 2),
             "absence_days": totals["absence_days"],
             "active_staff": len(members),
         },
-        "period_days": days,
+        "period_days": period_days,
         "period_start": start.date().isoformat(),
-        "period_end": now.date().isoformat(),
+        "period_end": (end - timedelta(days=1)).date().isoformat(),
     }
 
 
