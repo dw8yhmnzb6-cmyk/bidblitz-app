@@ -77,6 +77,13 @@ class ShiftCreate(BaseModel):
     end_time: datetime
     location: Optional[str] = None
 
+class ShiftUpdate(BaseModel):
+    staff_id: Optional[str] = None
+    title: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+
 class LeaveRequest(BaseModel):
     staff_id: str
     type: Literal["vacation", "sick", "other"]
@@ -543,6 +550,38 @@ async def delete_shift(
         raise HTTPException(404, "Schicht nicht gefunden")
     
     return {"success": True, "deleted": True}
+
+
+@router.patch("/shifts/{shift_id}")
+async def update_shift(
+    shift_id: str,
+    data: ShiftUpdate,
+    merchant_id: str = Depends(get_merchant_id)
+):
+    """Schicht aktualisieren (für Drag&Drop Schedule-Editor: Verschieben/Neu-Zuweisen)."""
+    update: dict = {}
+    raw = data.model_dump(exclude_none=True)
+    if "staff_id" in raw:
+        update["staff_id"] = raw["staff_id"]
+    if "title" in raw:
+        update["title"] = raw["title"]
+    if "location" in raw:
+        update["location"] = raw["location"]
+    if "start_time" in raw:
+        update["start_time"] = raw["start_time"].isoformat() if hasattr(raw["start_time"], "isoformat") else raw["start_time"]
+    if "end_time" in raw:
+        update["end_time"] = raw["end_time"].isoformat() if hasattr(raw["end_time"], "isoformat") else raw["end_time"]
+    if not update:
+        return {"success": True, "no_change": True}
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    res = await db.staff_shifts.update_one(
+        {"id": shift_id, "merchant_id": merchant_id}, {"$set": update},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Schicht nicht gefunden")
+    shift = await db.staff_shifts.find_one({"id": shift_id}, {"_id": 0})
+    return {"success": True, "shift": shift}
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. URLAUB / KRANKHEIT

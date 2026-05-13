@@ -100,6 +100,7 @@ def register_all_routers(app):
         ("routes.staff_tasks", "router"),
         ("routes.staff_checklists", "router"),
         ("routes.staff_training", "router"),
+        ("routes.staff_knowledge", "router"),
         
         # Mining & Marketplace
         ("routes.mining", "router"),

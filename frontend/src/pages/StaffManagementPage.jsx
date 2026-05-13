@@ -10,7 +10,7 @@ import {
   ArrowLeft, Users, Clock, Calendar, UmbrellaIcon, FileText, Plus,
   CheckCircle, XCircle, Loader2, MapPin, AlertCircle, Download,
   Edit, Trash2, Play, Pause, Square, TrendingUp, Award, QrCode,
-  Crown, Sparkles, Settings, ArrowRight
+  Crown, Sparkles, Settings, ArrowRight, BookOpen, LayoutGrid
 } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode.react";
@@ -22,6 +22,8 @@ import StaffExportButtons from "../components/staff/StaffExportButtons";
 import StaffWalletPanel from "../components/staff/StaffWalletPanel";
 import ManagerTeamTimesheet from "../components/staff/ManagerTeamTimesheet";
 import MerchantLiveOverview from "../components/staff/MerchantLiveOverview";
+import ScheduleGridEditor from "../components/staff/ScheduleGridEditor";
+import KnowledgeBaseManager from "../components/staff/KnowledgeBaseManager";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -239,6 +241,8 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
     { id: "clock", label: "Zeiterfassung", icon: Clock },
     { id: "timesheet", label: "Timesheet", icon: FileText },
     { id: "shifts", label: "Schichtplan", icon: Calendar },
+    { id: "schedule", label: "Schedule-Editor", icon: LayoutGrid },
+    { id: "knowledge", label: "Knowledge Base", icon: BookOpen },
     { id: "leave", label: "Urlaub/Krank", icon: UmbrellaIcon },
     { id: "reports", label: "Reports", icon: FileText }
   ];
@@ -395,6 +399,8 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
             {tab === "clock" && <ClockTab todayEvents={todayEvents} members={members} onClockAction={handleClockAction} />}
             {tab === "timesheet" && <ManagerTeamTimesheet />}
             {tab === "shifts" && <ShiftsTab shifts={shifts} members={members} onReload={loadData} />}
+            {tab === "schedule" && <ScheduleGridEditor members={members} onMembersReload={loadData} />}
+            {tab === "knowledge" && <KnowledgeBaseManager />}
             {tab === "leave" && <LeaveTab requests={leaveRequests} members={members} onApprove={handleApproveLeave} />}
             {tab === "reports" && <ReportsTab members={members} />}
           </>

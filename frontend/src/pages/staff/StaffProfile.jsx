@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
   User, Bell, Globe, Lock, LogOut, ChevronRight, Loader2, Mail, Phone, Briefcase, MapPin,
-  Shield, FileText, Sun, Moon, CheckCircle2, ClipboardCheck, GraduationCap,
+  Shield, FileText, Sun, Moon, CheckCircle2, ClipboardCheck, GraduationCap, BookOpen,
 } from "lucide-react";
 import { t, getStaffLang, setStaffLang, STAFF_LANGUAGES } from "../../i18n/staff";
 
@@ -114,6 +114,20 @@ export default function StaffProfile({ staff, onLoggedOut, onNavigateTab }) {
             </div>
             <p className="text-sm font-bold">Training</p>
             <p className="text-[11px] text-white/45 mt-0.5">Kurse & Quizzes</p>
+          </button>
+          <button
+            onClick={() => onNavigateTab("knowledge")}
+            data-testid="staff-profile-go-knowledge"
+            className="col-span-2 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] text-left hover:bg-white/[0.05] active:scale-[0.98] transition-all flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#F59E0B]/15 text-[#F59E0B] shrink-0">
+              <BookOpen size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold">Knowledge Base</p>
+              <p className="text-[11px] text-white/45 mt-0.5">Tutorials, Standards, Rezepte</p>
+            </div>
+            <ChevronRight size={14} className="text-white/30" />
           </button>
         </div>
       )}
