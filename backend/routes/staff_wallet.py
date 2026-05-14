@@ -384,11 +384,13 @@ async def request_payout(req: PayoutReq, request: Request):
 
     await db.staff_payouts.insert_one(payout_doc)
 
-    # Mark bonus events as wallet_paid (linked to this payout)
-    await db.staff_bonus_events.update_many(
-        {"merchant_id": mid, "staff_id": req.staff_id, "status": "credited"},
-        {"$set": {"status": "wallet_paid", "paid_at": now.isoformat(), "payout_id": payout_id}},
-    )
+    # Mark bonus events as wallet_paid ONLY if the payout actually went out / is in flight.
+    # Failed or pending-onboarding payouts must NOT consume the credited bonuses.
+    if payout_doc["status"] in ("pending", "processing"):
+        await db.staff_bonus_events.update_many(
+            {"merchant_id": mid, "staff_id": req.staff_id, "status": "credited"},
+            {"$set": {"status": "wallet_paid", "paid_at": now.isoformat(), "payout_id": payout_id}},
+        )
 
     payout_doc.pop("_id", None)
     return {"success": True, "payout": payout_doc, "next_step":

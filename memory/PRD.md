@@ -15,6 +15,24 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 14.05.2026 (iter92 — Sprint A+B+C: Stripe Connect + Voiceover + Native Build Doc)
+- 🟢 **Stripe Connect Express Onboarding** (echtes Stripe, kein Mock mehr):
+  - `POST /api/staff/wallet/connect/onboard` (Manager initiiert für MA) & `POST /me/onboard` (Staff selbst aus Mobile-App)
+  - `GET /status/{staff_id}?live=true|false` & `GET /me/status` (Live retrieve oder DB-Cache, schreibt `details_submitted`, `payouts_enabled`, `charges_enabled`, `requirements_currently_due[]`)
+  - `POST /login-link/{staff_id}` (Stripe Express Dashboard Re-Entry)
+  - `DELETE /{staff_id}` (Disconnect)
+  - **Echte `stripe.Transfer.create`** in `staff_wallet.py` payout-Flow, gated auf `payouts_enabled=true`. Bug-Fix: bonus_events werden NUR markiert wenn payout `pending|processing` (verhindert Geld-Verlust bei `needs_stripe_onboarding`).
+  - Frontend Manager (`StaffWalletPanel.jsx`): neue „Stripe"-Spalte mit `ConnectStatusPill` (4 states: not_connected/incomplete/under_review/active) — Click öffnet onboarding_url + kopiert Link in Zwischenablage.
+  - Frontend Staff (`StaffWalletTab.jsx`): neue „Direkt-Auszahlung"-Card mit 4-State-UI, „Jetzt einrichten" redirected zu Stripe.
+- 🟢 **Driver-Live-Voiceover** (`useTaxiVoiceover.js`, Web Speech API):
+  - Auto-Ansage bei jeder Status-Transition (pending/accepted/arriving/arrived/in_progress/completed/cancelled) auf Deutsch
+  - Voice-Toggle-Button (cyan-when-active) im Top-Bar während Tracking-View
+  - localStorage-Persistierung (`bidblitz_taxi_voice_enabled`)
+  - Plate wird Buchstabe-für-Buchstabe gesprochen für Klarheit
+- 🟢 **BUILD_NATIVE.md** (`/app/BUILD_NATIVE.md`, 10 Sektionen): iOS + Android Step-by-Step inkl. Permissions, Signing, Capacitor Sync, OneSignal Push, häufige Rejections, Post-Launch Monitoring, fastlane CD.
+- 🧪 Testing iter92: **7/7 Backend ✅** (alle Connect-Routen + Auth-Gates), **Frontend taxi 100%** (Map+Voiceover-Toggle verifiziert), Wallet-Panel-Visual deferred (cookie-flaky im Test). 1 Critical Syntax-Bug in StaffWalletPanel.jsx wurde vom Testing-Agent gefixt; 1 bonus-event Persistenz-Bug nachträglich vom Main-Agent gefixt.
+
+
 ### 14.05.2026 (iter91 — Taxi Booking Konkurrenz-Parity Sprint)
 - 🟢 **Map-First Landing**: Mapbox-Karte erscheint **sofort** beim Öffnen von `/taxi` (Uber/Bolt/FreeNow-Parity). `taxiType` default jetzt `'business'` → `inMapBookingFlow` true ab erster Render.
 - 🟢 **Auto-Estimate**: Sobald Pickup + Dropoff gesetzt sind, werden Preise/Vehicle-Picker **automatisch** geladen (debounced 400ms) — kein „Preise anzeigen"-Button-Click mehr nötig.
