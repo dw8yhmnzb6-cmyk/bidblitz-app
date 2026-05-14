@@ -352,15 +352,18 @@ async def request_payout(req: PayoutReq, request: Request):
         "completed_at": None,
     }
 
-    # Stripe Connect path (optional)
+    # Stripe Connect path (uses staff_bank_details.stripe_account_id from /api/staff/wallet/connect/* flow)
     if req.method == "stripe_connect":
         try:
             stripe_account_id = bank.get("stripe_account_id")
+            payouts_enabled = bool(bank.get("payouts_enabled"))
             if not stripe_account_id:
                 payout_doc["status"] = "needs_stripe_onboarding"
-                payout_doc["error"] = "Mitarbeiter hat keinen Stripe Connect Account"
+                payout_doc["error"] = "Mitarbeiter hat keinen Stripe Connect Account. Bitte zuerst Onboarding abschließen (/api/staff/wallet/connect/onboard)."
+            elif not payouts_enabled:
+                payout_doc["status"] = "needs_stripe_onboarding"
+                payout_doc["error"] = "Stripe Connect Onboarding nicht abgeschlossen (payouts_enabled=false). Bitte requirements.currently_due erfüllen."
             else:
-                # Real Stripe transfer
                 import stripe
                 stripe.api_key = os.getenv("STRIPE_API_KEY")
                 if not stripe.api_key:
@@ -374,9 +377,10 @@ async def request_payout(req: PayoutReq, request: Request):
                 )
                 payout_doc["status"] = "processing"
                 payout_doc["stripe_transfer_id"] = transfer.id
+                payout_doc["stripe_account_id"] = stripe_account_id
         except Exception as e:
             payout_doc["status"] = "failed"
-            payout_doc["error"] = str(e)
+            payout_doc["error"] = str(e)[:300]
 
     await db.staff_payouts.insert_one(payout_doc)
 

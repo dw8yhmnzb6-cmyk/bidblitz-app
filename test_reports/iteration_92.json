@@ -1,0 +1,50 @@
+{
+  "summary": "Sprint A+B+C testing — found and fixed 1 CRITICAL syntax-error in StaffWalletPanel.jsx that broke the entire frontend build (compile error overlay on every page). All 7 backend Stripe Connect endpoints pass (onboard, status cached & live, payout integration, disconnect, auth gates). Frontend /taxi regression confirmed green after fix — map, booking-sheet, all testids present. Merchant Wallet Connect-column visual verification deferred (auth flow in headless context was flaky); lint on the fixed StaffWalletPanel.jsx is clean and component compiles successfully.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "StaffWalletPanel.jsx",
+        "issue": "FIXED by tester. Original file had `</div>` immediately followed by `function ConnectStatusPill(...)` — missing `);}` to close the Modal component plus an extra stray `);}` at EOF. This produced a Babel SyntaxError ('Unexpected token, expected \",\"' at line 265:0) that broke webpack-dev-server compile and rendered a fullscreen red error overlay on /taxi, /merchant/staff, AND every other route in the SPA.",
+        "selector": "n/a — build-time error",
+        "priority": "CRITICAL (was blocking the whole app)"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_connect.py",
+    "/app/test_reports/pytest/staff_connect.xml"
+  ],
+  "action_items": [
+    "Main agent: self-verify the Merchant Wallet panel renders the new 'Stripe' column with Connect pills (+ Connect / Prüfung / Aktiv / Unvollst.) — visual verification deferred by tester (headless login session was flaky). Lint and compile are now clean.",
+    "Main agent: self-verify Staff Mobile /staff/mobile Wallet StripeConnectCard 4-state UI (not_started/incomplete/under_review/active) — needs staff magic-link cookie session.",
+    "Main agent: optionally smoke-test the actual Web Speech voice toggle by simulating a tracking-view activeRide (the testid `map-flow-voice-toggle` is gated behind `view === 'tracking'`, so it only renders after `bookRide()` succeeds)."
+  ],
+  "critical_code_review_comments": [
+    "StaffWalletPanel.jsx: function definitions split component scope incorrectly — the new ConnectStatusPill was injected mid-component and broke JSX balance. Recommend moving helper sub-components OUT of the main file (or above the parent), and run `yarn build` locally before commit — `yarn start`'s hot-reload swallowed the build error visually until refresh.",
+    "staff_connect.py:289 — `stripe.Account.delete(acc_id)` is wrapped in try/except (log warning then continue). Good — Stripe only allows delete for unverified test accounts, and the DB cleanup still proceeds. ✓",
+    "staff_connect.py:80-93 — `_get_or_create_account` correctly retries Stripe.Account.retrieve on stale acc_id (e.g. test→live key rotation) and creates a fresh account. ✓ Idempotent.",
+    "staff_wallet.py payout flow (lines 355-385): when `payouts_enabled=false`, status is set to 'needs_stripe_onboarding' BUT the staff_bonus_events are STILL marked wallet_paid (lines 388-391 run unconditionally). This is a SUBTLE BUG — failed/needs-onboarding payouts should NOT consume the credited bonus events; otherwise the staff's balance gets zeroed without an actual transfer. Recommend gating the `update_many(...)` on payout_doc['status'] IN ('pending', 'processing'). (Reported as test_payout passed because it just checks the status field — the persistence side-effect was not asserted, but it is in fact present.)",
+    "useTaxiVoiceover.js: speak() correctly no-ops in headless / when speechSynthesis is missing. localStorage default ON is good UX. Voice-toggle visibility is correctly gated to `view === 'tracking'`. ✓",
+    "TaxiPage.jsx voice-toggle title attr inverts the intent slightly: `title={voiceover.enabled ? 'Stimme aus' : 'Stimme an'}` — that is the *action* (click to turn off when enabled), but read literally as 'voice off' when voice is on. Minor i18n confusion; consider `Stimme ausschalten` / `Stimme einschalten`."
+  ],
+  "updated_files": [
+    "/app/frontend/src/components/staff/StaffWalletPanel.jsx (fixed missing `);}` after Modal + removed stray `);}` at EOF)",
+    "/app/backend/tests/test_staff_connect.py (new pytest suite, 7 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7)",
+    "frontend": "partial — taxi regression 100%, merchant wallet UI not visually verified"
+  },
+  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026! — login works via modal at / (Anmelden button). /login route redirects back to / so use the modal.",
+  "seed_data_creation": "Backend test_staff_connect.py creates a small €1.50 manual TEST_ bonus and saves a dummy DE IBAN for staff member during test_payout_with_stripe_connect_needs_onboarding_when_not_enabled — these write to real DB and are not cleaned up after the run.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "StaffWalletPanel.jsx is fixed and lint-clean. Backend test file is at /app/backend/tests/test_staff_connect.py. To visually verify the Stripe-column Connect pills: (a) login as merchant via the modal on / (not /login), (b) navigate to /merchant/staff, (c) the Wallet panel is opened via a tab WITHIN the staff page (not the bottom-nav 'WALLET' which is the user's personal wallet — selector clash was the issue in my run). Use `data-testid^='connect-'` to find the pills. For staff-mobile testing, the magic-link login at /staff/mobile sets a `staff_session` cookie; once set, the StripeConnectCard inside the Wallet tab calls /api/staff/wallet/connect/me/status to render its 4-state UI.",
+  "rca of the issue": "RCA — the original StaffWalletPanel.jsx was concatenated/appended by the implementing agent without re-balancing JSX braces: the new ConnectStatusPill function was inserted after `</div>` of the Modal sub-component WITHOUT closing the Modal's outer return-parenthesis and function body. webpack/babel-loader threw SyntaxError at parse time, the dev-server served an HTML error-overlay for the JS bundle, and *every* page in the SPA showed the red 'Compiled with problems' overlay. Reproduction: simply load /taxi — overlay covers map. Fix applied: re-balance the Modal close to `</div></div>);}` and remove the stray trailing `);}` at EOF (only 2 small edits, both lint-verified)."
+}

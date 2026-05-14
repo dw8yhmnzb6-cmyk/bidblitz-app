@@ -143,6 +143,7 @@ export default function StaffWalletPanel({ members = [] }) {
                 <th className="px-3 py-2 text-right">Bonus</th>
                 <th className="px-3 py-2 text-right">Trinkgeld</th>
                 <th className="px-3 py-2 text-right">Offen</th>
+                <th className="px-3 py-2 text-center">Stripe</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -153,10 +154,14 @@ export default function StaffWalletPanel({ members = [] }) {
                   <td className="px-3 py-2 text-right text-white/70">€{r.bonus_credited_eur.toFixed(2)}</td>
                   <td className="px-3 py-2 text-right text-white/70">€{r.tips_credited_eur.toFixed(2)}</td>
                   <td className="px-3 py-2 text-right font-bold text-[#10B981]">€{r.balance_eur.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-center">
+                    <ConnectStatusPill staffId={r.staff_id} />
+                  </td>
                   <td className="px-3 py-2 text-right">
                     {r.balance_eur > 0 && (
                       <button
                         onClick={() => requestPayout(r.staff_id)}
+                        data-testid={`payout-${r.staff_id}-btn`}
                         className="text-[10px] px-2 py-1 rounded bg-white/5 hover:bg-white/10"
                       >
                         Auszahlen
@@ -256,5 +261,85 @@ function Modal({ onClose, title, children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+function ConnectStatusPill({ staffId }) {
+  const [status, setStatus] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${API}/api/staff/wallet/connect/status/${staffId}?live=false`, { credentials: "include" });
+        if (r.ok) setStatus(await r.json());
+      } catch (e) {}
+    })();
+  }, [staffId]);
+
+  const startOnboarding = async (e) => {
+    e.stopPropagation();
+    setBusy(true);
+    try {
+      const origin = window.location.origin;
+      const return_url = `${origin}/merchant/staff?stripe_return=1&staff=${staffId}`;
+      const r = await fetch(`${API}/api/staff/wallet/connect/onboard`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staff_id: staffId, return_url, refresh_url: return_url }),
+      });
+      const d = await r.json();
+      if (r.ok && d.onboarding_url) {
+        // Open in new tab so manager keeps the dashboard
+        window.open(d.onboarding_url, "_blank", "noopener");
+        toast.success("Onboarding-Link geöffnet. Sende den Link auch an den Mitarbeiter.");
+        // Copy to clipboard
+        try { await navigator.clipboard.writeText(d.onboarding_url); toast("Link kopiert"); } catch {}
+      } else {
+        toast.error(d.detail || "Onboarding fehlgeschlagen");
+      }
+    } catch (e) { toast.error("Netzwerkfehler"); }
+    setBusy(false);
+  };
+
+  if (!status?.connected) {
+    return (
+      <button
+        onClick={startOnboarding}
+        disabled={busy}
+        data-testid={`connect-onboard-${staffId}`}
+        className="text-[10px] px-2 py-1 rounded bg-[#635BFF]/15 text-[#A0AEFF] font-semibold border border-[#635BFF]/30 hover:bg-[#635BFF]/25 disabled:opacity-60"
+        title="Stripe Connect Express Onboarding starten"
+      >
+        {busy ? "…" : "+ Connect"}
+      </button>
+    );
+  }
+  const payouts = !!status.payouts_enabled;
+  const submitted = !!status.details_submitted;
+  if (payouts) {
+    return (
+      <span data-testid={`connect-status-${staffId}-active`} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-[#10D981]/15 text-[#10D981] font-semibold">
+        <CheckCircle2 size={10} /> Aktiv
+      </span>
+    );
+  }
+  if (submitted) {
+    return (
+      <span data-testid={`connect-status-${staffId}-review`} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-[#A855F7]/15 text-[#A855F7] font-semibold">
+        <Loader2 size={10} className="animate-spin" /> Prüfung
+      </span>
+    );
+  }
+  return (
+    <button
+      onClick={startOnboarding}
+      disabled={busy}
+      data-testid={`connect-incomplete-${staffId}`}
+      className="text-[10px] px-2 py-1 rounded bg-[#F5A524]/15 text-[#F5A524] font-semibold border border-[#F5A524]/30"
+      title="Setup fortsetzen"
+    >
+      <AlertCircle size={10} className="inline mr-0.5" /> Unvollst.
+    </button>
   );
 }

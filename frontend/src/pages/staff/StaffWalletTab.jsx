@@ -6,7 +6,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, Gift, Coins, ArrowDownLeft, Loader2, Clock, ChevronRight, Landmark, CheckCircle2, AlertCircle, Banknote } from "lucide-react";
+import { Wallet, Gift, Coins, ArrowDownLeft, Loader2, Clock, ChevronRight, Landmark, CheckCircle2, AlertCircle, Banknote, ExternalLink, ShieldCheck } from "lucide-react";
 import { EmptyState } from "./StaffShifts";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -25,6 +25,15 @@ export default function StaffWalletTab() {
   const [payouts, setPayouts] = useState([]);
   const [bank, setBank] = useState(null);
   const [showAllPayouts, setShowAllPayouts] = useState(false);
+  const [connectStatus, setConnectStatus] = useState(null);
+  const [connectBusy, setConnectBusy] = useState(false);
+
+  const reloadStatus = async () => {
+    try {
+      const cs = await fetch(`${API}/api/staff/wallet/connect/me/status?live=true`, { credentials: "include" });
+      if (cs.ok) setConnectStatus(await cs.json());
+    } catch (e) {}
+  };
 
   useEffect(() => {
     (async () => {
@@ -37,10 +46,35 @@ export default function StaffWalletTab() {
         if (b.ok) setData(await b.json());
         if (p.ok) setPayouts((await p.json()).payouts || []);
         if (bk.ok) setBank((await bk.json()).bank || null);
+        await reloadStatus();
       } catch (e) {}
       setLoading(false);
     })();
+    // Poll once if user just returned from Stripe (query param ?stripe_return=1)
+    if (new URLSearchParams(window.location.search).get("stripe_return")) {
+      setTimeout(() => { reloadStatus(); }, 1500);
+    }
   }, []);
+
+  const startOnboarding = async () => {
+    setConnectBusy(true);
+    try {
+      const origin = window.location.origin;
+      const return_url = `${origin}/staff/mobile?stripe_return=1`;
+      const r = await fetch(`${API}/api/staff/wallet/connect/me/onboard`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ return_url, refresh_url: return_url }),
+      });
+      const d = await r.json();
+      if (r.ok && d.onboarding_url) {
+        window.location.href = d.onboarding_url;
+      } else {
+        alert(d.detail || "Stripe-Setup fehlgeschlagen");
+        setConnectBusy(false);
+      }
+    } catch (e) { alert("Netzwerkfehler"); setConnectBusy(false); }
+  };
 
   if (loading) {
     return <div className="py-20 flex justify-center"><Loader2 size={22} className="animate-spin text-[#10B981]" /></div>;
@@ -160,6 +194,14 @@ export default function StaffWalletTab() {
         </div>
       </div>
 
+      {/* Stripe Connect Onboarding */}
+      <StripeConnectCard
+        status={connectStatus}
+        busy={connectBusy}
+        onStart={startOnboarding}
+        onRefresh={reloadStatus}
+      />
+
       {/* Payout History */}
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -245,5 +287,88 @@ function PayoutRow({ payout }) {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+
+function StripeConnectCard({ status, busy, onStart, onRefresh }) {
+  const connected = !!status?.connected;
+  const submitted = !!status?.details_submitted;
+  const payoutsEnabled = !!status?.payouts_enabled;
+  const due = status?.requirements_currently_due || [];
+
+  const state = !connected
+    ? "not_started"
+    : payoutsEnabled
+      ? "active"
+      : submitted
+        ? "under_review"
+        : "incomplete";
+
+  const STATE_CFG = {
+    not_started: { color: "#00D4FF", label: "Auszahlungen aktivieren", desc: "Verbinde dein Bankkonto sicher über Stripe — dann können Bonus & Trinkgeld direkt überwiesen werden.", cta: "Jetzt einrichten", Icon: ShieldCheck },
+    incomplete:  { color: "#F5A524", label: "Setup unvollständig",      desc: "Bitte fülle die fehlenden Stripe-Daten aus.", cta: "Weiter mit Stripe", Icon: AlertCircle },
+    under_review:{ color: "#A855F7", label: "In Prüfung",                desc: "Stripe prüft deine Angaben. Das dauert meist nur wenige Minuten.", cta: "Status aktualisieren", Icon: Clock },
+    active:      { color: "#10D981", label: "Aktiv & einsatzbereit",    desc: "Auszahlungen werden direkt auf dein Bankkonto überwiesen.", cta: "Stripe-Dashboard öffnen", Icon: CheckCircle2 },
+  };
+  const cfg = STATE_CFG[state];
+  const Icon = cfg.Icon;
+
+  return (
+    <div data-testid="stripe-connect-card">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 mb-2 font-semibold flex items-center gap-2">
+        Direkt-Auszahlung <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#635BFF]/15 text-[#A0AEFF] font-bold tracking-wide">STRIPE</span>
+      </p>
+      <div className="p-4 rounded-2xl border" style={{ background: `${cfg.color}08`, borderColor: `${cfg.color}30` }}>
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${cfg.color}20`, color: cfg.color }}>
+            <Icon size={16} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-bold" style={{ color: cfg.color }}>{cfg.label}</p>
+              {connected && status?.stripe_account_id && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.05] text-white/40 font-mono tracking-tighter">{status.stripe_account_id.slice(0, 12)}…</span>
+              )}
+            </div>
+            <p className="text-[11px] text-white/55 mt-1 leading-relaxed">{cfg.desc}</p>
+
+            {due.length > 0 && state === "incomplete" && (
+              <div className="mt-2 p-2 rounded-lg bg-[#F5A524]/8 border border-[#F5A524]/20">
+                <p className="text-[10px] text-[#F5A524] font-semibold mb-1">Noch benötigt:</p>
+                <div className="flex flex-wrap gap-1">
+                  {due.slice(0, 6).map((d) => (
+                    <span key={d} className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-white/65 font-mono">{d.replace(/_/g, " ")}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={state === "active" ? onRefresh : onStart}
+                disabled={busy}
+                data-testid="stripe-connect-cta"
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-60 transition-transform active:scale-[0.98]"
+                style={{ background: `linear-gradient(135deg, ${cfg.color}, ${cfg.color}CC)` }}
+              >
+                {busy ? <Loader2 size={12} className="animate-spin" /> : <ExternalLink size={12} />}
+                {cfg.cta}
+              </button>
+              {connected && state !== "active" && (
+                <button
+                  onClick={onRefresh}
+                  data-testid="stripe-connect-refresh"
+                  className="px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-semibold text-white/70"
+                  title="Status neu laden"
+                >
+                  <Loader2 size={12} className={busy ? "animate-spin" : ""} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
