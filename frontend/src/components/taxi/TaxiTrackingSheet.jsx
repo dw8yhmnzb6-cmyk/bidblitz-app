@@ -30,10 +30,14 @@ function useLiveCountdown(etaMinutes, statusKey) {
   }, [etaMinutes, statusKey]);
   useEffect(() => {
     if (seconds == null) return;
-    if (seconds <= 0) return;
-    const id = setInterval(() => setSeconds((s) => (s != null && s > 0 ? s - 1 : s)), 1000);
+    const id = setInterval(() => {
+      setSeconds((s) => (s != null && s > 0 ? s - 1 : s));
+    }, 1000);
     return () => clearInterval(id);
-  }, [seconds]);
+    // We intentionally depend only on whether countdown is *active* (seconds!=null), not on the value,
+    // to avoid re-creating the interval every tick. The setSeconds-callback reads latest value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seconds == null]);
   if (seconds == null) return null;
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;

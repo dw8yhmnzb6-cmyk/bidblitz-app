@@ -15,6 +15,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 14.05.2026 (iter95 — Taxi Quick-Wins Sprint A-F)
+- 🟢 **(a) Live-ETA-Countdown**: `useLiveCountdown` Hook in TaxiTrackingSheet — tickt jede Sekunde, Format "M:SS", resettet bei Server-Update. Optimiert: nur 1 Interval (kein Re-Create pro Sekunde).
+- 🟢 **(b) `tel:`-Call-Button** + Plate-Spotter-Hint: Driver-Card hat jetzt `<a href="tel:...">` öffnet System-Phone (testid `taxi-driver-call`). Amber-Banner „Such nach <Farbe> <Modell> mit Kennzeichen <Plate>" (testid `taxi-plate-spotter`).
+- 🟢 **(c) Smooth Driver-Marker**: RAF-easing (cubic ease-out, 1400ms) zwischen Polling-Snapshots — wirkt premium. `driverPathRef` sammelt alle Punkte für Trip-Replay.
+- 🟢 **(d) Cancel-Reason-Dialog**: Modal mit 6 vordefinierten Reasons (wrong_address, too_long_wait, no_longer_needed, driver_no_show, found_other, other). Backend persistiert `reason` in `ride.cancellation_reason` + `status_history[].reason`. Model `RideActionRequest` jetzt `ride_id` required, `action` optional.
+- 🟢 **(e) Surge-Heatmap-Overlay** (UNIQUE — kein Konkurrent hat das): Mapbox `heatmap`-Layer mit Farbverlauf cyan→purple→amber→red. Client synthesisert 9 Zonen rund um Pickup wenn `surge.active=true` (MOCKED — Backend-Endpoint optional Folge-Sprint).
+- 🟢 **(f) Trip-Replay** (UNIQUE): Nach `completed`-Status animiert eine grüne Polyline (`trip-replay-line`, color #10D981) durch alle gesammelten Driver-Positions (50ms pro Punkt).
+- 🐛 **Bug-Fix (von Testing-Agent)**: Rules-of-Hooks Violation in TaxiTrackingSheet — `useLiveCountdown` lag nach `if (!activeRide) return`, was den gesamten /taxi dev-build blockierte. Fix: Hook-Call vor Guard mit Optional-Chaining.
+- 🧪 Testing iter95: **Backend 100% (4/4 cancel tests pass)**, **Frontend 60%** (Page-Render + Mapbox-Mount verifiziert; aktive-Ride-Features per Code-Review bestätigt, weil Driver-Simulator nicht aktivierbar war).
+
+
 ### 14.05.2026 (iter93 — Production Taxi Map Black-Screen Fix)
 - 🟢 **Map-Error Visibility**: useTaxiMap.js fängt jetzt 3 Fehler-Klassen ab (fehlender Token, 401/403, Netzwerk) und ruft `onError(msg)` Callback. TaxiPage zeigt sichtbares rotes Error-Overlay (`taxi-map-error`) mit „Neu laden"-Button — statt stummer schwarzer Map.
 - 🟢 **„No-Drivers"-Banner abgeschwächt**: Vorher dominanter roter Block, jetzt gelber Info-Block („Gerade kein Taxi frei — du kannst trotzdem bestellen") — User wird nicht mehr abgeschreckt.
