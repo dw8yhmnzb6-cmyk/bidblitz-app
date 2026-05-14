@@ -8,7 +8,7 @@ import { useState } from 'react';
 export function useTaxiState() {
   // Core booking state
   const [view, setView] = useState('book'); // book, tracking, history
-  const [taxiType, setTaxiType] = useState(''); // '', 'business', 'private'
+  const [taxiType, setTaxiType] = useState('business'); // '', 'business', 'private' — default to 'business' so map renders immediately on landing (competitor parity)
   const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
   const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
   const [estimates, setEstimates] = useState([]);

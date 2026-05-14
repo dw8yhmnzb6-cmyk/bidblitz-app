@@ -135,6 +135,9 @@ export default function TaxiPage({ onNavigate }) {
     mapStyle,
     activePoiCategory, setActivePoiCategory,
     setPoiLoading,
+    driverLocation: activeRide?.driver_lat && activeRide?.driver_lng
+      ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng }
+      : null,
   });
 
   const {
@@ -372,6 +375,17 @@ export default function TaxiPage({ onNavigate }) {
     }
     setLoading(false);
   };
+
+  // Auto-fetch estimates when both pickup + dropoff are valid (Uber/Bolt parity).
+  // Debounced to avoid hammering API on every keystroke.
+  useEffect(() => {
+    if (!moduleEnabled || !taxiType) return;
+    if (!pickup?.lat || !dropoff?.lat) return;
+    if (loading) return;
+    const t = setTimeout(() => { getEstimates(); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleEnabled, taxiType, pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
 
   const bookRide = async () => {
     const estimate = estimates.find(e => e.vehicle_type === selectedVehicle);

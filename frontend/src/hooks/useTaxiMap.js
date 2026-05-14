@@ -54,11 +54,14 @@ export function useTaxiMap({
   mapStyle,
   activePoiCategory, setActivePoiCategory,
   setPoiLoading,
+  driverLocation, // { lat, lng } | null  — live driver marker (tracking view)
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
+  const driverMarkerRef = useRef(null);
+  const routeSourceAddedRef = useRef(false);
   const poiMarkersRef = useRef([]);
 
   // Init map when booking flow opens (taxiType set)
@@ -170,10 +173,102 @@ export function useTaxiMap({
       );
       bounds.extend([dropoff.lng, dropoff.lat]);
       map.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 800 });
+
+      // Draw route polyline (Uber/Bolt parity)
+      drawRoute(map, [pickup.lng, pickup.lat], [dropoff.lng, dropoff.lat]);
     } else if (pickup.lat) {
+      removeRoute(map);
       map.flyTo({ center: [pickup.lng, pickup.lat], zoom: 14, duration: 600 });
     }
   }, [pickup.lat, pickup.lng, dropoff.lat, dropoff.lng]);
+
+  // Helper: draw / update route between two points via Mapbox Directions API
+  const drawRoute = async (map, start, end) => {
+    if (!MAPBOX_TOKEN) return;
+    try {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      const route = data?.routes?.[0]?.geometry;
+      if (!route) return;
+      const geojson = { type: "Feature", geometry: route, properties: {} };
+
+      const ensureLayer = () => {
+        if (!routeSourceAddedRef.current) {
+          map.addSource("taxi-route", { type: "geojson", data: geojson });
+          map.addLayer({
+            id: "taxi-route-shadow",
+            type: "line",
+            source: "taxi-route",
+            paint: {
+              "line-color": "#000",
+              "line-width": 8,
+              "line-opacity": 0.35,
+              "line-blur": 1,
+            },
+            layout: { "line-cap": "round", "line-join": "round" },
+          });
+          map.addLayer({
+            id: "taxi-route-line",
+            type: "line",
+            source: "taxi-route",
+            paint: {
+              "line-color": "#00C2FF",
+              "line-width": 5,
+              "line-opacity": 0.95,
+            },
+            layout: { "line-cap": "round", "line-join": "round" },
+          });
+          routeSourceAddedRef.current = true;
+        } else {
+          const src = map.getSource("taxi-route");
+          if (src) src.setData(geojson);
+        }
+      };
+
+      if (map.isStyleLoaded()) ensureLayer();
+      else map.once("style.load", ensureLayer);
+    } catch (e) {
+      console.warn("Route draw failed", e);
+    }
+  };
+
+  const removeRoute = (map) => {
+    if (!map) return;
+    try {
+      if (map.getLayer("taxi-route-line")) map.removeLayer("taxi-route-line");
+      if (map.getLayer("taxi-route-shadow")) map.removeLayer("taxi-route-shadow");
+      if (map.getSource("taxi-route")) map.removeSource("taxi-route");
+    } catch {}
+    routeSourceAddedRef.current = false;
+  };
+
+  // Live driver marker (tracking view)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !_mapboxgl) return;
+    if (!driverLocation || !driverLocation.lat || !driverLocation.lng) {
+      if (driverMarkerRef.current) {
+        driverMarkerRef.current.remove();
+        driverMarkerRef.current = null;
+      }
+      return;
+    }
+    if (!driverMarkerRef.current) {
+      const el = document.createElement("div");
+      el.className = "taxi-driver-marker";
+      el.style.cssText =
+        "width:38px;height:38px;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:3px solid #0A0A0F;border-radius:50%;box-shadow:0 0 0 4px rgba(251,191,36,0.25),0 6px 16px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;font-size:18px;transition:transform 1.2s linear;";
+      el.textContent = "🚕";
+      driverMarkerRef.current = new _mapboxgl.Marker({ element: el, anchor: "center" })
+        .setLngLat([driverLocation.lng, driverLocation.lat])
+        .addTo(map);
+    } else {
+      // Smooth move
+      driverMarkerRef.current.setLngLat([driverLocation.lng, driverLocation.lat]);
+    }
+  }, [driverLocation?.lat, driverLocation?.lng]);
 
   // POI tilequery
   const clearPoiMarkers = useCallback(() => {
