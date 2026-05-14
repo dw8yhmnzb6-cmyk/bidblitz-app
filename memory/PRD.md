@@ -15,6 +15,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 14.05.2026 (iter91 — Taxi Booking Konkurrenz-Parity Sprint)
+- 🟢 **Map-First Landing**: Mapbox-Karte erscheint **sofort** beim Öffnen von `/taxi` (Uber/Bolt/FreeNow-Parity). `taxiType` default jetzt `'business'` → `inMapBookingFlow` true ab erster Render.
+- 🟢 **Auto-Estimate**: Sobald Pickup + Dropoff gesetzt sind, werden Preise/Vehicle-Picker **automatisch** geladen (debounced 400ms) — kein „Preise anzeigen"-Button-Click mehr nötig.
+- 🟢 **Route-Polyline**: Cyan-Polyline (Mapbox Directions API) zwischen Pickup und Dropoff mit Schatten-Underlayer (Layer-IDs `taxi-route-line`, `taxi-route-shadow`). Auto-Refit-Bounds via `fitBounds()` mit Padding=80.
+- 🟢 **Live-Driver-Marker**: Gelber 🚕-Marker (CSS-Klasse `taxi-driver-marker`) erscheint, sobald `activeRide.driver_lat/lng` per Poll-Update gesetzt wird. Smooth-Movement via `transition: transform 1.2s linear`.
+- 🟢 **GPS-Denied UX**: Wenn Geolocation abgelehnt wurde, zeigt die Top-Bar jetzt einen klickbaren roten „GPS aus / Tippen, um zu aktivieren"-CTA (`map-flow-gps-denied-cta`) statt einer abgeschnittenen Fehlermeldung.
+- 🟢 **Style-Switch Edge-Case-Fix**: `routeSourceAddedRef` wird beim Map-Style-Switch zurückgesetzt — verhindert „setData on non-existent source"-Fehler nach Style-Wechsel.
+- 🟢 **ENV-Cleanup**: Duplikate `REACT_APP_MAPBOX_TOKEN`-Zeile aus `frontend/.env` entfernt.
+- 🧪 Testing iter91: **Frontend 100%** ✅ (alle 7 Akzeptanzkriterien, inkl. Map-Mount + Auto-Estimate + Route-Polyline + Driver-Marker via Code-Review). 0 Critical Bugs.
+
+
 ### 13.05.2026 (iter90 — Sprint A: Knowledge Base Extras + Schedule Editor Extras)
 - 🟢 **Knowledge Base — Cover-Image-Upload** (`POST /api/staff/knowledge/upload-cover`, multipart): jpg/png/webp, max 5MB. Wird unter `/uploads/knowledge/` gespeichert (StaticFiles).
 - 🟢 **Knowledge Base — AI-Summary** (`POST /articles/{id}/summary`): nutzt Emergent LLM Key + **openai/gpt-4.1-mini** (Claude/Anthropic war via EMERGENT_LLM_KEY nicht zugelassen — Fallback dokumentiert). Generiert 2-Satz-DE-Kurzfassung, persistiert `ai_summary`. Wird bei Content-Edit auto-invalidiert.

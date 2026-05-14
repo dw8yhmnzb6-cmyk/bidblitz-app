@@ -139,6 +139,9 @@ export function useTaxiMap({
     if (!mapRef.current) return;
     const styleConfig = MAP_STYLES[mapStyle] || MAP_STYLES.streets;
     mapRef.current.setStyle(styleConfig.style);
+    // setStyle() wipes all custom sources & layers — mark route source as gone so
+    // the next pickup/dropoff change re-adds it cleanly.
+    routeSourceAddedRef.current = false;
     try {
       localStorage.setItem("bidblitz_map_style", mapStyle);
     } catch {}

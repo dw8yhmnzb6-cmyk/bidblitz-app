@@ -504,17 +504,40 @@ export default function TaxiPage({ onNavigate }) {
                 </svg>
               </button>
 
-              {currentAddress && (
-                <div
-                  className="flex-1 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 text-left min-w-0"
-                  data-testid="map-flow-current-address"
-                >
-                  <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider leading-none">
-                    Standort
-                  </p>
-                  <p className="text-xs text-white truncate leading-tight mt-0.5">{currentAddress}</p>
-                </div>
-              )}
+              {currentAddress ? (
+                (() => {
+                  const isDenied = /verweigert|denied|verboten/i.test(currentAddress);
+                  if (isDenied) {
+                    return (
+                      <button
+                        onClick={getCurrentLocation}
+                        data-testid="map-flow-gps-denied-cta"
+                        className="flex-1 bg-red-500/10 border border-red-500/30 rounded-full px-3 py-2 text-left min-w-0 flex items-center gap-2 hover:bg-red-500/15 active:scale-[0.98] transition-all"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2" className="shrink-0">
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                        </svg>
+                        <span className="flex-1 min-w-0">
+                          <p className="text-[9px] text-red-400 font-semibold uppercase tracking-wider leading-none">GPS aus</p>
+                          <p className="text-xs text-white truncate leading-tight mt-0.5">Tippen, um zu aktivieren</p>
+                        </span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <div
+                      className="flex-1 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 text-left min-w-0"
+                      data-testid="map-flow-current-address"
+                    >
+                      <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider leading-none">
+                        Standort
+                      </p>
+                      <p className="text-xs text-white truncate leading-tight mt-0.5">{currentAddress}</p>
+                    </div>
+                  );
+                })()
+              ) : null}
 
               <button
                 onClick={getCurrentLocation}
