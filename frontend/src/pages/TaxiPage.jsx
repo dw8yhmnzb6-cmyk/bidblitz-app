@@ -124,6 +124,9 @@ export default function TaxiPage({ onNavigate }) {
   // HOOKS: Map + Geolocation
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // Map-error state surfaced when Mapbox fails (invalid token, network, etc.)
+  const [mapError, setMapError] = useState(null);
+
   const {
     mapContainerRef,
     mapRef,
@@ -139,6 +142,7 @@ export default function TaxiPage({ onNavigate }) {
     driverLocation: activeRide?.driver_lat && activeRide?.driver_lng
       ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng }
       : null,
+    onError: setMapError,
   });
 
   const {
@@ -491,6 +495,33 @@ export default function TaxiPage({ onNavigate }) {
             className="absolute inset-0"
             data-testid="taxi-map-container"
           />
+
+          {/* Map error overlay (token/network failure) */}
+          {mapError && (
+            <div
+              className="absolute inset-x-0 top-20 mx-4 z-30 p-4 rounded-2xl bg-red-500/10 border border-red-500/40 backdrop-blur-xl flex items-start gap-3"
+              data-testid="taxi-map-error"
+            >
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-red-300">Karte nicht ladbar</p>
+                <p className="text-[12px] text-white/65 mt-0.5 leading-snug">{mapError}</p>
+                <button
+                  onClick={() => { setMapError(null); window.location.reload(); }}
+                  data-testid="taxi-map-error-reload"
+                  className="mt-2 text-[11px] px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-semibold"
+                >
+                  Neu laden
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Top bar overlay */}
           <div className="absolute top-0 inset-x-0 z-40 px-4 pt-3 pb-2 bg-gradient-to-b from-black/80 to-transparent">

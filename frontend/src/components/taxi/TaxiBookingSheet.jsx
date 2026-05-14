@@ -281,11 +281,20 @@ export default function TaxiBookingSheet({
         </div>
       )}
 
-      {/* No-drivers banner (taxi.eu parity) */}
+      {/* No-drivers info banner — softer, info-style (taxi.eu shows similar) */}
       {noDriversAvailable && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-          <p className="text-sm font-medium text-red-300">Leider ist kein freies Taxi in Ihrer Nähe.</p>
-          <p className="text-xs text-gray-400 mt-1">Probieren Sie es bitte zu einem späteren Zeitpunkt noch einmal.</p>
+        <div className="p-3 bg-white/[0.03] border border-white/10 rounded-xl flex items-start gap-2.5" data-testid="taxi-no-drivers-banner">
+          <div className="w-8 h-8 rounded-lg bg-amber-400/15 flex items-center justify-center shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold text-white/90">Gerade kein Taxi frei</p>
+            <p className="text-[11px] text-white/55 mt-0.5 leading-snug">Du kannst trotzdem eine Bestellung absenden — wir benachrichtigen dich, sobald ein Fahrer verfügbar ist.</p>
+          </div>
         </div>
       )}
 

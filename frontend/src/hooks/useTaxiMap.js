@@ -55,6 +55,7 @@ export function useTaxiMap({
   activePoiCategory, setActivePoiCategory,
   setPoiLoading,
   driverLocation, // { lat, lng } | null  — live driver marker (tracking view)
+  onError,        // callback (msg: string) — fired when Mapbox fails
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -69,6 +70,13 @@ export function useTaxiMap({
     if (!mapContainerRef.current) return;
     if (mapRef.current) return;
     let cancelled = false;
+
+    // Hard-fail visibly if the token is missing in this build
+    if (!MAPBOX_TOKEN) {
+      console.error("[taxi] REACT_APP_MAPBOX_TOKEN missing in build — map cannot load.");
+      onError?.("Karte nicht verfügbar (Konfigurationsfehler). Bitte App neu starten oder Support kontaktieren.");
+      return;
+    }
 
     loadMapbox().then((mb) => {
       if (cancelled || !mapContainerRef.current || mapRef.current) return;
@@ -85,6 +93,16 @@ export function useTaxiMap({
           zoom: 14,
           language: "de",
           attributionControl: false,
+        });
+        // Surface Mapbox-internal errors (invalid token, tile load failures)
+        map.on("error", (ev) => {
+          const msg = ev?.error?.message || "";
+          console.error("[taxi] Mapbox error:", msg, ev?.error);
+          if (/unauthorized|access token|401|forbidden/i.test(msg)) {
+            onError?.("Karte nicht autorisiert. Bitte Support kontaktieren (Token-Fehler).");
+          } else if (/network|fetch|load/i.test(msg)) {
+            onError?.("Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen.");
+          }
         });
         map.addControl(new mb.NavigationControl(), "top-right");
 
@@ -111,7 +129,11 @@ export function useTaxiMap({
         mapRef.current = map;
       } catch (err) {
         console.error("❌ Mapbox initialization error:", err);
+        onError?.("Karte konnte nicht initialisiert werden. Versuche es bitte erneut.");
       }
+    }).catch((err) => {
+      console.error("❌ Mapbox bundle load failed:", err);
+      onError?.("Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen.");
     });
 
     return () => {

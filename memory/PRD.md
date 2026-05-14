@@ -15,6 +15,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 14.05.2026 (iter93 — Production Taxi Map Black-Screen Fix)
+- 🟢 **Map-Error Visibility**: useTaxiMap.js fängt jetzt 3 Fehler-Klassen ab (fehlender Token, 401/403, Netzwerk) und ruft `onError(msg)` Callback. TaxiPage zeigt sichtbares rotes Error-Overlay (`taxi-map-error`) mit „Neu laden"-Button — statt stummer schwarzer Map.
+- 🟢 **„No-Drivers"-Banner abgeschwächt**: Vorher dominanter roter Block, jetzt gelber Info-Block („Gerade kein Taxi frei — du kannst trotzdem bestellen") — User wird nicht mehr abgeschreckt.
+- 🟢 **Diagnose-Doku**: `/app/PRODUCTION_TAXI_FIX.md` mit 3 wahrscheinlichen Ursachen für schwarzes Map auf `bidblitz.ae` (Token fehlt im Build, URL-Restriction, Service-Worker-Cache) + Step-by-Step Fixes.
+- ℹ️ Ursache des Production-Issues ist Deployment-bezogen (Preview-Build funktioniert), Code-Änderungen helfen User künftig schneller zu diagnostizieren.
+
+
 ### 14.05.2026 (iter92 — Sprint A+B+C: Stripe Connect + Voiceover + Native Build Doc)
 - 🟢 **Stripe Connect Express Onboarding** (echtes Stripe, kein Mock mehr):
   - `POST /api/staff/wallet/connect/onboard` (Manager initiiert für MA) & `POST /me/onboard` (Staff selbst aus Mobile-App)
