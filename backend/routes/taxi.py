@@ -2010,8 +2010,9 @@ async def cancel_ride(req: RideActionRequest, request: Request):
             "cancelled_at": now.isoformat(),
             "cancelled_by": cancelled_by,
             "cancellation_fee": cancel_fee,
+            "cancellation_reason": req.reason or None,
         },
-        "$push": {"status_history": {"status": "cancelled", "at": now.isoformat(), "by": cancelled_by}}}
+        "$push": {"status_history": {"status": "cancelled", "at": now.isoformat(), "by": cancelled_by, "reason": req.reason or None}}}
     )
     
     return {

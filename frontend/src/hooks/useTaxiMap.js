@@ -56,6 +56,8 @@ export function useTaxiMap({
   setPoiLoading,
   driverLocation, // { lat, lng } | null  — live driver marker (tracking view)
   onError,        // callback (msg: string) — fired when Mapbox fails
+  surgeZones,     // [{lat, lng, multiplier}] | null — UNIQUE heatmap overlay
+  showTripReplay, // bool — animates collected driverPath after ride completion
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -269,7 +271,10 @@ export function useTaxiMap({
     routeSourceAddedRef.current = false;
   };
 
-  // Live driver marker (tracking view)
+  const driverAnimRef = useRef({ rafId: null, fromLng: null, fromLat: null });
+  const driverPathRef = useRef([]); // [[lng,lat], ...] — collected for trip-replay
+
+  // Live driver marker — smooth RAF easing between polling snapshots (~5s polling → 1.4s ease)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !_mapboxgl) return;
@@ -278,22 +283,167 @@ export function useTaxiMap({
         driverMarkerRef.current.remove();
         driverMarkerRef.current = null;
       }
+      if (driverAnimRef.current.rafId) cancelAnimationFrame(driverAnimRef.current.rafId);
+      driverAnimRef.current = { rafId: null, fromLng: null, fromLat: null };
       return;
     }
+    const targetLng = driverLocation.lng;
+    const targetLat = driverLocation.lat;
+
+    // First snapshot — create marker
     if (!driverMarkerRef.current) {
       const el = document.createElement("div");
       el.className = "taxi-driver-marker";
       el.style.cssText =
-        "width:38px;height:38px;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:3px solid #0A0A0F;border-radius:50%;box-shadow:0 0 0 4px rgba(251,191,36,0.25),0 6px 16px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;font-size:18px;transition:transform 1.2s linear;";
+        "width:38px;height:38px;background:linear-gradient(135deg,#FBBF24,#F59E0B);border:3px solid #0A0A0F;border-radius:50%;box-shadow:0 0 0 4px rgba(251,191,36,0.25),0 6px 16px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;font-size:18px;";
       el.textContent = "🚕";
       driverMarkerRef.current = new _mapboxgl.Marker({ element: el, anchor: "center" })
-        .setLngLat([driverLocation.lng, driverLocation.lat])
+        .setLngLat([targetLng, targetLat])
         .addTo(map);
-    } else {
-      // Smooth move
-      driverMarkerRef.current.setLngLat([driverLocation.lng, driverLocation.lat]);
+      driverAnimRef.current = { rafId: null, fromLng: targetLng, fromLat: targetLat };
+      // Seed path
+      driverPathRef.current = [[targetLng, targetLat]];
+      return;
+    }
+
+    // Cancel any in-flight animation
+    if (driverAnimRef.current.rafId) cancelAnimationFrame(driverAnimRef.current.rafId);
+    const fromLng = driverAnimRef.current.fromLng ?? targetLng;
+    const fromLat = driverAnimRef.current.fromLat ?? targetLat;
+    const start = performance.now();
+    const DUR = 1400; // ms — slightly less than 1500ms polling
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / DUR);
+      const e = easeOutCubic(t);
+      const lng = fromLng + (targetLng - fromLng) * e;
+      const lat = fromLat + (targetLat - fromLat) * e;
+      try {
+        driverMarkerRef.current?.setLngLat([lng, lat]);
+      } catch {}
+      if (t < 1) {
+        driverAnimRef.current.rafId = requestAnimationFrame(step);
+      } else {
+        driverAnimRef.current.rafId = null;
+        driverAnimRef.current.fromLng = targetLng;
+        driverAnimRef.current.fromLat = targetLat;
+      }
+    };
+    driverAnimRef.current.rafId = requestAnimationFrame(step);
+
+    // Append to trip-replay path (dedupe same point)
+    const path = driverPathRef.current;
+    const last = path[path.length - 1];
+    if (!last || Math.abs(last[0] - targetLng) + Math.abs(last[1] - targetLat) > 1e-6) {
+      path.push([targetLng, targetLat]);
     }
   }, [driverLocation?.lat, driverLocation?.lng]);
+
+  // Surge-Heatmap-Overlay (UNIQUE feature) — toggleable
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !_mapboxgl) return;
+    if (!surgeZones || !Array.isArray(surgeZones) || surgeZones.length === 0) {
+      try {
+        if (map.getLayer("surge-heatmap")) map.removeLayer("surge-heatmap");
+        if (map.getSource("surge-heatmap-src")) map.removeSource("surge-heatmap-src");
+      } catch {}
+      return;
+    }
+    const geojson = {
+      type: "FeatureCollection",
+      features: surgeZones.map((z) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [z.lng, z.lat] },
+        properties: { intensity: Math.max(0, Math.min(1, (z.multiplier - 1) / 1.5)) },
+      })),
+    };
+    const add = () => {
+      try {
+        if (!map.getSource("surge-heatmap-src")) {
+          map.addSource("surge-heatmap-src", { type: "geojson", data: geojson });
+        } else {
+          map.getSource("surge-heatmap-src").setData(geojson);
+        }
+        if (!map.getLayer("surge-heatmap")) {
+          map.addLayer({
+            id: "surge-heatmap",
+            type: "heatmap",
+            source: "surge-heatmap-src",
+            maxzoom: 16,
+            paint: {
+              "heatmap-weight": ["interpolate", ["linear"], ["get", "intensity"], 0, 0, 1, 1],
+              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 11, 1, 16, 2.5],
+              "heatmap-color": [
+                "interpolate", ["linear"], ["heatmap-density"],
+                0, "rgba(0,0,0,0)",
+                0.2, "rgba(0,194,255,0.18)",
+                0.4, "rgba(168,85,247,0.30)",
+                0.7, "rgba(245,158,11,0.55)",
+                1.0, "rgba(239,68,68,0.75)",
+              ],
+              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 11, 35, 16, 90],
+              "heatmap-opacity": 0.7,
+            },
+          });
+        }
+      } catch (e) { console.warn("heatmap add failed", e); }
+    };
+    if (map.isStyleLoaded()) add();
+    else map.once("style.load", add);
+  }, [surgeZones]);
+
+  // Trip-Replay: animated polyline through the collected driver path after completion
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !_mapboxgl) return;
+    const cleanup = () => {
+      try {
+        if (map.getLayer("trip-replay-line")) map.removeLayer("trip-replay-line");
+        if (map.getSource("trip-replay-src")) map.removeSource("trip-replay-src");
+      } catch {}
+    };
+    if (!showTripReplay) { cleanup(); return; }
+    const coords = driverPathRef.current;
+    if (!coords || coords.length < 2) { cleanup(); return; }
+
+    let i = 1;
+    let animId = null;
+    const animateFrame = () => {
+      const partial = coords.slice(0, i);
+      const data = { type: "Feature", geometry: { type: "LineString", coordinates: partial }, properties: {} };
+      try {
+        if (!map.getSource("trip-replay-src")) {
+          map.addSource("trip-replay-src", { type: "geojson", data });
+          map.addLayer({
+            id: "trip-replay-line",
+            type: "line",
+            source: "trip-replay-src",
+            paint: {
+              "line-color": "#10D981",
+              "line-width": 6,
+              "line-opacity": 0.95,
+              "line-blur": 0.5,
+            },
+            layout: { "line-cap": "round", "line-join": "round" },
+          });
+        } else {
+          map.getSource("trip-replay-src").setData(data);
+        }
+      } catch (e) { /* ignore */ }
+      i++;
+      if (i <= coords.length) animId = setTimeout(animateFrame, 50);
+    };
+    const startAnim = () => { animateFrame(); };
+    if (map.isStyleLoaded()) startAnim();
+    else map.once("style.load", startAnim);
+
+    return () => {
+      if (animId) clearTimeout(animId);
+      cleanup();
+    };
+  }, [showTripReplay]);
 
   // POI tilequery
   const clearPoiMarkers = useCallback(() => {
@@ -382,5 +532,6 @@ export function useTaxiMap({
     mapRef,
     pickupMarkerRef,
     loadPOIs,
+    driverPathRef,
   };
 }

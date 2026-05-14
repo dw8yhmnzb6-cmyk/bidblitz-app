@@ -1,0 +1,40 @@
+{
+  "summary": "Iter95 Taxi Quick-Wins testing: Backend cancel endpoint validation works (4/4 pytest pass). Frontend was BLOCKED by a critical React-Rules-of-Hooks compile error in TaxiTrackingSheet.jsx that prevented the entire /taxi page from rendering — fixed during testing. After fix: page loads, Mapbox mounts, booking sheet renders. Active-ride-dependent features (live ETA, plate spotter, cancel modal, tel: button, trip-replay, surge-heatmap) require a live active ride which cannot be created via the customer flow alone, but their data-testids and Mapbox-layer code are confirmed present via static code review.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_taxi_cancel_iter95.py",
+    "/app/test_reports/pytest/iter95_taxi_cancel.xml"
+  ],
+  "action_items": [
+    "PLEASE REVIEW MY FIX: /app/frontend/src/components/taxi/TaxiTrackingSheet.jsx — moved `useLiveCountdown(activeRide?.driver?.eta_minutes, activeRide?.status)` call BEFORE the early `if (!activeRide) return ...` to comply with Rules of Hooks. Without this fix the entire taxi page (and any page importing it) was crashing with a CRA ESLint overlay 'Compiled with problems'.",
+    "Consider doing an end-to-end ride-flow test in DEV: book a ride, simulate driver acceptance/arrival, then verify taxi-eta-live ticks every second, taxi-plate-spotter banner appears, taxi-driver-call tel: link is correct, cancel-reason-overlay opens with 6 buttons and POSTs reason, surge-heatmap & trip-replay-line Mapbox layers visually render. Without a driver-simulator I could only assert their code paths exist."
+  ],
+  "critical_code_review_comments": [
+    "FIXED by me: Rules-of-Hooks violation in TaxiTrackingSheet.jsx — useLiveCountdown was called AFTER the `if (!activeRide) return` early-return, which is a hard ESLint error in CRA and broke the dev build.",
+    "useLiveCountdown hook (lines 26-41 of TaxiTrackingSheet.jsx): the second useEffect depends on [seconds] which causes the interval to be recreated every single second. This works but is wasteful — consider using a ref + single interval or use functional setSeconds with no `seconds` dep.",
+    "Surge zones are client-side synthesized — already flagged by E1 as MOCKED. Acceptable for an MVP visual, but no real surge data is shown.",
+    "Pre-existing pyflakes F821 _get_operator warnings in taxi.py — NOT caused by Iter95, can be ignored per E1's note."
+  ],
+  "updated_files": [
+    "/app/frontend/src/components/taxi/TaxiTrackingSheet.jsx (Rules-of-Hooks fix only — moved hook call before early return; replaced activeRide.* with activeRide?.* in hook args)",
+    "/app/backend/tests/test_taxi_cancel_iter95.py (new pytest file)"
+  ],
+  "success_rate": {
+    "backend": "100% (4/4 cancel-endpoint tests pass — required ride_id, reason persisted-path, reason length 80 enforced, status endpoint healthy)",
+    "frontend": "60% (page loads after my fix, Mapbox mounts, booking flow renders; active-ride features verified by code review only — could not trigger them without a live driver)"
+  },
+  "test_credentials": "kunde@bidblitz.com / Kunde2026! (login is cookie-based, no JWT in response body)",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "If you can run a driver-simulator (or POST a fake active ride directly into taxi_rides with status 'accepted' and a driver block containing eta_minutes, phone, vehicle.plate/color/model) then re-open /taxi as the customer to actually exercise: taxi-eta-live (verify text changes after 3s), taxi-driver-call (href starts with tel:), taxi-plate-spotter (amber banner with plate/color/model), cancel-reason-overlay (6 reason buttons), cancel-reason-confirm (sends POST /api/taxi/cancel with reason). For trip-replay: set ride status to 'completed' and verify map.getLayer('trip-replay-line') exists. For surge-heatmap: set estimate response surge.active=true (currently always false in backend) → verify map.getLayer('surge-heatmap'). Cookie-based auth: use requests.Session() and POST /api/auth/login — token NOT returned, session cookie set automatically.",
+  "rca of the issue": "Root cause of the compile-error blocker: in TaxiTrackingSheet.jsx (Iter95 commit), the new `useLiveCountdown` hook was added on line 77, AFTER the existing `if (!activeRide) return (...)` early-return on line 56. React's Rules of Hooks require that hooks always run in the same order on every render — putting a hook call after a conditional return violates this and CRA/eslint-plugin-react-hooks treats it as a hard ERROR (not a warning), surfacing the dev-overlay 'Compiled with problems' which masks the entire UI. Reproduction: load /taxi in dev → overlay covers the page. Mitigation applied: moved `const etaText = useLiveCountdown(activeRide?.driver?.eta_minutes, activeRide?.status);` to ABOVE the `if (!activeRide)` guard, with optional-chaining so it tolerates a null activeRide. Verified: dev server recompiled cleanly, /taxi renders, no overlay, Mapbox + booking sheet visible."
+}

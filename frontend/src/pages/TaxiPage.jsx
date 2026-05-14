@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useI18n } from '../store/I18nContext';
 import { useUser } from '../store/UserContext';
@@ -126,6 +126,30 @@ export default function TaxiPage({ onNavigate }) {
 
   // Map-error state surfaced when Mapbox fails (invalid token, network, etc.)
   const [mapError, setMapError] = useState(null);
+  const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
+  const [showTripReplay, setShowTripReplay] = useState(false);
+
+  // Surge zones — synthesized from `surge` state in nearby cells for the heatmap overlay.
+  // In production this would come from a backend `/api/taxi/surge-zones` endpoint.
+  const surgeZones = useMemo(() => {
+    if (!surge?.active || !pickup?.lat) return null;
+    const m = surge.multiplier || 1.2;
+    // Generate 8 zones around the pickup (radius ~600m) for visual interest
+    const zones = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const dx = Math.cos(angle) * 0.005;
+      const dy = Math.sin(angle) * 0.005;
+      zones.push({
+        lat: pickup.lat + dy,
+        lng: pickup.lng + dx,
+        multiplier: m * (0.9 + Math.random() * 0.3),
+      });
+    }
+    // hot center
+    zones.push({ lat: pickup.lat, lng: pickup.lng, multiplier: m });
+    return zones;
+  }, [surge?.active, surge?.multiplier, pickup?.lat, pickup?.lng]);
 
   const {
     mapContainerRef,
@@ -143,6 +167,8 @@ export default function TaxiPage({ onNavigate }) {
       ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng }
       : null,
     onError: setMapError,
+    surgeZones,
+    showTripReplay,
   });
 
   const {
@@ -421,10 +447,10 @@ export default function TaxiPage({ onNavigate }) {
     setLoading(false);
   };
 
-  const cancelRide = async () => {
+  const cancelRide = async (reason = null) => {
     if (!activeRide) return;
     setLoading(true);
-    const result = await api.cancelRideApi(activeRide.ride_id);
+    const result = await api.cancelRideApi(activeRide.ride_id, reason);
     if (result.ok) {
       if (pollingRef.current) clearInterval(pollingRef.current);
       setActiveRide(null);
@@ -434,7 +460,19 @@ export default function TaxiPage({ onNavigate }) {
       setError(result.error);
     }
     setLoading(false);
+    setCancelReasonOpen(false);
   };
+
+  // Trigger trip-replay automatically when ride completes (one-shot)
+  useEffect(() => {
+    if (activeRide?.status === 'completed' && !showTripReplay) {
+      setShowTripReplay(true);
+    }
+    if (!activeRide || activeRide.status !== 'completed') {
+      if (showTripReplay) setShowTripReplay(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRide?.status]);
 
   const fetchHistory = async () => {
     setRideHistory(await api.fetchRideHistory());
@@ -635,6 +673,7 @@ export default function TaxiPage({ onNavigate }) {
                 activeRide={activeRide}
                 loading={loading}
                 cancelRide={cancelRide}
+                onRequestCancel={() => setCancelReasonOpen(true)}
                 simulateDriverArrival={simulateDriverArrival}
                 simulateStartTrip={simulateStartTrip}
                 simulateCompleteTrip={simulateCompleteTrip}
@@ -918,6 +957,13 @@ export default function TaxiPage({ onNavigate }) {
             onClose={() => setShowLiveChat(false)}
           />
         )}
+        {cancelReasonOpen && (
+          <CancelReasonModal
+            onClose={() => setCancelReasonOpen(false)}
+            onConfirm={(reason) => cancelRide(reason)}
+            loading={loading}
+          />
+        )}
       </AnimatePresence>
 
       {/* Driver Onboarding Modal */}
@@ -965,5 +1011,77 @@ export default function TaxiPage({ onNavigate }) {
         }}
       />
     </div>
+  );
+}
+
+
+function CancelReasonModal({ onClose, onConfirm, loading }) {
+  const REASONS = [
+    { key: "wrong_address", label: "Falsche Adresse eingegeben" },
+    { key: "too_long_wait", label: "Wartezeit zu lange" },
+    { key: "no_longer_needed", label: "Brauche das Taxi nicht mehr" },
+    { key: "driver_no_show", label: "Fahrer nicht aufgetaucht" },
+    { key: "found_other", label: "Habe eine andere Option gefunden" },
+    { key: "other", label: "Anderer Grund" },
+  ];
+  const [selected, setSelected] = useState(null);
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+      data-testid="cancel-reason-overlay"
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-md bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl p-5 space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-white">Warum brichst du die Fahrt ab?</h3>
+          <button onClick={onClose} className="text-white/50 hover:text-white p-1.5" data-testid="cancel-reason-close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-xs text-white/55">Deine Antwort hilft uns, den Service zu verbessern.</p>
+        <div className="space-y-1.5">
+          {REASONS.map((r) => (
+            <button
+              key={r.key}
+              onClick={() => setSelected(r.key)}
+              data-testid={`cancel-reason-${r.key}`}
+              className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-sm transition-colors ${
+                selected === r.key
+                  ? "bg-red-500/15 border-red-500/40 text-white"
+                  : "bg-white/[0.03] border-white/[0.08] text-white/80 hover:bg-white/[0.06]"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onClose}
+            data-testid="cancel-reason-back"
+            className="flex-1 py-3 rounded-2xl bg-white/[0.04] border border-white/10 text-sm font-semibold text-white/80"
+          >
+            Doch nicht abbrechen
+          </button>
+          <button
+            disabled={!selected || loading}
+            onClick={() => onConfirm(selected)}
+            data-testid="cancel-reason-confirm"
+            className="flex-1 py-3 rounded-2xl text-sm font-semibold text-white disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #EF4444, #DC2626)" }}
+          >
+            {loading ? "..." : "Bestätigen"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

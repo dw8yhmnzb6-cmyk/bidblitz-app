@@ -216,11 +216,11 @@ export async function bookRideApi({
   return res.ok ? { ok: true, ride: data?.ride } : { ok: false, error: data?.detail || "Buchung fehlgeschlagen" };
 }
 
-export async function cancelRideApi(rideId) {
+export async function cancelRideApi(rideId, reason = null) {
   const res = await fetch(`${API}/api/taxi/cancel`, {
     ...credJson,
     method: "POST",
-    body: JSON.stringify({ ride_id: rideId }),
+    body: JSON.stringify({ ride_id: rideId, ...(reason ? { reason } : {}) }),
   });
   const data = await readJson(res);
   return res.ok ? { ok: true } : { ok: false, error: data?.detail || "Stornierung fehlgeschlagen" };

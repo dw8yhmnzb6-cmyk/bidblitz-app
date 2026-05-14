@@ -13,7 +13,7 @@
  *  - Cancel button (only while pre-trip)
  *  - Post-completion success state with Rate + "Neue Fahrt"
  */
-import React from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { STATUS_COLORS, STATUS_LABELS } from "./TaxiConstants";
 
@@ -21,10 +21,30 @@ function Dot({ color }) {
   return <div className={`w-3 h-3 rounded-full ring-4 ${color} shrink-0`} />;
 }
 
+// Live countdown: ticks every second from the most-recent eta_minutes snapshot.
+// Resets whenever ETA changes (server pushes a fresh value via polling).
+function useLiveCountdown(etaMinutes, statusKey) {
+  const [seconds, setSeconds] = useState(() => (etaMinutes != null ? etaMinutes * 60 : null));
+  useEffect(() => {
+    setSeconds(etaMinutes != null ? Math.max(0, Math.round(etaMinutes * 60)) : null);
+  }, [etaMinutes, statusKey]);
+  useEffect(() => {
+    if (seconds == null) return;
+    if (seconds <= 0) return;
+    const id = setInterval(() => setSeconds((s) => (s != null && s > 0 ? s - 1 : s)), 1000);
+    return () => clearInterval(id);
+  }, [seconds]);
+  if (seconds == null) return null;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function TaxiTrackingSheet({
   activeRide,
   loading,
   cancelRide,
+  onRequestCancel,         // (optional) opens parent cancel-reason modal
   simulateDriverArrival,
   simulateStartTrip,
   simulateCompleteTrip,
@@ -33,6 +53,7 @@ export default function TaxiTrackingSheet({
   onOpenReview,
   onResetToBook,
 }) {
+  const etaText = useLiveCountdown(activeRide?.driver?.eta_minutes, activeRide?.status);
   if (!activeRide) {
     return (
       <div className="text-center py-10">
@@ -54,6 +75,10 @@ export default function TaxiTrackingSheet({
   const isStarted = activeRide.status === "started";
   const isFinished = isCompleted || isCancelled;
   const stops = activeRide.waypoints || [];
+  const phoneRaw = activeRide.driver?.phone || activeRide.driver?.phone_proxy || activeRide.driver?.contact || "";
+  const plate = activeRide.driver?.vehicle?.plate || "";
+  const vehicleColor = activeRide.driver?.vehicle?.color || "";
+  const vehicleModel = activeRide.driver?.vehicle?.model || "";
 
   return (
     <div className="space-y-4 pt-1">
@@ -65,9 +90,9 @@ export default function TaxiTrackingSheet({
         >
           {STATUS_LABELS[activeRide.status] || activeRide.status}
         </span>
-        {activeRide.driver?.eta_minutes != null && !isStarted && !isFinished && (
-          <span className="text-xs text-cyan-400 font-medium">
-            ETA {activeRide.driver.eta_minutes} Min
+        {etaText != null && !isStarted && !isFinished && (
+          <span className="text-xs text-cyan-400 font-medium tabular-nums" data-testid="taxi-eta-live">
+            ETA <strong className="text-cyan-300">{etaText}</strong>
           </span>
         )}
       </div>
@@ -90,26 +115,53 @@ export default function TaxiTrackingSheet({
                 <span>{activeRide.driver.total_rides} Fahrten</span>
               </div>
             </div>
-            <button
-              className="w-11 h-11 bg-green-500/20 hover:bg-green-500/30 rounded-full text-green-400 flex items-center justify-center"
-              data-testid="taxi-driver-call"
-              type="button"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-            </button>
+            {phoneRaw ? (
+              <a
+                href={`tel:${phoneRaw.replace(/[^+0-9]/g, "")}`}
+                className="w-11 h-11 bg-green-500/20 hover:bg-green-500/30 rounded-full text-green-400 flex items-center justify-center"
+                data-testid="taxi-driver-call"
+                aria-label="Fahrer anrufen"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </a>
+            ) : (
+              <button
+                disabled
+                className="w-11 h-11 bg-white/[0.04] rounded-full text-white/30 flex items-center justify-center cursor-not-allowed"
+                data-testid="taxi-driver-call-disabled"
+                title="Telefonnummer noch nicht freigegeben"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
             <div className="min-w-0">
               <p className="text-gray-500 text-[10px] uppercase tracking-wider">Fahrzeug</p>
-              <p className="text-white font-medium truncate">{activeRide.driver.vehicle?.model || "—"}</p>
+              <p className="text-white font-medium truncate">{vehicleModel || "—"}</p>
             </div>
             <div className="text-right shrink-0">
               <p className="text-gray-500 text-[10px] uppercase tracking-wider">Kennzeichen</p>
-              <p className="font-mono font-bold text-cyan-400">{activeRide.driver.vehicle?.plate || "—"}</p>
+              <p className="font-mono font-bold text-cyan-400" data-testid="taxi-driver-plate">{plate || "—"}</p>
             </div>
           </div>
+          {/* Plate-Spotter hint (helps user find the car in busy street) */}
+          {(plate || vehicleColor || vehicleModel) && !isStarted && !isFinished && (
+            <div className="mt-2 px-3 py-2 rounded-xl bg-amber-400/10 border border-amber-400/25 text-[11px] leading-snug text-amber-200 flex items-start gap-2" data-testid="taxi-plate-spotter">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2" className="shrink-0 mt-0.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span>
+                Such nach <strong className="text-amber-100">{vehicleColor || ""} {vehicleModel}</strong>
+                {plate && <> mit Kennzeichen <strong className="font-mono text-amber-100">{plate}</strong></>}.
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -225,7 +277,7 @@ export default function TaxiTrackingSheet({
       {/* Cancel (only pre-start) */}
       {!["completed", "cancelled", "started"].includes(activeRide.status) && (
         <button
-          onClick={cancelRide}
+          onClick={() => (onRequestCancel ? onRequestCancel() : cancelRide())}
           disabled={loading}
           className="w-full py-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 font-semibold text-sm"
           data-testid="taxi-cancel-btn"

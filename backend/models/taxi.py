@@ -180,9 +180,10 @@ class FlexBookRequest(BaseModel):
 
 
 class RideActionRequest(BaseModel):
-    """Driver actions: accept, start, complete, cancel ride"""
-    action: str = Field(..., pattern=r'^(accept|start|complete|cancel)$')
-    reason: Optional[str] = Field(None, description="Required for cancellation")
+    """Driver/customer actions on a ride: accept/start/complete/cancel."""
+    ride_id: str = Field(..., min_length=1)
+    action: Optional[str] = Field(None, pattern=r'^(accept|start|complete|cancel)$')
+    reason: Optional[str] = Field(None, max_length=80, description="Optional cancel reason")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
