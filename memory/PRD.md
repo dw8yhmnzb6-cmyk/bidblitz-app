@@ -14,6 +14,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter112 — 1:1 Manager↔Staff Chat MVP + Smart Reminders Engine)
+- 🟢 **Chat Backend** (`/app/backend/routes/staff_chat.py`): Thread + Message Model in MongoDB; Endpoints GET/POST /threads, GET/POST /threads/{id}/messages, PATCH /read, GET /unread-count; bidirektionale Unread-Counter (`unread_manager`, `unread_staff`); 4000-Zeichen-Limit; Best-Effort Push via OneSignal bei jeder neuen Manager-Nachricht.
+- 🟢 **Chat Frontend** (`/app/frontend/src/staff/StaffChat.jsx`): `StaffChatInbox` mit Avatar-Initialen + Unread-Badge + relativer Zeit + Last-Message-Preview ("Du: …"); `StaffChatThread` mit Message-Bubbles (rounded-2xl mit asymmetrischen Ecken, blau für Mine, weiß für Peer), Read-Receipts (CheckCheck), optimistic UI, Auto-Scroll, 5s Polling, sticky Composer mit Enter-to-Send; `NewThreadDialog` mit Mitarbeiter-Suche (Manager-Only).
+- 🟢 **Routen**: `/merchant/staff/chat` (Manager) + Chat-Overlay im Staff-Portal (data-testid='staff-chat-overlay'). Header-Button (`staff-chat-btn`) mit Unread-Badge im Staff-Portal. Quick-Action (`merchant-qa-open-chat`) im Manager-Dashboard mit Badge.
+- 🟢 **Smart Reminders Backend** (`/app/backend/routes/staff_reminders.py`): GET /check evaluiert 5 Regeln (break_overdue, long_break, shift_starting, shift_end_overdue, arrival_no_checkin); POST /dispatch sendet OneSignal-Push idempotent pro (staff_id, reminder_id, day) via `staff_reminder_log`.
+- 🟢 **Smart Reminders Frontend** (`/app/frontend/src/staff/useStaffReminders.js`): 60s-Polling, In-App-Toast (sonner) mit severity-Mapping (info/warning), localStorage-Dedup pro Tag, best-effort Push-Dispatch.
+- 🟢 **Bug Fix Manager-Send**: BottomNav + CookieBanner überdeckten den Composer auf /merchant/staff/chat. App.js `isFullScreenStaffMgr` blendet beide aus; Composer auf z-[70]. URL bleibt jetzt stabil beim Senden.
+- ✅ Testing iter112 (13/13 Backend pytest + Frontend Regression): 0 Bugs. Manager↔Staff Round-Trip verifiziert (3 Bubbles chronologisch), Unread-Counter funktionieren, Reminder-Endpoint liefert korrekt.
+
+
 ### 15.05.2026 (iter115 — Ultimate Smart Workforce Experience)
 - 🟢 **Premium Fullscreen Smart Arrival Modal** (`/app/frontend/src/staff/GeofenceArrivalModal.jsx`): iOS-style Bottom-Sheet, 92vh Mobile, drei pulsierende Glow-Rings um animierten Pin, Gradient-Hero, GPS-Signalstärke-Tile (Exzellent/Gut/OK/Schwach + ±m), Geofence-Radius-Tile, "Deine Schicht beginnt um HH:MM"-Badge (aus nextShift Prop), großer 16-h SHIFT-JETZT-STARTEN CTA mit Shadow-Glow + whileTap-Animation.
 - 🟢 **SmartStatusPill** (`/app/frontend/src/staff/SmartStatusPill.jsx`): Live-Pulse-Dot, 7 Status (Aktiv/Pause/Angekommen/In Nähe/Unterwegs/Feierabend/Bereit) mit semantischen Farben aus tokens.js, 3 Größen (sm/md/lg), motion-entrance.
