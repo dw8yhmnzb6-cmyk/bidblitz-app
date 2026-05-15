@@ -1,17 +1,23 @@
 """
-Diagnostic endpoints — Router registration state + live route inventory.
+Diagnostic endpoints — Router registration state + live route inventory + deep health check.
 
 /api/diag/routes
-  Admin-only. Liefert:
-    - registered: alle Module die erfolgreich gemountet wurden (mit Prefix + route_count)
-    - failed: Module die beim Import/Mount silent gescheitert sind (ImportError, SyntaxError, etc.)
-    - paths: alle aktuell gemounteten /api/* Pfade
+  Admin-only. Liefert komplette Router-Registry-Übersicht.
+
+/api/diag/health-deep
+  Admin-only. Ein-Request-Übersicht aller Systemkomponenten (DB, 3rd-party keys,
+  externe Services, Bot-Loop-Iterationen). Ideal als Pre-Deploy-Smoke und Live-Health-Monitor.
 
 Verhindert dass ein Syntax-Error in einem Route-Modul stillschweigend einen ganzen
 Endpoint-Bereich aussetzt (siehe iter98 Bug: express_checkout_stripe.py).
 """
+import os
+import time
+import asyncio
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from core.security import get_current_user
+from core.database import db
 from core.router_registry import get_registration_state
 
 router = APIRouter(prefix="/api/diag", tags=["diagnostics"])
@@ -76,4 +82,149 @@ async def diag_failed_only(request: Request):
             {"module": f["module"], "error_type": f["error_type"], "error": f["error"]}
             for f in state.get("failed", [])
         ],
+    }
+
+
+
+# ═══════════════════════════════════════════════════════════════════
+# DEEP HEALTH CHECK — 1-Request System Snapshot
+# ═══════════════════════════════════════════════════════════════════
+
+def _key_status(value, min_len: int = 8) -> dict:
+    """Bewertet ob ein Key/Env-Var konfiguriert ist (nicht leer + ausreichend lang)."""
+    if not value:
+        return {"configured": False, "length": 0, "preview": None}
+    v = str(value).strip()
+    ok = len(v) >= min_len
+    return {
+        "configured": ok,
+        "length": len(v),
+        "preview": (v[:4] + "..." + v[-2:]) if ok and len(v) > 10 else "***",
+    }
+
+
+async def _check_mongo() -> dict:
+    """Ping MongoDB + sample collection counts."""
+    t0 = time.perf_counter()
+    try:
+        await db.command("ping")
+        ping_ms = round((time.perf_counter() - t0) * 1000, 2)
+        users = await db.users.estimated_document_count()
+        merchants = await db.merchants.estimated_document_count()
+        return {
+            "status": "ok",
+            "ping_ms": ping_ms,
+            "collections": {"users": users, "merchants": merchants},
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e), "ping_ms": None}
+
+
+async def _check_bot_loop() -> dict:
+    """Letzte Bot-Bid Timestamps aus DB."""
+    try:
+        latest = await db.bids.find({"bot": True}, {"_id": 0, "created_at": 1}).sort("created_at", -1).limit(1).to_list(1)
+        if not latest:
+            return {"status": "idle", "last_bid_at": None, "age_seconds": None}
+        last_str = latest[0].get("created_at")
+        if isinstance(last_str, str):
+            last_dt = datetime.fromisoformat(last_str.replace("Z", "+00:00"))
+        else:
+            last_dt = last_str
+        age = (datetime.now(timezone.utc) - last_dt).total_seconds()
+        status = "ok" if age < 300 else "stale"
+        return {"status": status, "last_bid_at": last_dt.isoformat(), "age_seconds": round(age, 1)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@router.get("/health-deep")
+async def health_deep(request: Request):
+    """Ein-Request Deep-Health-Check über alle Systemkomponenten (Admin-only)."""
+    await _require_admin(request)
+
+    started = time.perf_counter()
+
+    # Run async checks in parallel
+    mongo_state, bot_state = await asyncio.gather(_check_mongo(), _check_bot_loop())
+
+    # Env / Key checks
+    stripe_key = os.environ.get("STRIPE_API_KEY", "")
+    integrations = {
+        "stripe": {
+            **_key_status(stripe_key),
+            "mode": "test" if stripe_key.startswith("sk_test_") else ("live" if stripe_key.startswith("sk_live_") else "unknown"),
+        },
+        "emergent_llm": _key_status(os.environ.get("EMERGENT_LLM_KEY")),
+        "resend_email": _key_status(os.environ.get("RESEND_API_KEY")),
+        "elevenlabs": _key_status(os.environ.get("ELEVENLABS_API_KEY")),
+        "mapbox": _key_status(os.environ.get("MAPBOX_TOKEN")),
+        "vapid_push": {
+            "public_key": _key_status(os.environ.get("VAPID_PUBLIC_KEY"), min_len=40),
+            "private_key": _key_status(os.environ.get("VAPID_PRIVATE_KEY"), min_len=20),
+            "subject": os.environ.get("VAPID_SUBJECT") or None,
+        },
+        "sabre": {
+            "environment": os.environ.get("SABRE_ENVIRONMENT") or "unknown",
+            "cert_client_id": _key_status(os.environ.get("SABRE_CERT_CLIENT_ID")),
+            "cert_client_secret": _key_status(os.environ.get("SABRE_CERT_CLIENT_SECRET")),
+            "prod_client_id": _key_status(os.environ.get("SABRE_PROD_CLIENT_ID")),
+        },
+        "livekit": {
+            "url": os.environ.get("LIVEKIT_URL") or None,
+            "api_key": _key_status(os.environ.get("LIVEKIT_API_KEY")),
+            "api_secret": _key_status(os.environ.get("LIVEKIT_API_SECRET")),
+        },
+        "sentry": _key_status(os.environ.get("SENTRY_DSN"), min_len=20),
+    }
+
+    # Routing state
+    reg = get_registration_state()
+    routing = {
+        "registered": reg.get("total_registered", 0),
+        "failed": reg.get("total_failed", 0),
+        "failed_modules": [f["module"] for f in reg.get("failed", [])],
+    }
+
+    # Compute overall status
+    critical_issues = []
+    if mongo_state.get("status") != "ok":
+        critical_issues.append("mongo")
+    if routing["failed"] > 0:
+        critical_issues.append("routing")
+    if not integrations["emergent_llm"]["configured"]:
+        critical_issues.append("emergent_llm_missing")
+
+    warnings = []
+    if not integrations["stripe"]["configured"]:
+        warnings.append("stripe_unconfigured")
+    if not integrations["elevenlabs"]["configured"]:
+        warnings.append("elevenlabs_unconfigured")
+    if not integrations["mapbox"]["configured"]:
+        warnings.append("mapbox_unconfigured")
+    if bot_state.get("status") == "stale":
+        warnings.append("bot_loop_stale")
+
+    overall = "ok" if not critical_issues else "degraded"
+    if mongo_state.get("status") == "error":
+        overall = "critical"
+
+    elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+
+    return {
+        "status": overall,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "elapsed_ms": elapsed_ms,
+        "critical_issues": critical_issues,
+        "warnings": warnings,
+        "components": {
+            "mongo": mongo_state,
+            "bot_loop": bot_state,
+            "routing": routing,
+            "integrations": integrations,
+        },
+        "environment": {
+            "node": os.environ.get("ENV") or "preview",
+            "frontend_url": os.environ.get("FRONTEND_URL"),
+        },
     }

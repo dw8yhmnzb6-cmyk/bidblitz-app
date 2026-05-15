@@ -14,6 +14,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter108 — Deep Health Check)
+- 🟢 **`/api/diag/health-deep`** Admin-Endpoint: ein parallelisierter Request prüft MongoDB-Ping + Collection-Counts, Bot-Loop-Aktivität, Router-Registry, alle 9 3rd-Party-Integrations (Stripe mit live/test-Detection, Emergent LLM, Resend, ElevenLabs, Mapbox, VAPID Push, Sabre CERT/PROD, LiveKit, Sentry). Liefert `status: ok|degraded|critical` + `critical_issues[]` + `warnings[]` + `elapsed_ms`.
+- 🟢 **`/admin/diag` Health-Tab**: Neue UI-Sektion mit Status-Banner (Heart-Icon), Component-Cards für MongoDB / Bot-Loop / Routing / Integrations + Status-Dots (grün/gelb/rot) + Key-Preview (sk_t...nt) + mode-Badge (test/live).
+- ✅ **Manuell verifiziert**: Liefert für aktuelle Preview-Env korrekt `degraded` (Routing 2 Failed + ElevenLabs unkonfiguriert) in 2ms. MongoDB 0.72ms ping, 124 Users / 34 Merchants.
+
+
+
 ### 15.05.2026 (iter107 — Admin Diag UI)
 - 🟢 **`/admin/diag` Admin-Page** (`AdminDiagPage.jsx`): UI für `/api/diag/routes` mit 4 Tabs (Übersicht, Module, API-Pfade, Failed) + Live-Search + ausklappbare Failure-Tracebacks. Counter-Cards für Registered/Failed/Live-Paths.
 - 🟢 **MorePage Eintrag** `Routing Diagnostics` im Admin-Menü mit Activity-Icon (cyan).

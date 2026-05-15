@@ -18,7 +18,8 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   ChevronLeft, Activity, AlertTriangle, CheckCircle2, Search,
-  Layers, RefreshCw, Loader2, ChevronDown, Code2,
+  Layers, RefreshCw, Loader2, ChevronDown, Code2, Heart, Zap,
+  Database, Server, Key,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -35,18 +36,49 @@ const METHOD_COLOR = {
   DELETE: "#EF4444", PATCH: "#8B5CF6",
 };
 
+function StatusDot({ status }) {
+  const color =
+    status === "ok" ? "#10B981" :
+    status === "stale" ? "#F59E0B" :
+    status === "idle" ? "#94A3B8" :
+    "#EF4444";
+  return (
+    <span
+      className="inline-block w-2 h-2 rounded-full ml-auto"
+      style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+      title={status}
+    />
+  );
+}
+
+function Stat({ label, value, danger, mono }) {
+  return (
+    <div>
+      <div className="text-xs text-slate-500 uppercase tracking-wide">{label}</div>
+      <div className={`${mono ? "font-mono text-xs" : "font-medium"} ${danger ? "text-red-400" : "text-slate-100"} break-all`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDiagPage({ onBack }) {
   const [data, setData] = useState(null);
+  const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("overview"); // overview | modules | paths | failed
+  const [tab, setTab] = useState("overview"); // overview | health | modules | paths | failed
   const [search, setSearch] = useState("");
   const [openFailed, setOpenFailed] = useState({});
 
   const load = async () => {
     setLoading(true);
     try {
-      const d = await api("/api/diag/routes?include_traceback=true");
+      const [d, h] = await Promise.all([
+        api("/api/diag/routes?include_traceback=true"),
+        api("/api/diag/health-deep").catch(() => null),
+      ]);
       setData(d);
+      setHealth(h);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -109,6 +141,7 @@ export default function AdminDiagPage({ onBack }) {
         <div className="flex border-t border-slate-700 overflow-x-auto">
           {[
             { id: "overview", label: "Übersicht" },
+            { id: "health", label: `Health${health ? ` (${health.status})` : ""}`, danger: health?.status === "critical", warn: health?.status === "degraded" },
             { id: "modules", label: `Module (${data?.total_registered || 0})` },
             { id: "paths", label: `API-Pfade (${data?.live_paths_count || 0})` },
             { id: "failed", label: `Failed (${data?.total_failed || 0})`, danger: data?.total_failed > 0 },
@@ -121,6 +154,8 @@ export default function AdminDiagPage({ onBack }) {
                 tab === t.id
                   ? t.danger
                     ? "border-red-500 text-red-400"
+                    : t.warn
+                    ? "border-amber-500 text-amber-400"
                     : "border-cyan-500 text-cyan-400"
                   : "border-transparent text-slate-400 hover:text-slate-200"
               }`}
@@ -258,6 +293,136 @@ export default function AdminDiagPage({ onBack }) {
               </div>
             )}
           </div>
+        )}
+
+        {health && tab === "health" && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            {/* Overall status banner */}
+            <div
+              data-testid="health-overall-status"
+              className={`rounded-xl p-5 border ${
+                health.status === "ok"
+                  ? "bg-emerald-500/10 border-emerald-500/30"
+                  : health.status === "degraded"
+                  ? "bg-amber-500/10 border-amber-500/30"
+                  : "bg-red-500/10 border-red-500/30"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Heart size={24} className={
+                  health.status === "ok" ? "text-emerald-400" :
+                  health.status === "degraded" ? "text-amber-400" : "text-red-400"
+                } />
+                <div className="flex-1">
+                  <div className="text-2xl font-bold uppercase tracking-wide">{health.status}</div>
+                  <div className="text-xs text-slate-400">
+                    Geprüft in {health.elapsed_ms}ms · {new Date(health.checked_at).toLocaleTimeString("de-DE")}
+                  </div>
+                </div>
+              </div>
+              {(health.critical_issues?.length > 0 || health.warnings?.length > 0) && (
+                <div className="mt-3 space-y-1 text-sm">
+                  {health.critical_issues?.map(c => (
+                    <div key={c} className="flex items-center gap-2 text-red-300">
+                      <AlertTriangle size={14} /> Critical: <span className="font-mono">{c}</span>
+                    </div>
+                  ))}
+                  {health.warnings?.map(w => (
+                    <div key={w} className="flex items-center gap-2 text-amber-300">
+                      <AlertTriangle size={14} /> Warning: <span className="font-mono">{w}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* MongoDB */}
+            <div data-testid="health-mongo" className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Database size={18} className="text-cyan-400" />
+                <span className="font-medium">MongoDB</span>
+                <StatusDot status={health.components.mongo.status} />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                <Stat label="Ping" value={health.components.mongo.ping_ms != null ? `${health.components.mongo.ping_ms}ms` : "—"} />
+                <Stat label="Users" value={health.components.mongo.collections?.users ?? "—"} />
+                <Stat label="Merchants" value={health.components.mongo.collections?.merchants ?? "—"} />
+              </div>
+            </div>
+
+            {/* Bot Loop */}
+            <div data-testid="health-bot" className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap size={18} className="text-purple-400" />
+                <span className="font-medium">Bot Auction Loop</span>
+                <StatusDot status={health.components.bot_loop.status} />
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <Stat label="Letzter Bot-Bid" value={health.components.bot_loop.last_bid_at ? new Date(health.components.bot_loop.last_bid_at).toLocaleString("de-DE") : "—"} />
+                <Stat label="Alter" value={health.components.bot_loop.age_seconds != null ? `${Math.round(health.components.bot_loop.age_seconds)}s` : "—"} />
+              </div>
+            </div>
+
+            {/* Routing */}
+            <div data-testid="health-routing" className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Server size={18} className="text-emerald-400" />
+                <span className="font-medium">Router Registry</span>
+                <StatusDot status={health.components.routing.failed > 0 ? "stale" : "ok"} />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                <Stat label="Registered" value={health.components.routing.registered} />
+                <Stat label="Failed" value={health.components.routing.failed} danger={health.components.routing.failed > 0} />
+                <Stat label="Failed Module" value={(health.components.routing.failed_modules || []).join(", ") || "—"} />
+              </div>
+            </div>
+
+            {/* Integrations grid */}
+            <div data-testid="health-integrations" className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Key size={18} className="text-amber-400" />
+                <span className="font-medium">3rd-Party Integrations</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                {Object.entries(health.components.integrations).map(([name, info]) => {
+                  const configured = typeof info === "object" && info?.configured !== undefined
+                    ? info.configured
+                    : (typeof info === "object" && info?.public_key ? info.public_key.configured : null);
+                  return (
+                    <div
+                      key={name}
+                      data-testid={`integration-${name}`}
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded border ${
+                        configured === true ? "bg-emerald-500/5 border-emerald-500/20"
+                          : configured === false ? "bg-red-500/5 border-red-500/20"
+                          : "bg-slate-700/30 border-slate-600"
+                      }`}
+                    >
+                      <div>
+                        <div className="font-medium text-slate-200 capitalize">{name.replace(/_/g, " ")}</div>
+                        <div className="text-xs text-slate-500 font-mono">
+                          {info.mode && `mode=${info.mode} · `}
+                          {info.preview ? `key=${info.preview}` : ""}
+                          {info.environment && `env=${info.environment}`}
+                        </div>
+                      </div>
+                      {configured === true && <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />}
+                      {configured === false && <AlertTriangle size={18} className="text-red-400 shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Environment */}
+            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 text-sm">
+              <div className="text-slate-400 mb-2">Environment</div>
+              <div className="grid grid-cols-2 gap-3">
+                <Stat label="Node" value={health.environment?.node || "—"} />
+                <Stat label="Frontend URL" value={health.environment?.frontend_url || "—"} mono />
+              </div>
+            </div>
+          </motion.div>
         )}
 
         {data && tab === "failed" && (
