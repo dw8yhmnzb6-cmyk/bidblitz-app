@@ -2921,3 +2921,98 @@ async def add_ride_tip(req: TipRequest, request: Request):
     )
 
     return {"ok": True, "tip": req.amount}
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Mapbox Geocoding Proxy — falls Frontend-Bundle keinen REACT_APP_MAPBOX_TOKEN hat
+# (z.B. wenn auf Production der GitHub-Secret nicht gesetzt wurde), kann das
+# Frontend auf diesen Backend-Proxy zurückfallen. Backend nutzt MAPBOX_TOKEN
+# aus seiner .env.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _server_mapbox_token() -> str:
+    import os
+    return (
+        os.environ.get("MAPBOX_TOKEN")
+        or os.environ.get("REACT_APP_MAPBOX_TOKEN")
+        or ""
+    )
+
+
+@router.get("/geocode")
+async def taxi_geocode(
+    q: str,
+    lng: Optional[float] = None,
+    lat: Optional[float] = None,
+    lang: str = "de",
+    limit: int = 8,
+):
+    """
+    Forward-geocode (autocomplete) Endpoint. Frontend nutzt diesen Proxy,
+    wenn `REACT_APP_MAPBOX_TOKEN` build-time fehlt. Optional `lng,lat` für
+    Proximity-Bias (näher gelegene Vorschläge zuerst).
+    """
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"features": []}
+
+    token = _server_mapbox_token()
+    if not token:
+        raise HTTPException(503, "Geocoding not configured (MAPBOX_TOKEN missing on server).")
+
+    import httpx
+    params = {
+        "access_token": token,
+        "language": lang,
+        "limit": str(max(1, min(limit, 10))),
+        "types": "address,poi,place,locality,neighborhood,postcode,district",
+        "autocomplete": "true",
+    }
+    if lng is not None and lat is not None:
+        params["proximity"] = f"{lng},{lat}"
+
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            r = await client.get(
+                f"https://api.mapbox.com/geocoding/v5/mapbox.places/{q}.json",
+                params=params,
+            )
+            if r.status_code != 200:
+                return {"features": [], "upstream_status": r.status_code}
+            data = r.json()
+    except Exception as e:
+        logger.warning(f"geocode proxy error: {e}")
+        return {"features": [], "error": "upstream_timeout"}
+
+    # Minimal, frontend-friendly shape (matches what Mapbox returns natively,
+    # so existing useTaxiGeocoder.parseFeature works 1:1)
+    return {"features": data.get("features", [])}
+
+
+@router.get("/geocode/reverse")
+async def taxi_reverse_geocode(lng: float, lat: float, lang: str = "de"):
+    """Reverse-geocode (coords → human address). For pickup-pin labels."""
+    token = _server_mapbox_token()
+    if not token:
+        raise HTTPException(503, "Geocoding not configured (MAPBOX_TOKEN missing on server).")
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            r = await client.get(
+                f"https://api.mapbox.com/geocoding/v5/mapbox.places/{lng},{lat}.json",
+                params={"access_token": token, "language": lang, "limit": 1},
+            )
+            if r.status_code != 200:
+                return {"address": "", "upstream_status": r.status_code}
+            data = r.json()
+    except Exception as e:
+        logger.warning(f"reverse geocode error: {e}")
+        return {"address": "", "error": "upstream_timeout"}
+    f = (data.get("features") or [{}])[0]
+    return {
+        "address": f.get("place_name", ""),
+        "name": f.get("text", ""),
+        "lat": (f.get("center") or [None, None])[1],
+        "lng": (f.get("center") or [None, None])[0],
+    }

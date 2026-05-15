@@ -6,13 +6,17 @@
  *  - geocodeOnBlur({address, lat, lng}): coordinate fix-up if user typed
  *    a free-form address without selecting a suggestion.
  *
- * Uses REACT_APP_MAPBOX_TOKEN directly so it works BEFORE the lazy-loaded
- * Mapbox GL library finishes initializing (fixes race condition where users
- * type pickup/dropoff before the map mounts).
+ * STRATEGY:
+ *  1) If REACT_APP_MAPBOX_TOKEN is present in the build → call Mapbox DIRECTLY
+ *     (fastest, no backend hop).
+ *  2) Else (e.g. Production GitHub Action forgot the secret) → transparently
+ *     fall back to backend proxy /api/taxi/geocode which uses server-side
+ *     MAPBOX_TOKEN. So address autocomplete always works.
  */
 import { useCallback, useRef, useEffect } from "react";
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const FORWARD_PARAMS =
   "language=de&limit=8&types=address,poi,place,locality,neighborhood,postcode,district";
 
@@ -67,20 +71,26 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
         setVisibility(false);
         return;
       }
-      if (!MAPBOX_TOKEN) {
-        console.warn("⚠️ REACT_APP_MAPBOX_TOKEN missing — autocomplete disabled");
-        setSuggestions([]);
-        setVisibility(false);
-        return;
-      }
 
       timers[key] = setTimeout(async () => {
         const controller = new AbortController();
         aborters[key] = controller;
         try {
-          const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-            q,
-          )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true`;
+          let url;
+          if (MAPBOX_TOKEN) {
+            // Direct Mapbox (fastest)
+            url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+              q,
+            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true`;
+          } else if (BACKEND_URL) {
+            // Backend proxy fallback (production safety net when build-time
+            // MAPBOX_TOKEN secret was forgotten)
+            url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(q)}&limit=8`;
+          } else {
+            setSuggestions([]);
+            setVisibility(false);
+            return;
+          }
           const res = await fetch(url, { signal: controller.signal });
           if (!res.ok) {
             setSuggestions([]);
@@ -112,11 +122,17 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
   const geocodeOnBlur = useCallback(async (target, setter, fallbackLat = 52.52) => {
     if (!target || !target.address) return;
     if (target.lat && target.lat !== 0 && target.lat !== fallbackLat) return;
-    if (!MAPBOX_TOKEN) return;
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-        target.address,
-      )}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
+      let url;
+      if (MAPBOX_TOKEN) {
+        url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          target.address,
+        )}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
+      } else if (BACKEND_URL) {
+        url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(target.address)}&limit=1`;
+      } else {
+        return;
+      }
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();

@@ -15,6 +15,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 15.05.2026 (iter98 — Adress-Autocomplete Proxy + Mapbox Resilience)
+- 🟢 **Backend Mapbox-Geocoding-Proxy** (NEU): `GET /api/taxi/geocode?q=Prishtina&[lng,lat,limit]` + `GET /api/taxi/geocode/reverse?lng=&lat=` — nutzen den server-seitigen `MAPBOX_TOKEN`. Smoke-Test live: "Prishtina" → Pristina/Kosovo, "Zejadin Sinani" → echte Adresse aus User-Referenz-Screenshot, Reverse-Geocode → "Luan Haradinaj 24, Pristina 10000, Kosovo".
+- 🟢 **Frontend `useTaxiGeocoder` mit Fallback**: Wenn `REACT_APP_MAPBOX_TOKEN` zur Build-Zeit fehlt (z.B. weil GitHub-Secret nicht gesetzt), fällt das Autocomplete transparent auf den Backend-Proxy zurück. **Folge:** Selbst wenn die Map auf Production schwarz/error bleibt, kann der User trotzdem Ziele suchen und Vorschläge bekommen.
+- 🟢 **`useGeolocation` mit Fallback**: Reverse-Geocode für aktuelle GPS-Position nutzt jetzt auch den Backend-Proxy als Fallback.
+- 🐛 **bookings.providers KeyError 'id' Defensive-Fix**: `/api/bookings/providers` gab 500, jetzt 200 mit `.get("id")` + skip-malformed.
+- 🟢 **6 fehlende Router registriert**: `routes.hotels`, `routes.sabre`, `routes.bookings`, `routes.apartments`, `routes.flights`, `routes.restaurants` — alle waren existent aber nie im `router_registry`. 504 Endpoints wieder erreichbar.
+- 🧪 **Backend 27/27 E2E Tests PASS** (`/app/backend/tests/test_iter97_e2e_rock_solid.py`) — alle 4 Hauptmodule (TAXI/HOTELS/AUKTIONEN/POS) rock-solid, keine 500er.
+
 ### 15.05.2026 (iter97 — Deploy-Pipeline Robustness + Mapbox-Health-Endpoint)
 - 🟢 **Health-Endpoint `/api/readiness/mapbox-token`** (NEU, public): Returns `{configured, source, masked, valid_format, live_ok}`. `?live=true` macht echten Mapbox-API-Roundtrip. Token-Wert nie unmaskiert. Smoke-tested via curl → `live_ok=true, status_code=200`.
 - 🟢 **`routes.readiness` in `router_registry.py` registriert** (war vorher nicht im Registry → komplette `readiness`-Suite war auf Prod nie erreichbar; nun gefixt).

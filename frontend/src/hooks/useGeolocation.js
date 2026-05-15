@@ -6,31 +6,40 @@
 import { useState, useCallback } from 'react';
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 
 export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
   const [currentAddress, setCurrentAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // Reverse geocode coordinates to address
+  // Reverse geocode coordinates to address.
+  // If frontend MAPBOX_TOKEN is missing (e.g. Production build forgot the
+  // secret), transparently fall back to backend proxy /api/taxi/geocode/reverse.
   const reverseGeocode = useCallback(async (lat, lng) => {
-    if (!MAPBOX_TOKEN) {
-      console.warn('⚠️ MAPBOX_TOKEN missing');
-      return;
-    }
-
     try {
-      const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`
-      );
+      let url;
+      if (MAPBOX_TOKEN) {
+        url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
+      } else if (BACKEND_URL) {
+        url = `${BACKEND_URL}/api/taxi/geocode/reverse?lng=${lng}&lat=${lat}`;
+      } else {
+        return;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Geocoding failed');
-      
+
       const data = await res.json();
+      // Direct Mapbox returns {features:[...]}, backend proxy returns {address,name,lat,lng}
+      let addr = '';
       if (data.features && data.features.length > 0) {
         const place = data.features[0];
-        const addr = place.place_name || place.text || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        setCurrentAddress(addr);
-        setPickup(prev => ({ ...prev, address: addr }));
+        addr = place.place_name || place.text || '';
+      } else if (data.address) {
+        addr = data.address;
       }
+      addr = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      setCurrentAddress(addr);
+      setPickup(prev => ({ ...prev, address: addr }));
     } catch (err) {
       console.error('Reverse geocode error:', err);
       setCurrentAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
