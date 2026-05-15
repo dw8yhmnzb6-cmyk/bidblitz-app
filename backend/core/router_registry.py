@@ -186,6 +186,15 @@ def register_all_routers(app):
         ("routes.livekit_streaming", "router"),
         ("routes.landing_chatbot", "router"),
         ("routes.readiness", "router"),
+
+        # Travel & Booking (Hotels, Flights, Apartments, Restaurants)
+        ("routes.hotels", "router"),
+        ("routes.sabre", "router"),
+        ("routes.bookings", "router"),
+        ("routes.bookings", "admin_router"),
+        ("routes.apartments", "router"),
+        ("routes.flights", "router"),
+        ("routes.restaurants", "router"),
     ]
     
     # Register all routers

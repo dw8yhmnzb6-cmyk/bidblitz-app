@@ -178,14 +178,17 @@ async def _compute_slots(provider: dict, date_str: str, service_duration: int) -
 @router.get("/providers")
 async def get_providers(city: str = ""):
     providers = await _list_providers(city)
-    # strip admin-only fields
+    # strip admin-only fields, skip malformed docs without id
     lite = []
     for p in providers:
+        pid = p.get("id")
+        if not pid:
+            continue
         lite.append({
-            "id": p["id"],
-            "name": p["name"],
-            "type": p["type"],
-            "city": p["city"],
+            "id": pid,
+            "name": p.get("name", ""),
+            "type": p.get("type", ""),
+            "city": p.get("city", ""),
             "rating": p.get("rating", 4.5),
             "reviews": p.get("reviews", 0),
             "services": p.get("services", []),
