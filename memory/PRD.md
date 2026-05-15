@@ -15,6 +15,29 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 15.05.2026 (iter101 — Standard-Pakete pro Branche [1-Klick Bundles])
+- 🟢 **8 Branchen-Bundles** im Backend definiert (`INDUSTRY_BUNDLES`):
+  - 🍦 Eiscafé/Café Komplett (5 Features, 39,90€)
+  - 🍽️ Restaurant Vollausstattung (7 Features, 69,90€)
+  - 🛍️ Einzelhandel Komplett (6 Features, 49,90€)
+  - 🏪 Kiosk/Spätkauf (4 Features, 29,90€)
+  - 🛒 Supermarkt (9 Features, 99,90€)
+  - 💇 Friseur/Salon (5 Features, 34,90€)
+  - 🤖 KI-Maximalpaket (4 Features, 49,90€)
+  - 🎁 Starter (11 Features GRATIS für Onboarding-Geschenk)
+- 🟢 **`GET /api/pos/features/bundles`** — listet alle Bundles mit Features + Preisen.
+- 🟢 **`POST /api/pos/features/admin/apply-bundle`** — schaltet Bundle in 1 Call frei. Mode `merge` (nur hinzufügen) oder `replace` (alle anderen deaktivieren). Setzt automatisch die Bundle-Preise als `custom_price`. Audit-Log.
+- 🟢 **Frontend UI**: 4-spaltiges Card-Grid unter Merchant-Header mit allen 8 Bundles. **Klick = merge**, **Rechtsklick = replace**. Confirm-Dialog vor Apply.
+- 🧪 **E2E getestet via curl**: `eiscafe` Bundle auf Test-Kiosk → 5 Features mit Bundle-Preisen aktiviert, MRR exakt 39.90€. `starter_free` → 11 Features alle 0€, MRR 0,00€.
+
+### 15.05.2026 (iter100 — Individuelle Preise pro Händler & Modul + MRR-Summe)
+- 🟢 **Backend Preis-Override**: `AdminToggle` Model erweitert um optionales `custom_price`. Neuer Endpoint `POST /api/pos/features/admin/set-price` (Body: `{merchant_id, feature_key, custom_price}`) setzt nur den Preis ohne Toggle-Status zu ändern. Preis-Logik: explizit → DB-Override → Catalog-Default. `0` = kostenlos für diesen Händler.
+- 🟢 **`admin/merchant/{id}` liefert jetzt** `catalog_price`, `custom_price` (null wenn nicht überschrieben), `effective_price` (was tatsächlich abgerechnet wird).
+- 🟢 **Audit-Log** schreibt jeden Preis-Wechsel inkl. Katalog-Preis + neuer Preis + actor_id.
+- 🟢 **Frontend UI**: Pro Feature-Card eine kleine `€/Monat`-Input neben dem Toggle. Auto-Save on blur oder Enter, optimistic update mit Loader. Custom-Preise bekommen einen gelben Pill (`GRATIS` wenn 0€, sonst `Custom`).
+- 🟢 **MRR-Summe live** im Merchant-Header: nur enabled Features × effective_price = monatlicher Umsatz pro Händler. Smoke-Test: 8 aktive Features → 75.90 €/Monat korrekt summiert.
+- 🧪 **Backend E2E getestet via curl**: staff_timeclock=0€, inventory_pro=19.90€, purchase_orders=5.50€ → alle persistiert, in `effective_price` reflektiert.
+
 ### 15.05.2026 (iter99 — Admin-Page: Händler-Module freischalten)
 - 🟢 **NEUE Admin-Page** `AdminMerchantFeaturesPage.jsx` unter Route `/admin/merchant-features`. Admin sieht links die komplette Händler-Liste (mit Suche), rechts den Feature-Katalog gruppiert nach Kategorie (Mitarbeiter, Handel, Gastro, Zahlungen, Marketing, Compliance, KI, Self-Checkout, Reports, Entwickler). Pro Feature ein großer Toggle-Switch mit optimistic-update + Live-Save zum Backend.
 - 🟢 **5 neue Feature-Toggles im Catalog** (vorher fehlten): `staff_timeclock` (Mitarbeiter-Zeiterfassung Kommen/Gehen), `staff_schedule` (Schichtplanung), `staff_wallet` (Boni an Wallet), `inventory_pro` (Warenwirtschaft EK/VK), `purchase_orders` (Bestellwesen). Insgesamt jetzt **23 toggle-bare Module**.

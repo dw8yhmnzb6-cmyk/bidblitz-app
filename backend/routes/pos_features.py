@@ -154,12 +154,146 @@ async def is_feature_enabled(merchant_id: str, feature_key: str) -> bool:
 
 
 # ═══════════════════════════════════════════════════════════
+# BRANCHEN-BUNDLES — 1-Klick "Standard-Paket pro Branche"
+# Jedes Bundle = Liste {feature_key, bundle_price}.
+# bundle_price = None → übernimmt Catalog-Preis.
+# bundle_price = 0 → kostenlos im Bundle.
+# ═══════════════════════════════════════════════════════════
+INDUSTRY_BUNDLES = [
+    {
+        "key": "eiscafe",
+        "name": "Eiscafé / Café Komplett",
+        "icon": "🍦",
+        "description": "Tisch-Reservierung + QR-Bestellung am Tisch + KDS + Treueprogramm + Gutscheine. Klassisches Saison-Café Setup.",
+        "monthly_total": 39.90,
+        "features": [
+            {"key": "table_reservations", "price": 7.90},
+            {"key": "table_qr_orders",    "price": 12.90},
+            {"key": "kds",                "price": 9.90},
+            {"key": "loyalty",            "price": 4.90},
+            {"key": "vouchers",           "price": 4.30},
+        ],
+    },
+    {
+        "key": "restaurant",
+        "name": "Restaurant Vollausstattung",
+        "icon": "🍽️",
+        "description": "Reservierung + QR + KDS + Delivery + Lieferschein-OCR + Treueprogramm + Reports.",
+        "monthly_total": 69.90,
+        "features": [
+            {"key": "table_reservations", "price": 9.90},
+            {"key": "table_qr_orders",    "price": 14.90},
+            {"key": "kds",                "price": 12.90},
+            {"key": "delivery_orders",    "price": 14.90},
+            {"key": "ocr_delivery",       "price": 7.90},
+            {"key": "loyalty",            "price": 4.90},
+            {"key": "advanced_reports",   "price": 4.50},
+        ],
+    },
+    {
+        "key": "retail",
+        "name": "Einzelhandel Komplett",
+        "icon": "🛍️",
+        "description": "Warenwirtschaft + Bestellwesen + Pfand + Zeiterfassung + Treueprogramm + Reports.",
+        "monthly_total": 49.90,
+        "features": [
+            {"key": "inventory_pro",     "price": 14.90},
+            {"key": "purchase_orders",   "price": 9.90},
+            {"key": "deposits",          "price": 3.90},
+            {"key": "staff_timeclock",   "price": 6.90},
+            {"key": "loyalty",           "price": 4.90},
+            {"key": "advanced_reports",  "price": 9.40},
+        ],
+    },
+    {
+        "key": "kiosk",
+        "name": "Kiosk / Spätkauf",
+        "icon": "🏪",
+        "description": "Warenwirtschaft + Pfand + Gutscheine + TSE/Fiskaly. Minimaler Kiosk-Start.",
+        "monthly_total": 29.90,
+        "features": [
+            {"key": "inventory_pro", "price": 9.90},
+            {"key": "deposits",      "price": 3.90},
+            {"key": "vouchers",      "price": 4.90},
+            {"key": "tse_fiskaly",   "price": 11.20},
+        ],
+    },
+    {
+        "key": "supermarkt",
+        "name": "Supermarkt / Markt",
+        "icon": "🛒",
+        "description": "Volle Warenwirtschaft + Self-Checkout + Scan&Go + Treue + Marketing + Reports + Compliance.",
+        "monthly_total": 99.90,
+        "features": [
+            {"key": "inventory_pro",       "price": 14.90},
+            {"key": "purchase_orders",     "price": 9.90},
+            {"key": "deposits",            "price": 3.90},
+            {"key": "self_checkout",       "price": 14.90},
+            {"key": "scan_and_go",         "price": 14.90},
+            {"key": "loyalty",             "price": 7.90},
+            {"key": "marketing_campaigns", "price": 9.90},
+            {"key": "advanced_reports",    "price": 8.90},
+            {"key": "tse_fiskaly",         "price": 14.70},
+        ],
+    },
+    {
+        "key": "salon",
+        "name": "Friseur / Salon / Beauty",
+        "icon": "💇",
+        "description": "Reservierung + Treueprogramm + Gutscheine + Mitarbeiter-Zeiterfassung + Schichtplan.",
+        "monthly_total": 34.90,
+        "features": [
+            {"key": "table_reservations", "price": 9.90},
+            {"key": "loyalty",            "price": 4.90},
+            {"key": "vouchers",           "price": 4.90},
+            {"key": "staff_timeclock",    "price": 6.90},
+            {"key": "staff_schedule",     "price": 8.30},
+        ],
+    },
+    {
+        "key": "ki_max",
+        "name": "KI-Maximalpaket",
+        "icon": "🤖",
+        "description": "Dynamic Pricing + KI-Assistent + Voice-Commands + OCR. Für alle Branchen.",
+        "monthly_total": 49.90,
+        "features": [
+            {"key": "dynamic_pricing", "price": 19.90},
+            {"key": "ai_assistant",    "price": 14.90},
+            {"key": "voice_commands",  "price": 7.90},
+            {"key": "ocr_delivery",    "price": 7.20},
+        ],
+    },
+    {
+        "key": "starter_free",
+        "name": "Starter (alles kostenlos für 30 Tage)",
+        "icon": "🎁",
+        "description": "Onboarding-Geschenk: ALLE Features 30 Tage gratis. Danach normale Preise.",
+        "monthly_total": 0.00,
+        "features": [
+            {"key": k, "price": 0.00} for k in [
+                "table_reservations","table_qr_orders","kds","loyalty","vouchers",
+                "deposits","staff_timeclock","inventory_pro","purchase_orders",
+                "advanced_reports","ocr_delivery",
+            ]
+        ],
+    },
+]
+BUNDLE_KEYS = {b["key"] for b in INDUSTRY_BUNDLES}
+
+
+# ═══════════════════════════════════════════════════════════
 # CATALOG
 # ═══════════════════════════════════════════════════════════
 @router.get("/catalog")
 async def get_catalog():
     """Öffentlicher Katalog aller Add-Ons mit Preisen."""
     return {"features": FEATURE_CATALOG}
+
+
+@router.get("/bundles")
+async def get_bundles():
+    """Branchen-Bundles für 1-Klick Aktivierung."""
+    return {"bundles": INDUSTRY_BUNDLES}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -262,12 +396,18 @@ async def admin_list_for_merchant(merchant_id: str, request: Request):
     out = []
     for f in FEATURE_CATALOG:
         a = by_key.get(f["key"], {})
+        custom = a.get("custom_price")
+        # Effektiver Preis: Override wenn gesetzt, sonst Catalog-Default
+        effective_price = float(custom) if custom is not None else float(f["monthly_price"])
         out.append({
             **f,
             "enabled": bool(a.get("enabled")),
             "trial": a.get("trial", False),
             "valid_until": a.get("valid_until"),
             "activated_at": a.get("activated_at"),
+            "catalog_price": float(f["monthly_price"]),
+            "custom_price": custom,
+            "effective_price": effective_price,
         })
     return {"merchant_id": merchant_id, "features": out}
 
@@ -277,6 +417,7 @@ class AdminToggle(BaseModel):
     feature_key: str
     enabled: bool
     valid_until: Optional[str] = None  # ISO-Datum oder None = unbegrenzt
+    custom_price: Optional[float] = None  # €/Monat-Override pro Händler. None=Catalog-Default, 0=kostenlos.
 
 
 @router.post("/admin/toggle")
@@ -292,13 +433,23 @@ async def admin_toggle(req: AdminToggle, request: Request):
     existing = await db.pos_merchant_features.find_one({
         "merchant_id": req.merchant_id, "feature_key": req.feature_key,
     })
+    # Preis-Logik: explizit übergeben > existierender Override > Catalog-Default
+    if req.custom_price is not None:
+        effective_price = max(0.0, float(req.custom_price))
+    elif existing and existing.get("custom_price") is not None:
+        effective_price = float(existing["custom_price"])
+    else:
+        effective_price = float(feat["monthly_price"])
+
     payload = {
         "merchant_id": req.merchant_id,
         "feature_key": req.feature_key,
         "enabled": req.enabled,
         "trial": False,
         "valid_until": req.valid_until,
-        "monthly_price": feat["monthly_price"],
+        "monthly_price": effective_price,
+        "custom_price": req.custom_price if req.custom_price is not None
+                        else (existing or {}).get("custom_price"),
         "activated_at": _now() if req.enabled else (existing or {}).get("activated_at"),
         "activated_by": str(user["_id"]),
         "deactivated_at": None if req.enabled else _now(),
@@ -318,13 +469,188 @@ async def admin_toggle(req: AdminToggle, request: Request):
             "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
             "actor_id": str(user["_id"]),
             "action": "feature.toggle",
-            "ref": {"merchant_id": req.merchant_id, "feature_key": req.feature_key, "enabled": req.enabled},
+            "ref": {
+                "merchant_id": req.merchant_id,
+                "feature_key": req.feature_key,
+                "enabled": req.enabled,
+                "monthly_price": effective_price,
+            },
             "ts": _now(),
         })
     except Exception:
         pass
 
     return {"ok": True, "feature": payload}
+
+
+class PriceUpdate(BaseModel):
+    merchant_id: str
+    feature_key: str
+    custom_price: float  # €/Monat — 0 = kostenlos
+
+
+@router.post("/admin/set-price")
+async def admin_set_price(req: PriceUpdate, request: Request):
+    """Admin setzt nur den Preis (ohne Enable-Status anzufassen)."""
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(403, "Nur Admin")
+    if req.feature_key not in FEATURE_KEYS:
+        raise HTTPException(400, "Unbekanntes Feature")
+
+    effective_price = max(0.0, float(req.custom_price))
+    feat = next(f for f in FEATURE_CATALOG if f["key"] == req.feature_key)
+    existing = await db.pos_merchant_features.find_one({
+        "merchant_id": req.merchant_id, "feature_key": req.feature_key,
+    })
+
+    update_doc = {
+        "merchant_id": req.merchant_id,
+        "feature_key": req.feature_key,
+        "monthly_price": effective_price,
+        "custom_price": effective_price,
+    }
+    if not existing:
+        # Lege Eintrag mit enabled=False an — Preis ist hinterlegt für später
+        update_doc.update({
+            "enabled": False,
+            "trial": False,
+            "valid_until": None,
+            "activated_at": None,
+            "activated_by": str(user["_id"]),
+        })
+        await db.pos_merchant_features.insert_one(update_doc)
+        update_doc.pop("_id", None)
+    else:
+        await db.pos_merchant_features.update_one(
+            {"merchant_id": req.merchant_id, "feature_key": req.feature_key},
+            {"$set": update_doc},
+        )
+
+    # Audit
+    try:
+        await db.pos_audit_log.insert_one({
+            "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
+            "actor_id": str(user["_id"]),
+            "action": "feature.set_price",
+            "ref": {
+                "merchant_id": req.merchant_id,
+                "feature_key": req.feature_key,
+                "new_price": effective_price,
+                "catalog_price": feat["monthly_price"],
+            },
+            "ts": _now(),
+        })
+    except Exception:
+        pass
+
+    return {"ok": True, "merchant_id": req.merchant_id, "feature_key": req.feature_key, "monthly_price": effective_price}
+
+
+class BundleApply(BaseModel):
+    merchant_id: str
+    bundle_key: str
+    mode: str = "replace"  # "replace" = deaktiviere alles andere zuerst, "merge" = nur Bundle-Features dazu
+
+
+@router.post("/admin/apply-bundle")
+async def admin_apply_bundle(req: BundleApply, request: Request):
+    """
+    Aktiviert ein komplettes Branchen-Bundle in einem Klick.
+    - mode='merge'   → Bundle-Features ON, andere unverändert.
+    - mode='replace' → Bundle-Features ON, alle anderen OFF.
+    Setzt automatisch die Bundle-Preise als custom_price.
+    """
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(403, "Nur Admin")
+    if req.bundle_key not in BUNDLE_KEYS:
+        raise HTTPException(400, f"Unbekanntes Bundle: {req.bundle_key}")
+
+    bundle = next(b for b in INDUSTRY_BUNDLES if b["key"] == req.bundle_key)
+    bundle_keys_set = {f["key"] for f in bundle["features"]}
+    now = _now()
+    actor_id = str(user["_id"])
+
+    activated, deactivated, skipped = [], [], []
+
+    # 1) replace-mode: alle aktuell aktiven Features, die NICHT im Bundle sind, deaktivieren
+    if req.mode == "replace":
+        currently_active = await db.pos_merchant_features.find(
+            {"merchant_id": req.merchant_id, "enabled": True}, {"_id": 0}
+        ).to_list(200)
+        for a in currently_active:
+            if a["feature_key"] in bundle_keys_set:
+                continue
+            await db.pos_merchant_features.update_one(
+                {"merchant_id": req.merchant_id, "feature_key": a["feature_key"]},
+                {"$set": {"enabled": False, "deactivated_at": now, "activated_by": actor_id}},
+            )
+            deactivated.append(a["feature_key"])
+
+    # 2) Bundle-Features aktivieren mit ihren Preisen
+    for feat_def in bundle["features"]:
+        key = feat_def["key"]
+        if key not in FEATURE_KEYS:
+            skipped.append(key)
+            continue
+        catalog_feat = next(f for f in FEATURE_CATALOG if f["key"] == key)
+        custom_price = float(feat_def.get("price")) if feat_def.get("price") is not None else None
+        effective_price = custom_price if custom_price is not None else float(catalog_feat["monthly_price"])
+
+        existing = await db.pos_merchant_features.find_one({
+            "merchant_id": req.merchant_id, "feature_key": key,
+        })
+        payload = {
+            "merchant_id": req.merchant_id,
+            "feature_key": key,
+            "enabled": True,
+            "trial": False,
+            "valid_until": None,
+            "monthly_price": effective_price,
+            "custom_price": custom_price,
+            "activated_at": now,
+            "activated_by": actor_id,
+            "deactivated_at": None,
+            "applied_bundle": req.bundle_key,
+        }
+        if existing:
+            await db.pos_merchant_features.update_one(
+                {"merchant_id": req.merchant_id, "feature_key": key},
+                {"$set": payload},
+            )
+        else:
+            await db.pos_merchant_features.insert_one(payload)
+        activated.append(key)
+
+    # Audit
+    try:
+        await db.pos_audit_log.insert_one({
+            "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
+            "actor_id": actor_id,
+            "action": "feature.apply_bundle",
+            "ref": {
+                "merchant_id": req.merchant_id,
+                "bundle_key": req.bundle_key,
+                "bundle_name": bundle["name"],
+                "mode": req.mode,
+                "activated": activated,
+                "deactivated": deactivated,
+            },
+            "ts": now,
+        })
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "bundle": bundle["name"],
+        "mode": req.mode,
+        "activated": activated,
+        "deactivated": deactivated,
+        "skipped": skipped,
+        "monthly_total": bundle.get("monthly_total"),
+    }
 
 
 class BulkToggle(BaseModel):
