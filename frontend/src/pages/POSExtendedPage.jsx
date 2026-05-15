@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   ChevronLeft, DollarSign, Receipt, Download, Upload,
-  Printer, SplitSquare, Loader2, Clock, TrendingUp,
+  Printer, Loader2, Clock, TrendingUp, Layers,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -163,7 +163,7 @@ export default function POSExtendedPage({ onBack }) {
                 <p className="text-sm font-medium">Bon drucken</p>
               </button>
               <button className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center hover:bg-gray-50">
-                <SplitSquare size={32} className="mx-auto mb-2 text-green-600" />
+                <Layers size={32} className="mx-auto mb-2 text-green-600" />
                 <p className="text-sm font-medium">Split-Payment</p>
               </button>
             </div>

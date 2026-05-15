@@ -980,9 +980,16 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "admin-legal", icon: ShieldCheck, label: "Legal-Pages Editor", desc: "AGB, Datenschutz, Impressum bearbeiten", color: "#00C2FF", action: () => onNavigate("/admin/legal") },
     { id: "admin-merchant-features", icon: ShieldCheck, label: "Händler-Module freischalten", desc: "Warenwirtschaft, Zeiterfassung & Co. pro Händler an/aus", color: "#FFD700", action: () => onNavigate("/admin/merchant-features") },
     { id: "admin-audit-log", icon: FileText, label: "Admin Audit Log", desc: "History aller Feature-Freischaltungen & Preisänderungen", color: "#8B5CF6", action: () => onNavigate("/admin/audit-log") },
+    { id: "staff-gps", icon: MapPin, label: "Staff GPS Tracking", desc: "Live-Standorte aller Mitarbeiter", color: "#10B981", action: () => onNavigate("/staff/gps") },
     { id: "admin-car-rental", icon: Car, label: t("more.admin_car_rental"), desc: t("more.admin_car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
     { id: "admin-support", icon: MessageCircle, label: t("more.admin_support"), desc: t("more.admin_support_desc"), color: "#A855F7", action: () => onNavigate("/admin/support") },
   ] : [];
+
+  const quickAccessMenu = [
+    { id: "express-checkout", icon: Zap, label: "Express Checkout", desc: "1-Klick Zahlung mit gespeicherten Daten", color: "#F59E0B", action: () => onNavigate("/express-checkout") },
+    { id: "hotels-sabre", icon: Building2, label: "Sabre Hotels", desc: "Kettenhotels weltweit buchen", color: "#3B82F6", action: () => onNavigate("/hotels/sabre") },
+    { id: "pos-extended", icon: Package, label: "POS Extended", desc: "Kassensturz, Offline-Mode, Bondrucker", color: "#8B5CF6", action: () => onNavigate("/pos/extended") },
+  ];
 
   const renderGroup = (title, items, delay) => (
     <motion.div
@@ -1022,6 +1029,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   // ── NEW: Compact search + accordion + 2-col grid renderer ──
   const GRID_GROUPS = [
+    { id: "quick", title: "🚀 Quick Access", color: "#F59E0B", items: quickAccessMenu },
     { id: "mobility", title: t("more.mobility") || "Mobilität", color: "#00C2FF", items: mobilityMenu },
     { id: "finance",  title: t("more.finance") || "Premium Finance", color: "#10B981", items: financeMenu },
     { id: "account",  title: t("more.account"), color: "#A855F7", items: accountMenu },
