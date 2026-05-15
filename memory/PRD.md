@@ -14,6 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter106 — Diagnostic Endpoint /api/diag/routes)
+- 🟢 **Router-Registry trackt jetzt jeden Mount-Versuch**: `REGISTRATION_STATE` modul-level Dict mit `registered[]` (module, attr, prefix, route_count) + `failed[]` (error_type, error, traceback).
+- 🟢 **`/api/diag/routes` Admin-Endpoint** (`routes/diag.py`): liefert komplette Routing-Übersicht — alle 151 erfolgreich gemounteten Module + 2 silently failed (taxi_operator/taxi_driver Module fehlen) + **1562 live API-Pfade** mit Methods.
+- 🟢 **`/api/diag/routes/failed`** Kurzfassung für Health-Checks/Alerting (nur fehlgeschlagene Module).
+- 🎯 **Verhindert künftige Stripe-Style Silent-Failures**: Ein Syntax-Error in einer Route-Datei (wie iter98 in `express_checkout_stripe.py`) ist jetzt sofort über `GET /api/diag/routes/failed` sichtbar.
+
+
+
 ### 15.05.2026 (iter105 — Testing-Sweep + 5 CRITICAL Bugfixes)
 - 🟢 **Audit-Log 500 Crash gefixt**: `pos_features.py:1055` Set-Comprehension über legacy `actor_id` Dict-Werte → `isinstance(str)` Filter + Dict-Coercion in Loop.
 - 🟢 **Stripe Express-Checkout SYNTAX ERROR gefixt**: `express_checkout_stripe.py` `create_setup_intent` hatte unterminierten Docstring der `@router.post('/wallet-payment')` decorator verschluckte → kompletter Stripe-Router war silently nie mounted. Setup-Intent properly implementiert, orphan-code entfernt. Alle 4 Stripe-Endpoints jetzt erreichbar.

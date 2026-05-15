@@ -4,9 +4,23 @@ Simplifies server.py by auto-importing all routers from /routes
 """
 
 import logging
+import traceback
 from pathlib import Path
 
 logger = logging.getLogger("bidblitz.registry")
+
+# Module-level state for diagnostic introspection
+REGISTRATION_STATE = {
+    "registered": [],   # list of dicts: {module, attr, prefix, route_count}
+    "failed": [],       # list of dicts: {module, attr, error_type, error}
+    "total_registered": 0,
+    "total_failed": 0,
+}
+
+
+def get_registration_state() -> dict:
+    """Read-only access to the latest router registration state."""
+    return REGISTRATION_STATE
 
 
 def register_all_routers(app):
@@ -28,6 +42,7 @@ def register_all_routers(app):
         ("routes.payout", "router"),
         ("routes.admin", "router"),
         ("routes.monitoring", "router"),
+        ("routes.diag", "router"),
         ("routes.merchant_admin", "router"),
         ("routes.blitz_transfer", "router"),
         ("routes.smm_boost", "router"),
@@ -206,6 +221,8 @@ def register_all_routers(app):
     # Register all routers
     registered = 0
     failed = []
+    REGISTRATION_STATE["registered"] = []
+    REGISTRATION_STATE["failed"] = []
     
     for module_path, router_attr in routers:
         try:
@@ -216,19 +233,48 @@ def register_all_routers(app):
             # Register router
             app.include_router(router)
             registered += 1
+            REGISTRATION_STATE["registered"].append({
+                "module": module_path,
+                "attr": router_attr,
+                "prefix": getattr(router, "prefix", ""),
+                "route_count": len(getattr(router, "routes", []) or []),
+            })
             
         except ImportError as e:
             logger.error(f"❌ Could not import {module_path}.{router_attr}: {e}", exc_info=True)
             failed.append(module_path)
+            REGISTRATION_STATE["failed"].append({
+                "module": module_path, "attr": router_attr,
+                "error_type": "ImportError", "error": str(e),
+                "traceback": traceback.format_exc(),
+            })
         except AttributeError as e:
             logger.warning(f"Router '{router_attr}' not found in {module_path}: {e}")
             failed.append(module_path)
+            REGISTRATION_STATE["failed"].append({
+                "module": module_path, "attr": router_attr,
+                "error_type": "AttributeError", "error": str(e),
+                "traceback": traceback.format_exc(),
+            })
         except SyntaxError as e:
             logger.error(f"❌ SYNTAX ERROR in {module_path}: {e}", exc_info=True)
             failed.append(module_path)
+            REGISTRATION_STATE["failed"].append({
+                "module": module_path, "attr": router_attr,
+                "error_type": "SyntaxError", "error": str(e),
+                "traceback": traceback.format_exc(),
+            })
         except Exception as e:
             logger.error(f"❌ Failed to register {module_path}.{router_attr}: {e}", exc_info=True)
             failed.append(module_path)
+            REGISTRATION_STATE["failed"].append({
+                "module": module_path, "attr": router_attr,
+                "error_type": type(e).__name__, "error": str(e),
+                "traceback": traceback.format_exc(),
+            })
+    
+    REGISTRATION_STATE["total_registered"] = registered
+    REGISTRATION_STATE["total_failed"] = len(failed)
     
     logger.info(f"✓ Registered {registered} routers")
     if failed:
