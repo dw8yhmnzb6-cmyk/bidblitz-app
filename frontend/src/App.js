@@ -642,13 +642,13 @@ function AppContent() {
       case "/admin/analytics":
         return user.role === "admin" ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/express-checkout":
-        return <ExpressCheckoutPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ExpressCheckoutPage onBack={() => handleNavigate("/more")} />;
       case "/staff/gps":
-        return <StaffGPSPage onBack={() => handleNavigate("/staff")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <StaffGPSPage onBack={() => handleNavigate("/staff")} />;
       case "/hotels/sabre":
-        return <HotelSabreSearchPage onBack={() => handleNavigate("/hotels")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <HotelSabreSearchPage onBack={() => handleNavigate("/hotels")} />;
       case "/pos/extended":
-        return <POSExtendedPage onBack={() => handleNavigate("/pos")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSExtendedPage onBack={() => handleNavigate("/pos")} />;
       case "/admin/wallet":
         return user.role === "admin" ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/smm":

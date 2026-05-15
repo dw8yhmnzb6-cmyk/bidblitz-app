@@ -1,0 +1,100 @@
+{
+  "summary": "E2E sweep of 15+ new modules built in last session (Express Checkout, Hotels Sabre, Staff GPS, Admin Audit Log, Push Broadcast, POS Extended, Wallet Payments, Analytics Growth, Taxi Voiceover). 24 backend tests run via new pytest file; 20 pass, 4 reveal real bugs. Frontend landing loads cleanly (no compile errors after HotelSabreSearchPage fix), auth-guards verified working for /express-checkout, /staff/gps, /hotels/sabre, /pos/extended (all redirect guest to HomePage). ErrorBoundary not triggered. Several CRITICAL backend bugs found: audit-log 500 crash, express_checkout_stripe.py syntax error (entire module silently skipped — wallet-payment + setup-intent return 404), and frontend-backend path mismatches in PushBroadcast & POSExtended pages.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/pos/features/admin/audit-log",
+        "issue": "500 Internal Server Error — TypeError: unhashable type: 'dict' at pos_features.py:1055. Code does `actor_ids = list({log[\"actor_id\"] for log in logs if log.get(\"actor_id\")})` but some audit log records have `actor_id` stored as a dict object (likely the full user document) instead of a string. Set-comprehension over dicts is not allowed.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "GET /api/express-checkout/stripe/setup-intent & POST /api/express-checkout/stripe/wallet-payment",
+        "issue": "Both endpoints return 404 because /app/backend/routes/express_checkout_stripe.py has a SYNTAX ERROR. Line 174 defines `async def create_setup_intent` but the function body contains only an unterminated docstring (lines 175-186). The `@router.post('/wallet-payment')` decorator at line 178 is INSIDE that docstring. AST parse fails with `SyntaxError: invalid syntax` at line 187. router_registry.py silently swallows the ImportError, so the entire express-checkout/stripe router is never mounted. Affects: save-payment-method, charge, setup-intent, wallet-payment — ALL 4 stripe endpoints under /api/express-checkout/stripe/* are unreachable.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "POST /api/push-notifications/admin/broadcast & GET /api/push-notifications/admin/broadcasts",
+        "issue": "Frontend page AdminPushBroadcastPage.jsx (lines 50, 67) calls these endpoints but they DO NOT EXIST. Backend push_notifications.py uses prefix `/api/push` (not `/api/push-notifications`) and only defines vapid-public-key, subscribe, unsubscribe, test. No admin/broadcast handler at all. Admin Push Broadcast page is non-functional.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "GET /api/pos-extended/cash-register/history, POST /api/pos-extended/cash-register/close-day, GET /api/pos-extended/offline/download-data",
+        "issue": "Frontend POSExtendedPage.jsx calls 3 endpoints under `/api/pos-extended/` (with hyphen) that DO NOT EXIST. Backend pos_extended.py uses prefix `/api/pos` (no hyphen, no `-extended`) and the cash-register / offline routes are not defined anywhere. Entire POS Extended page is broken end-to-end.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "POST /api/express-checkout/init",
+        "issue": "Review request lists this endpoint but it does NOT exist. express_checkout.py only defines /payment-methods, /addresses, /quick-buy. Either the endpoint was never built or was renamed to /quick-buy. Returns 404.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/pos/features/admin/bundles",
+        "issue": "Bundle `key` field is strictly validated against regex ^[a-z0-9_]+$ which rejects uppercase. Not a bug but the AdminBundles UI must enforce lowercase or normalize input."
+      },
+      {
+        "endpoint": "Path mismatch in review request",
+        "issue": "Review request mentioned /api/staff/extended/gps/locations + /api/staff/extended/gps/update — actual routes are /api/staff/gps/staff-locations and /api/staff/gps/update (no `/extended/` segment, and list endpoint is `staff-locations` not `locations`). Frontend uses correct paths."
+      },
+      {
+        "endpoint": "POST /api/hotels/sabre/search",
+        "issue": "Review request claimed GET — actual method is POST with JSON body {city, check_in, check_out, guests, min_stars}. Frontend uses POST correctly."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Admin Push Broadcast page",
+        "issue": "All API calls 404 — endpoints don't exist on backend. Page renders but list always empty and Send fails.",
+        "affected_selectors": ["AdminPushBroadcastPage form"]
+      },
+      {
+        "flow": "POS Extended page (cash register / offline)",
+        "issue": "All 3 API calls 404 due to wrong prefix /api/pos-extended/ vs backend /api/pos/. Plus cash-register/offline endpoints don't exist at all.",
+        "affected_selectors": ["POSExtendedPage history table, close-day button, offline download"]
+      },
+      {
+        "flow": "Express Checkout — Apple/Google Pay wallet payment",
+        "issue": "Wallet payment + setup-intent endpoints unreachable due to backend syntax error. Stripe payment-method save/charge is also broken (same file fails to import).",
+        "affected_selectors": ["ExpressCheckoutPage stripe wallet buttons"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter98_new_modules.py",
+    "/app/test_reports/pytest/iter98.xml"
+  ],
+  "action_items": [
+    "FIX pos_features.py:1055 — wrap with `str(log['actor_id']) if isinstance(log['actor_id'], dict) else log['actor_id']` OR sanitize collection beforehand. The audit-log collection has mixed schema (some actor_id stored as full user dict).",
+    "FIX express_checkout_stripe.py — properly close the create_setup_intent function (line 174). Currently the docstring at line 175 is unterminated and swallows the next @router.post decorator. Add function body OR remove the broken stub. This single fix restores ALL stripe express-checkout endpoints (save-payment-method, charge, setup-intent, wallet-payment).",
+    "BUILD missing /api/push-notifications/admin/broadcast (POST) and /api/push-notifications/admin/broadcasts (GET) endpoints, OR repoint AdminPushBroadcastPage.jsx to existing /api/push/* routes.",
+    "BUILD missing /api/pos-extended/cash-register/history, /api/pos-extended/cash-register/close-day, /api/pos-extended/offline/download-data, OR repoint POSExtendedPage.jsx to correct /api/pos/* routes (and these endpoints likely need to be implemented since pos_extended.py doesn't have cash-register/offline handlers at all).",
+    "CLARIFY whether /api/express-checkout/init was renamed to /api/express-checkout/quick-buy or must still be built (review request listed init).",
+    "Make router_registry import-error handling LOUDER — currently a syntax error in a route file is silently swallowed (file logged at info-level only). Consider raising at startup or alerting in /api/health to prevent silent route loss.",
+    "Normalize lowercase key input in AdminBundlesPage UI to match backend regex ^[a-z0-9_]+$."
+  ],
+  "critical_code_review_comments": [
+    "pos_features.py:1055 — set-comprehension over potentially-dict values is fragile. Either enforce string schema at write time or coerce here.",
+    "express_checkout_stripe.py:173-189 — broken function. Looks like create_setup_intent was started but never finished (docstring left open, no body, no return). Entire module fails to compile.",
+    "router_registry.py — silent swallow of route-module import errors is dangerous. Recommend logging at ERROR with full traceback and surfacing in a /api/diag/routes endpoint.",
+    "Frontend pages (AdminPushBroadcastPage, POSExtendedPage) reference backend endpoints that don't exist anywhere — indicates these pages were built without verifying backend contract. Add a route-contract test (CI-time) that scans frontend /api/* strings and asserts each is reachable.",
+    "Mixed-schema audit log collection (actor_id sometimes dict, sometimes string) — recommend running a one-time migration to normalize to string user_id; add Pydantic write-model to enforce going forward."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter98_new_modules.py (new — 24 tests covering all new modules in review)"
+  ],
+  "success_rate": {
+    "backend": "83% (20/24 passed, 4 real bugs exposed)",
+    "frontend": "Landing + auth-guards 100% OK; 3 pages have backend integration broken (PushBroadcast, POSExtended cash-register/offline, ExpressCheckout Stripe wallet) — not testable end-to-end until backend fixes ship"
+  },
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! ; haendler@bidblitz.com / Haendler2026! ; kunde@bidblitz.com / Kunde2026! — all login via POST /api/auth/login set HTTP-Only cookies (access_token, refresh_token)",
+  "seed_data_creation": "Created 1 Sabre hotel booking for kunde@bidblitz.com (hotel SABRE-* in Berlin, 3 nights, standard room). Created and DELETED 1 test bundle (TEST_BUNDLE_*) attempt failed validation. No persistent test pollution.",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "After E1 fixes the 4 critical bugs, rerun /app/backend/tests/test_iter98_new_modules.py — 4 currently-failing tests should pass: TestAuditLog::test_audit_log_admin_ok, TestExpressCheckout::test_setup_intent, TestExpressCheckout::test_wallet_payment_endpoint_present, TestPosBundles::test_admin_create_and_delete_bundle (lowercase key). Also update TestPushBroadcast + TestPosExtendedFrontendMismatch — currently those test classes ASSERT 404 (documenting the bug); after fix flip them to assert 200/2xx. Auth-guard frontend tests done in iteration_98 — already confirmed working, no need to retest. ErrorBoundary not triggered during sweep (no render errors). Landing page compile clean.",
+  "rca of the issue": "ROOT CAUSE #1 (audit-log 500): pos_features.py:1055 builds a Python set comprehension over log['actor_id'] which is sometimes a dict (legacy schema). Fix: coerce to str() or filter isinstance(..., str). ROOT CAUSE #2 (express-checkout stripe 404s): express_checkout_stripe.py line 174-187 has unterminated function body for create_setup_intent — the unterminated triple-quoted docstring at line 175 captures lines 176-186 and then line 187 'Apple Pay / Google Pay...' is parsed as code, causing SyntaxError. The module fails to import; router_registry catches the exception and continues silently, so all routes under /api/express-checkout/stripe/* are missing. Fix: complete or remove create_setup_intent. ROOT CAUSE #3 (push-broadcast & pos-extended 404s): frontend pages were written referencing endpoints that were never implemented on the backend (wrong prefix '/api/push-notifications' vs '/api/push'; wrong prefix '/api/pos-extended' vs '/api/pos'; missing handlers entirely for cash-register/offline/admin-broadcast). Fix: either implement the endpoints or repoint the frontend."
+}
