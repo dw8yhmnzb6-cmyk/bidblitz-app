@@ -43,6 +43,7 @@ def register_all_routers(app):
         ("routes.feedback", "router"),
         ("routes.auctions", "router"),
         ("routes.express_checkout", "router"),  # New: 1-Klick Checkout
+        ("routes.express_checkout_stripe", "router"),  # Stripe Integration
         ("routes.merchant_connect", "router"),
         ("routes.influencer", "router"),
         ("routes.investor", "router"),
