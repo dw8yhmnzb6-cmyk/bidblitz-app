@@ -14,6 +14,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter113 — Bluetooth Beacon + WLAN-SSID Multi-Signal Detection)
+- 🟢 **Backend Multi-Signal-Boost** (`/app/backend/routes/staff_geofence.py` check_presence): WiFi/BT-Match suggeriert Check-In auch außerhalb GPS-Radius. Neues Feld `match_source` in Response: "gps" | "wifi" | "bluetooth" | "combined" | null. Verifiziert mit 5 Szenarien (far-GPS+WiFi → wifi, far-GPS+BT → bluetooth, near-GPS+WiFi → combined, far-GPS+bad-ssid → null, near-GPS+bad-ssid → gps).
+- 🟢 **useSmartSignals Hook** (`/app/frontend/src/staff/useSmartSignals.js`): Capacitor-aware (`window.Capacitor.Plugins.Wifi`, `BluetoothLe`); Web-Fallback via `navigator.bluetooth.requestDevice()` für Beacons; localStorage-Override für SSID (`staff_wifi_ssid_override`); exportiert `capabilities` für UI-Hints.
+- 🟢 **StaffSmartSetupSheet** (`/app/frontend/src/staff/StaffSmartSetupSheet.jsx`): Bottom-Sheet zur SSID-Konfiguration + Beacon-Scan. Zeigt "Native App erkannt" vs "Browser-Modus" Banner mit erklärenden Hinweisen. Datenschutz-Footer.
+- 🟢 **useGeofenceWatch erweitert**: Sendet `wifi_ssid` + `bluetooth_beacons` automatisch in `/check-presence` Body.
+- 🟢 **NearbyCard erweitert**: Tappable → öffnet SmartSetupSheet; zeigt Match-Badges (`nearby-wifi-badge`, `nearby-bt-badge`) wenn Backend wifi_match / bluetooth_match returnt; "✓ Multi-Signal" Indikator bei combined.
+- ✅ Testing iter113: 7/7 Backend pytest + Frontend E2E verifiziert. End-to-End Multi-Signal funktioniert (Browser-Override → Backend match → Badge im UI). 0 Bugs.
+
+
 ### 15.05.2026 (iter112 — 1:1 Manager↔Staff Chat MVP + Smart Reminders Engine)
 - 🟢 **Chat Backend** (`/app/backend/routes/staff_chat.py`): Thread + Message Model in MongoDB; Endpoints GET/POST /threads, GET/POST /threads/{id}/messages, PATCH /read, GET /unread-count; bidirektionale Unread-Counter (`unread_manager`, `unread_staff`); 4000-Zeichen-Limit; Best-Effort Push via OneSignal bei jeder neuen Manager-Nachricht.
 - 🟢 **Chat Frontend** (`/app/frontend/src/staff/StaffChat.jsx`): `StaffChatInbox` mit Avatar-Initialen + Unread-Badge + relativer Zeit + Last-Message-Preview ("Du: …"); `StaffChatThread` mit Message-Bubbles (rounded-2xl mit asymmetrischen Ecken, blau für Mine, weiß für Peer), Read-Receipts (CheckCheck), optimistic UI, Auto-Scroll, 5s Polling, sticky Composer mit Enter-to-Send; `NewThreadDialog` mit Mitarbeiter-Suche (Manager-Only).
