@@ -404,3 +404,140 @@ async def add_review(req: ReviewCreate, request: Request):
         {"$set": {"rating": round(avg, 1), "review_count": len(all_reviews)}},
     )
     return {"ok": True}
+
+
+
+# ═══════════════════════════════════════════════════════════
+# SABRE INTEGRATION — Zimmersuche & erweiterte Features
+# ═══════════════════════════════════════════════════════════
+import random
+
+MOCK_CHAIN_HOTELS = [
+    {"id": "SABRE-BER-001", "name": "Hilton Berlin", "city": "Berlin", "stars": 5, "lat": 52.5200, "lng": 13.4050, "chain": "Hilton"},
+    {"id": "SABRE-MUC-001", "name": "Marriott München", "city": "München", "stars": 4, "lat": 48.1351, "lng": 11.5820, "chain": "Marriott"},
+    {"id": "SABRE-HAM-001", "name": "Hyatt Hamburg", "city": "Hamburg", "stars": 5, "lat": 53.5511, "lng": 9.9937, "chain": "Hyatt"},
+]
+
+ROOM_TYPES_SABRE = [
+    {"type": "standard", "name": "Standard", "capacity": 2, "size_sqm": 25},
+    {"type": "deluxe", "name": "Deluxe", "capacity": 2, "size_sqm": 35},
+    {"type": "suite", "name": "Suite", "capacity": 4, "size_sqm": 60},
+]
+
+
+class SabreSearchRequest(BaseModel):
+    city: Optional[str] = None
+    check_in: str
+    check_out: str
+    guests: int = 1
+    min_stars: Optional[int] = None
+
+
+@router.post("/sabre/search")
+async def sabre_search_hotels(req: SabreSearchRequest, request: Request):
+    """Sabre-Hotelsuche (Mock)."""
+    hotels = MOCK_CHAIN_HOTELS.copy()
+    
+    if req.city:
+        hotels = [h for h in hotels if req.city.lower() in h["city"].lower()]
+    
+    if req.min_stars:
+        hotels = [h for h in hotels if h["stars"] >= req.min_stars]
+    
+    from datetime import datetime as dt
+    check_in_dt = dt.fromisoformat(req.check_in)
+    check_out_dt = dt.fromisoformat(req.check_out)
+    nights = (check_out_dt - check_in_dt).days
+    
+    results = []
+    for hotel in hotels:
+        available_rooms = []
+        for room_type in ROOM_TYPES_SABRE:
+            if room_type["capacity"] >= req.guests:
+                base_price = {
+                    "standard": 120 + hotel["stars"] * 20,
+                    "deluxe": 180 + hotel["stars"] * 30,
+                    "suite": 350 + hotel["stars"] * 50,
+                }[room_type["type"]]
+                
+                available = random.randint(1, 8)
+                available_rooms.append({
+                    **room_type,
+                    "available_count": available,
+                    "price_per_night": base_price,
+                    "total_price": round(base_price * nights, 2),
+                })
+        
+        results.append({
+            **hotel,
+            "available_rooms": available_rooms,
+            "nights": nights,
+        })
+    
+    return {"hotels": results, "count": len(results)}
+
+
+class SabreBookingRequest(BaseModel):
+    hotel_id: str
+    room_type: str
+    check_in: str
+    check_out: str
+    guests: int
+    guest_name: str
+    guest_email: str
+
+
+@router.post("/sabre/book")
+async def sabre_create_booking(req: SabreBookingRequest, request: Request):
+    """Sabre-Buchung."""
+    user = await get_current_user(request)
+    
+    hotel = next((h for h in MOCK_CHAIN_HOTELS if h["id"] == req.hotel_id), None)
+    if not hotel:
+        raise HTTPException(404, "Hotel nicht gefunden")
+    
+    from datetime import datetime as dt
+    check_in_dt = dt.fromisoformat(req.check_in)
+    check_out_dt = dt.fromisoformat(req.check_out)
+    nights = (check_out_dt - check_in_dt).days
+    
+    base_price = {
+        "standard": 120 + hotel["stars"] * 20,
+        "deluxe": 180 + hotel["stars"] * 30,
+        "suite": 350 + hotel["stars"] * 50,
+    }.get(req.room_type, 150)
+    
+    total = round(base_price * nights, 2)
+    
+    booking = {
+        "booking_id": f"SABRE-{secrets.token_hex(5).upper()}",
+        "user_id": str(user["_id"]),
+        "hotel_id": req.hotel_id,
+        "hotel_name": hotel["name"],
+        "hotel_city": hotel["city"],
+        "room_type": req.room_type,
+        "check_in": req.check_in,
+        "check_out": req.check_out,
+        "nights": nights,
+        "guests": req.guests,
+        "guest_name": req.guest_name,
+        "guest_email": req.guest_email,
+        "total_price": total,
+        "status": "confirmed",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.hotel_bookings_sabre.insert_one(booking)
+    booking.pop("_id", None)
+    
+    return {"ok": True, "booking": booking}
+
+
+@router.get("/sabre/bookings")
+async def my_sabre_bookings(request: Request):
+    """Eigene Sabre-Buchungen."""
+    user = await get_current_user(request)
+    bookings = await db.hotel_bookings_sabre.find(
+        {"user_id": str(user["_id"])},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return {"bookings": bookings}
