@@ -59,6 +59,7 @@ def register_all_routers(app):
         ("routes.pos_chat", "router"),
         ("routes.pos_admin_self", "router"),
         ("routes.pos_extended", "router"),
+        ("routes.pos_extended_cash", "router"),
         ("routes.pos_advanced", "router"),
         ("routes.pos_pro", "router"),
         ("routes.pos_vouchers", "router"),
@@ -161,6 +162,7 @@ def register_all_routers(app):
         ("routes.friends", "router"),
         ("routes.web_push", "router"),
         ("routes.push_notifications", "router"),
+        ("routes.push_notifications", "admin_router"),
         
         # Mobility
         ("routes.taxi", "router"),
@@ -216,13 +218,16 @@ def register_all_routers(app):
             registered += 1
             
         except ImportError as e:
-            logger.warning(f"Could not import {module_path}.{router_attr}: {e}")
+            logger.error(f"❌ Could not import {module_path}.{router_attr}: {e}", exc_info=True)
             failed.append(module_path)
         except AttributeError as e:
             logger.warning(f"Router '{router_attr}' not found in {module_path}: {e}")
             failed.append(module_path)
+        except SyntaxError as e:
+            logger.error(f"❌ SYNTAX ERROR in {module_path}: {e}", exc_info=True)
+            failed.append(module_path)
         except Exception as e:
-            logger.error(f"Failed to register {module_path}.{router_attr}: {e}")
+            logger.error(f"❌ Failed to register {module_path}.{router_attr}: {e}", exc_info=True)
             failed.append(module_path)
     
     logger.info(f"✓ Registered {registered} routers")

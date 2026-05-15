@@ -1,0 +1,49 @@
+{
+  "summary": "Re-test of 5 CRITICAL bugs from iteration_98 after E1's fixes. All 4 originally-failing tests now pass + 5 new regression/fix-verification tests added. Total 28/28 backend tests green. All 5 CRITICAL fixes verified working: (1) audit-log no longer crashes with dict-actor_id (200 OK with logs), (2) express-checkout/stripe/setup-intent + wallet-payment endpoints now reachable (express_checkout_stripe.py syntax error fixed, module imports), (3) push-notifications/admin/broadcast + /broadcasts admin_router live (200 + auth-guard for kunde), (4) pos-extended/cash-register/history + close-day + offline/download-data routes registered via new pos_extended_cash.py (200, with merchant-business-404 for accounts without merchant record — which is expected business logic), (5) express-checkout/init alias to /quick-buy works. Regression: /quick-buy still functional, all 5 Analytics endpoints still 200 for admin and 403 for kunde.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/pos-extended/cash-register/history & /offline/download-data",
+        "issue": "Return 404 with body 'Kein Merchant für diesen Account gefunden' for the haendler@bidblitz.com test account. Endpoint IS registered & reachable (close-day on same path returns 422 not 404, confirming routing works). The 404 is a business-logic 'merchant not found' for the seeded test merchant. Recommendation: either auto-create a merchant record for the seeded haendler user, OR return 200 with empty list when merchant-not-found instead of 404 to match REST conventions for list endpoints."
+      },
+      {
+        "endpoint": "POST /api/pos/features/admin/bundles",
+        "issue": "Pre-existing schema: features[] requires objects with shape {key, name, price} (not strings) and only registered feature keys are accepted (e.g. 'tse' rejected with 'Unbekannte Feature-Keys'). UI must enforce. Bundle key regex ^[a-z0-9_]+$ also enforced."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter98_new_modules.py",
+    "/app/test_reports/pytest/iter99.xml"
+  ],
+  "action_items": [
+    "(Minor) Decide on cash-register/history & offline/download-data behavior when no merchant exists for the user — return 200+empty list instead of 404 for better REST/UX, OR auto-provision a merchant record for the seeded haendler@bidblitz.com test account.",
+    "(Minor) AdminBundlesPage UI: enforce lowercase bundle key, require valid feature keys with object shape {key,name,price}."
+  ],
+  "critical_code_review_comments": [
+    "express_checkout_stripe.py — Fix verified: create_setup_intent (lines 173-217) is properly closed; orphan code removed; module now imports cleanly and registers all stripe endpoints (setup-intent, wallet-payment, save-payment-method, charge).",
+    "pos_features.py — Fix verified: audit-log endpoint no longer raises TypeError on dict actor_id. Recommend completing the suggested one-time migration to normalize legacy dict actor_id values to plain user_id strings to keep schema consistent.",
+    "pos_extended_cash.py (new) — Routes correctly registered under /api/pos-extended prefix. Suggest 200+empty list for list endpoints when merchant missing instead of 404 (current behavior couples 'no data' and 'wrong endpoint' under same status).",
+    "router_registry.py — Couldn't verify the LOUDER import-error logging during this run (no module currently fails to import), but suggest adding a startup-time assertion or /api/diag/routes endpoint exposing failed mounts in future iterations.",
+    "push_notifications.py admin_router — Auth-guard verified (kunde 401/403, admin 200). Confirm DB cleanup / pagination for /admin/broadcasts list in future tests."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter98_new_modules.py (flipped 404 assertions to 2xx/503 for the 4 fixed bugs; added 5 new tests: TestPushBroadcast x3, TestPosExtendedCash x3, TestExpressCheckoutInit x2; fixed bundle payload schema)"
+  ],
+  "success_rate": {
+    "backend": "100% (28/28 passed, all 5 CRITICAL fixes verified)",
+    "frontend": "Not retested per review request — already verified OK in iteration_98"
+  },
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026! ; haendler@bidblitz.com / Haendler2026! ; kunde@bidblitz.com / Kunde2026! — cookie-based via POST /api/auth/login",
+  "seed_data_creation": "1 TEST_ bundle created and deleted (test_bundle_<ts>), 1 Sabre hotel booking created for kunde (cleanup not implemented but stable test data). No pollution.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter98 4 CRITICAL bugs fully fixed and verified in iter99 (28/28 tests pass). Stripe endpoints currently return 503 (STRIPE_SECRET_KEY not configured in preview) — that's expected. If STRIPE_SECRET_KEY is configured, retest TestExpressCheckout::test_setup_intent should return 200 with client_secret. The pos-extended/cash-register endpoints return 404 'merchant not found' for the seeded haendler — minor follow-up if E1 wants merchant auto-provisioning.",
+  "rca of the issue": "All 5 fixes from iter98 verified working: (1) pos_features.py:1055 dict→str coercion handles legacy actor_id schema; (2) express_checkout_stripe.py create_setup_intent body completed, orphan @router.post decorator no longer inside docstring, module imports cleanly; (3) admin_router added to push_notifications.py with /admin/broadcast + /admin/broadcasts handlers under /api/push-notifications prefix; (4) pos_extended_cash.py new module mounts /api/pos-extended/cash-register/* and /api/pos-extended/offline/* endpoints; (5) /init route added as alias to /quick-buy in express_checkout.py. Backend has 150 routers registered. No regressions detected in analytics-growth, quick-buy, hotels-sabre, staff-gps, taxi-voiceover, pos-bundles."
+}

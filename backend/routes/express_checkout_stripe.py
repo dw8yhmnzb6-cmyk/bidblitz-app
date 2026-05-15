@@ -173,6 +173,48 @@ async def charge_with_saved_method(
 @router.get("/setup-intent")
 async def create_setup_intent(request: Request):
     """
+    Erstellt einen Stripe SetupIntent zum Speichern einer Zahlungsmethode
+    (Apple Pay / Google Pay / Karte) ohne sofortige Belastung.
+    """
+    from core.security import get_current_user
+    from core.database import db
+
+    user = await get_current_user(request)
+
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(503, "Stripe nicht konfiguriert")
+
+    try:
+        import stripe
+        stripe.api_key = STRIPE_SECRET_KEY
+
+        user_record = await db.users.find_one({"_id": user["_id"]})
+        customer_id = (user_record or {}).get("stripe_customer_id")
+        if not customer_id:
+            customer = stripe.Customer.create(
+                email=user.get("email"),
+                metadata={"user_id": str(user["_id"])}
+            )
+            customer_id = customer.id
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"stripe_customer_id": customer_id}}
+            )
+
+        intent = stripe.SetupIntent.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+            usage="off_session",
+        )
+        return {
+            "client_secret": intent.client_secret,
+            "setup_intent_id": intent.id,
+            "customer_id": customer_id,
+        }
+    except ImportError:
+        raise HTTPException(503, "Stripe library fehlt")
+    except Exception as e:
+        raise HTTPException(500, f"SetupIntent fehlgeschlagen: {str(e)}")
 
 
 @router.post("/wallet-payment")
@@ -241,50 +283,3 @@ async def wallet_payment(
     
     except Exception as e:
         raise HTTPException(500, f"Wallet-Zahlung fehlgeschlagen: {str(e)}")
-
-    Setup Intent für Kartenspeicherung ohne Zahlung.
-    Frontend nutzt dies für Stripe Elements.
-    """
-    from core.security import get_current_user
-    from core.database import db
-    
-    user = await get_current_user(request)
-    
-    if not STRIPE_SECRET_KEY:
-        raise HTTPException(503, "Stripe nicht konfiguriert")
-    
-    try:
-        import stripe
-        stripe.api_key = STRIPE_SECRET_KEY
-        
-        # Stripe Customer
-        user_record = await db.users.find_one({"_id": user["_id"]})
-        customer_id = user_record.get("stripe_customer_id")
-        
-        if not customer_id:
-            customer = stripe.Customer.create(
-                email=user.get("email"),
-                metadata={"user_id": str(user["_id"])}
-            )
-            customer_id = customer.id
-            await db.users.update_one(
-                {"_id": user["_id"]},
-                {"$set": {"stripe_customer_id": customer_id}}
-            )
-        
-        # Setup Intent
-        intent = stripe.SetupIntent.create(
-            customer=customer_id,
-            payment_method_types=["card"],
-        )
-        
-        return {
-            "client_secret": intent.client_secret,
-            "setup_intent_id": intent.id,
-        }
-    
-    except ImportError:
-        raise HTTPException(503, "Stripe library fehlt")
-    
-    except Exception as e:
-        raise HTTPException(500, f"Setup Intent Fehler: {str(e)}")

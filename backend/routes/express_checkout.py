@@ -189,8 +189,9 @@ class ExpressCheckoutRequest(BaseModel):
 
 
 @router.post("/quick-buy")
+@router.post("/init")
 async def express_checkout(req: ExpressCheckoutRequest, request: Request):
-    """1-Klick-Checkout mit gespeicherten Daten."""
+    """1-Klick-Checkout mit gespeicherten Daten. Alias: /init (kompatibel zur Roadmap)."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     

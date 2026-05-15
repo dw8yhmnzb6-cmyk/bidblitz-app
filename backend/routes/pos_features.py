@@ -1052,7 +1052,7 @@ async def admin_audit_log(
 
     # Enrich mit Admin Email
     from bson import ObjectId
-    actor_ids = list({log["actor_id"] for log in logs if log.get("actor_id")})
+    actor_ids = list({log["actor_id"] for log in logs if log.get("actor_id") and isinstance(log["actor_id"], str)})
     users_map = {}
     if actor_ids:
         # Convert string IDs to ObjectId for MongoDB query
@@ -1065,7 +1065,12 @@ async def admin_audit_log(
 
     for log in logs:
         actor_id = log.get("actor_id")
-        log["admin_email"] = users_map.get(actor_id, "system") if actor_id else "system"
+        if isinstance(actor_id, dict):
+            # Legacy schema: actor_id was stored as full user dict
+            log["admin_email"] = actor_id.get("email", "system")
+            log["actor_id"] = str(actor_id.get("_id") or actor_id.get("id") or "")
+        else:
+            log["admin_email"] = users_map.get(actor_id, "system") if actor_id else "system"
 
     total = await db.pos_audit_log.count_documents(query)
 

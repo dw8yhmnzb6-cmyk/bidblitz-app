@@ -210,13 +210,16 @@ class TestPosBundles:
         assert r.status_code == 200, r.text[:300]
 
     def test_admin_create_and_delete_bundle(self, admin_sess):
-        key = f"TEST_BUNDLE_{int(datetime.now().timestamp())}"
+        # Backend validates ^[a-z0-9_]+$ — keep lowercase to match regex
+        key = f"test_bundle_{int(datetime.now().timestamp())}"
         payload = {
             "key": key,
             "name": "TEST Bundle",
-            "features": ["loyalty", "tse"],
+            "features": [
+                {"key": "loyalty", "name": "Loyalty", "price": 0.0},
+            ],
             "price_eur": 49.0,
-            "description": "Test bundle for iter98",
+            "description": "Test bundle for iter99",
         }
         r = admin_sess.post(f"{BASE_URL}/api/pos/features/admin/bundles", json=payload, timeout=15)
         assert r.status_code in (200, 201), r.text[:300]
@@ -225,30 +228,79 @@ class TestPosBundles:
         assert d.status_code in (200, 204, 404)
 
 
-# ---------------- Push Broadcast (Frontend references non-existent endpoint) ----------------
+# ---------------- Push Broadcast (admin_router added in iter98 fixes) ----------------
 class TestPushBroadcast:
-    def test_admin_broadcasts_list_endpoint_missing(self, admin_sess):
+    def test_admin_broadcasts_list_ok(self, admin_sess):
         # Frontend AdminPushBroadcastPage calls /api/push-notifications/admin/broadcasts
         r = admin_sess.get(f"{BASE_URL}/api/push-notifications/admin/broadcasts", timeout=15)
-        # Document the 404 - this is a bug
-        assert r.status_code == 404, f"Endpoint now exists with {r.status_code}? (was missing)"
+        assert r.status_code == 200, f"Expected 200, got {r.status_code} {r.text[:300]}"
+        data = r.json()
+        assert isinstance(data, (dict, list))
 
-    def test_admin_broadcast_send_endpoint_missing(self, admin_sess):
+    def test_admin_broadcast_send_ok(self, admin_sess):
         r = admin_sess.post(
             f"{BASE_URL}/api/push-notifications/admin/broadcast",
-            json={"title": "TEST", "body": "TEST broadcast", "target": "all"},
+            json={"title": "TEST_iter99", "body": "TEST broadcast iter99", "target": "all"},
             timeout=15,
         )
-        assert r.status_code == 404, f"Broadcast endpoint may exist now (got {r.status_code})"
+        # 200/201 = sent, 400/422 = validation issue but endpoint exists, 503 = service not configured
+        assert r.status_code in (200, 201, 202, 400, 422, 503), f"Got {r.status_code} {r.text[:300]}"
+        assert r.status_code != 404, "Broadcast endpoint must exist"
+
+    def test_admin_broadcasts_forbidden_for_kunde(self, kunde_sess):
+        r = kunde_sess.get(f"{BASE_URL}/api/push-notifications/admin/broadcasts", timeout=15)
+        assert r.status_code in (401, 403), f"Should be forbidden, got {r.status_code}"
 
 
-# ---------------- POS Extended Frontend mismatch ----------------
-class TestPosExtendedFrontendMismatch:
-    def test_pos_extended_cash_register_history_missing(self, merchant_sess):
-        # Frontend calls /api/pos-extended/cash-register/history (HYPHEN) but backend uses /api/pos/
+# ---------------- POS Extended Cash Register (new pos_extended_cash router) ----------------
+class TestPosExtendedCash:
+    def test_pos_extended_cash_register_history_ok(self, merchant_sess):
         r = merchant_sess.get(f"{BASE_URL}/api/pos-extended/cash-register/history", timeout=15)
-        assert r.status_code == 404, f"Endpoint now exists (got {r.status_code})"
+        # Endpoint exists. 200 = data, 404 with merchant-not-found body = endpoint up but no merchant record.
+        assert r.status_code in (200, 401, 403, 404), f"Got {r.status_code} {r.text[:300]}"
+        if r.status_code == 404:
+            body = r.json()
+            assert "Merchant" in body.get("detail", "") or "merchant" in body.get("detail", "").lower(), \
+                f"404 must be merchant-not-found business error, got: {r.text[:300]}"
 
-    def test_pos_extended_offline_download_missing(self, merchant_sess):
+    def test_pos_extended_cash_register_close_day(self, merchant_sess):
+        r = merchant_sess.post(
+            f"{BASE_URL}/api/pos-extended/cash-register/close-day",
+            json={"counted_cash": 100.0, "notes": "TEST_iter99 close-day"},
+            timeout=15,
+        )
+        assert r.status_code != 404, "cash-register/close-day endpoint must exist"
+        assert r.status_code in (200, 201, 400, 401, 403, 422), f"Got {r.status_code} {r.text[:300]}"
+
+    def test_pos_extended_offline_download_ok(self, merchant_sess):
         r = merchant_sess.get(f"{BASE_URL}/api/pos-extended/offline/download-data", timeout=15)
-        assert r.status_code == 404, f"Endpoint now exists (got {r.status_code})"
+        # Endpoint exists. 200 = data, 404 with merchant-not-found body = endpoint up but no merchant record.
+        assert r.status_code in (200, 401, 403, 404), f"Got {r.status_code} {r.text[:300]}"
+        if r.status_code == 404:
+            body = r.json()
+            assert "Merchant" in body.get("detail", "") or "merchant" in body.get("detail", "").lower(), \
+                f"404 must be merchant-not-found business error, got: {r.text[:300]}"
+
+
+# ---------------- Express Checkout init alias ----------------
+class TestExpressCheckoutInit:
+    def test_init_alias_endpoint_exists(self, kunde_sess):
+        # /init should now be an alias for /quick-buy
+        r = kunde_sess.post(
+            f"{BASE_URL}/api/express-checkout/init",
+            json={"product_id": "test_product", "amount": 100, "currency": "eur"},
+            timeout=15,
+        )
+        assert r.status_code != 404, "Express checkout /init alias must exist"
+        # 200/201 if valid, 400/422 if payload validation fails, but NOT 404
+        assert r.status_code in (200, 201, 400, 401, 402, 403, 422, 503), f"Got {r.status_code} {r.text[:300]}"
+
+    def test_quick_buy_still_works(self, kunde_sess):
+        # Regression: original /quick-buy must still work
+        r = kunde_sess.post(
+            f"{BASE_URL}/api/express-checkout/quick-buy",
+            json={"product_id": "test_product", "amount": 100, "currency": "eur"},
+            timeout=15,
+        )
+        assert r.status_code != 404, "quick-buy must still exist"
+        assert r.status_code in (200, 201, 400, 401, 402, 403, 422, 503), f"Got {r.status_code} {r.text[:300]}"

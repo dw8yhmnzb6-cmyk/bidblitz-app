@@ -15,6 +15,9 @@ import logging
 logger = logging.getLogger("bidblitz.push")
 router = APIRouter(prefix="/api/push", tags=["push"])
 
+# Mirror router for legacy/alternative frontend paths (/api/push-notifications/*)
+admin_router = APIRouter(prefix="/api/push-notifications", tags=["push-admin"])
+
 # VAPID Configuration
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "").replace("\\n", "\n")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").replace("\\n", "\n")
@@ -232,3 +235,83 @@ async def test_push(request: Request):
         raise HTTPException(404, "Keine Push-Subscriptions gefunden. Bitte aktiviere Benachrichtigungen.")
     
     return {"ok": True, "sent": count, "message": f"Test-Push an {count} Gerät(e) gesendet"}
+
+
+# ═════════════════════════════════════════════════════════════════
+# ADMIN BROADCAST
+# ═════════════════════════════════════════════════════════════════
+
+from datetime import datetime, timezone
+
+
+class BroadcastBody(BaseModel):
+    title: str
+    body: str
+    target: Optional[str] = "all"  # all | admins | merchants
+    url: Optional[str] = None
+
+
+async def _require_admin(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Admin access required")
+    return user
+
+
+@admin_router.post("/admin/broadcast")
+async def admin_broadcast(body: BroadcastBody, request: Request):
+    """Send a push broadcast to selected user segment."""
+    admin = await _require_admin(request)
+
+    # Resolve target user_ids
+    if body.target == "admins":
+        users = await db.users.find({"role": "admin"}, {"_id": 1}).to_list(10000)
+    elif body.target == "merchants":
+        users = await db.users.find({"role": "merchant"}, {"_id": 1}).to_list(10000)
+    else:
+        users = await db.users.find({}, {"_id": 1}).to_list(50000)
+
+    target_user_ids = [str(u["_id"]) for u in users]
+
+    # Send pushes
+    devices = 0
+    message = PushMessage(
+        title=body.title,
+        body=body.body,
+        icon="/logo192.png",
+        badge="/logo192.png",
+        tag="admin_broadcast",
+        data={"type": "broadcast", "url": body.url or "/"},
+    )
+    for uid in target_user_ids:
+        try:
+            devices += await send_push_to_user(uid, message)
+        except Exception:
+            pass
+
+    # Persist broadcast history
+    record = {
+        "title": body.title,
+        "body": body.body,
+        "target": body.target or "all",
+        "url": body.url,
+        "target_users": len(target_user_ids),
+        "devices": devices,
+        "sent_by": admin.get("email"),
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.push_broadcasts.insert_one(record)
+
+    return {
+        "ok": True,
+        "target_users": len(target_user_ids),
+        "devices": devices,
+    }
+
+
+@admin_router.get("/admin/broadcasts")
+async def admin_broadcasts_list(request: Request, limit: int = 50):
+    """List recent push broadcasts (admin only)."""
+    await _require_admin(request)
+    items = await db.push_broadcasts.find({}, {"_id": 0}).sort("sent_at", -1).limit(min(limit, 200)).to_list(200)
+    return {"broadcasts": items}
