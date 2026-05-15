@@ -14,6 +14,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter111 — Staff Portal komplettes UI-Redesign)
+- 🟢 **`StaffPortalPage.jsx` komplett neu** (~600 LOC): Light-Theme nach User-Referenz-Designs.
+- 🟢 **Home-Tab**: Live-Timer-Card (grün/orange gradient banner + LIVE-pulse-badge), riesiger HH:MM:SS Timer (tabular-nums, ticks 1Hz via `useLiveTimer` hook), 2 große gradient-Action-Buttons (Pause grün / Schicht-Ende rot), 4 Stat-Cards (Gearbeitet/Pause/Überstunden/Buchungen), Next-Shift-Card, Alles-klar-Banner.
+- 🟢 **Shifts-Tab**: Liste/Kalender Toggle (blauer Pill-Switch), Schicht-Cards mit Wochentag-Badge + Aktiv/Vorbei/Geplant Pills, voller Mini-Kalender mit Today-Highlight + Schicht-Dots.
+- 🟢 **Anträge-Tab**: Urlaub/Krank/Sonstiges mit Status-Pills (Offen/Genehmigt/Abgelehnt), Bottom-Sheet Antrags-Formular.
+- 🟢 **Profil-Tab**: Blaue Gradient-Profilkarte mit Avatar-Initial + 3-Stats (Woche/Überstunden/Buchungen) + Menü-Liste + Logout.
+- 🟢 **Bottom-Tab-Nav**: 4-Tabs (Home/Schichten/Anträge/Mehr) — App-BottomNav für `/staff/portal` deaktiviert (überlagerte sonst).
+- ✅ **Live verifiziert** (Playwright): Timer tickt korrekt 00:00:23 → 00:01:41, alle 4 Tabs rendern, design matches reference 1:1.
+
+
+
 ### 15.05.2026 (iter110 — DB-Migration + Probe-Auth + Bundle-Validation)
 - 🟢 **DB-Migration `pos_audit_log` actor_id**: 5 Legacy-Records mit Dict-`actor_id` (inkl. **password_hash + payment_barcode geleakt!**) → normalisiert zu plain user_id strings. Sensitive Felder (password, password_hash, card_number, card_expiry, payment_barcode, balance, referral_code, force_restart, last_seen) in `actor_id_legacy` Backup als `***REDACTED***` ersetzt. Endpoints: `GET/POST/POST /api/diag/migrations/audit-log-actor-id/preview|run|rollback` (Admin).
 - 🟢 **Probe-Token-Auth**: `HEALTH_PROBE_TOKEN` ENV-Variable. Wenn gesetzt → `/api/diag/health/probe` verlangt `X-Probe-Token` Header oder `?token=` Query. Wenn nicht gesetzt → bleibt public. Verifiziert: ohne/wrong → 401, korrekt → 503/200.
