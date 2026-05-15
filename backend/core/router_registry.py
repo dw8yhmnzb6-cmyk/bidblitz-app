@@ -42,6 +42,7 @@ def register_all_routers(app):
         ("routes.support", "router"),
         ("routes.feedback", "router"),
         ("routes.auctions", "router"),
+        ("routes.express_checkout", "router"),  # New: 1-Klick Checkout
         ("routes.merchant_connect", "router"),
         ("routes.influencer", "router"),
         ("routes.investor", "router"),
@@ -72,6 +73,7 @@ def register_all_routers(app):
         
         # Staff Management
         ("routes.staff", "router"),
+        ("routes.staff_extended", "router"),  # New: Urlaub + GPS
         ("routes.staff_multi_merchant", "router"),
         ("routes.staff_subscription", "router"),
         ("routes.staff_settings", "router"),
