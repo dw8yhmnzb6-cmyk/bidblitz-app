@@ -105,6 +105,7 @@ const StaffSettingsPage = lazy(() => import("./pages/StaffSettingsPage"));
 const StaffMobilePage = lazy(() => import("./pages/StaffMobilePage"));
 const StaffInvitePage = lazy(() => import("./pages/StaffInvitePage"));
 const StaffSystemCheckPage = lazy(() => import("./pages/StaffSystemCheckPage"));
+const ManagerGeofencePage = lazy(() => import("./staff/ManagerGeofencePage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
 const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
@@ -600,6 +601,10 @@ function AppContent() {
       case "/staff/settings":
         return user.role === "merchant" || user.role === "admin"
           ? <StaffSettingsPage onBack={() => handleNavigate("/merchant/staff")} />
+          : <HomePage {...homeProps} />;
+      case "/merchant/staff/geofence":
+        return user.role === "merchant" || user.role === "admin"
+          ? <ManagerGeofencePage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;

@@ -8,8 +8,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Users, CheckCircle2, Coffee, AlertCircle, Calendar, Sparkles,
-  Clock, Briefcase, ArrowUpRight, Activity, FilePlus, UserPlus, ChevronRight, TrendingUp,
+  Clock, Briefcase, ArrowUpRight, Activity, FilePlus, UserPlus, ChevronRight, TrendingUp, MapPin,
 } from "lucide-react";
+import LiveActivityTimeline from "../../staff/LiveActivityTimeline";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -20,8 +21,9 @@ function actionColor(a) {
   return { clock_in: "#10B981", clock_out: "#EF4444", break_start: "#F59E0B", break_end: "#06B6D4" }[a] || "#888";
 }
 
-export default function MerchantLiveOverview({ summary = {}, members = [], todayEvents = [], onAddMember, onCreateShift, onOpenTimesheet }) {
+export default function MerchantLiveOverview({ summary = {}, members = [], todayEvents = [], onAddMember, onCreateShift, onOpenTimesheet, onOpenGeofence }) {
   const [monthHours, setMonthHours] = useState(null);
+  const [geoEvents, setGeoEvents] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -30,6 +32,13 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
         if (r.ok) {
           const d = await r.json();
           setMonthHours(d.totals);
+        }
+      } catch (e) {}
+      try {
+        const g = await fetch(`${API}/api/staff/geofence/events?limit=30`, { credentials: "include" });
+        if (g.ok) {
+          const d = await g.json();
+          setGeoEvents(d.events || []);
         }
       } catch (e) {}
     })();
@@ -159,54 +168,52 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
             <QuickAction icon={UserPlus} color="#00D4FF" label="Mitarbeiter hinzufügen" onClick={onAddMember} testId="merchant-qa-add-member" />
             <QuickAction icon={Calendar} color="#A855F7" label="Schicht erstellen" onClick={onCreateShift} testId="merchant-qa-create-shift" />
             <QuickAction icon={FilePlus} color="#10B981" label="Timesheet ansehen" onClick={onOpenTimesheet} testId="merchant-qa-open-timesheet" />
+            {onOpenGeofence && (
+              <QuickAction icon={MapPin} color="#0EA5E9" label="Standorte & Ankünfte" onClick={onOpenGeofence} testId="merchant-qa-open-geofence" />
+            )}
           </div>
         </div>
       </div>
 
-      {/* Activity Feed */}
-      <div className="rounded-3xl bg-white/[0.02] border border-white/[0.08] p-5" data-testid="merchant-activity-feed">
-        <div className="flex items-center justify-between mb-3">
+      {/* Activity Feed — Premium Live Timeline */}
+      <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-5" data-testid="merchant-activity-feed">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-slate-500">Aktivitäts-Feed</p>
-            <h3 className="text-base font-bold mt-0.5 flex items-center gap-2">
-              <Activity size={14} className="text-[#00D4FF]" /> Heute
+            <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Live Activity</p>
+            <h3 className="text-base font-bold mt-0.5 flex items-center gap-2 text-slate-900">
+              <Activity size={14} className="text-emerald-500" /> Heute · alles auf einen Blick
             </h3>
           </div>
+          <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500">
+            <span className="relative flex w-1.5 h-1.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-70 animate-ping" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            </span>
+            Live
+          </span>
         </div>
 
-        {todayEvents.length === 0 ? (
-          <EmptyTile icon={Clock} title="Noch keine Buchungen heute" sub="Sobald Mitarbeiter ein- oder auschecken erscheinen die Bewegungen hier." />
-        ) : (
-          <div className="space-y-1.5">
-            {todayEvents.slice(0, 12).map((event, i) => {
-              const member = members.find((m) => m.id === event.staff_id);
-              const color = actionColor(event.action);
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.02 }}
-                  className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-white transition-colors"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00D4FF]/15 to-[#A855F7]/15 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      {member?.name?.[0] || "?"}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold truncate">{member?.name || "Unbekannt"}</p>
-                      <p className="text-[10px]" style={{ color }}>{actionLabel(event.action)}</p>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-slate-500 tabular-nums flex-shrink-0">
-                    {new Date(event.timestamp).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
+        <LiveActivityTimeline
+          events={[
+            ...todayEvents.map((e) => ({
+              id: e.id || `${e.staff_id}-${e.timestamp}`,
+              staff_id: e.staff_id,
+              staff_name: members.find((m) => m.id === e.staff_id)?.name,
+              action: e.action,
+              ts: e.timestamp,
+            })),
+            ...geoEvents.map((e) => ({
+              id: e.id,
+              staff_id: e.staff_id,
+              staff_name: members.find((m) => m.id === e.staff_id)?.name,
+              event_type: e.event_type,
+              ts: e.ts,
+              suspected_spoof: e.suspected_spoof,
+            })),
+          ]}
+          limit={20}
+          testid="merchant-timeline"
+        />
       </div>
     </div>
   );

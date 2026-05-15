@@ -9,9 +9,12 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Bell, Play, Square, Coffee, Pause, MapPin, Clock, Calendar,
   CheckCircle2, Loader2, LogOut, User, ChevronRight, ListTodo, Settings,
-  AlertCircle, Plus, FileText, Briefcase, BellRing,
+  AlertCircle, Plus, FileText, Briefcase, BellRing, Sun, Cloud, Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useGeofenceWatch } from "../staff/useGeofenceWatch";
+import { GeofenceArrivalModal } from "../staff/GeofenceArrivalModal";
+import { SmartStatusPill } from "../staff/SmartStatusPill";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -55,6 +58,8 @@ export default function StaffPortalPage({ onBack }) {
   const [myLeave, setMyLeave] = useState([]);
   const [lastEvent, setLastEvent] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [geofencePrompt, setGeofencePrompt] = useState(null);
+  const [smartPresence, setSmartPresence] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -102,6 +107,21 @@ export default function StaffPortalPage({ onBack }) {
     if (lastEvent.action === "break_start") return "break";
     return "off";
   }, [lastEvent]);
+
+  // Smart status: combines clock status + geofence presence
+  const smartStatus = useMemo(() => {
+    if (status === "working") return "working";
+    if (status === "break") return "break";
+    const sp = smartPresence?.smart_status;
+    if (sp === "arrived") return "arrived";
+    if (sp === "approaching") return "approaching";
+    return "off";
+  }, [status, smartPresence]);
+
+  const nextShift = useMemo(
+    () => myShifts.find((s) => new Date(s.start_time) > new Date()) || null,
+    [myShifts]
+  );
 
   const shiftStartedAt = useMemo(() => {
     // find most recent clock_in or break_end timestamp
@@ -151,12 +171,35 @@ export default function StaffPortalPage({ onBack }) {
   };
 
   // Geofence watch — runs in background when off-shift
-  const [geofencePrompt, setGeofencePrompt] = useState(null);
   useGeofenceWatch({
     enabled: !!staff,
     isWorking: status === "working" || status === "break",
     onSuggestCheckin: (info) => setGeofencePrompt(info),
   });
+  // Poll smart status separately for the smart pill
+  useEffect(() => {
+    if (!staff) return;
+    let cancelled = false;
+    const fetchStatus = async () => {
+      try {
+        if (!navigator.geolocation) return;
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000, maximumAge: 30000 })
+        );
+        const r = await fetch(`${API}/api/staff/geofence/check-presence`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy_m: pos.coords.accuracy }),
+        });
+        if (!r.ok || cancelled) return;
+        const d = await r.json();
+        if (!cancelled) setSmartPresence(d);
+      } catch {}
+    };
+    fetchStatus();
+    const id = setInterval(fetchStatus, 45000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [staff]);
 
   if (loading || !staff) {
     return (
@@ -187,14 +230,17 @@ export default function StaffPortalPage({ onBack }) {
           </button>
         </div>
         {tab === "home" && (
-          <div className="mt-3">
-            <p className="text-xs text-slate-500">{greeting()},</p>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              {staff?.name?.split(" ")[0] || "Mitarbeiter"} <span className="text-2xl">👋</span>
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
+          <div className="mt-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">{greeting()},</p>
+              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                {staff?.name?.split(" ")[0] || "Mitarbeiter"} <span className="text-2xl">👋</span>
+              </h1>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
+              </p>
+            </div>
+            <SmartStatusPill status={smartStatus} size="md" testid="staff-smart-status" />
           </div>
         )}
       </div>
@@ -205,11 +251,13 @@ export default function StaffPortalPage({ onBack }) {
           <HomeTab
             staff={staff}
             status={status}
+            smartStatus={smartStatus}
             shiftStartedAt={shiftStartedAt}
             weekReport={weekReport}
-            nextShift={myShifts.find((s) => new Date(s.start_time) > new Date()) || null}
+            nextShift={nextShift}
             actionLoading={actionLoading}
             onClockAction={handleClockAction}
+            smartPresence={smartPresence}
           />
         )}
         {tab === "shifts" && <ShiftsTab shifts={myShifts} />}
@@ -247,6 +295,7 @@ export default function StaffPortalPage({ onBack }) {
         open={!!geofencePrompt}
         fence={geofencePrompt?.fence}
         position={geofencePrompt?.position}
+        nextShift={nextShift}
         onClose={() => setGeofencePrompt(null)}
         onSuccess={() => { setGeofencePrompt(null); loadData(); }}
       />
@@ -254,14 +303,48 @@ export default function StaffPortalPage({ onBack }) {
   );
 }
 
-function HomeTab({ staff, status, shiftStartedAt, weekReport, nextShift, actionLoading, onClockAction }) {
+function HomeTab({ staff, status, smartStatus, shiftStartedAt, weekReport, nextShift, actionLoading, onClockAction, smartPresence }) {
   const isWorking = status === "working";
   const isBreak = status === "break";
   const isOff = status === "off";
   const timer = useLiveTimer(isWorking || isBreak ? shiftStartedAt : null);
 
+  // Smart hint based on context
+  const hint = useMemo(() => {
+    if (smartStatus === "approaching") return { text: "Du bist fast da — bereit zum Einchecken", tone: "blue" };
+    if (smartStatus === "arrived" && isOff) return { text: "Du bist am Arbeitsplatz — tippe zum Einchecken", tone: "emerald" };
+    if (isWorking && timer.total_seconds > 4 * 3600) return { text: "Du arbeitest seit über 4h — Pause nicht vergessen", tone: "amber" };
+    if (nextShift) {
+      const mins = Math.round((new Date(nextShift.start_time) - new Date()) / 60000);
+      if (mins > 0 && mins <= 30) return { text: `Schicht beginnt in ${mins} Min`, tone: "blue" };
+    }
+    return null;
+  }, [smartStatus, isOff, isWorking, timer.total_seconds, nextShift]);
+
   return (
     <div className="space-y-4">
+      {/* Smart Hint Banner */}
+      {hint && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-testid="staff-smart-hint"
+          className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl border ${
+            hint.tone === "emerald" ? "bg-emerald-50 border-emerald-100 text-emerald-700" :
+            hint.tone === "amber"   ? "bg-amber-50 border-amber-100 text-amber-700" :
+            "bg-blue-50 border-blue-100 text-blue-700"
+          }`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+          <p className="text-sm font-semibold">{hint.text}</p>
+        </motion.div>
+      )}
+
+      {/* Weather + Nearby strip — Smart Daily Pulse */}
+      <div className="grid grid-cols-2 gap-3" data-testid="smart-daily-strip">
+        <WeatherCard />
+        <NearbyCard smartPresence={smartPresence} />
+      </div>
       {/* Active Shift Hero Card */}
       {(isWorking || isBreak) && (
         <motion.div
@@ -409,6 +492,73 @@ function StatCard({ label, value, accent, big }) {
     <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-5">
       <p className={`${big ? "text-xs" : "text-[11px]"} text-slate-400 uppercase tracking-wide`}>{label}</p>
       <p className={`${big ? "text-3xl" : "text-2xl"} font-bold mt-1.5 ${accent} tabular-nums`}>{value}</p>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Weather Card (placeholder — kann später echte API anbinden)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function WeatherCard() {
+  // Time-based mock icon/text; production: openweathermap or browser-geo + API
+  const h = new Date().getHours();
+  const isDay = h >= 7 && h < 20;
+  const Icon = isDay ? Sun : Cloud;
+  const temp = 18 + Math.round(Math.sin(h / 24 * Math.PI * 2) * 6); // 12..24°
+  const label = isDay ? "Sonnig" : "Wolkig";
+  return (
+    <div
+      data-testid="staff-weather-card"
+      className="rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 p-4 flex items-center gap-3"
+    >
+      <div className="w-11 h-11 rounded-xl bg-white shadow-sm flex items-center justify-center">
+        <Icon size={22} className={isDay ? "text-amber-500" : "text-slate-500"} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Wetter</p>
+        <p className="text-base font-bold text-slate-900 tabular-nums">
+          {temp}°C <span className="text-xs font-medium text-slate-500">· {label}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Nearby Card — zeigt nächsten Standort an
+// ═══════════════════════════════════════════════════════════════════════════
+
+function NearbyCard({ smartPresence }) {
+  const nearest = smartPresence?.nearby?.[0];
+  const fence = nearest?.geofence;
+  const distance = nearest?.distance_m;
+  const status = nearest?.status; // "inside" | "approaching"
+  return (
+    <div
+      data-testid="staff-nearby-card"
+      className="rounded-2xl bg-white border border-slate-200 shadow-sm p-4 flex items-center gap-3"
+    >
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+        status === "inside" ? "bg-emerald-50 text-emerald-600" :
+        status === "approaching" ? "bg-blue-50 text-blue-600" :
+        "bg-slate-100 text-slate-400"
+      }`}>
+        {status === "inside" ? <CheckCircle2 size={20} /> : <Navigation size={20} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Standort</p>
+        {fence ? (
+          <>
+            <p className="text-sm font-bold text-slate-900 truncate">{fence.name}</p>
+            <p className="text-[11px] text-slate-500 tabular-nums">
+              {status === "inside" ? "Im Radius" : `${Math.round(distance)}m entfernt`}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm font-semibold text-slate-500">Kein Geofence in Nähe</p>
+        )}
+      </div>
     </div>
   );
 }

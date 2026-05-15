@@ -12,27 +12,34 @@ import { toast } from "sonner";
 import {
   StaffCard, StaffButton, StaffEmptyState, StaffSegmented, StaffListItem, StaffStatusBadge,
 } from "./components";
+import LiveActivityTimeline from "./LiveActivityTimeline";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const TYPE_ICONS = { office: Briefcase, warehouse: Warehouse, branch: Building2, site: MapPin, other: MapPin };
 
 export default function ManagerGeofencePage({ onBack }) {
-  const [tab, setTab] = useState("fences");
+  const [tab, setTab] = useState("timeline");
   const [fences, setFences] = useState([]);
   const [events, setEvents] = useState([]);
+  const [clockEvents, setClockEvents] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [fr, er] = await Promise.all([
+      const [fr, er, cr, mr] = await Promise.all([
         fetch(`${API}/api/staff/geofence?include_inactive=true`, { credentials: "include" }),
         fetch(`${API}/api/staff/geofence/events?limit=50`, { credentials: "include" }),
+        fetch(`${API}/api/staff/clock/today`, { credentials: "include" }),
+        fetch(`${API}/api/staff/members`, { credentials: "include" }),
       ]);
       if (fr.ok) setFences((await fr.json()).geofences || []);
       if (er.ok) setEvents((await er.json()).events || []);
+      if (cr.ok) setClockEvents((await cr.json()).events || []);
+      if (mr.ok) setMembers((await mr.json()).members || []);
     } catch (e) {
       toast.error(e.message || "Fehler");
     } finally {
@@ -40,7 +47,45 @@ export default function ManagerGeofencePage({ onBack }) {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 30000); // Live refresh every 30s
+    return () => clearInterval(id);
+  }, []);
+
+  const memberById = useMemo(() => {
+    const m = {};
+    members.forEach((mb) => { m[mb.id] = mb; });
+    return m;
+  }, [members]);
+  const fenceById = useMemo(() => {
+    const m = {};
+    fences.forEach((f) => { m[f.id] = f; });
+    return m;
+  }, [fences]);
+
+  // Unified timeline = clock_events ∪ geofence_events with staff name + fence name hydrated
+  const timelineEvents = useMemo(() => {
+    const hydrated = [];
+    clockEvents.forEach((e) => hydrated.push({
+      id: e.id || `${e.staff_id}-${e.timestamp}`,
+      staff_id: e.staff_id,
+      staff_name: memberById[e.staff_id]?.name,
+      action: e.action,
+      ts: e.timestamp,
+      geofence_name: e.geofence_id ? fenceById[e.geofence_id]?.name : undefined,
+    }));
+    events.forEach((e) => hydrated.push({
+      id: e.id,
+      staff_id: e.staff_id,
+      staff_name: memberById[e.staff_id]?.name,
+      event_type: e.event_type,
+      ts: e.ts,
+      geofence_name: fenceById[e.geofence_id]?.name,
+      suspected_spoof: e.suspected_spoof,
+    }));
+    return hydrated;
+  }, [clockEvents, events, memberById, fenceById]);
 
   const arrivals = useMemo(() => events.filter(e => ["entered", "checked_in"].includes(e.event_type)), [events]);
 
@@ -67,8 +112,9 @@ export default function ManagerGeofencePage({ onBack }) {
             current={tab}
             onChange={setTab}
             options={[
+              { id: "timeline", label: "Live-Stream" },
               { id: "fences", label: `Standorte (${fences.length})` },
-              { id: "arrivals", label: `Live-Ankünfte (${arrivals.length})` },
+              { id: "arrivals", label: `Ankünfte (${arrivals.length})` },
             ]}
             testid="geo-tabs"
           />
@@ -80,6 +126,28 @@ export default function ManagerGeofencePage({ onBack }) {
           <div className="flex justify-center py-12">
             <Loader2 size={28} className="animate-spin text-blue-500" />
           </div>
+        )}
+
+        {!loading && tab === "timeline" && (
+          <StaffCard testid="geo-timeline-card" className="!p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Live Activity</p>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Activity size={16} className="text-emerald-500" />
+                  Was passiert gerade
+                </h2>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500">
+                <span className="relative flex w-1.5 h-1.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-70 animate-ping" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                </span>
+                Live · alle 30s
+              </span>
+            </div>
+            <LiveActivityTimeline events={timelineEvents} limit={30} testid="geo-live-timeline" />
+          </StaffCard>
         )}
 
         {!loading && tab === "fences" && fences.length === 0 && (
