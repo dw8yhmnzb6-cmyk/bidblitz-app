@@ -25,7 +25,7 @@ yarn cap open android       # or: yarn cap open ios
 ```
 
 The LIVE-RELOAD config (`capacitor.config.live.ts`) points the WebView
-at `https://qr-checkout-20.preview.emergentagent.com` so code changes
+at `https://super-app-portal.preview.emergentagent.com` so code changes
 reflect instantly without rebuilding the native bundle.
 
 ## Production Build

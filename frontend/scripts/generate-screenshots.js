@@ -20,7 +20,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Configuration
-const APP_URL = process.env.REACT_APP_BACKEND_URL?.replace('/api', '') || 'https://qr-checkout-20.preview.emergentagent.com';
+const APP_URL = process.env.REACT_APP_BACKEND_URL?.replace('/api', '') || 'https://super-app-portal.preview.emergentagent.com';
 const OUTPUT_DIR = path.join(__dirname, '../public/screenshots');
 const TEST_USER = {
   email: 'admin@bidblitz.ae',

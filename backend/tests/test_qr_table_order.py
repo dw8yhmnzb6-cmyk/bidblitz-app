@@ -3,7 +3,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://qr-checkout-20.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://super-app-portal.preview.emergentagent.com").rstrip("/")
 MERCHANT_ID = "69d0126144299a2e0d94c788"
 
 MERCHANT_CREDS = {"email": "haendler@bidblitz.com", "password": "Haendler2026!"}

@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://qr-checkout-20.preview.emergentagent.com/api"
+BASE_URL = "https://super-app-portal.preview.emergentagent.com/api"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

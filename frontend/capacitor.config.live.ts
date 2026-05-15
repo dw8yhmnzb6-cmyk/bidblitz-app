@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://qr-checkout-20.preview.emergentagent.com',
+    url: 'https://super-app-portal.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

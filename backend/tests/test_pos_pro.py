@@ -7,7 +7,7 @@ import time
 import pytest
 import requests
 
-BASE = os.environ.get("REACT_APP_BACKEND_URL", "https://qr-checkout-20.preview.emergentagent.com").rstrip("/")
+BASE = os.environ.get("REACT_APP_BACKEND_URL", "https://super-app-portal.preview.emergentagent.com").rstrip("/")
 MERCHANT_EMAIL = "haendler@bidblitz.com"
 MERCHANT_PWD = "Haendler2026!"
 

@@ -1004,3 +1004,58 @@ async def my_purchases(request: Request, limit: int = 20):
         {"merchant_id": merchant["merchant_id"]}, {"_id": 0}
     ).sort("created_at", -1).limit(limit).to_list(limit)
     return {"purchases": items}
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN AUDIT LOG
+# ═══════════════════════════════════════════════════════════
+@router.get("/admin/audit-log")
+async def admin_audit_log(
+    request: Request,
+    limit: int = 100,
+    skip: int = 0,
+    merchant_id: Optional[str] = None,
+    action_type: Optional[str] = None,
+):
+    """Admin Audit Log — alle Feature-Management Aktionen mit Filter."""
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(403, "Nur Admin")
+
+    query = {}
+    if merchant_id:
+        query["ref.merchant_id"] = merchant_id
+    if action_type:
+        query["action"] = action_type
+
+    logs = await db.pos_audit_log.find(query, {"_id": 0}) \
+        .sort("ts", -1) \
+        .skip(skip) \
+        .limit(min(limit, 500)) \
+        .to_list(500)
+
+    # Enrich mit Admin Email
+    from bson import ObjectId
+    actor_ids = list({log["actor_id"] for log in logs if log.get("actor_id")})
+    users_map = {}
+    if actor_ids:
+        # Convert string IDs to ObjectId for MongoDB query
+        try:
+            object_ids = [ObjectId(aid) for aid in actor_ids if aid]
+            users = await db.users.find({"_id": {"$in": object_ids}}, {"_id": 1, "email": 1}).to_list(len(object_ids))
+            users_map = {str(u["_id"]): u.get("email", "unknown") for u in users}
+        except Exception:
+            pass  # Invalid ObjectId format
+
+    for log in logs:
+        actor_id = log.get("actor_id")
+        log["admin_email"] = users_map.get(actor_id, "system") if actor_id else "system"
+
+    total = await db.pos_audit_log.count_documents(query)
+
+    return {
+        "logs": logs,
+        "total": total,
+        "limit": limit,
+        "skip": skip,
+    }

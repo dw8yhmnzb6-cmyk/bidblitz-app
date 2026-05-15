@@ -10,7 +10,7 @@ import sys
 from typing import Dict, Optional
 
 # Configuration
-BACKEND_URL = "https://qr-checkout-20.preview.emergentagent.com"
+BACKEND_URL = "https://super-app-portal.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 MERCHANT_EMAIL = "haendler@bidblitz.com"

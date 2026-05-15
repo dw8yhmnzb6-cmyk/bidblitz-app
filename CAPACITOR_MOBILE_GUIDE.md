@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://qr-checkout-20.preview.emergentagent.com',
+  url: 'https://super-app-portal.preview.emergentagent.com',
   cleartext: false,
 }
 ```

@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from frontend/.env
-BASE_URL = "https://qr-checkout-20.preview.emergentagent.com"
+BASE_URL = "https://super-app-portal.preview.emergentagent.com"
 API_URL = f"{BASE_URL}/api"
 
 # Test credentials
