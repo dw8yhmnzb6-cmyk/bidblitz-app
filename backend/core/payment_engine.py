@@ -53,6 +53,7 @@ class TransactionType(str, Enum):
     WALLET_TOPUP_POS = "wallet_topup_pos"  # Wallet aufladen am POS
     EV_CHARGING = "ev_charging"  # EV Charging session payment
     EV_CHARGING_REVENUE = "ev_charging_revenue"  # Operator/Merchant revenue from EV charging
+    DRIVER_EARNINGS = "driver_earnings"  # Taxi/Food driver payout per ride
 
 
 # Idempotency cache (in-memory for this session, should be Redis in production)
