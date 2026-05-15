@@ -384,7 +384,7 @@ export function StaffChatThread({ role = "manager", threadId, onBack }) {
       {/* Composer */}
       <form
         onSubmit={send}
-        className="sticky bottom-0 bg-white border-t border-slate-200 px-3 py-3 max-w-3xl w-full mx-auto"
+        className="sticky bottom-0 z-[70] bg-white border-t border-slate-200 px-3 py-3 max-w-3xl w-full mx-auto"
         data-testid="chat-composer"
       >
         <div className="flex items-end gap-2">
