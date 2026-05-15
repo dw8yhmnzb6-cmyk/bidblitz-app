@@ -15,6 +15,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 15.05.2026 (iter96 — E2E Driver-Customer-Flow Verifikation + Backend-Enrichment-Fix)
+- 🔴 **Critical Backend-Bug entdeckt & gefixt**: `GET /api/taxi/rides/active` lieferte nur flache Felder (driver_id, driver_name) — KEIN nested `driver.{vehicle, phone, eta_minutes, photo_url, rating}` Objekt. Folge: alle Iter95 Quick-Wins (Plate-Spotter, Live-ETA, tel:-Call) hätten in echter Session NICHT funktioniert.
+- 🟢 **Driver-Enrichment** (`_enrich_ride_with_driver` Helper): Joint `drivers`-Collection → fügt `ride.driver.{name, photo_url, phone, rating, total_rides, eta_minutes, vehicle.{model, plate, color, year, type}}` + `ride.driver_lat/lng` an. ETA via Haversine + 30 km/h Annahme.
+- 🟢 **Trip-Replay Backend-Persistierung** (NEU `POST /driver/update-location` schreibt `driver_path[]`, throttling 20m-Schwelle + 8s-Fallback, cap 300 Punkte).
+- 🟢 **Trip-Replay Endpoint**: `GET /api/taxi/rides/{id}/path` mit Auth-Gate (nur Customer + zugewiesener Driver). Frontend pre-fetcht serverseitigen Path beim `completed`-Status → Trip-Replay funktioniert auch nach Page-Reload.
+- 🟢 **E2E-Verifikation**: Driver-Login + go-online + Customer-Book + Driver-Accept + Location-Updates + 4 Path-Points alle erfolgreich getestet via curl. Driver-Daten (Ahmed Yilmaz, Hyundai Kona Gelb B-AY 1234, ETA 5min, +491512345...) kommen sauber durch.
+- ℹ️ Pre-existing Bug entdeckt: `TransactionType.DRIVER_EARNINGS` fehlt im `payment_engine` → `/driver/end` 500-Error. NICHT von uns; aufgenommen ins Backlog.
+
+
 ### 14.05.2026 (iter95 — Taxi Quick-Wins Sprint A-F)
 - 🟢 **(a) Live-ETA-Countdown**: `useLiveCountdown` Hook in TaxiTrackingSheet — tickt jede Sekunde, Format "M:SS", resettet bei Server-Update. Optimiert: nur 1 Interval (kein Re-Create pro Sekunde).
 - 🟢 **(b) `tel:`-Call-Button** + Plate-Spotter-Hint: Driver-Card hat jetzt `<a href="tel:...">` öffnet System-Phone (testid `taxi-driver-call`). Amber-Banner „Such nach <Farbe> <Modell> mit Kennzeichen <Plate>" (testid `taxi-plate-spotter`).

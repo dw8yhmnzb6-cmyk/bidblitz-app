@@ -1378,12 +1378,63 @@ async def driver_update_location(request: Request):
         "status": {"$in": ["accepted", "arriving", "started"]}
     })
     if active_ride:
-        await db.taxi_rides.update_one(
-            {"ride_id": active_ride["ride_id"]},
-            {"$set": {"driver_location": {"lat": lat, "lng": lng}}}
-        )
+        # Throttle: append to driver_path only if moved >= ~20m from last point
+        # OR if >= 8 seconds since last sample (Trip-Replay needs ~smooth path).
+        path = active_ride.get("driver_path") or []
+        should_push = False
+        if not path:
+            should_push = True
+        else:
+            last = path[-1]
+            try:
+                dlat = (last.get("lat", 0) - lat)
+                dlng = (last.get("lng", 0) - lng)
+                # ~0.0002° latitude ≈ 22m
+                if abs(dlat) + abs(dlng) > 0.0002:
+                    should_push = True
+                else:
+                    # time-based fallback (helps trip-replay even when driver waits at red light)
+                    try:
+                        last_at = datetime.fromisoformat(last["at"].replace("Z", "+00:00"))
+                        if (now - last_at).total_seconds() >= 8:
+                            should_push = True
+                    except Exception:
+                        should_push = True
+            except Exception:
+                should_push = True
+        update = {"$set": {"driver_location": {"lat": lat, "lng": lng}}}
+        if should_push:
+            update["$push"] = {"driver_path": {
+                "lat": lat, "lng": lng, "at": now.isoformat(),
+                "$slice": -300,  # cap to last 300 points (~25 min @ 5s polling)
+            } if False else {"lat": lat, "lng": lng, "at": now.isoformat()}}
+        await db.taxi_rides.update_one({"ride_id": active_ride["ride_id"]}, update)
     
     return {"ok": True}
+
+
+@router.get("/rides/{ride_id}/path")
+async def get_ride_path(ride_id: str, request: Request):
+    """Return the recorded driver_path for a ride (Trip-Replay).
+    Accessible to the ride's customer or driver."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0, "customer_id": 1, "driver_id": 1, "driver_path": 1, "pickup": 1, "dropoff": 1, "status": 1})
+    if not ride:
+        raise HTTPException(404, "Fahrt nicht gefunden")
+    # auth: customer or assigned driver
+    if user_id != ride.get("customer_id"):
+        drv = await db.drivers.find_one({"user_id": user_id}, {"driver_id": 1, "_id": 0})
+        if not drv or drv.get("driver_id") != ride.get("driver_id"):
+            raise HTTPException(403, "Keine Berechtigung")
+    return {
+        "ok": True,
+        "ride_id": ride_id,
+        "status": ride.get("status"),
+        "pickup": ride.get("pickup"),
+        "dropoff": ride.get("dropoff"),
+        "path": ride.get("driver_path") or [],
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2029,7 +2080,7 @@ async def cancel_ride(req: RideActionRequest, request: Request):
 
 @router.get("/rides/active")
 async def get_customer_active_ride(request: Request):
-    """Customer gets their active ride."""
+    """Customer gets their active ride (with enriched driver data: photo, plate, ETA)."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
     
@@ -2040,8 +2091,56 @@ async def get_customer_active_ride(request: Request):
     
     if not ride:
         return {"has_active": False, "rides": []}
-    
+
+    ride = await _enrich_ride_with_driver(ride)
     return {"has_active": True, "rides": [ride]}
+
+
+async def _enrich_ride_with_driver(ride: dict) -> dict:
+    """Add ride.driver{...} nested object and live driver_lat/lng + eta_minutes for the frontend."""
+    drv_id = ride.get("driver_id")
+    if not drv_id:
+        return ride
+    d = await db.drivers.find_one({"driver_id": drv_id}, {"_id": 0})
+    if not d:
+        return ride
+    loc = d.get("location") or {}
+    pickup = ride.get("pickup") or {}
+    eta = None
+    try:
+        if loc.get("lat") is not None and pickup.get("lat") is not None:
+            # haversine in km
+            from math import radians, sin, cos, asin, sqrt
+            lat1, lon1 = radians(loc["lat"]), radians(loc["lng"])
+            lat2, lon2 = radians(pickup["lat"]), radians(pickup["lng"])
+            dlat = lat2 - lat1; dlon = lon2 - lon1
+            a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+            km = 2 * asin(sqrt(a)) * 6371
+            # rough: 30 km/h avg city → minutes
+            eta = max(1, round(km / 30 * 60))
+    except Exception:
+        eta = None
+    car = d.get("car") or {}
+    ride["driver"] = {
+        "driver_id": d.get("driver_id"),
+        "name": d.get("user_name") or ride.get("driver_name") or "",
+        "photo_url": d.get("photo_url", ""),
+        "phone": d.get("phone", ""),
+        "rating": d.get("rating", 5.0),
+        "total_rides": d.get("total_rides", 0),
+        "eta_minutes": eta,
+        "vehicle": {
+            "model": f"{car.get('brand','')} {car.get('model','')}".strip() or None,
+            "plate": car.get("license_plate"),
+            "color": car.get("color"),
+            "year": car.get("year"),
+            "type": car.get("type"),
+        },
+    }
+    if loc.get("lat") is not None:
+        ride["driver_lat"] = loc["lat"]
+        ride["driver_lng"] = loc["lng"]
+    return ride
 
 
 @router.get("/rides/history")

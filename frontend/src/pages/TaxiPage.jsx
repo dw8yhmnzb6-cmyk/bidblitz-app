@@ -156,6 +156,7 @@ export default function TaxiPage({ onNavigate }) {
     mapRef,
     pickupMarkerRef,
     loadPOIs,
+    driverPathRef,
   } = useTaxiMap({
     pickup, setPickup,
     dropoff, setDropoff,
@@ -170,6 +171,11 @@ export default function TaxiPage({ onNavigate }) {
     surgeZones,
     showTripReplay,
   });
+
+  // Expose so the activeRide-status effect can preload the server-recorded path on completion.
+  useEffect(() => {
+    if (typeof window !== "undefined") window.__taxiDriverPathRef = driverPathRef;
+  }, [driverPathRef]);
 
   const {
     currentAddress,
@@ -466,6 +472,23 @@ export default function TaxiPage({ onNavigate }) {
   // Trigger trip-replay automatically when ride completes (one-shot)
   useEffect(() => {
     if (activeRide?.status === 'completed' && !showTripReplay) {
+      // Fetch server-recorded path for reliable replay (works after page reload too)
+      const rid = activeRide.ride_id;
+      if (rid) {
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/taxi/rides/${rid}/path`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            if (d?.path?.length >= 2) {
+              // Inject server path into the map hook by setting both refs
+              // (the hook reads driverPathRef on showTripReplay=true)
+              const path = d.path.map(p => [p.lng, p.lat]);
+              if (window.__taxiDriverPathRef) {
+                window.__taxiDriverPathRef.current = path;
+              }
+            }
+          })
+          .catch(() => {});
+      }
       setShowTripReplay(true);
     }
     if (!activeRide || activeRide.status !== 'completed') {
