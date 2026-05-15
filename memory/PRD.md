@@ -14,6 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter114 — Capacitor 7 Native Plugins für WiFi + BLE)
+- 🟢 **Plugins installiert**: `@capacitor-community/bluetooth-le@^7` + `@capgo/capacitor-wifi@7.0.3` (Capacitor 7 kompatibel, kein Peer-Konflikt).
+- 🟢 **useSmartSignals Hook umgebaut**: Lazy ESM-Import via `await import()`, `Capacitor.isNativePlatform()` Guard. Im Browser → null-Plugin, Web-Fallback. Auf Native iOS/Android → echte SSID-Auslesung über `CapacitorWifi.getCurrentNetwork()` + BLE-Scan über `BleClient.requestLEScan()` (6s Scan, Dedupe per deviceId).
+- 🟢 **iOS Permissions** (`Info.plist`): NSBluetoothAlwaysUsageDescription, NSBluetoothPeripheralUsageDescription, NSLocalNetworkUsageDescription — alle mit User-freundlicher deutscher Erklärung für App-Store-Review.
+- 🟢 **Android Permissions** (`AndroidManifest.xml`): BLUETOOTH/BLUETOOTH_ADMIN (≤SDK30), BLUETOOTH_SCAN (neverForLocation Flag), BLUETOOTH_CONNECT, ACCESS_WIFI_STATE, CHANGE_WIFI_STATE + uses-feature bluetooth_le/wifi (optional).
+- ✅ Testing iter114 Regression: 0 Bugs. Frontend kompiliert sauber, /staff/portal lädt ohne JS-Errors, SSID-Save funktioniert via localStorage-Override. Capacitor.isNativePlatform Guard greift korrekt → Plugins bleiben im Browser inaktiv.
+
+
 ### 15.05.2026 (iter113 — Bluetooth Beacon + WLAN-SSID Multi-Signal Detection)
 - 🟢 **Backend Multi-Signal-Boost** (`/app/backend/routes/staff_geofence.py` check_presence): WiFi/BT-Match suggeriert Check-In auch außerhalb GPS-Radius. Neues Feld `match_source` in Response: "gps" | "wifi" | "bluetooth" | "combined" | null. Verifiziert mit 5 Szenarien (far-GPS+WiFi → wifi, far-GPS+BT → bluetooth, near-GPS+WiFi → combined, far-GPS+bad-ssid → null, near-GPS+bad-ssid → gps).
 - 🟢 **useSmartSignals Hook** (`/app/frontend/src/staff/useSmartSignals.js`): Capacitor-aware (`window.Capacitor.Plugins.Wifi`, `BluetoothLe`); Web-Fallback via `navigator.bluetooth.requestDevice()` für Beacons; localStorage-Override für SSID (`staff_wifi_ssid_override`); exportiert `capabilities` für UI-Hints.
