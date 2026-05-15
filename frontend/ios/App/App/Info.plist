@@ -57,6 +57,12 @@
 	<string>BidBlitz nutzt deinen Standort im Hintergrund, damit Kids-GPS-Tracking und Live-Lieferungen funktionieren.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>BidBlitz verwendet Face ID zur Absicherung deines Logins und Zahlungsbestätigungen.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>BidBlitz Staff erkennt Bluetooth-Beacons am Arbeitsplatz, um deine Schicht automatisch zu starten.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>BidBlitz Staff nutzt Bluetooth, um deine Anwesenheit am Arbeitsplatz zu erkennen.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>BidBlitz Staff erkennt das WLAN am Arbeitsplatz, um deine Schicht automatisch zu starten.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

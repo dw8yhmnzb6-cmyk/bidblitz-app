@@ -1,0 +1,41 @@
+{
+  "summary": "Regression frontend testing for Capacitor 7 native plugin integration (@capgo/capacitor-wifi 7.0.3 + @capacitor-community/bluetooth-le ^7). All critical scope items PASS. /staff/portal loads cleanly with no JS pageerrors and no Capacitor/Plugin related console errors. The lazy-loaded plugin imports + Capacitor.isNativePlatform() guard work correctly in browser (web fallback active).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_114.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "useSmartSignals.js lazy import pattern is correct: isNative() guard prevents @capgo/capacitor-wifi & @capacitor-community/bluetooth-le from loading on web, avoiding any module init crashes. Capabilities object reports platform='web', nativeWifi=false, nativeBluetooth=false, webBluetooth=false in Playwright (no navigator.bluetooth) — exactly as expected.",
+    "Bluetooth scan button is disabled in browser when both nativeBluetooth and webBluetooth are false; click does not crash (verified force=true click). UI shows the amber 'Bluetooth in diesem Browser nicht verfügbar' hint, which is correct.",
+    "SSID override persistence works end-to-end: input -> save -> localStorage.staff_wifi_ssid_override = 'Termokos-Office' -> toast 'WLAN-Name gespeichert' -> 'Aktiv: Termokos-Office' pill. After full page reload, the value is auto-loaded into the input and the pill again displays, confirming the SSID_OVERRIDE_KEY read on hook init.",
+    "useGeofenceWatch.js already includes wifi_ssid + bluetooth_beacons in POST /api/staff/geofence/check-presence body (lines 39-46). Note: in Playwright the call did not fire during this test because navigator.geolocation.getCurrentPosition is not granted in headless; this is an environment limitation, not a regression. Logic is correct in code.",
+    "Chat overlay (Nachrichten) opens without crash when triggered from the staff portal.",
+    "No 'module not found' / no TypeError / no Capacitor warnings in the console after the new ESM imports were added — confirms the bundler resolves the optional native plugins via dynamic import() correctly."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "skipped", "frontend": "100%"},
+  "test_credentials": "Staff: mitarbeiter@bidblitz.com / test123",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Capacitor 7 plugin integration is regression-clean on web. On native (iOS/Android) the lazy imports will resolve to real plugins — that path cannot be exercised in Playwright; manual native testing required if iOS/Android builds are produced. The 401/404 console resource errors observed (e.g. notifications, weather) are pre-existing and unrelated to this change.",
+  "verification_evidence": {
+    "staff_portal_loads_no_errors": true,
+    "nearby_card_opens_sheet": true,
+    "browser_modus_banner": true,
+    "ssid_save_to_localStorage": "Termokos-Office",
+    "active_pill_visible": true,
+    "toast_shown": "WLAN-Name gespeichert",
+    "bluetooth_scan_button_disabled": true,
+    "bluetooth_button_click_no_crash": true,
+    "capabilities_in_browser": {"platform": "web", "nativeWifi": false, "nativeBluetooth": false, "webBluetooth": false},
+    "ssid_persists_after_reload": true,
+    "chat_overlay_opens": true,
+    "page_errors_count": 0,
+    "capacitor_related_console_errors": 0
+  }
+}

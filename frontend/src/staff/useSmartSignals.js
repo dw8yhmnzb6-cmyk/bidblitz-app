@@ -1,25 +1,26 @@
 /**
  * useSmartSignals — erkennt WLAN-SSID und Bluetooth-Beacons.
  *
- * Capacitor (Native App):
- *   - WiFi via `window.Capacitor.Plugins.Wifi.getSSID()` (wenn @capacitor-community/wifi installiert)
- *   - Bluetooth via `window.Capacitor.Plugins.BluetoothLe` (wenn installiert)
- * Web (Browser):
- *   - WLAN SSID nicht abrufbar (Sicherheits-Restriktion)
- *   - Web Bluetooth: nur auf User-Geste (Button) — siehe scanBluetoothOnce()
+ * Native (Capacitor 7):
+ *   - WiFi via @capgo/capacitor-wifi → CapacitorWifi.getCurrentNetwork()
+ *   - Bluetooth LE via @capacitor-community/bluetooth-le → BleClient.requestLEScan()
+ * Web:
+ *   - WLAN SSID nicht abrufbar (Browser-Sicherheit) → manueller Override via localStorage
+ *   - Bluetooth: navigator.bluetooth.requestDevice() (User-Geste erforderlich)
  *
- * Optional: User-Manual-Override via localStorage ("staff_wifi_ssid_override").
+ * Capacitor-Detection: Plugins werden lazy importiert und nur auf "native" Platform
+ * ausgeführt, sonst graceful Fallback.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 
 const SSID_OVERRIDE_KEY = "staff_wifi_ssid_override";
+const isNative = () => {
+  try { return Capacitor.isNativePlatform?.() === true; } catch { return false; }
+};
 
 function readOverride() {
-  try {
-    return localStorage.getItem(SSID_OVERRIDE_KEY) || null;
-  } catch {
-    return null;
-  }
+  try { return localStorage.getItem(SSID_OVERRIDE_KEY) || null; } catch { return null; }
 }
 
 export function writeWifiOverride(ssid) {
@@ -29,6 +30,27 @@ export function writeWifiOverride(ssid) {
   } catch {}
 }
 
+// Lazy plugin loaders — only resolve on native, return null on web
+async function loadWifiPlugin() {
+  if (!isNative()) return null;
+  try {
+    const mod = await import("@capgo/capacitor-wifi");
+    return mod.CapacitorWifi || null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadBlePlugin() {
+  if (!isNative()) return null;
+  try {
+    const mod = await import("@capacitor-community/bluetooth-le");
+    return mod.BleClient || null;
+  } catch {
+    return null;
+  }
+}
+
 export function useSmartSignals({ enabled = true, intervalMs = 60000 } = {}) {
   const [wifiSsid, setWifiSsid] = useState(readOverride());
   const [bluetoothBeacons, setBluetoothBeacons] = useState([]);
@@ -36,37 +58,48 @@ export function useSmartSignals({ enabled = true, intervalMs = 60000 } = {}) {
     nativeWifi: false,
     nativeBluetooth: false,
     webBluetooth: typeof navigator !== "undefined" && !!navigator.bluetooth,
+    platform: isNative() ? "native" : "web",
   });
   const cacheRef = useRef({ beacons: [], ts: 0 });
+  const bleInitRef = useRef(false);
 
-  // detect once
+  // Detect capabilities once
   useEffect(() => {
-    const cap = (typeof window !== "undefined" && window.Capacitor) || null;
-    const plugins = cap?.Plugins || {};
-    setCapabilities({
-      nativeWifi: !!(plugins.Wifi || plugins.WifiInfo),
-      nativeBluetooth: !!(plugins.BluetoothLe || plugins.BluetoothScanner),
-      webBluetooth: !!navigator.bluetooth,
-    });
+    let cancelled = false;
+    (async () => {
+      const wifi = await loadWifiPlugin();
+      const ble = await loadBlePlugin();
+      if (!cancelled) {
+        setCapabilities((c) => ({
+          ...c,
+          nativeWifi: !!wifi,
+          nativeBluetooth: !!ble,
+        }));
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // poll wifi (native only)
+  // Poll Wifi — native only; web uses localStorage override
   const refreshWifi = useCallback(async () => {
     const override = readOverride();
     if (override) {
       setWifiSsid(override);
       return override;
     }
+    if (!isNative()) return null;
     try {
-      const plugins = window?.Capacitor?.Plugins;
-      if (plugins?.Wifi?.getSSID) {
-        const res = await plugins.Wifi.getSSID();
+      const Wifi = await loadWifiPlugin();
+      if (!Wifi) return null;
+      // @capgo/capacitor-wifi 7.x — getCurrentNetwork()
+      if (Wifi.getCurrentNetwork) {
+        const res = await Wifi.getCurrentNetwork();
         const ssid = res?.ssid || res?.SSID || null;
         setWifiSsid(ssid);
         return ssid;
       }
-      if (plugins?.WifiInfo?.getCurrentSSID) {
-        const res = await plugins.WifiInfo.getCurrentSSID();
+      if (Wifi.getSSID) {
+        const res = await Wifi.getSSID();
         const ssid = res?.ssid || null;
         setWifiSsid(ssid);
         return ssid;
@@ -75,7 +108,7 @@ export function useSmartSignals({ enabled = true, intervalMs = 60000 } = {}) {
     return null;
   }, []);
 
-  // beacons cache valid for ~5min
+  // Beacons cache valid for ~5min
   const getBeacons = useCallback(() => {
     if (Date.now() - cacheRef.current.ts < 5 * 60 * 1000) {
       return cacheRef.current.beacons;
@@ -83,25 +116,38 @@ export function useSmartSignals({ enabled = true, intervalMs = 60000 } = {}) {
     return [];
   }, []);
 
-  // one-time browser/native scan (must be triggered by user gesture)
+  // Bluetooth scan — must be triggered by user gesture
   const scanBluetoothOnce = useCallback(async () => {
     try {
-      const plugins = window?.Capacitor?.Plugins;
-      if (plugins?.BluetoothLe?.requestLEScan) {
-        await plugins.BluetoothLe.initialize();
+      if (isNative()) {
+        const BleClient = await loadBlePlugin();
+        if (!BleClient) throw new Error("Bluetooth-Plugin nicht verfügbar");
+        if (!bleInitRef.current) {
+          await BleClient.initialize({ androidNeverForLocation: true });
+          bleInitRef.current = true;
+        }
         const found = [];
-        await plugins.BluetoothLe.requestLEScan({ allowDuplicates: false }, (result) => {
-          if (result?.device) {
-            found.push({ id: result.device.deviceId, name: result.device.name, rssi: result.rssi });
-          }
-        });
-        // stop after 6s
+        await BleClient.requestLEScan(
+          { allowDuplicates: false },
+          (result) => {
+            if (result?.device) {
+              found.push({
+                id: result.device.deviceId,
+                name: result.device.name || result.localName,
+                rssi: result.rssi,
+              });
+            }
+          },
+        );
         await new Promise((r) => setTimeout(r, 6000));
-        await plugins.BluetoothLe.stopLEScan();
-        cacheRef.current = { beacons: found, ts: Date.now() };
-        setBluetoothBeacons(found);
-        return found;
+        await BleClient.stopLEScan();
+        // dedupe by id
+        const uniq = Object.values(found.reduce((acc, b) => { acc[b.id] = b; return acc; }, {}));
+        cacheRef.current = { beacons: uniq, ts: Date.now() };
+        setBluetoothBeacons(uniq);
+        return uniq;
       }
+      // Web fallback
       if (navigator.bluetooth?.requestDevice) {
         const device = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
@@ -112,10 +158,10 @@ export function useSmartSignals({ enabled = true, intervalMs = 60000 } = {}) {
         setBluetoothBeacons([beacon]);
         return [beacon];
       }
+      throw new Error("Bluetooth nicht verfügbar");
     } catch (e) {
       throw new Error(e?.message || "Bluetooth-Scan fehlgeschlagen");
     }
-    return [];
   }, []);
 
   useEffect(() => {
