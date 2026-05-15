@@ -185,6 +185,7 @@ def register_all_routers(app):
         ("routes.super_app_features", "router"),
         ("routes.livekit_streaming", "router"),
         ("routes.landing_chatbot", "router"),
+        ("routes.readiness", "router"),
     ]
     
     # Register all routers

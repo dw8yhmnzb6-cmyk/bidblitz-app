@@ -15,6 +15,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 15.05.2026 (iter97 — Deploy-Pipeline Robustness + Mapbox-Health-Endpoint)
+- 🟢 **Health-Endpoint `/api/readiness/mapbox-token`** (NEU, public): Returns `{configured, source, masked, valid_format, live_ok}`. `?live=true` macht echten Mapbox-API-Roundtrip. Token-Wert nie unmaskiert. Smoke-tested via curl → `live_ok=true, status_code=200`.
+- 🟢 **`routes.readiness` in `router_registry.py` registriert** (war vorher nicht im Registry → komplette `readiness`-Suite war auf Prod nie erreichbar; nun gefixt).
+- 🟢 **GitHub Actions `deploy.yml` resilient gegen `yarn.lock` drift**: `--frozen-lockfile` versucht zuerst, bei Fail → Warning + auto-regenerate + continue. Künftige `yarn add`-Sync-Drifts blockieren das Deploy nicht mehr.
+- 🟢 **`MAPBOX_TOKEN` Auto-Sync auf VPS**: Neuer SSH-Step vor PM2-Restart schreibt/updated `MAPBOX_TOKEN=...` idempotent in `/var/www/bidblitz/backend/.env`. Backend-side Geocoding/Routing braucht keinen separaten manuellen Setup mehr.
+- 🟢 **Post-Deploy Health-Check** automatisch: `curl /api/readiness/mapbox-token?live=true` läuft im Deploy-Summary → Token-Bug fällt sofort auf statt erst beim ersten User.
+- 📄 **Doku**: `/app/docs/MAPBOX_PROD_SETUP.md` (Secret-Tabelle, URL-Restriction-Liste, Verify-Curl).
+
 ### 15.05.2026 (iter96 — E2E Driver-Customer-Flow Verifikation + Backend-Enrichment-Fix)
 - 🔴 **Critical Backend-Bug entdeckt & gefixt**: `GET /api/taxi/rides/active` lieferte nur flache Felder (driver_id, driver_name) — KEIN nested `driver.{vehicle, phone, eta_minutes, photo_url, rating}` Objekt. Folge: alle Iter95 Quick-Wins (Plate-Spotter, Live-ETA, tel:-Call) hätten in echter Session NICHT funktioniert.
 - 🟢 **Driver-Enrichment** (`_enrich_ride_with_driver` Helper): Joint `drivers`-Collection → fügt `ride.driver.{name, photo_url, phone, rating, total_rides, eta_minutes, vehicle.{model, plate, color, year, type}}` + `ride.driver_lat/lng` an. ETA via Haversine + 30 km/h Annahme.

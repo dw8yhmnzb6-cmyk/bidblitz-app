@@ -189,6 +189,80 @@ async def health_check():
     }
 
 
+def _resolve_mapbox_token() -> tuple[str, str]:
+    """Resolve mapbox token from env. Returns (token, source)."""
+    import os
+    token = os.environ.get("MAPBOX_TOKEN", "")
+    if token:
+        return token, "MAPBOX_TOKEN"
+    token = os.environ.get("REACT_APP_MAPBOX_TOKEN", "")
+    if token:
+        return token, "REACT_APP_MAPBOX_TOKEN"
+    # Fallback: read from frontend/.env (works in pod; on prod only if .env is rsynced)
+    try:
+        with open("/app/frontend/.env") as f:
+            for line in f:
+                if line.startswith("REACT_APP_MAPBOX_TOKEN="):
+                    return line.split("=", 1)[1].strip(), "frontend/.env"
+    except Exception:
+        pass
+    return "", "none"
+
+
+@router.get("/mapbox-token")
+async def mapbox_token_health(live: bool = False):
+    """
+    Public health-check for Mapbox token configuration on the server.
+    Use `?live=true` to additionally hit Mapbox API to verify the token works.
+    Token value is masked — only first 12 + last 4 chars are exposed.
+    """
+    token, source = _resolve_mapbox_token()
+
+    if not token:
+        return {
+            "status": "error",
+            "configured": False,
+            "source": "none",
+            "masked": None,
+            "valid_format": False,
+            "live_ok": None,
+            "hint": "Set MAPBOX_TOKEN env var on the server, or REACT_APP_MAPBOX_TOKEN.",
+        }
+
+    masked = f"{token[:12]}...{token[-4:]}" if len(token) > 16 else "***"
+    valid_format = token.startswith("pk.") and len(token) > 40
+
+    result = {
+        "status": "ok" if valid_format else "warning",
+        "configured": True,
+        "source": source,
+        "masked": masked,
+        "valid_format": valid_format,
+        "live_ok": None,
+    }
+
+    if live and valid_format:
+        # Quick live ping: reverse-geocode a known coord (Berlin Brandenburg Tor)
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                r = await client.get(
+                    "https://api.mapbox.com/geocoding/v5/mapbox.places/13.3777,52.5163.json",
+                    params={"access_token": token, "limit": 1},
+                )
+                result["live_ok"] = r.status_code == 200
+                result["live_status_code"] = r.status_code
+                if r.status_code != 200:
+                    result["status"] = "error"
+                    result["live_error"] = r.text[:200]
+        except Exception as e:
+            result["live_ok"] = False
+            result["status"] = "error"
+            result["live_error"] = str(e)[:200]
+
+    return result
+
+
 @router.get("/full-check")
 async def full_system_check(request: Request):
     """Admin: Full system health check."""

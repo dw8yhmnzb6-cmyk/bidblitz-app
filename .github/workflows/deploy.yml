@@ -57,11 +57,16 @@ jobs:
           REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
           REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
           EOF
-          # Use --frozen-lockfile only if yarn.lock exists, otherwise allow yarn to resolve.
+          # Strict mode by default. If lockfile drifted (e.g. yarn add executed in
+          # pod but yarn.lock not pushed), fall back to a regenerating install so
+          # the deploy does not get blocked on a sync issue.
           if [ -f yarn.lock ]; then
-            yarn install --frozen-lockfile --network-timeout 600000
+            if ! yarn install --frozen-lockfile --network-timeout 600000; then
+              echo "::warning::yarn.lock drift detected — regenerating lockfile on the fly. Commit the updated frontend/yarn.lock to silence this warning."
+              yarn install --network-timeout 600000
+            fi
           else
-            echo "WARN: frontend/yarn.lock missing — running yarn install without lockfile"
+            echo "::warning::frontend/yarn.lock missing — running yarn install without lockfile"
             yarn install --network-timeout 600000
           fi
           yarn build
@@ -134,6 +139,37 @@ jobs:
           rsync -az -e "$RSYNC_RSH" \
             deploy/ "$VPS_USER@$VPS_HOST:/var/www/bidblitz/deploy/"
           $SSH "$VPS_USER@$VPS_HOST" "chmod +x /var/www/bidblitz/deploy/*.sh 2>/dev/null || true"
+
+      - name: Sync MAPBOX_TOKEN into backend .env on VPS
+        if: ${{ secrets.VPS_HOST != '' }}
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          MAPBOX_TOKEN_VALUE: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          command_timeout: 1m
+          envs: MAPBOX_TOKEN_VALUE
+          script: |
+            set -e
+            cd /var/www/bidblitz/backend
+            if [ -z "${MAPBOX_TOKEN_VALUE}" ]; then
+              echo "::warning::PROD_REACT_APP_MAPBOX_TOKEN secret is empty — backend MAPBOX_TOKEN not synced. Set it under Settings → Secrets → Actions to enable server-side geocoding/routing."
+              exit 0
+            fi
+            if [ ! -f .env ]; then
+              echo "::error::/var/www/bidblitz/backend/.env missing — cannot sync MAPBOX_TOKEN"
+              exit 1
+            fi
+            if grep -q '^MAPBOX_TOKEN=' .env; then
+              sed -i "s|^MAPBOX_TOKEN=.*|MAPBOX_TOKEN=${MAPBOX_TOKEN_VALUE}|" .env
+              echo "✓ MAPBOX_TOKEN updated in backend/.env"
+            else
+              echo "MAPBOX_TOKEN=${MAPBOX_TOKEN_VALUE}" >> .env
+              echo "✓ MAPBOX_TOKEN appended to backend/.env"
+            fi
 
       - name: Install backend deps & restart services
         uses: appleboy/ssh-action@v1.0.3
@@ -209,6 +245,9 @@ jobs:
               pm2 logs api --lines 100 --nostream
               exit 1
             fi
+            echo "==> Mapbox token health"
+            MB=$(curl -s 'https://bidblitz.ae/api/readiness/mapbox-token?live=true' || echo '{}')
+            echo "  $MB"
             ls -lh /var/www/bidblitz/frontend/build/static/js/main.*.js | head -1
 
       - name: Deployment summary
