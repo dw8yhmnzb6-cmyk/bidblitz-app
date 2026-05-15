@@ -92,6 +92,8 @@ def register_all_routers(app):
         ("routes.staff", "router"),
         ("routes.staff_extended", "router"),
         ("routes.staff_geofence", "router"),  # New: Urlaub + GPS
+        ("routes.staff_chat", "router"),  # 1:1 Manager↔Staff Chat MVP
+        ("routes.staff_reminders", "router"),  # Smart Reminder Engine
         ("routes.staff_multi_merchant", "router"),
         ("routes.staff_subscription", "router"),
         ("routes.staff_settings", "router"),

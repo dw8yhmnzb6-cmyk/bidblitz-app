@@ -10,11 +10,14 @@ import {
   ArrowLeft, Bell, Play, Square, Coffee, Pause, MapPin, Clock, Calendar,
   CheckCircle2, Loader2, LogOut, User, ChevronRight, ListTodo, Settings,
   AlertCircle, Plus, FileText, Briefcase, BellRing, Sun, Cloud, Navigation,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useGeofenceWatch } from "../staff/useGeofenceWatch";
 import { GeofenceArrivalModal } from "../staff/GeofenceArrivalModal";
 import { SmartStatusPill } from "../staff/SmartStatusPill";
+import { useStaffReminders } from "../staff/useStaffReminders";
+import StaffChatPage from "../staff/StaffChat";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -60,6 +63,8 @@ export default function StaffPortalPage({ onBack }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [geofencePrompt, setGeofencePrompt] = useState(null);
   const [smartPresence, setSmartPresence] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -176,6 +181,27 @@ export default function StaffPortalPage({ onBack }) {
     isWorking: status === "working" || status === "break",
     onSuggestCheckin: (info) => setGeofencePrompt(info),
   });
+
+  // Smart Reminders — In-App Toasts + optional Push dispatch
+  useStaffReminders({ enabled: !!staff });
+
+  // Chat unread polling
+  useEffect(() => {
+    if (!staff) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API}/api/staff/chat/unread-count`, { credentials: "include" });
+        if (!r.ok || cancelled) return;
+        const d = await r.json();
+        if (!cancelled) setChatUnread(d.unread || 0);
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [staff, chatOpen]);
+
   // Poll smart status separately for the smart pill
   useEffect(() => {
     if (!staff) return;
@@ -221,13 +247,30 @@ export default function StaffPortalPage({ onBack }) {
           >
             <ArrowLeft size={20} className="text-slate-700" />
           </button>
-          <button
-            data-testid="staff-notifications-btn"
-            className="relative w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center"
-          >
-            <Bell size={18} className="text-slate-700" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setChatOpen(true)}
+              data-testid="staff-chat-btn"
+              className="relative w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition"
+            >
+              <MessageCircle size={18} className="text-slate-700" />
+              {chatUnread > 0 && (
+                <span
+                  data-testid="staff-chat-unread-badge"
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-slate-50"
+                >
+                  {chatUnread > 99 ? "99+" : chatUnread}
+                </span>
+              )}
+            </button>
+            <button
+              data-testid="staff-notifications-btn"
+              className="relative w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center"
+            >
+              <Bell size={18} className="text-slate-700" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
+            </button>
+          </div>
         </div>
         {tab === "home" && (
           <div className="mt-3 flex items-start justify-between gap-3">
@@ -299,6 +342,13 @@ export default function StaffPortalPage({ onBack }) {
         onClose={() => setGeofencePrompt(null)}
         onSuccess={() => { setGeofencePrompt(null); loadData(); }}
       />
+
+      {/* Chat Overlay */}
+      {chatOpen && (
+        <div className="fixed inset-0 z-[70] bg-slate-50 overflow-y-auto" data-testid="staff-chat-overlay">
+          <StaffChatPage role="staff" onBack={() => setChatOpen(false)} />
+        </div>
+      )}
     </div>
   );
 }

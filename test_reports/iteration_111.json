@@ -1,0 +1,53 @@
+{
+  "summary": "iter111 — 1:1 Manager↔Staff Chat MVP + Smart Reminders verified. Backend: 13/13 pytest pass (manager create thread, list w/ hydrated staff name + unread + preview, send message, empty rejected, staff-scoped list, staff sees manager msg, staff unread-count, mark_read, manager unread after staff reply, reminders/check OK + 401 unauth + dispatch returns skipped:[{reason:'not_configured'}] for fake id since OneSignal env not set — matches expected MOCKED behavior). Frontend: Manager Inbox /merchant/staff/chat renders 2 threads (Max Mustermann w/ unread badge '1', UITestUser) with last_message_preview + timestamps; chat-new-thread-btn visible. Staff Portal /staff/portal renders staff-smart-status (Aktiv), staff-weather-card (13°C Sonnig), staff-nearby-card (Kein Geofence in Nähe), staff-chat-btn with notification dot. Click staff-chat-btn opens staff-chat-overlay → Inbox 'Mit deinem Manager' → thread → StaffChatThread with chat-messages/chat-input/chat-send-btn → Staff send WORKS with optimistic UI (bubbles 2→3, 'Reply UI TEST_iter111 from Max' appears immediately). useStaffReminders hook does NOT crash on portal load. ⚠️ HOWEVER: Manager-side send has a defect: after clicking chat-send-btn in manager StaffChatThread, the entire component unmounts and the page navigates to /account (Konto/Lisa Schmidt profile) instead of staying in the chat. chat-messages container goes from 1→0 and bubbles 3→0. Backend POST /messages still succeeds (verified via pytest) but the user is kicked out of the chat view. Staff-side does NOT have this issue.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "StaffChatThread (manager role)",
+        "issue": "After clicking chat-send-btn at /merchant/staff/chat the thread component unmounts and the SPA navigates to /account (Lisa Schmidt Konto). Backend message-send still succeeds, but user is ejected from the chat view. Staff-side send works flawlessly (no navigation, optimistic bubble appears).",
+        "selector": "[data-testid='chat-send-btn']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Manager Heute-Tab Quick-Action 'Team-Chat' (merchant-qa-open-chat) click navigation",
+        "issue": "Same flake as iter110 — Playwright click does not change URL because StaffManagementPage uses internal handleNavigate state, not React Router. Direct nav /merchant/staff/chat works. Likely a test-runner artifact rather than user-facing bug.",
+        "affected_selectors": ["[data-testid='merchant-qa-open-chat']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter111_chat_reminders.py",
+    "/app/test_reports/pytest/iter111_chat_reminders.xml"
+  ],
+  "action_items": [
+    "HIGH: Investigate StaffChatThread (manager role) send flow — after handleSend at /merchant/staff/chat the SPA routes user to /account. Suspected causes: (a) unhandled rejection in send → window.location change, (b) parent <form> wrapping the composer causing default submit + navigate, (c) accidental href on send button, (d) AppShell auth-state-refresh on POST. Confirm staff role does NOT exhibit this — so fix is likely in the manager-path wiring (StaffChat.jsx / StaffChatPage role='manager' wrapper / merchant route).",
+    "Optional: convert merchant-qa-open-chat to a real <Link> or router.push so URL changes are visible to tests."
+  ],
+  "critical_code_review_comments": [
+    "staff_chat.py: hydration logic only fetches name from staff_members but threads include manager_user_id without manager.name hydration — Staff inbox header shows 'Mitarbeiter' / 'Manager' generically; OK for MVP but consider hydrating manager profile for UX polish.",
+    "staff_chat.py POST /messages: best-effort OneSignal call wraps full body in try/except Exception: pass — silent failure. Consider logging.",
+    "staff_reminders.py: dispatch endpoint returns early {sent:[], skipped:[{reason:'not_configured'}]} when OneSignal not configured — does NOT iterate over requested ids. That's why fake_id returns single 'not_configured' instead of per-id 'expired'. Test handles both cases. OK as MVP, but could be more precise.",
+    "staff_chat.py _actor: merchant_id derivation falls back to uid if no merchants row matches — this would break Multi-Merchant isolation if merchant doc lookup misbehaves. Currently works because the seeded merchant matches.",
+    "StaffChat.jsx StaffChatPage default export only re-renders activeThread state; for /merchant/staff/chat route this state should NOT reset on chat-send-btn click. The unmount-on-send bug indicates a side-effect in send handler or parent route lifecycle — main agent should add a console.log/breakpoint at line ~403 and check if any re-render of StaffChatPage causes activeThread→null."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter111_chat_reminders.py (new pytest file)"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13)",
+    "frontend": "80% — Manager Inbox OK, Staff Portal OK, Staff Overlay OK, Staff Send OK with optimistic UI, useStaffReminders no crash, unread badge OK; but Manager-side send unmounts thread and redirects to /account"
+  },
+  "test_credentials": "Merchant haendler@bidblitz.com / Haendler2026! ✅ | Staff API: mitarbeiter@bidblitz.com / test123 ✅ (cookie staff_session = ee9686ea-739b-4ba9-9872-650cb0955fae). Note: /staff/mobile uses Magic-Link UI (data-testid='staff-mobile-identifier-input'), no email/password form — for E2E browser tests, set staff_session cookie directly via context.add_cookies after /api/staff/auth/login.",
+  "seed_data_creation": "Created two extra staff_chat_messages on existing thread fdf9e005-… via pytest ('Hallo TEST_iter111', 'Reply TEST_iter111 from Max') + one via Staff-UI ('Reply UI TEST_iter111 from Max'). No new threads needed — reused existing.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend chat + reminders are SOLID — all 13 pytest pass. Reminders /dispatch correctly returns skipped:[{reason:'not_configured'}] when OneSignal env unset. The single remaining UI bug is on Manager-side send: investigate StaffChat.jsx StaffChatThread handleSend in role='manager' context — after chat-send-btn click, the thread component unmounts and SPA navigates to /account. Staff-side (mobile viewport, staff_session cookie auth) works perfectly. To reproduce: login merchant haendler/Haendler2026! → /merchant/staff/chat → click first thread → type → click chat-send-btn → user lands on Konto page.",
+  "rca of the issue": "Manager-send navigation away: backend POST /api/staff/chat/threads/{id}/messages returns 200 OK (verified pytest). UI side: chat-send-btn click handler in StaffChatThread likely triggers a parent re-render that unmounts StaffChatPage and routes to / (which for logged-in merchant redirects to Konto). Look for: <form> wrapping the composer (default submit), unhandled promise rejection in handleSend that triggers an error-boundary fallback, or a useEffect dep that resets activeThread on a polled re-fetch. The fact that Staff-role with same component works rules out the send-handler itself — points to the route wrapper at /merchant/staff/chat in App.js or StaffManagementPage onOpenChat flow."
+}

@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import {
   Users, CheckCircle2, Coffee, AlertCircle, Calendar, Sparkles,
   Clock, Briefcase, ArrowUpRight, Activity, FilePlus, UserPlus, ChevronRight, TrendingUp, MapPin,
+  MessageCircle,
 } from "lucide-react";
 import LiveActivityTimeline from "../../staff/LiveActivityTimeline";
 
@@ -21,9 +22,10 @@ function actionColor(a) {
   return { clock_in: "#10B981", clock_out: "#EF4444", break_start: "#F59E0B", break_end: "#06B6D4" }[a] || "#888";
 }
 
-export default function MerchantLiveOverview({ summary = {}, members = [], todayEvents = [], onAddMember, onCreateShift, onOpenTimesheet, onOpenGeofence }) {
+export default function MerchantLiveOverview({ summary = {}, members = [], todayEvents = [], onAddMember, onCreateShift, onOpenTimesheet, onOpenGeofence, onOpenChat }) {
   const [monthHours, setMonthHours] = useState(null);
   const [geoEvents, setGeoEvents] = useState([]);
+  const [chatUnread, setChatUnread] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -39,6 +41,13 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
         if (g.ok) {
           const d = await g.json();
           setGeoEvents(d.events || []);
+        }
+      } catch (e) {}
+      try {
+        const c = await fetch(`${API}/api/staff/chat/unread-count`, { credentials: "include" });
+        if (c.ok) {
+          const d = await c.json();
+          setChatUnread(d.unread || 0);
         }
       } catch (e) {}
     })();
@@ -171,6 +180,16 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
             {onOpenGeofence && (
               <QuickAction icon={MapPin} color="#0EA5E9" label="Standorte & Ankünfte" onClick={onOpenGeofence} testId="merchant-qa-open-geofence" />
             )}
+            {onOpenChat && (
+              <QuickAction
+                icon={MessageCircle}
+                color="#F59E0B"
+                label="Team-Chat"
+                badge={chatUnread}
+                onClick={onOpenChat}
+                testId="merchant-qa-open-chat"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -243,7 +262,7 @@ function KpiHero({ icon: Icon, color, label, value, sub, testId }) {
   );
 }
 
-function QuickAction({ icon: Icon, color, label, onClick, testId }) {
+function QuickAction({ icon: Icon, color, label, onClick, testId, badge }) {
   return (
     <button
       onClick={onClick}
@@ -254,6 +273,11 @@ function QuickAction({ icon: Icon, color, label, onClick, testId }) {
         <Icon size={16} strokeWidth={2.2} />
       </div>
       <span className="text-sm font-semibold flex-1 text-slate-900">{label}</span>
+      {badge > 0 && (
+        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
       <ChevronRight size={16} className="text-slate-300" />
     </button>
   );
