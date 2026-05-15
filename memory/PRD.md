@@ -14,6 +14,19 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter115 — Ultimate Smart Workforce Experience)
+- 🟢 **Premium Fullscreen Smart Arrival Modal** (`/app/frontend/src/staff/GeofenceArrivalModal.jsx`): iOS-style Bottom-Sheet, 92vh Mobile, drei pulsierende Glow-Rings um animierten Pin, Gradient-Hero, GPS-Signalstärke-Tile (Exzellent/Gut/OK/Schwach + ±m), Geofence-Radius-Tile, "Deine Schicht beginnt um HH:MM"-Badge (aus nextShift Prop), großer 16-h SHIFT-JETZT-STARTEN CTA mit Shadow-Glow + whileTap-Animation.
+- 🟢 **SmartStatusPill** (`/app/frontend/src/staff/SmartStatusPill.jsx`): Live-Pulse-Dot, 7 Status (Aktiv/Pause/Angekommen/In Nähe/Unterwegs/Feierabend/Bereit) mit semantischen Farben aus tokens.js, 3 Größen (sm/md/lg), motion-entrance.
+- 🟢 **LiveActivityTimeline** (`/app/frontend/src/staff/LiveActivityTimeline.jsx`): vertikale Timeline mit Gradient-Rail, Icon-Nodes (Play/Square/Coffee/RotateCw/MapPin/CheckCircle2/AlertTriangle), Pulse-Badge auf neuestem Event, relative Zeitangaben ("vor 15 Min"), Spoof-Indikator, hydratisiert Staff-Name + Geofence-Name, Empty-State professionell.
+- 🟢 **Smart Daily Home Screen** (StaffPortalPage HomeTab): Smart Hint Banner (kontextsensitiv: "Du bist fast da", "Pause nicht vergessen", "Schicht beginnt in N Min"), Weather Placeholder Card (Tageszeit-basiert), Nearby Card (zeigt nächsten Geofence + Distance "120m entfernt" oder "Im Radius"), SmartStatusPill rechts neben Begrüßung im Header. Hintergrund-Polling alle 45s gegen /check-presence.
+- 🟢 **ManagerGeofencePage erweitert**: 3 Tabs (Live-Stream als Default, Standorte, Ankünfte), 30s Auto-Refresh, Member-Namen + Geofence-Namen werden client-side hydratisiert, kombiniert clock_events ∪ geofence_events in einer Timeline.
+- 🟢 **Route /merchant/staff/geofence**: wired in App.js mit Lazy-Import, geschützt für Merchant/Admin Rolle.
+- 🟢 **Manager Quick-Action "Standorte & Ankünfte"** in MerchantLiveOverview Sidebar (data-testid='merchant-qa-open-geofence').
+- 🟢 **MerchantLiveOverview Activity Feed → LiveActivityTimeline**: kombiniert /clock/today + /geofence/events?limit=30 in einer einheitlichen modernen Timeline statt simpler Liste.
+- 🟢 **Bug Fix**: TDZ-Error `Cannot access 'smartPresence' before initialization` in StaffPortalPage gefixt (useState vor useMemo).
+- ✅ Testing iter110 (3/3 Backend pytest + Frontend Smoke): 0 Bugs, Termokos HQ Geofence + 3 Events korrekt gerendert, alle test-IDs verifiziert.
+
+
 ### 15.05.2026 (iter114 — UI/UX Complete Redesign + DATEV EXTF + Premium Light Theme)
 - 🟢 **DATEV EXTF Lohn-Bewegungsdaten** (`/api/staff/export/datev/lohn-bewegungsdaten`): Echtes DATEV Format-510 (Version 1062) "Lohnstapel" — Windows-1252 encoded, Semikolon-separiert, deutsche Dezimalkomma, korrekter EXTF-Header mit Berater/Mandant/Wirtschaftsjahr/Periode. Lohnarten 200 (regulär) + 400 (Überstunden +25%). Verifiziert: Datei lädt mit `EXTF;510;1062;"Lohnstapel";...` Header und realen Daten `"1001";200;38,04;703,74;05.2026;...`.
 - 🟢 **Vereinfachtes DATEV CSV** (`/datev/lohnstunden-csv`): Mandant/PN/Mitarbeiter/Lohnart/Stunden/Stundensatz/Betrag/Periode — für manuellen Import durch Steuerberater.
