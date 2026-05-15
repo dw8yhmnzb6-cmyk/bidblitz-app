@@ -109,7 +109,21 @@ async def startup_event():
     logger.info("🚀 Starting BidBlitz V2...")
     await create_indexes()
     logger.info("✓ Database indexes created")
-    
+
+    # Seed demo auctions and start background bot+maintenance loops
+    try:
+        from routes.auctions import (
+            seed_demo_auctions,
+            start_auction_maintenance_loop,
+            start_bot_loop,
+        )
+        await seed_demo_auctions()
+        start_auction_maintenance_loop()
+        start_bot_loop()
+        logger.info("✓ Auction maintenance + bot loops started")
+    except Exception as e:
+        logger.warning(f"Auction loops start failed: {e}")
+
     # Optional: Seed demo data if DEMO_SEED=true
     import os
     if os.environ.get("DEMO_SEED", "").lower() == "true":

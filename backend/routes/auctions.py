@@ -1259,17 +1259,21 @@ PRODUCT_CATALOG = [p for p in PRODUCT_CATALOG if (p.get("retail_price") or 0) <=
 
 # ── Seed demo auctions ──
 def _bot_target_for(retail_price: float) -> float:
-    """Pick realistic bot target final price based on retail value."""
+    """Pick realistic bot target final price based on retail value.
+    
+    NEW (iter102): User wants Phase 3 final prices to land between 150-250€
+    for products under 2000€. This is the price the bots stop pushing TO.
+    Below 300€ retail → lower floor (since item itself is cheap).
+    """
     import random as _r
     if retail_price < 300:
-        return round(_r.uniform(18, 30), 2)
+        return round(_r.uniform(60, 120), 2)
     if retail_price < 800:
-        return round(_r.uniform(30, 55), 2)
+        return round(_r.uniform(120, 180), 2)
     if retail_price < 2000:
-        return round(_r.uniform(50, 90), 2)
-    if retail_price < 5000:
-        return round(_r.uniform(80, 140), 2)
-    return round(_r.uniform(150, 280), 2)
+        return round(_r.uniform(150, 250), 2)
+    # Above 2000 shouldn't happen (catalog cap), but safe fallback:
+    return round(_r.uniform(200, 350), 2)
 
 
 def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
@@ -1413,25 +1417,35 @@ async def auction_maintenance_loop():
                 logger.info(f"🎰 Ended {len(expired)} expired auctions")
 
             # 2) Auto-restart: ensure TARGET_ACTIVE_AUCTIONS are running
+            #    User-spec: SAME product respawns ~5 min after end → enforce
+            #    minimum cool-down so a freshly ended item doesn't reappear instantly.
+            RESTART_COOLDOWN_SECONDS = 300  # 5 minutes
+            cooldown_threshold = (now - timedelta(seconds=RESTART_COOLDOWN_SECONDS)).isoformat()
+
             active_count = await db.auctions.count_documents({"status": "active"})
             need = TARGET_ACTIVE_AUCTIONS - active_count
 
             if need > 0:
-                logger.info(f"🎰 Auto-restart: spawning {need} new auctions (current={active_count}, target={TARGET_ACTIVE_AUCTIONS})")
+                logger.info(f"🎰 Auto-restart check: need={need} (active={active_count}, target={TARGET_ACTIVE_AUCTIONS})")
                 created_titles = set()
                 # Get current active titles to avoid duplicates
                 async for a in db.auctions.find({"status": "active"}, {"_id": 0, "title": 1}):
                     created_titles.add(a.get("title"))
 
-                spawned = 0
-                # Sort catalog by least-recently-used
-                sorted_cat = []
+                # Compute last_ended_map AND in_cooldown_titles in one pass
                 last_ended_map = {}
+                in_cooldown = set()
                 async for doc in db.auctions.find(
                     {"status": "ended"}, {"_id": 0, "title": 1, "ended_at": 1}
                 ).sort("ended_at", -1).limit(200):
-                    last_ended_map.setdefault(doc.get("title"), doc.get("ended_at") or "")
+                    title = doc.get("title")
+                    ended = doc.get("ended_at") or ""
+                    last_ended_map.setdefault(title, ended)
+                    # If recently ended (< 5 min ago) → in cooldown, skip
+                    if ended and ended > cooldown_threshold:
+                        in_cooldown.add(title)
 
+                spawned = 0
                 sorted_cat = sorted(
                     PRODUCT_CATALOG, key=lambda p: last_ended_map.get(p["title"], "")
                 )
@@ -1440,6 +1454,9 @@ async def auction_maintenance_loop():
                     if spawned >= need:
                         break
                     if d["title"] in created_titles:
+                        continue
+                    if d["title"] in in_cooldown:
+                        # Recently ended — wait the 5-min cool-down before respawn
                         continue
                     auction = _build_auction_doc(d, "system_auto", now)
                     await db.auctions.insert_one(auction)
@@ -1849,6 +1866,24 @@ async def execute_bot_bid(auction):
     await db.auction_bids.insert_one(bid_record)
 
 
+async def _get_admin_win_rate() -> float:
+    """
+    Returns the admin-configured probability (0..1) that a HUMAN customer
+    should win when they're the current highest bidder in Phase 3.
+    Default 0.20 → 20% of auctions go to customers, 80% to bots.
+    """
+    cfg = await db.auction_automation_config.find_one({"_id": "global"}, {"_id": 0})
+    if not cfg:
+        return 0.20
+    pct = cfg.get("customer_win_rate_percent")
+    if pct is None:
+        return 0.20
+    try:
+        return max(0.0, min(1.0, float(pct) / 100.0))
+    except (TypeError, ValueError):
+        return 0.20
+
+
 async def bot_bidding_loop():
     """Background loop: check bot-enabled auctions and place bids.
     
@@ -1900,8 +1935,8 @@ async def bot_bidding_loop():
                 # ═══════════════════════════════════════════════════════════
                 initial_target = auction.get("bot_initial_target")
                 if initial_target is None:
-                    # Generate unique random target for this auction and persist it
-                    initial_target = round(random.uniform(3.0, 6.0), 2)
+                    # Generate unique random target for this auction (3-10€ per User-Spec)
+                    initial_target = round(random.uniform(3.0, 10.0), 2)
                     await db.auctions.update_one(
                         {"auction_id": auction["auction_id"]},
                         {"$set": {"bot_initial_target": initial_target}}
@@ -1928,8 +1963,32 @@ async def bot_bidding_loop():
 
                 # ═══════════════════════════════════════════════════════════
                 # PHASE 3: FINAL PHASE (Letzte 5 Minuten)
-                # Bots bieten wieder bis Zielpreis erreicht ist
+                # Bots bieten wieder bis Zielpreis erreicht ist.
+                # NEU iter102: Wenn aktuell ein ECHTER USER führt, prüfe die
+                # Admin-Win-Rate. Wenn dieser Auktion das "der Kunde gewinnt"-
+                # Los gezogen wurde → Bots halten sich zurück und lassen
+                # den User gewinnen.
                 # ═══════════════════════════════════════════════════════════
+                last_bidder_id = auction.get("last_bidder_id") or ""
+                is_user_leading = (
+                    last_bidder_id
+                    and not last_bidder_id.startswith("bot_")
+                    and last_bidder_id != "system"
+                )
+                if is_user_leading:
+                    # Decide once per auction whether this one is reserved for the customer
+                    reserve_decision = auction.get("customer_should_win")
+                    if reserve_decision is None:
+                        win_rate = await _get_admin_win_rate()
+                        reserve_decision = random.random() < win_rate
+                        await db.auctions.update_one(
+                            {"auction_id": auction["auction_id"]},
+                            {"$set": {"customer_should_win": reserve_decision}},
+                        )
+                    if reserve_decision:
+                        # Customer-win lottery: bots stand down for the final battle
+                        continue
+
                 # Preis < Target UND weniger als 5 Minuten übrig
                 bid_probability = auction.get("bot_probability", 0.35)
                 if random.random() > bid_probability:
@@ -1969,6 +2028,8 @@ class AutomationConfigRequest(BaseModel):
     bot_default_enabled: bool = True
     bot_default_target_percent: float = Field(default=15.0, ge=0, le=50)  # % of retail price
     categories_enabled: list = Field(default=["phones", "gaming", "audio", "wearables", "laptops", "tablets"])
+    # NEW iter102: Admin win-rate steering. 0-100 = % aller Auktionen die der KUNDE gewinnen soll.
+    customer_win_rate_percent: float = Field(default=20.0, ge=0, le=100)
 
 
 class ScheduleAuctionRequest(BaseModel):
@@ -2007,6 +2068,7 @@ async def get_automation_config(request: Request):
             "bot_default_enabled": True,
             "bot_default_target_percent": 15.0,
             "categories_enabled": ["phones", "gaming", "audio", "wearables", "laptops", "tablets"],
+            "customer_win_rate_percent": 20.0,
         }
     
     config.pop("_id", None)
@@ -2025,7 +2087,21 @@ async def get_automation_config(request: Request):
         "ended_today": ended_today,
         "catalog_size": len(PRODUCT_CATALOG),
     }
-    
+
+    # Win-rate stats: heute wer hat wieviel gewonnen?
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    won_today = await db.auctions.find(
+        {"status": "ended", "ended_at": {"$gte": today_start}, "winner_id": {"$ne": None}},
+        {"_id": 0, "winner_id": 1},
+    ).to_list(1000)
+    customer_wins = sum(1 for a in won_today if not str(a.get("winner_id", "")).startswith("bot_"))
+    bot_wins = len(won_today) - customer_wins
+    config["stats"]["customer_wins_today"] = customer_wins
+    config["stats"]["bot_wins_today"] = bot_wins
+    config["stats"]["actual_customer_win_rate"] = (
+        round(100.0 * customer_wins / len(won_today), 1) if won_today else 0.0
+    )
+
     return config
 
 

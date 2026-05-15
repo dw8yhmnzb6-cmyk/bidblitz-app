@@ -1,1627 +1,304 @@
 [
   {
-    "title": "DJI Mini 4 Pro",
-    "description": "DJI Mini 4 Pro — Under 250g, 4K HDR, Tri-Directional Sensing, Fly More Combo",
-    "retail_price": 1099.0,
-    "duration": 216000,
-    "category": "drones",
-    "features": [
-      "Under 249g, No Registration Needed",
-      "1/1.3\" CMOS, 48MP Photos",
-      "4K/60fps HDR Video",
-      "Tri-Directional Obstacle Sensing",
-      "34-Minute Flight Time",
-      "10km O4 Video Transmission"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "DJI Mini 4 Pro",
-        "description": "DJI Mini 4 Pro — Unter 250 g, 4K HDR, Tri-Directional Sensing, Fly More Combo",
-        "features": [
-          "Unter 249 g, keine Registrierung erforderlich",
-          "1/1.3\" CMOS, 48MP Fotos",
-          "4K/60fps HDR Video",
-          "Tri-Directional Obstacle Sensing",
-          "34 Minuten Flugzeit",
-          "10 km O4 Videoübertragung"
-        ]
-      },
-      "en": {
-        "title": "DJI Mini 4 Pro",
-        "description": "DJI Mini 4 Pro — Under 250g, 4K HDR, Tri-Directional Sensing, Fly More Combo",
-        "features": [
-          "Under 249g, No Registration Needed",
-          "1/1.3\" CMOS, 48MP Photos",
-          "4K/60fps HDR Video",
-          "Tri-Directional Obstacle Sensing",
-          "34-Minute Flight Time",
-          "10km O4 Video Transmission"
-        ]
-      },
-      "sq": {
-        "title": "DJI Mini 4 Pro",
-        "description": "DJI Mini 4 Pro — Nën 250 g, 4K HDR, Tri-Directional Sensing, Fly More Combo",
-        "features": [
-          "Nën 249 g, nuk nevojitet regjistrim",
-          "1/1.3\" CMOS, foto 48MP",
-          "Video 4K/60fps HDR",
-          "Tri-Directional Obstacle Sensing",
-          "34 minuta kohë fluturimi",
-          "Transmetim video O4 deri në 10 km"
-        ]
-      },
-      "tr": {
-        "title": "DJI Mini 4 Pro",
-        "description": "DJI Mini 4 Pro — 250 g altı, 4K HDR, Tri-Directional Sensing, Fly More Combo",
-        "features": [
-          "249 g altı, kayıt gerektirmez",
-          "1/1.3\" CMOS, 48MP fotoğraf",
-          "4K/60fps HDR video",
-          "Tri-Directional Obstacle Sensing",
-          "34 dakikalık uçuş süresi",
-          "10 km O4 video iletimi"
-        ]
-      }
-    }
-  },
-  {
-    "title": "De'Longhi La Specialista",
-    "description": "De'Longhi La Specialista Arte Evo — Integrated Grinder, Smart Tamping, Steam Wand",
-    "retail_price": 849.0,
-    "duration": 194400,
-    "category": "home",
-    "features": [
-      "Sensor Grinding Technology",
-      "Smart Tamping Station",
-      "Active Temperature Control",
-      "Professional Steam Wand",
-      "3 Preset Recipes + Custom",
-      "LatteCrema Hot System"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "De'Longhi La Specialista",
-        "description": "De'Longhi La Specialista Arte Evo — Integriertes Mahlwerk, Smart Tamping, Dampflanze",
-        "features": [
-          "Sensor Grinding Technology",
-          "Smart Tamping Station",
-          "Active Temperature Control",
-          "Professional Steam Wand",
-          "3 Preset Recipes + Custom",
-          "LatteCrema Hot System"
-        ]
-      },
-      "en": {
-        "title": "De'Longhi La Specialista",
-        "description": "De'Longhi La Specialista Arte Evo — Integrated Grinder, Smart Tamping, Steam Wand",
-        "features": [
-          "Sensor Grinding Technology",
-          "Smart Tamping Station",
-          "Active Temperature Control",
-          "Professional Steam Wand",
-          "3 Preset Recipes + Custom",
-          "LatteCrema Hot System"
-        ]
-      },
-      "sq": {
-        "title": "De'Longhi La Specialista",
-        "description": "De'Longhi La Specialista Arte Evo — Mullir i integruar, Smart Tamping, shkop avulli",
-        "features": [
-          "Sensor Grinding Technology",
-          "Smart Tamping Station",
-          "Active Temperature Control",
-          "Professional Steam Wand",
-          "3 Preset Recipes + Custom",
-          "LatteCrema Hot System"
-        ]
-      },
-      "tr": {
-        "title": "De'Longhi La Specialista",
-        "description": "De'Longhi La Specialista Arte Evo — Entegre öğütücü, Smart Tamping, buhar çubuğu",
-        "features": [
-          "Sensor Grinding Technology",
-          "Smart Tamping Station",
-          "Active Temperature Control",
-          "Professional Steam Wand",
-          "3 Preset Recipes + Custom",
-          "LatteCrema Hot System"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Google Nest Audio",
-    "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
-    "retail_price": 99.0,
-    "duration": 172800,
-    "category": "smarthome",
-    "features": [
-      "75mm Woofer, 19mm Tweeter",
-      "Google Assistant Built-In",
-      "Multi-Room Audio Support",
-      "Voice Match for Personalization",
-      "Ambient IQ Auto-Adjust",
-      "Chromecast Built-In"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Google Nest Audio",
-        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
-        "features": [
-          "75mm Woofer, 19mm Tweeter",
-          "Google Assistant integriert",
-          "Multi-Room Audio Unterstützung",
-          "Voice Match zur Personalisierung",
-          "Ambient IQ automatische Anpassung",
-          "Chromecast integriert"
-        ]
-      },
-      "en": {
-        "title": "Google Nest Audio",
-        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
-        "features": [
-          "75mm Woofer, 19mm Tweeter",
-          "Google Assistant built-in",
-          "Multi-Room Audio support",
-          "Voice Match for personalization",
-          "Ambient IQ auto-adjust",
-          "Chromecast built-in"
-        ]
-      },
-      "sq": {
-        "title": "Google Nest Audio",
-        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
-        "features": [
-          "75mm Woofer, 19mm Tweeter",
-          "Google Assistant i integruar",
-          "Mbështetje për Multi-Room Audio",
-          "Voice Match për personalizim",
-          "Ambient IQ me rregullim automatik",
-          "Chromecast i integruar"
-        ]
-      },
-      "tr": {
-        "title": "Google Nest Audio",
-        "description": "Google Nest Audio — 75mm Woofer, Google Assistant, Multi-Room Audio",
-        "features": [
-          "75mm Woofer, 19mm Tweeter",
-          "Google Assistant yerleşik",
-          "Multi-Room Audio desteği",
-          "Kişiselleştirme için Voice Match",
-          "Ambient IQ otomatik ayarlama",
-          "Chromecast yerleşik"
-        ]
-      }
-    }
-  },
-  {
-    "title": "iPad Pro 13\" M5",
-    "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
-    "retail_price": 1399.0,
-    "duration": 216000,
-    "category": "tablets",
-    "features": [
-      "13\" Tandem OLED, 2752x2064, ProMotion",
-      "Apple M5 Chip, Hardware Ray Tracing",
-      "Apple Pencil 3 & Magic Keyboard Support",
-      "Thunderbolt 5 / USB 4",
-      "12MP Ultra-Wide Front, LiDAR Scanner",
-      "Face ID, Wi-Fi 7, 5G Optional"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "iPad Pro 13\" M5",
-        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
-        "features": [
-          "13\" Tandem OLED, 2752x2064, ProMotion",
-          "Apple M5 Chip, Hardware Ray Tracing",
-          "Apple Pencil 3 & Magic Keyboard Unterstützung",
-          "Thunderbolt 5 / USB 4",
-          "12MP Ultra-Wide Front, LiDAR Scanner",
-          "Face ID, Wi-Fi 7, 5G optional"
-        ]
-      },
-      "en": {
-        "title": "iPad Pro 13\" M5",
-        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
-        "features": [
-          "13\" Tandem OLED, 2752x2064, ProMotion",
-          "Apple M5 Chip, Hardware Ray Tracing",
-          "Apple Pencil 3 & Magic Keyboard support",
-          "Thunderbolt 5 / USB 4",
-          "12MP Ultra-Wide front, LiDAR Scanner",
-          "Face ID, Wi-Fi 7, 5G optional"
-        ]
-      },
-      "sq": {
-        "title": "iPad Pro 13\" M5",
-        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
-        "features": [
-          "13\" Tandem OLED, 2752x2064, ProMotion",
-          "Apple M5 Chip, Hardware Ray Tracing",
-          "Mbështetje për Apple Pencil 3 & Magic Keyboard",
-          "Thunderbolt 5 / USB 4",
-          "12MP Ultra-Wide përpara, LiDAR Scanner",
-          "Face ID, Wi-Fi 7, 5G opsionale"
-        ]
-      },
-      "tr": {
-        "title": "iPad Pro 13\" M5",
-        "description": "Apple iPad Pro 13\" M5 — Tandem OLED, Apple Pencil 3, Thunderbolt 5",
-        "features": [
-          "13\" Tandem OLED, 2752x2064, ProMotion",
-          "Apple M5 Chip, Hardware Ray Tracing",
-          "Apple Pencil 3 ve Magic Keyboard desteği",
-          "Thunderbolt 5 / USB 4",
-          "12MP Ultra-Wide ön kamera, LiDAR Scanner",
-          "Face ID, Wi-Fi 7, isteğe bağlı 5G"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Sonos Era 300",
-    "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
-    "retail_price": 499.0,
-    "duration": 194400,
-    "category": "smarthome",
-    "features": [
-      "Dolby Atmos Music Support",
-      "6 Drivers for Spatial Sound",
-      "Trueplay Tuning Technology",
-      "WiFi 6, Bluetooth, USB-C",
-      "Amazon Alexa Built-In",
-      "AirPlay 2 Compatible"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Sonos Era 300",
-        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
-        "features": [
-          "Dolby Atmos Music Unterstützung",
-          "6 Treiber für Spatial Sound",
-          "Trueplay Tuning Technology",
-          "WiFi 6, Bluetooth, USB-C",
-          "Amazon Alexa integriert",
-          "AirPlay 2 kompatibel"
-        ]
-      },
-      "en": {
-        "title": "Sonos Era 300",
-        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
-        "features": [
-          "Dolby Atmos Music support",
-          "6 drivers for Spatial Sound",
-          "Trueplay Tuning Technology",
-          "WiFi 6, Bluetooth, USB-C",
-          "Amazon Alexa built-in",
-          "AirPlay 2 compatible"
-        ]
-      },
-      "sq": {
-        "title": "Sonos Era 300",
-        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
-        "features": [
-          "Mbështetje për Dolby Atmos Music",
-          "6 driverë për Spatial Sound",
-          "Trueplay Tuning Technology",
-          "WiFi 6, Bluetooth, USB-C",
-          "Amazon Alexa e integruar",
-          "E përputhshme me AirPlay 2"
-        ]
-      },
-      "tr": {
-        "title": "Sonos Era 300",
-        "description": "Sonos Era 300 — Dolby Atmos, Spatial Audio, WiFi 6, USB-C Line-In",
-        "features": [
-          "Dolby Atmos Music desteği",
-          "Spatial Sound için 6 sürücü",
-          "Trueplay Tuning Technology",
-          "WiFi 6, Bluetooth, USB-C",
-          "Amazon Alexa yerleşik",
-          "AirPlay 2 ile uyumlu"
-        ]
-      }
-    }
-  },
-  {
-    "title": "LG UltraGear 45GR95QE",
-    "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
-    "retail_price": 1699.0,
-    "duration": 259200,
-    "category": "monitors",
-    "features": [
-      "45\" Curved OLED Panel",
-      "3440x1440 WQHD Resolution",
-      "240Hz Refresh Rate",
-      "0.03ms GtG Response Time",
-      "G-Sync & FreeSync Premium",
-      "Anti-Glare Low Reflection"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "LG UltraGear 45GR95QE",
-        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
-        "features": [
-          "45\" Curved OLED Panel",
-          "3440x1440 WQHD Resolution",
-          "240Hz Refresh Rate",
-          "0.03ms GtG Response Time",
-          "G-Sync & FreeSync Premium",
-          "Anti-Glare Low Reflection"
-        ]
-      },
-      "en": {
-        "title": "LG UltraGear 45GR95QE",
-        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
-        "features": [
-          "45\" Curved OLED Panel",
-          "3440x1440 WQHD Resolution",
-          "240Hz Refresh Rate",
-          "0.03ms GtG Response Time",
-          "G-Sync & FreeSync Premium",
-          "Anti-Glare Low Reflection"
-        ]
-      },
-      "sq": {
-        "title": "LG UltraGear 45GR95QE",
-        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
-        "features": [
-          "45\" Panel OLED i lakuar",
-          "Rezolucion WQHD 3440x1440",
-          "Frekuencë rifreskimi 240Hz",
-          "Kohë përgjigjeje 0.03ms GtG",
-          "G-Sync & FreeSync Premium",
-          "Anti-Glare Low Reflection"
-        ]
-      },
-      "tr": {
-        "title": "LG UltraGear 45GR95QE",
-        "description": "LG UltraGear 45\" OLED — 240Hz, 0.03ms, WQHD, G-Sync & FreeSync Premium",
-        "features": [
-          "45\" Kavisli OLED Panel",
-          "3440x1440 WQHD Çözünürlük",
-          "240Hz Yenileme Hızı",
-          "0.03ms GtG Tepki Süresi",
-          "G-Sync & FreeSync Premium",
-          "Anti-Glare Low Reflection"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Dyson Airstrait Pro",
-    "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, Intelligent Heat Control",
-    "retail_price": 549.0,
-    "duration": 172800,
-    "category": "home",
-    "features": [
-      "Wet-to-Dry Straightening Technology",
-      "Intelligent Heat Control Every 100x/sec",
-      "Flexing Plates for Root-to-Tip Styling",
-      "3 Heat Settings + Cool Mode",
-      "Dual Airflow Jets for Fast Drying",
-      "360° Swivel Cable, Heat-Resistant Case"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Dyson Airstrait Pro",
-        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, intelligente Wärmekontrolle",
-        "features": [
-          "Wet-to-Dry-Glättungstechnologie",
-          "Intelligente Wärmekontrolle 100x/Sek.",
-          "Flexible Platten für Styling vom Ansatz bis in die Spitzen",
-          "3 Heizstufen + Kaltmodus",
-          "Duale Luftstromdüsen für schnelles Trocknen",
-          "360°-Drehkabel, hitzebeständiges Etui"
-        ]
-      },
-      "en": {
-        "title": "Dyson Airstrait Pro",
-        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, intelligent heat control",
-        "features": [
-          "Wet-to-Dry straightening technology",
-          "Intelligent heat control 100x/sec",
-          "Flexing plates for root-to-tip styling",
-          "3 heat settings + cool mode",
-          "Dual airflow jets for fast drying",
-          "360° swivel cable, heat-resistant case"
-        ]
-      },
-      "sq": {
-        "title": "Dyson Airstrait Pro",
-        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, kontroll inteligjent i nxehtësisë",
-        "features": [
-          "Teknologji drejtimi Wet-to-Dry",
-          "Kontroll inteligjent i nxehtësisë 100 herë/sek.",
-          "Pllaka fleksibël për stilim nga rrënja deri te majat",
-          "3 nivele nxehtësie + modalitet i ftohtë",
-          "Grykë me rrjedhë ajri të dyfishtë për tharje të shpejtë",
-          "Kabllo rrotulluese 360°, këllëf rezistent ndaj nxehtësisë"
-        ]
-      },
-      "tr": {
-        "title": "Dyson Airstrait Pro",
-        "description": "Dyson Airstrait Pro — Wet-to-Dry Straightener, akıllı ısı kontrolü",
-        "features": [
-          "Wet-to-Dry düzleştirme teknolojisi",
-          "100x/sn akıllı ısı kontrolü",
-          "Dipten uca şekillendirme için esnek plakalar",
-          "3 ısı ayarı + soğuk mod",
-          "Hızlı kurutma için çift hava akışı jeti",
-          "360° dönebilen kablo, ısıya dayanıklı taşıma kılıfı"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Nintendo Switch 2",
-    "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible",
-    "retail_price": 449.0,
-    "duration": 172800,
-    "category": "gaming",
-    "features": [
-      "8\" 1080p LCD Display",
-      "NVIDIA Custom Processor",
-      "Magnetic Joy-Con 2 Controllers",
-      "Backwards Compatible with Switch Games",
-      "64GB Internal Storage, microSD Slot",
-      "USB-C Dock for 4K TV Output"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Nintendo Switch 2",
-        "description": "Nintendo Switch 2 Konsole — 8\" LCD, magnetische Joy-Cons, abwärtskompatibel",
-        "features": [
-          "8\" 1080p LCD-Display",
-          "NVIDIA Custom Processor",
-          "Magnetic Joy-Con 2 Controller",
-          "Abwärtskompatibel mit Switch-Spielen",
-          "64GB interner Speicher, microSD-Steckplatz",
-          "USB-C Dock für 4K-TV-Ausgabe"
-        ]
-      },
-      "en": {
-        "title": "Nintendo Switch 2",
-        "description": "Nintendo Switch 2 Console — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible",
-        "features": [
-          "8\" 1080p LCD Display",
-          "NVIDIA Custom Processor",
-          "Magnetic Joy-Con 2 Controllers",
-          "Backwards Compatible with Switch Games",
-          "64GB Internal Storage, microSD Slot",
-          "USB-C Dock for 4K TV Output"
-        ]
-      },
-      "sq": {
-        "title": "Nintendo Switch 2",
-        "description": "Konsola Nintendo Switch 2 — 8\" LCD, Magnetic Joy-Cons, e pajtueshme me versionet e mëparshme",
-        "features": [
-          "Ekran 8\" 1080p LCD",
-          "NVIDIA Custom Processor",
-          "Kontrollorë Magnetic Joy-Con 2",
-          "E pajtueshme me lojërat Switch",
-          "Memorie e brendshme 64GB, vend për microSD",
-          "USB-C Dock për dalje 4K në TV"
-        ]
-      },
-      "tr": {
-        "title": "Nintendo Switch 2",
-        "description": "Nintendo Switch 2 Konsol — 8\" LCD, Magnetic Joy-Cons, Backwards Compatible",
-        "features": [
-          "8\" 1080p LCD Ekran",
-          "NVIDIA Custom Processor",
-          "Magnetic Joy-Con 2 Kontrolcüler",
-          "Switch Oyunlarıyla Backwards Compatible",
-          "64GB Dahili Depolama, microSD Yuvası",
-          "4K TV Çıkışı için USB-C Dock"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Hyperice Hypervolt 2 Pro",
-    "description": "Hyperice Hypervolt 2 Pro — Bluetooth Connected, 5 Speeds, Quiet Glide Technology",
-    "retail_price": 399.0,
-    "duration": 172800,
-    "category": "fitness",
-    "features": [
-      "Quiet Glide Technology",
-      "Bluetooth App Control",
-      "5 Speed Settings",
-      "3-Hour Battery Life",
-      "5 Attachment Heads",
-      "TSA-Approved Carry Size"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Hyperice Hypervolt 2 Pro",
-        "description": "Hyperice Hypervolt 2 Pro — Bluetooth-verbunden, 5 Geschwindigkeiten, Quiet Glide Technology",
-        "features": [
-          "Quiet Glide Technology",
-          "Bluetooth-App-Steuerung",
-          "5 Geschwindigkeitsstufen",
-          "3 Stunden Akkulaufzeit",
-          "5 Aufsatzköpfe",
-          "TSA-zugelassene Reisegröße"
-        ]
-      },
-      "en": {
-        "title": "Hyperice Hypervolt 2 Pro",
-        "description": "Hyperice Hypervolt 2 Pro — Bluetooth Connected, 5 Speeds, Quiet Glide Technology",
-        "features": [
-          "Quiet Glide Technology",
-          "Bluetooth App Control",
-          "5 Speed Settings",
-          "3-Hour Battery Life",
-          "5 Attachment Heads",
-          "TSA-Approved Carry Size"
-        ]
-      },
-      "sq": {
-        "title": "Hyperice Hypervolt 2 Pro",
-        "description": "Hyperice Hypervolt 2 Pro — i lidhur me Bluetooth, 5 shpejtësi, Quiet Glide Technology",
-        "features": [
-          "Quiet Glide Technology",
-          "Kontroll përmes aplikacionit Bluetooth",
-          "5 nivele shpejtësie",
-          "Jetëgjatësi baterie 3 orë",
-          "5 koka/shtojca të ndërrueshme",
-          "Madhësi për transport e aprovuar nga TSA"
-        ]
-      },
-      "tr": {
-        "title": "Hyperice Hypervolt 2 Pro",
-        "description": "Hyperice Hypervolt 2 Pro — Bluetooth bağlantılı, 5 hız, Quiet Glide Technology",
-        "features": [
-          "Quiet Glide Technology",
-          "Bluetooth uygulama kontrolü",
-          "5 hız ayarı",
-          "3 saat pil ömrü",
-          "5 başlık aparatı",
-          "TSA onaylı taşıma boyutu"
-        ]
-      }
-    }
-  },
-  {
-    "title": "PlayStation 5 Pro",
-    "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller",
-    "retail_price": 799.0,
-    "duration": 216000,
-    "category": "gaming",
-    "features": [
-      "Enhanced GPU with Ray Tracing",
-      "2TB SSD Ultra-Fast Storage",
-      "8K Video Output Support",
-      "DualSense Edge Wireless Controller",
-      "Tempest 3D Audio Engine",
-      "4K Gaming at 120fps"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "PlayStation 5 Pro",
-        "description": "Sony PS5 Pro 2TB — Verbesserte GPU, 8K-Ausgabe, DualSense Edge Controller",
-        "features": [
-          "Verbesserte GPU mit Ray Tracing",
-          "2TB SSD Ultra-schneller Speicher",
-          "Unterstützung für 8K-Videoausgabe",
-          "DualSense Edge Wireless Controller",
-          "Tempest 3D Audio Engine",
-          "4K-Gaming mit 120 fps"
-        ]
-      },
-      "en": {
-        "title": "PlayStation 5 Pro",
-        "description": "Sony PS5 Pro 2TB — Enhanced GPU, 8K Output, DualSense Edge Controller",
-        "features": [
-          "Enhanced GPU with Ray Tracing",
-          "2TB SSD Ultra-Fast Storage",
-          "8K Video Output Support",
-          "DualSense Edge Wireless Controller",
-          "Tempest 3D Audio Engine",
-          "4K gaming at 120 fps"
-        ]
-      },
-      "sq": {
-        "title": "PlayStation 5 Pro",
-        "description": "Sony PS5 Pro 2TB — GPU e përmirësuar, dalje 8K, DualSense Edge Controller",
-        "features": [
-          "GPU e përmirësuar me Ray Tracing",
-          "2TB SSD memorie ultra e shpejtë",
-          "Mbështetje për dalje video 8K",
-          "DualSense Edge Wireless Controller",
-          "Tempest 3D Audio Engine",
-          "Lojëra 4K me 120 fps"
-        ]
-      },
-      "tr": {
-        "title": "PlayStation 5 Pro",
-        "description": "Sony PS5 Pro 2TB — Geliştirilmiş GPU, 8K Çıkış, DualSense Edge Controller",
-        "features": [
-          "Ray Tracing destekli geliştirilmiş GPU",
-          "2TB SSD ultra hızlı depolama",
-          "8K video çıkışı desteği",
-          "DualSense Edge Wireless Controller",
-          "Tempest 3D Audio Engine",
-          "120 fps'de 4K oyun"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Lego Star Wars Millennium Falcon UCS",
-    "description": "Lego Ultimate Collector Series Millennium Falcon — 7.541 Teile, Sammler-Edition",
-    "retail_price": 849.99,
-    "duration": 172800,
-    "category": "gaming",
-    "features": [
-      "7.541 Teile",
-      "Ultimate Collector Series",
-      "84cm Länge",
-      "Sammler-Edition",
-      "Display-Modell"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Lego Star Wars Millennium Falcon UCS",
-        "description": "Lego Ultimate Collector Series Millennium Falcon — 7.541 Teile, Sammler-Edition",
-        "features": [
-          "7.541 Teile",
-          "Ultimate Collector Series",
-          "84cm Länge",
-          "Sammler-Edition",
-          "Display-Modell"
-        ]
-      },
-      "en": {
-        "title": "Lego Star Wars Millennium Falcon UCS",
-        "description": "Lego Ultimate Collector Series Millennium Falcon — 7,541 pieces, collector's edition",
-        "features": [
-          "7,541 pieces",
-          "Ultimate Collector Series",
-          "84 cm length",
-          "Collector's edition",
-          "Display model"
-        ]
-      },
-      "sq": {
-        "title": "Lego Star Wars Millennium Falcon UCS",
-        "description": "Lego Ultimate Collector Series Millennium Falcon — 7.541 pjesë, edicion koleksionistësh",
-        "features": [
-          "7.541 pjesë",
-          "Ultimate Collector Series",
-          "84 cm gjatësi",
-          "Edicion koleksionistësh",
-          "Model për ekspozim"
-        ]
-      },
-      "tr": {
-        "title": "Lego Star Wars Millennium Falcon UCS",
-        "description": "Lego Ultimate Collector Series Millennium Falcon — 7.541 parça, koleksiyoncu edisyonu",
-        "features": [
-          "7.541 parça",
-          "Ultimate Collector Series",
-          "84 cm uzunluk",
-          "Koleksiyoncu edisyonu",
-          "Sergileme modeli"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Meta Quest 4",
-    "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per Eye, 256GB",
-    "retail_price": 549.0,
-    "duration": 194400,
-    "category": "xr",
-    "features": [
-      "Snapdragon XR3 Gen 1 Processor",
-      "4K per Eye, Pancake Lens 2.0",
-      "Full-Color Mixed Reality Passthrough",
-      "256GB Storage, Wi-Fi 7",
-      "Hand Tracking 3.0, Eye Tracking",
-      "Meta Horizon OS, 1000+ Apps & Games"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Meta Quest 4",
-        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K pro Auge, 256GB",
-        "features": [
-          "Snapdragon XR3 Gen 1 Processor",
-          "4K pro Auge, Pancake Lens 2.0",
-          "Mixed Reality Passthrough in Vollfarbe",
-          "256GB Speicher, Wi-Fi 7",
-          "Hand Tracking 3.0, Eye Tracking",
-          "Meta Horizon OS, 1000+ Apps & Games"
-        ]
-      },
-      "en": {
-        "title": "Meta Quest 4",
-        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K per eye, 256GB",
-        "features": [
-          "Snapdragon XR3 Gen 1 Processor",
-          "4K per eye, Pancake Lens 2.0",
-          "Full-Color Mixed Reality Passthrough",
-          "256GB storage, Wi-Fi 7",
-          "Hand Tracking 3.0, Eye Tracking",
-          "Meta Horizon OS, 1000+ Apps & Games"
-        ]
-      },
-      "sq": {
-        "title": "Meta Quest 4",
-        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, 4K për sy, 256GB",
-        "features": [
-          "Snapdragon XR3 Gen 1 Processor",
-          "4K për sy, Pancake Lens 2.0",
-          "Passthrough Mixed Reality me ngjyra të plota",
-          "256GB hapësirë ruajtëse, Wi-Fi 7",
-          "Hand Tracking 3.0, Eye Tracking",
-          "Meta Horizon OS, 1000+ aplikacione & lojëra"
-        ]
-      },
-      "tr": {
-        "title": "Meta Quest 4",
-        "description": "Meta Quest 4 — Mixed Reality, Snapdragon XR3, göz başına 4K, 256GB",
-        "features": [
-          "Snapdragon XR3 Gen 1 Processor",
-          "Göz başına 4K, Pancake Lens 2.0",
-          "Tam Renkli Mixed Reality Passthrough",
-          "256GB depolama, Wi-Fi 7",
-          "Hand Tracking 3.0, Eye Tracking",
-          "Meta Horizon OS, 1000+ uygulama & oyun"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Samsung Odyssey G9 49\"",
-    "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
-    "retail_price": 1799.0,
-    "duration": 259200,
-    "category": "monitors",
-    "features": [
-      "49\" QD-OLED Curved Display",
-      "5120x1440, 32:9 Aspect Ratio",
-      "240Hz Refresh Rate",
-      "0.03ms Response Time",
-      "1000R Curvature",
-      "HDR10+ Gaming, 99% DCI-P3"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Samsung Odyssey G9 49\"",
-        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
-        "features": [
-          "49\" QD-OLED Curved Display",
-          "5120x1440, 32:9 Seitenverhältnis",
-          "240Hz Bildwiederholrate",
-          "0.03ms Reaktionszeit",
-          "1000R Krümmung",
-          "HDR10+ Gaming, 99% DCI-P3"
-        ]
-      },
-      "en": {
-        "title": "Samsung Odyssey G9 49\"",
-        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
-        "features": [
-          "49\" QD-OLED Curved Display",
-          "5120x1440, 32:9 aspect ratio",
-          "240Hz refresh rate",
-          "0.03ms response time",
-          "1000R curvature",
-          "HDR10+ Gaming, 99% DCI-P3"
-        ]
-      },
-      "sq": {
-        "title": "Samsung Odyssey G9 49\"",
-        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
-        "features": [
-          "49\" QD-OLED Curved Display",
-          "5120x1440, raport pamjeje 32:9",
-          "Shkallë rifreskimi 240Hz",
-          "Kohë përgjigjeje 0.03ms",
-          "Lakim 1000R",
-          "HDR10+ Gaming, 99% DCI-P3"
-        ]
-      },
-      "tr": {
-        "title": "Samsung Odyssey G9 49\"",
-        "description": "Samsung Odyssey OLED G9 49\" — QD-OLED, 240Hz, 0.03ms, 1000R Curve, HDR10+",
-        "features": [
-          "49\" QD-OLED Curved Display",
-          "5120x1440, 32:9 en-boy oranı",
-          "240Hz yenileme hızı",
-          "0.03ms tepki süresi",
-          "1000R kavis",
-          "HDR10+ Gaming, %99 DCI-P3"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Samsung Freestyle 2",
-    "description": "Samsung The Freestyle 2nd Gen — Portable Projector, 360° Sound, Smart TV Built-In",
-    "retail_price": 899.0,
-    "duration": 194400,
-    "category": "home",
-    "features": [
-      "Full HD 1080p Resolution",
-      "360° Sound Built-In",
-      "Auto Focus & Auto Keystone",
-      "Samsung Smart TV Built-In",
-      "Gaming Hub Support",
-      "Portable, 830g Weight"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Samsung Freestyle 2",
-        "description": "Samsung The Freestyle 2nd Gen — Tragbarer Projektor, 360° Sound, Samsung Smart TV integriert",
-        "features": [
-          "Full HD 1080p Auflösung",
-          "360° Sound integriert",
-          "Auto Focus & Auto Keystone",
-          "Samsung Smart TV integriert",
-          "Gaming Hub Unterstützung",
-          "Tragbar, 830 g Gewicht"
-        ]
-      },
-      "en": {
-        "title": "Samsung Freestyle 2",
-        "description": "Samsung The Freestyle 2nd Gen — Portable Projector, 360° Sound, Samsung Smart TV Built-In",
-        "features": [
-          "Full HD 1080p Resolution",
-          "360° Sound Built-In",
-          "Auto Focus & Auto Keystone",
-          "Samsung Smart TV Built-In",
-          "Gaming Hub Support",
-          "Portable, 830g Weight"
-        ]
-      },
-      "sq": {
-        "title": "Samsung Freestyle 2",
-        "description": "Samsung The Freestyle 2nd Gen — Projektor portativ, 360° Sound, Samsung Smart TV i integruar",
-        "features": [
-          "Rezolucion Full HD 1080p",
-          "360° Sound i integruar",
-          "Auto Focus & Auto Keystone",
-          "Samsung Smart TV i integruar",
-          "Mbështetje për Gaming Hub",
-          "Portativ, peshë 830 g"
-        ]
-      },
-      "tr": {
-        "title": "Samsung Freestyle 2",
-        "description": "Samsung The Freestyle 2nd Gen — Taşınabilir Projektör, 360° Sound, Samsung Smart TV Dahili",
-        "features": [
-          "Full HD 1080p Çözünürlük",
-          "360° Sound Dahili",
-          "Auto Focus & Auto Keystone",
-          "Samsung Smart TV Dahili",
-          "Gaming Hub Desteği",
-          "Taşınabilir, 830 g Ağırlık"
-        ]
-      }
-    }
-  },
-  {
-    "title": "GoPro Hero 13 Black",
-    "description": "GoPro Hero 13 Black Action Cam — 5.3K Video, HyperSmooth 6.0, 27MP Foto, Wasserdicht 10m",
-    "retail_price": 449.0,
-    "duration": 172800,
-    "category": "audio",
-    "features": [
-      "5.3K60 Video Recording",
-      "HyperSmooth 6.0 Stabilization",
-      "Wasserdicht bis 10m",
-      "27MP Photos",
-      "GP2 Processor"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "GoPro Hero 13 Black",
-        "description": "GoPro Hero 13 Black Action Cam — 5.3K Video, HyperSmooth 6.0, 27MP Foto, wasserdicht bis 10 m",
-        "features": [
-          "5.3K60 Videoaufnahme",
-          "HyperSmooth 6.0 Stabilisierung",
-          "Wasserdicht bis 10 m",
-          "27MP Fotos",
-          "GP2 Processor"
-        ]
-      },
-      "en": {
-        "title": "GoPro Hero 13 Black",
-        "description": "GoPro Hero 13 Black Action Cam — 5.3K video, HyperSmooth 6.0, 27MP photo, waterproof to 10 m",
-        "features": [
-          "5.3K60 video recording",
-          "HyperSmooth 6.0 stabilization",
-          "Waterproof to 10 m",
-          "27MP photos",
-          "GP2 Processor"
-        ]
-      },
-      "sq": {
-        "title": "GoPro Hero 13 Black",
-        "description": "GoPro Hero 13 Black kamera aksioni — video 5.3K, HyperSmooth 6.0, foto 27MP, rezistente ndaj ujit deri në 10 m",
-        "features": [
-          "Regjistrim video 5.3K60",
-          "Stabilizim HyperSmooth 6.0",
-          "Rezistente ndaj ujit deri në 10 m",
-          "Foto 27MP",
-          "GP2 Processor"
-        ]
-      },
-      "tr": {
-        "title": "GoPro Hero 13 Black",
-        "description": "GoPro Hero 13 Black aksiyon kamerası — 5.3K video, HyperSmooth 6.0, 27MP foto, 10 m'ye kadar su geçirmez",
-        "features": [
-          "5.3K60 video kayıt",
-          "HyperSmooth 6.0 sabitleme",
-          "10 m'ye kadar su geçirmez",
-          "27MP fotoğraflar",
-          "GP2 Processor"
-        ]
-      }
-    }
-  },
-  {
-    "title": "iRobot Roomba j7+ Combo",
-    "description": "iRobot Roomba Combo j7+ — Saug- und Wischroboter, Auto-Entleerung, AI-Hindernis-Erkennung",
-    "retail_price": 999.0,
-    "duration": 172800,
-    "category": "audio",
-    "features": [
-      "Saug- + Wischfunktion",
-      "Automatische Entleerung",
-      "AI-Hindernis-Erkennung",
-      "Smart Mapping",
-      "App-Steuerung"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "iRobot Roomba j7+ Combo",
-        "description": "iRobot Roomba Combo j7+ — Saug- und Wischroboter, Auto-Entleerung, AI-Hindernis-Erkennung",
-        "features": [
-          "Saug- + Wischfunktion",
-          "Automatische Entleerung",
-          "AI-Hindernis-Erkennung",
-          "Smart Mapping",
-          "App-Steuerung"
-        ]
-      },
-      "en": {
-        "title": "iRobot Roomba j7+ Combo",
-        "description": "iRobot Roomba Combo j7+ — vacuum and mop robot, auto-emptying, AI obstacle detection",
-        "features": [
-          "Vacuum + mop function",
-          "Automatic emptying",
-          "AI obstacle detection",
-          "Smart Mapping",
-          "App control"
-        ]
-      },
-      "sq": {
-        "title": "iRobot Roomba j7+ Combo",
-        "description": "iRobot Roomba Combo j7+ — robot fshesë me vakum dhe pastrues me leckë, auto-zbrazje, zbulim pengesash me AI",
-        "features": [
-          "Funksion fshirjeje me vakum + pastrimi me leckë",
-          "Zbrazje automatike",
-          "Zbulim pengesash me AI",
-          "Smart Mapping",
-          "Kontroll me aplikacion"
-        ]
-      },
-      "tr": {
-        "title": "iRobot Roomba j7+ Combo",
-        "description": "iRobot Roomba Combo j7+ — süpürme ve silme robotu, otomatik boşaltma, AI engel algılama",
-        "features": [
-          "Süpürme + silme fonksiyonu",
-          "Otomatik boşaltma",
-          "AI engel algılama",
-          "Smart Mapping",
-          "Uygulama ile kontrol"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Boosted Board Mini X",
-    "description": "Boosted Mini X — Compact Design, 23km Range, 30km/h Speed, Deep Concave Deck",
-    "retail_price": 999.0,
-    "duration": 194400,
-    "category": "mobility",
-    "features": [
-      "Compact 29.5\" Deck",
-      "1000W Dual Motors",
-      "23km / 14mi Range",
-      "30km/h / 18.5mph Speed",
-      "Regenerative Braking",
-      "Hyper Mode Available"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Boosted Board Mini X",
-        "description": "Boosted Mini X — Kompaktes Design, 23 km Reichweite, 30 km/h Geschwindigkeit, Deep-Concave-Deck",
-        "features": [
-          "Kompaktes 29,5\" Deck",
-          "1000 W Dual-Motoren",
-          "23 km / 14 mi Reichweite",
-          "30 km/h / 18,5 mph Geschwindigkeit",
-          "Rekuperatives Bremsen",
-          "Hyper Mode verfügbar"
-        ]
-      },
-      "en": {
-        "title": "Boosted Board Mini X",
-        "description": "Boosted Mini X — Compact design, 23 km range, 30 km/h speed, deep concave deck",
-        "features": [
-          "Compact 29.5\" deck",
-          "1000W dual motors",
-          "23km / 14mi range",
-          "30km/h / 18.5mph speed",
-          "Regenerative braking",
-          "Hyper Mode available"
-        ]
-      },
-      "sq": {
-        "title": "Boosted Board Mini X",
-        "description": "Boosted Mini X — Dizajn kompakt, autonomi 23 km, shpejtësi 30 km/h, deck me konkavitet të thellë",
-        "features": [
-          "Deck kompakt 29.5\"",
-          "Motorë të dyfishtë 1000W",
-          "Autonomi 23km / 14mi",
-          "Shpejtësi 30km/h / 18.5mph",
-          "Frenim rigjenerues",
-          "Hyper Mode i disponueshëm"
-        ]
-      },
-      "tr": {
-        "title": "Boosted Board Mini X",
-        "description": "Boosted Mini X — Kompakt tasarım, 23 km menzil, 30 km/s hız, derin konkav deck",
-        "features": [
-          "Kompakt 29.5\" deck",
-          "1000W çift motor",
-          "23km / 14mi menzil",
-          "30km/h / 18.5mph hız",
-          "Rejeneratif frenleme",
-          "Hyper Mode mevcut"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Secretlab Titan Evo 2024",
-    "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Magnetic Armrests, Hybrid Leatherette",
-    "retail_price": 584.0,
-    "duration": 194400,
-    "category": "gaming",
-    "features": [
-      "4-Way L-Adapt Lumbar Support",
-      "Magnetic CloudSwap Armrests",
-      "Neo Hybrid Leatherette",
-      "Multi-Tilt Mechanism",
-      "XL Pebble Seat Base",
-      "5-Year Extended Warranty"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Secretlab Titan Evo 2024",
-        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Magnetic Armrests, Hybrid Leatherette",
-        "features": [
-          "4-Way L-Adapt Lumbar Support",
-          "Magnetic CloudSwap Armrests",
-          "Neo Hybrid Leatherette",
-          "Multi-Tilt Mechanism",
-          "XL Pebble Seat Base",
-          "5-Year Extended Warranty"
-        ]
-      },
-      "en": {
-        "title": "Secretlab Titan Evo 2024",
-        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Magnetic Armrests, Hybrid Leatherette",
-        "features": [
-          "4-Way L-Adapt Lumbar Support",
-          "Magnetic CloudSwap Armrests",
-          "Neo Hybrid Leatherette",
-          "Multi-Tilt Mechanism",
-          "XL Pebble Seat Base",
-          "5-Year Extended Warranty"
-        ]
-      },
-      "sq": {
-        "title": "Secretlab Titan Evo 2024",
-        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Mbështetëse krahësh magnetike, Hybrid Leatherette",
-        "features": [
-          "4-Way L-Adapt Lumbar Support",
-          "Magnetic CloudSwap Armrests",
-          "Neo Hybrid Leatherette",
-          "Mekanizëm Multi-Tilt",
-          "Bazë sediljeje XL Pebble",
-          "Garanci e zgjatur 5-vjeçare"
-        ]
-      },
-      "tr": {
-        "title": "Secretlab Titan Evo 2024",
-        "description": "Secretlab Titan Evo 2024 — 4-Way L-Adapt Lumbar, Manyetik kolçaklar, Hybrid Leatherette",
-        "features": [
-          "4-Way L-Adapt Lumbar Support",
-          "Magnetic CloudSwap Armrests",
-          "Neo Hybrid Leatherette",
-          "Multi-Tilt Mekanizması",
-          "XL Pebble Oturma Tabanı",
-          "5 Yıl Uzatılmış Garanti"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Xiaomi Electric Scooter 5",
-    "description": "Xiaomi Electric Scooter 5 Pro — 600W Motor, 45km Range, 10\" Tubeless Tires",
-    "retail_price": 799.0,
-    "duration": 194400,
-    "category": "mobility",
-    "features": [
-      "600W Dual Motor Peak",
-      "45km / 28mi Max Range",
-      "10\" Tubeless Self-Sealing Tires",
-      "Front & Rear Disc Brakes",
-      "LED Dashboard Display",
-      "Apple Find My Compatible"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Xiaomi Electric Scooter 5",
-        "description": "Xiaomi Electric Scooter 5 Pro — 600W Motor, 45 km Reichweite, 10\" schlauchlose Reifen",
-        "features": [
-          "600W Dual-Motor-Spitzenleistung",
-          "Max. Reichweite: 45 km / 28 mi",
-          "10\" schlauchlose, selbstabdichtende Reifen",
-          "Scheibenbremsen vorne & hinten",
-          "LED-Dashboard-Display",
-          "Apple Find My kompatibel"
-        ]
-      },
-      "en": {
-        "title": "Xiaomi Electric Scooter 5",
-        "description": "Xiaomi Electric Scooter 5 Pro — 600W Motor, 45km Range, 10\" Tubeless Tires",
-        "features": [
-          "600W dual motor peak",
-          "45km / 28mi max range",
-          "10\" tubeless self-sealing tires",
-          "Front & rear disc brakes",
-          "LED dashboard display",
-          "Apple Find My compatible"
-        ]
-      },
-      "sq": {
-        "title": "Xiaomi Electric Scooter 5",
-        "description": "Xiaomi Electric Scooter 5 Pro — motor 600W, autonomi 45 km, goma 10\" pa tub",
-        "features": [
-          "Kulm fuqie 600W me dy motorë",
-          "Autonomi maksimale: 45 km / 28 mi",
-          "Goma 10\" pa tub, vetë-mbyllëse",
-          "Frena me disk përpara & prapa",
-          "Ekran LED në panelin e komandimit",
-          "E pajtueshme me Apple Find My"
-        ]
-      },
-      "tr": {
-        "title": "Xiaomi Electric Scooter 5",
-        "description": "Xiaomi Electric Scooter 5 Pro — 600W motor, 45 km menzil, 10\" tubeless lastikler",
-        "features": [
-          "600W çift motor tepe gücü",
-          "Maks. menzil: 45 km / 28 mi",
-          "10\" tubeless, kendini mühürleyen lastikler",
-          "Ön ve arka disk frenler",
-          "LED gösterge paneli ekranı",
-          "Apple Find My ile uyumlu"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Breville Barista Touch",
-    "description": "Breville Barista Touch Impress — Assisted Tamping, Touch Display, Grind Size Dial",
-    "retail_price": 1499.0,
-    "duration": 216000,
-    "category": "home",
-    "features": [
-      "Impress Puck System, Auto Tamping",
-      "Intuitive Touch Screen Display",
-      "ThermoJet Heating System",
-      "Integrated Conical Burr Grinder",
-      "Programmable Shot Volumes",
-      "Auto Steam Wand"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Breville Barista Touch",
-        "description": "Breville Barista Touch Impress — Unterstütztes Tampen, Touch-Display, Mahlgrad-Drehregler",
-        "features": [
-          "Impress Puck System, Auto-Tamping",
-          "Intuitives Touchscreen-Display",
-          "ThermoJet Heizsystem",
-          "Integriertes konisches Kegelmahlwerk",
-          "Programmierbare Shot-Volumen",
-          "Auto-Dampflanze"
-        ]
-      },
-      "en": {
-        "title": "Breville Barista Touch",
-        "description": "Breville Barista Touch Impress — Assisted tamping, touch display, grind size dial",
-        "features": [
-          "Impress Puck System, auto tamping",
-          "Intuitive touch screen display",
-          "ThermoJet heating system",
-          "Integrated conical burr grinder",
-          "Programmable shot volumes",
-          "Auto steam wand"
-        ]
-      },
-      "sq": {
-        "title": "Breville Barista Touch",
-        "description": "Breville Barista Touch Impress — Tampim i asistuar, ekran me prekje, rrotë për madhësinë e bluarjes",
-        "features": [
-          "Impress Puck System, tampim automatik",
-          "Ekran intuitiv me prekje",
-          "Sistemi i ngrohjes ThermoJet",
-          "Mulli i integruar me gurë konikë",
-          "Vëllime shot-i të programueshme",
-          "Shkop avulli automatik"
-        ]
-      },
-      "tr": {
-        "title": "Breville Barista Touch",
-        "description": "Breville Barista Touch Impress — Destekli tamping, dokunmatik ekran, öğütme boyutu kadranı",
-        "features": [
-          "Impress Puck System, otomatik tamping",
-          "Sezgisel dokunmatik ekran",
-          "ThermoJet ısıtma sistemi",
-          "Entegre konik burr öğütücü",
-          "Programlanabilir shot hacimleri",
-          "Otomatik buhar çubuğu"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Bose QuietComfort Ultra",
-    "description": "Bose QuietComfort Ultra Headphones — Best-in-class Noise Cancelling, Immersive Audio, 24h Akku",
-    "retail_price": 449.0,
-    "duration": 172800,
-    "category": "audio",
-    "features": [
-      "Active Noise Cancelling",
-      "Immersive Audio mit Spatial Sound",
-      "24 Stunden Akku",
-      "Bluetooth 5.3",
-      "Premium Komfort"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Bose QuietComfort Ultra",
-        "description": "Bose QuietComfort Ultra Headphones — Erstklassiges Noise Cancelling, Immersive Audio, 24h Akku",
-        "features": [
-          "Active Noise Cancelling",
-          "Immersive Audio mit Spatial Sound",
-          "24 Stunden Akku",
-          "Bluetooth 5.3",
-          "Premium Komfort"
-        ]
-      },
-      "en": {
-        "title": "Bose QuietComfort Ultra",
-        "description": "Bose QuietComfort Ultra Headphones — Best-in-class Noise Cancelling, Immersive Audio, 24h battery",
-        "features": [
-          "Active Noise Cancelling",
-          "Immersive Audio with Spatial Sound",
-          "24-hour battery",
-          "Bluetooth 5.3",
-          "Premium comfort"
-        ]
-      },
-      "sq": {
-        "title": "Bose QuietComfort Ultra",
-        "description": "Bose QuietComfort Ultra Headphones — Noise Cancelling më i miri në klasë, Immersive Audio, bateri 24h",
-        "features": [
-          "Active Noise Cancelling",
-          "Immersive Audio me Spatial Sound",
-          "Bateri 24 orë",
-          "Bluetooth 5.3",
-          "Komoditet premium"
-        ]
-      },
-      "tr": {
-        "title": "Bose QuietComfort Ultra",
-        "description": "Bose QuietComfort Ultra Headphones — Sınıfının en iyisi Noise Cancelling, Immersive Audio, 24h pil",
-        "features": [
-          "Active Noise Cancelling",
-          "Spatial Sound ile Immersive Audio",
-          "24 saat pil",
-          "Bluetooth 5.3",
-          "Premium konfor"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Bose Soundbar Ultra",
-    "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, Built-in Voice Control",
-    "retail_price": 999.0,
-    "duration": 172800,
-    "category": "audio",
-    "features": [
-      "Dolby Atmos Sound",
-      "AI Dialogue Mode",
-      "Voice Assistant Integration",
-      "Wireless Surround Ready",
-      "Spatial Audio"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Bose Soundbar Ultra",
-        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, integrierte Sprachsteuerung",
-        "features": [
-          "Dolby Atmos Sound",
-          "AI Dialogue Mode",
-          "Sprachassistenten-Integration",
-          "Kabelloses Surround-System bereit",
-          "Räumlicher Klang"
-        ]
-      },
-      "en": {
-        "title": "Bose Soundbar Ultra",
-        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, Built-in Voice Control",
-        "features": [
-          "Dolby Atmos Sound",
-          "AI Dialogue Mode",
-          "Voice Assistant Integration",
-          "Wireless Surround Ready",
-          "Spatial Audio"
-        ]
-      },
-      "sq": {
-        "title": "Bose Soundbar Ultra",
-        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, kontroll zanor i integruar",
-        "features": [
-          "Dolby Atmos Sound",
-          "AI Dialogue Mode",
-          "Integrim me asistentin zanor",
-          "Gati për Surround pa tela",
-          "Audio hapësinore"
-        ]
-      },
-      "tr": {
-        "title": "Bose Soundbar Ultra",
-        "description": "Bose Smart Soundbar Ultra — Dolby Atmos, AI Dialogue Mode, yerleşik sesli kontrol",
-        "features": [
-          "Dolby Atmos Sound",
-          "AI Dialogue Mode",
-          "Sesli asistan entegrasyonu",
-          "Kablosuz Surround'a hazır",
-          "Mekânsal ses"
-        ]
-      }
-    }
-  },
-  {
-    "title": "Samsung Galaxy S26 Ultra",
-    "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera",
-    "retail_price": 1499.0,
-    "duration": 172800,
+    "title": "iPhone 17 Pro 256GB",
+    "description": "Apple iPhone 17 Pro 2026 — A19 Pro Chip, Titanium Design, 256GB",
+    "retail_price": 1299.00,
+    "duration": 518400,
     "category": "phones",
-    "features": [
-      "6.9\" Dynamic AMOLED 2X, 3120x1440",
-      "Snapdragon 8 Elite 2 Processor",
-      "200MP Main + 50MP Ultra-Wide + 10MP Telephoto",
-      "5000mAh Battery, 65W Fast Charge",
-      "512GB Storage, 16GB RAM",
-      "S Pen Built-in, IP68 Water Resistant"
-    ],
+    "image_url": "https://images.unsplash.com/photo-1696446702183-be9605ffcc7b?w=800&q=80",
+    "features": ["A19 Pro Chip", "Titanium Frame", "48MP Triple Camera", "ProMotion 120Hz", "USB-C 3.2"],
     "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Samsung Galaxy S26 Ultra",
-        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Kamera",
-        "features": [
-          "6.9\" Dynamic AMOLED 2X, 3120x1440",
-          "Snapdragon 8 Elite 2 Prozessor",
-          "200MP Hauptkamera + 50MP Ultraweitwinkel + 10MP Telephoto",
-          "5000mAh Akku, 65W Schnellladen",
-          "512GB Speicher, 16GB RAM",
-          "S Pen integriert, IP68 wasserresistent"
-        ]
-      },
-      "en": {
-        "title": "Samsung Galaxy S26 Ultra",
-        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Camera",
-        "features": [
-          "6.9\" Dynamic AMOLED 2X, 3120x1440",
-          "Snapdragon 8 Elite 2 Processor",
-          "200MP Main + 50MP Ultra-Wide + 10MP Telephoto",
-          "5000mAh Battery, 65W Fast Charge",
-          "512GB Storage, 16GB RAM",
-          "S Pen Built-in, IP68 Water Resistant"
-        ]
-      },
-      "sq": {
-        "title": "Samsung Galaxy S26 Ultra",
-        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, Kamera 200MP",
-        "features": [
-          "6.9\" Dynamic AMOLED 2X, 3120x1440",
-          "Procesor Snapdragon 8 Elite 2",
-          "200MP Kamera kryesore + 50MP Ultra-Wide + 10MP Telephoto",
-          "Bateri 5000mAh, karikim i shpejtë 65W",
-          "512GB hapësirë ruajtjeje, 16GB RAM",
-          "S Pen i integruar, rezistencë ndaj ujit IP68"
-        ]
-      },
-      "tr": {
-        "title": "Samsung Galaxy S26 Ultra",
-        "description": "Samsung Galaxy S26 Ultra 512GB Titanium — AMOLED 6.9\", Snapdragon 8 Elite 2, 200MP Kamera",
-        "features": [
-          "6.9\" Dynamic AMOLED 2X, 3120x1440",
-          "Snapdragon 8 Elite 2 İşlemci",
-          "200MP Ana + 50MP Ultra-Wide + 10MP Telephoto",
-          "5000mAh Batarya, 65W Hızlı Şarj",
-          "512GB Depolama, 16GB RAM",
-          "Dahili S Pen, IP68 suya dayanıklılık"
-        ]
-      }
-    }
+    "translations": {"de": {"title": "iPhone 17 Pro 256GB", "description": "Apple iPhone 17 Pro 2026 — A19 Pro, Titan-Design, 256GB"}}
   },
   {
-    "title": "Segway Ninebot Max G3",
-    "description": "Segway Ninebot KickScooter Max G3 — 40km Range, 30km/h Speed, 10\" Pneumatic Tires",
-    "retail_price": 999.0,
-    "duration": 216000,
-    "category": "mobility",
-    "features": [
-      "40km / 25mi Max Range",
-      "30km/h / 18.6mph Top Speed",
-      "10\" Pneumatic Tires",
-      "Front & Rear Suspension",
-      "Built-in Phone Charger",
-      "IPX5 Water Resistant"
-    ],
+    "title": "Samsung Galaxy S26 Ultra 512GB",
+    "description": "Samsung Galaxy S26 Ultra 2026 — Snapdragon 8 Gen 5, 200MP Camera",
+    "retail_price": 1499.00,
+    "duration": 518400,
+    "category": "phones",
+    "image_url": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80",
+    "features": ["Snapdragon 8 Gen 5", "200MP Hauptkamera", "6.9\" Dynamic AMOLED 2X", "S-Pen integriert", "5000mAh"],
     "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Segway Ninebot Max G3",
-        "description": "Segway Ninebot KickScooter Max G3 — 40 km Reichweite, 30 km/h Geschwindigkeit, 10\" Luftreifen",
-        "features": [
-          "40 km / 25 mi maximale Reichweite",
-          "30 km/h / 18,6 mph Höchstgeschwindigkeit",
-          "10\" Luftreifen",
-          "Vorder- & Hinterradfederung",
-          "Integriertes Handy-Ladegerät",
-          "IPX5 wasserbeständig"
-        ]
-      },
-      "en": {
-        "title": "Segway Ninebot Max G3",
-        "description": "Segway Ninebot KickScooter Max G3 — 40km Range, 30km/h Speed, 10\" Pneumatic Tires",
-        "features": [
-          "40km / 25mi Max Range",
-          "30km/h / 18.6mph Top Speed",
-          "10\" Pneumatic Tires",
-          "Front & Rear Suspension",
-          "Built-in Phone Charger",
-          "IPX5 Water Resistant"
-        ]
-      },
-      "sq": {
-        "title": "Segway Ninebot Max G3",
-        "description": "Segway Ninebot KickScooter Max G3 — Autonomi 40 km, shpejtësi 30 km/h, goma pneumatike 10\"",
-        "features": [
-          "Autonomi maksimale 40 km / 25 mi",
-          "Shpejtësi maksimale 30 km/h / 18.6 mph",
-          "Goma pneumatike 10\"",
-          "Sistem amortizimi përpara dhe mbrapa",
-          "Karikues telefoni i integruar",
-          "Rezistent ndaj ujit IPX5"
-        ]
-      },
-      "tr": {
-        "title": "Segway Ninebot Max G3",
-        "description": "Segway Ninebot KickScooter Max G3 — 40 km menzil, 30 km/sa hız, 10\" pnömatik lastikler",
-        "features": [
-          "40 km / 25 mi maksimum menzil",
-          "30 km/sa / 18.6 mph maksimum hız",
-          "10\" pnömatik lastikler",
-          "Ön ve arka süspansiyon",
-          "Dahili telefon şarj cihazı",
-          "IPX5 suya dayanıklı"
-        ]
-      }
-    }
+    "translations": {"de": {"title": "Samsung Galaxy S26 Ultra 512GB", "description": "Galaxy S26 Ultra 2026 — Snapdragon 8 Gen 5, 200MP Kamera"}}
   },
   {
-    "title": "Corsair K100 RGB",
-    "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, Aircraft Aluminum",
-    "retail_price": 249.0,
-    "duration": 172800,
+    "title": "Google Pixel 10 Pro 256GB",
+    "description": "Google Pixel 10 Pro 2026 — Tensor G5, KI-Foto-Suite",
+    "retail_price": 1099.00,
+    "duration": 518400,
+    "category": "phones",
+    "image_url": "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&q=80",
+    "features": ["Tensor G5", "50MP Triple Cam", "Magic Editor 2.0", "7 Jahre Updates", "120Hz LTPO"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Xiaomi 16 Pro 512GB",
+    "description": "Xiaomi 16 Pro 2026 — Leica Optik, Snapdragon 8 Gen 5",
+    "retail_price": 999.00,
+    "duration": 518400,
+    "category": "phones",
+    "image_url": "https://images.unsplash.com/photo-1567581935884-3349723552ca?w=800&q=80",
+    "features": ["Leica Quad-Cam", "120W HyperCharge", "6.7\" LTPO", "Snapdragon 8 Gen 5", "5400mAh"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "OnePlus 14 Pro 256GB",
+    "description": "OnePlus 14 Pro 2026 — Hasselblad-Kamera, 100W Charging",
+    "retail_price": 899.00,
+    "duration": 518400,
+    "category": "phones",
+    "image_url": "https://images.unsplash.com/photo-1707592020706-f5fa05ac74f3?w=800&q=80",
+    "features": ["Hasselblad Triple Cam", "100W SuperVOOC", "Snapdragon 8 Gen 5", "6.78\" QHD+", "5400mAh"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Samsung Galaxy Z Flip7 256GB",
+    "description": "Samsung Galaxy Z Flip7 2026 — Foldable, Größeres Cover-Display",
+    "retail_price": 1199.00,
+    "duration": 518400,
+    "category": "phones",
+    "image_url": "https://images.unsplash.com/photo-1633053699034-459674171bd9?w=800&q=80",
+    "features": ["6.7\" Inner / 4.0\" Cover", "Snapdragon 8 Gen 5", "50MP Dual Cam", "FlexHinge 2.0"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Honor Magic7 Pro 512GB",
+    "description": "Honor Magic7 Pro 2026 — 200MP Periskop-Zoom",
+    "retail_price": 1099.00,
+    "duration": 518400,
+    "category": "phones",
+    "image_url": "https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=800&q=80",
+    "features": ["200MP Periskop", "Snapdragon 8 Gen 5", "100W Charging", "6.8\" LTPO OLED"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Apple Watch Series 11 GPS+Cellular 45mm",
+    "description": "Apple Watch Series 11 2026 — Blutdruck, Schlaf-Apnoe-Erkennung",
+    "retail_price": 549.00,
+    "duration": 518400,
+    "category": "wearables",
+    "image_url": "https://images.unsplash.com/photo-1551816230-ef5deaed4a26?w=800&q=80",
+    "features": ["Blutdruck-Sensor", "Schlaf-Apnoe", "5G Cellular", "S11 Chip", "Always-On Retina"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Apple Watch Ultra 3 49mm",
+    "description": "Apple Watch Ultra 3 2026 — Satellite Connectivity, Titan",
+    "retail_price": 899.00,
+    "duration": 518400,
+    "category": "wearables",
+    "image_url": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800&q=80",
+    "features": ["Satellite SOS", "Titan-Gehäuse", "100m wasserdicht", "Action-Button", "72h Battery"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Samsung Galaxy Watch7 Classic",
+    "description": "Samsung Galaxy Watch7 Classic 2026 — Rotating Bezel zurück",
+    "retail_price": 449.00,
+    "duration": 518400,
+    "category": "wearables",
+    "image_url": "https://images.unsplash.com/photo-1617043786394-f977fa12eddf?w=800&q=80",
+    "features": ["Drehbare Lünette", "EKG + Blutdruck", "Wear OS 6", "47mm Edelstahl"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Garmin Fenix 9 Sapphire Solar",
+    "description": "Garmin Fenix 9 Sapphire Solar 2026 — Multisport-Smartwatch",
+    "retail_price": 1099.00,
+    "duration": 518400,
+    "category": "wearables",
+    "image_url": "https://images.unsplash.com/photo-1617043786394-f977fa12eddf?w=800&q=80",
+    "features": ["Sapphire Glas", "Solar-Charging", "Multi-Band GNSS", "EKG", "30 Tage Battery"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Louis Vuitton Neverfull MM Damier 2026",
+    "description": "Louis Vuitton Neverfull MM Damier Ebene Canvas 2026 Collection",
+    "retail_price": 1850.00,
+    "duration": 518400,
+    "category": "fashion",
+    "image_url": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80",
+    "features": ["Damier Ebene Canvas", "Innenfutter rot", "Schulterriemen", "Made in France"],
+    "condition": "Brand New — Original Box"
+  },
+  {
+    "title": "Chanel Classic Flap Bag Medium 2026",
+    "description": "Chanel Classic Flap Bag Medium Caviar Leather 2026 Limited",
+    "retail_price": 1990.00,
+    "duration": 518400,
+    "category": "fashion",
+    "image_url": "https://images.unsplash.com/photo-1591561954557-26941169b49e?w=800&q=80",
+    "features": ["Caviar Leder", "Gold Hardware", "Klassische Steppung", "Doppel-C Logo"],
+    "condition": "Brand New — Original Box"
+  },
+  {
+    "title": "Gucci Marmont Matelassé Small 2026",
+    "description": "Gucci GG Marmont Matelassé Mini Shoulder Bag 2026",
+    "retail_price": 1450.00,
+    "duration": 518400,
+    "category": "fashion",
+    "image_url": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80",
+    "features": ["Matelassé Steppung", "Antik-Gold GG Logo", "Wendbarer Riemen", "Made in Italy"],
+    "condition": "Brand New — Original Box"
+  },
+  {
+    "title": "Prada Galleria Saffiano Medium 2026",
+    "description": "Prada Galleria Saffiano Leather Bag 2026 Collection",
+    "retail_price": 1990.00,
+    "duration": 518400,
+    "category": "fashion",
+    "image_url": "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=800&q=80",
+    "features": ["Saffiano Leder", "Triangle Logo", "Abnehmbarer Riemen", "Made in Italy"],
+    "condition": "Brand New — Original Box"
+  },
+  {
+    "title": "Dior Lady D-Joy Small 2026",
+    "description": "Dior Lady D-Joy Small Cannage Calfskin 2026",
+    "retail_price": 1850.00,
+    "duration": 518400,
+    "category": "fashion",
+    "image_url": "https://images.unsplash.com/photo-1564222256577-45e728f74099?w=800&q=80",
+    "features": ["Cannage Motiv", "D.I.O.R. Charme", "Kalbsleder", "Made in Italy"],
+    "condition": "Brand New — Original Box"
+  },
+  {
+    "title": "AirPods Pro 3 USB-C",
+    "description": "Apple AirPods Pro 3 2026 — Adaptive Audio, Hearing Aid Mode",
+    "retail_price": 299.00,
+    "duration": 518400,
+    "category": "audio",
+    "image_url": "https://images.unsplash.com/photo-1677346414290-d337cbc682a6?w=800&q=80",
+    "features": ["Adaptive Audio 2.0", "Hörgerät-Modus", "USB-C MagSafe Case", "H3 Chip"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Sony WH-1000XM6",
+    "description": "Sony WH-1000XM6 2026 — Beste ANC am Markt",
+    "retail_price": 449.00,
+    "duration": 518400,
+    "category": "audio",
+    "image_url": "https://images.unsplash.com/photo-1748792321323-25d97044ba2c?w=800&q=80",
+    "features": ["Adaptive ANC v6", "40h Battery", "LDAC + LE Audio", "Auto-Switch Multi-Point"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Bose QuietComfort Ultra 2026",
+    "description": "Bose QuietComfort Ultra 2026 — Immersive Audio Refresh",
+    "retail_price": 449.00,
+    "duration": 518400,
+    "category": "audio",
+    "image_url": "https://images.unsplash.com/photo-1545127398-14699f92334b?w=800&q=80",
+    "features": ["Immersive Audio", "Quiet Mode", "USB-C Lossless", "Bluetooth 5.4"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Sennheiser Momentum 5 Wireless",
+    "description": "Sennheiser Momentum 5 Wireless 2026 — Audiophile ANC",
+    "retail_price": 399.00,
+    "duration": 518400,
+    "category": "audio",
+    "image_url": "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=800&q=80",
+    "features": ["Adaptive Noise Cancellation", "60h Battery", "Sound Personalization", "aptX Adaptive"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "PlayStation 5 Pro Disc + 2 Controller",
+    "description": "Sony PlayStation 5 Pro 2026 Bundle — Disc Edition mit 2x DualSense",
+    "retail_price": 899.00,
+    "duration": 518400,
     "category": "gaming",
-    "features": [
-      "Corsair OPX Optical Switches",
-      "4000Hz Hyper-Polling",
-      "iCUE Control Wheel",
-      "Aircraft-Grade Aluminum Frame",
-      "Per-Key RGB Backlighting",
-      "Detachable Palm Rest"
-    ],
-    "condition": "Brand New — Factory Sealed",
-    "translations": {
-      "de": {
-        "title": "Corsair K100 RGB",
-        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, Flugzeugaluminium",
-        "features": [
-          "Corsair OPX Optical Switches",
-          "4000Hz Hyper-Polling",
-          "iCUE Control Wheel",
-          "Rahmen aus Flugzeugaluminium",
-          "RGB-Hintergrundbeleuchtung pro Taste",
-          "Abnehmbare Handballenauflage"
-        ]
-      },
-      "en": {
-        "title": "Corsair K100 RGB",
-        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, Aircraft Aluminum",
-        "features": [
-          "Corsair OPX Optical Switches",
-          "4000Hz Hyper-Polling",
-          "iCUE Control Wheel",
-          "Aircraft-Grade Aluminum Frame",
-          "Per-Key RGB Backlighting",
-          "Detachable Palm Rest"
-        ]
-      },
-      "sq": {
-        "title": "Corsair K100 RGB",
-        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, alumin aviacioni",
-        "features": [
-          "Corsair OPX Optical Switches",
-          "4000Hz Hyper-Polling",
-          "iCUE Control Wheel",
-          "Kornizë alumini e klasës së aviacionit",
-          "Ndriçim RGB për çdo tast",
-          "Mbështetëse pëllëmbësh e shkëputshme"
-        ]
-      },
-      "tr": {
-        "title": "Corsair K100 RGB",
-        "description": "Corsair K100 RGB — OPX Optical Switches, iCUE Control Wheel, uçak sınıfı alüminyum",
-        "features": [
-          "Corsair OPX Optical Switches",
-          "4000Hz Hyper-Polling",
-          "iCUE Control Wheel",
-          "Uçak sınıfı alüminyum gövde",
-          "Tuş başına RGB arka aydınlatma",
-          "Çıkarılabilir avuç içi desteği"
-        ]
-      }
-    }
+    "image_url": "https://images.unsplash.com/photo-1693929291343-f38cb7519d5d?w=800&q=80",
+    "features": ["PSSR Upscaling", "Custom GPU 67% schneller", "2TB SSD", "2x DualSense Controller"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Nintendo Switch 2 OLED Bundle",
+    "description": "Nintendo Switch 2 OLED 2026 — Mario Kart Bundle",
+    "retail_price": 499.00,
+    "duration": 518400,
+    "category": "gaming",
+    "image_url": "https://images.unsplash.com/photo-1761395013766-8416415b0207?w=800&q=80",
+    "features": ["8\" OLED Display", "Backwards Compatible", "Mario Kart World inkl.", "Mouse-Mode JoyCons"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Meta Quest 4 256GB",
+    "description": "Meta Quest 4 2026 — Mixed Reality Headset",
+    "retail_price": 599.00,
+    "duration": 518400,
+    "category": "gaming",
+    "image_url": "https://images.unsplash.com/photo-1758523670318-f1b79559e1d1?w=800&q=80",
+    "features": ["Snapdragon XR3 Gen 2", "4K-per-Eye Pancake Lenses", "Hand-Tracking 3.0", "256GB"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Nike Air Jordan 1 Retro High OG 2026",
+    "description": "Nike Air Jordan 1 Retro High OG 2026 Limited Colorway",
+    "retail_price": 299.00,
+    "duration": 518400,
+    "category": "fashion",
+    "image_url": "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=800&q=80",
+    "features": ["Limited Edition 2026", "Leather Upper", "Air-Sole Unit", "Größen 38-46"],
+    "condition": "Brand New — Original Box"
+  },
+  {
+    "title": "Adidas Yeezy Boost 350 V3 2026",
+    "description": "Adidas Yeezy Boost 350 V3 2026 Release",
+    "retail_price": 349.00,
+    "duration": 518400,
+    "category": "fashion",
+    "image_url": "https://images.unsplash.com/photo-1605348532760-6753d2c43329?w=800&q=80",
+    "features": ["Primeknit Upper", "Full-Length Boost", "Reflective Stripes", "Größen 38-46"],
+    "condition": "Brand New — Original Box"
+  },
+  {
+    "title": "Dyson Airwrap Multi-Styler Complete Long 2026",
+    "description": "Dyson Airwrap Long 2026 — Mit neuem Coanda Smoothing Dryer",
+    "retail_price": 599.00,
+    "duration": 518400,
+    "category": "beauty",
+    "image_url": "https://images.unsplash.com/photo-1629397683830-9805395892e8?w=800&q=80",
+    "features": ["6 Aufsätze", "Coanda Effect", "Schutz vor Hitzeschäden", "Long-Edition für lange Haare"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "GHD Platinum+ Styler 2026 Edition",
+    "description": "GHD Platinum+ Styler 2026 — Predictive Heat Technology",
+    "retail_price": 279.00,
+    "duration": 518400,
+    "category": "beauty",
+    "image_url": "https://images.unsplash.com/photo-1626804475297-41608ea09aeb?w=800&q=80",
+    "features": ["Predictive Heat", "Ultra-Zone Tech", "185°C konstant", "30s Heat-Up"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "DJI Mini 5 Pro Fly More Combo",
+    "description": "DJI Mini 5 Pro 2026 — Größerer Sensor, 4K/120fps",
+    "retail_price": 1199.00,
+    "duration": 518400,
+    "category": "drones",
+    "image_url": "https://images.unsplash.com/photo-1773750923584-5c684563e0d9?w=800&q=80",
+    "features": ["1\" CMOS Sensor", "4K/120fps", "45min Flight", "Tri-Directional Sensing", "20km Transmission"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "iPad Air 13\" M4 256GB Wi-Fi",
+    "description": "Apple iPad Air 13\" M4 2026 — 256GB Wi-Fi",
+    "retail_price": 999.00,
+    "duration": 518400,
+    "category": "tablets",
+    "image_url": "https://images.unsplash.com/photo-1622849030045-1f2c32ae3099?w=800&q=80",
+    "features": ["M4 Chip", "13\" Liquid Retina", "256GB", "Apple Pencil Pro kompatibel", "USB-C"],
+    "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Roborock S10 MaxV Ultra",
+    "description": "Roborock S10 MaxV Ultra 2026 — Self-Empty + Wisch-Funktion",
+    "retail_price": 1599.00,
+    "duration": 518400,
+    "category": "appliances",
+    "image_url": "https://images.unsplash.com/photo-1762859731349-c9ff2808b672?w=800&q=80",
+    "features": ["10.000Pa Saugkraft", "Reactive AI 3.0", "Auto-Mopp-Wäsche & Heißlufttrocknung", "5L Schmutzwasserbeutel"],
+    "condition": "Brand New — Factory Sealed"
   }
 ]

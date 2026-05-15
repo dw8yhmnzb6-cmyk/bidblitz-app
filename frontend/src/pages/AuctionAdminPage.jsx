@@ -393,6 +393,87 @@ const AuctionAdminPage = ({ onBack }) => {
               )}
             </Card>
 
+            {/* ═══ Win-Rate Steering (iter102) ═══ */}
+            <Card title="🎯 Gewinn-Steuerung (Win-Rate)" icon={<Target size={16} className="text-amber-400" />}>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-white/60">Wie viel Prozent der Auktionen sollen ECHTE KUNDEN gewinnen?</span>
+                    <span className="text-2xl font-bold text-amber-400" data-testid="winrate-display">
+                      {config?.customer_win_rate_percent ?? 20}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={config?.customer_win_rate_percent ?? 20}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setConfig((c) => ({ ...(c || {}), customer_win_rate_percent: v }));
+                    }}
+                    onMouseUp={async (e) => {
+                      const v = Number(e.target.value);
+                      try {
+                        await api("/api/auctions/admin/automation/config", {
+                          method: "POST",
+                          body: JSON.stringify({ ...config, customer_win_rate_percent: v }),
+                        });
+                        toast.success(`Kunden-Gewinnrate: ${v}%`);
+                      } catch (err) {
+                        toast.error("Speichern fehlgeschlagen");
+                      }
+                    }}
+                    onTouchEnd={async (e) => {
+                      const v = Number(e.target.value);
+                      try {
+                        await api("/api/auctions/admin/automation/config", {
+                          method: "POST",
+                          body: JSON.stringify({ ...config, customer_win_rate_percent: v }),
+                        });
+                        toast.success(`Kunden-Gewinnrate: ${v}%`);
+                      } catch (err) {
+                        toast.error("Speichern fehlgeschlagen");
+                      }
+                    }}
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                    data-testid="winrate-slider"
+                  />
+                  <div className="flex justify-between text-[10px] text-white/40 mt-1">
+                    <span>Nur Bots gewinnen</span>
+                    <span>50/50</span>
+                    <span>Nur Kunden gewinnen</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                  <div className="text-center p-2 rounded-lg bg-green-500/10">
+                    <p className="text-[10px] text-white/50 uppercase">Kunden heute</p>
+                    <p className="text-lg font-bold text-green-400" data-testid="customer-wins-today">
+                      {config?.stats?.customer_wins_today ?? 0}
+                    </p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/5">
+                    <p className="text-[10px] text-white/50 uppercase">Bots heute</p>
+                    <p className="text-lg font-bold text-white" data-testid="bot-wins-today">
+                      {config?.stats?.bot_wins_today ?? 0}
+                    </p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-amber-500/10">
+                    <p className="text-[10px] text-white/50 uppercase">Echt heute</p>
+                    <p className="text-lg font-bold text-amber-400" data-testid="actual-winrate-today">
+                      {config?.stats?.actual_customer_win_rate ?? 0}%
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-white/40 italic">
+                  💡 Diese Einstellung wirkt in den letzten 5 Min jeder Auktion: wenn ein echter Kunde führt und das "Kunde gewinnt"-Los gezogen wurde, halten sich die Bots zurück.
+                </p>
+              </div>
+            </Card>
+
             {/* Global Bot Settings */}
             <Card title="Globale Bot-Einstellungen" icon={<Settings size={16} className="text-white/40" />}>
               <div className="space-y-3">
