@@ -15,6 +15,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 15.05.2026 (iter99 — Admin-Page: Händler-Module freischalten)
+- 🟢 **NEUE Admin-Page** `AdminMerchantFeaturesPage.jsx` unter Route `/admin/merchant-features`. Admin sieht links die komplette Händler-Liste (mit Suche), rechts den Feature-Katalog gruppiert nach Kategorie (Mitarbeiter, Handel, Gastro, Zahlungen, Marketing, Compliance, KI, Self-Checkout, Reports, Entwickler). Pro Feature ein großer Toggle-Switch mit optimistic-update + Live-Save zum Backend.
+- 🟢 **5 neue Feature-Toggles im Catalog** (vorher fehlten): `staff_timeclock` (Mitarbeiter-Zeiterfassung Kommen/Gehen), `staff_schedule` (Schichtplanung), `staff_wallet` (Boni an Wallet), `inventory_pro` (Warenwirtschaft EK/VK), `purchase_orders` (Bestellwesen). Insgesamt jetzt **23 toggle-bare Module**.
+- 🟢 **Bulk-Aktionen**: "Alle aktivieren" / "Alle deaktivieren" — wirkt auf den aktuell sichtbaren Kategorie-Filter (z.B. nur Staff oder nur Gastro), so kann Admin ganze Bundles in 1 Klick freischalten.
+- 🟢 **MorePage-Eintrag** für Admins: gelbes Schild-Symbol "Händler-Module freischalten" unter den Admin-Tools.
+- 🧪 **Backend E2E getestet via curl**: Login als admin@bidblitz.com → POST /api/pos/features/admin/toggle für staff_timeclock & inventory_pro → bestätigt 7 aktive Features für MER-520D937E02F3 (vorher 5).
+
 ### 15.05.2026 (iter98 — Adress-Autocomplete Proxy + Mapbox Resilience)
 - 🟢 **Backend Mapbox-Geocoding-Proxy** (NEU): `GET /api/taxi/geocode?q=Prishtina&[lng,lat,limit]` + `GET /api/taxi/geocode/reverse?lng=&lat=` — nutzen den server-seitigen `MAPBOX_TOKEN`. Smoke-Test live: "Prishtina" → Pristina/Kosovo, "Zejadin Sinani" → echte Adresse aus User-Referenz-Screenshot, Reverse-Geocode → "Luan Haradinaj 24, Pristina 10000, Kosovo".
 - 🟢 **Frontend `useTaxiGeocoder` mit Fallback**: Wenn `REACT_APP_MAPBOX_TOKEN` zur Build-Zeit fehlt (z.B. weil GitHub-Secret nicht gesetzt), fällt das Autocomplete transparent auf den Backend-Proxy zurück. **Folge:** Selbst wenn die Map auf Production schwarz/error bleibt, kann der User trotzdem Ziele suchen und Vorschläge bekommen.

@@ -116,6 +116,7 @@ const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
 const BlitzMinePage = lazy(() => import("./pages/BlitzMinePage"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const AdminLegalPage = lazy(() => import("./pages/AdminLegalPage"));
+const AdminMerchantFeaturesPage = lazy(() => import("./pages/AdminMerchantFeaturesPage"));
 const AdminWalletPage = lazy(() => import("./pages/AdminWalletPage"));
 const AdminSMMPage = lazy(() => import("./pages/AdminSMMPage"));
 const ArcadePage = lazy(() => import("./pages/ArcadePage"));
@@ -624,6 +625,8 @@ function AppContent() {
       }
       case "/admin/legal":
         return user.role === "admin" ? <AdminLegalPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/merchant-features":
+        return user.role === "admin" ? <AdminMerchantFeaturesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/wallet":
         return user.role === "admin" ? <AdminWalletPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/smm":

@@ -75,6 +75,21 @@ FEATURE_CATALOG = [
     {"key": "advanced_reports", "name": "Erweiterte Berichte", "category": "analytics",
      "description": "ABC-Analyse, Forecast, Cross-Sell, Top-Cashier-KPIs",
      "monthly_price": 8.90, "default_enabled": False},
+    {"key": "staff_timeclock", "name": "Mitarbeiter-Zeiterfassung", "category": "staff",
+     "description": "Kommen/Gehen Stempeluhr, Pausen, Überstunden, Lohn-Export",
+     "monthly_price": 9.90, "default_enabled": False},
+    {"key": "staff_schedule", "name": "Schichtplanung", "category": "staff",
+     "description": "Visueller Wochen-Schedule, Drag&Drop, Konflikt-Warnung",
+     "monthly_price": 12.90, "default_enabled": False},
+    {"key": "staff_wallet", "name": "Mitarbeiter-Wallet & Bonus", "category": "staff",
+     "description": "Boni / Trinkgelder direkt auf Mitarbeiter-Wallet auszahlen",
+     "monthly_price": 6.90, "default_enabled": False},
+    {"key": "inventory_pro", "name": "Warenwirtschaft Pro", "category": "retail",
+     "description": "EK/VK-Tracking, Lieferanten, Bestellungen, Wareneingang, Stocktake",
+     "monthly_price": 14.90, "default_enabled": False},
+    {"key": "purchase_orders", "name": "Bestellwesen", "category": "retail",
+     "description": "Bestellungen an Lieferanten, Auto-Order auf Min-Bestand, Wareneingang",
+     "monthly_price": 9.90, "default_enabled": False},
 ]
 FEATURE_KEYS = {f["key"] for f in FEATURE_CATALOG}
 
