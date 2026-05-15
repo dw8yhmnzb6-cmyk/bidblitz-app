@@ -541,3 +541,47 @@ async def my_sabre_bookings(request: Request):
         {"_id": 0}
     ).sort("created_at", -1).to_list(50)
     return {"bookings": bookings}
+
+
+
+@router.post("/sabre/bookings/{booking_id}/cancel")
+async def sabre_cancel_booking_endpoint(booking_id: str, request: Request):
+    """Sabre-Buchung stornieren."""
+    user = await get_current_user(request)
+    
+    booking = await db.hotel_bookings_sabre.find_one({
+        "booking_id": booking_id,
+        "user_id": str(user["_id"])
+    })
+    if not booking:
+        raise HTTPException(404, "Buchung nicht gefunden")
+    
+    if booking["status"] in ("checked_in", "checked_out", "cancelled"):
+        raise HTTPException(400, f"Stornierung nicht möglich (Status: {booking['status']})")
+    
+    from datetime import datetime as dt
+    check_in_dt = dt.fromisoformat(booking["check_in"])
+    hours_until = (check_in_dt - dt.now(timezone.utc)).total_seconds() / 3600
+    
+    if hours_until >= 48:
+        refund_pct = 100
+    elif hours_until >= 24:
+        refund_pct = 75
+    elif hours_until >= 12:
+        refund_pct = 50
+    else:
+        refund_pct = 0
+    
+    refund = round(booking["total_price"] * refund_pct / 100, 2)
+    
+    await db.hotel_bookings_sabre.update_one(
+        {"booking_id": booking_id},
+        {"$set": {
+            "status": "cancelled",
+            "cancelled_at": datetime.now(timezone.utc).isoformat(),
+            "refund_percent": refund_pct,
+            "refund_amount": refund,
+        }}
+    )
+    
+    return {"ok": True, "refund_percent": refund_pct, "refund_amount": refund}

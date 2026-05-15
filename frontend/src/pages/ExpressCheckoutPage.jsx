@@ -9,6 +9,7 @@ import {
   ChevronLeft, CreditCard, MapPin, Plus, Check, Trash2,
   Star, Loader2,
 } from "lucide-react";
+import StripeCardInput from "../components/StripeCardInput";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -267,20 +268,18 @@ export default function ExpressCheckoutPage({ onBack }) {
         )}
       </div>
 
-      {/* Add Card Modal (Placeholder) */}
+      {/* Add Card Modal */}
       {showAddCard && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-bold mb-4">Karte hinzufügen</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Integration mit Stripe/PayPal folgt
-            </p>
-            <button
-              onClick={() => setShowAddCard(false)}
-              className="w-full py-2 bg-gray-200 rounded-lg"
-            >
-              Schließen
-            </button>
+            <StripeCardInput
+              onSuccess={() => {
+                setShowAddCard(false);
+                loadData();
+              }}
+              onCancel={() => setShowAddCard(false)}
+            />
           </div>
         </div>
       )}

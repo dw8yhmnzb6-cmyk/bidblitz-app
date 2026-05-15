@@ -8,6 +8,7 @@ import {
   ChevronLeft, MapPin, Users, RefreshCw, Loader2,
   Navigation, Clock,
 } from "lucide-react";
+import StaffGPSMap from "../components/StaffGPSMap";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -133,11 +134,8 @@ export default function StaffGPSPage({ onBack }) {
 
         {/* Map Placeholder */}
         {staffLocations.length > 0 && (
-          <div className="mt-6 bg-white rounded-xl p-6 text-center border-2 border-dashed border-gray-300">
-            <MapPin size={48} className="mx-auto mb-2 text-gray-400" />
-            <p className="text-sm text-gray-600">
-              Karte folgt (Mapbox/Leaflet Integration)
-            </p>
+          <div className="mt-6">
+            <StaffGPSMap staffLocations={staffLocations} />
           </div>
         )}
       </div>

@@ -23,6 +23,7 @@ async function api(path, opts = {}) {
 }
 
 export default function HotelSabreSearchPage({ onBack }) {
+  const [view, setView] = useState("search"); // search | bookings
   const [searchForm, setSearchForm] = useState({
     city: "",
     check_in: "",
@@ -100,10 +101,33 @@ export default function HotelSabreSearchPage({ onBack }) {
             <p className="text-xs text-gray-600">Kettenhotels weltweit</p>
           </div>
         </div>
+
+        {/* Tabs */}
+        <div className="flex border-t border-gray-200">
+          <button
+            onClick={() => setView("search")}
+            className={`flex-1 py-3 text-sm font-medium transition ${
+              view === "search" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-600"
+            }`}
+          >
+            Suchen
+          </button>
+          <button
+            onClick={() => setView("bookings")}
+            className={`flex-1 py-3 text-sm font-medium transition ${
+              view === "bookings" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-600"
+            }`}
+          >
+            Meine Buchungen
+          </button>
+        </div>
       </div>
 
-      {/* Search Form */}
+      {/* Content */}
       <div className="p-4">
+        {view === "search" && (
+          <>
+        {/* Search Form */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
           <input
             type="text"
