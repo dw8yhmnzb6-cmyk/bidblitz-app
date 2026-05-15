@@ -240,6 +240,13 @@ export default function HotelSabreSearchPage({ onBack }) {
             ))}
           </AnimatePresence>
         </div>
+          </>
+        )}
+        {view === "bookings" && (
+          <div className="text-center text-gray-500 py-12 text-sm">
+            Meine Buchungen werden hier angezeigt.
+          </div>
+        )}
       </div>
 
       {/* Booking Modal */}

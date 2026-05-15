@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from "./store/ThemeContext";
 import AIChatWidget from "./components/AIChatWidget";
 import SuperAppOverlay from "./components/SuperAppOverlay";
 import InAppUpdateManager from "./components/InAppUpdateManager";
+import ErrorBoundary, { setupGlobalErrorHandler } from "./components/ErrorBoundary";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
@@ -1143,12 +1144,17 @@ function AppContent() {
 }
 
 function App() {
+  useEffect(() => {
+    setupGlobalErrorHandler();
+  }, []);
   return (
-    <AppProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 

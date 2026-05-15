@@ -13,6 +13,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Stripe key: pre-configured (test mode)
 - Emergent LLM Key: pre-configured
 
+
+### 15.05.2026 (iter104 — P0 Bugfixes nach Handoff)
+- 🟢 **HotelSabreSearchPage Syntax-Error gefixt**: `<>` Fragment war nicht geschlossen → komplette Frontend-Compilation broken. Behoben mit `</>` close + Bookings-View Placeholder.
+- 🟢 **ErrorBoundary in App.js integriert**: Wrap um `<AppProvider><ThemeProvider><AppContent/>`. `setupGlobalErrorHandler()` im useEffect für unhandled promise rejections + window errors.
+- 🟢 **Analytics `KeyError: 'users'`**: Re-verifiziert — alle 4 Analytics-Endpoints (overview, funnel, retention, campaigns, conversions) liefern aktuell sauber. Kein Reproduzieren möglich, Issue gilt als bereits behoben.
+
+
 ## Implemented Features (current Sprint, Feb 2026)
 
 ### 15.05.2026 (iter103 — Bundle-Editor + Bot-Aggressivität-Slider)
