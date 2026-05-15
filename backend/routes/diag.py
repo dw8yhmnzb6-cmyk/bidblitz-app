@@ -146,11 +146,24 @@ async def health_deep(request: Request):
 
 
 @router.get("/health/probe")
-async def health_probe():
+async def health_probe(request: Request):
     """Public Probe-Mode für externe Monitore (UptimeRobot/BetterStack/Healthchecks.io).
     Liefert nur Status-Code + minimale Issue-Liste, keine Keys/Previews/PII.
     HTTP 200 bei status=ok, 503 bei degraded/critical für einfache Monitor-Regeln.
+
+    Optionaler Anti-Polling-Abuse: wenn ENV `HEALTH_PROBE_TOKEN` gesetzt ist, muss
+    Header `X-Probe-Token: <token>` oder Query `?token=<token>` mitgesendet werden.
     """
+    expected_token = os.environ.get("HEALTH_PROBE_TOKEN", "").strip()
+    if expected_token:
+        provided = (
+            request.headers.get("x-probe-token")
+            or request.query_params.get("token")
+            or ""
+        ).strip()
+        if provided != expected_token:
+            raise HTTPException(401, "Invalid or missing probe token")
+
     payload = await _build_health_payload(detailed=False)
     status_code = 200 if payload["status"] == "ok" else 503
     from fastapi.responses import JSONResponse
@@ -260,3 +273,147 @@ async def _build_health_payload(detailed: bool) -> dict:
             "frontend_url": os.environ.get("FRONTEND_URL"),
         },
     }
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ONE-TIME DATA MIGRATIONS
+# ═══════════════════════════════════════════════════════════════════
+
+@router.get("/migrations/audit-log-actor-id/preview")
+async def migration_audit_log_preview(request: Request):
+    """Zeigt wie viele pos_audit_log Records dict-actor_id haben (Migration nicht ausgeführt)."""
+    await _require_admin(request)
+    total = await db.pos_audit_log.count_documents({})
+    legacy = await db.pos_audit_log.count_documents({"actor_id": {"$type": "object"}})
+    valid_str = await db.pos_audit_log.count_documents({"actor_id": {"$type": "string"}})
+
+    # Sample one legacy record
+    sample = await db.pos_audit_log.find_one({"actor_id": {"$type": "object"}}, {"_id": 0})
+
+    def _stringify(value):
+        """Recursively convert ObjectId/datetime to JSON-safe primitives."""
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, dict):
+            return {k: _stringify(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_stringify(v) for v in value]
+        return str(value)
+
+    return {
+        "total_records": total,
+        "legacy_dict_actor_id": legacy,
+        "valid_string_actor_id": valid_str,
+        "needs_migration": legacy,
+        "sample_legacy": _stringify(sample),
+    }
+
+
+@router.post("/migrations/audit-log-actor-id/run")
+async def migration_audit_log_run(request: Request):
+    """Normalisiert legacy dict-actor_id im pos_audit_log zu plain user_id strings.
+
+    Strategie pro Record:
+      - actor_id ist dict → extract _id/id/user_id Feld; fallback "system"
+      - admin_email wird zusätzlich aus dict.email gepullt (falls vorhanden)
+      - Original-dict wird zu actor_id_legacy backup-gespeichert
+    """
+    admin = await _require_admin(request)
+
+    SENSITIVE_FIELDS = {
+        "password", "password_hash", "payment_barcode", "card_number",
+        "card_expiry", "referral_code", "force_restart", "force_restart_at",
+        "last_seen", "balance", "balance_blz",
+    }
+
+    cursor = db.pos_audit_log.find({"actor_id": {"$type": "object"}})
+    fixed = 0
+    failed = 0
+
+    async for record in cursor:
+        try:
+            legacy = record.get("actor_id") or {}
+            extracted_id = (
+                legacy.get("_id")
+                or legacy.get("id")
+                or legacy.get("user_id")
+                or ""
+            )
+            # Redact sensitive fields from the legacy backup
+            legacy_safe = {
+                k: ("***REDACTED***" if k in SENSITIVE_FIELDS else v)
+                for k, v in legacy.items()
+            }
+            update_doc = {
+                "actor_id": str(extracted_id) if extracted_id else "system",
+                "actor_id_legacy": legacy_safe,
+                "migrated_at": datetime.now(timezone.utc).isoformat(),
+                "migrated_by": admin.get("email", "admin"),
+            }
+            if legacy.get("email"):
+                update_doc["admin_email"] = legacy["email"]
+
+            await db.pos_audit_log.update_one(
+                {"_id": record["_id"]},
+                {"$set": update_doc},
+            )
+            fixed += 1
+        except Exception:
+            failed += 1
+
+    # ALSO redact any already-migrated legacy backups that still hold sensitive fields
+    redacted_existing = 0
+    cursor2 = db.pos_audit_log.find({
+        "actor_id_legacy": {"$exists": True},
+        "$or": [{f"actor_id_legacy.{f}": {"$exists": True, "$ne": "***REDACTED***"}} for f in SENSITIVE_FIELDS],
+    })
+    async for record in cursor2:
+        legacy = record.get("actor_id_legacy") or {}
+        legacy_safe = {
+            k: ("***REDACTED***" if k in SENSITIVE_FIELDS else v)
+            for k, v in legacy.items()
+        }
+        await db.pos_audit_log.update_one(
+            {"_id": record["_id"]},
+            {"$set": {"actor_id_legacy": legacy_safe}},
+        )
+        redacted_existing += 1
+
+    # Audit the migration itself
+    await db.pos_audit_log.insert_one({
+        "audit_id": f"MIG-{datetime.now(timezone.utc).timestamp()}",
+        "actor_id": str(admin.get("_id") or ""),
+        "action": "migration.audit_log_actor_id",
+        "ref": {"fixed": fixed, "failed": failed, "redacted_existing": redacted_existing},
+        "ts": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {
+        "ok": True,
+        "fixed": fixed,
+        "failed": failed,
+        "redacted_existing": redacted_existing,
+    }
+
+
+@router.post("/migrations/audit-log-actor-id/rollback")
+async def migration_audit_log_rollback(request: Request):
+    """Stellt die Original-actor_id Dicts aus dem actor_id_legacy Backup wieder her."""
+    await _require_admin(request)
+
+    cursor = db.pos_audit_log.find({"actor_id_legacy": {"$exists": True}})
+    restored = 0
+    async for record in cursor:
+        legacy = record.get("actor_id_legacy")
+        if legacy is None:
+            continue
+        await db.pos_audit_log.update_one(
+            {"_id": record["_id"]},
+            {
+                "$set": {"actor_id": legacy},
+                "$unset": {"actor_id_legacy": "", "migrated_at": "", "migrated_by": ""},
+            },
+        )
+        restored += 1
+
+    return {"ok": True, "restored": restored}

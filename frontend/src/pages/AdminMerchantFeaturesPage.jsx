@@ -715,6 +715,42 @@ function BundleEditor({ initial, catalog, saving, onCancel, onSave }) {
     [items],
   );
 
+  // Inline validation — recomputed live, shown as user types
+  const validation = useMemo(() => {
+    const errors = [];
+    const warnings = [];
+    if (!key) errors.push({ field: "key", msg: "Key fehlt" });
+    else if (!key.match(/^[a-z0-9_]+$/)) errors.push({ field: "key", msg: "Key: nur a-z, 0-9, _ (lowercase)" });
+    else if (key.length < 2) errors.push({ field: "key", msg: "Key min. 2 Zeichen" });
+    else if (key.length > 40) errors.push({ field: "key", msg: "Key max. 40 Zeichen" });
+
+    if (!name.trim()) errors.push({ field: "name", msg: "Name fehlt" });
+    else if (name.trim().length > 120) errors.push({ field: "name", msg: "Name max. 120 Zeichen" });
+
+    if (items.length === 0) errors.push({ field: "features", msg: "Mindestens 1 Feature auswählen" });
+
+    // Validate each feature item exists in catalog
+    const catalogKeys = new Set(catalog.map((c) => c.key));
+    const unknownFeatures = items.filter((it) => !catalogKeys.has(it.key));
+    if (unknownFeatures.length > 0) {
+      errors.push({
+        field: "features",
+        msg: `Unbekannte Feature-Keys: ${unknownFeatures.map((u) => u.key).join(", ")}`,
+      });
+    }
+
+    // Warnings (non-blocking)
+    const freeFeatures = items.filter((it) => Number(it.price) === 0);
+    if (items.length > 0 && freeFeatures.length === items.length) {
+      warnings.push("Alle Features sind kostenlos — Bundle hat €0 Preis");
+    }
+    if (description.length > 500) errors.push({ field: "description", msg: "Beschreibung max. 500 Zeichen" });
+
+    return { errors, warnings, isValid: errors.length === 0 };
+  }, [key, name, items, catalog, description]);
+
+  const fieldError = (field) => validation.errors.find((e) => e.field === field)?.msg;
+
   const toggleFeature = (fkey) => {
     setItems((prev) => {
       const idx = prev.findIndex((p) => p.key === fkey);
@@ -732,16 +768,8 @@ function BundleEditor({ initial, catalog, saving, onCancel, onSave }) {
   };
 
   const submit = () => {
-    if (!key.match(/^[a-z0-9_]+$/)) {
-      toast.error("Key: nur a-z, 0-9, _");
-      return;
-    }
-    if (!name.trim()) {
-      toast.error("Name fehlt");
-      return;
-    }
-    if (items.length === 0) {
-      toast.error("Mindestens 1 Feature auswählen");
+    if (!validation.isValid) {
+      toast.error(validation.errors[0].msg);
       return;
     }
     onSave({ key, name: name.trim(), icon: icon || "📦", description: description.trim(), features: items, order: initial?.order ?? 100 });
@@ -804,9 +832,16 @@ function BundleEditor({ initial, catalog, saving, onCancel, onSave }) {
               onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
               disabled={!isNew}
               placeholder="restaurant_premium"
-              className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono disabled:opacity-50"
+              className={`w-full mt-1 px-3 py-2 bg-white/5 border rounded-lg text-sm font-mono disabled:opacity-50 ${
+                fieldError("key") ? "border-red-500/60" : "border-white/10"
+              }`}
               data-testid="bundle-editor-key"
             />
+            {fieldError("key") && (
+              <p className="mt-1 text-[10px] text-red-400" data-testid="bundle-editor-key-error">
+                {fieldError("key")}
+              </p>
+            )}
           </div>
 
           <div>
@@ -871,6 +906,20 @@ function BundleEditor({ initial, catalog, saving, onCancel, onSave }) {
             <p className="text-2xl font-bold text-amber-400" data-testid="bundle-editor-total">
               {total.toFixed(2)} €<span className="text-xs text-gray-500"> /Monat</span>
             </p>
+            {validation.warnings.length > 0 && (
+              <div className="mt-1 flex gap-2" data-testid="bundle-editor-warnings">
+                {validation.warnings.map((w, i) => (
+                  <span key={i} className="text-[10px] text-amber-300">⚠ {w}</span>
+                ))}
+              </div>
+            )}
+            {validation.errors.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-2" data-testid="bundle-editor-errors">
+                {validation.errors.slice(0, 3).map((e, i) => (
+                  <span key={i} className="text-[10px] text-red-400">✗ {e.msg}</span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -882,9 +931,10 @@ function BundleEditor({ initial, catalog, saving, onCancel, onSave }) {
             </button>
             <button
               onClick={submit}
-              disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm disabled:opacity-50"
+              disabled={saving || !validation.isValid}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               data-testid="bundle-editor-save"
+              title={!validation.isValid ? validation.errors[0]?.msg : ""}
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               {isNew ? "Erstellen" : "Speichern"}

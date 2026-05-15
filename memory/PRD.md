@@ -14,6 +14,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter110 — DB-Migration + Probe-Auth + Bundle-Validation)
+- 🟢 **DB-Migration `pos_audit_log` actor_id**: 5 Legacy-Records mit Dict-`actor_id` (inkl. **password_hash + payment_barcode geleakt!**) → normalisiert zu plain user_id strings. Sensitive Felder (password, password_hash, card_number, card_expiry, payment_barcode, balance, referral_code, force_restart, last_seen) in `actor_id_legacy` Backup als `***REDACTED***` ersetzt. Endpoints: `GET/POST/POST /api/diag/migrations/audit-log-actor-id/preview|run|rollback` (Admin).
+- 🟢 **Probe-Token-Auth**: `HEALTH_PROBE_TOKEN` ENV-Variable. Wenn gesetzt → `/api/diag/health/probe` verlangt `X-Probe-Token` Header oder `?token=` Query. Wenn nicht gesetzt → bleibt public. Verifiziert: ohne/wrong → 401, korrekt → 503/200.
+- 🟢 **Bundle-Editor Live-Validation**: Inline-Error-Display unter Key-Feld + Error/Warning-Banner über dem Save-Button. Save-Button disabled wenn invalide. Validiert: lowercase a-z0-9_, length 2-40, name 1-120, mind. 1 Feature, Feature-Keys gegen Catalog, description ≤500. Warning bei 100% kostenlosen Features.
+
+
+
 ### 15.05.2026 (iter109 — Public Health Probe für externe Monitore)
 - 🟢 **`GET /api/diag/health/probe`** — Public-Probe ohne Auth, liefert minimale Status-Info (kein PII/keine Keys). HTTP 200 wenn `status=ok`, HTTP 503 bei degraded/critical → ideal für UptimeRobot/BetterStack/Healthchecks.io HTTP-Monitor-Regeln.
 - 🟢 **Shared Builder `_build_health_payload(detailed: bool)`**: DRY-Refactor, ein Code-Pfad für Admin-Deep + Public-Probe.
