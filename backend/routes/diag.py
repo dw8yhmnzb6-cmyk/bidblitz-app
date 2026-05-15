@@ -142,7 +142,23 @@ async def _check_bot_loop() -> dict:
 async def health_deep(request: Request):
     """Ein-Request Deep-Health-Check über alle Systemkomponenten (Admin-only)."""
     await _require_admin(request)
+    return await _build_health_payload(detailed=True)
 
+
+@router.get("/health/probe")
+async def health_probe():
+    """Public Probe-Mode für externe Monitore (UptimeRobot/BetterStack/Healthchecks.io).
+    Liefert nur Status-Code + minimale Issue-Liste, keine Keys/Previews/PII.
+    HTTP 200 bei status=ok, 503 bei degraded/critical für einfache Monitor-Regeln.
+    """
+    payload = await _build_health_payload(detailed=False)
+    status_code = 200 if payload["status"] == "ok" else 503
+    from fastapi.responses import JSONResponse
+    return JSONResponse(content=payload, status_code=status_code)
+
+
+async def _build_health_payload(detailed: bool) -> dict:
+    """Shared health-check builder. `detailed=False` für Public-Probe (keine Previews)."""
     started = time.perf_counter()
 
     # Run async checks in parallel
@@ -210,6 +226,22 @@ async def health_deep(request: Request):
         overall = "critical"
 
     elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+
+    # Public probe: strip previews/keys/PII
+    if not detailed:
+        return {
+            "status": overall,
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "elapsed_ms": elapsed_ms,
+            "critical_issues": critical_issues,
+            "warnings": warnings,
+            "components": {
+                "mongo": mongo_state.get("status"),
+                "routing_registered": routing["registered"],
+                "routing_failed": routing["failed"],
+                "bot_loop": bot_state.get("status"),
+            },
+        }
 
     return {
         "status": overall,

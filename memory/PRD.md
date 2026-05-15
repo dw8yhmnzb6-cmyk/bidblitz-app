@@ -14,6 +14,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter109 — Public Health Probe für externe Monitore)
+- 🟢 **`GET /api/diag/health/probe`** — Public-Probe ohne Auth, liefert minimale Status-Info (kein PII/keine Keys). HTTP 200 wenn `status=ok`, HTTP 503 bei degraded/critical → ideal für UptimeRobot/BetterStack/Healthchecks.io HTTP-Monitor-Regeln.
+- 🟢 **Shared Builder `_build_health_payload(detailed: bool)`**: DRY-Refactor, ein Code-Pfad für Admin-Deep + Public-Probe.
+- ✅ **Verifiziert**: Probe ohne Auth → HTTP 503 + sanitisierte Komponenten-Liste (nur status-Strings, keine Previews). Admin-Endpoint weiter 401 ohne Cookie.
+
+
+
 ### 15.05.2026 (iter108 — Deep Health Check)
 - 🟢 **`/api/diag/health-deep`** Admin-Endpoint: ein parallelisierter Request prüft MongoDB-Ping + Collection-Counts, Bot-Loop-Aktivität, Router-Registry, alle 9 3rd-Party-Integrations (Stripe mit live/test-Detection, Emergent LLM, Resend, ElevenLabs, Mapbox, VAPID Push, Sabre CERT/PROD, LiveKit, Sentry). Liefert `status: ok|degraded|critical` + `critical_issues[]` + `warnings[]` + `elapsed_ms`.
 - 🟢 **`/admin/diag` Health-Tab**: Neue UI-Sektion mit Status-Banner (Heart-Icon), Component-Cards für MongoDB / Bot-Loop / Routing / Integrations + Status-Dots (grün/gelb/rot) + Key-Preview (sk_t...nt) + mode-Badge (test/live).
