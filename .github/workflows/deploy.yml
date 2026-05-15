@@ -141,7 +141,6 @@ jobs:
           $SSH "$VPS_USER@$VPS_HOST" "chmod +x /var/www/bidblitz/deploy/*.sh 2>/dev/null || true"
 
       - name: Sync MAPBOX_TOKEN into backend .env on VPS
-        if: ${{ secrets.VPS_HOST != '' }}
         uses: appleboy/ssh-action@v1.0.3
         env:
           MAPBOX_TOKEN_VALUE: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
