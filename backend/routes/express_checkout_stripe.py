@@ -173,6 +173,75 @@ async def charge_with_saved_method(
 @router.get("/setup-intent")
 async def create_setup_intent(request: Request):
     """
+
+
+@router.post("/wallet-payment")
+async def wallet_payment(
+    amount: float,
+    currency: str = "eur",
+    description: Optional[str] = None,
+    payment_method_id: Optional[str] = None,
+    request: Request = None
+):
+    """
+    Apple Pay / Google Pay Zahlung verarbeiten.
+    Payment Method wird direkt vom Frontend geliefert.
+    """
+    from core.security import get_current_user
+    from core.database import db
+    
+    user = await get_current_user(request)
+    
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(503, "Stripe nicht konfiguriert")
+    
+    try:
+        import stripe
+        stripe.api_key = STRIPE_SECRET_KEY
+        
+        # Stripe Customer ID
+        user_record = await db.users.find_one({"_id": user["_id"]})
+        customer_id = user_record.get("stripe_customer_id")
+        
+        if not customer_id:
+            customer = stripe.Customer.create(
+                email=user.get("email"),
+                metadata={"user_id": str(user["_id"])}
+            )
+            customer_id = customer.id
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"stripe_customer_id": customer_id}}
+            )
+        
+        # Payment Intent erstellen
+        intent = stripe.PaymentIntent.create(
+            amount=int(amount * 100),
+            currency=currency,
+            customer=customer_id,
+            payment_method=payment_method_id,
+            confirm=True,
+            description=description or "BidBlitz Wallet Payment",
+            metadata={
+                "user_id": str(user["_id"]),
+                "payment_type": "wallet",
+            }
+        )
+        
+        return {
+            "ok": True,
+            "payment_intent_id": intent.id,
+            "status": intent.status,
+            "amount": amount,
+            "currency": currency,
+        }
+    
+    except ImportError:
+        raise HTTPException(503, "Stripe library fehlt")
+    
+    except Exception as e:
+        raise HTTPException(500, f"Wallet-Zahlung fehlgeschlagen: {str(e)}")
+
     Setup Intent für Kartenspeicherung ohne Zahlung.
     Frontend nutzt dies für Stripe Elements.
     """
