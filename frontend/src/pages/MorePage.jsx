@@ -980,6 +980,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "admin-legal", icon: ShieldCheck, label: "Legal-Pages Editor", desc: "AGB, Datenschutz, Impressum bearbeiten", color: "#00C2FF", action: () => onNavigate("/admin/legal") },
     { id: "admin-merchant-features", icon: ShieldCheck, label: "Händler-Module freischalten", desc: "Warenwirtschaft, Zeiterfassung & Co. pro Händler an/aus", color: "#FFD700", action: () => onNavigate("/admin/merchant-features") },
     { id: "admin-audit-log", icon: FileText, label: "Admin Audit Log", desc: "History aller Feature-Freischaltungen & Preisänderungen", color: "#8B5CF6", action: () => onNavigate("/admin/audit-log") },
+    { id: "admin-diag", icon: Activity, label: "Routing Diagnostics", desc: "Live-Übersicht aller API-Routen, gemounteten Module & Silent-Failures", color: "#06B6D4", action: () => onNavigate("/admin/diag") },
     { id: "admin-push-broadcast", icon: Bell, label: "Push Notifications", desc: "Broadcast an alle User oder Gruppen", color: "#EC4899", action: () => onNavigate("/admin/push-broadcast") },
     { id: "admin-analytics", icon: TrendingUp, label: "Analytics Dashboard", desc: "User-Aktivität, Revenue, Feature-Usage", color: "#06B6D4", action: () => onNavigate("/admin/analytics") },
     { id: "staff-gps", icon: MapPin, label: "Staff GPS Tracking", desc: "Live-Standorte aller Mitarbeiter", color: "#10B981", action: () => onNavigate("/staff/gps") },

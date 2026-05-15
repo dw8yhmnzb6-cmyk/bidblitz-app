@@ -14,6 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter107 — Admin Diag UI)
+- 🟢 **`/admin/diag` Admin-Page** (`AdminDiagPage.jsx`): UI für `/api/diag/routes` mit 4 Tabs (Übersicht, Module, API-Pfade, Failed) + Live-Search + ausklappbare Failure-Tracebacks. Counter-Cards für Registered/Failed/Live-Paths.
+- 🟢 **MorePage Eintrag** `Routing Diagnostics` im Admin-Menü mit Activity-Icon (cyan).
+- 🟢 **App.js Route** `/admin/diag` mit Admin-Auth-Guard registriert.
+- ✅ **Manueller Smoke-Test bestätigt:** 151 Module, 2 Failed (taxi_operator/taxi_driver — Module physisch fehlend), 1562 Live-Paths korrekt angezeigt.
+
+
+
 ### 15.05.2026 (iter106 — Diagnostic Endpoint /api/diag/routes)
 - 🟢 **Router-Registry trackt jetzt jeden Mount-Versuch**: `REGISTRATION_STATE` modul-level Dict mit `registered[]` (module, attr, prefix, route_count) + `failed[]` (error_type, error, traceback).
 - 🟢 **`/api/diag/routes` Admin-Endpoint** (`routes/diag.py`): liefert komplette Routing-Übersicht — alle 151 erfolgreich gemounteten Module + 2 silently failed (taxi_operator/taxi_driver Module fehlen) + **1562 live API-Pfade** mit Methods.
