@@ -14,6 +14,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter105 — Testing-Sweep + 5 CRITICAL Bugfixes)
+- 🟢 **Audit-Log 500 Crash gefixt**: `pos_features.py:1055` Set-Comprehension über legacy `actor_id` Dict-Werte → `isinstance(str)` Filter + Dict-Coercion in Loop.
+- 🟢 **Stripe Express-Checkout SYNTAX ERROR gefixt**: `express_checkout_stripe.py` `create_setup_intent` hatte unterminierten Docstring der `@router.post('/wallet-payment')` decorator verschluckte → kompletter Stripe-Router war silently nie mounted. Setup-Intent properly implementiert, orphan-code entfernt. Alle 4 Stripe-Endpoints jetzt erreichbar.
+- 🟢 **Push Broadcast Endpoints (neu)**: `admin_router` in `push_notifications.py` mit `/api/push-notifications/admin/broadcast` (POST) + `/admin/broadcasts` (GET) + DB-Collection `push_broadcasts` für History.
+- 🟢 **POS Extended Cash-Register Endpoints (neu)**: `/app/backend/routes/pos_extended_cash.py` mit `/cash-register/history`, `/cash-register/close-day`, `/offline/download-data` unter Prefix `/api/pos-extended`. Tagesabschluss inkl. Soll-/Ist-Vergleich aus `transactions`. List-Endpoints geben 200+empty list zurück wenn kein Merchant existiert.
+- 🟢 **Express-Checkout `/init` Alias**: `/api/express-checkout/init` als zweite Route auf bestehenden `/quick-buy` Handler.
+- 🟢 **Router-Registry LOUDER**: `ImportError` + `SyntaxError` werden jetzt mit `exc_info=True` als ERROR geloggt statt silently als WARNING. Verhindert zukünftige unentdeckte Modul-Aussetzer.
+- 🟢 **Auth-Guards für 4 neue Routen**: `/express-checkout`, `/staff/gps`, `/hotels/sabre`, `/pos/extended` redirecten Guests jetzt zur HomePage.
+- ✅ **Backend Testing: 28/28 grün** (iter99 via testing_agent_v3_fork).
+
+
+
 ### 15.05.2026 (iter104 — P0 Bugfixes nach Handoff)
 - 🟢 **HotelSabreSearchPage Syntax-Error gefixt**: `<>` Fragment war nicht geschlossen → komplette Frontend-Compilation broken. Behoben mit `</>` close + Bookings-View Placeholder.
 - 🟢 **ErrorBoundary in App.js integriert**: Wrap um `<AppProvider><ThemeProvider><AppContent/>`. `setupGlobalErrorHandler()` im useEffect für unhandled promise rejections + window errors.

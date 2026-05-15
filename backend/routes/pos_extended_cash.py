@@ -12,8 +12,10 @@ from core.security import get_current_user
 router = APIRouter(prefix="/api/pos-extended", tags=["pos-extended-cash"])
 
 
-async def _merchant_id_for(user: dict) -> str:
-    """Resolve merchant_id for the current authenticated user (merchant role)."""
+async def _merchant_id_for(user: dict, allow_empty: bool = False) -> Optional[str]:
+    """Resolve merchant_id for the current authenticated user (merchant role).
+    If allow_empty=True, returns None instead of raising 404 when no merchant exists.
+    """
     role = user.get("role")
     if role not in ("merchant", "admin"):
         raise HTTPException(403, "Merchant/Admin access required")
@@ -30,6 +32,8 @@ async def _merchant_id_for(user: dict) -> str:
     # Admin without owned merchant — accept user id as namespace
     if role == "admin":
         return uid
+    if allow_empty:
+        return None
     raise HTTPException(404, "Kein Merchant für diesen Account gefunden")
 
 
@@ -92,9 +96,11 @@ async def close_day(body: CloseDayBody, request: Request):
 
 @router.get("/cash-register/history")
 async def cash_history(request: Request, limit: int = 50):
-    """Liefert die letzten Tagesabschlüsse für den Merchant."""
+    """Liefert die letzten Tagesabschlüsse für den Merchant. Leere Liste wenn kein Merchant existiert."""
     user = await get_current_user(request)
-    merchant_id = await _merchant_id_for(user)
+    merchant_id = await _merchant_id_for(user, allow_empty=True)
+    if not merchant_id:
+        return {"history": [], "count": 0}
 
     items = await db.pos_cash_closings.find(
         {"merchant_id": merchant_id}, {"_id": 0}
@@ -105,9 +111,16 @@ async def cash_history(request: Request, limit: int = 50):
 
 @router.get("/offline/download-data")
 async def offline_download(request: Request):
-    """Snapshot für Offline-Modus: aktuelle Produkte, Preise, Steuersätze, Mitarbeiter."""
+    """Snapshot für Offline-Modus. Leere Sammlungen wenn kein Merchant existiert."""
     user = await get_current_user(request)
-    merchant_id = await _merchant_id_for(user)
+    merchant_id = await _merchant_id_for(user, allow_empty=True)
+    if not merchant_id:
+        return {
+            "merchant_id": None,
+            "snapshot_at": datetime.now(timezone.utc).isoformat(),
+            "products": [], "categories": [], "tax_rates": [], "staff": [],
+            "ttl_hours": 24,
+        }
 
     products = await db.pos_products.find({"merchant_id": merchant_id}, {"_id": 0}).limit(2000).to_list(2000)
     categories = await db.pos_categories.find({"merchant_id": merchant_id}, {"_id": 0}).limit(500).to_list(500)
