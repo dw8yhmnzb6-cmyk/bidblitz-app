@@ -119,6 +119,7 @@ const AdminLegalPage = lazy(() => import("./pages/AdminLegalPage"));
 const AdminMerchantFeaturesPage = lazy(() => import("./pages/AdminMerchantFeaturesPage"));
 const AdminAuditLogPage = lazy(() => import("./pages/AdminAuditLogPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
+const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
 const ExpressCheckoutPage = lazy(() => import("./pages/ExpressCheckoutPage"));
 const StaffGPSPage = lazy(() => import("./pages/StaffGPSPage"));
 const HotelSabreSearchPage = lazy(() => import("./pages/HotelSabreSearchPage"));
@@ -637,6 +638,8 @@ function AppContent() {
         return user.role === "admin" ? <AdminAuditLogPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/push-broadcast":
         return user.role === "admin" ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/analytics":
+        return user.role === "admin" ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/express-checkout":
         return <ExpressCheckoutPage onBack={() => handleNavigate("/more")} />;
       case "/staff/gps":

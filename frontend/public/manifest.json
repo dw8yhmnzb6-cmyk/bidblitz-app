@@ -1,127 +1,56 @@
 {
-  "name": "BidBlitz",
+  "name": "BidBlitz Super App",
   "short_name": "BidBlitz",
-  "description": "Die Super-App für Taxi, Scooter, Food Delivery, Auktionen und mehr",
+  "description": "Komplette Super App für Auktionen, Taxi, Hotels, Staff Management & POS",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050505",
-  "theme_color": "#00D4FF",
+  "background_color": "#030303",
+  "theme_color": "#00C2FF",
   "orientation": "portrait-primary",
-  "scope": "/",
-  "lang": "de",
-  "categories": [
-    "finance",
-    "lifestyle",
-    "shopping",
-    "transportation",
-    "food"
-  ],
   "icons": [
     {
-      "src": "../icons/icon-48.webp",
-      "type": "image/png",
-      "sizes": "48x48",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "../icons/icon-72.webp",
-      "type": "image/png",
-      "sizes": "72x72",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "../icons/icon-96.webp",
-      "type": "image/png",
-      "sizes": "96x96",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "../icons/icon-128.webp",
-      "type": "image/png",
-      "sizes": "128x128",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "../icons/icon-192.webp",
-      "type": "image/png",
+      "src": "/logo192.png",
       "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "../icons/icon-256.webp",
-      "type": "image/png",
-      "sizes": "256x256",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "../icons/icon-512.webp",
-      "type": "image/png",
+      "src": "/logo512.png",
       "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "shortcuts": [
-    {
-      "name": "Taxi buchen",
-      "short_name": "Taxi",
-      "description": "Schnell eine Fahrt buchen",
-      "url": "/taxi",
-      "icons": [
-        {
-          "src": "/icons/taxi-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Essen bestellen",
-      "short_name": "Food",
-      "description": "Essen liefern lassen",
-      "url": "/food",
-      "icons": [
-        {
-          "src": "/icons/food-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Scooter",
-      "short_name": "Scooter",
-      "description": "E-Scooter in der Nähe finden",
-      "url": "/scooter",
-      "icons": [
-        {
-          "src": "/icons/scooter-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Wallet",
-      "short_name": "Wallet",
-      "description": "Guthaben & Transaktionen",
-      "url": "/wallet",
-      "icons": [
-        {
-          "src": "/icons/wallet-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ],
+  "categories": ["business", "finance", "lifestyle", "productivity"],
   "screenshots": [
     {
       "src": "/screenshots/home.png",
       "sizes": "1080x1920",
       "type": "image/png",
-      "label": "BidBlitz Homepage"
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Express Checkout",
+      "short_name": "Checkout",
+      "description": "1-Klick Zahlung",
+      "url": "/#/express-checkout",
+      "icons": [{ "src": "/icons/checkout.png", "sizes": "96x96" }]
     },
     {
-      "src": "/screenshots/taxi.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "label": "Taxi buchen"
+      "name": "Hotels suchen",
+      "short_name": "Hotels",
+      "description": "Hotelsuche & Buchung",
+      "url": "/#/hotels/sabre",
+      "icons": [{ "src": "/icons/hotel.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "POS Kasse",
+      "short_name": "POS",
+      "description": "Kassensystem",
+      "url": "/#/pos/extended",
+      "icons": [{ "src": "/icons/pos.png", "sizes": "96x96" }]
     }
   ],
   "related_applications": [],
