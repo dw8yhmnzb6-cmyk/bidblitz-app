@@ -474,6 +474,65 @@ const AuctionAdminPage = ({ onBack }) => {
               </div>
             </Card>
 
+            {/* ═══ Bot-Aggressivität (iter103) ═══ */}
+            <Card title="🤖 Bot-Aggressivität (Phase 3)" icon={<Zap size={16} className="text-cyan-400" />}>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-white/60">Wie schnell schießen die Bots in den letzten 5 Min?</span>
+                    <span className="text-2xl font-bold text-cyan-400" data-testid="aggression-display">
+                      {config?.bot_aggression_level ?? 50}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={config?.bot_aggression_level ?? 50}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setConfig((c) => ({ ...(c || {}), bot_aggression_level: v }));
+                    }}
+                    onMouseUp={async (e) => {
+                      const v = Number(e.target.value);
+                      try {
+                        await api("/api/auctions/admin/automation/config", {
+                          method: "POST",
+                          body: JSON.stringify({ ...config, bot_aggression_level: v }),
+                        });
+                        toast.success(`Bot-Aggressivität: ${v}`);
+                      } catch (err) {
+                        toast.error("Speichern fehlgeschlagen");
+                      }
+                    }}
+                    onTouchEnd={async (e) => {
+                      const v = Number(e.target.value);
+                      try {
+                        await api("/api/auctions/admin/automation/config", {
+                          method: "POST",
+                          body: JSON.stringify({ ...config, bot_aggression_level: v }),
+                        });
+                        toast.success(`Bot-Aggressivität: ${v}`);
+                      } catch (err) {
+                        toast.error("Speichern fehlgeschlagen");
+                      }
+                    }}
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    data-testid="aggression-slider"
+                  />
+                  <div className="flex justify-between text-[10px] text-white/40 mt-1">
+                    <span>Relaxed (8-15s)</span>
+                    <span>Balanced</span>
+                    <span>Sniper (0.5-1.5s)</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-white/40 italic">
+                  💡 Bei <span className="text-cyan-400">100</span> bieten Bots fast in jeder Sekunde — User hat keine Chance zu überlegen. Bei <span className="text-cyan-400">0</span> warten Bots 8-15 s zwischen Bids → Kunde hat viel Reaktionszeit.
+                </p>
+              </div>
+            </Card>
+
             {/* Global Bot Settings */}
             <Card title="Globale Bot-Einstellungen" icon={<Settings size={16} className="text-white/40" />}>
               <div className="space-y-3">

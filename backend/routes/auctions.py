@@ -1884,6 +1884,34 @@ async def _get_admin_win_rate() -> float:
         return 0.20
 
 
+async def _get_bot_aggression() -> dict:
+    """
+    Returns Phase-3 bot timing/probability based on admin aggression slider 0..100.
+    0 → slow & relaxed (users have lots of reaction time)
+    50 → balanced default
+    100 → sniper mode (rapid bids in last seconds)
+    """
+    cfg = await db.auction_automation_config.find_one({"_id": "global"}, {"_id": 0})
+    level = 50.0
+    if cfg and cfg.get("bot_aggression_level") is not None:
+        try:
+            level = max(0.0, min(100.0, float(cfg["bot_aggression_level"])))
+        except (TypeError, ValueError):
+            pass
+    # Linear interpolate timing windows: t=0 → 8-15s,  t=100 → 0.5-1.5s
+    t = level / 100.0
+    pre_min = 8.0 - 7.5 * t   # 8.0 → 0.5
+    pre_max = 15.0 - 13.5 * t # 15 → 1.5
+    # Probability scales: 0 → 15%, 100 → 75%
+    prob = 0.15 + 0.60 * t
+    return {
+        "level": level,
+        "pre_min_s": max(0.3, pre_min),
+        "pre_max_s": max(pre_min + 0.5, pre_max),
+        "probability": prob,
+    }
+
+
 async def bot_bidding_loop():
     """Background loop: check bot-enabled auctions and place bids.
     
@@ -1990,12 +2018,14 @@ async def bot_bidding_loop():
                         continue
 
                 # Preis < Target UND weniger als 5 Minuten übrig
-                bid_probability = auction.get("bot_probability", 0.35)
+                # NEU iter103: nutze Admin-Aggressivitäts-Setting für Probability + Delay
+                aggr = await _get_bot_aggression()
+                bid_probability = aggr["probability"]
                 if random.random() > bid_probability:
                     continue
 
-                # Add random delay to avoid predictable timing
-                await asyncio.sleep(random.uniform(0.5, 2.0))
+                # Add random delay scaled by aggression
+                await asyncio.sleep(random.uniform(aggr["pre_min_s"], aggr["pre_max_s"]))
                 
                 await execute_bot_bid(auction)
 
@@ -2030,6 +2060,11 @@ class AutomationConfigRequest(BaseModel):
     categories_enabled: list = Field(default=["phones", "gaming", "audio", "wearables", "laptops", "tablets"])
     # NEW iter102: Admin win-rate steering. 0-100 = % aller Auktionen die der KUNDE gewinnen soll.
     customer_win_rate_percent: float = Field(default=20.0, ge=0, le=100)
+    # NEW iter103: Bot-Aggressivität 0-100. Beeinflusst Phase-3 Speed & Probability.
+    # 0   = sehr langsam, Bots geben User viel Reaktionszeit
+    # 50  = ausgewogen (Default)
+    # 100 = Sniper-Modus, Bots schießen alle 0.5-1.5s
+    bot_aggression_level: float = Field(default=50.0, ge=0, le=100)
 
 
 class ScheduleAuctionRequest(BaseModel):
@@ -2069,6 +2104,7 @@ async def get_automation_config(request: Request):
             "bot_default_target_percent": 15.0,
             "categories_enabled": ["phones", "gaming", "audio", "wearables", "laptops", "tablets"],
             "customer_win_rate_percent": 20.0,
+            "bot_aggression_level": 50.0,
         }
     
     config.pop("_id", None)

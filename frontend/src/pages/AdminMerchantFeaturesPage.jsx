@@ -16,11 +16,12 @@
  *   POST /api/pos/features/admin/bulk-toggle    — Mehrere Features auf einmal
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   ChevronLeft, Search, Store, ShieldCheck, Loader2, ToggleLeft,
   ToggleRight, CheckCircle2, Tag, Filter, Package, Sparkles,
+  Plus, Edit3, Trash2, X, Save,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -56,6 +57,8 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
   const [catalog, setCatalog] = useState([]);
   const [bundles, setBundles] = useState([]);
   const [applyingBundle, setApplyingBundle] = useState(null);
+  const [editingBundle, setEditingBundle] = useState(null);  // null | "new" | bundle object
+  const [savingBundle, setSavingBundle] = useState(false);
   const [search, setSearch] = useState("");
   const [activeMerchant, setActiveMerchant] = useState(null);
   const [merchantFeatures, setMerchantFeatures] = useState({}); // {feature_key: {enabled, effective_price, custom_price,...}}
@@ -157,6 +160,43 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
       toast.error(err.message || "Bulk-Update fehlgeschlagen");
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  const reloadBundles = useCallback(async () => {
+    try {
+      const b = await api("/api/pos/features/bundles");
+      setBundles(b.bundles || []);
+    } catch (err) {
+      /* ignore */
+    }
+  }, []);
+
+  const handleSaveBundle = async (draft) => {
+    setSavingBundle(true);
+    try {
+      await api("/api/pos/features/admin/bundles", {
+        method: "POST",
+        body: JSON.stringify(draft),
+      });
+      toast.success(`Bundle gespeichert: ${draft.name}`);
+      setEditingBundle(null);
+      await reloadBundles();
+    } catch (err) {
+      toast.error(err.message || "Speichern fehlgeschlagen");
+    } finally {
+      setSavingBundle(false);
+    }
+  };
+
+  const handleDeleteBundle = async (bundle) => {
+    if (!window.confirm(`Bundle "${bundle.name}" wirklich löschen?`)) return;
+    try {
+      await api(`/api/pos/features/admin/bundles/${bundle.key}`, { method: "DELETE" });
+      toast.success(`Bundle gelöscht: ${bundle.name}`);
+      await reloadBundles();
+    } catch (err) {
+      toast.error(err.message || "Löschen fehlgeschlagen");
     }
   };
 
@@ -404,43 +444,74 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
                       <Package size={16} className="text-amber-400" />
                       <h3 className="text-sm font-semibold">Standard-Paket pro Branche</h3>
                       <span className="text-[10px] text-gray-500">— 1 Klick = mehrere Features mit fertigen Preisen</span>
+                      <button
+                        onClick={() => setEditingBundle("new")}
+                        className="ml-auto flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition"
+                        data-testid="bundle-new-btn"
+                      >
+                        <Plus size={12} /> Neu
+                      </button>
                     </div>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
                       {bundles.map((b) => {
                         const applying = applyingBundle === b.key;
                         return (
-                          <button
+                          <div
                             key={b.key}
-                            onClick={() => handleApplyBundle(b, "merge")}
-                            onContextMenu={(e) => { e.preventDefault(); handleApplyBundle(b, "replace"); }}
-                            disabled={applying}
-                            className="text-left p-3 rounded-xl bg-gradient-to-br from-amber-500/5 to-amber-500/0 border border-amber-500/20 hover:border-amber-400/40 hover:bg-amber-500/10 transition disabled:opacity-50"
+                            className="group relative text-left p-3 rounded-xl bg-gradient-to-br from-amber-500/5 to-amber-500/0 border border-amber-500/20 hover:border-amber-400/40 hover:bg-amber-500/10 transition"
                             data-testid={`bundle-${b.key}`}
-                            title="Klick: hinzufügen   •   Rechtsklick: ersetzen (alle anderen aus)"
                           >
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-lg">{b.icon}</span>
-                              <span className="font-semibold text-xs truncate">{b.name}</span>
-                              {applying && <Loader2 className="animate-spin text-amber-400 ml-auto" size={12} />}
+                            <button
+                              type="button"
+                              onClick={() => handleApplyBundle(b, "merge")}
+                              onContextMenu={(e) => { e.preventDefault(); handleApplyBundle(b, "replace"); }}
+                              disabled={applying}
+                              className="w-full text-left disabled:opacity-50"
+                              title="Klick: hinzufügen   •   Rechtsklick: ersetzen (alle anderen aus)"
+                            >
+                              <div className="flex items-center gap-2 mb-1 pr-12">
+                                <span className="text-lg">{b.icon}</span>
+                                <span className="font-semibold text-xs truncate">{b.name}</span>
+                                {applying && <Loader2 className="animate-spin text-amber-400 ml-auto" size={12} />}
+                              </div>
+                              <p className="text-[10px] text-gray-400 leading-snug line-clamp-2 mb-2">
+                                {b.description}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-500">
+                                  {b.features.length} Module
+                                </span>
+                                <span className="text-xs font-bold text-amber-400">
+                                  {b.monthly_total?.toFixed(2)} €/M
+                                </span>
+                              </div>
+                            </button>
+                            {/* Edit / Delete actions */}
+                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingBundle(b); }}
+                                className="p-1 rounded bg-white/5 hover:bg-white/15 text-gray-300"
+                                data-testid={`bundle-edit-${b.key}`}
+                                aria-label="Bearbeiten"
+                              >
+                                <Edit3 size={11} />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteBundle(b); }}
+                                className="p-1 rounded bg-red-500/10 hover:bg-red-500/30 text-red-300"
+                                data-testid={`bundle-delete-${b.key}`}
+                                aria-label="Löschen"
+                              >
+                                <Trash2 size={11} />
+                              </button>
                             </div>
-                            <p className="text-[10px] text-gray-400 leading-snug line-clamp-2 mb-2">
-                              {b.description}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-gray-500">
-                                {b.features.length} Module
-                              </span>
-                              <span className="text-xs font-bold text-amber-400">
-                                {b.monthly_total?.toFixed(2)} €/M
-                              </span>
-                            </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
                     <p className="text-[10px] text-gray-500 mt-2 flex items-center gap-1">
                       <Sparkles size={10} />
-                      Klick = nur hinzufügen. Rechtsklick = ersetzen (deaktiviert alle anderen Features).
+                      Klick = hinzufügen. Rechtsklick = ersetzen. Hover für Bearbeiten/Löschen.
                     </p>
                   </div>
                 )}
@@ -608,6 +679,219 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
           </div>
         </div>
       )}
+
+      {/* ═══ Bundle Editor Modal ═══ */}
+      <AnimatePresence>
+        {editingBundle !== null && (
+          <BundleEditor
+            initial={editingBundle === "new" ? null : editingBundle}
+            catalog={catalog}
+            saving={savingBundle}
+            onCancel={() => setEditingBundle(null)}
+            onSave={handleSaveBundle}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+// Bundle Editor — inline component
+// ════════════════════════════════════════════════════════════════════
+function BundleEditor({ initial, catalog, saving, onCancel, onSave }) {
+  const [key, setKey] = useState(initial?.key || "");
+  const [name, setName] = useState(initial?.name || "");
+  const [icon, setIcon] = useState(initial?.icon || "📦");
+  const [description, setDescription] = useState(initial?.description || "");
+  const [items, setItems] = useState(
+    () => (initial?.features || []).map((f) => ({ key: f.key, price: Number(f.price) || 0 })),
+  );
+
+  const isNew = !initial;
+  const total = useMemo(
+    () => items.reduce((s, it) => s + (Number(it.price) || 0), 0),
+    [items],
+  );
+
+  const toggleFeature = (fkey) => {
+    setItems((prev) => {
+      const idx = prev.findIndex((p) => p.key === fkey);
+      if (idx >= 0) return prev.filter((p) => p.key !== fkey);
+      const cat = catalog.find((c) => c.key === fkey);
+      return [...prev, { key: fkey, price: cat?.monthly_price ?? 0 }];
+    });
+  };
+
+  const setItemPrice = (fkey, value) => {
+    const num = Number(String(value).replace(",", "."));
+    setItems((prev) =>
+      prev.map((p) => (p.key === fkey ? { ...p, price: Number.isFinite(num) ? Math.max(0, num) : 0 } : p)),
+    );
+  };
+
+  const submit = () => {
+    if (!key.match(/^[a-z0-9_]+$/)) {
+      toast.error("Key: nur a-z, 0-9, _");
+      return;
+    }
+    if (!name.trim()) {
+      toast.error("Name fehlt");
+      return;
+    }
+    if (items.length === 0) {
+      toast.error("Mindestens 1 Feature auswählen");
+      return;
+    }
+    onSave({ key, name: name.trim(), icon: icon || "📦", description: description.trim(), features: items, order: initial?.order ?? 100 });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onCancel}
+      data-testid="bundle-editor-modal"
+    >
+      <motion.div
+        initial={{ scale: 0.95, y: 10 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.95, y: 10 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#0a0a14] border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Package size={18} className="text-amber-400" />
+            {isNew ? "Neues Bundle erstellen" : `Bundle bearbeiten: ${initial.name}`}
+          </h2>
+          <button onClick={onCancel} className="p-2 hover:bg-white/5 rounded-lg" data-testid="bundle-editor-close">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="grid grid-cols-[80px_1fr] gap-3">
+            <div>
+              <label className="text-[10px] text-gray-400 uppercase">Emoji</label>
+              <input
+                value={icon}
+                onChange={(e) => setIcon(e.target.value)}
+                maxLength={4}
+                className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-2xl text-center"
+                data-testid="bundle-editor-icon"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400 uppercase">Name</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="z. B. Restaurant Premium 2026"
+                className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:border-amber-500/50 focus:outline-none"
+                data-testid="bundle-editor-name"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase">Bundle-Key (URL-safe)</label>
+            <input
+              value={key}
+              onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+              disabled={!isNew}
+              placeholder="restaurant_premium"
+              className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono disabled:opacity-50"
+              data-testid="bundle-editor-key"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase">Beschreibung</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder="Was beinhaltet dieses Bundle?"
+              className="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs resize-none"
+              data-testid="bundle-editor-description"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase mb-2 block">Features im Bundle ({items.length})</label>
+            <div className="grid sm:grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto pr-1">
+              {catalog.map((f) => {
+                const item = items.find((p) => p.key === f.key);
+                const checked = !!item;
+                return (
+                  <div
+                    key={f.key}
+                    className={`p-2 rounded-lg border transition flex items-center gap-2 ${
+                      checked ? "bg-amber-500/10 border-amber-500/30" : "bg-white/[0.02] border-white/5"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleFeature(f.key)}
+                      className="accent-amber-400 shrink-0"
+                      data-testid={`bundle-editor-feat-${f.key}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate">{f.name}</p>
+                      <p className="text-[10px] text-gray-500 truncate">
+                        Standard: {f.monthly_price?.toFixed(2)} €
+                      </p>
+                    </div>
+                    {checked && (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.price}
+                        onChange={(e) => setItemPrice(f.key, e.target.value)}
+                        className="w-16 text-xs px-1.5 py-1 bg-white/10 border border-white/10 rounded text-right"
+                        data-testid={`bundle-editor-price-${f.key}`}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between p-4 border-t border-white/10 bg-white/[0.02]">
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase">Bundle-Total</p>
+            <p className="text-2xl font-bold text-amber-400" data-testid="bundle-editor-total">
+              {total.toFixed(2)} €<span className="text-xs text-gray-500"> /Monat</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm"
+              data-testid="bundle-editor-cancel"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={submit}
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm disabled:opacity-50"
+              data-testid="bundle-editor-save"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {isNew ? "Erstellen" : "Speichern"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

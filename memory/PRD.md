@@ -15,6 +15,25 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 ## Implemented Features (current Sprint, Feb 2026)
 
+### 15.05.2026 (iter103 — Bundle-Editor + Bot-Aggressivität-Slider)
+- 🟢 **Bundle-Editor (Admin)**: Bundles sind jetzt **DB-backed** statt hardcoded. CRUD-Endpoints:
+  - `POST /api/pos/features/admin/bundles` (create/upsert mit name, icon, description, features[], order, prices)
+  - `DELETE /api/pos/features/admin/bundles/{key}` (löscht custom; bei Default → tombstone hidden=true)
+  - `GET /api/pos/features/bundles` mergt DB + Defaults (custom Bundles erscheinen oben mit `order`).
+- 🟢 **Frontend Modal `BundleEditor`** in `AdminMerchantFeaturesPage.jsx`: 
+  - Emoji + Name + Key (URL-safe, nur a-z0-9_) + Description
+  - Multi-Select aller 23 Features mit individuellem Preis-Override
+  - Live-Total-Berechnung
+  - Edit-Pencil + Delete-Trash auf Hover über jede Bundle-Karte
+  - "+ Neu" Button rechts neben Bundle-Header
+- 🟢 **Bot-Aggressivität (Slider 0-100)** im AuctionAdminPage (Übersicht-Tab):
+  - 0 = Relaxed (sleep 8-15s, Probability 15%)
+  - 50 = Balanced
+  - 100 = Sniper (sleep 0.5-1.5s, Probability 75%)
+  - Linear-Interpolation in Backend `_get_bot_aggression()`, dynamic read in Phase 3 jedes Loop-Tick.
+- 🟢 **AutomationConfig erweitert** um `bot_aggression_level` (0-100, Default 50). Persistiert in `auction_automation_config`.
+- 🧪 **E2E getestet**: Custom Bundle "Restaurant Premium 2026" mit 5 Features für 37€ erstellt → erscheint ganz oben → apply auf Händler aktiviert mit Custom-Preisen → delete → wieder 8 Bundles. Aggression=80 persistiert.
+
 ### 15.05.2026 (iter102 — Auktions-Reset: 30 frische 2026er Produkte + 3-Phasen-Bots + Admin Win-Rate)
 - 🟢 **Neuer Produkt-Katalog** (`product_catalog.json` komplett ersetzt): 30 echte 2026er Produkte unter 2000€:
   - 7× Handys (iPhone 17 Pro, Galaxy S26 Ultra, Pixel 10 Pro, Xiaomi 16 Pro, OnePlus 14 Pro, Z Flip7, Honor Magic7 Pro)

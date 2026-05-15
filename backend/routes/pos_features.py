@@ -4,7 +4,7 @@ Merchants können einzelne Pro-Features (Tisch-Reservierung, QR-Bestellung, KDS,
 zubuchen. Admin schaltet sie frei oder sperrt sie.
 """
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 from emergentintegrations.payments.stripe.checkout import (
@@ -281,6 +281,29 @@ INDUSTRY_BUNDLES = [
 BUNDLE_KEYS = {b["key"] for b in INDUSTRY_BUNDLES}
 
 
+async def _load_bundles() -> List[dict]:
+    """
+    Load bundles from DB (pos_bundles collection) if any exist;
+    otherwise return the hardcoded DEFAULTS so admins always see the
+    8 starter bundles on first run.
+    """
+    custom = await db.pos_bundles.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    if not custom:
+        return INDUSTRY_BUNDLES
+    # Merge: prefer DB bundles; fall back to defaults that haven't been overridden
+    keys = {b["key"] for b in custom}
+    merged = list(custom)
+    for b in INDUSTRY_BUNDLES:
+        if b["key"] not in keys:
+            merged.append(b)
+    return merged
+
+
+async def _all_bundle_keys() -> set:
+    bundles = await _load_bundles()
+    return {b["key"] for b in bundles}
+
+
 # ═══════════════════════════════════════════════════════════
 # CATALOG
 # ═══════════════════════════════════════════════════════════
@@ -292,8 +315,95 @@ async def get_catalog():
 
 @router.get("/bundles")
 async def get_bundles():
-    """Branchen-Bundles für 1-Klick Aktivierung."""
-    return {"bundles": INDUSTRY_BUNDLES}
+    """Branchen-Bundles für 1-Klick Aktivierung (DB-backed mit hardcoded Fallback)."""
+    bundles = await _load_bundles()
+    return {"bundles": bundles}
+
+
+class BundleFeatureItem(BaseModel):
+    key: str
+    price: float = Field(ge=0)
+
+
+class BundleSave(BaseModel):
+    key: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9_]+$")
+    name: str = Field(min_length=1, max_length=120)
+    icon: str = Field(default="📦", max_length=8)
+    description: str = Field(default="", max_length=500)
+    features: List[BundleFeatureItem]
+    order: int = Field(default=100, ge=0, le=10000)
+
+
+@router.post("/admin/bundles")
+async def admin_save_bundle(req: BundleSave, request: Request):
+    """Create or update a custom industry bundle. Admin only."""
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(403, "Nur Admin")
+
+    # Validate all feature keys exist in catalog
+    bad = [f.key for f in req.features if f.key not in FEATURE_KEYS]
+    if bad:
+        raise HTTPException(400, f"Unbekannte Feature-Keys: {', '.join(bad)}")
+
+    monthly_total = round(sum(f.price for f in req.features), 2)
+    payload = {
+        "key": req.key,
+        "name": req.name,
+        "icon": req.icon or "📦",
+        "description": req.description,
+        "features": [{"key": f.key, "price": float(f.price)} for f in req.features],
+        "monthly_total": monthly_total,
+        "order": req.order,
+        "updated_at": _now(),
+        "updated_by": str(user["_id"]),
+    }
+    await db.pos_bundles.update_one(
+        {"key": req.key},
+        {"$set": payload, "$setOnInsert": {"created_at": _now(), "created_by": str(user["_id"])}},
+        upsert=True,
+    )
+
+    # Audit
+    try:
+        await db.pos_audit_log.insert_one({
+            "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
+            "actor_id": str(user["_id"]),
+            "action": "bundle.save",
+            "ref": {"bundle_key": req.key, "name": req.name, "monthly_total": monthly_total},
+            "ts": _now(),
+        })
+    except Exception:
+        pass
+
+    return {"ok": True, "bundle": payload}
+
+
+@router.delete("/admin/bundles/{bundle_key}")
+async def admin_delete_bundle(bundle_key: str, request: Request):
+    """Delete a custom bundle. Hardcoded defaults are restored on next load."""
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(403, "Nur Admin")
+    res = await db.pos_bundles.delete_one({"key": bundle_key})
+    if res.deleted_count == 0:
+        # Maybe it's a default → mark it as hidden via tombstone
+        await db.pos_bundles.update_one(
+            {"key": bundle_key},
+            {"$set": {"key": bundle_key, "hidden": True, "hidden_at": _now(), "hidden_by": str(user["_id"])}},
+            upsert=True,
+        )
+    try:
+        await db.pos_audit_log.insert_one({
+            "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
+            "actor_id": str(user["_id"]),
+            "action": "bundle.delete",
+            "ref": {"bundle_key": bundle_key},
+            "ts": _now(),
+        })
+    except Exception:
+        pass
+    return {"ok": True, "deleted": bundle_key}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -564,10 +674,11 @@ async def admin_apply_bundle(req: BundleApply, request: Request):
     user = await get_current_user(request)
     if not await _is_admin(user):
         raise HTTPException(403, "Nur Admin")
-    if req.bundle_key not in BUNDLE_KEYS:
-        raise HTTPException(400, f"Unbekanntes Bundle: {req.bundle_key}")
 
-    bundle = next(b for b in INDUSTRY_BUNDLES if b["key"] == req.bundle_key)
+    all_bundles = await _load_bundles()
+    bundle = next((b for b in all_bundles if b["key"] == req.bundle_key), None)
+    if not bundle:
+        raise HTTPException(400, f"Unbekanntes Bundle: {req.bundle_key}")
     bundle_keys_set = {f["key"] for f in bundle["features"]}
     now = _now()
     actor_id = str(user["_id"])
