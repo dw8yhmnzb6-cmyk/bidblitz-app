@@ -90,7 +90,8 @@ def register_all_routers(app):
         
         # Staff Management
         ("routes.staff", "router"),
-        ("routes.staff_extended", "router"),  # New: Urlaub + GPS
+        ("routes.staff_extended", "router"),
+        ("routes.staff_geofence", "router"),  # New: Urlaub + GPS
         ("routes.staff_multi_merchant", "router"),
         ("routes.staff_subscription", "router"),
         ("routes.staff_settings", "router"),

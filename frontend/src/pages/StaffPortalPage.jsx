@@ -150,6 +150,14 @@ export default function StaffPortalPage({ onBack }) {
     onBack();
   };
 
+  // Geofence watch — runs in background when off-shift
+  const [geofencePrompt, setGeofencePrompt] = useState(null);
+  useGeofenceWatch({
+    enabled: !!staff,
+    isWorking: status === "working" || status === "break",
+    onSuggestCheckin: (info) => setGeofencePrompt(info),
+  });
+
   if (loading || !staff) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -234,13 +242,17 @@ export default function StaffPortalPage({ onBack }) {
           })}
         </div>
       </div>
+      {/* Geofence Arrival Modal */}
+      <GeofenceArrivalModal
+        open={!!geofencePrompt}
+        fence={geofencePrompt?.fence}
+        position={geofencePrompt?.position}
+        onClose={() => setGeofencePrompt(null)}
+        onSuccess={() => { setGeofencePrompt(null); loadData(); }}
+      />
     </div>
   );
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Home Tab — Active Shift Hero
-// ═══════════════════════════════════════════════════════════════════════════
 
 function HomeTab({ staff, status, shiftStartedAt, weekReport, nextShift, actionLoading, onClockAction }) {
   const isWorking = status === "working";

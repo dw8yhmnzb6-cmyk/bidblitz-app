@@ -120,6 +120,7 @@ const AdminLegalPage = lazy(() => import("./pages/AdminLegalPage"));
 const AdminMerchantFeaturesPage = lazy(() => import("./pages/AdminMerchantFeaturesPage"));
 const AdminAuditLogPage = lazy(() => import("./pages/AdminAuditLogPage"));
 const AdminDiagPage = lazy(() => import("./pages/AdminDiagPage"));
+const StaffUIAuditPage = lazy(() => import("./staff/StaffUIAuditPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
 const ExpressCheckoutPage = lazy(() => import("./pages/ExpressCheckoutPage"));
@@ -640,6 +641,8 @@ function AppContent() {
         return user.role === "admin" ? <AdminAuditLogPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/diag":
         return user.role === "admin" ? <AdminDiagPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/staff/ui-audit":
+        return <StaffUIAuditPage onBack={() => handleNavigate("/staff")} />;
       case "/admin/push-broadcast":
         return user.role === "admin" ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/analytics":
