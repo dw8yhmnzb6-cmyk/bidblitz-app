@@ -351,10 +351,8 @@ function HomeTab({ staff, status, shiftStartedAt, weekReport, nextShift, actionL
 
       {/* Today Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Gearbeitet" value={`${weekReport?.net_hours || 0} h`} accent="text-emerald-600" />
-        <StatCard label="Pause" value={`${weekReport?.break_hours || 0} h`} accent="text-orange-500" />
-        <StatCard label="Überstunden" value={`${weekReport?.overtime_hours || 0} h`} accent="text-blue-600" />
-        <StatCard label="Buchungen" value={`${weekReport?.events_count || 0}`} accent="text-slate-700" />
+        <StatCard label="Heute" value={`${(weekReport?.net_hours || 0).toFixed(1)}h`} accent="text-slate-900" big />
+        <StatCard label="Überstunden" value={`${(weekReport?.overtime_hours || 0).toFixed(1)}h`} accent="text-blue-600" big />
       </div>
 
       {/* Next Shift Card */}
@@ -378,25 +376,27 @@ function HomeTab({ staff, status, shiftStartedAt, weekReport, nextShift, actionL
         </div>
       )}
 
-      {/* Notifications/Tasks (placeholder for future) */}
-      <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-          <BellRing size={18} className="text-blue-600" />
+      {/* Notifications/Tasks — only show if relevant, less clutter */}
+      {!isWorking && !isBreak && (
+        <div className="rounded-2xl bg-blue-50 border border-blue-100 p-5 flex items-start gap-3">
+          <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0">
+            <BellRing size={20} className="text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-base font-bold text-slate-900">Alles klar!</p>
+            <p className="text-sm text-slate-600 mt-0.5">Keine offenen Aufgaben.</p>
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-slate-900">Alles klar!</p>
-          <p className="text-xs text-slate-600 mt-0.5">Keine offenen Aufgaben oder Benachrichtigungen.</p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function StatCard({ label, value, accent }) {
+function StatCard({ label, value, accent, big }) {
   return (
-    <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-4">
-      <p className="text-[11px] text-slate-400 uppercase tracking-wide">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accent}`}>{value}</p>
+    <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-5">
+      <p className={`${big ? "text-xs" : "text-[11px]"} text-slate-400 uppercase tracking-wide`}>{label}</p>
+      <p className={`${big ? "text-3xl" : "text-2xl"} font-bold mt-1.5 ${accent} tabular-nums`}>{value}</p>
     </div>
   );
 }

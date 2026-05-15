@@ -277,7 +277,7 @@ function PinView({ pin, busy, onKey, onNfc, nfcAvailable }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.2 }}
-      className="w-full max-w-sm"
+      className="w-full max-w-md"
     >
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-slate-900">Willkommen!</h1>

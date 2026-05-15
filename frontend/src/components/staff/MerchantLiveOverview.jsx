@@ -100,10 +100,10 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
         <div className="lg:col-span-2 rounded-3xl bg-white/[0.02] border border-white/[0.08] p-5" data-testid="merchant-live-status">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40">Live Status</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500">Live Status</p>
               <h3 className="text-base font-bold mt-0.5">Wer arbeitet gerade?</h3>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] text-white/40">
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500">
               <span className="relative flex w-1.5 h-1.5">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-70 animate-ping" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10B981]" />
@@ -126,7 +126,7 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
                   <div
                     key={m.id}
                     data-testid={`merchant-live-member-${m.id}`}
-                    className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors"
+                    className="p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-white transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       <div className="relative">
@@ -135,7 +135,7 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
                           style={{ background: "linear-gradient(135deg, #00D4FF 0%, #A855F7 100%)" }}
                         >{m.name?.[0]?.toUpperCase()}</div>
                         <span
-                          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0A0A0A]"
+                          className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
                           style={{ background: color }}
                         />
                       </div>
@@ -153,7 +153,7 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
 
         {/* Quick Actions */}
         <div className="rounded-3xl bg-white/[0.02] border border-white/[0.08] p-5" data-testid="merchant-quick-actions">
-          <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Schnellaktionen</p>
+          <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Schnellaktionen</p>
           <h3 className="text-base font-bold mb-3">Effizient bleiben</h3>
           <div className="space-y-2.5">
             <QuickAction icon={UserPlus} color="#00D4FF" label="Mitarbeiter hinzufügen" onClick={onAddMember} testId="merchant-qa-add-member" />
@@ -167,7 +167,7 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
       <div className="rounded-3xl bg-white/[0.02] border border-white/[0.08] p-5" data-testid="merchant-activity-feed">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-white/40">Aktivitäts-Feed</p>
+            <p className="text-[10px] uppercase tracking-widest text-slate-500">Aktivitäts-Feed</p>
             <h3 className="text-base font-bold mt-0.5 flex items-center gap-2">
               <Activity size={14} className="text-[#00D4FF]" /> Heute
             </h3>
@@ -187,7 +187,7 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.02 }}
-                  className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
+                  className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-white transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
@@ -199,7 +199,7 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
                       <p className="text-[10px]" style={{ color }}>{actionLabel(event.action)}</p>
                     </div>
                   </div>
-                  <p className="text-[10px] text-white/40 tabular-nums flex-shrink-0">
+                  <p className="text-[10px] text-slate-500 tabular-nums flex-shrink-0">
                     {new Date(event.timestamp).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </motion.div>
@@ -218,19 +218,19 @@ function KpiHero({ icon: Icon, color, label, value, sub, testId }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       data-testid={testId}
-      className="relative overflow-hidden p-4 rounded-3xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05] transition-all"
+      className="relative overflow-hidden p-5 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all"
     >
-      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl opacity-25 pointer-events-none" style={{ background: color }} />
+      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl opacity-10 pointer-events-none" style={{ background: color }} />
       <div className="relative">
-        <div className="flex items-center justify-between mb-2">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: `${color}1F`, color }}>
-            <Icon size={18} strokeWidth={2.2} />
+        <div className="flex items-center justify-between mb-3">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: `${color}1A`, color }}>
+            <Icon size={20} strokeWidth={2.2} />
           </div>
-          <ArrowUpRight size={14} className="text-white/20" />
+          <ArrowUpRight size={14} className="text-slate-300" />
         </div>
-        <p className="text-2xl font-bold tabular-nums" style={{ color }}>{value}</p>
-        <p className="text-[11px] font-semibold text-white/70 mt-1">{label}</p>
-        {sub && <p className="text-[10px] text-white/40 mt-0.5">{sub}</p>}
+        <p className="text-3xl font-bold tabular-nums text-slate-900">{value}</p>
+        <p className="text-xs font-semibold text-slate-600 mt-1">{label}</p>
+        {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
       </div>
     </motion.div>
   );
@@ -241,25 +241,25 @@ function QuickAction({ icon: Icon, color, label, onClick, testId }) {
     <button
       onClick={onClick}
       data-testid={testId}
-      className="w-full p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center gap-3 hover:bg-white/[0.06] transition-colors text-left"
+      className="w-full p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-3 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all text-left"
     >
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1F`, color }}>
-        <Icon size={15} strokeWidth={2.2} />
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}1A`, color }}>
+        <Icon size={16} strokeWidth={2.2} />
       </div>
-      <span className="text-sm font-semibold flex-1">{label}</span>
-      <ChevronRight size={15} className="text-white/30" />
+      <span className="text-sm font-semibold flex-1 text-slate-900">{label}</span>
+      <ChevronRight size={16} className="text-slate-300" />
     </button>
   );
 }
 
 function EmptyTile({ icon: Icon, title, sub, action }) {
   return (
-    <div className="py-8 px-4 flex flex-col items-center text-center">
-      <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mb-2">
-        <Icon size={22} className="text-white/30" strokeWidth={1.6} />
+    <div className="py-10 px-4 flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+        <Icon size={24} className="text-slate-400" strokeWidth={1.6} />
       </div>
-      <p className="text-sm font-semibold">{title}</p>
-      {sub && <p className="text-[11px] text-white/40 mt-1 max-w-[260px]">{sub}</p>}
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      {sub && <p className="text-xs text-slate-500 mt-1 max-w-[280px]">{sub}</p>}
       {action}
     </div>
   );

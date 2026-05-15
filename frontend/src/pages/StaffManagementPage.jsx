@@ -27,19 +27,19 @@ import KnowledgeBaseManager from "../components/staff/KnowledgeBaseManager";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-// Sub-tab switcher: pill-style selector inside parent tabs (iter113)
+// Sub-tab switcher: pill-style selector inside parent tabs (iter114 light theme)
 function SubTabSwitcher({ current, onChange, options }) {
   return (
-    <div className="mb-4 inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+    <div className="mb-6 inline-flex p-1 rounded-xl bg-white border border-slate-200 shadow-sm">
       {options.map((opt) => (
         <button
           key={opt.id}
           onClick={() => onChange(opt.id)}
           data-testid={`subtab-${opt.id}`}
-          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition ${
             current === opt.id
-              ? "bg-[#00C2FF] text-black shadow-md"
-              : "text-white/60 hover:text-white"
+              ? "bg-slate-900 text-white shadow-sm"
+              : "text-slate-500 hover:text-slate-900"
           }`}
         >
           {opt.label}
@@ -273,8 +273,8 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
   // ═════════════════════════════════════════════════════════════════════════
   if (subscriptionLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-[#00C2FF]" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 size={28} className="animate-spin text-blue-500" />
       </div>
     );
   }
@@ -296,21 +296,21 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
   const planColor = planColors[currentPlan] || "#00C2FF";
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white pb-24">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
-        <div className="flex items-center justify-between px-4 py-3">
+      <div className="sticky top-0 z-50 bg-slate-50/95 backdrop-blur-xl border-b border-slate-200">
+        <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
               data-testid="staff-back-btn"
-              className="p-2 rounded-xl hover:bg-white/5 transition-colors"
+              className="p-2 -ml-2 rounded-xl hover:bg-slate-200/60 transition"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={20} className="text-slate-700" />
             </button>
             <div>
-              <h1 className="text-base font-bold font-outfit">Staff Management</h1>
-              <p className="text-[10px] text-white/40">Zeiterfassung & Mitarbeiter</p>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Team</h1>
+              <p className="text-xs text-slate-500">Zeiterfassung & Schichtplanung</p>
             </div>
           </div>
 
@@ -320,10 +320,10 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
               <button
                 onClick={() => onNavigate && onNavigate("/merchant/staff/upgrade")}
                 data-testid="staff-trial-badge-header"
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/30 text-[10px] font-semibold text-[#00C2FF]"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-700"
                 title="Trial endet bald — upgraden"
               >
-                <Sparkles size={11} />
+                <Sparkles size={12} />
                 Trial · {trialDaysLeft}T
               </button>
             ) : currentPlan ? (
@@ -339,7 +339,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
             {/* Limit Display */}
             <span
               data-testid="staff-limit-display"
-              className="hidden md:inline-flex items-center px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-white/70"
+              className="hidden md:inline-flex items-center px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600"
             >
               {currentCount}/{maxStaff === 9999 ? "∞" : maxStaff}
             </span>
@@ -348,10 +348,10 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
             <button
               onClick={() => onNavigate && onNavigate("/staff/settings")}
               data-testid="staff-settings-btn"
-              className="p-2 rounded-xl hover:bg-white/5 transition-colors"
+              className="p-2 rounded-xl hover:bg-slate-200/60 transition"
               title="Einstellungen"
             >
-              <Settings size={16} className="text-white/60" />
+              <Settings size={18} className="text-slate-600" />
             </button>
 
             {/* Upgrade Button (only on trial or basic) */}
@@ -359,16 +359,16 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
               <button
                 onClick={() => onNavigate && onNavigate("/merchant/staff/upgrade")}
                 data-testid="staff-upgrade-cta"
-                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#00C2FF] to-[#A855F7] text-white text-[11px] font-semibold"
+                className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-white text-xs font-semibold shadow-md hover:shadow-lg transition"
               >
-                Upgrade <ArrowRight size={11} />
+                Upgrade <ArrowRight size={12} />
               </button>
             )}
 
             <button
               onClick={() => setShowAddMember(true)}
               data-testid="staff-add-member-btn"
-              className="px-3 py-1.5 bg-[#00C2FF] text-black rounded-lg text-xs font-semibold hover:bg-[#00A8E0] transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-slate-900 text-white rounded-full text-xs font-semibold hover:bg-slate-700 transition flex items-center gap-1.5 shadow-md"
             >
               <Plus size={14} />
               <span className="hidden sm:inline">Mitarbeiter</span>
@@ -376,30 +376,33 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 px-4 overflow-x-auto scrollbar-hide">
-          {tabs.map((t) => {
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors border-b-2 ${
-                  tab === t.id
-                    ? "text-[#00C2FF] border-[#00C2FF]"
-                    : "text-white/40 border-transparent hover:text-white/60"
-                }`}
-              >
-                <Icon size={14} />
-                {t.label}
-              </button>
-            );
-          })}
+        {/* Tabs — Premium Segmented Pills */}
+        <div className="px-4 pb-3">
+          <div className="inline-flex p-1 rounded-2xl bg-white border border-slate-200 shadow-sm w-full sm:w-auto">
+            {tabs.map((t) => {
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  data-testid={`tab-${t.id}`}
+                  className={`flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all flex-1 sm:flex-none ${
+                    tab === t.id
+                      ? "bg-slate-900 text-white shadow-md"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  <Icon size={16} />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="px-5 py-6 max-w-6xl mx-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-[#00C2FF]" />
@@ -533,8 +536,8 @@ function MembersTab({ members, onReload, onClockAction }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Users size={48} className="text-white/10 mb-3" />
-        <p className="text-sm text-white/40 mb-1">Keine Mitarbeiter</p>
-        <p className="text-xs text-white/30">Füge deinen ersten Mitarbeiter hinzu</p>
+        <p className="text-sm text-slate-500 mb-1">Keine Mitarbeiter</p>
+        <p className="text-xs text-slate-400">Füge deinen ersten Mitarbeiter hinzu</p>
       </div>
     );
   }
@@ -546,7 +549,7 @@ function MembersTab({ members, onReload, onClockAction }) {
           key={member.id}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-2xl bg-white/[0.02] border border-white/5"
+          className="p-4 rounded-2xl bg-white/[0.02] border border-slate-200"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
@@ -555,8 +558,8 @@ function MembersTab({ members, onReload, onClockAction }) {
               </div>
               <div>
                 <p className="text-sm font-semibold">{member.name}</p>
-                <p className="text-[10px] text-white/40">{member.email}</p>
-                <p className="text-[10px] text-white/30 mt-0.5">{member.role} • €{member.hourly_rate}/h</p>
+                <p className="text-[10px] text-slate-500">{member.email}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{member.role} • €{member.hourly_rate}/h</p>
               </div>
             </div>
             <div className={`px-2 py-1 rounded-lg text-[10px] font-medium ${member.active ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
@@ -589,7 +592,7 @@ function MembersTab({ members, onReload, onClockAction }) {
             </button>
             <button
               onClick={() => alert("Edit coming soon")}
-              className="px-2 py-1.5 rounded-lg bg-white/5 text-white/60 text-[10px] font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-1"
+              className="px-2 py-1.5 rounded-lg bg-slate-100 text-white/60 text-[10px] font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-1"
             >
               <Edit size={12} />
             </button>
@@ -608,46 +611,46 @@ function ClockTab({ todayEvents, members, onClockAction }) {
   return (
     <div className="space-y-4">
       {/* Quick Clock In */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+      <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
         <h3 className="text-sm font-semibold mb-3">Schnell-Check-in</h3>
         <div className="grid grid-cols-2 gap-2">
           {members.slice(0, 6).map((member) => (
             <button
               key={member.id}
               onClick={() => onClockAction(member.id, "clock_in")}
-              className="p-3 rounded-xl bg-white/5 hover:bg-[#00C2FF]/10 border border-white/10 hover:border-[#00C2FF]/30 transition-all text-left"
+              className="p-3 rounded-xl bg-slate-100 hover:bg-[#00C2FF]/10 border border-slate-100 hover:border-[#00C2FF]/30 transition-all text-left"
             >
               <p className="text-xs font-semibold truncate">{member.name}</p>
-              <p className="text-[10px] text-white/40 mt-0.5">{member.role}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{member.role}</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* Today's Events */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+      <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
         <h3 className="text-sm font-semibold mb-3">Heutige Buchungen</h3>
         {todayEvents.length === 0 ? (
-          <p className="text-xs text-white/40 py-4 text-center">Noch keine Buchungen heute</p>
+          <p className="text-xs text-slate-500 py-4 text-center">Noch keine Buchungen heute</p>
         ) : (
           <div className="space-y-2">
             {todayEvents.map((event, i) => {
               const member = members.find((m) => m.id === event.staff_id);
               return (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-semibold">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-semibold">
                       {member?.name?.charAt(0) || "?"}
                     </div>
                     <div>
                       <p className="text-xs font-medium">{member?.name || "Unbekannt"}</p>
-                      <p className="text-[10px] text-white/40">{getActionLabel(event.action)}</p>
+                      <p className="text-[10px] text-slate-500">{getActionLabel(event.action)}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-medium">{new Date(event.timestamp).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</p>
                     {event.lat && event.lng && (
-                      <p className="text-[9px] text-white/30 flex items-center gap-0.5 justify-end mt-0.5">
+                      <p className="text-[9px] text-slate-400 flex items-center gap-0.5 justify-end mt-0.5">
                         <MapPin size={9} />
                         GPS
                       </p>
@@ -670,25 +673,25 @@ function ClockTab({ todayEvents, members, onClockAction }) {
 function ShiftsTab({ shifts, members }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+      <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
         <h3 className="text-sm font-semibold mb-3">Kommende Schichten</h3>
         {shifts.length === 0 ? (
-          <p className="text-xs text-white/40 py-4 text-center">Keine Schichten geplant</p>
+          <p className="text-xs text-slate-500 py-4 text-center">Keine Schichten geplant</p>
         ) : (
           <div className="space-y-2">
             {shifts.map((shift) => {
               const member = members.find((m) => m.id === shift.staff_id);
               return (
-                <div key={shift.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div key={shift.id} className="p-3 rounded-xl bg-slate-100 border border-slate-100">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold">{shift.title}</p>
-                    <p className="text-[10px] text-white/40">{member?.name || "Unbekannt"}</p>
+                    <p className="text-[10px] text-slate-500">{member?.name || "Unbekannt"}</p>
                   </div>
                   <p className="text-[10px] text-white/60">
                     {new Date(shift.start_time).toLocaleString("de-DE")} - {new Date(shift.end_time).toLocaleTimeString("de-DE")}
                   </p>
                   {shift.location && (
-                    <p className="text-[10px] text-white/40 mt-1 flex items-center gap-1">
+                    <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                       <MapPin size={10} />
                       {shift.location}
                     </p>
@@ -714,23 +717,23 @@ function LeaveTab({ requests, members, onApprove }) {
   return (
     <div className="space-y-4">
       {/* Pending Requests */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+      <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <AlertCircle size={16} className="text-yellow-400" />
           Offene Anträge ({pending.length})
         </h3>
         {pending.length === 0 ? (
-          <p className="text-xs text-white/40 py-4 text-center">Keine offenen Anträge</p>
+          <p className="text-xs text-slate-500 py-4 text-center">Keine offenen Anträge</p>
         ) : (
           <div className="space-y-2">
             {pending.map((req) => {
               const member = members.find((m) => m.id === req.staff_id);
               return (
-                <div key={req.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div key={req.id} className="p-3 rounded-xl bg-slate-100 border border-slate-100">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="text-xs font-semibold">{member?.name || "Unbekannt"}</p>
-                      <p className="text-[10px] text-white/40">{getLeaveTypeLabel(req.type)}</p>
+                      <p className="text-[10px] text-slate-500">{getLeaveTypeLabel(req.type)}</p>
                     </div>
                     <div className={`px-2 py-1 rounded-lg text-[10px] font-medium ${getLeaveTypeColor(req.type)}`}>
                       {getLeaveTypeLabel(req.type)}
@@ -740,7 +743,7 @@ function LeaveTab({ requests, members, onApprove }) {
                     {req.start_date} bis {req.end_date}
                   </p>
                   {req.reason && (
-                    <p className="text-[10px] text-white/40 mb-3 italic">"{req.reason}"</p>
+                    <p className="text-[10px] text-slate-500 mb-3 italic">"{req.reason}"</p>
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -767,7 +770,7 @@ function LeaveTab({ requests, members, onApprove }) {
 
       {/* Approved Requests */}
       {approved.length > 0 && (
-        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+        <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <CheckCircle size={16} className="text-green-400" />
             Genehmigte Anträge ({approved.length})
@@ -776,11 +779,11 @@ function LeaveTab({ requests, members, onApprove }) {
             {approved.slice(0, 3).map((req) => {
               const member = members.find((m) => m.id === req.staff_id);
               return (
-                <div key={req.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <div key={req.id} className="p-3 rounded-xl bg-slate-100 border border-slate-100">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold">{member?.name || "Unbekannt"}</p>
-                      <p className="text-[10px] text-white/40">{req.start_date} - {req.end_date}</p>
+                      <p className="text-[10px] text-slate-500">{req.start_date} - {req.end_date}</p>
                     </div>
                     <div className="px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-[10px] font-medium">
                       ✓ Genehmigt
@@ -823,7 +826,7 @@ function ReportsTab({ members }) {
   return (
     <div className="space-y-4">
       {/* Export Buttons */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+      <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
         <h3 className="text-sm font-semibold mb-3">Exporte</h3>
         <StaffExportButtons period="monthly" />
       </div>
@@ -832,7 +835,7 @@ function ReportsTab({ members }) {
       <StaffWalletPanel members={members} />
 
       {/* Member Selection */}
-      <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+      <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
         <h3 className="text-sm font-semibold mb-3">Mitarbeiter wählen</h3>
         <div className="grid grid-cols-2 gap-2">
           {members.map((member) => (
@@ -845,11 +848,11 @@ function ReportsTab({ members }) {
               className={`p-3 rounded-xl border transition-all text-left ${
                 selectedMember?.id === member.id
                   ? "bg-[#00C2FF]/10 border-[#00C2FF]/30"
-                  : "bg-white/5 border-white/10 hover:bg-white/10"
+                  : "bg-slate-100 border-slate-100 hover:bg-white/10"
               }`}
             >
               <p className="text-xs font-semibold truncate">{member.name}</p>
-              <p className="text-[10px] text-white/40 mt-0.5">{member.role}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{member.role}</p>
             </button>
           ))}
         </div>
@@ -861,29 +864,29 @@ function ReportsTab({ members }) {
           <Loader2 size={24} className="animate-spin text-[#00C2FF]" />
         </div>
       ) : report ? (
-        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4">
+        <div className="rounded-2xl bg-white/[0.02] border border-slate-200 p-4">
           <h3 className="text-sm font-semibold mb-3">Wochenreport</h3>
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl bg-white/5">
-              <p className="text-[10px] text-white/40 mb-1">Gesamtstunden</p>
+            <div className="p-3 rounded-xl bg-slate-100">
+              <p className="text-[10px] text-slate-500 mb-1">Gesamtstunden</p>
               <p className="text-2xl font-bold">{report.net_hours}h</p>
             </div>
-            <div className="p-3 rounded-xl bg-white/5">
-              <p className="text-[10px] text-white/40 mb-1">Überstunden</p>
+            <div className="p-3 rounded-xl bg-slate-100">
+              <p className="text-[10px] text-slate-500 mb-1">Überstunden</p>
               <p className="text-2xl font-bold text-[#00C2FF]">{report.overtime_hours}h</p>
             </div>
-            <div className="p-3 rounded-xl bg-white/5">
-              <p className="text-[10px] text-white/40 mb-1">Pausen</p>
+            <div className="p-3 rounded-xl bg-slate-100">
+              <p className="text-[10px] text-slate-500 mb-1">Pausen</p>
               <p className="text-2xl font-bold text-yellow-400">{report.break_hours}h</p>
             </div>
-            <div className="p-3 rounded-xl bg-white/5">
-              <p className="text-[10px] text-white/40 mb-1">Buchungen</p>
+            <div className="p-3 rounded-xl bg-slate-100">
+              <p className="text-[10px] text-slate-500 mb-1">Buchungen</p>
               <p className="text-2xl font-bold">{report.events_count}</p>
             </div>
           </div>
 
           <button
-            className="w-full mt-3 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium transition-colors flex items-center justify-center gap-2"
+            className="w-full mt-3 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-white/10 border border-slate-100 text-xs font-medium transition-colors flex items-center justify-center gap-2"
           >
             <Download size={14} />
             Export (Coming Soon)
@@ -892,7 +895,7 @@ function ReportsTab({ members }) {
       ) : (
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <FileText size={32} className="text-white/10 mb-2" />
-          <p className="text-xs text-white/40">Wähle einen Mitarbeiter</p>
+          <p className="text-xs text-slate-500">Wähle einen Mitarbeiter</p>
         </div>
       )}
     </div>
@@ -929,7 +932,7 @@ function AddMemberModal({ isOpen, onClose, onSubmit }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md rounded-2xl bg-[#111] border border-white/10 p-6"
+        className="w-full max-w-md rounded-2xl bg-[#111] border border-slate-100 p-6"
       >
         <h2 className="text-lg font-bold mb-4">Neuer Mitarbeiter</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -940,7 +943,7 @@ function AddMemberModal({ isOpen, onClose, onSubmit }) {
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-[#00C2FF]/50"
+              className="w-full px-3 py-2 rounded-lg bg-slate-100 border border-slate-100 text-sm focus:outline-none focus:border-[#00C2FF]/50"
             />
           </div>
           <div>
@@ -950,7 +953,7 @@ function AddMemberModal({ isOpen, onClose, onSubmit }) {
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-[#00C2FF]/50"
+              className="w-full px-3 py-2 rounded-lg bg-slate-100 border border-slate-100 text-sm focus:outline-none focus:border-[#00C2FF]/50"
             />
           </div>
           <div>
@@ -959,7 +962,7 @@ function AddMemberModal({ isOpen, onClose, onSubmit }) {
               type="tel"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-[#00C2FF]/50"
+              className="w-full px-3 py-2 rounded-lg bg-slate-100 border border-slate-100 text-sm focus:outline-none focus:border-[#00C2FF]/50"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -971,7 +974,7 @@ function AddMemberModal({ isOpen, onClose, onSubmit }) {
                 required
                 value={form.hourly_rate}
                 onChange={(e) => setForm({ ...form, hourly_rate: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-[#00C2FF]/50"
+                className="w-full px-3 py-2 rounded-lg bg-slate-100 border border-slate-100 text-sm focus:outline-none focus:border-[#00C2FF]/50"
               />
             </div>
             <div>
@@ -981,7 +984,7 @@ function AddMemberModal({ isOpen, onClose, onSubmit }) {
                 required
                 value={form.vacation_days_yearly}
                 onChange={(e) => setForm({ ...form, vacation_days_yearly: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-[#00C2FF]/50"
+                className="w-full px-3 py-2 rounded-lg bg-slate-100 border border-slate-100 text-sm focus:outline-none focus:border-[#00C2FF]/50"
               />
             </div>
           </div>
@@ -989,7 +992,7 @@ function AddMemberModal({ isOpen, onClose, onSubmit }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-white/10 border border-slate-100 text-sm font-medium transition-colors"
             >
               Abbrechen
             </button>

@@ -14,6 +14,20 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter114 — UI/UX Complete Redesign + DATEV EXTF + Premium Light Theme)
+- 🟢 **DATEV EXTF Lohn-Bewegungsdaten** (`/api/staff/export/datev/lohn-bewegungsdaten`): Echtes DATEV Format-510 (Version 1062) "Lohnstapel" — Windows-1252 encoded, Semikolon-separiert, deutsche Dezimalkomma, korrekter EXTF-Header mit Berater/Mandant/Wirtschaftsjahr/Periode. Lohnarten 200 (regulär) + 400 (Überstunden +25%). Verifiziert: Datei lädt mit `EXTF;510;1062;"Lohnstapel";...` Header und realen Daten `"1001";200;38,04;703,74;05.2026;...`.
+- 🟢 **Vereinfachtes DATEV CSV** (`/datev/lohnstunden-csv`): Mandant/PN/Mitarbeiter/Lohnart/Stunden/Stundensatz/Betrag/Periode — für manuellen Import durch Steuerberater.
+- 🟢 **DATEV Preview-Endpoint** (`/datev/preview`): JSON-Vorschau aller Lohn-Zeilen vor Download.
+- 🟢 **DATEV Config Endpoint** (`POST /datev/config`): Berater-Nr, Mandant-Nr, WJ-Beginn, Lohnart-Mapping pro Merchant.
+- 🟢 **`personal_nr` Feld** zu monthly-report hinzugefügt (Fallback auf staff_id[:8]).
+- 🟢 **Manager Dashboard Light-Theme Premium-Redesign**: `bg-[#0A0A0A]` → `bg-slate-50`, Cards `bg-white shadow-sm border-slate-200`, Tabs als segmentierte Pills (dark-pill aktiv). Header größer + Apple-style. Kein Cyan-Neon-Spam mehr — neutrale Akzente.
+- 🟢 **MerchantLiveOverview Component Light-Theme**: KPI-Cards mit Shadow + größere 3xl-Zahlen, Quick-Actions modernisiert mit hover-shadow, EmptyTile professionell.
+- 🟢 **Terminal PIN-Buttons XL**: 12px-gap, text-5xl statt text-3xl, rounded-3xl, hover-shadow-xl, active:scale-90 für tactile Feel. NFC + Delete-Icons jetzt 32px statt 22px.
+- 🟢 **Mobile Portal Whitespace**: 4 Stats-Cards auf 2 reduziert ("Heute" + "Überstunden" mit big variant + 3xl Schrift), Notifications-Banner nur wenn off-shift, größere p-5 padding.
+- 🟢 **SubTabSwitcher Light-Theme**: dark-pill aktiv auf white-bg.
+
+
+
 ### 15.05.2026 (iter113 — Staff P0 Blocker Sprint)
 - 🟢 **Backend `/api/staff/auth/terminal-pin`**: PIN-Lookup für Kiosk. Member-Lookup nach `pin`-Feld in `staff_members`, optional Merchant-Scoping, Demo-Fallback `1234`. Audit-Log in `staff_terminal_log`. Verifiziert: 1234 → 200 + member, 9999 → 404. Pin "1234" für `mitarbeiter@bidblitz.com` gesetzt.
 - 🟢 **Manager-Dashboard 9 → 4 Tabs konsolidiert** (`StaffManagementPage.jsx`):
