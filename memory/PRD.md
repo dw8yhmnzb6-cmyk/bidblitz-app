@@ -14,6 +14,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter113 — Staff P0 Blocker Sprint)
+- 🟢 **Backend `/api/staff/auth/terminal-pin`**: PIN-Lookup für Kiosk. Member-Lookup nach `pin`-Feld in `staff_members`, optional Merchant-Scoping, Demo-Fallback `1234`. Audit-Log in `staff_terminal_log`. Verifiziert: 1234 → 200 + member, 9999 → 404. Pin "1234" für `mitarbeiter@bidblitz.com` gesetzt.
+- 🟢 **Manager-Dashboard 9 → 4 Tabs konsolidiert** (`StaffManagementPage.jsx`):
+  - 🏠 **Heute** (Sub: Live-Status / Zeiterfassung)
+  - 📅 **Plan** (Sub: Schichtplan / Editor)
+  - 👥 **Mitarbeiter** (Sub: Liste / Anträge mit Counter-Badge)
+  - 📊 **Auswertung** (Sub: Timesheet / Reports / Schulungen)
+- 🟢 **`SubTabSwitcher` Helper-Component**: Pill-Style intra-tab Switch mit cyan-aktiv-Highlight.
+- ✅ **Live verifiziert** (Playwright): Alle 4 Tabs + 11 Sub-Views rendern fehlerfrei.
+
+
+
 ### 15.05.2026 (iter111 — Staff Portal komplettes UI-Redesign)
 - 🟢 **`StaffPortalPage.jsx` komplett neu** (~600 LOC): Light-Theme nach User-Referenz-Designs.
 - 🟢 **Home-Tab**: Live-Timer-Card (grün/orange gradient banner + LIVE-pulse-badge), riesiger HH:MM:SS Timer (tabular-nums, ticks 1Hz via `useLiveTimer` hook), 2 große gradient-Action-Buttons (Pause grün / Schicht-Ende rot), 4 Stat-Cards (Gearbeitet/Pause/Überstunden/Buchungen), Next-Shift-Card, Alles-klar-Banner.

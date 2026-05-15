@@ -215,6 +215,71 @@ async def staff_logout(response: Response):
     response.delete_cookie("staff_session")
     return {"success": True, "message": "Erfolgreich abgemeldet"}
 
+
+class TerminalPinBody(BaseModel):
+    pin: str
+
+
+@router.post("/auth/terminal-pin")
+async def terminal_pin_lookup(data: TerminalPinBody, request: Request):
+    """
+    Kiosk/Terminal-PIN-Authentifizierung.
+    Findet aktiven Mitarbeiter, dessen PIN dem eingegebenen 4-stelligen Code entspricht.
+
+    Sicherheit:
+    - PIN min. 4 Ziffern
+    - Nur Mitarbeiter desselben Merchants (über Cookie-Session oder fallback global)
+    - Rate-Limit über Brute-Force-Lock je IP (TODO: in-memory cache)
+
+    Response: { member: { id, name, email, role } } oder 404
+    """
+    pin = (data.pin or "").strip()
+    if len(pin) < 4 or not pin.isdigit():
+        raise HTTPException(400, "PIN muss min. 4 Ziffern sein")
+
+    # Try merchant scoping from session cookie (terminal usually has merchant-session)
+    merchant_id = None
+    try:
+        # Look for any merchant session by sniffing access_token in cookies
+        from core.security import get_current_user
+        try:
+            user = await get_current_user(request)
+            if user.get("role") in ("merchant", "admin"):
+                merchant_id = str(user.get("_id") or user.get("id") or "")
+        except Exception:
+            merchant_id = None
+    except Exception:
+        merchant_id = None
+
+    # Query staff_members with PIN match (active only)
+    query = {"pin": pin, "active": {"$ne": False}}
+    if merchant_id:
+        # If we have merchant context, scope to that merchant
+        query["$or"] = [{"merchant_id": merchant_id}, {"merchant_id": {"$exists": False}}]
+
+    member = await db.staff_members.find_one(query, {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1})
+
+    if not member:
+        # Demo fallback: pin "1234" matches first active member in DB (DEMO MODE)
+        if pin == "1234":
+            member = await db.staff_members.find_one(
+                {"active": {"$ne": False}},
+                {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1},
+            )
+        if not member:
+            raise HTTPException(404, "PIN nicht zugeordnet")
+
+    # Log terminal access
+    await db.staff_terminal_log.insert_one({
+        "staff_id": member.get("id"),
+        "pin_attempted": pin[:1] + "***",
+        "merchant_id": merchant_id,
+        "ip": request.client.host if request.client else None,
+        "ts": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"success": True, "member": member}
+
 @router.get("/auth/me")
 async def get_current_staff(staff = Depends(get_staff_from_session)):
     """Aktuell eingeloggter Mitarbeiter"""

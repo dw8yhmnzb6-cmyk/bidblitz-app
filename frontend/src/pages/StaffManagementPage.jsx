@@ -27,6 +27,29 @@ import KnowledgeBaseManager from "../components/staff/KnowledgeBaseManager";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Sub-tab switcher: pill-style selector inside parent tabs (iter113)
+function SubTabSwitcher({ current, onChange, options }) {
+  return (
+    <div className="mb-4 inline-flex p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          onClick={() => onChange(opt.id)}
+          data-testid={`subtab-${opt.id}`}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+            current === opt.id
+              ? "bg-[#00C2FF] text-black shadow-md"
+              : "text-white/60 hover:text-white"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+
 export default function StaffManagementPage({ onBack, onNavigate }) {
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(false);
@@ -235,17 +258,15 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
   // Render Tabs
   // ═════════════════════════════════════════════════════════════════════════
 
+  // 4-Tab Consolidation (iter113): 9 → 4 mit internen Sub-Switches
   const tabs = [
-    { id: "overview", label: "Übersicht", icon: TrendingUp },
+    { id: "overview", label: "Heute", icon: TrendingUp },
+    { id: "shifts", label: "Plan", icon: Calendar },
     { id: "members", label: "Mitarbeiter", icon: Users },
-    { id: "clock", label: "Zeiterfassung", icon: Clock },
-    { id: "timesheet", label: "Timesheet", icon: FileText },
-    { id: "shifts", label: "Schichtplan", icon: Calendar },
-    { id: "schedule", label: "Schedule-Editor", icon: LayoutGrid },
-    { id: "knowledge", label: "Knowledge Base", icon: BookOpen },
-    { id: "leave", label: "Urlaub/Krank", icon: UmbrellaIcon },
-    { id: "reports", label: "Reports", icon: FileText }
+    { id: "reports", label: "Auswertung", icon: FileText },
   ];
+  // Sub-views inside parent tabs
+  const [subView, setSubView] = useState({ overview: "live", shifts: "list", members: "list", reports: "timesheet" });
 
   // ═════════════════════════════════════════════════════════════════════════
   // PAYWALL GATE
@@ -385,24 +406,90 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
           </div>
         ) : (
           <>
+            {/* HEUTE — Übersicht + Zeiterfassung */}
             {tab === "overview" && (
-              <OverviewTab
-                summary={summary}
-                members={members}
-                todayEvents={todayEvents}
-                onAddMember={() => setShowAddMember(true)}
-                onCreateShift={() => setTab("shifts")}
-                onOpenTimesheet={() => setTab("timesheet")}
-              />
+              <div>
+                <SubTabSwitcher
+                  current={subView.overview}
+                  onChange={(v) => setSubView({ ...subView, overview: v })}
+                  options={[
+                    { id: "live", label: "Live-Status" },
+                    { id: "clock", label: "Zeiterfassung" },
+                  ]}
+                />
+                {subView.overview === "live" && (
+                  <OverviewTab
+                    summary={summary}
+                    members={members}
+                    todayEvents={todayEvents}
+                    onAddMember={() => setShowAddMember(true)}
+                    onCreateShift={() => setTab("shifts")}
+                    onOpenTimesheet={() => { setTab("reports"); setSubView((s) => ({ ...s, reports: "timesheet" })); }}
+                  />
+                )}
+                {subView.overview === "clock" && (
+                  <ClockTab todayEvents={todayEvents} members={members} onClockAction={handleClockAction} />
+                )}
+              </div>
             )}
-            {tab === "members" && <MembersTab members={members} onReload={loadData} onClockAction={handleClockAction} />}
-            {tab === "clock" && <ClockTab todayEvents={todayEvents} members={members} onClockAction={handleClockAction} />}
-            {tab === "timesheet" && <ManagerTeamTimesheet />}
-            {tab === "shifts" && <ShiftsTab shifts={shifts} members={members} onReload={loadData} />}
-            {tab === "schedule" && <ScheduleGridEditor members={members} onMembersReload={loadData} />}
-            {tab === "knowledge" && <KnowledgeBaseManager />}
-            {tab === "leave" && <LeaveTab requests={leaveRequests} members={members} onApprove={handleApproveLeave} />}
-            {tab === "reports" && <ReportsTab members={members} />}
+
+            {/* PLAN — Schichtplan + Schedule-Editor */}
+            {tab === "shifts" && (
+              <div>
+                <SubTabSwitcher
+                  current={subView.shifts}
+                  onChange={(v) => setSubView({ ...subView, shifts: v })}
+                  options={[
+                    { id: "list", label: "Schichtplan" },
+                    { id: "editor", label: "Editor" },
+                  ]}
+                />
+                {subView.shifts === "list" && (
+                  <ShiftsTab shifts={shifts} members={members} onReload={loadData} />
+                )}
+                {subView.shifts === "editor" && (
+                  <ScheduleGridEditor members={members} onMembersReload={loadData} />
+                )}
+              </div>
+            )}
+
+            {/* MITARBEITER — Liste + Urlaub/Krank */}
+            {tab === "members" && (
+              <div>
+                <SubTabSwitcher
+                  current={subView.members}
+                  onChange={(v) => setSubView({ ...subView, members: v })}
+                  options={[
+                    { id: "list", label: "Mitarbeiter" },
+                    { id: "leave", label: `Anträge${leaveRequests.filter((r) => r.status === "pending").length ? ` (${leaveRequests.filter((r) => r.status === "pending").length})` : ""}` },
+                  ]}
+                />
+                {subView.members === "list" && (
+                  <MembersTab members={members} onReload={loadData} onClockAction={handleClockAction} />
+                )}
+                {subView.members === "leave" && (
+                  <LeaveTab requests={leaveRequests} members={members} onApprove={handleApproveLeave} />
+                )}
+              </div>
+            )}
+
+            {/* AUSWERTUNG — Timesheet + Reports + Knowledge */}
+            {tab === "reports" && (
+              <div>
+                <SubTabSwitcher
+                  current={subView.reports}
+                  onChange={(v) => setSubView({ ...subView, reports: v })}
+                  options={[
+                    { id: "timesheet", label: "Timesheet" },
+                    { id: "reports", label: "Reports" },
+                    { id: "knowledge", label: "Schulungen" },
+                  ]}
+                />
+                {subView.reports === "timesheet" && <ManagerTeamTimesheet />}
+                {subView.reports === "reports" && <ReportsTab members={members} />}
+                {subView.reports === "knowledge" && <KnowledgeBaseManager />}
+              </div>
+            )}
           </>
         )}
       </div>
