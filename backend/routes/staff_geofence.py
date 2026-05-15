@@ -268,6 +268,7 @@ async def check_presence(body: PresenceCheck, request: Request):
 
     inside_fence = None
     auto_checkin_suggested = False
+    match_source = None
     last_clock = None
     if nearby and nearby[0]["status"] == "inside" and not suspected_spoof:
         f = nearby[0]["geofence"]
@@ -299,29 +300,51 @@ async def check_presence(body: PresenceCheck, request: Request):
         is_off_shift = (not last_clock) or last_clock.get("action") == "clock_out"
         inside_fence = f
         auto_checkin_suggested = is_off_shift and not suspected_spoof
+        match_source = "gps"
 
     wifi_match = None
+    wifi_match_fence = None
     for f in fences:
         if f.get("wifi_ssid") and body.wifi_ssid and f["wifi_ssid"].lower() == body.wifi_ssid.lower():
             wifi_match = f["id"]
+            wifi_match_fence = f
             break
 
     bt_match = None
+    bt_match_fence = None
     if body.bluetooth_beacons:
         for f in fences:
             if f.get("bluetooth_beacon_id"):
                 for b in body.bluetooth_beacons:
                     if (b.get("id") or "").lower() == f["bluetooth_beacon_id"].lower():
                         bt_match = f["id"]
+                        bt_match_fence = f
                         break
             if bt_match:
                 break
+
+    # Multi-Signal Boost: WiFi/BT-Match suggests check-in even if GPS is uncertain
+    if not inside_fence and not suspected_spoof:
+        booster_fence = wifi_match_fence or bt_match_fence
+        if booster_fence:
+            if last_clock is None:
+                last_clock = await db.staff_clock_events.find_one(
+                    {"staff_id": staff_id}, {"_id": 0, "action": 1}, sort=[("timestamp", -1)],
+                )
+            is_off_shift = (not last_clock) or last_clock.get("action") == "clock_out"
+            inside_fence = booster_fence
+            auto_checkin_suggested = is_off_shift
+            match_source = "wifi" if wifi_match_fence else "bluetooth"
+    elif inside_fence and (wifi_match or bt_match):
+        # Combined signal — record stronger match
+        match_source = "combined"
 
     return {
         "success": True,
         "nearby": nearby,
         "inside_fence": inside_fence,
         "auto_checkin_suggested": auto_checkin_suggested,
+        "match_source": match_source,
         "wifi_match": wifi_match,
         "bluetooth_match": bt_match,
         "suspected_spoof": suspected_spoof,

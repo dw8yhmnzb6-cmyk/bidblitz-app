@@ -18,6 +18,7 @@ import { GeofenceArrivalModal } from "../staff/GeofenceArrivalModal";
 import { SmartStatusPill } from "../staff/SmartStatusPill";
 import { useStaffReminders } from "../staff/useStaffReminders";
 import StaffChatPage from "../staff/StaffChat";
+import { StaffSmartSetupSheet } from "../staff/StaffSmartSetupSheet";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -65,6 +66,7 @@ export default function StaffPortalPage({ onBack }) {
   const [smartPresence, setSmartPresence] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
+  const [smartSetupOpen, setSmartSetupOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -301,6 +303,7 @@ export default function StaffPortalPage({ onBack }) {
             actionLoading={actionLoading}
             onClockAction={handleClockAction}
             smartPresence={smartPresence}
+            setSmartSetupOpen={setSmartSetupOpen}
           />
         )}
         {tab === "shifts" && <ShiftsTab shifts={myShifts} />}
@@ -349,11 +352,14 @@ export default function StaffPortalPage({ onBack }) {
           <StaffChatPage role="staff" onBack={() => setChatOpen(false)} />
         </div>
       )}
+
+      {/* Smart Setup Sheet */}
+      <StaffSmartSetupSheet open={smartSetupOpen} onClose={() => setSmartSetupOpen(false)} />
     </div>
   );
 }
 
-function HomeTab({ staff, status, smartStatus, shiftStartedAt, weekReport, nextShift, actionLoading, onClockAction, smartPresence }) {
+function HomeTab({ staff, status, smartStatus, shiftStartedAt, weekReport, nextShift, actionLoading, onClockAction, smartPresence, setSmartSetupOpen }) {
   const isWorking = status === "working";
   const isBreak = status === "break";
   const isOff = status === "off";
@@ -393,7 +399,7 @@ function HomeTab({ staff, status, smartStatus, shiftStartedAt, weekReport, nextS
       {/* Weather + Nearby strip — Smart Daily Pulse */}
       <div className="grid grid-cols-2 gap-3" data-testid="smart-daily-strip">
         <WeatherCard />
-        <NearbyCard smartPresence={smartPresence} />
+        <NearbyCard smartPresence={smartPresence} onTap={() => setSmartSetupOpen?.(true)} />
       </div>
       {/* Active Shift Hero Card */}
       {(isWorking || isBreak) && (
@@ -579,17 +585,24 @@ function WeatherCard() {
 // Nearby Card — zeigt nächsten Standort an
 // ═══════════════════════════════════════════════════════════════════════════
 
-function NearbyCard({ smartPresence }) {
+function NearbyCard({ smartPresence, onTap }) {
   const nearest = smartPresence?.nearby?.[0];
   const fence = nearest?.geofence;
   const distance = nearest?.distance_m;
   const status = nearest?.status; // "inside" | "approaching"
+  const wifiMatch = !!smartPresence?.wifi_match;
+  const btMatch = !!smartPresence?.bluetooth_match;
+  const matchSource = smartPresence?.match_source;
+  const showCta = !fence;
+
   return (
-    <div
+    <button
+      type="button"
+      onClick={onTap}
       data-testid="staff-nearby-card"
-      className="rounded-2xl bg-white border border-slate-200 shadow-sm p-4 flex items-center gap-3"
+      className="rounded-2xl bg-white border border-slate-200 shadow-sm p-4 flex items-center gap-3 text-left hover:shadow-md transition"
     >
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
         status === "inside" ? "bg-emerald-50 text-emerald-600" :
         status === "approaching" ? "bg-blue-50 text-blue-600" :
         "bg-slate-100 text-slate-400"
@@ -601,15 +614,34 @@ function NearbyCard({ smartPresence }) {
         {fence ? (
           <>
             <p className="text-sm font-bold text-slate-900 truncate">{fence.name}</p>
-            <p className="text-[11px] text-slate-500 tabular-nums">
-              {status === "inside" ? "Im Radius" : `${Math.round(distance)}m entfernt`}
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <p className="text-[11px] text-slate-500 tabular-nums">
+                {status === "inside" ? "Im Radius" : `${Math.round(distance)}m entfernt`}
+              </p>
+              {wifiMatch && (
+                <span data-testid="nearby-wifi-badge" className="inline-flex items-center gap-0.5 text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100">
+                  WLAN
+                </span>
+              )}
+              {btMatch && (
+                <span data-testid="nearby-bt-badge" className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full border border-violet-100">
+                  BT
+                </span>
+              )}
+              {matchSource === "combined" && (
+                <span className="text-[10px] font-bold text-emerald-600">✓ Multi-Signal</span>
+              )}
+            </div>
           </>
         ) : (
-          <p className="text-sm font-semibold text-slate-500">Kein Geofence in Nähe</p>
+          <>
+            <p className="text-sm font-semibold text-slate-700">Smart-Setup</p>
+            <p className="text-[11px] text-slate-500">WLAN/Bluetooth einrichten</p>
+          </>
         )}
       </div>
-    </div>
+      {showCta && <ChevronRight size={14} className="text-slate-300" />}
+    </button>
   );
 }
 

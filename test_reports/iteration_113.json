@@ -1,0 +1,41 @@
+{
+  "summary": "iter113 — Bluetooth Beacon + WLAN-SSID Multi-Signal Boost VERIFIED end-to-end. Backend: 7/7 pytest tests passed for PATCH geofence (wifi_ssid + bluetooth_beacon_id), and check-presence under 5 GPS/WiFi/BT scenarios (wifi_match far-GPS → match_source='wifi'; bluetooth far-GPS → match_source='bluetooth'; near-GPS+wifi → match_source='combined'; far-GPS+bad-ssid → match_source=null; near-GPS+bad-ssid → match_source='gps'). Frontend (staff_session cookie ee9686ea-...): /staff/portal loads, staff-nearby-card visible and tappable; clicking opens smart-setup-sheet with capabilities banner ('Browser-Modus'/'Native App erkannt'); smart-setup-ssid-input + smart-setup-ssid-save fill+save 'Termokos-Office' → toast 'WLAN-Name gespeichert' visible AND localStorage['staff_wifi_ssid_override']='Termokos-Office' persisted; smart-setup-close dismisses sheet. useGeofenceWatch verified to send wifi_ssid in body via Playwright network capture: backend responses returned wifi_match=4f75e706-... after override set, and after reload with GPS near Termokos (42.66/21.16) match_source flipped GPS→'combined' on the live preview URL (proves end-to-end multi-signal integration). Regression: staff-chat-btn present, Wetter card text/°C visible, Arbeitszeit live-timer ticking (02:08→02:09). Bluetooth Web API is disabled in Playwright (capabilities.webBluetooth=false) and the 'Beacon scannen' button is correctly disabled — expected per problem statement.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "StaffPortalPage NearbyCard", "issues": ["When GPS is far away from any fence (no nearest), the card branches to the 'Smart-Setup' CTA layout and the nearby-wifi-badge/nearby-bt-badge are NOT rendered even if smartPresence.wifi_match/bluetooth_match is set via the multi-signal boost. Badges currently only show when nearest?.geofence is truthy (line 614). Consider also rendering the wifi/bt badge in the fallback (Smart-Setup) branch so the user gets a 'Du bist via WLAN erkannt' hint when GPS is unreliable. Pure-frontend rendering note; backend boost itself works."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter113_multi_signal.py",
+    "/app/test_reports/pytest/iter113_results.xml"
+  ],
+  "action_items": [
+    "(Optional UX polish) Surface nearby-wifi-badge / nearby-bt-badge in the 'Smart-Setup' fallback branch of NearbyCard when smartPresence.wifi_match or bluetooth_match is set but no GPS-nearest fence exists, so the user can visually confirm Multi-Signal Boost worked even far from GPS-radius.",
+    "Note for next iteration: teleportation-spoof guard correctly fires when GPS jumps >200km/h between events (verified: after Termokos events stored, a hop to lat 52/13 within seconds is rejected). This is expected behaviour."
+  ],
+  "critical_code_review_comments": [
+    "staff_geofence.py check_presence multi-signal boost (lines 326-340) is clean and correct: GPS-inside takes priority for match_source='gps', WiFi/BT-only boosts to inside_fence with match_source='wifi'|'bluetooth', combined case correctly upgrades to 'combined'. Spoof-guard short-circuits boost which is the right behaviour.",
+    "useSmartSignals.js: localStorage override pattern (SSID_OVERRIDE_KEY) is robust, capabilities detection runs once via useEffect (line 43), polling refreshWifi every 60s. setWifiOverride correctly persists+updates state in one call. Web Bluetooth + Capacitor branches both wired.",
+    "StaffPortalPage NearbyCard: minor — wifi/bt badges only render inside the `fence ? (...)` branch (line 614). Could be lifted up so multi-signal-without-nearest case still shows badge.",
+    "Backend response field naming is consistent (match_source / wifi_match / bluetooth_match) — frontend usage in StaffPortalPage matches."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter113_multi_signal.py (new test file)"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 pytest tests passed: patch, persist, wifi-far, bt-far, combined, wifi-mismatch-far, wifi-mismatch-near)",
+    "frontend": "100% (sheet opens/closes, ssid persists in localStorage, toast shows, capabilities banner shows, check-presence fires with wifi_ssid evidenced by wifi_match in response, combined match_source observed live, chat+weather+timer regression OK)"
+  },
+  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026! ✅ | Staff cookie: staff_session=ee9686ea-739b-4ba9-9872-650cb0955fae ✅ | Geofence ID 4f75e706-b703-44fb-9fec-e02826fd55f3 (wifi=Termokos-Office, bt=TERMOKOS-BEACON-001) ✅",
+  "seed_data_creation": "PATCH on existing geofence 4f75e706-... wifi_ssid='Termokos-Office', bluetooth_beacon_id='TERMOKOS-BEACON-001' (re-confirmed idempotent). Some staff_geofence_events 'entered' rows created at lat=42.66 lng=21.16 during the live-flow validation.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Multi-Signal Boost (wifi/bluetooth) is fully working backend+frontend. Pytest file /app/backend/tests/test_iter113_multi_signal.py covers all 5 match_source cases. For UI re-tests: set localStorage staff_wifi_ssid_override='Termokos-Office' BEFORE reload, grant geolocation, and the page will pull match_source='combined' within ~5s. Web Bluetooth is MOCKED-OFF in Playwright (no scan). One minor UX gap: NearbyCard hides wifi/bt badges in the fallback (no-fence-nearest) branch. Anti-teleportation correctly blocks rapid GPS jumps (>200km/h) — that's why a quick hop from lat 42.6→52.0 inside the same session yields inside_fence=null even with wifi_match set; that's by design, not a regression.",
+  "rca of the issue": "N/A — no bugs. All feature requirements verified passing."
+}

@@ -1,13 +1,14 @@
 /**
  * useGeofenceWatch — Background-Hook für Mobile Mitarbeiter-App.
  *
- * Pollt navigator.geolocation alle 30s + sendet Position an Backend.
- * Wenn Backend `auto_checkin_suggested=true` returnt → triggert
- * onSuggestCheckin Callback (Modal-Anzeige).
+ * Sendet GPS + WLAN-SSID + Bluetooth-Beacons an Backend.
+ * Wenn Backend `auto_checkin_suggested=true` returnt → triggert onSuggestCheckin.
  *
- * Aktiv NUR wenn Mitarbeiter aktuell off-shift (sonst sinnlos).
+ * Multi-Signal: Stronger Signals (WiFi/BT exact match) erlauben Check-In
+ * auch wenn GPS unscharf ist.
  */
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useSmartSignals } from "./useSmartSignals";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const DEFAULT_INTERVAL_MS = 30000; // 30s
@@ -18,6 +19,7 @@ export function useGeofenceWatch({ enabled = true, intervalMs = DEFAULT_INTERVAL
   const [error, setError] = useState(null);
   const [permission, setPermission] = useState("prompt");
   const lastSuggestedId = useRef(null);
+  const { wifiSsid, getBeacons } = useSmartSignals({ enabled });
 
   const checkOnce = useCallback(async () => {
     if (!navigator.geolocation) {
@@ -38,6 +40,8 @@ export function useGeofenceWatch({ enabled = true, intervalMs = DEFAULT_INTERVAL
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
         accuracy_m: pos.coords.accuracy,
+        wifi_ssid: wifiSsid || undefined,
+        bluetooth_beacons: getBeacons(),
         timestamp: new Date().toISOString(),
       };
 
@@ -54,10 +58,6 @@ export function useGeofenceWatch({ enabled = true, intervalMs = DEFAULT_INTERVAL
       const data = await res.json();
       setLastResult(data);
 
-      // Trigger callback only when:
-      //   - inside_fence exists
-      //   - auto_checkin_suggested true
-      //   - not already suggested for this fence in this session
       if (data.auto_checkin_suggested && data.inside_fence && !isWorking) {
         const fenceId = data.inside_fence.id;
         if (lastSuggestedId.current !== fenceId) {
@@ -65,6 +65,7 @@ export function useGeofenceWatch({ enabled = true, intervalMs = DEFAULT_INTERVAL
           onSuggestCheckin?.({
             fence: data.inside_fence,
             position: { lat: body.lat, lng: body.lng, accuracy_m: body.accuracy_m },
+            match_source: data.match_source,
           });
         }
       }
@@ -72,7 +73,7 @@ export function useGeofenceWatch({ enabled = true, intervalMs = DEFAULT_INTERVAL
       if (e?.code === 1) setPermission("denied");
       setError(e?.message || "Standortfehler");
     }
-  }, [onSuggestCheckin, isWorking]);
+  }, [onSuggestCheckin, isWorking, wifiSsid, getBeacons]);
 
   useEffect(() => {
     if (!enabled) return;
