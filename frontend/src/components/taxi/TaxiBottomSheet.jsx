@@ -10,7 +10,7 @@
 import React, { useState } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 
-const SNAPS = { collapsed: 0.32, half: 0.62, full: 0.92 };
+const SNAPS = { collapsed: 0.46, half: 0.68, full: 0.94 };
 
 export default function TaxiBottomSheet({
   defaultSnap = "half",
@@ -80,7 +80,7 @@ export default function TaxiBottomSheet({
       </motion.div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto px-4 pb-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6">
         {children}
       </div>
     </motion.div>

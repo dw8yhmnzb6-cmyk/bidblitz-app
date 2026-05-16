@@ -14,7 +14,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter118 — Promo-Banner + Push-Broadcast + Native-Build-Script)
+### 16.05.2026 (iter119 — P0 Mapbox-CSS-Konflikt-Fix + Vehicle-Card Premium-Layout)
+- 🔴 **P0 BUG FIX — Map komplett schwarz**: `mapbox-gl.css` setzt `.mapboxgl-map { position: relative }` → überschrieb Tailwinds `absolute` Klasse via CSS-Spezifität. Map-Container hatte `height: 0` weil `absolute inset-0` nicht griff. Fix: Inline `style={{ position:'absolute', top/right/bottom/left:0 }}` auf `mapContainerRef`-Div in `TaxiPage.jsx`. Verified: Container 414×896, Canvas 414×896, Berlin-Tiles rendern.
+- 🟢 **Robuster Map-Init**: `useTaxiMap.js` hat jetzt sane Default-Center (Berlin 52.52/13.405, zoom 11) wenn pickup={0,0} beim Map-Init (vermeidet Gulf of Guinea = leere Tiles). Pickup-Marker wird nur bei validem GPS-Fix angelegt; sonst nachträglich beim ersten gültigen pickup-Update. `map.resize()` Triggers on style.load + 250/800ms Setup-Race-Safety für iOS Safari.
+- 🟢 **Vehicle-Card Overflow-Fix**: Card-Padding `p-3`, Icon `w-14 h-10` (statt 20×12), Preis-Spalte mit `tabular-nums whitespace-nowrap`, Range mit `Math.round` (kein `€5.89-€7.49` Truncate mehr). Meta-Row reduziert auf "4 P · 3 Min". "schnell"/"günstig" Badge als eigener Chip neben dem Namen.
+- 🟢 **Bottom-Sheet Snap optimiert**: Collapsed 32% → 46%, Half 62% → 68%. Sheet zeigt jetzt sofort Adress-Inputs + erste Vehicle-Card statt nur Trust-Strip. `overflow-x-hidden` als Safety-Net.
+- ✅ Smoke: 414×896 Mobile-Viewport → Map zeigt Berlin (Spandauer Vorstadt), Pickup-Marker, Navigation Controls. Bottom-Sheet rendert korrekt mit Booking-Form, Promo-Banner, Saved-Places, Address-Rows.
+
+
+
 - 🟢 **Public `/api/taxi/promo/active` Endpoint**: Liefert alle aktiven Promos (BUILTIN + DB-Codes) ohne Auth-Pflicht für Banner-Rendering.
 - 🟢 **TaxiPromoBanner Frontend Komponente**: Horizontaler Scroll-Strip im BookingSheet zwischen Greeting und Adress-Inputs. Jede Card: Gift-Icon, Code-Badge, Discount-Pill (−10%/−€5/etc.), Beschreibung, 1-Tap Apply via `validatePromoCode`. Versteckt sobald Promo angewendet oder Dropoff gewählt.
 - 🟢 **OneSignal `broadcast_to_segment` Helper**: Sendet an OneSignal-Segment ("Subscribed Users") via `included_segments`. Erweitert send_push um diesen Mechanismus.

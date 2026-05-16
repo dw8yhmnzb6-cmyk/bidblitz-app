@@ -85,6 +85,15 @@ export function useTaxiMap({
     loadMapbox().then((mb) => {
       if (cancelled || !mapContainerRef.current || mapRef.current) return;
       try {
+        // Avoid initializing at [0,0] (Gulf of Guinea → completely black tiles).
+        // Use a sane default until GPS arrives.
+        const hasValidPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng)
+          && pickup.lat !== 0 && pickup.lng !== 0;
+        const startCenter = hasValidPickup
+          ? [pickup.lng, pickup.lat]
+          : [13.405, 52.52]; // Berlin fallback
+        const startZoom = hasValidPickup ? 14 : 11;
+
         const map = new mb.Map({
           container: mapContainerRef.current,
           style:
@@ -93,11 +102,21 @@ export function useTaxiMap({
               : mapStyle === "satellite"
                 ? "mapbox://styles/mapbox/satellite-streets-v12"
                 : "mapbox://styles/mapbox/dark-v11",
-          center: [pickup.lng, pickup.lat],
-          zoom: 14,
+          center: startCenter,
+          zoom: startZoom,
           language: "de",
           attributionControl: false,
         });
+
+        // iOS Safari sometimes mounts the canvas with stale dimensions when the
+        // bottom-sheet animates in. Force a resize after layout settles.
+        const resizeSoon = () => {
+          try { map.resize(); } catch {}
+        };
+        map.on("load", resizeSoon);
+        map.on("style.load", resizeSoon);
+        setTimeout(resizeSoon, 250);
+        setTimeout(resizeSoon, 800);
         // Surface Mapbox-internal errors (invalid token, tile load failures)
         map.on("error", (ev) => {
           const msg = ev?.error?.message || "";
@@ -114,21 +133,25 @@ export function useTaxiMap({
         pickupEl.className = "mapbox-marker-pickup";
         pickupEl.style.cssText =
           "width:32px;height:32px;background:#00C2FF;border:4px solid white;border-radius:50%;box-shadow:0 0 16px rgba(0,194,255,0.6),0 4px 8px rgba(0,0,0,0.3);cursor:move;";
-        const pickupMarker = new mb.Marker({ element: pickupEl, draggable: true })
-          .setLngLat([pickup.lng, pickup.lat])
-          .addTo(map);
-        pickupMarkerRef.current = pickupMarker;
+        // Only attach the pickup marker if we have a real GPS fix. Otherwise the
+        // markers effect will create it once a valid pickup arrives.
+        if (hasValidPickup) {
+          const pickupMarker = new mb.Marker({ element: pickupEl, draggable: true })
+            .setLngLat([pickup.lng, pickup.lat])
+            .addTo(map);
+          pickupMarkerRef.current = pickupMarker;
 
-        pickupMarker.on("dragend", async () => {
-          const lngLat = pickupMarker.getLngLat();
-          const addr = await reverseGeocodeInline(lngLat.lat, lngLat.lng);
-          setPickup((prev) => ({
-            ...prev,
-            lat: lngLat.lat,
-            lng: lngLat.lng,
-            ...(addr ? { address: addr } : {}),
-          }));
-        });
+          pickupMarker.on("dragend", async () => {
+            const lngLat = pickupMarker.getLngLat();
+            const addr = await reverseGeocodeInline(lngLat.lat, lngLat.lng);
+            setPickup((prev) => ({
+              ...prev,
+              lat: lngLat.lat,
+              lng: lngLat.lng,
+              ...(addr ? { address: addr } : {}),
+            }));
+          });
+        }
 
         mapRef.current = map;
       } catch (err) {
@@ -180,6 +203,26 @@ export function useTaxiMap({
 
     if (pickupMarkerRef.current && pickup.lat && pickup.lng) {
       pickupMarkerRef.current.setLngLat([pickup.lng, pickup.lat]);
+    } else if (pickup.lat && pickup.lng && !pickupMarkerRef.current && _mapboxgl) {
+      // Late-arriving GPS: create the pickup marker now (map was initialized at fallback center)
+      const pickupEl = document.createElement("div");
+      pickupEl.className = "mapbox-marker-pickup";
+      pickupEl.style.cssText =
+        "width:32px;height:32px;background:#00C2FF;border:4px solid white;border-radius:50%;box-shadow:0 0 16px rgba(0,194,255,0.6),0 4px 8px rgba(0,0,0,0.3);cursor:move;";
+      const marker = new _mapboxgl.Marker({ element: pickupEl, draggable: true })
+        .setLngLat([pickup.lng, pickup.lat])
+        .addTo(map);
+      marker.on("dragend", async () => {
+        const lngLat = marker.getLngLat();
+        const addr = await reverseGeocodeInline(lngLat.lat, lngLat.lng);
+        setPickup((prev) => ({
+          ...prev,
+          lat: lngLat.lat,
+          lng: lngLat.lng,
+          ...(addr ? { address: addr } : {}),
+        }));
+      });
+      pickupMarkerRef.current = marker;
     }
 
     if (dropoffMarkerRef.current) {

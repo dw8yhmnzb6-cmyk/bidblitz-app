@@ -37,52 +37,56 @@ export default function TaxiVehiclePicker({
               onClick={() => onSelect(est.vehicle_type)}
               whileTap={{ scale: 0.98 }}
               data-testid={`vehicle-card-${est.vehicle_type}`}
-              className={`w-full p-4 rounded-2xl border-2 transition-all ${
+              className={`w-full p-3 rounded-2xl border-2 transition-all overflow-hidden ${
                 isActive
                   ? "bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border-cyan-400/70 shadow-[0_0_24px_rgba(0,194,255,0.15)]"
                   : "bg-[#0F1218] border-white/5 hover:border-white/15"
               } ${isExpanded ? "rounded-b-none" : ""}`}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
                   <div
-                    className={`shrink-0 w-20 h-12 rounded-xl flex items-center justify-center ${
+                    className={`shrink-0 w-14 h-10 rounded-lg flex items-center justify-center ${
                       isActive ? "bg-cyan-500/10" : "bg-white/[0.03]"
                     }`}
                   >
-                    <VehicleIcon type={est.vehicle_type} className="w-16 h-8" active={isActive} />
+                    <VehicleIcon type={est.vehicle_type} className="w-11 h-6" active={isActive} />
                   </div>
                   <div className="text-left min-w-0 flex-1">
-                    <p className={`font-bold text-base ${isActive ? "text-white" : "text-gray-200"}`}>
-                      {est.name}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">{est.description}</p>
-                    <p className="text-[11px] text-gray-600 mt-0.5 flex items-center gap-1.5">
-                      <span>{est.capacity} Pers.</span>
-                      <span>·</span>
-                      <span>{est.eta_minutes} Min</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className={`font-bold text-[15px] leading-tight truncate ${isActive ? "text-white" : "text-gray-200"}`}>
+                        {est.name}
+                      </p>
                       {isActive && priority === "fastest" && (
-                        <span className="text-cyan-400 font-medium">· schnellster</span>
+                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cyan-300 bg-cyan-500/15 px-1.5 py-0.5 rounded-md">
+                          schnell
+                        </span>
                       )}
                       {isActive && priority === "cheapest" && (
-                        <span className="text-emerald-400 font-medium">· günstigster</span>
+                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded-md">
+                          günstig
+                        </span>
                       )}
+                    </div>
+                    <p className="text-[11px] text-gray-500 truncate">{est.description}</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5 whitespace-nowrap">
+                      {est.capacity}&nbsp;P · {est.eta_minutes}&nbsp;Min
                     </p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className={`text-lg font-bold ${isActive ? "text-cyan-400" : "text-gray-300"}`}>
+                <div className="text-right shrink-0 pl-1">
+                  <p className={`text-base font-bold tabular-nums whitespace-nowrap ${isActive ? "text-cyan-400" : "text-gray-200"}`}>
                     €{est.fare.toFixed(2)}
                   </p>
                   {est.fare_discount > 0 && est.fare_original && (
-                    <p className="text-[10px] text-emerald-400 font-semibold">
+                    <p className="text-[10px] text-emerald-400 font-semibold whitespace-nowrap tabular-nums">
                       <span className="line-through text-gray-500 mr-1">€{est.fare_original.toFixed(2)}</span>
                       −€{est.fare_discount.toFixed(2)}
                     </p>
                   )}
                   {!est.fare_discount && est.fare_range && (
-                    <p className="text-[10px] text-gray-600">
-                      €{est.fare_range.min.toFixed(2)}–€{est.fare_range.max.toFixed(2)}
+                    <p className="text-[10px] text-gray-600 whitespace-nowrap tabular-nums">
+                      €{Math.round(est.fare_range.min)}–€{Math.round(est.fare_range.max)}
                     </p>
                   )}
                 </div>
@@ -95,12 +99,12 @@ export default function TaxiVehiclePicker({
                     e.stopPropagation();
                     setExpandedKey(isExpanded ? null : est.vehicle_type);
                   }}
-                  className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-cyan-400 hover:text-cyan-300"
+                  className="mt-2.5 pt-2.5 border-t border-white/5 flex items-center justify-between text-[11px] text-cyan-400 hover:text-cyan-300"
                   data-testid={`vehicle-customize-${est.vehicle_type}`}
                 >
                   <span className="font-medium">Anpassen</span>
                   <svg
-                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                     className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
                   >
                     <path d="m9 6 6 6-6 6" />
