@@ -152,6 +152,15 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
         setSummary(data);
       }
 
+      // Pending swaps count (lightweight poll)
+      try {
+        const swapsRes = await fetch(`${API}/api/staff/open-shifts/manager/pending`, { credentials: "include" });
+        if (swapsRes.ok) {
+          const data = await swapsRes.json();
+          setPendingSwaps(data.count || 0);
+        }
+      } catch {}
+
       // Load shifts if on calendar tab
       if (tab === "shifts") {
         const shiftsRes = await fetch(`${API}/api/staff/shifts`, { credentials: "include" });
@@ -263,7 +272,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
   // 4-Tab Consolidation (iter113): 9 → 4 mit internen Sub-Switches
   const tabs = [
     { id: "overview", label: "Heute", icon: TrendingUp },
-    { id: "shifts", label: "Plan", icon: Calendar },
+    { id: "shifts", label: "Plan", icon: Calendar, badge: pendingSwaps },
     { id: "members", label: "Mitarbeiter", icon: Users },
     { id: "reports", label: "Auswertung", icon: FileText },
   ];
@@ -396,6 +405,16 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
                 >
                   <Icon size={16} />
                   {t.label}
+                  {t.badge > 0 && (
+                    <span
+                      data-testid={`tab-badge-${t.id}`}
+                      className={`ml-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                        tab === t.id ? "bg-white text-slate-900" : "bg-red-500 text-white"
+                      }`}
+                    >
+                      {t.badge > 99 ? "99+" : t.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
