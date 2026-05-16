@@ -91,6 +91,20 @@ async def sync_offline_events(batch: OfflineSyncBatch, staff=Depends(get_staff_f
         }
         await db.staff_clock_events.insert_one(doc)
 
+        # P1: GPS Anomaly check on every offline-synced event (best-effort)
+        try:
+            from utils.clock_anomaly import check_anomaly
+            await check_anomaly(
+                staff_id=staff["id"],
+                merchant_id=staff["merchant_id"],
+                event_id=doc["id"],
+                lat=ev.lat,
+                lng=ev.lng,
+                timestamp_iso=ev.captured_at,
+            )
+        except Exception:
+            pass
+
         # Update sync meta
         await db.staff_offline_sync_meta.update_one(
             {"staff_id": staff["id"]},

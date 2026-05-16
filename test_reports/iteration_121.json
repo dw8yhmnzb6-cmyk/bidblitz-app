@@ -1,0 +1,56 @@
+{
+  "summary": "iter121 testing complete — Live-Map, GPS Anomaly Detection (P1) und Shift Watchdog (P2). 10/10 Backend-Pytest grün, alle Frontend-Acceptance-Kriterien erfüllt.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter121_live_map_watchdog.py",
+    "/app/test_reports/pytest/iter121_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "staff_live_map.list_live_positions iteriert ALLE staff_clock_events pro Staff-Member ohne Limit/Time-Filter — bei wachsendem Event-Volumen O(N*M). Empfehlung: nur Events der letzten 24-48h für state-computation laden oder Last-Known-Position pro Staff cachen.",
+    "Watchdog _evaluate_staff scant ebenfalls komplette Event-History pro Staff pro Tick (5min Loop x 15+ Staff). Mit Production-Daten schnell zu langsam. Sort + .limit oder dedizierter shift_state-Cache wäre robuster.",
+    "clock_anomaly.check_anomaly: static_cluster-Check vergleicht float-equality (lat==X, lng==Y) — bei realen Float-Drift unwahrscheinlich match. Bewusst (Indikator für Mock-Provider). OK.",
+    "staff_shift_watchdog speichert _WATCHDOG_TASK in Modul-Scope — bei Reload via Hot-Reload (uvicorn) entsteht potenziell Duplicate-Loop. Im Supervisor-Setup unkritisch."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter121_live_map_watchdog.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026! (Cookie-basiertes Auth via /api/auth/login → access_token Cookie)",
+  "seed_data_creation": "Anomaly-Test legt staff_clock_events Pair an (TEST_anomaly_staff_*), prüft check_anomaly() → impossible_jump, und cleant danach wieder.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "backend_test_details": {
+    "TestLiveMapAuth::test_positions_requires_auth": "PASS — 401 ohne Cookie",
+    "TestLiveMapAuth::test_anomalies_requires_auth": "PASS — 401 ohne Cookie",
+    "TestLiveMapMerchant::test_positions_as_merchant": "PASS — total=15, active=2, anomaly=0, geofences=1, alle Felder vorhanden",
+    "TestLiveMapMerchant::test_anomalies_list": "PASS — items/total Struktur korrekt",
+    "TestLiveMapMerchant::test_anomaly_review_404": "PASS — 404 für nonexistent anomaly_id",
+    "TestWatchdog::test_status_public": "PASS — running=true, alle Counter-Felder",
+    "TestWatchdog::test_tick_requires_auth": "PASS — 401 ohne Auth",
+    "TestWatchdog::test_tick_with_merchant_auth": "PASS — success:true, checked/break_sent/checkout_sent",
+    "TestWatchdog::test_tick_idempotent_no_duplicates": "PASS — Doppel-Tick = 0 zusätzliche Reminder (staff_reminders_sent dedupliziert via shift_started_at + reminder_type)",
+    "TestAnomalyDetection::test_check_anomaly_impossible_jump": "PASS — 11km/30s → impossible_jump erkannt, is_mock_suspected=true, Eintrag in staff_anomalies"
+  },
+  "frontend_test_details": {
+    "Header 'Live-Cockpit'": "PASS",
+    "Counter-Pills (2 aktiv · 0 Pause · 13 offline)": "PASS",
+    "Mapbox-Map rendert": "PASS (2 sichtbare Marker im Viewport, 4 total laut Backend-Daten)",
+    "live-marker-{staff_id}": "PASS — 4 Markers im DOM (entspricht 4/15 Staff mit last_position)",
+    "live-staff-row-{staff_id}": "PASS — 15 Rows",
+    "merchant-qa-open-live-map QuickAction": "PASS — vorhanden in /merchant/staff Overview, navigiert auf live-map",
+    "live-map-anomaly-inbox-btn": "PASS — Modal anomaly-inbox-modal öffnet (Anomalie-Inbox (0) — Alle sauber)",
+    "Modal-Close per X": "PASS — data-testid=anomaly-modal-close schließt Modal",
+    "live-map-refresh": "PASS — triggert Re-Fetch ohne Page-Reload",
+    "Mapbox Legend (Aktiv im Geofence/außerhalb-Stale/Pause/Anomalie)": "vorhanden + Mapbox attribution sichtbar"
+  },
+  "context_for_next_testing_agent": "iter121 Live-Map ist E2E grün. Cookie-basiertes Login (kein Bearer-Token im Body, sondern Set-Cookie access_token). Watchdog läuft als Background-Task seit Startup; sicheres Verhalten bei wiederholten Ticks bestätigt. Bei Production-Daten-Wachstum sollten _compute_shift_state und _evaluate_staff auf Last-Event-Snapshot oder Time-Window-Filter umgestellt werden."
+}

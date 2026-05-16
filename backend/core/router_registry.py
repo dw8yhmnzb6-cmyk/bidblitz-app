@@ -96,6 +96,8 @@ def register_all_routers(app):
         ("routes.staff_reminders", "router"),  # Smart Reminder Engine
         ("routes.staff_open_shifts", "router"),  # Schichttausch (Open Shifts) MVP
         ("routes.staff_offline_sync", "router"),  # Offline Clock Event Sync Queue
+        ("routes.staff_live_map", "router"),  # Manager Live-Map + Anomaly Inbox (iter121)
+        ("routes.staff_shift_watchdog", "router"),  # Push-Reminder Watchdog (iter121)
         ("routes.taxi_admin_promos", "router"),  # Taxi Promo Code Admin/Reporting
         ("routes.staff_multi_merchant", "router"),
         ("routes.staff_subscription", "router"),

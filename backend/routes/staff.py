@@ -489,6 +489,22 @@ async def clock_event(
             event["geofence_warning"] = warn
     except Exception:
         pass
+    # P1: GPS Anomaly / Mock Detection (best-effort)
+    try:
+        from utils.clock_anomaly import check_anomaly
+        anomaly = await check_anomaly(
+            staff_id=data.staff_id,
+            merchant_id=merchant_id,
+            event_id=event["id"],
+            lat=data.lat,
+            lng=data.lng,
+            timestamp_iso=event["timestamp"],
+        )
+        if anomaly:
+            event["is_mock_suspected"] = True
+            event["anomaly"] = anomaly
+    except Exception:
+        pass
     try:
         await db.staff_audit_log.insert_one({
             "id": str(uuid4()),

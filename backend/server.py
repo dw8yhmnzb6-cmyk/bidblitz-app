@@ -124,6 +124,14 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Auction loops start failed: {e}")
 
+    # Staff Shift Watchdog (Push-Reminders alle 5min)
+    try:
+        from routes.staff_shift_watchdog import start_watchdog_loop
+        start_watchdog_loop()
+        logger.info("✓ Staff shift watchdog loop started")
+    except Exception as e:
+        logger.warning(f"Staff watchdog start failed: {e}")
+
     # Optional: Seed demo data if DEMO_SEED=true
     import os
     if os.environ.get("DEMO_SEED", "").lower() == "true":

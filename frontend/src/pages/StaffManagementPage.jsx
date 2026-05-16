@@ -452,6 +452,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
                     onOpenGeofence={() => onNavigate && onNavigate("/merchant/staff/geofence")}
                     onOpenChat={() => onNavigate && onNavigate("/merchant/staff/chat")}
                     onOpenPromos={() => onNavigate && onNavigate("/merchant/taxi/promos")}
+                    onOpenLiveMap={() => onNavigate && onNavigate("/merchant/staff/live-map")}
                   />
                 )}
                 {subView.overview === "clock" && (
@@ -539,7 +540,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
 // Overview Tab
 // ═════════════════════════════════════════════════════════════════════════
 
-function OverviewTab({ summary, members, todayEvents, onAddMember, onCreateShift, onOpenTimesheet, onOpenGeofence, onOpenChat, onOpenPromos }) {
+function OverviewTab({ summary, members, todayEvents, onAddMember, onCreateShift, onOpenTimesheet, onOpenGeofence, onOpenChat, onOpenPromos, onOpenLiveMap }) {
   return (
     <div className="space-y-5">
       <MerchantLiveOverview
@@ -552,6 +553,7 @@ function OverviewTab({ summary, members, todayEvents, onAddMember, onCreateShift
         onOpenGeofence={onOpenGeofence}
         onOpenChat={onOpenChat}
         onOpenPromos={onOpenPromos}
+        onOpenLiveMap={onOpenLiveMap}
       />
       <StaffWarningsList />
     </div>
