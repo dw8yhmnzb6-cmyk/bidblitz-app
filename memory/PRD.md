@@ -14,7 +14,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter121 — Live-Cockpit + GPS Anomaly + Push Watchdog) ✅
+### 16.05.2026 (iter122 — Shift-Heatmap Add-On für Live-Cockpit) ✅
+- 🟢 **Backend** (`routes/staff_heatmap.py`): `GET /api/staff/heatmap/shifts?days=30&geofence_id=...&under=2&peak=5` aggregiert Clock-Events der letzten N Tage zu 7×24 Matrix mit Ø concurrent staff pro Stunden-Slot. Berücksichtigt noch laufende Schichten (clipped auf `t_to`). Optional: Geofence-Filterung über Haversine-Distanz der clock_in-Position. Returns: matrix, totals (events, shifts_completed, total_hours, unique_staff), under_staffed[], peak[], thresholds.
+- 🟢 **Frontend** (`staff/StaffShiftHeatmap.jsx` + Tab in `ManagerStaffLiveMapPage.jsx`): Tab-Switcher „Live-Karte / Shift-Heatmap" oben in der Live-Cockpit-Page. Heatmap-View mit Tag-Filter (7/14/30/90T), Geofence-Select, Stats-Header, 7×24 Cell-Grid mit Gradient (dark-navy → cyan → amber → red), Hover-Tooltip, Insight-Cards „Unterbesetzt (Ø < N)" und „Peaks (Ø ≥ N)" mit Top-6.
+- ✅ Smoke: 168 Cells gerendert, 12 mit Daten (190.1h Total, 5 unique staff, 9 Shifts in 30T). 4 Under-Staffed Slots erkannt (Di 09-12 jeweils Ø 1).
+- 🟢 Router registriert in `core/router_registry.py` (Position nach staff_shift_watchdog).
+
+
 - 🟢 **Live-Cockpit für Manager** (`/merchant/staff/live-map`): Mapbox-Map mit farbcodierten Staff-Pins (grün=inside geofence, gelb=outside/stale, lila=Pause, rot-Ring=Anomalie). Geofence-Kreise als Mapbox-Layer. Auto-Refresh 10s. Counter-Header (X aktiv · Y Pause · Z offline · N Anomalien). Belegschaft-Liste mit Tap-to-Focus. Quick-Action „Live-Cockpit" im StaffManagement Overview.
 - 🟢 **P1 GPS Fake Detection** (`utils/clock_anomaly.py`): Server-Heuristik nach jedem Clock-Insert (auch Offline-Sync): impossible_jump (≥2km in ≤60s), speed_exceeded (>200km/h), static_cluster (≥5 identische Koords/24h). Markiert Event mit `is_mock_suspected=true` + Eintrag in `staff_anomalies`. Manager-Inbox via Modal mit Review-Action.
 - 🟢 **P2 Push-Reminder Watchdog** (`routes/staff_shift_watchdog.py`): Background-Loop alle 5min via `start_watchdog_loop()` im Startup. Pause-Reminder nach 6h Schicht ohne break_start („Pause vergessen?"), Auto-Checkout-Reminder nach 10h („Auschecken nicht vergessen 👋"). Idempotenz via `staff_reminders_sent` (staff_id + shift_started_at + reminder_type). GET /status + POST /tick (admin-only) für Debug.

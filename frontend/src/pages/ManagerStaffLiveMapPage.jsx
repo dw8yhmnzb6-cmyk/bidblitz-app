@@ -13,7 +13,8 @@
  * Auto-Refresh alle 10s.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, AlertTriangle, MapPin, Users, RefreshCw, X } from "lucide-react";
+import { Loader2, AlertTriangle, MapPin, Users, RefreshCw, X, BarChart3, Radio } from "lucide-react";
+import StaffShiftHeatmap from "../staff/StaffShiftHeatmap";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -113,6 +114,7 @@ export default function ManagerStaffLiveMapPage({ onBack }) {
   const [anomalies, setAnomalies] = useState([]);
   const [showAnomalies, setShowAnomalies] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [view, setView] = useState("live"); // "live" | "heatmap"
 
   // Fetch positions
   const fetchPositions = async () => {
@@ -327,8 +329,30 @@ export default function ManagerStaffLiveMapPage({ onBack }) {
         </button>
       </div>
 
+      {/* Tab Switcher */}
+      <div className="px-3 pt-2 pb-1 flex gap-1.5 bg-[#050505] border-b border-white/[0.04]">
+        <button
+          onClick={() => setView("live")}
+          data-testid="live-cockpit-tab-live"
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+            view === "live" ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" : "bg-white/[0.03] text-gray-400 border border-white/[0.04] hover:bg-white/5"
+          }`}
+        >
+          <Radio className="w-3.5 h-3.5" /> Live-Karte
+        </button>
+        <button
+          onClick={() => setView("heatmap")}
+          data-testid="live-cockpit-tab-heatmap"
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+            view === "heatmap" ? "bg-amber-500/15 text-amber-300 border border-amber-500/30" : "bg-white/[0.03] text-gray-400 border border-white/[0.04] hover:bg-white/5"
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5" /> Shift-Heatmap
+        </button>
+      </div>
+
       {/* Map */}
-      <div className="relative flex-1 min-h-[260px]">
+      <div className="relative flex-1 min-h-[260px]" style={{ display: view === "live" ? "block" : "none" }}>
         <div
           ref={mapContainerRef}
           data-testid="live-map-container"
@@ -354,7 +378,9 @@ export default function ManagerStaffLiveMapPage({ onBack }) {
       </div>
 
       {/* Bottom list */}
-      <div className="border-t border-white/[0.06] bg-[#0A0A0F] max-h-[40vh] overflow-y-auto" data-testid="live-staff-list">
+      <div className="border-t border-white/[0.06] bg-[#0A0A0F] max-h-[40vh] overflow-y-auto"
+           data-testid="live-staff-list"
+           style={{ display: view === "live" ? "block" : "none" }}>
         <div className="px-3 py-2 flex items-center gap-2 text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
           <Users className="w-3.5 h-3.5" /> Belegschaft ({data?.total || 0})
         </div>
@@ -367,6 +393,13 @@ export default function ManagerStaffLiveMapPage({ onBack }) {
           )}
         </div>
       </div>
+
+      {/* Heatmap View */}
+      {view === "heatmap" && (
+        <div className="flex-1 overflow-y-auto bg-[#0A0A0F] p-3" data-testid="heatmap-view">
+          <StaffShiftHeatmap />
+        </div>
+      )}
 
       {/* Anomaly Inbox Modal */}
       {showAnomalies && (
