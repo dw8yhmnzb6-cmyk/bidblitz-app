@@ -293,13 +293,7 @@ export default function TaxiBookingSheet({
       </div>
       )}
 
-      {/* Gespeicherte Orte nur zeigen wenn Ziel noch nicht gewählt */}
-      {!dropoff?.address && savedPlaces?.length > 0 && (
-        <TaxiSavedPlacesRow
-          savedPlaces={savedPlaces}
-          onPick={(p) => onPickSavedPlace(p)}
-        />
-      )}
+      {/* Gespeicherte-Orte-Row entfernt (Duplizierung mit Quick-Actions) — iter124 UX */}
 
       {/* Vehicle picker — auto-shown when estimates available, BEFORE options */}
       {estimates?.length > 0 && (
