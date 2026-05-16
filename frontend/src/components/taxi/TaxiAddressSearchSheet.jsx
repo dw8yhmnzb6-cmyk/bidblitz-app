@@ -71,11 +71,13 @@ export default function TaxiAddressSearchSheet({
 
   const onPickupChange = (v) => {
     setPickupVal(v);
-    search("sheet-pickup", v, setPickupSugg, setShowPickupSugg);
+    const prox = currentLocation && currentLocation.lat ? { lat: currentLocation.lat, lng: currentLocation.lng } : (pickup && pickup.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
+    search("sheet-pickup", v, setPickupSugg, setShowPickupSugg, prox);
   };
   const onDropoffChange = (v) => {
     setDropoffVal(v);
-    search("sheet-dropoff", v, setDropoffSugg, setShowDropoffSugg);
+    const prox = (pickup && pickup.lat) ? { lat: pickup.lat, lng: pickup.lng } : (currentLocation && currentLocation.lat ? { lat: currentLocation.lat, lng: currentLocation.lng } : null);
+    search("sheet-dropoff", v, setDropoffSugg, setShowDropoffSugg, prox);
   };
 
   // Universal "apply" — works for pickup, dropoff, or waypoint:N

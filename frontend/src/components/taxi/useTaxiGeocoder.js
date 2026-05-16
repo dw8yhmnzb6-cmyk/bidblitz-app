@@ -59,7 +59,7 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
    * key: stable identifier per input ("pickup" | "dropoff" | …)
    */
   const search = useCallback(
-    (key, query, setSuggestions, setVisibility) => {
+    (key, query, setSuggestions, setVisibility, proximity = null) => {
       const timers = timersRef.current;
       const aborters = abortersRef.current;
       if (timers[key]) clearTimeout(timers[key]);
@@ -72,20 +72,25 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
         return;
       }
 
+      // Proximity bias toward user's GPS for relevant local-first results.
+      // Mapbox expects "lng,lat" string.
+      const prox = proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng) && proximity.lat !== 0
+        ? `&proximity=${proximity.lng},${proximity.lat}`
+        : "";
+
       timers[key] = setTimeout(async () => {
         const controller = new AbortController();
         aborters[key] = controller;
         try {
           let url;
           if (MAPBOX_TOKEN) {
-            // Direct Mapbox (fastest)
             url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
               q,
-            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true`;
+            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true${prox}`;
           } else if (BACKEND_URL) {
-            // Backend proxy fallback (production safety net when build-time
-            // MAPBOX_TOKEN secret was forgotten)
-            url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(q)}&limit=8`;
+            url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(q)}&limit=8${
+              proximity && Number.isFinite(proximity.lat) ? `&lat=${proximity.lat}&lng=${proximity.lng}` : ""
+            }`;
           } else {
             setSuggestions([]);
             setVisibility(false);
