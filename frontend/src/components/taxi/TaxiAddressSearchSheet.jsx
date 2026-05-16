@@ -46,7 +46,7 @@ export default function TaxiAddressSearchSheet({
   savedPlaces = [],
   recentAddresses = [],
 }) {
-  const { search } = useTaxiGeocoder({ debounceMs: 200 });
+  const { search } = useTaxiGeocoder({ debounceMs: 120 });
   const [pickupVal, setPickupVal] = useState(pickup?.address || "");
   const [dropoffVal, setDropoffVal] = useState(dropoff?.address || "");
   const [pickupSugg, setPickupSugg] = useState([]);

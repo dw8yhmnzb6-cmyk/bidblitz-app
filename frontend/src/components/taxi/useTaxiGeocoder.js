@@ -66,7 +66,7 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
       if (aborters[key]) aborters[key].abort();
 
       const q = (query || "").trim();
-      if (q.length < 2) {
+      if (q.length < 1) {
         setSuggestions([]);
         setVisibility(false);
         return;
