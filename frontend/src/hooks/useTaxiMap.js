@@ -68,6 +68,17 @@ export function useTaxiMap({
   const routeSourceAddedRef = useRef(false);
   const poiMarkersRef = useRef([]);
   const nearbyMarkersRef = useRef([]);
+  // Track whether the map was started with a real GPS fix. If false, we
+  // need to flyTo the pickup as soon as it arrives so users in any city
+  // see *their* surroundings (Berlin-Fallback otherwise leaves Pristina/etc.
+  // users staring at Berlin tiles).
+  const initialisedWithGpsRef = useRef(false);
+  const autoFlewToPickupRef = useRef(false);
+
+  // Track latest pickup in a ref so map.on('load') can read current value
+  // even when the closure was created at fallback-init time.
+  const latestPickupRef = useRef(pickup);
+  useEffect(() => { latestPickupRef.current = pickup; }, [pickup.lat, pickup.lng, pickup.address]);
 
   // Init map when booking flow opens (taxiType set)
   useEffect(() => {
@@ -93,6 +104,8 @@ export function useTaxiMap({
           ? [pickup.lng, pickup.lat]
           : [13.405, 52.52]; // Berlin fallback
         const startZoom = hasValidPickup ? 14 : 11;
+        initialisedWithGpsRef.current = hasValidPickup;
+        autoFlewToPickupRef.current = hasValidPickup;
 
         const map = new mb.Map({
           container: mapContainerRef.current,
@@ -113,8 +126,22 @@ export function useTaxiMap({
         const resizeSoon = () => {
           try { map.resize(); } catch {}
         };
-        map.on("load", resizeSoon);
-        map.on("style.load", resizeSoon);
+        // After style/load, recenter on the LATEST pickup if it's now valid.
+        // Closes the GPS-arrives-after-init race condition.
+        const recenterOnLatestPickup = () => {
+          try {
+            const p = latestPickupRef.current;
+            if (!p) return;
+            if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
+            if (p.lat === 0 && p.lng === 0) return;
+            // If we already initialised with a real GPS fix, nothing to do.
+            if (initialisedWithGpsRef.current) return;
+            map.jumpTo({ center: [p.lng, p.lat], zoom: 14 });
+            autoFlewToPickupRef.current = true;
+          } catch {}
+        };
+        map.on("load", () => { resizeSoon(); recenterOnLatestPickup(); });
+        map.on("style.load", () => { resizeSoon(); recenterOnLatestPickup(); });
         setTimeout(resizeSoon, 250);
         setTimeout(resizeSoon, 800);
         // Surface Mapbox-internal errors (invalid token, tile load failures)
@@ -200,6 +227,21 @@ export function useTaxiMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !_mapboxgl) return;
+
+    // Auto recenter on first valid pickup arrival (when map started with Berlin-Fallback)
+    // Uses both jumpTo (instant, works even before style-load) and flyTo (smooth, animated)
+    if (!autoFlewToPickupRef.current && pickup.lat && pickup.lng
+        && pickup.lat !== 0 && pickup.lng !== 0) {
+      autoFlewToPickupRef.current = true;
+      try {
+        // Instant jump first to ensure visible movement even if style not yet loaded
+        map.jumpTo({ center: [pickup.lng, pickup.lat], zoom: 14 });
+        // Then animate for polish (no-op if style not ready, but jumpTo already worked)
+        setTimeout(() => {
+          try { map.flyTo({ center: [pickup.lng, pickup.lat], zoom: 14, duration: 500, essential: true }); } catch {}
+        }, 100);
+      } catch {}
+    }
 
     if (pickupMarkerRef.current && pickup.lat && pickup.lng) {
       pickupMarkerRef.current.setLngLat([pickup.lng, pickup.lat]);

@@ -1513,6 +1513,14 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
         raise HTTPException(400, "Koordinaten fehlen")
     
     distance_km = haversine_distance(p_lat, p_lng, d_lat, d_lng)
+    # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
+    MAX_RIDE_KM = 250
+    if distance_km > MAX_RIDE_KM:
+        raise HTTPException(
+            400,
+            f"Diese Strecke ({distance_km:.0f} km) übersteigt unsere maximale Fahrtdistanz von {MAX_RIDE_KM} km. "
+            "Bitte buche stattdessen einen Langstreckentransfer.",
+        )
     duration_minutes = max(5, (distance_km / 30) * 60)
     
     # Detect pricing region from pickup coordinates
@@ -1656,6 +1664,13 @@ async def book_ride(req: FlexBookRequest, request: Request):
     distance_km = 0.0
     for i in range(len(route_pts) - 1):
         distance_km += haversine_distance(*route_pts[i], *route_pts[i + 1])
+    # Sanity check: City-Taxi sollte nicht Cross-Country buchen können.
+    MAX_RIDE_KM = 250
+    if distance_km > MAX_RIDE_KM:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Diese Strecke ({distance_km:.0f} km) übersteigt die maximale Fahrtdistanz von {MAX_RIDE_KM} km. Bitte buche einen Langstreckentransfer.",
+        )
     duration_minutes = max(5, (distance_km / 30) * 60)
     region = detect_region(p_lat, p_lng)
     fare_estimate = calculate_fare(distance_km, duration_minutes, car_type, region)

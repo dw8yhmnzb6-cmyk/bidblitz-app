@@ -14,7 +14,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter123 — Taxi-Konkurrenz P0+P1+P2+P3 Mega-Sweep) ✅
+### 16.05.2026 (iter124 — Phase A: Mobile-Bug-Sweep) ✅
+- 🔴 **P0 FIX Map-Falsche-Position**: `useTaxiState.js` initialisierte `pickup` mit Berlin-Default `{lat:52.52, lng:13.405}` → mein iter119 `hasValidPickup`-Check (lat!==0) griff nicht für User in anderen Ländern (Pristina, Wien etc) → Map blieb auf Berlin obwohl GPS in Pristina war. Fix: initial state auf `{lat:0, lng:0}`, GPS überschreibt, Berlin nur als Map-Init-Fallback wenn GPS noch nicht da. Plus `latestPickupRef` für race-safe Re-Center via `map.on('load')` + `jumpTo` (instant). Verifiziert mit Pristina-GPS (42.66, 21.16) → MEDRESA/TOPHANE-Tiles, und Berlin-GPS → Spandauer-Vorstadt-Tiles (keine Regression).
+- 🟢 **P0 FIX Stornierte-Card** (`components/taxi/TaxiHistoryView.jsx`): isCancelled → Preis durchgestrichen grau + „nicht berechnet" Label. Vermeidet UX-Inkonsistenz „€811 trotz STORNIERT".
+- 🟢 **P1 FIX Distanz-Sanity** (`routes/taxi.py` Lines ~1515 + ~1668): `/estimate` und `/book` lehnen Strecken >250km mit HTTP 400 + erklärendem Detail ab. Verifiziert: Pristina→Berlin (1239km) → 400, Berlin→Berlin-Ost (10km) → 200.
+
+
 - 🟢 **P0-1 Pre-Booking + Recurring + Watchdog** (`routes/taxi_scheduled.py`): POST/GET/DELETE /scheduled, /recurring; Watchdog _loop alle 60s tickt _materialize_recurring + _dispatch_due (mit soft_cutoff filter); Push-Notif via OneSignal beim Ready-to-Book Status.
 - 🟢 **P0-2 B2B Corporate Accounts** (`routes/taxi_corporate.py`): Account-CRUD, Invite-Token (7T-Gültigkeit), Accept-Endpoint, Monthly-Summary mit by_cost_center + by_user Aggregaten.
 - 🟢 **P0-3 PDF-Rechnung 7% USt-konform** (`utils/taxi_receipt_pdf.py` + neuer Endpoint `/api/taxi/rides/{id}/receipt.pdf`): reportlab A4, Firmen-Header, Brutto/Netto/USt-Aufstellung, Trinkgeld USt-frei separat, Corporate-Adresse + VAT-ID falls vorhanden. 2335-Byte-PDF Smoke-Test bestätigt.

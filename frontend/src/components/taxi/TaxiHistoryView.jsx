@@ -65,6 +65,7 @@ export default function TaxiHistoryView({ rideHistory, onRefresh, onReview }) {
                 })
               : '—';
             const fare = ride.final_fare || ride.fare_estimate || 0;
+            const isCancelled = ride.status === 'cancelled';
             const rideKey = ride.ride_id || ride.id || `ride-${idx}-${ride.created_at || ''}`;
             return (
               <div
@@ -109,7 +110,14 @@ export default function TaxiHistoryView({ rideHistory, onRefresh, onReview }) {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-bold text-cyan-400">€{fare.toFixed(2)}</span>
+                    {isCancelled ? (
+                      <div className="text-right">
+                        <span className="text-sm font-semibold text-gray-500 line-through tabular-nums">€{fare.toFixed(2)}</span>
+                        <p className="text-[10px] text-red-300/80">nicht berechnet</p>
+                      </div>
+                    ) : (
+                      <span className="text-base font-bold text-cyan-400 tabular-nums">€{fare.toFixed(2)}</span>
+                    )}
                     {ride.status === 'completed' && (
                       <button
                         data-testid={`taxi-review-btn-${rideKey}`}
