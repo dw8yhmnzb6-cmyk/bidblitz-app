@@ -178,8 +178,8 @@ export default function TaxiBookingSheet({
         />
       )}
 
-      {/* Active promos banner — horizontal scroll, 1-tap apply */}
-      {!dropoff?.address && onApplyPromoCode && (
+      {/* Active promos banner — nur wenn Ziel gewählt, sonst zu unruhig */}
+      {dropoff?.address && onApplyPromoCode && (
         <TaxiPromoBanner activePromoCode={promo?.code} onApply={onApplyPromoCode} />
       )}
 
@@ -217,7 +217,29 @@ export default function TaxiBookingSheet({
         </div>
       )}
 
-      {/* Address rows */}
+      {/* Welcome-State: 1 großer „Wohin?"-Search-Button statt 2 schmaler Address-Rows */}
+      {!dropoff?.address ? (
+        <button
+          onClick={onTapDropoff}
+          data-testid="taxi-dropoff-cta"
+          className="w-full flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 hover:from-cyan-500/25 hover:to-cyan-500/10 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl text-left active:scale-[0.98] transition-all"
+        >
+          <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-cyan-300 uppercase tracking-wider font-bold mb-0.5">Ziel</p>
+            <p className="text-base font-semibold text-white">Wohin möchtest du?</p>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" className="shrink-0">
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        </button>
+      ) : (
+      /* Address rows */
       <div className="space-y-2">
         <AddressRow
           variant="pickup"
@@ -255,8 +277,8 @@ export default function TaxiBookingSheet({
           testId="taxi-dropoff-row"
         />
 
-        {/* Add waypoint */}
-        {(waypoints?.length || 0) < 3 && (
+        {/* Add waypoint — erst wenn Ziel gewählt, sonst überfordert */}
+        {dropoff?.address && (waypoints?.length || 0) < 3 && (
           <button
             onClick={onAddWaypoint}
             className="w-full flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-dashed border-white/15 rounded-xl text-xs text-gray-400 hover:text-white transition-colors"
@@ -269,11 +291,15 @@ export default function TaxiBookingSheet({
           </button>
         )}
       </div>
+      )}
 
-      <TaxiSavedPlacesRow
-        savedPlaces={savedPlaces}
-        onPick={(p) => onPickSavedPlace(p)}
-      />
+      {/* Gespeicherte Orte nur zeigen wenn Ziel noch nicht gewählt */}
+      {!dropoff?.address && savedPlaces?.length > 0 && (
+        <TaxiSavedPlacesRow
+          savedPlaces={savedPlaces}
+          onPick={(p) => onPickSavedPlace(p)}
+        />
+      )}
 
       {/* Vehicle picker — auto-shown when estimates available, BEFORE options */}
       {estimates?.length > 0 && (
