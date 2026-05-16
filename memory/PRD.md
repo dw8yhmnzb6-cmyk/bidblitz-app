@@ -14,6 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 16.05.2026 (iter117 — Festpreis-Garantie Card + Promo Admin-Manager)
+- 🟢 **Festpreis-Garantie Card** (`TaxiBookingSheet.jsx`): Direkt vor dem "Taxi bestellen"-Button rendert eine prominente emerald/cyan-gradient Card mit Schild-Icon ("FESTPREIS-GARANTIE / Keine Überraschung, kein Stau-Zuschlag"), großem fettem Preis (€X.XX) und ETA. Wenn Promo aktiv: zeigt Original durchgestrichen + Discount-Badge.
+- 🟢 **Taxi Promo Admin Backend** (`/app/backend/routes/taxi_admin_promos.py`): 5 Endpoints (GET list mit Aggregat-Statistik, POST create, PATCH update, DELETE archive, GET stats). DB-Codes ergänzen BUILTIN-Codes ohne sie zu überschreiben. Stats-Endpoint funktioniert auch für BUILTIN-Codes (Read-Only).
+- 🟢 **TaxiPromoManagerPage** (`/app/frontend/src/pages/TaxiPromoManagerPage.jsx`): Premium Admin-UI mit Code-Liste (System-Badge für BUILTIN, Aktiv/Archiviert für DB-Codes), Inline Redemption-Stats (Einlösungen + Discount-Volumen), Editor-Sheet (Create/Edit) mit 4 Rabatt-Typen (percent/fixed/free_ride), Max-Off-Cap, Per-User-Limit, Expiry-Date, Aktiv-Toggle. Stats-View zeigt Aggregate + letzte 20 Einlösungen.
+- 🟢 **Route /merchant/taxi/promos** in App.js verkabelt (Admin/Merchant-only, BottomNav ausgeblendet).
+- ✅ Backend-Smoke iter117: Komplettes CRUD-Cycle grün (Create SOMMER25 → Update → Stats für BUILTIN NEUKUNDE10 → DB-Code wird in Estimate korrekt angewendet → Archive). Frontend Smoke: alle 5 Promo-Cards rendern mit korrekten Status-Badges.
+
+
 ### 15.05.2026 (iter116 — Vehicle-Picker Sichtbarkeit + Promo-Code MVP)
 - 🟢 **Vehicle-Carousel direkt unter Adressen**: Auto-Fetch von /estimate triggered 400ms nach gültigem Pickup+Dropoff (Uber/Bolt-Parität). Vehicle-Section (`taxi-vehicle-section`) erscheint VOR Options-Button und Promo-Field statt versteckt hinter Klick. Picker mit aktiver cyan-Border zeigt fare + Range.
 - 🟢 **Promo-Code Backend Engine** (`/app/backend/utils/taxi_promo.py`): 4 BUILTIN-Codes (NEUKUNDE10, BIDBLITZ5, FREUNDE, PROMO2026) + optionale DB-Erweiterung via `taxi_promo_codes` Collection. Validate-Endpoint `GET /api/taxi/promo/validate?code=X` mit Reason-Codes (not_found, expired, already_used, invalid_format). Apply-Logic: percent/fixed/free_ride mit max_off Cap. Redemption-Tracking via `taxi_promo_redemptions` (max_uses_per_user enforced).

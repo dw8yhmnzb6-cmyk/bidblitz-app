@@ -336,15 +336,61 @@ export default function TaxiBookingSheet({
 
       {/* Book CTA */}
       {estimates?.length > 0 ? (
-        <motion.button
-          whileTap={{ scale: 0.98 }}
-          onClick={onBook}
-          disabled={loading}
-          className="w-full py-4 bg-cyan-500 rounded-2xl font-bold text-black text-base disabled:opacity-50 shadow-[0_4px_24px_rgba(0,194,255,0.35)]"
-          data-testid="taxi-book-btn"
-        >
-          {loading ? "Wird gebucht..." : scheduledLabel ? `Bestellen für ${scheduledLabel}` : "Taxi bestellen"}
-        </motion.button>
+        <>
+          {/* Festpreis-Garantie Card — Trust Killer */}
+          {(() => {
+            const sel = estimates.find((e) => e.vehicle_type === selectedVehicle) || estimates[0];
+            const final = sel?.fare ?? 0;
+            const orig = sel?.fare_original;
+            const discount = sel?.fare_discount;
+            const eta = sel?.eta_minutes;
+            return (
+              <div
+                className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-cyan-500/5 to-emerald-500/10 border border-emerald-400/30 p-4"
+                data-testid="taxi-fixed-fare-card"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-300">Festpreis-Garantie</p>
+                      <p className="text-xs text-white/80 truncate">Keine Überraschung, kein Stau-Zuschlag</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-2xl font-extrabold text-white tabular-nums" data-testid="taxi-fixed-fare-amount">
+                      €{final.toFixed(2)}
+                    </p>
+                    {discount > 0 && orig && (
+                      <p className="text-[10px] text-emerald-300 font-semibold">
+                        <span className="line-through text-gray-500 mr-1">€{orig.toFixed(2)}</span>
+                        −€{discount.toFixed(2)}
+                      </p>
+                    )}
+                    {eta && (
+                      <p className="text-[10px] text-cyan-300/80 mt-0.5">ca. {eta} Min</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={onBook}
+            disabled={loading}
+            className="w-full py-4 bg-cyan-500 rounded-2xl font-bold text-black text-base disabled:opacity-50 shadow-[0_4px_24px_rgba(0,194,255,0.35)]"
+            data-testid="taxi-book-btn"
+          >
+            {loading ? "Wird gebucht..." : scheduledLabel ? `Bestellen für ${scheduledLabel}` : "Taxi bestellen"}
+          </motion.button>
+        </>
       ) : (
         <motion.button
           whileTap={{ scale: 0.98 }}
