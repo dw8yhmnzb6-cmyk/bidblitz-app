@@ -1092,6 +1092,9 @@ function AppContent() {
   const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
   const showBottomNav = !isCheckout && !isQrOrder && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
+  const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
+  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
+
   return (
     <div className="app-container" data-testid="app-container">
       <Toaster
@@ -1119,6 +1122,7 @@ function AppContent() {
               </div>
             </div>
           }>
+            {showBackToHome && <BackToHomeBar onHome={() => handleNavigate("/")} />}
             {renderPage()}
           </Suspense>
         </motion.div>
