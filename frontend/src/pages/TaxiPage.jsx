@@ -104,6 +104,7 @@ export default function TaxiPage({ onNavigate }) {
   // Live driver availability (count near pickup, filtered by options)
   const [nearbyCount, setNearbyCount] = useState(null); // null = unknown, 0+ = known
   const [nearbyDrivers, setNearbyDrivers] = useState([]); // for live pulse markers on map
+  const [promo, setPromo] = useState(null); // {code, label, discount}
 
   // Favorite routes (top pickup→dropoff pairs from ride history)
   const [favoriteRoutes, setFavoriteRoutes] = useState([]);
@@ -410,10 +411,14 @@ export default function TaxiPage({ onNavigate }) {
       return;
     }
     setLoading(true); setError('');
-    const result = await api.estimateRide({ pickup, dropoff });
+    const result = await api.estimateRide({ pickup, dropoff, promoCode: promo?.code });
     if (result.ok) {
       setEstimates(result.estimates);
       setSurge(result.surge);
+      if (result.promo && !result.promo.valid && promo) {
+        // server says applied promo no longer valid → clear
+        setPromo(null);
+      }
     } else {
       setError(result.error);
     }
@@ -421,7 +426,7 @@ export default function TaxiPage({ onNavigate }) {
   };
 
   // Auto-fetch estimates when both pickup + dropoff are valid (Uber/Bolt parity).
-  // Debounced to avoid hammering API on every keystroke.
+  // Also re-trigger when promo changes.
   useEffect(() => {
     if (!moduleEnabled || !taxiType) return;
     if (!pickup?.lat || !dropoff?.lat) return;
@@ -429,7 +434,7 @@ export default function TaxiPage({ onNavigate }) {
     const t = setTimeout(() => { getEstimates(); }, 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleEnabled, taxiType, pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
+  }, [moduleEnabled, taxiType, pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, promo?.code]);
 
   const bookRide = async () => {
     const estimate = estimates.find(e => e.vehicle_type === selectedVehicle);
@@ -443,6 +448,7 @@ export default function TaxiPage({ onNavigate }) {
       pickup, dropoff, vehicleType: selectedVehicle,
       options: orderOptions,
       stops: waypoints,
+      promoCode: promo?.code || null,
     });
     if (result.ok) {
       setActiveRide(result.ride);
@@ -756,6 +762,8 @@ export default function TaxiPage({ onNavigate }) {
                   setPickup({ lat: r.pickup.lat, lng: r.pickup.lng, address: r.pickup.address });
                   setDropoff({ lat: r.dropoff.lat, lng: r.dropoff.lng, address: r.dropoff.address });
                 }}
+                promo={promo}
+                onPromoChange={setPromo}
               />
             )}
           </TaxiBottomSheet>

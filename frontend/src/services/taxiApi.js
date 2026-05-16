@@ -165,13 +165,14 @@ export async function fetchRideHistory() {
   return data?.rides || [];
 }
 
-export async function estimateRide({ pickup, dropoff }) {
+export async function estimateRide({ pickup, dropoff, promoCode }) {
   const body = {
     pickup_lat: pickup.lat,
     pickup_lng: pickup.lng,
     dropoff_lat: dropoff.lat,
     dropoff_lng: dropoff.lng,
   };
+  if (promoCode) body.promo_code = promoCode;
   const res = await fetch(`${API}/api/taxi/estimate`, {
     ...credJson,
     method: "POST",
@@ -179,12 +180,17 @@ export async function estimateRide({ pickup, dropoff }) {
   });
   const data = await readJson(res);
   return res.ok
-    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 } }
+    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null }
     : { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
 }
 
+export async function validatePromoCode(code) {
+  const res = await fetch(`${API}/api/taxi/promo/validate?code=${encodeURIComponent(code)}`, credJson);
+  return await readJson(res);
+}
+
 export async function bookRideApi({
-  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [],
+  pickup, dropoff, vehicleType, paymentMethod = "wallet", options = {}, stops = [], promoCode = null,
 }) {
   const body = {
     pickup_address: pickup.address || "",
@@ -206,6 +212,7 @@ export async function bookRideApi({
     assistance: !!options.assistance,
     notes: options.notes || "",
     scheduled_at: options.scheduledAt || null,
+    promo_code: promoCode || null,
   };
   const res = await fetch(`${API}/api/taxi/book`, {
     ...credJson,

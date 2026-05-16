@@ -108,6 +108,7 @@ class EstimateRequest(BaseModel):
     pickup_lng: float = Field(..., ge=-180, le=180)
     dropoff_lat: float = Field(..., ge=-90, le=90)
     dropoff_lng: float = Field(..., ge=-180, le=180)
+    promo_code: Optional[str] = Field(None, max_length=32)
     
     def get_coords(self):
         """Helper method for backward compatibility with taxi.py route"""
@@ -165,6 +166,7 @@ class FlexBookRequest(BaseModel):
     luggage: Optional[str] = Field(None, max_length=20)  # "none" | "small" | "much" | "much_combi"
     assistance: bool = False
     scheduled_at: Optional[str] = None  # ISO datetime; None => "Jetzt"
+    promo_code: Optional[str] = Field(None, max_length=32)
     
     def get_coords(self):
         """Helper method for backward compatibility with taxi.py route"""

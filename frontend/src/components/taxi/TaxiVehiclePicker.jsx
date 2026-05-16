@@ -74,7 +74,13 @@ export default function TaxiVehiclePicker({
                   <p className={`text-lg font-bold ${isActive ? "text-cyan-400" : "text-gray-300"}`}>
                     €{est.fare.toFixed(2)}
                   </p>
-                  {est.fare_range && (
+                  {est.fare_discount > 0 && est.fare_original && (
+                    <p className="text-[10px] text-emerald-400 font-semibold">
+                      <span className="line-through text-gray-500 mr-1">€{est.fare_original.toFixed(2)}</span>
+                      −€{est.fare_discount.toFixed(2)}
+                    </p>
+                  )}
+                  {!est.fare_discount && est.fare_range && (
                     <p className="text-[10px] text-gray-600">
                       €{est.fare_range.min.toFixed(2)}–€{est.fare_range.max.toFixed(2)}
                     </p>

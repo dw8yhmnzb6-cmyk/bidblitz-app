@@ -1497,7 +1497,7 @@ async def get_nearby_drivers(
 # CUSTOMER: BOOK RIDE
 # ══════════════════════════════════════════════════════════════════════════════
 @router.post("/estimate")
-async def get_ride_estimate(req: EstimateRequest):
+async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     """Get price estimates for all vehicle types."""
     
     if not TAXI_MODULE_ENABLED:
@@ -1517,7 +1517,23 @@ async def get_ride_estimate(req: EstimateRequest):
     
     # Detect pricing region from pickup coordinates
     region = detect_region(p_lat, p_lng)
-    
+
+    # Optional promo validation
+    promo_info = None
+    if req.promo_code:
+        try:
+            from utils.taxi_promo import validate_promo
+            user = None
+            if request is not None:
+                try:
+                    user = await get_current_user(request)
+                except Exception:
+                    user = None
+            uid = str(user.get("_id") or user.get("id")) if user else None
+            promo_info = await validate_promo(req.promo_code, uid)
+        except Exception:
+            promo_info = {"valid": False, "code": req.promo_code, "reason": "internal_error"}
+
     VEHICLE_INFO = {
         "standard": {"name": "Standard", "description": "Komfortabel & günstig", "capacity": 4},
         "premium": {"name": "Premium", "description": "Luxus & Stil", "capacity": 4},
@@ -1528,7 +1544,7 @@ async def get_ride_estimate(req: EstimateRequest):
     for vtype in ["standard", "premium", "van"]:
         fare = calculate_fare(distance_km, duration_minutes, vtype, region)
         info = VEHICLE_INFO[vtype]
-        estimates.append({
+        item = {
             "vehicle_type": vtype,
             "name": info["name"],
             "description": info["description"],
@@ -1539,7 +1555,15 @@ async def get_ride_estimate(req: EstimateRequest):
             "distance_km": round(distance_km, 2),
             "duration_minutes": round(duration_minutes),
             "fare_breakdown": fare,
-        })
+        }
+        # Apply promo on top of computed fare (per-vehicle so user sees the impact)
+        if promo_info and promo_info.get("valid"):
+            from utils.taxi_promo import apply_discount
+            disc = apply_discount(fare["total"], promo_info)
+            item["fare_original"] = disc["original"]
+            item["fare_discount"] = disc["discount"]
+            item["fare"] = disc["final"]
+        estimates.append(item)
     
     return {
         "module_enabled": True,
@@ -1547,7 +1571,21 @@ async def get_ride_estimate(req: EstimateRequest):
         "surge": {"active": False, "multiplier": 1.0},
         "region": region,
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
+        "promo": promo_info,
     }
+
+
+@router.get("/promo/validate")
+async def validate_promo_endpoint(code: str, request: Request):
+    """Validate a promo code for the current user (returns label, discount config)."""
+    from utils.taxi_promo import validate_promo
+    user = None
+    try:
+        user = await get_current_user(request)
+    except Exception:
+        user = None
+    uid = str(user.get("_id") or user.get("id")) if user else None
+    return await validate_promo(code, uid)
 
 
 @router.post("/book")
@@ -1590,6 +1628,26 @@ async def book_ride(req: FlexBookRequest, request: Request):
     duration_minutes = max(5, (distance_km / 30) * 60)
     region = detect_region(p_lat, p_lng)
     fare_estimate = calculate_fare(distance_km, duration_minutes, car_type, region)
+    fare_total = fare_estimate["total"]
+
+    # Apply promo if provided & valid
+    promo_applied = None
+    if req.promo_code:
+        try:
+            from utils.taxi_promo import validate_promo, apply_discount
+            promo_info = await validate_promo(req.promo_code, user_id)
+            if promo_info.get("valid"):
+                disc = apply_discount(fare_total, promo_info)
+                fare_total = disc["final"]
+                promo_applied = {
+                    "code": disc["code"],
+                    "label": disc["label"],
+                    "original": disc["original"],
+                    "discount": disc["discount"],
+                    "final": disc["final"],
+                }
+        except Exception:
+            promo_applied = None
     
     now = datetime.now(timezone.utc)
     ride_id = secrets.token_hex(8)
@@ -1617,7 +1675,9 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "car_type": car_type,
         "distance_km_estimate": round(distance_km, 2),
         "duration_estimate_minutes": round(duration_minutes),
-        "fare_estimate": fare_estimate["total"],
+        "fare_estimate": fare_total,
+        "fare_estimate_original": fare_estimate["total"],
+        "promo": promo_applied,
         "status": RideStatus.REQUESTED.value,
         "options": {
             "language": req.language or "de",
@@ -1633,6 +1693,14 @@ async def book_ride(req: FlexBookRequest, request: Request):
     
     await db.taxi_rides.insert_one(ride)
     ride.pop("_id", None)
+
+    # Promo redemption tracking (idempotent per ride)
+    if promo_applied:
+        try:
+            from utils.taxi_promo import record_redemption
+            await record_redemption(user_id, promo_applied["code"], ride_id, promo_applied["discount"])
+        except Exception as e:
+            logger.warning(f"Failed to record promo redemption: {e}")
     
     # Track recent addresses (pickup + dropoff + any stops) so the search-sheet
     # can show "Letzte Adressen" on the next booking.

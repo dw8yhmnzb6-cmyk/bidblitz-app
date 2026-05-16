@@ -7,6 +7,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import TaxiVehiclePicker from "./TaxiVehiclePicker";
 import TaxiSavedPlacesRow from "./TaxiSavedPlacesRow";
+import TaxiPromoCodeField from "./TaxiPromoCodeField";
 
 const greet = () => {
   const h = new Date().getHours();
@@ -110,6 +111,8 @@ export default function TaxiBookingSheet({
   favoriteRoutes, onPickFavoriteRoute,
   // Personalisation
   userName,
+  // Promo code (P2)
+  promo, onPromoChange,
 }) {
   return (
     <div className="space-y-4 pt-1">
@@ -248,6 +251,22 @@ export default function TaxiBookingSheet({
         onPick={(p) => onPickSavedPlace(p)}
       />
 
+      {/* Vehicle picker — auto-shown when estimates available, BEFORE options */}
+      {estimates?.length > 0 && (
+        <div className="space-y-3" data-testid="taxi-vehicle-section">
+          <TaxiVehiclePicker
+            estimates={estimates}
+            selectedVehicle={selectedVehicle}
+            onSelect={setSelectedVehicle}
+          />
+        </div>
+      )}
+
+      {/* Promo code */}
+      {onPromoChange && (
+        <TaxiPromoCodeField value={promo} onChange={onPromoChange} />
+      )}
+
       {/* Options + Schedule */}
       <OptionsButton summary={optionsSummary} onClick={onOpenOptions} />
 
@@ -315,24 +334,17 @@ export default function TaxiBookingSheet({
         </div>
       )}
 
-      {/* Estimates / Book CTA */}
+      {/* Book CTA */}
       {estimates?.length > 0 ? (
-        <div className="space-y-3">
-          <TaxiVehiclePicker
-            estimates={estimates}
-            selectedVehicle={selectedVehicle}
-            onSelect={setSelectedVehicle}
-          />
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={onBook}
-            disabled={loading}
-            className="w-full py-4 bg-cyan-500 rounded-2xl font-bold text-black text-base disabled:opacity-50 shadow-[0_4px_24px_rgba(0,194,255,0.35)]"
-            data-testid="taxi-book-btn"
-          >
-            {loading ? "Wird gebucht..." : scheduledLabel ? `Bestellen für ${scheduledLabel}` : "Taxi bestellen"}
-          </motion.button>
-        </div>
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={onBook}
+          disabled={loading}
+          className="w-full py-4 bg-cyan-500 rounded-2xl font-bold text-black text-base disabled:opacity-50 shadow-[0_4px_24px_rgba(0,194,255,0.35)]"
+          data-testid="taxi-book-btn"
+        >
+          {loading ? "Wird gebucht..." : scheduledLabel ? `Bestellen für ${scheduledLabel}` : "Taxi bestellen"}
+        </motion.button>
       ) : (
         <motion.button
           whileTap={{ scale: 0.98 }}
