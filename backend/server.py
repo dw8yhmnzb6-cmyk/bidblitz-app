@@ -132,6 +132,14 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Staff watchdog start failed: {e}")
 
+    # Taxi Pre-Booking / Recurring Watchdog (iter123)
+    try:
+        from routes.taxi_scheduled import start_taxi_scheduled_loop
+        start_taxi_scheduled_loop()
+        logger.info("✓ Taxi scheduled/recurring watchdog started")
+    except Exception as e:
+        logger.warning(f"Taxi scheduled watchdog start failed: {e}")
+
     # Optional: Seed demo data if DEMO_SEED=true
     import os
     if os.environ.get("DEMO_SEED", "").lower() == "true":

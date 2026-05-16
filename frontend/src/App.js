@@ -108,6 +108,7 @@ const StaffSystemCheckPage = lazy(() => import("./pages/StaffSystemCheckPage"));
 const ManagerGeofencePage = lazy(() => import("./staff/ManagerGeofencePage"));
 const StaffChatPage = lazy(() => import("./staff/StaffChat"));
 const TaxiPromoManagerPage = lazy(() => import("./pages/TaxiPromoManagerPage"));
+const TaxiProSuitePage = lazy(() => import("./pages/TaxiProSuitePage"));
 const ManagerStaffLiveMapPage = lazy(() => import("./pages/ManagerStaffLiveMapPage"));
 const POSPage = lazy(() => import("./pages/POSPage"));
 const KDSPage = lazy(() => import("./pages/KDSPage"));
@@ -617,6 +618,10 @@ function AppContent() {
         return user.role === "merchant" || user.role === "admin"
           ? <TaxiPromoManagerPage onBack={() => handleNavigate("/merchant/dashboard")} />
           : <HomePage {...homeProps} />;
+      case "/taxi/pro":
+        return user
+          ? <TaxiProSuitePage onBack={() => handleNavigate("/taxi")} />
+          : <HomePage {...homeProps} />;
       case "/merchant/staff/live-map":
         return user.role === "merchant" || user.role === "admin"
           ? <ManagerStaffLiveMapPage onBack={() => handleNavigate("/merchant/staff")} />
@@ -1084,7 +1089,7 @@ function AppContent() {
   const isCheckout = currentPath.startsWith("/pay/checkout/");
   const isQrOrder = currentPath.startsWith("/order/qr/");
   const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
-  const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map";
+  const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
   const showBottomNav = !isCheckout && !isQrOrder && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
 
   return (

@@ -100,6 +100,11 @@ def register_all_routers(app):
         ("routes.staff_shift_watchdog", "router"),  # Push-Reminder Watchdog (iter121)
         ("routes.staff_heatmap", "router"),  # Shift-Heatmap (iter122)
         ("routes.taxi_admin_promos", "router"),  # Taxi Promo Code Admin/Reporting
+        ("routes.taxi_scheduled", "router"),  # Pre-Booking + Recurring (iter123)
+        ("routes.taxi_corporate", "router"),  # B2B Corporate Accounts (iter123)
+        ("routes.taxi_driver_pro", "router"),  # Driver Heatmap/Documents/Earnings (iter123)
+        ("routes.taxi_lostfound", "router"),  # Lost & Found (iter123)
+        ("routes.taxi_tariffs", "router"),  # Multi-Tariff + Airport Queue + Public Demand (iter123)
         ("routes.staff_multi_merchant", "router"),
         ("routes.staff_subscription", "router"),
         ("routes.staff_settings", "router"),

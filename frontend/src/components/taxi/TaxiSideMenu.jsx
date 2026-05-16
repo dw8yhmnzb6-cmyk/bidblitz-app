@@ -137,6 +137,17 @@ export default function TaxiSideMenu({
               />
               <Item
                 icon={
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                }
+                label="BidBlitz Pro"
+                onClick={() => go('/taxi/pro')}
+                testId="sm-pro-suite"
+              />
+              <Item
+                icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
                     <path d="M3 9h18M9 21V9" />

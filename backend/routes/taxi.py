@@ -2918,6 +2918,41 @@ async def trigger_sos(req: SosRequest, request: Request):
 # TRIP RECEIPT  (P0 — Post-Ride Receipt)
 # ══════════════════════════════════════════════════════════════════════════════
 
+@router.get("/rides/{ride_id}/receipt.pdf")
+async def get_ride_receipt_pdf(ride_id: str, request: Request):
+    """PDF-Quittung für eine abgeschlossene Fahrt (DE 7% USt-konform)."""
+    from fastapi.responses import Response
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    if ride.get("customer_id") != user_id and ride.get("driver_id") != user_id and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nicht berechtigt")
+    if ride.get("status") not in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="Fahrt noch nicht abgeschlossen")
+    # Normalisiere ride dict für PDF
+    pdf_ride = {
+        **ride,
+        "fare": ride.get("final_fare") or ride.get("estimated_fare") or 0,
+        "distance_km": ride.get("distance_km", 0),
+        "duration_min": ride.get("duration_minutes", 0),
+        "vehicle_type": ride.get("car_type", "standard"),
+    }
+    corporate = None
+    if ride.get("corporate_account_id"):
+        corporate = await db.taxi_corporate_accounts.find_one(
+            {"id": ride["corporate_account_id"]}, {"_id": 0},
+        )
+    try:
+        from utils.taxi_receipt_pdf import generate_receipt_pdf
+        pdf = generate_receipt_pdf(pdf_ride, user=user, corporate_account=corporate)
+    except Exception as e:
+        raise HTTPException(500, f"PDF-Generierung fehlgeschlagen: {e}")
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="quittung-{ride_id[:8]}.pdf"'})
+
+
 @router.get("/rides/{ride_id}/receipt")
 async def get_ride_receipt(ride_id: str, request: Request):
     """Itemised receipt for a completed ride."""
