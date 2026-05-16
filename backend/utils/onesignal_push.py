@@ -30,6 +30,7 @@ async def send_push(
     *,
     external_user_ids: Optional[List[str]] = None,
     player_ids: Optional[List[str]] = None,
+    included_segments: Optional[List[str]] = None,
     data: Optional[Dict] = None,
     url: Optional[str] = None,
 ) -> Dict:
@@ -39,7 +40,7 @@ async def send_push(
     """
     if not is_configured():
         return {"sent": False, "reason": "not_configured"}
-    if not (external_user_ids or player_ids):
+    if not (external_user_ids or player_ids or included_segments):
         return {"sent": False, "reason": "no_recipient"}
 
     payload: Dict = {
@@ -51,6 +52,8 @@ async def send_push(
         payload["include_external_user_ids"] = external_user_ids
     if player_ids:
         payload["include_player_ids"] = player_ids
+    if included_segments:
+        payload["included_segments"] = included_segments
     if data:
         payload["data"] = data
     if url:
@@ -75,3 +78,9 @@ async def send_push(
 async def send_to_staff(staff_id: str, title: str, body: str, **kwargs) -> Dict:
     """Kürzel: an einen einzelnen Mitarbeiter (external_user_id = staff_id)."""
     return await send_push(title, body, external_user_ids=[staff_id], **kwargs)
+
+
+async def broadcast_to_segment(segment: str, title: str, body: str, **kwargs) -> Dict:
+    """Broadcast to a OneSignal user segment (e.g. 'Subscribed Users')."""
+    return await send_push(title, body, included_segments=[segment], **kwargs)
+

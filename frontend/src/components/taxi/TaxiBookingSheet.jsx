@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import TaxiVehiclePicker from "./TaxiVehiclePicker";
 import TaxiSavedPlacesRow from "./TaxiSavedPlacesRow";
 import TaxiPromoCodeField from "./TaxiPromoCodeField";
+import TaxiPromoBanner from "./TaxiPromoBanner";
 
 const greet = () => {
   const h = new Date().getHours();
@@ -113,6 +114,7 @@ export default function TaxiBookingSheet({
   userName,
   // Promo code (P2)
   promo, onPromoChange,
+  onApplyPromoCode,
 }) {
   return (
     <div className="space-y-4 pt-1">
@@ -157,6 +159,11 @@ export default function TaxiBookingSheet({
           </h2>
           <p className="text-sm text-gray-400 mt-0.5">Wohin möchtest du fahren?</p>
         </div>
+      )}
+
+      {/* Active promos banner — horizontal scroll, 1-tap apply */}
+      {!dropoff?.address && onApplyPromoCode && (
+        <TaxiPromoBanner activePromoCode={promo?.code} onApply={onApplyPromoCode} />
       )}
 
       {!dropoff?.address && favoriteRoutes?.length > 0 && (

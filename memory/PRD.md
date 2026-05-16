@@ -14,6 +14,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 16.05.2026 (iter118 — Promo-Banner + Push-Broadcast + Native-Build-Script)
+- 🟢 **Public `/api/taxi/promo/active` Endpoint**: Liefert alle aktiven Promos (BUILTIN + DB-Codes) ohne Auth-Pflicht für Banner-Rendering.
+- 🟢 **TaxiPromoBanner Frontend Komponente**: Horizontaler Scroll-Strip im BookingSheet zwischen Greeting und Adress-Inputs. Jede Card: Gift-Icon, Code-Badge, Discount-Pill (−10%/−€5/etc.), Beschreibung, 1-Tap Apply via `validatePromoCode`. Versteckt sobald Promo angewendet oder Dropoff gewählt.
+- 🟢 **OneSignal `broadcast_to_segment` Helper**: Sendet an OneSignal-Segment ("Subscribed Users") via `included_segments`. Erweitert send_push um diesen Mechanismus.
+- 🟢 **Auto-Push bei neuer Promo**: `POST /admin/promos` broadcastet bei `active:true` an alle Subscribed Users ("Neue Promo-Aktion 🎁 — {label} — Code: {code}"). Best-effort, fail-safe wenn OneSignal nicht konfiguriert.
+- 🟢 **Manager-Dashboard Quick-Action "Taxi-Promos"**: Tag-Icon (rot) im MerchantLiveOverview Quick-Actions Panel, navigiert nach `/merchant/taxi/promos`.
+- 🟢 **Native Build Pipeline Script** (`/app/scripts/build-native.sh`): 4 Stages mit farbigem Output: (1) Mapbox-Token Health-Check gegen Mapbox Style-API (fängt 401 sofort), (2) yarn build, (3) cap sync, (4) Plugin-Sanity-Check für die 5 erwarteten Capacitor Plugins. Args: `ios` | `android` | `both`. ENV: `SKIP_BUILD=1` für Sync-Only. Verifiziert: Token=200, alle 5 Plugins installiert.
+- ✅ Backend-Smoke iter118: `/promo/active` returnt 4 BUILTIN-Codes. Push-Broadcast-Code-Pfad lädt sauber (nicht konfiguriert → skipped). Frontend Smoke: Promo-Banner mit allen 4 Cards perfekt gerendert, Trust-Strip, Greeting, korrekte Reverse-Geocode-Adresse.
+
+
 ### 16.05.2026 (iter117 — Festpreis-Garantie Card + Promo Admin-Manager)
 - 🟢 **Festpreis-Garantie Card** (`TaxiBookingSheet.jsx`): Direkt vor dem "Taxi bestellen"-Button rendert eine prominente emerald/cyan-gradient Card mit Schild-Icon ("FESTPREIS-GARANTIE / Keine Überraschung, kein Stau-Zuschlag"), großem fettem Preis (€X.XX) und ETA. Wenn Promo aktiv: zeigt Original durchgestrichen + Discount-Badge.
 - 🟢 **Taxi Promo Admin Backend** (`/app/backend/routes/taxi_admin_promos.py`): 5 Endpoints (GET list mit Aggregat-Statistik, POST create, PATCH update, DELETE archive, GET stats). DB-Codes ergänzen BUILTIN-Codes ohne sie zu überschreiben. Stats-Endpoint funktioniert auch für BUILTIN-Codes (Read-Only).

@@ -1588,6 +1588,37 @@ async def validate_promo_endpoint(code: str, request: Request):
     return await validate_promo(code, uid)
 
 
+@router.get("/promo/active")
+async def list_active_promos():
+    """Public — returns currently usable promo codes (BUILTIN + active DB), without
+    expiry/usage validation (UI shows a banner)."""
+    from utils.taxi_promo import BUILTIN
+    items = []
+    for code, cfg in BUILTIN.items():
+        items.append({
+            "code": code,
+            "label": cfg.get("label") or f"Code {code}",
+            "type": cfg.get("type", "percent"),
+            "value": cfg.get("value", 0),
+            "max_off": cfg.get("max_off"),
+            "builtin": True,
+        })
+    try:
+        async for p in db.taxi_promo_codes.find({"active": True}, {"_id": 0}).sort("created_at", -1).limit(20):
+            items.append({
+                "code": p["code"],
+                "label": p.get("label"),
+                "type": p.get("type", "percent"),
+                "value": p.get("value", 0),
+                "max_off": p.get("max_off"),
+                "expires_at": p.get("expires_at"),
+                "builtin": False,
+            })
+    except Exception:
+        pass
+    return {"promos": items, "count": len(items)}
+
+
 @router.post("/book")
 async def book_ride(req: FlexBookRequest, request: Request):
     """Customer books a ride."""

@@ -103,6 +103,17 @@ async def create_promo(body: PromoCreate, request: Request):
     }
     await db.taxi_promo_codes.insert_one(doc.copy())
     doc.pop("_id", None)
+
+    # Best-effort broadcast push to taxi customers when active
+    if body.active:
+        try:
+            from utils.onesignal_push import broadcast_to_segment, is_configured
+            if is_configured():
+                preview = f"{doc['label']} — Code: {code}"
+                await broadcast_to_segment("Subscribed Users", "Neue Promo-Aktion 🎁", preview)
+        except Exception:
+            pass
+
     return {"success": True, "promo": doc}
 
 

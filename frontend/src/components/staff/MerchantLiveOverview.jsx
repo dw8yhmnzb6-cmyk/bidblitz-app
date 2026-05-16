@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import {
   Users, CheckCircle2, Coffee, AlertCircle, Calendar, Sparkles,
   Clock, Briefcase, ArrowUpRight, Activity, FilePlus, UserPlus, ChevronRight, TrendingUp, MapPin,
-  MessageCircle,
+  MessageCircle, Tag,
 } from "lucide-react";
 import LiveActivityTimeline from "../../staff/LiveActivityTimeline";
 
@@ -22,7 +22,7 @@ function actionColor(a) {
   return { clock_in: "#10B981", clock_out: "#EF4444", break_start: "#F59E0B", break_end: "#06B6D4" }[a] || "#888";
 }
 
-export default function MerchantLiveOverview({ summary = {}, members = [], todayEvents = [], onAddMember, onCreateShift, onOpenTimesheet, onOpenGeofence, onOpenChat }) {
+export default function MerchantLiveOverview({ summary = {}, members = [], todayEvents = [], onAddMember, onCreateShift, onOpenTimesheet, onOpenGeofence, onOpenChat, onOpenPromos }) {
   const [monthHours, setMonthHours] = useState(null);
   const [geoEvents, setGeoEvents] = useState([]);
   const [chatUnread, setChatUnread] = useState(0);
@@ -188,6 +188,15 @@ export default function MerchantLiveOverview({ summary = {}, members = [], today
                 badge={chatUnread}
                 onClick={onOpenChat}
                 testId="merchant-qa-open-chat"
+              />
+            )}
+            {onOpenPromos && (
+              <QuickAction
+                icon={Tag}
+                color="#EF4444"
+                label="Taxi-Promos"
+                onClick={onOpenPromos}
+                testId="merchant-qa-open-promos"
               />
             )}
           </div>

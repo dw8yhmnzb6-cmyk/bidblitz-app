@@ -764,6 +764,14 @@ export default function TaxiPage({ onNavigate }) {
                 }}
                 promo={promo}
                 onPromoChange={setPromo}
+                onApplyPromoCode={async (code) => {
+                  try {
+                    const r = await api.validatePromoCode(code);
+                    if (r?.valid) {
+                      setPromo({ code: r.code, label: r.label, discount: r.discount });
+                    }
+                  } catch {}
+                }}
               />
             )}
           </TaxiBottomSheet>
