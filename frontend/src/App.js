@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from "./store/ThemeContext";
 import AIChatWidget from "./components/AIChatWidget";
 import SuperAppOverlay from "./components/SuperAppOverlay";
 import InAppUpdateManager from "./components/InAppUpdateManager";
+import BackToHomeBar from "./components/BackToHomeBar";
 import ErrorBoundary, { setupGlobalErrorHandler } from "./components/ErrorBoundary";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
