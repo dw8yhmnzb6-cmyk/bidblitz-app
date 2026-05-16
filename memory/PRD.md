@@ -14,7 +14,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter120 — Offline Sync Queue E2E VERIFIED + Map Regression)
+### 16.05.2026 (iter121 — Live-Cockpit + GPS Anomaly + Push Watchdog) ✅
+- 🟢 **Live-Cockpit für Manager** (`/merchant/staff/live-map`): Mapbox-Map mit farbcodierten Staff-Pins (grün=inside geofence, gelb=outside/stale, lila=Pause, rot-Ring=Anomalie). Geofence-Kreise als Mapbox-Layer. Auto-Refresh 10s. Counter-Header (X aktiv · Y Pause · Z offline · N Anomalien). Belegschaft-Liste mit Tap-to-Focus. Quick-Action „Live-Cockpit" im StaffManagement Overview.
+- 🟢 **P1 GPS Fake Detection** (`utils/clock_anomaly.py`): Server-Heuristik nach jedem Clock-Insert (auch Offline-Sync): impossible_jump (≥2km in ≤60s), speed_exceeded (>200km/h), static_cluster (≥5 identische Koords/24h). Markiert Event mit `is_mock_suspected=true` + Eintrag in `staff_anomalies`. Manager-Inbox via Modal mit Review-Action.
+- 🟢 **P2 Push-Reminder Watchdog** (`routes/staff_shift_watchdog.py`): Background-Loop alle 5min via `start_watchdog_loop()` im Startup. Pause-Reminder nach 6h Schicht ohne break_start („Pause vergessen?"), Auto-Checkout-Reminder nach 10h („Auschecken nicht vergessen 👋"). Idempotenz via `staff_reminders_sent` (staff_id + shift_started_at + reminder_type). GET /status + POST /tick (admin-only) für Debug.
+- ✅ **Testing-Agent iter121: 10/10 Backend Pytest PASS + 100% Frontend Acceptance**. Anomaly-Detection erkennt 11km/30s als impossible_jump. Watchdog Idempotenz bestätigt (Doppel-Tick = 0 zusätzliche Reminder).
+- 📦 Test-Asset: `/app/backend/tests/test_iter121_live_map_watchdog.py`
+- 🟡 Bekannte Skalierungs-Limits: `_compute_shift_state` und `_evaluate_staff` scannen komplette Event-History pro Staff/Tick — bei Production-Volumen Time-Window-Filter oder Snapshot-Cache nachrüsten.
+
+
+
 - ✅ **Testing-Agent v3 Iteration 120**: Backend 8/8 PASS (auth-guard, batch sync, idempotency, status endpoint, partial dedup, validation). Frontend E2E PASS: Offline-Simulation via `context.set_offline(True)` + `navigator.onLine`-Override → clock_out tap → Event in `localStorage[staff_offline_clock_queue]` mit UUID `client_event_id`, action=clock_out, source=offline_sync. Offline-Badge + Toast "Ausgecheckt (offline) — Wird synchronisiert sobald wieder online." sichtbar. Online wiederhergestellt → Queue 1→0 nach Auto-Sync (debounce 1500ms + Network).
 - ✅ **Taxi-Map Regression iter119**: mapContainer 414×896, position:absolute, canvasCount=1, Berlin-Tiles (Hackesche Höfe, Spandauer Vorstadt) sichtbar. Inline-Style-Fix hält.
 - 📦 **Test-Asset**: `/app/backend/tests/test_offline_sync_iter120.py` (8 Tests, ~3.5s, als Regression nutzbar).
