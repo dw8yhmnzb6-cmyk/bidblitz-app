@@ -1,0 +1,30 @@
+{
+  "summary": "Iter116 — Frontend E2E for Taxi Promo-Code flow PASSED end-to-end. Completed full happy-path: login → /taxi → taxiType (business) auto-restored from state → tap taxi-dropoff-row → taxi-search-sheet opens → type 'Mall' in search-dropoff-input → first suggestion ('Mallorca, ES') clicked → search sheet auto-closes → auto-estimate-fetch (~400ms debounce) → taxi-vehicle-section visible with vehicle-card-standard active (cyan border). Promo flow: taxi-promo-toggle visible BELOW vehicle-section → click expands taxi-promo-field + taxi-promo-input → 'NEUKUNDE10' + Apply → taxi-promo-applied green pill with text 'NEUKUNDE10 / 10% Rabatt für Neukunden (max 5€)' → all 3 vehicle cards re-render with fare_original strike-through + '-€5.00' discount badge + reduced final fare. Clear button removes pill and cards revert to original prices. Error path: 'INVALID_FAKE' → taxi-promo-error rendered with text 'Code nicht gefunden' (matches REASONS.not_found mapping). All data-testids per spec are wired correctly. Ready to ship.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Address search 'Mall' suggestions", "issues": ["The first suggestion for 'Mall' typed from Pristina is 'Mallorca, ES' (~4150 km away). Geocoder lacks proximity bias toward the user's current pickup coords, leading to unrealistic destinations and huge fares (€1028.81 / 156 min). Not a promo-flow blocker, but worth adding a proximity bias param to Mapbox geocoding so 'Mall' surfaces local malls (e.g. 'Albi Mall Pristina') first."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optional UX polish) Add proximity bias (Mapbox `proximity={lng},{lat}`) to the dropoff geocoder so local POIs rank above remote matches. Out of scope of promo flow but improves the typed-search UX."
+  ],
+  "critical_code_review_comments": [
+    "TaxiBookingSheet.jsx (L254-263): taxi-vehicle-section correctly placed AFTER SavedPlaces and BEFORE OptionsButton + Promo. Conditional render is `estimates?.length > 0` — works as soon as estimates land. Good.",
+    "TaxiPromoCodeField.jsx (L67,81,96,107,115,122): All required data-testids present and trigger correct UI transitions. Apply button disabled state honors `busy || !input.trim()` (verified visually).",
+    "TaxiPage.jsx (L430-437): Auto-fetch estimates debounced by 400ms and re-runs when promo.code changes — verified that applying NEUKUNDE10 triggers a fresh estimate call and the vehicle cards re-render with fare_original + fare_discount. Clean.",
+    "TaxiPage.jsx (L418-421): Fallback that nulls promo if server reports it as invalid is defensive and matches spec.",
+    "Promo discount cap works correctly: 10% of €1028.81 ≈ €102.88 but the server correctly caps it at the built-in max 5€ → final fare €1023.81 displayed with -€5.00 badge. Backend behaviour validated through UI."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not retested (iter115 backend = 100%)", "frontend": "100% (all 11 spec steps passed)"},
+  "test_credentials": "Customer: haendler@bidblitz.com / Haendler2026!  ; built-in promos used: NEUKUNDE10 (10% max 5€), INVALID_FAKE for error case",
+  "seed_data_creation": "None. No ride was booked — flow stopped at promo apply/clear/error and the page was navigated away. No taxi_promo_redemptions records created (validate-only path).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Promo UI flow is complete and stable. The useTaxiState hook persists taxiType in localStorage, so on a returning session the booking sheet may render IMMEDIATELY without showing the TaxiTypeSelector — handle both cases in any future script (probe '[data-testid=taxi-type-business]'; if null, sheet is already open). The geocoder picks remote POIs for short keywords like 'Mall' — for deterministic tests prefer typing 'Pristina Center' (suggestion is in 'Letzte Adressen' so it lands instantly even without typing). Mapbox proximity-bias improvement is a separate UX ticket.",
+  "rca of the issue": "No outstanding bug — promo UI flow validated end-to-end and matches PRD."
+}
