@@ -107,7 +107,7 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
   </motion.div>
 );
 
-export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
+export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, routeParams = {} }) => {
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
@@ -116,10 +116,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const hasCardSaved = typeof window !== "undefined" && window.location.search.includes("card_saved=success");
 
   const [showBalance, setShowBalance] = useState(true);
-  const [showTopUp, setShowTopUp] = useState(hasStripeParam);
+  const [showTopUp, setShowTopUp] = useState(hasStripeParam || routeParams.action === "topup");
   const [showCryptoTopUp, setShowCryptoTopUp] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
-  const [showSendMoney, setShowSendMoney] = useState(false);
+  const [showSendMoney, setShowSendMoney] = useState(routeParams.action === "send");
   const [selectedTx, setSelectedTx] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");

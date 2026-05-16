@@ -427,6 +427,10 @@ function AppContent() {
   }
 
   const renderPage = () => {
+    // Strip query string for route matching, keep params accessible to pages
+    const queryStr = currentPath.includes("?") ? currentPath.split("?")[1] : "";
+    const basePath = currentPath.split("?")[0];
+    const routeParams = Object.fromEntries(new URLSearchParams(queryStr));
     const homeProps = {
       onNavigate: handleNavigate, isGuest, isDemoMode,
       onLogin: () => { tracker.ctaClick("login", "home"); setShowFullAuth("login"); },
@@ -448,6 +452,7 @@ function AppContent() {
       onAuthRequired: requireAuth,
       onLogin: () => { tracker.ctaClick("login", currentPath); setShowFullAuth("login"); },
       onRegister: () => { tracker.guestRegisterClick(currentPath); setShowFullAuth("register"); },
+      routeParams,
       onStartDemo: () => {
         tracker.demoStart();
         setIsDemoMode(true);
@@ -526,7 +531,7 @@ function AppContent() {
     if (currentPath === "/pay/for-business") {
       return <PayForBusinessPage onNavigate={handleNavigate} />;
     }
-    switch (currentPath) {
+    switch (basePath) {
       case "/":
         return <HomePage {...homeProps} />;
       case "/landing":
