@@ -14,7 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter119 — P0 Mapbox-CSS-Konflikt-Fix + Vehicle-Card Premium-Layout)
+### 16.05.2026 (iter120 — Offline Sync Queue E2E VERIFIED + Map Regression)
+- ✅ **Testing-Agent v3 Iteration 120**: Backend 8/8 PASS (auth-guard, batch sync, idempotency, status endpoint, partial dedup, validation). Frontend E2E PASS: Offline-Simulation via `context.set_offline(True)` + `navigator.onLine`-Override → clock_out tap → Event in `localStorage[staff_offline_clock_queue]` mit UUID `client_event_id`, action=clock_out, source=offline_sync. Offline-Badge + Toast "Ausgecheckt (offline) — Wird synchronisiert sobald wieder online." sichtbar. Online wiederhergestellt → Queue 1→0 nach Auto-Sync (debounce 1500ms + Network).
+- ✅ **Taxi-Map Regression iter119**: mapContainer 414×896, position:absolute, canvasCount=1, Berlin-Tiles (Hackesche Höfe, Spandauer Vorstadt) sichtbar. Inline-Style-Fix hält.
+- 📦 **Test-Asset**: `/app/backend/tests/test_offline_sync_iter120.py` (8 Tests, ~3.5s, als Regression nutzbar).
+- 🟢 Code-Review-Highlights: Idempotency-Key (client_event_id + staff_id) per-tenant scoped, sortiert nach captured_at vor Insert, flushQueue behandelt synced+duplicate identisch (kein Loop bei Resync), Mount-Time scheduleSync für stale Queue beim Open. Keine Bugs.
+
+
+
 - 🔴 **P0 BUG FIX — Map komplett schwarz**: `mapbox-gl.css` setzt `.mapboxgl-map { position: relative }` → überschrieb Tailwinds `absolute` Klasse via CSS-Spezifität. Map-Container hatte `height: 0` weil `absolute inset-0` nicht griff. Fix: Inline `style={{ position:'absolute', top/right/bottom/left:0 }}` auf `mapContainerRef`-Div in `TaxiPage.jsx`. Verified: Container 414×896, Canvas 414×896, Berlin-Tiles rendern.
 - 🟢 **Robuster Map-Init**: `useTaxiMap.js` hat jetzt sane Default-Center (Berlin 52.52/13.405, zoom 11) wenn pickup={0,0} beim Map-Init (vermeidet Gulf of Guinea = leere Tiles). Pickup-Marker wird nur bei validem GPS-Fix angelegt; sonst nachträglich beim ersten gültigen pickup-Update. `map.resize()` Triggers on style.load + 250/800ms Setup-Race-Safety für iOS Safari.
 - 🟢 **Vehicle-Card Overflow-Fix**: Card-Padding `p-3`, Icon `w-14 h-10` (statt 20×12), Preis-Spalte mit `tabular-nums whitespace-nowrap`, Range mit `Math.round` (kein `€5.89-€7.49` Truncate mehr). Meta-Row reduziert auf "4 P · 3 Min". "schnell"/"günstig" Badge als eigener Chip neben dem Namen.
