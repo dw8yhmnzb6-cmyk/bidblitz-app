@@ -14,7 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter124 — Phase A: Mobile-Bug-Sweep) ✅
+### 16.05.2026 (iter124 — Phase B: Welcome-Sheet Quick-Actions) ✅
+- 🟢 **Neue Komponente** `components/taxi/TaxiQuickActions.jsx`: Big-Touch 1-Tap-Aktionen direkt im Welcome-Sheet. Bricht das „Stammkunden müssen durchs Side-Menu"-Problem.
+- 🟢 **„Jetzt | Später"-Toggle** (Zap/Clock Icons): „Später" navigiert auf `/taxi/pro` (Pre-Booking-Tab).
+- 🟢 **3 Quick-Tiles**: 🏠 Heim · 💼 Arbeit · 🔁 Letzte Fahrt. Resolved aus `savedPlaces` (icon-key oder name-Match) + `rideHistory.find(status==='completed')`. Disabled-State zeigt „Adresse speichern" / „Noch keine Fahrt".
+- 🟢 **1-Tap-Reorder**: Tap auf „Letzte Fahrt" → `setDropoff(lastRide.dropoff)` → öffnet Estimates automatisch (kein Adresseintippen).
+- ✅ Smoke: Berlin-GPS → Map rendert Spandauer-Vorstadt, alle 5 testids sichtbar (taxi-quick-actions, taxi-mode-now/later, taxi-quick-home/work/last).
+
+
 - 🔴 **P0 FIX Map-Falsche-Position**: `useTaxiState.js` initialisierte `pickup` mit Berlin-Default `{lat:52.52, lng:13.405}` → mein iter119 `hasValidPickup`-Check (lat!==0) griff nicht für User in anderen Ländern (Pristina, Wien etc) → Map blieb auf Berlin obwohl GPS in Pristina war. Fix: initial state auf `{lat:0, lng:0}`, GPS überschreibt, Berlin nur als Map-Init-Fallback wenn GPS noch nicht da. Plus `latestPickupRef` für race-safe Re-Center via `map.on('load')` + `jumpTo` (instant). Verifiziert mit Pristina-GPS (42.66, 21.16) → MEDRESA/TOPHANE-Tiles, und Berlin-GPS → Spandauer-Vorstadt-Tiles (keine Regression).
 - 🟢 **P0 FIX Stornierte-Card** (`components/taxi/TaxiHistoryView.jsx`): isCancelled → Preis durchgestrichen grau + „nicht berechnet" Label. Vermeidet UX-Inkonsistenz „€811 trotz STORNIERT".
 - 🟢 **P1 FIX Distanz-Sanity** (`routes/taxi.py` Lines ~1515 + ~1668): `/estimate` und `/book` lehnen Strecken >250km mit HTTP 400 + erklärendem Detail ab. Verifiziert: Pristina→Berlin (1239km) → 400, Berlin→Berlin-Ost (10km) → 200.

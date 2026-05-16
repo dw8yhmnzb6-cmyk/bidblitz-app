@@ -131,6 +131,7 @@ export default function TaxiPage({ onNavigate }) {
   const [mapError, setMapError] = useState(null);
   const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
   const [showTripReplay, setShowTripReplay] = useState(false);
+  const [scheduleMode, setScheduleMode] = useState("now"); // 'now' | 'later'
 
   // Surge zones — synthesized from `surge` state in nearby cells for the heatmap overlay.
   // In production this would come from a backend `/api/taxi/surge-zones` endpoint.
@@ -773,6 +774,17 @@ export default function TaxiPage({ onNavigate }) {
                     }
                   } catch {}
                 }}
+                lastRide={(rideHistory || []).find((r) => r.status === 'completed')}
+                onUseLastRide={(r) => {
+                  // Set dropoff to last completed ride's dropoff (1-tap reorder)
+                  const drop = r.dropoff || { lat: r.dropoff_lat, lng: r.dropoff_lng, address: r.dropoff_address };
+                  if (drop?.lat && drop?.lng) {
+                    setDropoff({ lat: drop.lat, lng: drop.lng, address: drop.address || r.dropoff_address || '' });
+                  }
+                }}
+                scheduleMode={scheduleMode}
+                onScheduleModeChange={setScheduleMode}
+                onOpenScheduled={() => { window.location.href = '/taxi/pro'; }}
               />
             )}
           </TaxiBottomSheet>

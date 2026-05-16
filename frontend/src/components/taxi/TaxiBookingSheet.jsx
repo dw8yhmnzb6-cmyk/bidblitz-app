@@ -9,6 +9,7 @@ import TaxiVehiclePicker from "./TaxiVehiclePicker";
 import TaxiSavedPlacesRow from "./TaxiSavedPlacesRow";
 import TaxiPromoCodeField from "./TaxiPromoCodeField";
 import TaxiPromoBanner from "./TaxiPromoBanner";
+import TaxiQuickActions from "./TaxiQuickActions";
 
 const greet = () => {
   const h = new Date().getHours();
@@ -115,6 +116,9 @@ export default function TaxiBookingSheet({
   // Promo code (P2)
   promo, onPromoChange,
   onApplyPromoCode,
+  // Quick actions (iter124 Phase B)
+  lastRide, onUseLastRide,
+  scheduleMode, onScheduleModeChange, onOpenScheduled,
 }) {
   return (
     <div className="space-y-4 pt-1">
@@ -159,6 +163,19 @@ export default function TaxiBookingSheet({
           </h2>
           <p className="text-sm text-gray-400 mt-0.5">Wohin möchtest du fahren?</p>
         </div>
+      )}
+
+      {/* Big-Touch Quick-Actions (iter124 Phase B) */}
+      {!dropoff?.address && (
+        <TaxiQuickActions
+          savedPlaces={savedPlaces}
+          lastRide={lastRide}
+          onPickPlace={onPickSavedPlace}
+          onUseLastRide={onUseLastRide}
+          scheduleMode={scheduleMode}
+          onScheduleModeChange={onScheduleModeChange}
+          onOpenScheduled={onOpenScheduled}
+        />
       )}
 
       {/* Active promos banner — horizontal scroll, 1-tap apply */}
