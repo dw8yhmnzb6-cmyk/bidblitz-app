@@ -14,7 +14,20 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter122 — Shift-Heatmap Add-On für Live-Cockpit) ✅
+### 16.05.2026 (iter123 — Taxi-Konkurrenz P0+P1+P2+P3 Mega-Sweep) ✅
+- 🟢 **P0-1 Pre-Booking + Recurring + Watchdog** (`routes/taxi_scheduled.py`): POST/GET/DELETE /scheduled, /recurring; Watchdog _loop alle 60s tickt _materialize_recurring + _dispatch_due (mit soft_cutoff filter); Push-Notif via OneSignal beim Ready-to-Book Status.
+- 🟢 **P0-2 B2B Corporate Accounts** (`routes/taxi_corporate.py`): Account-CRUD, Invite-Token (7T-Gültigkeit), Accept-Endpoint, Monthly-Summary mit by_cost_center + by_user Aggregaten.
+- 🟢 **P0-3 PDF-Rechnung 7% USt-konform** (`utils/taxi_receipt_pdf.py` + neuer Endpoint `/api/taxi/rides/{id}/receipt.pdf`): reportlab A4, Firmen-Header, Brutto/Netto/USt-Aufstellung, Trinkgeld USt-frei separat, Corporate-Adresse + VAT-ID falls vorhanden. 2335-Byte-PDF Smoke-Test bestätigt.
+- 🟢 **P0-4 Driver Demand Heatmap** + **P0-5 Driver Documents** + **P1-14 Driver Earnings Pro + CSV** (`routes/taxi_driver_pro.py`): demand-heatmap mit 1km-Grid, documents CRUD mit days_until_expiry, earnings/pro by_day + CSV-Export (Content-Type text/csv).
+- 🟢 **P0-7 Multi-Tarif-Zonen** + **P0-8 Airport-Queue FIFO** + **P3 Public Demand Marketing Map** (`routes/taxi_tariffs.py`): Zone-CRUD (Admin), Airport-Queue join/leave/status (FIFO), public/demand-marketing (24h anonymisiert ~2km Grid).
+- 🟢 **P1-11 Lost & Found** (`routes/taxi_lostfound.py`): Cases-CRUD, Thread-Messages (owner ↔ driver), Auto-Push an Driver.
+- 🟢 **Frontend** (`pages/TaxiProSuitePage.jsx` + Side-Menu `BidBlitz Pro` + PDF-Button in History): 4-Tab-Page (Geplant/Pendler/Firma/Lost+Found), alle CRUD-Flows mit Form + Liste, sonner-Toasts.
+- ✅ **Testing-Agent iter123: Backend 26/27 PASS (1 skipped wg. fehlender completed ride für Auto-PDF-Test, manuell bestätigt), Frontend 4/5 ✓**. Watchdog läuft, last_tick_at updated <90s. Auth-Schutz korrekt (Merchant→403 für Driver-Heatmap). Test-Suite gespeichert in `/app/backend/tests/test_iter123_taxi_pro_suite.py`.
+- 🟢 **Skalierungs-Optimierung**: `_dispatch_due` jetzt mit `$lte(soft_cutoff)` Filter (70min Lookahead, statt komplette Pending-Liste).
+- 🟡 Bekannte Tech-Debt: `taxi.py` ist 3153 Zeilen — Modul-Split empfohlen (Backlog).
+
+
+
 - 🟢 **Backend** (`routes/staff_heatmap.py`): `GET /api/staff/heatmap/shifts?days=30&geofence_id=...&under=2&peak=5` aggregiert Clock-Events der letzten N Tage zu 7×24 Matrix mit Ø concurrent staff pro Stunden-Slot. Berücksichtigt noch laufende Schichten (clipped auf `t_to`). Optional: Geofence-Filterung über Haversine-Distanz der clock_in-Position. Returns: matrix, totals (events, shifts_completed, total_hours, unique_staff), under_staffed[], peak[], thresholds.
 - 🟢 **Frontend** (`staff/StaffShiftHeatmap.jsx` + Tab in `ManagerStaffLiveMapPage.jsx`): Tab-Switcher „Live-Karte / Shift-Heatmap" oben in der Live-Cockpit-Page. Heatmap-View mit Tag-Filter (7/14/30/90T), Geofence-Select, Stats-Header, 7×24 Cell-Grid mit Gradient (dark-navy → cyan → amber → red), Hover-Tooltip, Insight-Cards „Unterbesetzt (Ø < N)" und „Peaks (Ø ≥ N)" mit Top-6.
 - ✅ Smoke: 168 Cells gerendert, 12 mit Daten (190.1h Total, 5 unique staff, 9 Shifts in 30T). 4 Under-Staffed Slots erkannt (Di 09-12 jeweils Ø 1).

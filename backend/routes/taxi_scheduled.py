@@ -240,7 +240,12 @@ async def _materialize_recurring(now: datetime) -> int:
 async def _dispatch_due(now: datetime) -> int:
     """Dispatche scheduled_rides, deren Auto-Dispatch-Zeit erreicht ist."""
     dispatched = 0
-    async for r in db.taxi_scheduled_rides.find({"status": "pending"}, {"_id": 0}):
+    # Skalierungs-Optimierung iter123-followup: nur Rides deren scheduled_for nahe genug ist
+    # (innerhalb der nächsten 70 Minuten — größter mögl. auto_dispatch_minutes_before = 60 + Sicherheit)
+    soft_cutoff = (now + timedelta(minutes=70)).isoformat()
+    async for r in db.taxi_scheduled_rides.find(
+        {"status": "pending", "scheduled_for": {"$lte": soft_cutoff}}, {"_id": 0},
+    ):
         sched_at = _parse_iso(r["scheduled_for"])
         if not sched_at:
             continue

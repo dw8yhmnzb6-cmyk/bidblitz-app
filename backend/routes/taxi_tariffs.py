@@ -134,7 +134,7 @@ async def queue_status(code: str, request: Request):
     drivers = q.get("drivers", [])
     pos = next((i + 1 for i, d in enumerate(drivers) if d["driver_id"] == driver_id), None)
     return {"airport_code": code, "total": len(drivers), "position": pos,
-            "updated_at": q.get("updated_at")}
+            "drivers": drivers, "updated_at": q.get("updated_at")}
 
 
 # ── Public Demand Marketing Map (P3) ─────────────────────────────────────
