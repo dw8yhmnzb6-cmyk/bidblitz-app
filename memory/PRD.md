@@ -14,6 +14,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter116 — Vehicle-Picker Sichtbarkeit + Promo-Code MVP)
+- 🟢 **Vehicle-Carousel direkt unter Adressen**: Auto-Fetch von /estimate triggered 400ms nach gültigem Pickup+Dropoff (Uber/Bolt-Parität). Vehicle-Section (`taxi-vehicle-section`) erscheint VOR Options-Button und Promo-Field statt versteckt hinter Klick. Picker mit aktiver cyan-Border zeigt fare + Range.
+- 🟢 **Promo-Code Backend Engine** (`/app/backend/utils/taxi_promo.py`): 4 BUILTIN-Codes (NEUKUNDE10, BIDBLITZ5, FREUNDE, PROMO2026) + optionale DB-Erweiterung via `taxi_promo_codes` Collection. Validate-Endpoint `GET /api/taxi/promo/validate?code=X` mit Reason-Codes (not_found, expired, already_used, invalid_format). Apply-Logic: percent/fixed/free_ride mit max_off Cap. Redemption-Tracking via `taxi_promo_redemptions` (max_uses_per_user enforced).
+- 🟢 **Estimate + Book mit Promo**: EstimateRequest und FlexBookRequest haben optional `promo_code`. Estimate returnt per Vehicle: `fare_original`, `fare_discount`, `fare` (=final). Book speichert `ride.promo:{code, label, original, discount, final}` und legt Redemption-Eintrag an.
+- 🟢 **TaxiPromoCodeField** (`/app/frontend/src/components/taxi/TaxiPromoCodeField.jsx`): Collapsible Toggle → Input + Apply → Applied-Pill (grün mit CheckCircle) → Clear-Button. Error-Banner für invalid_format/not_found/expired/already_used. Auto-Uppercase + Enter-to-Apply.
+- 🟢 **Vehicle-Card Discount-Display**: Wenn `fare_discount > 0`: Original-Preis durchgestrichen + grünes `-€X.XX` Badge.
+- ✅ Testing iter115 Backend: 9/9 pytest PASS (validate alle Codes, estimate+promo, book+promo, redemption-Tracking). iter116 Frontend E2E: 100% grün — kompletter Happy-Path inkl. Clear + Error-Case durchlaufen. 0 Bugs.
+
+
 ### 15.05.2026 (iter115 — Taxi Booking UX Premium Fix + Open Shifts)
 - 🔴 **P0 Bug fixed**: Mapbox-Token in `.env.production` war ungültig (401 von Mapbox API) → mit funktionierendem Dev-Token überschrieben. Karte lädt jetzt auf nativer iOS-App.
 - 🟢 **Reverse-Geocode Fallback verbessert**: Statt rohe Koordinaten ("42.64698, 21.17334") zeigt das UI jetzt "Standort gefunden" als Fallback und sofort die korrekte Adresse ("Shaban Polluzha 3, Pristina 10000, Kosovo") sobald Backend-Geocoder antwortet.
