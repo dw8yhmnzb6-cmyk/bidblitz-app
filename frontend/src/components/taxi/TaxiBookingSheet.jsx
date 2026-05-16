@@ -108,34 +108,51 @@ export default function TaxiBookingSheet({
   pickupCity, citySaved, onSaveCityDefault,
   // Favorite routes
   favoriteRoutes, onPickFavoriteRoute,
+  // Personalisation
+  userName,
 }) {
   return (
     <div className="space-y-4 pt-1">
-      {/* Selected type pill + change */}
-      <div className="flex items-center justify-between">
-        <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-            taxiType === "business" ? "bg-cyan-500/10 text-cyan-400" : "bg-purple-500/10 text-purple-400"
-          }`}
-        >
-          <span className="text-xs font-semibold">
-            {taxiType === "business" ? "Unternehmer-Taxi" : "Privat-Taxi"}
-          </span>
-        </div>
+      {/* Trust strip — small, top */}
+      <div className="flex items-center gap-2 text-[10px] text-gray-500">
+        <span className="inline-flex items-center gap-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Festpreis
+        </span>
+        <span className="text-gray-700">·</span>
+        <span className="inline-flex items-center gap-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Lizenzierte Fahrer
+        </span>
+        <span className="text-gray-700">·</span>
+        <span className="inline-flex items-center gap-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Live-Tracking
+        </span>
+      </div>
+
+      {/* Selected type pill + change (subtle) */}
+      <div className="flex items-center justify-between -mt-1">
         <button
           onClick={onChangeType}
-          className="text-xs text-gray-400 hover:text-white underline"
+          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition ${
+            taxiType === "business"
+              ? "bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/15"
+              : "bg-purple-500/10 text-purple-400 hover:bg-purple-500/15"
+          }`}
           data-testid="taxi-change-type-btn"
         >
-          Ändern
+          {taxiType === "business" ? "Unternehmer-Taxi" : "Privat-Taxi"} · Ändern
         </button>
       </div>
 
       {/* Greeting + Favorite Routes (only when no destination chosen yet) */}
       {!dropoff?.address && (
         <div>
-          <h2 className="text-xl font-bold text-white">{greet()}</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Wohin möchtest du fahren?</p>
+          <h2 className="text-2xl font-bold text-white">
+            {greet()}{userName ? `, ${userName}` : ""} <span className="inline-block">👋</span>
+          </h2>
+          <p className="text-sm text-gray-400 mt-0.5">Wohin möchtest du fahren?</p>
         </div>
       )}
 

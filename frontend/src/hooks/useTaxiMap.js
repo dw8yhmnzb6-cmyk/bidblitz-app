@@ -58,6 +58,7 @@ export function useTaxiMap({
   onError,        // callback (msg: string) — fired when Mapbox fails
   surgeZones,     // [{lat, lng, multiplier}] | null — UNIQUE heatmap overlay
   showTripReplay, // bool — animates collected driverPath after ride completion
+  nearbyDrivers,  // [{id, lat, lng}] — pulse markers for available taxis on booking map
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -66,6 +67,7 @@ export function useTaxiMap({
   const driverMarkerRef = useRef(null);
   const routeSourceAddedRef = useRef(false);
   const poiMarkersRef = useRef([]);
+  const nearbyMarkersRef = useRef([]);
 
   // Init map when booking flow opens (taxiType set)
   useEffect(() => {
@@ -273,6 +275,64 @@ export function useTaxiMap({
 
   const driverAnimRef = useRef({ rafId: null, fromLng: null, fromLat: null });
   const driverPathRef = useRef([]); // [[lng,lat], ...] — collected for trip-replay
+
+  // Nearby drivers — pulse markers on booking map (subtle, live confidence signal)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !_mapboxgl) return;
+
+    // Clear existing
+    nearbyMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
+    nearbyMarkersRef.current = [];
+
+    if (driverLocation) return; // hide during active ride tracking
+
+    const drivers = Array.isArray(nearbyDrivers) ? nearbyDrivers : [];
+    if (drivers.length === 0) return;
+
+    // Inject pulse CSS once
+    if (!document.getElementById("taxi-pulse-css")) {
+      const st = document.createElement("style");
+      st.id = "taxi-pulse-css";
+      st.textContent = `
+        @keyframes taxiPulseRing { 0%{transform:scale(0.6);opacity:.85} 100%{transform:scale(2.6);opacity:0} }
+        .taxi-pulse-marker{position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+        .taxi-pulse-marker::before,.taxi-pulse-marker::after{
+          content:"";position:absolute;left:0;top:0;width:100%;height:100%;
+          border-radius:50%;background:rgba(0,194,255,0.55);
+          animation:taxiPulseRing 1.8s cubic-bezier(0.2,.8,.4,1) infinite;
+        }
+        .taxi-pulse-marker::after{animation-delay:.9s}
+        .taxi-pulse-marker .dot{
+          position:relative;z-index:2;width:14px;height:14px;border-radius:50%;
+          background:linear-gradient(135deg,#FBBF24,#F59E0B);
+          border:2px solid #0A0A0F;box-shadow:0 2px 6px rgba(0,0,0,.4);
+        }
+      `;
+      document.head.appendChild(st);
+    }
+
+    drivers.slice(0, 12).forEach((d) => {
+      if (!Number.isFinite(d?.lat) || !Number.isFinite(d?.lng)) return;
+      const el = document.createElement("div");
+      el.className = "taxi-pulse-marker";
+      el.setAttribute("data-testid", "taxi-nearby-marker");
+      const dot = document.createElement("div");
+      dot.className = "dot";
+      el.appendChild(dot);
+      try {
+        const marker = new _mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat([d.lng, d.lat])
+          .addTo(map);
+        nearbyMarkersRef.current.push(marker);
+      } catch {}
+    });
+
+    return () => {
+      nearbyMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
+      nearbyMarkersRef.current = [];
+    };
+  }, [nearbyDrivers, driverLocation]);
 
   // Live driver marker — smooth RAF easing between polling snapshots (~5s polling → 1.4s ease)
   useEffect(() => {

@@ -30,6 +30,7 @@ import * as api from '../services/taxiApi';
 
 export default function TaxiPage({ onNavigate }) {
   const { t } = useI18n();
+  const { user } = useUser();
   const { search: geocodeSearch, geocodeOnBlur: geocodeOnBlurHook } = useTaxiGeocoder();
   
   // Navigation helper (replaces useNavigate)
@@ -102,6 +103,7 @@ export default function TaxiPage({ onNavigate }) {
 
   // Live driver availability (count near pickup, filtered by options)
   const [nearbyCount, setNearbyCount] = useState(null); // null = unknown, 0+ = known
+  const [nearbyDrivers, setNearbyDrivers] = useState([]); // for live pulse markers on map
 
   // Favorite routes (top pickup→dropoff pairs from ride history)
   const [favoriteRoutes, setFavoriteRoutes] = useState([]);
@@ -170,6 +172,7 @@ export default function TaxiPage({ onNavigate }) {
     onError: setMapError,
     surgeZones,
     showTripReplay,
+    nearbyDrivers,
   });
 
   // Expose so the activeRide-status effect can preload the server-recorded path on completion.
@@ -239,11 +242,11 @@ export default function TaxiPage({ onNavigate }) {
 
   // Live driver count: refetch when pickup coords or options change (debounced)
   useEffect(() => {
-    if (!moduleEnabled || !taxiType) { setNearbyCount(null); return; }
-    if (!pickup?.lat || pickup.lat === 0) { setNearbyCount(null); return; }
+    if (!moduleEnabled || !taxiType) { setNearbyCount(null); setNearbyDrivers([]); return; }
+    if (!pickup?.lat || pickup.lat === 0) { setNearbyCount(null); setNearbyDrivers([]); return; }
     const carType = selectedVehicle || 'standard';
     const t = setTimeout(async () => {
-      const { count } = await api.fetchNearbyDriversCount({
+      const { count, drivers } = await api.fetchNearbyDriversCount({
         lat: pickup.lat,
         lng: pickup.lng,
         carType,
@@ -252,6 +255,7 @@ export default function TaxiPage({ onNavigate }) {
         assistance: orderOptions.assistance,
       });
       setNearbyCount(count);
+      setNearbyDrivers(drivers || []);
     }, 400);
     return () => clearTimeout(t);
   }, [
@@ -713,6 +717,7 @@ export default function TaxiPage({ onNavigate }) {
               <TaxiBookingSheet
                 taxiType={taxiType}
                 onChangeType={() => setTaxiType('')}
+                userName={user?.name?.split(" ")?.[0] || user?.first_name || null}
                 pickup={pickup}
                 dropoff={dropoff}
                 onTapPickup={() => setSearchSheetMode('pickup')}

@@ -37,12 +37,12 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
       } else if (data.address) {
         addr = data.address;
       }
-      addr = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      addr = addr || `Standort gefunden`;
       setCurrentAddress(addr);
       setPickup(prev => ({ ...prev, address: addr }));
     } catch (err) {
       console.error('Reverse geocode error:', err);
-      setCurrentAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      setCurrentAddress(`Standort gefunden`);
     }
   }, [setPickup]);
 

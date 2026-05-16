@@ -14,6 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 15.05.2026 (iter115 — Taxi Booking UX Premium Fix + Open Shifts)
+- 🔴 **P0 Bug fixed**: Mapbox-Token in `.env.production` war ungültig (401 von Mapbox API) → mit funktionierendem Dev-Token überschrieben. Karte lädt jetzt auf nativer iOS-App.
+- 🟢 **Reverse-Geocode Fallback verbessert**: Statt rohe Koordinaten ("42.64698, 21.17334") zeigt das UI jetzt "Standort gefunden" als Fallback und sofort die korrekte Adresse ("Shaban Polluzha 3, Pristina 10000, Kosovo") sobald Backend-Geocoder antwortet.
+- 🟢 **TaxiBookingSheet Premium Touches**: Trust-Strip oben (✓ Festpreis · ✓ Lizenzierte Fahrer · ✓ Live-Tracking), personalisierte Begrüßung "Guten Morgen, [Vorname] 👋" via userName-Prop, "Unternehmer-Taxi · Ändern" als subtile Pill statt prominente Box.
+- 🟢 **Driver-Pulse-Markers auf Booking-Map**: useTaxiMap erweitert um `nearbyDrivers` Prop, rendert animierte Cyan-Pulse-Ringe + gelbe Dots für bis zu 12 verfügbare Fahrer. Verschwindet während Live-Tracking.
+- 🟢 **Schichttausch (Open Shifts) MVP komplett**: Backend `staff_open_shifts.py` mit 7 Endpoints (release, cancel-release, list, claim, withdraw, manager/pending, manager/decide), Frontend `OpenShifts.jsx` mit Staff-Inbox + Manager-Approval-View + Release-Sheet, Tab-Badge bei Manager mit Live-Count, Push-Notifications an Releaser/Claimer.
+
+
 ### 15.05.2026 (iter114 — Capacitor 7 Native Plugins für WiFi + BLE)
 - 🟢 **Plugins installiert**: `@capacitor-community/bluetooth-le@^7` + `@capgo/capacitor-wifi@7.0.3` (Capacitor 7 kompatibel, kein Peer-Konflikt).
 - 🟢 **useSmartSignals Hook umgebaut**: Lazy ESM-Import via `await import()`, `Capacitor.isNativePlatform()` Guard. Im Browser → null-Plugin, Web-Fallback. Auf Native iOS/Android → echte SSID-Auslesung über `CapacitorWifi.getCurrentNetwork()` + BLE-Scan über `BleClient.requestLEScan()` (6s Scan, Dedupe per deviceId).
