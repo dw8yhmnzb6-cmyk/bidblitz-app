@@ -73,9 +73,14 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
       }
 
       // Proximity bias toward user's GPS for relevant local-first results.
-      // Mapbox expects "lng,lat" string.
-      const prox = proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng) && proximity.lat !== 0
-        ? `&proximity=${proximity.lng},${proximity.lat}`
+      // Mapbox expects "lng,lat" string. Plus tight bbox (~200km) to suppress
+      // unrelated worldwide matches (Mallaig GB / Ali Mallan YE etc.).
+      const hasProx = proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng)
+        && proximity.lat !== 0;
+      const prox = hasProx ? `&proximity=${proximity.lng},${proximity.lat}` : "";
+      // ~2 degrees ≈ 220km bbox around user
+      const bbox = hasProx
+        ? `&bbox=${proximity.lng - 2},${proximity.lat - 2},${proximity.lng + 2},${proximity.lat + 2}`
         : "";
 
       timers[key] = setTimeout(async () => {
@@ -86,10 +91,10 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
           if (MAPBOX_TOKEN) {
             url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
               q,
-            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true${prox}`;
+            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true${prox}${bbox}`;
           } else if (BACKEND_URL) {
             url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(q)}&limit=8${
-              proximity && Number.isFinite(proximity.lat) ? `&lat=${proximity.lat}&lng=${proximity.lng}` : ""
+              hasProx ? `&lat=${proximity.lat}&lng=${proximity.lng}` : ""
             }`;
           } else {
             setSuggestions([]);
