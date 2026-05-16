@@ -24,6 +24,7 @@ import ManagerTeamTimesheet from "../components/staff/ManagerTeamTimesheet";
 import MerchantLiveOverview from "../components/staff/MerchantLiveOverview";
 import ScheduleGridEditor from "../components/staff/ScheduleGridEditor";
 import KnowledgeBaseManager from "../components/staff/KnowledgeBaseManager";
+import ManagerOpenShifts from "../staff/OpenShifts";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -64,6 +65,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
   const [shifts, setShifts] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [summary, setSummary] = useState({});
+  const [pendingSwaps, setPendingSwaps] = useState(0);
   
   // Modals
   const [showAddMember, setShowAddMember] = useState(false);
@@ -438,7 +440,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
               </div>
             )}
 
-            {/* PLAN — Schichtplan + Schedule-Editor */}
+            {/* PLAN — Schichtplan + Schedule-Editor + Schichttausch */}
             {tab === "shifts" && (
               <div>
                 <SubTabSwitcher
@@ -447,6 +449,7 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
                   options={[
                     { id: "list", label: "Schichtplan" },
                     { id: "editor", label: "Editor" },
+                    { id: "swap", label: `Tausch${pendingSwaps ? ` (${pendingSwaps})` : ""}` },
                   ]}
                 />
                 {subView.shifts === "list" && (
@@ -454,6 +457,9 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
                 )}
                 {subView.shifts === "editor" && (
                   <ScheduleGridEditor members={members} onMembersReload={loadData} />
+                )}
+                {subView.shifts === "swap" && (
+                  <ManagerOpenShifts />
                 )}
               </div>
             )}

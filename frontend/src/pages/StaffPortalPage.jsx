@@ -19,6 +19,7 @@ import { SmartStatusPill } from "../staff/SmartStatusPill";
 import { useStaffReminders } from "../staff/useStaffReminders";
 import StaffChatPage from "../staff/StaffChat";
 import { StaffSmartSetupSheet } from "../staff/StaffSmartSetupSheet";
+import { StaffOpenShifts, ReleaseShiftSheet } from "../staff/OpenShifts";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -651,6 +652,7 @@ function NearbyCard({ smartPresence, onTap }) {
 
 function ShiftsTab({ shifts }) {
   const [view, setView] = useState("liste");
+  const [releaseShift, setReleaseShift] = useState(null);
 
   const sortedShifts = useMemo(() => {
     return [...shifts].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -667,6 +669,7 @@ function ShiftsTab({ shifts }) {
         {[
           { id: "liste", label: "Liste" },
           { id: "kalender", label: "Kalender" },
+          { id: "tausch", label: "Tausch" },
         ].map((v) => (
           <button
             key={v.id}
@@ -681,7 +684,7 @@ function ShiftsTab({ shifts }) {
         ))}
       </div>
 
-      {sortedShifts.length === 0 && (
+      {view === "liste" && sortedShifts.length === 0 && (
         <div className="text-center py-16">
           <Calendar size={48} className="mx-auto text-slate-200 mb-3" />
           <p className="text-sm text-slate-500">Keine Schichten geplant</p>
@@ -696,52 +699,70 @@ function ShiftsTab({ shifts }) {
             const isActive = start <= now && end >= now;
             const isPast = end < now;
             const dur = Math.round((end - start) / 36e5);
+            const isReleased = shift.release_status === "open" || shift.release_status === "pending_approval";
+            const canRelease = !isPast && !isActive && !isReleased && shift.release_status !== "swapped";
             return (
               <div
                 key={shift.id}
                 data-testid="shift-card"
-                className="rounded-2xl bg-white shadow-sm border border-slate-200 p-4 flex items-center gap-4"
+                className="rounded-2xl bg-white shadow-sm border border-slate-200 p-4"
               >
-                <div className="text-center w-12 shrink-0">
-                  <p className="text-[10px] uppercase font-bold text-slate-400">
-                    {start.toLocaleDateString("de-DE", { weekday: "short" })}
-                  </p>
-                  <p className="text-xl font-bold text-slate-900">{start.getDate()}</p>
-                  <p className="text-[10px] text-slate-400">
-                    {start.toLocaleDateString("de-DE", { month: "short" })}
-                  </p>
+                <div className="flex items-center gap-4">
+                  <div className="text-center w-12 shrink-0">
+                    <p className="text-[10px] uppercase font-bold text-slate-400">
+                      {start.toLocaleDateString("de-DE", { weekday: "short" })}
+                    </p>
+                    <p className="text-xl font-bold text-slate-900">{start.getDate()}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {start.toLocaleDateString("de-DE", { month: "short" })}
+                    </p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900">
+                      {start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} – {end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      {shift.location && <><MapPin size={10} /> {shift.location}</>}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                        isReleased ? "bg-amber-100 text-amber-700" :
+                        isActive ? "bg-emerald-100 text-emerald-700" :
+                        isPast ? "bg-slate-100 text-slate-500" :
+                        "bg-blue-50 text-blue-700"
+                      }`}
+                    >
+                      {isReleased ? "Freigegeben" : isActive ? "Aktiv" : isPast ? "Vorbei" : "Geplant"}
+                    </span>
+                    <p className="text-[10px] text-slate-400 mt-1">{dur}h</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900">
-                    {start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} – {end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                    {shift.location && <><MapPin size={10} /> {shift.location}</>}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span
-                    className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      isActive
-                        ? "bg-emerald-100 text-emerald-700"
-                        : isPast
-                        ? "bg-slate-100 text-slate-500"
-                        : "bg-blue-50 text-blue-700"
-                    }`}
+                {canRelease && (
+                  <button
+                    onClick={() => setReleaseShift(shift)}
+                    data-testid={`release-btn-${shift.id}`}
+                    className="mt-3 w-full py-2 rounded-xl text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition"
                   >
-                    {isActive ? "Aktiv" : isPast ? "Vorbei" : "Geplant"}
-                  </span>
-                  <p className="text-[10px] text-slate-400 mt-1">{dur}h</p>
-                </div>
+                    Schicht freigeben
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {view === "kalender" && (
-        <CalendarView shifts={sortedShifts} />
-      )}
+      {view === "kalender" && <CalendarView shifts={sortedShifts} />}
+      {view === "tausch" && <StaffOpenShifts />}
+
+      <ReleaseShiftSheet
+        open={!!releaseShift}
+        shift={releaseShift}
+        onClose={() => setReleaseShift(null)}
+        onReleased={() => { setReleaseShift(null); setView("tausch"); }}
+      />
     </div>
   );
 }
