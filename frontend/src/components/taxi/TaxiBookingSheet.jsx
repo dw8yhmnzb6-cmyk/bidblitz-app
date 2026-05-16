@@ -178,10 +178,7 @@ export default function TaxiBookingSheet({
         />
       )}
 
-      {/* Active promos banner — nur wenn Ziel gewählt, sonst zu unruhig */}
-      {dropoff?.address && onApplyPromoCode && (
-        <TaxiPromoBanner activePromoCode={promo?.code} onApply={onApplyPromoCode} />
-      )}
+      {/* Promo-Banner entfernt für cleaneren Look (iter124 UX). Promo-Code-Field bleibt unten. */}
 
       {!dropoff?.address && favoriteRoutes?.length > 0 && (
         <div data-testid="taxi-favorite-routes">
