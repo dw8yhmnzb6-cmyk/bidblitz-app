@@ -67,35 +67,7 @@ export default function SafetyButton({ rideId, type = 'taxi' }) {
                 </div>
               </motion.button>
 
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setEmergencyModal(true);
-                  setShowMenu(false);
-                }}
-                className="w-full p-4 bg-red-500/20 rounded-2xl flex items-center gap-4 text-left border-2 border-red-500/50"
-              >
-                <div className="w-12 h-12 rounded-full bg-red-500/30 flex items-center justify-center">
-                  <AlertCircle size={24} className="text-red-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Emergency</p>
-                  <p className="text-gray-400 text-sm">Contact emergency services</p>
-                </div>
-              </motion.button>
-
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                className="w-full p-4 bg-[#121218] rounded-2xl flex items-center gap-4 text-left"
-              >
-                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <Phone size={24} className="text-green-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Call Support</p>
-                  <p className="text-gray-400 text-sm">24/7 customer support</p>
-                </div>
-              </motion.button>
+              {/* Emergency + Call Support entfernt auf User-Wunsch (iter124-followup) */}
             </motion.div>
           </motion.div>
         )}
