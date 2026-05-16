@@ -493,8 +493,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               {[
                 { id: "topup", icon: Plus, label: "Aufladen", color: "#00C2FF", onClick: () => onNavigate("/wallet?action=topup") },
                 { id: "send", icon: Send, label: "Senden", color: "#00D26A", onClick: () => onNavigate("/wallet?action=send") },
-                { id: "scan", icon: QrCode, label: "Scannen", color: "#A855F7", onClick: () => onNavigate("/qr-scan") },
-                { id: "cards", icon: CreditCard, label: "Karten", color: "#FFB800", onClick: () => onNavigate("/cards") },
+                { id: "scan", icon: QrCode, label: "Scannen", color: "#A855F7", onClick: () => onNavigate("/scan") },
+                { id: "cards", icon: CreditCard, label: "Karten", color: "#FFB800", onClick: () => onNavigate("/wallet?tab=cards") },
               ].map((a, i) => (
                 <motion.button
                   key={a.id}
