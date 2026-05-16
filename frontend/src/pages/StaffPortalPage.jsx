@@ -20,6 +20,7 @@ import { useStaffReminders } from "../staff/useStaffReminders";
 import StaffChatPage from "../staff/StaffChat";
 import { StaffSmartSetupSheet } from "../staff/StaffSmartSetupSheet";
 import { StaffOpenShifts, ReleaseShiftSheet } from "../staff/OpenShifts";
+import { useOfflineClockQueue } from "../staff/useOfflineClockQueue";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -68,6 +69,16 @@ export default function StaffPortalPage({ onBack }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
   const [smartSetupOpen, setSmartSetupOpen] = useState(false);
+
+  // Offline clock event queue (Untergeschoss/Tunnel/Lager)
+  const offlineQueue = useOfflineClockQueue({ enabled: !!staff });
+
+  // After sync completes, refresh data
+  useEffect(() => {
+    if (!staff) return;
+    if (offlineQueue.lastSyncAt) loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offlineQueue.lastSyncAt, staff]);
 
   useEffect(() => {
     (async () => {
@@ -145,28 +156,47 @@ export default function StaffPortalPage({ onBack }) {
   const handleClockAction = async (action) => {
     setActionLoading(true);
     try {
-      let lat = null, lng = null;
+      let lat = null, lng = null, accuracy_m = null;
       if (navigator.geolocation) {
         try {
           const pos = await new Promise((res, rej) =>
             navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
           );
           lat = pos.coords.latitude; lng = pos.coords.longitude;
+          accuracy_m = pos.coords.accuracy;
         } catch {}
       }
-      const res = await fetch(
-        `${API}/api/staff/clock/self?action=${action}&lat=${lat}&lng=${lng}`,
-        { method: "POST", credentials: "include" }
-      );
-      if (res.ok) {
-        const labels = { clock_in: "Eingecheckt", clock_out: "Ausgecheckt", break_start: "Pause gestartet", break_end: "Pause beendet" };
-        toast.success(labels[action] || "OK");
-        await loadData();
-      } else {
-        toast.error("Fehler bei Zeitbuchung");
+
+      const labels = { clock_in: "Eingecheckt", clock_out: "Ausgecheckt", break_start: "Pause gestartet", break_end: "Pause beendet" };
+
+      // Offline-first: if browser is offline, queue immediately
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        offlineQueue.enqueue({ action, lat, lng, accuracy_m });
+        toast.success(`${labels[action] || "OK"} (offline)`, {
+          description: "Wird synchronisiert sobald wieder online.",
+        });
+        return;
       }
-    } catch {
-      toast.error("Netzwerkfehler");
+
+      try {
+        const res = await fetch(
+          `${API}/api/staff/clock/self?action=${action}&lat=${lat}&lng=${lng}`,
+          { method: "POST", credentials: "include" }
+        );
+        if (res.ok) {
+          toast.success(labels[action] || "OK");
+          await loadData();
+        } else {
+          // Server reachable but rejected — do NOT queue (validation errors etc)
+          toast.error("Fehler bei Zeitbuchung");
+        }
+      } catch (netErr) {
+        // Network failure → queue for later
+        offlineQueue.enqueue({ action, lat, lng, accuracy_m });
+        toast.warning(`${labels[action] || "Buchung"} offline gespeichert`, {
+          description: "Wird automatisch hochgeladen sobald online.",
+        });
+      }
     } finally {
       setActionLoading(false);
     }
@@ -251,6 +281,32 @@ export default function StaffPortalPage({ onBack }) {
             <ArrowLeft size={20} className="text-slate-700" />
           </button>
           <div className="flex items-center gap-2">
+            {(offlineQueue.queueLength > 0 || !offlineQueue.online) && (
+              <button
+                onClick={() => offlineQueue.sync()}
+                data-testid="staff-offline-badge"
+                className={`flex items-center gap-1.5 px-2.5 h-10 rounded-full border shadow-sm transition ${
+                  !offlineQueue.online
+                    ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                    : offlineQueue.syncing
+                    ? "bg-blue-50 border-blue-200 text-blue-700"
+                    : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                }`}
+                title={!offlineQueue.online ? "Offline" : offlineQueue.syncing ? "Synchronisiere…" : `${offlineQueue.queueLength} ungesynchronisiert · Tippen zum Syncen`}
+              >
+                <span className="relative flex w-2 h-2">
+                  {!offlineQueue.online && (
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                  )}
+                  <span className={`relative inline-flex rounded-full w-2 h-2 ${
+                    !offlineQueue.online ? "bg-red-500" : offlineQueue.syncing ? "bg-blue-500 animate-pulse" : "bg-amber-500"
+                  }`} />
+                </span>
+                <span className="text-[11px] font-bold">
+                  {!offlineQueue.online ? "Offline" : offlineQueue.syncing ? "Synct…" : offlineQueue.queueLength}
+                </span>
+              </button>
+            )}
             <button
               onClick={() => setChatOpen(true)}
               data-testid="staff-chat-btn"
