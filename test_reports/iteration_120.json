@@ -1,0 +1,34 @@
+{
+  "summary": "Iter120 — Staff Offline Sync Queue E2E + Taxi Map regression. Backend 8/8 PASS (auth-guard, batch sync, idempotency, status, partial dedup, validation). Frontend E2E PASS: offline simulation via context.set_offline + navigator.onLine override → click shift-end-btn → event queued in localStorage `staff_offline_clock_queue` with valid client_event_id (UUID), action=clock_out, source=offline_sync; offline badge ('Offline') visible; offline toast 'Ausgecheckt (offline) — Wird synchronisiert sobald wieder online.' shown. Going online → queue cleared (length 1→0) after auto-sync (debounce 1500ms + network). Taxi Map regression PASS: /taxi → booking sheet → mapContainer renders 414x896, position:absolute, inset:0, canvasCount=1, Berlin tiles (Hackesche Höfe, Spandauer Vorstadt) visible — iter119 CSS-Spezifitäts-Fix holds.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_offline_sync_iter120.py",
+    "/app/test_reports/pytest/iter120_offline_sync.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/staff_offline_sync.py: idempotency key = (client_event_id, staff_id) — perfectly scoped per-staff and prevents cross-tenant collision. Good.",
+    "routes/staff_offline_sync.py:56 sorted by captured_at before insert — preserves chronological order even when client sends out-of-order events. Good.",
+    "useOfflineClockQueue.js:65-87 flushQueue correctly treats BOTH 'synced' AND 'duplicate' results as successfully-handled and filters them out of the queue — this is the right behavior for safe resync; without it a duplicate would loop forever.",
+    "useOfflineClockQueue.js:138-140 mount-time scheduleSync covers the case where the user opens the portal already online with a leftover queue from a previous session. Solid.",
+    "StaffPortalPage.jsx:172-179 short-circuits to enqueue when navigator.onLine === false (no network attempt). Lines 193-199 also enqueue on fetch network failure (5xx/timeout). The catch-all does NOT enqueue on HTTP 4xx — correct, otherwise validation errors would queue forever.",
+    "Minor observation: the success toast after online-sync ('X Buchung(en) synchronisiert') was animated out before the 5s screenshot tick — purely a timing observation, not a defect. Queue clearance (1→0) confirms the sync happened.",
+    "TaxiPage.jsx:563-569 inline-style fix (position:absolute;inset:0) is necessary because mapbox-gl.css ships `.mapboxgl-map { position: relative }` which has equal specificity to Tailwind utilities but is loaded later — inline style is the cleanest deterministic override.",
+    "Regression check stays green at 414x896 mobile viewport — the bug from iter119 cannot resurface as long as the inline style stays in place."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_offline_sync_iter120.py"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% (offline-queue persistence + auto-sync + map regression all verified)"},
+  "test_credentials": "Staff: TEST_magic_1778611082@example.com / test123 (logged in as TEST_MagicUser, was in 'working' state with active shift). Merchant for /taxi: haendler@bidblitz.com / Haendler2026!",
+  "seed_data_creation": "Backend tests inserted 4 offline clock events into staff_clock_events for TEST_magic staff (3 from initial batch + 1 from partial-dedup test). All marked offline_captured=true. No cleanup performed since these are valid historical clock records; safe to leave or purge via `db.staff_clock_events.delete_many({staff_id: '<TEST_magic_id>', source: 'offline_sync', client_event_id: {$in: [...]}})`. Frontend E2E added 1 more clock_out via offline-queue auto-sync.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Offline sync is end-to-end stable. Key things to know for future tests: (1) localStorage key is `staff_offline_clock_queue`; flushQueue treats both 'synced' and 'duplicate' results as successfully-removed → safe to call repeatedly. (2) For Playwright offline simulation use BOTH `page.context.set_offline(True)` AND `Object.defineProperty(navigator,'onLine',{get:()=>false}); window.dispatchEvent(new Event('offline'))` — the hook reads navigator.onLine directly. (3) Sync debounce is 1500ms, plus network roundtrip — allow ≥3s after `online` event before asserting queue cleared. (4) Taxi map regression: assert `[data-testid=taxi-map-container]` or `.mapboxgl-map` has height>200 and canvasCount>=1; iter119 inline-style fix is the gating change. (5) Backend pytest module: /app/backend/tests/test_offline_sync_iter120.py — 8 tests, ~3.5s wall-time, reusable as regression.",
+  "rca of the issue": "No bugs found. The offline-sync flow design (UUID client_event_id + server-side idempotency on (client_event_id, staff_id)) is correct and exercised. The taxi-map iter119 fix is still effective."
+}
