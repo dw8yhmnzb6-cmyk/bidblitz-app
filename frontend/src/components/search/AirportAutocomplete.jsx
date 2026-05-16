@@ -26,7 +26,11 @@ export const AirportAutocomplete = ({
   const wrapRef = useRef(null);
   const cache = useRef(new Map());
 
-  useEffect(() => { setText(value); }, [value]);
+  useEffect(() => {
+    // Only sync from parent if parent value differs significantly (avoid flicker mid-typing)
+    if (value !== text) setText(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   useEffect(() => {
     const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };

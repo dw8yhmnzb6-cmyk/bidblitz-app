@@ -103,7 +103,7 @@ const FlightSearchPage = ({ onBack, onNavigate }) => {
                 <label className="text-[9px] text-gray-500 mb-1 block">Von</label>
                 <AirportAutocomplete
                   value={origin}
-                  onChange={(v) => setOrigin(v.length === 3 ? v.toUpperCase() : v)}
+                  onChange={setOrigin}
                   onSelect={(a) => setOrigin(a.iata)}
                   placeholder="Abflug"
                   testId="flight-origin-autocomplete"
@@ -113,7 +113,7 @@ const FlightSearchPage = ({ onBack, onNavigate }) => {
                 <label className="text-[9px] text-gray-500 mb-1 block">Nach</label>
                 <AirportAutocomplete
                   value={dest}
-                  onChange={(v) => setDest(v.length === 3 ? v.toUpperCase() : v)}
+                  onChange={setDest}
                   onSelect={(a) => setDest(a.iata)}
                   placeholder="Ankunft"
                   testId="flight-dest-autocomplete"
