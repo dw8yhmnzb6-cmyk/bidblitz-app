@@ -1,13 +1,57 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { STATUS_COLORS, STATUS_LABELS, VEHICLE_ICONS } from './TaxiConstants';
 
+const FILTERS = [
+  { key: 'all',       label: 'Alle' },
+  { key: 'week',      label: 'Diese Woche' },
+  { key: 'business',  label: 'Geschäftlich' },
+  { key: 'cancelled', label: 'Storniert' },
+];
+
+function startOfWeekISO() {
+  const d = new Date();
+  const day = d.getDay() || 7; // Mo=1..So=7
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (day - 1));
+  return d.toISOString();
+}
+
 /**
  * Ride history view extracted from TaxiPage.jsx (iter57c).
- * Stateless — receives all data via props.
+ * Stateless — receives all data via props. Filter-Tabs added in iter124 Phase C.
  */
 export default function TaxiHistoryView({ rideHistory, onRefresh, onReview }) {
-  const totalSpent = rideHistory
+  const [filter, setFilter] = useState('all');
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return rideHistory;
+    if (filter === 'cancelled') return rideHistory.filter((r) => r.status === 'cancelled');
+    if (filter === 'business') {
+      return rideHistory.filter((r) =>
+        r.corporate_account_id || r.cost_center || r.is_business || r.taxi_type === 'business'
+      );
+    }
+    if (filter === 'week') {
+      const cut = startOfWeekISO();
+      return rideHistory.filter((r) => (r.created_at || '') >= cut);
+    }
+    return rideHistory;
+  }, [rideHistory, filter]);
+
+  const counts = useMemo(() => {
+    const cut = startOfWeekISO();
+    return {
+      all: rideHistory.length,
+      week: rideHistory.filter((r) => (r.created_at || '') >= cut).length,
+      business: rideHistory.filter((r) =>
+        r.corporate_account_id || r.cost_center || r.is_business || r.taxi_type === 'business'
+      ).length,
+      cancelled: rideHistory.filter((r) => r.status === 'cancelled').length,
+    };
+  }, [rideHistory]);
+
+  const totalSpent = filtered
     .filter((r) => r.status === 'completed')
     .reduce((sum, r) => sum + (r.final_fare || r.fare_estimate || 0), 0);
 
@@ -24,12 +68,35 @@ export default function TaxiHistoryView({ rideHistory, onRefresh, onReview }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20">
           <p className="text-[10px] text-cyan-400/70 uppercase tracking-wider font-semibold mb-1">Fahrten gesamt</p>
-          <p className="text-2xl font-bold text-white">{rideHistory.length}</p>
+          <p className="text-2xl font-bold text-white tabular-nums">{filtered.length}</p>
         </div>
         <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20">
           <p className="text-[10px] text-purple-400/70 uppercase tracking-wider font-semibold mb-1">Ausgegeben</p>
-          <p className="text-2xl font-bold text-white">€{totalSpent.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-white tabular-nums">€{totalSpent.toFixed(2)}</p>
         </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1" data-testid="taxi-history-filters">
+        {FILTERS.map((f) => {
+          const active = filter === f.key;
+          const c = counts[f.key] || 0;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              data-testid={`taxi-history-filter-${f.key}`}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                active
+                  ? 'bg-cyan-500 text-black border-cyan-400'
+                  : 'bg-white/[0.04] text-gray-300 border-white/[0.06] hover:bg-white/[0.08]'
+              }`}
+            >
+              {f.label}
+              <span className={`text-[10px] tabular-nums ${active ? 'text-black/70' : 'text-gray-500'}`}>{c}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex items-center justify-between pt-2">
@@ -43,19 +110,25 @@ export default function TaxiHistoryView({ rideHistory, onRefresh, onReview }) {
         </button>
       </div>
 
-      {rideHistory.length === 0 ? (
-        <div className="text-center py-12 rounded-2xl border border-white/5 bg-white/[0.02]">
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 rounded-2xl border border-white/5 bg-white/[0.02]" data-testid="taxi-history-empty">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.5">
               <path d="M3 6h18M3 12h18M3 18h12" />
             </svg>
           </div>
-          <p className="text-gray-300 text-sm font-medium mb-1">Noch keine Fahrten</p>
-          <p className="text-xs text-gray-500">Deine abgeschlossenen Fahrten erscheinen hier</p>
+          <p className="text-gray-300 text-sm font-medium mb-1">
+            {filter === 'all' ? 'Noch keine Fahrten' : 'Keine Fahrten in dieser Auswahl'}
+          </p>
+          <p className="text-xs text-gray-500">
+            {filter === 'all'
+              ? 'Deine abgeschlossenen Fahrten erscheinen hier'
+              : 'Versuche einen anderen Filter'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {rideHistory.map((ride, idx) => {
+          {filtered.map((ride, idx) => {
             const dateStr = ride.created_at
               ? new Date(ride.created_at).toLocaleDateString('de-DE', {
                   day: '2-digit',

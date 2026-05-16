@@ -14,7 +14,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
-### 16.05.2026 (iter124 — Phase B: Welcome-Sheet Quick-Actions) ✅
+### 16.05.2026 (iter124 — Phase C: History Filter-Tabs) ✅
+- 🟢 **Filter-Tabs** in `TaxiHistoryView.jsx`: `Alle | Diese Woche | Geschäftlich | Storniert` mit Count-Badges. Cyan-Pill für aktiven Filter (Uber/Bolt-Pattern).
+- 🟢 **Logik**: `useMemo` für filtered + counts. „Diese Woche" via `startOfWeekISO()` (Montag 00:00). „Geschäftlich" matcht `corporate_account_id || cost_center || is_business || taxi_type==='business'`. „Storniert" zeigt nur cancelled.
+- 🟢 **Stats-Header dynamisch**: Fahrten-Count und „Ausgegeben" rechnen sich basierend auf filtered statt komplettem History.
+- 🟢 **Empty-State adaptiv**: bei Filter „Versuche einen anderen Filter" statt „Noch keine Fahrten".
+- ✅ Smoke: alle 4 testids (taxi-history-filter-all/week/business/cancelled) gefunden, Stats-Header zeigt 0/0 für leeren Account, Tab-Switch funktioniert.
+
+
 - 🟢 **Neue Komponente** `components/taxi/TaxiQuickActions.jsx`: Big-Touch 1-Tap-Aktionen direkt im Welcome-Sheet. Bricht das „Stammkunden müssen durchs Side-Menu"-Problem.
 - 🟢 **„Jetzt | Später"-Toggle** (Zap/Clock Icons): „Später" navigiert auf `/taxi/pro` (Pre-Booking-Tab).
 - 🟢 **3 Quick-Tiles**: 🏠 Heim · 💼 Arbeit · 🔁 Letzte Fahrt. Resolved aus `savedPlaces` (icon-key oder name-Match) + `rideHistory.find(status==='completed')`. Disabled-State zeigt „Adresse speichern" / „Noch keine Fahrt".
