@@ -13,6 +13,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Stripe key: pre-configured (test mode)
 - Emergent LLM Key: pre-configured
 
+### 17.05.2026 (Scan Hub + Table/Invoice Barcode System) ✅
+- 🟢 **Unified Scan Hub im bestehenden Scan-Tab** (`frontend/src/pages/ScannerPage.jsx`, `frontend/src/App.js`, `frontend/src/services/api.js`): `/scan` ist jetzt der zentrale Einstieg für **Tisch scannen**, **Rechnung scannen** und **Kassieren**. Enthält Tool-Switcher `Scannen | Kassieren | Mein QR`, Kamera-Start via `BarcodeDetector`, manuelle Code-Eingabe und direkte Route-Weiterleitung nach erfolgreichem Resolve.
+- 🟢 **Neue Scan-Resolve API** (`backend/routes/scan_router.py`, registriert in `backend/core/router_registry.py`): `POST /api/scan/resolve` unterstützt `TBL-...`, `BBINV-...`, `BLZ-...`, `CS_...` sowie komplette URLs (`/order/qr/...`, `/pay/checkout/...`, `/invoice/pay/...`).
+- 🟢 **Stabile Table-Barcode-Codes** (`backend/routes/qr_table_order.py`, `frontend/src/pages/MerchantQrTablesPage.jsx`): Neue QR-Tische bekommen zusätzlich ein persistentes `scan_code` Feld im Format `TBL-XXXXXXXXXX`. Dieses wird im Merchant-UI sichtbar als `Barcode: TBL-...` gerendert.
+- 🟢 **Invoice Scan + direkte Zahlungsseite** (`backend/routes/invoicing.py`, `frontend/src/pages/InvoicePayPage.jsx`): Neue Rechnungen erhalten `scan_code` im Format `BBINV-XXXXXXXXXX` plus `pay_url`. Öffentliche Endpoints `GET /api/invoicing/public/{scan_code}` und `POST /api/invoicing/public/{scan_code}/pay` ermöglichen direktes Öffnen und Bezahlen nach dem Scan. Wallet-Debit/Credit + Transaktionslogs werden beim Bezahlen geschrieben.
+- ✅ **Testing iter126**: `/app/test_reports/iteration_126.json` → Backend 17/17 PASS, Frontend PASS. Zusätzliche Pflichttests ebenfalls grün: Frontend-Subagent 12/13 PASS ohne kritische Issues, Backend-Subagent 5/5 PASS.
+
 ### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
 - 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
 - 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.
