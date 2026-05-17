@@ -1,0 +1,171 @@
+[
+  {
+    "test_name": "Driver Login",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "id": "69cface7afddbc3de2cabb39",
+      "email": "admin@bidblitz.com",
+      "name": "Admin Updated",
+      "role": "admin",
+      "modes": [
+        "personal",
+        "kids",
+        "merchant"
+      ],
+      "balance": 8533.88,
+      "currency": "EUR",
+      "card_number": "4721 9980 8906 9791",
+      "card_expiry": "09/28",
+      "created_at": "2026-04-03T12:04:55.708517+00:00",
+      "language": "de",
+      "notifications_enabled": true,
+      "email_notifications": true,
+      "biometric_enabled": false,
+      "dark_mode": true
+    },
+    "expected": "200 OK with user data and session cookies",
+    "actual": "200 with email=admin@bidblitz.com",
+    "notes": "Cookies: ['access_token', 'refresh_token', '__cf_bm']",
+    "timestamp": "2026-05-17T21:41:49.132322"
+  },
+  {
+    "test_name": "Driver Eligibility",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "is_driver": true,
+      "is_verified": true,
+      "status": "active",
+      "driver_id": "drv_admin_e2cabb39"
+    },
+    "expected": "is_driver=true, is_verified=true, status=active",
+    "actual": "is_driver=True, is_verified=True, status=active",
+    "notes": "Driver ID: drv_admin_e2cabb39",
+    "timestamp": "2026-05-17T21:41:49.270538"
+  },
+  {
+    "test_name": "Driver Profile",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "driver_id": "drv_admin_e2cabb39",
+      "name": "Admin Updated",
+      "email": "admin@bidblitz.com",
+      "phone": null,
+      "avatar": null,
+      "vehicle": {
+        "brand": "Mercedes",
+        "model": "E-Klasse",
+        "plate": "BB-DRIVER-1",
+        "type": "premium",
+        "color": "black"
+      },
+      "rating": 5.0,
+      "is_verified": true,
+      "status": "active",
+      "joined_at": "2026-05-17T21:36:12.515464+00:00",
+      "stats": {
+        "total_rides": 0,
+        "total_earned": 0.0,
+        "wallet_balance": 8533.88
+      }
+    },
+    "expected": "200 OK with complete driver profile (driver_id, name, email, vehicle, rating, stats)",
+    "actual": "200 OK with 11 fields, missing: none",
+    "notes": "Stats: 0 rides, \u20ac0.0 earned, \u20ac8533.88 balance",
+    "timestamp": "2026-05-17T21:41:49.423487"
+  },
+  {
+    "test_name": "Driver Status",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "driver_id": "drv_admin_e2cabb39",
+      "name": "Admin Updated",
+      "is_online": false,
+      "is_busy": false,
+      "vehicle": {
+        "brand": "Mercedes",
+        "model": "E-Klasse",
+        "plate": "BB-DRIVER-1",
+        "type": "premium",
+        "color": "black"
+      },
+      "rating": 5.0,
+      "current_location": {
+        "lat": 52.52,
+        "lng": 13.405,
+        "updated_at": "2026-05-17T21:36:12.515464+00:00"
+      },
+      "earnings": {
+        "today": 0,
+        "today_rides": 0,
+        "week": 0,
+        "week_rides": 0,
+        "total_rides": 0
+      },
+      "active_ride": null,
+      "pending_requests": [],
+      "balance": 0
+    },
+    "expected": "200 OK with driver status (is_online, is_busy, earnings, active_ride, pending_requests)",
+    "actual": "200 OK with 11 fields, missing: none",
+    "notes": "Online: False, Busy: False, Today: \u20ac0 (0 rides)",
+    "timestamp": "2026-05-17T21:41:49.554401"
+  },
+  {
+    "test_name": "Driver Documents Summary",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "counts": {
+        "expired": 0,
+        "urgent": 0,
+        "warning": 0,
+        "notice": 0,
+        "ok": 1,
+        "unknown": 0
+      },
+      "missing_required": [
+        {
+          "type": "license",
+          "label": "F\u00fchrerschein"
+        },
+        {
+          "type": "p_schein",
+          "label": "P-Schein"
+        },
+        {
+          "type": "insurance",
+          "label": "Versicherung"
+        }
+      ],
+      "next_expiring": {
+        "id": "27ae568c-c41c-4006-9758-0b5615602c4b",
+        "driver_id": "69cface7afddbc3de2cabb39",
+        "type": "tuev",
+        "expires_on": "2026-12-31",
+        "file_url": null,
+        "note": null,
+        "uploaded_at": "2026-05-16T14:02:26.701246+00:00",
+        "status": "active",
+        "days_until_expiry": 228,
+        "alert_level": "ok",
+        "type_label": "T\u00dcV"
+      },
+      "alerts": [
+        {
+          "tone": "violet",
+          "title": "Pflichtdokument fehlt",
+          "text": "F\u00fchrerschein, P-Schein, Versicherung"
+        }
+      ],
+      "has_blocker": true
+    },
+    "expected": "200 OK with documents summary (counts, missing_required, alerts, has_blocker)",
+    "actual": "200 OK with 5 fields, missing: none",
+    "notes": "Counts: {'expired': 0, 'urgent': 0, 'warning': 0, 'notice': 0, 'ok': 1, 'unknown': 0}, Missing: 3, Alerts: 1, Blocker: True",
+    "timestamp": "2026-05-17T21:41:49.670964"
+  }
+]
