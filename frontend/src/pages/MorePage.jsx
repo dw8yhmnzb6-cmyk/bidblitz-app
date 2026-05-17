@@ -781,9 +781,17 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       .catch(() => setDriverAccess(null));
   }, [isGuest, isDemoMode]);
 
-  const gatedAction = (fn) => () => {
-    if (isGuest && !isDemoMode) { onAuthRequired(); return; }
-    if (isDemoMode) { return; } // Demo: show menu but no sub-page navigation
+  const gatedAction = (fn) => async () => {
+    if (isDemoMode) { return; }
+    if (isGuest) {
+      try {
+        await refreshUser();
+        await api.getMe();
+      } catch {
+        onAuthRequired();
+        return;
+      }
+    }
     fn();
   };
 
@@ -1221,7 +1229,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, ...slide }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => (isGuest && !isDemoMode) ? onAuthRequired() : isDemoMode ? null : setSubPage("profile")}
+          onClick={gatedAction(() => setSubPage("profile"))}
         >
           <div
             className="absolute -top-8 -left-8 w-24 h-24 rounded-full pointer-events-none"
