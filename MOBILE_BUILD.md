@@ -40,7 +40,7 @@ npx cap open ios
 In `capacitor.config.ts`:
 ```ts
 server: {
-  url: 'https://blitz-dispatch.preview.emergentagent.com',
+  url: 'https://bidblitz-staff.preview.emergentagent.com',
   cleartext: true,
 }
 ```
@@ -86,7 +86,7 @@ npx cap sync
 npx cap run android   # oder ios
 
 # Code änderen → die App auf dem Handy lädt automatisch neu
-# (lädt von https://blitz-dispatch.preview.emergentagent.com)
+# (lädt von https://bidblitz-staff.preview.emergentagent.com)
 
 # Vor Release zurück:
 git checkout capacitor.config.ts

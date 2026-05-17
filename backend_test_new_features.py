@@ -16,7 +16,7 @@ from datetime import datetime
 import uuid
 
 # Backend URL from frontend/.env
-BASE_URL = "https://blitz-dispatch.preview.emergentagent.com/api"
+BASE_URL = "https://bidblitz-staff.preview.emergentagent.com/api"
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.ae"

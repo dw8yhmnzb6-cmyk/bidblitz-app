@@ -156,23 +156,106 @@ async def get_staff_from_session(request: Request):
         raise HTTPException(401, "Not authenticated")
     
     # Simple session validation (replace with proper session management)
-    staff = await db.staff_members.find_one({"id": session_cookie}, {"_id": 0})
+    staff = await db.staff_members.find_one(
+        {"id": session_cookie},
+        {"_id": 0, "password_hash": 0, "pin": 0, "pin_hash": 0},
+    )
     if not staff or not staff.get("active"):
         raise HTTPException(401, "Invalid session or inactive account")
     
     return staff
+
+
+STAFF_AUTH_MAX_ATTEMPTS = 5
+STAFF_AUTH_LOCKOUT_MINUTES = 15
+
+
+def _staff_auth_client_ip(request: Request) -> str:
+    forwarded = (request.headers.get("x-forwarded-for") or "").strip()
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _staff_auth_identifier(request: Request, scope: str, subject: str) -> str:
+    return f"{scope}:{_staff_auth_client_ip(request)}:{subject}"
+
+
+def _staff_auth_limit_error(retry_after_sec: int) -> HTTPException:
+    return HTTPException(
+        status_code=429,
+        detail={
+            "code": "rate_limit_exceeded",
+            "message": f"Zu viele Versuche. Bitte in {retry_after_sec} Sekunden erneut versuchen.",
+            "retry_after_sec": retry_after_sec,
+        },
+        headers={"Retry-After": str(retry_after_sec)},
+    )
+
+
+async def _ensure_staff_auth_allowed(identifier: str):
+    attempt = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    if not attempt:
+        return
+
+    locked_until = attempt.get("locked_until")
+    if attempt.get("attempts", 0) < STAFF_AUTH_MAX_ATTEMPTS or not locked_until:
+        return
+
+    now = datetime.now(timezone.utc)
+    try:
+        locked_until_dt = datetime.fromisoformat(str(locked_until))
+    except Exception:
+        locked_until_dt = None
+
+    if locked_until_dt and locked_until_dt > now:
+        retry_after = max(1, int((locked_until_dt - now).total_seconds()))
+        raise _staff_auth_limit_error(retry_after)
+
+    await db.login_attempts.delete_one({"identifier": identifier})
+
+
+async def _record_staff_auth_failure(identifier: str):
+    now = datetime.now(timezone.utc)
+    attempt = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    attempts = (attempt or {}).get("attempts", 0) + 1
+    payload = {
+        "identifier": identifier,
+        "attempts": attempts,
+        "updated_at": now.isoformat(),
+    }
+    if attempts >= STAFF_AUTH_MAX_ATTEMPTS:
+        payload["locked_until"] = (now + timedelta(minutes=STAFF_AUTH_LOCKOUT_MINUTES)).isoformat()
+
+    await db.login_attempts.update_one(
+        {"identifier": identifier},
+        {
+            "$set": payload,
+            "$setOnInsert": {"created_at": now.isoformat()},
+        },
+        upsert=True,
+    )
+
+
+async def _reset_staff_auth_failures(identifier: str):
+    await db.login_attempts.delete_many({"identifier": identifier})
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 0. STAFF AUTH (Self-Service Login)
 # ═══════════════════════════════════════════════════════════════════════════
 
 @router.post("/auth/login")
-async def staff_login(data: StaffLogin, response: Response):
+async def staff_login(data: StaffLogin, request: Request, response: Response):
     """Mitarbeiter Login für Self-Service Portal"""
+    email = (data.email or "").strip().lower()
+    identifier = _staff_auth_identifier(request, "staff_login", email or "unknown")
+    await _ensure_staff_auth_allowed(identifier)
+
     # Find staff member by email
-    staff = await db.staff_members.find_one({"email": data.email}, {"_id": 0})
+    staff = await db.staff_members.find_one({"email": email}, {"_id": 0})
     
     if not staff:
+        await _record_staff_auth_failure(identifier)
         raise HTTPException(401, "Ungültige E-Mail oder Passwort")
     
     if not staff.get("active"):
@@ -181,6 +264,7 @@ async def staff_login(data: StaffLogin, response: Response):
     # Check password (if exists, otherwise allow login with any password for now)
     if staff.get("password_hash"):
         if not bcrypt.checkpw(data.password.encode(), staff["password_hash"].encode()):
+            await _record_staff_auth_failure(identifier)
             raise HTTPException(401, "Ungültige E-Mail oder Passwort")
     else:
         # First login - set password
@@ -198,6 +282,8 @@ async def staff_login(data: StaffLogin, response: Response):
         max_age=86400 * 30,  # 30 days
         samesite="lax"
     )
+
+    await _reset_staff_auth_failures(identifier)
     
     return {
         "success": True,
@@ -251,6 +337,9 @@ async def terminal_pin_lookup(data: TerminalPinBody, request: Request):
     except Exception:
         merchant_id = None
 
+    identifier = _staff_auth_identifier(request, "staff_terminal_pin", merchant_id or "global")
+    await _ensure_staff_auth_allowed(identifier)
+
     # Query staff_members with PIN match (active only)
     query = {"pin": pin, "active": {"$ne": False}}
     if merchant_id:
@@ -267,7 +356,10 @@ async def terminal_pin_lookup(data: TerminalPinBody, request: Request):
                 {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1},
             )
         if not member:
+            await _record_staff_auth_failure(identifier)
             raise HTTPException(404, "PIN nicht zugeordnet")
+
+    await _reset_staff_auth_failures(identifier)
 
     # Log terminal access
     await db.staff_terminal_log.insert_one({

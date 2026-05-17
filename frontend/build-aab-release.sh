@@ -45,20 +45,32 @@ if [ ! -d "$SDK_DIR/platforms" ]; then
 fi
 
 export ANDROID_HOME="$SDK_DIR"
+KEYSTORE_PATH="${ANDROID_KEYSTORE_FILE:-$ANDROID_DIR/bidblitz-upload.jks}"
+KEYSTORE_PROPS="$ANDROID_DIR/keystore.properties"
 
 # ── 2. local.properties (Gradle finds SDK) ──
 echo "sdk.dir=$SDK_DIR" > "$ANDROID_DIR/local.properties"
 
 # ── 3. Verify keystore exists ──
-if [ ! -f "$ANDROID_DIR/bidblitz-upload.jks" ]; then
-  echo "❌ Keystore not found: $ANDROID_DIR/bidblitz-upload.jks"
-  echo "Run keystore generation first or restore from backup."
+if [ ! -f "$KEYSTORE_PATH" ]; then
+  echo "❌ Keystore not found: $KEYSTORE_PATH"
+  echo "Restore it from your secure vault or provide ANDROID_KEYSTORE_FILE."
   exit 1
 fi
 
-if [ ! -f "$ANDROID_DIR/keystore.properties" ]; then
-  echo "❌ keystore.properties not found"
-  exit 1
+if [ ! -f "$KEYSTORE_PROPS" ]; then
+  if [ -n "${ANDROID_KEYSTORE_PASSWORD:-}" ] && [ -n "${ANDROID_KEY_ALIAS:-}" ] && [ -n "${ANDROID_KEY_PASSWORD:-}" ]; then
+    cat > "$KEYSTORE_PROPS" <<EOF
+storeFile=$KEYSTORE_PATH
+storePassword=${ANDROID_KEYSTORE_PASSWORD}
+keyAlias=${ANDROID_KEY_ALIAS}
+keyPassword=${ANDROID_KEY_PASSWORD}
+EOF
+    trap 'rm -f "$KEYSTORE_PROPS"' EXIT
+  else
+    echo "❌ keystore.properties fehlt und ANDROID_* Secrets sind unvollständig"
+    exit 1
+  fi
 fi
 
 # ── 4. Web-build + Capacitor sync ──

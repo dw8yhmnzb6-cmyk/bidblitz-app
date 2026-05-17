@@ -88,7 +88,7 @@ def configure_cors(app):
     """Configure CORS middleware."""
     origins = [
         "http://localhost:3000",
-        "https://blitz-dispatch.preview.emergentagent.com",
+        "https://bidblitz-staff.preview.emergentagent.com",
         os.getenv("REACT_APP_BACKEND_URL", ""),
     ]
     

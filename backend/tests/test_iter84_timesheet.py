@@ -15,7 +15,7 @@ import pytest
 import requests
 from datetime import datetime, timezone
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://blitz-dispatch.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://bidblitz-staff.preview.emergentagent.com").rstrip("/")
 
 MERCHANT_EMAIL = "haendler@bidblitz.com"
 MERCHANT_PW = "Haendler2026!"

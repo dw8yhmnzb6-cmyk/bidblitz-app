@@ -18,6 +18,7 @@ set -euo pipefail
 
 PLATFORM="${1:-both}"
 FRONTEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/frontend"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$FRONTEND_DIR"
 
 # Color output helpers
@@ -28,9 +29,15 @@ warn() { echo -e "${YELLOW}⚠ $*${NC}"; }
 err()  { echo -e "${RED}✗ $*${NC}" >&2; }
 
 # ---------------------------------------------------------------------------
+# 0. Mobile version auto-bump (CI)
+# ---------------------------------------------------------------------------
+step "0/5 Mobile-Version vorbereiten"
+"$SCRIPT_DIR/bump-mobile-version.sh"
+
+# ---------------------------------------------------------------------------
 # 1. Mapbox token health check
 # ---------------------------------------------------------------------------
-step "1/4 Mapbox-Token Health Check"
+step "1/5 Mapbox-Token Health Check"
 
 ENV_FILE=".env.production"
 [[ -f "$ENV_FILE" ]] || ENV_FILE=".env"
@@ -59,17 +66,17 @@ esac
 # 2. Yarn build (CRA)
 # ---------------------------------------------------------------------------
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
-  step "2/4 Frontend Production-Build (yarn build)"
+  step "2/5 Frontend Production-Build (yarn build)"
   yarn build
   ok "Build erfolgreich"
 else
-  warn "2/4 Build übersprungen (SKIP_BUILD=1)"
+  warn "2/5 Build übersprungen (SKIP_BUILD=1)"
 fi
 
 # ---------------------------------------------------------------------------
 # 3. Capacitor Sync
 # ---------------------------------------------------------------------------
-step "3/4 Capacitor Sync"
+step "3/5 Capacitor Sync"
 
 case "$PLATFORM" in
   ios)
@@ -93,7 +100,7 @@ esac
 # ---------------------------------------------------------------------------
 # 4. Plugin sanity check
 # ---------------------------------------------------------------------------
-step "4/4 Plugin Sanity Check"
+step "4/5 Plugin Sanity Check"
 
 EXPECTED=("@capacitor/core" "@capacitor/ios" "@capacitor/android"
           "@capacitor-community/bluetooth-le" "@capgo/capacitor-wifi")

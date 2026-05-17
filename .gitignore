@@ -77,6 +77,12 @@ agenthub/agents/youtube/db
 .cache/
 
 memory/test_credentials.md
+keystore_backup/
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
 
 # Mobile development
 android-sdk/frontend/node_modules/.cache/default-development/2.pack
