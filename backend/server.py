@@ -8,12 +8,13 @@ load_dotenv(Path(__file__).parent / '.env')
 
 import logging
 from logging.handlers import RotatingFileHandler
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
-from core.config import APP_ENV, IS_PRODUCTION
+from core.config import APP_ENV, IS_PRODUCTION, ADMIN_EMAIL
 from core.database import db, create_indexes, close_connection
 from core.rate_limit import limiter
 from core.middleware import setup_middleware
@@ -99,6 +100,68 @@ logger.info(f"✓ BidBlitz V2 API started ({APP_ENV} mode)")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
+async def ensure_admin_driver_account():
+    try:
+        admin = await db.users.find_one({"email": ADMIN_EMAIL})
+        if not admin:
+            logger.warning(f"Admin driver seed skipped: user {ADMIN_EMAIL} not found")
+            return
+
+        user_id = str(admin["_id"])
+        existing = await db.drivers.find_one({"user_id": user_id}) or {}
+        now = datetime.now(timezone.utc).isoformat()
+        driver_id = existing.get("driver_id") or f"drv_admin_{user_id[-8:]}"
+        vehicle = existing.get("vehicle") or {
+            "brand": "Mercedes",
+            "model": "E-Klasse",
+            "plate": "BB-DRIVER-1",
+            "type": "premium",
+            "color": "black",
+        }
+
+        await db.drivers.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "driver_id": driver_id,
+                    "user_id": user_id,
+                    "user_email": admin.get("email", ""),
+                    "user_name": admin.get("name", "Admin Driver"),
+                    "name": existing.get("name") or admin.get("name", "Admin Driver"),
+                    "phone": existing.get("phone") or admin.get("phone", ""),
+                    "vehicle": vehicle,
+                    "car": existing.get("car") or vehicle,
+                    "rating": existing.get("rating", 5.0),
+                    "balance": existing.get("balance", 0),
+                    "is_verified": True,
+                    "verified": True,
+                    "status": "active",
+                    "is_online": existing.get("is_online", False),
+                    "online": existing.get("online", False),
+                    "is_busy": existing.get("is_busy", False),
+                    "current_location": existing.get("current_location") or {"lat": 52.52, "lng": 13.405, "updated_at": now},
+                    "approved_at": existing.get("approved_at") or now,
+                    "created_at": existing.get("created_at") or now,
+                }
+            },
+            upsert=True,
+        )
+
+        await db.users.update_one(
+            {"_id": admin["_id"]},
+            {
+                "$set": {
+                    "is_driver": True,
+                    "driver_status": "approved",
+                    "taxi_driver_id": driver_id,
+                }
+            },
+        )
+        logger.info(f"✓ Verified driver test account ensured for {ADMIN_EMAIL}")
+    except Exception as e:
+        logger.warning(f"Admin driver seed failed: {e}")
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STARTUP & SHUTDOWN
 # ══════════════════════════════════════════════════════════════════════════════
@@ -109,6 +172,7 @@ async def startup_event():
     logger.info("🚀 Starting BidBlitz V2...")
     await create_indexes()
     logger.info("✓ Database indexes created")
+    await ensure_admin_driver_account()
 
     # Seed demo auctions and start background bot+maintenance loops
     try:
