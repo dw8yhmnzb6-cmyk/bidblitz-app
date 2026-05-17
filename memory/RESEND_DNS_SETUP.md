@@ -69,7 +69,7 @@ nslookup -type=TXT send.bidblitz.ae
 
 ```bash
 # Admin-Token holen
-API_URL=https://super-app-portal.preview.emergentagent.com
+API_URL=https://blitz-dispatch.preview.emergentagent.com
 
 TOKEN=$(curl -s -X POST "$API_URL/api/auth/login" \
   -H "Content-Type: application/json" \

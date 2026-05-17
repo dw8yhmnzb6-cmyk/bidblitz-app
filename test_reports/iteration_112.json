@@ -25,7 +25,7 @@
     "backend": "100% (regression verified — POST /messages 200, staff auth 200)",
     "frontend": "100% (Manager send: URL stays, bubble appears, no nav; Staff send: URL stays, bubble appears; BottomNav hidden; CookieBanner hidden; composer clickable)"
   },
-  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026! ✅ | Staff (cookie auth): staff_session=ee9686ea-739b-4ba9-9872-650cb0955fae ✅",
+  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026! ✅ | Staff (cookie auth): staff_session=blitz-dispatch ✅",
   "seed_data_creation": "Sent 2 new chat_messages on existing thread fdf9e005-… : 'REGRESSION_iter112 Manager final test' (manager-bubble 16:56) and 'REGRESSION_iter112 Staff reply test' (staff-bubble 16:57). No new threads.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

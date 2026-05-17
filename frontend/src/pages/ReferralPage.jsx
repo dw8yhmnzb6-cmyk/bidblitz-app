@@ -52,6 +52,15 @@ const ReferralPage = ({ onBack }) => {
     try {
       const res = await api.applyReferral(applyCode.trim());
       setApplyMsg({ type: "success", text: res.message });
+      if (res.taxi_promo) {
+        // Show taxi promo code
+        setTimeout(() => {
+          setApplyMsg({ 
+            type: "success", 
+            text: `${res.message} Dein Taxi-Promo-Code: ${res.taxi_promo} (5€ Rabatt auf erste Fahrt)` 
+          });
+        }, 1000);
+      }
       setApplyCode("");
     } catch (err) {
       setApplyMsg({ type: "error", text: err.message });

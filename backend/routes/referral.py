@@ -87,12 +87,31 @@ async def apply_referral_code(req: ApplyReferralRequest, request: Request):
     # Store on user
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"referred_by": referrer_id, "referral_code_used": req.code.upper().strip()}})
 
-    return {"success": True, "message": "Referral code applied! You'll both be rewarded after your first payment."}
+    # Auto-create taxi promo code for new user (5€ off first ride)
+    referral_promo_code = f"REF-{req.code.upper().strip()[-6:]}"
+    try:
+        existing_promo = await db.taxi_promo_codes.find_one({"code": referral_promo_code})
+        if not existing_promo:
+            await db.taxi_promo_codes.insert_one({
+                "code": referral_promo_code,
+                "type": "fixed",
+                "value": 5.0,
+                "label": "Empfehlungs-Rabatt: 5€ auf deine erste Fahrt",
+                "max_uses_per_user": 1,
+                "user_id": user_id,  # Bound to this user only
+                "active": True,
+                "expires_at": None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+    except Exception:
+        pass  # Non-blocking
+
+    return {"success": True, "message": "Referral code applied! You'll both be rewarded after your first payment.", "taxi_promo": referral_promo_code}
 
 
 @router.get("/check-rewards")
 async def check_and_grant_rewards(request: Request):
-    """Check if referral rewards should be granted (called after first payment/topup)."""
+    """Check if referral rewards should be granted (called after first payment/topup OR first ride)."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
@@ -101,15 +120,20 @@ async def check_and_grant_rewards(request: Request):
     if not referral:
         return {"rewarded": False}
 
-    # Check if user has made a qualifying action (first payment or topup)
+    # Check if user has made a qualifying action (first payment, topup, OR completed taxi ride)
     qualifying_txn = await db.transactions.find_one({
         "user_id": user_id,
         "status": "completed",
         "type": {"$in": ["payment", "topup"]},
     })
+    
+    qualifying_ride = await db.taxi_rides.find_one({
+        "user_id": user_id,
+        "status": "completed",
+    })
 
-    if not qualifying_txn:
-        return {"rewarded": False, "message": "Complete your first payment or top-up to earn your referral bonus"}
+    if not qualifying_txn and not qualifying_ride:
+        return {"rewarded": False, "message": "Complete your first payment, top-up, or taxi ride to earn your referral bonus"}
 
     # Grant rewards to both users
     bonus = REWARDS["referral_bonus"]

@@ -1,7 +1,7 @@
 # BidBlitz Super-App Features Backend Test Report
 **Date:** 2026-04-26  
 **Tester:** Testing Agent  
-**Backend URL:** https://super-app-portal.preview.emergentagent.com/api
+**Backend URL:** https://blitz-dispatch.preview.emergentagent.com/api
 
 ## Test Summary
 - **Total Tests:** 10

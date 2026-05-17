@@ -62,6 +62,10 @@ async def validate_promo(code: Optional[str], user_id: Optional[str] = None) -> 
     if not promo:
         return {"valid": False, "code": code, "reason": "not_found"}
 
+    # User-specific promo check (e.g., referral-bound codes)
+    if promo.get("user_id") and user_id and promo["user_id"] != user_id:
+        return {"valid": False, "code": code, "reason": "not_for_you"}
+
     # Expiry check (DB only — built-ins are evergreen)
     if promo.get("expires_at"):
         try:

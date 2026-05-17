@@ -166,7 +166,7 @@ In Native Apps keine process.env - nutze:
 ```typescript
 // capacitor.config.ts
 server: {
-  url: 'https://super-app-portal.preview.emergentagent.com',
+  url: 'https://blitz-dispatch.preview.emergentagent.com',
   cleartext: true
 }
 ```

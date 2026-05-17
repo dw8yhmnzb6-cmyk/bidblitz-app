@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://super-app-portal.preview.emergentagent.com',
+    url: 'https://blitz-dispatch.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

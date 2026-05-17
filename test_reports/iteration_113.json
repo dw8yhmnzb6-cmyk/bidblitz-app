@@ -32,7 +32,7 @@
     "backend": "100% (7/7 pytest tests passed: patch, persist, wifi-far, bt-far, combined, wifi-mismatch-far, wifi-mismatch-near)",
     "frontend": "100% (sheet opens/closes, ssid persists in localStorage, toast shows, capabilities banner shows, check-presence fires with wifi_ssid evidenced by wifi_match in response, combined match_source observed live, chat+weather+timer regression OK)"
   },
-  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026! ✅ | Staff cookie: staff_session=ee9686ea-739b-4ba9-9872-650cb0955fae ✅ | Geofence ID 4f75e706-b703-44fb-9fec-e02826fd55f3 (wifi=Termokos-Office, bt=TERMOKOS-BEACON-001) ✅",
+  "test_credentials": "Merchant: haendler@bidblitz.com / Haendler2026! ✅ | Staff cookie: staff_session=blitz-dispatch ✅ | Geofence ID 4f75e706-b703-44fb-9fec-e02826fd55f3 (wifi=Termokos-Office, bt=TERMOKOS-BEACON-001) ✅",
   "seed_data_creation": "PATCH on existing geofence 4f75e706-... wifi_ssid='Termokos-Office', bluetooth_beacon_id='TERMOKOS-BEACON-001' (re-confirmed idempotent). Some staff_geofence_events 'entered' rows created at lat=42.66 lng=21.16 during the live-flow validation.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

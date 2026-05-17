@@ -12,7 +12,7 @@ import secrets
 import requests
 import pytest
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://super-app-portal.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://blitz-dispatch.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASS = "BidBlitz2026!"
 USER_EMAIL = "kunde@bidblitz.com"

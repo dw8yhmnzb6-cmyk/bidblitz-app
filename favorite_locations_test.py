@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://super-app-portal.preview.emergentagent.com"
+BASE_URL = "https://blitz-dispatch.preview.emergentagent.com"
 LOGIN_ENDPOINT = f"{BASE_URL}/api/auth/login"
 FAVORITES_ENDPOINT = f"{BASE_URL}/api/taxi/user/favorite-locations"
 
