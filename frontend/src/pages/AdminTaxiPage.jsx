@@ -10,6 +10,7 @@ import {
   RefreshCw, Ban, UserCheck, Pause, FileText, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
+import { TaxiTariffZonesAdmin } from "../components/taxi/TaxiTariffZonesAdmin";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const panelBg = "rgba(12, 14, 26, 0.95)";
@@ -817,6 +818,7 @@ export default function AdminTaxiPage({ onNavigate }) {
             { id: "overview", label: "Übersicht", icon: DollarSign },
             { id: "applications", label: "Bewerbungen", icon: FileText },
             { id: "modes", label: "Modi", icon: UserCheck },
+            { id: "zones", label: "Zonen", icon: MapPin },
             { id: "drivers", label: "Fahrer", icon: Users },
             { id: "rides", label: "Fahrten", icon: Car },
             { id: "settings", label: "Preise", icon: Settings },
@@ -840,6 +842,7 @@ export default function AdminTaxiPage({ onNavigate }) {
             {tab === "overview" && <OverviewTab/>}
             {tab === "applications" && <ApplicationsTab/>}
             {tab === "modes" && <ModesTab/>}
+            {tab === "zones" && <TaxiTariffZonesAdmin api={api} panelBg={panelBg} panelBorder={panelBorder} />}
             {tab === "drivers" && <DriversTab/>}
             {tab === "rides" && <RidesTab/>}
             {tab === "settings" && <FareSettingsTab/>}
