@@ -13,6 +13,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Stripe key: pre-configured (test mode)
 - Emergent LLM Key: pre-configured
 
+### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
+- 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
+- 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.
+- 🟢 **Android Signing gehärtet** (`frontend/android/app/build.gradle`, `frontend/build-aab-release.sh`): Release-Signing liest nun lokale `keystore.properties` **oder** CI-Secrets `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Repo-Keystore-Backup-Dateien entfernt, Security-Doku bereinigt.
+- 🟢 **CI Version Auto-Bump vorbereitet** (`scripts/bump-mobile-version.sh`, `scripts/build-native.sh`): Script bump't Android `versionCode/versionName` und iOS `CURRENT_PROJECT_VERSION/MARKETING_VERSION` via `MOBILE_BUILD_NUMBER`, `MOBILE_VERSION_NAME`, `GITHUB_RUN_NUMBER`, `CI_PIPELINE_IID`, `BUILD_NUMBER`.
+- 🟢 **iOS ATS verifiziert**: `frontend/ios/App/App/Info.plist` steht auf `NSAllowsArbitraryLoads=false`.
+- ✅ **Testing iter124**: 10/10 Tests grün (`/app/test_reports/iteration_124.json`) + zusätzlicher Frontend-Smoke und Backend-Pflichtcheck grün.
+
 
 ### 17.05.2026 (Open Shifts Auto-Publish — Enhancement zu P3) ✅
 - 🟢 **Backend** (`routes/staff_shift_assistant.py`): Neue Collection `staff_ai_open_shifts` + 6 Endpoints — Manager `POST /publish` (berechnet automatisch das nächste Wochentags-Datum), `GET /open-shifts`, `DELETE /{id}`; Staff `GET /open-shifts/staff` (mit `claimed_by_me`/`seats_left`-Annotations), `POST /{id}/claim` (auto-flip auf `filled` wenn voll), `POST /{id}/withdraw`. E2E via curl verifiziert.

@@ -5,7 +5,7 @@
 # Run this LOCALLY on macOS or Linux. NOT in the Emergent container (no Android SDK).
 #
 # Output: app/build/outputs/bundle/release/app-release.aab
-#         (signed with bidblitz-upload.jks, ready for Play Console)
+#         (signed via local keystore or ANDROID_* CI secrets, ready for Play Console)
 #
 
 set -e
