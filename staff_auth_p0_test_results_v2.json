@@ -1,0 +1,41 @@
+{
+  "test_run": {
+    "timestamp": "2026-05-17T17:46:54.476815",
+    "base_url": "https://bidblitz-staff.preview.emergentagent.com",
+    "total": 5,
+    "passed": 4,
+    "failed": 1
+  },
+  "results": [
+    {
+      "test": "Staff Login Rate Limit",
+      "passed": true,
+      "details": "Attempt 6: Got 429 as expected. Message: Zu viele Versuche. Bitte in 899 Sekunden erneut versuchen.",
+      "timestamp": "2026-05-17T17:46:45.643974"
+    },
+    {
+      "test": "Terminal PIN Rate Limit",
+      "passed": true,
+      "details": "Attempt 6: Got 429 as expected. Message: Zu viele Versuche. Bitte in 899 Sekunden erneut versuchen.",
+      "timestamp": "2026-05-17T17:46:49.850570"
+    },
+    {
+      "test": "Successful Staff Login",
+      "passed": true,
+      "details": "Login successful. Cookie set. Staff: Max Mustermann (mitarbeiter@bidblitz.com)",
+      "timestamp": "2026-05-17T17:46:52.235485"
+    },
+    {
+      "test": "Staff /me - No Sensitive Fields",
+      "passed": true,
+      "details": "No sensitive fields found. Staff fields: ['email', 'active', 'created_at', 'hourly_rate', 'id', 'merchant_id', 'name', 'role', 'personal_nr']",
+      "timestamp": "2026-05-17T17:46:52.341949"
+    },
+    {
+      "test": "Terminal PIN Success",
+      "passed": false,
+      "details": "Expected 200, got 429. Response: {\"detail\":{\"code\":\"rate_limit_exceeded\",\"message\":\"Zu viele Versuche. Bitte in 894 Sekunden erneut versuchen.\",\"retry_after_sec\":894}}",
+      "timestamp": "2026-05-17T17:46:54.475874"
+    }
+  ]
+}

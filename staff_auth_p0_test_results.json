@@ -1,0 +1,91 @@
+{
+  "test_run": {
+    "timestamp": "2026-05-17T17:43:59.761028",
+    "base_url": "https://bidblitz-staff.preview.emergentagent.com",
+    "test_user": "mitarbeiter@bidblitz.com",
+    "total_tests": 5,
+    "passed": 1,
+    "failed": 4
+  },
+  "p0_fixes": {
+    "staff_login_rate_limit": "5 fails \u2192 401, 6th \u2192 429",
+    "terminal_pin_rate_limit": "5 fails \u2192 404, 6th \u2192 429",
+    "staff_session_cookie": "Set on successful login",
+    "no_sensitive_fields": "password_hash, pin, pin_hash excluded from /me",
+    "terminal_pin_success": "Correct PIN returns member data"
+  },
+  "test_results": [
+    {
+      "test_name": "Staff Login Rate Limit",
+      "passed": true,
+      "status_code": 429,
+      "response": {
+        "detail": {
+          "code": "rate_limit_exceeded",
+          "message": "Zu viele Versuche. Bitte in 899 Sekunden erneut versuchen.",
+          "retry_after_sec": 899
+        }
+      },
+      "expected": "429 with retry_after info after 5 failed attempts",
+      "actual": "Status: 429, has_retry_after=True",
+      "notes": "Rate limiting working correctly. Message: {'code': 'rate_limit_exceeded', 'message': 'Zu viele Versuche. Bitte in 899 Sekunden erneut versuchen.', 'retry_after_sec': 899}",
+      "timestamp": "2026-05-17T17:43:49.342828"
+    },
+    {
+      "test_name": "Terminal PIN Rate Limit - Attempt 1",
+      "passed": false,
+      "status_code": 429,
+      "response": {
+        "detail": {
+          "code": "rate_limit_exceeded",
+          "message": "Zu viele Versuche. Bitte in 447 Sekunden erneut versuchen.",
+          "retry_after_sec": 447
+        }
+      },
+      "expected": "404 Not Found",
+      "actual": "Status: 429",
+      "notes": "Expected 404 for failed PIN attempt 1",
+      "timestamp": "2026-05-17T17:43:49.481970"
+    },
+    {
+      "test_name": "Successful Staff Login",
+      "passed": false,
+      "status_code": 429,
+      "response": {
+        "has_staff_session_cookie": false,
+        "success": null,
+        "staff": {}
+      },
+      "expected": "200 with staff_session cookie and staff data",
+      "actual": "Status: 429, has_cookie=False, has_staff=False",
+      "notes": "Staff: None (None)",
+      "timestamp": "2026-05-17T17:43:54.630993"
+    },
+    {
+      "test_name": "Staff /me - No Sensitive Fields",
+      "passed": false,
+      "status_code": 0,
+      "response": {},
+      "expected": "Requires login",
+      "actual": "No session cookies available",
+      "notes": "",
+      "timestamp": "2026-05-17T17:43:54.631794"
+    },
+    {
+      "test_name": "Terminal PIN Success",
+      "passed": false,
+      "status_code": 429,
+      "response": {
+        "detail": {
+          "code": "rate_limit_exceeded",
+          "message": "Zu viele Versuche. Bitte in 436 Sekunden erneut versuchen.",
+          "retry_after_sec": 436
+        }
+      },
+      "expected": "200 with member data",
+      "actual": "Status: 429, has_member=False",
+      "notes": "",
+      "timestamp": "2026-05-17T17:43:59.760076"
+    }
+  ]
+}
