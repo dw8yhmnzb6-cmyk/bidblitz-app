@@ -54,6 +54,8 @@ def register_all_routers(app):
         ("routes.promotions", "router"),
         ("routes.analytics", "router"),
         ("routes.kids", "router"),
+        ("routes.kids_controls", "router"),
+        ("routes.kids_app", "router"),
         ("routes.support", "router"),
         ("routes.feedback", "router"),
         ("routes.auctions", "router"),
@@ -199,6 +201,7 @@ def register_all_routers(app):
         ("routes.taxi", "router"),
         ("routes.taxi_admin", "router"),
         ("routes.taxi_voiceover", "router"),  # ElevenLabs Voiceover
+        ("routes.driver_dashboard", "router"),
         ("routes.scooter", "router"),
         ("routes.food", "router"),
         ("routes.food_tracking", "router"),

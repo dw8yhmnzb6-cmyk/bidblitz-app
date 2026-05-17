@@ -160,6 +160,14 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
     );
   }
 
+  if (!settings) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0F] text-white flex items-center justify-center" data-testid="parent-controls-loading-state">
+        <Loader2 className="animate-spin" size={28} />
+      </div>
+    );
+  }
+
   const modulesList = MODULES_META;
   const childDisplay = child?.name || children.find((c) => c.child_id === currentChildId)?.name || childName || "Kind";
 

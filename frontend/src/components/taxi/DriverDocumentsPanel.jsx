@@ -107,6 +107,18 @@ export const DriverDocumentsPanel = ({ api, panelBg, panelBorder }) => {
         </div>
       ))}
 
+      {summary?.has_blocker && (
+        <div className="rounded-2xl p-3 border bg-red-500/10 border-red-500/25 text-red-300" data-testid="driver-documents-blocker-banner">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="text-[12px] font-bold">Handlung nötig</p>
+              <p className="text-[11px] opacity-80 mt-0.5">Mindestens ein Dokument ist abgelaufen oder ein Pflichtdokument fehlt.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {summary?.next_expiring && (
         <div className="rounded-2xl p-3 border bg-white/5 border-white/10" data-testid="driver-next-expiring-card">
           <div className="flex items-center gap-2 text-white"><CalendarClock size={14} className="text-[#00C2FF]" /><span className="text-[12px] font-bold">Nächstes Ablaufdatum</span></div>

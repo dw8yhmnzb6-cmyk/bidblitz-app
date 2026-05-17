@@ -279,6 +279,23 @@ const ProfileView = ({ userId, userName, userEmail, userRole, userBalance, userC
         ))}
       </motion.div>
 
+      <motion.div
+        className="mt-4 rounded-2xl p-4 flex items-start gap-3"
+        style={{ background: "rgba(255,90,95,0.05)", border: "1px solid rgba(255,90,95,0.16)" }}
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
+        data-testid="profile-taxi-shield-card"
+      >
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,90,95,0.12)", border: "1px solid rgba(255,90,95,0.2)" }}>
+          <Shield size={16} className="text-[#FF5A5F]" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-white">Taxi Preis-Schutz</p>
+          <p className="text-[11px] text-white/55 mt-1 leading-relaxed">
+            Festpreis, lizenzierte Fahrer und Live-Tracking bleiben aktiv — der rote Shield-Hinweis liegt jetzt intern hier im Profil.
+          </p>
+        </div>
+      </motion.div>
+
       {/* Change Password Section */}
       <motion.div className="mt-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
         <motion.button data-testid="profile-change-pw-btn"

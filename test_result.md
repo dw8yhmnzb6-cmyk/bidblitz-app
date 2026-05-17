@@ -618,6 +618,54 @@ frontend:
         agent: "testing"
         comment: "COMPREHENSIVE TEST COMPLETE (2026-04-22): ✅ Admin login successful (admin@bidblitz.ae), ✅ Wallet-Tool page loads correctly at /admin/wallet, ✅ User search working (found users with 'test' query), ✅ User list displays with email, role, EUR and BLZ balances, ✅ User selection working, ✅ Credit user flow successful (10 EUR sent to afrimfinaltest@icloud.com with success toast), ✅ All tabs visible and working (Senden/Abziehen, Self-Topup, Log), ✅ Credit/Debit toggle working, ✅ Amount inputs (EUR and BLZ) working, ✅ Submit button clickable and functional, ✅ Self-Topup tab shows admin wallet balance (5.00€), ✅ History tab accessible. Minor: Wallet-Tool button not easily discoverable in MEHR page (had to use direct navigation), but functionality is 100% working. Backend API endpoints (/api/admin/wallet/users, /api/admin/wallet/credit) working correctly."
 
+  - task: "Taxi Booking View - iter124 fixes"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/taxi/TaxiBookingSheet.jsx, /app/frontend/src/components/taxi/TaxiQuickActions.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "ITER124 TAXI BOOKING VIEW TESTING COMPLETE (2026-05-17): ✅ TEST PASSED (100% success) - Tested Taxi Booking View after iter124 fixes at https://bidblitz-staff.preview.emergentagent.com/taxi. ✅ Page loads correctly without errors. ✅ Main CTA button visible and working (data-testid='taxi-dropoff-cta') with text 'ZIEL - Wohin möchtest du?', large prominent button with cyan gradient styling. ✅ Quick Actions component visible and compact (data-testid='taxi-quick-actions') with Jetzt/Später toggle (data-testid='taxi-mode-now' and 'taxi-mode-later') and 3 action tiles: Heim (data-testid='taxi-quick-home'), Arbeit (data-testid='taxi-quick-work'), Letzte Fahrt (data-testid='taxi-quick-last'). ✅ Page displays greeting 'Guten Abend 👋' with personalized message 'Wohin möchtest du fahren?'. ✅ Compact layout confirmed - Quick Actions section is streamlined with toggle buttons and tile-based layout instead of verbose menu. ✅ All UI elements have proper data-testid attributes for testing. 📸 Screenshot: taxi_page_iter124.png shows clean, uncluttered interface with prominent CTA and compact Quick Actions. Taxi booking view successfully streamlined per iter124 requirements."
+
+  - task: "Profile Taxi Shield Card"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/MorePage.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "PROFILE TAXI SHIELD CARD TESTING (2026-05-17): ❌ TEST FAILED - profile-taxi-shield-card NOT visible due to authentication issue. ✅ /more page loads correctly. ✅ Account group toggle found and clicked successfully (data-testid='group-toggle-account'). ✅ Profile grid tile found and clicked successfully (data-testid='grid-profile'). ❌ BUT profile-taxi-shield-card (data-testid='profile-taxi-shield-card') NOT visible because auth gate modal appeared instead of profile page. 🔍 ROOT CAUSE: The profile action is wrapped in gatedAction (MorePage.jsx line 784-788) which checks isGuest flag. When isGuest=true, it calls onAuthRequired() which shows login modal instead of opening profile page. User session appears to be lost or not persisting across navigation. The ProfileView component (lines 92-384) is only rendered when !isGuest (line 791), so profile sub-page is not accessible for guest users. The profile-taxi-shield-card is defined at line 282-297 in ProfileView component and should display 'Taxi Preis-Schutz' message with red shield icon. 📊 ISSUE: Authentication state not persisting properly - even after successful login (admin@bidblitz.com / BidBlitz2026!), the app treats user as guest when navigating to /more page. This could be due to: (1) cookies not persisting across navigation, (2) app state not updating after login, (3) session timeout, or (4) bug in authentication flow. 📸 Screenshots: more_account_open.png (shows account group expanded), profile_page_opened.png (shows auth gate modal instead of profile page). REQUIRED FIX: Investigate why authentication state is not persisting and ensure logged-in users can access profile page without re-authentication."
+
+  - task: "Kids Parent Controls Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ParentControlsPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "KIDS PARENT CONTROLS PAGE TESTING COMPLETE (2026-05-17): ✅ TEST PASSED (100% success) - Tested Kids Parent Controls page after iter124 fixes at https://bidblitz-staff.preview.emergentagent.com/parent-controls. ✅ Admin login successful (admin@bidblitz.com / BidBlitz2026!). ✅ Page loaded successfully without crashing (data-testid='parent-controls-page'). ✅ All expected elements present: Back button (data-testid='parent-controls-back'), Save button (data-testid='parent-controls-save'), Master lock toggle (data-testid='master-lock-toggle'). ✅ All 4 tabs present and working: Übersicht (data-testid='tab-overview'), Module (data-testid='tab-modules'), Zeit (data-testid='tab-time'), Report (data-testid='tab-activity'). ✅ Page displays 'Eltern-Kontrollen für Albin · Kind' header with proper child information. ✅ Overview tab shows dashboard stats: 6 modules locked (MODULE FREI), 0m usage (NUTZUNG - 7 Tage: 0m), €50.00 wallet balance (WALLET), Bettzeit aktiv status (STATUS - Bettzeit aktiv, Ruhemodus bis 07:00). ✅ Master lock toggle shows 'Alles freigegeben' state with green styling. ✅ No crashes, no errors, page fully functional. 📸 Screenshot: parent_controls_iter124.png shows complete page with all elements rendered correctly. Kids Parent Controls page is production-ready and working as expected."
+
+  - task: "Admin Wallet Tool"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AdminWalletPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE TEST COMPLETE (2026-04-22): ✅ Admin login successful (admin@bidblitz.ae), ✅ Wallet-Tool page loads correctly at /admin/wallet, ✅ User search working (found users with 'test' query), ✅ User list displays with email, role, EUR and BLZ balances, ✅ User selection working, ✅ Credit user flow successful (10 EUR sent to afrimfinaltest@icloud.com with success toast), ✅ All tabs visible and working (Senden/Abziehen, Self-Topup, Log), ✅ Credit/Debit toggle working, ✅ Amount inputs (EUR and BLZ) working, ✅ Submit button clickable and functional, ✅ Self-Topup tab shows admin wallet balance (5.00€), ✅ History tab accessible. Minor: Wallet-Tool button not easily discoverable in MEHR page (had to use direct navigation), but functionality is 100% working. Backend API endpoints (/api/admin/wallet/users, /api/admin/wallet/credit) working correctly."
+
   - task: "KYC Frontend Components"
     implemented: true
     working: true
@@ -723,12 +771,16 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Barcode/QR-Scan System - Backend APIs"
+    - "Taxi Booking View - iter124 fixes"
+    - "Profile Taxi Shield Card"
+    - "Kids Parent Controls Page"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "testing"
+    message: "ITER124 FIXES TESTING COMPLETE (2026-05-17): ✅ 2/3 TESTS PASSED (67% success rate) - Tested Taxi Booking View, Profile Taxi Shield Card, and Kids Parent Controls after iter124 fixes. ✅ TEST 1 PASS: Taxi Booking View (/taxi) - Main CTA button visible (data-testid='taxi-dropoff-cta') with text 'Wohin möchtest du?', Quick Actions component visible (data-testid='taxi-quick-actions') with Jetzt/Später toggle and 3 action tiles (Heim, Arbeit, Letzte Fahrt), page loads correctly with greeting 'Guten Abend 👋', compact layout confirmed. ❌ TEST 2 FAIL: Profile Taxi Shield Card - Account group toggle found and clicked successfully, Profile grid tile (data-testid='grid-profile') found and clicked, BUT profile-taxi-shield-card NOT visible because auth gate modal appeared instead of profile page, user session appears to be lost or profile action requires re-authentication, the gatedAction wrapper in MorePage.jsx (line 784-788) triggers onAuthRequired() for guest users. ✅ TEST 3 PASS: Kids Parent Controls (/parent-controls) - Page loaded successfully without crashing (data-testid='parent-controls-page'), all expected elements present (back button, save button, master lock toggle, 4 tabs: Übersicht/Module/Zeit/Report), admin login successful, page shows 'Eltern-Kontrollen für Albin · Kind' with overview tab displaying stats (6 modules locked, 0m usage, €50.00 wallet, Bettzeit aktiv). 🔍 ISSUE IDENTIFIED: Profile page requires authenticated session but auth state is not persisting across navigation or multiple test sessions, the profile action is wrapped in gatedAction which checks isGuest flag, when isGuest=true it shows login modal instead of profile page. 📊 SCREENSHOTS: taxi_page_iter124.png (shows taxi page with CTA and Quick Actions), profile_page_iter124.png (shows /more page), parent_controls_iter124.png (shows parent controls page), more_account_open.png (shows account group expanded), profile_page_opened.png (shows auth gate modal). Credentials used: admin@bidblitz.com / BidBlitz2026!."
   - agent: "testing"
     message: "BARCODE/QR-SCAN SYSTEM BACKEND API TESTING COMPLETE (2026-05-17): ✅ ALL 5 TESTS PASSED (100% success rate) - Comprehensive backend API testing of new Barcode/QR-Scan system at https://bidblitz-staff.preview.emergentagent.com. ✅ Test 1: POST /api/scan/resolve with TBL-... code - Table scan code TBL-745E9871FF correctly resolved to /order/qr/... route with type=table_order. ✅ Test 2: POST /api/scan/resolve with BBINV-... code - Invoice scan code BBINV-344BCD2F3A correctly resolved to /invoice/pay/... route with type=invoice. ✅ Test 3: GET /api/invoicing/public/:scanCode - Public invoice endpoint retrieved invoice with all required fields (invoice_id, invoice_number, scan_code, client_name, items, total, status). ✅ Test 4: POST /api/invoicing/public/:scanCode/pay with Auth - Payment endpoint successfully processed €66.64 payment, wallet debited, invoice status updated to paid, transaction records created. ✅ Test 5: QR-Tisch-Erstellung liefert stabiles scan_code Feld - Table creation generates stable scan_code (TBL-73BAA23E59) that persists across API requests. 🎯 KEY FEATURES VERIFIED: Scan router supports TBL/BBINV/CS codes and URLs, Table creation with stable scan_code and rotating qr_token, Invoice creation with BBINV scan_code, Public invoice access without auth, Authenticated payment with wallet debit, Atomic transactions with proper error handling. 🔒 SECURITY: Auth required for payments, Merchant role for table creation, Wallet balance validation, Proper HTTP status codes (200/404/402/409). All backend APIs production-ready. Test results: /app/scan_system_test_results.json. Credentials: admin@bidblitz.com / BidBlitz2026!, haendler@bidblitz.com / Haendler2026!."
   - agent: "testing"

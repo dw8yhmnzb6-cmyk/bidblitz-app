@@ -136,24 +136,11 @@ export default function TaxiBookingSheet({
       {/* Greeting + Favorite Routes (only when no destination chosen yet) */}
       {!dropoff?.address && (
         <div>
-          <h2 className="text-2xl font-bold text-white">
+          <h2 className="text-xl font-bold text-white">
             {greet()}{userName ? `, ${userName}` : ""} <span className="inline-block">👋</span>
           </h2>
-          <p className="text-sm text-gray-400 mt-0.5">Wohin möchtest du fahren?</p>
+          <p className="text-[13px] text-gray-400 mt-0.5">Wohin möchtest du fahren?</p>
         </div>
-      )}
-
-      {/* Big-Touch Quick-Actions (iter124 Phase B) */}
-      {!dropoff?.address && (
-        <TaxiQuickActions
-          savedPlaces={savedPlaces}
-          lastRide={lastRide}
-          onPickPlace={onPickSavedPlace}
-          onUseLastRide={onUseLastRide}
-          scheduleMode={scheduleMode}
-          onScheduleModeChange={onScheduleModeChange}
-          onOpenScheduled={onOpenScheduled}
-        />
       )}
 
       {/* Promo-Banner entfernt für cleaneren Look (iter124 UX). Promo-Code-Field bleibt unten. */}
@@ -232,6 +219,18 @@ export default function TaxiBookingSheet({
           </button>
         )}
       </div>
+      )}
+
+      {!dropoff?.address && (
+        <TaxiQuickActions
+          savedPlaces={savedPlaces}
+          lastRide={lastRide}
+          onPickPlace={onPickSavedPlace}
+          onUseLastRide={onUseLastRide}
+          scheduleMode={scheduleMode}
+          onScheduleModeChange={onScheduleModeChange}
+          onOpenScheduled={onOpenScheduled}
+        />
       )}
 
       {/* Gespeicherte-Orte-Row entfernt (Duplizierung mit Quick-Actions) — iter124 UX */}

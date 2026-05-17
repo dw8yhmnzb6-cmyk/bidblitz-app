@@ -15,15 +15,17 @@ function ActionTile({ icon: Icon, label, sub, color, onClick, disabled, testId }
       onClick={onClick}
       disabled={disabled}
       data-testid={testId}
-      className={`flex-1 flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl border transition-all active:scale-[0.97] ${
+      className={`flex-1 flex items-center gap-2.5 py-2.5 px-3 rounded-xl border transition-all active:scale-[0.97] ${
         disabled
           ? "bg-white/[0.02] border-white/[0.04] text-gray-600 cursor-not-allowed"
           : `bg-gradient-to-br ${color.bg} border-white/[0.06] hover:border-white/15 text-white`
       }`}
     >
-      <Icon className={`w-5 h-5 ${disabled ? "text-gray-600" : color.icon}`} />
-      <span className="text-[11px] font-bold leading-tight text-center">{label}</span>
-      {sub && <span className="text-[9px] text-gray-400 truncate w-full">{sub}</span>}
+      <Icon className={`w-4 h-4 shrink-0 ${disabled ? "text-gray-600" : color.icon}`} />
+      <div className="min-w-0 text-left">
+        <span className="block text-[11px] font-bold leading-tight">{label}</span>
+        {sub && <span className="block text-[9px] text-gray-400 truncate">{sub}</span>}
+      </div>
     </button>
   );
 }
@@ -43,7 +45,7 @@ export default function TaxiQuickActions({
   const lastDropAddr = lastRide?.dropoff_address || lastRide?.dropoff?.address || lastRide?.dropoff;
 
   return (
-    <div className="space-y-3" data-testid="taxi-quick-actions">
+    <div className="space-y-2" data-testid="taxi-quick-actions">
       {/* Jetzt / Später toggle */}
       <div className="flex gap-1 p-1 bg-white/[0.04] border border-white/[0.06] rounded-xl">
         <button
@@ -74,7 +76,7 @@ export default function TaxiQuickActions({
       </div>
 
       {/* 3 Quick-Action-Tiles */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <ActionTile
           icon={Home}
           label="Heim"
