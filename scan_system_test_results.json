@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-05-17T20:33:18.902081",
+  "base_url": "https://bidblitz-staff.preview.emergentagent.com",
+  "tests": [
+    {
+      "name": "Test 1: Scan Resolve TBL",
+      "passed": true,
+      "details": "TBL-745E9871FF correctly resolved to /order/qr/GJ05ZBjrYbG5CT37ite2HrMrNHw"
+    },
+    {
+      "name": "Test 2: Scan Resolve BBINV",
+      "passed": true,
+      "details": "BBINV-344BCD2F3A correctly resolved to /invoice/pay/BBINV-344BCD2F3A"
+    },
+    {
+      "name": "Test 3: Public Invoice GET",
+      "passed": true,
+      "details": "Invoice BBINV-344BCD2F3A retrieved successfully with all required fields"
+    },
+    {
+      "name": "Test 4: Public Invoice Pay",
+      "passed": true,
+      "details": "Invoice BBINV-344BCD2F3A paid successfully"
+    },
+    {
+      "name": "Test 5: Table scan_code Stability",
+      "passed": true,
+      "details": "scan_code is stable: TBL-73BAA23E59 == TBL-73BAA23E59"
+    }
+  ]
+}
