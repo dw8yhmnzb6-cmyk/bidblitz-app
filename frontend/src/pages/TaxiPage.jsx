@@ -105,6 +105,8 @@ export default function TaxiPage({ onNavigate }) {
   const [nearbyCount, setNearbyCount] = useState(null); // null = unknown, 0+ = known
   const [nearbyDrivers, setNearbyDrivers] = useState([]); // for live pulse markers on map
   const [promo, setPromo] = useState(null); // {code, label, discount}
+  const [tariffZone, setTariffZone] = useState(null); // {id, name}
+  const [timeTariff, setTimeTariff] = useState(null); // {multiplier, label, night, weekend, holiday}
 
   // Favorite routes (top pickup→dropoff pairs from ride history)
   const [favoriteRoutes, setFavoriteRoutes] = useState([]);
@@ -416,6 +418,8 @@ export default function TaxiPage({ onNavigate }) {
     if (result.ok) {
       setEstimates(result.estimates);
       setSurge(result.surge);
+      setTariffZone(result.tariff_zone || null);
+      setTimeTariff(result.time_tariff || null);
       if (result.promo && !result.promo.valid && promo) {
         // server says applied promo no longer valid → clear
         setPromo(null);
@@ -785,6 +789,8 @@ export default function TaxiPage({ onNavigate }) {
                 scheduleMode={scheduleMode}
                 onScheduleModeChange={setScheduleMode}
                 onOpenScheduled={() => { window.location.href = '/taxi/pro'; }}
+                tariffZone={tariffZone}
+                timeTariff={timeTariff}
               />
             )}
           </TaxiBottomSheet>

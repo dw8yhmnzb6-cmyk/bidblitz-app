@@ -15,6 +15,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, AlertTriangle, MapPin, Users, RefreshCw, X, BarChart3, Radio } from "lucide-react";
 import StaffShiftHeatmap from "../staff/StaffShiftHeatmap";
+import StaffShiftAssistant from "../staff/StaffShiftAssistant";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -396,8 +397,9 @@ export default function ManagerStaffLiveMapPage({ onBack }) {
 
       {/* Heatmap View */}
       {view === "heatmap" && (
-        <div className="flex-1 overflow-y-auto bg-[#0A0A0F] p-3" data-testid="heatmap-view">
+        <div className="flex-1 overflow-y-auto bg-[#0A0A0F] p-3 space-y-3" data-testid="heatmap-view">
           <StaffShiftHeatmap />
+          <StaffShiftAssistant />
         </div>
       )}
 

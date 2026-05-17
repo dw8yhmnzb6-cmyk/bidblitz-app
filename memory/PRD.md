@@ -14,6 +14,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 17.05.2026 (Multi-Tarif Zonen-Pricing P2 + AI-Schichtplan-Assistent P3) ✅
+- 🟢 **P2 Multi-Tarif Zonen-Pricing** (`utils/taxi_zone_pricing.py` + Patch `routes/taxi.py::get_ride_estimate`): Helper findet zur Pickup-Koordinate passende Tarif-Zone (Haversine, kleinste Zone gewinnt) + berechnet Zeit-Multiplier (Nacht 22-06, Wochenende, Feiertag DE — höchster wins, kein Compound). Estimate-Response liefert `tariff_zone` + `time_tariff` an Frontend. Verifiziert: Berlin 52.52/13.405 Wochenende → Zone "Berlin Innenstadt" + ×1.15 Wochenend-Tarif → fare 8.57€.
+- 🟢 **Frontend Multi-Tarif Badges** (`TaxiBookingSheet.jsx`): Pill-Badges direkt unter Surge: Cyan-Zone-Badge mit MapPin-Icon + Time-Badge (🌙 Nacht=Indigo, 🎉 Feiertag=Rose, 📅 Wochenende=Amber) mit Multiplier-Anzeige.
+- 🟢 **P3 AI-Schichtplan-Assistent** (`routes/staff_shift_assistant.py`): Heuristik (kein LLM-Call, kostenfrei) — analysiert 7×24 Heatmap-Matrix, identifiziert zusammenhängende Hoch-Demand-Stunden (`min_demand=1.5`), schneidet sie in 4-8h Schichten, `needed_staff = ceil(avg_demand × coverage_factor)`, markiert Confidence (high wenn ≥3 historische Samples). Unterbesetzungs-Warnungen für Slots mit avg<threshold aber max≥2. Verifiziert: 30T → 15 Schichten, 370h/Wo, sample Di 18-24 ø2.5/peak4 → 3 needed.
+- 🟢 **Frontend ShiftAssistant** (`staff/StaffShiftAssistant.jsx`): KPI-Header (Shifts/Hours/Warnings), Coverage-Slider (1.0×–2.0×), Tage-Tabs (14/30/60), Gruppierung pro Wochentag mit Clock-Icon + needed_staff Pill, Warning-Liste. Eingebunden unter Heatmap in `ManagerStaffLiveMapPage.jsx` heatmap-view.
+- 🟢 **Bugfix FlightSearchPage**: `filters` State war undefined → useState({sort:"price_asc"}). Trust-Row + "Bester Preis"-Badge auf günstigstem Flug + Gradient-CTAs.
+- 🟢 **TaxiTypeSelector UX-Upgrade**: Premium-Hero "In 3 Min. unterwegs", Trust-Row (10k+/4.9★/24/7), TypeCards mit Glow + Pfeil-Indikator.
+
+
 ### 16.05.2026 (iter124 — Phase C: History Filter-Tabs) ✅
 - 🟢 **Filter-Tabs** in `TaxiHistoryView.jsx`: `Alle | Diese Woche | Geschäftlich | Storniert` mit Count-Badges. Cyan-Pill für aktiven Filter (Uber/Bolt-Pattern).
 - 🟢 **Logik**: `useMemo` für filtered + counts. „Diese Woche" via `startOfWeekISO()` (Montag 00:00). „Geschäftlich" matcht `corporate_account_id || cost_center || is_business || taxi_type==='business'`. „Storniert" zeigt nur cancelled.

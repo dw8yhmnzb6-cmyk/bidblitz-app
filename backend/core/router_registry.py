@@ -99,6 +99,7 @@ def register_all_routers(app):
         ("routes.staff_live_map", "router"),  # Manager Live-Map + Anomaly Inbox (iter121)
         ("routes.staff_shift_watchdog", "router"),  # Push-Reminder Watchdog (iter121)
         ("routes.staff_heatmap", "router"),  # Shift-Heatmap (iter122)
+        ("routes.staff_shift_assistant", "router"),  # AI-Schichtplan-Assistent (P3)
         ("routes.taxi_admin_promos", "router"),  # Taxi Promo Code Admin/Reporting
         ("routes.taxi_scheduled", "router"),  # Pre-Booking + Recurring (iter123)
         ("routes.taxi_corporate", "router"),  # B2B Corporate Accounts (iter123)

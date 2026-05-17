@@ -1526,6 +1526,11 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     # Detect pricing region from pickup coordinates
     region = detect_region(p_lat, p_lng)
 
+    # Multi-Tarif: Zone-Match + Time-Multiplier (P2)
+    from utils.taxi_zone_pricing import find_matching_zone, compute_time_multiplier, apply_multi_tariff
+    matched_zone = await find_matching_zone(p_lat, p_lng)
+    time_info = compute_time_multiplier(matched_zone)
+
     # Optional promo validation
     promo_info = None
     if req.promo_code:
@@ -1551,6 +1556,8 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     estimates = []
     for vtype in ["standard", "premium", "van"]:
         fare = calculate_fare(distance_km, duration_minutes, vtype, region)
+        # Apply zone & time multipliers (P2 multi-tariff)
+        fare = apply_multi_tariff(fare, matched_zone, time_info)
         info = VEHICLE_INFO[vtype]
         item = {
             "vehicle_type": vtype,
@@ -1580,6 +1587,17 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
         "region": region,
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
         "promo": promo_info,
+        "tariff_zone": {
+            "id": matched_zone.get("id"),
+            "name": matched_zone.get("name"),
+        } if matched_zone else None,
+        "time_tariff": {
+            "multiplier": time_info["multiplier"],
+            "label": time_info["label"],
+            "night": time_info["night"],
+            "weekend": time_info["weekend"],
+            "holiday": time_info["holiday"],
+        },
     }
 
 

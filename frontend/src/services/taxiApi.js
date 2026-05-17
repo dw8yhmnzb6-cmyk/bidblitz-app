@@ -180,7 +180,7 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
   });
   const data = await readJson(res);
   return res.ok
-    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null }
+    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null, tariff_zone: data?.tariff_zone || null, time_tariff: data?.time_tariff || null }
     : { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
 }
 

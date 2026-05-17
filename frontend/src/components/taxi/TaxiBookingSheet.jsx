@@ -119,6 +119,8 @@ export default function TaxiBookingSheet({
   // Quick actions (iter124 Phase B)
   lastRide, onUseLastRide,
   scheduleMode, onScheduleModeChange, onOpenScheduled,
+  // Multi-Tarif Zonen & Zeit (P2)
+  tariffZone, timeTariff,
 }) {
   return (
     <div className="space-y-4 pt-1">
@@ -340,6 +342,45 @@ export default function TaxiBookingSheet({
             <p className="text-sm font-medium text-yellow-400">Hohe Nachfrage</p>
             <p className="text-xs text-gray-400">Preise sind {surge.multiplier}× höher</p>
           </div>
+        </div>
+      )}
+
+      {/* Multi-Tarif Badges: Zone + Time (P2) */}
+      {(tariffZone || (timeTariff && timeTariff.multiplier > 1)) && (
+        <div className="flex flex-wrap gap-2" data-testid="taxi-tariff-badges">
+          {tariffZone && (
+            <div
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30"
+              data-testid="taxi-zone-badge"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" strokeWidth="2.5">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <span className="text-[11px] font-semibold text-cyan-300">Zone {tariffZone.name}</span>
+            </div>
+          )}
+          {timeTariff && timeTariff.multiplier > 1 && (
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                timeTariff.holiday
+                  ? "bg-rose-500/10 border-rose-500/30"
+                  : timeTariff.night
+                    ? "bg-indigo-500/10 border-indigo-500/30"
+                    : "bg-amber-500/10 border-amber-500/30"
+              }`}
+              data-testid="taxi-time-tariff-badge"
+            >
+              <span className="text-xs">
+                {timeTariff.holiday ? "🎉" : timeTariff.night ? "🌙" : "📅"}
+              </span>
+              <span className={`text-[11px] font-semibold ${
+                timeTariff.holiday ? "text-rose-300" : timeTariff.night ? "text-indigo-300" : "text-amber-300"
+              }`}>
+                {timeTariff.label} · ×{timeTariff.multiplier.toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
