@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-05-17T21:13:03.629994",
+  "base_url": "https://bidblitz-staff.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Kids Controls Settings",
+      "passed": true,
+      "status_code": 200,
+      "details": "Settings loaded for child: Albin",
+      "response_sample": {
+        "modules_count": 13,
+        "bedtime_enabled": true,
+        "lock_all": false,
+        "child_name": "Albin"
+      }
+    },
+    {
+      "test": "Kids Controls Dashboard",
+      "passed": true,
+      "status_code": 200,
+      "details": "Dashboard loaded for child: Albin",
+      "response_sample": {
+        "active_modules": 6,
+        "today_minutes": 0,
+        "week_minutes": 0,
+        "balance_eur": 50.0,
+        "alerts_count": 1
+      }
+    },
+    {
+      "test": "Kids Controls Activity",
+      "passed": true,
+      "status_code": 200,
+      "details": "Activity report loaded for 7 days",
+      "response_sample": {
+        "child_id": "child_2a880974de5f",
+        "days": 7,
+        "total_minutes": 0,
+        "per_day_count": 0,
+        "per_module_count": 0
+      }
+    },
+    {
+      "test": "Driver Dashboard Eligibility",
+      "passed": true,
+      "status_code": 200,
+      "details": "Eligibility check successful",
+      "response_sample": {
+        "is_driver": false,
+        "is_verified": false,
+        "status": "not_registered",
+        "driver_id": null
+      }
+    },
+    {
+      "test": "Taxi Driver Documents Summary",
+      "passed": true,
+      "status_code": 200,
+      "details": "Documents summary loaded",
+      "response_sample": {
+        "counts": {
+          "expired": 0,
+          "urgent": 0,
+          "warning": 0,
+          "notice": 0,
+          "ok": 1,
+          "unknown": 0
+        },
+        "missing_required_count": 3,
+        "has_blocker": true,
+        "alerts_count": 1
+      }
+    }
+  ]
+}
