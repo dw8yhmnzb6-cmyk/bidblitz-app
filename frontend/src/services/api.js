@@ -169,6 +169,7 @@ export const api = {
   send: (body) => request("/api/payment/send", { method: "POST", body: JSON.stringify(body) }),
   getMyBarcode: () => request("/api/payment/my-barcode"),
   merchantScanPayment: (body) => request("/api/payment/merchant-scan", { method: "POST", body: JSON.stringify(body) }),
+  resolveScanCode: (body) => request("/api/scan/resolve", { method: "POST", body: JSON.stringify(body) }),
 
   // Merchant
   getMerchantDashboard: () => request("/api/merchant/dashboard"),

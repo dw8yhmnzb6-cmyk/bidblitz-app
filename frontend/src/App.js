@@ -33,6 +33,7 @@ const MerchantOnboardingPage = lazy(() => import("./pages/MerchantOnboardingPage
 const MerchantPricingPage = lazy(() => import("./pages/MerchantPricingPage"));
 const MerchantLandingPage = lazy(() => import("./pages/MerchantLandingPage"));
 const PayCheckoutPage = lazy(() => import("./pages/PayCheckoutPage"));
+const InvoicePayPage = lazy(() => import("./pages/InvoicePayPage"));
 const PayDirectoryPage = lazy(() => import("./pages/PayDirectoryPage"));
 const PayForBusinessPage = lazy(() => import("./pages/PayForBusinessPage"));
 const MiningPage = lazy(() => import("./pages/MiningPage"));
@@ -382,14 +383,10 @@ function AppContent() {
       }
     }
 
-    // For customers: scan tab opens QR modal (or gates if guest)
+    // Scan tab
     if (path === "/scan") {
       if (isGuest) {
         requireAuth();
-        return;
-      }
-      if (user.role !== "merchant" && user.role !== "admin" && user.currentMode !== "merchant") {
-        setShowBarcode(true);
         return;
       }
     }
@@ -496,6 +493,9 @@ function AppContent() {
     if (currentPath === "/merchant/qr-tables") {
       return <MerchantQrTablesPage onBack={() => handleNavigate("/merchant-dashboard")} user={user} />;
     }
+    if (currentPath.startsWith("/invoice/pay/")) {
+      return <InvoicePayPage scanCode={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
+    }
     if (currentPath === "/ev" || currentPath === "/ev/map") {
       return <EVChargingMapPage onNavigate={handleNavigate} />;
     }
@@ -539,10 +539,9 @@ function AppContent() {
       case "/wallet":
         return <WalletPage {...pageProps} />;
       case "/scan":
-        if (user.role === "merchant" || user.role === "admin") {
-          return <ScannerPage onNavigate={handleNavigate} />;
-        }
-        return <HomePage {...homeProps} />;
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : <ScannerPage onNavigate={handleNavigate} onShowBarcode={() => setShowBarcode(true)} />;
       case "/merchant":
         return <MerchantPage {...pageProps} />;
       case "/merchant-connect":
@@ -1094,12 +1093,13 @@ function AppContent() {
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
   const isQrOrder = currentPath.startsWith("/order/qr/");
+  const isInvoicePay = currentPath.startsWith("/invoice/pay/");
   const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
   const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
-  const showBottomNav = !isCheckout && !isQrOrder && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && (currentPath !== "/scan" || (user.role !== "merchant" && user.role !== "admin"));
+  const showBottomNav = !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
 
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
-  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
+  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -1156,13 +1156,14 @@ function AppContent() {
       {showOnboarding && !user.isAuthenticated &&
        !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory", "/marketplace"].includes(currentPath) &&
        !currentPath.startsWith("/pay/checkout/") &&
+       !currentPath.startsWith("/invoice/pay/") &&
        !currentPath.startsWith("/pay/merchant/") && (
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && !isCheckout && !isQrOrder && <AIChatWidget />}
+      {user.isAuthenticated && !isCheckout && !isQrOrder && !isInvoicePay && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
-      {!isCheckout && !isQrOrder && (
+      {!isCheckout && !isQrOrder && !isInvoicePay && (
         <SuperAppOverlay
           currentPath={currentPath}
           onNavigate={handleNavigate}
@@ -1174,10 +1175,10 @@ function AppContent() {
       <InAppUpdateManager />
 
       {/* Landing Chatbot — Floating widget for guest visitors (hidden on staff mobile) */}
-      {!user.isAuthenticated && !isCheckout && !isQrOrder && !isStaffEmployeeShell && <LandingChatbot />}
+      {!user.isAuthenticated && !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
-      {!isQrOrder && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}
+      {!isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}
 
       {/* Push Notification Prompt */}
       {/* PushNotificationPrompt (FCM) removed — use PushPermissionPrompt above */}

@@ -160,6 +160,7 @@ def register_all_routers(app):
         ("routes.p2p", "router"),
         ("routes.p2p_transfer", "router"),
         ("routes.split_bill", "router"),
+        ("routes.invoicing", "router"),
         ("routes.virtual_cards", "router"),
         ("routes.credit_system", "router"),
         ("routes.bills", "router"),
@@ -220,6 +221,7 @@ def register_all_routers(app):
         ("routes.livekit_streaming", "router"),
         ("routes.landing_chatbot", "router"),
         ("routes.readiness", "router"),
+        ("routes.scan_router", "router"),
 
         # Travel & Booking (Hotels, Flights, Apartments, Restaurants)
         ("routes.hotels", "router"),

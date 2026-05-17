@@ -141,6 +141,10 @@ def _gen_token() -> str:
     return secrets.token_urlsafe(20)
 
 
+def _gen_table_scan_code() -> str:
+    return f"TBL-{secrets.token_hex(5).upper()}"
+
+
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -161,6 +165,17 @@ async def _rotate_token(table_id: str) -> dict:
         {"$set": {"qr_token": token, "qr_token_expires_at": expires}},
     )
     return {"token": token, "expires_at": expires}
+
+
+async def _ensure_table_scan_code(table_id: str, current_code: Optional[str] = None) -> str:
+    if current_code:
+        return current_code
+    code = _gen_table_scan_code()
+    await db.pos_tables.update_one(
+        {"table_id": table_id},
+        {"$set": {"scan_code": code}},
+    )
+    return code
 
 
 async def _get_merchant_settings(merchant_id: str) -> dict:
@@ -469,6 +484,7 @@ async def create_qr_table(req: TableCreateRequest, request: Request):
         "merchant_id": req.merchant_id,
         "label": req.label,
         "capacity": req.capacity,
+        "scan_code": _gen_table_scan_code(),
         "qr_token": token,
         "qr_token_expires_at": expires,
         "created_at": now.isoformat(),
@@ -486,6 +502,8 @@ async def list_qr_tables(merchant_id: str, request: Request):
         {"$or": [{"merchant_id": merchant_id}, {"store_id": merchant_id}], "active": {"$ne": False}},
         {"_id": 0},
     ).to_list(500)
+    for table in tables:
+        table["scan_code"] = await _ensure_table_scan_code(table["table_id"], table.get("scan_code"))
     return {"tables": tables}
 
 

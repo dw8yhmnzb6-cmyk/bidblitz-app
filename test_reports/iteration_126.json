@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 126 - Barcode Scan System Testing Complete. All 17 backend tests PASSED, all frontend UI tests PASSED. Scan Hub page loads with table/invoice scan cards, code input, and camera button. Table scan resolve (TBL-...) returns /order/qr/... route. Invoice scan resolve (BBINV-...) returns /invoice/pay/... route. Public invoice payment page loads with invoice details and login form. Merchant QR Tables page shows scan_code (TBL-...) for each table.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter126_scan_invoice.py",
+    "/app/test_reports/pytest/iter126_scan_invoice.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ScannerPage.jsx is well-structured with proper data-testid attributes for all interactive elements",
+    "InvoicePayPage.jsx handles loading, error, and success states correctly",
+    "scan_router.py properly handles TBL-, BBINV-, BLZ-, CS_ prefixes and URL path extraction"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter126_scan_invoice.py"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100%"},
+  "test_credentials": "Admin: admin@bidblitz.com / BidBlitz2026!, Manager: haendler@bidblitz.com / Haendler2026!",
+  "seed_data_creation": "Test tables and invoices created during testing with TEST_ prefix",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 126 Barcode Scan System verified: (1) Scan Hub page at /scan loads with tool switcher (Scannen/Kassieren/Mein QR), table scan card, invoice scan card, camera button, and code input, (2) POST /api/scan/resolve handles TBL- codes returning /order/qr/... route, BBINV- codes returning /invoice/pay/... route, BLZ- wallet barcodes, CS_ checkout sessions, and full URLs with path extraction, (3) Public invoice page /invoice/pay/:scanCode loads invoice details with login form for wallet payment, (4) Merchant QR Tables page at /merchant/qr-tables shows scan_code (TBL-...) for each table card, (5) Invoice payment flow works: create → public fetch → wallet pay (requires auth). Test file at /app/backend/tests/test_iter126_scan_invoice.py can be reused for regression.",
+  "verified_features": {
+    "scan_hub_page_loads": "PASS - /scan page loads with all scan hub elements",
+    "scan_hub_tool_switcher": "PASS - Scannen/Kassieren/Mein QR buttons visible",
+    "scan_hub_table_card": "PASS - 'Tisch scannen' card visible",
+    "scan_hub_invoice_card": "PASS - 'Rechnung scannen' card visible",
+    "scan_hub_camera_button": "PASS - 'Kamera starten' button visible",
+    "scan_hub_code_input": "PASS - Code input and submit button work",
+    "scan_resolve_tbl_code": "PASS - TBL- codes resolve to /order/qr/... route",
+    "scan_resolve_bbinv_code": "PASS - BBINV- codes resolve to /invoice/pay/... route",
+    "scan_resolve_blz_code": "PASS - BLZ- codes resolve to wallet_barcode type",
+    "scan_resolve_cs_code": "PASS - CS_ codes resolve to checkout type",
+    "scan_resolve_url_paths": "PASS - Full URLs with /order/qr/, /pay/checkout/, /invoice/pay/ paths extracted",
+    "scan_resolve_nonexistent_returns_404": "PASS - Non-existent TBL/BBINV codes return 404",
+    "public_invoice_fetch": "PASS - GET /api/invoicing/public/:scanCode returns invoice details",
+    "public_invoice_page_loads": "PASS - /invoice/pay/:scanCode shows invoice with login form",
+    "invoice_payment_requires_auth": "PASS - POST /api/invoicing/public/:scanCode/pay requires authentication",
+    "merchant_qr_tables_scan_code": "PASS - Table cards show 'Barcode: TBL-...' scan_code"
+  }
+}

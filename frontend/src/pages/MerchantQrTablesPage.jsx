@@ -281,6 +281,11 @@ function TableCard({ table, onRotate }) {
           ) : (
             <p className="text-[10px] text-emerald-400 mt-1">QR aktiv</p>
           )}
+          {table.scan_code && (
+            <p className="text-[10px] text-white/45 mt-1 font-mono" data-testid={`qr-table-scan-code-${table.table_id}`}>
+              Barcode: {table.scan_code}
+            </p>
+          )}
           <div className="flex gap-1.5 mt-2">
             <button
               onClick={printQR}
