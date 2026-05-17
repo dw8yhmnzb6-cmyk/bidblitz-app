@@ -21,6 +21,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **iOS ATS verifiziert**: `frontend/ios/App/App/Info.plist` steht auf `NSAllowsArbitraryLoads=false`.
 - ✅ **Testing iter124**: 10/10 Tests grün (`/app/test_reports/iteration_124.json`) + zusätzlicher Frontend-Smoke und Backend-Pflichtcheck grün.
 
+### 17.05.2026 (P1 Taxi Zonen-Editor + Router Cleanup) ✅
+- 🟢 **Dead Router Imports entfernt** (`backend/core/router_registry.py`): `routes.taxi_operator` und `routes.taxi_driver` entfernt. Backend startet jetzt ohne diese Importfehler; zuletzt `166 routers registered`.
+- 🟢 **Admin Zonen-Editor UI** (`frontend/src/components/taxi/TaxiTariffZonesAdmin.jsx`, `frontend/src/pages/AdminTaxiPage.jsx`): Neuer Tab **Zonen** in `/admin/taxi` mit Create/List/Delete für Taxi-Tarifzonen.
+- 🟢 **Testbarkeit**: Alle neuen Interaktionen haben `data-testid`-Attribute.
+- ✅ **Testing iter125**: Backend 11/11 PASS + Frontend UI PASS (`/app/test_reports/iteration_125.json`). Zusätzlicher Frontend-Pflichtcheck und Backend-Pflichtcheck ebenfalls grün.
+
 
 ### 17.05.2026 (Open Shifts Auto-Publish — Enhancement zu P3) ✅
 - 🟢 **Backend** (`routes/staff_shift_assistant.py`): Neue Collection `staff_ai_open_shifts` + 6 Endpoints — Manager `POST /publish` (berechnet automatisch das nächste Wochentags-Datum), `GET /open-shifts`, `DELETE /{id}`; Staff `GET /open-shifts/staff` (mit `claimed_by_me`/`seats_left`-Annotations), `POST /{id}/claim` (auto-flip auf `filled` wenn voll), `POST /{id}/withdraw`. E2E via curl verifiziert.
