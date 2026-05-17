@@ -6,9 +6,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import TaxiVehiclePicker from "./TaxiVehiclePicker";
-import TaxiSavedPlacesRow from "./TaxiSavedPlacesRow";
 import TaxiPromoCodeField from "./TaxiPromoCodeField";
-import TaxiPromoBanner from "./TaxiPromoBanner";
 import TaxiQuickActions from "./TaxiQuickActions";
 
 const greet = () => {
@@ -107,10 +105,6 @@ export default function TaxiBookingSheet({
   nearbyCount,
   onGetEstimates, onBook,
   scheduledLabel,
-  // City defaults
-  pickupCity, citySaved, onSaveCityDefault,
-  // Favorite routes
-  favoriteRoutes, onPickFavoriteRoute,
   // Personalisation
   userName,
   // Promo code (P2)
@@ -123,25 +117,7 @@ export default function TaxiBookingSheet({
   tariffZone, timeTariff,
 }) {
   return (
-    <div className="space-y-4 pt-1">
-      {/* Trust strip — small, top */}
-      <div className="flex items-center gap-2 text-[10px] text-gray-500">
-        <span className="inline-flex items-center gap-1">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Festpreis
-        </span>
-        <span className="text-gray-700">·</span>
-        <span className="inline-flex items-center gap-1">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Lizenzierte Fahrer
-        </span>
-        <span className="text-gray-700">·</span>
-        <span className="inline-flex items-center gap-1">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Live-Tracking
-        </span>
-      </div>
-
+    <div className="space-y-3 pt-1">
       {/* Selected type pill + change (subtle) */}
       <div className="flex items-center justify-between -mt-1">
         <button
@@ -181,40 +157,6 @@ export default function TaxiBookingSheet({
       )}
 
       {/* Promo-Banner entfernt für cleaneren Look (iter124 UX). Promo-Code-Field bleibt unten. */}
-
-      {!dropoff?.address && favoriteRoutes?.length > 0 && (
-        <div data-testid="taxi-favorite-routes">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">
-            Lieblings-Routen
-          </p>
-          <div className="space-y-1.5">
-            {favoriteRoutes.slice(0, 5).map((r, i) => (
-              <button
-                key={i}
-                onClick={() => onPickFavoriteRoute?.(r)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-left active:scale-[0.98] transition-all"
-                data-testid={`taxi-fav-route-${i}`}
-              >
-                <div className="shrink-0 flex flex-col items-center pt-0.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-500" />
-                  <span className="w-px h-3 bg-white/15 my-0.5" />
-                  <span className="w-2 h-2 rounded-full bg-red-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-white truncate font-medium">{r.pickup?.address}</p>
-                  <p className="text-xs text-gray-400 truncate">{r.dropoff?.address}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] text-cyan-400 font-bold">{r.use_count}×</p>
-                  {r.avg_fare > 0 && (
-                    <p className="text-[10px] text-gray-500">~€{r.avg_fare?.toFixed(0)}</p>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Welcome-State: 1 großer „Wohin?"-Search-Button statt 2 schmaler Address-Rows */}
       {!dropoff?.address ? (
@@ -313,27 +255,6 @@ export default function TaxiBookingSheet({
       {/* Options + Schedule */}
       <OptionsButton summary={optionsSummary} onClick={onOpenOptions} />
 
-      {/* Save current options as default for this pickup city */}
-      {pickupCity && !citySaved && onSaveCityDefault && (
-        <button
-          onClick={onSaveCityDefault}
-          className="w-full px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs text-gray-300 flex items-center justify-center gap-2"
-          data-testid="taxi-save-city-default"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-            <polyline points="17 21 17 13 7 13 7 21" />
-            <polyline points="7 3 7 8 15 8" />
-          </svg>
-          Als Standard für {pickupCity} speichern
-        </button>
-      )}
-      {pickupCity && citySaved && (
-        <p className="text-[10px] text-emerald-400/80 text-center" data-testid="taxi-city-saved-hint">
-          ✓ Standard-Optionen für {pickupCity} aktiv
-        </p>
-      )}
-
       {/* Surge */}
       {surge?.active && (
         <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center gap-3">
@@ -419,50 +340,6 @@ export default function TaxiBookingSheet({
       {/* Book CTA */}
       {estimates?.length > 0 ? (
         <>
-          {/* Festpreis-Garantie Card — Trust Killer */}
-          {(() => {
-            const sel = estimates.find((e) => e.vehicle_type === selectedVehicle) || estimates[0];
-            const final = sel?.fare ?? 0;
-            const orig = sel?.fare_original;
-            const discount = sel?.fare_discount;
-            const eta = sel?.eta_minutes;
-            return (
-              <div
-                className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-cyan-500/5 to-emerald-500/10 border border-emerald-400/30 p-4"
-                data-testid="taxi-fixed-fare-card"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"/>
-                        <polyline points="9 12 11 14 15 10"/>
-                      </svg>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-300">Festpreis-Garantie</p>
-                      <p className="text-xs text-white/80 truncate">Keine Überraschung, kein Stau-Zuschlag</p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-2xl font-extrabold text-white tabular-nums" data-testid="taxi-fixed-fare-amount">
-                      €{final.toFixed(2)}
-                    </p>
-                    {discount > 0 && orig && (
-                      <p className="text-[10px] text-emerald-300 font-semibold">
-                        <span className="line-through text-gray-500 mr-1">€{orig.toFixed(2)}</span>
-                        −€{discount.toFixed(2)}
-                      </p>
-                    )}
-                    {eta && (
-                      <p className="text-[10px] text-cyan-300/80 mt-0.5">ca. {eta} Min</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={onBook}
