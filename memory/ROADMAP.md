@@ -1,7 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Verifizierten Driver-Testaccount für echtes Frontend-E2E im Fahrer-Dashboard bereitstellen
+- GitHub Actions Workflow einmal im echten Remote-Repo laufen lassen und ggf. CI-spezifische Testfehler nachziehen
 
 ## P1
 - CI/CD um `pytest backend/tests` + `eslint` erweitern

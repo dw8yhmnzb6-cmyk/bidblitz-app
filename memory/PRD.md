@@ -27,6 +27,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Driver Dashboard Eligibility repariert** (`backend/core/router_registry.py`): Fehlender Router `routes.driver_dashboard` registriert. `GET /api/driver-dashboard/eligibility` antwortet jetzt korrekt; Driver Document Summary bleibt erreichbar. In `DriverDocumentsPanel.jsx` wurde zusätzlich ein Blocker-Banner ergänzt.
 - ✅ **Retests**: Frontend-Smoke (Taxi, Profil, Parent Controls) PASS. Frontend-Subagent: alle 3 Bereiche PASS. Backend-Retest: Kids Controls `settings/dashboard/activity`, Driver Eligibility und Driver Documents Summary **5/5 PASS**.
 
+### 17.05.2026 (Verified Driver Seed + GitHub Actions CI) ✅
+- 🟢 **Verifizierter Driver-Testaccount bereitgestellt** (`backend/server.py`, `memory/test_credentials.md`): Beim Backend-Startup wird `admin@bidblitz.com` automatisch als aktiver/verifizierter Driver mit Mercedes E-Klasse Seed bereitgestellt (`ensure_admin_driver_account`). Damit ist echtes Frontend-E2E im Fahrer-Dashboard möglich.
+- 🟢 **GitHub Actions CI ergänzt** (`.github/workflows/ci.yml`): Neuer Workflow `BidBlitz CI` mit zwei Jobs: `backend-tests` (`pytest backend/tests` gegen Mongo-Service + CI-.env) und `frontend-eslint` (`npx eslint src --ext .js,.jsx`).
+- ✅ **Retests Driver Seed**: Frontend-Subagent 100% PASS für `/driver-dashboard` inkl. Dokumente-Tab. Backend-Retest 5/5 PASS für `eligibility`, `profile`, `status`, `documents/summary`. Workflow-Datei wurde zusätzlich per YAML-Parse validiert.
+
 ### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
 - 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
 - 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.

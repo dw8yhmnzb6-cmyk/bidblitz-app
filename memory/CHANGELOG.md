@@ -11,3 +11,6 @@
 - Fehlende Router für Kids Controls, Kids App und Driver Dashboard registriert
 - Parent Controls Crash (`settings.lock_all` auf `null`) behoben
 - Retests für Taxi, Profil, Kids Controls und Backend-Endpunkte grün
+- Verifizierten Driver-Testaccount für `admin@bidblitz.com` beim Startup gesät
+- GitHub Actions Workflow `.github/workflows/ci.yml` für `pytest backend/tests` + `eslint` ergänzt
+- Driver-Dashboard-Frontend und Backend mit neuem Testaccount erfolgreich retestet
