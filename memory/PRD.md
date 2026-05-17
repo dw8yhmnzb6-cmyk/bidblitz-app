@@ -20,6 +20,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Invoice Scan + direkte Zahlungsseite** (`backend/routes/invoicing.py`, `frontend/src/pages/InvoicePayPage.jsx`): Neue Rechnungen erhalten `scan_code` im Format `BBINV-XXXXXXXXXX` plus `pay_url`. Öffentliche Endpoints `GET /api/invoicing/public/{scan_code}` und `POST /api/invoicing/public/{scan_code}/pay` ermöglichen direktes Öffnen und Bezahlen nach dem Scan. Wallet-Debit/Credit + Transaktionslogs werden beim Bezahlen geschrieben.
 - ✅ **Testing iter126**: `/app/test_reports/iteration_126.json` → Backend 17/17 PASS, Frontend PASS. Zusätzliche Pflichttests ebenfalls grün: Frontend-Subagent 12/13 PASS ohne kritische Issues, Backend-Subagent 5/5 PASS.
 
+### 17.05.2026 (Taxi Cleanup + Kids/Driver Fixes) ✅
+- 🟢 **Taxi-Bestellansicht weiter entschlackt** (`frontend/src/components/taxi/TaxiBookingSheet.jsx`, `frontend/src/components/taxi/TaxiQuickActions.jsx`): Begrüßung kompakter, Quick-Actions kleiner und erst nach dem Haupt-CTA platziert. Ziel: ruhigerer erster Screen.
+- 🟢 **Rotes Shield intern ins Profil verschoben** (`frontend/src/pages/MorePage.jsx`): Neues internes Profil-Element `profile-taxi-shield-card` mit rotem Shield und Taxi-Preis-Schutz-Hinweis. Zusätzlich Auth-Race im More-Bereich abgefangen (`gatedAction` + `refreshUser`).
+- 🟢 **Kids Parent Controls repariert** (`backend/core/router_registry.py`, `frontend/src/pages/ParentControlsPage.jsx`): Fehlende Router `routes.kids_controls` + `routes.kids_app` registriert; Frontend-Guard gegen `settings === null` ergänzt. Die zuvor gefundenen 404er und der Frontend-Crash sind behoben.
+- 🟢 **Driver Dashboard Eligibility repariert** (`backend/core/router_registry.py`): Fehlender Router `routes.driver_dashboard` registriert. `GET /api/driver-dashboard/eligibility` antwortet jetzt korrekt; Driver Document Summary bleibt erreichbar. In `DriverDocumentsPanel.jsx` wurde zusätzlich ein Blocker-Banner ergänzt.
+- ✅ **Retests**: Frontend-Smoke (Taxi, Profil, Parent Controls) PASS. Frontend-Subagent: alle 3 Bereiche PASS. Backend-Retest: Kids Controls `settings/dashboard/activity`, Driver Eligibility und Driver Documents Summary **5/5 PASS**.
+
 ### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
 - 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
 - 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.

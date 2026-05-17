@@ -1,11 +1,9 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Taxi Booking UI weiter entschlacken (`TaxiBookingSheet.jsx`) und rotes Shield intern sauber final platzieren
+- Verifizierten Driver-Testaccount für echtes Frontend-E2E im Fahrer-Dashboard bereitstellen
 
 ## P1
-- Kids Parent-Dashboard UI final testen und glätten
-- Driver Document Expiry Monitoring final testen und glätten
 - CI/CD um `pytest backend/tests` + `eslint` erweitern
 
 ## P2

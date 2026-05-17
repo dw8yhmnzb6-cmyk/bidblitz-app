@@ -6,3 +6,8 @@
 - Stabile Tisch-Barcodes `TBL-...` ergänzt und im Merchant-QR-Tab sichtbar gemacht
 - Rechnungs-Scan-Codes `BBINV-...` + öffentliche Rechnungs-Zahlungsseite `/invoice/pay/:scanCode` ergänzt
 - Testing: `iteration_126.json` vollständig grün
+- Taxi-Bestellansicht weiter entschlackt; Quick-Actions kompakter und später platziert
+- Rotes Taxi-Shield intern ins Profil verschoben (`profile-taxi-shield-card`)
+- Fehlende Router für Kids Controls, Kids App und Driver Dashboard registriert
+- Parent Controls Crash (`settings.lock_all` auf `null`) behoben
+- Retests für Taxi, Profil, Kids Controls und Backend-Endpunkte grün
