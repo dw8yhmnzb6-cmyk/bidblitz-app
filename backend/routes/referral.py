@@ -89,10 +89,11 @@ async def apply_referral_code(req: ApplyReferralRequest, request: Request):
 
     # Auto-create taxi promo code for new user (5€ off first ride)
     referral_promo_code = f"REF-{req.code.upper().strip()[-6:]}"
+    promo_created = False
     try:
         existing_promo = await db.taxi_promo_codes.find_one({"code": referral_promo_code})
         if not existing_promo:
-            await db.taxi_promo_codes.insert_one({
+            result = await db.taxi_promo_codes.insert_one({
                 "code": referral_promo_code,
                 "type": "fixed",
                 "value": 5.0,
@@ -103,10 +104,18 @@ async def apply_referral_code(req: ApplyReferralRequest, request: Request):
                 "expires_at": None,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
-    except Exception:
-        pass  # Non-blocking
+            promo_created = True
+        else:
+            promo_created = True  # Already exists
+    except Exception as e:
+        print(f"⚠️ Failed to create taxi promo code: {e}")
 
-    return {"success": True, "message": "Referral code applied! You'll both be rewarded after your first payment.", "taxi_promo": referral_promo_code}
+    return {
+        "success": True, 
+        "message": "Referral code applied! You'll both be rewarded after your first payment.", 
+        "taxi_promo": referral_promo_code,
+        "promo_created": promo_created
+    }
 
 
 @router.get("/check-rewards")
