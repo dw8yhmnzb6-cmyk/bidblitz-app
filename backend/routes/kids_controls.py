@@ -105,6 +105,76 @@ def _is_bedtime_now(settings: dict, now: Optional[datetime] = None) -> bool:
     return cur >= s or cur < e
 
 
+@router.get("/{child_id}/dashboard")
+async def dashboard_summary(child_id: str, request: Request):
+    """Verdichtete Eltern-Übersicht für Dashboard-Karten."""
+    user = await get_current_user(request)
+    parent_id = str(user["_id"])
+    child = await _get_child_for_parent(parent_id, child_id)
+
+    settings = await db.kids_controls.find_one({"child_id": child_id, "parent_id": parent_id}, {"_id": 0})
+    if not settings:
+        settings = _default_settings_for_age(child.get("age"))
+
+    now = datetime.now(timezone.utc)
+    today_key = now.strftime("%Y-%m-%d")
+    cutoff = (now - timedelta(days=6)).strftime("%Y-%m-%d")
+    bedtime_now = _is_bedtime_now(settings, now)
+    module_meta = {m["key"]: m for m in AVAILABLE_MODULES}
+    active_modules = [k for k, v in (settings.get("modules") or {}).items() if v.get("allowed")]
+
+    usage_today = await db.kids_usage.find({"child_id": child_id, "day": today_key}, {"_id": 0}).to_list(100)
+    usage_week = await db.kids_usage.find({"child_id": child_id, "day": {"$gte": cutoff}}, {"_id": 0}).to_list(500)
+    today_seconds = sum(int(d.get("seconds", 0) or 0) for d in usage_today)
+    week_by_module: Dict[str, int] = {}
+    for row in usage_week:
+        mod = row.get("module")
+        week_by_module[mod] = week_by_module.get(mod, 0) + int(row.get("seconds", 0) or 0)
+    top_module_key = max(week_by_module, key=week_by_module.get) if week_by_module else None
+
+    chores_open = await db.kids_chores.count_documents({"child_id": child_id, "status": "open"})
+    chores_submitted = await db.kids_chores.count_documents({"child_id": child_id, "status": "submitted"})
+    approvals_pending = await db.kids_approvals.count_documents({"child_id": child_id, "parent_id": parent_id, "status": "pending"})
+    badges_earned = await db.kids_badges.count_documents({"child_id": child_id})
+    allowance_cfg = await db.kids_allowance.find_one({"child_id": child_id, "parent_id": parent_id}, {"_id": 0})
+    gifts_total = 0.0
+    async for gift in db.kids_gifts.find({"child_id": child_id, "status": "completed"}, {"_id": 0, "amount_eur": 1}):
+        gifts_total += float(gift.get("amount_eur", 0) or 0)
+
+    alerts: List[dict] = []
+    if settings.get("lock_all"):
+        alerts.append({"tone": "red", "title": "Alles gesperrt", "text": "Der Master-Lock ist aktiv."})
+    if bedtime_now:
+        alerts.append({"tone": "violet", "title": "Bettzeit aktiv", "text": f"Ruhemodus bis {settings.get('bedtime_end', '07:00')}"})
+    if approvals_pending:
+        alerts.append({"tone": "amber", "title": "Freigaben offen", "text": f"{approvals_pending} Kaufanfragen warten auf dich."})
+    if chores_submitted:
+        alerts.append({"tone": "cyan", "title": "Aufgaben prüfen", "text": f"{chores_submitted} erledigte Aufgaben warten auf Bestätigung."})
+
+    return {
+        "child": {k: v for k, v in child.items() if k != "_id"},
+        "summary": {
+            "active_modules": len(active_modules),
+            "blocked_modules": len(AVAILABLE_MODULES) - len(active_modules),
+            "lock_all": bool(settings.get("lock_all")),
+            "bedtime_now": bedtime_now,
+            "today_minutes": today_seconds // 60,
+            "week_minutes": sum(week_by_module.values()) // 60,
+            "top_module_key": top_module_key,
+            "top_module_label": module_meta.get(top_module_key, {}).get("label") if top_module_key else None,
+            "badges_earned": badges_earned,
+            "open_chores": chores_open,
+            "submitted_chores": chores_submitted,
+            "approvals_pending": approvals_pending,
+            "balance_eur": round(float(child.get("balance", 0) or 0), 2),
+            "balance_blz": int(child.get("balance_blz", 0) or 0),
+            "gifts_total_eur": round(gifts_total, 2),
+        },
+        "allowance": allowance_cfg or {},
+        "alerts": alerts,
+    }
+
+
 # ─── Endpoints (Parent side) ─────────────────────────────────────
 @router.get("/modules")
 async def list_available_modules():

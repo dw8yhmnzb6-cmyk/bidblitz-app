@@ -45,6 +45,50 @@ async def _driver(request: Request) -> dict:
     return user
 
 
+REQUIRED_DRIVER_DOCUMENTS = {
+    "license": "Führerschein",
+    "p_schein": "P-Schein",
+    "insurance": "Versicherung",
+    "tuev": "TÜV",
+}
+
+DOCUMENT_LABELS = {
+    **REQUIRED_DRIVER_DOCUMENTS,
+    "concession": "Konzession",
+    "other": "Sonstiges",
+}
+
+
+def _document_alert_level(days_until_expiry: Optional[int]) -> str:
+    if days_until_expiry is None:
+        return "unknown"
+    if days_until_expiry < 0:
+        return "expired"
+    if days_until_expiry <= 7:
+        return "urgent"
+    if days_until_expiry <= 14:
+        return "warning"
+    if days_until_expiry <= 30:
+        return "notice"
+    return "ok"
+
+
+def _annotate_document(doc: dict) -> dict:
+    out = {**doc}
+    today = datetime.now(timezone.utc).date()
+    try:
+        exp = datetime.fromisoformat(out["expires_on"]).date()
+        days_until_expiry = (exp - today).days
+    except Exception:
+        days_until_expiry = None
+    out["days_until_expiry"] = days_until_expiry
+    out["alert_level"] = _document_alert_level(days_until_expiry)
+    out["type_label"] = DOCUMENT_LABELS.get(out.get("type"), out.get("type", "Dokument"))
+    if days_until_expiry is not None and days_until_expiry < 0:
+        out["status"] = "expired"
+    return out
+
+
 # ─── DRIVER HEATMAP ────────────────────────────────────────────────────
 @router.get("/demand-heatmap")
 async def demand_heatmap(request: Request, days: int = 14, lat: float = 52.52, lng: float = 13.405,
@@ -99,7 +143,7 @@ async def add_document(payload: DocumentCreate, request: Request):
     }
     await db.taxi_driver_documents.insert_one(doc)
     doc.pop("_id", None)
-    return {"success": True, "document": doc}
+    return {"success": True, "document": _annotate_document(doc)}
 
 
 @router.get("/documents")
@@ -107,16 +151,40 @@ async def list_documents(request: Request):
     user = await _driver(request)
     driver_id = str(user.get("_id") or user.get("id"))
     cursor = db.taxi_driver_documents.find({"driver_id": driver_id}, {"_id": 0})
-    items = [d async for d in cursor]
-    today = datetime.now(timezone.utc).date()
-    for d in items:
-        try:
-            exp = datetime.fromisoformat(d["expires_on"]).date()
-            d["days_until_expiry"] = (exp - today).days
-        except Exception:
-            d["days_until_expiry"] = None
+    items = [_annotate_document(d) async for d in cursor]
     items.sort(key=lambda x: x.get("days_until_expiry") if x.get("days_until_expiry") is not None else 9999)
     return {"items": items}
+
+
+@router.get("/documents/summary")
+async def documents_summary(request: Request):
+    user = await _driver(request)
+    driver_id = str(user.get("_id") or user.get("id"))
+    cursor = db.taxi_driver_documents.find({"driver_id": driver_id}, {"_id": 0})
+    items = [_annotate_document(d) async for d in cursor]
+    counts = {"expired": 0, "urgent": 0, "warning": 0, "notice": 0, "ok": 0, "unknown": 0}
+    for item in items:
+        counts[item["alert_level"]] = counts.get(item["alert_level"], 0) + 1
+    missing_required = [
+        {"type": key, "label": label}
+        for key, label in REQUIRED_DRIVER_DOCUMENTS.items()
+        if not any(i.get("type") == key for i in items)
+    ]
+    next_expiring = next((item for item in sorted(items, key=lambda x: x.get("days_until_expiry") if x.get("days_until_expiry") is not None else 9999) if item.get("days_until_expiry") is not None), None)
+    alerts = []
+    if counts["expired"]:
+        alerts.append({"tone": "red", "title": "Dokument abgelaufen", "text": f"{counts['expired']} Dokument(e) sind bereits abgelaufen."})
+    if counts["urgent"]:
+        alerts.append({"tone": "amber", "title": "Sofort prüfen", "text": f"{counts['urgent']} Dokument(e) laufen in 7 Tagen oder früher ab."})
+    if missing_required:
+        alerts.append({"tone": "violet", "title": "Pflichtdokument fehlt", "text": ", ".join(x["label"] for x in missing_required)})
+    return {
+        "counts": counts,
+        "missing_required": missing_required,
+        "next_expiring": next_expiring,
+        "alerts": alerts,
+        "has_blocker": bool(counts["expired"] or missing_required),
+    }
 
 
 @router.delete("/documents/{did}")

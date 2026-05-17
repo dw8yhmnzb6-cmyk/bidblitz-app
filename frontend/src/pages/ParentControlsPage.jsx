@@ -8,6 +8,7 @@ import {
   ArrowLeft, Lock, Unlock, Moon, Clock, Shield, BarChart3,
   Check, X, Loader2, Save, RotateCcw, AlertCircle, Sparkles
 } from "lucide-react";
+import { ParentDashboardOverview } from "../components/kids/ParentDashboardOverview";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -16,15 +17,33 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState(null);
   const [child, setChild] = useState(null);
+  const [children, setChildren] = useState([]);
+  const [currentChildId, setCurrentChildId] = useState(childId || "");
   const [activity, setActivity] = useState(null);
-  const [tab, setTab] = useState("modules"); // modules | time | activity
+  const [dashboard, setDashboard] = useState(null);
+  const [tab, setTab] = useState("overview");
   const [error, setError] = useState("");
   const [successFlash, setSuccessFlash] = useState(false);
 
+  useEffect(() => {
+    if (childId) setCurrentChildId(childId);
+  }, [childId]);
+
+  const loadChildren = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/kids/children`, { credentials: "include" });
+      const d = await res.json();
+      const kids = d.children || [];
+      setChildren(kids);
+      if (!currentChildId && kids.length > 0) setCurrentChildId(kids[0].child_id);
+    } catch {}
+  }, [currentChildId]);
+
   const load = useCallback(async () => {
+    if (!currentChildId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/kids/controls/${childId}/settings`, {
+      const res = await fetch(`${API}/api/kids/controls/${currentChildId}/settings`, {
         credentials: "include",
       });
       const d = await res.json();
@@ -35,18 +54,29 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
       setError(e.message);
     }
     setLoading(false);
-  }, [childId]);
+  }, [currentChildId]);
+
+  const loadDashboard = useCallback(async () => {
+    if (!currentChildId) return;
+    try {
+      const res = await fetch(`${API}/api/kids/controls/${currentChildId}/dashboard`, {
+        credentials: "include",
+      });
+      if (res.ok) setDashboard(await res.json());
+    } catch {}
+  }, [currentChildId]);
 
   const loadActivity = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/kids/controls/${childId}/activity?days=7`, {
+      const res = await fetch(`${API}/api/kids/controls/${currentChildId}/activity?days=7`, {
         credentials: "include",
       });
       if (res.ok) setActivity(await res.json());
     } catch {}
-  }, [childId]);
+  }, [currentChildId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadChildren(); }, [loadChildren]);
+  useEffect(() => { load(); loadDashboard(); }, [load, loadDashboard]);
   useEffect(() => { if (tab === "activity") loadActivity(); }, [tab, loadActivity]);
 
   const save = async () => {
@@ -62,7 +92,7 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
         lock_all: !!settings.lock_all,
         notes: settings.notes || "",
       };
-      const res = await fetch(`${API}/api/kids/controls/${childId}/settings`, {
+      const res = await fetch(`${API}/api/kids/controls/${currentChildId}/settings`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -71,6 +101,7 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
       const d = await res.json();
       if (!res.ok) throw new Error(d.detail || "Speichern fehlgeschlagen");
       setSettings(d.settings);
+      loadDashboard();
       setSuccessFlash(true);
       setTimeout(() => setSuccessFlash(false), 1500);
     } catch (e) {
@@ -81,7 +112,7 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
 
   const masterLock = async (lock) => {
     try {
-      const res = await fetch(`${API}/api/kids/controls/${childId}/master-lock`, {
+      const res = await fetch(`${API}/api/kids/controls/${currentChildId}/master-lock`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -89,6 +120,7 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
       });
       if (res.ok) {
         setSettings((s) => ({ ...s, lock_all: lock }));
+        loadDashboard();
         setSuccessFlash(true);
         setTimeout(() => setSuccessFlash(false), 1500);
       }
@@ -118,8 +150,18 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
     );
   }
 
+  if (!currentChildId) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0F] text-white flex flex-col items-center justify-center p-6" data-testid="parent-controls-empty-state">
+        <Shield className="mb-3 text-white/20" size={32} />
+        <p className="text-[14px] font-bold">Noch kein Kind ausgewählt</p>
+        <button onClick={onBack} className="mt-4 px-4 py-2 rounded-xl bg-white/10 text-[12px]" data-testid="parent-controls-empty-back">Zurück</button>
+      </div>
+    );
+  }
+
   const modulesList = MODULES_META;
-  const childDisplay = child?.name || childName || "Kind";
+  const childDisplay = child?.name || children.find((c) => c.child_id === currentChildId)?.name || childName || "Kind";
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white pb-24" data-testid="parent-controls-page">
@@ -151,6 +193,7 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
         {/* Tabs */}
         <div className="flex gap-1.5 mt-3 -mb-1">
           {[
+            { k: "overview", label: "Übersicht", icon: Sparkles },
             { k: "modules", label: "Module", icon: Shield },
             { k: "time", label: "Zeit", icon: Clock },
             { k: "activity", label: "Report", icon: BarChart3 },
@@ -162,6 +205,16 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
             </button>
           ))}
         </div>
+        {children.length > 1 && (
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1" data-testid="parent-controls-child-switcher">
+            {children.map((kid) => (
+              <button key={kid.child_id} onClick={() => setCurrentChildId(kid.child_id)} data-testid={`parent-controls-child-${kid.child_id}`}
+                className={`px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap ${currentChildId === kid.child_id ? 'bg-white/10 text-white border border-white/10' : 'bg-white/[0.03] text-gray-500 border border-transparent'}`}>
+                {kid.avatar || "🦁"} {kid.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Master Lock Banner */}
@@ -191,6 +244,10 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
           </div>
         )}
       </div>
+
+      {tab === "overview" && (
+        <ParentDashboardOverview dashboard={dashboard} onOpenActivity={() => setTab("activity")} onOpenTime={() => setTab("time")} />
+      )}
 
       {/* ───── TAB: Modules ───── */}
       {tab === "modules" && (
@@ -360,10 +417,11 @@ const ParentControlsPage = ({ onBack, childId, childName }) => {
               <button
                 data-testid="reset-usage"
                 onClick={async () => {
-                  await fetch(`${API}/api/kids/controls/${childId}/reset-usage`, {
+                  await fetch(`${API}/api/kids/controls/${currentChildId}/reset-usage`, {
                     method: "POST", credentials: "include"
                   });
                   loadActivity();
+                  loadDashboard();
                 }}
                 className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-[12px] text-gray-400 flex items-center justify-center gap-2">
                 <RotateCcw size={14} /> Heutige Nutzung zurücksetzen

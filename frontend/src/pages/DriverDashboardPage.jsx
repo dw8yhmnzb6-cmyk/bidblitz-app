@@ -11,9 +11,10 @@ import {
   ArrowLeft, Power, MapPin, Navigation, CheckCircle, XCircle,
   Phone, Loader2, Car, Star, AlertCircle, Play, Bell, RefreshCw,
   Wallet, Home, History, User as UserIcon, Euro, TrendingUp,
-  ChevronRight, Clock
+  ChevronRight, Clock, FileText
 } from "lucide-react";
 import { toast } from "sonner";
+import { DriverDocumentsPanel } from "../components/taxi/DriverDocumentsPanel";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const panelBg = "rgba(12, 14, 26, 0.95)";
@@ -574,6 +575,7 @@ const DriverDashboardPage = ({ onNavigate }) => {
           {[
             { id: "home", label: "Start", icon: Home },
             { id: "history", label: "Verlauf", icon: History },
+            { id: "docs", label: "Dokumente", icon: FileText },
             { id: "profile", label: "Profil", icon: UserIcon },
           ].map((t) => (
             <button
@@ -624,6 +626,7 @@ const DriverDashboardPage = ({ onNavigate }) => {
                 onRefresh={loadHistory}
               />
             )}
+            {tab === "docs" && <DriverDocumentsPanel api={api} panelBg={panelBg} panelBorder={panelBorder} />}
             {tab === "profile" && <ProfileTab profile={profile} onNavigate={onNavigate} />}
           </motion.div>
         </AnimatePresence>
