@@ -14,6 +14,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Emergent LLM Key: pre-configured
 
 
+### 17.05.2026 (Open Shifts Auto-Publish — Enhancement zu P3) ✅
+- 🟢 **Backend** (`routes/staff_shift_assistant.py`): Neue Collection `staff_ai_open_shifts` + 6 Endpoints — Manager `POST /publish` (berechnet automatisch das nächste Wochentags-Datum), `GET /open-shifts`, `DELETE /{id}`; Staff `GET /open-shifts/staff` (mit `claimed_by_me`/`seats_left`-Annotations), `POST /{id}/claim` (auto-flip auf `filled` wenn voll), `POST /{id}/withdraw`. E2E via curl verifiziert.
+- 🟢 **Frontend Manager** (`staff/StaffShiftAssistant.jsx`): Pro Suggestion ein „Publizieren"-Pill-Button (Send-Icon, Cyan); wenn bereits live → grüner „✓ Live"-Badge. Neuer Block „Live Open Shifts" mit besetzten/freien Plätzen pro Slot + Storno-X.
+- 🟢 **Frontend Staff** (`staff/OpenShifts.jsx`): Neue Sektion „Manager-Schichten" oben, AI-publizierte Slots auto-refresh alle 20s, „Übernehmen"-Button cyan / „✓ Übernommen" wenn schon claimed / „Voll" wenn besetzt. Side-by-side mit klassischen Kollegen-Releases.
+
 ### 17.05.2026 (Multi-Tarif Zonen-Pricing P2 + AI-Schichtplan-Assistent P3) ✅
 - 🟢 **P2 Multi-Tarif Zonen-Pricing** (`utils/taxi_zone_pricing.py` + Patch `routes/taxi.py::get_ride_estimate`): Helper findet zur Pickup-Koordinate passende Tarif-Zone (Haversine, kleinste Zone gewinnt) + berechnet Zeit-Multiplier (Nacht 22-06, Wochenende, Feiertag DE — höchster wins, kein Compound). Estimate-Response liefert `tariff_zone` + `time_tariff` an Frontend. Verifiziert: Berlin 52.52/13.405 Wochenende → Zone "Berlin Innenstadt" + ×1.15 Wochenend-Tarif → fare 8.57€.
 - 🟢 **Frontend Multi-Tarif Badges** (`TaxiBookingSheet.jsx`): Pill-Badges direkt unter Surge: Cyan-Zone-Badge mit MapPin-Icon + Time-Badge (🌙 Nacht=Indigo, 🎉 Feiertag=Rose, 📅 Wochenende=Amber) mit Multiplier-Anzeige.

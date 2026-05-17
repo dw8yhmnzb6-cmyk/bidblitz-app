@@ -181,3 +181,162 @@ async def shift_suggestions(
             "weekly_staff_hours": total_staff_hours,
         },
     }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Auto-Publish Open Shifts (Enhancement)
+# ════════════════════════════════════════════════════════════════════════════
+# Manager kann eine AI-Empfehlung mit 1-Tap als „Open Shift" publizieren.
+# Staff-Mitarbeiter sehen offene Slots im Staff-Portal und können claimen.
+#
+# Collection: `staff_ai_open_shifts`
+#   id, merchant_id, weekday, start_hour, end_hour, duration_h,
+#   needed_staff, claimed_by:[staff_id], status: "open"|"filled"|"cancelled",
+#   shift_date (ISO date string – nächste Wochentags-Instanz),
+#   source: "ai_recommendation", created_at, created_by
+# ════════════════════════════════════════════════════════════════════════════
+from pydantic import BaseModel, Field
+from uuid import uuid4
+
+
+def _next_weekday_date(weekday: int) -> str:
+    """Returns ISO-date for the next occurrence of the given weekday (Mo=0 .. So=6)."""
+    today = datetime.now(timezone.utc).date()
+    days_ahead = (weekday - today.weekday()) % 7
+    if days_ahead == 0:
+        days_ahead = 7
+    return (today + timedelta(days=days_ahead)).isoformat()
+
+
+class PublishOpenShiftBody(BaseModel):
+    weekday: int = Field(..., ge=0, le=6)
+    start_hour: int = Field(..., ge=0, le=23)
+    end_hour: int = Field(..., ge=1, le=24)
+    needed_staff: int = Field(..., ge=1, le=20)
+    note: Optional[str] = Field(None, max_length=200)
+
+
+@router.post("/open-shifts/publish")
+async def publish_open_shift(payload: PublishOpenShiftBody, request: Request):
+    """Manager: publiziert eine AI-Empfehlung als Open Shift, den Staff claimen kann."""
+    mgr = await _manager(request)
+    if payload.end_hour <= payload.start_hour:
+        raise HTTPException(400, "end_hour muss > start_hour sein")
+
+    duration_h = payload.end_hour - payload.start_hour
+    shift_date = _next_weekday_date(payload.weekday)
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid4()),
+        "merchant_id": mgr["merchant_id"],
+        "weekday": payload.weekday,
+        "weekday_label": WEEKDAYS[payload.weekday],
+        "start_hour": payload.start_hour,
+        "end_hour": payload.end_hour,
+        "duration_h": duration_h,
+        "needed_staff": payload.needed_staff,
+        "claimed_by": [],
+        "status": "open",
+        "shift_date": shift_date,
+        "note": payload.note or "",
+        "source": "ai_recommendation",
+        "created_at": now,
+        "created_by": mgr["id"],
+    }
+    await db.staff_ai_open_shifts.insert_one(doc)
+    doc.pop("_id", None)
+    return {"success": True, "open_shift": doc}
+
+
+@router.get("/open-shifts")
+async def list_open_shifts(request: Request):
+    """Manager: listet alle offenen + gefüllten AI-publizierten Schichten."""
+    mgr = await _manager(request)
+    items = await db.staff_ai_open_shifts.find(
+        {"merchant_id": mgr["merchant_id"], "status": {"$ne": "cancelled"}},
+        {"_id": 0},
+    ).sort([("shift_date", 1), ("start_hour", 1)]).to_list(500)
+    return {"items": items, "count": len(items)}
+
+
+@router.delete("/open-shifts/{shift_id}")
+async def cancel_open_shift(shift_id: str, request: Request):
+    """Manager: storniert einen Open Shift."""
+    mgr = await _manager(request)
+    res = await db.staff_ai_open_shifts.update_one(
+        {"id": shift_id, "merchant_id": mgr["merchant_id"]},
+        {"$set": {"status": "cancelled",
+                  "cancelled_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Open Shift nicht gefunden")
+    return {"success": True}
+
+
+# Staff-Side: Claim
+async def _staff_session(request: Request) -> dict:
+    sid = request.cookies.get("staff_session")
+    if not sid:
+        raise HTTPException(401, "Nicht angemeldet")
+    m = await db.staff_members.find_one({"id": sid, "active": True}, {"_id": 0})
+    if not m:
+        raise HTTPException(401, "Session ungültig")
+    return m
+
+
+@router.get("/open-shifts/staff")
+async def staff_list_open_shifts(request: Request):
+    """Staff: listet offene Slots des eigenen Merchants."""
+    me = await _staff_session(request)
+    merchant_id = me.get("merchant_id")
+    items = await db.staff_ai_open_shifts.find(
+        {"merchant_id": merchant_id, "status": "open"},
+        {"_id": 0},
+    ).sort([("shift_date", 1), ("start_hour", 1)]).to_list(200)
+    # Annotate: did I already claim?
+    my_id = me["id"]
+    for it in items:
+        it["claimed_by_me"] = my_id in (it.get("claimed_by") or [])
+        it["seats_left"] = max(0, it["needed_staff"] - len(it.get("claimed_by") or []))
+    return {"items": items, "count": len(items)}
+
+
+@router.post("/open-shifts/{shift_id}/claim")
+async def staff_claim_open_shift(shift_id: str, request: Request):
+    """Staff: claimt einen offenen Slot. Sobald Anzahl Claims = needed_staff → status=filled."""
+    me = await _staff_session(request)
+    doc = await db.staff_ai_open_shifts.find_one({"id": shift_id, "status": "open"}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Slot nicht offen")
+    if doc.get("merchant_id") != me.get("merchant_id"):
+        raise HTTPException(403, "Fremder Merchant")
+    claimed = list(doc.get("claimed_by") or [])
+    if me["id"] in claimed:
+        return {"success": True, "already_claimed": True, "shift_id": shift_id}
+    claimed.append(me["id"])
+    update = {"claimed_by": claimed}
+    if len(claimed) >= int(doc.get("needed_staff", 1)):
+        update["status"] = "filled"
+        update["filled_at"] = datetime.now(timezone.utc).isoformat()
+    await db.staff_ai_open_shifts.update_one({"id": shift_id}, {"$set": update})
+    return {"success": True, "shift_id": shift_id, "status": update.get("status", "open"),
+            "seats_left": max(0, int(doc.get("needed_staff", 1)) - len(claimed))}
+
+
+@router.post("/open-shifts/{shift_id}/withdraw")
+async def staff_withdraw_claim(shift_id: str, request: Request):
+    """Staff: nimmt eigenen Claim zurück (solange status=open)."""
+    me = await _staff_session(request)
+    doc = await db.staff_ai_open_shifts.find_one({"id": shift_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Slot nicht gefunden")
+    if doc.get("status") != "open" and doc.get("status") != "filled":
+        raise HTTPException(400, "Slot ist nicht aktiv")
+    claimed = [c for c in (doc.get("claimed_by") or []) if c != me["id"]]
+    update = {"claimed_by": claimed, "status": "open"}
+    update.pop("filled_at", None)
+    await db.staff_ai_open_shifts.update_one(
+        {"id": shift_id},
+        {"$set": update, "$unset": {"filled_at": ""}},
+    )
+    return {"success": True, "shift_id": shift_id}

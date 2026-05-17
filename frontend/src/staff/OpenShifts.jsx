@@ -48,6 +48,16 @@ export function StaffOpenShifts({ onClose }) {
   const [data, setData] = useState({ open: [], released_by_me: [] });
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [aiShifts, setAiShifts] = useState([]);
+
+  const loadAi = useCallback(async () => {
+    try {
+      const d = await api("/api/staff/shift-assistant/open-shifts/staff");
+      setAiShifts(d.items || []);
+    } catch {
+      /* silent — AI feature may not be authorized */
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -60,7 +70,29 @@ export function StaffOpenShifts({ onClose }) {
     }
   }, []);
 
-  useEffect(() => { load(); const id = setInterval(load, 20000); return () => clearInterval(id); }, [load]);
+  useEffect(() => {
+    load();
+    loadAi();
+    const id = setInterval(() => { load(); loadAi(); }, 20000);
+    return () => clearInterval(id);
+  }, [load, loadAi]);
+
+  const claimAi = async (shiftId, withdraw = false) => {
+    setBusyId(shiftId);
+    try {
+      await api(`/api/staff/shift-assistant/open-shifts/${shiftId}/${withdraw ? "withdraw" : "claim"}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      toast.success(withdraw ? "Anmeldung zurückgenommen" : "Schicht übernommen ✓");
+      loadAi();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const claim = async (shiftId) => {
     setBusyId(shiftId);
@@ -110,6 +142,62 @@ export function StaffOpenShifts({ onClose }) {
 
   return (
     <div className="space-y-5" data-testid="staff-open-shifts">
+      {/* AI-Empfehlung publizierte Open Shifts (Manager-initiiert) */}
+      {aiShifts.length > 0 && (
+        <section data-testid="staff-ai-open-shifts">
+          <h3 className="text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-2 px-1 flex items-center gap-1.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500" />
+            </span>
+            Manager-Schichten · {aiShifts.length}
+          </h3>
+          <div className="space-y-2">
+            {aiShifts.map((s) => {
+              const busy = busyId === s.id;
+              return (
+                <div
+                  key={s.id}
+                  className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3 flex items-center justify-between gap-2"
+                  data-testid={`staff-ai-shift-${s.id}`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900">
+                      {s.weekday_label} {s.shift_date.slice(5)} · {String(s.start_hour).padStart(2, "0")}:00–{String(s.end_hour).padStart(2, "0")}:00
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {s.duration_h}h · {s.seats_left} von {s.needed_staff} frei
+                      {s.note ? ` · ${s.note}` : ""}
+                    </p>
+                  </div>
+                  {s.claimed_by_me ? (
+                    <button
+                      onClick={() => claimAi(s.id, true)}
+                      disabled={busy}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold disabled:opacity-50"
+                      data-testid={`staff-ai-shift-withdraw-${s.id}`}
+                    >
+                      {busy ? "..." : "✓ Übernommen"}
+                    </button>
+                  ) : s.seats_left <= 0 ? (
+                    <span className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-400 text-[11px] font-bold">Voll</span>
+                  ) : (
+                    <button
+                      onClick={() => claimAi(s.id, false)}
+                      disabled={busy}
+                      className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-[11px] font-extrabold disabled:opacity-50"
+                      data-testid={`staff-ai-shift-claim-${s.id}`}
+                    >
+                      {busy ? "..." : "Übernehmen"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Released by me */}
       {data.released_by_me.length > 0 && (
         <section>

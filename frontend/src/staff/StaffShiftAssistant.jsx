@@ -3,8 +3,9 @@
  * Liest /api/staff/shift-assistant/suggestions, gruppiert nach Wochentag,
  * zeigt empfohlene Schichten + Unterbesetzungs-Warnungen.
  */
-import React, { useEffect, useState, useMemo } from "react";
-import { Loader2, Sparkles, AlertTriangle, Users, Clock, TrendingUp } from "lucide-react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { Loader2, Sparkles, AlertTriangle, Users, Clock, TrendingUp, Send, Check, X } from "lucide-react";
+import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -20,6 +21,73 @@ export default function StaffShiftAssistant() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [published, setPublished] = useState([]);
+  const [publishingKey, setPublishingKey] = useState(null);
+
+  const loadPublished = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/api/staff/shift-assistant/open-shifts`, { credentials: "include" });
+      if (r.ok) {
+        const j = await r.json();
+        setPublished(j.items || []);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => { loadPublished(); }, [loadPublished]);
+
+  const isAlreadyPublished = useCallback(
+    (s) => published.some(
+      (p) => p.status !== "cancelled"
+        && p.weekday === s.weekday
+        && p.start_hour === s.start_hour
+        && p.end_hour === s.end_hour,
+    ),
+    [published],
+  );
+
+  const publish = async (s) => {
+    const key = `${s.weekday}-${s.start_hour}-${s.end_hour}`;
+    setPublishingKey(key);
+    try {
+      const r = await fetch(`${API}/api/staff/shift-assistant/open-shifts/publish`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekday: s.weekday,
+          start_hour: s.start_hour,
+          end_hour: s.end_hour,
+          needed_staff: s.needed_staff,
+          note: s.reason || "",
+        }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.detail || `HTTP ${r.status}`);
+      }
+      toast.success(`Open Shift ${s.weekday_label} ${s.start_hour}–${s.end_hour} publiziert`);
+      loadPublished();
+    } catch (e) {
+      toast.error(e?.message || "Fehler beim Publizieren");
+    } finally {
+      setPublishingKey(null);
+    }
+  };
+
+  const cancelPublished = async (id) => {
+    try {
+      const r = await fetch(`${API}/api/staff/shift-assistant/open-shifts/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      toast.success("Open Shift storniert");
+      loadPublished();
+    } catch (e) {
+      toast.error(e?.message || "Fehler");
+    }
+  };
 
   useEffect(() => {
     const ac = new AbortController();
@@ -136,30 +204,56 @@ export default function StaffShiftAssistant() {
                     <span className="text-[10px] text-white/40">{shifts.length} Schicht{shifts.length !== 1 ? "en" : ""}</span>
                   </div>
                   <div className="space-y-1.5 pl-1">
-                    {shifts.map((s, i) => (
-                      <div
-                        key={`${w}-${i}`}
-                        className={`rounded-xl border p-2.5 flex items-center justify-between ${CONFIDENCE_STYLE[s.confidence] || CONFIDENCE_STYLE.low}`}
-                        data-testid={`shift-assist-suggestion-${w}-${i}`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Clock className="w-3.5 h-3.5 text-white/50 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white">
-                              {String(s.start_hour).padStart(2, "0")}:00 – {String(s.end_hour).padStart(2, "0")}:00
-                              <span className="text-white/40 font-normal ml-1.5">({s.duration_h}h)</span>
-                            </p>
-                            <p className="text-[10px] text-white/55 truncate">
-                              ø {s.avg_demand.toFixed(1)} aktiv · Peak {s.peak_demand}
-                            </p>
+                    {shifts.map((s, i) => {
+                      const key = `${s.weekday}-${s.start_hour}-${s.end_hour}`;
+                      const alreadyPub = isAlreadyPublished(s);
+                      const busy = publishingKey === key;
+                      return (
+                        <div
+                          key={`${w}-${i}`}
+                          className={`rounded-xl border p-2.5 flex items-center justify-between gap-2 ${CONFIDENCE_STYLE[s.confidence] || CONFIDENCE_STYLE.low}`}
+                          data-testid={`shift-assist-suggestion-${w}-${i}`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Clock className="w-3.5 h-3.5 text-white/50 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white">
+                                {String(s.start_hour).padStart(2, "0")}:00 – {String(s.end_hour).padStart(2, "0")}:00
+                                <span className="text-white/40 font-normal ml-1.5">({s.duration_h}h)</span>
+                              </p>
+                              <p className="text-[10px] text-white/55 truncate">
+                                ø {s.avg_demand.toFixed(1)} aktiv · Peak {s.peak_demand}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1">
+                              <Users className="w-3 h-3 text-cyan-300" />
+                              <span className="text-sm font-extrabold text-cyan-300 tabular-nums">{s.needed_staff}</span>
+                            </div>
+                            {alreadyPub ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 text-[10px] font-bold"
+                                data-testid={`shift-assist-published-${w}-${i}`}
+                              >
+                                <Check className="w-3 h-3" /> Live
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => publish(s)}
+                                disabled={busy}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black text-[10px] font-extrabold transition-colors"
+                                data-testid={`shift-assist-publish-${w}-${i}`}
+                                title="Als Open Shift publizieren"
+                              >
+                                {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                Publizieren
+                              </button>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Users className="w-3 h-3 text-cyan-300" />
-                          <span className="text-sm font-extrabold text-cyan-300 tabular-nums">{s.needed_staff}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -190,6 +284,50 @@ export default function StaffShiftAssistant() {
                     {w.message}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Live Open Shifts (manager view) */}
+          {published.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-white/5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Send className="w-3.5 h-3.5 text-cyan-300" />
+                <h4 className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider">
+                  Live Open Shifts ({published.filter((p) => p.status !== "cancelled").length})
+                </h4>
+              </div>
+              <div className="space-y-1.5" data-testid="shift-assist-published-list">
+                {published.filter((p) => p.status !== "cancelled").map((p) => {
+                  const filled = (p.claimed_by || []).length;
+                  const isFilled = p.status === "filled";
+                  return (
+                    <div
+                      key={p.id}
+                      className={`rounded-xl border p-2.5 flex items-center justify-between gap-2 ${
+                        isFilled ? "bg-emerald-500/5 border-emerald-500/25" : "bg-cyan-500/5 border-cyan-500/25"
+                      }`}
+                      data-testid={`shift-assist-published-row-${p.id}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white">
+                          {p.weekday_label} {p.shift_date.slice(5)} · {String(p.start_hour).padStart(2, "0")}:00–{String(p.end_hour).padStart(2, "0")}:00
+                        </p>
+                        <p className="text-[10px] text-white/55">
+                          {filled}/{p.needed_staff} besetzt {isFilled && "✓"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => cancelPublished(p.id)}
+                        className="w-7 h-7 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/60 hover:text-rose-300 flex items-center justify-center transition-colors"
+                        data-testid={`shift-assist-cancel-${p.id}`}
+                        title="Storno"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
