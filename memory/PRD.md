@@ -44,6 +44,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Interne Warenwirtschaft / Kassen-System-Flow**: Auto-generierte Bestellungen erscheinen direkt in den POS-Purchase-Orders und laufen damit intern durch die Warenwirtschaft des Kassensystems — bewusst **ohne externe ERP-Anbindung** in dieser Iteration.
 - ✅ **Testing iter127**: `/app/test_reports/iteration_127.json` → Backend **17/17 PASS**, Frontend **100% PASS**. Verifiziert wurden Settings speichern/laden, Artikel-Konfiguration, Auto-PO-Erzeugung, Lieferschein-PDF und Anzeige in den Bestellungen.
 
+### 19.05.2026 (Auction Card Image Recovery for Production) ✅
+- 🟢 **Auktionskarten-Bild-Fallback zentral ergänzt** (`frontend/src/components/auctions/AuctionGridCard.jsx`, `frontend/src/components/auctions/AuctionDetail.jsx`, `frontend/src/components/auctions/imageFallbacks.js`): Defekte/fehlende Produktbilder wechseln jetzt automatisch auf hochwertige Keyword-Fallbacks (Phone, Console, Audio, Laptop, Scooter, Camera, Coffee, Speaker, Chair, Drone, Bike, Generic).
+- 🟢 **Backend Image Resolver ergänzt** (`backend/routes/auctions.py`): Auktionsfeeds (`/active`, `/list`, `/feed`) liefern jetzt serverseitig immer ein `image_url` zurück, selbst wenn das gespeicherte Bild fehlt. Resolver nutzt exakte Mappings + Keyword-Fallbacks.
+- ✅ **Retests**: Frontend-Subagent 100% PASS (Grid + Detail auf Mobile/Desktop). Backend-Sanity 3/3 PASS für nicht-leere `image_url` in `active/list/feed`.
+- ⚠️ **Wichtig**: Der gemeldete Fehler kam aus **Production (`https://bidblitz.ae`)**. Fix wurde im Preview-Code eingebaut — für Live ist ein **neuer Deploy** nötig.
+
 ### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
 - 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
 - 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.

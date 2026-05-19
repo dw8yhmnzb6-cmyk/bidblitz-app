@@ -20,3 +20,6 @@
 - Auto-Bestellartikel mit Zielbestand, VE/Packung und Hinweis konfigurierbar gemacht
 - Lieferschein-PDF für Auto-Bestellungen ergänzt und im POS-UI verlinkt
 - Testing: `iteration_127.json` vollständig grün
+- Auktionskarten-Bilder über zentrales Frontend-Fallback wiederhergestellt
+- Backend-Auktionsfeeds liefern jetzt immer `image_url` via Resolver
+- Production-Fix vorbereitet; Live braucht dafür nur noch einen neuen Deploy
