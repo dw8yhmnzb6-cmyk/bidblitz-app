@@ -4,7 +4,7 @@
 - GitHub Actions Workflow einmal im echten Remote-Repo laufen lassen und ggf. CI-spezifische Testfehler nachziehen
 
 ## P1
-- CI/CD um `pytest backend/tests` + `eslint` erweitern
+- Optional externe Warenwirtschaft-/Kassenanbindung für Auto-Bestellungen ergänzen
 
 ## P2
 - Admin Zonen-Editor weiter ausbauen

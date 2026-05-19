@@ -37,6 +37,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Kamera-Feedback sichtbar gemacht**: Klick auf `Kamera starten` führt jetzt immer zu sichtbarer Reaktion — entweder echter Scanner-Start oder klarer Fehlerhinweis (`Kamera konnte nicht gestartet werden.`) statt „nichts passiert“.
 - ✅ **Retests**: Mobile-Frontend-Test 100% PASS für den Kamera-Button (`Kamera starten` reagiert, kein stilles Nichts, klare Rückmeldung). Backend-Sanity-Check für `/api/scan/resolve` ebenfalls 5/5 PASS.
 
+### 19.05.2026 (POS Auto-Bestellung intern + Lieferschein) ✅
+- 🟢 **Internes Auto-Bestellmodul erweitert** (`backend/services/pos_auto_order.py`, `backend/routes/pos_advanced.py`, `backend/routes/pos_system.py`): Konfigurierbare Auto-Bestellung ohne externe Anbindung. Unterstützt **Kombination** aus Mindestbestand, Verkaufsrate und fixer Uhrzeit. Läuft manuell über POS Mega-Tools und zusätzlich automatisch nach Verkäufen im POS-Flow.
+- 🟢 **Artikel-Konfiguration für Auto-Bestellung** (`backend/routes/pos_advanced.py`, `frontend/src/pages/POSAdvancedTab.jsx`): Für einzelne Produkte lassen sich `auto_reorder_enabled`, Zielbestand, VE-/Packungsgröße, Einheitenbezeichnung (z. B. Stange/Karton/Packung) und Bestellhinweis pflegen.
+- 🟢 **Lieferschein/PDF-Flow ergänzt** (`backend/routes/pos_inventory.py`, `frontend/src/pages/POSAdvancedTab.jsx`): Auto-generierte POs bekommen einen Lieferschein-PDF-Endpunkt `/api/pos/purchase-orders/{po_id}/delivery-note.pdf`; im UI wird der Lieferschein direkt verlinkt/druckbar angezeigt.
+- 🟢 **Interne Warenwirtschaft / Kassen-System-Flow**: Auto-generierte Bestellungen erscheinen direkt in den POS-Purchase-Orders und laufen damit intern durch die Warenwirtschaft des Kassensystems — bewusst **ohne externe ERP-Anbindung** in dieser Iteration.
+- ✅ **Testing iter127**: `/app/test_reports/iteration_127.json` → Backend **17/17 PASS**, Frontend **100% PASS**. Verifiziert wurden Settings speichern/laden, Artikel-Konfiguration, Auto-PO-Erzeugung, Lieferschein-PDF und Anzeige in den Bestellungen.
+
 ### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
 - 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
 - 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.

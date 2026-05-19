@@ -16,3 +16,7 @@
 - Driver-Dashboard-Frontend und Backend mit neuem Testaccount erfolgreich retestet
 - Safari-/iPhone-Fallback im Scan Hub via `html5-qrcode` ergänzt
 - Kamera-Button im Scan Hub liefert jetzt sichtbares Feedback statt stillem Nichtstun
+- Internes POS Auto-Bestellmodul mit Kombination aus Mindestbestand/Verkaufsrate/Uhrzeit ergänzt
+- Auto-Bestellartikel mit Zielbestand, VE/Packung und Hinweis konfigurierbar gemacht
+- Lieferschein-PDF für Auto-Bestellungen ergänzt und im POS-UI verlinkt
+- Testing: `iteration_127.json` vollständig grün
