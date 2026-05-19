@@ -14,3 +14,5 @@
 - Verifizierten Driver-Testaccount für `admin@bidblitz.com` beim Startup gesät
 - GitHub Actions Workflow `.github/workflows/ci.yml` für `pytest backend/tests` + `eslint` ergänzt
 - Driver-Dashboard-Frontend und Backend mit neuem Testaccount erfolgreich retestet
+- Safari-/iPhone-Fallback im Scan Hub via `html5-qrcode` ergänzt
+- Kamera-Button im Scan Hub liefert jetzt sichtbares Feedback statt stillem Nichtstun

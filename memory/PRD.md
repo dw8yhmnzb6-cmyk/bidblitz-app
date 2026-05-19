@@ -32,6 +32,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **GitHub Actions CI ergänzt** (`.github/workflows/ci.yml`): Neuer Workflow `BidBlitz CI` mit zwei Jobs: `backend-tests` (`pytest backend/tests` gegen Mongo-Service + CI-.env) und `frontend-eslint` (`npx eslint src --ext .js,.jsx`).
 - ✅ **Retests Driver Seed**: Frontend-Subagent 100% PASS für `/driver-dashboard` inkl. Dokumente-Tab. Backend-Retest 5/5 PASS für `eligibility`, `profile`, `status`, `documents/summary`. Workflow-Datei wurde zusätzlich per YAML-Parse validiert.
 
+### 19.05.2026 (Production Scan Button Fix for iPhone/Safari) ✅
+- 🟢 **Safari-/iPhone-Fallback für Scan Hub ergänzt** (`frontend/src/pages/ScannerPage.jsx`): Wenn `BarcodeDetector` fehlt oder iOS erkannt wird, nutzt der Scan-Flow jetzt `html5-qrcode` als Kamera-Fallback statt still zu scheitern. Unterstützt QR + klassische Barcodes.
+- 🟢 **Kamera-Feedback sichtbar gemacht**: Klick auf `Kamera starten` führt jetzt immer zu sichtbarer Reaktion — entweder echter Scanner-Start oder klarer Fehlerhinweis (`Kamera konnte nicht gestartet werden.`) statt „nichts passiert“.
+- ✅ **Retests**: Mobile-Frontend-Test 100% PASS für den Kamera-Button (`Kamera starten` reagiert, kein stilles Nichts, klare Rückmeldung). Backend-Sanity-Check für `/api/scan/resolve` ebenfalls 5/5 PASS.
+
 ### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
 - 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
 - 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.
