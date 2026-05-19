@@ -88,6 +88,7 @@ async def list_auctions(request: Request, response: Response):
     # Enrich with final_battle info
     now_dt = datetime.now(timezone.utc)
     for a in auctions:
+        a["image_url"] = resolve_product_image(a.get("title", ""), a.get("image_url") or "")
         if a.get("status") == "active" and a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -120,6 +121,7 @@ async def get_active_auctions():
     ).sort("ends_at", 1).to_list(50)
     
     for a in auctions:
+        a["image_url"] = resolve_product_image(a.get("title", ""), a.get("image_url") or "")
         if a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -147,6 +149,7 @@ async def list_all_auctions(status: str = None, limit: int = 50):
     
     now = datetime.now(timezone.utc)
     for a in auctions:
+        a["image_url"] = resolve_product_image(a.get("title", ""), a.get("image_url") or "")
         if a.get("status") == "active" and a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -778,7 +781,7 @@ class BuyCreditsRequest(BaseModel):
 
 
 @router.post("/buy-credits")
-async def buy_credits(req: BuyCreditsRequest, request: Request):
+async def buy_credits_direct(req: BuyCreditsRequest, request: Request):
     """Buy bid credits using wallet balance - Uses Payment Engine for safety."""
     from core.payment_engine import debit_wallet, TransactionType
     
@@ -855,7 +858,7 @@ class BuyCreditsDirectRequest(BaseModel):
 
 
 @router.post("/buy-credits-direct")
-async def buy_credits_direct(req: BuyCreditsDirectRequest, request: Request):
+async def buy_credits_direct_checkout(req: BuyCreditsDirectRequest, request: Request):
     """Buy bid credits directly charging saved Stripe card (1-click)."""
     import stripe as stripe_mod
     from core.config import STRIPE_API_KEY
@@ -1244,6 +1247,37 @@ PRODUCT_IMAGES = {
     "iRobot Roomba j7+ Combo": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&h=400&fit=crop&q=80",
 }
 
+
+def resolve_product_image(title: str, current: str = "") -> str:
+    if current:
+        return current
+    if title in PRODUCT_IMAGES:
+        return PRODUCT_IMAGES[title]
+    text = (title or "").lower()
+    if any(k in text for k in ["iphone", "galaxy", "pixel", "phone", "smartphone", "watch", "ipad", "tablet", "kindle"]):
+        return "https://images.unsplash.com/photo-1697636979311-511164585ca9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHxzbWFydHBob25lJTIwcHJvZHVjdCUyMHN0dWRpb3xlbnwwfHx8fDE3NzkyMjE2NzR8MA&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["switch", "playstation", "xbox", "console"]):
+        return "https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["airpods", "bose", "sony", "headphone", "soundbar", "earbud"]):
+        return "https://images.unsplash.com/photo-1557315360-6a350ab4eccd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxoZWFkcGhvbmVzJTIwcHJvZHVjdCUyMHN0dWRpb3xlbnwwfHx8fDE3NzkyMjE2NzN8MA&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["macbook", "laptop", "notebook", "monitor"]):
+        return "https://images.pexels.com/photos/129205/pexels-photo-129205.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["scooter", "segway", "ninebot", "boosted", "board"]):
+        return "https://images.unsplash.com/photo-1597260491619-bab87197869f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHwxfHxlbGVjdHJpYyUyMHNjb290ZXIlMjBwcm9kdWN0fGVufDB8fHx8MTc3OTIyMTY3NHww&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["camera", "gopro", "sony a7"]):
+        return "https://images.unsplash.com/photo-1581017232414-4bb1668e8349?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxjYW1lcmElMjBwcm9kdWN0JTIwc3R1ZGlvfGVufDB8fHx8MTc3OTIyMTY3NHww&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["coffee", "barista", "espresso", "delonghi", "breville"]):
+        return "https://images.pexels.com/photos/30298107/pexels-photo-30298107.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["speaker", "homepod", "sonos", "nest", "audio"]):
+        return "https://images.pexels.com/photos/14309814/pexels-photo-14309814.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["chair", "secretlab", "herman miller"]):
+        return "https://images.unsplash.com/photo-1770195483917-b3bb444b7a29?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxnYW1pbmclMjBjaGFpciUyMHByb2R1Y3QlMjBzdHVkaW98ZW58MHx8fHwxNzc5MjIxNjg5fDA&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["drone", "dji", "mavic", "mini 4"]):
+        return "https://images.unsplash.com/photo-1649857114280-0df8879c9034?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxkcm9uZSUyMHByb2R1Y3QlMjBzdHVkaW98ZW58MHx8fHwxNzc5MjIxNjg4fDA&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["bike", "vanmoof", "cowboy"]):
+        return "https://images.unsplash.com/photo-1666360058702-a3aa07227c53?w=600&h=400&fit=crop&q=80"
+    return "https://images.pexels.com/photos/5412270/pexels-photo-5412270.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+
 import json
 import os
 from pathlib import Path
@@ -1286,7 +1320,7 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
         "description": d["description"],
         # i18n: pre-translated catalog (DE/EN/SQ/TR) — None if not yet translated
         "translations": d.get("translations") or None,
-        "image_url": PRODUCT_IMAGES.get(d["title"], ""),
+        "image_url": resolve_product_image(d["title"], PRODUCT_IMAGES.get(d["title"], "")),
         "retail_price": d["retail_price"],
         "starting_price": 0.00,
         "current_price": 0.00,
@@ -2177,7 +2211,7 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
     if req.start_at:
         try:
             start_time = datetime.fromisoformat(req.start_at.replace("Z", "+00:00"))
-        except:
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid start_at format")
         status = "scheduled" if start_time > now else "active"
     else:

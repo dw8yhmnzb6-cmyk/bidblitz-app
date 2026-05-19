@@ -12,6 +12,7 @@ import GuestCTABar from "../GuestCTABar";
 import Countdown from "./Countdown";
 import BuyCreditsModal from "./BuyCreditsModal";
 import { POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGreen, accentGold, accentRed, accentPurple } from "./atoms";
+import { getAuctionFallbackImage } from "./imageFallbacks";
 
 /* ─── BidRow (local to AuctionDetail) ─── */
 const BidRow = ({ bid, isLatest }) => (
@@ -81,6 +82,14 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const [showAutoBidModal, setShowAutoBidModal] = useState(false);
   const [showLocalCredits, setShowLocalCredits] = useState(false);
   const pollRef = useRef(null);
+  const fallbackImage = getAuctionFallbackImage(auction || {});
+  const [detailImage, setDetailImage] = useState("");
+  const [hideDetailImage, setHideDetailImage] = useState(false);
+
+  useEffect(() => {
+    setHideDetailImage(false);
+    setDetailImage(auction?.image_url || fallbackImage);
+  }, [auction?.image_url, auction?.title, auction?.category, fallbackImage]);
 
   const fetch = useCallback(async () => {
     try {
@@ -136,7 +145,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
     <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       {/* Hero Image */}
       <div className="relative w-full aspect-[16/10] max-h-[300px] overflow-hidden">
-        {auction.image_url ? <img src={auction.image_url} alt={auction.title || ''} className={`w-full h-full object-cover ${isEnded ? "opacity-30 grayscale" : ""}`} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} /> : <div className="w-full h-full bg-[#060810]" />}
+        {!hideDetailImage ? <img src={detailImage} alt={auction.title || ''} className={`w-full h-full object-cover ${isEnded ? "opacity-30 grayscale" : ""}`} onError={() => { if (detailImage !== fallbackImage) setDetailImage(fallbackImage); else setHideDetailImage(true); }} /> : <div className="w-full h-full bg-[#060810]" />}
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #040610 0%, #04061080 40%, transparent 100%)" }} />
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top,0px),16px)]">
           <motion.button data-testid="auction-back-btn" className={`w-9 h-9 rounded-full flex items-center justify-center ${glass}`}

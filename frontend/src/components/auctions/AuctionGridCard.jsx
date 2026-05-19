@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Gavel, Trophy, Timer, Package, Truck, Eye, Zap, Heart, Bot } from "lucide-react";
 import { localized } from "./atoms";
+import { getAuctionFallbackImage } from "./imageFallbacks";
 
 /**
  * AuctionGridCard — DealDash-style premium grid card with timer, bid count,
@@ -20,6 +21,13 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
   const isEndingNow = rem > 0 && rem <= 20;
   const isHot = auction.total_bids > 10;
   const d = Math.floor(rem / 86400), h = Math.floor((rem % 86400) / 3600), m = Math.floor((rem % 3600) / 60), s = rem % 60;
+  const fallbackImage = getAuctionFallbackImage(auction);
+  const [imageSrc, setImageSrc] = useState(auction.image_url || fallbackImage);
+  const [hideImage, setHideImage] = useState(false);
+  useEffect(() => {
+    setHideImage(false);
+    setImageSrc(auction.image_url || fallbackImage);
+  }, [auction.image_url, auction.title, auction.category, fallbackImage]);
   
   // Calculate savings percentage
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
@@ -51,12 +59,16 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
 
       {/* Image Section with Premium Overlay */}
       <div className="relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-b from-[#0a0e1a] to-[#060810]">
-        {auction.image_url ? (
+        {!hideImage ? (
           <img 
-            src={auction.image_url} 
+            src={imageSrc} 
             alt={loc.title} 
             className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${isEnded ? "opacity-25 grayscale" : ""}`} 
             loading="lazy" 
+            onError={() => {
+              if (imageSrc !== fallbackImage) setImageSrc(fallbackImage);
+              else setHideImage(true);
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
