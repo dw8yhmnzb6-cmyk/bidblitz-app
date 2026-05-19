@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from services.pos_auto_order import get_auto_order_settings, list_auto_order_items, save_auto_order_items, run_auto_order_for_store
 from routes.pos_system import (
     _require_merchant, _require_store_access, _audit, short_id, now_iso,
 )
@@ -37,7 +38,9 @@ async def ocr_delivery_note(req: OcrRequest, request: Request):
     await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
-        import os, re, json
+        import json
+        import os
+        import re
         api_key = os.environ.get("EMERGENT_LLM_KEY")
         if not api_key:
             raise RuntimeError("EMERGENT_LLM_KEY fehlt in .env")
@@ -162,44 +165,74 @@ async def generate_labels(req: LabelPrintRequest, request: Request):
 
 
 # ── 4. AUTO-BESTELLUNG ────────────────────────────────────────────────
+class AutoOrderSettingsPayload(BaseModel):
+    enabled: bool = False
+    trigger_low_stock: bool = True
+    trigger_velocity: bool = True
+    trigger_daily_time: bool = False
+    run_time: str = "20:00"
+    velocity_days: int = Field(7, ge=1, le=60)
+    lookahead_days: int = Field(3, ge=1, le=30)
+    auto_submit_orders: bool = True
+    print_delivery_note: bool = True
+
+
+class AutoOrderItemPayload(BaseModel):
+    product_id: str
+    auto_reorder_enabled: bool = False
+    reorder_target_stock: float = Field(0, ge=0)
+    order_unit_size: float = Field(1, ge=1)
+    order_unit_label: str = "Stk"
+    reorder_note: Optional[str] = None
+
+
+class AutoOrderItemsSavePayload(BaseModel):
+    store_id: str
+    items: List[AutoOrderItemPayload]
+
+
+@router.get("/auto-order/settings")
+async def auto_order_settings(request: Request, store_id: str):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    merchant = await _require_merchant(user)
+    return {"ok": True, "settings": await get_auto_order_settings(store_id, merchant["merchant_id"])}
+
+
+@router.post("/auto-order/settings")
+async def save_auto_order_settings_route(req: AutoOrderSettingsPayload, request: Request, store_id: str):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    merchant = await _require_merchant(user)
+    doc = await get_auto_order_settings(store_id, merchant["merchant_id"])
+    doc.update(req.model_dump())
+    doc["merchant_id"] = merchant["merchant_id"]
+    doc["updated_at"] = now_iso()
+    await db.pos_auto_order_settings.update_one({"store_id": store_id}, {"$set": doc}, upsert=True)
+    return {"ok": True, "settings": doc}
+
+
+@router.get("/auto-order/items")
+async def auto_order_items(request: Request, store_id: str):
+    user = await get_current_user(request)
+    await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
+    return {"ok": True, "items": await list_auto_order_items(store_id)}
+
+
+@router.post("/auto-order/items")
+async def save_auto_order_items_route(req: AutoOrderItemsSavePayload, request: Request):
+    user = await get_current_user(request)
+    await _require_store_access(user, req.store_id, {"merchant_admin", "store_manager"})
+    updated = await save_auto_order_items(req.store_id, [i.model_dump() for i in req.items])
+    return {"ok": True, "updated": updated}
+
+
 @router.post("/auto-order/run")
 async def run_auto_order(request: Request, store_id: str):
     user = await get_current_user(request)
     await _require_store_access(user, store_id, {"merchant_admin", "store_manager"})
     merchant = await _require_merchant(user)
-    low = await db.pos_products.find({
-        "store_id": store_id, "active": True, "track_stock": True,
-        "minimum_stock": {"$gt": 0},
-        "$expr": {"$lte": ["$stock", "$minimum_stock"]},
-        "supplier_id": {"$ne": None, "$exists": True},
-    }, {"_id": 0}).to_list(500)
-    by_supplier: Dict[str, list] = {}
-    for p in low:
-        by_supplier.setdefault(p["supplier_id"], []).append(p)
-    created = []
-    for sup_id, items in by_supplier.items():
-        po_id = short_id("PO", 12)
-        lines = []
-        total = 0.0
-        for p in items:
-            qty = max((p.get("minimum_stock", 0) or 0) * 2 - p.get("stock", 0), 1)
-            ep = p.get("purchase_price", 0) or 0
-            lt = round(qty * ep, 2)
-            total += lt
-            lines.append({
-                "product_id": p["product_id"], "product_name": p["name"],
-                "barcode": p.get("barcode"), "quantity": qty,
-                "purchase_price": ep, "line_total": lt, "received": 0,
-            })
-        sup = await db.pos_suppliers.find_one({"supplier_id": sup_id})
-        await db.pos_purchase_orders.insert_one({
-            "po_id": po_id, "merchant_id": merchant["merchant_id"], "store_id": store_id,
-            "supplier_id": sup_id, "supplier_name": sup.get("name", "") if sup else "",
-            "items": lines, "total_cost": round(total, 2), "status": "draft",
-            "auto_generated": True, "created_at": now_iso(),
-        })
-        created.append({"po_id": po_id, "supplier": sup_id, "lines": len(lines), "total": total})
-    return {"ok": True, "created_pos": created, "low_stock_count": len(low)}
+    return await run_auto_order_for_store(store_id, merchant["merchant_id"], str(user["_id"]), trigger="manual", force=True)
 
 
 # ── 5. CSV BULK-IMPORT ────────────────────────────────────────────────

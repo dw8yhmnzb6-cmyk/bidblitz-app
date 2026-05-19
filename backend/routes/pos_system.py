@@ -20,6 +20,7 @@ from bson import ObjectId
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import debit_wallet, credit_wallet, TransactionType
+from services.pos_auto_order import run_auto_order_for_store
 
 router = APIRouter(prefix="/api/pos", tags=["POS System"])
 logger = logging.getLogger("bidblitz.pos")
@@ -799,6 +800,10 @@ async def _finalise_sale(payment: dict, cart: dict, paid_by_user_id: str | None,
                 "note": f"Sale {sale['receipt_id']}",
                 "created_at": now_iso(),
             })
+    try:
+        await run_auto_order_for_store(cart["store_id"], cart["merchant_id"], cart["cashier_id"], trigger="sale", force=False)
+    except Exception:
+        pass
     # Mark cart paid
     await db.pos_carts.update_one(
         {"cart_id": cart["cart_id"]}, {"$set": {"status": "paid"}}

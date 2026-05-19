@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from fpdf import FPDF
 
 from core.database import db
 from core.security import get_current_user
@@ -355,6 +356,55 @@ async def receive_purchase_order(po_id: str, request: Request):
     )
     await _audit(str(user["_id"]), "po.receive", {"po_id": po_id})
     return {"ok": True, "status": "received"}
+
+
+@router.get("/purchase-orders/{po_id}/delivery-note.pdf")
+async def purchase_order_delivery_note_pdf(po_id: str, request: Request):
+    user = await get_current_user(request)
+    merchant = await _require_merchant(user)
+    po = await db.pos_purchase_orders.find_one({"po_id": po_id}, {"_id": 0})
+    if not po or po["merchant_id"] != merchant["merchant_id"]:
+        raise HTTPException(status_code=404, detail="PO nicht gefunden")
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Lieferschein / Auto-Bestellung", ln=1)
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 8, f"Lieferschein-ID: {po.get('delivery_note_id') or po_id}", ln=1)
+    pdf.cell(0, 8, f"Bestellung: {po_id}", ln=1)
+    pdf.cell(0, 8, f"Lieferant: {po.get('supplier_name', '')}", ln=1)
+    pdf.cell(0, 8, f"Status: {po.get('status', '')}", ln=1)
+    pdf.cell(0, 8, f"Erstellt: {str(po.get('created_at', ''))[:19].replace('T', ' ')}", ln=1)
+    pdf.ln(4)
+
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(78, 8, "Artikel", 1)
+    pdf.cell(28, 8, "Menge", 1)
+    pdf.cell(28, 8, "VE", 1)
+    pdf.cell(28, 8, "EK", 1)
+    pdf.cell(28, 8, "Gesamt", 1, ln=1)
+    pdf.set_font("Helvetica", "", 10)
+
+    for line in po.get("items", []):
+        pdf.cell(78, 8, str(line.get("product_name", ""))[:38], 1)
+        pdf.cell(28, 8, str(line.get("quantity", 0)), 1)
+        pdf.cell(28, 8, str(line.get("order_unit_label") or "Stk")[:14], 1)
+        pdf.cell(28, 8, f"EUR {float(line.get('purchase_price') or 0):.2f}", 1)
+        pdf.cell(28, 8, f"EUR {float(line.get('line_total') or 0):.2f}", 1, ln=1)
+        if line.get("reorder_note"):
+            pdf.set_font("Helvetica", "I", 8)
+            pdf.cell(190, 6, f"Hinweis: {line.get('reorder_note')}", 1, ln=1)
+            pdf.set_font("Helvetica", "", 10)
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.ln(4)
+    pdf.cell(0, 8, f"Gesamtsumme: EUR {float(po.get('total_cost') or 0):.2f}", ln=1)
+    buf = io.BytesIO()
+    buf.write(bytes(pdf.output(dest="S")))
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="lieferschein_{po_id}.pdf"'})
 
 
 @router.post("/purchase-orders/{po_id}/cancel")

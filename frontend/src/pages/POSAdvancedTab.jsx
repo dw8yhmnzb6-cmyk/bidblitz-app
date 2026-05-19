@@ -309,6 +309,32 @@ function KISection({ storeId, registerId }) {
 function StockSection({ storeId }) {
   const [busy, setBusy] = useState("");
   const fileRef = useRef(null);
+  const [autoSettings, setAutoSettings] = useState({
+    enabled: false,
+    trigger_low_stock: true,
+    trigger_velocity: true,
+    trigger_daily_time: false,
+    run_time: "20:00",
+    velocity_days: 7,
+    lookahead_days: 3,
+    auto_submit_orders: true,
+    print_delivery_note: true,
+  });
+  const [autoItems, setAutoItems] = useState([]);
+  const [autoOrderResult, setAutoOrderResult] = useState(null);
+
+  const loadAutoOrder = useCallback(async () => {
+    try {
+      const [settingsRes, itemsRes] = await Promise.all([
+        api(`/api/pos/auto-order/settings?store_id=${storeId}`),
+        api(`/api/pos/auto-order/items?store_id=${storeId}`),
+      ]);
+      setAutoSettings(settingsRes.settings || {});
+      setAutoItems(itemsRes.items || []);
+    } catch {}
+  }, [storeId]);
+
+  useEffect(() => { loadAutoOrder(); }, [loadAutoOrder]);
 
   const csvImport = async (e) => {
     const f = e.target.files?.[0];
@@ -355,8 +381,32 @@ function StockSection({ storeId }) {
     setBusy("auto");
     try {
       const data = await api(`/api/pos/auto-order/run?store_id=${storeId}`, { method: "POST" });
+      setAutoOrderResult(data);
       toast.success(`${data.created_pos.length} Bestellungen für ${data.low_stock_count} niedrige Artikel angelegt`);
+      loadAutoOrder();
     } catch (err) { toast.error(err.message); } finally { setBusy(""); }
+  };
+
+  const saveAutoSettings = async () => {
+    setBusy("auto-settings");
+    try {
+      const data = await api(`/api/pos/auto-order/settings?store_id=${storeId}`, { method: "POST", body: autoSettings });
+      setAutoSettings(data.settings || autoSettings);
+      toast.success("Auto-Bestellregeln gespeichert");
+    } catch (err) { toast.error(err.message); } finally { setBusy(""); }
+  };
+
+  const saveAutoItems = async () => {
+    setBusy("auto-items");
+    try {
+      await api(`/api/pos/auto-order/items`, { method: "POST", body: { store_id: storeId, items: autoItems } });
+      toast.success("Auto-Bestellartikel gespeichert");
+      loadAutoOrder();
+    } catch (err) { toast.error(err.message); } finally { setBusy(""); }
+  };
+
+  const updateAutoItem = (productId, patch) => {
+    setAutoItems((prev) => prev.map((item) => item.product_id === productId ? { ...item, ...patch } : item));
   };
 
   // Etiketten
@@ -437,11 +487,92 @@ function StockSection({ storeId }) {
         </div>
       </Card>
 
-      <Card title="Auto-Bestellung (Niedrigbestand → PO)" icon={ShoppingCart}>
-        <p className="text-[10px] text-white/40 mb-2">Erzeugt automatisch Bestellungen für alle Artikel unter Mindestbestand pro Lieferant.</p>
-        <Btn onClick={autoOrder} loading={busy === "auto"} testId="auto-order-btn">
-          <ShoppingCart size={12} /> Auto-PO ausführen
-        </Btn>
+      <Card title="Auto-Bestellung + Lieferschein" icon={ShoppingCart}>
+        <p className="text-[10px] text-white/40 mb-3">
+          Kombination aus Mindestbestand, Verkaufsrate und fixer Uhrzeit. Auto-generierte Bestellungen landen direkt in der Warenwirtschaft der POS-Module und erzeugen einen Lieferschein zum Drucken.
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-[11px]">
+          <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2" data-testid="auto-order-enabled-toggle">
+            <input type="checkbox" checked={!!autoSettings.enabled} onChange={(e) => setAutoSettings({ ...autoSettings, enabled: e.target.checked })} /> Aktiv
+          </label>
+          <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
+            <input type="checkbox" checked={!!autoSettings.trigger_low_stock} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_low_stock: e.target.checked })} /> Mindestbestand
+          </label>
+          <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
+            <input type="checkbox" checked={!!autoSettings.trigger_velocity} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_velocity: e.target.checked })} /> Verkaufsrate
+          </label>
+          <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
+            <input type="checkbox" checked={!!autoSettings.trigger_daily_time} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_daily_time: e.target.checked })} /> Uhrzeit
+          </label>
+          <Input value={autoSettings.run_time} onChange={(v) => setAutoSettings({ ...autoSettings, run_time: v })} placeholder="20:00" testId="auto-order-run-time" />
+          <Input value={autoSettings.velocity_days} onChange={(v) => setAutoSettings({ ...autoSettings, velocity_days: v })} type="number" placeholder="Verkaufstage" testId="auto-order-velocity-days" />
+          <Input value={autoSettings.lookahead_days} onChange={(v) => setAutoSettings({ ...autoSettings, lookahead_days: v })} type="number" placeholder="Vorlauf Tage" testId="auto-order-lookahead-days" />
+          <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
+            <input type="checkbox" checked={!!autoSettings.auto_submit_orders} onChange={(e) => setAutoSettings({ ...autoSettings, auto_submit_orders: e.target.checked })} /> Direkt bestellen
+          </label>
+        </div>
+
+        <div className="flex gap-2 mb-3">
+          <Btn onClick={saveAutoSettings} loading={busy === "auto-settings"} testId="auto-order-settings-save">
+            <ShoppingCart size={12} /> Regeln speichern
+          </Btn>
+          <Btn onClick={autoOrder} loading={busy === "auto"} testId="auto-order-btn">
+            <ShoppingCart size={12} /> Auto-PO ausführen
+          </Btn>
+        </div>
+
+        <div className="bg-black/20 rounded-xl border border-white/10 overflow-hidden" data-testid="auto-order-items-list">
+          <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-white/40 border-b border-white/10">
+            <span className="col-span-3">Artikel</span>
+            <span className="col-span-2">Bestand</span>
+            <span className="col-span-2">Ziel</span>
+            <span className="col-span-2">VE</span>
+            <span className="col-span-2">Einheit</span>
+            <span className="col-span-1">Auto</span>
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {autoItems.filter((item) => item.supplier_id).map((item) => (
+              <div key={item.product_id} className="grid grid-cols-12 gap-2 px-3 py-2 border-b border-white/5 text-[11px] items-center" data-testid={`auto-order-item-${item.product_id}`}>
+                <div className="col-span-3 min-w-0">
+                  <p className="text-white font-semibold truncate">{item.name}</p>
+                  <p className="text-[10px] text-white/40 truncate">{item.supplier_name || "Lieferant"}</p>
+                </div>
+                <div className="col-span-2 text-white/70">{item.stock} / min {item.minimum_stock}</div>
+                <div className="col-span-2"><Input value={item.reorder_target_stock} onChange={(v) => updateAutoItem(item.product_id, { reorder_target_stock: v })} type="number" placeholder="Ziel" testId={`auto-target-${item.product_id}`} /></div>
+                <div className="col-span-2"><Input value={item.order_unit_size} onChange={(v) => updateAutoItem(item.product_id, { order_unit_size: v })} type="number" placeholder="VE" testId={`auto-unit-size-${item.product_id}`} /></div>
+                <div className="col-span-2"><Input value={item.order_unit_label} onChange={(v) => updateAutoItem(item.product_id, { order_unit_label: v })} placeholder="Stk / Stange" testId={`auto-unit-label-${item.product_id}`} /></div>
+                <label className="col-span-1 flex justify-center"><input type="checkbox" checked={!!item.auto_reorder_enabled} onChange={(e) => updateAutoItem(item.product_id, { auto_reorder_enabled: e.target.checked })} data-testid={`auto-enable-${item.product_id}`} /></label>
+                <div className="col-span-12"><Input value={item.reorder_note || ""} onChange={(v) => updateAutoItem(item.product_id, { reorder_note: v })} placeholder="Hinweis für Lieferschein / Bestellung (optional)" testId={`auto-note-${item.product_id}`} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-3 flex gap-2">
+          <Btn onClick={saveAutoItems} loading={busy === "auto-items"} variant="secondary" testId="auto-order-items-save">
+            Artikel speichern
+          </Btn>
+        </div>
+
+        {autoOrderResult && (
+          <div className="mt-3 bg-black/30 rounded-xl p-3 text-[11px] space-y-2" data-testid="auto-order-result">
+            <p className="text-white/70">{autoOrderResult.created_pos?.length || 0} Bestellung(en) erzeugt für {autoOrderResult.low_stock_count || 0} betroffene Artikel.</p>
+            {(autoOrderResult.created_pos || []).map((po) => (
+              <div key={po.po_id} className="flex flex-wrap items-center justify-between gap-2 border border-white/10 rounded-lg p-2">
+                <div>
+                  <p className="font-semibold text-white">{po.supplier_name || po.supplier}</p>
+                  <p className="text-white/45">{po.po_id} · {po.lines} Pos · €{Number(po.total || 0).toFixed(2)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Btn onClick={() => window.open(`${API}${po.delivery_note_url}`, "_blank")} variant="secondary" testId={`auto-delivery-note-${po.po_id}`}>
+                    <Receipt size={12} /> Lieferschein
+                  </Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card title="Etiketten / Preisschilder drucken (PDF)" icon={Tag}>
