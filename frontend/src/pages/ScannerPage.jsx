@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import {
   ArrowLeft, ScanBarcode, CheckCircle2, XCircle, Loader2,
   Euro, Smartphone, QrCode, Zap, ShieldCheck, Receipt, Heart,
@@ -16,6 +17,17 @@ const Tool = { RESOLVE: "resolve", CASHIER: "cashier" };
 const QUICK_AMOUNTS = [5, 10, 15, 25, 50, 100];
 const BARCODE_RE = /^BLZ-[A-F0-9]{12}(-[A-F0-9]{8})?$/;
 const SUPPORTED_SCAN_FORMATS = ["qr_code", "code_128", "ean_13", "ean_8", "upc_a", "upc_e", "code_39", "code_93", "codabar"];
+const HTML5_SUPPORTED_FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_93,
+  Html5QrcodeSupportedFormats.CODABAR,
+];
 
 const generateIdempotencyKey = () => `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -44,9 +56,11 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
   const [scanHint, setScanHint] = useState("Scanne Tisch-, Rechnungs- oder Checkout-Codes.");
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [cameraEngine, setCameraEngine] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const detectorRef = useRef(null);
+  const html5ScannerRef = useRef(null);
   const scanLockRef = useRef(false);
 
   const numAmount = parseFloat(amount) || 0;
@@ -62,11 +76,19 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
     streamRef.current?.getTracks?.().forEach((track) => track.stop());
     streamRef.current = null;
     detectorRef.current = null;
+    if (html5ScannerRef.current) {
+      const scanner = html5ScannerRef.current;
+      scanner.stop?.().catch(() => {}).finally(() => {
+        scanner.clear?.().catch(() => {});
+      });
+      html5ScannerRef.current = null;
+    }
     scanLockRef.current = false;
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
     setCameraActive(false);
+    setCameraEngine(null);
   }, []);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
@@ -120,12 +142,44 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
       setCameraError("Kamera nicht verfügbar.");
       return;
     }
-    if (typeof window === "undefined" || !("BarcodeDetector" in window)) {
-      setCameraError("Kamera-Scan wird hier nicht unterstützt. Bitte Code unten eingeben.");
-      return;
-    }
-
     try {
+      const preferHtml5Fallback = /iPad|iPhone|iPod/i.test(navigator.userAgent) || typeof window === "undefined" || !("BarcodeDetector" in window);
+
+      if (preferHtml5Fallback) {
+        const scanner = new Html5Qrcode("scan-hub-reader");
+        html5ScannerRef.current = scanner;
+
+        const onScanSuccess = async (decodedText) => {
+          if (scanLockRef.current) return;
+          scanLockRef.current = true;
+          setScanCodeInput(decodedText);
+          await handleResolveCode(decodedText);
+          setTimeout(() => { scanLockRef.current = false; }, 1500);
+        };
+
+        const config = {
+          fps: 10,
+          qrbox: { width: 260, height: 260 },
+          rememberLastUsedCamera: true,
+          formatsToSupport: HTML5_SUPPORTED_FORMATS,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+        };
+
+        try {
+          await scanner.start({ facingMode: { exact: "environment" } }, config, onScanSuccess, () => {});
+        } catch {
+          await scanner.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+        }
+
+        setCameraEngine("html5");
+        setCameraActive(true);
+        setScanHint("Safari/iPhone-Kamera aktiv. Richte den Code mittig aus.");
+        setTimeout(() => {
+          scanner.applyVideoConstraints?.({ advanced: [{ focusMode: "continuous" }, { zoom: 2 }] }).catch(() => {});
+        }, 1200);
+        return;
+      }
+
       const supported = typeof window.BarcodeDetector.getSupportedFormats === "function"
         ? await window.BarcodeDetector.getSupportedFormats()
         : SUPPORTED_SCAN_FORMATS;
@@ -144,15 +198,16 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
       }
 
       setCameraActive(true);
+      setCameraEngine("native");
       setScanHint("Kamera scannt QR- und Barcodes live.");
     } catch (e) {
       stopCamera();
       setCameraError(e?.message || "Kamera konnte nicht gestartet werden.");
     }
-  }, [stopCamera]);
+  }, [handleResolveCode, stopCamera]);
 
   useEffect(() => {
-    if (!cameraActive || !detectorRef.current || !videoRef.current) return undefined;
+    if (!cameraActive || cameraEngine !== "native" || !detectorRef.current || !videoRef.current) return undefined;
 
     let cancelled = false;
 
@@ -178,7 +233,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
 
     scanLoop();
     return () => { cancelled = true; };
-  }, [cameraActive, handleResolveCode]);
+  }, [cameraActive, cameraEngine, handleResolveCode]);
 
   const handleStartScan = () => {
     if (!isValidAmount) return;
@@ -328,7 +383,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
 
             <div className="rounded-3xl border border-white/[0.05] bg-white/[0.03] overflow-hidden" data-testid="scan-hub-camera-card">
               <div className="aspect-[4/5] bg-[#050505] flex items-center justify-center relative">
-                {cameraActive ? (
+                {cameraActive && cameraEngine === "native" ? (
                   <video
                     ref={videoRef}
                     autoPlay
@@ -336,6 +391,12 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
                     muted
                     className="absolute inset-0 w-full h-full object-cover"
                     data-testid="scan-camera-preview"
+                  />
+                ) : cameraActive && cameraEngine === "html5" ? (
+                  <div
+                    id="scan-hub-reader"
+                    className="absolute inset-0 overflow-hidden [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&>div]:w-full [&>div]:h-full"
+                    data-testid="scan-camera-html5-preview"
                   />
                 ) : (
                   <div className="text-center px-6" data-testid="scan-camera-placeholder">
