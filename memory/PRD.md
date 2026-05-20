@@ -47,6 +47,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 ### 19.05.2026 (Auction Card Image Recovery for Production) ✅
 - 🟢 **Auktionskarten-Bild-Fallback zentral ergänzt** (`frontend/src/components/auctions/AuctionGridCard.jsx`, `frontend/src/components/auctions/AuctionDetail.jsx`, `frontend/src/components/auctions/imageFallbacks.js`): Defekte/fehlende Produktbilder wechseln jetzt automatisch auf hochwertige Keyword-Fallbacks (Phone, Console, Audio, Laptop, Scooter, Camera, Coffee, Speaker, Chair, Drone, Bike, Generic).
 - 🟢 **Backend Image Resolver ergänzt** (`backend/routes/auctions.py`): Auktionsfeeds (`/active`, `/list`, `/feed`) liefern jetzt serverseitig immer ein `image_url` zurück, selbst wenn das gespeicherte Bild fehlt. Resolver nutzt exakte Mappings + Keyword-Fallbacks.
+- 🟢 **Resolver-Priorität verschärft**: Kuratierte Titel-/Kategorie-Bilder übersteuern jetzt auch alte gespeicherte falsche Bild-URLs. Zusätzliche harte Kategorien: Watch, Luxury Bag, Sneakers, Beauty/Styler, XR/VR, Robot Vacuum.
 - ✅ **Retests**: Frontend-Subagent 100% PASS (Grid + Detail auf Mobile/Desktop). Backend-Sanity 3/3 PASS für nicht-leere `image_url` in `active/list/feed`.
 - ⚠️ **Wichtig**: Der gemeldete Fehler kam aus **Production (`https://bidblitz.ae`)**. Fix wurde im Preview-Code eingebaut — für Live ist ein **neuer Deploy** nötig.
 

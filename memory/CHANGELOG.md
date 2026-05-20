@@ -22,4 +22,5 @@
 - Testing: `iteration_127.json` vollständig grün
 - Auktionskarten-Bilder über zentrales Frontend-Fallback wiederhergestellt
 - Backend-Auktionsfeeds liefern jetzt immer `image_url` via Resolver
+- Kuratierte Bild-Mappings überschreiben jetzt auch alte falsche gespeicherte Bild-URLs
 - Production-Fix vorbereitet; Live braucht dafür nur noch einen neuen Deploy

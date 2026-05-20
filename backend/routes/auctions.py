@@ -1249,15 +1249,23 @@ PRODUCT_IMAGES = {
 
 
 def resolve_product_image(title: str, current: str = "") -> str:
-    if current:
-        return current
     if title in PRODUCT_IMAGES:
         return PRODUCT_IMAGES[title]
     text = (title or "").lower()
-    if any(k in text for k in ["iphone", "galaxy", "pixel", "phone", "smartphone", "watch", "ipad", "tablet", "kindle"]):
+    if any(k in text for k in ["iphone", "galaxy", "pixel", "phone", "smartphone", "xiaomi", "oneplus", "honor", "watch", "ipad", "tablet", "kindle"]):
+        if any(k in text for k in ["watch", "fenix", "garmin"]):
+            return "https://images.unsplash.com/photo-1638095562082-449d8c5a47b4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxzbWFydHdhdGNoJTIwcHJvZHVjdCUyMHN0dWRpb3xlbnwwfHx8fDE3NzkyNzAwOTB8MA&ixlib=rb-4.1.0&q=85"
         return "https://images.unsplash.com/photo-1697636979311-511164585ca9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHxzbWFydHBob25lJTIwcHJvZHVjdCUyMHN0dWRpb3xlbnwwfHx8fDE3NzkyMjE2NzR8MA&ixlib=rb-4.1.0&q=85"
     if any(k in text for k in ["switch", "playstation", "xbox", "console"]):
         return "https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["louis vuitton", "chanel", "gucci", "prada", "dior", "bag", "neverfull", "flap", "marmont", "galleria", "lady d-joy"]):
+        return "https://images.unsplash.com/photo-1575403538007-acb790100421?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBoYW5kYmFnJTIwcHJvZHVjdHxlbnwwfHx8fDE3NzkyNzAwOTB8MA&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["nike", "adidas", "yeezy", "jordan", "sneaker", "shoe"]):
+        return "https://images.pexels.com/photos/12628400/pexels-photo-12628400.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["dyson", "ghd", "airwrap", "styler", "beauty"]):
+        return "https://images.pexels.com/photos/3993449/pexels-photo-3993449.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["quest", "vision pro", "xr", "vr"]):
+        return "https://images.pexels.com/photos/4523094/pexels-photo-4523094.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
     if any(k in text for k in ["airpods", "bose", "sony", "headphone", "soundbar", "earbud"]):
         return "https://images.unsplash.com/photo-1557315360-6a350ab4eccd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxoZWFkcGhvbmVzJTIwcHJvZHVjdCUyMHN0dWRpb3xlbnwwfHx8fDE3NzkyMjE2NzN8MA&ixlib=rb-4.1.0&q=85"
     if any(k in text for k in ["macbook", "laptop", "notebook", "monitor"]):
@@ -1268,6 +1276,8 @@ def resolve_product_image(title: str, current: str = "") -> str:
         return "https://images.unsplash.com/photo-1581017232414-4bb1668e8349?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxjYW1lcmElMjBwcm9kdWN0JTIwc3R1ZGlvfGVufDB8fHx8MTc3OTIyMTY3NHww&ixlib=rb-4.1.0&q=85"
     if any(k in text for k in ["coffee", "barista", "espresso", "delonghi", "breville"]):
         return "https://images.pexels.com/photos/30298107/pexels-photo-30298107.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    if any(k in text for k in ["roborock", "irobot", "roomba", "vacuum"]):
+        return "https://images.unsplash.com/photo-1765970101376-4d5153f56e81?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwxfHxyb2JvdCUyMHZhY3V1bSUyMHByb2R1Y3R8ZW58MHx8fHwxNzc5MjcwMDkwfDA&ixlib=rb-4.1.0&q=85"
     if any(k in text for k in ["speaker", "homepod", "sonos", "nest", "audio"]):
         return "https://images.pexels.com/photos/14309814/pexels-photo-14309814.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
     if any(k in text for k in ["chair", "secretlab", "herman miller"]):
@@ -1276,6 +1286,8 @@ def resolve_product_image(title: str, current: str = "") -> str:
         return "https://images.unsplash.com/photo-1649857114280-0df8879c9034?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxkcm9uZSUyMHByb2R1Y3QlMjBzdHVkaW98ZW58MHx8fHwxNzc5MjIxNjg4fDA&ixlib=rb-4.1.0&q=85"
     if any(k in text for k in ["bike", "vanmoof", "cowboy"]):
         return "https://images.unsplash.com/photo-1666360058702-a3aa07227c53?w=600&h=400&fit=crop&q=80"
+    if current:
+        return current
     return "https://images.pexels.com/photos/5412270/pexels-photo-5412270.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
 
 import json
