@@ -169,6 +169,7 @@ def register_all_routers(app):
         ("routes.receipts", "router"),
         ("routes.admin_wallet", "router"),
         ("routes.coinbase_commerce", "router"),
+        ("routes.pay_sdk", "router"),  # BidBlitz Pay SDK for 3rd-party websites
         
         # Entertainment
         ("routes.casino", "router"),

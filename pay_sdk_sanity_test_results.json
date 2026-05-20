@@ -1,0 +1,23 @@
+{
+  "total": 4,
+  "passed": 4,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "GET /api/pay.js delivers JavaScript",
+      "passed": true
+    },
+    {
+      "name": "POST /api/pay/session exists (no 500 error)",
+      "passed": true
+    },
+    {
+      "name": "GET /api/pay/session/:id exists (no 500 error)",
+      "passed": true
+    },
+    {
+      "name": "Backend logs check (no critical errors)",
+      "passed": true
+    }
+  ]
+}
