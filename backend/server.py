@@ -11,6 +11,7 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
@@ -161,6 +162,12 @@ async def ensure_admin_driver_account():
         logger.info(f"✓ Verified driver test account ensured for {ADMIN_EMAIL}")
     except Exception as e:
         logger.warning(f"Admin driver seed failed: {e}")
+
+
+@app.get("/pay.js", include_in_schema=False)
+@app.get("/api/pay.js", include_in_schema=False)
+async def serve_bidblitz_pay_sdk():
+    return FileResponse("static/pay.js", media_type="application/javascript", filename="pay.js")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # STARTUP & SHUTDOWN

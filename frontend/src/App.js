@@ -33,6 +33,7 @@ const MerchantOnboardingPage = lazy(() => import("./pages/MerchantOnboardingPage
 const MerchantPricingPage = lazy(() => import("./pages/MerchantPricingPage"));
 const MerchantLandingPage = lazy(() => import("./pages/MerchantLandingPage"));
 const PayCheckoutPage = lazy(() => import("./pages/PayCheckoutPage"));
+const PayDeveloperDocsPage = lazy(() => import("./pages/PayDeveloperDocsPage"));
 const InvoicePayPage = lazy(() => import("./pages/InvoicePayPage"));
 const PayDirectoryPage = lazy(() => import("./pages/PayDirectoryPage"));
 const PayForBusinessPage = lazy(() => import("./pages/PayForBusinessPage"));
@@ -527,6 +528,9 @@ function AppContent() {
     }
     if (currentPath === "/pay/directory" || currentPath === "/marketplace") {
       return <PayDirectoryPage onBack={() => handleNavigate("/merchant-landing")} onNavigate={handleNavigate} />;
+    }
+    if (currentPath === "/pay/docs") {
+      return <PayDeveloperDocsPage />;
     }
     if (currentPath === "/pay/for-business") {
       return <PayForBusinessPage onNavigate={handleNavigate} />;
