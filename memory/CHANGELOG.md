@@ -24,3 +24,6 @@
 - Backend-Auktionsfeeds liefern jetzt immer `image_url` via Resolver
 - Kuratierte Bild-Mappings überschreiben jetzt auch alte falsche gespeicherte Bild-URLs
 - Production-Fix vorbereitet; Live braucht dafür nur noch einen neuen Deploy
+- Globalen Mobile-Container für Desktop aufgehoben (`.app-container` nicht mehr 28rem auf Laptop)
+- Bottom-Navigation auf Desktop deaktiviert
+- Startseite für Laptop/Desktop breiter und sauberer angeordnet

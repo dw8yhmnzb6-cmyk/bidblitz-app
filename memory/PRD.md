@@ -51,6 +51,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - ✅ **Retests**: Frontend-Subagent 100% PASS (Grid + Detail auf Mobile/Desktop). Backend-Sanity 3/3 PASS für nicht-leere `image_url` in `active/list/feed`.
 - ⚠️ **Wichtig**: Der gemeldete Fehler kam aus **Production (`https://bidblitz.ae`)**. Fix wurde im Preview-Code eingebaut — für Live ist ein **neuer Deploy** nötig.
 
+### 20.05.2026 (Laptop/Desktop Homepage Width Fix) ✅
+- 🟢 **Globalen Mobile-Container auf Desktop aufgehoben** (`frontend/src/App.css`): `.app-container` war global auf `max-width: 28rem` begrenzt. Ab `min-width: 1024px` läuft die App jetzt wieder full-width ohne Mobile-Rahmen, Seitenränder und Mobile-Schatten.
+- 🟢 **Desktop Bottom-Nav deaktiviert** (`frontend/src/App.js`): Bottom-Navigation wird jetzt nur noch unterhalb Desktop-Breite gezeigt.
+- 🟢 **HomePage für Laptop verbreitert** (`frontend/src/pages/HomePage.jsx`): Größere Hero-Typo, breitere CTA-Zone, Desktop-Grid für Produktkarten + Benefits.
+- ✅ **Retests**: Screenshot-Smoke + Frontend-Subagent PASS. Verifiziert: 1440px volle Breite, keine Bottom-Nav auf Desktop, saubere Anordnung von Hero/CTA/Produkten/Benefits.
+- ⚠️ **Wichtig**: Fehler wurde vom User auf **Production (`https://bidblitz.ae`)** gemeldet. Fix liegt jetzt im Preview-Code — für Live ist **neu deployen** nötig.
+
 ### 17.05.2026 (P0 Launch-Blocker Hardening) ✅
 - 🟢 **Staff Auth Brute-Force Schutz** (`routes/staff.py`): `POST /api/staff/auth/login` und `POST /api/staff/auth/terminal-pin` haben jetzt MongoDB-basierten Lockout pro IP/Identifier (`login_attempts`). Nach 5 Fehlversuchen → 429 + Retry-After. Erfolgreiche Anmeldung/PIN-Abfrage resetten den Counter.
 - 🟢 **Sensitive Field Leak geschlossen** (`routes/staff.py::get_staff_from_session`): `/api/staff/auth/me` liefert keine Felder `password_hash`, `pin`, `pin_hash` mehr.
