@@ -374,6 +374,7 @@ async def buy_subscription(req: BuySubscriptionRequest, request: Request):
         "read": False,
         "created_at": now.isoformat(),
     })
+
     
     logger.info(f"Subscription purchased: {subscription_id} - {req.plan} ({req.billing_cycle}) by {user_id}")
     
@@ -472,6 +473,7 @@ async def cancel_subscription(req: CancelSubscriptionRequest, request: Request):
         "read": False,
         "created_at": now.isoformat(),
     })
+
     
     logger.info(f"Subscription cancelled: {subscription['subscription_id']} by {user_id}")
     
@@ -502,7 +504,7 @@ async def toggle_auto_renew(request: Request):
         {"subscription_id": subscription["subscription_id"]},
         {"$set": {"auto_renew": new_state}}
     )
-    
+
     return {
         "ok": True,
         "auto_renew": new_state,

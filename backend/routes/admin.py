@@ -185,7 +185,6 @@ async def update_user_role(user_id: str, request: Request):
     new_role = body.get("role", "")
     if new_role not in ["user", "merchant", "admin", "driver"]:
         raise HTTPException(status_code=400, detail="Ungueltige Rolle")
-    from bson import ObjectId
     result = await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"role": new_role}})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User nicht gefunden")
