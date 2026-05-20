@@ -963,3 +963,8 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - **Feb 2026 (iter47)**: LandingChatbot global mount, /landing route, age-verify dual-mode, POS RetailTab.
 - **Feb 2026 (iter46)**: Backend Phases A-E complete (43 endpoints).
 - **Feb 2026**: Bundle ID `com.bidblitz.app`, mobile build scripts, 18 POS Enterprise features.
+- **20.05.2026 (iter128 — Accountant Productivity MVP im bestehenden Rechnungsmodul)**:
+  - 🟢 `/invoicing` als leichtgewichtiger Accountant-Hub erweitert: Task Center, Reminder-Polish, Client Health, Recurring Invoice, CSV-Import, Audit-View und Demo-Mode ohne neues Großmodul.
+  - 🟢 Backend nur im bestehenden Invoicing-Kontext erweitert (`/api/invoicing/dashboard`, Reminder-History, Generate-Next, Clients/Import/Audit/Task-Complete).
+  - 🟢 Frontend `InvoicingPage.jsx` jetzt mit Dashboard-, Rechnungs-, Mandanten-, Import- und Audit-Tabs; mobile Karten-Layouts und `data-testid` flächendeckend ergänzt.
+  - 🟢 Verifiziert durch `iteration_128.json`: Backend 21/21 Tests grün, Frontend-Schlüsselpfade grün. Demo-Mode nutzt lokales Mock-Dataset (**MOCKED**) und schreibt nichts in echte Daten.

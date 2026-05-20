@@ -27,3 +27,13 @@
 - Globalen Mobile-Container für Desktop aufgehoben (`.app-container` nicht mehr 28rem auf Laptop)
 - Bottom-Navigation auf Desktop deaktiviert
 - Startseite für Laptop/Desktop breiter und sauberer angeordnet
+
+## 20.05.2026
+- Accountant Productivity MVP im bestehenden Rechnungsbereich (`/invoicing`) ergänzt statt neuer Module
+- Task Center mit Prioritätsgruppen, Urgent/Pending/Completed-Filtern, Empty-State und Safe-Complete-Actions eingebaut
+- Payment Reminder Polish: E-Mail-Reminder, WhatsApp-Link, Copy-Link, Reminder-Historie, Overdue-Badge, BidBlitz-Pay-CTA
+- Client Health Score auf Dashboard, Mandantenliste und Mandanten-Detail sichtbar gemacht
+- Recurring Invoice Polish: Toggle, Weekly/Monthly, Next-Invoice-Date, Badge und manueller Generate-Next-Flow
+- CSV-Client-Import mit Upload, Preview, Required-Field-Validation und Success/Fail-Zähler ergänzt
+- Demo Mode Banner mit lokalem Mock-Dataset und Reset-Placeholder ergänzt (**MOCKED** nur im Demo-Mode)
+- Testing: `iteration_128.json` grün (Backend 21/21, Frontend-Schlüsselpfade verifiziert)

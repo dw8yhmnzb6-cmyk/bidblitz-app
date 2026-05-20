@@ -394,9 +394,11 @@ function InvoicingPage({ onBack }) {
       setAuditLogs(auditRes?.logs || []);
 
       const focusId = keepClientId || selectedClientId;
-      if (focusId) {
+      const availableClients = clientsRes?.clients || [];
+      if (focusId && availableClients.some((item) => item.client_id === focusId)) {
         await loadClientDetail(focusId, false);
       } else {
+        setSelectedClientId("");
         setSelectedClient(null);
         setSelectedClientAuditLogs([]);
       }
