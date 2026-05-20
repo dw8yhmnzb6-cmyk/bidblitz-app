@@ -346,7 +346,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         <motion.div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[500px] h-[80vw] max-h-[500px] rounded-full" style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.04)" }} />
       </div>
 
-      <div className="px-4 sm:px-5 pb-8 relative z-10" style={{ maxWidth: "100vw" }}>
+      <div className="px-4 sm:px-5 lg:px-8 pb-8 lg:pb-12 relative z-10 max-w-7xl mx-auto" style={{ maxWidth: "100vw" }}>
 
         {/* ── Header ── */}
         <motion.header
@@ -415,13 +415,13 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── Tagline (nur für Gäste — angemeldete User sehen sofort den Wallet) ── */}
         {isGuest && (
-          <motion.div className="mb-5" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
-            <h2 className="text-[20px] sm:text-[22px] font-outfit font-bold text-white leading-[1.25] tracking-tight mb-1.5 break-words">
+          <motion.div className="mb-6 lg:mb-8 lg:max-w-3xl" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
+            <h2 className="text-[20px] sm:text-[22px] lg:text-[40px] font-outfit font-bold text-white leading-[1.15] tracking-tight mb-1.5 break-words text-left">
               {t("home.tagline_1")}{" "}
               <span className="text-[#00C2FF]">{t("home.tagline_2")}</span>,{" "}
               <span className="text-[#00C2FF]">{t("home.tagline_3")}</span> {t("home.tagline_more")}
             </h2>
-            <p className="text-[12px] text-[#333] font-medium">{t("home.subtitle")}</p>
+            <p className="text-[12px] lg:text-[14px] text-[#333] font-medium max-w-2xl">{t("home.subtitle")}</p>
           </motion.div>
         )}
 
@@ -533,13 +533,13 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── CTA Buttons (Gäste sehen Login/Register; eingeloggte User haben oben Quick-Actions) ── */}
         {isGuest ? (
-          <div className="mb-6">
+          <div className="mb-7 lg:mb-8 lg:max-w-xl">
             <motion.button data-testid="cta-register-btn" className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-2.5 relative overflow-hidden" style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, ...slide }} whileTap={{ scale: 0.96 }} onClick={onRegister}>
               <UserPlus size={15} strokeWidth={2} />
               {t("auth.create") || "Create Account"}
               <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }}><ChevronRight size={16} strokeWidth={2.5} /></motion.div>
             </motion.button>
-            <div className="flex gap-2.5">
+            <div className="flex gap-2.5 lg:grid lg:grid-cols-2">
               <motion.button data-testid="cta-login-btn" className="flex-1 py-[12px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#fff" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, ...slide }} whileTap={{ scale: 0.96 }} onClick={onLogin}>
                 <LogIn size={14} strokeWidth={2} />{t("auth.signin") || "Login"}
               </motion.button>
@@ -554,7 +554,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ═══════════ GUEST SECTIONS ═══════════ */}
         {isGuest && (
-          <>
+          <div className="lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,400px)] xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,420px)] lg:gap-6 xl:gap-8 items-start">
+            <div>
             {/* ── Key Products ── */}
             <motion.section
               data-testid="guest-products"
@@ -566,18 +567,21 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <div className="flex items-center justify-between mb-3.5">
                 <h3 className="text-[13px] font-semibold font-outfit text-white">{gt("gp.products_title")}</h3>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 lg:gap-3">
                 <ProductCard icon={Wallet} title={gt("gp.wallet_title")} desc={gt("gp.wallet_desc")} color="#00C2FF" delay={0.32} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("wallet"); onRegister(); }} />
                 <ProductCard icon={QrCode} title={gt("gp.qr_title")} desc={gt("gp.qr_desc")} color="#00D26A" delay={0.36} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("qr"); onRegister(); }} />
                 <ProductCard icon={Store} title={gt("gp.merchant_title")} desc={gt("gp.merchant_desc")} color="#FFB800" delay={0.4} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("merchant"); onRegister(); }} />
                 <ProductCard icon={TrendingUp} title={gt("gp.mining_title")} desc={gt("gp.mining_desc")} color="#A855F7" delay={0.44} cta={gt("gp.use_now")} onClick={() => { tracker.featureClick("mining"); onRegister(); }} />
               </div>
             </motion.section>
+            </div>
+
+            <div className="lg:sticky lg:top-6">
 
             {/* ── Benefits ── */}
             <motion.section
               data-testid="guest-benefits"
-              className="mb-7 rounded-2xl p-4"
+              className="mb-4 lg:mb-5 rounded-2xl p-4 lg:p-5"
               style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
@@ -594,13 +598,13 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             {/* ── Trust Section ── */}
             <motion.section
               data-testid="guest-trust"
-              className="mb-7 rounded-2xl p-4"
+              className="mb-4 lg:mb-5 rounded-2xl p-4 lg:p-5"
               style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.64, ...slide }}
             >
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 lg:gap-3">
                 <TrustBadge icon={Users} label={gt("gp.trust_users")} delay={0.66} />
                 <TrustBadge icon={Shield} label={gt("gp.trust_encrypted")} delay={0.7} />
                 <TrustBadge icon={Globe} label={gt("gp.trust_languages")} delay={0.74} />
@@ -610,7 +614,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             {/* ── Bottom CTA ── */}
             <motion.div
               data-testid="guest-bottom-cta"
-              className="rounded-2xl p-4 relative overflow-hidden cursor-pointer group"
+              className="rounded-2xl p-4 lg:p-5 relative overflow-hidden cursor-pointer group"
               style={{ background: "rgba(0,194,255,0.03)", border: "1px solid rgba(0,194,255,0.08)" }}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
@@ -624,7 +628,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                   <CreditCard size={18} strokeWidth={1.5} className="text-[#00C2FF]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-[13px] font-semibold text-white font-outfit mb-0.5">{t("home.wallet_banner") || "Everything runs through BidBlitz Wallet"}</h4>
+                  <h4 className="text-[13px] lg:text-[14px] font-semibold text-white font-outfit mb-0.5">{t("home.wallet_banner") || "Everything runs through BidBlitz Wallet"}</h4>
                   <p className="text-[11px] text-[#444] font-medium">{t("home.wallet_sub") || "One wallet for all your payments"}</p>
                 </div>
                 <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="flex-shrink-0">
@@ -632,7 +636,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 </motion.div>
               </div>
             </motion.div>
-          </>
+            </div>
+          </div>
         )}
 
         {/* ═══════════ AUTHENTICATED SECTIONS ═══════════ */}

@@ -312,6 +312,17 @@ body {
   z-index: 1;
 }
 
+@media (min-width: 1024px) {
+  .app-container {
+    max-width: 100%;
+    margin: 0;
+    padding-bottom: 0;
+    border-left: none;
+    border-right: none;
+    box-shadow: none;
+  }
+}
+
 @media (max-width: 480px) {
   .app-container {
     max-width: 100%;

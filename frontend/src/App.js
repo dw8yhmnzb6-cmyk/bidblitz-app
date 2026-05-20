@@ -310,8 +310,17 @@ function AppContent() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("bidblitz_onboarded"));
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = () => setIsDesktopViewport(window.innerWidth >= 1024);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (user.isAuthenticated && user.language) {
@@ -1100,7 +1109,7 @@ function AppContent() {
   const isInvoicePay = currentPath.startsWith("/invoice/pay/");
   const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
   const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
-  const showBottomNav = !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
+  const showBottomNav = !isDesktopViewport && !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
 
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
   const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
