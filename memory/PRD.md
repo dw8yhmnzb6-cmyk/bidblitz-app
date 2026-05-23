@@ -982,3 +982,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - 🟢 Warenwirtschaft angebunden: QR-Tischbestellungen reduzieren bei `track_stock` den Bestand und schreiben echte Stock-Movements via vorhandener POS-Inventory-Logik.
   - 🟢 NFC Entry ergänzt: Admin kann NFC-Tags direkt mit Tisch-URL beschreiben (Web NFC; browser-/deviceabhängig, kein MOCK).
   - 🟢 Verifiziert durch `iteration_130.json`: Backend 18/18 Tests grün, Frontend 100% für die A/B/C/D-Upgrades.
+- **23.05.2026 (Live-Drucker-Test)**:
+  - 🟢 Testbon-Endpoint für echte USB-/Netzwerk-Checks ergänzt: `POST /api/table-hardware/printers/test`.
+  - 🟡 Interner Realtest hat bestätigt, dass das gespeicherte Netzwerk-Mapping tatsächlich benutzt wird; im Preview-Umfeld schlug der Connect auf `10.0.0.50:9100` jedoch mit Timeout fehl.
+  - 🟡 Fazit: USB/Netzwerk wird jetzt real angewendet; für „grün“ braucht es im Live-Netz ein erreichbares Gerät bzw. einen gültigen USB-Device-Pfad.

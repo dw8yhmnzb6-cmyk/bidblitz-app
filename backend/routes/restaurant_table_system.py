@@ -339,6 +339,11 @@ class PrinterConfigRequest(BaseModel):
     device: str = ""
 
 
+class PrinterTestRequest(BaseModel):
+    store_id: Optional[str] = None
+    role: Literal["kitchen", "service", "bill"] = "kitchen"
+
+
 @router.post("/api/tables")
 async def create_table_endpoint(req: TableCreateRequest, request: Request):
     _, store = await require_staff(request, req.store_id)
@@ -510,6 +515,22 @@ async def save_printer_mapping(req: PrinterConfigRequest, request: Request):
         upsert=True,
     )
     return {"ok": True, "printer": {**doc, "printer_id": printer_id}}
+
+
+@router.post("/api/table-hardware/printers/test")
+async def test_printer_mapping(req: PrinterTestRequest, request: Request):
+    _, store = await require_staff(request, req.store_id)
+    result = await print_slip(
+        store.get("store_id"),
+        req.role,
+        "TESTBON",
+        [
+            f"Rolle: {req.role}",
+            "USB / NETZWERK TEST",
+            f"Store: {store.get('store_id')}",
+        ],
+    )
+    return {"ok": True, "result": result}
 
 
 @router.post("/api/orders")

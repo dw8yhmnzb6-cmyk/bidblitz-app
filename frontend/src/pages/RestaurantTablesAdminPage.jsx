@@ -188,6 +188,15 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     }
   };
 
+  const testPrinter = async () => {
+    try {
+      const result = await api("/api/table-hardware/printers/test", { method: "POST", body: { role: printerForm.role, store_id: storeId || undefined } });
+      toast.success(`Testbon gesendet (${result.result?.printer || printerForm.type})`);
+    } catch (error) {
+      toast.error(error.message || "Testbon fehlgeschlagen");
+    }
+  };
+
   const loadPrinterRole = (role) => {
     const match = hardware.printers.find((printer) => printer.role === role);
     setPrinterForm({
@@ -296,7 +305,10 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                 <input value={printerForm.ip} onChange={(event) => setPrinterForm((prev) => ({ ...prev, ip: event.target.value }))} placeholder="IP Adresse" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-ip-input" />
                 <input value={printerForm.port} onChange={(event) => setPrinterForm((prev) => ({ ...prev, port: event.target.value }))} placeholder="Port" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-port-input" />
                 <input value={printerForm.device} onChange={(event) => setPrinterForm((prev) => ({ ...prev, device: event.target.value }))} placeholder="USB Device optional" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
-                <button onClick={savePrinter} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B]" data-testid="restaurant-admin-printer-save-button">Hardware speichern</button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={savePrinter} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B]" data-testid="restaurant-admin-printer-save-button">Hardware speichern</button>
+                  <button onClick={testPrinter} className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/75" data-testid="restaurant-admin-printer-test-button">Testbon</button>
+                </div>
               </div>
             </div>
           </div>

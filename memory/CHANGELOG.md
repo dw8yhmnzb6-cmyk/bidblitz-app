@@ -54,3 +54,8 @@
 - NFC Entry erweitert: Admin kann NFC-Tag direkt mit Tisch-URL beschreiben (Web NFC, browser-/deviceabhängig)
 - Staff Dashboard zeigt jetzt zusätzlich Low-Stock und Hardware-Health
 - Testing: `iteration_130.json` grün (Backend 18/18, Frontend 100%)
+
+## 23.05.2026 — Echter Drucker-Testflow
+- Neuer Testbon-Endpoint: `POST /api/table-hardware/printers/test`
+- Admin-Hardware-UI kann jetzt gespeichertes USB-/Netzwerk-Mapping direkt mit Testbon prüfen
+- Interner Live-Test hat gezeigt: reales Netzwerk-Mapping wurde angewendet; Verbindung zu `10.0.0.50:9100` schlug im Preview-Umfeld mit Timeout fehl
