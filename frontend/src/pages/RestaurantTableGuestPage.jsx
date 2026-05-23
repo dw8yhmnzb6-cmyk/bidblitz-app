@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Bell, Loader2, Minus, Plus, ReceiptText, ShoppingCart } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -24,6 +25,8 @@ export default function RestaurantTableGuestPage({ tableId: propTableId }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [successOrder, setSuccessOrder] = useState(null);
+  const [paymentLink, setPaymentLink] = useState("");
+  const [paying, setPaying] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -92,6 +95,18 @@ export default function RestaurantTableGuestPage({ tableId: propTableId }) {
     }
   };
 
+  const requestPaymentLink = async () => {
+    setPaying(true);
+    try {
+      const result = await api(`/api/tables/${tableId}/bill-link/public`, { method: "POST" });
+      setPaymentLink(result.payment_link || "");
+      toast.success("Zahlungslink bereit");
+    } catch (error) {
+      toast.error(error.message);
+    }
+    setPaying(false);
+  };
+
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-[#06070B]"><Loader2 size={24} className="animate-spin text-white/45" /></div>;
   if (!data) return <div className="flex min-h-screen items-center justify-center bg-[#06070B] text-white">Tisch nicht gefunden.</div>;
 
@@ -108,7 +123,24 @@ export default function RestaurantTableGuestPage({ tableId: propTableId }) {
             <ReceiptText size={16} className="mr-2 inline-block" /> Rechnung anfordern
           </button>
         </div>
+        <button onClick={requestPaymentLink} disabled={paying} className="mt-2 w-full rounded-2xl border border-emerald-400/20 bg-emerald-400/15 px-4 py-3 text-sm font-bold text-emerald-100" data-testid="restaurant-table-pay-now-button">
+          {paying ? <Loader2 size={16} className="mx-auto animate-spin" /> : "Direkt bezahlen"}
+        </button>
       </div>
+
+      {paymentLink && (
+        <div className="mx-4 mt-4 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 p-4" data-testid="restaurant-table-payment-link-card">
+          <p className="text-lg font-black text-emerald-100">Smartphone Payment</p>
+          <div className="mt-3 flex flex-col items-center gap-3 rounded-2xl bg-white p-4 text-black">
+            <QRCodeSVG value={paymentLink} size={160} includeMargin />
+            <p className="break-all text-center text-xs">{paymentLink}</p>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button onClick={() => window.open(paymentLink, "_blank", "noopener,noreferrer")} className="rounded-2xl bg-black px-4 py-3 text-sm font-bold text-white" data-testid="restaurant-table-open-payment-link">Zahlungsseite öffnen</button>
+            <button onClick={() => navigator.clipboard.writeText(paymentLink).then(() => toast.success("Zahlungslink kopiert"))} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white" data-testid="restaurant-table-copy-payment-link">Link kopieren</button>
+          </div>
+        </div>
+      )}
 
       {successOrder && (
         <div className="mx-4 mt-4 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 p-4" data-testid="restaurant-table-order-success">

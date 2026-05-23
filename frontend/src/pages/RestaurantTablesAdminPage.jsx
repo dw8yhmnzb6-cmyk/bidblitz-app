@@ -29,17 +29,24 @@ async function api(path, { method = "GET", body } = {}) {
 
 export default function RestaurantTablesAdminPage({ onBack }) {
   const printRefs = useRef({});
+  const floorplanRef = useRef(null);
   const [tables, setTables] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [storeId, setStoreId] = useState("");
+  const [hardware, setHardware] = useState({ printers: [], button_webhook_url: "", nfc_base_url: "" });
+  const [printerForm, setPrinterForm] = useState({ role: "kitchen", name: "", type: "network", ip: "", port: 9100, device: "" });
+  const [dragging, setDragging] = useState(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await api("/api/tables");
-      setTables(data.tables || []);
+      const [tablesRes, hardwareRes] = await Promise.all([api("/api/tables"), api("/api/table-hardware")]);
+      setTables(tablesRes.tables || []);
+      setStoreId(tablesRes.store?.store_id || hardwareRes.store_id || "");
+      setHardware(hardwareRes || { printers: [], button_webhook_url: "", nfc_base_url: "" });
     } catch (error) {
       toast.error(error.message);
     }
@@ -91,6 +98,33 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  useEffect(() => {
+    if (!dragging) return undefined;
+    const move = (event) => {
+      const rect = floorplanRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const nextX = Math.max(0, Math.min(rect.width - 92, event.clientX - rect.left - dragging.offsetX));
+      const nextY = Math.max(0, Math.min(rect.height - 72, event.clientY - rect.top - dragging.offsetY));
+      setTables((prev) => prev.map((table) => (table.table_id === dragging.tableId ? { ...table, x: Math.round(nextX), y: Math.round(nextY) } : table)));
+    };
+    const up = async () => {
+      const target = tables.find((table) => table.table_id === dragging.tableId);
+      setDragging(null);
+      if (!target) return;
+      try {
+        await api(`/api/tables/${target.table_id}`, { method: "PUT", body: { x: target.x, y: target.y } });
+      } catch (error) {
+        toast.error(error.message || "Position konnte nicht gespeichert werden");
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up, { once: true });
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [dragging, tables]);
+
   const deleteTable = async (tableId) => {
     if (!window.confirm("Tisch wirklich löschen?")) return;
     try {
@@ -140,6 +174,43 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     popup.document.close();
   };
 
+  const savePrinter = async () => {
+    try {
+      await api("/api/table-hardware/printers", { method: "POST", body: { ...printerForm, store_id: storeId || undefined } });
+      toast.success("Printer-Mapping gespeichert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const loadPrinterRole = (role) => {
+    const match = hardware.printers.find((printer) => printer.role === role);
+    setPrinterForm({
+      role,
+      name: match?.name || "",
+      type: match?.type || "network",
+      ip: match?.ip || "",
+      port: match?.port || 9100,
+      device: match?.device || "",
+    });
+  };
+
+  const writeNfcTag = async (table) => {
+    if (typeof window === "undefined" || typeof window.NDEFReader === "undefined") {
+      toast.error("Web NFC wird auf diesem Gerät nicht unterstützt");
+      return;
+    }
+    try {
+      const ndef = new window.NDEFReader();
+      const url = table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`;
+      await ndef.write({ records: [{ recordType: "url", data: url }] });
+      toast.success(`NFC-Tag für ${table.table_name} geschrieben`);
+    } catch (error) {
+      toast.error(error?.message || "NFC-Tag konnte nicht geschrieben werden");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#06070B] text-white pb-20" data-testid="restaurant-tables-admin-page">
       <div className="sticky top-0 z-30 border-b border-white/10 bg-[#06070B]/90 backdrop-blur-xl">
@@ -184,6 +255,72 @@ export default function RestaurantTablesAdminPage({ onBack }) {
           </div>
         </section>
 
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-admin-hardware-section">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div>
+              <h2 className="text-lg font-black">Hardware-Mapping</h2>
+              <p className="mt-1 text-sm text-white/45">Thermodrucker rollenbasiert mappen, Button-Webhook fixieren, NFC-URL auf Tags schreiben.</p>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {(hardware.printers || []).map((printer) => (
+                  <button key={printer.printer_id || printer.role} onClick={() => loadPrinterRole(printer.role)} className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-left" data-testid={`restaurant-admin-printer-card-${printer.role}`}>
+                    <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">{printer.role}</p>
+                    <p className="mt-2 text-base font-semibold">{printer.name || "Nicht gesetzt"}</p>
+                    <p className="mt-1 text-xs text-white/45">{printer.type} {printer.ip || printer.device || "file fallback"}</p>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 rounded-[24px] border border-white/10 bg-black/20 p-4 text-sm text-white/70">
+                <p className="font-semibold text-white">Webhook + NFC</p>
+                <p className="mt-2 font-mono text-xs break-all">Button Webhook: {hardware.button_webhook_url || `${window.location.origin}/api/button-webhook`}</p>
+                <p className="mt-2 font-mono text-xs break-all">NFC Base URL: {hardware.nfc_base_url || `${window.location.origin}/table/`}</p>
+              </div>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">Printer Config</p>
+              <div className="mt-4 grid gap-3">
+                <select value={printerForm.role} onChange={(event) => loadPrinterRole(event.target.value)} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-role-select">
+                  <option value="kitchen">Kitchen</option>
+                  <option value="service">Service</option>
+                  <option value="bill">Bill</option>
+                </select>
+                <input value={printerForm.name} onChange={(event) => setPrinterForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Printer Name" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-name-input" />
+                <select value={printerForm.type} onChange={(event) => setPrinterForm((prev) => ({ ...prev, type: event.target.value }))} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-type-select">
+                  <option value="network">Network ESC/POS</option>
+                  <option value="usb">USB</option>
+                  <option value="file">File Fallback</option>
+                </select>
+                <input value={printerForm.ip} onChange={(event) => setPrinterForm((prev) => ({ ...prev, ip: event.target.value }))} placeholder="IP Adresse" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-ip-input" />
+                <input value={printerForm.port} onChange={(event) => setPrinterForm((prev) => ({ ...prev, port: event.target.value }))} placeholder="Port" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-port-input" />
+                <input value={printerForm.device} onChange={(event) => setPrinterForm((prev) => ({ ...prev, device: event.target.value }))} placeholder="USB Device optional" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
+                <button onClick={savePrinter} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B]" data-testid="restaurant-admin-printer-save-button">Hardware speichern</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-admin-floorplan-section">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black">Floorplan / Raumplan</h2>
+              <p className="mt-1 text-sm text-white/45">Tische per Drag & Drop verschieben. Position wird direkt gespeichert.</p>
+            </div>
+          </div>
+          <div ref={floorplanRef} className="relative mt-4 h-[420px] overflow-hidden rounded-[28px] border border-dashed border-white/10 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.07)_1px,transparent_0)] [background-size:24px_24px]" data-testid="restaurant-admin-floorplan-canvas">
+            {tables.map((table) => (
+              <button
+                key={table.table_id}
+                onPointerDown={(event) => setDragging({ tableId: table.table_id, offsetX: event.nativeEvent.offsetX, offsetY: event.nativeEvent.offsetY })}
+                style={{ left: table.x || 24, top: table.y || 24 }}
+                className={`absolute w-[92px] rounded-[22px] border px-3 py-3 text-left text-xs font-bold shadow-xl ${statusStyle[table.status] || statusStyle.free}`}
+                data-testid={`restaurant-admin-floorplan-table-${table.table_id}`}
+              >
+                <div>{table.table_name}</div>
+                <div className="mt-1 text-[11px] opacity-80">#{table.table_number}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-white/45" /></div>
         ) : (
@@ -203,6 +340,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                   </div>
                   <div className="space-y-2 text-sm text-white/70">
                     <p data-testid={`restaurant-admin-table-button-value-${table.table_id}`}>Button: {table.button_id || "—"}</p>
+                    <p>NFC Entry: {table.qr_code_absolute_url}</p>
                     <p>Open Orders: {table.open_order_count}</p>
                     <p>Service Calls: {table.open_service_call_count}</p>
                     <p className="font-mono text-xs text-white/45">{table.qr_code_absolute_url}</p>
@@ -214,6 +352,9 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                   </button>
                   <button onClick={() => printQr(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-print-qr-${table.table_id}`}>
                     <Printer size={14} className="mr-2 inline-block" /> Drucken
+                  </button>
+                  <button onClick={() => writeNfcTag(table)} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/15 px-3 py-3 text-xs font-bold text-emerald-100" data-testid={`restaurant-admin-write-nfc-${table.table_id}`}>
+                    NFC schreiben
                   </button>
                   <button onClick={() => copyLink(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-copy-link-${table.table_id}`}>
                     <Copy size={14} className="mr-2 inline-block" /> Link

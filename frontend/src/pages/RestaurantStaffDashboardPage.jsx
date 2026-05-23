@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Bell, Copy, Loader2, ReceiptText, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, ReceiptText, RefreshCw } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -25,9 +25,12 @@ const waitLabel = (value) => {
 export default function RestaurantStaffDashboardPage({ onBack }) {
   const previousCalls = useRef(0);
   const [loading, setLoading] = useState(true);
+  const [storeId, setStoreId] = useState("");
   const [tables, setTables] = useState([]);
   const [orders, setOrders] = useState([]);
   const [serviceCalls, setServiceCalls] = useState([]);
+  const [lowStock, setLowStock] = useState([]);
+  const [hardwareHealth, setHardwareHealth] = useState({ printers: [] });
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -37,9 +40,19 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
         api("/api/orders"),
         api("/api/service-call"),
       ]);
+      const resolvedStoreId = tablesRes.store?.store_id || tablesRes.tables?.[0]?.store_id || "";
       setTables(tablesRes.tables || []);
+      setStoreId(resolvedStoreId);
       setOrders(ordersRes.orders || []);
       setServiceCalls(serviceRes.service_calls || []);
+      if (resolvedStoreId) {
+        const [stockRes, hardwareRes] = await Promise.all([
+          api(`/api/pos/stock/low?store_id=${resolvedStoreId}`),
+          api(`/api/pos/hardware/health?store_id=${resolvedStoreId}`),
+        ]);
+        setLowStock(stockRes.products || []);
+        setHardwareHealth(hardwareRes || { printers: [] });
+      }
       const openCalls = (serviceRes.service_calls || []).filter((item) => item.status === "open").length;
       if (previousCalls.current && openCalls > previousCalls.current) {
         toast.success("Neue Live-Meldung im Service-Dashboard");
@@ -188,6 +201,35 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
             ))}
           </div>
         </section>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-staff-low-stock-section">
+            <h2 className="text-lg font-black">Warenwirtschaft / Low Stock</h2>
+            <div className="mt-4 space-y-3">
+              {lowStock.slice(0, 8).map((product) => (
+                <div key={product.product_id} className="rounded-[24px] border border-white/10 bg-black/20 p-4" data-testid={`restaurant-staff-low-stock-${product.product_id}`}>
+                  <p className="text-base font-semibold">{product.name}</p>
+                  <p className="mt-1 text-sm text-white/45">Bestand {product.stock} · Minimum {product.minimum_stock}</p>
+                </div>
+              ))}
+              {lowStock.length === 0 && <p className="text-sm text-white/45">Keine kritischen Lagerwarnungen.</p>}
+            </div>
+          </section>
+
+          <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-staff-hardware-section">
+            <h2 className="text-lg font-black">Hardware Health</h2>
+            <p className="mt-1 text-sm text-white/45">Store {storeId || "—"}</p>
+            <div className="mt-4 space-y-3">
+              {(hardwareHealth.printers || []).map((printer) => (
+                <div key={printer.printer_id || printer.role} className="rounded-[24px] border border-white/10 bg-black/20 p-4" data-testid={`restaurant-staff-printer-${printer.role || printer.printer_id}`}>
+                  <p className="text-base font-semibold">{printer.name || printer.role}</p>
+                  <p className="mt-1 text-sm text-white/45">{printer.type} · {printer.ip || printer.device || "file"}</p>
+                </div>
+              ))}
+              {(hardwareHealth.printers || []).length === 0 && <p className="text-sm text-white/45">Noch kein echter Drucker gemappt — File-Fallback aktiv.</p>}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

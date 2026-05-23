@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.email import FRONTEND_URL
 from core.security import get_current_user
+from routes.pos_inventory import _record_movement
 from routes.pos_hardware import _send_to_network_printer, _send_to_usb_printer
 
 router = APIRouter(tags=["restaurant-table-system"])
@@ -179,6 +180,8 @@ async def serialize_table(table: dict, origin: str = "") -> dict:
         "table_name": table.get("table_name") or table.get("name") or f"Tisch {table.get('table_number') or table_id[-4:]}",
         "area": table.get("area") or table.get("section") or "Gastraum",
         "button_id": table.get("button_id", ""),
+        "x": int(table.get("x", 24) or 24),
+        "y": int(table.get("y", 24) or 24),
         "qr_code_url": qr_path,
         "qr_code_absolute_url": build_public_url(qr_path, origin),
         "scan_code": table.get("scan_code") or table_scan_code(),
@@ -194,10 +197,17 @@ async def store_owner_email(store: dict) -> str:
     for field in ["merchant_email", "owner_email", "email", "contact_email"]:
         if store.get(field):
             return str(store.get(field)).strip().lower()
+    if store.get("owner_id"):
+        user = await db.users.find_one({"_id": store.get("owner_id")}, {"_id": 0, "email": 1})
+        if user and user.get("email"):
+            return str(user["email"]).strip().lower()
     if store.get("merchant_id"):
         user = await db.users.find_one({"merchant_id": store.get("merchant_id")}, {"_id": 0, "email": 1})
         if user and user.get("email"):
             return str(user["email"]).strip().lower()
+    admin = await db.users.find_one({"role": {"$in": ["admin", "merchant"]}}, {"_id": 0, "email": 1})
+    if admin and admin.get("email"):
+        return str(admin["email"]).strip().lower()
     return ""
 
 
@@ -208,6 +218,9 @@ async def create_payment_link(table: dict, store: dict, origin: str = "", fallba
     ).to_list(200)
     if not orders:
         return None
+    existing_link = next((order.get("payment_link") for order in orders if order.get("payment_link")), None)
+    if existing_link:
+        return existing_link
     merchant_email = await store_owner_email(store)
     if not merchant_email and fallback_email:
         merchant_email = fallback_email.strip().lower()
@@ -268,6 +281,8 @@ class TableCreateRequest(BaseModel):
     table_name: str = Field(..., min_length=1, max_length=80)
     area: str = Field("Gastraum", min_length=1, max_length=60)
     button_id: str = Field("", max_length=80)
+    x: int = 24
+    y: int = 24
 
 
 class TableUpdateRequest(BaseModel):
@@ -276,6 +291,8 @@ class TableUpdateRequest(BaseModel):
     area: Optional[str] = None
     button_id: Optional[str] = None
     status: Optional[str] = None
+    x: Optional[int] = None
+    y: Optional[int] = None
 
 
 class PublicOrderItem(BaseModel):
@@ -311,6 +328,17 @@ class ButtonWebhookRequest(BaseModel):
     type: Literal["service", "bill", "problem"] = "service"
 
 
+class PrinterConfigRequest(BaseModel):
+    store_id: Optional[str] = None
+    printer_id: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=80)
+    role: Literal["kitchen", "service", "bill"] = "kitchen"
+    type: Literal["network", "usb", "file"] = "network"
+    ip: str = ""
+    port: int = 9100
+    device: str = ""
+
+
 @router.post("/api/tables")
 async def create_table_endpoint(req: TableCreateRequest, request: Request):
     _, store = await require_staff(request, req.store_id)
@@ -326,6 +354,8 @@ async def create_table_endpoint(req: TableCreateRequest, request: Request):
         "area": req.area.strip(),
         "section": req.area.strip(),
         "button_id": req.button_id.strip(),
+        "x": int(req.x),
+        "y": int(req.y),
         "scan_code": table_scan_code(),
         "qr_code_url": f"/table/{table_id}",
         "status": "free",
@@ -376,6 +406,10 @@ async def update_table_endpoint(table_id: str, req: TableUpdateRequest, request:
         if existing:
             raise HTTPException(status_code=409, detail="Button-ID bereits vergeben")
         update_doc["button_id"] = req.button_id.strip()
+    if req.x is not None:
+        update_doc["x"] = int(req.x)
+    if req.y is not None:
+        update_doc["y"] = int(req.y)
     if req.status is not None:
         if req.status not in TABLE_STATUS:
             raise HTTPException(status_code=400, detail="Ungültiger Tischstatus")
@@ -432,6 +466,52 @@ async def build_bill_link(table_id: str, request: Request):
     return {"ok": True, "payment_link": payment_link}
 
 
+@router.post("/api/tables/{table_id}/bill-link/public")
+async def build_public_bill_link(table_id: str, request: Request):
+    table = await get_table_doc(table_id)
+    store = await resolve_store(table.get("store_id"))
+    payment_link = await create_payment_link(table, store, request.headers.get("origin", ""))
+    if not payment_link:
+        raise HTTPException(status_code=400, detail="Kein Zahlungslink möglich")
+    await db.pos_tables.update_one({"table_id": table_id}, {"$set": {"status": "bill_requested", "updated_at": now_iso()}})
+    return {"ok": True, "payment_link": payment_link}
+
+
+@router.get("/api/table-hardware")
+async def hardware_config_endpoint(request: Request, store_id: Optional[str] = Query(default=None)):
+    _, store = await require_staff(request, store_id)
+    printers = await db.pos_printers.find({"store_id": store.get("store_id")}, {"_id": 0}).sort("role", 1).to_list(50)
+    return {
+        "store_id": store.get("store_id"),
+        "printers": printers,
+        "button_webhook_url": build_public_url("/api/button-webhook", request.headers.get("origin", "")),
+        "nfc_base_url": build_public_url("/table/", request.headers.get("origin", "")),
+    }
+
+
+@router.post("/api/table-hardware/printers")
+async def save_printer_mapping(req: PrinterConfigRequest, request: Request):
+    _, store = await require_staff(request, req.store_id)
+    printer_id = req.printer_id or make_id("printer")
+    doc = {
+        "store_id": store.get("store_id"),
+        "role": req.role,
+        "name": req.name.strip(),
+        "type": req.type,
+        "ip": req.ip.strip(),
+        "port": int(req.port or 9100),
+        "device": req.device.strip(),
+        "active": True,
+        "updated_at": now_iso(),
+    }
+    await db.pos_printers.update_one(
+        {"store_id": store.get("store_id"), "role": req.role},
+        {"$set": doc, "$setOnInsert": {"created_at": now_iso(), "printer_id": printer_id}},
+        upsert=True,
+    )
+    return {"ok": True, "printer": {**doc, "printer_id": printer_id}}
+
+
 @router.post("/api/orders")
 async def create_order_endpoint(req: OrderCreateRequest, request: Request):
     table = await get_table_doc(req.table_id)
@@ -442,6 +522,8 @@ async def create_order_endpoint(req: OrderCreateRequest, request: Request):
         if not product:
             continue
         qty = int(raw.quantity or 1)
+        if product.get("track_stock") and float(product.get("stock", 0) or 0) < qty:
+            raise HTTPException(status_code=409, detail=f"{product.get('name')} nicht ausreichend auf Lager")
         unit_price = round(float(product.get("price", 0) or 0), 2)
         line_total = round(unit_price * qty, 2)
         total += line_total
@@ -475,6 +557,24 @@ async def create_order_endpoint(req: OrderCreateRequest, request: Request):
         "status_history": [{"status": "new", "at": now_iso()}],
     }
     await db.pos_guest_orders.insert_one({**doc})
+    for item in items:
+        product = await db.pos_products.find_one({"product_id": item["product_id"]}, {"_id": 0})
+        if product and product.get("track_stock"):
+            before = float(product.get("stock", 0) or 0)
+            after = round(before - float(item.get("quantity", 0) or 0), 3)
+            await db.pos_products.update_one({"product_id": item["product_id"]}, {"$set": {"stock": after, "updated_at": now_iso()}})
+            await _record_movement(
+                product=product,
+                store_id=table.get("store_id"),
+                merchant_id=table.get("merchant_id") or table.get("store_id"),
+                type_="sale",
+                qty=-float(item.get("quantity", 0) or 0),
+                before=before,
+                after=after,
+                reference_id=order_id,
+                actor_id="restaurant_table_system",
+                note=f"Tisch {doc['table_number']} QR Bestellung",
+            )
     await db.pos_tables.update_one({"table_id": req.table_id}, {"$set": {"status": "order_open", "updated_at": now_iso(), "occupied_since": now_iso()}})
     await create_live_event(table.get("store_id"), "order_created", f"Tisch {doc['table_number']} hat bestellt", {"order_id": order_id, "table_id": req.table_id})
     await print_slip(
