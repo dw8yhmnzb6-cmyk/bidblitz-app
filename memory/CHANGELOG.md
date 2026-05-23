@@ -45,3 +45,12 @@
 - QR pro Tisch, digitale Service-Buttons, optionaler physischer Button via Webhook, Live-Staff-Dashboard, Küchenmonitor und Invoice-Pay-Bill-Link umgesetzt
 - Druckerfluss produktionsnah vorbereitet: ESC/POS-Slip-Generierung mit File-Fallback im Preview, später Hardware-Mapping möglich
 - Testing: `iteration_129.json` grün (Backend 22/22, Frontend-Schlüsselpfade verifiziert)
+
+## 23.05.2026 — Erweiterung A+B+C+D
+- Hardware-Mapping ergänzt: `/api/table-hardware`, `/api/table-hardware/printers`, rollenbasierte Printer-Configs für Kitchen/Service/Bill
+- Direktzahlung am Tisch ergänzt: öffentlicher Bill-Link `/api/tables/:id/bill-link/public` + QR/Payment-Card direkt auf `/table/:tableId`
+- Floorplan-/Raumplan-Editor ergänzt: `x/y` Persistenz + Drag & Drop im Admin-Tischscreen
+- Warenwirtschaft angebunden: Tischbestellungen reduzieren jetzt bei `track_stock` den Bestand und schreiben Stock-Movements
+- NFC Entry erweitert: Admin kann NFC-Tag direkt mit Tisch-URL beschreiben (Web NFC, browser-/deviceabhängig)
+- Staff Dashboard zeigt jetzt zusätzlich Low-Stock und Hardware-Health
+- Testing: `iteration_130.json` grün (Backend 18/18, Frontend 100%)

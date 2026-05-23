@@ -975,3 +975,10 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - 🟢 Admin-Seite `/admin/tables` für Tisch-CRUD, QR-Generierung, QR-Print/Copy und Button-ID-Zuweisung ergänzt.
   - 🟢 Optionaler physischer Button via `/api/button-webhook` unterstützt; Druckerfluss nutzt ESC/POS-Slip-Generierung mit File-Fallback im Preview (kein MOCK, sondern produktionsnaher Fallback).
   - 🟢 Verifiziert durch `iteration_129.json`: Backend 22/22 Tests grün, Frontend-Schlüsselpfade grün.
+- **23.05.2026 (iter130 — Erweiterung A+B+C+D für das Tischsystem)**:
+  - 🟢 Hardware-Mapping im Admin ergänzt (`/api/table-hardware`, `/api/table-hardware/printers`) und an vorhandene `pos_printers` angebunden.
+  - 🟢 Direktzahlung am Tisch im Gastflow ergänzt: öffentlicher Bill-Link `/api/tables/:id/bill-link/public` + QR/Payment-Card direkt auf `/table/:tableId`.
+  - 🟢 Floorplan-/Raumplan-Editor ergänzt: Tische haben jetzt `x/y`-Koordinaten und lassen sich im Admin-Screen per Drag & Drop verschieben.
+  - 🟢 Warenwirtschaft angebunden: QR-Tischbestellungen reduzieren bei `track_stock` den Bestand und schreiben echte Stock-Movements via vorhandener POS-Inventory-Logik.
+  - 🟢 NFC Entry ergänzt: Admin kann NFC-Tags direkt mit Tisch-URL beschreiben (Web NFC; browser-/deviceabhängig, kein MOCK).
+  - 🟢 Verifiziert durch `iteration_130.json`: Backend 18/18 Tests grün, Frontend 100% für die A/B/C/D-Upgrades.

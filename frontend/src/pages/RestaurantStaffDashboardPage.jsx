@@ -12,7 +12,11 @@ async function api(path, { method = "GET", body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || data.message || "Fehler");
+  if (!response.ok) {
+    const error = new Error(data.detail || data.message || "Fehler");
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
 
@@ -59,7 +63,7 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
       }
       previousCalls.current = openCalls;
     } catch (error) {
-      toast.error(error.message);
+      if (error.status !== 401) toast.error(error.message);
     }
     setLoading(false);
   };

@@ -23,7 +23,11 @@ async function api(path, { method = "GET", body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || data.message || "Fehler");
+  if (!response.ok) {
+    const error = new Error(data.detail || data.message || "Fehler");
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
 
@@ -48,7 +52,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       setStoreId(tablesRes.store?.store_id || hardwareRes.store_id || "");
       setHardware(hardwareRes || { printers: [], button_webhook_url: "", nfc_base_url: "" });
     } catch (error) {
-      toast.error(error.message);
+      if (error.status !== 401) toast.error(error.message);
     }
     setLoading(false);
   };
