@@ -87,6 +87,7 @@ def register_all_routers(app):
         ("routes.pos_selfcheckout", "router"),
         ("routes.qr_table_order", "router"),
         ("routes.qr_table_order", "admin_router"),
+        ("routes.restaurant_table_system", "router"),
         ("routes.pos_retail_p1p2", "router"),
         ("routes.pos_hardware", "router"),
         

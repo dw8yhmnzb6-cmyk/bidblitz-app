@@ -1,0 +1,235 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { ArrowLeft, Copy, Loader2, Pencil, Plus, Printer, QrCode, RefreshCw, Trash2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+
+const API = process.env.REACT_APP_BACKEND_URL;
+
+const emptyForm = { table_number: "", table_name: "", area: "Gastraum", button_id: "" };
+const statusStyle = {
+  free: "bg-emerald-500/15 border-emerald-400/20 text-emerald-200",
+  occupied: "bg-amber-500/15 border-amber-400/20 text-amber-100",
+  order_open: "bg-cyan-500/15 border-cyan-400/20 text-cyan-100",
+  service_call: "bg-rose-500/15 border-rose-400/20 text-rose-100",
+  bill_requested: "bg-violet-500/15 border-violet-400/20 text-violet-100",
+};
+
+async function api(path, { method = "GET", body } = {}) {
+  const response = await fetch(`${API}${path}`, {
+    method,
+    credentials: "include",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || data.message || "Fehler");
+  return data;
+}
+
+export default function RestaurantTablesAdminPage({ onBack }) {
+  const printRefs = useRef({});
+  const [tables, setTables] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await api("/api/tables");
+      setTables(data.tables || []);
+    } catch (error) {
+      toast.error(error.message);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const summary = useMemo(() => ({
+    total: tables.length,
+    service: tables.filter((table) => table.status === "service_call").length,
+    orders: tables.filter((table) => table.status === "order_open").length,
+    bills: tables.filter((table) => table.status === "bill_requested").length,
+  }), [tables]);
+
+  const saveTable = async () => {
+    if (!form.table_number.trim() || !form.table_name.trim()) {
+      toast.error("Tischnummer und Tischname sind Pflicht");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingId) {
+        await api(`/api/tables/${editingId}`, { method: "PUT", body: form });
+        toast.success("Tisch aktualisiert");
+      } else {
+        await api("/api/tables", { method: "POST", body: form });
+        toast.success("Tisch angelegt");
+      }
+      setForm(emptyForm);
+      setEditingId("");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    }
+    setSaving(false);
+  };
+
+  const editTable = (table) => {
+    setEditingId(table.table_id);
+    setForm({
+      table_number: table.table_number || "",
+      table_name: table.table_name || "",
+      area: table.area || "Gastraum",
+      button_id: table.button_id || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const deleteTable = async (tableId) => {
+    if (!window.confirm("Tisch wirklich löschen?")) return;
+    try {
+      await api(`/api/tables/${tableId}`, { method: "DELETE" });
+      toast.success("Tisch gelöscht");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const regenerateQr = async (tableId) => {
+    try {
+      await api(`/api/tables/${tableId}/generate-qr`, { method: "POST" });
+      toast.success("QR-Link aktualisiert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const copyLink = async (table) => {
+    try {
+      await navigator.clipboard.writeText(table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`);
+      toast.success("QR-Link kopiert");
+    } catch {
+      toast.error("Link konnte nicht kopiert werden");
+    }
+  };
+
+  const printQr = (table) => {
+    const node = printRefs.current[table.table_id];
+    const svg = node?.querySelector("svg");
+    if (!svg) return;
+    const xml = new XMLSerializer().serializeToString(svg);
+    const popup = window.open("", "_blank", "width=520,height=720");
+    if (!popup) return;
+    popup.document.write(`
+      <html><body style="font-family:Outfit,Arial;padding:32px;text-align:center;color:#111">
+      <h1>${table.table_name}</h1>
+      <p>Tischnummer ${table.table_number} · ${table.area}</p>
+      <div style="display:inline-block;padding:18px;border:2px solid #111;border-radius:20px">${xml}</div>
+      <p style="margin-top:14px;font-size:12px">${table.qr_code_absolute_url}</p>
+      <script>setTimeout(()=>window.print(),150)</script>
+      </body></html>
+    `);
+    popup.document.close();
+  };
+
+  return (
+    <div className="min-h-screen bg-[#06070B] text-white pb-20" data-testid="restaurant-tables-admin-page">
+      <div className="sticky top-0 z-30 border-b border-white/10 bg-[#06070B]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
+          <button onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5" data-testid="restaurant-tables-admin-back-button">
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-xl font-black">Restaurant Tischsystem</h1>
+            <p className="text-sm text-white/45">QR, Button-ID, Status und Druck vorbereitet</p>
+          </div>
+          <button onClick={load} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/75" data-testid="restaurant-tables-admin-refresh-button">
+            <RefreshCw size={14} className="mr-2 inline-block" /> Aktualisieren
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="grid gap-3 md:grid-cols-4">
+          {[{ label: "Tische", value: summary.total }, { label: "Offene Orders", value: summary.orders }, { label: "Service", value: summary.service }, { label: "Rechnung", value: summary.bills }].map((item) => (
+            <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4" data-testid={`restaurant-admin-metric-${item.label.toLowerCase()}`}>
+              <p className="text-xs uppercase tracking-[0.18em] text-white/35">{item.label}</p>
+              <p className="mt-3 text-3xl font-black">{item.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-admin-table-form-section">
+          <div className="grid gap-3 md:grid-cols-4">
+            <input value={form.table_number} onChange={(event) => setForm((prev) => ({ ...prev, table_number: event.target.value }))} placeholder="Tischnummer" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-number-input" />
+            <input value={form.table_name} onChange={(event) => setForm((prev) => ({ ...prev, table_name: event.target.value }))} placeholder="Tischname" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-name-input" />
+            <input value={form.area} onChange={(event) => setForm((prev) => ({ ...prev, area: event.target.value }))} placeholder="Bereich / Raum" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-area-input" />
+            <input value={form.button_id} onChange={(event) => setForm((prev) => ({ ...prev, button_id: event.target.value }))} placeholder="Button-ID" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-button-id-input" />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={saveTable} disabled={saving} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B] disabled:opacity-50" data-testid="restaurant-admin-save-table-button">
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={14} className="mr-2 inline-block" />{editingId ? "Tisch speichern" : "Tisch anlegen"}</>}
+            </button>
+            <button onClick={() => { setEditingId(""); setForm(emptyForm); }} className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/70" data-testid="restaurant-admin-reset-table-button">
+              Reset
+            </button>
+          </div>
+        </section>
+
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-white/45" /></div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3" data-testid="restaurant-admin-tables-grid">
+            {tables.map((table, index) => (
+              <motion.div key={table.table_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4" data-testid={`restaurant-admin-table-card-${table.table_id}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-black">{table.table_name}</p>
+                    <p className="text-sm text-white/45">#{table.table_number} · {table.area}</p>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusStyle[table.status] || statusStyle.free}`} data-testid={`restaurant-admin-table-status-${table.table_id}`}>{table.status}</span>
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-[120px_minmax(0,1fr)]">
+                  <div ref={(node) => { printRefs.current[table.table_id] = node; }} className="rounded-2xl bg-white p-3">
+                    <QRCodeSVG value={table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`} size={96} includeMargin />
+                  </div>
+                  <div className="space-y-2 text-sm text-white/70">
+                    <p data-testid={`restaurant-admin-table-button-value-${table.table_id}`}>Button: {table.button_id || "—"}</p>
+                    <p>Open Orders: {table.open_order_count}</p>
+                    <p>Service Calls: {table.open_service_call_count}</p>
+                    <p className="font-mono text-xs text-white/45">{table.qr_code_absolute_url}</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button onClick={() => regenerateQr(table.table_id)} className="rounded-2xl border border-cyan-400/20 bg-cyan-400/15 px-3 py-3 text-xs font-bold text-cyan-100" data-testid={`restaurant-admin-generate-qr-${table.table_id}`}>
+                    <QrCode size={14} className="mr-2 inline-block" /> QR neu
+                  </button>
+                  <button onClick={() => printQr(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-print-qr-${table.table_id}`}>
+                    <Printer size={14} className="mr-2 inline-block" /> Drucken
+                  </button>
+                  <button onClick={() => copyLink(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-copy-link-${table.table_id}`}>
+                    <Copy size={14} className="mr-2 inline-block" /> Link
+                  </button>
+                  <button onClick={() => editTable(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-edit-table-${table.table_id}`}>
+                    <Pencil size={14} className="mr-2 inline-block" /> Bearbeiten
+                  </button>
+                </div>
+                <button onClick={() => deleteTable(table.table_id)} className="mt-2 w-full rounded-2xl border border-rose-400/20 bg-rose-500/10 px-3 py-3 text-xs font-bold text-rose-100" data-testid={`restaurant-admin-delete-table-${table.table_id}`}>
+                  <Trash2 size={14} className="mr-2 inline-block" /> Löschen
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

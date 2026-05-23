@@ -1,0 +1,87 @@
+{
+  "summary": "Iteration 129 - Restaurant Table System with Digital Service Buttons Testing Complete. All 22 backend API tests PASSED. Frontend UI verified: Admin Tables page (/admin/tables) with CRUD, QR generation, print/copy functions. Public Guest page (/table/:tableId) with digital service buttons (Service rufen, Rechnung anfordern), menu display, cart functionality. Staff Dashboard (/staff/dashboard) with open orders, active service calls, wait times, action buttons. Kitchen Monitor (/kitchen) with order status groups (new/accepted/preparing/ready) and tap-to-advance workflow.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter129_restaurant_table_system.py",
+    "/app/test_reports/pytest/iter129_restaurant.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend restaurant_table_system.py is well-structured with proper async/await patterns",
+    "All table CRUD endpoints properly validate user authentication",
+    "Service call creation (digital buttons) works without auth - correct for public guest access",
+    "Table status automatically updates based on open orders/service calls/bill requests",
+    "Printer slip generation uses file fallback when no hardware printer is configured (acceptable for preview)",
+    "Frontend pages have proper data-testid attributes for all interactive elements",
+    "Digital service buttons (Kellner rufen, Rechnung anfordern) work correctly from guest page",
+    "Staff dashboard shows live service calls with accept/done actions",
+    "Kitchen monitor shows orders grouped by status with tap-to-advance workflow"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter129_restaurant_table_system.py"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22 tests passed)",
+    "frontend": "100% (all pages and key elements verified)"
+  },
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026!",
+  "seed_data_creation": "Test tables created with TEST_ prefix during backend testing, automatically cleaned up",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 129 Restaurant Table System verified. Key clarification: The Service-Button is DIGITAL (not hardware). Guests scan QR code → open /table/:tableId → click digital buttons (Service rufen, Rechnung anfordern) → ServiceCall created in backend → Staff Dashboard receives live notification. No wireless button, no gateway, no external hardware needed. Backend endpoints: POST/GET/PUT/DELETE /api/tables, POST /api/tables/:id/generate-qr, GET /api/tables/:id/menu (public), POST /api/orders, GET /api/orders, PUT /api/orders/:id/status, POST /api/service-call (public - for digital buttons), GET /api/service-call, PUT /api/service-call/:id/status, POST /api/button-webhook (for optional physical buttons), POST /api/tables/:id/bill-link. Frontend pages: /admin/tables (admin CRUD), /table/:tableId (public guest page with digital buttons), /staff/dashboard (staff view), /kitchen (kitchen monitor).",
+  "verified_features": {
+    "table_crud": {
+      "status": "PASS",
+      "details": "Create, read, update, delete tables working. Button-ID uniqueness enforced."
+    },
+    "qr_generation": {
+      "status": "PASS",
+      "details": "QR code generation, copy link, print QR all working from admin page"
+    },
+    "public_guest_page": {
+      "status": "PASS",
+      "details": "Guest page loads menu, shows table info, digital service buttons work"
+    },
+    "digital_service_buttons": {
+      "status": "PASS",
+      "details": "Service rufen (Kellner rufen), Rechnung anfordern buttons create ServiceCalls in backend"
+    },
+    "order_creation": {
+      "status": "PASS",
+      "details": "Cart functionality works, order submission creates order in backend"
+    },
+    "staff_dashboard": {
+      "status": "PASS",
+      "details": "Shows open orders, service calls, bills, problems with action buttons (Annehmen, Erledigt, Rechnung bringen)"
+    },
+    "kitchen_monitor": {
+      "status": "PASS",
+      "details": "Shows orders grouped by status (new/accepted/preparing/ready), tap-to-advance workflow"
+    },
+    "bill_link_generation": {
+      "status": "PASS",
+      "details": "Bill link endpoint creates InvoicePay link when open orders exist"
+    },
+    "button_webhook": {
+      "status": "PASS",
+      "details": "Webhook endpoint resolves button_id to table and creates service call (for optional physical buttons)"
+    },
+    "printer_slip": {
+      "status": "PASS",
+      "details": "Printer slip generation uses file fallback when no hardware printer configured (acceptable for preview)"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "important_clarification": "The Service-Button is 100% DIGITAL in the Web-App. No external hardware needed. Flow: QR-Code scan → Digital table page → Digital buttons (Kellner rufen, Rechnung anfordern, Nachbestellen, Problem melden) → ServiceCall in Backend → Staff Dashboard live notification → Optional thermal printer slip."
+}

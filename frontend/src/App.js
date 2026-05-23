@@ -119,6 +119,10 @@ const CustomerDisplayPage = lazy(() => import("./pages/CustomerDisplayPage"));
 const PublicTableOrderPage = lazy(() => import("./pages/PublicTableOrderPage"));
 const QrOrderPage = lazy(() => import("./pages/QrOrderPage"));
 const MerchantQrTablesPage = lazy(() => import("./pages/MerchantQrTablesPage"));
+const RestaurantTablesAdminPage = lazy(() => import("./pages/RestaurantTablesAdminPage"));
+const RestaurantTableGuestPage = lazy(() => import("./pages/RestaurantTableGuestPage"));
+const RestaurantStaffDashboardPage = lazy(() => import("./pages/RestaurantStaffDashboardPage"));
+const RestaurantKitchenPage = lazy(() => import("./pages/RestaurantKitchenPage"));
 const SelfCheckoutPage = lazy(() => import("./pages/SelfCheckoutPage"));
 const BlitzTransferPage = lazy(() => import("./pages/BlitzTransferPage"));
 const BlitzBoostPage = lazy(() => import("./pages/BlitzBoostPage"));
@@ -497,8 +501,20 @@ function AppContent() {
       }
       return <QrOrderPage onNavigate={handleNavigate} />;
     }
+    if (currentPath.startsWith("/table/")) {
+      return <RestaurantTableGuestPage tableId={currentPath.split("/")[2]} />;
+    }
     if (currentPath.startsWith("/order/")) {
       return <PublicTableOrderPage qrToken={currentPath.split("/")[2]} />;
+    }
+    if (currentPath === "/admin/tables") {
+      return <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} />;
+    }
+    if (currentPath === "/staff/dashboard") {
+      return <RestaurantStaffDashboardPage onBack={() => handleNavigate("/")} />;
+    }
+    if (currentPath === "/kitchen") {
+      return <RestaurantKitchenPage onBack={() => handleNavigate("/")} />;
     }
     if (currentPath === "/merchant/qr-tables") {
       return <MerchantQrTablesPage onBack={() => handleNavigate("/merchant-dashboard")} user={user} />;
