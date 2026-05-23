@@ -37,3 +37,11 @@
 - CSV-Client-Import mit Upload, Preview, Required-Field-Validation und Success/Fail-Zähler ergänzt
 - Demo Mode Banner mit lokalem Mock-Dataset und Reset-Placeholder ergänzt (**MOCKED** nur im Demo-Mode)
 - Testing: `iteration_128.json` grün (Backend 21/21, Frontend-Schlüsselpfade verifiziert)
+
+## 23.05.2026
+- Komplettes Restaurant-/Café-Tischsystem auf vorhandene POS-/QR-/Printer-Bausteine aufgesetzt
+- Neue API-Flows: `/api/tables`, `/api/orders`, `/api/service-call`, `/api/button-webhook`, `/api/tables/:id/bill-link`
+- Neue Seiten: `/admin/tables`, `/table/:tableId`, `/staff/dashboard`, `/kitchen`
+- QR pro Tisch, digitale Service-Buttons, optionaler physischer Button via Webhook, Live-Staff-Dashboard, Küchenmonitor und Invoice-Pay-Bill-Link umgesetzt
+- Druckerfluss produktionsnah vorbereitet: ESC/POS-Slip-Generierung mit File-Fallback im Preview, später Hardware-Mapping möglich
+- Testing: `iteration_129.json` grün (Backend 22/22, Frontend-Schlüsselpfade verifiziert)

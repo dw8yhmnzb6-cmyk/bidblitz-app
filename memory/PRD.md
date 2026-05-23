@@ -968,3 +968,10 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - 🟢 Backend nur im bestehenden Invoicing-Kontext erweitert (`/api/invoicing/dashboard`, Reminder-History, Generate-Next, Clients/Import/Audit/Task-Complete).
   - 🟢 Frontend `InvoicingPage.jsx` jetzt mit Dashboard-, Rechnungs-, Mandanten-, Import- und Audit-Tabs; mobile Karten-Layouts und `data-testid` flächendeckend ergänzt.
   - 🟢 Verifiziert durch `iteration_128.json`: Backend 21/21 Tests grün, Frontend-Schlüsselpfade grün. Demo-Mode nutzt lokales Mock-Dataset (**MOCKED**) und schreibt nichts in echte Daten.
+- **23.05.2026 (iter129 — Restaurant-/Café-Tischsystem)**:
+  - 🟢 Neues Tischsystem auf vorhandenen POS-Collections aufgebaut: `pos_tables`, `pos_guest_orders`, `pos_service_calls`, `pos_printers`, `invoices`.
+  - 🟢 Öffentliche Gastseite `/table/:tableId` mit Speisekarte, Tisch-Erkennung, Order-Submit, „Service rufen“ und „Rechnung anfordern“ ergänzt.
+  - 🟢 Staff-Dashboard `/staff/dashboard` und Küchenmonitor `/kitchen` mit Live-Polling, Statusaktionen und Wait-Time-Ansicht ergänzt.
+  - 🟢 Admin-Seite `/admin/tables` für Tisch-CRUD, QR-Generierung, QR-Print/Copy und Button-ID-Zuweisung ergänzt.
+  - 🟢 Optionaler physischer Button via `/api/button-webhook` unterstützt; Druckerfluss nutzt ESC/POS-Slip-Generierung mit File-Fallback im Preview (kein MOCK, sondern produktionsnaher Fallback).
+  - 🟢 Verifiziert durch `iteration_129.json`: Backend 22/22 Tests grün, Frontend-Schlüsselpfade grün.
