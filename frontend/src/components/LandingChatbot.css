@@ -2,7 +2,7 @@
 
 .chatbot-toggle-btn {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   right: 24px;
   width: 60px;
   height: 60px;
@@ -42,7 +42,7 @@
 
 .chatbot-window {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   right: 24px;
   width: 380px;
   height: 600px;
@@ -278,12 +278,12 @@
   .chatbot-window {
     width: calc(100vw - 32px);
     height: calc(100vh - 100px);
-    bottom: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     right: 16px;
   }
   
   .chatbot-toggle-btn {
-    bottom: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     right: 16px;
   }
 }

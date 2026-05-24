@@ -66,6 +66,7 @@ export default function CookieBanner({ onNavigate }) {
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
         className="fixed bottom-0 left-0 right-0 z-[60] p-3 sm:p-4"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
         data-testid="cookie-banner"
       >
         <div className="max-w-3xl mx-auto bg-[#0A0A0F]/98 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl">
