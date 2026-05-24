@@ -65,7 +65,7 @@ export default function CookieBanner({ onNavigate }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] p-3 sm:p-4"
+        className="fixed bottom-0 left-0 right-0 z-[10000] p-3 sm:p-4"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
         data-testid="cookie-banner"
       >
