@@ -986,3 +986,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - 🟢 Testbon-Endpoint für echte USB-/Netzwerk-Checks ergänzt: `POST /api/table-hardware/printers/test`.
   - 🟡 Interner Realtest hat bestätigt, dass das gespeicherte Netzwerk-Mapping tatsächlich benutzt wird; im Preview-Umfeld schlug der Connect auf `10.0.0.50:9100` jedoch mit Timeout fehl.
   - 🟡 Fazit: USB/Netzwerk wird jetzt real angewendet; für „grün“ braucht es im Live-Netz ein erreichbares Gerät bzw. einen gültigen USB-Device-Pfad.
+- **24.05.2026 (Samsung-Mobile Scroll-Fix auf `/table/:tableId`)**:
+  - 🟢 Route aus globalen App-Shell-Overlays herausgenommen, damit Samsung/Android-Mobile-Views nicht von BottomNav/BackToHome/CookieBanner blockiert werden.
+  - 🟢 Öffentliche Gastseite nutzt jetzt Safe-Area-Padding + größeres dynamisches Bottom-Padding, damit die fixe Cart-Bar den Inhalt nicht verdeckt.
+  - 🟢 Verifiziert durch gezielten Mobile-Frontend-Test: Scroll oben/unten funktioniert sauber, auch mit Produkt im Warenkorb und sichtbarer Bottom-Bar.

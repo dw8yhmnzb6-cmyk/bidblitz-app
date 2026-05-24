@@ -59,3 +59,8 @@
 - Neuer Testbon-Endpoint: `POST /api/table-hardware/printers/test`
 - Admin-Hardware-UI kann jetzt gespeichertes USB-/Netzwerk-Mapping direkt mit Testbon prüfen
 - Interner Live-Test hat gezeigt: reales Netzwerk-Mapping wurde angewendet; Verbindung zu `10.0.0.50:9100` schlug im Preview-Umfeld mit Timeout fehl
+
+## 24.05.2026 — Samsung Mobile Scroll Fix
+- Öffentliche Gastseite `/table/:tableId` aus globalen App-Shell-Overlays genommen (`BottomNav`, `BackToHomeBar`, `CookieBanner`, `LandingChatbot`, `AIChatWidget`)
+- Mobile Safe-Areas + dynamisches Bottom-Padding für fixe Warenkorb-Leiste ergänzt
+- Verifiziert per Mobile-Frontend-Test: vertikales Scrollen oben/unten funktioniert, auch mit sichtbarer Bottom-Cart-Bar
