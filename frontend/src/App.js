@@ -1122,13 +1122,14 @@ function AppContent() {
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
   const isQrOrder = currentPath.startsWith("/order/qr/");
+  const isRestaurantTableGuest = currentPath.startsWith("/table/");
   const isInvoicePay = currentPath.startsWith("/invoice/pay/");
   const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
   const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
-  const showBottomNav = !isDesktopViewport && !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
+  const showBottomNav = !isDesktopViewport && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
 
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
-  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
+  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -1190,9 +1191,9 @@ function AppContent() {
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && !isCheckout && !isQrOrder && !isInvoicePay && <AIChatWidget />}
+      {user.isAuthenticated && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
-      {!isCheckout && !isQrOrder && !isInvoicePay && (
+      {!isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && (
         <SuperAppOverlay
           currentPath={currentPath}
           onNavigate={handleNavigate}
@@ -1204,10 +1205,10 @@ function AppContent() {
       <InAppUpdateManager />
 
       {/* Landing Chatbot — Floating widget for guest visitors (hidden on staff mobile) */}
-      {!user.isAuthenticated && !isCheckout && !isQrOrder && !isInvoicePay && !isStaffEmployeeShell && <LandingChatbot />}
+      {!user.isAuthenticated && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
-      {!isQrOrder && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}
+      {!isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}
 
       {/* Push Notification Prompt */}
       {/* PushNotificationPrompt (FCM) removed — use PushPermissionPrompt above */}

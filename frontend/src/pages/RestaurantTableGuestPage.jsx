@@ -111,11 +111,15 @@ export default function RestaurantTableGuestPage({ tableId: propTableId }) {
   if (!data) return <div className="flex min-h-screen items-center justify-center bg-[#06070B] text-white">Tisch nicht gefunden.</div>;
 
   return (
-    <div className="min-h-screen bg-[#06070B] pb-32 text-white" data-testid="restaurant-table-guest-page">
-      <div className="sticky top-0 z-30 border-b border-white/10 bg-[#06070B]/90 backdrop-blur-xl px-4 py-4">
+    <div
+      className="min-h-screen bg-[#06070B] text-white overflow-x-hidden"
+      style={{ paddingBottom: Object.keys(cart).length > 0 ? "calc(10rem + env(safe-area-inset-bottom, 0px))" : "calc(2rem + env(safe-area-inset-bottom, 0px))" }}
+      data-testid="restaurant-table-guest-page"
+    >
+      <div className="sticky top-0 z-30 border-b border-white/10 bg-[#06070B]/90 px-4 py-4 backdrop-blur-xl" style={{ paddingTop: "calc(1rem + env(safe-area-inset-top, 0px))" }}>
         <h1 className="text-2xl font-black">{data.store?.name || "Speisekarte"}</h1>
         <p className="mt-1 text-sm text-white/45" data-testid="restaurant-table-guest-table-label">{data.table?.table_name} · Tisch {data.table?.table_number} · {data.table?.area}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button onClick={() => createCall("service")} className="rounded-2xl border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100" data-testid="restaurant-table-service-button">
             <Bell size={16} className="mr-2 inline-block" /> Service rufen
           </button>
@@ -149,7 +153,7 @@ export default function RestaurantTableGuestPage({ tableId: propTableId }) {
         </div>
       )}
 
-      <div className="space-y-5 px-4 py-5">
+      <div className="space-y-5 px-4 py-5" data-testid="restaurant-table-scroll-content">
         {Object.entries(groupedProducts).map(([category, products]) => (
           <section key={category} data-testid={`restaurant-table-category-${category}`}>
             <h2 className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-white/40">{category}</h2>
@@ -176,7 +180,7 @@ export default function RestaurantTableGuestPage({ tableId: propTableId }) {
       </div>
 
       {Object.keys(cart).length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-cyan-400/20 bg-[#06070B]/95 p-4 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 border-t border-cyan-400/20 bg-[#06070B]/95 p-4 backdrop-blur-xl" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}>
           <input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Name optional" className="mb-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none" data-testid="restaurant-table-guest-name-input" />
           <button onClick={placeOrder} disabled={submitting} className="w-full rounded-2xl bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-4 text-sm font-black text-[#05070B]" data-testid="restaurant-table-submit-order-button">
             {submitting ? <Loader2 size={16} className="mx-auto animate-spin" /> : <><ShoppingCart size={16} className="mr-2 inline-block" /> Bestellung senden · €{total.toFixed(2)}</>}
