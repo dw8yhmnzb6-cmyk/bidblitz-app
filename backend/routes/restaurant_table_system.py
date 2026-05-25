@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from core.database import db
 from core.email import FRONTEND_URL
-from core.security import get_current_user
+from core.security import get_current_user, get_current_user_from_token
 from routes.pos_inventory import _record_movement
 from routes.pos_hardware import _send_to_network_printer, _send_to_usb_printer
 
 router = APIRouter(tags=["restaurant-table-system"])
+restaurant_ws_connections: dict[str, set[WebSocket]] = {}
 
 TABLE_STATUS = {"free", "occupied", "order_open", "service_call", "bill_requested"}
 ORDER_STATUS = {"new", "accepted", "preparing", "ready", "served", "paid", "closed"}
@@ -144,14 +147,28 @@ async def print_slip(store_id: str, slip_type: Literal["kitchen", "service", "bi
 
 
 async def create_live_event(store_id: str, event_type: str, message: str, payload: dict) -> None:
-    await db.restaurant_live_events.insert_one({
+    event = {
         "event_id": make_id("evt"),
         "store_id": store_id,
         "event_type": event_type,
         "message": message,
         "payload": payload,
         "created_at": now_iso(),
-    })
+    }
+    await db.restaurant_live_events.insert_one(event)
+    await broadcast_restaurant_event(store_id, event)
+
+
+async def broadcast_restaurant_event(store_id: str, event: dict) -> None:
+    sockets = restaurant_ws_connections.get(store_id, set()).copy()
+    dead: list[WebSocket] = []
+    for socket in sockets:
+        try:
+            await socket.send_json(event)
+        except Exception:
+            dead.append(socket)
+    for socket in dead:
+        restaurant_ws_connections.get(store_id, set()).discard(socket)
 
 
 async def refresh_table_status(table_id: str) -> None:
@@ -344,6 +361,57 @@ class PrinterTestRequest(BaseModel):
     role: Literal["kitchen", "service", "bill"] = "kitchen"
 
 
+class PrinterDiagnosticsRequest(BaseModel):
+    store_id: Optional[str] = None
+    role: Literal["kitchen", "service", "bill"] = "kitchen"
+
+
+async def diagnose_printer(store_id: str, role: str) -> dict:
+    printer = await db.pos_printers.find_one({"store_id": store_id, "role": role}, {"_id": 0})
+    if not printer:
+        return {"role": role, "status": "missing", "message": "Kein Mapping gespeichert"}
+    if printer.get("type") == "network":
+        ip = printer.get("ip")
+        port = int(printer.get("port", 9100) or 9100)
+        if not ip:
+            return {"role": role, "type": "network", "status": "invalid", "message": "IP fehlt"}
+        try:
+            reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=3)
+            writer.close()
+            await writer.wait_closed()
+            return {"role": role, "type": "network", "status": "ok", "message": f"Socket erreichbar {ip}:{port}", "ip": ip, "port": port}
+        except Exception as exc:
+            return {"role": role, "type": "network", "status": "error", "message": str(exc), "ip": ip, "port": port}
+    if printer.get("type") == "usb":
+        device = printer.get("device", "")
+        exists = bool(device) and os.path.exists(device)
+        return {"role": role, "type": "usb", "status": "ok" if exists else "error", "message": f"USB Path {'gefunden' if exists else 'nicht gefunden'}", "device": device}
+    return {"role": role, "type": printer.get("type", "file"), "status": "ok", "message": "File fallback aktiv"}
+
+
+@router.websocket("/api/restaurant/ws/{store_id}")
+async def restaurant_live_ws(websocket: WebSocket, store_id: str, token: Optional[str] = Query(default=None)):
+    await websocket.accept()
+    try:
+        user = await get_current_user_from_token(token or "")
+        await resolve_store(store_id, user)
+    except Exception as exc:
+        await websocket.send_json({"type": "error", "message": str(exc)})
+        await websocket.close(code=4401)
+        return
+    restaurant_ws_connections.setdefault(store_id, set()).add(websocket)
+    await websocket.send_json({"type": "connected", "store_id": store_id, "message": "restaurant_live_connected"})
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            if raw == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        restaurant_ws_connections.get(store_id, set()).discard(websocket)
+    except Exception:
+        restaurant_ws_connections.get(store_id, set()).discard(websocket)
+
+
 @router.post("/api/tables")
 async def create_table_endpoint(req: TableCreateRequest, request: Request):
     _, store = await require_staff(request, req.store_id)
@@ -531,6 +599,27 @@ async def test_printer_mapping(req: PrinterTestRequest, request: Request):
         ],
     )
     return {"ok": True, "result": result}
+
+
+@router.post("/api/table-hardware/diagnostics")
+async def printer_diagnostics(req: PrinterDiagnosticsRequest, request: Request):
+    _, store = await require_staff(request, req.store_id)
+    result = await diagnose_printer(store.get("store_id"), req.role)
+    await db.restaurant_printer_diagnostics.insert_one({
+        "id": make_id("diag"),
+        "store_id": store.get("store_id"),
+        "role": req.role,
+        "result": result,
+        "created_at": now_iso(),
+    })
+    return {"ok": True, "result": result}
+
+
+@router.get("/api/table-hardware/diagnostics")
+async def printer_diagnostics_history(request: Request, store_id: Optional[str] = Query(default=None)):
+    _, store = await require_staff(request, store_id)
+    logs = await db.restaurant_printer_diagnostics.find({"store_id": store.get("store_id")}, {"_id": 0}).sort("created_at", -1).limit(30).to_list(30)
+    return {"logs": logs}
 
 
 @router.post("/api/orders")
