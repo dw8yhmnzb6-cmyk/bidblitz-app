@@ -64,3 +64,10 @@
 - Öffentliche Gastseite `/table/:tableId` aus globalen App-Shell-Overlays genommen (`BottomNav`, `BackToHomeBar`, `CookieBanner`, `LandingChatbot`, `AIChatWidget`)
 - Mobile Safe-Areas + dynamisches Bottom-Padding für fixe Warenkorb-Leiste ergänzt
 - Verifiziert per Mobile-Frontend-Test: vertikales Scrollen oben/unten funktioniert, auch mit sichtbarer Bottom-Cart-Bar
+
+## 25.05.2026 — Restaurant Live WS + Scooter Fix
+- Restaurant Staff Dashboard und Kitchen Monitor von schnellem Polling auf echte Live-WebSockets umgestellt
+- `/api/orders/:id/status` und `/api/service-call/:id/status` triggern jetzt Live-Events für Echtzeit-Refresh
+- Drucker-Diagnose-Screen im Admin ergänzt: Rollen-Karten, Diagnose-Button, Ergebnisbereich, Diagnose-Logs
+- Scooter-Layout gegen Safe-Area-/Bottom-Overlay-Regressions gehärtet; Share-Modal bleibt scrollbar, Unlock-Sheet sitzt sauber über dem Bottom-Bereich
+- Testing: `iteration_131.json` PASS; lokale Preview-Drucker bleiben **MOCKED/FALLBACK**

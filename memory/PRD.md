@@ -5,6 +5,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
+## Current Focus — Restaurant Table System
+- Restaurant-/Café-Tischsystem mit QR-Menü, Service-Button-Flow, Staff-Dashboard, Küchenmonitor und Drucker-Integration ist aktiv im Ausbau.
+- Preview-Einschränkung bleibt: echte lokale USB-/LAN-Drucker sind dort nur per Fallback/Diagnose simulierbar, nicht als echte Hardware-End-to-End-Verbindung.
+
+### 25.05.2026 (Restaurant Live WS + Scooter Regression Fix) ✅
+- 🟢 **Restaurant Live-WebSockets fertig** (`backend/routes/restaurant_table_system.py`, `frontend/src/pages/RestaurantStaffDashboardPage.jsx`, `frontend/src/pages/RestaurantKitchenPage.jsx`): Staff-Dashboard und Küchenmonitor verbinden sich jetzt per `/api/auth/ws-token` + `/api/restaurant/ws/{store_id}` live statt via schnelles Polling. Beide Screens zeigen einen Live-Status-Badge und reagieren auf Order-/Service-Events.
+- 🟢 **Live-Events für Statuswechsel ergänzt** (`backend/routes/restaurant_table_system.py`): `PUT /api/orders/{id}/status` und `PUT /api/service-call/{id}/status` broadcasten jetzt sauber Restaurant-Events für Echtzeit-Refresh in Staff/Kitchen.
+- 🟢 **Drucker-Diagnose-Screen eingehängt** (`frontend/src/pages/RestaurantTablesAdminPage.jsx`): Diagnose-Karten für Kitchen/Service/Bill, manueller Diagnose-Button, Ergebnisbereich und Diagnose-Logs im Admin verfügbar.
+- 🟢 **Scooter UI Regression behoben** (`frontend/src/pages/ScooterPage.jsx`, `frontend/src/App.js`): zusätzliche Safe-Area-/Bottom-Padding-Härtung, scrollbare Share-Sheet-Höhe, Unlock-Sheet oberhalb Bottom-Bereich und keine zusätzliche Back-Bar im Mobility-Shell.
+- ✅ **Testing iter131**: `/app/test_reports/iteration_131.json` → Frontend-Schlüsselpfade PASS, Backend-Live-WS PASS. Lokale Drucker bleiben im Preview **MOCKED/FALLBACK**.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations
