@@ -22,3 +22,9 @@ curl -i -X POST "$REACT_APP_BACKEND_URL/api/staff/auth/terminal-pin" \
   -H "Content-Type: application/json" \
   -d '{"pin":"9999"}'
 ```
+
+## Custom JWT WebSocket Auth
+1. Login via `/api/auth/login` und Cookies speichern.
+2. `GET /api/auth/ws-token` mit denselben Cookies aufrufen.
+3. WebSocket auf `/api/restaurant/ws/{store_id}?token=...` öffnen.
+4. Erwartung: `connected` Event, danach Live-Events bei Order-/Service-Änderungen.

@@ -1124,12 +1124,13 @@ function AppContent() {
   const isQrOrder = currentPath.startsWith("/order/qr/");
   const isRestaurantTableGuest = currentPath.startsWith("/table/");
   const isInvoicePay = currentPath.startsWith("/invoice/pay/");
+  const isMobilityShell = currentPath === "/scooter" || currentPath === "/ev" || currentPath === "/ev/map" || currentPath === "/ev/history" || currentPath.startsWith("/ev/start/") || currentPath.startsWith("/ev/session/");
   const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
   const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
   const showBottomNav = !isDesktopViewport && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
 
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
-  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
+  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isMobilityShell && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
 
   return (
     <div className="app-container" data-testid="app-container">

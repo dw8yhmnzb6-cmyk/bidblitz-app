@@ -727,8 +727,20 @@ async def update_order_status_endpoint(order_id: str, req: OrderStatusRequest, r
         {"order_id": order_id},
         {"$set": update_doc, "$push": {"status_history": {"status": req.status, "at": now_iso()}}},
     )
-    if req.status == "paid":
-        await create_live_event(order.get("store_id"), "order_paid", f"Tisch {order.get('table_number')} bezahlt", {"order_id": order_id, "table_id": order.get("table_id")})
+    event_type = "order_paid" if req.status == "paid" else "order_status"
+    event_message = f"Tisch {order.get('table_number')} bezahlt" if req.status == "paid" else f"Tisch {order.get('table_number')} → {req.status}"
+    await create_live_event(
+        order.get("store_id"),
+        event_type,
+        event_message,
+        {
+            "order_id": order_id,
+            "table_id": order.get("table_id"),
+            "table_number": order.get("table_number"),
+            "old_status": order.get("status"),
+            "status": req.status,
+        },
+    )
     await refresh_table_status(order.get("table_id"))
     return {"ok": True, "status": req.status}
 
@@ -791,6 +803,20 @@ async def update_service_call_status_endpoint(service_call_id: str, req: Service
         if call.get("type") == "bill":
             await print_slip(call.get("store_id"), "bill", f"TISCH {call.get('table_number')}", ["RECHNUNG GEBRACHT"])
     await db.pos_service_calls.update_one({"service_call_id": service_call_id}, {"$set": update_doc})
+    await create_live_event(
+        call.get("store_id"),
+        "service_call_status",
+        f"Service-Call Tisch {call.get('table_number')} → {req.status}",
+        {
+            "service_call_id": service_call_id,
+            "table_id": call.get("table_id"),
+            "table_number": call.get("table_number"),
+            "type": call.get("type"),
+            "old_status": call.get("status"),
+            "status": req.status,
+            "accepted_by": update_doc.get("accepted_by") or call.get("accepted_by"),
+        },
+    )
     await refresh_table_status(call.get("table_id"))
     return {"ok": True, "status": req.status}
 

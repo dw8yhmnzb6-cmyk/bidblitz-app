@@ -14,6 +14,12 @@ const statusStyle = {
   service_call: "bg-rose-500/15 border-rose-400/20 text-rose-100",
   bill_requested: "bg-violet-500/15 border-violet-400/20 text-violet-100",
 };
+const diagStatusStyle = {
+  ok: "bg-emerald-500/15 border-emerald-400/20 text-emerald-100",
+  error: "bg-rose-500/15 border-rose-400/20 text-rose-100",
+  missing: "bg-amber-500/15 border-amber-400/20 text-amber-100",
+  invalid: "bg-orange-500/15 border-orange-400/20 text-orange-100",
+};
 
 async function api(path, { method = "GET", body } = {}) {
   const response = await fetch(`${API}${path}`, {
@@ -43,14 +49,18 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   const [hardware, setHardware] = useState({ printers: [], button_webhook_url: "", nfc_base_url: "" });
   const [printerForm, setPrinterForm] = useState({ role: "kitchen", name: "", type: "network", ip: "", port: 9100, device: "" });
   const [dragging, setDragging] = useState(null);
+  const [diagnosticLogs, setDiagnosticLogs] = useState([]);
+  const [diagnosticResult, setDiagnosticResult] = useState(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [tablesRes, hardwareRes] = await Promise.all([api("/api/tables"), api("/api/table-hardware")]);
+      const [tablesRes, hardwareRes, diagnosticsRes] = await Promise.all([api("/api/tables"), api("/api/table-hardware"), api("/api/table-hardware/diagnostics")]);
       setTables(tablesRes.tables || []);
       setStoreId(tablesRes.store?.store_id || hardwareRes.store_id || "");
       setHardware(hardwareRes || { printers: [], button_webhook_url: "", nfc_base_url: "" });
+      setDiagnosticLogs(diagnosticsRes.logs || []);
     } catch (error) {
       if (error.status !== 401) toast.error(error.message);
     }
@@ -67,6 +77,12 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     orders: tables.filter((table) => table.status === "order_open").length,
     bills: tables.filter((table) => table.status === "bill_requested").length,
   }), [tables]);
+
+  const latestDiagnostics = useMemo(() => diagnosticLogs.reduce((acc, log) => {
+    if (!log?.role || acc[log.role]) return acc;
+    acc[log.role] = log;
+    return acc;
+  }, {}), [diagnosticLogs]);
 
   const saveTable = async () => {
     if (!form.table_number.trim() || !form.table_name.trim()) {
@@ -197,6 +213,20 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     }
   };
 
+  const runDiagnostics = async (role = printerForm.role) => {
+    setDiagnosticLoading(true);
+    try {
+      const result = await api("/api/table-hardware/diagnostics", { method: "POST", body: { role, store_id: storeId || undefined } });
+      setDiagnosticResult(result.result || null);
+      const history = await api("/api/table-hardware/diagnostics");
+      setDiagnosticLogs(history.logs || []);
+      toast.success(`Diagnose ${role} abgeschlossen`);
+    } catch (error) {
+      toast.error(error.message || "Diagnose fehlgeschlagen");
+    }
+    setDiagnosticLoading(false);
+  };
+
   const loadPrinterRole = (role) => {
     const match = hardware.printers.find((printer) => printer.role === role);
     setPrinterForm({
@@ -287,6 +317,19 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                 <p className="mt-2 font-mono text-xs break-all">Button Webhook: {hardware.button_webhook_url || `${window.location.origin}/api/button-webhook`}</p>
                 <p className="mt-2 font-mono text-xs break-all">NFC Base URL: {hardware.nfc_base_url || `${window.location.origin}/table/`}</p>
               </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {["kitchen", "service", "bill"].map((role) => {
+                  const result = latestDiagnostics[role]?.result;
+                  const status = result?.status || "missing";
+                  return (
+                    <button key={role} onClick={() => runDiagnostics(role)} className={`rounded-[24px] border p-4 text-left ${diagStatusStyle[status] || diagStatusStyle.missing}`} data-testid={`restaurant-admin-diagnostics-card-${role}`}>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] opacity-80">{role}</p>
+                      <p className="mt-2 text-sm font-semibold">{result?.message || "Noch kein Diagnose-Lauf"}</p>
+                      <p className="mt-1 text-xs opacity-70">{result?.ip || result?.device || result?.type || "Ping / Socket / USB Check"}</p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
               <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">Printer Config</p>
@@ -305,9 +348,37 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                 <input value={printerForm.ip} onChange={(event) => setPrinterForm((prev) => ({ ...prev, ip: event.target.value }))} placeholder="IP Adresse" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-ip-input" />
                 <input value={printerForm.port} onChange={(event) => setPrinterForm((prev) => ({ ...prev, port: event.target.value }))} placeholder="Port" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-port-input" />
                 <input value={printerForm.device} onChange={(event) => setPrinterForm((prev) => ({ ...prev, device: event.target.value }))} placeholder="USB Device optional" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   <button onClick={savePrinter} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B]" data-testid="restaurant-admin-printer-save-button">Hardware speichern</button>
                   <button onClick={testPrinter} className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/75" data-testid="restaurant-admin-printer-test-button">Testbon</button>
+                  <button onClick={() => runDiagnostics(printerForm.role)} disabled={diagnosticLoading} className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50" data-testid="restaurant-admin-printer-diagnostics-button">Diagnose</button>
+                </div>
+                <div className="rounded-[24px] border border-white/10 bg-[#0A0A0F] p-4" data-testid="restaurant-admin-printer-diagnostics-result">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Aktuelle Diagnose</p>
+                      <p className="mt-1 text-xs text-white/45">Rolle {printerForm.role}</p>
+                    </div>
+                    <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${diagStatusStyle[diagnosticResult?.status] || diagStatusStyle.missing}`}>{diagnosticResult?.status || "idle"}</span>
+                  </div>
+                  <p className="mt-3 text-sm text-white/80">{diagnosticResult?.message || "Noch keine Diagnose ausgeführt."}</p>
+                  {(diagnosticResult?.ip || diagnosticResult?.device || diagnosticResult?.port) && <p className="mt-2 font-mono text-xs text-white/45">{diagnosticResult?.ip || diagnosticResult?.device}{diagnosticResult?.port ? `:${diagnosticResult.port}` : ""}</p>}
+                </div>
+                <div className="rounded-[24px] border border-white/10 bg-[#0A0A0F] p-4" data-testid="restaurant-admin-printer-diagnostics-logs">
+                  <p className="text-sm font-semibold text-white">Diagnose-Logs</p>
+                  <div className="mt-3 space-y-2">
+                    {diagnosticLogs.slice(0, 6).map((log) => (
+                      <div key={log.id} className="rounded-2xl border border-white/10 bg-black/20 p-3" data-testid={`restaurant-admin-printer-log-${log.id}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/40">{log.role}</p>
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${diagStatusStyle[log.result?.status] || diagStatusStyle.missing}`}>{log.result?.status || "missing"}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-white/75">{log.result?.message || "Keine Meldung"}</p>
+                        <p className="mt-1 text-[11px] text-white/35">{new Date(log.created_at).toLocaleString("de-DE")}</p>
+                      </div>
+                    ))}
+                    {diagnosticLogs.length === 0 && <p className="text-sm text-white/45">Noch keine Diagnose-Logs vorhanden.</p>}
+                  </div>
                 </div>
               </div>
             </div>

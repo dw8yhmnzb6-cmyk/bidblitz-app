@@ -3,6 +3,13 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, ReceiptText, RefreshCw } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const LIVE_EVENTS = new Set(["order_created", "order_status", "order_paid", "service_call", "service_call_status"]);
+
+const buildWsUrl = (storeId, token) => {
+  const base = API.endsWith("/") ? API.slice(0, -1) : API;
+  const wsBase = base.startsWith("https://") ? base.replace("https://", "wss://") : base.replace("http://", "ws://");
+  return `${wsBase}/api/restaurant/ws/${encodeURIComponent(storeId)}?token=${encodeURIComponent(token)}`;
+};
 
 async function api(path, { method = "GET", body } = {}) {
   const response = await fetch(`${API}${path}`, {
@@ -28,6 +35,7 @@ const waitLabel = (value) => {
 
 export default function RestaurantStaffDashboardPage({ onBack }) {
   const previousCalls = useRef(0);
+  const reconnectRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState("");
   const [tables, setTables] = useState([]);
@@ -35,6 +43,7 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
   const [serviceCalls, setServiceCalls] = useState([]);
   const [lowStock, setLowStock] = useState([]);
   const [hardwareHealth, setHardwareHealth] = useState({ printers: [] });
+  const [liveState, setLiveState] = useState("offline");
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -70,9 +79,55 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
 
   useEffect(() => {
     load();
-    const timer = setInterval(() => load({ silent: true }), 5000);
+    const timer = setInterval(() => load({ silent: true }), 45000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!storeId) return undefined;
+    let closedByPage = false;
+    let socket;
+
+    const connect = async () => {
+      try {
+        setLiveState("connecting");
+        const tokenRes = await api("/api/auth/ws-token");
+        socket = new window.WebSocket(buildWsUrl(storeId, tokenRes.token));
+        socket.onopen = () => setLiveState("online");
+        socket.onmessage = async (event) => {
+          const message = JSON.parse(event.data || "{}");
+          if (message.type === "connected" || message.type === "pong") {
+            setLiveState("online");
+            return;
+          }
+          if (message.type === "error") {
+            setLiveState("error");
+            return;
+          }
+          if (!LIVE_EVENTS.has(message.event_type)) return;
+          if (message.event_type === "service_call") toast.success("Neuer Service-Ruf live eingegangen");
+          if (message.event_type === "order_created") toast.success("Neue Tischbestellung live eingegangen");
+          await load({ silent: true });
+        };
+        socket.onerror = () => setLiveState("error");
+        socket.onclose = () => {
+          if (closedByPage) return;
+          setLiveState("reconnecting");
+          reconnectRef.current = window.setTimeout(connect, 2500);
+        };
+      } catch {
+        setLiveState("error");
+        reconnectRef.current = window.setTimeout(connect, 4000);
+      }
+    };
+
+    connect();
+    return () => {
+      closedByPage = true;
+      if (reconnectRef.current) window.clearTimeout(reconnectRef.current);
+      if (socket) socket.close();
+    };
+  }, [storeId]);
 
   const summary = useMemo(() => ({
     openOrders: orders.filter((order) => ["new", "accepted", "preparing", "ready", "served"].includes(order.status)).length,
@@ -127,6 +182,10 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
           <div className="flex-1">
             <h1 className="text-xl font-black">Staff Dashboard</h1>
             <p className="text-sm text-white/45">Offene Bestellungen, Service-Rufe, Rechnung anfordern</p>
+            <div className="mt-2 flex items-center gap-2" data-testid="restaurant-staff-live-status">
+              <span className={`h-2.5 w-2.5 rounded-full ${liveState === "online" ? "bg-emerald-400" : liveState === "connecting" || liveState === "reconnecting" ? "bg-amber-400" : "bg-rose-400"}`} />
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/40">Live {liveState === "online" ? "verbunden" : liveState === "connecting" ? "verbindet" : liveState === "reconnecting" ? "reconnect" : "offline"}</span>
+            </div>
           </div>
           <button onClick={() => load()} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/75" data-testid="restaurant-staff-dashboard-refresh-button"><RefreshCw size={14} className="mr-2 inline-block" />Refresh</button>
         </div>

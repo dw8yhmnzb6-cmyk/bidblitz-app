@@ -426,19 +426,23 @@ export default function ScooterPage({ onNavigate }) {
     } catch {}
   };
 
+  const pageBottomPadding = selectedScooter
+    ? 'calc(12rem + env(safe-area-inset-bottom, 0px))'
+    : 'calc(7rem + env(safe-area-inset-bottom, 0px))';
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-24">
+    <div className="min-h-screen overflow-x-hidden bg-[#050505] text-white" style={{ paddingBottom: pageBottomPadding }} data-testid="scooter-page">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto px-4 py-4" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))' }}>
           <div className="flex items-center justify-between">
-            <button onClick={() => navigate('/')} className="p-2 -ml-2 text-gray-400 hover:text-white">
+            <button onClick={() => navigate('/')} className="p-2 -ml-2 text-gray-400 hover:text-white" data-testid="scooter-back-button">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <h1 className="text-xl font-bold">BidBlitz Scooter</h1>
-            <div className="text-sm text-green-400 font-medium">€{userBalance.toFixed(2)}</div>
+            <div className="text-sm text-green-400 font-medium" data-testid="scooter-wallet-balance">€{userBalance.toFixed(2)}</div>
           </div>
           
           {/* Tabs */}
@@ -462,7 +466,7 @@ export default function ScooterPage({ onNavigate }) {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
+      <div className="max-w-lg mx-auto px-4 py-6" data-testid="scooter-scroll-content">
         {/* MODULE DISABLED NOTICE */}
         {!moduleEnabled && (
           <motion.div
@@ -665,7 +669,9 @@ export default function ScooterPage({ onNavigate }) {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="fixed bottom-24 left-4 right-4 max-w-lg mx-auto"
+                  className="fixed left-4 right-4 max-w-lg mx-auto"
+                  style={{ bottom: 'calc(5.75rem + env(safe-area-inset-bottom, 0px))' }}
+                  data-testid="scooter-unlock-sheet"
                 >
                   <div className="p-4 bg-[#111]/95 backdrop-blur-xl rounded-2xl border border-green-500/30 shadow-2xl">
                     <div className="flex items-center justify-between mb-4">
@@ -673,7 +679,7 @@ export default function ScooterPage({ onNavigate }) {
                         <p className="font-bold">{selectedScooter.scooter_id}</p>
                         <p className="text-sm text-gray-400">{selectedScooter.model} • {selectedScooter.battery_percent}%</p>
                       </div>
-                      <button onClick={() => setSelectedScooter(null)} className="text-gray-500">✕</button>
+                      <button onClick={() => setSelectedScooter(null)} className="text-gray-500" data-testid="scooter-unlock-sheet-close">✕</button>
                     </div>
                     
                     {userBalance < pricing.unlock_fee ? (
@@ -691,6 +697,7 @@ export default function ScooterPage({ onNavigate }) {
                         onClick={() => unlockScooter(selectedScooter)}
                         disabled={loading}
                         className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl font-bold text-black text-lg disabled:opacity-50"
+                        data-testid="scooter-unlock-button"
                       >
                         {loading ? 'Entsperren...' : `Entsperren (€${pricing.unlock_fee?.toFixed(2)})`}
                       </button>
@@ -825,13 +832,14 @@ export default function ScooterPage({ onNavigate }) {
                 initial={{ y: 300 }}
                 animate={{ y: 0 }}
                 exit={{ y: 300 }}
-                className="w-full max-w-md bg-[#111] rounded-t-3xl p-6 space-y-5"
+                className="w-full max-w-md max-h-[82vh] overflow-y-auto bg-[#111] rounded-t-3xl p-6 space-y-5"
+                style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
                 onClick={e => e.stopPropagation()}
                 data-testid="scooter-share-modal"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-white">Scooter teilen</h3>
-                  <button onClick={() => setShowShare(false)} className="text-gray-500 hover:text-white">
+                  <button onClick={() => setShowShare(false)} className="text-gray-500 hover:text-white" data-testid="scooter-share-close">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>
                 </div>
