@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 26.05.2026
+- Rangliste `/leaderboard` repariert: fehlende Router-Registrierung für `routes.extras` ergänzt
+- `/api/extras/leaderboard` liefert wieder echte Daten für Guthaben, Gamer und Bewertungen
+- Ranglisten-UI mit Hero-Karte, Podium und stabilen Loading-/Error-/Empty-States aufgewertet
+- Frontend-Test bestanden: keine große Leerfläche mehr, Tabs funktionieren sauber
+
 ## 17.05.2026
 - Barcode/QR-Scan-System im bestehenden `/scan`-Tab eingebaut
 - Neue API `POST /api/scan/resolve` für Tisch-, Rechnungs-, Checkout- und Wallet-Codes

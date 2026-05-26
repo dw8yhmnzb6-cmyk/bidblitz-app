@@ -9,6 +9,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Restaurant-/Café-Tischsystem mit QR-Menü, Service-Button-Flow, Staff-Dashboard, Küchenmonitor und Drucker-Integration ist aktiv im Ausbau.
 - Preview-Einschränkung bleibt: echte lokale USB-/LAN-Drucker sind dort nur per Fallback/Diagnose simulierbar, nicht als echte Hardware-End-to-End-Verbindung.
 
+### 26.05.2026 (Leaderboard / Rangliste Fix) ✅
+- 🟢 **Rangliste repariert** (`backend/core/router_registry.py`): `routes.extras` wird jetzt wieder registriert, dadurch antwortet `/api/extras/leaderboard` nicht mehr mit 404.
+- 🟢 **Leaderboard-UI professionalisiert** (`frontend/src/pages/ExtraFeatures.jsx`): Hero-Karte, Podium, Lade-/Fehler-/Leerzustände und zusätzliche `data-testid`-Attribute ergänzt. Die Seite wirkt nicht mehr leer/unfertig.
+- ✅ **Testing**: API-Checks für `balance`, `gaming`, `rating` jeweils 200 OK; Frontend-Smoke-Test für `/leaderboard` PASS.
+
 ### 25.05.2026 (Restaurant Live WS + Scooter Regression Fix) ✅
 - 🟢 **Restaurant Live-WebSockets fertig** (`backend/routes/restaurant_table_system.py`, `frontend/src/pages/RestaurantStaffDashboardPage.jsx`, `frontend/src/pages/RestaurantKitchenPage.jsx`): Staff-Dashboard und Küchenmonitor verbinden sich jetzt per `/api/auth/ws-token` + `/api/restaurant/ws/{store_id}` live statt via schnelles Polling. Beide Screens zeigen einen Live-Status-Badge und reagieren auf Order-/Service-Events.
 - 🟢 **Live-Events für Statuswechsel ergänzt** (`backend/routes/restaurant_table_system.py`): `PUT /api/orders/{id}/status` und `PUT /api/service-call/{id}/status` broadcasten jetzt sauber Restaurant-Events für Echtzeit-Refresh in Staff/Kitchen.
