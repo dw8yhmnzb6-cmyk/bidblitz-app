@@ -1,7 +1,7 @@
 {
   "test_run": {
     "timestamp": "2026-05-11T08:24:50.112244",
-    "base_url": "https://bidblitz-staff.preview.emergentagent.com",
+    "base_url": "https://floorplan-wizard-8.preview.emergentagent.com",
     "test_user": "admin@bidblitz.ae",
     "total_tests": 10,
     "passed": 9,

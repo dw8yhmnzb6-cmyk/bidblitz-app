@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 # Configuration
-BASE_URL = "https://bidblitz-staff.preview.emergentagent.com"
+BASE_URL = "https://floorplan-wizard-8.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials - verified driver account

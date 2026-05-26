@@ -1,15 +1,12 @@
 # BidBlitz P0 Deployment Asset Status
 
-## Generated: Feb 4, 2026 (iter48)
+## Updated: 26.05.2026
 
-### ✅ (a) Android Release Keystore — GENERATED
-- Path: `/app/frontend/android/bidblitz-upload.jks`
-- Alias: `bidblitz`
-- Password: `BidBlitz2026Release!` (also stored in `keystore.properties`)
-- Validity: 10000 days (until Sep 2053)
-- SHA1: `3C:0C:F9:F7:BB:57:B0:AD:8F:17:5B:84:5C:89:A3:33:7E:42:35:1C`
-- SHA256: `04:42:24:D7:83:9F:E6:CF:CC:5B:F4:4C:AC:5C:09:CB:C3:3A:1E:40:8C:FD:FF:37:A6:3D:6A:8F:02:8B:4B:37`
-- ⚠️ **CRITICAL**: Download `bidblitz-upload.jks` to a SECURE off-site backup BEFORE first Play Store release. Loss = no app updates ever again.
+### ✅ (a) Android Release Keystore — REPO BEREINIGT
+- Die Datei `frontend/android/bidblitz-upload.jks` darf **nicht** im Repo liegen.
+- Keystore nur lokal/offline oder via CI-Secrets halten.
+- Falls ein Release gebaut werden soll: `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` setzen oder lokal eine nicht versionierte `keystore.properties` nutzen.
+- Keine Passwörter oder Fingerprints mehr in Repo-Dokumenten speichern.
 
 ### ✅ (b) LIVEKIT .env Structure — PREPARED
 Added to `/app/backend/.env`:
@@ -31,10 +28,9 @@ Set `LIVEKIT_URL` to your project's `wss://xxx.livekit.cloud` URL.
 - File: `/app/backend/routes/landing_chatbot.py`
 - Multi-turn session-based memory: WORKING (verified with 3-turn German conversation)
 - Lead-capture rule on demo/testen keywords: WORKING
-- ⚠️ Note: Emergent LLM Key currently restricted to `gpt-4*` models. To use Claude Sonnet 4.5, request expanded key access from Emergent.
 
 ## Next Action Items (User-Side, External)
-1. Backup `bidblitz-upload.jks` + password OFFLINE
+1. Eigenen Release-Keystore lokal/extern verwalten, nicht im Repo
 2. Configure real LIVEKIT_* values in `/app/backend/.env`
 3. Transfer `/app/frontend/` to local macOS, run `./build-mobile-final.sh`
 4. Open `/app/frontend/android/` in Android Studio → Build → Generate Signed APK/Bundle

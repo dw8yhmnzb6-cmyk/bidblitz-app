@@ -1,0 +1,136 @@
+<analysis>**original_problem_statement**: Baue ein komplettes Restaurant-/Café-Tischsystem. PRODUCT REQUIREMENTS: Fix Scooter-UI Regression (P0), implementiere Live-WebSockets für Staff/Kitchen, baue den Floorplan aus (Farben, Formen, Snapping), füge Live-Sound-Cues hinzu und entwickle einen Printer-Setup-Wizard (Auto-Suche, manuelle IP, Pflicht-Testdruck, Speichern pro Rolle).
+
+**User's preferred language**: GERMAN (Du MUSST automatisch die primäre Sprache des Benutzers erkennen und AUSSCHLIESSLICH auf Deutsch antworten. **CRITICAL:** Der User hat einen STRIKTEN BIDBLITZ LOW-COST DEVELOPMENT MODE aktiviert: Keine langen Erklärungen, keine unnötigen Zusammenfassungen. Nur minimal invasiver Code, nur angeforderte Dateien bearbeiten.)
+
+**what currently exists?** 
+Ein React + FastAPI + MongoDB Full-Stack-Projekt mit Capacitor (Android/iOS). Das System umfasst Module für Taxi, EV Charging, POS, Staff und ein neues Restaurant-Tischsystem. In dieser Session wurde ein UI-Bug (Scooter-Layout) gefixt. Das Restaurant-Modul wurde um Live-WebSockets, einen visuell erweiterten Floorplan, Sound-Benachrichtigungen und einen voll funktionsfähigen Drucker-Setup-Wizard ergänzt.
+
+**Last working item**: 
+    - Last item agent was working: Entwicklung des Drucker-Setup-Wizards im Restaurant-Admin-Bereich. Der Wizard beinhaltet automatische LAN/USB-Suche, manuelle IP-Eingabe, einen zwingend erforderlichen Testdruck und das Speichern für verschiedene Rollen (Kitchen, Service, Bill).
+    - Status: USER VERIFICATION PENDING (Agent hat es fertiggestellt und erfolgreich getestet, wartet auf finale Bestätigung/Nächsten Schritt vom User).
+    - Agent Testing Done: Y
+    - Which testing method agent to use? NA (Testing agent passed in )
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:  
+  - Issue 1: iOS  in Info.plist (P0 Blocker aus vorherigem Audit)
+     - Attempted fixes: Bisher nicht gestartet, User fokussierte sich auf Restaurant-Features.
+     - Next debug checklist:  bearbeiten und auf  setzen.
+     - Why fix this issue and what will be achieved with the fix? Verhindert 100%ige Ablehnung im Apple App Store.
+     - Status: NOT STARTED 
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: NA
+  - Issue 2: Unsicherer Keystore im Git-Repo (P0 Blocker aus vorherigem Audit)
+     - Next debug checklist:  löschen, User instruieren.
+     - Why fix this issue and what will be achieved with the fix? Behebt massives Sicherheitsrisiko (Production-Key im Repo).
+     - Status: NOT STARTED 
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? NA
+     - Blocked on other issue: NA
+
+**In progress Task List**: 
+Keine. Alle aktuellen Tasks wurden abgeschlossen.
+
+**Upcoming and Future Tasks**
+  - P0: Behebung der App-Store & Security Blocker (iOS Plist, Keystore, Auth-Ratelimit - siehe Issues).
+  - P1: Echter Onboarding-Assistent für Kunden zur schrittweisen Einrichtung der Drucker (Kitchen → Service → Bill). *(Vom Agenten vorgeschlagen)*
+  - P1: Native NFC-Bridge für Capacitor nachreichen (wartet auf User-Gerätedaten/Lizenz).
+  - P2: Floorplan um Mehrraum-Zonen, Rotation und freie Polygon-Räume erweitern.
+  - P2: Zonen-Editor-UI im Admin (Taxi Modul).
+
+**Completed work in this session**
+- Scooter-UI Layout Bug (Regression durch globale Safe-Area/CSS Änderungen) behoben (DONE)
+- Live WebSockets für Restaurant Staff Dashboard & Kitchen implementiert (DONE)
+- Restaurant Floorplan Upgrade (Formen, Größen, Farben, Snapping) eingebaut (DONE)
+- Live-Sound und Badge-Cues für eintreffende Restaurant-Events (DONE)
+- Printer-Setup-Wizard inkl. Auto-Discovery, manuellem Fallback und Testdruck-Pflicht (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+   - Issue 1: Dead Router Imports
+   - Debug checklist:  prüfen,  und  entfernen.
+   - Why to solve this issue: Vermeidet 500er Fehler beim FastAPI Startup durch nicht existierende Module.
+   - Status: NOT STARTED
+   - Is recurring issue? N
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: Echte lokale LAN-Drucker können aus dem Cloud-Preview-Environment nicht gefunden/gepingt werden.
+  - Recurrence count: 2
+  - Status: RESOLVED (Wird im Backend via Fallback/Mock gehandhabt. User ist informiert, dass echte lokale IPs nur im nativen Build erreichbar sind).
+
+**Code Architecture**
+- Frontend: React 19 + Vite + Tailwind + Capacitor 7.
+- Backend: FastAPI + Uvicorn + WebSockets.
+- Database: MongoDB.
+
+**Key Technical Concepts**
+- FastAPI WebSockets mit Token-Authentifizierung für Live-Dashboards.
+- Hardware-Discovery und ESC/POS Drucker-Kommunikation.
+- **Low-Cost Development Mode**: Keine Erklärungen, direkte Implementierung, minimale Änderungen.
+
+**key DB schema**
+  - : {id, table_number, table_name, area, shape, size_key, color, seats, qr_code_url}
+  - : {id, store_id, name, role, type, address, is_active}
+
+**changes in tech stack**
+  - Keine neuen Libraries, aber starke Nutzung von WebSockets (usage: websockets [--version | <uri>] in FastAPI).
+
+**All files of reference** 
+  -  (WS-Logik, Floorplan-Updates, Printer-Wizard Endpunkte)
+  -  (Floorplan UI & Printer Wizard UI)
+  -  (WS & Sound)
+  -  (WS & Sound)
+  -  (Layout-Bugfixes)
+  -  (Layout-Bugfixes)
+
+**Areas that need refactoring**: 
+Keine. (Strict User Rule: Unaufgeforderte Refactorings sind verboten).
+
+**key api endpoints**
+-  (Live Updates)
+-  (LAN Scanner)
+-  (Mandatory Test Print)
+
+**Critical Info for New Agent** 
+- **BIDBLITZ LOW-COST DEVELOPMENT MODE AKTIV**: Der User will absolute Kürze. Keine Floskeln, keine Romane. Code schreiben, testen, Finish.
+- Der Drucker-Setup-Wizard ist fertig. Der vorherige Agent hat dem User als nächsten Schritt einen Onboarding-Assistenten (Kitchen -> Service -> Bill) vorgeschlagen. Warte auf die Reaktion des Users.
+- Vergiss nicht, dass im Hintergrund noch die kritischen P0-Blocker (Keystore, iOS Plist) offen sind. Diese wurden vom User zugunsten der Restaurant-Features vorerst ignoriert. Behalte sie im Hinterkopf, falls der User nach Launch Readiness fragt.
+
+**documents and test reports created in this job** 
+  -  (Updated)
+  -  (Updated)
+  -  (Updated)
+  -  (Pass)
+  -  (Pass)
+  -  (Pass)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - User: Druckerdaten senden: Modell + IP:Port + USB-Gerätepfad/Bezeichnung -> (Agent erklärte das Setup)
+ - User: Wie ist es, wenn wir jeden Kunden den Drucker suchen, zum Beispiel und unbedingt verbinden lassen oder mit ip -> (Agent schlug Wizard vor)
+ - User: Ja genau -> (Bestätigung des Flows)
+ - User: Ja -> (Agent baut den Drucker Setup Wizard inkl. Discovery und Testdruck)
+ - Agent: *Finish* -> (Pending Human Message: Antwort auf Vorschlag für schrittweisen Onboarding-Assistenten)
+
+**Project Health Check:**
+- Broken: Keine aktuellen UI-Bugs bekannt (Scooter gefixt).
+- Mocked: Native LAN-Drucker Discovery & NFC Native Bridge (im Cloud-Environment als Mock hinterlegt).
+
+**3rd Party Integrations** 
+  - Mapbox (Maps & Geocoding) — User API Key
+  - Stripe (Payments) — Emergentintegrations
+  - Resend (Mails) — User API Key
+  - OneSignal (Push) — User API Key
+
+**Testing status**
+  - Testing agent used after significant changes: YES (intensiv für WebSockets, Floorplan und Printer-Wizard genutzt)
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None
+  - Known regressions: None (Vorherige Scooter-Regression wurde behoben).
+
+**Credentials to test flow:**
+- Admin:  / 
+- Manager:  / 
+- Staff:  /  / PIN: 
+
+**What agent forgot to execute**
+Nichts. Der Agent hat alle Anforderungen (Scooter-Fix, WebSockets, Floorplan, Wizard) vollständig umgesetzt und wartet auf das Go für den nächsten Task.</analysis>

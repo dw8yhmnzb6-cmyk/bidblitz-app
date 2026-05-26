@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://bidblitz-staff.preview.emergentagent.com"
+BASE_URL = "https://floorplan-wizard-8.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 MANAGER_EMAIL = "haendler@bidblitz.com"

@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://bidblitz-staff.preview.emergentagent.com',
+    url: 'https://floorplan-wizard-8.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

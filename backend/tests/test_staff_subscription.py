@@ -3,7 +3,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://bidblitz-staff.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://floorplan-wizard-8.preview.emergentagent.com").rstrip("/")
 
 MERCHANT = {"email": "haendler@bidblitz.com", "password": "Haendler2026!"}
 ADMIN = {"email": "admin@bidblitz.com", "password": "BidBlitz2026!"}
