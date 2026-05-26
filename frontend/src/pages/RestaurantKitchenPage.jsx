@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ChefHat, Clock, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChefHat, Clock, Loader2, RefreshCw, Volume2, VolumeX } from "lucide-react";
+import { loadRestaurantSoundEnabled, playRestaurantLiveCue, saveRestaurantSoundEnabled } from "../utils/restaurantLiveCue";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const STATUS_NEXT = { new: "accepted", accepted: "preparing", preparing: "ready", ready: "served" };
@@ -25,10 +26,14 @@ async function api(path, { method = "GET", body } = {}) {
 }
 
 export default function RestaurantKitchenPage({ onBack }) {
+  const soundEnabledRef = useRef(loadRestaurantSoundEnabled());
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState("");
   const [orders, setOrders] = useState([]);
   const [liveState, setLiveState] = useState("offline");
+  const [soundEnabled, setSoundEnabled] = useState(() => loadRestaurantSoundEnabled());
+  const [lastLiveEvent, setLastLiveEvent] = useState("");
+  const [pulseStatus, setPulseStatus] = useState("");
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -53,6 +58,16 @@ export default function RestaurantKitchenPage({ onBack }) {
     let closedByPage = false;
     let reconnectTimer;
     let socket;
+    let pulseTimer;
+
+    const triggerLiveFeedback = (message) => {
+      setLastLiveEvent(message.message || message.event_type);
+      const nextStatus = message.payload?.status || (message.event_type === "order_created" ? "new" : "");
+      setPulseStatus(nextStatus);
+      if (pulseTimer) window.clearTimeout(pulseTimer);
+      pulseTimer = window.setTimeout(() => setPulseStatus(""), 1600);
+      if (soundEnabledRef.current) playRestaurantLiveCue(message.event_type);
+    };
 
     const connect = async () => {
       try {
@@ -71,6 +86,7 @@ export default function RestaurantKitchenPage({ onBack }) {
             return;
           }
           if (!LIVE_EVENTS.has(message.event_type)) return;
+          triggerLiveFeedback(message);
           if (message.event_type === "order_created") toast.success("Neue Küchenbestellung live eingegangen");
           await load({ silent: true });
         };
@@ -90,6 +106,7 @@ export default function RestaurantKitchenPage({ onBack }) {
     return () => {
       closedByPage = true;
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (pulseTimer) window.clearTimeout(pulseTimer);
       if (socket) socket.close();
     };
   }, [storeId]);
@@ -113,6 +130,14 @@ export default function RestaurantKitchenPage({ onBack }) {
     }
   };
 
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    soundEnabledRef.current = next;
+    saveRestaurantSoundEnabled(next);
+    toast.success(next ? "Küchen-Sound aktiviert" : "Küchen-Sound deaktiviert");
+  };
+
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-[#06070B]"><Loader2 size={24} className="animate-spin text-white/45" /></div>;
 
   return (
@@ -123,9 +148,14 @@ export default function RestaurantKitchenPage({ onBack }) {
           <div className="flex-1">
             <h1 className="text-xl font-black">Kitchen Monitor</h1>
             <p className="text-sm text-white/45">Neu · Angenommen · In Arbeit · Fertig</p>
-            <div className="mt-2 flex items-center gap-2" data-testid="restaurant-kitchen-live-status">
+            <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="restaurant-kitchen-live-status">
               <span className={`h-2.5 w-2.5 rounded-full ${liveState === "online" ? "bg-emerald-400" : liveState === "connecting" || liveState === "reconnecting" ? "bg-amber-400" : "bg-rose-400"}`} />
               <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/40">Live {liveState === "online" ? "verbunden" : liveState === "connecting" ? "verbindet" : liveState === "reconnecting" ? "reconnect" : "offline"}</span>
+              <button onClick={toggleSound} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold text-white/75" data-testid="restaurant-kitchen-sound-toggle">
+                {soundEnabled ? <Volume2 size={12} className="mr-1 inline-block" /> : <VolumeX size={12} className="mr-1 inline-block" />}
+                Sound {soundEnabled ? "an" : "aus"}
+              </button>
+              {lastLiveEvent && <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-100" data-testid="restaurant-kitchen-last-event">{lastLiveEvent}</span>}
             </div>
           </div>
           <button onClick={() => load()} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/75" data-testid="restaurant-kitchen-refresh-button"><RefreshCw size={14} className="mr-2 inline-block" />Refresh</button>
@@ -134,7 +164,7 @@ export default function RestaurantKitchenPage({ onBack }) {
 
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {Object.entries(grouped).map(([status, items]) => (
-          <section key={status} data-testid={`restaurant-kitchen-group-${status}`}>
+          <section key={status} className={`rounded-[28px] border p-3 transition-all ${pulseStatus === status ? "border-cyan-400/40 bg-cyan-400/5" : "border-transparent"}`} data-testid={`restaurant-kitchen-group-${status}`}>
             <div className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-white/40"><ChefHat size={14} /> {status}</div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {items.map((order) => (

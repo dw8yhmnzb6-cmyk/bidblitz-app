@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, ReceiptText, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, ReceiptText, RefreshCw, Volume2, VolumeX } from "lucide-react";
+import { loadRestaurantSoundEnabled, playRestaurantLiveCue, saveRestaurantSoundEnabled } from "../utils/restaurantLiveCue";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const LIVE_EVENTS = new Set(["order_created", "order_status", "order_paid", "service_call", "service_call_status"]);
@@ -36,6 +37,8 @@ const waitLabel = (value) => {
 export default function RestaurantStaffDashboardPage({ onBack }) {
   const previousCalls = useRef(0);
   const reconnectRef = useRef(null);
+  const pulseTimeoutRef = useRef(null);
+  const soundEnabledRef = useRef(loadRestaurantSoundEnabled());
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState("");
   const [tables, setTables] = useState([]);
@@ -44,6 +47,9 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
   const [lowStock, setLowStock] = useState([]);
   const [hardwareHealth, setHardwareHealth] = useState({ printers: [] });
   const [liveState, setLiveState] = useState("offline");
+  const [soundEnabled, setSoundEnabled] = useState(() => loadRestaurantSoundEnabled());
+  const [lastLiveEvent, setLastLiveEvent] = useState("");
+  const [pulseZone, setPulseZone] = useState("");
 
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -88,6 +94,15 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
     let closedByPage = false;
     let socket;
 
+    const triggerLiveFeedback = (message) => {
+      setLastLiveEvent(message.message || message.event_type);
+      const nextPulseZone = message.event_type?.startsWith("service") ? "service" : "orders";
+      setPulseZone(nextPulseZone);
+      if (pulseTimeoutRef.current) window.clearTimeout(pulseTimeoutRef.current);
+      pulseTimeoutRef.current = window.setTimeout(() => setPulseZone(""), 1600);
+      if (soundEnabledRef.current) playRestaurantLiveCue(message.event_type);
+    };
+
     const connect = async () => {
       try {
         setLiveState("connecting");
@@ -105,6 +120,7 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
             return;
           }
           if (!LIVE_EVENTS.has(message.event_type)) return;
+          triggerLiveFeedback(message);
           if (message.event_type === "service_call") toast.success("Neuer Service-Ruf live eingegangen");
           if (message.event_type === "order_created") toast.success("Neue Tischbestellung live eingegangen");
           await load({ silent: true });
@@ -125,6 +141,7 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
     return () => {
       closedByPage = true;
       if (reconnectRef.current) window.clearTimeout(reconnectRef.current);
+      if (pulseTimeoutRef.current) window.clearTimeout(pulseTimeoutRef.current);
       if (socket) socket.close();
     };
   }, [storeId]);
@@ -156,6 +173,14 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
     }
   };
 
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    soundEnabledRef.current = next;
+    saveRestaurantSoundEnabled(next);
+    toast.success(next ? "Live-Sound aktiviert" : "Live-Sound deaktiviert");
+  };
+
   const bringBill = async (tableId, serviceCallId) => {
     try {
       const result = await api(`/api/tables/${tableId}/bill-link`, { method: "POST" });
@@ -182,9 +207,14 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
           <div className="flex-1">
             <h1 className="text-xl font-black">Staff Dashboard</h1>
             <p className="text-sm text-white/45">Offene Bestellungen, Service-Rufe, Rechnung anfordern</p>
-            <div className="mt-2 flex items-center gap-2" data-testid="restaurant-staff-live-status">
+            <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="restaurant-staff-live-status">
               <span className={`h-2.5 w-2.5 rounded-full ${liveState === "online" ? "bg-emerald-400" : liveState === "connecting" || liveState === "reconnecting" ? "bg-amber-400" : "bg-rose-400"}`} />
               <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/40">Live {liveState === "online" ? "verbunden" : liveState === "connecting" ? "verbindet" : liveState === "reconnecting" ? "reconnect" : "offline"}</span>
+              <button onClick={toggleSound} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold text-white/75" data-testid="restaurant-staff-sound-toggle">
+                {soundEnabled ? <Volume2 size={12} className="mr-1 inline-block" /> : <VolumeX size={12} className="mr-1 inline-block" />}
+                Sound {soundEnabled ? "an" : "aus"}
+              </button>
+              {lastLiveEvent && <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-100" data-testid="restaurant-staff-last-event">{lastLiveEvent}</span>}
             </div>
           </div>
           <button onClick={() => load()} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/75" data-testid="restaurant-staff-dashboard-refresh-button"><RefreshCw size={14} className="mr-2 inline-block" />Refresh</button>
@@ -202,7 +232,7 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-staff-orders-section">
+          <section className={`rounded-[28px] border bg-white/[0.03] p-4 transition-all sm:p-5 ${pulseZone === "orders" ? "border-cyan-400/40 shadow-[0_0_0_1px_rgba(34,211,238,0.25)]" : "border-white/10"}`} data-testid="restaurant-staff-orders-section">
             <h2 className="text-lg font-black">Offene Bestellungen</h2>
             <div className="mt-4 space-y-3">
               {orders.filter((order) => ["new", "accepted", "preparing", "ready", "served"].includes(order.status)).map((order) => (
@@ -228,7 +258,7 @@ export default function RestaurantStaffDashboardPage({ onBack }) {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-staff-service-section">
+          <section className={`rounded-[28px] border bg-white/[0.03] p-4 transition-all sm:p-5 ${pulseZone === "service" ? "border-amber-400/40 shadow-[0_0_0_1px_rgba(251,191,36,0.2)]" : "border-white/10"}`} data-testid="restaurant-staff-service-section">
             <h2 className="text-lg font-black">Aktive Service-Rufe</h2>
             <div className="mt-4 space-y-3">
               {serviceCalls.filter((call) => call.status !== "done").map((call) => (

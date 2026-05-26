@@ -197,6 +197,12 @@ async def serialize_table(table: dict, origin: str = "") -> dict:
         "table_name": table.get("table_name") or table.get("name") or f"Tisch {table.get('table_number') or table_id[-4:]}",
         "area": table.get("area") or table.get("section") or "Gastraum",
         "button_id": table.get("button_id", ""),
+        "shape": table.get("shape") or "square",
+        "size_key": table.get("size_key") or "md",
+        "color": table.get("color") or "#22c55e",
+        "seats": int(table.get("seats", 4) or 4),
+        "width": int(table.get("width", 92) or 92),
+        "height": int(table.get("height", 72) or 72),
         "x": int(table.get("x", 24) or 24),
         "y": int(table.get("y", 24) or 24),
         "qr_code_url": qr_path,
@@ -298,6 +304,12 @@ class TableCreateRequest(BaseModel):
     table_name: str = Field(..., min_length=1, max_length=80)
     area: str = Field("Gastraum", min_length=1, max_length=60)
     button_id: str = Field("", max_length=80)
+    shape: Literal["square", "round", "bar"] = "square"
+    size_key: Literal["sm", "md", "lg", "xl"] = "md"
+    color: str = Field("#22c55e", min_length=4, max_length=20)
+    seats: int = Field(4, ge=1, le=20)
+    width: int = Field(92, ge=56, le=220)
+    height: int = Field(72, ge=56, le=180)
     x: int = 24
     y: int = 24
 
@@ -308,6 +320,12 @@ class TableUpdateRequest(BaseModel):
     area: Optional[str] = None
     button_id: Optional[str] = None
     status: Optional[str] = None
+    shape: Optional[Literal["square", "round", "bar"]] = None
+    size_key: Optional[Literal["sm", "md", "lg", "xl"]] = None
+    color: Optional[str] = None
+    seats: Optional[int] = Field(None, ge=1, le=20)
+    width: Optional[int] = Field(None, ge=56, le=220)
+    height: Optional[int] = Field(None, ge=56, le=180)
     x: Optional[int] = None
     y: Optional[int] = None
 
@@ -427,6 +445,12 @@ async def create_table_endpoint(req: TableCreateRequest, request: Request):
         "area": req.area.strip(),
         "section": req.area.strip(),
         "button_id": req.button_id.strip(),
+        "shape": req.shape,
+        "size_key": req.size_key,
+        "color": req.color.strip() or "#22c55e",
+        "seats": int(req.seats),
+        "width": int(req.width),
+        "height": int(req.height),
         "x": int(req.x),
         "y": int(req.y),
         "scan_code": table_scan_code(),
@@ -479,6 +503,18 @@ async def update_table_endpoint(table_id: str, req: TableUpdateRequest, request:
         if existing:
             raise HTTPException(status_code=409, detail="Button-ID bereits vergeben")
         update_doc["button_id"] = req.button_id.strip()
+    if req.shape is not None:
+        update_doc["shape"] = req.shape
+    if req.size_key is not None:
+        update_doc["size_key"] = req.size_key
+    if req.color is not None:
+        update_doc["color"] = req.color.strip() or "#22c55e"
+    if req.seats is not None:
+        update_doc["seats"] = int(req.seats)
+    if req.width is not None:
+        update_doc["width"] = int(req.width)
+    if req.height is not None:
+        update_doc["height"] = int(req.height)
     if req.x is not None:
         update_doc["x"] = int(req.x)
     if req.y is not None:

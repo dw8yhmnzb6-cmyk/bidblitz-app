@@ -6,7 +6,15 @@ import { QRCodeSVG } from "qrcode.react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-const emptyForm = { table_number: "", table_name: "", area: "Gastraum", button_id: "" };
+const FLOORPLAN_BOUNDS = { width: 1200, height: 560 };
+const TABLE_COLORS = ["#22c55e", "#06b6d4", "#f97316", "#a855f7", "#eab308", "#ef4444"];
+const SIZE_PRESETS = {
+  sm: { label: "2 Plätze", width: 72, height: 72, seats: 2 },
+  md: { label: "4 Plätze", width: 92, height: 72, seats: 4 },
+  lg: { label: "6 Plätze", width: 116, height: 92, seats: 6 },
+  xl: { label: "8 Plätze", width: 144, height: 96, seats: 8 },
+};
+const emptyForm = { table_number: "", table_name: "", area: "Gastraum", button_id: "", shape: "square", size_key: "md", color: "#22c55e" };
 const statusStyle = {
   free: "bg-emerald-500/15 border-emerald-400/20 text-emerald-200",
   occupied: "bg-amber-500/15 border-amber-400/20 text-amber-100",
@@ -20,6 +28,19 @@ const diagStatusStyle = {
   missing: "bg-amber-500/15 border-amber-400/20 text-amber-100",
   invalid: "bg-orange-500/15 border-orange-400/20 text-orange-100",
 };
+
+const hexToRgba = (hex, alpha) => {
+  const normalized = (hex || "#22c55e").replace("#", "");
+  const value = normalized.length === 3 ? normalized.split("").map((item) => item + item).join("") : normalized;
+  const int = Number.parseInt(value, 16);
+  if (Number.isNaN(int)) return `rgba(34,197,94,${alpha})`;
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const snapValue = (value, step = 24) => Math.round(value / step) * step;
 
 async function api(path, { method = "GET", body } = {}) {
   const response = await fetch(`${API}${path}`, {
@@ -49,6 +70,9 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   const [hardware, setHardware] = useState({ printers: [], button_webhook_url: "", nfc_base_url: "" });
   const [printerForm, setPrinterForm] = useState({ role: "kitchen", name: "", type: "network", ip: "", port: 9100, device: "" });
   const [dragging, setDragging] = useState(null);
+  const [selectedArea, setSelectedArea] = useState("all");
+  const [zoom, setZoom] = useState(1);
+  const [snapToGrid, setSnapToGrid] = useState(true);
   const [diagnosticLogs, setDiagnosticLogs] = useState([]);
   const [diagnosticResult, setDiagnosticResult] = useState(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
@@ -78,11 +102,20 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     bills: tables.filter((table) => table.status === "bill_requested").length,
   }), [tables]);
 
+  const areas = useMemo(() => Array.from(new Set(tables.map((table) => table.area || "Gastraum"))), [tables]);
+  const visibleTables = useMemo(() => selectedArea === "all" ? tables : tables.filter((table) => table.area === selectedArea), [selectedArea, tables]);
+
   const latestDiagnostics = useMemo(() => diagnosticLogs.reduce((acc, log) => {
     if (!log?.role || acc[log.role]) return acc;
     acc[log.role] = log;
     return acc;
   }, {}), [diagnosticLogs]);
+
+  useEffect(() => {
+    if (selectedArea !== "all" && areas.length && !areas.includes(selectedArea)) {
+      setSelectedArea(areas[0]);
+    }
+  }, [areas, selectedArea]);
 
   const saveTable = async () => {
     if (!form.table_number.trim() || !form.table_name.trim()) {
@@ -90,12 +123,14 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       return;
     }
     setSaving(true);
+    const preset = SIZE_PRESETS[form.size_key] || SIZE_PRESETS.md;
+    const payload = { ...form, seats: preset.seats, width: preset.width, height: preset.height };
     try {
       if (editingId) {
-        await api(`/api/tables/${editingId}`, { method: "PUT", body: form });
+        await api(`/api/tables/${editingId}`, { method: "PUT", body: payload });
         toast.success("Tisch aktualisiert");
       } else {
-        await api("/api/tables", { method: "POST", body: form });
+        await api("/api/tables", { method: "POST", body: payload });
         toast.success("Tisch angelegt");
       }
       setForm(emptyForm);
@@ -114,6 +149,9 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       table_name: table.table_name || "",
       area: table.area || "Gastraum",
       button_id: table.button_id || "",
+      shape: table.shape || "square",
+      size_key: table.size_key || "md",
+      color: table.color || "#22c55e",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -123,9 +161,20 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     const move = (event) => {
       const rect = floorplanRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const nextX = Math.max(0, Math.min(rect.width - 92, event.clientX - rect.left - dragging.offsetX));
-      const nextY = Math.max(0, Math.min(rect.height - 72, event.clientY - rect.top - dragging.offsetY));
-      setTables((prev) => prev.map((table) => (table.table_id === dragging.tableId ? { ...table, x: Math.round(nextX), y: Math.round(nextY) } : table)));
+      setTables((prev) => prev.map((table) => {
+        if (table.table_id !== dragging.tableId) return table;
+        const tableWidth = Number(table.width || 92);
+        const tableHeight = Number(table.height || 72);
+        const rawX = (event.clientX - rect.left) / zoom - dragging.offsetX;
+        const rawY = (event.clientY - rect.top) / zoom - dragging.offsetY;
+        const limitedX = Math.max(0, Math.min(FLOORPLAN_BOUNDS.width - tableWidth, rawX));
+        const limitedY = Math.max(0, Math.min(FLOORPLAN_BOUNDS.height - tableHeight, rawY));
+        return {
+          ...table,
+          x: Math.round(snapToGrid ? snapValue(limitedX) : limitedX),
+          y: Math.round(snapToGrid ? snapValue(limitedY) : limitedY),
+        };
+      }));
     };
     const up = async () => {
       const target = tables.find((table) => table.table_id === dragging.tableId);
@@ -143,7 +192,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
-  }, [dragging, tables]);
+  }, [dragging, snapToGrid, tables, zoom]);
 
   const deleteTable = async (tableId) => {
     if (!window.confirm("Tisch wirklich löschen?")) return;
@@ -288,6 +337,21 @@ export default function RestaurantTablesAdminPage({ onBack }) {
             <input value={form.area} onChange={(event) => setForm((prev) => ({ ...prev, area: event.target.value }))} placeholder="Bereich / Raum" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-area-input" />
             <input value={form.button_id} onChange={(event) => setForm((prev) => ({ ...prev, button_id: event.target.value }))} placeholder="Button-ID" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-button-id-input" />
           </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_120px_minmax(0,1fr)]">
+            <select value={form.shape} onChange={(event) => setForm((prev) => ({ ...prev, shape: event.target.value }))} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-shape-select">
+              <option value="square">Rechteck</option>
+              <option value="round">Rund</option>
+              <option value="bar">Bar / Lang</option>
+            </select>
+            <select value={form.size_key} onChange={(event) => setForm((prev) => ({ ...prev, size_key: event.target.value }))} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-size-select">
+              {Object.entries(SIZE_PRESETS).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}
+            </select>
+            <input type="color" value={form.color} onChange={(event) => setForm((prev) => ({ ...prev, color: event.target.value }))} className="h-[52px] w-full rounded-2xl border border-white/10 bg-black/20 px-2" data-testid="restaurant-admin-table-color-input" />
+            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/65" data-testid="restaurant-admin-table-preview-chip">
+              <span>Vorschau</span>
+              <span className="rounded-full border px-3 py-1 text-xs font-bold" style={{ borderColor: form.color, backgroundColor: hexToRgba(form.color, 0.18), color: form.color }}>{SIZE_PRESETS[form.size_key]?.label || "4 Plätze"}</span>
+            </div>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button onClick={saveTable} disabled={saving} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B] disabled:opacity-50" data-testid="restaurant-admin-save-table-button">
               {saving ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={14} className="mr-2 inline-block" />{editingId ? "Tisch speichern" : "Tisch anlegen"}</>}
@@ -386,25 +450,54 @@ export default function RestaurantTablesAdminPage({ onBack }) {
         </section>
 
         <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-admin-floorplan-section">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-black">Floorplan / Raumplan</h2>
-              <p className="mt-1 text-sm text-white/45">Tische per Drag & Drop verschieben. Position wird direkt gespeichert.</p>
+              <p className="mt-1 text-sm text-white/45">Bereiche, Größen, Formen, Zoom und Snapping direkt im Raumplan.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-bold text-white/70" data-testid="restaurant-admin-floorplan-zoom-control">
+                Zoom {zoom.toFixed(2)}×
+                <input type="range" min="0.8" max="1.6" step="0.1" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} className="ml-3 align-middle" />
+              </label>
+              <button onClick={() => setSnapToGrid((prev) => !prev)} className={`rounded-full border px-4 py-2 text-xs font-bold ${snapToGrid ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-100" : "border-white/10 bg-white/5 text-white/70"}`} data-testid="restaurant-admin-floorplan-snap-toggle">
+                Snap {snapToGrid ? "an" : "aus"}
+              </button>
             </div>
           </div>
-          <div ref={floorplanRef} className="relative mt-4 h-[420px] overflow-hidden rounded-[28px] border border-dashed border-white/10 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.07)_1px,transparent_0)] [background-size:24px_24px]" data-testid="restaurant-admin-floorplan-canvas">
-            {tables.map((table) => (
-              <button
-                key={table.table_id}
-                onPointerDown={(event) => setDragging({ tableId: table.table_id, offsetX: event.nativeEvent.offsetX, offsetY: event.nativeEvent.offsetY })}
-                style={{ left: table.x || 24, top: table.y || 24 }}
-                className={`absolute w-[92px] rounded-[22px] border px-3 py-3 text-left text-xs font-bold shadow-xl ${statusStyle[table.status] || statusStyle.free}`}
-                data-testid={`restaurant-admin-floorplan-table-${table.table_id}`}
-              >
-                <div>{table.table_name}</div>
-                <div className="mt-1 text-[11px] opacity-80">#{table.table_number}</div>
-              </button>
-            ))}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={() => setSelectedArea("all")} className={`rounded-full border px-4 py-2 text-xs font-bold ${selectedArea === "all" ? "border-white/30 bg-white/10 text-white" : "border-white/10 bg-black/20 text-white/70"}`} data-testid="restaurant-admin-floorplan-area-all">Alle Räume</button>
+            {areas.map((area, index) => {
+              const color = TABLE_COLORS[index % TABLE_COLORS.length];
+              return (
+                <button key={area} onClick={() => setSelectedArea(area)} className={`rounded-full border px-4 py-2 text-xs font-bold ${selectedArea === area ? "text-white" : "text-white/70"}`} style={{ borderColor: color, backgroundColor: selectedArea === area ? hexToRgba(color, 0.22) : hexToRgba(color, 0.1) }} data-testid={`restaurant-admin-floorplan-area-${area.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}`}>
+                  {area}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 overflow-auto rounded-[28px] border border-dashed border-white/10 bg-[#07090F]" data-testid="restaurant-admin-floorplan-scroll-shell">
+            <div ref={floorplanRef} className="relative" style={{ width: FLOORPLAN_BOUNDS.width * zoom, height: FLOORPLAN_BOUNDS.height * zoom, backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)", backgroundSize: `${24 * zoom}px ${24 * zoom}px` }} data-testid="restaurant-admin-floorplan-canvas">
+              {visibleTables.map((table) => {
+                const borderColor = table.color || TABLE_COLORS[0];
+                const shapeClass = table.shape === "round" ? "rounded-full" : table.shape === "bar" ? "rounded-[18px]" : "rounded-[22px]";
+                return (
+                  <button
+                    key={table.table_id}
+                    onPointerDown={(event) => {
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      setDragging({ tableId: table.table_id, offsetX: (event.clientX - rect.left) / zoom, offsetY: (event.clientY - rect.top) / zoom });
+                    }}
+                    style={{ left: (table.x || 24) * zoom, top: (table.y || 24) * zoom, width: (table.width || 92) * zoom, height: (table.height || 72) * zoom, borderColor, backgroundColor: hexToRgba(borderColor, 0.18), color: borderColor }}
+                    className={`absolute border px-3 py-3 text-left text-xs font-bold shadow-xl ${shapeClass}`}
+                    data-testid={`restaurant-admin-floorplan-table-${table.table_id}`}
+                  >
+                    <div className="text-white">{table.table_name}</div>
+                    <div className="mt-1 text-[11px] text-white/75">#{table.table_number} · {table.seats || SIZE_PRESETS[table.size_key]?.seats || 4}P</div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
 
@@ -430,6 +523,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                     <p>NFC Entry: {table.qr_code_absolute_url}</p>
                     <p>Open Orders: {table.open_order_count}</p>
                     <p>Service Calls: {table.open_service_call_count}</p>
+                    <p>Form: {table.shape} · {SIZE_PRESETS[table.size_key]?.label || "Custom"}</p>
                     <p className="font-mono text-xs text-white/45">{table.qr_code_absolute_url}</p>
                   </div>
                 </div>
