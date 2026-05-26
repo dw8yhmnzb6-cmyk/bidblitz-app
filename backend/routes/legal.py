@@ -55,7 +55,7 @@ DATENSCHUTZ_CONTENT = [
 ]
 
 IMPRESSUM_CONTENT = [
-    {"heading": "Angaben zum Betreiber", "text": "BidBlitz LLC\nDubai, United Arab Emirates\nFree Zone Registration pending"},
+    {"heading": "Angaben zum Betreiber", "text": "BidBlitz LLC\nBetreiber: Afrim Krasniqi\nDubai, United Arab Emirates\nFree Zone Registration pending"},
     {"heading": "Vertreten durch", "text": "Geschaeftsfuehrer: Details folgen nach Handelsregister-Eintragung"},
     {"heading": "Kontakt", "text": "E-Mail: support@bidblitz.ae\nSupport: support@bidblitz.ae\nDatenschutz: datenschutz@bidblitz.ae\nSicherheit: security@bidblitz.ae\nWebsite: https://bidblitz.ae"},
     {"heading": "Umsatzsteuer-ID", "text": "Umsatzsteuer-Identifikationsnummer: Details folgen nach Eintragung"},
@@ -91,6 +91,24 @@ def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+def _normalize_impressum_content(content: list[dict]) -> tuple[list[dict], bool]:
+    changed = False
+    normalized = []
+    for section in content or []:
+        item = dict(section)
+        if item.get("heading") == "Angaben zum Betreiber":
+            lines = [line.strip() for line in (item.get("text") or "").split("\n") if line.strip()]
+            if "Betreiber: Afrim Krasniqi" not in lines:
+                if lines and lines[0] == "BidBlitz LLC":
+                    lines = [lines[0], "Betreiber: Afrim Krasniqi", *lines[1:]]
+                else:
+                    lines.insert(0, "Betreiber: Afrim Krasniqi")
+                item["text"] = "\n".join(lines)
+                changed = True
+        normalized.append(item)
+    return normalized, changed
+
+
 async def _seed_if_missing(slug: str):
     exists = await db.legal_pages.find_one({"slug": slug}, {"_id": 0, "slug": 1})
     if exists:
@@ -109,6 +127,15 @@ async def _seed_if_missing(slug: str):
 async def _fetch(slug: str) -> dict:
     await _seed_if_missing(slug)
     doc = await db.legal_pages.find_one({"slug": slug}, {"_id": 0})
+    if doc and slug == "impressum":
+        normalized_content, changed = _normalize_impressum_content(doc.get("content", []))
+        if changed:
+            doc["content"] = normalized_content
+            doc["last_updated"] = _now_iso()
+            await db.legal_pages.update_one(
+                {"slug": slug},
+                {"$set": {"content": normalized_content, "last_updated": doc["last_updated"]}},
+            )
     return doc or {"slug": slug, "title": slug, "content": [], "last_updated": None}
 
 
