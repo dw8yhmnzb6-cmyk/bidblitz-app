@@ -16,6 +16,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Scooter UI Regression behoben** (`frontend/src/pages/ScooterPage.jsx`, `frontend/src/App.js`): zusätzliche Safe-Area-/Bottom-Padding-Härtung, scrollbare Share-Sheet-Höhe, Unlock-Sheet oberhalb Bottom-Bereich und keine zusätzliche Back-Bar im Mobility-Shell.
 - ✅ **Testing iter131**: `/app/test_reports/iteration_131.json` → Frontend-Schlüsselpfade PASS, Backend-Live-WS PASS. Lokale Drucker bleiben im Preview **MOCKED/FALLBACK**.
 
+### 26.05.2026 (Restaurant Floorplan Upgrade + Live Sound Cues) ✅
+- 🟢 **Floorplan/Raumplan ausgebaut** (`backend/routes/restaurant_table_system.py`, `frontend/src/pages/RestaurantTablesAdminPage.jsx`): Tische speichern jetzt zusätzlich `shape`, `size_key`, `color`, `seats`, `width`, `height`. Im Admin sind Bereichsfilter, Zoom, Snap-Toggle, Formen, Größen und Farbvorschau direkt nutzbar.
+- 🟢 **Live-Sound-/Badge-Cues ergänzt** (`frontend/src/pages/RestaurantStaffDashboardPage.jsx`, `frontend/src/pages/RestaurantKitchenPage.jsx`, `frontend/src/utils/restaurantLiveCue.js`): Sound-Toggle mit LocalStorage-Persistenz, Last-Event-Badge und Pulse-Highlights für neue Restaurant-Live-Events.
+- 🟡 **Bewusst offen**: Native NFC-Bridge wartet auf User-Lizenz; echte USB-/Netzwerk-Drucker-Bridge + echte Hardware-Tests warten auf User-Gerätedaten.
+- ✅ **Testing iter132**: `/app/test_reports/iteration_132.json` → Backend 10/10 PASS, Frontend 100% PASS. Preview hat weiter bekannte Session-/Cookie-Eigenheiten bei Navigation.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations

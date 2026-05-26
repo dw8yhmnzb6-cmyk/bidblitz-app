@@ -4,6 +4,7 @@
 - Keine offenen P0-Blocker im aktuellen Restaurant-/Scooter-Umfang nach `iteration_131`
 
 ## P1
+- Native NFC-Bridge nachreichen, sobald User-Lizenz vorliegt
 - Reale USB-/Netzwerk-Drucker über Native-/Device-Bridge außerhalb Preview mit Hardware-Mapping verifizieren
 - Floorplan-/Raumplan-Editor für Tische mit Mehrraum/Zoom/Snapping ausbauen
 - Restaurant-Live-Events optional um Sound/Badge-Cues pro Event-Typ erweitern
@@ -19,3 +20,4 @@
 - Mandanten-Detail später um echte Dokument-/OCR-Metriken statt nur leichtgewichtiger Health-Faktoren erweitern
 - Warenwirtschaft, Kassenabschluss und Mitarbeiter-Zeiterfassung an das neue Tischsystem andocken
 - Printer-Diagnose später um echte Live-Socket-Logs/Retry-Historie pro Gerät vertiefen
+- Floorplan später um Mehrraum-Zonen, Rotation und freien Rechteck-/Polygon-Raumaufbau vertiefen

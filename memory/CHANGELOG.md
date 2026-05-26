@@ -71,3 +71,10 @@
 - Drucker-Diagnose-Screen im Admin ergänzt: Rollen-Karten, Diagnose-Button, Ergebnisbereich, Diagnose-Logs
 - Scooter-Layout gegen Safe-Area-/Bottom-Overlay-Regressions gehärtet; Share-Modal bleibt scrollbar, Unlock-Sheet sitzt sauber über dem Bottom-Bereich
 - Testing: `iteration_131.json` PASS; lokale Preview-Drucker bleiben **MOCKED/FALLBACK**
+
+## 26.05.2026 — Restaurant Floorplan + Sound Cues
+- Floorplan/Raumplan erweitert: Bereichsfilter, Zoom-Slider, Snap-Toggle, Formen, Größen und Farben im Tisch-Admin
+- Backend speichert neue Tischfelder `shape`, `size_key`, `color`, `seats`, `width`, `height`
+- Staff Dashboard und Kitchen Monitor haben jetzt Sound-Toggles, Last-Event-Badges und Pulse-Highlights für Live-Events
+- Testing: `iteration_132.json` PASS (Backend 10/10, Frontend 100%)
+- **OFFEN/WAITING:** Native NFC-Bridge wartet auf Lizenz; echte USB-/Netzwerk-Drucker-Tests warten auf User-Gerätedaten
