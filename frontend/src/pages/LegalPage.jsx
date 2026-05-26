@@ -20,6 +20,7 @@ const LegalPage = ({ slug = "agb", onBack, onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const meta = SLUG_META[slug] || SLUG_META.agb;
   const Icon = meta.icon;
+  const isImpressum = slug === "impressum";
 
   useEffect(() => {
     setLoading(true);
@@ -33,7 +34,7 @@ const LegalPage = ({ slug = "agb", onBack, onNavigate }) => {
   return (
     <motion.div
       data-testid={`legal-page-${slug}`}
-      className="min-h-screen pb-24"
+      className="min-h-[100dvh] pb-16"
       style={{ background: "#050505", color: "white" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -110,6 +111,49 @@ const LegalPage = ({ slug = "agb", onBack, onNavigate }) => {
           <p className="text-center text-[10px] text-white/40 mt-4">
             Stand: {doc.last_updated}
           </p>
+        )}
+        {!loading && isImpressum && (
+          <motion.div
+            data-testid="legal-impressum-footer-card"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="rounded-2xl p-4 mt-4"
+            style={{
+              background: "linear-gradient(180deg, rgba(168,85,247,0.10) 0%, rgba(255,255,255,0.03) 100%)",
+              border: "1px solid rgba(168,85,247,0.22)",
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div data-testid="legal-impressum-footer-operator">
+                <p className="text-[10px] text-white/45 uppercase tracking-[0.18em] font-bold mb-1">Betreiber</p>
+                <p className="text-[13px] font-bold text-white">Afrim Krasniqi</p>
+                <p className="text-[11px] text-white/65 mt-1">BidBlitz LLC · Dubai · UAE</p>
+              </div>
+              <div data-testid="legal-impressum-footer-response" className="text-right">
+                <p className="text-[10px] text-white/45 uppercase tracking-[0.18em] font-bold mb-1">Antwortzeit</p>
+                <p className="text-[13px] font-bold" style={{ color: meta.color }}>innerhalb 24h</p>
+                <p className="text-[11px] text-white/60 mt-1">Support & Rechtliches</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+              {[
+                { id: "support", label: "Support", value: "support@bidblitz.ae" },
+                { id: "privacy", label: "Datenschutz", value: "datenschutz@bidblitz.ae" },
+                { id: "security", label: "Sicherheit", value: "security@bidblitz.ae" },
+              ].map((item) => (
+                <div
+                  key={item.id}
+                  data-testid={`legal-impressum-footer-${item.id}`}
+                  className="rounded-xl px-3 py-2.5"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <p className="text-[10px] text-white/45 uppercase tracking-[0.14em] font-bold">{item.label}</p>
+                  <p className="text-[11px] text-white/82 mt-1 break-all">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         )}
       </div>
     </motion.div>

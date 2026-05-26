@@ -227,6 +227,7 @@ const CATS = [
   { id: "phones", label: "Phones", color: accentPurple },
   { id: "gaming", label: "Gaming", color: "#FF6B6B" },
   { id: "audio", label: "Audio", color: accentGreen },
+  { id: "marine", label: "Boote", color: "#34D399" },
   { id: "wearables", label: "Wearables", color: accentGold },
   { id: "laptops", label: "Laptops", color: accentCyan },
   { id: "tablets", label: "Tablets", color: "#FF8C42" },

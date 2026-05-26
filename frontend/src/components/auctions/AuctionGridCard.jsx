@@ -24,6 +24,7 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
   const fallbackImage = getAuctionFallbackImage(auction);
   const [imageSrc, setImageSrc] = useState(auction.image_url || fallbackImage);
   const [hideImage, setHideImage] = useState(false);
+  const logisticsLabel = auction.category === "marine" ? "ABHOLUNG / MARINA" : "FREE SHIPPING";
   useEffect(() => {
     setHideImage(false);
     setImageSrc(auction.image_url || fallbackImage);
@@ -166,13 +167,13 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
 
         {/* Free Shipping Badge — Bottom Left (hidden for bot-only auctions) */}
         {!isEnded && !auction.bot_only && (
-          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
+          <div data-testid={`auction-logistics-badge-${auction.auction_id}`} className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
             style={{ 
               background: "linear-gradient(135deg, rgba(0,232,157,0.9) 0%, rgba(0,200,140,0.9) 100%)", 
               boxShadow: "0 4px 12px rgba(0,232,157,0.25)"
             }}>
             <Truck size={10} className="text-white" />
-            <span className="text-[9px] font-bold text-white tracking-wide">FREE SHIPPING</span>
+            <span className="text-[9px] font-bold text-white tracking-wide">{logisticsLabel}</span>
           </div>
         )}
 

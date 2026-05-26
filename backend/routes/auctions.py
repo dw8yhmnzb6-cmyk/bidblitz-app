@@ -83,7 +83,7 @@ async def list_auctions(request: Request, response: Response):
     auctions = await db.auctions.find(
         {"status": {"$in": ["active", "upcoming", "ended"]}},
         {"_id": 0},
-    ).sort("created_at", -1).to_list(50)
+    ).sort("created_at", -1).to_list(100)
 
     # Enrich with final_battle info
     now_dt = datetime.now(timezone.utc)
@@ -118,7 +118,7 @@ async def get_active_auctions():
     auctions = await db.auctions.find(
         {"status": "active"},
         {"_id": 0},
-    ).sort("ends_at", 1).to_list(50)
+    ).sort("ends_at", 1).to_list(100)
     
     for a in auctions:
         a["image_url"] = resolve_product_image(a.get("title", ""), a.get("image_url") or "")
@@ -136,7 +136,7 @@ async def get_active_auctions():
 
 
 @router.get("/list")
-async def list_all_auctions(status: str = None, limit: int = 50):
+async def list_all_auctions(status: str = None, limit: int = 100):
     """List auctions with optional status filter."""
     query = {}
     if status and status in ["active", "upcoming", "ended"]:
@@ -1284,6 +1284,8 @@ def resolve_product_image(title: str, current: str = "") -> str:
         return "https://images.unsplash.com/photo-1770195483917-b3bb444b7a29?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxnYW1pbmclMjBjaGFpciUyMHByb2R1Y3QlMjBzdHVkaW98ZW58MHx8fHwxNzc5MjIxNjg5fDA&ixlib=rb-4.1.0&q=85"
     if any(k in text for k in ["drone", "dji", "mavic", "mini 4"]):
         return "https://images.unsplash.com/photo-1649857114280-0df8879c9034?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxkcm9uZSUyMHByb2R1Y3QlMjBzdHVkaW98ZW58MHx8fHwxNzc5MjIxNjg4fDA&ixlib=rb-4.1.0&q=85"
+    if any(k in text for k in ["boat", "boot", "yacht", "marine", "jetski", "jet ski", "tender", "kayak", "sup", "wake"]):
+        return "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NzY2MXwwfDF8c2VhcmNofDF8fGJvYXQlMjBvbiUyMHdhdGVyfGVufDB8fHx8MTc0ODI2MjQwMHww&ixlib=rb-4.1.0&q=85"
     if any(k in text for k in ["bike", "vanmoof", "cowboy"]):
         return "https://images.unsplash.com/photo-1666360058702-a3aa07227c53?w=600&h=400&fit=crop&q=80"
     if current:
@@ -1332,7 +1334,7 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
         "description": d["description"],
         # i18n: pre-translated catalog (DE/EN/SQ/TR) — None if not yet translated
         "translations": d.get("translations") or None,
-        "image_url": resolve_product_image(d["title"], PRODUCT_IMAGES.get(d["title"], "")),
+        "image_url": resolve_product_image(d["title"], d.get("image_url") or PRODUCT_IMAGES.get(d["title"], "")),
         "retail_price": d["retail_price"],
         "starting_price": 0.00,
         "current_price": 0.00,
@@ -1383,7 +1385,7 @@ async def seed_demo_auctions():
 # - Auto-creates new auctions to keep count at TARGET_ACTIVE_AUCTIONS
 # - Naturally fluctuates viewer counts for realism
 # ══════════════════════════════════════════════════════════════
-TARGET_ACTIVE_AUCTIONS = 30
+TARGET_ACTIVE_AUCTIONS = 60
 
 
 async def _next_product_for_restart() -> dict:
@@ -2244,7 +2246,7 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
         "auction_id": auction_id,
         "title": product["title"],
         "description": product["description"],
-        "image_url": PRODUCT_IMAGES.get(product["title"], ""),
+        "image_url": resolve_product_image(product["title"], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
         "retail_price": product["retail_price"],
         "starting_price": 0.00,
         "current_price": 0.00,
@@ -2309,7 +2311,7 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
             "auction_id": auction_id,
             "title": product["title"],
             "description": product["description"],
-            "image_url": PRODUCT_IMAGES.get(product["title"], ""),
+            "image_url": resolve_product_image(product["title"], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
             "retail_price": product["retail_price"],
             "starting_price": 0.00,
             "current_price": 0.00,

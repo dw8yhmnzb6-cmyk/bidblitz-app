@@ -140,6 +140,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const isLeading = isActive && auction.last_bidder_id === user?.id;
   const isOutbid = isActive && auction.last_bidder_id && auction.last_bidder_id !== user?.id && bids.some(b => b.user_id === user?.id || b.user_name === user?.name);
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
+  const logisticsLabel = auction.category === "marine" ? "ÜBERGABE NACH ABSPRACHE" : "FREE WORLDWIDE SHIPPING";
 
   return (
     <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -157,8 +158,8 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
           </div>
         </div>
         {/* Badges on hero */}
-        <div className="absolute bottom-12 left-4 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#00E89D]/70 border border-[#00E89D]/25">
-          <Truck size={9} className="text-white" /><span className="text-[8px] font-bold text-white tracking-wider">FREE WORLDWIDE SHIPPING</span>
+        <div data-testid="auction-detail-logistics-badge" className="absolute bottom-12 left-4 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#00E89D]/70 border border-[#00E89D]/25">
+          <Truck size={9} className="text-white" /><span className="text-[8px] font-bold text-white tracking-wider">{logisticsLabel}</span>
         </div>
         <div className="absolute bottom-12 right-4 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#060810]/60 border border-[#00E89D]/15">
           <ShieldCheck size={8} className="text-[#00E89D]" /><span className="text-[8px] font-semibold text-[#00E89D]">{auction.condition || "Brand New"}</span>

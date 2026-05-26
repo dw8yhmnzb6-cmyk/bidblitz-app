@@ -300,5 +300,355 @@
     "image_url": "https://images.unsplash.com/photo-1762859731349-c9ff2808b672?w=800&q=80",
     "features": ["10.000Pa Saugkraft", "Reactive AI 3.0", "Auto-Mopp-Wäsche & Heißlufttrocknung", "5L Schmutzwasserbeutel"],
     "condition": "Brand New — Factory Sealed"
+  },
+  {
+    "title": "Yamaha WaveRunner EX Sport 2026",
+    "description": "Kompakter Fun-Jetski für Küste, See und Sommer-Abenteuer.",
+    "retail_price": 1990.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Jetski", "3 Sitze", "Sport-Modus", "Sommer-Edition"],
+    "condition": "Top Zustand — Sofort verfügbar"
+  },
+  {
+    "title": "Sea-Doo Spark Trixx 2UP 2026",
+    "description": "Agiler Freizeit-Jetski mit auffälligem Trixx-Setup.",
+    "retail_price": 1890.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Trixx Paket", "2 Sitze", "Leichtgewicht", "Wassersport"],
+    "condition": "Top Zustand — Sofort verfügbar"
+  },
+  {
+    "title": "Zodiac Cadet 270 Aero Tender",
+    "description": "Leichtes Beiboot für Marina, Küste und Yacht-Transfers.",
+    "retail_price": 1699.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80",
+    "features": ["Tender", "Aero Floor", "Tragbar", "Marina Ready"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Aqua Marina Deluxe 330 Inflatable Boat",
+    "description": "Aufblasbares Boot für Freizeit, Angeltrip und Wochenendausflug.",
+    "retail_price": 1299.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80",
+    "features": ["3.3m", "Inflatable", "Paddel inklusive", "Familien-Setup"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Highfield UL260 Tender Package",
+    "description": "Robustes Aluminium-Tender-Paket für Hafen und Strand.",
+    "retail_price": 1790.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80",
+    "features": ["Aluminium-Rumpf", "Tender", "Leicht", "UV-beständig"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Torqeedo Travel 1103 Electric Outboard",
+    "description": "Elektrischer Außenborder für kleine Boote und Tender.",
+    "retail_price": 1990.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Electric Outboard", "Leise", "Batterie", "Travel Range"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Minn Kota Endura Max 55",
+    "description": "Beliebter Trolling-Motor für Angler und kleine Boote.",
+    "retail_price": 699.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["55lb Thrust", "Trolling Motor", "Maximizer", "Freshwater"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Garmin GPSMAP 923xsv Marine",
+    "description": "Premium Marine-Plotter mit Sonar- und Karten-Support.",
+    "retail_price": 1599.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["9 Zoll", "Plotter", "Sonar", "Garmin Nav"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Jobe Aero Duna SUP 11.6",
+    "description": "Stabiles Touring-SUP für Freizeit und Küstenfahrten.",
+    "retail_price": 849.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1521334884684-d80222895322?w=800&q=80",
+    "features": ["SUP", "Touring", "11.6", "Paddle inklusive"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Bluefin Cruise Carbon 12",
+    "description": "Steifes Carbon-SUP mit kompletter Touring-Ausstattung.",
+    "retail_price": 999.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1521334884684-d80222895322?w=800&q=80",
+    "features": ["Carbon Rail", "SUP", "Touring", "Premium Bag"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Red Paddle Co Voyager 13.2",
+    "description": "Langstrecken-SUP für ambitionierte Wasserfans.",
+    "retail_price": 1499.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1521334884684-d80222895322?w=800&q=80",
+    "features": ["Voyager", "SUP", "13.2", "Touring Setup"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Hobie Mirage Passport 12 Kayak",
+    "description": "Komfort-Kajak mit Pedal-Antrieb für See und Küste.",
+    "retail_price": 1899.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
+    "features": ["Kayak", "Pedal Drive", "Fishing Ready", "12ft"],
+    "condition": "Top Zustand — Sofort verfügbar"
+  },
+  {
+    "title": "Sevylor Colorado Fishing Kayak",
+    "description": "Praktisches Angel-Kajak für Wochenendtrips.",
+    "retail_price": 649.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
+    "features": ["Kayak", "Fishing", "Inflatable", "2 Personen"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Aqua Marina Tomahawk AIR-K 440",
+    "description": "Schnelles Luftkajak mit Touring-Fokus.",
+    "retail_price": 1199.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
+    "features": ["AIR-K", "Kajak", "440", "Touring"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Yamaha SeaScooter Pro 500",
+    "description": "Unterwasser-Scooter für Tauchen und Schnorcheln.",
+    "retail_price": 799.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Sea Scooter", "Dive Assist", "Compact", "Travel Case"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Sublue Navbow Plus Underwater Scooter",
+    "description": "Starker Unterwasser-Scooter mit langer Laufzeit.",
+    "retail_price": 1190.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Underwater Scooter", "Dual Motor", "Travel Battery", "Dive Mode"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "JOBE Infinity Island Lite",
+    "description": "Große Wasserplattform für Strand, Hotel und Events.",
+    "retail_price": 1790.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1521334884684-d80222895322?w=800&q=80",
+    "features": ["Floating Platform", "Modular", "Event Ready", "Beach Club"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "O'Brien Baller 3 Towable Tube",
+    "description": "Spaßiger Towable Tube für Speed und Sommer-Action.",
+    "retail_price": 399.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Towable", "3 Personen", "Heavy Duty", "Quick Connect"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Liquid Force Wakeboard Prime Set",
+    "description": "Wakeboard-Komplettset für Einsteiger und Fortgeschrittene.",
+    "retail_price": 649.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Wakeboard", "Bindings", "Allround Rocker", "Water Ready"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Radar Combo Waterskis 2026",
+    "description": "Klassische Combo-Wasserski für Sommer und Resort.",
+    "retail_price": 499.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Waterskis", "Combo Set", "Rope Ready", "Beginner Friendly"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Helly Hansen Offshore Pro Sailing Set",
+    "description": "Sailing-Set für Offshore, Yacht und Regatta.",
+    "retail_price": 899.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Jacket", "Bib", "Waterproof", "Offshore"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Spinera Lets Paddle 12.0 Touring SUP",
+    "description": "Touring-Board für lange Tagestrips auf ruhigem Wasser.",
+    "retail_price": 699.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1521334884684-d80222895322?w=800&q=80",
+    "features": ["Touring SUP", "12.0", "Bag", "Pump"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Navisafe Portable LED Navigation Light Kit",
+    "description": "Kompaktes Navigationslicht-Set für Tender und kleine Boote.",
+    "retail_price": 229.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["LED", "Portable", "Navigation Light", "USB-C Rechargeable"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Fusion Apollo RA210 Marine Stereo",
+    "description": "Marine-Stereo für Boot, Tender und Party-Deck.",
+    "retail_price": 549.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1655976797987-0fdbab9e7419?w=800&q=80",
+    "features": ["Marine Audio", "Bluetooth", "Zone Control", "Compact Unit"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "JL Audio Marine Speaker Pair M3",
+    "description": "Wetterfeste Marine-Lautsprecher für sauberen Klang an Bord.",
+    "retail_price": 479.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1655976797987-0fdbab9e7419?w=800&q=80",
+    "features": ["Marine Speaker", "UV Resistant", "Pair", "White Finish"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Icom IC-M37 Marine Handheld VHF",
+    "description": "Robustes Handfunkgerät für Wasser und Hafenbetrieb.",
+    "retail_price": 299.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["VHF", "Waterproof", "Float'n Flash", "Portable"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Lowrance Eagle Eye 9 Live",
+    "description": "Fishfinder- und Karten-Display für moderne Boots-Navigation.",
+    "retail_price": 1490.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Fishfinder", "9 Zoll", "Live View", "Marine Maps"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Sea-Doo Move Trailer Lite",
+    "description": "Leichter Transport-Trailer für Jetski und kleine Wassersportgeräte.",
+    "retail_price": 1290.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Trailer", "Jetski Ready", "Easy Launch", "Compact"],
+    "condition": "Top Zustand — Sofort verfügbar"
+  },
+  {
+    "title": "Bravo GE 230 Electric Boat Pump",
+    "description": "Leistungsstarke elektrische Pumpe für SUP und Schlauchboote.",
+    "retail_price": 189.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80",
+    "features": ["Electric Pump", "Boat", "SUP", "Fast Inflate"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "West Marine Premium Dock Kit",
+    "description": "Dock-Set mit Leinen und Fendern für sichere Übergabe am Steg.",
+    "retail_price": 349.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80",
+    "features": ["Dock Lines", "Fenders", "Marina", "Premium Set"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Mercury Avator 7.5e Portable Kit",
+    "description": "Moderner Elektro-Antrieb für kleine Boote und Tender.",
+    "retail_price": 1990.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Electric Motor", "Portable", "Silent Ride", "Battery Included"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Aqua Marina Ripple Tech Boat 335",
+    "description": "Modernes Freizeit-Boot für sonnige Tage am Wasser.",
+    "retail_price": 1399.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=800&q=80",
+    "features": ["Boat", "335", "Family Setup", "Portable"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Tahe Breeze Full HP2 Kayak Pack",
+    "description": "Komplettes Touring-Kajak-Set für Urlaub und Wochenendtour.",
+    "retail_price": 999.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
+    "features": ["Kayak Pack", "2 Personen", "Touring", "Portable"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Jobe Omnia Multi Position Board",
+    "description": "Vielseitiges Board für Kneeboard, Ski und Surf-Action.",
+    "retail_price": 599.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=800&q=80",
+    "features": ["Multi Position", "Board", "Watersport", "Summer Fun"],
+    "condition": "Brand New — Originalverpackt"
+  },
+  {
+    "title": "Railblaza Kayak Fishing Pro Bundle",
+    "description": "Fishing-Bundle für Kajak, Boot und Outdoor-Wassertrips.",
+    "retail_price": 459.00,
+    "duration": 518400,
+    "category": "marine",
+    "image_url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
+    "features": ["Fishing Bundle", "Kayak", "Mount System", "Pro Pack"],
+    "condition": "Brand New — Originalverpackt"
   }
 ]
