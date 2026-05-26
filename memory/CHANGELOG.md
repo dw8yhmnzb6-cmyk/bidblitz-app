@@ -1,6 +1,10 @@
 # BidBlitz — CHANGELOG
 
 ## 26.05.2026
+- Drucker-Wizard im Restaurant-Admin um geführtes Onboarding Kitchen → Service → Bill erweitert
+- Sichtbare Fortschrittsanzeige `x/3 fertig`, Rollen-Karten und aktueller Rollen-Banner ergänzt
+- Auto-Weiter zur nächsten Rolle nach erfolgreichem Speichern eingebaut
+- Frontend- und Backend-Smoke für Drucker-Onboarding grün
 - Rangliste `/leaderboard` repariert: fehlende Router-Registrierung für `routes.extras` ergänzt
 - `/api/extras/leaderboard` liefert wieder echte Daten für Guthaben, Gamer und Bewertungen
 - Ranglisten-UI mit Hero-Karte, Podium und stabilen Loading-/Error-/Empty-States aufgewertet

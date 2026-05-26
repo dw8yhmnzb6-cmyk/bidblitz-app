@@ -34,6 +34,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - ⚠️ **Bewusst offen / NICHT FERTIG**: USB-Auto-Suche ist noch nicht integriert; aktuell manueller USB-Pfad. Discovery im Preview kann echte Kunden-LAN-Drucker nicht sehen.
 - ✅ **Testing iter133**: `/app/test_reports/iteration_133.json` → Backend 15/15 PASS, Frontend 100% PASS.
 
+### 26.05.2026 (Printer Onboarding Assistant) ✅
+- 🟢 **Geführter Rollen-Flow ergänzt** (`frontend/src/pages/RestaurantTablesAdminPage.jsx`): Im Wizard gibt es jetzt eine sichtbare Kitchen → Service → Bill Onboarding-Karte mit Fortschritt `x/3 fertig`.
+- 🟢 **Rollen-Navigation eingebaut**: Jede Rolle ist direkt anwählbar, zeigt Status `fertig/offen` und blendet die aktuelle Rolle separat im Banner ein.
+- 🟢 **Auto-Weiter nach Speichern**: Nach erfolgreichem Speichern springt der Wizard automatisch zur nächsten Rolle.
+- ✅ **Testing**: Frontend-Smoke für `/admin/tables` PASS; Backend-Smoke für bestehende Table-Hardware-Endpunkte PASS.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations
