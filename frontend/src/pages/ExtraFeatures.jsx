@@ -58,41 +58,142 @@ export const GlobalSearch = ({ onNavigate, onClose }) => {
 export default function LeaderboardPage({ onBack }) {
   const [type, setType] = useState("balance");
   const [data, setData] = useState({ type: "", entries: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/extras/leaderboard?type=${type}`, { credentials: "include" }).then(r => r.json()).then(d => setData(d)).catch(() => {});
+    setLoading(true);
+    setError(false);
+    fetch(`${API}/api/extras/leaderboard?type=${type}`, { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("leaderboard_failed");
+        return r.json();
+      })
+      .then((d) => setData({ type: d.type || "", entries: d.entries || [] }))
+      .catch(() => {
+        setError(true);
+        setData({ type: "", entries: [] });
+      })
+      .finally(() => setLoading(false));
   }, [type]);
 
   const rankIcon = (r) => r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : `#${r}`;
   const rankColor = (r) => r === 1 ? "#FFD700" : r === 2 ? "#C0C0C0" : r === 3 ? "#CD7F32" : "#6B7280";
+  const topThree = data.entries?.slice(0, 3) || [];
+  const restEntries = data.entries?.slice(3) || [];
+  const typeMeta = {
+    balance: { accent: "#FACC15", label: "Top Guthaben", hint: "Die höchsten Wallet-Stände live sortiert." },
+    gaming: { accent: "#A855F7", label: "Top Gamer", hint: "Die aktivsten Coin-Spieler auf einen Blick." },
+    rating: { accent: "#22C55E", label: "Top Bewertet", hint: "Die bestbewerteten Nutzer im System." },
+  }[type];
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white pb-24" data-testid="leaderboard-page">
+    <div className="min-h-screen bg-[#0A0A0F] text-white pb-16" data-testid="leaderboard-page">
       <div className="sticky top-0 z-20 bg-[#0A0A0F]/90 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center"><ArrowLeft size={18} /></button>
+          <button data-testid="leaderboard-back-button" onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center"><ArrowLeft size={18} /></button>
           <h1 className="text-base font-bold flex items-center gap-2"><Trophy size={18} className="text-yellow-400" /> Rangliste</h1>
         </div>
         <div className="flex gap-2 mt-3">
           {[{ id: "balance", label: "Top Guthaben" }, { id: "gaming", label: "Top Gamer" }, { id: "rating", label: "Top Bewertet" }].map(t => (
-            <button key={t.id} onClick={() => setType(t.id)}
+            <button data-testid={`leaderboard-filter-${t.id}`} key={t.id} onClick={() => setType(t.id)}
               className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${type === t.id ? "bg-yellow-500 text-black" : "bg-white/5 text-gray-400"}`}>{t.label}</button>
           ))}
         </div>
       </div>
-      <div className="px-4 pt-4 space-y-2">
-        {data.entries?.map((e, i) => (
+      <div className="px-4 pt-4 space-y-4" data-testid="leaderboard-content">
+        <div
+          data-testid="leaderboard-hero-card"
+          className="rounded-[28px] border border-white/8 overflow-hidden"
+          style={{ background: `radial-gradient(circle at top right, ${typeMeta.accent}22 0%, rgba(255,255,255,0.04) 35%, rgba(255,255,255,0.02) 100%)` }}
+        >
+          <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-white/45 font-bold">Live Ranking</p>
+              <h2 data-testid="leaderboard-hero-title" className="text-lg font-black mt-1">{typeMeta.label}</h2>
+              <p className="text-xs text-white/60 mt-1 max-w-[240px]">{typeMeta.hint}</p>
+            </div>
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: `${typeMeta.accent}22`, color: typeMeta.accent }}>
+              <Crown size={20} />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 px-3 pb-3">
+            {[
+              { id: "count", label: "Einträge", value: String(data.entries?.length || 0) },
+              { id: "winner", label: "Platz 1", value: topThree[0]?.name || "—" },
+              { id: "mode", label: "Ansicht", value: typeMeta.label },
+            ].map((item) => (
+              <div key={item.id} data-testid={`leaderboard-stat-${item.id}`} className="rounded-2xl px-3 py-3 bg-black/20 border border-white/6 min-h-[74px]">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-bold">{item.label}</p>
+                <p className="text-xs font-bold text-white mt-2 break-words">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {loading && (
+          <div data-testid="leaderboard-loading-state" className="space-y-2">
+            {[1,2,3,4,5].map((row) => (
+              <div key={row} className="h-[68px] rounded-2xl bg-white/[0.03] border border-white/6 animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {!loading && error && (
+          <div data-testid="leaderboard-error-state" className="rounded-3xl border border-red-500/20 bg-red-500/8 px-4 py-5 text-center">
+            <p className="text-sm font-bold text-white">Rangliste lädt gerade nicht.</p>
+            <p className="text-xs text-white/60 mt-1">Bitte kurz erneut öffnen.</p>
+          </div>
+        )}
+
+        {!loading && !error && topThree.length > 0 && (
+          <div className="grid grid-cols-3 gap-2" data-testid="leaderboard-podium">
+            {[topThree[1], topThree[0], topThree[2]].map((entry, index) => {
+              if (!entry) {
+                return <div key={`empty-${index}`} className="rounded-3xl bg-white/[0.02] border border-white/5 min-h-[148px]" />;
+              }
+              const realRank = entry.rank;
+              const height = realRank === 1 ? "min-h-[176px]" : "min-h-[148px]";
+              return (
+                <div key={entry.rank} data-testid={`leaderboard-podium-rank-${entry.rank}`} className={`rounded-3xl border flex flex-col justify-end px-3 py-4 ${height}`} style={{ borderColor: `${rankColor(realRank)}33`, background: `${rankColor(realRank)}14` }}>
+                  <div className="w-12 h-12 rounded-full mx-auto mb-3 bg-white/10 flex items-center justify-center text-sm font-black">{(entry.name || "?")[0]}</div>
+                  <p className="text-center text-lg">{rankIcon(realRank)}</p>
+                  <p className="text-xs font-bold text-center mt-2 truncate">{entry.name}</p>
+                  <p className="text-[11px] text-center text-white/65 mt-1 break-words">{entry.value}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && !error && restEntries.map((e, i) => (
           <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-            className={`p-3 rounded-xl flex items-center gap-3 ${i < 3 ? "bg-yellow-500/5 border border-yellow-500/10" : "bg-white/[0.02] border border-white/5"}`}>
+            data-testid={`leaderboard-entry-${e.rank}`}
+            className="p-3 rounded-2xl flex items-center gap-3 bg-white/[0.02] border border-white/5">
             <span className="text-lg w-8 text-center" style={{ color: rankColor(e.rank) }}>{rankIcon(e.rank)}</span>
             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold">{(e.name || "?")[0]}</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate">{e.name}</p>
               {e.premium && <span className="text-[8px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 font-bold">VIP</span>}
             </div>
-            <p className="text-sm font-bold" style={{ color: i < 3 ? "#FFD700" : "#fff" }}>{e.value}</p>
+            <p className="text-sm font-bold" style={{ color: "#fff" }}>{e.value}</p>
           </motion.div>
         ))}
+
+        {!loading && !error && data.entries?.length === 0 && (
+          <div data-testid="leaderboard-empty-state" className="rounded-3xl border border-white/8 bg-white/[0.03] px-4 py-8 text-center">
+            <div className="w-14 h-14 rounded-2xl mx-auto mb-4 bg-white/5 flex items-center justify-center"><Medal size={24} className="text-white/70" /></div>
+            <p className="text-sm font-bold text-white">Noch keine Einträge vorhanden</p>
+            <p className="text-xs text-white/55 mt-1">Sobald Daten da sind, erscheint hier die Rangliste.</p>
+          </div>
+        )}
+
+        {!loading && !error && data.entries?.length > 0 && (
+          <div data-testid="leaderboard-footer-note" className="rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-3">
+            <p className="text-[11px] font-bold text-white/80">Live aktualisiert</p>
+            <p className="text-[11px] text-white/50 mt-1">Die Liste wird direkt aus echten App-Daten aufgebaut und wirkt dadurch nicht mehr leer.</p>
+          </div>
+        )}
       </div>
     </div>
   );

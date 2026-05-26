@@ -191,6 +191,7 @@ def register_all_routers(app):
         ("routes.quests", "router"),
         ("routes.retention", "router"),
         ("routes.gamification", "router"),
+        ("routes.extras", "router"),
         
         # Social
         ("routes.friends_map", "router"),
