@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-05-26T13:34:42.232553",
+  "base_url": "https://floorplan-wizard-8.preview.emergentagent.com",
+  "tests": [
+    {
+      "name": "API Health Check",
+      "passed": true,
+      "details": "Status: 200"
+    },
+    {
+      "name": "Login Flow",
+      "passed": true,
+      "details": "Login successful, user: N/A"
+    },
+    {
+      "name": "Auth Me Endpoint",
+      "passed": true,
+      "details": "User: admin@bidblitz.com, Role: admin"
+    },
+    {
+      "name": "Endpoint /auctions/active",
+      "passed": true,
+      "details": "Status: 200"
+    },
+    {
+      "name": "Endpoint /wallet/balance",
+      "passed": true,
+      "details": "Status: 200"
+    },
+    {
+      "name": "Endpoint /admin/overview",
+      "passed": true,
+      "details": "Status: 200"
+    },
+    {
+      "name": "iOS NSAllowsArbitraryLoads=false",
+      "passed": true,
+      "details": "ATS properly configured"
+    },
+    {
+      "name": "Android keystore removed",
+      "passed": true,
+      "details": "bidblitz-upload.jks not found in repo"
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0
+  }
+}
