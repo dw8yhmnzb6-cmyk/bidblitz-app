@@ -78,3 +78,11 @@
 - Staff Dashboard und Kitchen Monitor haben jetzt Sound-Toggles, Last-Event-Badges und Pulse-Highlights für Live-Events
 - Testing: `iteration_132.json` PASS (Backend 10/10, Frontend 100%)
 - **OFFEN/WAITING:** Native NFC-Bridge wartet auf Lizenz; echte USB-/Netzwerk-Drucker-Tests warten auf User-Gerätedaten
+
+## 26.05.2026 — Printer Setup Wizard
+- Neuer Printer-Setup-Wizard im Restaurant-Admin: `Auto suchen | IP manuell | USB / Pfad`
+- Neuer Discovery-Endpoint `POST /api/table-hardware/discover` für schnelle Netzwerksuche nach ESC/POS-Druckern
+- `POST /api/table-hardware/printers/test` kann jetzt ad-hoc Druckerwerte testen, ohne sie vorher zu speichern
+- Speichern ist im Wizard erst nach erfolgreichem Testbon freigegeben
+- Testing: `iteration_133.json` PASS (Backend 15/15, Frontend 100%)
+- **OFFEN/WAITING:** USB-Auto-Suche noch nicht integriert; echte Kunden-LAN-Drucker im Preview nicht sichtbar

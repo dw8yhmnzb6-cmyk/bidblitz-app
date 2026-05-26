@@ -22,6 +22,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟡 **Bewusst offen**: Native NFC-Bridge wartet auf User-Lizenz; echte USB-/Netzwerk-Drucker-Bridge + echte Hardware-Tests warten auf User-Gerätedaten.
 - ✅ **Testing iter132**: `/app/test_reports/iteration_132.json` → Backend 10/10 PASS, Frontend 100% PASS. Preview hat weiter bekannte Session-/Cookie-Eigenheiten bei Navigation.
 
+### 26.05.2026 (Printer Setup Wizard) ✅
+- 🟢 **Wizard-Flow für Kunden-Setup eingebaut** (`frontend/src/pages/RestaurantTablesAdminPage.jsx`): 3 Modi `Auto suchen`, `IP manuell`, `USB / Pfad`; 3 Schritte `suchen/eingeben → Testbon → Verbinden & speichern`.
+- 🟢 **Discovery-Endpoint ergänzt** (`backend/routes/restaurant_table_system.py`): `POST /api/table-hardware/discover` scannt ein eingegebenes Subnetz parallel auf typische ESC/POS-Ports und liefert Trefferliste für den Wizard.
+- 🟢 **Direkter Test vor Speichern** (`backend/routes/restaurant_table_system.py`, `frontend/src/pages/RestaurantTablesAdminPage.jsx`): `POST /api/table-hardware/printers/test` akzeptiert jetzt ad-hoc Druckerwerte (`name/type/ip/port/device`) ohne vorheriges Speichern. Save-Button bleibt bis zum erfolgreichen Test gesperrt.
+- ⚠️ **Bewusst offen / NICHT FERTIG**: USB-Auto-Suche ist noch nicht integriert; aktuell manueller USB-Pfad. Discovery im Preview kann echte Kunden-LAN-Drucker nicht sehen.
+- ✅ **Testing iter133**: `/app/test_reports/iteration_133.json` → Backend 15/15 PASS, Frontend 100% PASS.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations
