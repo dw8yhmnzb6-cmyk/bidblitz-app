@@ -8,6 +8,11 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const FLOORPLAN_BOUNDS = { width: 1200, height: 560 };
 const TABLE_COLORS = ["#22c55e", "#06b6d4", "#f97316", "#a855f7", "#eab308", "#ef4444"];
+const PRINTER_ROLE_FLOW = [
+  { id: "kitchen", label: "Kitchen", hint: "Küchenbons / Produktionsdruck" },
+  { id: "service", label: "Service", hint: "Service- und Runner-Bons" },
+  { id: "bill", label: "Bill", hint: "Rechnung / Kasse" },
+];
 const SIZE_PRESETS = {
   sm: { label: "2 Plätze", width: 72, height: 72, seats: 2 },
   md: { label: "4 Plätze", width: 92, height: 72, seats: 4 },
@@ -118,6 +123,19 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     acc[log.role] = log;
     return acc;
   }, {}), [diagnosticLogs]);
+
+  const printerRoleStatus = useMemo(() => PRINTER_ROLE_FLOW.map((role) => {
+    const saved = (hardware.printers || []).find((printer) => printer.role === role.id);
+    return {
+      ...role,
+      saved: Boolean(saved),
+      value: saved?.ip || saved?.device || saved?.type || "Noch nicht verbunden",
+      printer: saved || null,
+    };
+  }), [hardware.printers]);
+
+  const activePrinterRoleIndex = useMemo(() => Math.max(0, PRINTER_ROLE_FLOW.findIndex((item) => item.id === printerForm.role)), [printerForm.role]);
+  const completedPrinterRoles = printerRoleStatus.filter((item) => item.saved).length;
 
   useEffect(() => {
     if (selectedArea !== "all" && areas.length && !areas.includes(selectedArea)) {
@@ -276,6 +294,12 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       await api("/api/table-hardware/printers", { method: "POST", body: { ...printerForm, store_id: storeId || undefined } });
       toast.success("Printer-Mapping gespeichert");
       await load();
+      const currentIndex = PRINTER_ROLE_FLOW.findIndex((item) => item.id === printerForm.role);
+      const nextRole = PRINTER_ROLE_FLOW[currentIndex + 1]?.id;
+      if (nextRole) {
+        loadPrinterRole(nextRole);
+        toast.success(`Weiter mit ${nextRole}`);
+      }
     } catch (error) {
       toast.error(error.message);
     }
@@ -481,6 +505,32 @@ export default function RestaurantTablesAdminPage({ onBack }) {
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
               <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">Printer Setup Wizard</p>
               <div className="mt-4 grid gap-3">
+                <div className="rounded-[24px] border border-cyan-400/15 bg-cyan-400/8 p-4" data-testid="restaurant-admin-printer-onboarding-card">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Geführtes Onboarding</p>
+                      <p className="mt-1 text-xs text-white/55">Verbinde nacheinander Kitchen → Service → Bill. Nach dem Speichern springt der Wizard automatisch weiter.</p>
+                    </div>
+                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-100" data-testid="restaurant-admin-printer-onboarding-progress">{completedPrinterRoles}/3 fertig</span>
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {printerRoleStatus.map((role, index) => (
+                      <button
+                        key={role.id}
+                        onClick={() => loadPrinterRole(role.id)}
+                        className={`rounded-2xl border px-3 py-3 text-left ${printerForm.role === role.id ? "border-cyan-400/30 bg-cyan-400/15" : role.saved ? "border-emerald-400/20 bg-emerald-400/10" : "border-white/10 bg-[#0A0A0F]"}`}
+                        data-testid={`restaurant-admin-printer-onboarding-role-${role.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">{index + 1}. {role.label}</p>
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${role.saved ? diagStatusStyle.ok : diagStatusStyle.missing}`}>{role.saved ? "fertig" : "offen"}</span>
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-white">{role.hint}</p>
+                        <p className="mt-1 text-[11px] text-white/45 break-all">{role.value}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {[
                     { id: "auto", label: "Auto suchen", icon: Search },
@@ -500,7 +550,12 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                     { step: "1", label: printerWizardMode === "auto" ? "Drucker suchen" : printerWizardMode === "manual" ? "IP eingeben" : "USB wählen" },
                     { step: "2", label: "Testbon drucken" },
                     { step: "3", label: "Verbinden & speichern" },
-                  ].map((item) => <div key={item.step} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm text-white/70" data-testid={`restaurant-admin-printer-step-${item.step}`}><span className="mr-2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">{item.step}</span>{item.label}</div>)}
+                  ].map((item, index) => <div key={item.step} className={`rounded-2xl border px-4 py-3 text-sm ${activePrinterRoleIndex >= 0 && index <= 2 ? "border-white/10 bg-[#0A0A0F] text-white/70" : "border-white/5 bg-[#0A0A0F] text-white/40"}`} data-testid={`restaurant-admin-printer-step-${item.step}`}><span className="mr-2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">{item.step}</span>{item.label}</div>)}
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3" data-testid="restaurant-admin-printer-current-role-banner">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Aktuelle Rolle</p>
+                  <p className="mt-1 text-sm font-semibold text-white">{PRINTER_ROLE_FLOW[activePrinterRoleIndex]?.label || "Kitchen"}</p>
+                  <p className="mt-1 text-xs text-white/45">{PRINTER_ROLE_FLOW[activePrinterRoleIndex]?.hint || "Küchenbons / Produktionsdruck"}</p>
                 </div>
                 <select value={printerForm.role} onChange={(event) => loadPrinterRole(event.target.value)} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-role-select">
                   <option value="kitchen">Kitchen</option>
