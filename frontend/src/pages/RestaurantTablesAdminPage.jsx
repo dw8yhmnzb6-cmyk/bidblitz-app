@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Loader2, Pencil, Plus, Printer, QrCode, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, Pencil, Plus, Printer, QrCode, RefreshCw, Search, Trash2, Wifi } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -69,6 +69,14 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   const [storeId, setStoreId] = useState("");
   const [hardware, setHardware] = useState({ printers: [], button_webhook_url: "", nfc_base_url: "" });
   const [printerForm, setPrinterForm] = useState({ role: "kitchen", name: "", type: "network", ip: "", port: 9100, device: "" });
+  const [printerWizardMode, setPrinterWizardMode] = useState("auto");
+  const [discoverySubnet, setDiscoverySubnet] = useState("192.168.1");
+  const [discoveryStartHost, setDiscoveryStartHost] = useState(1);
+  const [discoveryEndHost, setDiscoveryEndHost] = useState(24);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [discoveryResults, setDiscoveryResults] = useState([]);
+  const [printerVerified, setPrinterVerified] = useState(false);
+  const [lastPrinterTest, setLastPrinterTest] = useState(null);
   const [dragging, setDragging] = useState(null);
   const [selectedArea, setSelectedArea] = useState("all");
   const [zoom, setZoom] = useState(1);
@@ -116,6 +124,14 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       setSelectedArea(areas[0]);
     }
   }, [areas, selectedArea]);
+
+  useEffect(() => {
+    const sourceIp = printerForm.ip || hardware.printers.find((printer) => printer.ip)?.ip || "";
+    const parts = String(sourceIp).split(".");
+    if (parts.length === 4) {
+      setDiscoverySubnet(parts.slice(0, 3).join("."));
+    }
+  }, [hardware.printers, printerForm.ip]);
 
   const saveTable = async () => {
     if (!form.table_number.trim() || !form.table_name.trim()) {
@@ -244,6 +260,18 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   };
 
   const savePrinter = async () => {
+    if (!printerVerified) {
+      toast.error("Bitte erst erfolgreichen Testbon drucken");
+      return;
+    }
+    if (printerForm.type === "network" && !printerForm.ip.trim()) {
+      toast.error("Bitte IP-Adresse eingeben oder Drucker suchen");
+      return;
+    }
+    if (printerForm.type === "usb" && !printerForm.device.trim()) {
+      toast.error("Bitte USB-Gerät oder Pfad eintragen");
+      return;
+    }
     try {
       await api("/api/table-hardware/printers", { method: "POST", body: { ...printerForm, store_id: storeId || undefined } });
       toast.success("Printer-Mapping gespeichert");
@@ -254,12 +282,46 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   };
 
   const testPrinter = async () => {
+    if (printerForm.type === "network" && !printerForm.ip.trim()) {
+      toast.error("Bitte IP-Adresse eingeben oder Drucker suchen");
+      return;
+    }
+    if (printerForm.type === "usb" && !printerForm.device.trim()) {
+      toast.error("Bitte USB-Gerät oder Pfad eintragen");
+      return;
+    }
     try {
-      const result = await api("/api/table-hardware/printers/test", { method: "POST", body: { role: printerForm.role, store_id: storeId || undefined } });
+      const result = await api("/api/table-hardware/printers/test", { method: "POST", body: { ...printerForm, role: printerForm.role, store_id: storeId || undefined } });
+      setPrinterVerified(true);
+      setLastPrinterTest({ status: "ok", message: `Testbon gesendet (${result.result?.printer || printerForm.type})` });
       toast.success(`Testbon gesendet (${result.result?.printer || printerForm.type})`);
     } catch (error) {
+      setPrinterVerified(false);
+      setLastPrinterTest({ status: "error", message: error.message || "Test fehlgeschlagen" });
       toast.error(error.message || "Testbon fehlgeschlagen");
     }
+  };
+
+  const discoverPrinters = async () => {
+    setDiscoveryLoading(true);
+    setDiscoveryResults([]);
+    try {
+      const result = await api("/api/table-hardware/discover", {
+        method: "POST",
+        body: {
+          subnet: discoverySubnet,
+          start_host: Number(discoveryStartHost) || 1,
+          end_host: Number(discoveryEndHost) || 24,
+          ports: [Number(printerForm.port) || 9100],
+          store_id: storeId || undefined,
+        },
+      });
+      setDiscoveryResults(result.results || []);
+      toast.success(result.count ? `${result.count} Drucker gefunden` : "Keine Drucker gefunden");
+    } catch (error) {
+      toast.error(error.message || "Suche fehlgeschlagen");
+    }
+    setDiscoveryLoading(false);
   };
 
   const runDiagnostics = async (role = printerForm.role) => {
@@ -286,6 +348,27 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       port: match?.port || 9100,
       device: match?.device || "",
     });
+    setPrinterWizardMode(match?.type === "usb" ? "usb" : "auto");
+    setPrinterVerified(false);
+    setLastPrinterTest(null);
+  };
+
+  const updatePrinterForm = (patch) => {
+    setPrinterForm((prev) => ({ ...prev, ...patch }));
+    setPrinterVerified(false);
+    setLastPrinterTest(null);
+  };
+
+  const selectDiscoveredPrinter = (printer) => {
+    updatePrinterForm({
+      type: "network",
+      name: printer.name || `ESC/POS ${printer.ip}`,
+      ip: printer.ip || "",
+      port: printer.port || 9100,
+      device: "",
+    });
+    setPrinterWizardMode("manual");
+    toast.success(`Drucker ${printer.ip}:${printer.port} übernommen`);
   };
 
   const writeNfcTag = async (table) => {
@@ -396,26 +479,89 @@ export default function RestaurantTablesAdminPage({ onBack }) {
               </div>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">Printer Config</p>
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">Printer Setup Wizard</p>
               <div className="mt-4 grid gap-3">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {[
+                    { id: "auto", label: "Auto suchen", icon: Search },
+                    { id: "manual", label: "IP manuell", icon: Wifi },
+                    { id: "usb", label: "USB / Pfad", icon: Printer },
+                  ].map((mode) => {
+                    const Icon = mode.icon;
+                    return (
+                      <button key={mode.id} onClick={() => { setPrinterWizardMode(mode.id); updatePrinterForm({ type: mode.id === "usb" ? "usb" : "network" }); }} className={`rounded-2xl border px-4 py-3 text-sm font-bold ${printerWizardMode === mode.id ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-100" : "border-white/10 bg-[#0A0A0F] text-white/70"}`} data-testid={`restaurant-admin-printer-mode-${mode.id}`}>
+                        <Icon size={14} className="mr-2 inline-block" />{mode.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {[
+                    { step: "1", label: printerWizardMode === "auto" ? "Drucker suchen" : printerWizardMode === "manual" ? "IP eingeben" : "USB wählen" },
+                    { step: "2", label: "Testbon drucken" },
+                    { step: "3", label: "Verbinden & speichern" },
+                  ].map((item) => <div key={item.step} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm text-white/70" data-testid={`restaurant-admin-printer-step-${item.step}`}><span className="mr-2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">{item.step}</span>{item.label}</div>)}
+                </div>
                 <select value={printerForm.role} onChange={(event) => loadPrinterRole(event.target.value)} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-role-select">
                   <option value="kitchen">Kitchen</option>
                   <option value="service">Service</option>
                   <option value="bill">Bill</option>
                 </select>
-                <input value={printerForm.name} onChange={(event) => setPrinterForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Printer Name" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-name-input" />
-                <select value={printerForm.type} onChange={(event) => setPrinterForm((prev) => ({ ...prev, type: event.target.value }))} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-type-select">
+                <input value={printerForm.name} onChange={(event) => updatePrinterForm({ name: event.target.value })} placeholder="Printer Name" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-name-input" />
+                <select value={printerForm.type} onChange={(event) => updatePrinterForm({ type: event.target.value })} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-type-select">
                   <option value="network">Network ESC/POS</option>
                   <option value="usb">USB</option>
                   <option value="file">File Fallback</option>
                 </select>
-                <input value={printerForm.ip} onChange={(event) => setPrinterForm((prev) => ({ ...prev, ip: event.target.value }))} placeholder="IP Adresse" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-ip-input" />
-                <input value={printerForm.port} onChange={(event) => setPrinterForm((prev) => ({ ...prev, port: event.target.value }))} placeholder="Port" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-port-input" />
-                <input value={printerForm.device} onChange={(event) => setPrinterForm((prev) => ({ ...prev, device: event.target.value }))} placeholder="USB Device optional" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
+                {printerWizardMode === "auto" && (
+                  <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/10 p-4" data-testid="restaurant-admin-printer-discovery-panel">
+                    <div className="grid gap-2 sm:grid-cols-[1.2fr_90px_90px_auto]">
+                      <input value={discoverySubnet} onChange={(event) => setDiscoverySubnet(event.target.value)} placeholder="Subnetz z. B. 192.168.1" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-subnet-input" />
+                      <input value={discoveryStartHost} onChange={(event) => setDiscoveryStartHost(event.target.value)} placeholder="Von" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-start-input" />
+                      <input value={discoveryEndHost} onChange={(event) => setDiscoveryEndHost(event.target.value)} placeholder="Bis" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-end-input" />
+                      <button onClick={discoverPrinters} disabled={discoveryLoading} className="rounded-2xl border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50" data-testid="restaurant-admin-printer-discovery-button">{discoveryLoading ? "Suche..." : "Suchen"}</button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {discoveryResults.map((printer) => (
+                        <button key={`${printer.ip}:${printer.port}`} onClick={() => selectDiscoveredPrinter(printer)} className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-left" data-testid={`restaurant-admin-discovered-printer-${printer.ip?.replace(/\./g, "-")}-${printer.port}`}>
+                          <div>
+                            <p className="text-sm font-semibold text-white">{printer.name}</p>
+                            <p className="text-xs text-white/45">{printer.ip}:{printer.port}</p>
+                          </div>
+                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-3 py-1 text-[11px] font-bold text-cyan-100">Übernehmen</span>
+                        </button>
+                      ))}
+                      {!discoveryLoading && discoveryResults.length === 0 && <p className="text-sm text-white/55" data-testid="restaurant-admin-printer-discovery-empty">Noch keine Treffer. Alternativ IP manuell eingeben.</p>}
+                    </div>
+                  </div>
+                )}
+                {printerWizardMode !== "usb" && (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <input value={printerForm.ip} onChange={(event) => updatePrinterForm({ ip: event.target.value })} placeholder="IP Adresse" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-ip-input" />
+                    <input value={printerForm.port} onChange={(event) => updatePrinterForm({ port: event.target.value })} placeholder="Port" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-port-input" />
+                  </div>
+                )}
+                {printerWizardMode === "usb" && (
+                  <div className="rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-4" data-testid="restaurant-admin-printer-usb-panel">
+                    <p className="text-sm font-semibold text-amber-100">USB / lokaler Drucker</p>
+                    <p className="mt-1 text-xs text-amber-50/70">Pfad oder Gerätebezeichnung eintragen und danach Testbon drucken. Native Auto-Suche folgt separat.</p>
+                    <input value={printerForm.device} onChange={(event) => updatePrinterForm({ device: event.target.value })} placeholder="USB Device z. B. /dev/usb/lp0" className="mt-3 w-full rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
+                  </div>
+                )}
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <button onClick={savePrinter} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B]" data-testid="restaurant-admin-printer-save-button">Hardware speichern</button>
+                  <button onClick={savePrinter} disabled={!printerVerified} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B] disabled:opacity-50" data-testid="restaurant-admin-printer-save-button">Verbinden & speichern</button>
                   <button onClick={testPrinter} className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/75" data-testid="restaurant-admin-printer-test-button">Testbon</button>
                   <button onClick={() => runDiagnostics(printerForm.role)} disabled={diagnosticLoading} className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50" data-testid="restaurant-admin-printer-diagnostics-button">Diagnose</button>
+                </div>
+                <div className="rounded-[24px] border border-white/10 bg-[#0A0A0F] p-4" data-testid="restaurant-admin-printer-wizard-status">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Verbindungsstatus</p>
+                      <p className="mt-1 text-xs text-white/45">Speichern erst nach erfolgreichem Test</p>
+                    </div>
+                    <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${printerVerified ? diagStatusStyle.ok : diagStatusStyle.missing}`}>{printerVerified ? "verified" : "pending"}</span>
+                  </div>
+                  <p className="mt-3 text-sm text-white/75">{lastPrinterTest?.message || (printerVerified ? "Testbon erfolgreich gesendet." : "Noch kein erfolgreicher Testbon in diesem Setup." )}</p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-[#0A0A0F] p-4" data-testid="restaurant-admin-printer-diagnostics-result">
                   <div className="flex items-center justify-between gap-3">

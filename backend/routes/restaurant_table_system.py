@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import os
 import secrets
 from datetime import datetime, timezone
@@ -123,8 +124,14 @@ def escpos_text(title: str, subtitle: str, lines: list[str]) -> bytes:
     return b"".join(parts)
 
 
-async def print_slip(store_id: str, slip_type: Literal["kitchen", "service", "bill"], title: str, lines: list[str]) -> dict:
-    printer = await db.pos_printers.find_one(
+async def print_slip(
+    store_id: str,
+    slip_type: Literal["kitchen", "service", "bill"],
+    title: str,
+    lines: list[str],
+    printer_override: Optional[dict[str, Any]] = None,
+) -> dict:
+    printer = printer_override or await db.pos_printers.find_one(
         {
             "store_id": store_id,
             "$or": [{"role": slip_type}, {"printer_id": slip_type}, {"printer_id": "default"}],
@@ -143,7 +150,12 @@ async def print_slip(store_id: str, slip_type: Literal["kitchen", "service", "bi
                 handle.write(data)
     except Exception as exc:  # pragma: no cover
         raise HTTPException(status_code=500, detail=f"Druckfehler: {exc}")
-    return {"ok": True, "slip_type": slip_type, "printer": (printer or {}).get("printer_id", "file"), "file": output_path}
+    return {
+        "ok": True,
+        "slip_type": slip_type,
+        "printer": (printer or {}).get("printer_id") or (printer or {}).get("name") or (printer or {}).get("type", "file"),
+        "file": output_path,
+    }
 
 
 async def create_live_event(store_id: str, event_type: str, message: str, payload: dict) -> None:
@@ -377,11 +389,24 @@ class PrinterConfigRequest(BaseModel):
 class PrinterTestRequest(BaseModel):
     store_id: Optional[str] = None
     role: Literal["kitchen", "service", "bill"] = "kitchen"
+    name: Optional[str] = None
+    type: Optional[Literal["network", "usb", "file"]] = None
+    ip: str = ""
+    port: int = 9100
+    device: str = ""
 
 
 class PrinterDiagnosticsRequest(BaseModel):
     store_id: Optional[str] = None
     role: Literal["kitchen", "service", "bill"] = "kitchen"
+
+
+class PrinterDiscoveryRequest(BaseModel):
+    store_id: Optional[str] = None
+    subnet: str = Field("192.168.1", min_length=3, max_length=32)
+    start_host: int = Field(1, ge=1, le=254)
+    end_host: int = Field(24, ge=1, le=254)
+    ports: list[int] = Field(default_factory=lambda: [9100])
 
 
 async def diagnose_printer(store_id: str, role: str) -> dict:
@@ -405,6 +430,42 @@ async def diagnose_printer(store_id: str, role: str) -> dict:
         exists = bool(device) and os.path.exists(device)
         return {"role": role, "type": "usb", "status": "ok" if exists else "error", "message": f"USB Path {'gefunden' if exists else 'nicht gefunden'}", "device": device}
     return {"role": role, "type": printer.get("type", "file"), "status": "ok", "message": "File fallback aktiv"}
+
+
+async def discover_network_printers(subnet: str, start_host: int, end_host: int, ports: list[int]) -> list[dict[str, Any]]:
+    clean_ports = [int(port) for port in ports if int(port) > 0][:4] or [9100]
+    lower = min(start_host, end_host)
+    upper = max(start_host, end_host)
+
+    try:
+        if "/" in subnet:
+            network = ipaddress.ip_network(subnet, strict=False)
+            hosts = [str(host) for host in list(network.hosts())[lower - 1:upper]]
+        else:
+            prefix = subnet.rstrip(".")
+            if len(prefix.split(".")) != 3:
+                raise ValueError("Ungültiges Subnetz")
+            hosts = [f"{prefix}.{index}" for index in range(lower, upper + 1)]
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    semaphore = asyncio.Semaphore(32)
+    results: list[dict[str, Any]] = []
+
+    async def probe(ip: str) -> None:
+        async with semaphore:
+            for port in clean_ports:
+                try:
+                    reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=0.35)
+                    writer.close()
+                    await writer.wait_closed()
+                    results.append({"name": f"ESC/POS {ip}:{port}", "ip": ip, "port": port, "type": "network"})
+                    return
+                except Exception:
+                    continue
+
+    await asyncio.gather(*(probe(ip) for ip in hosts))
+    return sorted(results, key=lambda item: (item.get("ip", ""), item.get("port", 0)))
 
 
 @router.websocket("/api/restaurant/ws/{store_id}")
@@ -624,6 +685,16 @@ async def save_printer_mapping(req: PrinterConfigRequest, request: Request):
 @router.post("/api/table-hardware/printers/test")
 async def test_printer_mapping(req: PrinterTestRequest, request: Request):
     _, store = await require_staff(request, req.store_id)
+    printer_override = None
+    if req.type or req.ip or req.device or req.name:
+        printer_override = {
+            "name": (req.name or f"{req.role} test").strip(),
+            "role": req.role,
+            "type": req.type or ("usb" if req.device else "network" if req.ip else "file"),
+            "ip": req.ip.strip(),
+            "port": int(req.port or 9100),
+            "device": req.device.strip(),
+        }
     result = await print_slip(
         store.get("store_id"),
         req.role,
@@ -633,8 +704,22 @@ async def test_printer_mapping(req: PrinterTestRequest, request: Request):
             "USB / NETZWERK TEST",
             f"Store: {store.get('store_id')}",
         ],
+        printer_override=printer_override,
     )
     return {"ok": True, "result": result}
+
+
+@router.post("/api/table-hardware/discover")
+async def discover_printers(req: PrinterDiscoveryRequest, request: Request):
+    _, store = await require_staff(request, req.store_id)
+    results = await discover_network_printers(req.subnet, req.start_host, req.end_host, req.ports)
+    return {
+        "ok": True,
+        "store_id": store.get("store_id"),
+        "subnet": req.subnet,
+        "results": results,
+        "count": len(results),
+    }
 
 
 @router.post("/api/table-hardware/diagnostics")

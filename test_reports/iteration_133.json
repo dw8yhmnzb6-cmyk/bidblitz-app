@@ -1,0 +1,88 @@
+{
+  "summary": "Iteration 133 - Printer Setup Wizard Testing Complete. Backend: 15/15 tests PASSED (discovery, ad-hoc test, save, diagnostics endpoints). Frontend: All Wizard UI elements verified - 3 modes (Auto/Manual/USB), 3 steps, save gate working (disabled until test passes), testbon, discovery, diagnostics all functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter133_printer_wizard.py",
+    "/app/test_reports/pytest/iter133_printer_wizard.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend PrinterTestRequest correctly accepts ad-hoc printer config (name, type, ip, port, device) for testing without saving",
+    "Backend PrinterDiscoveryRequest uses asyncio semaphore for concurrent socket probing with 0.35s timeout per host",
+    "Frontend Printer Setup Wizard has 3 modes: Auto suchen (network discovery), IP manuell (direct IP entry), USB / Pfad (USB device path)",
+    "Wizard steps dynamically update labels based on mode: 'Drucker suchen' / 'IP eingeben' / 'USB wählen'",
+    "Save Gate correctly implemented: printerVerified state controls save button disabled state, only enabled after successful testPrinter()",
+    "Discovery panel shows subnet/start/end inputs with 'Suchen' button, results list with 'Übernehmen' action",
+    "USB panel shows informational text about manual path entry and 'Native Auto-Suche folgt separat' note",
+    "All interactive elements have proper data-testid attributes for testing"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter133_printer_wizard.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% (all wizard elements and flows verified)"
+  },
+  "test_credentials": "admin@bidblitz.com / BidBlitz2026!",
+  "seed_data_creation": "Test printer mappings created during backend testing (kitchen, service, bill roles)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 133 verified Printer Setup Wizard: (1) Backend endpoints - POST /api/table-hardware/discover returns 200 with results array, POST /api/table-hardware/printers/test accepts ad-hoc config and tests without saving, POST /api/table-hardware/printers saves mapping, POST /api/table-hardware/diagnostics runs printer check. (2) Frontend Wizard UI - 3 mode buttons (Auto suchen/IP manuell/USB Pfad), 3 step indicators with dynamic labels, role/name/type selectors, discovery panel with subnet inputs, USB panel with device input, save/test/diagnostics buttons. (3) Save Gate - Save button disabled (opacity 0.5) until printerVerified=true after successful test. (4) Discovery - Returns empty in preview (expected - no real LAN printers). (5) USB Auto-Suche - NOT YET IMPLEMENTED (manual path entry only, noted in UI). Route is /admin/tables not /restaurant/admin/tables.",
+  "verified_features": {
+    "backend_discovery_endpoint": {
+      "status": "PASS",
+      "details": "POST /api/table-hardware/discover returns 200 with ok:true, results:[], count:0 (empty in preview - expected)"
+    },
+    "backend_printer_test_endpoint": {
+      "status": "PASS",
+      "details": "POST /api/table-hardware/printers/test accepts ad-hoc config (name, type, ip, port, device) and tests without saving. File type returns 200, network unreachable returns 500/502, USB device not found returns 500"
+    },
+    "backend_printer_save_endpoint": {
+      "status": "PASS",
+      "details": "POST /api/table-hardware/printers saves mapping with role, name, type, ip, port, device fields"
+    },
+    "backend_diagnostics_endpoint": {
+      "status": "PASS",
+      "details": "POST /api/table-hardware/diagnostics returns result with role, status, message, type fields"
+    },
+    "frontend_wizard_modes": {
+      "status": "PASS",
+      "details": "3 mode buttons: Auto suchen (shows discovery panel), IP manuell (shows IP/port inputs), USB / Pfad (shows USB panel with device input)"
+    },
+    "frontend_wizard_steps": {
+      "status": "PASS",
+      "details": "3 step indicators with dynamic labels: Step 1 changes based on mode (Drucker suchen/IP eingeben/USB wählen), Step 2 always 'Testbon drucken', Step 3 always 'Verbinden & speichern'"
+    },
+    "frontend_save_gate": {
+      "status": "PASS",
+      "details": "Save button disabled (opacity 0.5) when printerVerified=false, enabled after successful testPrinter() call. Wizard status shows 'pending' before test, 'verified' after"
+    },
+    "frontend_testbon": {
+      "status": "PASS",
+      "details": "Testbon button calls /api/table-hardware/printers/test with current form values, shows success toast 'Testbon gesendet (kitchen test)'"
+    },
+    "frontend_discovery": {
+      "status": "PASS",
+      "details": "Discovery panel with subnet/start/end inputs, 'Suchen' button calls /api/table-hardware/discover, shows 'Keine Drucker gefunden' in preview (expected)"
+    },
+    "frontend_diagnostics": {
+      "status": "PASS",
+      "details": "Diagnose button calls /api/table-hardware/diagnostics, result panel shows status/message, logs panel shows history"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "Echte Kunden-LAN-Drucker im Preview-Environment (Discovery returns empty - expected)",
+      "USB-Auto-Suche (noch nicht integriert, nur manueller USB-Pfad)"
+    ]
+  }
+}
