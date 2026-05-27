@@ -1,0 +1,53 @@
+[
+  {
+    "test_name": "Admin Login",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "user": {}
+    },
+    "expected": "200 OK with session cookie",
+    "actual": "200 OK - User: None",
+    "notes": "Session cookie set: True",
+    "timestamp": "2026-05-27T10:55:31.532316"
+  },
+  {
+    "test_name": "USB Discovery Endpoint",
+    "passed": true,
+    "status_code": 200,
+    "response": {
+      "ok": true,
+      "store_id": "STR-C433697A3B",
+      "devices": [
+        {
+          "path": "/dev/usb/lp0",
+          "name": "USB Printer lp0",
+          "type": "usb",
+          "source": "fallback",
+          "mocked": true
+        },
+        {
+          "path": "/dev/usb/lp1",
+          "name": "USB Printer lp1",
+          "type": "usb",
+          "source": "fallback",
+          "mocked": true
+        },
+        {
+          "path": "/dev/ttyUSB0",
+          "name": "USB Serial ttyUSB0",
+          "type": "usb",
+          "source": "fallback",
+          "mocked": true
+        }
+      ],
+      "count": 3,
+      "mocked": true,
+      "message": "Keine echten USB-Ger\u00e4te im Preview gefunden \u2014 Fallback-Pfade werden angezeigt"
+    },
+    "expected": "200 OK with devices, count, mocked, message fields",
+    "actual": "200 OK - All fields present: True",
+    "notes": "Fields present: devices=True, count=True, mocked=True, message=True\n   Mocked: True (acceptable in preview)\n   Device count: 3\n   Has fallback paths: True\n   Sample device paths: ['/dev/usb/lp0', '/dev/usb/lp1', '/dev/ttyUSB0']\n   Message: Keine echten USB-Ger\u00e4te im Preview gefunden \u2014 Fallback-Pfade werden angezeigt",
+    "timestamp": "2026-05-27T10:55:31.651603"
+  }
+]
