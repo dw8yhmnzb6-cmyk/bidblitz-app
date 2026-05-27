@@ -40,6 +40,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Auto-Weiter nach Speichern**: Nach erfolgreichem Speichern springt der Wizard automatisch zur nächsten Rolle.
 - ✅ **Testing**: Frontend-Smoke für `/admin/tables` PASS; Backend-Smoke für bestehende Table-Hardware-Endpunkte PASS.
 
+### 26.05.2026 (USB Auto-Suche im Drucker-Wizard) ✅
+- 🟢 **USB-Discovery Endpoint ergänzt** (`backend/routes/restaurant_table_system.py`): `GET /api/table-hardware/usb-discover` scannt typische Gerätepfade (`/dev/usb/lp*`, `/dev/ttyUSB*`, `/dev/ttyACM*`) und liefert strukturierte Trefferliste.
+- 🟢 **Preview-Fallback eingebaut** (`backend/routes/restaurant_table_system.py`): Wenn im Preview keine echten USB-Geräte sichtbar sind, werden **MOCKED** Fallback-Pfade wie `/dev/usb/lp0` und `/dev/ttyUSB0` geliefert.
+- 🟢 **Wizard-UI erweitert** (`frontend/src/pages/RestaurantTablesAdminPage.jsx`): Im USB-Modus gibt es jetzt `USB automatisch suchen`, Ergebnisliste, **MOCKED**-Hinweis und Direktübernahme ins Device-Feld.
+- ✅ **Testing**: Frontend-USB-Flow PASS, Backend-USB-Discovery PASS.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations

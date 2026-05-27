@@ -1,6 +1,10 @@
 # BidBlitz — CHANGELOG
 
 ## 26.05.2026
+- USB-Auto-Suche im Restaurant-Drucker-Wizard ergänzt
+- Neuer Endpoint `GET /api/table-hardware/usb-discover` liefert echte oder **MOCKED** USB-Gerätepfade
+- USB-Geräte im Wizard auswählbar; Übernahme schreibt Pfad direkt ins Device-Feld
+- Frontend- und Backend-Smoke für USB-Discovery grün
 - Drucker-Wizard im Restaurant-Admin um geführtes Onboarding Kitchen → Service → Bill erweitert
 - Sichtbare Fortschrittsanzeige `x/3 fertig`, Rollen-Karten und aktueller Rollen-Banner ergänzt
 - Auto-Weiter zur nächsten Rolle nach erfolgreichem Speichern eingebaut
