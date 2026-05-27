@@ -80,6 +80,10 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   const [discoveryEndHost, setDiscoveryEndHost] = useState(24);
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
   const [discoveryResults, setDiscoveryResults] = useState([]);
+  const [usbDiscoveryLoading, setUsbDiscoveryLoading] = useState(false);
+  const [usbDiscoveryResults, setUsbDiscoveryResults] = useState([]);
+  const [usbDiscoveryMessage, setUsbDiscoveryMessage] = useState("");
+  const [usbDiscoveryMocked, setUsbDiscoveryMocked] = useState(false);
   const [printerVerified, setPrinterVerified] = useState(false);
   const [lastPrinterTest, setLastPrinterTest] = useState(null);
   const [dragging, setDragging] = useState(null);
@@ -395,6 +399,34 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     toast.success(`Drucker ${printer.ip}:${printer.port} übernommen`);
   };
 
+  const discoverUsbDevices = async () => {
+    setUsbDiscoveryLoading(true);
+    setUsbDiscoveryResults([]);
+    setUsbDiscoveryMessage("");
+    try {
+      const result = await api(`/api/table-hardware/usb-discover${storeId ? `?store_id=${encodeURIComponent(storeId)}` : ""}`);
+      setUsbDiscoveryResults(result.devices || []);
+      setUsbDiscoveryMessage(result.message || "USB-Geräte geladen");
+      setUsbDiscoveryMocked(Boolean(result.mocked));
+      toast.success(result.message || `${result.count || 0} USB-Geräte gefunden`);
+    } catch (error) {
+      setUsbDiscoveryMessage(error.message || "USB-Suche fehlgeschlagen");
+      setUsbDiscoveryMocked(false);
+      toast.error(error.message || "USB-Suche fehlgeschlagen");
+    }
+    setUsbDiscoveryLoading(false);
+  };
+
+  const selectUsbDevice = (device) => {
+    updatePrinterForm({
+      type: "usb",
+      name: printerForm.name || device.name || `USB ${device.path}`,
+      device: device.path || "",
+      ip: "",
+    });
+    toast.success(`${device.path} übernommen`);
+  };
+
   const writeNfcTag = async (table) => {
     if (typeof window === "undefined" || typeof window.NDEFReader === "undefined") {
       toast.error("Web NFC wird auf diesem Gerät nicht unterstützt");
@@ -600,6 +632,22 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                   <div className="rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-4" data-testid="restaurant-admin-printer-usb-panel">
                     <p className="text-sm font-semibold text-amber-100">USB / lokaler Drucker</p>
                     <p className="mt-1 text-xs text-amber-50/70">Pfad oder Gerätebezeichnung eintragen und danach Testbon drucken. Native Auto-Suche folgt separat.</p>
+                    <button onClick={discoverUsbDevices} disabled={usbDiscoveryLoading} className="mt-3 rounded-2xl border border-amber-300/25 bg-black/20 px-4 py-3 text-sm font-bold text-amber-100 disabled:opacity-50" data-testid="restaurant-admin-printer-usb-discovery-button">{usbDiscoveryLoading ? "USB Suche..." : "USB automatisch suchen"}</button>
+                    {(usbDiscoveryMessage || usbDiscoveryResults.length > 0) && (
+                      <div className="mt-3 space-y-2" data-testid="restaurant-admin-printer-usb-discovery-results">
+                        {usbDiscoveryMessage && <p className="text-xs text-amber-50/75" data-testid="restaurant-admin-printer-usb-discovery-message">{usbDiscoveryMessage}</p>}
+                        {usbDiscoveryMocked && <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200" data-testid="restaurant-admin-printer-usb-discovery-mocked">MOCKED PREVIEW FALLBACK</p>}
+                        {usbDiscoveryResults.map((device) => (
+                          <button key={device.path} onClick={() => selectUsbDevice(device)} className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-left" data-testid={`restaurant-admin-usb-device-${device.path.replace(/[^a-zA-Z0-9]+/g, "-")}`}>
+                            <div>
+                              <p className="text-sm font-semibold text-white">{device.name}</p>
+                              <p className="text-xs text-white/45 break-all">{device.path}</p>
+                            </div>
+                            <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-bold text-amber-100">Übernehmen</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <input value={printerForm.device} onChange={(event) => updatePrinterForm({ device: event.target.value })} placeholder="USB Device z. B. /dev/usb/lp0" className="mt-3 w-full rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
                   </div>
                 )}

@@ -6,6 +6,7 @@ import asyncio
 import ipaddress
 import os
 import secrets
+from glob import glob
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
@@ -409,6 +410,42 @@ class PrinterDiscoveryRequest(BaseModel):
     ports: list[int] = Field(default_factory=lambda: [9100])
 
 
+def discover_usb_printers() -> dict[str, Any]:
+    patterns = [
+        "/dev/usb/lp*",
+        "/dev/ttyUSB*",
+        "/dev/ttyACM*",
+        "/dev/bus/usb/*/*",
+    ]
+    devices: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for pattern in patterns:
+        for path in sorted(glob(pattern)):
+            if path in seen:
+                continue
+            seen.add(path)
+            devices.append({
+                "path": path,
+                "name": f"USB Printer {os.path.basename(path)}",
+                "type": "usb",
+                "source": "native_scan",
+                "mocked": False,
+            })
+    if devices:
+        return {"devices": devices, "count": len(devices), "mocked": False, "message": "USB-Geräte gefunden"}
+    fallback = [
+        {"path": "/dev/usb/lp0", "name": "USB Printer lp0", "type": "usb", "source": "fallback", "mocked": True},
+        {"path": "/dev/usb/lp1", "name": "USB Printer lp1", "type": "usb", "source": "fallback", "mocked": True},
+        {"path": "/dev/ttyUSB0", "name": "USB Serial ttyUSB0", "type": "usb", "source": "fallback", "mocked": True},
+    ]
+    return {
+        "devices": fallback,
+        "count": len(fallback),
+        "mocked": True,
+        "message": "Keine echten USB-Geräte im Preview gefunden — Fallback-Pfade werden angezeigt",
+    }
+
+
 async def diagnose_printer(store_id: str, role: str) -> dict:
     printer = await db.pos_printers.find_one({"store_id": store_id, "role": role}, {"_id": 0})
     if not printer:
@@ -719,6 +756,17 @@ async def discover_printers(req: PrinterDiscoveryRequest, request: Request):
         "subnet": req.subnet,
         "results": results,
         "count": len(results),
+    }
+
+
+@router.get("/api/table-hardware/usb-discover")
+async def discover_usb_devices(request: Request, store_id: Optional[str] = Query(default=None)):
+    _, store = await require_staff(request, store_id)
+    result = discover_usb_printers()
+    return {
+        "ok": True,
+        "store_id": store.get("store_id"),
+        **result,
     }
 
 
