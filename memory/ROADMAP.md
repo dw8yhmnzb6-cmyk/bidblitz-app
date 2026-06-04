@@ -7,6 +7,7 @@
 - Native NFC-Bridge nachreichen, sobald User-Lizenz vorliegt
 - Reale USB-/Netzwerk-Drucker über Native-/Device-Bridge außerhalb Preview mit Hardware-Mapping verifizieren
 - USB-Auto-Suche im nativen Drucker-Wizard auf echten Geräten verifizieren
+- Volltest später um zusätzliche weniger kritische Module außerhalb des aktuellen Kerns erweitern
 - Floorplan-/Raumplan-Editor für Tische mit Mehrraum/Zoom/Snapping ausbauen
 - Restaurant-Live-Events optional um Sound/Badge-Cues pro Event-Typ erweitern
 - Optional externe Warenwirtschaft-/Kassenanbindung für Auto-Bestellungen ergänzen

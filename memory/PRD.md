@@ -46,6 +46,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Wizard-UI erweitert** (`frontend/src/pages/RestaurantTablesAdminPage.jsx`): Im USB-Modus gibt es jetzt `USB automatisch suchen`, Ergebnisliste, **MOCKED**-Hinweis und Direktübernahme ins Device-Feld.
 - ✅ **Testing**: Frontend-USB-Flow PASS, Backend-USB-Discovery PASS.
 
+### 26.05.2026 (Kompletter Website-Sweep) ✅
+- ✅ **Testing-Agent iter134**: Vollständiger Sweep über Homepage, Login, Impressum, Leaderboard, Auktionen und Restaurant-Admin erfolgreich.
+- ✅ **Backend 17/17 PASS**: Auth, Legal, Leaderboard, Auktionen, Restaurant Table Hardware und Extras ohne Fehler.
+- ✅ **Frontend PASS**: Keine UI-, Integrations- oder Design-Bugs in den getesteten Kernflows gefunden.
+- ⚠️ **MOCKED im Preview**: USB-Discovery liefert erwartungsgemäß Fallback-Pfade, solange keine echten Geräte im Preview sichtbar sind.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations

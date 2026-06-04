@@ -1,6 +1,9 @@
 # BidBlitz — CHANGELOG
 
 ## 26.05.2026
+- Vollständiger Website-Sweep `iteration_134` grün: Backend 17/17 PASS, Frontend-Kernflows PASS
+- Geprüft: Homepage, Login, Impressum, Leaderboard, Auktionen, Restaurant Admin, Printer Wizard, USB Discovery
+- Keine echten neuen Bugs im getesteten Umfang gefunden
 - USB-Auto-Suche im Restaurant-Drucker-Wizard ergänzt
 - Neuer Endpoint `GET /api/table-hardware/usb-discover` liefert echte oder **MOCKED** USB-Gerätepfade
 - USB-Geräte im Wizard auswählbar; Übernahme schreibt Pfad direkt ins Device-Feld
