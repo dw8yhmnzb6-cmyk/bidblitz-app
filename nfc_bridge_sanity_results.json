@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-06-04T16:48:40.526966",
+  "base_url": "https://floorplan-wizard-8.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Login",
+      "status": "PASS",
+      "details": "User: admin@bidblitz.com, Role: admin"
+    },
+    {
+      "test": "/nfc route",
+      "status": "PASS",
+      "details": "Status 200, HTML content, 9681 bytes"
+    },
+    {
+      "test": "/admin/tables route",
+      "status": "PASS",
+      "details": "Status 200, HTML content, 9681 bytes"
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "errors": 0,
+    "success_rate": "100.0%"
+  }
+}
