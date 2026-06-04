@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Loader2, Pencil, Plus, Printer, QrCode, RefreshCw, Search, Trash2, Wifi } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { writeNFC, isNFCAvailable } from "../utils/nfcService";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -428,18 +429,18 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   };
 
   const writeNfcTag = async (table) => {
-    if (typeof window === "undefined" || typeof window.NDEFReader === "undefined") {
-      toast.error("Web NFC wird auf diesem Gerät nicht unterstützt");
+    const nfc = await isNFCAvailable();
+    if (!nfc.available && nfc.mode !== "web") {
+      toast.error(nfc.reason || "NFC wird auf diesem Gerät nicht unterstützt");
       return;
     }
-    try {
-      const ndef = new window.NDEFReader();
-      const url = table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`;
-      await ndef.write({ records: [{ recordType: "url", data: url }] });
-      toast.success(`NFC-Tag für ${table.table_name} geschrieben`);
-    } catch (error) {
-      toast.error(error?.message || "NFC-Tag konnte nicht geschrieben werden");
+    const url = table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`;
+    const result = await writeNFC([{ recordType: "url", data: url }]);
+    if (!result.ok) {
+      toast.error(result.error || "NFC-Tag konnte nicht geschrieben werden");
+      return;
     }
+    toast.success(result.pending ? `Halte jetzt den NFC-Tag für ${table.table_name} an das Gerät` : `NFC-Tag für ${table.table_name} geschrieben`);
   };
 
   return (
@@ -506,6 +507,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
             <div>
               <h2 className="text-lg font-black">Hardware-Mapping</h2>
               <p className="mt-1 text-sm text-white/45">Thermodrucker rollenbasiert mappen, Button-Webhook fixieren, NFC-URL auf Tags schreiben.</p>
+              <p className="mt-2 text-xs text-cyan-200/80" data-testid="restaurant-admin-native-nfc-hint">Native Android NFC-Bridge aktiv. iPhone bleibt sauber deaktiviert bis Apple-Entitlement da ist.</p>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 {(hardware.printers || []).map((printer) => (
                   <button key={printer.printer_id || printer.role} onClick={() => loadPrinterRole(printer.role)} className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-left" data-testid={`restaurant-admin-printer-card-${printer.role}`}>

@@ -63,6 +63,8 @@
 	<string>BidBlitz Staff nutzt Bluetooth, um deine Anwesenheit am Arbeitsplatz zu erkennen.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>BidBlitz Staff erkennt das WLAN am Arbeitsplatz, um deine Schicht automatisch zu starten.</string>
+        <key>NFCReaderUsageDescription</key>
+        <string>BidBlitz nutzt NFC zum Lesen und Schreiben von Tags für Check-in, Tische und weitere native Funktionen.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
