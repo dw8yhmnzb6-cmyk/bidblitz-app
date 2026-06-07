@@ -21,20 +21,12 @@ export const AuthGateOverlay = ({ isOpen, onClose, message, initialMode }) => {
     setLoading(true);
     try {
       if (mode === "login") {
-        await user.login(email, password);
+        const ok = await user.login(email, password);
+        if (!ok) throw new Error(user.error || "Anmeldung fehlgeschlagen");
         toast.success(t("auth.welcome_back") || "Welcome back!");
       } else {
-        const body = { email, password, name };
-        if (inviteCode.trim()) body.invite_code = inviteCode.trim();
-        const res = await fetch(`${API}/api/auth/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Registration failed");
-        await user.login(email, password);
+        const ok = await user.register(name, email, password, password, "customer");
+        if (!ok) throw new Error(user.error || "Registrierung fehlgeschlagen");
         toast.success(t("auth.welcome") || "Welcome to BidBlitz!");
       }
       onClose();
