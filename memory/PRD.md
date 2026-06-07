@@ -52,6 +52,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - ✅ **Frontend PASS**: Keine UI-, Integrations- oder Design-Bugs in den getesteten Kernflows gefunden.
 - ⚠️ **MOCKED im Preview**: USB-Discovery liefert erwartungsgemäß Fallback-Pfade, solange keine echten Geräte im Preview sichtbar sind.
 
+### 07.06.2026 (KYC / Ausweis-Verifizierung Fix) ✅
+- 🟢 **Backend KYC-AI repariert** (`backend/services/kyc_ai_verifier.py`): veralteter `ImageContent(..., mime_type=...)` Aufruf entfernt; KYC-Submit startet wieder statt 500 zu werfen.
+- 🟢 **Verification-Frontend korrigiert** (`frontend/src/pages/VerificationPage.jsx`, `frontend/src/services/api.js`): Seite nutzt jetzt den echten KYC-Flow `/api/kyc/status` + `/api/kyc/submit` statt der alten Verification-Endpunkte.
+- 🟢 **Registrierungs-/Auth-Gate vereinheitlicht** (`frontend/src/store/UserContext.jsx`, `frontend/src/components/AuthGateOverlay.jsx`, `frontend/src/pages/AuthPage.jsx`): Register-Flow konsolidiert, KYC springt nicht mehr direkt ungefragt auf, normaler Auth-/KYC-Fortgang stabilisiert.
+- ✅ **Verifiziert**: Browser-E2E mit frischem `.com`-User → Register 200, `/api/auth/me` 200, `/api/kyc/submit` 200, `/api/kyc/status` 200.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations

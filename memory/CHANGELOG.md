@@ -17,6 +17,12 @@
 - Ranglisten-UI mit Hero-Karte, Podium und stabilen Loading-/Error-/Empty-States aufgewertet
 - Frontend-Test bestanden: keine große Leerfläche mehr, Tabs funktionieren sauber
 
+## 07.06.2026
+- KYC-/Ausweis-Verifizierung repariert: `/api/kyc/submit` wirft keinen 500er mehr
+- `VerificationPage` auf echte KYC-Endpunkte umgestellt (`/api/kyc/status`, `/api/kyc/submit`)
+- Register-/Auth-Gate-Flow vereinheitlicht, damit frische User sauber authentifiziert im KYC landen
+- Browser-E2E verifiziert: Register 200, `/api/auth/me` 200, `/api/kyc/submit` 200, `/api/kyc/status` 200
+
 ## 17.05.2026
 - Barcode/QR-Scan-System im bestehenden `/scan`-Tab eingebaut
 - Neue API `POST /api/scan/resolve` für Tisch-, Rechnungs-, Checkout- und Wallet-Codes

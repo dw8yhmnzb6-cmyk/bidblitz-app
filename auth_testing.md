@@ -28,3 +28,11 @@ curl -i -X POST "$REACT_APP_BACKEND_URL/api/staff/auth/terminal-pin" \
 2. `GET /api/auth/ws-token` mit denselben Cookies aufrufen.
 3. WebSocket auf `/api/restaurant/ws/{store_id}?token=...` öffnen.
 4. Erwartung: `connected` Event, danach Live-Events bei Order-/Service-Änderungen.
+
+## KYC / Ausweis-Verifizierung
+1. Frischen User mit gültiger `.com`/`.ae` Mail registrieren
+2. Prüfen: `/api/auth/me` liefert 200
+3. `/verification` öffnen
+4. `id_front`, `id_back`, `selfie` hochladen
+5. `POST /api/kyc/submit` muss 200 liefern
+6. Danach `GET /api/kyc/status` muss 200 liefern und Status `pending` oder `rejected`
