@@ -23,9 +23,12 @@ const VerificationPage = ({ onBack }) => {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.getVerificationStatus();
+      const res = await api.getKycStatus();
       setData(res);
-    } catch {}
+      setSuccess(false);
+    } catch (loadError) {
+      void loadError;
+    }
     setLoading(false);
   }, []);
 
@@ -51,11 +54,11 @@ const VerificationPage = ({ onBack }) => {
       fd.append("id_front", files.id_front);
       fd.append("id_back", files.id_back);
       fd.append("selfie", files.selfie);
-      await api.uploadVerification(fd);
-      setSuccess(true);
+      fd.append("document_type", "national_id");
+      await api.submitKycFormData(fd);
       await load();
     } catch (e) {
-      setError(e.message);
+      setError(e?.message || "KYC Upload fehlgeschlagen");
     }
     setUploading(false);
   };
@@ -68,10 +71,8 @@ const VerificationPage = ({ onBack }) => {
     );
   }
 
-  const ver = data?.verification;
-  const roleReq = data?.role_request;
-  const status = ver?.status;
-  const requestedRole = data?.requested_role || roleReq?.requested_role || "";
+  const status = data?.kyc_status;
+  const requestedRole = "Identität";
 
   return (
     <motion.div data-testid="verification-page" className="min-h-screen pb-24" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -97,7 +98,7 @@ const VerificationPage = ({ onBack }) => {
             <Clock size={28} className="text-[#FFB800] mx-auto mb-2" />
             <p className="text-[13px] font-bold text-[#FFB800]">{t("verify.pending_title") || "Under Review"}</p>
             <p className="text-[10px] text-white/30 mt-1">{t("verify.pending_desc") || "Your documents are being reviewed. This may take a few hours."}</p>
-            <p className="text-[9px] text-white/15 mt-2">{t("verify.requested_role") || "Requested Role"}: <span className="text-[#00E0FF] font-bold">{requestedRole || ver?.requested_role}</span></p>
+            <p className="text-[9px] text-white/15 mt-2">{t("verify.requested_role") || "Requested Role"}: <span className="text-[#00E0FF] font-bold">{requestedRole}</span></p>
           </motion.div>
         )}
 
@@ -113,7 +114,7 @@ const VerificationPage = ({ onBack }) => {
           <motion.div className={`rounded-2xl p-4 text-center ${glass}`} style={{ background: "rgba(255,71,87,0.04)", border: "1px solid rgba(255,71,87,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <X size={28} className="text-[#FF4757] mx-auto mb-2" />
             <p className="text-[13px] font-bold text-[#FF4757]">{t("verify.rejected_title") || "Verification Rejected"}</p>
-            <p className="text-[10px] text-white/30 mt-1">{ver?.reason || t("verify.rejected_desc") || "Please re-submit clear documents."}</p>
+            <p className="text-[10px] text-white/30 mt-1">{data?.rejection_reason || t("verify.rejected_desc") || "Please re-submit clear documents."}</p>
           </motion.div>
         )}
 

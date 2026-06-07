@@ -60,7 +60,9 @@ async function request(path, options = {}) {
           res = await fetch(url, { ...config, signal: retryController.signal, _isRetry: true });
           clearTimeout(retryTimeout);
         }
-      } catch {}
+      } catch (refreshError) {
+        void refreshError;
+      }
     }
 
     let data;
@@ -222,8 +224,19 @@ export const api = {
   changePassword: (body) => request("/api/user/change-password", { method: "POST", body: JSON.stringify(body) }),
 
   // KYC
-  getKycStatus: () => request("/api/user/kyc"),
-  submitKyc: (body) => request("/api/user/kyc", { method: "POST", body: JSON.stringify(body) }),
+  getKycStatus: () => request("/api/kyc/status"),
+  submitKyc: (body) => request("/api/kyc/submit", { method: "POST", body }),
+  submitKycFormData: (formData) => {
+    return fetch(`${API_URL}/api/kyc/submit`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    }).then(async (r) => {
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || d.message || "KYC Upload fehlgeschlagen");
+      return d;
+    });
+  },
 
   // Sessions
   getSessions: () => request("/api/sessions"),
