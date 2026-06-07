@@ -69,6 +69,8 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true); // Default to true for better UX
   const [otpCode, setOtpCode] = useState("");
   const [showKYC, setShowKYC] = useState(false);
@@ -109,7 +111,9 @@ export const AuthPage = ({ onBack, initialMode }) => {
             body: JSON.stringify({ code: ref }),
           }).catch(() => {});
         }
-      } catch {}
+      } catch (refError) {
+        void refError;
+      }
       // Nach Registrierung erst stabil einloggen lassen; KYC später manuell starten
       setShowKYC(false);
     }
@@ -123,18 +127,20 @@ export const AuthPage = ({ onBack, initialMode }) => {
       } else if (typeof user.fetchProfile === "function") {
         await user.fetchProfile();
       }
-    } catch {}
+    } catch (refreshError) {
+      void refreshError;
+    }
     setShowKYC(false);
   };
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    setError("");
+    setForgotError("");
     if (!email.trim()) {
-      setError("Bitte E-Mail eingeben");
+      setForgotError("Bitte E-Mail eingeben");
       return;
     }
-    setLoading(true);
+    setForgotLoading(true);
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/forgot-password`, {
         method: "POST",
@@ -145,12 +151,13 @@ export const AuthPage = ({ onBack, initialMode }) => {
         setForgotSent(true);
       } else {
         const d = await res.json().catch(() => ({}));
-        setError(d.detail || "Fehler beim Senden");
+        setForgotError(d.detail || "Fehler beim Senden");
       }
-    } catch {
-      setError("Netzwerkfehler");
+    } catch (forgotPasswordError) {
+      void forgotPasswordError;
+      setForgotError("Netzwerkfehler");
     }
-    setLoading(false);
+    setForgotLoading(false);
   };
 
   const switchMode = (m) => {
@@ -377,7 +384,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
 
               {/* Error */}
               <AnimatePresence>
-                {user.error && (
+                {(forgotError || user.error) && (
                   <motion.div
                     className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
                     style={{ background: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.12)" }}
@@ -386,7 +393,7 @@ export const AuthPage = ({ onBack, initialMode }) => {
                     exit={{ opacity: 0, y: -6, height: 0 }}
                   >
                     <AlertCircle size={13} className="text-[#FF4757] flex-shrink-0" />
-                    <p className="text-[11px] text-[#FF4757] font-medium">{user.error}</p>
+                    <p className="text-[11px] text-[#FF4757] font-medium">{forgotError || user.error}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -395,12 +402,12 @@ export const AuthPage = ({ onBack, initialMode }) => {
               <motion.button
                 data-testid="login-submit-btn"
                 type="submit"
-                disabled={user.isLoading}
+                disabled={user.isLoading || forgotLoading}
                 className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
                 style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
                 whileTap={!user.isLoading ? { scale: 0.96 } : {}}
               >
-                {user.isLoading ? (
+                {user.isLoading || forgotLoading ? (
                   <>
                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
                       <Loader2 size={15} />

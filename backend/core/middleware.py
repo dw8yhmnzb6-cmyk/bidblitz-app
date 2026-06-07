@@ -10,7 +10,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
-from core.config import IS_PRODUCTION
+from core.config import IS_PRODUCTION, CORS_ORIGINS
 
 logger = logging.getLogger("bidblitz")
 access_logger = logging.getLogger("bidblitz.access")
@@ -22,7 +22,7 @@ def setup_middleware(app):
     # ── CORS Middleware ──
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

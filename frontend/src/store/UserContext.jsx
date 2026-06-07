@@ -72,14 +72,14 @@ function authReducer(state, action) {
       const mapped = mapUser(u);
       // Restore saved mode or default to personal
       let savedMode = 'personal';
-      try { savedMode = localStorage.getItem('bidblitz_mode') || 'personal'; } catch {}
+      try { savedMode = localStorage.getItem('bidblitz_mode') || 'personal'; } catch (storageError) { void storageError; }
       const validMode = mapped.modes.includes(savedMode) ? savedMode : 'personal';
       return { ...state, ...mapped, currentMode: validMode, isLoading: false, error: null, sessionReady: true, requires2FA: false };
     }
     case AUTH_ACTIONS.SET_MODE: {
       const mode = action.payload;
       if (state.modes.includes(mode)) {
-        try { localStorage.setItem('bidblitz_mode', mode); } catch {}
+        try { localStorage.setItem('bidblitz_mode', mode); } catch (storageError) { void storageError; }
         return { ...state, currentMode: mode };
       }
       return state;
@@ -87,7 +87,7 @@ function authReducer(state, action) {
     case AUTH_ACTIONS.SET_2FA_PENDING:
       return { ...state, requires2FA: true, twoFAEmailHint: action.payload || '', isLoading: false, error: null };
     case AUTH_ACTIONS.LOGOUT:
-      try { localStorage.removeItem('bidblitz_mode'); } catch {}
+      try { localStorage.removeItem('bidblitz_mode'); } catch (storageError) { void storageError; }
       return { ...guestState, sessionReady: true };
     case AUTH_ACTIONS.SESSION_CHECKED:
       return { ...state, sessionReady: true };
@@ -127,7 +127,9 @@ export function UserProvider({ children }) {
     const interval = setInterval(async () => {
       try {
         await api.refresh();
-      } catch {}
+      } catch (refreshError) {
+        void refreshError;
+      }
     }, 45 * 60 * 1000);
     return () => clearInterval(interval);
   }, [state.isAuthenticated]);
@@ -195,8 +197,10 @@ export function UserProvider({ children }) {
     try {
       const body = { name, email, password };
       if (requestedRole && requestedRole !== "customer") body.requested_role = requestedRole;
-      const user = await api.register(body);
-      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+      await api.register(body);
+      const loginResponse = await api.login({ email, password, remember_me: true });
+      const userData = JSON.parse(JSON.stringify(loginResponse.user || loginResponse));
+      dispatch({ type: AUTH_ACTIONS.SET_USER, payload: userData });
       // 🎁 Welcome Bonus Toast
       try {
         const { toast } = await import("sonner");
@@ -204,7 +208,9 @@ export function UserProvider({ children }) {
           description: "Du hast 5,00 € + 10 BLZ Willkommens-Bonus erhalten!",
           duration: 6000,
         });
-      } catch {}
+      } catch (toastError) {
+        void toastError;
+      }
       return true;
     } catch (err) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
@@ -213,7 +219,7 @@ export function UserProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    try { await api.logout(); } catch {}
+    try { await api.logout(); } catch (logoutError) { void logoutError; }
     dispatch({ type: AUTH_ACTIONS.LOGOUT });
   }, []);
 
@@ -221,7 +227,9 @@ export function UserProvider({ children }) {
     try {
       const user = await api.getMe();
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
-    } catch {}
+    } catch (refreshUserError) {
+      void refreshUserError;
+    }
   }, []);
 
   const setMode = useCallback((mode) => {

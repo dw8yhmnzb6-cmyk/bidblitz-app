@@ -30,9 +30,6 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() == "true"
 COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "none" if COOKIE_SECURE else "lax")
 COOKIE_HTTPONLY = True
 
-# ── CORS ──
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",") if IS_PRODUCTION else ["*"]
-
 # ── Stripe ──
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
@@ -45,6 +42,15 @@ STRIPE_ISSUING_DAILY_LIMIT_CENTS = int(os.environ.get("STRIPE_ISSUING_DAILY_LIMI
 # ── URLs ──
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8001")
+
+# ── CORS ──
+_raw_cors_origins = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",") if origin.strip()]
+if _raw_cors_origins:
+    CORS_ORIGINS = _raw_cors_origins
+elif FRONTEND_URL:
+    CORS_ORIGINS = [FRONTEND_URL]
+else:
+    CORS_ORIGINS = []
 
 # ── Rewards & Growth ──
 REWARDS = {
