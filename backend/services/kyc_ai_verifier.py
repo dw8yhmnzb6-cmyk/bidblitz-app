@@ -61,18 +61,14 @@ async def verify_id_documents(front_path: str, back_path: str, selfie_path: str)
         return {"error": "EMERGENT_LLM_KEY missing", "recommendation": "review", "overall_confidence": 0}
 
     # Read & encode all 3 images
-    images = []
+    image_contents = []
     for label, path in [("Vorderseite", front_path), ("Rückseite", back_path), ("Selfie mit Ausweis", selfie_path)]:
         if not os.path.exists(path):
             return {"error": f"file_missing: {label} ({path})", "recommendation": "review", "overall_confidence": 0}
         with open(path, "rb") as f:
             img_bytes = f.read()
         b64 = base64.b64encode(img_bytes).decode("utf-8")
-        # Detect mime type from extension
-        ext = path.lower().rsplit(".", 1)[-1]
-        mime_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
-        mime = mime_map.get(ext, "image/jpeg")
-        images.append(ImageContent(image_base64=b64, mime_type=mime))
+        image_contents.append(ImageContent(image_base64=b64))
 
     try:
         chat = LlmChat(
@@ -82,7 +78,7 @@ async def verify_id_documents(front_path: str, back_path: str, selfie_path: str)
         )
         chat.with_model("gemini", "gemini-2.5-pro")
 
-        msg = UserMessage(text=VERIFY_PROMPT, file_contents=images)
+        msg = UserMessage(text=VERIFY_PROMPT, file_contents=image_contents)
         response = await chat.send_message(msg)
         text = (response or "").strip()
 
