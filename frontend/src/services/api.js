@@ -345,7 +345,7 @@ export const api = {
   getAuctionReferral: () => request("/api/auctions/user/referral"),
   applyAuctionReferral: (code) => request("/api/auctions/user/apply-referral", { method: "POST", body: JSON.stringify({ code }) }),
   checkFirstPurchase: () => request("/api/auctions/first-purchase-check"),
-  getReferralLeaderboard: () => request("/api/auctions/referral-leaderboard"),
+  getAuctionReferralLeaderboard: () => request("/api/auctions/referral-leaderboard"),
   // Stripe Connect
   createConnectAccount: (body) => request("/api/merchant-connect/create-account", { method: "POST", body: JSON.stringify(body) }),
   getConnectStatus: () => request("/api/merchant-connect/status"),
@@ -364,7 +364,7 @@ export const api = {
   submitInvestorContact: (body) => request("/api/investor/contact", { method: "POST", body: JSON.stringify(body) }),
   // Rewards
   getRewardStatus: () => request("/api/rewards/status"),
-  claimDailyReward: () => request("/api/rewards/daily-claim", { method: "POST" }),
+  claimRewardsDailyReward: () => request("/api/rewards/daily-claim", { method: "POST" }),
   claimMilestone: (id) => request(`/api/rewards/milestone/${id}`, { method: "POST" }),
   getRewardNotifications: () => request("/api/rewards/notifications"),
   markRewardNotificationsRead: () => request("/api/rewards/notifications/read", { method: "POST" }),
@@ -377,7 +377,7 @@ export const api = {
   // Verification
   uploadVerification: (formData) => {
     const token = document.cookie.split(";").find(c => c.trim().startsWith("access_token="));
-    return fetch(`${API}/api/verification/upload`, {
+    return fetch(`${API_URL}/api/verification/upload`, {
       method: "POST",
       body: formData,
       credentials: "include",
@@ -385,7 +385,7 @@ export const api = {
     }).then(r => r.ok ? r.json() : r.json().then(d => { throw new Error(d.detail || "Upload failed"); }));
   },
   getVerificationStatus: () => request("/api/verification/my-status"),
-  getVerificationFileUrl: (filename) => `${API}/api/verification/file/${filename}`,
+  getVerificationFileUrl: (filename) => `${API_URL}/api/verification/file/${filename}`,
   adminListVerifications: (status = "pending") => request(`/api/verification/admin/list?status=${status}`),
   adminDecideVerification: (body) => request("/api/verification/admin/decide", { method: "POST", body: JSON.stringify(body) }),
   // Merchant Hierarchy
@@ -417,9 +417,9 @@ export const api = {
   getBranchSummary: () => request("/api/merchant-hierarchy/branch-summary"),
   getCommissionSummary: () => request("/api/merchant-hierarchy/commission-summary"),
   getApiKeys: (branchId = "") => request(`/api/merchant-hierarchy/api-keys${branchId ? `?branch_id=${branchId}` : ""}`),
-  getWalletBalance: () => request("/api/merchant-hierarchy/wallet-balance"),
+  getMerchantHierarchyWalletBalance: () => request("/api/merchant-hierarchy/wallet-balance"),
   // POS Payments
-  getMyBarcode: () => request("/api/payments/my-barcode"),
+  getPaymentsBarcode: () => request("/api/payments/my-barcode"),
   refreshBarcode: () => request("/api/payments/refresh-barcode", { method: "POST" }),
   barcodeLookup: (barcode) => request("/api/payments/barcode-lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
   barcodePayment: (body) => request("/api/payments/barcode-pay", { method: "POST", body: JSON.stringify(body) }),

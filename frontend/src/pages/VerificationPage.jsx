@@ -22,24 +22,32 @@ const VerificationPage = ({ onBack }) => {
   const [success, setSuccess] = useState(false);
 
   const load = useCallback(async () => {
-    try {
-      const res = await api.getKycStatus();
-      setData(res);
-      setSuccess(false);
-    } catch (loadError) {
-      void loadError;
-    }
-    setLoading(false);
+    const res = await api.getKycStatus();
+    return res;
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await load();
+        if (!active) return;
+        setData(res);
+        setSuccess(false);
+      } catch (loadError) {
+        void loadError;
+      }
+      if (active) setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [load]);
 
   const handleFile = (key, file) => {
     if (!file) return;
     setFiles(p => ({ ...p, [key]: file }));
-    const reader = new FileReader();
-    reader.onload = (e) => setPreviews(p => ({ ...p, [key]: e.target.result }));
-    reader.readAsDataURL(file);
+    setPreviews(p => ({ ...p, [key]: URL.createObjectURL(file) }));
   };
 
   const submit = async () => {
@@ -56,7 +64,9 @@ const VerificationPage = ({ onBack }) => {
       fd.append("selfie", files.selfie);
       fd.append("document_type", "national_id");
       await api.submitKycFormData(fd);
-      await load();
+      const nextStatus = await load();
+      setData(nextStatus);
+      setSuccess(false);
     } catch (e) {
       setError(e?.message || "KYC Upload fehlgeschlagen");
     }
