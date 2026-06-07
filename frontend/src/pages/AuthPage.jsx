@@ -110,8 +110,8 @@ export const AuthPage = ({ onBack, initialMode }) => {
           }).catch(() => {});
         }
       } catch {}
-      // Open KYC modal immediately after registration
-      setShowKYC(true);
+      // Nach Registrierung erst stabil einloggen lassen; KYC später manuell starten
+      setShowKYC(false);
     }
   };
 
