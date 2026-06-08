@@ -31,6 +31,12 @@ const HTML5_SUPPORTED_FORMATS = [
 
 const generateIdempotencyKey = () => `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
+const swallowMaybePromise = (result) => {
+  if (result && typeof result.catch === "function") {
+    result.catch(() => {});
+  }
+};
+
 const ScannerPage = ({ onNavigate, onShowBarcode }) => {
   const user = useUser();
   const wallet = useWallet();
@@ -78,9 +84,20 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
     detectorRef.current = null;
     if (html5ScannerRef.current) {
       const scanner = html5ScannerRef.current;
-      scanner.stop?.().catch(() => {}).finally(() => {
-        scanner.clear?.().catch(() => {});
-      });
+      try {
+        const state = typeof scanner.getState === "function" ? scanner.getState() : null;
+        const canStop = state === 2 || state === 3 || state === "SCANNING" || state === "PAUSED";
+        if (canStop && typeof scanner.stop === "function") {
+          scanner.stop().catch(() => {}).finally(() => {
+            swallowMaybePromise(scanner.clear?.());
+          });
+        } else {
+          swallowMaybePromise(scanner.clear?.());
+        }
+      } catch (scannerStopError) {
+        void scannerStopError;
+        swallowMaybePromise(scanner.clear?.());
+      }
       html5ScannerRef.current = null;
     }
     scanLockRef.current = false;
@@ -91,13 +108,14 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
     setCameraEngine(null);
   }, []);
 
-  useEffect(() => () => stopCamera(), [stopCamera]);
-
-  useEffect(() => {
-    if (tool !== Tool.RESOLVE) {
+  const switchTool = useCallback((nextTool) => {
+    if (nextTool !== Tool.RESOLVE) {
       stopCamera();
     }
-  }, [tool, stopCamera]);
+    setTool(nextTool);
+  }, [stopCamera]);
+
+  useEffect(() => () => stopCamera(), [stopCamera]);
 
   const handleResolveCode = useCallback(async (value) => {
     const code = (value || "").trim();
@@ -146,7 +164,11 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
       const preferHtml5Fallback = /iPad|iPhone|iPod/i.test(navigator.userAgent) || typeof window === "undefined" || !("BarcodeDetector" in window);
 
       if (preferHtml5Fallback) {
-        const scanner = new Html5Qrcode("scan-hub-reader");
+        const scanner = new Html5Qrcode("scan-hub-reader", {
+          experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+          useBarCodeDetectorIfSupported: false,
+          verbose: false,
+        });
         html5ScannerRef.current = scanner;
 
         const onScanSuccess = async (decodedText) => {
@@ -163,6 +185,11 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
           rememberLastUsedCamera: true,
           formatsToSupport: HTML5_SUPPORTED_FORMATS,
           experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+          videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
         };
 
         try {
@@ -175,7 +202,11 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
         setCameraActive(true);
         setScanHint("Safari/iPhone-Kamera aktiv. Richte den Code mittig aus.");
         setTimeout(() => {
-          scanner.applyVideoConstraints?.({ advanced: [{ focusMode: "continuous" }, { zoom: 2 }] }).catch(() => {});
+          try {
+            swallowMaybePromise(scanner.applyVideoConstraints?.({ advanced: [{ focusMode: "continuous" }, { zoom: 2 }] }));
+          } catch (focusError) {
+            void focusError;
+          }
         }, 1200);
         return;
       }
@@ -224,7 +255,9 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
             setTimeout(() => { scanLockRef.current = false; }, 1500);
           }
         }
-      } catch {}
+      } catch (scanLoopError) {
+        void scanLoopError;
+      }
 
       if (!cancelled) {
         setTimeout(scanLoop, 700);
@@ -340,14 +373,14 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
       <div className="px-5 pb-8 relative z-10 space-y-5">
         <div className="grid grid-cols-3 gap-2" data-testid="scanner-tool-switcher">
           <button
-            onClick={() => setTool(Tool.RESOLVE)}
+            onClick={() => switchTool(Tool.RESOLVE)}
             className={`py-2.5 rounded-xl text-xs font-semibold border ${tool === Tool.RESOLVE ? "bg-[#00C2FF]/15 text-[#00C2FF] border-[#00C2FF]/30" : "bg-white/[0.03] text-[#888] border-white/[0.05]"}`}
             data-testid="scanner-tool-resolve"
           >
             Scannen
           </button>
           <button
-            onClick={() => canCashier ? setTool(Tool.CASHIER) : onShowBarcode?.()}
+            onClick={() => canCashier ? switchTool(Tool.CASHIER) : onShowBarcode?.()}
             className={`py-2.5 rounded-xl text-xs font-semibold border ${tool === Tool.CASHIER ? "bg-[#00D26A]/15 text-[#00D26A] border-[#00D26A]/30" : "bg-white/[0.03] text-[#888] border-white/[0.05]"}`}
             data-testid="scanner-tool-cashier"
           >
@@ -383,29 +416,33 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
 
             <div className="rounded-3xl border border-white/[0.05] bg-white/[0.03] overflow-hidden" data-testid="scan-hub-camera-card">
               <div className="aspect-[4/5] bg-[#050505] flex items-center justify-center relative">
-                {cameraActive && cameraEngine === "native" ? (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="absolute inset-0 w-full h-full object-cover"
-                    data-testid="scan-camera-preview"
-                  />
-                ) : cameraActive && cameraEngine === "html5" ? (
-                  <div
-                    id="scan-hub-reader"
-                    className="absolute inset-0 overflow-hidden [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&>div]:w-full [&>div]:h-full"
-                    data-testid="scan-camera-html5-preview"
-                  />
-                ) : (
-                  <div className="text-center px-6" data-testid="scan-camera-placeholder">
-                    <div className="w-20 h-20 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 flex items-center justify-center mx-auto mb-4">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity ${cameraActive && cameraEngine === "native" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                  data-testid="scan-camera-preview"
+                />
+                <div
+                  id="scan-hub-reader"
+                  className={`absolute inset-0 overflow-hidden transition-opacity [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&>div]:w-full [&>div]:h-full ${cameraActive && cameraEngine === "html5" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                  data-testid="scan-camera-html5-preview"
+                />
+
+                {!cameraActive && (
+                  <button
+                    type="button"
+                    onClick={startCamera}
+                    className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6"
+                    data-testid="scan-camera-placeholder-action"
+                  >
+                    <div className="w-20 h-20 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 flex items-center justify-center mx-auto mb-4 shadow-[0_0_40px_rgba(0,194,255,0.08)]">
                       <ScanLine size={30} className="text-[#00C2FF]" />
                     </div>
-                    <p className="text-sm font-semibold">QR + klassische Barcodes</p>
-                    <p className="text-[11px] text-[#666] mt-1">Unterstützt Tisch-Codes, Rechnungen und Checkout-Links.</p>
-                  </div>
+                    <p className="text-sm font-semibold">Zum Scannen tippen</p>
+                    <p className="text-[11px] text-[#666] mt-1">QR + klassische Barcodes. Unterstützt Tisch-Codes, Rechnungen und Checkout-Links.</p>
+                  </button>
                 )}
                 <div className="absolute inset-x-5 top-5 h-12 border border-[#00C2FF]/35 rounded-2xl pointer-events-none" />
               </div>
