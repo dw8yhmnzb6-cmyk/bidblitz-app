@@ -63,6 +63,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [cameraEngine, setCameraEngine] = useState(null);
+  const [cameraPreparing, setCameraPreparing] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const detectorRef = useRef(null);
@@ -104,6 +105,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setCameraPreparing(false);
     setCameraActive(false);
     setCameraEngine(null);
   }, []);
@@ -164,6 +166,11 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
       const preferHtml5Fallback = /iPad|iPhone|iPod/i.test(navigator.userAgent) || typeof window === "undefined" || !("BarcodeDetector" in window);
 
       if (preferHtml5Fallback) {
+        setCameraPreparing(true);
+        setCameraEngine("html5");
+        await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+        await new Promise((resolve) => setTimeout(resolve, 60));
+
         const scanner = new Html5Qrcode("scan-hub-reader", {
           experimentalFeatures: { useBarCodeDetectorIfSupported: false },
           useBarCodeDetectorIfSupported: false,
@@ -198,8 +205,8 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
           await scanner.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
         }
 
-        setCameraEngine("html5");
         setCameraActive(true);
+        setCameraPreparing(false);
         setScanHint("Safari/iPhone-Kamera aktiv. Richte den Code mittig aus.");
         setTimeout(() => {
           try {
@@ -426,11 +433,11 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
                 />
                 <div
                   id="scan-hub-reader"
-                  className={`absolute inset-0 overflow-hidden transition-opacity [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&>div]:w-full [&>div]:h-full ${cameraActive && cameraEngine === "html5" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                  className={`absolute inset-0 overflow-hidden transition-opacity [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&>div]:w-full [&>div]:h-full ${cameraEngine === "html5" || cameraPreparing ? "opacity-100" : "opacity-0 pointer-events-none"}`}
                   data-testid="scan-camera-html5-preview"
                 />
 
-                {!cameraActive && (
+                {!cameraActive && !cameraPreparing && (
                   <button
                     type="button"
                     onClick={startCamera}
@@ -443,6 +450,15 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
                     <p className="text-sm font-semibold">Zum Scannen tippen</p>
                     <p className="text-[11px] text-[#666] mt-1">QR + klassische Barcodes. Unterstützt Tisch-Codes, Rechnungen und Checkout-Links.</p>
                   </button>
+                )}
+                {cameraPreparing && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6 bg-[#050505]/80" data-testid="scan-camera-preparing">
+                    <div className="w-16 h-16 rounded-full border border-[#00C2FF]/25 bg-[#00C2FF]/10 flex items-center justify-center mb-4">
+                      <Loader2 size={26} className="text-[#00C2FF] animate-spin" />
+                    </div>
+                    <p className="text-sm font-semibold">Kamera wird gestartet</p>
+                    <p className="text-[11px] text-[#666] mt-1">Bitte kurz warten und die Berechtigung erlauben.</p>
+                  </div>
                 )}
                 <div className="absolute inset-x-5 top-5 h-12 border border-[#00C2FF]/35 rounded-2xl pointer-events-none" />
               </div>
