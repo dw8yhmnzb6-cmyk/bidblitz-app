@@ -1,5 +1,14 @@
 # BidBlitz — CHANGELOG
 
+## 08.06.2026
+- Mobile-Safari-/iPhone-Sweep `iteration_136` vollständig grün: Taxi, Scanner, Express Checkout, Sabre Hotels und Wallet PASS
+- Taxi-Map mit sichtbarer Leaflet-Fallback-Karte gehärtet, falls Mapbox ausfällt
+- Express Checkout: funktionsfähige Add-Card- und Add-Address-Modals mit Validierung ergänzt
+- Scanner: iPhone-Fallback auf `capture=environment` / Foto-Kamera-Auswahl umgestellt
+- Sabre-Hotel-Suche stabilisiert: Daten vorbefüllt, bessere Validierung, Buchungsmodal + Bookings-Tab sauber
+- Backend-Smoke für Hotels, Taxi und Auth 5/5 PASS
+- **MOCKED**: Sabre-Hotelsuche/-Buchungen sowie Browser-Native-Hardware-Fallbacks
+
 ## 26.05.2026
 - Vollständiger Website-Sweep `iteration_134` grün: Backend 17/17 PASS, Frontend-Kernflows PASS
 - Geprüft: Homepage, Login, Impressum, Leaderboard, Auktionen, Restaurant Admin, Printer Wizard, USB Discovery

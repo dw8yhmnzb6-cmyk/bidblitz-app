@@ -9,6 +9,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Restaurant-/Café-Tischsystem mit QR-Menü, Service-Button-Flow, Staff-Dashboard, Küchenmonitor und Drucker-Integration ist aktiv im Ausbau.
 - Preview-Einschränkung bleibt: echte lokale USB-/LAN-Drucker sind dort nur per Fallback/Diagnose simulierbar, nicht als echte Hardware-End-to-End-Verbindung.
 
+### 08.06.2026 (Mobile Safari / Frontend Stabilisierungssweep) ✅
+- 🟢 **Taxi-Karte gehärtet** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/MiniLeafletMap.jsx`): Wenn Mapbox ausfällt, bleibt eine sichtbare Fallback-Karte aktiv statt eines harten Kartenabbruchs.
+- 🟢 **Express Checkout repariert** (`frontend/src/pages/ExpressCheckoutPage.jsx`): kaputtes Karten-/Adress-Handling durch echte, ausfüllbare Add-Card- und Add-Address-Modals ersetzt; Validierung und mobile Bedienung verbessert.
+- 🟢 **Sabre-Hotel-Flow stabilisiert** (`frontend/src/pages/HotelSabreSearchPage.jsx`, `backend/routes/hotels.py`): Check-in/out sind vorbefüllt, Suche validiert klarer, Buchungsmodal ist testbar/stabil und `Meine Buchungen` zeigt sinnvolle Empty-States; Backend blockt ungültige Datumsbereiche sauber mit 400.
+- 🟢 **iPhone-Scanner-Fallback verbessert** (`frontend/src/pages/ScannerPage.jsx`): Statt am Kamera-Start zu hängen, nutzt iPhone/Safari jetzt zuverlässig `capture=environment` / Foto-Kamera-Auswahl als Fallback.
+- ✅ **Verifiziert**: `iteration_136.json` Frontend-Sweep grün (Taxi, Scan, Express Checkout, Sabre Hotels, Wallet); zusätzlicher Backend-Smoke für Hotels, Taxi und Auth 5/5 PASS.
+- ⚠️ **MOCKED/FALLBACK**: Sabre-Hotelsuche/-Buchungen bleiben im Backend **MOCKED**; NFC/USB/native Hardware-Funktionen bleiben im Browser-Preview **MOCKED/FALLBACK**.
+
 ### 26.05.2026 (Leaderboard / Rangliste Fix) ✅
 - 🟢 **Rangliste repariert** (`backend/core/router_registry.py`): `routes.extras` wird jetzt wieder registriert, dadurch antwortet `/api/extras/leaderboard` nicht mehr mit 404.
 - 🟢 **Leaderboard-UI professionalisiert** (`frontend/src/pages/ExtraFeatures.jsx`): Hero-Karte, Podium, Lade-/Fehler-/Leerzustände und zusätzliche `data-testid`-Attribute ergänzt. Die Seite wirkt nicht mehr leer/unfertig.
