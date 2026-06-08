@@ -18,6 +18,10 @@
 - Frontend-Test bestanden: keine große Leerfläche mehr, Tabs funktionieren sauber
 
 ## 07.06.2026
+- Taxi-Map-/Adresssuche verbessert: Uber/Bolt-artige Hinweise, klarere Zielsuche, Live-Treffer sichtbarer
+- Taxi-Geocode lokalisiert: engerer Proximity-/BBox-Bias plus `country`-Support im Backend-Proxy
+- Kartenfehler-Overlay entschärft: Suche und Bestellung bleiben klar nutzbar, auch wenn Mapbox im Frontend ausfällt
+- Frontend-Taxi-Test PASS, Backend-Taxi-Geocode PASS
 - KYC-/Ausweis-Verifizierung repariert: `/api/kyc/submit` wirft keinen 500er mehr
 - `VerificationPage` auf echte KYC-Endpunkte umgestellt (`/api/kyc/status`, `/api/kyc/submit`)
 - Register-/Auth-Gate-Flow vereinheitlicht, damit frische User sauber authentifiziert im KYC landen

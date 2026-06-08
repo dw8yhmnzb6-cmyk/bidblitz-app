@@ -58,6 +58,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Registrierungs-/Auth-Gate vereinheitlicht** (`frontend/src/store/UserContext.jsx`, `frontend/src/components/AuthGateOverlay.jsx`, `frontend/src/pages/AuthPage.jsx`): Register-Flow konsolidiert, KYC springt nicht mehr direkt ungefragt auf, normaler Auth-/KYC-Fortgang stabilisiert.
 - ✅ **Verifiziert**: Browser-E2E mit frischem `.com`-User → Register 200, `/api/auth/me` 200, `/api/kyc/submit` 200, `/api/kyc/status` 200.
 
+### 07.06.2026 (Taxi Map + Suchflow Upgrade) ✅
+- 🟢 **Taxi-Suche moderner gemacht** (`frontend/src/components/taxi/TaxiAddressSearchSheet.jsx`, `TaxiBookingSheet.jsx`): klare Uber/Bolt-artige Hinweise, sichtbare Live-Treffer, verständlichere Zielsuche („Straße, Hausnummer, Hotel, Bahnhof oder Ort“), und `Pin auf Karte setzen` hervorgehoben.
+- 🟢 **Geocode-Relevanz verbessert** (`frontend/src/components/taxi/useTaxiGeocoder.js`, `backend/routes/taxi.py`): Country-Hint + engerer BBox/Proximity-Bias für passendere lokale Ergebnisse; Backend-Proxy unterstützt jetzt `country` und bessere lokale Gewichtung.
+- 🟢 **Produktions-Fallback für Kartenfehler verbessert** (`frontend/src/hooks/useTaxiMap.js`, `frontend/src/pages/TaxiPage.jsx`): Wenn die Karte nicht lädt, bleibt die Straßensuche und Bestellung klar nutzbar statt wie kaputt zu wirken.
+- ✅ **Verifiziert**: Taxi-UI-Test PASS, Taxi-Geocode-Backend PASS.
+
 ## Architecture
 - Frontend: React 19 + Capacitor 7 (iOS/Android) + Tailwind + framer-motion + sonner
 - Backend: FastAPI + Motor (MongoDB async) + emergentintegrations

@@ -9,6 +9,7 @@
 - USB-Auto-Suche im nativen Drucker-Wizard auf echten Geräten verifizieren
 - Volltest später um zusätzliche weniger kritische Module außerhalb des aktuellen Kerns erweitern
 - KYC-Flow später noch um bessere Upload-Fehlermeldungen und klare Status-Refresh-UX erweitern
+- Taxi-Suche später noch um Recents/Home/Work-Priorisierung und echte serverseitige Ranking-Heuristik vertiefen
 - Floorplan-/Raumplan-Editor für Tische mit Mehrraum/Zoom/Snapping ausbauen
 - Restaurant-Live-Events optional um Sound/Badge-Cues pro Event-Typ erweitern
 - Optional externe Warenwirtschaft-/Kassenanbindung für Auto-Bestellungen ergänzen
