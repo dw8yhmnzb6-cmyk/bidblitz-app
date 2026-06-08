@@ -166,7 +166,7 @@ In Native Apps keine process.env - nutze:
 ```typescript
 // capacitor.config.ts
 server: {
-  url: 'https://floorplan-wizard-8.preview.emergentagent.com',
+  url: 'https://taxi-uber-style.preview.emergentagent.com',
   cleartext: true
 }
 ```

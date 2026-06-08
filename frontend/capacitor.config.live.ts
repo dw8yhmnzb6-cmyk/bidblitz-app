@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://floorplan-wizard-8.preview.emergentagent.com',
+    url: 'https://taxi-uber-style.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

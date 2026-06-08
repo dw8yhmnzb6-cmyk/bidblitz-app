@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://floorplan-wizard-8.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://taxi-uber-style.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.com"
@@ -67,7 +67,7 @@ class TestStripeCheckout:
         """POST /api/stripe/checkout without auth returns 401"""
         response = requests.post(f"{BASE_URL}/api/stripe/checkout", json={
             "package_id": "50",
-            "origin_url": "https://floorplan-wizard-8.preview.emergentagent.com"
+            "origin_url": "https://taxi-uber-style.preview.emergentagent.com"
         })
         assert response.status_code == 401, f"Expected 401, got {response.status_code}"
         print("✓ POST /api/stripe/checkout without auth returns 401")
@@ -76,7 +76,7 @@ class TestStripeCheckout:
         """POST /api/stripe/checkout with valid package_id returns checkout_url and session_id"""
         response = auth_session.post(f"{BASE_URL}/api/stripe/checkout", json={
             "package_id": "50",
-            "origin_url": "https://floorplan-wizard-8.preview.emergentagent.com"
+            "origin_url": "https://taxi-uber-style.preview.emergentagent.com"
         })
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
@@ -98,7 +98,7 @@ class TestStripeCheckout:
         """POST /api/stripe/checkout with invalid package returns 400 error"""
         response = auth_session.post(f"{BASE_URL}/api/stripe/checkout", json={
             "package_id": "999",  # Invalid package
-            "origin_url": "https://floorplan-wizard-8.preview.emergentagent.com"
+            "origin_url": "https://taxi-uber-style.preview.emergentagent.com"
         })
         assert response.status_code == 400, f"Expected 400, got {response.status_code}: {response.text}"
         
@@ -116,7 +116,7 @@ class TestStripeCheckout:
         for pkg_id in valid_packages:
             response = auth_session.post(f"{BASE_URL}/api/stripe/checkout", json={
                 "package_id": pkg_id,
-                "origin_url": "https://floorplan-wizard-8.preview.emergentagent.com"
+                "origin_url": "https://taxi-uber-style.preview.emergentagent.com"
             })
             assert response.status_code == 200, f"Package {pkg_id} failed: {response.text}"
             data = response.json()
@@ -128,7 +128,7 @@ class TestStripeCheckout:
     def test_checkout_missing_package_id_returns_422(self, auth_session):
         """POST /api/stripe/checkout without package_id returns 422"""
         response = auth_session.post(f"{BASE_URL}/api/stripe/checkout", json={
-            "origin_url": "https://floorplan-wizard-8.preview.emergentagent.com"
+            "origin_url": "https://taxi-uber-style.preview.emergentagent.com"
         })
         assert response.status_code == 422, f"Expected 422, got {response.status_code}"
         print("✓ POST /api/stripe/checkout without package_id returns 422")
@@ -173,7 +173,7 @@ class TestStripeCheckoutStatus:
         # First create a checkout session
         checkout_resp = auth_session.post(f"{BASE_URL}/api/stripe/checkout", json={
             "package_id": "25",
-            "origin_url": "https://floorplan-wizard-8.preview.emergentagent.com"
+            "origin_url": "https://taxi-uber-style.preview.emergentagent.com"
         })
         assert checkout_resp.status_code == 200
         session_id = checkout_resp.json()["session_id"]
@@ -220,7 +220,7 @@ class TestStripeIntegrationFlow:
         # Step 2: Create checkout session for €100 package
         checkout_resp = auth_session.post(f"{BASE_URL}/api/stripe/checkout", json={
             "package_id": "100",
-            "origin_url": "https://floorplan-wizard-8.preview.emergentagent.com"
+            "origin_url": "https://taxi-uber-style.preview.emergentagent.com"
         })
         assert checkout_resp.status_code == 200
         checkout_data = checkout_resp.json()

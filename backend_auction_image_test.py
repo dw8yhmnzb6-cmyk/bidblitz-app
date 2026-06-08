@@ -8,7 +8,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "https://floorplan-wizard-8.preview.emergentagent.com"
+BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
 
 def test_active_auctions():
     """Test 1: GET /api/auctions/active returns auctions with non-empty image_url"""

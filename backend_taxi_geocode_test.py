@@ -9,7 +9,7 @@ import json
 from typing import Dict, Any
 
 # Backend URL from frontend .env
-BASE_URL = "https://floorplan-wizard-8.preview.emergentagent.com"
+BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
 
 def test_geocode_endpoint(query: str, description: str) -> Dict[str, Any]:
     """Test geocode endpoint with a search query"""

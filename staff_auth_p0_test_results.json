@@ -1,7 +1,7 @@
 {
   "test_run": {
     "timestamp": "2026-05-17T17:43:59.761028",
-    "base_url": "https://floorplan-wizard-8.preview.emergentagent.com",
+    "base_url": "https://taxi-uber-style.preview.emergentagent.com",
     "test_user": "mitarbeiter@bidblitz.com",
     "total_tests": 5,
     "passed": 1,

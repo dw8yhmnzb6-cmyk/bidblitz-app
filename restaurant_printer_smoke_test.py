@@ -15,7 +15,7 @@ import os
 import requests
 import json
 
-BASE_URL = "https://floorplan-wizard-8.preview.emergentagent.com"
+BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

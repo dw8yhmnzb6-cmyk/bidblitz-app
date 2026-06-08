@@ -1,7 +1,7 @@
 # BidBlitz Super-App Features Backend Test Report
 **Date:** 2026-04-26  
 **Tester:** Testing Agent  
-**Backend URL:** https://floorplan-wizard-8.preview.emergentagent.com/api
+**Backend URL:** https://taxi-uber-style.preview.emergentagent.com/api
 
 ## Test Summary
 - **Total Tests:** 10

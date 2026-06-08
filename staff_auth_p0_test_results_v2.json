@@ -1,7 +1,7 @@
 {
   "test_run": {
     "timestamp": "2026-05-17T17:46:54.476815",
-    "base_url": "https://floorplan-wizard-8.preview.emergentagent.com",
+    "base_url": "https://taxi-uber-style.preview.emergentagent.com",
     "total": 5,
     "passed": 4,
     "failed": 1

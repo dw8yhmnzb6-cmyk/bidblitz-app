@@ -1,6 +1,6 @@
 {
   "test_suite": "Taxi Tariff Zones P1",
-  "base_url": "https://floorplan-wizard-8.preview.emergentagent.com",
+  "base_url": "https://taxi-uber-style.preview.emergentagent.com",
   "timestamp": "2026-05-17T18:10:44.628069",
   "tests": [
     {

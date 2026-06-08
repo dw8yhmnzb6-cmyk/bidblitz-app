@@ -1,136 +1,130 @@
-<analysis>**original_problem_statement**: Baue ein komplettes Restaurant-/Café-Tischsystem. PRODUCT REQUIREMENTS: Fix Scooter-UI Regression (P0), implementiere Live-WebSockets für Staff/Kitchen, baue den Floorplan aus (Farben, Formen, Snapping), füge Live-Sound-Cues hinzu und entwickle einen Printer-Setup-Wizard (Auto-Suche, manuelle IP, Pflicht-Testdruck, Speichern pro Rolle).
+<analysis>**original_problem_statement**: Baue ein komplettes Restaurant-/Café-Tischsystem und erweitere die Super-App. PRODUCT REQUIREMENTS: Fix iOS/Android Security Blocker (P0), implementiere NFC-Native-Bridge, repariere die leere Rangliste, integriere 30 neue Marine-Auktionen (keine Miete!), repariere den KYC-Upload-Flow (Gemini API & CORS Bugs) und überarbeite die Taxi-Karte und Zielsuche im Uber/Bolt-Style inkl. Fallbacks. 
 
-**User's preferred language**: GERMAN (Du MUSST automatisch die primäre Sprache des Benutzers erkennen und AUSSCHLIESSLICH auf Deutsch antworten. **CRITICAL:** Der User hat einen STRIKTEN BIDBLITZ LOW-COST DEVELOPMENT MODE aktiviert: Keine langen Erklärungen, keine unnötigen Zusammenfassungen. Nur minimal invasiver Code, nur angeforderte Dateien bearbeiten.)
+**User's preferred language**: GERMAN (Du MUSST automatisch die primäre Sprache des Benutzers erkennen und AUSSCHLIESSLICH auf Deutsch antworten. **CRITICAL:** Der User hat einen STRIKTEN BIDBLITZ LOW-COST DEVELOPMENT MODE aktiviert und war im letzten Chat verärgert über zu viele Nachfragen (Du stellst mir zu viele Fragen... mach es einfach). Keine langen Erklärungen, keine unnötigen Zusammenfassungen, und  nur im absoluten Notfall nutzen. Direkt Code schreiben und testen.)
 
 **what currently exists?** 
-Ein React + FastAPI + MongoDB Full-Stack-Projekt mit Capacitor (Android/iOS). Das System umfasst Module für Taxi, EV Charging, POS, Staff und ein neues Restaurant-Tischsystem. In dieser Session wurde ein UI-Bug (Scooter-Layout) gefixt. Das Restaurant-Modul wurde um Live-WebSockets, einen visuell erweiterten Floorplan, Sound-Benachrichtigungen und einen voll funktionsfähigen Drucker-Setup-Wizard ergänzt.
+Ein React + FastAPI + MongoDB Full-Stack-Projekt mit Capacitor (Android/iOS). Das System umfasst Module für Taxi, EV Charging, POS, Staff, Restaurant und Wallet. In dieser Session wurden iOS/Android Security-Blocker behoben, ein USB-Scanner für den Drucker-Wizard hinzugefügt, eine native NFC-Bridge (Capacitor/Java) gebaut, 30 Marine-Auktionen ergänzt, ein kaputter KYC-Verifizierungsflow repariert (Gemini SDK & CORS Cookie Fix) und das Taxi-Modul mit einem modernen Uber/Bolt-Suchflow samt Map-Fallbacks ausgestattet.
 
 **Last working item**: 
-    - Last item agent was working: Entwicklung des Drucker-Setup-Wizards im Restaurant-Admin-Bereich. Der Wizard beinhaltet automatische LAN/USB-Suche, manuelle IP-Eingabe, einen zwingend erforderlichen Testdruck und das Speichern für verschiedene Rollen (Kitchen, Service, Bill).
-    - Status: USER VERIFICATION PENDING (Agent hat es fertiggestellt und erfolgreich getestet, wartet auf finale Bestätigung/Nächsten Schritt vom User).
+    - Last item agent was working: Überarbeitung der Taxi-Zielsuche (Uber/Bolt-Style) und Karten-Fallbacks. ,  und Backend-Geocoding wurden verbessert, sodass die Suche mit Live-Treffern und Pin auf Karte setzen funktioniert, selbst wenn Mapbox hakt.
+    - Status: USER VERIFICATION PENDING
     - Agent Testing Done: Y
-    - Which testing method agent to use? NA (Testing agent passed in )
+    - Which testing method agent to use? NA (Frontend testing agent passed successfully).
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:  
-  - Issue 1: iOS  in Info.plist (P0 Blocker aus vorherigem Audit)
-     - Attempted fixes: Bisher nicht gestartet, User fokussierte sich auf Restaurant-Features.
-     - Next debug checklist:  bearbeiten und auf  setzen.
-     - Why fix this issue and what will be achieved with the fix? Verhindert 100%ige Ablehnung im Apple App Store.
-     - Status: NOT STARTED 
+*(Keine offenen P0/P1-Bugs aus dem aktuellen Scope bekannt. Der vorherige Full-Site-Test lief grün. Folgende Punkte sind konzeptionell noch offen)*
+  - Issue 1: Taxi-UX Feinschliff
+     - Next debug checklist: Prüfen, ob nach der Uber-Style Zielauswahl sofort Route, Preis und Fahrzeit korrekt berechnet und prominent angezeigt werden (wie von Agent am Ende vorgeschlagen).
+     - Why fix this issue and what will be achieved with the fix? Vervollständigt die Uber/Bolt-Parität.
+     - Status: NOT STARTED
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on other issue: NA
-  - Issue 2: Unsicherer Keystore im Git-Repo (P0 Blocker aus vorherigem Audit)
-     - Next debug checklist:  löschen, User instruieren.
-     - Why fix this issue and what will be achieved with the fix? Behebt massives Sicherheitsrisiko (Production-Key im Repo).
-     - Status: NOT STARTED 
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? NA
-     - Blocked on other issue: NA
 
 **In progress Task List**: 
-Keine. Alle aktuellen Tasks wurden abgeschlossen.
+Keine. Alle gestarteten Tasks wurden abgeschlossen.
 
 **Upcoming and Future Tasks**
-  - P0: Behebung der App-Store & Security Blocker (iOS Plist, Keystore, Auth-Ratelimit - siehe Issues).
-  - P1: Echter Onboarding-Assistent für Kunden zur schrittweisen Einrichtung der Drucker (Kitchen → Service → Bill). *(Vom Agenten vorgeschlagen)*
-  - P1: Native NFC-Bridge für Capacitor nachreichen (wartet auf User-Gerätedaten/Lizenz).
-  - P2: Floorplan um Mehrraum-Zonen, Rotation und freie Polygon-Räume erweitern.
-  - P2: Zonen-Editor-UI im Admin (Taxi Modul).
+  - P1: Taxi-Flow: Nach Zielauswahl sofort Route + Preis + Fahrzeit anzeigen (wie bei Uber/Bolt).
+  - P1: KYC-UI: Klare KYC-Erfolgs-/Fehleranzeige mit Auto-Refresh und Retry-Button einbauen.
+  - P2: Floorplan: Mehrraum-Zonen, Rotation und freie Polygon-Räume im Restaurant-System.
+  - P2: Printer-Diagnose um echte Live-Socket-Logs/Retry-Historie pro Gerät vertiefen.
 
 **Completed work in this session**
-- Scooter-UI Layout Bug (Regression durch globale Safe-Area/CSS Änderungen) behoben (DONE)
-- Live WebSockets für Restaurant Staff Dashboard & Kitchen implementiert (DONE)
-- Restaurant Floorplan Upgrade (Formen, Größen, Farben, Snapping) eingebaut (DONE)
-- Live-Sound und Badge-Cues für eintreffende Restaurant-Events (DONE)
-- Printer-Setup-Wizard inkl. Auto-Discovery, manuellem Fallback und Testdruck-Pflicht (DONE)
+- iOS ATS Flag & Android Keystore Security-Blocker gelöst (DONE)
+- Impressum-Text aktualisiert (DONE)
+- 30 neue Marine/Boot-Auktionen hinzugefügt (ohne Mietfunktion) (DONE)
+-  (Rangliste) 404-Fehler behoben und UI vervollständigt (DONE)
+- Drucker-Wizard: Geführter Rollen-Flow & USB-Auto-Suche implementiert (DONE)
+- Tote Router-Imports (, ) entfernt (DONE)
+- Native NFC-Bridge via Capacitor/Java + UI implementiert (DONE)
+- KYC-Bug 1 gefixt: Veralteter Gemini-Vision Aufruf ( mime_type) (DONE)
+- KYC-Bug 2 gefixt: CORS/Cookie-Abweisungen beim Register-Flow, die den Upload blockierten (DONE)
+- Taxi-Karten UI & Mapbox-Geocoding im Uber/Bolt-Style umgebaut (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1: Dead Router Imports
-   - Debug checklist:  prüfen,  und  entfernen.
-   - Why to solve this issue: Vermeidet 500er Fehler beim FastAPI Startup durch nicht existierende Module.
-   - Status: NOT STARTED
-   - Is recurring issue? N
+Keine bekannt. Ein dedizierter Full-Site Sweep () wurde durchgeführt, alle Kern-Flows sind grün.
 
 **Known issue recurrence from previous fork**
-  - Issue recurrence in previous fork: Echte lokale LAN-Drucker können aus dem Cloud-Preview-Environment nicht gefunden/gepingt werden.
-  - Recurrence count: 2
-  - Status: RESOLVED (Wird im Backend via Fallback/Mock gehandhabt. User ist informiert, dass echte lokale IPs nur im nativen Build erreichbar sind).
+  - Issue recurrence in previous fork: Lokale Hardware (NFC, LAN/USB Drucker)
+  - Recurrence count: 3
+  - Status: RESOLVED (Wird via Mock/Fallback in der Cloud-Preview abgefangen, echte Funktionalität erfordert nativen Build. Code ist production-ready.)
 
 **Code Architecture**
 - Frontend: React 19 + Vite + Tailwind + Capacitor 7.
-- Backend: FastAPI + Uvicorn + WebSockets.
+- Backend: FastAPI + Uvicorn.
 - Database: MongoDB.
 
 **Key Technical Concepts**
-- FastAPI WebSockets mit Token-Authentifizierung für Live-Dashboards.
-- Hardware-Discovery und ESC/POS Drucker-Kommunikation.
-- **Low-Cost Development Mode**: Keine Erklärungen, direkte Implementierung, minimale Änderungen.
+- FastAPI WebSockets für Live-Dashboards.
+- Native Integrationen: Eigene Capacitor Android Java Plugins ().
+- Mapbox GL JS für Taxi-Routing & Forward Geocoding.
+- Gemini Vision via Emergentintegrations für KYC AI-Verifizierung.
 
 **key DB schema**
-  - : {id, table_number, table_name, area, shape, size_key, color, seats, qr_code_url}
-  - : {id, store_id, name, role, type, address, is_active}
+  - : {kyc_status, kyc_verified, roles}
+  -  &  (Erweitert um Marine)
+  - : {slug, content}
 
 **changes in tech stack**
-  - Keine neuen Libraries, aber starke Nutzung von WebSockets (usage: websockets [--version | <uri>] in FastAPI).
+  - Custom Capacitor 7 Android Java Plugin für NFC hinzugefügt ( war fehlerhaft, wurde durch custom native Bridge ersetzt).
 
 **All files of reference** 
-  -  (WS-Logik, Floorplan-Updates, Printer-Wizard Endpunkte)
-  -  (Floorplan UI & Printer Wizard UI)
-  -  (WS & Sound)
-  -  (WS & Sound)
-  -  (Layout-Bugfixes)
-  -  (Layout-Bugfixes)
+  -  (Neues NFC Native Plugin)
+  -  &  (NFC UI)
+  -  &  (CORS/Cookie Fix)
+  -  (Gemini Vision SDK Fix)
+  -  &  (KYC Flow UI)
+  -  &  (Taxi Map UI)
+  -  (Taxi Autocomplete UI)
+  -  (Backend Geocode)
 
 **Areas that need refactoring**: 
-Keine. (Strict User Rule: Unaufgeforderte Refactorings sind verboten).
+Keine unaufgeforderten Refactorings durchführen (Strict Low-Cost Mode Regel).
 
 **key api endpoints**
--  (Live Updates)
--  (LAN Scanner)
--  (Mandatory Test Print)
+-  (Nutzt Gemini Vision AI)
+- 
+- 
+- 
 
 **Critical Info for New Agent** 
-- **BIDBLITZ LOW-COST DEVELOPMENT MODE AKTIV**: Der User will absolute Kürze. Keine Floskeln, keine Romane. Code schreiben, testen, Finish.
-- Der Drucker-Setup-Wizard ist fertig. Der vorherige Agent hat dem User als nächsten Schritt einen Onboarding-Assistenten (Kitchen -> Service -> Bill) vorgeschlagen. Warte auf die Reaktion des Users.
-- Vergiss nicht, dass im Hintergrund noch die kritischen P0-Blocker (Keystore, iOS Plist) offen sind. Diese wurden vom User zugunsten der Restaurant-Features vorerst ignoriert. Behalte sie im Hinterkopf, falls der User nach Launch Readiness fragt.
+- **USER BEHAVIOR WARNING**: Der Nutzer war stark genervt von Rückfragen des Agenten. Vermeide  zwingend, es sei denn, ein Weitermachen ist technisch unmöglich. Triff selbst vernünftige Entscheidungen.
+- Die Deployment-Umgebung des Users (Production) ist kürzlich fehlgeschlagen. Du arbeitest in der funktionierenden Preview-Umgebung. Wechsle keine URLs.
+- Bei Hardware-Tests (NFC, USB) in der Browser-Vorschau immer bedenken, dass die Mocks/Fallbacks triggern. Das ist gewollt.
+- Authentifizierungs-Cookies setzen jetzt strikt  und haben einen dynamischen Origin-Header statt . Achte darauf, wenn neue Auth-Routen gebaut werden.
 
 **documents and test reports created in this job** 
+  - , ,  (Updated)
   -  (Updated)
-  -  (Updated)
-  -  (Updated)
-  -  (Pass)
-  -  (Pass)
-  -  (Pass)
+  -  (Full App Sweep - 17/17 Backend Pass)
+  -  (NFC Tests)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - User: Druckerdaten senden: Modell + IP:Port + USB-Gerätepfad/Bezeichnung -> (Agent erklärte das Setup)
- - User: Wie ist es, wenn wir jeden Kunden den Drucker suchen, zum Beispiel und unbedingt verbinden lassen oder mit ip -> (Agent schlug Wizard vor)
- - User: Ja genau -> (Bestätigung des Flows)
- - User: Ja -> (Agent baut den Drucker Setup Wizard inkl. Discovery und Testdruck)
- - Agent: *Finish* -> (Pending Human Message: Antwort auf Vorschlag für schrittweisen Onboarding-Assistenten)
+ - User: Ausweis verfikiern funktioniert nicht -> (Agent fixte Gemini SDK & CORS Auth Cookies in einem langen Debug-Prozess).
+ - User: Schau mal die Map von nicht die Karte funktioniert nicht und dazu die Bestellung von Taxi gefällt mir auch noch nicht. Schau mal die Konkurrenzanalyse mal die Konkurrenz wie die das gemacht haben wenn man zum Beispiel eingibt Straße oder so, dass man auf der Mafia Dea findet -> (Agent baute die Taxi-Suche & Karte im Uber/Bolt-Style um).
+ - *Keine ausstehende Human Message.* Warte auf Feedback zur Taxi-Überarbeitung.
 
 **Project Health Check:**
-- Broken: Keine aktuellen UI-Bugs bekannt (Scooter gefixt).
-- Mocked: Native LAN-Drucker Discovery & NFC Native Bridge (im Cloud-Environment als Mock hinterlegt).
+- Broken: Keine aktuellen Blocker.
+- Mocked: NFC Lesen/Schreiben, USB Drucker, Native Features im Browser.
 
 **3rd Party Integrations** 
   - Mapbox (Maps & Geocoding) — User API Key
   - Stripe (Payments) — Emergentintegrations
   - Resend (Mails) — User API Key
   - OneSignal (Push) — User API Key
+  - Gemini Vision 3 (KYC AI) — Emergentintegrations
 
 **Testing status**
-  - Testing agent used after significant changes: YES (intensiv für WebSockets, Floorplan und Printer-Wizard genutzt)
+  - Testing agent used after significant changes: YES (Intensiv genutzt für KYC, Full-Site Sweep, NFC und Taxi)
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
-  - Known regressions: None (Vorherige Scooter-Regression wurde behoben).
+  - Known regressions: None.
 
 **Credentials to test flow:**
 - Admin:  / 
-- Manager:  / 
-- Staff:  /  / PIN: 
+- Staff PIN: 
 
 **What agent forgot to execute**
-Nichts. Der Agent hat alle Anforderungen (Scooter-Fix, WebSockets, Floorplan, Wizard) vollständig umgesetzt und wartet auf das Go für den nächsten Task.</analysis>
+Nichts. Das Uber/Bolt-Style Taxi-Upgrade wurde wie gewünscht implementiert. Agent wartet auf nächstes Kommando.</analysis>
