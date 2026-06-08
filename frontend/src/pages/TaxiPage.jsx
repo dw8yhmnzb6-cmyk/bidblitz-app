@@ -13,6 +13,7 @@ import TaxiFavoritesModal from '../components/taxi/TaxiFavoritesModal';
 import TaxiSaveFavoriteModal from '../components/taxi/TaxiSaveFavoriteModal';
 import TaxiDriverOnboardingModal from '../components/taxi/TaxiDriverOnboardingModal';
 import TaxiBookingSheet from '../components/taxi/TaxiBookingSheet';
+import TaxiBookingForm from '../components/taxi/TaxiBookingForm';
 import TaxiTrackingSheet from '../components/taxi/TaxiTrackingSheet';
 import useTaxiVoiceover from '../hooks/useTaxiVoiceover';
 import TaxiBottomSheet from '../components/taxi/TaxiBottomSheet';
@@ -707,7 +708,10 @@ export default function TaxiPage({ onNavigate }) {
           </div>
 
           {/* Draggable Bottom Sheet (starts collapsed for max map area) */}
-          <TaxiBottomSheet defaultSnap={view === 'tracking' ? 'half' : 'collapsed'}>
+          <TaxiBottomSheet
+            key={`${view}-${dropoff?.address ? 'route-ready' : 'route-empty'}`}
+            defaultSnap={view === 'tracking' ? 'half' : (dropoff?.address ? 'half' : 'collapsed')}
+          >
             {view === 'tracking' ? (
               <TaxiTrackingSheet
                 activeRide={activeRide}

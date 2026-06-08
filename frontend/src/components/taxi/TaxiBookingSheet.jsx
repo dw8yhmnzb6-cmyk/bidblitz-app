@@ -116,6 +116,12 @@ export default function TaxiBookingSheet({
   // Multi-Tarif Zonen & Zeit (P2)
   tariffZone, timeTariff,
 }) {
+  const selectedEstimate = estimates?.find((item) => item.vehicle_type === selectedVehicle) || estimates?.[0] || null;
+  const lowestEstimate = estimates?.reduce((best, item) => {
+    if (!best || item.fare < best.fare) return item;
+    return best;
+  }, null);
+
   return (
     <div className="space-y-3 pt-1">
       {/* Selected type pill + change (subtle) */}
@@ -232,6 +238,86 @@ export default function TaxiBookingSheet({
           onScheduleModeChange={onScheduleModeChange}
           onOpenScheduled={onOpenScheduled}
         />
+      )}
+
+      {dropoff?.address && loading && !selectedEstimate && (
+        <div
+          className="rounded-2xl border border-cyan-400/20 bg-gradient-to-r from-cyan-500/12 via-cyan-500/6 to-emerald-500/10 p-4"
+          data-testid="taxi-route-loading-card"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-cyan-400/12 border border-cyan-400/25 flex items-center justify-center shrink-0">
+              <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white" data-testid="taxi-route-loading-title">Route wird berechnet</p>
+              <p className="text-xs text-white/60">Preis, Fahrzeit und Strecke erscheinen sofort nach der Zielauswahl.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedEstimate && (
+        <div
+          className="rounded-[24px] border border-cyan-400/25 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.2),_transparent_55%),linear-gradient(135deg,rgba(7,12,20,0.98),rgba(12,24,34,0.92))] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
+          data-testid="taxi-route-summary-card"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-300/80">Route bereit</p>
+              <h3 className="mt-1 text-lg font-bold text-white" data-testid="taxi-route-summary-title">
+                {selectedEstimate.name} ist ausgewählt
+              </h3>
+              <p className="mt-1 text-xs text-white/55" data-testid="taxi-route-summary-subtitle">
+                Preis und Fahrzeit wurden direkt nach deiner Zielauswahl berechnet.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-right shrink-0">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-300/80">Abholung</p>
+              <p className="text-sm font-semibold text-emerald-300" data-testid="taxi-route-summary-eta">
+                {selectedEstimate.eta_minutes} Min
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3" data-testid="taxi-route-summary-price-block">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Preis</p>
+              <p className="mt-1 text-base font-bold text-white tabular-nums" data-testid="taxi-route-summary-price">
+                €{selectedEstimate.fare.toFixed(2)}
+              </p>
+              {selectedEstimate.fare_discount > 0 && selectedEstimate.fare_original && (
+                <p className="mt-1 text-[10px] text-emerald-300 tabular-nums" data-testid="taxi-route-summary-price-discount">
+                  <span className="line-through text-white/35 mr-1">€{selectedEstimate.fare_original.toFixed(2)}</span>
+                  −€{selectedEstimate.fare_discount.toFixed(2)}
+                </p>
+              )}
+              {!selectedEstimate.fare_discount && lowestEstimate && (
+                <p className="mt-1 text-[10px] text-white/45" data-testid="taxi-route-summary-price-hint">
+                  Günstigste Option ab €{lowestEstimate.fare.toFixed(2)}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3" data-testid="taxi-route-summary-duration-block">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Fahrzeit</p>
+              <p className="mt-1 text-base font-bold text-white" data-testid="taxi-route-summary-duration">
+                {selectedEstimate.duration_minutes} Min
+              </p>
+              <p className="mt-1 text-[10px] text-white/45">Direkt auf der Karte sichtbar</p>
+            </div>
+
+            <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3" data-testid="taxi-route-summary-distance-block">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Strecke</p>
+              <p className="mt-1 text-base font-bold text-white" data-testid="taxi-route-summary-distance">
+                {selectedEstimate.distance_km.toFixed(1)} km
+              </p>
+              <p className="mt-1 text-[10px] text-white/45">Route live berechnet</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Gespeicherte-Orte-Row entfernt (Duplizierung mit Quick-Actions) — iter124 UX */}
