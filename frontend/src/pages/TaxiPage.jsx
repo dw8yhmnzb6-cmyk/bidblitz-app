@@ -23,6 +23,7 @@ import TaxiSideMenu from '../components/taxi/TaxiSideMenu';
 import TaxiNoteModal from '../components/taxi/TaxiNoteModal';
 import TaxiHeader from '../components/taxi/TaxiHeader';
 import TaxiTypeSelector from '../components/taxi/TaxiTypeSelector';
+import MiniLeafletMap from '../components/MiniLeafletMap';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 import { useTaxiState } from '../hooks/useTaxiState';
 import { useGeolocation } from '../hooks/useGeolocation';
@@ -551,6 +552,26 @@ export default function TaxiPage({ onNavigate }) {
     (view === 'tracking' && activeRide)
   );
 
+  const fallbackMapConfig = useMemo(() => {
+    const hasPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng) && pickup.lat !== 0 && pickup.lng !== 0;
+    const hasDropoff = Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng) && dropoff.lat !== 0 && dropoff.lng !== 0;
+    const baseLat = hasPickup ? pickup.lat : 52.52;
+    const baseLng = hasPickup ? pickup.lng : 13.405;
+    const pins = [];
+
+    if (hasPickup) {
+      pins.push({ lat: pickup.lat, lng: pickup.lng, color: '#00C2FF', label: 'A' });
+    }
+    if (hasDropoff) {
+      pins.push({ lat: dropoff.lat, lng: dropoff.lng, color: '#EF4444', label: 'Z' });
+    }
+    if (!pins.length) {
+      pins.push({ lat: baseLat, lng: baseLng, color: '#00C2FF', label: '•' });
+    }
+
+    return { lat: baseLat, lng: baseLng, pins };
+  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
+
   return (
     <div className="min-h-screen bg-[#050505] text-white" data-mapflow={inMapBookingFlow ? '1' : '0'}>
       {!inMapBookingFlow && (
@@ -574,23 +595,36 @@ export default function TaxiPage({ onNavigate }) {
             data-testid="taxi-map-container"
           />
 
+          {mapError && (
+            <MiniLeafletMap
+              lat={fallbackMapConfig.lat}
+              lng={fallbackMapConfig.lng}
+              pins={fallbackMapConfig.pins}
+              autoFitPins={fallbackMapConfig.pins.length > 1}
+              zoom={14}
+              height="100%"
+              className="absolute inset-0 rounded-none"
+              testId="taxi-map-fallback"
+            />
+          )}
+
           {/* Map error overlay (token/network failure) */}
           {mapError && (
             <div
-              className="absolute inset-x-0 top-20 mx-4 z-30 p-4 rounded-2xl bg-red-500/10 border border-red-500/40 backdrop-blur-xl flex items-start gap-3"
+              className="absolute inset-x-0 top-20 mx-4 z-30 p-4 rounded-2xl bg-amber-500/10 border border-amber-400/40 backdrop-blur-xl flex items-start gap-3"
               data-testid="taxi-map-error"
             >
-              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-red-300">Karte nicht ladbar</p>
+                <p className="text-sm font-bold text-amber-200">Fallback-Karte aktiv</p>
                 <p className="text-[12px] text-white/65 mt-0.5 leading-snug">{mapError}</p>
-                <p className="text-[11px] text-cyan-200/80 mt-1">Du kannst trotzdem Straße, Hotel, Bahnhof oder Ort direkt suchen und bestellen.</p>
+                <p className="text-[11px] text-amber-100/80 mt-1">Die Ersatzkarte bleibt sichtbar, damit Suche und Bestellung weiter funktionieren.</p>
                 <button
                   onClick={() => { setMapError(null); window.location.reload(); }}
                   data-testid="taxi-map-error-reload"

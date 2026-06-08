@@ -10,6 +10,7 @@ const MiniLeafletMap = ({
   zoom = 14,
   height = 200,
   pins = [], // [{lat, lng, color, label}]
+  autoFitPins = false,
   className = "",
   testId = "mini-leaflet-map",
 }) => {
@@ -36,10 +37,10 @@ const MiniLeafletMap = ({
       const map = L.map(containerRef.current, {
         zoomControl: false,
         attributionControl: false,
-        dragging: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        touchZoom: false,
+        dragging: !autoFitPins,
+        scrollWheelZoom: !autoFitPins,
+        doubleClickZoom: !autoFitPins,
+        touchZoom: !autoFitPins,
       }).setView([lat, lng], zoom);
       mapRef.current = map;
 
@@ -60,16 +61,30 @@ const MiniLeafletMap = ({
         L.marker([p.lat, p.lng], { icon }).addTo(map);
       });
 
+      if (autoFitPins && allPins.length > 1) {
+        const points = allPins
+          .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+          .map((p) => [p.lat, p.lng]);
+        if (points.length > 1) {
+          map.fitBounds(points, { padding: [48, 48], maxZoom: zoom });
+        }
+      }
+
       cleanupFns.push(() => map.remove());
     })().catch(() => {});
 
     return () => {
       mounted = false;
-      cleanupFns.forEach((fn) => { try { fn(); } catch {} });
+      cleanupFns.forEach((fn) => {
+        try {
+          fn();
+        } catch (cleanupError) {
+          void cleanupError;
+        }
+      });
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lat, lng, zoom, JSON.stringify(pins)]);
+  }, [lat, lng, zoom, autoFitPins, JSON.stringify(pins)]);
 
   if (lat == null || lng == null) {
     return (
