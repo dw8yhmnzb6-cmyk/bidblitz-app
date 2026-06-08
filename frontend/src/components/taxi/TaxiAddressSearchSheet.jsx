@@ -62,15 +62,15 @@ export default function TaxiAddressSearchSheet({
 
   useEffect(() => {
     if (!mode) return;
-    setFocused(mode);
-    setPickupVal(pickup?.address || "");
-    setDropoffVal(dropoff?.address || "");
     const t = setTimeout(() => {
+      setFocused(mode);
+      setPickupVal(pickup?.address || "");
+      setDropoffVal(dropoff?.address || "");
       const el = mode === "pickup" ? pickupRef.current : dropoffRef.current;
       el?.focus();
     }, 60);
     return () => clearTimeout(t);
-  }, [mode]); // eslint-disable-line
+  }, [mode, pickup?.address, dropoff?.address]);
 
   const onPickupChange = (v) => {
     setPickupVal(v);

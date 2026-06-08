@@ -1,0 +1,1417 @@
+{
+  "tests": [
+    {
+      "query": "Alexanderplatz",
+      "description": "Famous square/location",
+      "result": {
+        "success": true,
+        "status_code": 200,
+        "feature_count": 5,
+        "features": [
+          {
+            "id": "address.4627079707601896",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6Zjk4NzhmZmQtZjhlOC00YmE0LThlNDgtYzU1NzdhOTBlZDdi"
+            },
+            "text_de": "Alexanderplatz",
+            "language_de": "de",
+            "place_name_de": "Alexanderplatz, 03238 Finsterwalde, Deutschland",
+            "text": "Alexanderplatz",
+            "language": "de",
+            "place_name": "Alexanderplatz, 03238 Finsterwalde, Deutschland",
+            "center": [
+              13.707521,
+              51.631357
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.707521,
+                51.631357
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.1404474",
+                "mapbox_id": "dXJuOm1ieHBsYzpGVzQ2",
+                "text_de": "03238",
+                "language_de": "de",
+                "text": "03238",
+                "language": "de"
+              },
+              {
+                "id": "place.21637178",
+                "mapbox_id": "dXJuOm1ieHBsYzpBVW9vT2c",
+                "wikidata": "Q588905",
+                "text_de": "Finsterwalde",
+                "language_de": "de",
+                "text": "Finsterwalde",
+                "language": "de"
+              },
+              {
+                "id": "district.476730",
+                "mapbox_id": "dXJuOm1ieHBsYzpCMFk2",
+                "wikidata": "Q6152",
+                "text_de": "Kreis Elbe-Elster",
+                "language_de": "de",
+                "text": "Kreis Elbe-Elster",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.8484706602192480",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6MzZkODk4NzQtYzJhNS00NTAyLWJiOWEtZjhmYmExNzU2MWZm"
+            },
+            "text_de": "Alexanderplatz",
+            "language_de": "de",
+            "place_name_de": "Alexanderplatz, 10178 Berlin, Deutschland",
+            "text": "Alexanderplatz",
+            "language": "de",
+            "place_name": "Alexanderplatz, 10178 Berlin, Deutschland",
+            "center": [
+              13.413191,
+              52.521666
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.413191,
+                52.521666
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.5131834",
+                "mapbox_id": "dXJuOm1ieHBsYzpUazQ2",
+                "text_de": "10178",
+                "language_de": "de",
+                "text": "10178",
+                "language": "de"
+              },
+              {
+                "id": "locality.215001658",
+                "mapbox_id": "dXJuOm1ieHBsYzpETkNxT2c",
+                "wikidata": "Q2013767",
+                "text_de": "Berlin-Mitte",
+                "language_de": "de",
+                "text": "Berlin-Mitte",
+                "language": "de"
+              },
+              {
+                "id": "place.115770",
+                "mapbox_id": "dXJuOm1ieHBsYzpBY1E2",
+                "wikidata": "Q64",
+                "short_code": "DE-BE",
+                "text_de": "Berlin",
+                "language_de": "de",
+                "text": "Berlin",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.5147471759359126",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street"
+            },
+            "text_de": "Alexanderplatz",
+            "language_de": "de",
+            "place_name_de": "Alexanderplatz, 17235 Neustrelitz, Deutschland",
+            "text": "Alexanderplatz",
+            "language": "de",
+            "place_name": "Alexanderplatz, 17235 Neustrelitz, Deutschland",
+            "center": [
+              13.097832,
+              53.331334
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.097832,
+                53.331334
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.8171066",
+                "mapbox_id": "dXJuOm1ieHBsYzpmSzQ2",
+                "text_de": "17235",
+                "language_de": "de",
+                "text": "17235",
+                "language": "de"
+              },
+              {
+                "id": "locality.328313402",
+                "mapbox_id": "dXJuOm1ieHBsYzpFNUdxT2c",
+                "wikidata": "Q1237784",
+                "text_de": "Strelitz-Alt",
+                "language_de": "de",
+                "text": "Strelitz-Alt",
+                "language": "de"
+              },
+              {
+                "id": "place.55404602",
+                "mapbox_id": "dXJuOm1ieHBsYzpBMDFvT2c",
+                "wikidata": "Q20352",
+                "text_de": "Neustrelitz",
+                "language_de": "de",
+                "text": "Neustrelitz",
+                "language": "de"
+              },
+              {
+                "id": "district.1214010",
+                "mapbox_id": "dXJuOm1ieHBsYzpFb1k2",
+                "wikidata": "Q2902",
+                "text_de": "Kreis Mecklenburgische Seenplatte",
+                "language_de": "de",
+                "text": "Kreis Mecklenburgische Seenplatte",
+                "language": "de"
+              },
+              {
+                "id": "region.25658",
+                "mapbox_id": "dXJuOm1ieHBsYzpaRG8",
+                "wikidata": "Q1196",
+                "short_code": "DE-MV",
+                "text_de": "Mecklenburg-Vorpommern",
+                "language_de": "de",
+                "text": "Mecklenburg-Vorpommern",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "query": "Hauptbahnhof Berlin",
+      "description": "Train station",
+      "result": {
+        "success": true,
+        "status_code": 200,
+        "feature_count": 5,
+        "features": [
+          {
+            "id": "place.26061036",
+            "type": "Feature",
+            "place_type": [
+              "place"
+            ],
+            "relevance": 0.5,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpBWTJvN0E",
+              "wikidata": "Q821244"
+            },
+            "text_de": "Berlin",
+            "language_de": "de",
+            "place_name_de": "Berlin, New Hampshire, Vereinigte Staaten",
+            "text": "Berlin",
+            "language": "de",
+            "place_name": "Berlin, New Hampshire, Vereinigte Staaten",
+            "bbox": [
+              -71.397622,
+              44.444963,
+              -71.123947,
+              44.528054
+            ],
+            "center": [
+              -71.179906,
+              44.470209
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -71.179906,
+                44.470209
+              ]
+            },
+            "context": [
+              {
+                "id": "district.5211884",
+                "mapbox_id": "dXJuOm1ieHBsYzpUNGJz",
+                "wikidata": "Q54447",
+                "text_de": "Co\u00f6s County",
+                "language_de": "de",
+                "text": "Co\u00f6s County",
+                "language": "de"
+              },
+              {
+                "id": "region.345324",
+                "mapbox_id": "dXJuOm1ieHBsYzpCVVRz",
+                "wikidata": "Q759",
+                "short_code": "US-NH",
+                "text_de": "New Hampshire",
+                "language_de": "de",
+                "text": "New Hampshire",
+                "language": "de"
+              },
+              {
+                "id": "country.8940",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdXc",
+                "wikidata": "Q30",
+                "short_code": "us",
+                "text_de": "Vereinigte Staaten",
+                "language_de": "de",
+                "text": "Vereinigte Staaten",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "place.25995500",
+            "type": "Feature",
+            "place_type": [
+              "place"
+            ],
+            "relevance": 0.5,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpBWXlvN0E",
+              "wikidata": "Q614184"
+            },
+            "text_de": "Berlin",
+            "language_de": "de",
+            "place_name_de": "Berlin, Maryland, Vereinigte Staaten",
+            "text": "Berlin",
+            "language": "de",
+            "place_name": "Berlin, Maryland, Vereinigte Staaten",
+            "bbox": [
+              -75.364989,
+              38.141747,
+              -75.087625,
+              38.4078
+            ],
+            "center": [
+              -75.219004,
+              38.324728
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -75.219004,
+                38.324728
+              ]
+            },
+            "context": [
+              {
+                "id": "district.25396972",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWU9HN0E",
+                "wikidata": "Q494072",
+                "text_de": "Worcester County",
+                "language_de": "de",
+                "text": "Worcester County",
+                "language": "de"
+              },
+              {
+                "id": "region.124140",
+                "mapbox_id": "dXJuOm1ieHBsYzpBZVRz",
+                "wikidata": "Q1391",
+                "short_code": "US-MD",
+                "text_de": "Maryland",
+                "language_de": "de",
+                "text": "Maryland",
+                "language": "de"
+              },
+              {
+                "id": "country.8940",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdXc",
+                "wikidata": "Q30",
+                "short_code": "us",
+                "text_de": "Vereinigte Staaten",
+                "language_de": "de",
+                "text": "Vereinigte Staaten",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "place.500697324",
+            "type": "Feature",
+            "place_type": [
+              "place"
+            ],
+            "relevance": 0.5,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpIZGdJN0E",
+              "wikidata": "Q1086827"
+            },
+            "text_de": "Berlin",
+            "language_de": "de",
+            "place_name_de": "Berlin, New Jersey, Vereinigte Staaten",
+            "text": "Berlin",
+            "language": "de",
+            "place_name": "Berlin, New Jersey, Vereinigte Staaten",
+            "bbox": [
+              -74.974491,
+              39.70904,
+              -74.878605,
+              39.809363
+            ],
+            "center": [
+              -74.929456,
+              39.791432
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -74.929456,
+                39.791432
+              ]
+            },
+            "context": [
+              {
+                "id": "district.3016428",
+                "mapbox_id": "dXJuOm1ieHBsYzpMZ2Jz",
+                "wikidata": "Q497810",
+                "text_de": "Camden County",
+                "language_de": "de",
+                "text": "Camden County",
+                "language": "de"
+              },
+              {
+                "id": "region.156908",
+                "mapbox_id": "dXJuOm1ieHBsYzpBbVRz",
+                "wikidata": "Q1408",
+                "short_code": "US-NJ",
+                "text_de": "New Jersey",
+                "language_de": "de",
+                "text": "New Jersey",
+                "language": "de"
+              },
+              {
+                "id": "country.8940",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdXc",
+                "wikidata": "Q30",
+                "short_code": "us",
+                "text_de": "Vereinigte Staaten",
+                "language_de": "de",
+                "text": "Vereinigte Staaten",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "query": "Unter den Linden",
+      "description": "Famous street",
+      "result": {
+        "success": true,
+        "status_code": 200,
+        "feature_count": 5,
+        "features": [
+          {
+            "id": "address.141147661836052",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6ZGJiODc2YmItYjlkZC00NWY3LTkwYjgtMTU3M2IwNTgzY2Ri"
+            },
+            "text_de": "Unter den Linden",
+            "language_de": "de",
+            "place_name_de": "Unter den Linden, 2004 Niederhollabrunn, \u00d6sterreich",
+            "text": "Unter den Linden",
+            "language": "de",
+            "place_name": "Unter den Linden, 2004 Niederhollabrunn, \u00d6sterreich",
+            "center": [
+              16.264601,
+              48.464844
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                16.264601,
+                48.464844
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.232973",
+                "mapbox_id": "dXJuOm1ieHBsYzpBNDRO",
+                "text_de": "2004",
+                "language_de": "de",
+                "text": "2004",
+                "language": "de"
+              },
+              {
+                "id": "locality.68422157",
+                "mapbox_id": "dXJuOm1ieHBsYzpCQlFLRFE",
+                "wikidata": "Q66816738",
+                "text_de": "Streitdorf",
+                "language_de": "de",
+                "text": "Streitdorf",
+                "language": "de"
+              },
+              {
+                "id": "place.9611277",
+                "mapbox_id": "dXJuOm1ieHBsYzprcWdO",
+                "wikidata": "Q684602",
+                "text_de": "Niederhollabrunn",
+                "language_de": "de",
+                "text": "Niederhollabrunn",
+                "language": "de"
+              },
+              {
+                "id": "region.50189",
+                "mapbox_id": "dXJuOm1ieHBsYzp4QTA",
+                "wikidata": "Q42497",
+                "short_code": "AT-3",
+                "text_de": "Nieder\u00f6sterreich",
+                "language_de": "de",
+                "text": "Nieder\u00f6sterreich",
+                "language": "de"
+              },
+              {
+                "id": "country.8717",
+                "mapbox_id": "dXJuOm1ieHBsYzpJZzA",
+                "wikidata": "Q40",
+                "short_code": "at",
+                "text_de": "\u00d6sterreich",
+                "language_de": "de",
+                "text": "\u00d6sterreich",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.4752664129887100",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6YmEzMzE0ZjktMTBjNC00MzliLTgwYzEtOGFmN2FlZDE3OThk"
+            },
+            "text_de": "Unter den Linden",
+            "language_de": "de",
+            "place_name_de": "Unter den Linden, 2000 Stockerau, \u00d6sterreich",
+            "text": "Unter den Linden",
+            "language": "de",
+            "place_name": "Unter den Linden, 2000 Stockerau, \u00d6sterreich",
+            "center": [
+              16.200588,
+              48.388765
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                16.200588,
+                48.388765
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.208397",
+                "mapbox_id": "dXJuOm1ieHBsYzpBeTRO",
+                "text_de": "2000",
+                "language_de": "de",
+                "text": "2000",
+                "language": "de"
+              },
+              {
+                "id": "place.14460941",
+                "mapbox_id": "dXJuOm1ieHBsYzozS2dO",
+                "wikidata": "Q494283",
+                "text_de": "Stockerau",
+                "language_de": "de",
+                "text": "Stockerau",
+                "language": "de"
+              },
+              {
+                "id": "region.50189",
+                "mapbox_id": "dXJuOm1ieHBsYzp4QTA",
+                "wikidata": "Q42497",
+                "short_code": "AT-3",
+                "text_de": "Nieder\u00f6sterreich",
+                "language_de": "de",
+                "text": "Nieder\u00f6sterreich",
+                "language": "de"
+              },
+              {
+                "id": "country.8717",
+                "mapbox_id": "dXJuOm1ieHBsYzpJZzA",
+                "wikidata": "Q40",
+                "short_code": "at",
+                "text_de": "\u00d6sterreich",
+                "language_de": "de",
+                "text": "\u00d6sterreich",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.3787261801810042",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6NjQ2MDhmNmItYzA0Yi00NDNjLWI2ZjUtMDlhZDkwMzYwNDEz"
+            },
+            "text_de": "Unter Den Linden",
+            "language_de": "de",
+            "place_name_de": "Unter Den Linden, 4750 B\u00fctgenbach, Provinz L\u00fcttich, Belgien",
+            "text": "Unter Den Linden",
+            "language": "de",
+            "place_name": "Unter Den Linden, 4750 B\u00fctgenbach, Provinz L\u00fcttich, Belgien",
+            "center": [
+              6.219909,
+              50.456497
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                6.219909,
+                50.456497
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.3976725",
+                "mapbox_id": "dXJuOm1ieHBsYzpQSzRW",
+                "text_de": "4750",
+                "language_de": "de",
+                "text": "4750",
+                "language": "de"
+              },
+              {
+                "id": "locality.3754517",
+                "mapbox_id": "dXJuOm1ieHBsYzpPVW9W",
+                "wikidata": "Q3047187",
+                "text_de": "Elsenborn",
+                "language_de": "de",
+                "text": "Elsenborn",
+                "language": "de"
+              },
+              {
+                "id": "place.780309",
+                "mapbox_id": "dXJuOm1ieHBsYzpDK2dW",
+                "wikidata": "Q160005",
+                "text_de": "B\u00fctgenbach",
+                "language_de": "de",
+                "text": "B\u00fctgenbach",
+                "language": "de"
+              },
+              {
+                "id": "region.74773",
+                "mapbox_id": "dXJuOm1ieHBsYzpBU1FW",
+                "wikidata": "Q1127",
+                "short_code": "BE-WLG",
+                "text_de": "Provinz L\u00fcttich",
+                "language_de": "de",
+                "text": "Provinz L\u00fcttich",
+                "language": "de"
+              },
+              {
+                "id": "country.8725",
+                "mapbox_id": "dXJuOm1ieHBsYzpJaFU",
+                "wikidata": "Q31",
+                "short_code": "be",
+                "text_de": "Belgien",
+                "language_de": "de",
+                "text": "Belgien",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "query": "Brandenburger Tor",
+      "description": "Landmark",
+      "result": {
+        "success": true,
+        "status_code": 200,
+        "feature_count": 5,
+        "features": [
+          {
+            "id": "address.2288810272269450",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6ZTcyMTFiMjYtNDE1Yi00N2U4LThlYTgtYjlkMGJlZWNmMjE0"
+            },
+            "text_de": "Brandenburger Tor",
+            "language_de": "de",
+            "place_name_de": "Brandenburger Tor, 14793 Amt Ziesar, Deutschland",
+            "text": "Brandenburger Tor",
+            "language": "de",
+            "place_name": "Brandenburger Tor, 14793 Amt Ziesar, Deutschland",
+            "center": [
+              12.296767,
+              52.268423
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                12.296767,
+                52.268423
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.6950458",
+                "mapbox_id": "dXJuOm1ieHBsYzphZzQ2",
+                "text_de": "14793",
+                "language_de": "de",
+                "text": "14793",
+                "language": "de"
+              },
+              {
+                "id": "place.89401402",
+                "mapbox_id": "dXJuOm1ieHBsYzpCVlFvT2c",
+                "wikidata": "Q315211",
+                "text_de": "Amt Ziesar",
+                "language_de": "de",
+                "text": "Amt Ziesar",
+                "language": "de"
+              },
+              {
+                "id": "district.1599034",
+                "mapbox_id": "dXJuOm1ieHBsYzpHR1k2",
+                "wikidata": "Q6142",
+                "text_de": "Kreis Potsdam-Mittelmark",
+                "language_de": "de",
+                "text": "Kreis Potsdam-Mittelmark",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.5092945848852920",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6MDI3NTYyZWQtODEwZS00MTUwLWJhMzMtYjM4ZGIyNzlkOWIz"
+            },
+            "text_de": "Brandenburger Tor",
+            "language_de": "de",
+            "place_name_de": "Brandenburger Tor, 52393 H\u00fcrtgenwald, Deutschland",
+            "text": "Brandenburger Tor",
+            "language": "de",
+            "place_name": "Brandenburger Tor, 52393 H\u00fcrtgenwald, Deutschland",
+            "center": [
+              6.36561,
+              50.708554
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                6.36561,
+                50.708554
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.29470266",
+                "mapbox_id": "dXJuOm1ieHBsYzpBY0d1T2c",
+                "text_de": "52393",
+                "language_de": "de",
+                "text": "52393",
+                "language": "de"
+              },
+              {
+                "id": "locality.152529466",
+                "mapbox_id": "dXJuOm1ieHBsYzpDUmRxT2c",
+                "wikidata": "Q1254103",
+                "text_de": "H\u00fcrtgen",
+                "language_de": "de",
+                "text": "H\u00fcrtgen",
+                "language": "de"
+              },
+              {
+                "id": "place.36644922",
+                "mapbox_id": "dXJuOm1ieHBsYzpBaThvT2c",
+                "wikidata": "Q199974",
+                "text_de": "H\u00fcrtgenwald",
+                "language_de": "de",
+                "text": "H\u00fcrtgenwald",
+                "language": "de"
+              },
+              {
+                "id": "district.435770",
+                "mapbox_id": "dXJuOm1ieHBsYzpCcVk2",
+                "wikidata": "Q6275",
+                "text_de": "Kreis D\u00fcren",
+                "language_de": "de",
+                "text": "Kreis D\u00fcren",
+                "language": "de"
+              },
+              {
+                "id": "region.42042",
+                "mapbox_id": "dXJuOm1ieHBsYzpwRG8",
+                "wikidata": "Q1198",
+                "short_code": "DE-NW",
+                "text_de": "Nordrhein-Westfalen",
+                "language_de": "de",
+                "text": "Nordrhein-Westfalen",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "place.36399263",
+            "type": "Feature",
+            "place_type": [
+              "place"
+            ],
+            "relevance": 0.5,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpBaXRvbnc",
+              "wikidata": "Q386991"
+            },
+            "text_de": "Torre\u00f3n",
+            "language_de": "de",
+            "place_name_de": "Torre\u00f3n, Coahuila, Mexiko",
+            "text": "Torre\u00f3n",
+            "language": "de",
+            "place_name": "Torre\u00f3n, Coahuila, Mexiko",
+            "bbox": [
+              -103.510937,
+              24.793111,
+              -102.956807,
+              25.691381
+            ],
+            "center": [
+              -103.41103,
+              25.54292
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -103.41103,
+                25.54292
+              ]
+            },
+            "context": [
+              {
+                "id": "region.66719",
+                "mapbox_id": "dXJuOm1ieHBsYzpBUVNm",
+                "wikidata": "Q53079",
+                "short_code": "MX-COA",
+                "text_de": "Coahuila",
+                "language_de": "de",
+                "text": "Coahuila",
+                "language": "de"
+              },
+              {
+                "id": "country.8863",
+                "mapbox_id": "dXJuOm1ieHBsYzpJcDg",
+                "wikidata": "Q96",
+                "short_code": "mx",
+                "text_de": "Mexiko",
+                "language_de": "de",
+                "text": "Mexiko",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "query": "Berlin Ostbahnhof",
+      "description": "Train station with city name",
+      "result": {
+        "success": true,
+        "status_code": 200,
+        "feature_count": 5,
+        "features": [
+          {
+            "id": "address.8661423955171392",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.89,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6YjZmOWQ1M2QtZmJlYy00NDgxLWFjNjMtNjI3ZDk4NjcwYWQ2"
+            },
+            "text_de": "Am Ostbahnhof",
+            "language_de": "de",
+            "place_name_de": "Am Ostbahnhof, 10243 Berlin, Deutschland",
+            "text": "Am Ostbahnhof",
+            "language": "de",
+            "place_name": "Am Ostbahnhof, 10243 Berlin, Deutschland",
+            "center": [
+              13.432813,
+              52.51017
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.432813,
+                52.51017
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.5148218",
+                "mapbox_id": "dXJuOm1ieHBsYzpUbzQ2",
+                "text_de": "10243",
+                "language_de": "de",
+                "text": "10243",
+                "language": "de"
+              },
+              {
+                "id": "locality.90794554",
+                "mapbox_id": "dXJuOm1ieHBsYzpCV2xxT2c",
+                "wikidata": "Q317056",
+                "text_de": "Friedrichshain",
+                "language_de": "de",
+                "text": "Friedrichshain",
+                "language": "de"
+              },
+              {
+                "id": "place.115770",
+                "mapbox_id": "dXJuOm1ieHBsYzpBY1E2",
+                "wikidata": "Q64",
+                "short_code": "DE-BE",
+                "text_de": "Berlin",
+                "language_de": "de",
+                "text": "Berlin",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.984092200129316",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.87,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6NjRhMWZmODEtYWIxMS00MmNhLWIzZDItNTM1ZTdmMGY3ZTM3"
+            },
+            "text_de": "Am Postbahnhof",
+            "language_de": "de",
+            "place_name_de": "Am Postbahnhof, 10243 Berlin, Deutschland",
+            "text": "Am Postbahnhof",
+            "language": "de",
+            "place_name": "Am Postbahnhof, 10243 Berlin, Deutschland",
+            "center": [
+              13.437149,
+              52.508088
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.437149,
+                52.508088
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.5148218",
+                "mapbox_id": "dXJuOm1ieHBsYzpUbzQ2",
+                "text_de": "10243",
+                "language_de": "de",
+                "text": "10243",
+                "language": "de"
+              },
+              {
+                "id": "locality.90794554",
+                "mapbox_id": "dXJuOm1ieHBsYzpCV2xxT2c",
+                "wikidata": "Q317056",
+                "text_de": "Friedrichshain",
+                "language_de": "de",
+                "text": "Friedrichshain",
+                "language": "de"
+              },
+              {
+                "id": "place.115770",
+                "mapbox_id": "dXJuOm1ieHBsYzpBY1E2",
+                "wikidata": "Q64",
+                "short_code": "DE-BE",
+                "text_de": "Berlin",
+                "language_de": "de",
+                "text": "Berlin",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "place.26061036",
+            "type": "Feature",
+            "place_type": [
+              "place"
+            ],
+            "relevance": 0.5,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpBWTJvN0E",
+              "wikidata": "Q821244"
+            },
+            "text_de": "Berlin",
+            "language_de": "de",
+            "place_name_de": "Berlin, New Hampshire, Vereinigte Staaten",
+            "text": "Berlin",
+            "language": "de",
+            "place_name": "Berlin, New Hampshire, Vereinigte Staaten",
+            "bbox": [
+              -71.397622,
+              44.444963,
+              -71.123947,
+              44.528054
+            ],
+            "center": [
+              -71.179906,
+              44.470209
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -71.179906,
+                44.470209
+              ]
+            },
+            "context": [
+              {
+                "id": "district.5211884",
+                "mapbox_id": "dXJuOm1ieHBsYzpUNGJz",
+                "wikidata": "Q54447",
+                "text_de": "Co\u00f6s County",
+                "language_de": "de",
+                "text": "Co\u00f6s County",
+                "language": "de"
+              },
+              {
+                "id": "region.345324",
+                "mapbox_id": "dXJuOm1ieHBsYzpCVVRz",
+                "wikidata": "Q759",
+                "short_code": "US-NH",
+                "text_de": "New Hampshire",
+                "language_de": "de",
+                "text": "New Hampshire",
+                "language": "de"
+              },
+              {
+                "id": "country.8940",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdXc",
+                "wikidata": "Q30",
+                "short_code": "us",
+                "text_de": "Vereinigte Staaten",
+                "language_de": "de",
+                "text": "Vereinigte Staaten",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "query": "Potsdamer Platz 1",
+      "description": "Street with house number",
+      "result": {
+        "success": true,
+        "status_code": 200,
+        "feature_count": 5,
+        "features": [
+          {
+            "id": "address.5600396895800704",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "rooftop",
+              "mapbox_id": "dXJuOm1ieGFkcjpmMTM3N2NiMS1jYTE2LTQ2NDEtYThjNi1lNGM5NTA1MmQ5OTc"
+            },
+            "text_de": "Potsdamer Platz",
+            "language_de": "de",
+            "place_name_de": "Potsdamer Platz 1, 10785 Berlin, Deutschland",
+            "text": "Potsdamer Platz",
+            "language": "de",
+            "place_name": "Potsdamer Platz 1, 10785 Berlin, Deutschland",
+            "center": [
+              13.375487,
+              52.509176
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.375487,
+                52.509176
+              ]
+            },
+            "address": "1",
+            "context": [
+              {
+                "id": "postcode.5475898",
+                "mapbox_id": "dXJuOm1ieHBsYzpVNDQ2",
+                "text_de": "10785",
+                "language_de": "de",
+                "text": "10785",
+                "language": "de"
+              },
+              {
+                "id": "locality.337283642",
+                "mapbox_id": "dXJuOm1ieHBsYzpGQnFLT2c",
+                "wikidata": "Q328672",
+                "text_de": "Tiergarten",
+                "language_de": "de",
+                "text": "Tiergarten",
+                "language": "de"
+              },
+              {
+                "id": "place.115770",
+                "mapbox_id": "dXJuOm1ieHBsYzpBY1E2",
+                "wikidata": "Q64",
+                "short_code": "DE-BE",
+                "text_de": "Berlin",
+                "language_de": "de",
+                "text": "Berlin",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.1979722936546322",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "rooftop",
+              "mapbox_id": "dXJuOm1ieGFkcjpkNWJmNDRkMC02ZGQ5LTQyYTctODg4NC1kM2U3YmMyZjY0NjE"
+            },
+            "text_de": "Potsdamer Platz",
+            "language_de": "de",
+            "place_name_de": "Potsdamer Platz 1, 14548 Schwielowsee, Deutschland",
+            "text": "Potsdamer Platz",
+            "language": "de",
+            "place_name": "Potsdamer Platz 1, 14548 Schwielowsee, Deutschland",
+            "center": [
+              12.928917,
+              52.311282
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                12.928917,
+                52.311282
+              ]
+            },
+            "address": "1",
+            "context": [
+              {
+                "id": "postcode.6770234",
+                "mapbox_id": "dXJuOm1ieHBsYzpaMDQ2",
+                "text_de": "14548",
+                "language_de": "de",
+                "text": "14548",
+                "language": "de"
+              },
+              {
+                "id": "locality.84396602",
+                "mapbox_id": "dXJuOm1ieHBsYzpCUWZLT2c",
+                "wikidata": "Q507824",
+                "text_de": "Ferch",
+                "language_de": "de",
+                "text": "Ferch",
+                "language": "de"
+              },
+              {
+                "id": "place.72484922",
+                "mapbox_id": "dXJuOm1ieHBsYzpCRklJT2c",
+                "wikidata": "Q625403",
+                "text_de": "Schwielowsee",
+                "language_de": "de",
+                "text": "Schwielowsee",
+                "language": "de"
+              },
+              {
+                "id": "district.1599034",
+                "mapbox_id": "dXJuOm1ieHBsYzpHR1k2",
+                "wikidata": "Q6142",
+                "text_de": "Kreis Potsdam-Mittelmark",
+                "language_de": "de",
+                "text": "Kreis Potsdam-Mittelmark",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.7827575536422204",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 1,
+            "properties": {
+              "accuracy": "rooftop",
+              "mapbox_id": "dXJuOm1ieGFkcjo0YTYzMmU2YS1lOGMwLTRmOWYtYjVkYi1iNzEwYWRkOGNlOGI"
+            },
+            "text_de": "Potsdamer Platz",
+            "language_de": "de",
+            "place_name_de": "Potsdamer Platz 1, 23823 Seedorf, Deutschland",
+            "text": "Potsdamer Platz",
+            "language": "de",
+            "place_name": "Potsdamer Platz 1, 23823 Seedorf, Deutschland",
+            "center": [
+              10.449606,
+              54.03445
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                10.449606,
+                54.03445
+              ]
+            },
+            "address": "1",
+            "context": [
+              {
+                "id": "postcode.11873850",
+                "mapbox_id": "dXJuOm1ieHBsYzp0UzQ2",
+                "text_de": "23823",
+                "language_de": "de",
+                "text": "23823",
+                "language": "de"
+              },
+              {
+                "id": "locality.25913914",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWXRxT2c",
+                "wikidata": "Q12053136",
+                "text_de": "Berlin",
+                "language_de": "de",
+                "text": "Berlin",
+                "language": "de"
+              },
+              {
+                "id": "place.72648762",
+                "mapbox_id": "dXJuOm1ieHBsYzpCRlNJT2c",
+                "wikidata": "Q684291",
+                "text_de": "Seedorf",
+                "language_de": "de",
+                "text": "Seedorf",
+                "language": "de"
+              },
+              {
+                "id": "district.1943098",
+                "mapbox_id": "dXJuOm1ieHBsYzpIYVk2",
+                "wikidata": "Q2980",
+                "text_de": "Kreis Segeberg",
+                "language_de": "de",
+                "text": "Kreis Segeberg",
+                "language": "de"
+              },
+              {
+                "id": "region.17466",
+                "mapbox_id": "dXJuOm1ieHBsYzpSRG8",
+                "wikidata": "Q1194",
+                "short_code": "DE-SH",
+                "text_de": "Schleswig-Holstein",
+                "language_de": "de",
+                "text": "Schleswig-Holstein",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "proximity_test": {
+    "success": true,
+    "status_code": 200,
+    "feature_count": 4
+  },
+  "no_auth_test": {
+    "success": true,
+    "status_code": 200,
+    "feature_count": 7
+  },
+  "edge_cases": [
+    {
+      "query": "",
+      "success": true,
+      "feature_count": 0
+    },
+    {
+      "query": "a",
+      "success": true,
+      "feature_count": 0
+    },
+    {
+      "query": "Stra\u00dfe 123",
+      "success": true,
+      "feature_count": 8
+    },
+    {
+      "query": "Berlin Mitte",
+      "success": true,
+      "feature_count": 8
+    }
+  ]
+}
