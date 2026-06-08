@@ -65,6 +65,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
   const [cameraEngine, setCameraEngine] = useState(null);
   const [cameraPreparing, setCameraPreparing] = useState(false);
   const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
   const streamRef = useRef(null);
   const detectorRef = useRef(null);
   const html5ScannerRef = useRef(null);
@@ -72,6 +73,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
 
   const numAmount = parseFloat(amount) || 0;
   const isValidAmount = numAmount >= 0.5 && numAmount <= 2500;
+  const prefersImageCapture = typeof navigator !== "undefined" && /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
   useEffect(() => {
     if (tool === Tool.CASHIER && step === Step.SCANNING && barcodeRef.current) {
@@ -119,6 +121,12 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
+  const openNativeImageCapture = useCallback(() => {
+    setCameraError("");
+    setScanError("");
+    fileInputRef.current?.click();
+  }, []);
+
   const handleResolveCode = useCallback(async (value) => {
     const code = (value || "").trim();
     if (!code) return;
@@ -154,9 +162,52 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
     }
   }, [canCashier, onNavigate, online, stopCamera, t]);
 
+  const handleImageFileSelected = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setCameraError("");
+    setScanError("");
+    setCameraPreparing(true);
+    setCameraEngine("html5");
+
+    try {
+      stopCamera();
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      const scanner = new Html5Qrcode("scan-hub-reader", {
+        experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+        useBarCodeDetectorIfSupported: false,
+        verbose: false,
+      });
+      html5ScannerRef.current = scanner;
+
+      const decodedText = await scanner.scanFile(file, true);
+      setScanCodeInput(decodedText);
+      setScanHint("Code aus Bild erkannt. Ziel wird geöffnet …");
+      await handleResolveCode(decodedText);
+      swallowMaybePromise(scanner.clear?.());
+      html5ScannerRef.current = null;
+      setCameraEngine(null);
+    } catch (e) {
+      setCameraError(e?.message || "Code konnte aus Foto nicht erkannt werden.");
+      setScanHint("Auf iPhone wird die Kamera über Foto-/Kamera-Auswahl geöffnet.");
+    } finally {
+      setCameraPreparing(false);
+    }
+  }, [handleResolveCode, stopCamera]);
+
   const startCamera = useCallback(async () => {
     setCameraError("");
     setScanError("");
+
+    if (prefersImageCapture) {
+      setScanHint("iPhone öffnet Kamera oder Fotoauswahl zum Scannen.");
+      openNativeImageCapture();
+      return;
+    }
 
     if (!navigator?.mediaDevices?.getUserMedia) {
       setCameraError("Kamera nicht verfügbar.");
@@ -242,7 +293,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
       stopCamera();
       setCameraError(e?.message || "Kamera konnte nicht gestartet werden.");
     }
-  }, [handleResolveCode, stopCamera]);
+  }, [handleResolveCode, stopCamera, prefersImageCapture, openNativeImageCapture]);
 
   useEffect(() => {
     if (!cameraActive || cameraEngine !== "native" || !detectorRef.current || !videoRef.current) return undefined;
@@ -378,6 +429,16 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
       </div>
 
       <div className="px-5 pb-8 relative z-10 space-y-5">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleImageFileSelected}
+          data-testid="scan-image-input"
+        />
+
         <div className="grid grid-cols-3 gap-2" data-testid="scanner-tool-switcher">
           <button
             onClick={() => switchTool(Tool.RESOLVE)}
@@ -440,14 +501,14 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
                 {!cameraActive && !cameraPreparing && (
                   <button
                     type="button"
-                    onClick={startCamera}
+                    onClick={prefersImageCapture ? openNativeImageCapture : startCamera}
                     className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6"
                     data-testid="scan-camera-placeholder-action"
                   >
                     <div className="w-20 h-20 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 flex items-center justify-center mx-auto mb-4 shadow-[0_0_40px_rgba(0,194,255,0.08)]">
                       <ScanLine size={30} className="text-[#00C2FF]" />
                     </div>
-                    <p className="text-sm font-semibold">Zum Scannen tippen</p>
+                    <p className="text-sm font-semibold">{prefersImageCapture ? "Kamera oder Foto öffnen" : "Zum Scannen tippen"}</p>
                     <p className="text-[11px] text-[#666] mt-1">QR + klassische Barcodes. Unterstützt Tisch-Codes, Rechnungen und Checkout-Links.</p>
                   </button>
                 )}
@@ -466,12 +527,12 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
               <div className="p-4 space-y-3">
                 <div className="flex gap-2">
                   <button
-                    onClick={cameraActive ? stopCamera : startCamera}
+                    onClick={cameraActive ? stopCamera : (prefersImageCapture ? openNativeImageCapture : startCamera)}
                     className={`flex-1 py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 ${cameraActive ? "bg-red-500/12 text-red-300 border border-red-500/25" : "bg-[#00C2FF]/15 text-[#00C2FF] border border-[#00C2FF]/25"}`}
                     data-testid="scan-camera-toggle"
                   >
                     {cameraActive ? <CameraOff size={16} /> : <Camera size={16} />}
-                    {cameraActive ? "Kamera stoppen" : "Kamera starten"}
+                    {cameraActive ? "Kamera stoppen" : (prefersImageCapture ? "Kamera/Foto öffnen" : "Kamera starten")}
                   </button>
                   <button
                     onClick={() => onShowBarcode?.()}

@@ -436,6 +436,16 @@ class SabreSearchRequest(BaseModel):
 @router.post("/sabre/search")
 async def sabre_search_hotels(req: SabreSearchRequest, request: Request):
     """Sabre-Hotelsuche (Mock)."""
+    from datetime import datetime as dt
+
+    check_in_dt = dt.fromisoformat(req.check_in)
+    check_out_dt = dt.fromisoformat(req.check_out)
+    nights = (check_out_dt - check_in_dt).days
+    if nights <= 0:
+        raise HTTPException(400, "Check-out muss nach Check-in liegen")
+    if req.guests < 1:
+        raise HTTPException(400, "Mindestens 1 Gast erforderlich")
+
     hotels = MOCK_CHAIN_HOTELS.copy()
     
     if req.city:
@@ -443,11 +453,6 @@ async def sabre_search_hotels(req: SabreSearchRequest, request: Request):
     
     if req.min_stars:
         hotels = [h for h in hotels if h["stars"] >= req.min_stars]
-    
-    from datetime import datetime as dt
-    check_in_dt = dt.fromisoformat(req.check_in)
-    check_out_dt = dt.fromisoformat(req.check_out)
-    nights = (check_out_dt - check_in_dt).days
     
     results = []
     for hotel in hotels:
@@ -500,6 +505,12 @@ async def sabre_create_booking(req: SabreBookingRequest, request: Request):
     check_in_dt = dt.fromisoformat(req.check_in)
     check_out_dt = dt.fromisoformat(req.check_out)
     nights = (check_out_dt - check_in_dt).days
+    if nights <= 0:
+        raise HTTPException(400, "Check-out muss nach Check-in liegen")
+    if req.guests < 1:
+        raise HTTPException(400, "Mindestens 1 Gast erforderlich")
+    if not req.guest_name.strip() or not req.guest_email.strip():
+        raise HTTPException(400, "Name und E-Mail sind erforderlich")
     
     base_price = {
         "standard": 120 + hotel["stars"] * 20,

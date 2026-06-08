@@ -9,9 +9,39 @@ import {
   ChevronLeft, CreditCard, MapPin, Plus, Check, Trash2,
   Star, Loader2,
 } from "lucide-react";
-import StripeCardInput from "../components/StripeCardInput";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+
+const createEmptyCardForm = (isDefault = false) => ({
+  card_holder: "",
+  card_number: "",
+  expiry: "",
+  is_default: isDefault,
+});
+
+const createEmptyAddressForm = (isDefault = false) => ({
+  label: "",
+  street: "",
+  city: "",
+  zip_code: "",
+  country: "DE",
+  is_default: isDefault,
+});
+
+const detectCardType = (digits) => {
+  if (/^4/.test(digits)) return "visa";
+  if (/^(5[1-5]|2[2-7])/.test(digits)) return "mastercard";
+  if (/^3[47]/.test(digits)) return "amex";
+  return "card";
+};
+
+const formatCardNumber = (value) => value.replace(/\D/g, "").slice(0, 19).replace(/(.{4})/g, "$1 ").trim();
+
+const formatExpiry = (value) => {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+};
 
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, {
@@ -31,6 +61,10 @@ export default function ExpressCheckoutPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [showAddCard, setShowAddCard] = useState(false);
   const [showAddAddress, setShowAddAddress] = useState(false);
+  const [savingCard, setSavingCard] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [cardForm, setCardForm] = useState(createEmptyCardForm(false));
+  const [addressForm, setAddressForm] = useState(createEmptyAddressForm(false));
 
   useEffect(() => {
     loadData();
@@ -49,6 +83,76 @@ export default function ExpressCheckoutPage({ onBack }) {
       toast.error(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const normalizedCardNumber = cardForm.card_number.replace(/\D/g, "");
+  const isCardFormValid =
+    cardForm.card_holder.trim().length >= 3 &&
+    normalizedCardNumber.length >= 12 &&
+    /^\d{2}\/\d{2}$/.test(cardForm.expiry);
+
+  const isAddressFormValid =
+    addressForm.label.trim() &&
+    addressForm.street.trim() &&
+    addressForm.city.trim() &&
+    addressForm.zip_code.trim() &&
+    addressForm.country.trim();
+
+  const handleCreateCard = async () => {
+    if (!isCardFormValid) {
+      toast.error("Bitte alle Kartenfelder korrekt ausfüllen");
+      return;
+    }
+    setSavingCard(true);
+    try {
+      await api("/api/express-checkout/payment-methods", {
+        method: "POST",
+        body: JSON.stringify({
+          card_number: normalizedCardNumber,
+          card_holder: cardForm.card_holder.trim(),
+          expiry: cardForm.expiry,
+          card_type: detectCardType(normalizedCardNumber),
+          is_default: cardForm.is_default,
+        }),
+      });
+      toast.success("Karte gespeichert");
+      setShowAddCard(false);
+      setCardForm(createEmptyCardForm(cards.length === 0));
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Karte konnte nicht gespeichert werden");
+    } finally {
+      setSavingCard(false);
+    }
+  };
+
+  const handleCreateAddress = async () => {
+    if (!isAddressFormValid) {
+      toast.error("Bitte alle Adressfelder ausfüllen");
+      return;
+    }
+    setSavingAddress(true);
+    try {
+      await api("/api/express-checkout/addresses", {
+        method: "POST",
+        body: JSON.stringify({
+          label: addressForm.label.trim(),
+          street: addressForm.street.trim(),
+          city: addressForm.city.trim(),
+          zip_code: addressForm.zip_code.trim(),
+          country: addressForm.country.trim().toUpperCase(),
+          is_default: addressForm.is_default,
+        }),
+      });
+      toast.success("Adresse gespeichert");
+      setShowAddAddress(false);
+      setAddressForm(createEmptyAddressForm(addresses.length === 0));
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Adresse konnte nicht gespeichert werden");
+    } finally {
+      setSavingAddress(false);
     }
   };
 
@@ -146,7 +250,11 @@ export default function ExpressCheckoutPage({ onBack }) {
             <div className="mb-4 flex justify-between items-center">
               <h2 className="text-lg font-bold">Gespeicherte Karten</h2>
               <button
-                onClick={() => setShowAddCard(true)}
+                onClick={() => {
+                  setCardForm(createEmptyCardForm(cards.length === 0));
+                  setShowAddCard(true);
+                }}
+                data-testid="express-add-card-button"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-1"
               >
                 <Plus size={16} />
@@ -182,6 +290,7 @@ export default function ExpressCheckoutPage({ onBack }) {
                     </div>
                     <button
                       onClick={() => deleteCard(card.id)}
+                      data-testid={`express-delete-card-${card.id}`}
                       className="p-2 hover:bg-red-50 rounded-full text-red-600"
                     >
                       <Trash2 size={16} />
@@ -192,6 +301,7 @@ export default function ExpressCheckoutPage({ onBack }) {
                   {!card.is_default && (
                     <button
                       onClick={() => setDefaultCard(card.id)}
+                      data-testid={`express-set-default-card-${card.id}`}
                       className="mt-2 text-xs text-blue-600 hover:underline"
                     >
                       Als Standard setzen
@@ -208,7 +318,11 @@ export default function ExpressCheckoutPage({ onBack }) {
             <div className="mb-4 flex justify-between items-center">
               <h2 className="text-lg font-bold">Gespeicherte Adressen</h2>
               <button
-                onClick={() => setShowAddAddress(true)}
+                onClick={() => {
+                  setAddressForm(createEmptyAddressForm(addresses.length === 0));
+                  setShowAddAddress(true);
+                }}
+                data-testid="express-add-address-button"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-1"
               >
                 <Plus size={16} />
@@ -244,6 +358,7 @@ export default function ExpressCheckoutPage({ onBack }) {
                     </div>
                     <button
                       onClick={() => deleteAddress(addr.id)}
+                      data-testid={`express-delete-address-${addr.id}`}
                       className="p-2 hover:bg-red-50 rounded-full text-red-600"
                     >
                       <Trash2 size={16} />
@@ -256,6 +371,7 @@ export default function ExpressCheckoutPage({ onBack }) {
                   {!addr.is_default && (
                     <button
                       onClick={() => setDefaultAddress(addr.id)}
+                      data-testid={`express-set-default-address-${addr.id}`}
                       className="mt-2 text-xs text-green-600 hover:underline"
                     >
                       Als Standard setzen
@@ -271,31 +387,134 @@ export default function ExpressCheckoutPage({ onBack }) {
       {/* Add Card Modal */}
       {showAddCard && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md" data-testid="express-add-card-modal">
             <h3 className="text-lg font-bold mb-4">Karte hinzufügen</h3>
-            <StripeCardInput
-              onSuccess={() => {
-                setShowAddCard(false);
-                loadData();
-              }}
-              onCancel={() => setShowAddCard(false)}
-            />
+            <div className="space-y-3">
+              <input
+                value={cardForm.card_holder}
+                onChange={(e) => setCardForm((prev) => ({ ...prev, card_holder: e.target.value }))}
+                placeholder="Name auf der Karte"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                data-testid="express-card-holder-input"
+              />
+              <input
+                value={cardForm.card_number}
+                onChange={(e) => setCardForm((prev) => ({ ...prev, card_number: formatCardNumber(e.target.value) }))}
+                placeholder="Kartennummer"
+                inputMode="numeric"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                data-testid="express-card-number-input"
+              />
+              <input
+                value={cardForm.expiry}
+                onChange={(e) => setCardForm((prev) => ({ ...prev, expiry: formatExpiry(e.target.value) }))}
+                placeholder="MM/JJ"
+                inputMode="numeric"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                data-testid="express-card-expiry-input"
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={cardForm.is_default}
+                  onChange={(e) => setCardForm((prev) => ({ ...prev, is_default: e.target.checked }))}
+                  data-testid="express-card-default-checkbox"
+                />
+                Als Standard-Karte setzen
+              </label>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowAddCard(false)}
+                  className="flex-1 py-3 bg-gray-200 rounded-lg font-medium"
+                  data-testid="express-card-cancel-button"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleCreateCard}
+                  disabled={!isCardFormValid || savingCard}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  data-testid="express-card-save-button"
+                >
+                  {savingCard ? <Loader2 size={18} className="animate-spin" /> : null}
+                  Speichern
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Add Address Modal (Placeholder) */}
       {showAddAddress && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md" data-testid="express-add-address-modal">
             <h3 className="text-lg font-bold mb-4">Adresse hinzufügen</h3>
-            <p className="text-sm text-gray-600 mb-4">Formular folgt</p>
-            <button
-              onClick={() => setShowAddAddress(false)}
-              className="w-full py-2 bg-gray-200 rounded-lg"
-            >
-              Schließen
-            </button>
+            <div className="space-y-3">
+              <input
+                value={addressForm.label}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, label: e.target.value }))}
+                placeholder="Zuhause, Büro, Hotel ..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                data-testid="express-address-label-input"
+              />
+              <input
+                value={addressForm.street}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, street: e.target.value }))}
+                placeholder="Straße und Hausnummer"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                data-testid="express-address-street-input"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  value={addressForm.zip_code}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, zip_code: e.target.value }))}
+                  placeholder="PLZ"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                  data-testid="express-address-zip-input"
+                />
+                <input
+                  value={addressForm.city}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, city: e.target.value }))}
+                  placeholder="Stadt"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                  data-testid="express-address-city-input"
+                />
+              </div>
+              <input
+                value={addressForm.country}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, country: e.target.value }))}
+                placeholder="Land (z. B. DE)"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                data-testid="express-address-country-input"
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={addressForm.is_default}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, is_default: e.target.checked }))}
+                  data-testid="express-address-default-checkbox"
+                />
+                Als Standard-Adresse setzen
+              </label>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowAddAddress(false)}
+                  className="flex-1 py-3 bg-gray-200 rounded-lg font-medium"
+                  data-testid="express-address-cancel-button"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleCreateAddress}
+                  disabled={!isAddressFormValid || savingAddress}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  data-testid="express-address-save-button"
+                >
+                  {savingAddress ? <Loader2 size={18} className="animate-spin" /> : null}
+                  Speichern
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
