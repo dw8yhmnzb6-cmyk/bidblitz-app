@@ -121,6 +121,9 @@ export default function TaxiBookingSheet({
     if (!best || item.fare < best.fare) return item;
     return best;
   }, null);
+  const instantBookingLabel = selectedEstimate
+    ? `Jetzt buchen · €${selectedEstimate.fare.toFixed(2)} · ${selectedEstimate.duration_minutes} Min`
+    : (scheduledLabel ? `Bestellen für ${scheduledLabel}` : "Taxi bestellen");
 
   return (
     <div className="space-y-3 pt-1">
@@ -330,6 +333,26 @@ export default function TaxiBookingSheet({
             selectedVehicle={selectedVehicle}
             onSelect={setSelectedVehicle}
           />
+
+          {selectedEstimate && (
+            <div
+              className="rounded-2xl border border-cyan-400/20 bg-cyan-500/8 px-4 py-3 flex items-center justify-between gap-3"
+              data-testid="taxi-instant-booking-banner"
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/75">Sofortübersicht</p>
+                <p className="text-sm font-semibold text-white truncate" data-testid="taxi-instant-booking-banner-title">
+                  {selectedEstimate.name} · €{selectedEstimate.fare.toFixed(2)}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[10px] text-white/45">Fahrzeit</p>
+                <p className="text-sm font-bold text-cyan-300" data-testid="taxi-instant-booking-banner-duration">
+                  {selectedEstimate.duration_minutes} Min
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -433,7 +456,7 @@ export default function TaxiBookingSheet({
             className="w-full py-4 bg-cyan-500 rounded-2xl font-bold text-black text-base disabled:opacity-50 shadow-[0_4px_24px_rgba(0,194,255,0.35)]"
             data-testid="taxi-book-btn"
           >
-            {loading ? "Wird gebucht..." : scheduledLabel ? `Bestellen für ${scheduledLabel}` : "Taxi bestellen"}
+            {loading ? "Wird gebucht..." : instantBookingLabel}
           </motion.button>
         </>
       ) : (

@@ -295,6 +295,9 @@ export default function TaxiPage({ onNavigate }) {
 
   const selectDropoffSugg = (s) => {
     setDropoff({ lat: s.lat, lng: s.lng, address: s.address });
+    if (!selectedVehicle && Array.isArray(estimates) && estimates.length > 0) {
+      setSelectedVehicle(estimates[0].vehicle_type);
+    }
     setShowDropoffSugg(false); setDropoffSuggestions([]);
   };
   const [businessDrivers, setBusinessDrivers] = useState(0);
@@ -419,6 +422,12 @@ export default function TaxiPage({ onNavigate }) {
     const result = await api.estimateRide({ pickup, dropoff, promoCode: promo?.code });
     if (result.ok) {
       setEstimates(result.estimates);
+      if (Array.isArray(result.estimates) && result.estimates.length > 0) {
+        const hasCurrentSelection = result.estimates.some((item) => item.vehicle_type === selectedVehicle);
+        if (!hasCurrentSelection) {
+          setSelectedVehicle(result.estimates[0].vehicle_type);
+        }
+      }
       setSurge(result.surge);
       setTariffZone(result.tariff_zone || null);
       setTimeTariff(result.time_tariff || null);

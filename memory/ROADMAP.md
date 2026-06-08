@@ -10,7 +10,6 @@
 - Volltest später um zusätzliche weniger kritische Module außerhalb des aktuellen Kerns erweitern
 - KYC-Flow später noch um bessere Upload-Fehlermeldungen und klare Status-Refresh-UX erweitern
 - Taxi-Suche später noch um Recents/Home/Work-Priorisierung und echte serverseitige Ranking-Heuristik vertiefen
-- Taxi-Flow nach Zielauswahl noch stärker auf sofortige Preis-/Zeit-Kommunikation trimmen
 - Express-Checkout später optional mit echter Stripe-Setup-/Save-Card-Weiterleitung statt reinem Schnellspeicher vertiefen
 - Floorplan-/Raumplan-Editor für Tische mit Mehrraum/Zoom/Snapping ausbauen
 - Restaurant-Live-Events optional um Sound/Badge-Cues pro Event-Typ erweitern

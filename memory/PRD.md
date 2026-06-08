@@ -14,6 +14,8 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Express Checkout repariert** (`frontend/src/pages/ExpressCheckoutPage.jsx`): kaputtes Karten-/Adress-Handling durch echte, ausfüllbare Add-Card- und Add-Address-Modals ersetzt; Validierung und mobile Bedienung verbessert.
 - 🟢 **Sabre-Hotel-Flow stabilisiert** (`frontend/src/pages/HotelSabreSearchPage.jsx`, `backend/routes/hotels.py`): Check-in/out sind vorbefüllt, Suche validiert klarer, Buchungsmodal ist testbar/stabil und `Meine Buchungen` zeigt sinnvolle Empty-States; Backend blockt ungültige Datumsbereiche sauber mit 400.
 - 🟢 **iPhone-Scanner-Fallback verbessert** (`frontend/src/pages/ScannerPage.jsx`): Statt am Kamera-Start zu hängen, nutzt iPhone/Safari jetzt zuverlässig `capture=environment` / Foto-Kamera-Auswahl als Fallback.
+- 🟢 **Taxi-Sofortpreis/ETA geschärft** (`frontend/src/components/taxi/TaxiBookingSheet.jsx`, `frontend/src/pages/TaxiPage.jsx`): Nach Zielauswahl stehen Preis, Fahrzeit und Strecke sofort prominent über der Fahrzeugliste; der Buchungs-CTA trägt jetzt direkt Preis + Dauer.
+- 🟢 **KYC-Status-UX nachgeschärft** (`frontend/src/pages/VerificationPage.jsx`): neuer Status-/Refresh-Block, Auto-Refresh bei `pending`, klarer Retry-Button sowie besser sichtbare Erfolgs-/Fehlerzustände.
 - ✅ **Verifiziert**: `iteration_136.json` Frontend-Sweep grün (Taxi, Scan, Express Checkout, Sabre Hotels, Wallet); zusätzlicher Backend-Smoke für Hotels, Taxi und Auth 5/5 PASS.
 - ⚠️ **MOCKED/FALLBACK**: Sabre-Hotelsuche/-Buchungen bleiben im Backend **MOCKED**; NFC/USB/native Hardware-Funktionen bleiben im Browser-Preview **MOCKED/FALLBACK**.
 

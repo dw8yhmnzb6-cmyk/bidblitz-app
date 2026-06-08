@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Upload, Camera, CreditCard, Shield, Check, Loader2,
-  Clock, X, AlertCircle, ChevronRight
+  Clock, X, AlertCircle, RefreshCcw
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
@@ -20,29 +20,46 @@ const VerificationPage = ({ onBack }) => {
   const [previews, setPreviews] = useState({ id_front: null, id_back: null, selfie: null });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSyncAt, setLastSyncAt] = useState(null);
 
   const load = useCallback(async () => {
     const res = await api.getKycStatus();
     return res;
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const res = await load();
-        if (!active) return;
-        setData(res);
-        setSuccess(false);
-      } catch (loadError) {
-        void loadError;
-      }
-      if (active) setLoading(false);
-    })();
-    return () => {
-      active = false;
-    };
+  const refreshStatus = useCallback(async ({ silent = false } = {}) => {
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError("");
+    try {
+      const res = await load();
+      setData(res);
+      setLastSyncAt(new Date());
+      return res;
+    } catch (loadError) {
+      setError(loadError?.message || "KYC-Status konnte nicht geladen werden");
+      return null;
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
   }, [load]);
+
+  useEffect(() => {
+    refreshStatus();
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    if (!data?.kyc_status || !["pending", "submitted"].includes(data.kyc_status)) return;
+    const timer = setInterval(() => {
+      refreshStatus({ silent: true });
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [data?.kyc_status, refreshStatus]);
 
   const handleFile = (key, file) => {
     if (!file) return;
@@ -64,9 +81,11 @@ const VerificationPage = ({ onBack }) => {
       fd.append("selfie", files.selfie);
       fd.append("document_type", "national_id");
       await api.submitKycFormData(fd);
-      const nextStatus = await load();
-      setData(nextStatus);
-      setSuccess(false);
+      setSuccess(true);
+      const nextStatus = await refreshStatus({ silent: true });
+      if (nextStatus?.kyc_status === "approved") {
+        setSuccess(false);
+      }
     } catch (e) {
       setError(e?.message || "KYC Upload fehlgeschlagen");
     }
@@ -83,6 +102,16 @@ const VerificationPage = ({ onBack }) => {
 
   const status = data?.kyc_status;
   const requestedRole = "Identität";
+  const canRetryUpload = !status || status === "rejected";
+  const statusTone = status === "approved"
+    ? { title: "Verifiziert", color: "#00E89D", bg: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)", icon: Check }
+    : status === "rejected"
+      ? { title: "Verifizierung abgelehnt", color: "#FF4757", bg: "rgba(255,71,87,0.04)", border: "1px solid rgba(255,71,87,0.12)", icon: X }
+      : { title: "In Prüfung", color: "#FFB800", bg: "rgba(255,184,0,0.04)", border: "1px solid rgba(255,184,0,0.12)", icon: Clock };
+  const StatusIcon = statusTone.icon;
+  const syncLabel = lastSyncAt
+    ? `Zuletzt aktualisiert: ${lastSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : "Status wird geladen";
 
   return (
     <motion.div data-testid="verification-page" className="min-h-screen pb-24" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -101,6 +130,36 @@ const VerificationPage = ({ onBack }) => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+
+        <motion.div
+          className={`rounded-2xl p-4 ${glass}`}
+          style={{ background: panelBg, border: panelBorder }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-testid="kyc-status-actions-card"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">KYC Status</p>
+              <p className="text-[13px] font-bold mt-1" style={{ color: statusTone.color }} data-testid="kyc-status-title">{statusTone.title}</p>
+              <p className="text-[10px] text-white/30 mt-1" data-testid="kyc-last-sync-label">{syncLabel}</p>
+            </div>
+            <button
+              onClick={() => refreshStatus({ silent: true })}
+              className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white/70 text-[11px] font-semibold flex items-center gap-2 disabled:opacity-40"
+              disabled={refreshing || uploading}
+              data-testid="kyc-refresh-button"
+            >
+              <RefreshCcw size={13} className={refreshing ? "animate-spin" : ""} />
+              Aktualisieren
+            </button>
+          </div>
+          {(status === "pending" || success) && (
+            <p className="text-[10px] text-cyan-300/80 mt-3" data-testid="kyc-auto-refresh-hint">
+              Auto-Refresh ist aktiv. Der Status wird im Hintergrund erneut geprüft.
+            </p>
+          )}
+        </motion.div>
 
         {/* Status Banner */}
         {status === "pending" && (
@@ -125,6 +184,22 @@ const VerificationPage = ({ onBack }) => {
             <X size={28} className="text-[#FF4757] mx-auto mb-2" />
             <p className="text-[13px] font-bold text-[#FF4757]">{t("verify.rejected_title") || "Verification Rejected"}</p>
             <p className="text-[10px] text-white/30 mt-1">{data?.rejection_reason || t("verify.rejected_desc") || "Please re-submit clear documents."}</p>
+            <div className="flex gap-2 mt-3 justify-center">
+              <button
+                onClick={() => refreshStatus({ silent: true })}
+                className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white/70 text-[11px] font-semibold"
+                data-testid="kyc-rejected-refresh-button"
+              >
+                Status neu laden
+              </button>
+              <button
+                onClick={() => setError("")}
+                className="px-3 py-2 rounded-xl bg-[#FF4757]/10 border border-[#FF4757]/20 text-[#FF7C87] text-[11px] font-semibold"
+                data-testid="kyc-retry-upload-button"
+              >
+                Neu hochladen
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -169,7 +244,14 @@ const VerificationPage = ({ onBack }) => {
             {error && (
               <motion.div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(255,71,87,0.04)", border: "1px solid rgba(255,71,87,0.1)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <AlertCircle size={12} className="text-[#FF4757]" />
-                <span className="text-[10px] text-[#FF4757]">{error}</span>
+                <span className="text-[10px] text-[#FF4757] flex-1" data-testid="kyc-error-message">{error}</span>
+                <button
+                  onClick={() => canRetryUpload ? submit() : refreshStatus({ silent: true })}
+                  className="px-2.5 py-1 rounded-lg bg-[#FF4757]/10 border border-[#FF4757]/15 text-[#FF9AA3] text-[10px] font-semibold"
+                  data-testid="kyc-inline-retry-button"
+                >
+                  Erneut versuchen
+                </button>
               </motion.div>
             )}
 
@@ -186,11 +268,12 @@ const VerificationPage = ({ onBack }) => {
           </>
         )}
 
-        {success && !status && (
-          <motion.div className={`rounded-2xl p-4 text-center ${glass}`} style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)" }} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+        {success && status !== "approved" && (
+          <motion.div className={`rounded-2xl p-4 text-center ${glass}`} style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.12)" }} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} data-testid="kyc-success-card">
             <Check size={28} className="text-[#00E89D] mx-auto mb-2" />
             <p className="text-[13px] font-bold text-[#00E89D]">{t("verify.submitted") || "Documents Submitted"}</p>
             <p className="text-[10px] text-white/30 mt-1">{t("verify.wait_review") || "Please wait for admin review."}</p>
+            <p className="text-[10px] text-cyan-300/80 mt-2">Status wird automatisch aktualisiert. Du kannst zusätzlich manuell refreshen.</p>
           </motion.div>
         )}
 
