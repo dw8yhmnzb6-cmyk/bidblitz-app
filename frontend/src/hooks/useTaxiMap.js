@@ -89,7 +89,7 @@ export function useTaxiMap({
     // Hard-fail visibly if the token is missing in this build
     if (!MAPBOX_TOKEN) {
       console.error("[taxi] REACT_APP_MAPBOX_TOKEN missing in build — map cannot load.");
-      onError?.("Karte nicht verfügbar (Konfigurationsfehler). Bitte App neu starten oder Support kontaktieren.");
+      onError?.("Karte nicht verfügbar. Du kannst Straße oder Ort trotzdem direkt suchen und bestellen.");
       return;
     }
 
@@ -124,7 +124,7 @@ export function useTaxiMap({
         // iOS Safari sometimes mounts the canvas with stale dimensions when the
         // bottom-sheet animates in. Force a resize after layout settles.
         const resizeSoon = () => {
-          try { map.resize(); } catch {}
+          try { map.resize(); } catch (resizeError) { void resizeError; }
         };
         // After style/load, recenter on the LATEST pickup if it's now valid.
         // Closes the GPS-arrives-after-init race condition.
@@ -138,7 +138,7 @@ export function useTaxiMap({
             if (initialisedWithGpsRef.current) return;
             map.jumpTo({ center: [p.lng, p.lat], zoom: 14 });
             autoFlewToPickupRef.current = true;
-          } catch {}
+          } catch (recenterError) { void recenterError; }
         };
         map.on("load", () => { resizeSoon(); recenterOnLatestPickup(); });
         map.on("style.load", () => { resizeSoon(); recenterOnLatestPickup(); });
@@ -149,9 +149,9 @@ export function useTaxiMap({
           const msg = ev?.error?.message || "";
           console.error("[taxi] Mapbox error:", msg, ev?.error);
           if (/unauthorized|access token|401|forbidden/i.test(msg)) {
-            onError?.("Karte nicht autorisiert. Bitte Support kontaktieren (Token-Fehler).");
+            onError?.("Karte konnte nicht geladen werden. Straßensuche und Bestellung bleiben verfügbar.");
           } else if (/network|fetch|load/i.test(msg)) {
-            onError?.("Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen.");
+            onError?.("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
           }
         });
         map.addControl(new mb.NavigationControl(), "top-right");
@@ -183,11 +183,11 @@ export function useTaxiMap({
         mapRef.current = map;
       } catch (err) {
         console.error("❌ Mapbox initialization error:", err);
-        onError?.("Karte konnte nicht initialisiert werden. Versuche es bitte erneut.");
+        onError?.("Karte konnte nicht initialisiert werden. Suche und Bestellung bleiben aktiv.");
       }
     }).catch((err) => {
       console.error("❌ Mapbox bundle load failed:", err);
-      onError?.("Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen.");
+      onError?.("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
     });
 
     return () => {
@@ -238,9 +238,9 @@ export function useTaxiMap({
         map.jumpTo({ center: [pickup.lng, pickup.lat], zoom: 14 });
         // Then animate for polish (no-op if style not ready, but jumpTo already worked)
         setTimeout(() => {
-          try { map.flyTo({ center: [pickup.lng, pickup.lat], zoom: 14, duration: 500, essential: true }); } catch {}
+          try { map.flyTo({ center: [pickup.lng, pickup.lat], zoom: 14, duration: 500, essential: true }); } catch (flyError) { void flyError; }
         }, 100);
-      } catch {}
+      } catch (jumpError) { void jumpError; }
     }
 
     if (pickupMarkerRef.current && pickup.lat && pickup.lng) {

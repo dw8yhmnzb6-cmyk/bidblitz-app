@@ -3114,6 +3114,7 @@ async def taxi_geocode(
     lat: Optional[float] = None,
     lang: str = "de",
     limit: int = 8,
+    country: Optional[str] = None,
 ):
     """
     Forward-geocode (autocomplete) Endpoint. Frontend nutzt diesen Proxy,
@@ -3136,8 +3137,11 @@ async def taxi_geocode(
         "types": "address,poi,place,locality,neighborhood,postcode,district",
         "autocomplete": "true",
     }
+    if country:
+        params["country"] = country
     if lng is not None and lat is not None:
         params["proximity"] = f"{lng},{lat}"
+        params["bbox"] = f"{lng - 1.4},{lat - 1.4},{lng + 1.4},{lat + 1.4}"
 
     try:
         async with httpx.AsyncClient(timeout=4.0) as client:

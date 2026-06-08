@@ -271,12 +271,12 @@ export default function TaxiPage({ onNavigate }) {
 
   const handlePickupChange = (text) => {
     setPickup(p => ({ ...p, address: text }));
-    geocodeSearch('pickup', text, setPickupSuggestions, setShowPickupSugg);
+    geocodeSearch('pickup', text, setPickupSuggestions, setShowPickupSugg, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
   };
 
   const handleDropoffChange = (text) => {
     setDropoff(p => ({ ...p, address: text }));
-    geocodeSearch('dropoff', text, setDropoffSuggestions, setShowDropoffSugg);
+    geocodeSearch('dropoff', text, setDropoffSuggestions, setShowDropoffSugg, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
   };
 
   // Auto-geocode on blur if no coords yet
@@ -589,6 +589,7 @@ export default function TaxiPage({ onNavigate }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-red-300">Karte nicht ladbar</p>
                 <p className="text-[12px] text-white/65 mt-0.5 leading-snug">{mapError}</p>
+                <p className="text-[11px] text-cyan-200/80 mt-1">Du kannst trotzdem Straße, Hotel, Bahnhof oder Ort direkt suchen und bestellen.</p>
                 <button
                   onClick={() => { setMapError(null); window.location.reload(); }}
                   data-testid="taxi-map-error-reload"

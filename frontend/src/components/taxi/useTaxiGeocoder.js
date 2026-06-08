@@ -19,6 +19,7 @@ const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const FORWARD_PARAMS =
   "language=de&limit=8&types=address,poi,place,locality,neighborhood,postcode,district";
+const COUNTRY_HINT = "de,at,ch,xk,al,mk,me";
 
 function parseFeature(f) {
   const ctx = f.context || [];
@@ -39,6 +40,25 @@ function parseFeature(f) {
     lng: f.center?.[0],
     type: (f.place_type && f.place_type[0]) || "address",
   };
+}
+
+function scoreFeature(feature, query, proximity) {
+  const q = (query || "").trim().toLowerCase();
+  const text = `${feature?.text || ""} ${feature?.place_name || ""}`.toLowerCase();
+  let score = 0;
+  if (text.startsWith(q)) score += 120;
+  if (text.includes(q)) score += 60;
+  const types = feature?.place_type || [];
+  if (types.includes("address")) score += 28;
+  if (types.includes("poi")) score += 20;
+  if (types.includes("place")) score += 14;
+  const center = feature?.center || [];
+  if (proximity && Number.isFinite(center[1]) && Number.isFinite(center[0])) {
+    const dLat = Math.abs(center[1] - proximity.lat);
+    const dLng = Math.abs(center[0] - proximity.lng);
+    score += Math.max(0, 18 - ((dLat + dLng) * 12));
+  }
+  return score;
 }
 
 export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
@@ -78,9 +98,9 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
       const hasProx = proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng)
         && proximity.lat !== 0;
       const prox = hasProx ? `&proximity=${proximity.lng},${proximity.lat}` : "";
-      // ~2 degrees ≈ 220km bbox around user
+      const country = `&country=${COUNTRY_HINT}`;
       const bbox = hasProx
-        ? `&bbox=${proximity.lng - 2},${proximity.lat - 2},${proximity.lng + 2},${proximity.lat + 2}`
+        ? `&bbox=${proximity.lng - 1.4},${proximity.lat - 1.4},${proximity.lng + 1.4},${proximity.lat + 1.4}`
         : "";
 
       timers[key] = setTimeout(async () => {
@@ -91,11 +111,11 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
           if (MAPBOX_TOKEN) {
             url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
               q,
-            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true${prox}${bbox}`;
+            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true${country}${prox}${bbox}`;
           } else if (BACKEND_URL) {
             url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(q)}&limit=8${
               hasProx ? `&lat=${proximity.lat}&lng=${proximity.lng}` : ""
-            }`;
+            }&country=${encodeURIComponent(COUNTRY_HINT)}`;
           } else {
             setSuggestions([]);
             setVisibility(false);
@@ -109,6 +129,8 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
           }
           const data = await res.json();
           const results = (data.features || [])
+            .slice()
+            .sort((a, b) => scoreFeature(b, q, proximity) - scoreFeature(a, q, proximity))
             .map(parseFeature)
             .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
           setSuggestions(results);
@@ -137,9 +159,9 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
       if (MAPBOX_TOKEN) {
         url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
           target.address,
-        )}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
+        )}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1&country=${COUNTRY_HINT}`;
       } else if (BACKEND_URL) {
-        url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(target.address)}&limit=1`;
+        url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(target.address)}&limit=1&country=${encodeURIComponent(COUNTRY_HINT)}`;
       } else {
         return;
       }

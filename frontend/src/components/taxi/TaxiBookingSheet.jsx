@@ -161,6 +161,7 @@ export default function TaxiBookingSheet({
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-cyan-300 uppercase tracking-wider font-bold mb-0.5">Ziel</p>
             <p className="text-base font-semibold text-white">Wohin möchtest du?</p>
+            <p className="text-[11px] text-white/50 mt-1">Straße, Hausnummer, Hotel, Bahnhof oder Ort suchen</p>
           </div>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" className="shrink-0">
             <path d="m9 6 6 6-6 6" />

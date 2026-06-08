@@ -47,6 +47,9 @@ export default function TaxiAddressSearchSheet({
   recentAddresses = [],
 }) {
   const { search } = useTaxiGeocoder({ debounceMs: 120 });
+  const computedSearchHint = mode === "pickup"
+    ? "Abholadresse suchen oder auf der Karte setzen"
+    : "Zieladresse suchen wie bei Uber oder Bolt";
   const [pickupVal, setPickupVal] = useState(pickup?.address || "");
   const [dropoffVal, setDropoffVal] = useState(dropoff?.address || "");
   const [pickupSugg, setPickupSugg] = useState([]);
@@ -131,7 +134,10 @@ export default function TaxiAddressSearchSheet({
                   <path d="m15 6-6 6 6 6" />
                 </svg>
               </button>
-              <h2 className="text-base font-semibold text-white">Adresse eingeben</h2>
+              <div>
+                <h2 className="text-base font-semibold text-white">Adresse eingeben</h2>
+                <p className="text-[11px] text-white/45 mt-0.5" data-testid="taxi-search-sheet-hint">{computedSearchHint}</p>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -185,6 +191,7 @@ export default function TaxiAddressSearchSheet({
             {/* When a query is active → show suggestions */}
             {currentShow && currentList.length > 0 ? (
               <div>
+                <div className="px-4 py-2 text-[10px] text-cyan-300 uppercase tracking-[0.18em] font-bold" data-testid="taxi-search-live-results-label">Live Treffer</div>
                 {currentList.map((s, i) => (
                   <button
                     key={i}
@@ -198,6 +205,7 @@ export default function TaxiAddressSearchSheet({
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-white truncate">{s.name}</div>
                       <div className="text-xs text-gray-400 truncate">{s.cityZip || s.address}</div>
+                      <div className="text-[10px] text-white/30 mt-1 truncate">{s.address}</div>
                     </div>
                   </button>
                 ))}
@@ -237,7 +245,8 @@ export default function TaxiAddressSearchSheet({
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white">Standort auf Karte festlegen</div>
+                    <div className="text-sm font-medium text-white">Pin auf Karte setzen</div>
+                    <div className="text-xs text-gray-400">Wie bei Uber/Bolt: Position direkt auf der Karte anpassen</div>
                   </div>
                 </button>
 
