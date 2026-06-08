@@ -52,6 +52,7 @@ export default function HotelSabreSearchPage({ onBack }) {
     guest_name: "",
     guest_email: "",
   });
+  const [cityInput, setCityInput] = useState("");
 
   const isSearchReady = Boolean(searchForm.city && searchForm.check_in && searchForm.check_out);
   const isBookingReady = Boolean(bookingForm.guest_name.trim() && bookingForm.guest_email.trim());
@@ -104,6 +105,11 @@ export default function HotelSabreSearchPage({ onBack }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCityInputChange = (value) => {
+    setCityInput(value);
+    setSearchForm((prev) => ({ ...prev, city: value }));
   };
 
   const bookRoom = async () => {
@@ -190,9 +196,18 @@ export default function HotelSabreSearchPage({ onBack }) {
             <input
               type="text"
               placeholder="Berlin, München, Hamburg ..."
-              value={searchForm.city}
-              onChange={(e) => setSearchForm({ ...searchForm, city: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+              value={cityInput}
+              onChange={(e) => handleCityInputChange(e.target.value)}
+              onInput={(e) => handleCityInputChange(e.currentTarget.value)}
+              onBlur={(e) => handleCityInputChange(e.target.value.trim())}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="words"
+              spellCheck={false}
+              enterKeyHint="search"
+              name="hotel-destination-city"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400"
+              style={{ WebkitTextFillColor: "#111827" }}
               data-testid="sabre-city-input"
             />
           </div>
@@ -203,7 +218,8 @@ export default function HotelSabreSearchPage({ onBack }) {
                 type="date"
                 value={searchForm.check_in}
                 onChange={(e) => setSearchForm({ ...searchForm, check_in: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
+                style={{ WebkitTextFillColor: "#111827" }}
                 data-testid="sabre-checkin-input"
               />
             </div>
@@ -213,7 +229,8 @@ export default function HotelSabreSearchPage({ onBack }) {
                 type="date"
                 value={searchForm.check_out}
                 onChange={(e) => setSearchForm({ ...searchForm, check_out: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
+                style={{ WebkitTextFillColor: "#111827" }}
                 data-testid="sabre-checkout-input"
               />
             </div>
@@ -226,7 +243,8 @@ export default function HotelSabreSearchPage({ onBack }) {
                 min="1"
                 value={searchForm.guests}
                 onChange={(e) => setSearchForm({ ...searchForm, guests: Math.max(1, parseInt(e.target.value || "1", 10)) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-400"
+                style={{ WebkitTextFillColor: "#111827" }}
                 placeholder="Gäste"
                 data-testid="sabre-guests-input"
               />
@@ -236,7 +254,8 @@ export default function HotelSabreSearchPage({ onBack }) {
               <select
                 value={searchForm.min_stars || ""}
                 onChange={(e) => setSearchForm({ ...searchForm, min_stars: e.target.value ? parseInt(e.target.value, 10) : null })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900"
+                style={{ WebkitTextFillColor: "#111827" }}
                 data-testid="sabre-stars-select"
               >
                 <option value="">Alle Sterne</option>
@@ -392,7 +411,8 @@ export default function HotelSabreSearchPage({ onBack }) {
               placeholder="Name"
               value={bookingForm.guest_name}
               onChange={(e) => setBookingForm({ ...bookingForm, guest_name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3 bg-white text-gray-900 placeholder:text-gray-400"
+              style={{ WebkitTextFillColor: "#111827" }}
               data-testid="sabre-booking-name-input"
             />
             <input
@@ -400,7 +420,8 @@ export default function HotelSabreSearchPage({ onBack }) {
               placeholder="E-Mail"
               value={bookingForm.guest_email}
               onChange={(e) => setBookingForm({ ...bookingForm, guest_email: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 bg-white text-gray-900 placeholder:text-gray-400"
+              style={{ WebkitTextFillColor: "#111827" }}
               data-testid="sabre-booking-email-input"
             />
             <div className="flex gap-2">
