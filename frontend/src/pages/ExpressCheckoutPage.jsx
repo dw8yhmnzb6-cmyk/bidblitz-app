@@ -2,7 +2,7 @@
  * Express Checkout Page — 1-Klick-Zahlung
  * Gespeicherte Karten & Adressen verwalten
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -86,18 +86,22 @@ export default function ExpressCheckoutPage({ onBack }) {
     }
   };
 
-  const normalizedCardNumber = cardForm.card_number.replace(/\D/g, "");
-  const isCardFormValid =
+  const normalizedCardNumber = useMemo(() => cardForm.card_number.replace(/\D/g, ""), [cardForm.card_number]);
+  const isCardFormValid = useMemo(() => (
     cardForm.card_holder.trim().length >= 3 &&
     normalizedCardNumber.length >= 12 &&
-    /^\d{2}\/\d{2}$/.test(cardForm.expiry);
+    /^\d{2}\/\d{2}$/.test(cardForm.expiry)
+  ), [cardForm.card_holder, cardForm.expiry, normalizedCardNumber]);
 
-  const isAddressFormValid =
-    addressForm.label.trim() &&
-    addressForm.street.trim() &&
-    addressForm.city.trim() &&
-    addressForm.zip_code.trim() &&
-    addressForm.country.trim();
+  const isAddressFormValid = useMemo(() => (
+    Boolean(
+      addressForm.label.trim() &&
+      addressForm.street.trim() &&
+      addressForm.city.trim() &&
+      addressForm.zip_code.trim() &&
+      addressForm.country.trim()
+    )
+  ), [addressForm.label, addressForm.street, addressForm.city, addressForm.zip_code, addressForm.country]);
 
   const handleCreateCard = async () => {
     if (!isCardFormValid) {
