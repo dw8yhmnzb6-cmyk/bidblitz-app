@@ -35,6 +35,16 @@ export async function mobilityRoute(payload) {
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Routing fehlgeschlagen" };
 }
 
+export async function getMobilityNearby({ lat, lng, radius = 5 } = {}) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { center: null, counts: {}, markers: [], available_modes: [] };
+  }
+  const qs = new URLSearchParams({ lat: String(lat), lng: String(lng), radius: String(radius) });
+  const res = await fetch(`${API}/api/mobility-platform/nearby?${qs.toString()}`, { credentials: "include" });
+  if (!res.ok) return { center: null, counts: {}, markers: [], available_modes: [] };
+  return await readJson(res);
+}
+
 export async function getSavedMobilityLocations() {
   const res = await fetch(`${API}/api/mobility-platform/saved-locations`, { credentials: "include" });
   if (!res.ok) return [];

@@ -205,6 +205,8 @@ def register_all_routers(app):
         ("routes.taxi_admin", "router"),
         ("routes.taxi_voiceover", "router"),  # ElevenLabs Voiceover
         ("routes.driver_dashboard", "router"),
+        ("routes.mobility_platform", "router"),
+        ("routes.mobility_payments", "router"),
         ("routes.scooter", "router"),
         ("routes.food", "router"),
         ("routes.food_tracking", "router"),

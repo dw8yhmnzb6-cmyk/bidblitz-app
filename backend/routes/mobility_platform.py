@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from math import radians, sin, cos, asin, sqrt
 from typing import Optional, List
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
@@ -14,6 +15,8 @@ router = APIRouter(prefix="/api/mobility-platform", tags=["Mobility Platform"])
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
 OSRM_URL = "https://router.project-osrm.org"
 SEARCH_LANGS = {"de": "de", "en": "en", "sq": "sq"}
+
+TRANSPORT_PAYMENT_METHODS = ["wallet", "nfc", "qr", "apple_pay", "google_pay"]
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -114,12 +117,55 @@ class SavedLocationRequest(BaseModel):
     kind: str = Field(default="favorite")
 
 
+def _cache_key(path: str, params: dict) -> str:
+    clean = {k: v for k, v in params.items() if v is not None}
+    return f"{path}?{urlencode(sorted(clean.items()), doseq=True)}"
+
+
+async def _read_geo_cache(key: str):
+    cached = await db.mobility_geo_cache.find_one({"key": key}, {"_id": 0, "payload": 1})
+    return cached.get("payload") if cached else None
+
+
+async def _write_geo_cache(key: str, payload):
+    await db.mobility_geo_cache.update_one(
+        {"key": key},
+        {"$set": {
+            "key": key,
+            "payload": payload,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+
+
+def _round_money(value: float) -> float:
+    return round(float(value or 0), 2)
+
+
+def _service_marker(marker_type: str, marker_id: str, label: str, lat: float, lng: float, **extra):
+    return {
+        "id": marker_id,
+        "type": marker_type,
+        "label": label,
+        "lat": lat,
+        "lng": lng,
+        **extra,
+    }
+
+
 async def _nominatim_get(path: str, params: dict):
+    key = _cache_key(path, params)
+    cached = await _read_geo_cache(key)
+    if cached is not None:
+        return cached
     headers = {"User-Agent": "BidBlitzMobility/1.0 (support@bidblitz.com)"}
     async with httpx.AsyncClient(timeout=8.0) as client:
         response = await client.get(f"{NOMINATIM_URL}{path}", params=params, headers=headers)
         response.raise_for_status()
-        return response.json()
+        payload = response.json()
+        await _write_geo_cache(key, payload)
+        return payload
 
 
 @router.get("/search")
@@ -222,6 +268,119 @@ async def calculate_route(req: MobilityRouteRequest):
         raise
     except Exception as exc:
         raise HTTPException(502, f"Routing nicht erreichbar: {exc}")
+
+
+@router.get("/nearby")
+async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
+    radius_km = max(0.5, min(radius, 25.0))
+
+    driver_rows = await db.drivers.find(
+        {"online": True, "verified": True, "status": "approved"},
+        {"_id": 0, "driver_id": 1, "name": 1, "car": 1, "location": 1},
+    ).to_list(150)
+    driver_locations = await db.driver_locations.find({}, {"_id": 0, "driver_id": 1, "lat": 1, "lng": 1}).to_list(250)
+    driver_loc_map = {
+        item.get("driver_id"): {"lat": item.get("lat"), "lng": item.get("lng")}
+        for item in driver_locations
+        if item.get("driver_id")
+    }
+
+    scooter_rows = await db.scooters.find(
+        {"status": {"$in": ["available", "locked"]}, "battery": {"$gte": 15}},
+        {"_id": 0, "scooter_id": 1, "name": 1, "model": 1, "battery": 1, "battery_percent": 1, "location": 1, "lat": 1, "lng": 1},
+    ).to_list(150)
+
+    car_rows = await db.car_rental_cars.find(
+        {"status": "available"},
+        {"_id": 0, "car_id": 1, "title": 1, "brand": 1, "model": 1, "city": 1, "lat": 1, "lng": 1, "price_per_day": 1, "main_image": 1},
+    ).to_list(150)
+
+    markers = []
+    counts = {"taxi": 0, "scooter": 0, "car_rental": 0}
+
+    for driver in driver_rows:
+        loc = driver_loc_map.get(driver.get("driver_id")) or driver.get("location") or {}
+        dlat = loc.get("lat")
+        dlng = loc.get("lng")
+        if not dlat or not dlng:
+            continue
+        distance_km = haversine_distance(lat, lng, dlat, dlng)
+        if distance_km > radius_km:
+            continue
+        counts["taxi"] += 1
+        car_info = driver.get("car") or {}
+        markers.append(_service_marker(
+            "taxi",
+            driver.get("driver_id") or f"taxi-{counts['taxi']}",
+            driver.get("name") or car_info.get("brand") or "Taxi in der Nähe",
+            dlat,
+            dlng,
+            distance_km=round(distance_km, 2),
+            eta_minutes=max(2, round(distance_km * 2.5)),
+            subtitle=car_info.get("brand") or car_info.get("model") or "Verifizierter Fahrer",
+            payment_methods=TRANSPORT_PAYMENT_METHODS,
+        ))
+
+    for scooter in scooter_rows:
+        loc = scooter.get("location") or {}
+        slat = loc.get("lat") or scooter.get("lat")
+        slng = loc.get("lng") or scooter.get("lng")
+        if not slat or not slng:
+            continue
+        distance_km = haversine_distance(lat, lng, slat, slng)
+        if distance_km > radius_km:
+            continue
+        counts["scooter"] += 1
+        markers.append(_service_marker(
+            "scooter",
+            scooter.get("scooter_id") or f"scooter-{counts['scooter']}",
+            scooter.get("model") or scooter.get("name") or "E-Scooter",
+            slat,
+            slng,
+            distance_km=round(distance_km, 2),
+            battery_percent=int(scooter.get("battery_percent") or scooter.get("battery") or 0),
+            subtitle="Sofort entsperrbar",
+            payment_methods=TRANSPORT_PAYMENT_METHODS,
+        ))
+
+    for car in car_rows:
+        clat = car.get("lat")
+        clng = car.get("lng")
+        if not clat or not clng:
+            continue
+        distance_km = haversine_distance(lat, lng, clat, clng)
+        if distance_km > radius_km:
+            continue
+        counts["car_rental"] += 1
+        markers.append(_service_marker(
+            "car_rental",
+            car.get("car_id") or f"car-{counts['car_rental']}",
+            car.get("title") or "Mietwagen",
+            clat,
+            clng,
+            distance_km=round(distance_km, 2),
+            price_hint=_round_money(car.get("price_per_day") or 0),
+            subtitle=car.get("city") or f"{car.get('brand', '')} {car.get('model', '')}".strip() or "Tagesmiete",
+            image_url=car.get("main_image"),
+            payment_methods=TRANSPORT_PAYMENT_METHODS,
+        ))
+
+    markers.sort(key=lambda item: (item.get("distance_km") or 999, item.get("label") or ""))
+
+    return {
+        "center": {"lat": lat, "lng": lng},
+        "radius_km": radius_km,
+        "counts": counts,
+        "markers": markers[:60],
+        "available_modes": [
+            {"type": "taxi", "label": "Taxi", "live": counts["taxi"] > 0, "count": counts["taxi"]},
+            {"type": "scooter", "label": "E-Scooter", "live": counts["scooter"] > 0, "count": counts["scooter"]},
+            {"type": "bike", "label": "Fahrrad", "live": True, "count": None},
+            {"type": "car_rental", "label": "Mietwagen", "live": counts["car_rental"] > 0, "count": counts["car_rental"]},
+            {"type": "airport_shuttle", "label": "Airport Shuttle", "live": True, "count": None},
+            {"type": "vip", "label": "VIP Chauffeur", "live": True, "count": None},
+        ],
+    }
 
 
 @router.get("/saved-locations")
