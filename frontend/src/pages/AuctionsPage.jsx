@@ -750,8 +750,15 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onInput={(e) => setSearchQuery(e.currentTarget.value)}
               placeholder="Suchen..."
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="search"
               className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl pl-9 pr-3 py-2 text-[12px] text-white placeholder-white/30 focus:outline-none focus:border-[#00C2FF]/40"
+              style={{ WebkitTextFillColor: "#ffffff" }}
             />
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/>
@@ -762,6 +769,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="bg-white/[0.04] border border-white/[0.06] rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#00C2FF]/40"
+            style={{ WebkitTextFillColor: "#ffffff" }}
           >
             <option value="ending_soon" className="bg-[#0a0a0a]">Endet bald</option>
             <option value="low_price" className="bg-[#0a0a0a]">Niedrigster Preis</option>

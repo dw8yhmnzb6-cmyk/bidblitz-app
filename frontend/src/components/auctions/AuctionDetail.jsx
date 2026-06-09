@@ -143,7 +143,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const logisticsLabel = auction.category === "marine" ? "ÜBERGABE NACH ABSPRACHE" : "FREE WORLDWIDE SHIPPING";
 
   return (
-    <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} data-testid="auction-detail" data-scroll-page="true">
       {/* Hero Image */}
       <div className="relative w-full aspect-[16/10] max-h-[300px] overflow-hidden">
         {!hideDetailImage ? <img src={detailImage} alt={auction.title || ''} className={`w-full h-full object-cover ${isEnded ? "opacity-30 grayscale" : ""}`} onError={() => { if (detailImage !== fallbackImage) setDetailImage(fallbackImage); else setHideDetailImage(true); }} /> : <div className="w-full h-full bg-[#060810]" />}
@@ -166,7 +166,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
         </div>
       </div>
 
-      <div className="px-5 -mt-5 pb-32 relative z-10 space-y-3">
+      <div className="px-5 -mt-5 pb-40 relative z-10 space-y-3">
         <h1 className="text-[17px] font-bold text-white/90 font-outfit leading-tight">{auction.title}</h1>
         <p className="text-[10px] text-white/30 leading-relaxed">{auction.description}</p>
 
