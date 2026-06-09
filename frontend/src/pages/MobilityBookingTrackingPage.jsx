@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { ArrowLeft, Clock3, MapPin, ShieldCheck, XCircle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { cancelMobilityBooking, getMobilityBookingDetail } from "../services/mobilityPlatformApi";
@@ -18,6 +20,9 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(null);
   const [tracking, setTracking] = useState(null);
+  const [liveEta, setLiveEta] = useState(0);
+  const mapRef = useRef(null);
+  const layerRef = useRef(null);
 
   const loadBooking = useCallback(async () => {
     const result = await getMobilityBookingDetail(bookingId);
@@ -28,6 +33,7 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
     }
     setBooking(result.booking);
     setTracking(result.tracking);
+    setLiveEta(result.tracking?.eta_minutes || result.booking?.duration_min || 0);
     setLoading(false);
   }, [bookingId]);
 
@@ -48,6 +54,48 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
     toast.success("Buchung storniert");
     await loadBooking();
   };
+
+  useEffect(() => {
+    if (!tracking?.eta_minutes && !booking?.duration_min) return;
+    const timer = setInterval(() => {
+      setLiveEta((prev) => Math.max(0, prev - 1));
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [tracking?.eta_minutes, booking?.duration_min]);
+
+  useEffect(() => {
+    if (!booking?.pickup?.lat || !booking?.dropoff?.lat) return;
+    if (!mapRef.current) {
+      mapRef.current = L.map("mobility-booking-live-map", { zoomControl: false, attributionControl: true }).setView([booking.pickup.lat, booking.pickup.lng], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap" }).addTo(mapRef.current);
+      layerRef.current = L.layerGroup().addTo(mapRef.current);
+    }
+    const map = mapRef.current;
+    const layer = layerRef.current;
+    layer.clearLayers();
+    const pickupMarker = L.marker([booking.pickup.lat, booking.pickup.lng]).addTo(layer).bindPopup("Start");
+    const dropoffMarker = L.marker([booking.dropoff.lat, booking.dropoff.lng]).addTo(layer).bindPopup("Ziel");
+    const routePoints = [[booking.pickup.lat, booking.pickup.lng]];
+    if (tracking?.assigned_resource?.lat && tracking?.assigned_resource?.lng) {
+      L.marker([tracking.assigned_resource.lat, tracking.assigned_resource.lng]).addTo(layer).bindPopup(tracking.assigned_resource.label || "Live");
+      routePoints.push([tracking.assigned_resource.lat, tracking.assigned_resource.lng]);
+    }
+    routePoints.push([booking.dropoff.lat, booking.dropoff.lng]);
+    const polyline = L.polyline(routePoints, { color: "#0F766E", weight: 5, opacity: 0.85 }).addTo(layer);
+    map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+    return () => {
+      pickupMarker.remove();
+      dropoffMarker.remove();
+    };
+  }, [booking, tracking]);
+
+  const progressPercent = useMemo(() => {
+    if (!booking?.duration_min) return 0;
+    if (tracking?.status === "cancelled") return 0;
+    const total = booking.duration_min;
+    const done = Math.max(0, total - (liveEta || total));
+    return Math.max(8, Math.min(100, Math.round((done / total) * 100)));
+  }, [booking?.duration_min, liveEta, tracking?.status]);
 
   if (loading) {
     return <div data-testid="mobility-booking-tracking-loading" className="min-h-screen bg-[#f2eadc] flex items-center justify-center text-[#18202a]">Lädt…</div>;
@@ -81,10 +129,30 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
           </div>
         </div>
 
+        <div className="rounded-3xl bg-white border border-[#18202a]/8 p-5" data-testid="mobility-booking-live-map-card">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Live Karte</p>
+              <h3 className="text-base font-bold mt-1">Fortschritt & Route</h3>
+            </div>
+            <div className="text-right text-xs text-[#18202a]/55" data-testid="mobility-booking-live-eta">ETA {liveEta || booking?.duration_min || 0} Min</div>
+          </div>
+          <div id="mobility-booking-live-map" className="h-64 w-full rounded-2xl overflow-hidden" data-testid="mobility-booking-live-map"></div>
+          <div className="mt-4">
+            <div className="flex items-center justify-between gap-3 text-[11px] text-[#18202a]/55 mb-2">
+              <span>Fortschrittslinie</span>
+              <span data-testid="mobility-booking-progress-label">{progressPercent}%</span>
+            </div>
+            <div className="h-3 rounded-full bg-[#f3eadc] overflow-hidden" data-testid="mobility-booking-progress-track">
+              <div className="h-full rounded-full bg-[#0F766E] transition-[width] duration-500" style={{ width: `${progressPercent}%` }} data-testid="mobility-booking-progress-bar"></div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-3xl bg-white border border-[#18202a]/8 p-5" data-testid="mobility-booking-eta-card">
             <div className="flex items-center gap-2 text-[#0F766E]"><Clock3 size={16} /><span className="text-sm font-semibold">ETA</span></div>
-            <div className="text-2xl font-bold mt-3">{tracking?.eta_minutes || booking?.duration_min || 0} Min</div>
+            <div className="text-2xl font-bold mt-3">{liveEta || booking?.duration_min || 0} Min</div>
           </div>
           <div className="rounded-3xl bg-white border border-[#18202a]/8 p-5" data-testid="mobility-booking-payment-card">
             <div className="flex items-center gap-2 text-[#0F766E]"><Wallet size={16} /><span className="text-sm font-semibold">Zahlung</span></div>

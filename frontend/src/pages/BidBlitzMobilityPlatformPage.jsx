@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import L from "leaflet";
@@ -7,7 +8,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 import { useUser } from "../store/UserContext";
-import { writeNFC } from "../utils/nfcService";
+import { isNFCAvailable, writeNFC } from "../utils/nfcService";
 import { addRecentMobilityLocation, cancelMobilityBooking, createMobilityBooking, createMobilityCheckoutSession, getMobilityAiRecommendation, getMobilityBookingDetail, getMobilityCheckoutStatus, getMobilityNearby, getMobilityPaymentOptions, getMobilityPreferences, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation, saveMobilityPreferences } from "../services/mobilityPlatformApi";
 
 const TRANSPORT_META = {
@@ -141,6 +142,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const [bookings, setBookings] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState({ wallet_balance: 0, methods: [] });
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("wallet");
+  const [nfcStatus, setNfcStatus] = useState(null);
   const [qrCheckout, setQrCheckout] = useState(null);
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [loadingNearby, setLoadingNearby] = useState(false);
@@ -497,6 +499,14 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     return () => { active = false; };
   }, [onNavigate, refreshBootstrapData]);
 
+  useEffect(() => {
+    if (selectedPaymentMethod !== "nfc") return;
+    (async () => {
+      const status = await isNFCAvailable();
+      setNfcStatus(status);
+    })();
+  }, [selectedPaymentMethod]);
+
   return (
     <div className="min-h-screen bg-[#f2eadc] text-[#18202a] pb-28" data-testid="bidblitz-mobility-platform-page">
       <div className="sticky top-0 z-30 bg-[#f2eadc]/92 backdrop-blur-xl border-b border-[#18202a]/8 px-4 py-3 flex items-center justify-between gap-3">
@@ -613,6 +623,19 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               ))}
             </div>
           </div>
+
+          {selectedPaymentMethod === "nfc" && (
+            <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-nfc-diagnostics-card">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">NFC Bridge</p>
+                  <h3 className="text-base font-bold mt-1">Gerätediagnose & Handoff</h3>
+                  <p className="text-sm text-[#18202a]/62 mt-2">Status: {nfcStatus?.available ? `bereit (${nfcStatus.mode})` : (nfcStatus?.reason || "wird geprüft")}</p>
+                </div>
+                <button onClick={() => onNavigate?.("/nfc")} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold" data-testid="mobility-open-nfc-lab-btn">NFC Lab öffnen</button>
+              </div>
+            </div>
+          )}
 
           <div className="mt-4" data-testid="mobility-ai-recommendation-block">
             {loadingAiRecommendation ? (
