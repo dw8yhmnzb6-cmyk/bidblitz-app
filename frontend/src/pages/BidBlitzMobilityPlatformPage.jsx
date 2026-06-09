@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ArrowLeft, Bike, Car, Crown, Crosshair, Home, Loader2, MapPin, Navigation, Plane, Search, ShieldCheck, Star, Wallet, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 import { useUser } from "../store/UserContext";
-import { addRecentMobilityLocation, getMobilityAiRecommendation, getMobilityNearby, getMobilityPaymentOptions, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation } from "../services/mobilityPlatformApi";
+import { addRecentMobilityLocation, createMobilityBooking, getMobilityAiRecommendation, getMobilityNearby, getMobilityPaymentOptions, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation } from "../services/mobilityPlatformApi";
 
 const TRANSPORT_META = {
   taxi: { icon: Car, color: "#00C2FF", detail: "Direkt, schnell und klassisch wie Uber/Bolt." },
@@ -109,21 +110,25 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const [activeField, setActiveField] = useState("dropoff");
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
+  const [preferences, setPreferences] = useState({ priority: "balance", luggage: false, childSeat: false });
   const [options, setOptions] = useState([]);
   const [recommendations, setRecommendations] = useState(null);
   const [selectedType, setSelectedType] = useState("balance");
   const [detailOption, setDetailOption] = useState(null);
   const [savedLocations, setSavedLocations] = useState([]);
   const [recentLocations, setRecentLocations] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState({ wallet_balance: 0, methods: [] });
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [loadingAiRecommendation, setLoadingAiRecommendation] = useState(false);
+  const [bookingTransportType, setBookingTransportType] = useState("");
   const [routeSummary, setRouteSummary] = useState(null);
   const [nearbyCounts, setNearbyCounts] = useState({ taxi: 0, scooter: 0, car_rental: 0 });
   const [availableModes, setAvailableModes] = useState([]);
   const [selectedNearby, setSelectedNearby] = useState(null);
   const [aiRecommendation, setAiRecommendation] = useState(null);
+  const [routeSnapshot, setRouteSnapshot] = useState(null);
   const [searchTarget, setSearchTarget] = useState("dropoff");
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
@@ -140,15 +145,26 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
 
   useEffect(() => {
     (async () => {
-      const [saved, recents, payments] = await Promise.all([
+      const [saved, recents, payments, myBookings] = await Promise.all([
         getSavedMobilityLocations(),
         getRecentMobilityLocations(),
         getMobilityPaymentOptions(),
+        getMyMobilityBookings(),
       ]);
       setSavedLocations(saved);
       setRecentLocations(recents);
       setPaymentOptions(payments);
+      setBookings(myBookings);
     })();
+  }, []);
+
+  const refreshBootstrapData = useCallback(async () => {
+    const [payments, myBookings] = await Promise.all([
+      getMobilityPaymentOptions(),
+      getMyMobilityBookings(),
+    ]);
+    setPaymentOptions(payments);
+    setBookings(myBookings);
   }, []);
 
   const loadNearby = useCallback(async (lat, lng) => {
@@ -168,6 +184,22 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       marker.bindPopup(`<strong>${item.label}</strong><br/>${item.subtitle || ""}<br/>${item.distance_km || 0} km`);
     });
   }, []);
+
+  const requestAiRecommendation = useCallback(async (routeData, pickupValue = pickup, dropoffValue = dropoff, nextPreferences = preferences) => {
+    if (!routeData?.options?.length) return;
+    setLoadingAiRecommendation(true);
+    const ai = await getMobilityAiRecommendation({
+      pickup_address: pickupValue.address,
+      dropoff_address: dropoffValue.address,
+      distance_km: routeData.distance_km,
+      duration_min: routeData.duration_min,
+      options: routeData.options || [],
+      recommendations: routeData.recommendations || {},
+      preferences: nextPreferences,
+    });
+    setAiRecommendation(ai);
+    setLoadingAiRecommendation(false);
+  }, [dropoff, pickup, preferences]);
 
   const calculateRoute = useCallback(async (pickupValue = pickup, dropoffValue = dropoff) => {
     if (!pickupValue?.lat || !dropoffValue?.lat) return;
@@ -190,6 +222,12 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     setOptions(result.options || []);
     setRecommendations(result.recommendations);
     setRouteSummary({ distance_km: result.distance_km, duration_min: result.duration_min });
+    setRouteSnapshot({
+      distance_km: result.distance_km,
+      duration_min: result.duration_min,
+      options: result.options || [],
+      recommendations: result.recommendations || {},
+    });
     await addRecentMobilityLocation({ label: "pickup", address: pickupValue.address, lat: pickupValue.lat, lng: pickupValue.lng, kind: "recent" });
     await addRecentMobilityLocation({ label: "dropoff", address: dropoffValue.address, lat: dropoffValue.lat, lng: dropoffValue.lng, kind: "recent" });
     const latLngs = (result.geometry || []).map(([lng, lat]) => [lat, lng]);
@@ -198,17 +236,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     mapRef.current?.fitBounds(polyline.getBounds(), { padding: [40, 40] });
     routeLayerRef.current = polyline;
 
-    const ai = await getMobilityAiRecommendation({
-      pickup_address: pickupValue.address,
-      dropoff_address: dropoffValue.address,
+    await requestAiRecommendation({
       distance_km: result.distance_km,
       duration_min: result.duration_min,
       options: result.options || [],
       recommendations: result.recommendations || {},
-    });
-    setAiRecommendation(ai);
-    setLoadingAiRecommendation(false);
-  }, [pickup, dropoff]);
+    }, pickupValue, dropoffValue, preferences);
+  }, [pickup, dropoff, preferences, requestAiRecommendation]);
 
   useEffect(() => { activeFieldRef.current = activeField; }, [activeField]);
   useEffect(() => { pickupStateRef.current = pickup; }, [pickup]);
@@ -347,6 +381,39 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     setSavedLocations(await getSavedMobilityLocations());
   };
 
+  const updatePreferences = async (changes) => {
+    const nextPreferences = { ...preferences, ...changes };
+    setPreferences(nextPreferences);
+    if (["cheapest", "fastest", "balance", "eco"].includes(nextPreferences.priority)) {
+      setSelectedType(nextPreferences.priority);
+    }
+    if (routeSnapshot?.options?.length) {
+      await requestAiRecommendation(routeSnapshot, pickup, dropoff, nextPreferences);
+    }
+  };
+
+  const bookTransport = async (option) => {
+    if (!pickup.lat || !dropoff.lat) return toast.error("Bitte zuerst Start und Ziel festlegen");
+    setBookingTransportType(option.type);
+    const result = await createMobilityBooking({
+      transport_type: option.type,
+      transport_label: option.label,
+      price_eur: option.price_eur,
+      duration_min: option.duration_min,
+      distance_km: option.distance_km,
+      payment_method: "wallet",
+      pickup,
+      dropoff,
+      preferences,
+      ai_recommendation: aiRecommendation,
+    });
+    setBookingTransportType("");
+    if (!result.ok) return toast.error(result.error || "Buchung fehlgeschlagen");
+    toast.success(`${option.label} gebucht`);
+    setDetailOption(null);
+    await refreshBootstrapData();
+  };
+
   return (
     <div className="min-h-screen bg-[#f2eadc] text-[#18202a] pb-28" data-testid="bidblitz-mobility-platform-page">
       <div className="sticky top-0 z-30 bg-[#f2eadc]/92 backdrop-blur-xl border-b border-[#18202a]/8 px-4 py-3 flex items-center justify-between gap-3">
@@ -439,6 +506,22 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             ))}
           </div>
 
+          <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-preferences-panel">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">AI Präferenzen</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {[
+                { key: "cheapest", label: "Günstig" },
+                { key: "fastest", label: "Schnell" },
+                { key: "balance", label: "Balance" },
+                { key: "eco", label: "Eco" },
+              ].map((item) => (
+                <button key={item.key} onClick={() => updatePreferences({ priority: item.key })} className={`px-3 py-2 rounded-full text-xs font-semibold border ${preferences.priority === item.key ? "bg-[#0F766E] text-white border-[#0F766E]" : "bg-[#f8f3e9] text-[#18202a]/80 border-[#18202a]/10"}`} data-testid={`mobility-pref-priority-${item.key}`}>{item.label}</button>
+              ))}
+              <button onClick={() => updatePreferences({ luggage: !preferences.luggage })} className={`px-3 py-2 rounded-full text-xs font-semibold border ${preferences.luggage ? "bg-[#F97316] text-white border-[#F97316]" : "bg-[#f8f3e9] text-[#18202a]/80 border-[#18202a]/10"}`} data-testid="mobility-pref-luggage-toggle">Gepäck</button>
+              <button onClick={() => updatePreferences({ childSeat: !preferences.childSeat })} className={`px-3 py-2 rounded-full text-xs font-semibold border ${preferences.childSeat ? "bg-[#7C3AED] text-white border-[#7C3AED]" : "bg-[#f8f3e9] text-[#18202a]/80 border-[#18202a]/10"}`} data-testid="mobility-pref-child-seat-toggle">Kind</button>
+            </div>
+          </div>
+
           <div className="mt-4" data-testid="mobility-ai-recommendation-block">
             {loadingAiRecommendation ? (
               <div className="rounded-2xl border border-[#0F766E]/16 bg-[#0F766E]/8 p-4" data-testid="mobility-ai-recommendation-loading">
@@ -478,7 +561,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               const Icon = meta.icon;
               const isSelected = selectedOption?.type === option.type;
               return (
-                <button key={option.type} onClick={() => setDetailOption(option)} className={`w-full rounded-2xl border p-4 text-left transition-all ${isSelected ? "border-[#00C2FF]/30 bg-[#00C2FF]/8" : "border-white/[0.06] bg-white/[0.03]"}`} data-testid={`mobility-option-${option.type}`}>
+                <div key={option.type} className={`w-full rounded-2xl border p-4 text-left transition-all ${isSelected || aiRecommendation?.best_option_type === option.type ? "border-[#00C2FF]/30 bg-[#00C2FF]/8" : "border-white/[0.06] bg-white/[0.03]"}`} data-testid={`mobility-option-${option.type}`}>
+                  <button onClick={() => setDetailOption(option)} className="w-full text-left" data-testid={`mobility-option-detail-${option.type}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${meta.color}18`, color: meta.color }}><Icon size={20} /></div>
@@ -496,7 +580,12 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                       <div className="text-[10px] text-[#18202a]/45 mt-1">Wallet · NFC · QR</div>
                     </div>
                   </div>
-                </button>
+                  </button>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="text-[11px] text-[#18202a]/55">Direkt mit Wallet buchen</div>
+                    <button onClick={() => bookTransport(option)} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold disabled:opacity-40" disabled={bookingTransportType === option.type} data-testid={`mobility-book-option-${option.type}`}>{bookingTransportType === option.type ? "Bucht..." : "Jetzt buchen"}</button>
+                  </div>
+                </div>
               );
             })}
             {!options.length && (
@@ -530,6 +619,31 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               </div>
             </div>
           </div>
+
+          {!!bookings.length && (
+            <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-recent-bookings-card">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-xs font-semibold">Letzte Mobility-Buchungen</p>
+                <span className="text-[10px] text-[#18202a]/45">Wallet: {formatPrice(paymentOptions.wallet_balance)}</span>
+              </div>
+              <div className="space-y-2">
+                {bookings.slice(0, 3).map((item) => (
+                  <div key={item.booking_id} className="rounded-xl bg-[#f8f3e9] px-3 py-2" data-testid={`mobility-booking-${item.booking_id}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-semibold text-[#18202a]">{item.transport_label}</div>
+                        <div className="text-[10px] text-[#18202a]/45 mt-0.5 truncate">{item.pickup?.address} → {item.dropoff?.address}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[11px] font-semibold text-[#18202a]">{formatPrice(item.price_eur)}</div>
+                        <div className="text-[10px] text-[#18202a]/45">{item.status}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {selectedNearby && (
             <div className="mt-4 rounded-2xl bg-[#0F766E]/8 border border-[#0F766E]/20 p-4" data-testid="mobility-selected-nearby-card">

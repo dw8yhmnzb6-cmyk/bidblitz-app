@@ -46,6 +46,24 @@ export async function getMobilityAiRecommendation(payload) {
   return await readJson(res);
 }
 
+export async function createMobilityBooking(payload) {
+  const res = await fetch(`${API}/api/mobility-platform/book`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Buchung fehlgeschlagen" };
+}
+
+export async function getMyMobilityBookings() {
+  const res = await fetch(`${API}/api/mobility-platform/my-bookings`, { credentials: "include" });
+  if (!res.ok) return [];
+  const data = await readJson(res);
+  return data?.bookings || [];
+}
+
 export async function getMobilityNearby({ lat, lng, radius = 5 } = {}) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return { center: null, counts: {}, markers: [], available_modes: [] };

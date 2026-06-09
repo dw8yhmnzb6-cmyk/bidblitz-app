@@ -136,6 +136,26 @@ class MobilityAiRecommendationRequest(BaseModel):
     duration_min: int
     options: List[dict] = Field(default_factory=list)
     recommendations: Optional[dict] = None
+    preferences: Optional[dict] = None
+
+
+class MobilityBookingLocation(BaseModel):
+    address: str = Field(..., min_length=2, max_length=280)
+    lat: float
+    lng: float
+
+
+class MobilityBookingRequest(BaseModel):
+    transport_type: str = Field(..., min_length=2, max_length=60)
+    transport_label: str = Field(..., min_length=2, max_length=80)
+    price_eur: float = Field(..., gt=0)
+    duration_min: int = Field(..., gt=0)
+    distance_km: float = Field(..., gt=0)
+    payment_method: str = Field(default="wallet")
+    pickup: MobilityBookingLocation
+    dropoff: MobilityBookingLocation
+    preferences: Optional[dict] = None
+    ai_recommendation: Optional[dict] = None
 
 
 def _cache_key(path: str, params: dict) -> str:
@@ -232,6 +252,7 @@ async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationReq
         f"Dropoff: {payload.dropoff_address}\n"
         f"Gesamtdistanz: {round(payload.distance_km, 2)} km\n"
         f"Basisdauer: {payload.duration_min} Minuten\n"
+        f"Nutzerpräferenzen: {json.dumps(payload.preferences or {}, ensure_ascii=False)}\n"
         f"Regelwerk-Empfehlungen: {json.dumps(payload.recommendations or {}, ensure_ascii=False)}\n"
         f"Optionen: {json.dumps(compact_options, ensure_ascii=False)}"
     )
@@ -410,6 +431,67 @@ async def mobility_ai_recommendation(req: MobilityAiRecommendationRequest):
     if not req.options:
         raise HTTPException(400, "Keine Transportoptionen für AI-Empfehlung übergeben")
     return await _generate_ai_route_recommendation(req)
+
+
+@router.post("/book")
+async def create_mobility_booking(req: MobilityBookingRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    if req.payment_method != "wallet":
+        raise HTTPException(400, "Direktbuchung ist aktuell nur mit Wallet verfügbar")
+
+    from routes.mobility_payments import process_payment
+
+    booking_id = f"mob-{uuid4().hex[:12]}"
+    payment_result = await process_payment(
+        user_id=user_id,
+        amount=round(req.price_eur, 2),
+        payment_type="mobility_booking",
+        reference_id=booking_id,
+        reference_type="mobility_booking",
+        description=f"{req.transport_label} · {req.pickup.address} → {req.dropoff.address}",
+        commission_category=req.transport_type,
+    )
+
+    booking = {
+        "booking_id": booking_id,
+        "user_id": user_id,
+        "user_email": user.get("email"),
+        "transport_type": req.transport_type,
+        "transport_label": req.transport_label,
+        "price_eur": round(req.price_eur, 2),
+        "duration_min": req.duration_min,
+        "distance_km": round(req.distance_km, 2),
+        "payment_method": req.payment_method,
+        "payment_status": "paid",
+        "payment_id": ((payment_result or {}).get("payment") or {}).get("payment_id"),
+        "status": "confirmed",
+        "pickup": req.pickup.model_dump(),
+        "dropoff": req.dropoff.model_dump(),
+        "preferences": req.preferences or {},
+        "ai_recommendation": req.ai_recommendation or {},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.mobility_bookings.insert_one(booking)
+    booking_response = {**booking}
+    booking_response.pop("_id", None)
+
+    return {
+        "ok": True,
+        "booking": booking_response,
+        "new_balance": payment_result.get("new_balance"),
+    }
+
+
+@router.get("/my-bookings")
+async def get_my_mobility_bookings(request: Request):
+    user = await get_current_user(request)
+    bookings = await db.mobility_bookings.find(
+        {"user_id": str(user["_id"])},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(20).to_list(20)
+    return {"bookings": bookings}
 
 
 @router.get("/nearby")

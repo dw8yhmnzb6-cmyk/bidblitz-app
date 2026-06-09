@@ -314,6 +314,182 @@ class TestMobilityPlatformRecentLocations:
         assert data.get("ok") == True
 
 
+class TestMobilityPlatformBooking:
+    """Tests for /api/mobility-platform/book and /api/mobility-platform/my-bookings endpoints - Direct Wallet Booking"""
+    
+    def test_book_transport_with_wallet(self, auth_session):
+        """Book transport with wallet payment returns booking and new_balance"""
+        response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/book",
+            json={
+                "transport_type": "taxi",
+                "transport_label": "Taxi",
+                "price_eur": 5.50,
+                "duration_min": 10,
+                "distance_km": 3.2,
+                "payment_method": "wallet",
+                "pickup": {
+                    "address": "Berlin Mitte Test",
+                    "lat": 52.5200,
+                    "lng": 13.4050
+                },
+                "dropoff": {
+                    "address": "Berlin Zoo Test",
+                    "lat": 52.5070,
+                    "lng": 13.3320
+                },
+                "preferences": {"priority": "balance", "luggage": False, "childSeat": False},
+                "ai_recommendation": {"headline": "Test AI", "best_option_type": "taxi"}
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify booking response structure
+        assert data.get("ok") == True, f"Booking should succeed, got: {data}"
+        assert "booking" in data
+        assert "new_balance" in data
+        
+        booking = data["booking"]
+        assert "booking_id" in booking
+        assert booking["booking_id"].startswith("mob-")
+        assert booking["transport_type"] == "taxi"
+        assert booking["transport_label"] == "Taxi"
+        assert booking["price_eur"] == 5.50
+        assert booking["payment_method"] == "wallet"
+        assert booking["payment_status"] == "paid"
+        assert booking["status"] == "confirmed"
+        assert "pickup" in booking
+        assert "dropoff" in booking
+        assert booking["pickup"]["address"] == "Berlin Mitte Test"
+        assert booking["dropoff"]["address"] == "Berlin Zoo Test"
+        
+        # Verify new_balance is a number
+        assert isinstance(data["new_balance"], (int, float))
+    
+    def test_book_scooter_with_wallet(self, auth_session):
+        """Book E-Scooter with wallet payment"""
+        response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/book",
+            json={
+                "transport_type": "scooter",
+                "transport_label": "E-Scooter",
+                "price_eur": 2.80,
+                "duration_min": 8,
+                "distance_km": 2.1,
+                "payment_method": "wallet",
+                "pickup": {
+                    "address": "Pristina Center",
+                    "lat": 42.6489,
+                    "lng": 21.1743
+                },
+                "dropoff": {
+                    "address": "Pristina Airport",
+                    "lat": 42.5728,
+                    "lng": 21.0358
+                }
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("ok") == True
+        assert data["booking"]["transport_type"] == "scooter"
+    
+    def test_book_non_wallet_payment_fails(self, auth_session):
+        """Booking with non-wallet payment method should fail (only wallet supported currently)"""
+        response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/book",
+            json={
+                "transport_type": "taxi",
+                "transport_label": "Taxi",
+                "price_eur": 10.00,
+                "duration_min": 15,
+                "distance_km": 5.0,
+                "payment_method": "nfc",  # Non-wallet payment
+                "pickup": {
+                    "address": "Test Pickup",
+                    "lat": 52.5200,
+                    "lng": 13.4050
+                },
+                "dropoff": {
+                    "address": "Test Dropoff",
+                    "lat": 52.5070,
+                    "lng": 13.3320
+                }
+            }
+        )
+        
+        assert response.status_code == 400
+        data = response.json()
+        assert "detail" in data
+        assert "wallet" in data["detail"].lower()
+    
+    def test_get_my_bookings(self, auth_session):
+        """Get my mobility bookings returns list of bookings"""
+        response = auth_session.get(f"{BASE_URL}/api/mobility-platform/my-bookings")
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert "bookings" in data
+        assert isinstance(data["bookings"], list)
+        
+        # Should have at least the bookings we created in previous tests
+        if len(data["bookings"]) > 0:
+            booking = data["bookings"][0]
+            assert "booking_id" in booking
+            assert "transport_type" in booking
+            assert "transport_label" in booking
+            assert "price_eur" in booking
+            assert "status" in booking
+            assert "pickup" in booking
+            assert "dropoff" in booking
+            assert "created_at" in booking
+    
+    def test_booking_persists_in_my_bookings(self, auth_session):
+        """Verify booking appears in my-bookings after creation"""
+        # Create a unique booking
+        import time
+        unique_address = f"TEST_Booking_Verify_{int(time.time())}"
+        
+        book_response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/book",
+            json={
+                "transport_type": "bike",
+                "transport_label": "Fahrrad",
+                "price_eur": 1.50,
+                "duration_min": 12,
+                "distance_km": 2.5,
+                "payment_method": "wallet",
+                "pickup": {
+                    "address": unique_address,
+                    "lat": 52.5200,
+                    "lng": 13.4050
+                },
+                "dropoff": {
+                    "address": "Test Dropoff Verify",
+                    "lat": 52.5070,
+                    "lng": 13.3320
+                }
+            }
+        )
+        
+        assert book_response.status_code == 200
+        booking_id = book_response.json()["booking"]["booking_id"]
+        
+        # Verify booking appears in my-bookings
+        list_response = auth_session.get(f"{BASE_URL}/api/mobility-platform/my-bookings")
+        assert list_response.status_code == 200
+        
+        bookings = list_response.json()["bookings"]
+        found_booking = next((b for b in bookings if b["booking_id"] == booking_id), None)
+        
+        assert found_booking is not None, f"Booking {booking_id} should appear in my-bookings"
+        assert found_booking["pickup"]["address"] == unique_address
+
+
 class TestMobilityPlatformAiRecommendation:
     """Tests for /api/mobility-platform/ai-recommendation endpoint - AI Route Recommendations via Universal Key"""
     

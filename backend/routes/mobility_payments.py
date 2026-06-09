@@ -163,14 +163,28 @@ async def process_payment(
             hold_hours=PAYOUT_CONFIG["hold_hours"],
         )
     
-    # Credit platform commission to admin/system
-    await db.platform_revenue.insert_one({
-        "revenue_id": secrets.token_hex(8),
-        "payment_id": payment_id,
-        "amount": platform_commission,
-        "category": commission_category or payment_type,
-        "created_at": now.isoformat(),
-    })
+    # Credit platform commission to admin/system (daily aggregate to avoid duplicate-key collisions)
+    revenue_date = now.date().isoformat()
+    revenue_category = commission_category or payment_type
+    await db.platform_revenue.update_one(
+        {"date": revenue_date},
+        {
+            "$setOnInsert": {
+                "revenue_id": secrets.token_hex(8),
+                "date": revenue_date,
+                "created_at": now.isoformat(),
+            },
+            "$set": {
+                "updated_at": now.isoformat(),
+                "last_payment_id": payment_id,
+            },
+            "$inc": {
+                "amount": platform_commission,
+                f"by_category.{revenue_category}": platform_commission,
+            },
+        },
+        upsert=True,
+    )
     
     payment_record.pop("_id", None)
     return {
