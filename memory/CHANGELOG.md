@@ -8,6 +8,7 @@
 - Sabre-Hotel-Suche stabilisiert: Daten vorbefüllt, bessere Validierung, Buchungsmodal + Bookings-Tab sauber
 - Taxi-CTA und Route-Card weiter geschärft: Preis/Fahrzeit/Strecke sofort sichtbar, Buchungsbutton zeigt jetzt direkt Preis + Dauer
 - KYC-Seite erweitert: Refresh-Button, Auto-Refresh bei Pending, klarere Retry-/Success-/Error-States
+- Auktionsliste mobil neu aufgebaut: volle Kartenbreite, saubere Ein-Spalten-Mobile-Ansicht, keine gequetschten Badges/Preisblöcke mehr
 - Backend-Smoke für Hotels, Taxi und Auth 5/5 PASS
 - **MOCKED**: Sabre-Hotelsuche/-Buchungen sowie Browser-Native-Hardware-Fallbacks
 
