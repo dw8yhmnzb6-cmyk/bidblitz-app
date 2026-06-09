@@ -23,12 +23,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Mobility Stripe Checkout live** (`backend/routes/mobility_platform.py`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): QR, Apple Pay, Google Pay und NFC erzeugen jetzt echte Stripe-Checkout-Sessions; QR wird als echte Checkout-QR-Karte angezeigt, Apple/Google laufen über Stripe Checkout, NFC nutzt die native Bridge für URL-Handoff.
 - 🟢 **Mobility Tracking-Seite angeschlossen** (`frontend/src/pages/MobilityBookingTrackingPage.jsx`, `frontend/src/App.js`, `backend/routes/mobility_platform.py`): neue Route `/mobility-booking/{booking_id}` zeigt Summary, ETA, Payment, Zuweisung, Route, AI-Empfehlung, Support und Storno für bestätigte Buchungen.
 - 🟢 **Tracking-/Cancel-APIs live** (`backend/routes/mobility_platform.py`): `GET /api/mobility-platform/booking/{booking_id}` liefert Trackingdaten, `POST /api/mobility-platform/booking/{booking_id}/cancel` storniert bestätigte/pending Buchungen.
+- 🟢 **Tracking visuell vertieft** (`frontend/src/pages/MobilityBookingTrackingPage.jsx`): Live-Karte, Fortschrittslinie und auto-updating ETA eingebaut; Tracking-Seite pollt weiter und zeigt den aktuellen Fortschritt deutlich sichtbarer.
+- 🟢 **NFC-Diagnose in Mobility-Checkout integriert** (`frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): bei Zahlungsart NFC erscheint jetzt direkt eine Diagnosekarte inkl. Status und Schnellzugriff auf das NFC-Lab.
 - 🟢 **Router-Registrierung ergänzt** (`backend/core/router_registry.py`): `routes.mobility_platform` und `routes.mobility_payments` werden jetzt sicher mitgeladen.
 - ✅ **Verifiziert**: Self-Test per curl PASS (`/search`, `/reverse`, `/route`, `/nearby`, `/payment-options`) + Frontend-Smoke eingeloggt PASS.
 - ✅ **Testing-Agent**: `iteration_138.json` komplett grün — Backend 13/13 PASS, Frontend 100% PASS für Login, Karte, Suche, Preisvergleich und Detail-Sheet.
 - ✅ **AI-Testing-Agent**: `iteration_139.json` komplett grün — Backend 17/17 PASS, Frontend 100% PASS für AI-Karte, Provider-Badge, Best-Option und Watchouts.
 - ✅ **Booking/Preference-Testing-Agent**: `iteration_140.json` komplett grün — Backend 22/22 PASS, Frontend 100% PASS für Preference-Toggles, Direktbuchung, Wallet-Abbuchung und Recent-Bookings-Anzeige.
 - ✅ **Checkout/Tracking-Testing-Agent**: `iteration_141.json` komplett grün — Backend 15/15 PASS, Frontend 100% PASS für Preferences-Persistenz, Stripe-Checkout, QR-Karte und Tracking-Seite.
+- ✅ **Tracking/NFC-Finalchecks**: zusätzlicher Frontend-Check 6/6 PASS und Backend-Regressionscheck 7/7 PASS nach Live-Karte, Fortschrittslinie und NFC-Diagnose.
 
 ### 08.06.2026 (Mobile Safari / Frontend Stabilisierungssweep) ✅
 - 🟢 **Taxi-Karte gehärtet** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/MiniLeafletMap.jsx`): Wenn Mapbox ausfällt, bleibt eine sichtbare Fallback-Karte aktiv statt eines harten Kartenabbruchs.

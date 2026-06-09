@@ -6,7 +6,7 @@
 ## P1
 - Mobility: Stripe-Checkout zusätzlich per Webhook/Session-Resume noch robuster gegen abgebrochene Browser-Sessions machen
 - Mobility: Tracking für Shuttle/VIP und weitere Transportarten mit echterer Live-Progression vertiefen
-- Mobility: Tracking-Seite um echte Map-Animation und Fortschritts-Polylines erweitern
+- Mobility: Tracking-Seite um echte Map-Animation und Fortschritts-Polylines weiter ausbauen
 - Native NFC-Bridge nachreichen, sobald User-Lizenz vorliegt
 - Reale USB-/Netzwerk-Drucker über Native-/Device-Bridge außerhalb Preview mit Hardware-Mapping verifizieren
 - USB-Auto-Suche im nativen Drucker-Wizard auf echten Geräten verifizieren
