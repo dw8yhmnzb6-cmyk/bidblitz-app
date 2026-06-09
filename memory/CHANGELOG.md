@@ -10,6 +10,7 @@
 - KYC-Seite erweitert: Refresh-Button, Auto-Refresh bei Pending, klarere Retry-/Success-/Error-States
 - Auktionsliste mobil neu aufgebaut: volle Kartenbreite, saubere Ein-Spalten-Mobile-Ansicht, keine gequetschten Badges/Preisblöcke mehr
 - Samsung-Mobile-Fixes ergänzt: Scrollen, Tippen, Sucheingabe und Auktionsdetailseite jetzt sauber auf Android/Samsung; Sweep `iteration_137` komplett PASS
+- Merchant-Language-Fix: Albanisch auf `/merchant-landing` übersetzt jetzt Hero, CTA und die Gastro-/Voucher-Sektion statt hartem Deutsch/Englisch
 - Backend-Smoke für Hotels, Taxi und Auth 5/5 PASS
 - **MOCKED**: Sabre-Hotelsuche/-Buchungen sowie Browser-Native-Hardware-Fallbacks
 
