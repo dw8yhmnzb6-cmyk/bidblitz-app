@@ -4,9 +4,9 @@
 - Keine offenen P0-Blocker im aktuellen Mobility-Map-Core nach `iteration_138`
 
 ## P1
-- Mobility: Buchungsabschluss pro Transportart direkt aus dem Preisvergleich auslösen
-- Mobility: Zahlarten im Flow nicht nur anzeigen, sondern bis zum finalen Checkout durchbuchen
+- Mobility: Nicht-Wallet-Zahlarten (NFC/QR/Apple Pay/Google Pay) nach der Wallet-Direktbuchung ebenfalls bis zum finalen Checkout durchziehen
 - Mobility: AI-Empfehlung später um Nutzerpräferenzen (günstig, schnell, eco, mit Gepäck, mit Kind) personalisieren
+- Mobility: AI-Präferenzen in Nutzerprofil / Persistenz übernehmen und zwischen Sessions merken
 - Native NFC-Bridge nachreichen, sobald User-Lizenz vorliegt
 - Reale USB-/Netzwerk-Drucker über Native-/Device-Bridge außerhalb Preview mit Hardware-Mapping verifizieren
 - USB-Auto-Suche im nativen Drucker-Wizard auf echten Geräten verifizieren
