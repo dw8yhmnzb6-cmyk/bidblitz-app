@@ -1,17 +1,40 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Gavel, Trophy, Timer, Package, Truck, Eye, Zap, Heart, Bot } from "lucide-react";
 import { localized } from "./atoms";
 import { getAuctionFallbackImage } from "./imageFallbacks";
+
+function AuctionCardImage({ imageUrl, fallbackImage, title, isEnded }) {
+  const [imageSrc, setImageSrc] = useState(imageUrl || fallbackImage);
+  const [hideImage, setHideImage] = useState(false);
+
+  if (hideImage) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Package size={44} className="text-white/5" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageSrc}
+      alt={title}
+      className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-[1.03] ${isEnded ? "opacity-25 grayscale" : ""}`}
+      loading="lazy"
+      onError={() => {
+        if (imageSrc !== fallbackImage) setImageSrc(fallbackImage);
+        else setHideImage(true);
+      }}
+    />
+  );
+}
 
 export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, onToggleWatch, lang = "de" }) {
   const isEnded = auction.status === "ended";
   const loc = localized(auction, lang);
   const [rem, setRem] = useState(0);
   const fallbackImage = getAuctionFallbackImage(auction);
-  const initialImageSrc = useMemo(() => auction.image_url || fallbackImage, [auction.image_url, fallbackImage]);
-  const [imageSrc, setImageSrc] = useState(initialImageSrc);
-  const [hideImage, setHideImage] = useState(false);
 
   useEffect(() => {
     const calculate = () => setRem(Math.max(0, Math.floor((new Date(auction.ends_at) - Date.now()) / 1000)));
@@ -19,11 +42,6 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
     const timer = setInterval(calculate, 1000);
     return () => clearInterval(timer);
   }, [auction.ends_at]);
-
-  useEffect(() => {
-    setHideImage(false);
-    setImageSrc(initialImageSrc);
-  }, [initialImageSrc, auction.title, auction.category]);
 
   const isFinalBattle = rem > 0 && rem <= 60;
   const isEndingNow = rem > 0 && rem <= 20;
@@ -73,22 +91,13 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
       )}
 
       <div className="relative w-full aspect-[1.18/1] overflow-hidden bg-gradient-to-b from-[#0a0e1a] to-[#060810]">
-        {!hideImage ? (
-          <img
-            src={imageSrc}
-            alt={loc.title}
-            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-[1.03] ${isEnded ? "opacity-25 grayscale" : ""}`}
-            loading="lazy"
-            onError={() => {
-              if (imageSrc !== fallbackImage) setImageSrc(fallbackImage);
-              else setHideImage(true);
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Package size={44} className="text-white/5" />
-          </div>
-        )}
+        <AuctionCardImage
+          key={`${auction.auction_id}-${auction.image_url || fallbackImage}`}
+          imageUrl={auction.image_url}
+          fallbackImage={fallbackImage}
+          title={loc.title}
+          isEnded={isEnded}
+        />
 
         <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(4,6,16,0.18) 0%, rgba(4,6,16,0.05) 35%, rgba(4,6,16,0.65) 100%)" }} />
 
