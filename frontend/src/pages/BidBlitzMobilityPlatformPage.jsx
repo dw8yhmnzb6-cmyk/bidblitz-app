@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { ArrowLeft, Bike, Car, Crown, Crosshair, Home, Loader2, MapPin, Navigation, Plane, Search, ShieldCheck, Star, Wallet, Zap } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { useUser } from "../store/UserContext";
-import { getMobilityNearby, getMobilityPaymentOptions, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation, addRecentMobilityLocation } from "../services/mobilityPlatformApi";
+import { addRecentMobilityLocation, getMobilityAiRecommendation, getMobilityNearby, getMobilityPaymentOptions, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation } from "../services/mobilityPlatformApi";
 
 const TRANSPORT_META = {
   taxi: { icon: Car, color: "#00C2FF", detail: "Direkt, schnell und klassisch wie Uber/Bolt." },
@@ -118,10 +118,12 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const [paymentOptions, setPaymentOptions] = useState({ wallet_balance: 0, methods: [] });
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [loadingNearby, setLoadingNearby] = useState(false);
+  const [loadingAiRecommendation, setLoadingAiRecommendation] = useState(false);
   const [routeSummary, setRouteSummary] = useState(null);
   const [nearbyCounts, setNearbyCounts] = useState({ taxi: 0, scooter: 0, car_rental: 0 });
   const [availableModes, setAvailableModes] = useState([]);
   const [selectedNearby, setSelectedNearby] = useState(null);
+  const [aiRecommendation, setAiRecommendation] = useState(null);
   const [searchTarget, setSearchTarget] = useState("dropoff");
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
@@ -170,6 +172,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const calculateRoute = useCallback(async (pickupValue = pickup, dropoffValue = dropoff) => {
     if (!pickupValue?.lat || !dropoffValue?.lat) return;
     setLoadingRoute(true);
+    setLoadingAiRecommendation(true);
+    setAiRecommendation(null);
     const result = await mobilityRoute({
       pickup_lat: pickupValue.lat,
       pickup_lng: pickupValue.lng,
@@ -179,7 +183,10 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       dropoff_address: dropoffValue.address,
     });
     setLoadingRoute(false);
-    if (!result.ok) return;
+    if (!result.ok) {
+      setLoadingAiRecommendation(false);
+      return;
+    }
     setOptions(result.options || []);
     setRecommendations(result.recommendations);
     setRouteSummary({ distance_km: result.distance_km, duration_min: result.duration_min });
@@ -190,6 +197,17 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     const polyline = L.polyline(latLngs, { color: "#0F766E", weight: 6, opacity: 0.9 }).addTo(mapRef.current);
     mapRef.current?.fitBounds(polyline.getBounds(), { padding: [40, 40] });
     routeLayerRef.current = polyline;
+
+    const ai = await getMobilityAiRecommendation({
+      pickup_address: pickupValue.address,
+      dropoff_address: dropoffValue.address,
+      distance_km: result.distance_km,
+      duration_min: result.duration_min,
+      options: result.options || [],
+      recommendations: result.recommendations || {},
+    });
+    setAiRecommendation(ai);
+    setLoadingAiRecommendation(false);
   }, [pickup, dropoff]);
 
   useEffect(() => { activeFieldRef.current = activeField; }, [activeField]);
@@ -419,6 +437,39 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                 <RecommendationChip label={item.label} reason={recommendations[item.key]?.reason} active={selectedType === item.key} />
               </button>
             ))}
+          </div>
+
+          <div className="mt-4" data-testid="mobility-ai-recommendation-block">
+            {loadingAiRecommendation ? (
+              <div className="rounded-2xl border border-[#0F766E]/16 bg-[#0F766E]/8 p-4" data-testid="mobility-ai-recommendation-loading">
+                <div className="flex items-center gap-2 text-[#0F766E] text-sm font-semibold"><Loader2 size={15} className="animate-spin" /> AI analysiert Preis, Zeit und Eco-Wert…</div>
+              </div>
+            ) : aiRecommendation?.headline ? (
+              <div className="rounded-2xl border border-[#0F766E]/18 bg-[#0F766E]/8 p-4" data-testid="mobility-ai-recommendation-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#0F766E]">AI Route Insight</p>
+                    <h3 className="text-base font-bold mt-1 text-[#18202a]">{aiRecommendation.headline}</h3>
+                    <p className="text-sm text-[#18202a]/70 mt-2">{aiRecommendation.summary}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-[11px] font-semibold text-[#0F766E]" data-testid="mobility-ai-provider-badge">{aiRecommendation.provider || "rule"}</div>
+                    <div className="text-[10px] text-[#18202a]/55">{aiRecommendation.confidence || 0}%</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {aiRecommendation.best_option_type ? <span className="px-3 py-1.5 rounded-full bg-white text-[11px] font-semibold text-[#18202a]" data-testid="mobility-ai-best-option">Beste Wahl: {options.find((item) => item.type === aiRecommendation.best_option_type)?.label || aiRecommendation.best_option_type}</span> : null}
+                  {aiRecommendation.secondary_option_type ? <span className="px-3 py-1.5 rounded-full bg-white text-[11px] font-semibold text-[#18202a]">Alternative: {options.find((item) => item.type === aiRecommendation.secondary_option_type)?.label || aiRecommendation.secondary_option_type}</span> : null}
+                </div>
+                {!!aiRecommendation.watchouts?.length && (
+                  <div className="mt-3 space-y-1" data-testid="mobility-ai-watchouts-list">
+                    {aiRecommendation.watchouts.slice(0, 2).map((item, idx) => (
+                      <div key={`${item}-${idx}`} className="text-[11px] text-[#18202a]/62">• {item}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-3 mt-4" data-testid="mobility-options-list">

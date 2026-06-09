@@ -1,20 +1,32 @@
+import json
+import os
 from datetime import datetime, timezone
 from math import radians, sin, cos, asin, sqrt
 from typing import Optional, List
 from urllib.parse import urlencode
+from uuid import uuid4
 
 import httpx
+from dotenv import load_dotenv
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
 
+load_dotenv()
+
 router = APIRouter(prefix="/api/mobility-platform", tags=["Mobility Platform"])
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org"
 OSRM_URL = "https://router.project-osrm.org"
 SEARCH_LANGS = {"de": "de", "en": "en", "sq": "sq"}
+AI_MODEL_FALLBACKS = [
+    ("openai", "gpt-5.2"),
+    ("gemini", "gemini-3-flash-preview"),
+    ("anthropic", "claude-sonnet-4-5-20250929"),
+]
 
 TRANSPORT_PAYMENT_METHODS = ["wallet", "nfc", "qr", "apple_pay", "google_pay"]
 
@@ -117,6 +129,15 @@ class SavedLocationRequest(BaseModel):
     kind: str = Field(default="favorite")
 
 
+class MobilityAiRecommendationRequest(BaseModel):
+    pickup_address: str = Field(..., min_length=2, max_length=280)
+    dropoff_address: str = Field(..., min_length=2, max_length=280)
+    distance_km: float
+    duration_min: int
+    options: List[dict] = Field(default_factory=list)
+    recommendations: Optional[dict] = None
+
+
 def _cache_key(path: str, params: dict) -> str:
     clean = {k: v for k, v in params.items() if v is not None}
     return f"{path}?{urlencode(sorted(clean.items()), doseq=True)}"
@@ -151,6 +172,120 @@ def _service_marker(marker_type: str, marker_id: str, label: str, lat: float, ln
         "lat": lat,
         "lng": lng,
         **extra,
+    }
+
+
+def _extract_json_payload(text: str) -> dict:
+    cleaned = (text or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:]
+        cleaned = cleaned.strip()
+    try:
+        return json.loads(cleaned)
+    except Exception:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start >= 0 and end > start:
+            return json.loads(cleaned[start:end + 1])
+        raise
+
+
+async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationRequest) -> dict:
+    api_key = os.getenv("EMERGENT_LLM_KEY")
+    if not api_key:
+        return {
+            "available": False,
+            "headline": "AI aktuell nicht verfügbar",
+            "summary": "Regelwerk bleibt aktiv, aber der Universal Key fehlt im Backend.",
+            "provider": None,
+            "model": None,
+        }
+
+    compact_options = [
+        {
+            "type": item.get("type"),
+            "label": item.get("label"),
+            "price_eur": item.get("price_eur"),
+            "duration_min": item.get("duration_min"),
+            "distance_km": item.get("distance_km"),
+            "eco_score": item.get("eco_score"),
+        }
+        for item in payload.options
+    ]
+    prompt = (
+        "Du bist BidBlitz Mobility AI. Analysiere die Transportoptionen und antworte NUR als gültiges JSON ohne Markdown.\n"
+        "Wähle die beste Option für diese konkrete Strecke und gib eine kurze, hilfreiche Begründung auf Deutsch.\n"
+        "Die Werte im Feld best_option_type und secondary_option_type müssen exakt einem dieser Types entsprechen: taxi, scooter, bike, car_rental, airport_shuttle, vip.\n"
+        "Antwortformat:\n"
+        "{\n"
+        '  "headline": "kurze Headline",\n'
+        '  "summary": "1-2 Sätze Empfehlung",\n'
+        '  "reason_short": "kurzer Hauptgrund",\n'
+        '  "best_option_type": "taxi|scooter|bike|car_rental|airport_shuttle|vip",\n'
+        '  "secondary_option_type": "taxi|scooter|bike|car_rental|airport_shuttle|vip",\n'
+        '  "watchouts": ["Hinweis 1", "Hinweis 2"],\n'
+        '  "confidence": 0-100\n'
+        "}\n\n"
+        f"Pickup: {payload.pickup_address}\n"
+        f"Dropoff: {payload.dropoff_address}\n"
+        f"Gesamtdistanz: {round(payload.distance_km, 2)} km\n"
+        f"Basisdauer: {payload.duration_min} Minuten\n"
+        f"Regelwerk-Empfehlungen: {json.dumps(payload.recommendations or {}, ensure_ascii=False)}\n"
+        f"Optionen: {json.dumps(compact_options, ensure_ascii=False)}"
+    )
+
+    last_error = None
+    for provider, model in AI_MODEL_FALLBACKS:
+        try:
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=f"mobility-ai-{uuid4().hex}",
+                system_message="Du bist BidBlitz Mobility AI. Antworte nur mit JSON.",
+            ).with_model(provider, model)
+            text = await chat.send_message(UserMessage(text=prompt))
+            parsed = _extract_json_payload(text)
+            recommendation = {
+                "available": True,
+                "headline": parsed.get("headline") or "AI-Empfehlung bereit",
+                "summary": parsed.get("summary") or parsed.get("reason_short") or "AI-Empfehlung wurde erzeugt.",
+                "reason_short": parsed.get("reason_short") or "Beste Gesamtwahl",
+                "best_option_type": parsed.get("best_option_type"),
+                "secondary_option_type": parsed.get("secondary_option_type"),
+                "watchouts": parsed.get("watchouts") or [],
+                "confidence": int(parsed.get("confidence") or 0),
+                "provider": provider,
+                "model": model,
+            }
+            await db.mobility_ai_recommendations.insert_one({
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "provider": provider,
+                "model": model,
+                "pickup_address": payload.pickup_address,
+                "dropoff_address": payload.dropoff_address,
+                "distance_km": payload.distance_km,
+                "duration_min": payload.duration_min,
+                "options": compact_options,
+                "recommendations": payload.recommendations or {},
+                "response": recommendation,
+            })
+            return recommendation
+        except Exception as exc:
+            last_error = str(exc)
+
+    return {
+        "available": False,
+        "headline": "AI-Empfehlung derzeit nicht erreichbar",
+        "summary": "Regelwerk bleibt aktiv. Bitte versuche die KI-Empfehlung gleich noch einmal.",
+        "reason_short": "Fallback auf Regelwerk",
+        "best_option_type": None,
+        "secondary_option_type": None,
+        "watchouts": [],
+        "confidence": 0,
+        "provider": None,
+        "model": None,
+        "error": last_error,
     }
 
 
@@ -268,6 +403,13 @@ async def calculate_route(req: MobilityRouteRequest):
         raise
     except Exception as exc:
         raise HTTPException(502, f"Routing nicht erreichbar: {exc}")
+
+
+@router.post("/ai-recommendation")
+async def mobility_ai_recommendation(req: MobilityAiRecommendationRequest):
+    if not req.options:
+        raise HTTPException(400, "Keine Transportoptionen für AI-Empfehlung übergeben")
+    return await _generate_ai_route_recommendation(req)
 
 
 @router.get("/nearby")

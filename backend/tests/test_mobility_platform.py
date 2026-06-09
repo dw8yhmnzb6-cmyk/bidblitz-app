@@ -314,5 +314,151 @@ class TestMobilityPlatformRecentLocations:
         assert data.get("ok") == True
 
 
+class TestMobilityPlatformAiRecommendation:
+    """Tests for /api/mobility-platform/ai-recommendation endpoint - AI Route Recommendations via Universal Key"""
+    
+    def test_ai_recommendation_returns_valid_response(self, auth_session):
+        """AI recommendation endpoint returns valid response with provider and model"""
+        response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/ai-recommendation",
+            json={
+                "pickup_address": "Berlin Mitte",
+                "dropoff_address": "Berlin Zoo",
+                "distance_km": 5.2,
+                "duration_min": 12,
+                "options": [
+                    {"type": "taxi", "label": "Taxi", "price_eur": 12.50, "duration_min": 12, "distance_km": 5.2, "eco_score": 55},
+                    {"type": "scooter", "label": "E-Scooter", "price_eur": 3.80, "duration_min": 15, "distance_km": 5.2, "eco_score": 86},
+                    {"type": "bike", "label": "Fahrrad", "price_eur": 2.10, "duration_min": 23, "distance_km": 5.2, "eco_score": 96},
+                    {"type": "car_rental", "label": "Mietwagen", "price_eur": 10.20, "duration_min": 13, "distance_km": 5.2, "eco_score": 48},
+                    {"type": "airport_shuttle", "label": "Airport Shuttle", "price_eur": 8.50, "duration_min": 14, "distance_km": 5.2, "eco_score": 63},
+                    {"type": "vip", "label": "VIP Chauffeur", "price_eur": 22.00, "duration_min": 11, "distance_km": 5.2, "eco_score": 28}
+                ],
+                "recommendations": {
+                    "cheapest": {"type": "bike", "label": "Fahrrad"},
+                    "fastest": {"type": "vip", "label": "VIP Chauffeur"},
+                    "balance": {"type": "scooter", "label": "E-Scooter"},
+                    "eco": {"type": "bike", "label": "Fahrrad"}
+                }
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify AI response structure
+        assert "available" in data
+        assert data["available"] == True, "AI should be available with EMERGENT_LLM_KEY"
+        
+        # Verify provider and model (primary fallback is openai/gpt-5.2)
+        assert "provider" in data
+        assert "model" in data
+        assert data["provider"] in ["openai", "gemini", "anthropic"], f"Unexpected provider: {data['provider']}"
+        
+        # Verify German language response fields
+        assert "headline" in data
+        assert "summary" in data
+        assert len(data["headline"]) > 0, "Headline should not be empty"
+        assert len(data["summary"]) > 0, "Summary should not be empty"
+        
+        # Verify best option type is valid
+        assert "best_option_type" in data
+        valid_types = ["taxi", "scooter", "bike", "car_rental", "airport_shuttle", "vip"]
+        if data["best_option_type"]:
+            assert data["best_option_type"] in valid_types, f"Invalid best_option_type: {data['best_option_type']}"
+        
+        # Verify secondary option type if present
+        if data.get("secondary_option_type"):
+            assert data["secondary_option_type"] in valid_types, f"Invalid secondary_option_type: {data['secondary_option_type']}"
+        
+        # Verify confidence score
+        assert "confidence" in data
+        assert isinstance(data["confidence"], int)
+        assert 0 <= data["confidence"] <= 100
+        
+        # Verify watchouts is a list
+        assert "watchouts" in data
+        assert isinstance(data["watchouts"], list)
+    
+    def test_ai_recommendation_primary_provider_gpt52(self, auth_session):
+        """AI recommendation should use GPT-5.2 as primary provider"""
+        response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/ai-recommendation",
+            json={
+                "pickup_address": "Pristina, Kosovo",
+                "dropoff_address": "Flughafen Pristina",
+                "distance_km": 18.5,
+                "duration_min": 25,
+                "options": [
+                    {"type": "taxi", "label": "Taxi", "price_eur": 25.00, "duration_min": 25, "distance_km": 18.5, "eco_score": 55},
+                    {"type": "airport_shuttle", "label": "Airport Shuttle", "price_eur": 12.00, "duration_min": 30, "distance_km": 18.5, "eco_score": 63}
+                ],
+                "recommendations": {
+                    "cheapest": {"type": "airport_shuttle", "label": "Airport Shuttle"},
+                    "fastest": {"type": "taxi", "label": "Taxi"}
+                }
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Primary provider should be openai with gpt-5.2
+        if data.get("available"):
+            assert data.get("provider") == "openai", f"Expected openai as primary provider, got: {data.get('provider')}"
+            assert data.get("model") == "gpt-5.2", f"Expected gpt-5.2 as model, got: {data.get('model')}"
+    
+    def test_ai_recommendation_empty_options_returns_400(self, auth_session):
+        """AI recommendation with empty options returns 400 error"""
+        response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/ai-recommendation",
+            json={
+                "pickup_address": "Berlin Mitte",
+                "dropoff_address": "Berlin Zoo",
+                "distance_km": 5.2,
+                "duration_min": 12,
+                "options": []  # Empty options should fail
+            }
+        )
+        
+        assert response.status_code == 400
+        data = response.json()
+        assert "detail" in data
+    
+    def test_ai_recommendation_german_language_response(self, auth_session):
+        """AI recommendation returns German language response"""
+        response = auth_session.post(
+            f"{BASE_URL}/api/mobility-platform/ai-recommendation",
+            json={
+                "pickup_address": "München Hauptbahnhof",
+                "dropoff_address": "Marienplatz",
+                "distance_km": 2.1,
+                "duration_min": 8,
+                "options": [
+                    {"type": "taxi", "label": "Taxi", "price_eur": 8.50, "duration_min": 8, "distance_km": 2.1, "eco_score": 55},
+                    {"type": "bike", "label": "Fahrrad", "price_eur": 1.20, "duration_min": 12, "distance_km": 2.1, "eco_score": 96}
+                ],
+                "recommendations": {
+                    "cheapest": {"type": "bike", "label": "Fahrrad"},
+                    "fastest": {"type": "taxi", "label": "Taxi"}
+                }
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        if data.get("available"):
+            # Check for German language indicators in response
+            summary = data.get("summary", "")
+            headline = data.get("headline", "")
+            combined = f"{headline} {summary}".lower()
+            
+            # German words that should appear in the response
+            german_indicators = ["und", "für", "mit", "ist", "der", "die", "das", "ein", "eine", "bei", "oder", "als", "wenn", "km", "min"]
+            has_german = any(word in combined for word in german_indicators)
+            assert has_german, f"Response should be in German. Got: {combined[:200]}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

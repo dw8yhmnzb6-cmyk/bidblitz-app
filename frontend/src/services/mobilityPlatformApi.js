@@ -35,6 +35,17 @@ export async function mobilityRoute(payload) {
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Routing fehlgeschlagen" };
 }
 
+export async function getMobilityAiRecommendation(payload) {
+  const res = await fetch(`${API}/api/mobility-platform/ai-recommendation`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) return { available: false, headline: "AI nicht erreichbar", summary: "Regelwerk bleibt aktiv." };
+  return await readJson(res);
+}
+
 export async function getMobilityNearby({ lat, lng, radius = 5 } = {}) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return { center: null, counts: {}, markers: [], available_modes: [] };
