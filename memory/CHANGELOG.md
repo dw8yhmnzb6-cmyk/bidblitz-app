@@ -10,9 +10,13 @@
 - Direktbuchung mit Wallet ergänzt: `/api/mobility-platform/book` bucht Transportarten direkt aus dem Preisvergleich, zieht Wallet-Guthaben real ab und speichert bestätigte Buchungen in `mobility_bookings`
 - `GET /api/mobility-platform/my-bookings` ergänzt und im Frontend als `Letzte Mobility-Buchungen` angezeigt
 - AI-Präferenz-Panel ergänzt: günstig/schnell/balance/eco/Gepäck/Kind personalisieren die AI-Empfehlung im Bottom-Sheet
+- AI-Präferenzen jetzt persistent: `/api/mobility-platform/preferences` speichert/lädt Nutzerpräferenzen dauerhaft
+- Stripe Mobility Checkout ergänzt: `/api/mobility-platform/checkout/session` + `/api/mobility-platform/checkout/status/{session_id}` für QR/Apple Pay/Google Pay/NFC
+- Neue Tracking-Seite `/mobility-booking/{booking_id}` mit ETA, Payment, Zuweisung, Route, AI, Support und Storno
+- Tracking-/Cancel-APIs ergänzt: `/api/mobility-platform/booking/{booking_id}` und `/api/mobility-platform/booking/{booking_id}/cancel`
 - Revenue-Insert im Mobility-Payment-Flow gehärtet, damit Mehrfachbuchungen keine Duplicate-Key-Fehler mehr auslösen
 - Router-Registrierung für `mobility_platform` und `mobility_payments` ergänzt
-- Verifiziert: Self-Test PASS + `iteration_138.json` vollständig grün (Backend 13/13, Frontend 100%) + `iteration_139.json` AI-Retests grün (Backend 17/17, Frontend 100%) + `iteration_140.json` Booking/Preferences grün (Backend 22/22, Frontend 100%)
+- Verifiziert: Self-Test PASS + `iteration_138.json` vollständig grün (Backend 13/13, Frontend 100%) + `iteration_139.json` AI-Retests grün (Backend 17/17, Frontend 100%) + `iteration_140.json` Booking/Preferences grün (Backend 22/22, Frontend 100%) + `iteration_141.json` Checkout/Tracking grün (Backend 15/15, Frontend 100%)
 
 ## 08.06.2026
 - Mobile-Safari-/iPhone-Sweep `iteration_136` vollständig grün: Taxi, Scanner, Express Checkout, Sabre Hotels und Wallet PASS

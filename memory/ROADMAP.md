@@ -4,9 +4,9 @@
 - Keine offenen P0-Blocker im aktuellen Mobility-Map-Core nach `iteration_138`
 
 ## P1
-- Mobility: Nicht-Wallet-Zahlarten (NFC/QR/Apple Pay/Google Pay) nach der Wallet-Direktbuchung ebenfalls bis zum finalen Checkout durchziehen
-- Mobility: AI-Empfehlung später um Nutzerpräferenzen (günstig, schnell, eco, mit Gepäck, mit Kind) personalisieren
-- Mobility: AI-Präferenzen in Nutzerprofil / Persistenz übernehmen und zwischen Sessions merken
+- Mobility: Stripe-Checkout zusätzlich per Webhook/Session-Resume noch robuster gegen abgebrochene Browser-Sessions machen
+- Mobility: Tracking für Shuttle/VIP und weitere Transportarten mit echterer Live-Progression vertiefen
+- Mobility: Tracking-Seite um echte Map-Animation und Fortschritts-Polylines erweitern
 - Native NFC-Bridge nachreichen, sobald User-Lizenz vorliegt
 - Reale USB-/Netzwerk-Drucker über Native-/Device-Bridge außerhalb Preview mit Hardware-Mapping verifizieren
 - USB-Auto-Suche im nativen Drucker-Wizard auf echten Geräten verifizieren
