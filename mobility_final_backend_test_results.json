@@ -1,0 +1,153 @@
+{
+  "test_date": "2026-06-09T18:56:11.757091",
+  "base_url": "https://taxi-uber-style.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "GET /api/mobility-platform/preferences",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "preferences": {
+          "priority": "cheapest",
+          "luggage": false,
+          "childSeat": true
+        },
+        "has_all_fields": true
+      },
+      "timestamp": "2026-06-09T18:56:12.494012"
+    },
+    {
+      "test": "POST /api/mobility-platform/preferences",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "ok": true,
+        "saved_preferences": {
+          "priority": "fastest",
+          "luggage": true,
+          "childSeat": true
+        },
+        "matches_input": true
+      },
+      "timestamp": "2026-06-09T18:56:12.641758"
+    },
+    {
+      "test": "POST /api/mobility-platform/checkout/session (QR)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "has_checkout_url": true,
+        "has_session_id": true,
+        "has_booking_id": true,
+        "booking_id": "mob-37e325d02b39",
+        "checkout_url_preview": "https://checkout.stripe.com/c/pay/cs_test_a1N45ckalAKkpi2V4QQyQVBwlWXdb3kiHoWkGLyqNg8LqOxBQTsgBb4JkA"
+      },
+      "timestamp": "2026-06-09T18:56:13.871127"
+    },
+    {
+      "test": "POST /api/mobility-platform/checkout/session (Apple Pay)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "has_checkout_url": true,
+        "has_session_id": true,
+        "has_booking_id": true,
+        "booking_id": "mob-c5701d090f2f"
+      },
+      "timestamp": "2026-06-09T18:56:14.709809"
+    },
+    {
+      "test": "POST /api/mobility-platform/checkout/session (Google Pay)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "has_checkout_url": true,
+        "has_session_id": true,
+        "has_booking_id": true,
+        "booking_id": "mob-9fdacad478e2"
+      },
+      "timestamp": "2026-06-09T18:56:15.650986"
+    },
+    {
+      "test": "POST /api/mobility-platform/checkout/session (NFC)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "has_checkout_url": true,
+        "has_session_id": true,
+        "has_booking_id": true,
+        "booking_id": "mob-f6c06bcaaf36"
+      },
+      "timestamp": "2026-06-09T18:56:16.730849"
+    },
+    {
+      "test": "POST /api/mobility-platform/book (Wallet)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "ok": true,
+        "booking_id": "mob-eb5c3df8ffee",
+        "status": "confirmed",
+        "payment_status": "paid",
+        "payment_method": "wallet",
+        "price_eur": 18.5,
+        "new_balance": 8022.259999999999,
+        "all_checks_passed": true
+      },
+      "timestamp": "2026-06-09T18:56:16.873355"
+    },
+    {
+      "test": "GET /api/mobility-platform/booking/{booking_id}",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "booking_id": "mob-eb5c3df8ffee",
+        "status": "confirmed",
+        "tracking_status": "confirmed",
+        "eta_minutes": 12,
+        "can_cancel": true,
+        "has_all_fields": true
+      },
+      "timestamp": "2026-06-09T18:56:17.049123"
+    },
+    {
+      "test": "POST /api/mobility-platform/booking/{booking_id}/cancel",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "ok": true,
+        "booking_id": "mob-eb5c3df8ffee",
+        "status": "cancelled",
+        "cancellation_successful": true
+      },
+      "timestamp": "2026-06-09T18:56:17.188477"
+    },
+    {
+      "test": "POST /api/mobility-platform/route (REGRESSION)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "distance_km": 1.89,
+        "duration_min": 4,
+        "options_count": 6,
+        "has_recommendations": true,
+        "no_regression": true
+      },
+      "timestamp": "2026-06-09T18:56:19.049301"
+    },
+    {
+      "test": "POST /api/mobility-platform/ai-recommendation (REGRESSION)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "available": true,
+        "provider": "openai",
+        "model": "gpt-5.2",
+        "best_option_type": "scooter",
+        "headline": "E-Scooter: schnell, günstig und gut für kurze City-Strecken",
+        "no_regression": true
+      },
+      "timestamp": "2026-06-09T18:56:22.392676"
+    }
+  ]
+}
