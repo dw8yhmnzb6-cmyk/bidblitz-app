@@ -9,9 +9,11 @@ from uuid import uuid4
 import httpx
 from dotenv import load_dotenv
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from core.config import STRIPE_API_KEY
 from core.database import db
 from core.security import get_current_user
 
@@ -156,6 +158,22 @@ class MobilityBookingRequest(BaseModel):
     dropoff: MobilityBookingLocation
     preferences: Optional[dict] = None
     ai_recommendation: Optional[dict] = None
+
+
+class MobilityCheckoutSessionRequest(BaseModel):
+    transport_type: str = Field(..., min_length=2, max_length=60)
+    payment_method: str = Field(..., min_length=2, max_length=40)
+    origin_url: str = Field(..., min_length=8, max_length=220)
+    pickup: MobilityBookingLocation
+    dropoff: MobilityBookingLocation
+    preferences: Optional[dict] = None
+    ai_recommendation: Optional[dict] = None
+
+
+class MobilityPreferencesRequest(BaseModel):
+    priority: str = Field(default="balance")
+    luggage: bool = False
+    childSeat: bool = False
 
 
 def _cache_key(path: str, params: dict) -> str:
@@ -310,6 +328,88 @@ async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationReq
     }
 
 
+async def _compute_route_payload(
+    pickup_lat: float,
+    pickup_lng: float,
+    dropoff_lat: float,
+    dropoff_lng: float,
+    pickup_address: str,
+    dropoff_address: str,
+):
+    coords = f"{pickup_lng},{pickup_lat};{dropoff_lng},{dropoff_lat}"
+    distance_km = haversine_distance(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        res = await client.get(
+            f"{OSRM_URL}/route/v1/driving/{coords}",
+            params={"overview": "full", "geometries": "geojson", "steps": "true", "alternatives": "false"},
+        )
+        res.raise_for_status()
+        data = res.json()
+    route = (data.get("routes") or [None])[0]
+    if not route:
+        raise HTTPException(404, "Keine Route gefunden")
+    duration_min = max(2, round(route["duration"] / 60))
+    demand_multiplier = 1.0 + min(0.22, distance_km / 90)
+    options = [
+        build_option("taxi", distance_km, duration_min, demand_multiplier, 55),
+        build_option("scooter", distance_km, duration_min, 1.0, 86),
+        build_option("bike", distance_km, duration_min, 1.0, 96),
+        build_option("car_rental", distance_km, duration_min, 1.0, 48),
+        build_option("airport_shuttle", distance_km, duration_min, 1.0, 63),
+        build_option("vip", distance_km, duration_min, 1.08, 28),
+    ]
+    return {
+        "distance_km": round(distance_km, 2),
+        "duration_min": duration_min,
+        "geometry": route.get("geometry", {}).get("coordinates", []),
+        "pickup": {"address": pickup_address, "lat": pickup_lat, "lng": pickup_lng},
+        "dropoff": {"address": dropoff_address, "lat": dropoff_lat, "lng": dropoff_lng},
+        "options": options,
+        "recommendations": build_recommendations(options),
+    }
+
+
+def _find_option(options: list[dict], transport_type: str):
+    return next((item for item in options if item.get("type") == transport_type), None)
+
+
+async def _assign_booking_resource(transport_type: str, pickup: dict):
+    nearby = await get_nearby_mobility(pickup["lat"], pickup["lng"], 6)
+    marker = next((item for item in nearby.get("markers", []) if item.get("type") == transport_type), None)
+    if not marker:
+        return None
+    return {
+        "resource_id": marker.get("id"),
+        "label": marker.get("label"),
+        "subtitle": marker.get("subtitle"),
+        "lat": marker.get("lat"),
+        "lng": marker.get("lng"),
+        "eta_minutes": marker.get("eta_minutes") or max(2, round((marker.get("distance_km") or 1) * 3)),
+    }
+
+
+async def _confirm_booking_after_external_payment(booking_id: str, session_id: str):
+    booking = await db.mobility_bookings.find_one({"booking_id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Buchung nicht gefunden")
+    if booking.get("status") == "confirmed":
+        return booking
+    assignment = await _assign_booking_resource(booking.get("transport_type"), booking.get("pickup") or {})
+    await db.mobility_bookings.update_one(
+        {"booking_id": booking_id},
+        {"$set": {
+            "status": "confirmed",
+            "payment_status": "paid",
+            "assigned_resource": assignment,
+            "tracking_status": "confirmed",
+            "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            "stripe_session_id": session_id,
+        }},
+    )
+    updated = await db.mobility_bookings.find_one({"booking_id": booking_id}, {"_id": 0})
+    return updated
+
+
 async def _nominatim_get(path: str, params: dict):
     key = _cache_key(path, params)
     cached = await _read_geo_cache(key)
@@ -433,6 +533,22 @@ async def mobility_ai_recommendation(req: MobilityAiRecommendationRequest):
     return await _generate_ai_route_recommendation(req)
 
 
+@router.get("/preferences")
+async def get_mobility_preferences(request: Request):
+    user = await get_current_user(request)
+    return {
+        "preferences": user.get("mobility_preferences") or {"priority": "balance", "luggage": False, "childSeat": False}
+    }
+
+
+@router.post("/preferences")
+async def save_mobility_preferences(req: MobilityPreferencesRequest, request: Request):
+    user = await get_current_user(request)
+    prefs = req.model_dump()
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"mobility_preferences": prefs}})
+    return {"ok": True, "preferences": prefs}
+
+
 @router.post("/book")
 async def create_mobility_booking(req: MobilityBookingRequest, request: Request):
     user = await get_current_user(request)
@@ -444,6 +560,7 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
     from routes.mobility_payments import process_payment
 
     booking_id = f"mob-{uuid4().hex[:12]}"
+    assignment = await _assign_booking_resource(req.transport_type, req.pickup.model_dump())
     payment_result = await process_payment(
         user_id=user_id,
         amount=round(req.price_eur, 2),
@@ -467,6 +584,8 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
         "payment_status": "paid",
         "payment_id": ((payment_result or {}).get("payment") or {}).get("payment_id"),
         "status": "confirmed",
+        "tracking_status": "confirmed",
+        "assigned_resource": assignment,
         "pickup": req.pickup.model_dump(),
         "dropoff": req.dropoff.model_dump(),
         "preferences": req.preferences or {},
@@ -492,6 +611,151 @@ async def get_my_mobility_bookings(request: Request):
         {"_id": 0},
     ).sort("created_at", -1).limit(20).to_list(20)
     return {"bookings": bookings}
+
+
+@router.post("/checkout/session")
+async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    route_payload = await _compute_route_payload(
+        req.pickup.lat,
+        req.pickup.lng,
+        req.dropoff.lat,
+        req.dropoff.lng,
+        req.pickup.address,
+        req.dropoff.address,
+    )
+    option = _find_option(route_payload["options"], req.transport_type)
+    if not option:
+        raise HTTPException(404, "Transportart nicht verfügbar")
+
+    booking_id = f"mob-{uuid4().hex[:12]}"
+    origin = req.origin_url.rstrip("/")
+    success_url = f"{origin}/mobility-map?mobility_session_id={{CHECKOUT_SESSION_ID}}&mobility_booking_id={booking_id}"
+    cancel_url = f"{origin}/mobility-map?mobility_booking_cancelled={booking_id}"
+    host_url = str(request.base_url).rstrip("/")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+
+    checkout_request = CheckoutSessionRequest(
+        amount=float(option["price_eur"]),
+        currency="eur",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "type": "mobility_booking",
+            "booking_id": booking_id,
+            "user_id": user_id,
+            "transport_type": req.transport_type,
+            "payment_method": req.payment_method,
+        },
+    )
+    session = await stripe_checkout.create_checkout_session(checkout_request)
+
+    await db.mobility_bookings.insert_one({
+        "booking_id": booking_id,
+        "user_id": user_id,
+        "user_email": user.get("email"),
+        "transport_type": option["type"],
+        "transport_label": option["label"],
+        "price_eur": round(option["price_eur"], 2),
+        "duration_min": option["duration_min"],
+        "distance_km": round(option["distance_km"], 2),
+        "payment_method": req.payment_method,
+        "payment_status": "pending",
+        "status": "payment_pending",
+        "tracking_status": "payment_pending",
+        "pickup": req.pickup.model_dump(),
+        "dropoff": req.dropoff.model_dump(),
+        "preferences": req.preferences or {},
+        "ai_recommendation": req.ai_recommendation or {},
+        "stripe_session_id": session.session_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    await db.payment_transactions.insert_one({
+        "session_id": session.session_id,
+        "user_id": user_id,
+        "user_email": user.get("email"),
+        "amount": float(option["price_eur"]),
+        "currency": "eur",
+        "type": "mobility_booking",
+        "status": "initiated",
+        "payment_status": "pending",
+        "metadata": {
+            "type": "mobility_booking",
+            "booking_id": booking_id,
+            "transport_type": option["type"],
+            "payment_method": req.payment_method,
+        },
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"checkout_url": session.url, "session_id": session.session_id, "booking_id": booking_id}
+
+
+@router.get("/checkout/status/{session_id}")
+async def get_mobility_checkout_status(session_id: str, request: Request):
+    user = await get_current_user(request)
+    txn = await db.payment_transactions.find_one({"session_id": session_id, "user_id": str(user["_id"])}, {"_id": 0})
+    if not txn:
+        raise HTTPException(404, "Checkout nicht gefunden")
+    host_url = str(request.base_url).rstrip("/")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    status = await stripe_checkout.get_checkout_status(session_id)
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "status": status.status,
+            "payment_status": status.payment_status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    booking = None
+    booking_id = (txn.get("metadata") or {}).get("booking_id")
+    if status.payment_status == "paid" and booking_id:
+        booking = await _confirm_booking_after_external_payment(booking_id, session_id)
+    return {
+        "status": status.status,
+        "payment_status": status.payment_status,
+        "amount_total": status.amount_total,
+        "currency": status.currency,
+        "metadata": status.metadata,
+        "booking": booking,
+    }
+
+
+@router.get("/booking/{booking_id}")
+async def get_mobility_booking_detail(booking_id: str, request: Request):
+    user = await get_current_user(request)
+    booking = await db.mobility_bookings.find_one({"booking_id": booking_id, "user_id": str(user["_id"])}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Buchung nicht gefunden")
+    resource = booking.get("assigned_resource") or {}
+    eta_minutes = resource.get("eta_minutes") or booking.get("duration_min") or 0
+    return {
+        "booking": booking,
+        "tracking": {
+            "status": booking.get("tracking_status") or booking.get("status"),
+            "eta_minutes": eta_minutes,
+            "assigned_resource": resource,
+            "support_channel": "/support-chat",
+            "can_cancel": booking.get("status") in {"confirmed", "payment_pending"},
+        },
+    }
+
+
+@router.post("/booking/{booking_id}/cancel")
+async def cancel_mobility_booking(booking_id: str, request: Request):
+    user = await get_current_user(request)
+    booking = await db.mobility_bookings.find_one({"booking_id": booking_id, "user_id": str(user["_id"])}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Buchung nicht gefunden")
+    if booking.get("status") not in {"confirmed", "payment_pending"}:
+        raise HTTPException(400, "Buchung kann nicht mehr storniert werden")
+    await db.mobility_bookings.update_one(
+        {"booking_id": booking_id},
+        {"$set": {"status": "cancelled", "tracking_status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"ok": True, "booking_id": booking_id, "status": "cancelled"}
 
 
 @router.get("/nearby")

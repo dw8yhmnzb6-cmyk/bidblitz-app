@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ArrowLeft, Bike, Car, Crown, Crosshair, Home, Loader2, MapPin, Navigation, Plane, Search, ShieldCheck, Star, Wallet, Zap } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 import { useUser } from "../store/UserContext";
-import { addRecentMobilityLocation, createMobilityBooking, getMobilityAiRecommendation, getMobilityNearby, getMobilityPaymentOptions, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation } from "../services/mobilityPlatformApi";
+import { writeNFC } from "../utils/nfcService";
+import { addRecentMobilityLocation, cancelMobilityBooking, createMobilityBooking, createMobilityCheckoutSession, getMobilityAiRecommendation, getMobilityBookingDetail, getMobilityCheckoutStatus, getMobilityNearby, getMobilityPaymentOptions, getMobilityPreferences, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation, saveMobilityPreferences } from "../services/mobilityPlatformApi";
 
 const TRANSPORT_META = {
   taxi: { icon: Car, color: "#00C2FF", detail: "Direkt, schnell und klassisch wie Uber/Bolt." },
@@ -19,6 +21,25 @@ const TRANSPORT_META = {
 
 function formatPrice(value) {
   return `€${Number(value || 0).toFixed(2)}`;
+}
+
+function buildWalletBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson) {
+  return {
+    transport_type: transportType,
+    transport_label: transportLabel,
+    price_eur: priceEur,
+    duration_min: durationMin,
+    distance_km: distanceKm,
+    payment_method: "wallet",
+    pickup: { address: pickupAddress, lat: pickupLat, lng: pickupLng },
+    dropoff: { address: dropoffAddress, lat: dropoffLat, lng: dropoffLng },
+    preferences: { priority, luggage, childSeat },
+    ai_recommendation: aiRecommendationJson ? JSON.parse(aiRecommendationJson) : null,
+  };
+}
+
+async function createWalletBookingFromValues(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson) {
+  return await createMobilityBooking(buildWalletBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson));
 }
 
 function makeServiceIcon(type) {
@@ -119,6 +140,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const [recentLocations, setRecentLocations] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState({ wallet_balance: 0, methods: [] });
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("wallet");
+  const [qrCheckout, setQrCheckout] = useState(null);
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [loadingAiRecommendation, setLoadingAiRecommendation] = useState(false);
@@ -145,16 +168,19 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
 
   useEffect(() => {
     (async () => {
-      const [saved, recents, payments, myBookings] = await Promise.all([
+      const [saved, recents, payments, myBookings, storedPreferences] = await Promise.all([
         getSavedMobilityLocations(),
         getRecentMobilityLocations(),
         getMobilityPaymentOptions(),
         getMyMobilityBookings(),
+        getMobilityPreferences(),
       ]);
       setSavedLocations(saved);
       setRecentLocations(recents);
       setPaymentOptions(payments);
       setBookings(myBookings);
+      setPreferences(storedPreferences);
+      setSelectedType(storedPreferences?.priority || "balance");
     })();
   }, []);
 
@@ -384,6 +410,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const updatePreferences = async (changes) => {
     const nextPreferences = { ...preferences, ...changes };
     setPreferences(nextPreferences);
+    await saveMobilityPreferences(nextPreferences);
     if (["cheapest", "fastest", "balance", "eco"].includes(nextPreferences.priority)) {
       setSelectedType(nextPreferences.priority);
     }
@@ -394,25 +421,81 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
 
   const bookTransport = async (option) => {
     if (!pickup.lat || !dropoff.lat) return toast.error("Bitte zuerst Start und Ziel festlegen");
+    const transportType = option.type;
+    const transportLabel = option.label;
+    const priceEur = option.price_eur;
+    const durationMin = option.duration_min;
+    const distanceKm = option.distance_km;
+    const pickupValue = { ...pickup };
+    const dropoffValue = { ...dropoff };
+    const preferenceValue = { ...preferences };
     setBookingTransportType(option.type);
-    const result = await createMobilityBooking({
-      transport_type: option.type,
-      transport_label: option.label,
-      price_eur: option.price_eur,
-      duration_min: option.duration_min,
-      distance_km: option.distance_km,
-      payment_method: "wallet",
-      pickup,
-      dropoff,
-      preferences,
-      ai_recommendation: aiRecommendation,
-    });
+    if (selectedPaymentMethod !== "wallet") {
+      const session = await createMobilityCheckoutSession({
+        transport_type: transportType,
+        payment_method: selectedPaymentMethod,
+        origin_url: window.location.origin,
+        pickup: pickupValue,
+        dropoff: dropoffValue,
+        preferences: preferenceValue,
+        ai_recommendation: aiRecommendation ? { ...aiRecommendation } : null,
+      });
+      setBookingTransportType("");
+      if (!session.ok) return toast.error(session.error || "Checkout konnte nicht gestartet werden");
+      if (selectedPaymentMethod === "qr") {
+        setQrCheckout(session);
+        return;
+      }
+      if (selectedPaymentMethod === "nfc") {
+        const nfcResult = await writeNFC([{ recordType: "url", data: session.checkout_url }]);
+        if (!nfcResult.ok) {
+          toast.message("NFC nicht verfügbar — Stripe Checkout wird stattdessen geöffnet");
+        }
+      }
+      window.location.href = session.checkout_url;
+      return;
+    }
+    const result = await createWalletBookingFromValues(
+      transportType,
+      transportLabel,
+      priceEur,
+      durationMin,
+      distanceKm,
+      pickupValue.address,
+      pickupValue.lat,
+      pickupValue.lng,
+      dropoffValue.address,
+      dropoffValue.lat,
+      dropoffValue.lng,
+      preferenceValue.priority,
+      preferenceValue.luggage,
+      preferenceValue.childSeat,
+      aiRecommendation ? JSON.stringify(aiRecommendation) : "",
+    );
     setBookingTransportType("");
     if (!result.ok) return toast.error(result.error || "Buchung fehlgeschlagen");
-    toast.success(`${option.label} gebucht`);
+    toast.success(`${transportLabel} gebucht`);
     setDetailOption(null);
     await refreshBootstrapData();
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("mobility_session_id");
+    const bookingId = params.get("mobility_booking_id");
+    if (!sessionId || !bookingId) return;
+    let active = true;
+    (async () => {
+      const status = await getMobilityCheckoutStatus(sessionId);
+      if (!active || !status.ok) return;
+      if (status.payment_status === "paid") {
+        toast.success("Stripe-Zahlung bestätigt");
+        await refreshBootstrapData();
+        onNavigate?.(`/mobility-booking/${bookingId}`);
+      }
+    })();
+    return () => { active = false; };
+  }, [onNavigate, refreshBootstrapData]);
 
   return (
     <div className="min-h-screen bg-[#f2eadc] text-[#18202a] pb-28" data-testid="bidblitz-mobility-platform-page">
@@ -522,6 +605,15 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             </div>
           </div>
 
+          <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-payment-method-panel">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Checkout-Methode</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {paymentOptions.methods.map((method) => (
+                <button key={method.id} onClick={() => setSelectedPaymentMethod(method.id)} className={`px-3 py-2 rounded-full text-xs font-semibold border ${selectedPaymentMethod === method.id ? "bg-[#18202a] text-white border-[#18202a]" : "bg-[#f8f3e9] text-[#18202a]/80 border-[#18202a]/10"}`} data-testid={`mobility-payment-method-${method.id}`}>{method.label}</button>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-4" data-testid="mobility-ai-recommendation-block">
             {loadingAiRecommendation ? (
               <div className="rounded-2xl border border-[#0F766E]/16 bg-[#0F766E]/8 p-4" data-testid="mobility-ai-recommendation-loading">
@@ -582,7 +674,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                   </div>
                   </button>
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="text-[11px] text-[#18202a]/55">Direkt mit Wallet buchen</div>
+                    <div className="text-[11px] text-[#18202a]/55">{selectedPaymentMethod === "wallet" ? "Direkt mit Wallet buchen" : `Checkout: ${paymentOptions.methods.find((item) => item.id === selectedPaymentMethod)?.label || selectedPaymentMethod}`}</div>
                     <button onClick={() => bookTransport(option)} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold disabled:opacity-40" disabled={bookingTransportType === option.type} data-testid={`mobility-book-option-${option.type}`}>{bookingTransportType === option.type ? "Bucht..." : "Jetzt buchen"}</button>
                   </div>
                 </div>
@@ -628,7 +720,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               </div>
               <div className="space-y-2">
                 {bookings.slice(0, 3).map((item) => (
-                  <div key={item.booking_id} className="rounded-xl bg-[#f8f3e9] px-3 py-2" data-testid={`mobility-booking-${item.booking_id}`}>
+                  <button key={item.booking_id} className="w-full text-left rounded-xl bg-[#f8f3e9] px-3 py-2" data-testid={`mobility-booking-${item.booking_id}`} onClick={() => onNavigate?.(`/mobility-booking/${item.booking_id}`)}>
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="text-[11px] font-semibold text-[#18202a]">{item.transport_label}</div>
@@ -639,8 +731,25 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                         <div className="text-[10px] text-[#18202a]/45">{item.status}</div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {qrCheckout && (
+            <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-qr-checkout-card">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">QR Checkout</p>
+                  <h3 className="text-base font-bold mt-1">Stripe Checkout per QR</h3>
+                  <p className="text-sm text-[#18202a]/62 mt-2">Scanne den QR-Code auf einem zweiten Gerät oder öffne den Link direkt.</p>
+                </div>
+                <button onClick={() => setQrCheckout(null)} className="px-3 py-2 rounded-full bg-[#f8f3e9] text-xs font-semibold border border-[#18202a]/10" data-testid="mobility-qr-close-button">Schließen</button>
+              </div>
+              <div className="mt-4 flex flex-col items-center gap-3">
+                <QRCodeSVG value={qrCheckout.checkout_url} size={180} includeMargin data-testid="mobility-qr-code" />
+                <a href={qrCheckout.checkout_url} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold" data-testid="mobility-qr-open-link">Stripe Checkout öffnen</a>
               </div>
             </div>
           )}

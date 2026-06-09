@@ -64,6 +64,55 @@ export async function getMyMobilityBookings() {
   return data?.bookings || [];
 }
 
+export async function getMobilityPreferences() {
+  const res = await fetch(`${API}/api/mobility-platform/preferences`, { credentials: "include" });
+  if (!res.ok) return { priority: "balance", luggage: false, childSeat: false };
+  const data = await readJson(res);
+  return data?.preferences || { priority: "balance", luggage: false, childSeat: false };
+}
+
+export async function saveMobilityPreferences(payload) {
+  const res = await fetch(`${API}/api/mobility-platform/preferences`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return await readJson(res);
+}
+
+export async function createMobilityCheckoutSession(payload) {
+  const res = await fetch(`${API}/api/mobility-platform/checkout/session`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Checkout fehlgeschlagen" };
+}
+
+export async function getMobilityCheckoutStatus(sessionId) {
+  const res = await fetch(`${API}/api/mobility-platform/checkout/status/${sessionId}`, { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Checkout-Status fehlgeschlagen" };
+}
+
+export async function getMobilityBookingDetail(bookingId) {
+  const res = await fetch(`${API}/api/mobility-platform/booking/${bookingId}`, { credentials: "include" });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Buchung nicht gefunden" };
+}
+
+export async function cancelMobilityBooking(bookingId) {
+  const res = await fetch(`${API}/api/mobility-platform/booking/${bookingId}/cancel`, {
+    method: "POST",
+    credentials: "include",
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Storno fehlgeschlagen" };
+}
+
 export async function getMobilityNearby({ lat, lng, radius = 5 } = {}) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return { center: null, counts: {}, markers: [], available_modes: [] };

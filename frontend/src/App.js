@@ -33,6 +33,7 @@ const MerchantOnboardingPage = lazy(() => import("./pages/MerchantOnboardingPage
 const MerchantPricingPage = lazy(() => import("./pages/MerchantPricingPage"));
 const MerchantLandingPage = lazy(() => import("./pages/MerchantLandingPage"));
 const PayCheckoutPage = lazy(() => import("./pages/PayCheckoutPage"));
+const PayMerchantDetailPage = lazy(() => import("./pages/PayMerchantDetailPage"));
 const PayDeveloperDocsPage = lazy(() => import("./pages/PayDeveloperDocsPage"));
 const InvoicePayPage = lazy(() => import("./pages/InvoicePayPage"));
 const PayDirectoryPage = lazy(() => import("./pages/PayDirectoryPage"));
@@ -74,6 +75,7 @@ const VipPage = lazy(() => import("./pages/VipPage"));
 const LoyaltyPage = lazy(() => import("./pages/LoyaltyPage"));
 const KidsPaywall = lazy(() => import("./pages/KidsPaywall"));
 const MobilityMapPage = lazy(() => import("./pages/MobilityMapPage"));
+const MobilityBookingTrackingPage = lazy(() => import("./pages/MobilityBookingTrackingPage"));
 const NotificationSettingsPage = lazy(() => import("./pages/NotificationSettingsPage"));
 const FriendsMapPage = lazy(() => import("./pages/FriendsMapPage"));
 const OrderTrackingPage = lazy(() => import("./pages/OrderTrackingPage"));
@@ -289,7 +291,9 @@ function AppContent() {
           method: "POST",
         }).catch(() => {});
       }
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }, []);
 
   // Initialize Sentry once (only fires if user opted in via CookieBanner)
@@ -335,9 +339,12 @@ function AppContent() {
   // Close auth gate after login
   useEffect(() => {
     if (user.isAuthenticated) {
-      setShowAuthGate(false);
-      setShowFullAuth("");
-      setIsDemoMode(false);
+      const timer = setTimeout(() => {
+        setShowAuthGate(false);
+        setShowFullAuth("");
+        setIsDemoMode(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [user.isAuthenticated]);
 
@@ -361,7 +368,9 @@ function AppContent() {
           }
           lastCheck = Date.now();
         }
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     };
     const interval = setInterval(checkNotifs, 30000);
     checkNotifs();
@@ -816,7 +825,7 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <VipPage onBack={() => handleNavigate("/more")} />;
       case "/mobility-map":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MobilityMapPage onNavigate={handleNavigate} />;
-      case "/notifications":
+      case "/notification-settings":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <NotificationSettingsPage onNavigate={handleNavigate} />;
       case "/friends-map":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <FriendsMapPage onNavigate={handleNavigate} />;
@@ -1111,6 +1120,10 @@ function AppContent() {
         if (currentPath.startsWith("/car-rental/car/")) {
           const carId = currentPath.split("/car-rental/car/")[1];
           return <CarDetailPage carId={carId} onBack={() => handleNavigate("/car-rental")} onNavigate={handleNavigate} />;
+        }
+        if (currentPath.startsWith("/mobility-booking/")) {
+          const bookingId = currentPath.split("/mobility-booking/")[1];
+          return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MobilityBookingTrackingPage bookingId={bookingId} onBack={() => handleNavigate("/mobility-map")} onNavigate={handleNavigate} />;
         }
         if (currentPath.startsWith("/food/track/")) {
           const orderId = currentPath.split("/food/track/")[1];
