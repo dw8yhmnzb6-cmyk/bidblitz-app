@@ -1,28 +1,20 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Keine offenen P0-Blocker im aktuellen Restaurant-/Scooter-Umfang nach `iteration_131`
+- Keine offenen P0-Blocker im aktuellen Mobility-Map-Core nach `iteration_138`
 
 ## P1
+- Mobility: Buchungsabschluss pro Transportart direkt aus dem Preisvergleich auslösen
+- Mobility: AI-Routenempfehlungen mit Universal Key (GPT-5.2 / Gemini / Claude) an das bestehende Regelwerk anschließen
+- Mobility: Zahlarten im Flow nicht nur anzeigen, sondern bis zum finalen Checkout durchbuchen
 - Native NFC-Bridge nachreichen, sobald User-Lizenz vorliegt
 - Reale USB-/Netzwerk-Drucker über Native-/Device-Bridge außerhalb Preview mit Hardware-Mapping verifizieren
 - USB-Auto-Suche im nativen Drucker-Wizard auf echten Geräten verifizieren
-- Volltest später um zusätzliche weniger kritische Module außerhalb des aktuellen Kerns erweitern
 - KYC-Flow später noch um bessere Upload-Fehlermeldungen und klare Status-Refresh-UX erweitern
-- Taxi-Suche später noch um Recents/Home/Work-Priorisierung und echte serverseitige Ranking-Heuristik vertiefen
-- Express-Checkout später optional mit echter Stripe-Setup-/Save-Card-Weiterleitung statt reinem Schnellspeicher vertiefen
 - Floorplan-/Raumplan-Editor für Tische mit Mehrraum/Zoom/Snapping ausbauen
-- Restaurant-Live-Events optional um Sound/Badge-Cues pro Event-Typ erweitern
-- Optional externe Warenwirtschaft-/Kassenanbindung für Auto-Bestellungen ergänzen
-- Reales Bank-Matching / CSV-Bankimport später auf das neue Task-Center andocken
-- Reminder-E-Mails in Live mit produktiver Resend-Konfiguration verifizieren
-- NFC-Tisch-Entry und echtes Hardware-Mapping für Wireless Call Buttons / Thermodrucker ergänzen
-- Browserunabhängige NFC-/Native-App-Bridge für Geräte ohne Web NFC ergänzen
 
 ## P2
-- Admin Zonen-Editor weiter ausbauen
-- Document Expiry / Reminder UX für Taxi-Fahrer vertiefen
-- Mandanten-Detail später um echte Dokument-/OCR-Metriken statt nur leichtgewichtiger Health-Faktoren erweitern
-- Warenwirtschaft, Kassenabschluss und Mitarbeiter-Zeiterfassung an das neue Tischsystem andocken
+- Mobility: echte Live-Positionsupdates/Tracking für Shuttle, VIP und weitere Transportarten vertiefen
+- Mobility: serverseitige Ranking-Heuristik für Autocomplete und Empfehlungslogik weiter schärfen
 - Printer-Diagnose später um echte Live-Socket-Logs/Retry-Historie pro Gerät vertiefen
 - Floorplan später um Mehrraum-Zonen, Rotation und freien Rechteck-/Polygon-Raumaufbau vertiefen

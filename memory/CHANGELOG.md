@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 09.06.2026
+- Phase 3 Mobility Ecosystem auf `/mobility-map` live gebaut: zentrale OSM-/Leaflet-Karte statt alter Car-only-Map
+- Neue Backend-APIs unter `/api/mobility-platform`: `nearby`, `search`, `reverse`, `route`, `payment-options`, `saved-locations`, `recent-locations`
+- Nominatim-Requests serverseitig mit Cache versehen; GPS-/Kartenzentrum-Fallback für Pickup ergänzt
+- Bottom-Sheet zeigt jetzt Preisvergleich für 6 Transportarten inkl. Wallet/NFC/QR/Apple Pay/Google Pay
+- Router-Registrierung für `mobility_platform` und `mobility_payments` ergänzt
+- Verifiziert: Self-Test PASS + `iteration_138.json` vollständig grün (Backend 13/13, Frontend 100%)
+
 ## 08.06.2026
 - Mobile-Safari-/iPhone-Sweep `iteration_136` vollständig grün: Taxi, Scanner, Express Checkout, Sabre Hotels und Wallet PASS
 - Taxi-Map mit sichtbarer Leaflet-Fallback-Karte gehärtet, falls Mapbox ausfällt

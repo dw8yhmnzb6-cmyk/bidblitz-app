@@ -129,6 +129,12 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const pickupMarkerRef = useRef(null);
   const dropoffMarkerRef = useRef(null);
   const pickupInitializedRef = useRef(false);
+  const activeFieldRef = useRef(activeField);
+  const pickupStateRef = useRef(pickup);
+  const dropoffStateRef = useRef(dropoff);
+  const langRef = useRef(lang);
+  const loadNearbyRef = useRef(null);
+  const calculateRouteRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -186,6 +192,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     routeLayerRef.current = polyline;
   }, [pickup, dropoff]);
 
+  useEffect(() => { activeFieldRef.current = activeField; }, [activeField]);
+  useEffect(() => { pickupStateRef.current = pickup; }, [pickup]);
+  useEffect(() => { dropoffStateRef.current = dropoff; }, [dropoff]);
+  useEffect(() => { langRef.current = lang; }, [lang]);
+  useEffect(() => { loadNearbyRef.current = loadNearby; }, [loadNearby]);
+  useEffect(() => { calculateRouteRef.current = calculateRoute; }, [calculateRoute]);
+
   const hydratePickupFallback = useCallback(async (lat, lng, fallbackLabel = "Kartenzentrum") => {
     if (pickupInitializedRef.current) return;
     pickupInitializedRef.current = true;
@@ -202,15 +215,21 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     L.control.zoom({ position: "topright" }).addTo(map);
     nearbyLayerRef.current = L.layerGroup().addTo(map);
     map.on("click", async (e) => {
-      const info = await mobilityReverse(e.latlng.lat, e.latlng.lng, lang || "de");
+      const info = await mobilityReverse(e.latlng.lat, e.latlng.lng, langRef.current || "de");
       const payload = { address: info?.address || `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`, lat: e.latlng.lat, lng: e.latlng.lng };
-      if (activeField === "pickup") {
+      if (activeFieldRef.current === "pickup") {
         setPickup(payload);
-        loadNearby(payload.lat, payload.lng);
-        if (dropoff.lat && dropoff.lng) calculateRoute(payload, dropoff);
+        await loadNearbyRef.current?.(payload.lat, payload.lng);
+        const currentDropoff = dropoffStateRef.current;
+        if (currentDropoff?.lat && currentDropoff?.lng) {
+          await calculateRouteRef.current?.(payload, currentDropoff);
+        }
       } else {
         setDropoff(payload);
-        if (pickup.lat && pickup.lng) calculateRoute(pickup, payload);
+        const currentPickup = pickupStateRef.current;
+        if (currentPickup?.lat && currentPickup?.lng) {
+          await calculateRouteRef.current?.(currentPickup, payload);
+        }
       }
     });
     mapRef.current = map;
@@ -221,7 +240,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       }
     }, 900);
     return () => map.remove();
-  }, [activeField, calculateRoute, dropoff, hydratePickupFallback, lang, loadNearby, pickup]);
+  }, [hydratePickupFallback]);
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(async (pos) => {

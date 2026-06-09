@@ -5,9 +5,20 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — Restaurant Table System
-- Restaurant-/Café-Tischsystem mit QR-Menü, Service-Button-Flow, Staff-Dashboard, Küchenmonitor und Drucker-Integration ist aktiv im Ausbau.
-- Preview-Einschränkung bleibt: echte lokale USB-/LAN-Drucker sind dort nur per Fallback/Diagnose simulierbar, nicht als echte Hardware-End-to-End-Verbindung.
+## Current Focus — Phase 3 Mobility Ecosystem
+- Zentrale BidBlitz-Mobilitätskarte mit OpenStreetMap + Leaflet + Nominatim ist jetzt als eigenständiger Flow unter `/mobility-map` aktiv.
+- Restaurant-/Café-Tischsystem bleibt vorhanden; Preview-Einschränkung für echte USB-/LAN-Drucker gilt weiterhin.
+
+### 09.06.2026 (Phase 3 Mobility Ecosystem — Unified Map) ✅
+- 🟢 **Neue zentrale Mobility-Karte aktiviert** (`frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`, `frontend/src/pages/MobilityMapPage.jsx`): `/mobility-map` nutzt jetzt eine echte Leaflet/OSM-Karte mit klarem eigenständigem Mobility-Flow statt der alten Car-only-Ansicht.
+- 🟢 **Adresssuche + Reverse Geocoding produktiv** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`): Nominatim-basierte Suche, Reverse-Geocoding und serverseitiger Cache für Such-/Reverse-Ergebnisse eingebaut.
+- 🟢 **GPS-/Karten-Fallback gehärtet** (`BidBlitzMobilityPlatformPage.jsx`): Pickup wird automatisch per GPS gesetzt; wenn GPS fehlt, fällt der Flow sauber auf das aktuelle Kartenzentrum zurück statt leer zu bleiben.
+- 🟢 **Live-Marker aus echten Endpunkten** (`backend/routes/mobility_platform.py`): neuer Endpoint `/api/mobility-platform/nearby` aggregiert echte Taxi-, Scooter- und Mietwagen-Daten für die Karte; Bike/Shuttle/VIP bleiben im Preisvergleich direkt verfügbar.
+- 🟢 **Bottom-Sheet Preisvergleich fertig** (`BidBlitzMobilityPlatformPage.jsx`, `backend/routes/mobility_platform.py`): nach Zielwahl werden Route, Distanz, Dauer und 6 Transportarten (Taxi, E‑Scooter, Fahrrad, Mietwagen, Airport Shuttle, VIP Chauffeur) direkt angezeigt.
+- 🟢 **Zahlungsarten im Mobility-Flow sichtbar** (`backend/routes/mobility_platform.py`): Wallet, NFC, QR, Apple Pay und Google Pay werden im Flow geladen und im Detail-Sheet angezeigt.
+- 🟢 **Router-Registrierung ergänzt** (`backend/core/router_registry.py`): `routes.mobility_platform` und `routes.mobility_payments` werden jetzt sicher mitgeladen.
+- ✅ **Verifiziert**: Self-Test per curl PASS (`/search`, `/reverse`, `/route`, `/nearby`, `/payment-options`) + Frontend-Smoke eingeloggt PASS.
+- ✅ **Testing-Agent**: `iteration_138.json` komplett grün — Backend 13/13 PASS, Frontend 100% PASS für Login, Karte, Suche, Preisvergleich und Detail-Sheet.
 
 ### 08.06.2026 (Mobile Safari / Frontend Stabilisierungssweep) ✅
 - 🟢 **Taxi-Karte gehärtet** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/MiniLeafletMap.jsx`): Wenn Mapbox ausfällt, bleibt eine sichtbare Fallback-Karte aktiv statt eines harten Kartenabbruchs.
