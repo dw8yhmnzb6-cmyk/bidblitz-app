@@ -16,9 +16,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Live-Marker aus echten Endpunkten** (`backend/routes/mobility_platform.py`): neuer Endpoint `/api/mobility-platform/nearby` aggregiert echte Taxi-, Scooter- und Mietwagen-Daten für die Karte; Bike/Shuttle/VIP bleiben im Preisvergleich direkt verfügbar.
 - 🟢 **Bottom-Sheet Preisvergleich fertig** (`BidBlitzMobilityPlatformPage.jsx`, `backend/routes/mobility_platform.py`): nach Zielwahl werden Route, Distanz, Dauer und 6 Transportarten (Taxi, E‑Scooter, Fahrrad, Mietwagen, Airport Shuttle, VIP Chauffeur) direkt angezeigt.
 - 🟢 **Zahlungsarten im Mobility-Flow sichtbar** (`backend/routes/mobility_platform.py`): Wallet, NFC, QR, Apple Pay und Google Pay werden im Flow geladen und im Detail-Sheet angezeigt.
+- 🟢 **AI-Routenempfehlungen mit Universal Key integriert** (`backend/routes/mobility_platform.py`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`, `frontend/src/services/mobilityPlatformApi.js`): neuer Endpoint `/api/mobility-platform/ai-recommendation` nutzt den Universal Key mit Fallback-Kette `openai/gpt-5.2 -> gemini/gemini-3-flash-preview -> anthropic/claude-sonnet-4-5-20250929` und liefert deutsche Headline, Summary, Best-Option, Alternative und Watchouts direkt ins Bottom-Sheet.
 - 🟢 **Router-Registrierung ergänzt** (`backend/core/router_registry.py`): `routes.mobility_platform` und `routes.mobility_payments` werden jetzt sicher mitgeladen.
 - ✅ **Verifiziert**: Self-Test per curl PASS (`/search`, `/reverse`, `/route`, `/nearby`, `/payment-options`) + Frontend-Smoke eingeloggt PASS.
 - ✅ **Testing-Agent**: `iteration_138.json` komplett grün — Backend 13/13 PASS, Frontend 100% PASS für Login, Karte, Suche, Preisvergleich und Detail-Sheet.
+- ✅ **AI-Testing-Agent**: `iteration_139.json` komplett grün — Backend 17/17 PASS, Frontend 100% PASS für AI-Karte, Provider-Badge, Best-Option und Watchouts.
 
 ### 08.06.2026 (Mobile Safari / Frontend Stabilisierungssweep) ✅
 - 🟢 **Taxi-Karte gehärtet** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/MiniLeafletMap.jsx`): Wenn Mapbox ausfällt, bleibt eine sichtbare Fallback-Karte aktiv statt eines harten Kartenabbruchs.

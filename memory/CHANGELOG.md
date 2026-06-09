@@ -5,8 +5,10 @@
 - Neue Backend-APIs unter `/api/mobility-platform`: `nearby`, `search`, `reverse`, `route`, `payment-options`, `saved-locations`, `recent-locations`
 - Nominatim-Requests serverseitig mit Cache versehen; GPS-/Kartenzentrum-Fallback für Pickup ergänzt
 - Bottom-Sheet zeigt jetzt Preisvergleich für 6 Transportarten inkl. Wallet/NFC/QR/Apple Pay/Google Pay
+- AI-Routenempfehlungen mit Universal Key ergänzt: `/api/mobility-platform/ai-recommendation` liefert deutsche Headline, Summary, Best-Option, Alternative und Watchouts; Primärmodell aktuell `openai/gpt-5.2`
+- Fallback-Kette für Mobility-AI eingebaut: `openai/gpt-5.2 -> gemini/gemini-3-flash-preview -> anthropic/claude-sonnet-4-5-20250929`
 - Router-Registrierung für `mobility_platform` und `mobility_payments` ergänzt
-- Verifiziert: Self-Test PASS + `iteration_138.json` vollständig grün (Backend 13/13, Frontend 100%)
+- Verifiziert: Self-Test PASS + `iteration_138.json` vollständig grün (Backend 13/13, Frontend 100%) + `iteration_139.json` AI-Retests grün (Backend 17/17, Frontend 100%)
 
 ## 08.06.2026
 - Mobile-Safari-/iPhone-Sweep `iteration_136` vollständig grün: Taxi, Scanner, Express Checkout, Sabre Hotels und Wallet PASS
