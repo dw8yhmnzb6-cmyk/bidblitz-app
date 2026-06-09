@@ -17,7 +17,9 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Taxi-Sofortpreis/ETA geschärft** (`frontend/src/components/taxi/TaxiBookingSheet.jsx`, `frontend/src/pages/TaxiPage.jsx`): Nach Zielauswahl stehen Preis, Fahrzeit und Strecke sofort prominent über der Fahrzeugliste; der Buchungs-CTA trägt jetzt direkt Preis + Dauer.
 - 🟢 **KYC-Status-UX nachgeschärft** (`frontend/src/pages/VerificationPage.jsx`): neuer Status-/Refresh-Block, Auto-Refresh bei `pending`, klarer Retry-Button sowie besser sichtbare Erfolgs-/Fehlerzustände.
 - 🟢 **Auktionskarten mobil komplett neu aufgebaut** (`frontend/src/components/auctions/AuctionGridCard.jsx`, `frontend/src/pages/AuctionsPage.jsx`): die gequetschte 2-Spalten-Mobilansicht wurde durch eine bewusst neue 1-Spalten-Mobile-Card ersetzt; Timer, Gebote, Viewer, Versand, Titel, Preis und CTA liegen jetzt klar getrennt statt ineinander.
+- 🟢 **Samsung-Mobile Scroll/Tap/Input Fix** (`frontend/src/index.css`, `frontend/src/pages/AuctionsPage.jsx`, `frontend/src/components/auctions/AuctionDetail.jsx`): globale Touch-/Scroll-Regeln gelockert, Auktions-Suchfeld für Android/Samsung gehärtet und Detailseite mit explizitem Scroll-Container + mehr Bottom-Padding abgesichert.
 - ✅ **Verifiziert**: `iteration_136.json` Frontend-Sweep grün (Taxi, Scan, Express Checkout, Sabre Hotels, Wallet); zusätzlicher Backend-Smoke für Hotels, Taxi und Auth 5/5 PASS.
+- ✅ **Zusätzlich verifiziert**: `iteration_137.json` Samsung-Viewport 412x915 komplett grün auf `/auctions`, `/`, `/wallet`, `/taxi`, `/scan`, `/more`, `/all-services`.
 - ⚠️ **MOCKED/FALLBACK**: Sabre-Hotelsuche/-Buchungen bleiben im Backend **MOCKED**; NFC/USB/native Hardware-Funktionen bleiben im Browser-Preview **MOCKED/FALLBACK**.
 
 ### 26.05.2026 (Leaderboard / Rangliste Fix) ✅
