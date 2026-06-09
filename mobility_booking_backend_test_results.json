@@ -1,0 +1,157 @@
+{
+  "timestamp": "2026-06-09T16:29:33.477873",
+  "base_url": "https://taxi-uber-style.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Admin Login",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "user_email": null,
+        "cookies_set": true
+      },
+      "timestamp": "2026-06-09T16:29:34.006310"
+    },
+    {
+      "test": "POST /api/mobility-platform/book with Wallet",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "ok": true,
+        "has_booking": true,
+        "has_new_balance": true,
+        "booking_id": "mob-252c78c2dfba",
+        "status": "confirmed",
+        "payment_status": "paid",
+        "payment_method": "wallet",
+        "price_eur": 15.5,
+        "initial_balance": 8073.66,
+        "new_balance": 8058.16,
+        "balance_deducted": true,
+        "transport_type": "taxi",
+        "pickup_address": "Alexanderplatz, Berlin, Deutschland",
+        "dropoff_address": "Brandenburger Tor, Berlin, Deutschland",
+        "is_real_booking": "NOT MOCKED - Real wallet deduction confirmed"
+      },
+      "timestamp": "2026-06-09T16:29:34.114711"
+    },
+    {
+      "test": "POST /api/mobility-platform/book with non-Wallet Payment",
+      "passed": true,
+      "details": {
+        "status_code": 400,
+        "expected_status": 400,
+        "error_message": "Direktbuchung ist aktuell nur mit Wallet verfügbar",
+        "has_proper_error": true,
+        "validation": "Clean 400 error returned as expected"
+      },
+      "timestamp": "2026-06-09T16:29:34.173621"
+    },
+    {
+      "test": "GET /api/mobility-platform/my-bookings",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "bookings_count": 11,
+        "has_bookings": true,
+        "structure_valid": true,
+        "first_booking": {
+          "booking_id": "mob-252c78c2dfba",
+          "transport_type": "taxi",
+          "transport_label": "Taxi",
+          "price_eur": 15.5,
+          "status": "confirmed",
+          "payment_status": "paid",
+          "pickup_address": "Alexanderplatz, Berlin, Deutschland",
+          "dropoff_address": "Brandenburger Tor, Berlin, Deutschland",
+          "created_at": "2026-06-09T16:29:34.096906+00:00"
+        },
+        "last_3_bookings": [
+          {
+            "transport_type": "taxi",
+            "price_eur": 15.5,
+            "status": "confirmed"
+          },
+          {
+            "transport_type": "taxi",
+            "price_eur": 6.42,
+            "status": "confirmed"
+          },
+          {
+            "transport_type": "scooter",
+            "price_eur": 425.84,
+            "status": "confirmed"
+          }
+        ]
+      },
+      "timestamp": "2026-06-09T16:29:34.226211"
+    },
+    {
+      "test": "POST /api/mobility-platform/ai-recommendation (günstig preference)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "available": true,
+        "provider": "openai",
+        "model": "gpt-5.2",
+        "headline": "Günstigste Wahl: Fahrrad von Alexanderplatz zum Brandenburger Tor",
+        "summary": "Für deine Priorität „cheapest“ ist das Fahrrad mit ca. 2,10 € die beste Option. Ohne Gepäck und Kindersitz ist die Strecke gut machbar, auch wenn es e...",
+        "best_option_type": "bike",
+        "secondary_option_type": "scooter",
+        "confidence": 92,
+        "watchouts_count": 2,
+        "preferences_accepted": "cheapest",
+        "valid_structure": true
+      },
+      "timestamp": "2026-06-09T16:29:38.269423"
+    },
+    {
+      "test": "POST /api/mobility-platform/ai-recommendation (schnell + Gepäck + Kind)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "available": true,
+        "provider": "openai",
+        "model": "gpt-5.2",
+        "headline": "Taxi ist am schnellsten und am praktischsten mit Gepäck & Kindersitz",
+        "best_option_type": "taxi",
+        "confidence": 89,
+        "preferences_accepted": "fastest + luggage + childSeat"
+      },
+      "timestamp": "2026-06-09T16:29:47.340911"
+    },
+    {
+      "test": "POST /api/mobility-platform/ai-recommendation (eco preference)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "available": true,
+        "provider": "openai",
+        "best_option_type": "bike",
+        "preferences_accepted": "eco"
+      },
+      "timestamp": "2026-06-09T16:29:51.309094"
+    },
+    {
+      "test": "POST /api/mobility-platform/route (Regression Check)",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "distance_km": 2.48,
+        "duration_min": 6,
+        "options_count": 6,
+        "has_recommendations": true,
+        "has_geometry": true,
+        "structure_valid": true,
+        "first_option": {
+          "type": "taxi",
+          "label": "Taxi",
+          "price_eur": 6.38,
+          "duration_min": 6
+        },
+        "regression_status": "NO REGRESSION - Route endpoint working correctly"
+      },
+      "timestamp": "2026-06-09T16:29:51.822914"
+    }
+  ]
+}
