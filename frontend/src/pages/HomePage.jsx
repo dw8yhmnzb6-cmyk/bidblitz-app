@@ -198,8 +198,9 @@ const LoyaltyCard = ({ onNavigate, t }) => {
       data-testid="loyalty-home-card"
       className="rounded-[18px] p-4 mb-6 cursor-pointer group"
       style={{
-        background: "linear-gradient(135deg, rgba(255,215,0,0.04) 0%, rgba(8,8,8,0.9) 100%)",
-        border: "1px solid rgba(255,215,0,0.1)",
+        background: "linear-gradient(135deg, rgba(84,64,10,0.28) 0%, rgba(26,24,14,0.96) 52%, rgba(16,16,12,0.94) 100%)",
+        border: "1px solid rgba(255,215,0,0.16)",
+        boxShadow: "0 16px 32px rgba(0,0,0,0.18)",
       }}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
@@ -214,7 +215,7 @@ const LoyaltyCard = ({ onNavigate, t }) => {
             <Coins size={16} className="text-[#FFD700]" />
           </div>
           <div>
-            <p className="text-[9px] text-white/30 uppercase tracking-wider font-semibold">{t("loyalty.coins") || "Coins & Cashback"}</p>
+            <p className="text-[9px] text-white/50 uppercase tracking-wider font-semibold">{t("loyalty.coins") || "Coins & Cashback"}</p>
             <p className="text-[18px] font-bold text-[#FFD700] font-mono">{loyalty.coins_balance?.toLocaleString() || 0}</p>
           </div>
         </div>
@@ -224,14 +225,14 @@ const LoyaltyCard = ({ onNavigate, t }) => {
             <Medal size={10} style={{ color: levelColor }} />
             <span className="text-[9px] font-bold" style={{ color: levelColor }}>{loyalty.level_name}</span>
           </div>
-          <ChevronRight size={14} className="text-white/20 group-hover:text-[#FFD700] transition-colors" />
+          <ChevronRight size={14} className="text-white/40 group-hover:text-[#FFD700] transition-colors" />
         </div>
       </div>
 
       {/* Progress bar */}
       {!progress.is_max_level && (
         <div className="mb-2">
-          <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+          <div className="w-full h-1.5 rounded-full bg-white/12 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               style={{ background: `linear-gradient(90deg, ${levelColor}, ${LEVEL_COLORS[progress.next_level] || "#FFD700"})` }}
@@ -241,7 +242,7 @@ const LoyaltyCard = ({ onNavigate, t }) => {
             />
           </div>
           <div className="flex justify-between mt-1">
-            <span className="text-[8px] text-white/20">{progress.progress?.toFixed(0) || 0}%</span>
+            <span className="text-[8px] text-white/45">{progress.progress?.toFixed(0) || 0}%</span>
             <span className="text-[8px]" style={{ color: LEVEL_COLORS[progress.next_level] }}>{progress.next_level}</span>
           </div>
         </div>
@@ -250,16 +251,16 @@ const LoyaltyCard = ({ onNavigate, t }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="text-center">
-            <p className="text-[8px] text-white/25">{t("loyalty.multiplier") || "Multiplier"}</p>
+            <p className="text-[8px] text-white/45">{t("loyalty.multiplier") || "Multiplier"}</p>
             <p className="text-[11px] font-bold text-[#FFD700]">{loyalty.coin_multiplier}x</p>
           </div>
-          <div className="w-px h-6 bg-white/5" />
+          <div className="w-px h-6 bg-white/12" />
           <div className="text-center">
-            <p className="text-[8px] text-white/25">{t("loyalty.cashback") || "Cashback"}</p>
+            <p className="text-[8px] text-white/45">{t("loyalty.cashback") || "Cashback"}</p>
             <p className="text-[11px] font-bold text-[#00E89D]">€{(loyalty.total_cashback_earned || 0).toFixed(2)}</p>
           </div>
         </div>
-        <span className="text-[9px] text-[#FFD700]/60">{t("loyalty.view_details") || "Details ansehen"}</span>
+        <span className="text-[9px] text-[#FFD700]/85">{t("loyalty.view_details") || "Details ansehen"}</span>
       </div>
     </motion.div>
   );
@@ -303,7 +304,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
   const dismissHint = () => {
     setHintDismissed(true);
-    try { localStorage.setItem("bb_hint_dismissed", "1"); } catch {}
+    try { localStorage.setItem("bb_hint_dismissed", "1"); } catch (_err) { return; }
   };
 
   const handleServiceClick = (featureId) => {
@@ -432,50 +433,50 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <motion.div
               data-testid="hero-balance-card"
               className="rounded-[22px] p-5 mb-3 relative overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", backdropFilter: "blur(24px)" }}
+              style={{ background: "linear-gradient(135deg, rgba(20,28,36,0.96) 0%, rgba(15,21,28,0.94) 52%, rgba(10,54,64,0.82) 100%)", border: "1px solid rgba(255,255,255,0.09)", boxShadow: "0 18px 36px rgba(0,0,0,0.24)", backdropFilter: "blur(24px)" }}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08, ...slide }}
             >
-              <motion.div className="absolute -top-16 -right-16 w-44 h-44 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.15) 0%, transparent 70%)" }} animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none" />
+              <motion.div className="absolute -top-16 -right-16 w-44 h-44 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.22) 0%, transparent 72%)" }} animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.18] to-transparent pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-1.5">
                     <Shield size={10} className="text-[#00C2FF]/50" />
-                    <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.12em] uppercase">{t("home.balance")}</p>
+                    <p className="text-[10px] text-white/55 font-semibold tracking-[0.12em] uppercase">{t("home.balance")}</p>
                   </div>
                   <motion.button
                     data-testid="balance-toggle-visibility"
                     whileTap={{ scale: 0.92 }}
                     onClick={() => setBalanceHidden(v => !v)}
                     className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
                   >
-                    {balanceHidden ? <EyeOff size={12} className="text-white/40" /> : <Eye size={12} className="text-white/40" />}
+                    {balanceHidden ? <EyeOff size={12} className="text-white/65" /> : <Eye size={12} className="text-white/65" />}
                   </motion.button>
                 </div>
                 <motion.div className="flex items-baseline gap-1.5 mb-3 min-w-0 overflow-hidden" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
-                  <span className="text-[18px] sm:text-[24px] text-[#2A2A2A] font-outfit font-light flex-shrink-0">{currency}</span>
-                  <span className="font-bold font-outfit text-white tracking-[-0.03em] leading-none truncate min-w-0 flex-1" style={{ fontSize: "clamp(28px, 9.2vw, 52px)" }}>
+                  <span className="text-[18px] sm:text-[24px] text-white/55 font-outfit font-light flex-shrink-0">{currency}</span>
+                  <span className="font-bold font-outfit text-[#F8FAFC] tracking-[-0.03em] leading-none truncate min-w-0 flex-1" style={{ fontSize: "clamp(28px, 9.2vw, 52px)", textShadow: "0 6px 24px rgba(0,0,0,0.24)" }}>
                     {balanceHidden ? "••••••" : displayBalance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                   </span>
                 </motion.div>
 
                 {hasCrypto && !balanceHidden && (
-                  <motion.div className="flex flex-col gap-1 mb-2 pb-2 border-b border-white/[0.03]" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ delay: 0.3 }}>
+                  <motion.div className="flex flex-col gap-1 mb-2 pb-2 border-b border-white/[0.08]" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ delay: 0.3 }}>
                     <div className="flex items-center justify-between text-[9px]">
-                      <span className="text-white/30">EUR Wallet</span>
-                      <span className="text-white/50 font-mono">€{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
+                      <span className="text-white/55">EUR Wallet</span>
+                      <span className="text-white/75 font-mono">€{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex items-center justify-between text-[9px]">
-                      <span className="text-white/30">Crypto ({cryptoBreakdown.length} Coins)</span>
+                      <span className="text-white/55">Crypto ({cryptoBreakdown.length} Coins)</span>
                       <span className="text-[#00C2FF] font-mono">€{cryptoBalanceEur.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
                     </div>
                   </motion.div>
                 )}
 
-                <motion.div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(0,210,106,0.06)", border: "1px solid rgba(0,210,106,0.12)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+                <motion.div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: "rgba(0,210,106,0.12)", border: "1px solid rgba(0,210,106,0.18)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
                   <TrendingUp size={10} className="text-[#00D26A]" />
                   <span className="text-[10px] text-[#00D26A] font-semibold">+{percentageChange}% {t("home.month")}</span>
                 </motion.div>
@@ -502,7 +503,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                   onClick={a.onClick}
                   whileTap={{ scale: 0.93 }}
                   className="flex flex-col items-center gap-1.5 py-2.5 rounded-2xl"
-                  style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.04)" }}
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.22 + i * 0.04 }}
@@ -510,7 +511,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${a.color}10`, border: `1px solid ${a.color}20` }}>
                     <a.icon size={15} strokeWidth={1.8} style={{ color: a.color }} />
                   </div>
-                  <span className="text-[10px] font-semibold text-white/80 font-outfit">{a.label}</span>
+                  <span className="text-[10px] font-semibold text-white/92 font-outfit">{a.label}</span>
                 </motion.button>
               ))}
             </motion.div>
