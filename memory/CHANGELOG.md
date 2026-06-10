@@ -1,6 +1,9 @@
 # BidBlitz — CHANGELOG
 
 ## 10.06.2026
+- Home Wallet-/Euro-Karte aufgehellt und kontrastreicher gemacht
+- Quick-Action-Reihe und BlitzPoints-Karte lesbarer gestaltet
+- Verifiziert: Login-Screenshot + Frontend-Check PASS, keine sichtbaren Dunkelheits-/Lesbarkeitsprobleme mehr
 - Mobility-Master-Prompt P0 geschlossen: `Credit Card` + `Cash` explizit im Mobility-Payment-Flow ergänzt
 - `Cash` bucht jetzt serverseitig direkt mit `payment_status=cash_due`; `Credit Card` erzeugt echte Stripe-Checkout-Sessions
 - Favoriten/Recent-Addresses vollständig angebunden: Speichern, Laden, Löschen, `use_count`, UI-Karten für Favoriten und letzte Ziele

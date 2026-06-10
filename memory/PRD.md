@@ -16,6 +16,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Mehrsprachigkeit der neuen Mobility-UI geschlossen** (`BidBlitzMobilityPlatformPage.jsx`): zentrale UI-Texte für Deutsch/Englisch/Albanisch ergänzt; Search/Reverse liefen bereits sprachabhängig und sind jetzt durch sichtbare UI-Copy ergänzt.
 - ✅ **Verifiziert**: Self-Test per curl + DB-Check PASS; eingeloggter Frontend-Smoke auf `/mobility-map` PASS; `iteration_142.json` vollständig grün (Backend 25/25 PASS, Frontend 100% PASS, alle 6 Collections verifiziert).
 
+### 10.06.2026 (Home Wallet/Euro/BlitzPoints lesbarer gemacht) ✅
+- 🟢 **Wallet-/Euro-Karte aufgehellt** (`frontend/src/pages/HomePage.jsx`): dunkles Hero-Panel durch klareren Blau/Teal-Gradient, stärkere Konturen und hellere Zahlen/Labels ersetzt.
+- 🟢 **Quick-Action-Reihe lesbarer** (`HomePage.jsx`): Buttons für Aufladen/Senden/Scannen/Karten mit hellerer Fläche, sichtbarerem Border und kontrastreicheren Labels versehen.
+- 🟢 **BlitzPoints-Karte heller** (`HomePage.jsx`): Loyalty-Panel mit wärmerem Gold-Gradient, klarerer Progressbar und besser sichtbaren Texten/Details verbessert.
+- ✅ **Verifiziert**: Browser-Screenshot nach Login PASS; Frontend-UI-Test bestätigt, dass alle drei Bereiche jetzt heller und besser lesbar sind.
+
 ### 10.06.2026 (Taxi UI Lesbarkeit / Modernisierung) ✅
 - 🟢 **Taxi-Mobile-Ansicht modernisiert** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/taxi/TaxiBottomSheet.jsx`, `frontend/src/components/taxi/TaxiBookingSheet.jsx`, `frontend/src/components/taxi/TaxiAddressSearchSheet.jsx`): dunkles, schwer lesbares Kartenlayout auf ein klares High-Contrast-Design mit großem weißem Bottom-Sheet, sauberer Typo und deutlich lesbarer Such-CTA umgestellt.
 - 🟢 **Map-Overlays klarer gemacht** (`TaxiPage.jsx`): GPS-/Standort-Pills, Kartenstatus und Top-Actions jetzt als helle Floating-Pills mit besserem Kontrast über der Karte statt visuell zu verschwimmen.
