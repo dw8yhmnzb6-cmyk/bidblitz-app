@@ -1,147 +1,102 @@
 {
-  "project_name": "BidBlitz V2",
-  "theme_strategy": {
-    "theme": "dark",
-    "archetype": "Archetype 4 (Swiss & High-Contrast) adapted for Fintech",
-    "rationale": "High-end Revolut/Apple Wallet aesthetic demands a pure dark UI (#0A0A0A) rather than standard dark gray. High contrast pure whites and a striking cyan (#00C2FF) provide a premium 'Electric' punch while maintaining functional clarity.",
-    "font_strategy": "Outfit (Headings) + Inter (Body). Outfit offers a geometric, modern tech feel."
+  "project_context": {
+    "domain": "Super-App / Ride Hailing Mobile Web App",
+    "theme": "LIGHT",
+    "archetype": "4_Swiss_High_Contrast",
+    "archetype_reasoning": "A ride-hailing map view demands absolute clarity, objective functional hierarchy, and instantaneous readability under physical stress (walking, sunlight). Swiss High-Contrast maximizes contrast against a visually complex map, addressing the user's specific complaint about bad legibility ('Das kann man nicht sehen')."
   },
-  "colors": {
-    "primary": "#0A0A0A",
-    "surface": "#141414",
-    "surface_hover": "#1A1A1A",
-    "accent": "#00C2FF",
-    "accent_glow": "rgba(0, 194, 255, 0.4)",
-    "text_main": "#FFFFFF",
-    "text_muted": "#A1A1AA",
-    "border_light": "rgba(255,255,255,0.08)",
-    "success": "#22C55E",
-    "error": "#EF4444"
-  },
-  "typography": {
-    "families": {
-      "heading": "'Outfit', sans-serif",
-      "body": "'Inter', sans-serif"
+  "design_system": {
+    "typography": {
+      "heading_font": "Chivo",
+      "body_font": "IBM Plex Sans",
+      "rules": "Tight letter spacing (tracking-tight) on headings, high weight contrast (Black vs Light). Never use Inter or generic sans. Label texts must be uppercase, tiny, and wide-spaced.",
+      "scales": {
+        "h1_sheet": "text-3xl font-black tracking-tighter text-zinc-950",
+        "h2_section": "text-lg font-bold tracking-tight text-zinc-900",
+        "body_primary": "text-base font-medium text-zinc-900",
+        "body_secondary": "text-sm font-normal text-zinc-500",
+        "label": "text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500"
+      }
     },
-    "scales": {
-      "h1": "text-4xl sm:text-5xl font-semibold tracking-tighter text-white",
-      "h2": "text-2xl sm:text-3xl font-medium tracking-tight text-white",
-      "h3": "text-xl font-medium tracking-tight text-white",
-      "body": "text-base text-[#A1A1AA] leading-relaxed",
-      "label": "text-[10px] uppercase tracking-[0.2em] font-bold text-[#A1A1AA]"
+    "colors": {
+      "background": {
+        "bottom_sheet": "#FFFFFF",
+        "input_surface": "#F4F4F5",
+        "map_fallback_overlay": "rgba(0,0,0,0.15)"
+      },
+      "text": {
+        "primary": "#0A0A0A",
+        "secondary": "#52525B",
+        "inverse": "#FFFFFF",
+        "accent": "#002FA7"
+      },
+      "accents": {
+        "primary": "#002FA7",
+        "warning": "#FFCC00",
+        "error": "#FF3B30",
+        "success": "#34C759"
+      }
+    },
+    "surfaces": {
+      "floating_pill": "backdrop-blur-xl bg-white/90 border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.12)]",
+      "bottom_sheet": "bg-white shadow-[0_-12px_40px_rgba(0,0,0,0.12)] rounded-t-[32px] border-t border-black/5"
+    },
+    "spacing": {
+      "padding": "Generous. Use p-6 inside the bottom sheet, gap-4 for lists.",
+      "layout": "Mobile-first absolute positioning. Map z-0, Pills z-10, Bottom Sheet z-20."
     }
-  },
-  "spacing_and_layout": {
-    "app_container": "max-w-md mx-auto w-full min-h-screen bg-[#0A0A0A] text-white relative overflow-x-hidden pb-24 shadow-2xl border-x border-white/5",
-    "bento_padding": "p-5",
-    "grid_gap": "gap-4",
-    "radii": {
-      "card": "rounded-3xl",
-      "button": "rounded-full",
-      "icon_wrapper": "rounded-2xl"
-    }
-  },
-  "ui_components": {
-    "bottom_nav": {
-      "container": "fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-[#0A0A0A]/80 backdrop-blur-2xl border-t border-white/10 px-6 py-4 flex justify-between items-center z-50",
-      "item": "flex flex-col items-center gap-1 text-[10px] text-[#A1A1AA] hover:text-white transition-colors",
-      "active_item": "text-[#00C2FF]",
-      "center_action": "h-14 w-14 rounded-full bg-[#00C2FF] text-black flex items-center justify-center shadow-[0_0_20px_rgba(0,194,255,0.4)] -translate-y-6"
-    },
-    "card": {
-      "default": "bg-[#141414] border border-white/5 rounded-3xl p-5 hover:bg-[#1a1a1a] transition-colors relative overflow-hidden",
-      "glass": "bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6"
-    },
-    "premium_credit_card": {
-      "style": "relative w-full aspect-[1.58/1] rounded-2xl bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border border-white/10 p-6 flex flex-col justify-between overflow-hidden shadow-2xl",
-      "glow_effect": "absolute inset-0 bg-gradient-to-tr from-[#00C2FF]/10 to-transparent opacity-50 pointer-events-none"
-    }
-  },
-  "pages": {
-    "homepage": {
-      "structure": [
-        "Header: User avatar, Greeting ('Good Evening, Alex'), Notification icon.",
-        "Hero: Glass panel with abstract background. Tagline: 'All-in-One App for Payments, Mobility & More'. Prominent total balance display.",
-        "Feature Grid (Bento): 'Wallet' (large span), 'Taxi' & 'Scooter' (medium span with background images), 'Food' & 'Auctions' (small spans). Use Lucide icons + subtle images."
-      ]
-    },
-    "wallet": {
-      "structure": [
-        "Header: 'Wallet' title.",
-        "Card Display: Premium black credit card visual with cyan glow edges. Shows card number ending and exp date.",
-        "Quick Actions: Add Money, Send, History. Circular buttons.",
-        "Transactions: List view. Date headers (e.g., 'Today'). Items have rounded icon backgrounds, merchant name, time, and right-aligned amount."
-      ]
-    },
-    "scanner_payment": {
-      "structure": [
-        "Full screen modal style.",
-        "Camera Viewfinder: Dark background with a centered rounded-3xl frame.",
-        "Animation: Cyan laser line sweeping up and down inside the frame using Framer Motion.",
-        "Amount Input: Massive text (e.g., text-6xl+) in cyan or white.",
-        "Action: 'Activate Scan' or 'Confirm Payment' button."
-      ]
-    },
-    "merchant": {
-      "structure": [
-        "Header: 'Händler Dashboard'.",
-        "Overview: Today's Earnings large display.",
-        "Chart: Recharts simple AreaChart showing week earnings (Cyan stroke, cyan to transparent gradient fill).",
-        "Action: 'Create Payment Request' big button.",
-        "Recent Payments: List of incoming transactions."
-      ]
-    }
-  },
-  "animations": {
-    "library": "framer-motion",
-    "page_transition": {
-      "initial": { "opacity": 0, "y": 10 },
-      "animate": { "opacity": 1, "y": 0 },
-      "exit": { "opacity": 0, "y": -10 }
-    },
-    "list_stagger": "staggerChildren: 0.05",
-    "tap_effect": "whileTap: { scale: 0.96 }",
-    "scanner_laser": "animate: { y: [0, 200, 0] }, transition: { repeat: Infinity, duration: 2, ease: 'linear' }"
   },
   "media": {
-    "user_avatar": {
-      "url": "https://images.unsplash.com/photo-1737574821698-862e77f044c1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMG1vZGVybiUyMHByb2Zlc3Npb25hbHxlbnwwfHx8fDE3NzUxNjE1Nzh8MA&ixlib=rb-4.1.0&q=85",
-      "description": "Professional user profile avatar"
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1620662892011-f5c2d523fae2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjh8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBtaW5pbWFsJTIwY2l0eSUyMG1hcCUyMGFlcmlhbCUyMHZpZXd8ZW58MHx8fHwxNzgxMDY5NjAwfDA&ixlib=rb-4.1.0&q=85",
+        "category": "map_fallback_background",
+        "description": "Aerial dark map view for fallback when interactive map is loading or fails."
+      }
+    ]
+  },
+  "components": {
+    "taxi_view_container": {
+      "structure": "relative h-[100dvh] w-full overflow-hidden bg-zinc-900"
     },
-    "hero_abstract_bg": {
-      "url": "https://images.pexels.com/photos/31032751/pexels-photo-31032751.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-      "description": "Dark abstract glowing cyan texture for hero cards"
+    "map_layer": {
+      "structure": "absolute inset-0 z-0",
+      "instructions": "Render map fallback image with object-cover and opacity-80 to ensure UI pops."
     },
-    "premium_card_bg": {
-      "url": "https://images.unsplash.com/photo-1764258906159-3f5952286f5e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwzfHxkYXJrJTIwYWJzdHJhY3QlMjB0ZXh0dXJlJTIwbmVvbiUyMGN5YW58ZW58MHx8fHwxNzc1MTYxNTg5fDA&ixlib=rb-4.1.0&q=85",
-      "description": "Subtle dark fluid background for premium credit card"
+    "gps_status_pill": {
+      "structure": "absolute top-safe-12 left-1/2 -translate-x-1/2 z-10 rounded-full px-4 py-2 flex items-center gap-2",
+      "instructions": "Apply floating_pill surface. Use a pulsing green dot (w-2 h-2 rounded-full bg-success animate-pulse) next to text 'Standort genau' (text-xs font-bold text-zinc-800). Fallback state: orange dot 'GPS wird gesucht...'.",
+      "data_testid": "gps-status-indicator"
     },
-    "scooter_image": {
-      "url": "https://images.unsplash.com/photo-1762350988150-4fff02852a35?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBzY29vdGVyJTIwbmlnaHR8ZW58MHx8fHwxNzc1MTYxNTc4fDA&ixlib=rb-4.1.0&q=85",
-      "description": "Modern night scooter image for feature grid background"
+    "bottom_sheet": {
+      "structure": "absolute bottom-0 w-full z-20 pt-6 pb-12 px-6 flex flex-col gap-6",
+      "instructions": "Apply bottom_sheet surface. Top must have a visual drag handle (w-12 h-1.5 bg-zinc-200 rounded-full mx-auto mb-2). Main content: H1 'Wohin soll\\'s gehen?'.",
+      "data_testid": "booking-bottom-sheet"
     },
-    "food_image": {
-      "url": "https://images.unsplash.com/photo-1761315600943-d8a5bb0c499f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwxfHxyZXN0YXVyYW50JTIwZm9vZCUyMHByZW1pdW0lMjBkYXJrfGVufDB8fHx8MTc3NTE2MTU4OXww&ixlib=rb-4.1.0&q=85",
-      "description": "Premium dark restaurant food for feature grid background"
+    "quick_actions_toggle": {
+      "structure": "flex bg-zinc-100 rounded-full p-1 w-fit",
+      "instructions": "Segmented control for Now/Later. 'Jetzt' (active: bg-white shadow-sm text-zinc-900 px-4 py-1.5 rounded-full font-bold text-sm) vs 'Später' (inactive: text-zinc-500 px-4 py-1.5 font-medium text-sm).",
+      "data_testid": "time-toggle-group"
+    },
+    "destination_search_input": {
+      "structure": "flex items-center gap-3 bg-zinc-100 rounded-2xl p-4 w-full transition-transform active:scale-[0.98]",
+      "instructions": "Use Phosphor 'MagnifyingGlass' icon (size 24, text-zinc-500). Text should be text-lg text-zinc-500 'Ziel suchen...'.",
+      "data_testid": "destination-search-input"
+    },
+    "saved_places": {
+      "structure": "flex flex-col gap-0",
+      "instructions": "List of places (Zuhause, Arbeit). Each item is flex row, items-center, gap-4, py-4, border-b border-zinc-100 last:border-none. Icon container: w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center. Use Phosphor 'House' and 'Briefcase'.",
+      "data_testid": "saved-places-list"
     }
   },
-  "iconography": {
-    "library": "lucide-react",
-    "instructions": "Use strokeWidth={1.5} for all icons to maintain a delicate, premium aesthetic. Avoid chunky icons."
-  },
-  "testing_and_accessibility": {
-    "data_testid": "ALL interactive components (buttons, links, inputs, tabs) MUST have a data-testid attribute in kebab-case representing their function (e.g., 'home-tab-btn', 'add-funds-btn').",
-    "aria_labels": "Include aria-labels for icon-only buttons like the Scanner button."
-  },
   "instructions_to_main_agent": [
-    "Build the application in /app/frontend/src/.",
-    "Install framer-motion, lucide-react, recharts, and clsx/tailwind-merge if not already present.",
-    "Use pure HTML + Tailwind for complex asymmetrical layouts like the Feature Bento Grid. Use custom divs instead of Shadcn standard Cards if they restrict the design.",
-    "Implement the 4 main pages and wire them with react-router-dom.",
-    "Force dark mode via Tailwind 'dark' class or strictly use the dark color palette (#0A0A0A base).",
-    "Ensure the mobile-first layout is constrained within a 'max-w-md mx-auto' container so it looks like a mobile app even on desktop browsers.",
-    "Populate the app with realistic mock data (e.g., 'Uber Trip', 'Apple Store', 'Merchant Dashboard Earnings').",
-    "Do NOT use placeholder image URLs. Use ONLY the provided URLs in the media section.",
-    "Ensure the bottom navigation stays fixed and layered above all content (z-50)."
+    "INSTALL @phosphor-icons/react using yarn and use it for icons (MapPin, House, Briefcase, MagnifyingGlass).",
+    "Do NOT use generic 'Inter' font. Use 'Chivo' for headings and 'IBM Plex Sans' for body. Import them via Google Fonts.",
+    "Adhere strictly to the Swiss High-Contrast color palette (Black, White, Zinc-100, and International Klein Blue #002FA7 for accents).",
+    "The user complained 'Das kann man nicht sehen gar nix sehen' - meaning the old design had terrible contrast against the map. Ensure the bottom sheet is entirely opaque, white, with crisp black text, and floating elements use strong crystal glassmorphism.",
+    "Do not use Shadcn card for the bottom sheet. Build it cleanly with tailwind HTML (div, section) to get the exact rounded-t-[32px] and shadow specs.",
+    "Use 100dvh for container height and safe-area padding equivalents (e.g., pb-8 or iOS safe area inset classes) for bottom sheet to look premium on iPhones.",
+    "Make sure all interactive items have data-testid attributes.",
+    "Ensure German language is used exactly as specified (Zuhause, Arbeit, Wohin soll\\'s gehen?, Jetzt, Später, Standort genau, Ziel suchen...)."
   ]
 }
