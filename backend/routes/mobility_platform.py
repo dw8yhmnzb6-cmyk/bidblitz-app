@@ -30,7 +30,9 @@ AI_MODEL_FALLBACKS = [
     ("anthropic", "claude-sonnet-4-5-20250929"),
 ]
 
-TRANSPORT_PAYMENT_METHODS = ["wallet", "nfc", "qr", "apple_pay", "google_pay"]
+TRANSPORT_PAYMENT_METHODS = ["wallet", "nfc", "qr", "apple_pay", "google_pay", "credit_card", "cash"]
+STRIPE_CHECKOUT_METHODS = {"nfc", "qr", "apple_pay", "google_pay", "credit_card"}
+DIRECT_BOOKING_METHODS = {"wallet", "cash"}
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -124,6 +126,7 @@ class MobilityRouteRequest(BaseModel):
 
 
 class SavedLocationRequest(BaseModel):
+    favorite_id: Optional[str] = Field(default=None, max_length=80)
     label: str = Field(..., min_length=1, max_length=60)
     address: str = Field(..., min_length=2, max_length=280)
     lat: float
@@ -373,6 +376,147 @@ def _find_option(options: list[dict], transport_type: str):
     return next((item for item in options if item.get("type") == transport_type), None)
 
 
+async def _store_route_snapshot(
+    user_id: Optional[str],
+    route_payload: dict,
+    source: str,
+    preferences: Optional[dict] = None,
+    transport_type: Optional[str] = None,
+):
+    route_id = f"route-{uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc).isoformat()
+    route_doc = {
+        "route_id": route_id,
+        "user_id": user_id,
+        "source": source,
+        "transport_type": transport_type,
+        "pickup": route_payload.get("pickup") or {},
+        "dropoff": route_payload.get("dropoff") or {},
+        "distance_km": round(float(route_payload.get("distance_km") or 0), 2),
+        "duration_min": int(route_payload.get("duration_min") or 0),
+        "geometry": route_payload.get("geometry") or [],
+        "options": route_payload.get("options") or [],
+        "recommendations": route_payload.get("recommendations") or {},
+        "preferences": preferences or {},
+        "created_at": now,
+    }
+    await db.mobility_routes.insert_one(route_doc)
+    return route_doc
+
+
+async def _upsert_trip_snapshot(booking: dict):
+    booking_id = booking.get("booking_id")
+    if not booking_id:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    trip_doc = {
+        "trip_id": booking_id,
+        "booking_id": booking_id,
+        "user_id": booking.get("user_id"),
+        "transport_type": booking.get("transport_type"),
+        "transport_label": booking.get("transport_label"),
+        "status": booking.get("status"),
+        "tracking_status": booking.get("tracking_status"),
+        "payment_method": booking.get("payment_method"),
+        "payment_status": booking.get("payment_status"),
+        "price_eur": booking.get("price_eur"),
+        "distance_km": booking.get("distance_km"),
+        "duration_min": booking.get("duration_min"),
+        "pickup": booking.get("pickup") or {},
+        "dropoff": booking.get("dropoff") or {},
+        "preferences": booking.get("preferences") or {},
+        "ai_recommendation": booking.get("ai_recommendation") or {},
+        "route_id": booking.get("route_id"),
+        "assigned_resource": booking.get("assigned_resource") or None,
+        "updated_at": now,
+    }
+    await db.mobility_trips.update_one(
+        {"booking_id": booking_id},
+        {"$set": trip_doc, "$setOnInsert": {"created_at": booking.get("created_at") or now}},
+        upsert=True,
+    )
+
+
+async def _sync_nearby_inventory(markers: list[dict], counts: dict, lat: float, lng: float):
+    now = datetime.now(timezone.utc).isoformat()
+    await db.mobility_drivers.update_one(
+        {"driver_id": "availability-summary"},
+        {"$set": {
+            "driver_id": "availability-summary",
+            "type": "availability_summary",
+            "center": {"lat": lat, "lng": lng},
+            "live_counts": counts,
+            "updated_at": now,
+        }},
+        upsert=True,
+    )
+
+    for marker in markers:
+        base_doc = {
+            "label": marker.get("label"),
+            "type": marker.get("type"),
+            "lat": marker.get("lat"),
+            "lng": marker.get("lng"),
+            "distance_km": marker.get("distance_km"),
+            "subtitle": marker.get("subtitle"),
+            "payment_methods": marker.get("payment_methods") or TRANSPORT_PAYMENT_METHODS,
+            "updated_at": now,
+        }
+        if marker.get("type") == "taxi":
+            await db.mobility_drivers.update_one(
+                {"driver_id": marker.get("id")},
+                {"$set": {"driver_id": marker.get("id"), **base_doc, "eta_minutes": marker.get("eta_minutes")}},
+                upsert=True,
+            )
+        else:
+            await db.mobility_vehicles.update_one(
+                {"vehicle_id": marker.get("id")},
+                {"$set": {"vehicle_id": marker.get("id"), **base_doc, "price_hint": marker.get("price_hint"), "battery_percent": marker.get("battery_percent")}},
+                upsert=True,
+            )
+
+    for item in [
+        {"vehicle_id": "bike-on-demand", "type": "bike", "label": "Fahrrad", "subtitle": "On-demand verfügbar"},
+        {"vehicle_id": "airport-shuttle-on-demand", "type": "airport_shuttle", "label": "Airport Shuttle", "subtitle": "Direkt zum Terminal"},
+        {"vehicle_id": "vip-chauffeur-on-demand", "type": "vip", "label": "VIP Chauffeur", "subtitle": "Premium on-demand"},
+    ]:
+        await db.mobility_vehicles.update_one(
+            {"vehicle_id": item["vehicle_id"]},
+            {"$set": {
+                **item,
+                "lat": lat,
+                "lng": lng,
+                "distance_km": 0,
+                "payment_methods": TRANSPORT_PAYMENT_METHODS,
+                "updated_at": now,
+            }},
+            upsert=True,
+        )
+
+
+async def _migrate_legacy_favorites(user_id: str):
+    existing = await db.mobility_favorites.count_documents({"user_id": user_id}, limit=1)
+    if existing:
+        return
+    legacy_items = await db.mobility_saved_locations.find({"user_id": user_id}, {"_id": 0}).to_list(50)
+    for item in legacy_items:
+        favorite_id = item.get("favorite_id") or (item.get("label") if item.get("label") in {"home", "work"} else f"fav-{uuid4().hex[:10]}")
+        await db.mobility_favorites.update_one(
+            {"user_id": user_id, "favorite_id": favorite_id},
+            {"$set": {
+                "user_id": user_id,
+                "favorite_id": favorite_id,
+                "label": item.get("label") or "Favorit",
+                "address": item.get("address"),
+                "lat": item.get("lat"),
+                "lng": item.get("lng"),
+                "kind": item.get("kind") or "favorite",
+                "updated_at": item.get("updated_at") or datetime.now(timezone.utc).isoformat(),
+            }, "$setOnInsert": {"created_at": item.get("updated_at") or datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+
+
 async def _assign_booking_resource(transport_type: str, pickup: dict):
     nearby = await get_nearby_mobility(pickup["lat"], pickup["lng"], 6)
     marker = next((item for item in nearby.get("markers", []) if item.get("type") == transport_type), None)
@@ -407,6 +551,7 @@ async def _confirm_booking_after_external_payment(booking_id: str, session_id: s
         }},
     )
     updated = await db.mobility_bookings.find_one({"booking_id": booking_id}, {"_id": 0})
+    await _upsert_trip_snapshot(updated)
     return updated
 
 
@@ -488,38 +633,17 @@ async def reverse_place(lat: float, lng: float, lang: str = "de"):
 
 @router.post("/route")
 async def calculate_route(req: MobilityRouteRequest):
-    coords = f"{req.pickup_lng},{req.pickup_lat};{req.dropoff_lng},{req.dropoff_lat}"
-    distance_km = haversine_distance(req.pickup_lat, req.pickup_lng, req.dropoff_lat, req.dropoff_lng)
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.get(
-                f"{OSRM_URL}/route/v1/driving/{coords}",
-                params={"overview": "full", "geometries": "geojson", "steps": "true", "alternatives": "false"},
-            )
-            res.raise_for_status()
-            data = res.json()
-        route = (data.get("routes") or [None])[0]
-        if not route:
-            raise HTTPException(404, "Keine Route gefunden")
-        duration_min = max(2, round(route["duration"] / 60))
-        demand_multiplier = 1.0 + min(0.22, distance_km / 90)
-        options = [
-            build_option("taxi", distance_km, duration_min, demand_multiplier, 55),
-            build_option("scooter", distance_km, duration_min, 1.0, 86),
-            build_option("bike", distance_km, duration_min, 1.0, 96),
-            build_option("car_rental", distance_km, duration_min, 1.0, 48),
-            build_option("airport_shuttle", distance_km, duration_min, 1.0, 63),
-            build_option("vip", distance_km, duration_min, 1.08, 28),
-        ]
-        return {
-            "distance_km": round(distance_km, 2),
-            "duration_min": duration_min,
-            "geometry": route.get("geometry", {}).get("coordinates", []),
-            "pickup": {"address": req.pickup_address, "lat": req.pickup_lat, "lng": req.pickup_lng},
-            "dropoff": {"address": req.dropoff_address, "lat": req.dropoff_lat, "lng": req.dropoff_lng},
-            "options": options,
-            "recommendations": build_recommendations(options),
-        }
+        payload = await _compute_route_payload(
+            req.pickup_lat,
+            req.pickup_lng,
+            req.dropoff_lat,
+            req.dropoff_lng,
+            req.pickup_address,
+            req.dropoff_address,
+        )
+        await _store_route_snapshot(None, payload, "route_preview")
+        return payload
     except HTTPException:
         raise
     except Exception as exc:
@@ -554,37 +678,78 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
-    if req.payment_method != "wallet":
-        raise HTTPException(400, "Direktbuchung ist aktuell nur mit Wallet verfügbar")
+    if req.payment_method not in DIRECT_BOOKING_METHODS:
+        raise HTTPException(400, "Direktbuchung ist nur mit Wallet oder Cash verfügbar")
+
+    route_payload = await _compute_route_payload(
+        req.pickup.lat,
+        req.pickup.lng,
+        req.dropoff.lat,
+        req.dropoff.lng,
+        req.pickup.address,
+        req.dropoff.address,
+    )
+    option = _find_option(route_payload["options"], req.transport_type)
+    if not option:
+        raise HTTPException(404, "Transportart nicht verfügbar")
+    route_doc = await _store_route_snapshot(user_id, route_payload, "direct_booking", req.preferences, req.transport_type)
 
     from routes.mobility_payments import process_payment
 
     booking_id = f"mob-{uuid4().hex[:12]}"
     assignment = await _assign_booking_resource(req.transport_type, req.pickup.model_dump())
-    payment_result = await process_payment(
-        user_id=user_id,
-        amount=round(req.price_eur, 2),
-        payment_type="mobility_booking",
-        reference_id=booking_id,
-        reference_type="mobility_booking",
-        description=f"{req.transport_label} · {req.pickup.address} → {req.dropoff.address}",
-        commission_category=req.transport_type,
-    )
+    payment_result = None
+    payment_status = "cash_due" if req.payment_method == "cash" else "paid"
+    payment_id = None
+    if req.payment_method == "wallet":
+        payment_result = await process_payment(
+            user_id=user_id,
+            amount=round(option["price_eur"], 2),
+            payment_type="mobility_booking",
+            reference_id=booking_id,
+            reference_type="mobility_booking",
+            description=f"{option['label']} · {req.pickup.address} → {req.dropoff.address}",
+            commission_category=req.transport_type,
+        )
+        payment_id = ((payment_result or {}).get("payment") or {}).get("payment_id")
+    else:
+        payment_id = f"cash-{uuid4().hex[:12]}"
+        now = datetime.now(timezone.utc).isoformat()
+        await db.payment_transactions.insert_one({
+            "transaction_id": payment_id,
+            "session_id": payment_id,
+            "user_id": user_id,
+            "user_email": user.get("email"),
+            "amount": float(option["price_eur"]),
+            "currency": "eur",
+            "type": "mobility_booking",
+            "status": "cash_due",
+            "payment_status": "cash_due",
+            "metadata": {
+                "type": "mobility_booking",
+                "booking_id": booking_id,
+                "transport_type": req.transport_type,
+                "payment_method": "cash",
+            },
+            "created_at": now,
+            "updated_at": now,
+        })
 
     booking = {
         "booking_id": booking_id,
         "user_id": user_id,
         "user_email": user.get("email"),
-        "transport_type": req.transport_type,
-        "transport_label": req.transport_label,
-        "price_eur": round(req.price_eur, 2),
-        "duration_min": req.duration_min,
-        "distance_km": round(req.distance_km, 2),
+        "transport_type": option["type"],
+        "transport_label": option["label"],
+        "price_eur": round(option["price_eur"], 2),
+        "duration_min": option["duration_min"],
+        "distance_km": round(option["distance_km"], 2),
         "payment_method": req.payment_method,
-        "payment_status": "paid",
-        "payment_id": ((payment_result or {}).get("payment") or {}).get("payment_id"),
+        "payment_status": payment_status,
+        "payment_id": payment_id,
         "status": "confirmed",
         "tracking_status": "confirmed",
+        "route_id": route_doc["route_id"],
         "assigned_resource": assignment,
         "pickup": req.pickup.model_dump(),
         "dropoff": req.dropoff.model_dump(),
@@ -593,13 +758,14 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.mobility_bookings.insert_one(booking)
+    await _upsert_trip_snapshot(booking)
     booking_response = {**booking}
     booking_response.pop("_id", None)
 
     return {
         "ok": True,
         "booking": booking_response,
-        "new_balance": payment_result.get("new_balance"),
+        "new_balance": payment_result.get("new_balance") if payment_result else None,
     }
 
 
@@ -617,6 +783,8 @@ async def get_my_mobility_bookings(request: Request):
 async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
+    if req.payment_method not in STRIPE_CHECKOUT_METHODS:
+        raise HTTPException(400, "Diese Checkout-Methode läuft nicht über Stripe")
     route_payload = await _compute_route_payload(
         req.pickup.lat,
         req.pickup.lng,
@@ -628,6 +796,7 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
     option = _find_option(route_payload["options"], req.transport_type)
     if not option:
         raise HTTPException(404, "Transportart nicht verfügbar")
+    route_doc = await _store_route_snapshot(user_id, route_payload, "stripe_checkout", req.preferences, req.transport_type)
 
     booking_id = f"mob-{uuid4().hex[:12]}"
     origin = req.origin_url.rstrip("/")
@@ -641,6 +810,7 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
         currency="eur",
         success_url=success_url,
         cancel_url=cancel_url,
+        payment_methods=["card"],
         metadata={
             "type": "mobility_booking",
             "booking_id": booking_id,
@@ -651,7 +821,7 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
     )
     session = await stripe_checkout.create_checkout_session(checkout_request)
 
-    await db.mobility_bookings.insert_one({
+    booking_doc = {
         "booking_id": booking_id,
         "user_id": user_id,
         "user_email": user.get("email"),
@@ -664,14 +834,18 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
         "payment_status": "pending",
         "status": "payment_pending",
         "tracking_status": "payment_pending",
+        "route_id": route_doc["route_id"],
         "pickup": req.pickup.model_dump(),
         "dropoff": req.dropoff.model_dump(),
         "preferences": req.preferences or {},
         "ai_recommendation": req.ai_recommendation or {},
         "stripe_session_id": session.session_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    await db.mobility_bookings.insert_one(booking_doc)
+    await _upsert_trip_snapshot(booking_doc)
     await db.payment_transactions.insert_one({
+        "transaction_id": f"stripe-{uuid4().hex[:12]}",
         "session_id": session.session_id,
         "user_id": user_id,
         "user_email": user.get("email"),
@@ -755,6 +929,12 @@ async def cancel_mobility_booking(booking_id: str, request: Request):
         {"booking_id": booking_id},
         {"$set": {"status": "cancelled", "tracking_status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}},
     )
+    await db.payment_transactions.update_many(
+        {"metadata.booking_id": booking_id},
+        {"$set": {"status": "cancelled", "payment_status": "cancelled", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    updated = await db.mobility_bookings.find_one({"booking_id": booking_id}, {"_id": 0})
+    await _upsert_trip_snapshot(updated)
     return {"ok": True, "booking_id": booking_id, "status": "cancelled"}
 
 
@@ -854,6 +1034,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
         ))
 
     markers.sort(key=lambda item: (item.get("distance_km") or 999, item.get("label") or ""))
+    await _sync_nearby_inventory(markers[:60], counts, lat, lng)
 
     return {
         "center": {"lat": lat, "lng": lng},
@@ -875,8 +1056,14 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
 async def get_saved_locations(request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    items = await db.mobility_saved_locations.find({"user_id": user_id}, {"_id": 0}).sort("updated_at", -1).to_list(50)
+    await _migrate_legacy_favorites(user_id)
+    items = await db.mobility_favorites.find({"user_id": user_id}, {"_id": 0}).sort("updated_at", -1).to_list(50)
     return {"locations": items}
+
+
+@router.get("/favorites")
+async def get_favorite_locations(request: Request):
+    return await get_saved_locations(request)
 
 
 @router.post("/saved-locations")
@@ -884,20 +1071,38 @@ async def save_location(req: SavedLocationRequest, request: Request):
     user = await get_current_user(request)
     user_id = str(user["_id"])
     now = datetime.now(timezone.utc).isoformat()
-    await db.mobility_saved_locations.update_one(
-        {"user_id": user_id, "label": req.label},
+    favorite_id = req.favorite_id or (req.kind if req.kind in {"home", "work"} else f"fav-{uuid4().hex[:10]}")
+    location_doc = {
+        "user_id": user_id,
+        "favorite_id": favorite_id,
+        "label": req.label,
+        "address": req.address,
+        "lat": req.lat,
+        "lng": req.lng,
+        "kind": req.kind,
+        "updated_at": now,
+    }
+    await db.mobility_favorites.update_one(
+        {"user_id": user_id, "favorite_id": favorite_id},
         {"$set": {
-            "user_id": user_id,
-            "label": req.label,
-            "address": req.address,
-            "lat": req.lat,
-            "lng": req.lng,
-            "kind": req.kind,
-            "updated_at": now,
-        }},
+            **location_doc,
+        }, "$setOnInsert": {"created_at": now}},
         upsert=True,
     )
-    return {"ok": True}
+    return {"ok": True, "location": location_doc}
+
+
+@router.delete("/saved-locations/{favorite_id}")
+async def delete_saved_location(favorite_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    await db.mobility_favorites.delete_one({"user_id": user_id, "favorite_id": favorite_id})
+    return {"ok": True, "favorite_id": favorite_id}
+
+
+@router.delete("/favorites/{favorite_id}")
+async def delete_favorite_location(favorite_id: str, request: Request):
+    return await delete_saved_location(favorite_id, request)
 
 
 @router.post("/recent-locations")
@@ -940,5 +1145,7 @@ async def mobility_payment_options(request: Request):
             {"id": "qr", "label": "QR Payment", "enabled": True},
             {"id": "apple_pay", "label": "Apple Pay", "enabled": True},
             {"id": "google_pay", "label": "Google Pay", "enabled": True},
+            {"id": "credit_card", "label": "Credit Card", "enabled": True},
+            {"id": "cash", "label": "Cash", "enabled": True},
         ],
     }

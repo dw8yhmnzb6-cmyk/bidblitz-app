@@ -3,35 +3,41 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { ArrowLeft, Bike, Car, Crown, Crosshair, Home, Loader2, MapPin, Navigation, Plane, Search, ShieldCheck, Star, Wallet, Zap } from "lucide-react";
+import { ArrowLeft, Bike, Car, Crown, Crosshair, Home, Loader2, MapPin, Navigation, Plane, Search, ShieldCheck, Star, Trash2, Wallet, Zap } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 import { useUser } from "../store/UserContext";
 import { isNFCAvailable, writeNFC } from "../utils/nfcService";
-import { addRecentMobilityLocation, cancelMobilityBooking, createMobilityBooking, createMobilityCheckoutSession, getMobilityAiRecommendation, getMobilityBookingDetail, getMobilityCheckoutStatus, getMobilityNearby, getMobilityPaymentOptions, getMobilityPreferences, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation, saveMobilityPreferences } from "../services/mobilityPlatformApi";
+import { addRecentMobilityLocation, cancelMobilityBooking, createMobilityBooking, createMobilityCheckoutSession, deleteSavedMobilityLocation, getMobilityAiRecommendation, getMobilityBookingDetail, getMobilityCheckoutStatus, getMobilityNearby, getMobilityPaymentOptions, getMobilityPreferences, getMyMobilityBookings, getRecentMobilityLocations, getSavedMobilityLocations, mobilityReverse, mobilityRoute, mobilitySearch, saveMobilityLocation, saveMobilityPreferences } from "../services/mobilityPlatformApi";
 
 const TRANSPORT_META = {
-  taxi: { icon: Car, color: "#00C2FF", detail: "Direkt, schnell und klassisch wie Uber/Bolt." },
-  scooter: { icon: Zap, color: "#7CFF5B", detail: "Ideal für kurze City-Strecken und günstig." },
-  bike: { icon: Bike, color: "#FACC15", detail: "Die günstigste und nachhaltigste Kurzstrecke." },
-  car_rental: { icon: Car, color: "#A78BFA", detail: "Für eigene Flexibilität über mehrere Stunden." },
-  airport_shuttle: { icon: Plane, color: "#FB7185", detail: "Perfekt für Flughafen und große Gepäckmengen." },
-  vip: { icon: Crown, color: "#F59E0B", detail: "Premium-Fahrt mit VIP Chauffeur und maximalem Komfort." },
+  taxi: { icon: Car, color: "#00C2FF", details: { de: "Direkt, schnell und klassisch wie Uber/Bolt.", en: "Direct, fast and classic like Uber/Bolt.", sq: "Direkt, e shpejtë dhe klasike si Uber/Bolt." } },
+  scooter: { icon: Zap, color: "#7CFF5B", details: { de: "Ideal für kurze City-Strecken und günstig.", en: "Ideal for short city rides and affordable.", sq: "Ideale për udhëtime të shkurtra në qytet dhe me kosto të ulët." } },
+  bike: { icon: Bike, color: "#FACC15", details: { de: "Die günstigste und nachhaltigste Kurzstrecke.", en: "The cheapest and most sustainable short trip.", sq: "Opsioni më i lirë dhe më i qëndrueshëm për distanca të shkurtra." } },
+  car_rental: { icon: Car, color: "#A78BFA", details: { de: "Für eigene Flexibilität über mehrere Stunden.", en: "For full flexibility over several hours.", sq: "Për fleksibilitet të plotë për disa orë." } },
+  airport_shuttle: { icon: Plane, color: "#FB7185", details: { de: "Perfekt für Flughafen und große Gepäckmengen.", en: "Perfect for airports and heavy luggage.", sq: "Perfekt për aeroport dhe bagazh të madh." } },
+  vip: { icon: Crown, color: "#F59E0B", details: { de: "Premium-Fahrt mit VIP Chauffeur und maximalem Komfort.", en: "Premium ride with VIP chauffeur and maximum comfort.", sq: "Udhëtim premium me shofer VIP dhe rehati maksimale." } },
+};
+
+const MOBILITY_COPY = {
+  de: { title: "Alles auf einer Karte", pickup: "Abholort suchen oder per GPS setzen", dropoff: "Wohin möchtest du fahren?", current: "Mein Standort", mapSets: "Karte setzt", start: "Start", destination: "Ziel", compare: "Preise vergleichen", home: "Zuhause", work: "Arbeit", saveStart: "Start merken", saveDestination: "Ziel merken", aiRules: "Smartes Regelwerk aktiv", aiRulesText: "Nach Zielwahl erscheinen Preis, Fahrzeit und Empfehlung direkt wie bei Uber/Bolt.", aiPrefs: "AI Präferenzen", checkout: "Checkout-Methode", favorites: "Favoriten", recents: "Zuletzt genutzt", noFavorites: "Noch keine Favoriten gespeichert.", noRecents: "Noch keine letzten Ziele vorhanden.", bookings: "Letzte Mobility-Buchungen", directWallet: "Direkt mit Wallet buchen", directCash: "Cash-Fahrt direkt reservieren", booking: "Bucht...", bookNow: "Jetzt buchen", empty: "Gib Start und Ziel ein oder tippe auf die Karte. Danach erscheint hier sofort der Preisvergleich für Taxi, Scooter, Bike, Mietwagen, Shuttle und VIP.", recentLabel: "Letztes Ziel", used: "genutzt", recommended: "Empfohlen", bestChoice: "Beste Wahl", alternative: "Alternative", nearby: "Live in der Nähe", nearbyFallback: "Verfügbar auf der Karte", qrTitle: "QR Checkout", qrText: "Scanne den QR-Code auf einem zweiten Gerät oder öffne den Link direkt.", close: "Schließen", openStripe: "Stripe Checkout öffnen", liveTaxi: "Taxi live", rentalCars: "Mietwagen", paymentTitle: "Zahlungsmethoden", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card und Cash sind eingebunden.", price: "Preis", time: "Zeit", distance: "Distanz" },
+  en: { title: "Everything on one map", pickup: "Search pickup or set via GPS", dropoff: "Where do you want to go?", current: "My location", mapSets: "Map sets", start: "pickup", destination: "destination", compare: "Compare prices", home: "Home", work: "Work", saveStart: "Save pickup", saveDestination: "Save destination", aiRules: "Smart routing active", aiRulesText: "After choosing a destination, price, ETA and recommendation appear instantly like Uber/Bolt.", aiPrefs: "AI preferences", checkout: "Checkout method", favorites: "Favorites", recents: "Recent places", noFavorites: "No favorites saved yet.", noRecents: "No recent places yet.", bookings: "Recent mobility bookings", directWallet: "Book directly with wallet", directCash: "Reserve as cash ride", booking: "Booking...", bookNow: "Book now", empty: "Set pickup and destination or tap the map. Then the instant comparison for taxi, scooter, bike, rental car, shuttle and VIP appears here.", recentLabel: "Recent destination", used: "times used", recommended: "Recommended", bestChoice: "Best choice", alternative: "Alternative", nearby: "Live nearby", nearbyFallback: "Available on the map", qrTitle: "QR checkout", qrText: "Scan the QR code on another device or open the link directly.", close: "Close", openStripe: "Open Stripe checkout", liveTaxi: "taxis live", rentalCars: "rental cars", paymentTitle: "Payment methods", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card and Cash are integrated.", price: "Price", time: "Time", distance: "Distance" },
+  sq: { title: "Gjithçka në një hartë", pickup: "Kërko nisjen ose vendose me GPS", dropoff: "Ku dëshiron të shkosh?", current: "Vendndodhja ime", mapSets: "Harta vendos", start: "nisjen", destination: "destinacionin", compare: "Krahaso çmimet", home: "Shtëpia", work: "Puna", saveStart: "Ruaj nisjen", saveDestination: "Ruaj destinacionin", aiRules: "Rregullat smart aktive", aiRulesText: "Pas zgjedhjes së destinacionit, çmimi, ETA dhe rekomandimi shfaqen menjëherë si Uber/Bolt.", aiPrefs: "Preferencat AI", checkout: "Metoda e pagesës", favorites: "Të preferuarat", recents: "Adresat e fundit", noFavorites: "Ende nuk ka të preferuara.", noRecents: "Ende nuk ka adresa të fundit.", bookings: "Rezervimet e fundit mobility", directWallet: "Rezervo direkt me wallet", directCash: "Rezervo si udhëtim me cash", booking: "Po rezervohet...", bookNow: "Rezervo tani", empty: "Vendos nisjen dhe destinacionin ose prek hartën. Pastaj këtu shfaqet menjëherë krahasimi për taxi, scooter, bike, veturë me qira, shuttle dhe VIP.", recentLabel: "Destinacion i fundit", used: "herë përdorur", recommended: "Rekomanduar", bestChoice: "Zgjedhja më e mirë", alternative: "Alternativa", nearby: "Live afër", nearbyFallback: "I disponueshëm në hartë", qrTitle: "QR checkout", qrText: "Skano kodin QR në një pajisje tjetër ose hape linkun direkt.", close: "Mbyll", openStripe: "Hap Stripe checkout", liveTaxi: "taksi live", rentalCars: "vetura me qira", paymentTitle: "Metodat e pagesës", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card dhe Cash janë të integruara.", price: "Çmimi", time: "Koha", distance: "Distanca" },
 };
 
 function formatPrice(value) {
   return `€${Number(value || 0).toFixed(2)}`;
 }
 
-function buildWalletBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson) {
+function buildDirectBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson, paymentMethod = "wallet") {
   return {
     transport_type: transportType,
     transport_label: transportLabel,
     price_eur: priceEur,
     duration_min: durationMin,
     distance_km: distanceKm,
-    payment_method: "wallet",
+    payment_method: paymentMethod,
     pickup: { address: pickupAddress, lat: pickupLat, lng: pickupLng },
     dropoff: { address: dropoffAddress, lat: dropoffLat, lng: dropoffLng },
     preferences: { priority, luggage, childSeat },
@@ -39,8 +45,13 @@ function buildWalletBookingPayload(transportType, transportLabel, priceEur, dura
   };
 }
 
-async function createWalletBookingFromValues(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson) {
-  return await createMobilityBooking(buildWalletBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson));
+async function createDirectBookingFromValues(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson, paymentMethod = "wallet") {
+  return await createMobilityBooking(buildDirectBookingPayload(transportType, transportLabel, priceEur, durationMin, distanceKm, pickupAddress, pickupLat, pickupLng, dropoffAddress, dropoffLat, dropoffLng, priority, luggage, childSeat, aiRecommendationJson, paymentMethod));
+}
+
+function makeFavoriteLabel(address, fallback = "Favorit") {
+  const first = String(address || "").split(",")[0]?.trim();
+  return first?.length ? first.slice(0, 36) : fallback;
 }
 
 function makeServiceIcon(type) {
@@ -79,10 +90,11 @@ function RecommendationChip({ label, reason, active }) {
   );
 }
 
-function MobilityDetailSheet({ option, onClose, paymentOptions }) {
+function MobilityDetailSheet({ option, onClose, paymentOptions, ui, lang }) {
   if (!option) return null;
   const meta = TRANSPORT_META[option.type] || TRANSPORT_META.taxi;
   const Icon = meta.icon;
+  const detailText = meta.details?.[lang] || meta.details?.de;
   return (
     <AnimatePresence>
       <motion.div className="fixed inset-0 z-[120] bg-black/65 backdrop-blur-sm flex items-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
@@ -92,21 +104,21 @@ function MobilityDetailSheet({ option, onClose, paymentOptions }) {
             <div className="flex-1 min-w-0">
               <p className="text-[10px] uppercase tracking-[0.22em] text-white/35">BidBlitz Mobility</p>
               <h3 className="text-xl font-bold text-white mt-1">{option.label}</h3>
-              <p className="text-sm text-white/55 mt-1">{meta.detail}</p>
+              <p className="text-sm text-white/55 mt-1">{detailText}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mt-5">
-            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">Preis</p><p className="text-lg font-bold text-white mt-1">{formatPrice(option.price_eur)}</p></div>
-            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">Zeit</p><p className="text-lg font-bold text-white mt-1">{option.duration_min} Min</p></div>
-            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">Distanz</p><p className="text-lg font-bold text-white mt-1">{option.distance_km.toFixed(1)} km</p></div>
+            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">{ui.price}</p><p className="text-lg font-bold text-white mt-1">{formatPrice(option.price_eur)}</p></div>
+            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">{ui.time}</p><p className="text-lg font-bold text-white mt-1">{option.duration_min} Min</p></div>
+            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] p-3"><p className="text-[10px] text-white/35 uppercase tracking-[0.15em]">{ui.distance}</p><p className="text-lg font-bold text-white mt-1">{option.distance_km.toFixed(1)} km</p></div>
           </div>
 
           <div className="mt-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">Zahlungsmethoden</p>
-                <p className="text-sm text-white/70 mt-1">Wallet, NFC, QR, Apple Pay und Google Pay sind eingebunden.</p>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">{ui.paymentTitle}</p>
+                <p className="text-sm text-white/70 mt-1">{ui.paymentText}</p>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#00C2FF]/10 border border-[#00C2FF]/20 text-[#8EEBFF] text-xs font-semibold">
                 <Wallet size={14} /> {formatPrice(paymentOptions.wallet_balance)}
@@ -127,6 +139,7 @@ function MobilityDetailSheet({ option, onClose, paymentOptions }) {
 export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const { t, lang } = useI18n();
   const { user } = useUser();
+  const ui = MOBILITY_COPY[lang] || MOBILITY_COPY.de;
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
   const [dropoff, setDropoff] = useState({ address: "", lat: null, lng: null });
   const [activeField, setActiveField] = useState("dropoff");
@@ -180,6 +193,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       setSavedLocations(saved);
       setRecentLocations(recents);
       setPaymentOptions(payments);
+      setSelectedPaymentMethod((payments?.methods || []).some((item) => item.id === "wallet") ? "wallet" : payments?.methods?.[0]?.id || "wallet");
       setBookings(myBookings);
       setPreferences(storedPreferences);
       setSelectedType(storedPreferences?.priority || "balance");
@@ -258,6 +272,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     });
     await addRecentMobilityLocation({ label: "pickup", address: pickupValue.address, lat: pickupValue.lat, lng: pickupValue.lng, kind: "recent" });
     await addRecentMobilityLocation({ label: "dropoff", address: dropoffValue.address, lat: dropoffValue.lat, lng: dropoffValue.lng, kind: "recent" });
+    setRecentLocations(await getRecentMobilityLocations());
     const latLngs = (result.geometry || []).map(([lng, lat]) => [lat, lng]);
     if (routeLayerRef.current) mapRef.current?.removeLayer(routeLayerRef.current);
     const polyline = L.polyline(latLngs, { color: "#0F766E", weight: 6, opacity: 0.9 }).addTo(mapRef.current);
@@ -402,11 +417,29 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     mapRef.current?.setView([item.lat, item.lng], 15);
   };
 
-  const saveQuickLocation = async (label) => {
-    const target = label === "home" ? pickup : dropoff;
+  const saveQuickLocation = async (kind = "favorite", targetKey = null) => {
+    const effectiveTarget = targetKey || (searchTarget === "pickup" ? "pickup" : "dropoff");
+    const target = effectiveTarget === "pickup" ? pickup : dropoff;
     if (!target?.address || !target?.lat) return;
-    await saveMobilityLocation({ label, address: target.address, lat: target.lat, lng: target.lng, kind: label });
+    const label = kind === "home" ? "Zuhause" : kind === "work" ? "Arbeit" : makeFavoriteLabel(target.address, effectiveTarget === "pickup" ? "Start" : "Ziel");
+    const result = await saveMobilityLocation({
+      favorite_id: kind === "home" ? "home" : kind === "work" ? "work" : undefined,
+      label,
+      address: target.address,
+      lat: target.lat,
+      lng: target.lng,
+      kind,
+    });
+    if (!result?.ok) return toast.error(result?.error || "Favorit konnte nicht gespeichert werden");
     setSavedLocations(await getSavedMobilityLocations());
+    toast.success(`${label} gespeichert`);
+  };
+
+  const removeFavorite = async (favoriteId) => {
+    const result = await deleteSavedMobilityLocation(favoriteId);
+    if (!result?.ok) return toast.error(result?.error || "Favorit konnte nicht gelöscht werden");
+    setSavedLocations(await getSavedMobilityLocations());
+    toast.success("Favorit gelöscht");
   };
 
   const updatePreferences = async (changes) => {
@@ -432,7 +465,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     const dropoffValue = { ...dropoff };
     const preferenceValue = { ...preferences };
     setBookingTransportType(option.type);
-    if (selectedPaymentMethod !== "wallet") {
+    if (!["wallet", "cash"].includes(selectedPaymentMethod)) {
       const session = await createMobilityCheckoutSession({
         transport_type: transportType,
         payment_method: selectedPaymentMethod,
@@ -457,7 +490,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       window.location.href = session.checkout_url;
       return;
     }
-    const result = await createWalletBookingFromValues(
+    const result = await createDirectBookingFromValues(
       transportType,
       transportLabel,
       priceEur,
@@ -473,10 +506,11 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
       preferenceValue.luggage,
       preferenceValue.childSeat,
       aiRecommendation ? JSON.stringify(aiRecommendation) : "",
+      selectedPaymentMethod,
     );
     setBookingTransportType("");
     if (!result.ok) return toast.error(result.error || "Buchung fehlgeschlagen");
-    toast.success(`${transportLabel} gebucht`);
+    toast.success(selectedPaymentMethod === "cash" ? `${transportLabel} als Cash-Fahrt reserviert` : `${transportLabel} gebucht`);
     setDetailOption(null);
     await refreshBootstrapData();
   };
@@ -514,7 +548,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           <button onClick={() => onNavigate?.("/more")} className="w-10 h-10 rounded-full bg-white/70 border border-[#18202a]/10 flex items-center justify-center" data-testid="mobility-platform-back-btn"><ArrowLeft size={18} className="text-[#18202a]/70" /></button>
           <div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-[#0F766E]">BidBlitz Mobility</p>
-            <h1 className="text-lg font-bold">Alles auf einer Karte</h1>
+            <h1 className="text-lg font-bold">{ui.title}</h1>
           </div>
         </div>
         <div className="px-3 py-2 rounded-2xl bg-[#0F766E]/10 border border-[#0F766E]/20 text-[#0F766E] text-xs font-semibold flex items-center gap-2" data-testid="mobility-wallet-balance"><Wallet size={14} /> {formatPrice(paymentOptions.wallet_balance)}</div>
@@ -526,20 +560,20 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           <div className="rounded-[28px] bg-[#fffaf1]/90 border border-[#18202a]/8 backdrop-blur-xl p-3 pointer-events-auto shadow-[0_16px_48px_rgba(15,23,42,0.14)]">
             <div className="flex items-center justify-between gap-2 mb-2" data-testid="mobility-live-stats-row">
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-[11px] font-semibold" data-testid="mobility-live-count-taxi">{nearbyCounts.taxi || 0} Taxi live</span>
+                <span className="px-3 py-1.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-[11px] font-semibold" data-testid="mobility-live-count-taxi">{nearbyCounts.taxi || 0} {ui.liveTaxi}</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#7CFF5B]/16 text-[#256C1B] text-[11px] font-semibold" data-testid="mobility-live-count-scooter">{nearbyCounts.scooter || 0} Scooter</span>
-                <span className="px-3 py-1.5 rounded-full bg-[#F59E0B]/16 text-[#92400E] text-[11px] font-semibold" data-testid="mobility-live-count-cars">{nearbyCounts.car_rental || 0} Mietwagen</span>
+                <span className="px-3 py-1.5 rounded-full bg-[#F59E0B]/16 text-[#92400E] text-[11px] font-semibold" data-testid="mobility-live-count-cars">{nearbyCounts.car_rental || 0} {ui.rentalCars}</span>
               </div>
               {loadingNearby && <Loader2 size={16} className="animate-spin text-[#0F766E]" />}
             </div>
             <div className="space-y-2">
               <div className="relative">
                 <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0F766E]" />
-                <input value={pickup.address} onFocus={() => { setSearchTarget("pickup"); setActiveField("pickup"); }} onChange={(e) => { setPickup((prev) => ({ ...prev, address: e.target.value })); triggerSearch("pickup", e.target.value); }} placeholder="Abholort suchen oder per GPS setzen" className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#0F766E]/40" data-testid="mobility-pickup-input" />
+                <input value={pickup.address} onFocus={() => { setSearchTarget("pickup"); setActiveField("pickup"); }} onChange={(e) => { setPickup((prev) => ({ ...prev, address: e.target.value })); triggerSearch("pickup", e.target.value); }} placeholder={ui.pickup} className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#0F766E]/40" data-testid="mobility-pickup-input" />
               </div>
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#F97316]" />
-                <input value={dropoff.address} onFocus={() => { setSearchTarget("dropoff"); setActiveField("dropoff"); }} onChange={(e) => { setDropoff((prev) => ({ ...prev, address: e.target.value })); triggerSearch("dropoff", e.target.value); }} placeholder="Wohin möchtest du fahren?" className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#F97316]/40" data-testid="mobility-dropoff-input" />
+                <input value={dropoff.address} onFocus={() => { setSearchTarget("dropoff"); setActiveField("dropoff"); }} onChange={(e) => { setDropoff((prev) => ({ ...prev, address: e.target.value })); triggerSearch("dropoff", e.target.value); }} placeholder={ui.dropoff} className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#18202a]/10 text-sm outline-none focus:border-[#F97316]/40" data-testid="mobility-dropoff-input" />
               </div>
             </div>
 
@@ -557,11 +591,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             )}
 
             <div className="flex gap-2 mt-3 flex-wrap">
-              <button onClick={useCurrentLocation} className="px-3 py-2 rounded-2xl bg-[#0F766E]/12 border border-[#0F766E]/20 text-[#0F766E] text-xs font-semibold inline-flex items-center gap-1.5" data-testid="mobility-use-current-location-btn"><Navigation size={14} /> Mein Standort</button>
-              <button onClick={() => setActiveField(activeField === "pickup" ? "dropoff" : "pickup")} className="px-3 py-2 rounded-2xl bg-[#F97316]/10 border border-[#F97316]/20 text-[#C2410C] text-xs font-semibold inline-flex items-center gap-1.5" data-testid="mobility-map-tap-target-btn"><Crosshair size={14} /> Karte setzt: {activeField === "pickup" ? "Start" : "Ziel"}</button>
-              <button onClick={() => calculateRoute()} disabled={!pickup.lat || !dropoff.lat || loadingRoute} className="px-3 py-2 rounded-2xl bg-[#F97316] text-white text-xs font-semibold disabled:opacity-40" data-testid="mobility-calculate-route-btn">{loadingRoute ? "Berechnet..." : "Preise vergleichen"}</button>
-              <button onClick={() => saveQuickLocation("home")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-home-btn"><Home size={14} className="inline mr-1" /> Zuhause</button>
-              <button onClick={() => saveQuickLocation("work")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-work-btn"><ShieldCheck size={14} className="inline mr-1" /> Arbeit</button>
+              <button onClick={useCurrentLocation} className="px-3 py-2 rounded-2xl bg-[#0F766E]/12 border border-[#0F766E]/20 text-[#0F766E] text-xs font-semibold inline-flex items-center gap-1.5" data-testid="mobility-use-current-location-btn"><Navigation size={14} /> {ui.current}</button>
+              <button onClick={() => setActiveField(activeField === "pickup" ? "dropoff" : "pickup")} className="px-3 py-2 rounded-2xl bg-[#F97316]/10 border border-[#F97316]/20 text-[#C2410C] text-xs font-semibold inline-flex items-center gap-1.5" data-testid="mobility-map-tap-target-btn"><Crosshair size={14} /> {ui.mapSets}: {activeField === "pickup" ? ui.start : ui.destination}</button>
+              <button onClick={() => calculateRoute()} disabled={!pickup.lat || !dropoff.lat || loadingRoute} className="px-3 py-2 rounded-2xl bg-[#F97316] text-white text-xs font-semibold disabled:opacity-40" data-testid="mobility-calculate-route-btn">{loadingRoute ? "..." : ui.compare}</button>
+              <button onClick={() => saveQuickLocation("home", "dropoff")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-home-btn"><Home size={14} className="inline mr-1" /> {ui.home}</button>
+              <button onClick={() => saveQuickLocation("work", "dropoff")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-work-btn"><ShieldCheck size={14} className="inline mr-1" /> {ui.work}</button>
+              <button onClick={() => saveQuickLocation("favorite", "pickup")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-pickup-favorite-btn"><Star size={14} className="inline mr-1" /> {ui.saveStart}</button>
+              <button onClick={() => saveQuickLocation("favorite", "dropoff")} className="px-3 py-2 rounded-2xl bg-white border border-[#18202a]/10 text-[#18202a]/75 text-xs font-semibold" data-testid="mobility-save-dropoff-favorite-btn"><Star size={14} className="inline mr-1" /> {ui.saveDestination}</button>
             </div>
           </div>
         </div>
@@ -573,8 +609,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           <div className="flex items-start justify-between gap-3 mb-4">
             <div>
               <p className="text-[10px] uppercase tracking-[0.2em] text-[#18202a]/35">AI Route Recommendations</p>
-              <h2 className="text-lg font-bold mt-1">Smartes Regelwerk aktiv</h2>
-              <p className="text-xs text-[#18202a]/55 mt-1">Nach Zielwahl erscheinen Preis, Fahrzeit und Empfehlung direkt wie bei Uber/Bolt.</p>
+              <h2 className="text-lg font-bold mt-1">{ui.aiRules}</h2>
+              <p className="text-xs text-[#18202a]/55 mt-1">{ui.aiRulesText}</p>
             </div>
             {routeSummary && <div className="text-right text-xs text-[#18202a]/70" data-testid="mobility-route-summary"><div>{routeSummary.distance_km.toFixed(1)} km</div><div>{routeSummary.duration_min} Min</div></div>}
           </div>
@@ -600,7 +636,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           </div>
 
           <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-preferences-panel">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">AI Präferenzen</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">{ui.aiPrefs}</p>
             <div className="flex flex-wrap gap-2 mt-3">
               {[
                 { key: "cheapest", label: "Günstig" },
@@ -616,7 +652,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           </div>
 
           <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-payment-method-panel">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Checkout-Methode</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">{ui.checkout}</p>
             <div className="flex flex-wrap gap-2 mt-3">
               {paymentOptions.methods.map((method) => (
                 <button key={method.id} onClick={() => setSelectedPaymentMethod(method.id)} className={`px-3 py-2 rounded-full text-xs font-semibold border ${selectedPaymentMethod === method.id ? "bg-[#18202a] text-white border-[#18202a]" : "bg-[#f8f3e9] text-[#18202a]/80 border-[#18202a]/10"}`} data-testid={`mobility-payment-method-${method.id}`}>{method.label}</button>
@@ -656,8 +692,8 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {aiRecommendation.best_option_type ? <span className="px-3 py-1.5 rounded-full bg-white text-[11px] font-semibold text-[#18202a]" data-testid="mobility-ai-best-option">Beste Wahl: {options.find((item) => item.type === aiRecommendation.best_option_type)?.label || aiRecommendation.best_option_type}</span> : null}
-                  {aiRecommendation.secondary_option_type ? <span className="px-3 py-1.5 rounded-full bg-white text-[11px] font-semibold text-[#18202a]">Alternative: {options.find((item) => item.type === aiRecommendation.secondary_option_type)?.label || aiRecommendation.secondary_option_type}</span> : null}
+                  {aiRecommendation.best_option_type ? <span className="px-3 py-1.5 rounded-full bg-white text-[11px] font-semibold text-[#18202a]" data-testid="mobility-ai-best-option">{ui.bestChoice}: {options.find((item) => item.type === aiRecommendation.best_option_type)?.label || aiRecommendation.best_option_type}</span> : null}
+                  {aiRecommendation.secondary_option_type ? <span className="px-3 py-1.5 rounded-full bg-white text-[11px] font-semibold text-[#18202a]">{ui.alternative}: {options.find((item) => item.type === aiRecommendation.secondary_option_type)?.label || aiRecommendation.secondary_option_type}</span> : null}
                 </div>
                 {!!aiRecommendation.watchouts?.length && (
                   <div className="mt-3 space-y-1" data-testid="mobility-ai-watchouts-list">
@@ -684,53 +720,64 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-[#18202a]">{option.label}</span>
-                          {isSelected && <span className="px-2 py-0.5 rounded-full bg-[#0F766E]/15 text-[#0F766E] text-[10px] font-semibold">Empfohlen</span>}
+                          {isSelected && <span className="px-2 py-0.5 rounded-full bg-[#0F766E]/15 text-[#0F766E] text-[10px] font-semibold">{ui.recommended}</span>}
                         </div>
                         <p className="text-xs text-[#18202a]/55 mt-1">{option.duration_min} Min · {option.distance_km.toFixed(1)} km · Eco {option.eco_score}</p>
-                        <p className="text-[11px] text-[#18202a]/42 mt-1">{meta.detail}</p>
+                        <p className="text-[11px] text-[#18202a]/42 mt-1">{meta.details?.[lang] || meta.details?.de}</p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-base font-bold text-[#18202a]">{formatPrice(option.price_eur)}</div>
-                      <div className="text-[10px] text-[#18202a]/45 mt-1">Wallet · NFC · QR</div>
+                      <div className="text-[10px] text-[#18202a]/45 mt-1">{(option.payment_methods || []).map((id) => paymentOptions.methods.find((item) => item.id === id)?.label || id).slice(0, 3).join(" · ")}</div>
                     </div>
                   </div>
                   </button>
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="text-[11px] text-[#18202a]/55">{selectedPaymentMethod === "wallet" ? "Direkt mit Wallet buchen" : `Checkout: ${paymentOptions.methods.find((item) => item.id === selectedPaymentMethod)?.label || selectedPaymentMethod}`}</div>
-                    <button onClick={() => bookTransport(option)} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold disabled:opacity-40" disabled={bookingTransportType === option.type} data-testid={`mobility-book-option-${option.type}`}>{bookingTransportType === option.type ? "Bucht..." : "Jetzt buchen"}</button>
+                    <div className="text-[11px] text-[#18202a]/55">{selectedPaymentMethod === "wallet" ? ui.directWallet : selectedPaymentMethod === "cash" ? ui.directCash : `Checkout: ${paymentOptions.methods.find((item) => item.id === selectedPaymentMethod)?.label || selectedPaymentMethod}`}</div>
+                    <button onClick={() => bookTransport(option)} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold disabled:opacity-40" disabled={bookingTransportType === option.type} data-testid={`mobility-book-option-${option.type}`}>{bookingTransportType === option.type ? ui.booking : ui.bookNow}</button>
                   </div>
                 </div>
               );
             })}
             {!options.length && (
               <div className="rounded-2xl border border-dashed border-[#18202a]/14 bg-white/70 p-4 text-sm text-[#18202a]/65" data-testid="mobility-empty-comparison-state">
-                Gib Start und Ziel ein oder tippe auf die Karte. Danach erscheint hier sofort der Preisvergleich für Taxi, Scooter, Bike, Mietwagen, Shuttle und VIP.
+                {ui.empty}
               </div>
             )}
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-saved-locations-card">
-              <div className="flex items-center gap-2 mb-3"><Star size={14} className="text-[#FACC15]" /><p className="text-xs font-semibold">Favoriten</p></div>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2"><Star size={14} className="text-[#FACC15]" /><p className="text-xs font-semibold">{ui.favorites}</p></div>
+                <span className="text-[10px] text-[#18202a]/45">{savedLocations.length}</span>
+              </div>
               <div className="space-y-2">
-                {savedLocations.slice(0, 4).map((item) => (
-                  <button key={`${item.label}-${item.address}`} onClick={() => applyLocation("dropoff", item)} className="w-full text-left rounded-xl bg-[#f8f3e9] px-3 py-2" data-testid={`mobility-saved-location-${item.label}`}>
-                    <div className="text-xs font-semibold text-[#18202a]">{item.label}</div>
-                    <div className="text-[10px] text-[#18202a]/45 truncate mt-0.5">{item.address}</div>
-                  </button>
+                {savedLocations.slice(0, 6).map((item) => (
+                  <div key={item.favorite_id || `${item.label}-${item.address}`} className="flex items-start gap-2 rounded-xl bg-[#f8f3e9] px-2 py-2">
+                    <button onClick={() => applyLocation(searchTarget === "pickup" ? "pickup" : "dropoff", item)} className="flex-1 min-w-0 text-left px-1" data-testid={`mobility-saved-location-${item.favorite_id || item.label}`}>
+                      <div className="text-xs font-semibold text-[#18202a]">{item.label}</div>
+                      <div className="text-[10px] text-[#18202a]/45 truncate mt-0.5">{item.address}</div>
+                    </button>
+                    <button onClick={() => removeFavorite(item.favorite_id)} className="w-8 h-8 rounded-full bg-white border border-[#18202a]/10 flex items-center justify-center text-[#18202a]/55 shrink-0" data-testid={`mobility-delete-saved-location-${item.favorite_id || item.label}`}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 ))}
+                {!savedLocations.length && <div className="text-[11px] text-[#18202a]/45">{ui.noFavorites}</div>}
               </div>
             </div>
             <div className="rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-recent-locations-card">
-              <div className="flex items-center gap-2 mb-3"><MapPin size={14} className="text-[#00C2FF]" /><p className="text-xs font-semibold">Recent</p></div>
+              <div className="flex items-center justify-between gap-3 mb-3"><div className="flex items-center gap-2"><MapPin size={14} className="text-[#00C2FF]" /><p className="text-xs font-semibold">{ui.recents}</p></div><span className="text-[10px] text-[#18202a]/45">{recentLocations.length}</span></div>
               <div className="space-y-2">
                 {recentLocations.slice(0, 4).map((item, idx) => (
-                  <button key={`${item.address}-${idx}`} onClick={() => applyLocation("dropoff", item)} className="w-full text-left rounded-xl bg-[#f8f3e9] px-3 py-2" data-testid={`mobility-recent-location-${idx}`}>
-                    <div className="text-[11px] font-semibold text-[#18202a]">{item.label || "Letztes Ziel"}</div>
+                  <button key={`${item.address}-${idx}`} onClick={() => applyLocation(searchTarget === "pickup" ? "pickup" : "dropoff", item)} className="w-full text-left rounded-xl bg-[#f8f3e9] px-3 py-2" data-testid={`mobility-recent-location-${idx}`}>
+                    <div className="text-[11px] font-semibold text-[#18202a]">{item.label || ui.recentLabel}</div>
                     <div className="text-[10px] text-[#18202a]/45 truncate mt-0.5">{item.address}</div>
+                    <div className="text-[10px] text-[#18202a]/35 mt-1">{item.use_count ? `${item.use_count}× ${ui.used}` : "Neu"}</div>
                   </button>
                 ))}
+                {!recentLocations.length && <div className="text-[11px] text-[#18202a]/45">{ui.noRecents}</div>}
               </div>
             </div>
           </div>
@@ -738,7 +785,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
           {!!bookings.length && (
             <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-recent-bookings-card">
               <div className="flex items-center justify-between gap-3 mb-3">
-                <p className="text-xs font-semibold">Letzte Mobility-Buchungen</p>
+                <p className="text-xs font-semibold">{ui.bookings}</p>
                 <span className="text-[10px] text-[#18202a]/45">Wallet: {formatPrice(paymentOptions.wallet_balance)}</span>
               </div>
               <div className="space-y-2">
@@ -764,15 +811,15 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-qr-checkout-card">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">QR Checkout</p>
-                  <h3 className="text-base font-bold mt-1">Stripe Checkout per QR</h3>
-                  <p className="text-sm text-[#18202a]/62 mt-2">Scanne den QR-Code auf einem zweiten Gerät oder öffne den Link direkt.</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">{ui.qrTitle}</p>
+                  <h3 className="text-base font-bold mt-1">{ui.qrTitle}</h3>
+                  <p className="text-sm text-[#18202a]/62 mt-2">{ui.qrText}</p>
                 </div>
-                <button onClick={() => setQrCheckout(null)} className="px-3 py-2 rounded-full bg-[#f8f3e9] text-xs font-semibold border border-[#18202a]/10" data-testid="mobility-qr-close-button">Schließen</button>
+                <button onClick={() => setQrCheckout(null)} className="px-3 py-2 rounded-full bg-[#f8f3e9] text-xs font-semibold border border-[#18202a]/10" data-testid="mobility-qr-close-button">{ui.close}</button>
               </div>
               <div className="mt-4 flex flex-col items-center gap-3">
                 <QRCodeSVG value={qrCheckout.checkout_url} size={180} includeMargin data-testid="mobility-qr-code" />
-                <a href={qrCheckout.checkout_url} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold" data-testid="mobility-qr-open-link">Stripe Checkout öffnen</a>
+                <a href={qrCheckout.checkout_url} className="px-4 py-2 rounded-full bg-[#18202a] text-white text-xs font-semibold" data-testid="mobility-qr-open-link">{ui.openStripe}</a>
               </div>
             </div>
           )}
@@ -781,9 +828,9 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
             <div className="mt-4 rounded-2xl bg-[#0F766E]/8 border border-[#0F766E]/20 p-4" data-testid="mobility-selected-nearby-card">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#0F766E]">Live in der Nähe</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#0F766E]">{ui.nearby}</p>
                   <h3 className="text-base font-bold mt-1 text-[#18202a]">{selectedNearby.label}</h3>
-                  <p className="text-xs text-[#18202a]/60 mt-1">{selectedNearby.subtitle || "Verfügbar auf der Karte"}</p>
+                  <p className="text-xs text-[#18202a]/60 mt-1">{selectedNearby.subtitle || ui.nearbyFallback}</p>
                 </div>
                 <div className="text-right text-xs text-[#18202a]/65">
                   {selectedNearby.distance_km ? <div>{selectedNearby.distance_km} km</div> : null}
@@ -796,7 +843,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
         </div>
       </div>
 
-      <MobilityDetailSheet option={detailOption} onClose={() => setDetailOption(null)} paymentOptions={paymentOptions} />
+      <MobilityDetailSheet option={detailOption} onClose={() => setDetailOption(null)} paymentOptions={paymentOptions} ui={ui} lang={lang} />
     </div>
   );
 }

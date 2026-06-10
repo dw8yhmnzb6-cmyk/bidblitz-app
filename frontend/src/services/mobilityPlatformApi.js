@@ -137,7 +137,17 @@ export async function saveMobilityLocation(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  return res.ok;
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Favorit konnte nicht gespeichert werden" };
+}
+
+export async function deleteSavedMobilityLocation(favoriteId) {
+  const res = await fetch(`${API}/api/mobility-platform/saved-locations/${favoriteId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Favorit konnte nicht gelöscht werden" };
 }
 
 export async function getRecentMobilityLocations() {
