@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 10.06.2026
+- Taxi-Ansicht visuell modernisiert: helles High-Contrast-Bottom-Sheet statt schwer lesbarem Dark-Overlay
+- Such-CTA „Wohin möchtest du?“ größer, klarer und hochwertiger gestaltet
+- GPS-/Standort-Pills und Kartenstatus als helle Floating-Elemente über der Karte verbessert
+- Booking-, Vehicle-, Promo- und Tracking-Karten im Taxi-Flow auf moderne weiße Kartenoptik umgestellt
+- Neue Taxi-Typografie ergänzt: `Chivo` Headlines + `IBM Plex Sans` Body
+- Verifiziert: echter Screenshot-Smoke auf `/taxi` + Frontend-UI-Test 8/8 PASS
+
 ## 09.06.2026
 - Phase 3 Mobility Ecosystem auf `/mobility-map` live gebaut: zentrale OSM-/Leaflet-Karte statt alter Car-only-Map
 - Neue Backend-APIs unter `/api/mobility-platform`: `nearby`, `search`, `reverse`, `route`, `payment-options`, `saved-locations`, `recent-locations`

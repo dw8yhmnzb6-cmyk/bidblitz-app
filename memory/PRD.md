@@ -9,6 +9,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Zentrale BidBlitz-Mobilitätskarte mit OpenStreetMap + Leaflet + Nominatim ist jetzt als eigenständiger Flow unter `/mobility-map` aktiv.
 - Restaurant-/Café-Tischsystem bleibt vorhanden; Preview-Einschränkung für echte USB-/LAN-Drucker gilt weiterhin.
 
+### 10.06.2026 (Taxi UI Lesbarkeit / Modernisierung) ✅
+- 🟢 **Taxi-Mobile-Ansicht modernisiert** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/taxi/TaxiBottomSheet.jsx`, `frontend/src/components/taxi/TaxiBookingSheet.jsx`, `frontend/src/components/taxi/TaxiAddressSearchSheet.jsx`): dunkles, schwer lesbares Kartenlayout auf ein klares High-Contrast-Design mit großem weißem Bottom-Sheet, sauberer Typo und deutlich lesbarer Such-CTA umgestellt.
+- 🟢 **Map-Overlays klarer gemacht** (`TaxiPage.jsx`): GPS-/Standort-Pills, Kartenstatus und Top-Actions jetzt als helle Floating-Pills mit besserem Kontrast über der Karte statt visuell zu verschwimmen.
+- 🟢 **Booking-/Tracking-Sheet visuell aufgewertet** (`TaxiBookingSheet.jsx`, `TaxiTrackingSheet.jsx`, `TaxiVehiclePicker.jsx`, `TaxiPromoCodeField.jsx`): Preise, ETA, Fahrzeugwahl, Buttons und Hinweise jetzt heller, moderner und besser gegliedert.
+- 🟢 **Neue Typo für Taxi-Flow** (`frontend/src/index.css`): `Chivo` für Headlines und `IBM Plex Sans` für Body-Texte im Taxi-Flow ergänzt.
+- ✅ **Verifiziert**: echter Screenshot-Smoke auf `/taxi` erfolgreich; zusätzlicher Frontend-UI-Test PASS (8/8) — Bottom-Sheet klar lesbar, CTA sichtbar, GPS-Pills lesbar, kein Layout-Chaos.
+
 ### 09.06.2026 (Phase 3 Mobility Ecosystem — Unified Map) ✅
 - 🟢 **Neue zentrale Mobility-Karte aktiviert** (`frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`, `frontend/src/pages/MobilityMapPage.jsx`): `/mobility-map` nutzt jetzt eine echte Leaflet/OSM-Karte mit klarem eigenständigem Mobility-Flow statt der alten Car-only-Ansicht.
 - 🟢 **Adresssuche + Reverse Geocoding produktiv** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`): Nominatim-basierte Suche, Reverse-Geocoding und serverseitiger Cache für Such-/Reverse-Ergebnisse eingebaut.
