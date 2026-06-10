@@ -1,0 +1,42 @@
+{
+  "test_date": "2026-06-10T08:14:15.942641",
+  "base_url": "https://taxi-uber-style.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Payment Options - credit_card and cash present",
+      "passed": true,
+      "details": "{\n  \"status_code\": 200,\n  \"wallet_balance\": 7968.46,\n  \"total_methods\": 7,\n  \"method_ids\": [\n    \"wallet\",\n    \"nfc\",\n    \"qr\",\n    \"apple_pay\",\n    \"google_pay\",\n    \"credit_card\",\n    \"cash\"\n  ],\n  \"credit_card\": {\n    \"id\": \"credit_card\",\n    \"label\": \"Credit Card\",\n    \"enabled\": true\n  },\n  \"cash\": {\n    \"id\": \"cash\",\n    \"label\": \"Cash\",\n    \"enabled\": true\n  }\n}",
+      "timestamp": "2026-06-10T08:14:16.432725"
+    },
+    {
+      "test": "Saved Locations CRUD",
+      "passed": true,
+      "details": "{\n  \"initial_count\": 8,\n  \"after_post_count\": 9,\n  \"final_count\": 8,\n  \"created_favorite_id\": \"fav-06a7083720\",\n  \"crud_operations\": \"GET \\u2192 POST \\u2192 GET \\u2192 DELETE \\u2192 GET\",\n  \"verification\": \"Count increased by 1 after POST: True, Count back to initial after DELETE: True\"\n}",
+      "timestamp": "2026-06-10T08:14:16.682251"
+    },
+    {
+      "test": "Recent Locations - GET/POST",
+      "passed": true,
+      "details": "{\n  \"post_status\": \"success\",\n  \"get_status\": \"success\",\n  \"recent_locations_count\": 8,\n  \"posted_location_found\": true,\n  \"sample_locations\": [\n    {\n      \"user_id\": \"69cface7afddbc3de2cabb39\",\n      \"address\": \"Brandenburger Tor, Berlin, Germany\",\n      \"kind\": \"place\",\n      \"label\": \"Brandenburg Gate\",\n      \"lat\": 52.5163,\n      \"lng\": 13.3777,\n      \"updated_at\": \"2026-06-10T08:14:16.715242+00:00\",\n      \"use_count\": 2\n    },\n    {\n      \"address\": \"UseCount Address 1794731a\",\n      \"user_id\": \"69cface7afddbc3de2cabb39\",\n      \"kind\": \"recent\",\n      \"label\": \"TEST_UseCount_1794731a\",\n      \"lat\": 42.6629,\n      \"lng\": 21.1655,\n      \"updated_at\": \"2026-06-10T08:02:14.356445+00:00\",\n      \"use_count\": 2\n    },\n    {\n      \"address\": \"Get Recent Address cf41bd89\",\n      \"user_id\": \"69cface7afddbc3de2cabb39\",\n      \"kind\": \"recent\",\n      \"label\": \"TEST_GetRecent_cf41bd89\",\n      \"lat\": 42.6629,\n      \"lng\": 21.1655,\n      \"updated_at\": \"2026-06-10T08:02:14.209340+00:00\",\n      \"use_count\": 1\n    }\n  ]\n}",
+      "timestamp": "2026-06-10T08:14:16.786124"
+    },
+    {
+      "test": "Cash Booking - payment_status=cash_due",
+      "passed": true,
+      "details": "{\n  \"status_code\": 200,\n  \"ok\": true,\n  \"booking_id\": \"mob-e52eace20197\",\n  \"payment_method\": \"cash\",\n  \"payment_status\": \"cash_due\",\n  \"status\": \"confirmed\",\n  \"transport_type\": \"taxi\",\n  \"price_eur\": 5.33,\n  \"verification\": \"payment_status=cash_due \\u2713\"\n}",
+      "timestamp": "2026-06-10T08:14:17.243221"
+    },
+    {
+      "test": "Credit Card Checkout - checkout_url present",
+      "passed": true,
+      "details": "{\n  \"status_code\": 200,\n  \"checkout_url\": \"https://checkout.stripe.com/c/pay/cs_test_a1WqEvQeKFZJDT37hhik7miUjors0D6HLacsk4qMyQHdMo2CP26Avb0H5e#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRXbE1PbkYxSmNdNEI8VlZ%2FXWlVXHIzQ102Zkc3X3cyQ0tVMktEaUFNSV1MNE1AUUhMTzVAQGZEbktRaXZRbzJCR2BBU3FXVEw8YFQzMm5hazZOYWEwSFA1NVJiY2owRlBjJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl\",\n  \"session_id\": \"cs_test_a1WqEvQeKFZJDT37hhik7miUjors0D6HLacsk4qMyQHdMo2CP26Avb0H5e\",\n  \"booking_id\": \"mob-5b664d318da5\",\n  \"verification\": \"checkout_url present and valid Stripe URL \\u2713\"\n}",
+      "timestamp": "2026-06-10T08:14:18.081660"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "success_rate": "100.0%"
+  }
+}
