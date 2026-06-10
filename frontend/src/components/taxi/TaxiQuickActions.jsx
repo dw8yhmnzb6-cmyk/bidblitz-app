@@ -45,16 +45,16 @@ export default function TaxiQuickActions({
   const lastDropAddr = lastRide?.dropoff_address || lastRide?.dropoff?.address || lastRide?.dropoff;
 
   return (
-    <div className="space-y-2" data-testid="taxi-quick-actions">
+    <div className="space-y-3" data-testid="taxi-quick-actions">
       {/* Jetzt / Später toggle */}
-      <div className="flex gap-1 p-1 bg-white/[0.04] border border-white/[0.06] rounded-xl">
+      <div className="flex gap-1 p-1 bg-zinc-100 rounded-full border border-zinc-200">
         <button
           onClick={() => onScheduleModeChange?.("now")}
           data-testid="taxi-mode-now"
-          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-colors ${
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-full text-sm font-bold transition-all ${
             scheduleMode === "now"
-              ? "bg-cyan-500 text-black"
-              : "text-gray-300 hover:bg-white/5"
+              ? "bg-white text-zinc-950 shadow-[0_4px_12px_rgba(15,23,42,0.08)]"
+              : "text-zinc-500 hover:bg-white/60"
           }`}
         >
           <Zap className="w-3.5 h-3.5" /> Jetzt
@@ -65,10 +65,10 @@ export default function TaxiQuickActions({
             onOpenScheduled?.();
           }}
           data-testid="taxi-mode-later"
-          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-colors ${
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-full text-sm font-bold transition-all ${
             scheduleMode === "later"
-              ? "bg-purple-500 text-white"
-              : "text-gray-300 hover:bg-white/5"
+              ? "bg-[#002FA7] text-white shadow-[0_6px_16px_rgba(0,47,167,0.18)]"
+              : "text-zinc-500 hover:bg-white/60"
           }`}
         >
           <Clock className="w-3.5 h-3.5" /> Später
@@ -76,7 +76,7 @@ export default function TaxiQuickActions({
       </div>
 
       {/* 3 Quick-Action-Tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <ActionTile
           icon={Home}
           label="Heim"

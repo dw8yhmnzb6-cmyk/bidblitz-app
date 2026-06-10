@@ -10,7 +10,7 @@
 import React, { useState } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 
-const SNAPS = { collapsed: 0.46, half: 0.68, full: 0.94 };
+const SNAPS = { collapsed: 0.40, half: 0.64, full: 0.92 };
 
 export default function TaxiBottomSheet({
   defaultSnap = "half",
@@ -61,7 +61,7 @@ export default function TaxiBottomSheet({
   return (
     <motion.div
       style={{ height: h }}
-      className="fixed inset-x-0 bottom-0 z-30 bg-[#0A0A0F] rounded-t-3xl border-t border-white/10 shadow-[0_-12px_40px_rgba(0,0,0,0.6)] flex flex-col"
+      className="fixed inset-x-0 bottom-0 z-30 bg-white rounded-t-[32px] border-t border-black/5 shadow-[0_-18px_60px_rgba(15,23,42,0.18)] flex flex-col overflow-hidden"
       data-testid={testId}
       data-snap={snap}
     >
@@ -73,14 +73,14 @@ export default function TaxiBottomSheet({
         onDrag={onDrag}
         onDragEnd={onDragEnd}
         onClick={onHandleTap}
-        className="pt-2 pb-1 flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
+        className="pt-3 pb-2 flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
         data-testid={`${testId}-handle`}
       >
-        <div className="w-12 h-1.5 rounded-full bg-white/25" />
+        <div className="w-12 h-1.5 rounded-full bg-zinc-200" />
       </motion.div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] text-zinc-950 font-taxi-body">
         {children}
       </div>
     </motion.div>

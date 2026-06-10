@@ -23,7 +23,7 @@ export default function TaxiVehiclePicker({
   return (
     <div className="space-y-3" data-testid="taxi-vehicle-picker">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wider">
+        <h3 className="font-taxi-heading font-bold text-zinc-900 text-sm uppercase tracking-[0.22em]">
           {estimates.length === 1 ? "Ein Produkt verfügbar" : `${estimates.length} Produkte verfügbar`}
         </h3>
       </div>
@@ -37,55 +37,55 @@ export default function TaxiVehiclePicker({
               onClick={() => onSelect(est.vehicle_type)}
               whileTap={{ scale: 0.98 }}
               data-testid={`vehicle-card-${est.vehicle_type}`}
-              className={`w-full p-3 rounded-2xl border-2 transition-all overflow-hidden ${
+              className={`w-full p-4 rounded-[24px] border transition-all overflow-hidden ${
                 isActive
-                  ? "bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border-cyan-400/70 shadow-[0_0_24px_rgba(0,194,255,0.15)]"
-                  : "bg-[#0F1218] border-white/5 hover:border-white/15"
+                  ? "bg-[#F6F8FF] border-[#002FA7]/25 shadow-[0_10px_24px_rgba(0,47,167,0.10)]"
+                  : "bg-white border-zinc-200 hover:border-zinc-300 shadow-[0_6px_18px_rgba(15,23,42,0.05)]"
               } ${isExpanded ? "rounded-b-none" : ""}`}
             >
               <div className="flex items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                   <div
-                    className={`shrink-0 w-14 h-10 rounded-lg flex items-center justify-center ${
-                      isActive ? "bg-cyan-500/10" : "bg-white/[0.03]"
+                    className={`shrink-0 w-16 h-11 rounded-2xl flex items-center justify-center ${
+                      isActive ? "bg-white" : "bg-zinc-100"
                     }`}
                   >
                     <VehicleIcon type={est.vehicle_type} className="w-11 h-6" active={isActive} />
                   </div>
                   <div className="text-left min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <p className={`font-bold text-[15px] leading-tight truncate ${isActive ? "text-white" : "text-gray-200"}`}>
+                      <p className={`font-taxi-heading font-black text-[16px] leading-tight truncate ${isActive ? "text-zinc-950" : "text-zinc-900"}`}>
                         {est.name}
                       </p>
                       {isActive && priority === "fastest" && (
-                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cyan-300 bg-cyan-500/15 px-1.5 py-0.5 rounded-md">
+                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#002FA7] bg-[#002FA7]/10 px-2 py-1 rounded-full">
                           schnell
                         </span>
                       )}
                       {isActive && priority === "cheapest" && (
-                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded-md">
+                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">
                           günstig
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-500 truncate">{est.description}</p>
-                    <p className="text-[11px] text-gray-600 mt-0.5 whitespace-nowrap">
+                    <p className="text-[12px] text-zinc-500 truncate mt-0.5">{est.description}</p>
+                    <p className="text-[11px] text-zinc-400 mt-1 whitespace-nowrap">
                       {est.capacity}&nbsp;P · {est.eta_minutes}&nbsp;Min
                     </p>
                   </div>
                 </div>
                 <div className="text-right shrink-0 pl-1">
-                  <p className={`text-base font-bold tabular-nums whitespace-nowrap ${isActive ? "text-cyan-400" : "text-gray-200"}`}>
+                  <p className={`text-lg font-black tabular-nums whitespace-nowrap ${isActive ? "text-[#002FA7]" : "text-zinc-950"}`}>
                     €{est.fare.toFixed(2)}
                   </p>
                   {est.fare_discount > 0 && est.fare_original && (
-                    <p className="text-[10px] text-emerald-400 font-semibold whitespace-nowrap tabular-nums">
-                      <span className="line-through text-gray-500 mr-1">€{est.fare_original.toFixed(2)}</span>
+                    <p className="text-[10px] text-emerald-600 font-semibold whitespace-nowrap tabular-nums">
+                      <span className="line-through text-zinc-400 mr-1">€{est.fare_original.toFixed(2)}</span>
                       −€{est.fare_discount.toFixed(2)}
                     </p>
                   )}
                   {!est.fare_discount && est.fare_range && (
-                    <p className="text-[10px] text-gray-600 whitespace-nowrap tabular-nums">
+                    <p className="text-[10px] text-zinc-400 whitespace-nowrap tabular-nums">
                       €{Math.round(est.fare_range.min)}–€{Math.round(est.fare_range.max)}
                     </p>
                   )}
@@ -99,7 +99,7 @@ export default function TaxiVehiclePicker({
                     e.stopPropagation();
                     setExpandedKey(isExpanded ? null : est.vehicle_type);
                   }}
-                  className="mt-2.5 pt-2.5 border-t border-white/5 flex items-center justify-between text-[11px] text-cyan-400 hover:text-cyan-300"
+                  className="mt-3 pt-3 border-t border-zinc-200 flex items-center justify-between text-[11px] text-[#002FA7] hover:text-[#001f6b]"
                   data-testid={`vehicle-customize-${est.vehicle_type}`}
                 >
                   <span className="font-medium">Anpassen</span>
@@ -120,11 +120,11 @@ export default function TaxiVehiclePicker({
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.18 }}
-                  className="overflow-hidden bg-[#0F1218] border-2 border-t-0 border-cyan-400/70 rounded-b-2xl"
+                  className="overflow-hidden bg-white border border-t-0 border-[#002FA7]/25 rounded-b-[24px] shadow-[0_10px_24px_rgba(0,47,167,0.08)]"
                 >
                   <div className="p-4 space-y-3">
                     <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-semibold mb-2">
                         Priorität
                       </p>
                       <div className="grid grid-cols-3 gap-2">
@@ -134,8 +134,8 @@ export default function TaxiVehiclePicker({
                             onClick={() => onChangePriority?.(p.key)}
                             className={`py-2 rounded-xl text-xs font-medium transition-colors ${
                               priority === p.key
-                                ? "bg-cyan-500 text-black"
-                                : "bg-white/5 text-gray-300 hover:bg-white/10"
+                                ? "bg-[#002FA7] text-white"
+                                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                             }`}
                             data-testid={`priority-${p.key}`}
                           >
@@ -146,13 +146,13 @@ export default function TaxiVehiclePicker({
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-white/5 rounded-xl px-3 py-2">
-                        <p className="text-gray-500 text-[10px]">Max. Sitzplätze</p>
-                        <p className="text-white font-semibold">{est.capacity}</p>
+                      <div className="bg-zinc-100 rounded-xl px-3 py-2">
+                        <p className="text-zinc-500 text-[10px]">Max. Sitzplätze</p>
+                        <p className="text-zinc-950 font-semibold">{est.capacity}</p>
                       </div>
-                      <div className="bg-white/5 rounded-xl px-3 py-2">
-                        <p className="text-gray-500 text-[10px]">Geschätzte Ankunft</p>
-                        <p className="text-white font-semibold">~{est.eta_minutes} Min</p>
+                      <div className="bg-zinc-100 rounded-xl px-3 py-2">
+                        <p className="text-zinc-500 text-[10px]">Geschätzte Ankunft</p>
+                        <p className="text-zinc-950 font-semibold">~{est.eta_minutes} Min</p>
                       </div>
                     </div>
                   </div>

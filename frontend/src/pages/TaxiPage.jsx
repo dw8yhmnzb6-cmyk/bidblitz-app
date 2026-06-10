@@ -582,7 +582,7 @@ export default function TaxiPage({ onNavigate }) {
   }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white" data-mapflow={inMapBookingFlow ? '1' : '0'}>
+    <div className="min-h-screen bg-[#f3f4f6] text-zinc-950 font-taxi-body" data-mapflow={inMapBookingFlow ? '1' : '0'}>
       {!inMapBookingFlow && (
         <TaxiHeader
           onBack={() => navigate('/')}
@@ -617,27 +617,30 @@ export default function TaxiPage({ onNavigate }) {
             />
           )}
 
+          <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(255,255,255,0.2)_0%,rgba(255,255,255,0.02)_22%,rgba(255,255,255,0)_48%,rgba(255,255,255,0.16)_100%)]" />
+
           {/* Map error overlay (token/network failure) */}
           {mapError && (
             <div
-              className="absolute inset-x-0 top-20 mx-4 z-30 p-4 rounded-2xl bg-amber-500/10 border border-amber-400/40 backdrop-blur-xl flex items-start gap-3"
+              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+80px)] mx-4 z-30 rounded-[28px] bg-white/96 border border-black/5 shadow-[0_18px_48px_rgba(15,23,42,0.18)] backdrop-blur-xl p-5 flex items-start gap-4"
               data-testid="taxi-map-error"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-500 flex items-center justify-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-amber-200">Fallback-Karte aktiv</p>
-                <p className="text-[12px] text-white/65 mt-0.5 leading-snug">{mapError}</p>
-                <p className="text-[11px] text-amber-100/80 mt-1">Die Ersatzkarte bleibt sichtbar, damit Suche und Bestellung weiter funktionieren.</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-500">Kartenstatus</p>
+                <p className="text-lg font-taxi-heading font-black tracking-tight text-zinc-950 mt-1">Fallback-Karte aktiv</p>
+                <p className="text-sm text-zinc-600 mt-2 leading-snug">{mapError}</p>
+                <p className="text-xs text-zinc-500 mt-1">Suche und Bestellung bleiben trotzdem klar nutzbar.</p>
                 <button
                   onClick={() => { setMapError(null); window.location.reload(); }}
                   data-testid="taxi-map-error-reload"
-                  className="mt-2 text-[11px] px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-semibold"
+                  className="mt-3 text-xs px-4 py-2 rounded-full bg-[#002FA7] hover:bg-[#00258a] text-white font-semibold transition-colors"
                 >
                   Neu laden
                 </button>
@@ -646,11 +649,11 @@ export default function TaxiPage({ onNavigate }) {
           )}
 
           {/* Top bar overlay */}
-          <div className="absolute top-0 inset-x-0 z-40 px-4 pt-3 pb-2 bg-gradient-to-b from-black/80 to-transparent">
-            <div className="flex items-center justify-between gap-2">
+          <div className="absolute top-0 inset-x-0 z-40 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-2">
+            <div className="flex items-start justify-between gap-3">
               <button
                 onClick={() => setShowSideMenu(true)}
-                className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center shrink-0"
+                className="w-12 h-12 rounded-full bg-white/88 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(15,23,42,0.14)] text-zinc-900 flex items-center justify-center shrink-0 pointer-events-auto"
                 data-testid="map-flow-menu"
                 title="Menü"
               >
@@ -669,84 +672,94 @@ export default function TaxiPage({ onNavigate }) {
                       <button
                         onClick={getCurrentLocation}
                         data-testid="map-flow-gps-denied-cta"
-                        className="flex-1 bg-red-500/10 border border-red-500/30 rounded-full px-3 py-2 text-left min-w-0 flex items-center gap-2 hover:bg-red-500/15 active:scale-[0.98] transition-all"
+                        className="flex-1 max-w-[min(56vw,420px)] bg-white/90 border border-red-200 rounded-full px-4 py-2.5 text-left min-w-0 flex items-center gap-3 shadow-[0_8px_24px_rgba(15,23,42,0.14)] hover:bg-white active:scale-[0.98] transition-all pointer-events-auto"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2" className="shrink-0">
+                        <span className="relative flex h-3 w-3 shrink-0">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-45 animate-ping" />
+                          <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                        </span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" className="shrink-0 hidden">
                           <circle cx="12" cy="12" r="3" />
                           <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
                         </svg>
                         <span className="flex-1 min-w-0">
-                          <p className="text-[9px] text-red-400 font-semibold uppercase tracking-wider leading-none">GPS aus</p>
-                          <p className="text-xs text-white truncate leading-tight mt-0.5">Tippen, um zu aktivieren</p>
+                          <p className="text-[10px] text-red-500 font-semibold uppercase tracking-[0.2em] leading-none">GPS aus</p>
+                          <p className="text-sm text-zinc-900 truncate leading-tight mt-1 font-medium">Tippen, um zu aktivieren</p>
                         </span>
                       </button>
                     );
                   }
                   return (
                     <div
-                      className="flex-1 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-2 text-left min-w-0"
+                      className="flex-1 max-w-[min(56vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-full px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto"
                       data-testid="map-flow-current-address"
                     >
-                      <p className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider leading-none">
-                        Standort
+                      <p className="text-[10px] text-[#002FA7] font-semibold uppercase tracking-[0.2em] leading-none">
+                        Standort genau
                       </p>
-                      <p className="text-xs text-white truncate leading-tight mt-0.5">{currentAddress}</p>
+                      <p className="text-sm text-zinc-900 truncate leading-tight mt-1 font-medium">{currentAddress}</p>
                     </div>
                   );
                 })()
-              ) : null}
+              ) : (
+                <div className="flex-1 max-w-[min(56vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-full px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto" data-testid="map-flow-current-address">
+                  <p className="text-[10px] text-[#002FA7] font-semibold uppercase tracking-[0.2em] leading-none">GPS wird gesucht</p>
+                  <p className="text-sm text-zinc-700 truncate leading-tight mt-1 font-medium">Wir holen deinen Standort jetzt.</p>
+                </div>
+              )}
 
-              <button
-                onClick={getCurrentLocation}
-                disabled={loadingLocation}
-                className="w-10 h-10 rounded-full bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center disabled:opacity-50 shrink-0"
-                data-testid="map-flow-locate"
-                title="Standort"
-              >
-                {loadingLocation ? (
-                  <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581" />
-                  </svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-                  </svg>
-                )}
-              </button>
-
-              {view === 'tracking' && (
+              <div className="flex items-center gap-2 shrink-0 pointer-events-auto">
                 <button
-                  onClick={() => {
-                    voiceover.setEnabled(!voiceover.enabled);
-                    if (!voiceover.enabled) {
-                      // unmute → speak a confirmation so the user hears it works
-                      voiceover.speak("Stimme aktiviert.");
-                    }
-                  }}
-                  className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center shrink-0 transition-colors ${
-                    voiceover.enabled
-                      ? "bg-[#00C2FF]/20 border-[#00C2FF]/40 text-[#00C2FF]"
-                      : "bg-black/70 border-white/10 text-white/50"
-                  }`}
-                  data-testid="map-flow-voice-toggle"
-                  title={voiceover.enabled ? "Stimme ausschalten" : "Stimme einschalten"}
+                  onClick={getCurrentLocation}
+                  disabled={loadingLocation}
+                  className="w-12 h-12 rounded-full bg-white/88 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(15,23,42,0.14)] text-zinc-900 flex items-center justify-center disabled:opacity-50"
+                  data-testid="map-flow-locate"
+                  title="Standort"
                 >
-                  {voiceover.enabled ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                      <path d="M15.54 8.46a5 5 0 010 7.07" />
-                      <path d="M19.07 4.93a10 10 0 010 14.14" />
+                  {loadingLocation ? (
+                    <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581" />
                     </svg>
                   ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                      <line x1="23" y1="9" x2="17" y2="15" />
-                      <line x1="17" y1="9" x2="23" y2="15" />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#002FA7" strokeWidth="2">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
                     </svg>
                   )}
                 </button>
-              )}
+
+                {view === 'tracking' && (
+                  <button
+                    onClick={() => {
+                      voiceover.setEnabled(!voiceover.enabled);
+                      if (!voiceover.enabled) {
+                        voiceover.speak("Stimme aktiviert.");
+                      }
+                    }}
+                    className={`w-12 h-12 rounded-full backdrop-blur-xl border shadow-[0_8px_24px_rgba(15,23,42,0.14)] flex items-center justify-center transition-colors ${
+                      voiceover.enabled
+                        ? "bg-[#002FA7] border-[#002FA7] text-white"
+                        : "bg-white/88 border-white/70 text-zinc-600"
+                    }`}
+                    data-testid="map-flow-voice-toggle"
+                    title={voiceover.enabled ? "Stimme ausschalten" : "Stimme einschalten"}
+                  >
+                    {voiceover.enabled ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                        <path d="M15.54 8.46a5 5 0 010 7.07" />
+                        <path d="M19.07 4.93a10 10 0 010 14.14" />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                        <line x1="23" y1="9" x2="17" y2="15" />
+                        <line x1="17" y1="9" x2="23" y2="15" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
