@@ -9,6 +9,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Zentrale BidBlitz-Mobilitätskarte mit OpenStreetMap + Leaflet + Nominatim ist jetzt als eigenständiger Flow unter `/mobility-map` aktiv.
 - Restaurant-/Café-Tischsystem bleibt vorhanden; Preview-Einschränkung für echte USB-/LAN-Drucker gilt weiterhin.
 
+### 10.06.2026 (Mobility Master Prompt P0 geschlossen) ✅
+- 🟢 **Credit Card + Cash live ergänzt** (`backend/routes/mobility_platform.py`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): Payment-Optionen zeigen jetzt explizit `Credit Card` und `Cash`; `Credit Card` erzeugt echte Stripe-Checkout-Sessions, `Cash` erzeugt echte serverseitige Direktbuchungen mit `payment_status=cash_due` ohne Wallet-Abzug.
+- 🟢 **Favoriten + Recent Addresses komplett angebunden** (`mobility_platform.py`, `mobilityPlatformApi.js`, `BidBlitzMobilityPlatformPage.jsx`): Favoriten lassen sich speichern/laden/löschen; Recent-Adressen inkrementieren `use_count`; UI zeigt eigene Karten für Favoriten und zuletzt genutzte Adressen inkl. Schnellbuttons für Start/Ziel/Zuhause/Arbeit.
+- 🟢 **Exakte MongoDB-Collections real beschrieben** (`mobility_platform.py`): `mobility_trips`, `mobility_bookings`, `mobility_routes`, `mobility_favorites`, `mobility_vehicles`, `mobility_drivers` werden jetzt produktiv befüllt (Buchung, Route, Favoriten, Nearby-Snapshots, Driver/Vehicle-Snapshots).
+- 🟢 **Mehrsprachigkeit der neuen Mobility-UI geschlossen** (`BidBlitzMobilityPlatformPage.jsx`): zentrale UI-Texte für Deutsch/Englisch/Albanisch ergänzt; Search/Reverse liefen bereits sprachabhängig und sind jetzt durch sichtbare UI-Copy ergänzt.
+- ✅ **Verifiziert**: Self-Test per curl + DB-Check PASS; eingeloggter Frontend-Smoke auf `/mobility-map` PASS; `iteration_142.json` vollständig grün (Backend 25/25 PASS, Frontend 100% PASS, alle 6 Collections verifiziert).
+
 ### 10.06.2026 (Taxi UI Lesbarkeit / Modernisierung) ✅
 - 🟢 **Taxi-Mobile-Ansicht modernisiert** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/taxi/TaxiBottomSheet.jsx`, `frontend/src/components/taxi/TaxiBookingSheet.jsx`, `frontend/src/components/taxi/TaxiAddressSearchSheet.jsx`): dunkles, schwer lesbares Kartenlayout auf ein klares High-Contrast-Design mit großem weißem Bottom-Sheet, sauberer Typo und deutlich lesbarer Such-CTA umgestellt.
 - 🟢 **Map-Overlays klarer gemacht** (`TaxiPage.jsx`): GPS-/Standort-Pills, Kartenstatus und Top-Actions jetzt als helle Floating-Pills mit besserem Kontrast über der Karte statt visuell zu verschwimmen.

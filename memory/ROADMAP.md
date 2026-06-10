@@ -1,7 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Keine offenen P0-Blocker im aktuellen Mobility-Map-Core nach `iteration_138`
+- Keine offenen P0-Blocker im aktuellen Mobility-Map-Core nach `iteration_142`
 
 ## P1
 - Mobility: Stripe-Checkout zusätzlich per Webhook/Session-Resume noch robuster gegen abgebrochene Browser-Sessions machen

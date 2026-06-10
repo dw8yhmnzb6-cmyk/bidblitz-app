@@ -1,6 +1,12 @@
 # BidBlitz — CHANGELOG
 
 ## 10.06.2026
+- Mobility-Master-Prompt P0 geschlossen: `Credit Card` + `Cash` explizit im Mobility-Payment-Flow ergänzt
+- `Cash` bucht jetzt serverseitig direkt mit `payment_status=cash_due`; `Credit Card` erzeugt echte Stripe-Checkout-Sessions
+- Favoriten/Recent-Addresses vollständig angebunden: Speichern, Laden, Löschen, `use_count`, UI-Karten für Favoriten und letzte Ziele
+- Exakte Mobility-Collections produktiv beschrieben: `mobility_trips`, `mobility_bookings`, `mobility_routes`, `mobility_favorites`, `mobility_vehicles`, `mobility_drivers`
+- Mehrsprachige Mobility-UI für DE/EN/SQ ergänzt
+- Verifiziert: `iteration_142.json` komplett grün (Backend 25/25 PASS, Frontend 100% PASS)
 - Taxi-Ansicht visuell modernisiert: helles High-Contrast-Bottom-Sheet statt schwer lesbarem Dark-Overlay
 - Such-CTA „Wohin möchtest du?“ größer, klarer und hochwertiger gestaltet
 - GPS-/Standort-Pills und Kartenstatus als helle Floating-Elemente über der Karte verbessert
