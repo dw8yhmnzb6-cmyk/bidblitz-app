@@ -20,6 +20,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Wallet-/Euro-Karte aufgehellt** (`frontend/src/pages/HomePage.jsx`): dunkles Hero-Panel durch klareren Blau/Teal-Gradient, stärkere Konturen und hellere Zahlen/Labels ersetzt.
 - 🟢 **Quick-Action-Reihe lesbarer** (`HomePage.jsx`): Buttons für Aufladen/Senden/Scannen/Karten mit hellerer Fläche, sichtbarerem Border und kontrastreicheren Labels versehen.
 - 🟢 **BlitzPoints-Karte heller** (`HomePage.jsx`): Loyalty-Panel mit wärmerem Gold-Gradient, klarerer Progressbar und besser sichtbaren Texten/Details verbessert.
+- 🟢 **Restliche Home-Module auf denselben helleren Stil gezogen** (`components/QuickAccessBar.jsx`, `QuestsWidget.jsx`, `SponsoredAdSlot.jsx`, `RecommendAppCard.jsx`, `HomePage.jsx`): Schnellzugriff, Quests, Empfehlungs-/Ads-Karten und Service-CTA jetzt mit konsistenteren helleren Gradients, sichtbarerem Border und höherem Textkontrast.
 - ✅ **Verifiziert**: Browser-Screenshot nach Login PASS; Frontend-UI-Test bestätigt, dass alle drei Bereiche jetzt heller und besser lesbar sind.
 
 ### 10.06.2026 (Taxi UI Lesbarkeit / Modernisierung) ✅

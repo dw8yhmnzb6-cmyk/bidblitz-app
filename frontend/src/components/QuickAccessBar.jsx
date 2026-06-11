@@ -2,7 +2,7 @@
  * BidBlitz V2 - Quick Access Bar
  * Personalized shortcut row on HomePage. User picks their own favorites.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Car, Zap, Hotel, UtensilsCrossed, Ticket, MapPin, Wallet,
@@ -78,22 +78,28 @@ const QuickAccessBar = ({ onNavigate }) => {
   const [selected, setSelected] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/api/user/quick-access`, { credentials: "include" });
-      if (res.ok) {
-        const d = await res.json();
-        setShortcuts(d.shortcuts?.length > 0 ? d.shortcuts : DEFAULT_SHORTCUTS);
-      } else {
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/api/user/quick-access`, { credentials: "include" });
+        if (!mounted) return;
+        if (res.ok) {
+          const d = await res.json();
+          if (!mounted) return;
+          setShortcuts(d.shortcuts?.length > 0 ? d.shortcuts : DEFAULT_SHORTCUTS);
+        } else {
+          setShortcuts(DEFAULT_SHORTCUTS);
+        }
+      } catch (_err) {
+        if (!mounted) return;
         setShortcuts(DEFAULT_SHORTCUTS);
       }
-    } catch {
-      setShortcuts(DEFAULT_SHORTCUTS);
-    }
-    setLoaded(true);
+      if (mounted) setLoaded(true);
+    };
+    load();
+    return () => { mounted = false; };
   }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const save = async (newShortcuts) => {
     try {

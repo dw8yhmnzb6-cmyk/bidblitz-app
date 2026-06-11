@@ -3,6 +3,7 @@
 ## 10.06.2026
 - Home Wallet-/Euro-Karte aufgehellt und kontrastreicher gemacht
 - Quick-Action-Reihe und BlitzPoints-Karte lesbarer gestaltet
+- Restliche Home-Module (Schnellzugriff, Quests, Empfehlungen, Ads, Service-CTA) auf denselben helleren Stil gebracht
 - Verifiziert: Login-Screenshot + Frontend-Check PASS, keine sichtbaren Dunkelheits-/Lesbarkeitsprobleme mehr
 - Mobility-Master-Prompt P0 geschlossen: `Credit Card` + `Cash` explizit im Mobility-Payment-Flow ergänzt
 - `Cash` bucht jetzt serverseitig direkt mit `payment_status=cash_due`; `Credit Card` erzeugt echte Stripe-Checkout-Sessions
