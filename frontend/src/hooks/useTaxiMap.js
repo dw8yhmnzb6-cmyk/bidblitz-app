@@ -33,6 +33,19 @@ const loadMapbox = () => {
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 
+function readLastKnownPickup() {
+  try {
+    const raw = window.localStorage.getItem('bidblitz_last_gps_pickup');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Number.isFinite(parsed?.lat) || !Number.isFinite(parsed?.lng)) return null;
+    if (parsed.lat === 0 && parsed.lng === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 async function reverseGeocodeInline(lat, lng) {
   if (!MAPBOX_TOKEN) return null;
   try {
@@ -51,6 +64,7 @@ export function useTaxiMap({
   pickup, setPickup,
   dropoff, setDropoff,
   taxiType,
+  retrySeed,
   mapStyle,
   activePoiCategory, setActivePoiCategory,
   setPoiLoading,
@@ -74,6 +88,19 @@ export function useTaxiMap({
   // users staring at Berlin tiles).
   const initialisedWithGpsRef = useRef(false);
   const autoFlewToPickupRef = useRef(false);
+  const lastErrorRef = useRef(null);
+
+  const pushMapError = useCallback((message) => {
+    if (!message || lastErrorRef.current === message) return;
+    lastErrorRef.current = message;
+    onError?.(message);
+  }, [onError]);
+
+  const clearMapError = useCallback(() => {
+    if (lastErrorRef.current == null) return;
+    lastErrorRef.current = null;
+    onError?.(null);
+  }, [onError]);
 
   // Track latest pickup in a ref so map.on('load') can read current value
   // even when the closure was created at fallback-init time.
@@ -83,13 +110,20 @@ export function useTaxiMap({
   // Init map when booking flow opens (taxiType set)
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapRef.current) return;
+    if (mapRef.current) {
+      try { mapRef.current.remove(); } catch (removeError) { void removeError; }
+      mapRef.current = null;
+      pickupMarkerRef.current = null;
+      dropoffMarkerRef.current = null;
+      driverMarkerRef.current = null;
+      routeSourceAddedRef.current = false;
+    }
     let cancelled = false;
 
     // Hard-fail visibly if the token is missing in this build
     if (!MAPBOX_TOKEN) {
       console.error("[taxi] REACT_APP_MAPBOX_TOKEN missing in build — map cannot load.");
-      onError?.("Karte nicht verfügbar. Du kannst Straße oder Ort trotzdem direkt suchen und bestellen.");
+      pushMapError("Karte nicht verfügbar. Du kannst Straße oder Ort trotzdem direkt suchen und bestellen.");
       return;
     }
 
@@ -100,12 +134,17 @@ export function useTaxiMap({
         // Use a sane default until GPS arrives.
         const hasValidPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng)
           && pickup.lat !== 0 && pickup.lng !== 0;
+        const lastKnownPickup = !hasValidPickup ? readLastKnownPickup() : null;
+        const hasLastKnownPickup = Number.isFinite(lastKnownPickup?.lat) && Number.isFinite(lastKnownPickup?.lng)
+          && lastKnownPickup.lat !== 0 && lastKnownPickup.lng !== 0;
         const startCenter = hasValidPickup
           ? [pickup.lng, pickup.lat]
-          : [13.405, 52.52]; // Berlin fallback
-        const startZoom = hasValidPickup ? 14 : 11;
-        initialisedWithGpsRef.current = hasValidPickup;
-        autoFlewToPickupRef.current = hasValidPickup;
+          : hasLastKnownPickup
+            ? [lastKnownPickup.lng, lastKnownPickup.lat]
+            : [13.405, 52.52];
+        const startZoom = hasValidPickup || hasLastKnownPickup ? 14 : 11;
+        initialisedWithGpsRef.current = hasValidPickup || hasLastKnownPickup;
+        autoFlewToPickupRef.current = hasValidPickup || hasLastKnownPickup;
 
         const map = new mb.Map({
           container: mapContainerRef.current,
@@ -140,18 +179,20 @@ export function useTaxiMap({
             autoFlewToPickupRef.current = true;
           } catch (recenterError) { void recenterError; }
         };
-        map.on("load", () => { resizeSoon(); recenterOnLatestPickup(); });
-        map.on("style.load", () => { resizeSoon(); recenterOnLatestPickup(); });
+        map.on("load", () => { clearMapError(); resizeSoon(); recenterOnLatestPickup(); });
+        map.on("style.load", () => { clearMapError(); resizeSoon(); recenterOnLatestPickup(); });
         setTimeout(resizeSoon, 250);
         setTimeout(resizeSoon, 800);
         // Surface Mapbox-internal errors (invalid token, tile load failures)
         map.on("error", (ev) => {
           const msg = ev?.error?.message || "";
           console.error("[taxi] Mapbox error:", msg, ev?.error);
-          if (/unauthorized|access token|401|forbidden/i.test(msg)) {
-            onError?.("Karte konnte nicht geladen werden. Straßensuche und Bestellung bleiben verfügbar.");
+          if (/request object could not be cloned|postmessage/i.test(msg)) {
+            pushMapError("Karte konnte nicht stabil geladen werden. Wir schalten auf die sichere Fallback-Karte um und versuchen die Live-Karte automatisch erneut.");
+          } else if (/unauthorized|access token|401|forbidden/i.test(msg)) {
+            pushMapError("Karte konnte nicht geladen werden. Straßensuche und Bestellung bleiben verfügbar.");
           } else if (/network|fetch|load/i.test(msg)) {
-            onError?.("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
+            pushMapError("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
           }
         });
         map.addControl(new mb.NavigationControl(), "top-right");
@@ -183,11 +224,11 @@ export function useTaxiMap({
         mapRef.current = map;
       } catch (err) {
         console.error("❌ Mapbox initialization error:", err);
-        onError?.("Karte konnte nicht initialisiert werden. Suche und Bestellung bleiben aktiv.");
+        pushMapError("Karte konnte nicht initialisiert werden. Suche und Bestellung bleiben aktiv.");
       }
     }).catch((err) => {
       console.error("❌ Mapbox bundle load failed:", err);
-      onError?.("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
+      pushMapError("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
     });
 
     return () => {
@@ -198,7 +239,7 @@ export function useTaxiMap({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taxiType]);
+  }, [taxiType, retrySeed, pushMapError, clearMapError]);
 
   // Unmount cleanup
   useEffect(() => {

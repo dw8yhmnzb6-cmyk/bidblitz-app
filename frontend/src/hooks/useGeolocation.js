@@ -3,14 +3,40 @@
  * Handles getCurrentPosition, reverse geocoding, fallback to Berlin
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+const LAST_GPS_STORAGE_KEY = 'bidblitz_last_gps_pickup';
+
+function readLastKnownPickup() {
+  try {
+    const raw = window.localStorage.getItem(LAST_GPS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Number.isFinite(parsed?.lat) || !Number.isFinite(parsed?.lng)) return null;
+    if (parsed.lat === 0 && parsed.lng === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistLastKnownPickup(location) {
+  try {
+    if (!Number.isFinite(location?.lat) || !Number.isFinite(location?.lng)) return;
+    if (location.lat === 0 && location.lng === 0) return;
+    window.localStorage.setItem(LAST_GPS_STORAGE_KEY, JSON.stringify(location));
+  } catch {
+    // ignore
+  }
+}
 
 export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
   const [currentAddress, setCurrentAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [permissionState, setPermissionState] = useState('prompt');
+  const lastAutoRetryAtRef = useRef(0);
 
   // Reverse geocode coordinates to address.
   // If frontend MAPBOX_TOKEN is missing (e.g. Production build forgot the
@@ -40,18 +66,23 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
       addr = addr || `Standort gefunden`;
       setCurrentAddress(addr);
       setPickup(prev => ({ ...prev, address: addr }));
+      persistLastKnownPickup({ lat, lng, address: addr });
     } catch (err) {
       console.error('Reverse geocode error:', err);
       setCurrentAddress(`Standort gefunden`);
+      persistLastKnownPickup({ lat, lng });
     }
   }, [setPickup]);
 
   // Get current GPS position
-  const getCurrentLocation = useCallback(() => {
+  const getCurrentLocation = useCallback((options = {}) => {
+    const { silent = false } = options;
     if (!navigator.geolocation) {
-      setCurrentAddress('Geolocation wird nicht unterstützt');
-      // Fallback to default location (Berlin center)
-      setPickup(prev => ({ ...prev, lat: 52.52, lng: 13.405, address: '' }));
+      if (!silent) setCurrentAddress('Geolocation wird nicht unterstützt');
+      const lastKnown = readLastKnownPickup();
+      if (lastKnown) {
+        setPickup(prev => ({ ...prev, lat: lastKnown.lat, lng: lastKnown.lng, address: lastKnown.address || prev.address || '' }));
+      }
       return;
     }
 
@@ -62,6 +93,7 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
         console.log('✓ GPS Position:', latitude, longitude);
 
         setPickup(prev => ({ ...prev, lat: latitude, lng: longitude }));
+        persistLastKnownPickup({ lat: latitude, lng: longitude });
 
         // Update map center & pickup marker (Mapbox)
         if (mapRef?.current) {
@@ -87,17 +119,22 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
         } else if (error.code === 3) {
           errorMsg = 'Standortabfrage Timeout. Bitte erneut versuchen.';
         }
-        setCurrentAddress(errorMsg);
-        
-        // Fallback: Set pickup to default location (Berlin center) so user can continue
-        setPickup(prev => ({ ...prev, lat: 52.52, lng: 13.405, address: '' }));
-        
-        // Update map to default location
-        if (mapRef?.current) {
-          mapRef.current.flyTo({ center: [13.405, 52.52], zoom: 12 });
-        }
-        if (pickupMarkerRef?.current) {
-          pickupMarkerRef.current.setLngLat([13.405, 52.52]);
+        if (!silent) setCurrentAddress(errorMsg);
+
+        const lastKnown = readLastKnownPickup();
+        if (lastKnown) {
+          setPickup(prev => ({
+            ...prev,
+            lat: prev.lat && prev.lat !== 0 ? prev.lat : lastKnown.lat,
+            lng: prev.lng && prev.lng !== 0 ? prev.lng : lastKnown.lng,
+            address: prev.address || lastKnown.address || '',
+          }));
+          if (mapRef?.current) {
+            mapRef.current.flyTo({ center: [lastKnown.lng, lastKnown.lat], zoom: 13.5 });
+          }
+          if (pickupMarkerRef?.current) {
+            pickupMarkerRef.current.setLngLat([lastKnown.lng, lastKnown.lat]);
+          }
         }
         
         setLoadingLocation(false);
@@ -110,11 +147,49 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
     );
   }, [setPickup, reverseGeocode, mapRef, pickupMarkerRef]);
 
+  useEffect(() => {
+    if (!navigator.permissions?.query) return undefined;
+    let mounted = true;
+    let permissionStatus = null;
+
+    navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+      if (!mounted) return;
+      permissionStatus = status;
+      setPermissionState(status.state || 'prompt');
+      status.onchange = () => setPermissionState(status.state || 'prompt');
+    }).catch(() => {});
+
+    return () => {
+      mounted = false;
+      if (permissionStatus) permissionStatus.onchange = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (permissionState !== 'granted') return undefined;
+
+    const retryLocation = () => {
+      if (document.visibilityState && document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastAutoRetryAtRef.current < 5000) return;
+      lastAutoRetryAtRef.current = now;
+      getCurrentLocation({ silent: true });
+    };
+
+    window.addEventListener('focus', retryLocation);
+    document.addEventListener('visibilitychange', retryLocation);
+    return () => {
+      window.removeEventListener('focus', retryLocation);
+      document.removeEventListener('visibilitychange', retryLocation);
+    };
+  }, [permissionState, getCurrentLocation]);
+
   return {
     currentAddress,
     setCurrentAddress,
     loadingLocation,
     setLoadingLocation,
+    permissionState,
     getCurrentLocation,
     reverseGeocode,
   };

@@ -133,6 +133,9 @@ export default function TaxiPage({ onNavigate }) {
 
   // Map-error state surfaced when Mapbox fails (invalid token, network, etc.)
   const [mapError, setMapError] = useState(null);
+  const [mapRetrySeed, setMapRetrySeed] = useState(0);
+  const [mapRetrying, setMapRetrying] = useState(false);
+  const [mapRetryCount, setMapRetryCount] = useState(0);
   const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
   const [showTripReplay, setShowTripReplay] = useState(false);
   const [scheduleMode, setScheduleMode] = useState("now"); // 'now' | 'later'
@@ -169,6 +172,7 @@ export default function TaxiPage({ onNavigate }) {
     pickup, setPickup,
     dropoff, setDropoff,
     taxiType,
+    retrySeed: mapRetrySeed,
     mapStyle,
     activePoiCategory, setActivePoiCategory,
     setPoiLoading,
@@ -189,8 +193,32 @@ export default function TaxiPage({ onNavigate }) {
   const {
     currentAddress,
     loadingLocation,
+    permissionState,
     getCurrentLocation,
   } = useGeolocation({ setPickup, mapRef, pickupMarkerRef });
+
+  const retryMap = useCallback((source = 'manual') => {
+    setMapRetrying(true);
+    setMapRetrySeed((prev) => prev + 1);
+    setMapError(null);
+    setMapRetryCount((prev) => (source === 'auto' ? prev + 1 : 1));
+    if ((!pickup?.lat || pickup.lat === 0) && !loadingLocation) {
+      getCurrentLocation({ silent: source === 'auto' });
+    }
+    window.setTimeout(() => setMapRetrying(false), 1400);
+  }, [pickup?.lat, loadingLocation, getCurrentLocation]);
+
+  useEffect(() => {
+    if (!mapError) {
+      setMapRetryCount(0);
+      return;
+    }
+    if (mapRetryCount >= 2) return;
+    const timer = window.setTimeout(() => {
+      retryMap('auto');
+    }, mapRetryCount === 0 ? 1800 : 3200);
+    return () => window.clearTimeout(timer);
+  }, [mapError, mapRetryCount, retryMap]);
 
   // Voiceover (Web Speech API) — announces ride status transitions in German
   const voiceover = useTaxiVoiceover(activeRide);
@@ -564,8 +592,8 @@ export default function TaxiPage({ onNavigate }) {
   const fallbackMapConfig = useMemo(() => {
     const hasPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng) && pickup.lat !== 0 && pickup.lng !== 0;
     const hasDropoff = Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng) && dropoff.lat !== 0 && dropoff.lng !== 0;
-    const baseLat = hasPickup ? pickup.lat : 52.52;
-    const baseLng = hasPickup ? pickup.lng : 13.405;
+    const baseLat = hasPickup ? pickup.lat : hasDropoff ? dropoff.lat : null;
+    const baseLng = hasPickup ? pickup.lng : hasDropoff ? dropoff.lng : null;
     const pins = [];
 
     if (hasPickup) {
@@ -575,7 +603,9 @@ export default function TaxiPage({ onNavigate }) {
       pins.push({ lat: dropoff.lat, lng: dropoff.lng, color: '#EF4444', label: 'Z' });
     }
     if (!pins.length) {
-      pins.push({ lat: baseLat, lng: baseLng, color: '#00C2FF', label: '•' });
+      if (Number.isFinite(baseLat) && Number.isFinite(baseLng)) {
+        pins.push({ lat: baseLat, lng: baseLng, color: '#00C2FF', label: '•' });
+      }
     }
 
     return { lat: baseLat, lng: baseLng, pins };
@@ -636,13 +666,18 @@ export default function TaxiPage({ onNavigate }) {
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-500">Kartenstatus</p>
                 <p className="text-lg font-taxi-heading font-black tracking-tight text-zinc-950 mt-1">Fallback-Karte aktiv</p>
                 <p className="text-sm text-zinc-600 mt-2 leading-snug">{mapError}</p>
-                <p className="text-xs text-zinc-500 mt-1">Suche und Bestellung bleiben trotzdem klar nutzbar.</p>
+                <p className="text-xs text-zinc-500 mt-1" data-testid="taxi-map-error-hint">
+                  {mapRetrying
+                    ? 'Wir verbinden die Karte gerade neu – deine Eingaben bleiben erhalten.'
+                    : 'Suche und Bestellung bleiben trotzdem klar nutzbar.'}
+                </p>
                 <button
-                  onClick={() => { setMapError(null); window.location.reload(); }}
+                  onClick={() => retryMap('manual')}
                   data-testid="taxi-map-error-reload"
-                  className="mt-3 text-xs px-4 py-2 rounded-full bg-[#002FA7] hover:bg-[#00258a] text-white font-semibold transition-colors"
+                  disabled={mapRetrying}
+                  className="mt-3 text-xs px-4 py-2 rounded-full bg-[#002FA7] hover:bg-[#00258a] text-white font-semibold transition-colors disabled:opacity-60"
                 >
-                  Neu laden
+                  {mapRetrying ? 'Karte wird neu verbunden…' : 'Karte neu verbinden'}
                 </button>
               </div>
             </div>
@@ -670,7 +705,7 @@ export default function TaxiPage({ onNavigate }) {
                   if (isDenied) {
                     return (
                       <button
-                        onClick={getCurrentLocation}
+                        onClick={() => getCurrentLocation()}
                         data-testid="map-flow-gps-denied-cta"
                         className="flex-1 max-w-[min(56vw,420px)] bg-white/90 border border-red-200 rounded-full px-4 py-2.5 text-left min-w-0 flex items-center gap-3 shadow-[0_8px_24px_rgba(15,23,42,0.14)] hover:bg-white active:scale-[0.98] transition-all pointer-events-auto"
                       >
@@ -684,7 +719,9 @@ export default function TaxiPage({ onNavigate }) {
                         </svg>
                         <span className="flex-1 min-w-0">
                           <p className="text-[10px] text-red-500 font-semibold uppercase tracking-[0.2em] leading-none">GPS aus</p>
-                          <p className="text-sm text-zinc-900 truncate leading-tight mt-1 font-medium">Tippen, um zu aktivieren</p>
+                          <p className="text-sm text-zinc-900 truncate leading-tight mt-1 font-medium">
+                            {permissionState === 'granted' ? 'Wird automatisch neu verbunden…' : 'Tippen, um zu aktivieren'}
+                          </p>
                         </span>
                       </button>
                     );

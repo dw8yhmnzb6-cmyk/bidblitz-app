@@ -93,7 +93,7 @@ const MiniLeafletMap = ({
         className={`bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-[11px] text-gray-500 ${className}`}
         style={{ height }}
       >
-        Keine Position
+        GPS aktivieren oder Adresse eingeben
       </div>
     );
   }
