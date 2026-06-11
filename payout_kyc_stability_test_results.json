@@ -1,0 +1,88 @@
+{
+  "test_date": "2026-06-11T19:25:47.733716",
+  "base_url": "https://taxi-uber-style.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Admin Login",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "has_access_token": true,
+        "cookies": [
+          "access_token",
+          "refresh_token",
+          "__cf_bm"
+        ],
+        "response_keys": [
+          "id",
+          "email",
+          "name",
+          "role",
+          "modes",
+          "balance",
+          "currency",
+          "card_number",
+          "card_expiry",
+          "created_at",
+          "language",
+          "notifications_enabled",
+          "email_notifications",
+          "biometric_enabled",
+          "dark_mode"
+        ]
+      },
+      "timestamp": "2026-06-11T19:25:48.177498"
+    },
+    {
+      "test": "Payout Balance",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "balance": 17.55,
+        "balance_greater_than_zero": true,
+        "full_response": {
+          "available": 17.55,
+          "pending_payout": 0,
+          "total_paid_out": 0,
+          "total_earnings": 17.55,
+          "gross_earnings": 18.0,
+          "total_fees": 0.45,
+          "min_payout": 5.0,
+          "payout_flat_fee": 0.5
+        }
+      },
+      "timestamp": "2026-06-11T19:25:48.305920"
+    },
+    {
+      "test": "KYC Status",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "kyc_status": "pending",
+        "is_pending": true,
+        "full_response": {
+          "kyc_verified": false,
+          "kyc_status": "pending",
+          "document_type": "national_id",
+          "submitted_at": "2026-06-07T18:34:59.828843+00:00",
+          "reviewed_at": "2026-06-11T19:20:00+00:00",
+          "rejection_reason": null,
+          "ai_confidence": null,
+          "can_use_features": {
+            "browse": true,
+            "wallet_topup": false,
+            "wallet_send": false,
+            "wallet_withdraw": false,
+            "place_bids": false,
+            "buy_marketplace": false,
+            "sell_marketplace": false,
+            "request_taxi": false,
+            "drive_taxi": false,
+            "merchant_actions": false
+          }
+        }
+      },
+      "timestamp": "2026-06-11T19:25:48.468286"
+    }
+  ]
+}
