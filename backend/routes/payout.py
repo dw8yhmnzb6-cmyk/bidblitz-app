@@ -190,7 +190,13 @@ async def request_payout(req: PayoutRequest, request: Request):
     if merchant:
         await db.merchants.update_one(
             {"_id": merchant["_id"]},
-            {"$inc": {"available_payout": -req.amount, "pending_payout": req.amount}},
+            {"$set": {
+                "gross_earnings": payout_summary["gross_earnings"],
+                "total_earnings": payout_summary["total_earnings"],
+                "total_fees": payout_summary["total_fees"],
+                "available_payout": round(max(payout_summary["available"] - req.amount, 0.0), 2),
+                "pending_payout": round(payout_summary["pending_payout"] + req.amount, 2),
+            }},
         )
 
     await log_audit(AuditEvent.PAYOUT_REQUESTED, user_id=user_id, email=user.get("email", ""),
@@ -250,6 +256,20 @@ async def cancel_payout(payout_ref: str, request: Request):
         {"user_id": user_id},
         {"$inc": {"available_payout": payout["amount"], "pending_payout": -payout["amount"]}},
     )
+
+    merchant, merchant_profile = await _get_merchant_sources(user_id)
+    summary = await _build_payout_summary(user_id, merchant, merchant_profile)
+    if merchant:
+        await db.merchants.update_one(
+            {"_id": merchant["_id"]},
+            {"$set": {
+                "gross_earnings": summary["gross_earnings"],
+                "total_earnings": summary["total_earnings"],
+                "total_fees": summary["total_fees"],
+                "available_payout": summary["available"],
+                "pending_payout": summary["pending_payout"],
+            }},
+        )
 
     await log_audit(AuditEvent.PAYOUT_CANCELLED, user_id=user_id, email=user.get("email", ""),
                     ip=ip, user_agent=ua,

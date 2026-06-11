@@ -1115,3 +1115,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - 🟢 Route aus globalen App-Shell-Overlays herausgenommen, damit Samsung/Android-Mobile-Views nicht von BottomNav/BackToHome/CookieBanner blockiert werden.
   - 🟢 Öffentliche Gastseite nutzt jetzt Safe-Area-Padding + größeres dynamisches Bottom-Padding, damit die fixe Cart-Bar den Inhalt nicht verdeckt.
   - 🟢 Verifiziert durch gezielten Mobile-Frontend-Test: Scroll oben/unten funktioniert sauber, auch mit Produkt im Warenkorb und sichtbarer Bottom-Bar.
+
+
+## Update 2026-06-11 — Payout/Withdraw Fix
+- P0-Auszahlungsfehler analysiert und behoben.
+- Backend: Merchant-Payout-Balance wird jetzt aus echten Merchant-/Legacy-Transaktionen und Payout-Historie berechnet, statt nur auf veraltete Felder zu vertrauen.
+- Backend: `POST /api/payout/request`, `GET /api/payout/balance` und `GET /api/payout/history` funktionieren wieder konsistent für Merchant-User.
+- Backend: `POST /api/mining/withdraw` verifiziert funktionsfähig; Debug-Testdaten wurden nach der Prüfung wieder bereinigt.
+- Frontend: Mining- und Merchant-Betragseingaben akzeptieren jetzt auch deutsche Komma-Eingaben robuster (`1,5` etc.).
+- Tests: manueller API-Retest erfolgreich, Browser-Smoke-Test erfolgreich, Backend-Testagent meldete 5/5 Tests bestanden.
+- Offen/P1: Merchant-Payout-UI noch einmal gezielt mit nicht-leerem Echtgeld-/Testsaldo im Browser durchklicken für vollständige UX-Verifikation.
