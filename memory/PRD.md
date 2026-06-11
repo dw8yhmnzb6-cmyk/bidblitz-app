@@ -1125,3 +1125,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Frontend: Mining- und Merchant-Betragseingaben akzeptieren jetzt auch deutsche Komma-Eingaben robuster (`1,5` etc.).
 - Tests: manueller API-Retest erfolgreich, Browser-Smoke-Test erfolgreich, Backend-Testagent meldete 5/5 Tests bestanden.
 - Offen/P1: Merchant-Payout-UI noch einmal gezielt mit nicht-leerem Echtgeld-/Testsaldo im Browser durchklicken für vollständige UX-Verifikation.
+
+
+## Update 2026-06-11 — Merchant Payout Modal + KYC UI
+- Merchant-Payout-Modal verfeinert: zusätzliche `data-testid`s, klarere Fehler-/Erfolgszustände und robustere Fehlerausgabe aus API-Responses.
+- Browser-Verifikation mit echtem verfügbarem Merchant-Guthaben durchgeführt; Komma-Eingabe (`5,50`) und Success-State funktionieren.
+- KYC-Status-UI erweitert: klarere Status-/Feedback-Karten, stabiler manueller Refresh, Auto-Refresh-Hinweis bei pending/submitted und echter Retry-/Reset-Flow bei abgelehnter Verifizierung.
+- React-Fehlerschleife auf `/verification` beseitigt; Seite rendert jetzt stabil.
+- Tests: manueller Browser-Test für Merchant + KYC erfolgreich, Frontend-Testagent 16/16 PASS, Backend-Stability-Check PASS.
+- Preview-Hinweis: Für die Browser-Verifikation wurde im Merchant-Bereich des Admin-Users ein echter Testsaldo von 17,55 EUR vorbereitet (kein MOCK).
