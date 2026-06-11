@@ -23,6 +23,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Restliche Home-Module auf denselben helleren Stil gezogen** (`components/QuickAccessBar.jsx`, `QuestsWidget.jsx`, `SponsoredAdSlot.jsx`, `RecommendAppCard.jsx`, `HomePage.jsx`): Schnellzugriff, Quests, Empfehlungs-/Ads-Karten und Service-CTA jetzt mit konsistenteren helleren Gradients, sichtbarerem Border und höherem Textkontrast.
 - ✅ **Verifiziert**: Browser-Screenshot nach Login PASS; Frontend-UI-Test bestätigt, dass alle drei Bereiche jetzt heller und besser lesbar sind.
 
+### 11.06.2026 (Wallet / Loyalty / Affiliate Premium-Light-Look) ✅
+- 🟢 **Wallet-Unterseite angeglichen** (`frontend/src/pages/WalletPage.jsx`, `components/PremiumCard.jsx`, `App.css`, `index.css`): Balance-Hero, Stats, User-Number-Karte und Premium-Card jetzt im hellen Premium-Look mit light gradients statt dunklem Card-Kontrast.
+- 🟢 **Loyalty-Unterseite angeglichen** (`frontend/src/pages/LoyaltyPage.jsx`): Hero, Progress, Stats-Karten und Tabs auf konsistente helle Kartenoptik mit klarerem Kontrast umgestellt.
+- 🟢 **Affiliate-Unterseite angeglichen** (`frontend/src/pages/AffiliatePage.jsx`): Header, Partner-Link-Box, Einnahmen- und Leaderboard-Karten heller und konsistenter gestaltet.
+- 🟢 **Wichtige Edit-/Detail-Modals aufgehellt** (`components/TopUpModal.jsx`, `SendMoneyModal.jsx`, `TransactionDetailModal.jsx`): Bottom-Sheets jetzt als helle Premium-Flächen statt dunkle Overlays.
+- ✅ **Verifiziert**: Frontend-Test bestätigt Wallet/Loyalty/Affiliate jetzt 100% konsistent hell; Premium Card auf Wallet ist nicht mehr dunkel.
+
 ### 10.06.2026 (Taxi UI Lesbarkeit / Modernisierung) ✅
 - 🟢 **Taxi-Mobile-Ansicht modernisiert** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/taxi/TaxiBottomSheet.jsx`, `frontend/src/components/taxi/TaxiBookingSheet.jsx`, `frontend/src/components/taxi/TaxiAddressSearchSheet.jsx`): dunkles, schwer lesbares Kartenlayout auf ein klares High-Contrast-Design mit großem weißem Bottom-Sheet, sauberer Typo und deutlich lesbarer Such-CTA umgestellt.
 - 🟢 **Map-Overlays klarer gemacht** (`TaxiPage.jsx`): GPS-/Standort-Pills, Kartenstatus und Top-Actions jetzt als helle Floating-Pills mit besserem Kontrast über der Karte statt visuell zu verschwimmen.

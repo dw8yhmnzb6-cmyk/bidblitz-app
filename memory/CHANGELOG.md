@@ -5,6 +5,10 @@
 - Quick-Action-Reihe und BlitzPoints-Karte lesbarer gestaltet
 - Restliche Home-Module (Schnellzugriff, Quests, Empfehlungen, Ads, Service-CTA) auf denselben helleren Stil gebracht
 - Verifiziert: Login-Screenshot + Frontend-Check PASS, keine sichtbaren Dunkelheits-/Lesbarkeitsprobleme mehr
+- Wallet-, Loyalty- und Affiliate-Unterseiten auf Premium-Light-Look umgestellt
+- Premium Card auf Wallet von dunkel auf hell geändert; globale Page-Hintergründe auf hellen Verlauf vereinheitlicht
+- TopUp-, SendMoney- und Transaction-Detail-Modals als helle Premium-Bottom-Sheets gestaltet
+- Verifiziert: Premium-Light-Test für Wallet/Loyalty/Affiliate 100% PASS
 - Mobility-Master-Prompt P0 geschlossen: `Credit Card` + `Cash` explizit im Mobility-Payment-Flow ergänzt
 - `Cash` bucht jetzt serverseitig direkt mit `payment_status=cash_due`; `Credit Card` erzeugt echte Stripe-Checkout-Sessions
 - Favoriten/Recent-Addresses vollständig angebunden: Speichern, Laden, Löschen, `use_count`, UI-Karten für Favoriten und letzte Ziele
