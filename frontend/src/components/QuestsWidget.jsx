@@ -36,10 +36,10 @@ export default function QuestsWidget({ isGuest, onNavigate }) {
       className="w-full rounded-2xl mb-4 relative overflow-hidden text-left"
       style={{
         background: allDone
-          ? "linear-gradient(135deg,rgba(0,210,106,0.18),rgba(0,194,255,0.08))"
+          ? "linear-gradient(135deg,rgba(0,210,106,0.24),rgba(0,194,255,0.12))"
           : unclaimedRewards > 0
-          ? "linear-gradient(135deg,rgba(255,184,0,0.18),rgba(255,107,157,0.08))"
-          : "linear-gradient(135deg,rgba(0,194,255,0.15),rgba(168,85,247,0.08))",
+          ? "linear-gradient(135deg,rgba(255,184,0,0.24),rgba(255,107,157,0.12))"
+          : "linear-gradient(135deg,rgba(0,194,255,0.2),rgba(168,85,247,0.12))",
         border: allDone ? "1px solid rgba(0,210,106,0.25)" :
                 unclaimedRewards > 0 ? "1px solid rgba(255,184,0,0.3)" :
                 "1px solid rgba(0,194,255,0.25)",
@@ -71,7 +71,7 @@ export default function QuestsWidget({ isGuest, onNavigate }) {
               </span>
             )}
           </div>
-          <p className="text-[11px] text-white/60 mt-0.5">
+          <p className="text-[11px] text-white/78 mt-0.5">
             {allDone ? "Alle erledigt! Komm morgen wieder." : `${done} von ${total} erledigt · ${data.total_reward_blz} BLZ möglich`}
           </p>
           <div className="flex gap-1 mt-1.5">
@@ -82,7 +82,7 @@ export default function QuestsWidget({ isGuest, onNavigate }) {
             ))}
           </div>
         </div>
-        <ChevronRight size={15} className="text-white/40"/>
+        <ChevronRight size={15} className="text-white/58"/>
       </div>
     </motion.button>
   );

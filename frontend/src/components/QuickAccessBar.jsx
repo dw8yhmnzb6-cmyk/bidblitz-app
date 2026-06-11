@@ -96,14 +96,13 @@ const QuickAccessBar = ({ onNavigate }) => {
   useEffect(() => { load(); }, [load]);
 
   const save = async (newShortcuts) => {
-    setShortcuts(newShortcuts);
     try {
       await fetch(`${API}/api/user/quick-access`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ shortcuts: newShortcuts }),
       });
-    } catch {}
+    } catch (_err) { return; }
   };
 
   const startEdit = () => {
@@ -120,6 +119,7 @@ const QuickAccessBar = ({ onNavigate }) => {
   };
 
   const confirmEdit = () => {
+    setShortcuts(selected);
     save(selected);
     setEditing(false);
   };
@@ -148,7 +148,7 @@ const QuickAccessBar = ({ onNavigate }) => {
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={startEdit}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-medium text-[#F59E0B] bg-[#F59E0B]/5 border border-[#F59E0B]/10"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-medium text-[#F59E0B] bg-[#F59E0B]/10 border border-[#F59E0B]/18"
             data-testid="quick-access-edit"
           >
             <Pencil size={10} /> Bearbeiten
@@ -174,7 +174,7 @@ const QuickAccessBar = ({ onNavigate }) => {
                 <s.icon size={18} style={{ color: s.color }} />
                 <div className="absolute inset-0 rounded-2xl opacity-20 pointer-events-none" style={{ background: s.color, filter: "blur(12px)" }} />
               </div>
-              <span className="text-[9px] text-[#777] font-medium text-center leading-tight truncate w-full">
+              <span className="text-[9px] text-white/72 font-medium text-center leading-tight truncate w-full">
                 {s.label}
               </span>
             </motion.button>
@@ -190,10 +190,10 @@ const QuickAccessBar = ({ onNavigate }) => {
             className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[62px]"
             data-testid="quick-add-more"
           >
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white/[0.03] border border-dashed border-white/10">
-              <Plus size={16} className="text-[#444]" />
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white/[0.06] border border-dashed border-white/16">
+              <Plus size={16} className="text-white/60" />
             </div>
-            <span className="text-[9px] text-[#444] font-medium">Mehr</span>
+            <span className="text-[9px] text-white/60 font-medium">Mehr</span>
           </motion.button>
         </div>
       </motion.div>
@@ -215,18 +215,18 @@ const QuickAccessBar = ({ onNavigate }) => {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#111118] rounded-t-3xl border-t border-white/10 max-h-[85vh] overflow-hidden flex flex-col"
+              className="w-full max-w-lg bg-[#171b22] rounded-t-3xl border-t border-white/12 max-h-[85vh] overflow-hidden flex flex-col"
             >
               {/* Header */}
-              <div className="p-4 pb-3 flex items-center justify-between border-b border-white/5 flex-shrink-0">
+              <div className="p-4 pb-3 flex items-center justify-between border-b border-white/8 flex-shrink-0">
                 <div>
                   <h3 className="text-[14px] font-bold text-white">Schnellzugriff bearbeiten</h3>
-                  <p className="text-[10px] text-gray-500">{selected.length}/8 ausgewählt</p>
+                  <p className="text-[10px] text-white/55">{selected.length}/8 ausgewählt</p>
                 </div>
                 <div className="flex gap-2">
                   <motion.button whileTap={{ scale: 0.9 }} onClick={() => setEditing(false)}
-                    className="p-2 rounded-xl bg-white/5">
-                    <X size={16} className="text-gray-400" />
+                    className="p-2 rounded-xl bg-white/8 border border-white/10">
+                    <X size={16} className="text-white/65" />
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.9 }} onClick={confirmEdit}
                     className="flex items-center gap-1 px-4 py-2 rounded-xl bg-[#F59E0B] text-black text-xs font-bold"
@@ -250,7 +250,7 @@ const QuickAccessBar = ({ onNavigate }) => {
                         className={`relative p-2.5 rounded-xl flex flex-col items-center gap-1 border transition-all ${
                           isActive
                             ? "border-[#F59E0B]/40 bg-[#F59E0B]/5"
-                            : "border-white/5 bg-white/[0.02] hover:border-white/10"
+                            : "border-white/8 bg-white/[0.05] hover:border-white/14"
                         }`}
                         data-testid={`quick-option-${s.id}`}
                       >

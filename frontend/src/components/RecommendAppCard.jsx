@@ -38,7 +38,7 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
           text: "Komm zu BidBlitz und hol dir 5€ Willkommens-Bonus!",
           url: link,
         });
-      } catch {} // user cancelled
+      } catch (_err) { return; }
       return;
     }
     // Desktop / fallback
@@ -64,8 +64,8 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
       data-testid="recommend-app-card"
       className="rounded-2xl p-4 mb-4 relative overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, rgba(255,107,157,0.18) 0%, rgba(168,85,247,0.12) 100%)",
-        border: "1px solid rgba(255,107,157,0.25)",
+        background: "linear-gradient(135deg, rgba(255,107,157,0.24) 0%, rgba(168,85,247,0.16) 100%)",
+        border: "1px solid rgba(255,107,157,0.32)",
       }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -81,18 +81,18 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
         </motion.div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-black text-white leading-tight">BidBlitz empfehlen</p>
-          <p className="text-[11px] text-white/70 leading-tight mt-0.5">
+          <p className="text-[11px] text-white/84 leading-tight mt-0.5">
             5€ pro Anmeldung + 10% Provision — teile mit Freunden
           </p>
         </div>
       </div>
 
-      <div className="bg-black/30 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+      <div className="bg-white/10 rounded-lg px-3 py-2 mb-3 flex items-center gap-2 border border-white/12">
         <p className="text-[11px] text-[#00C2FF] font-mono truncate flex-1" data-testid="recommend-link">
           {link}
         </p>
         <button onClick={copyLink} data-testid="recommend-copy" className="p-1">
-          {copied ? <Check size={13} className="text-[#00D26A]" /> : <Copy size={13} className="text-white/60" />}
+          {copied ? <Check size={13} className="text-[#00D26A]" /> : <Copy size={13} className="text-white/78" />}
         </button>
       </div>
 
@@ -130,15 +130,15 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
           data-testid="recommend-details"
           onClick={() => onNavigate && onNavigate("/affiliate")}
           whileTap={{ scale: 0.95 }}
-          className="py-2.5 rounded-lg text-[11px] font-bold text-white/80 border border-white/10 bg-white/5"
+          className="py-2.5 rounded-lg text-[11px] font-bold text-white border border-white/14 bg-white/10"
         >
           Details
         </motion.button>
       </div>
 
       {code && (
-        <p className="text-[9px] text-white/40 uppercase tracking-wider mt-2 text-center">
-          Dein Code: <span className="font-mono text-white/70">{code}</span>
+        <p className="text-[9px] text-white/55 uppercase tracking-wider mt-2 text-center">
+          Dein Code: <span className="font-mono text-white/82">{code}</span>
         </p>
       )}
     </motion.div>

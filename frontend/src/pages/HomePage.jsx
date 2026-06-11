@@ -663,7 +663,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <motion.button
               onClick={() => onNavigate("/all-services")}
               className="w-full rounded-2xl p-4 flex items-center gap-3 text-left"
-              style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.08), rgba(16,185,129,0.08))", border: "1px solid rgba(0,194,255,0.12)" }}
+              style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.14), rgba(16,185,129,0.12))", border: "1px solid rgba(0,194,255,0.18)" }}
               whileTap={{ scale: 0.98 }}
               data-testid="all-services-btn"
             >
@@ -672,9 +672,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               </div>
               <div className="flex-1">
                 <div className="text-[13px] font-semibold text-white">Alle Services entdecken</div>
-                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.5)" }}>60+ Features in einer App</div>
+                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.72)" }}>60+ Features in einer App</div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.56)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
             </motion.button>
 
             {/* ═══ Sponsored Banners ═══ */}
@@ -704,7 +704,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 {availableFeatures.map((f, i) => (
                   <motion.div key={f.id} data-testid={`feature-${f.id}-card`}
                     className={`rounded-2xl relative overflow-hidden cursor-pointer group ${f.large ? "col-span-2" : ""}`}
-                    style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.04)" }}
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                     initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ delay: 0.3 + i * 0.06, ...slide }}
                     whileTap={{ scale: 0.97 }} whileHover={{ borderColor: `${f.color}25` }}
@@ -718,7 +718,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                         <div className="absolute inset-0 rounded-xl opacity-30 pointer-events-none" style={{ background: f.color, filter: "blur(16px)" }} />
                       </div>
                       <h3 className="text-[14px] font-semibold font-outfit text-white mb-0.5 tracking-tight">{f.title}</h3>
-                      <p className="text-[11px] text-[#444] font-medium">{f.desc}</p>
+                      <p className="text-[11px] text-white/64 font-medium">{f.desc}</p>
                       {f.large && (
                         <motion.div className="mt-auto pt-3 flex items-center gap-1.5">
                           <span className="text-[11px] font-medium" style={{ color: f.color }}>View Balance</span>
@@ -755,7 +755,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 {extraFeatures.map((f, i) => (
                   <motion.div key={f.id} data-testid={`extra-${f.id}-card`}
                     className="rounded-2xl relative overflow-hidden cursor-pointer group"
-                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                     initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 + i * 0.04, ...slide }}
                     whileTap={{ scale: 0.97 }}
