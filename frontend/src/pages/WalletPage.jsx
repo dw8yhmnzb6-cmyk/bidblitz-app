@@ -29,10 +29,10 @@ const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
 // Skeleton shimmer for loading state
 const Skeleton = ({ className }) => (
-  <div className={`relative overflow-hidden rounded-xl ${className}`} style={{ background: "rgba(255,255,255,0.025)" }}>
+  <div className={`relative overflow-hidden rounded-xl ${className}`} style={{ background: "rgba(255,255,255,0.72)", border: "1px solid rgba(15,23,42,0.06)" }}>
     <motion.div
       className="absolute inset-0"
-      style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%)" }}
+      style={{ background: "linear-gradient(90deg, transparent 0%, rgba(0,194,255,0.12) 50%, transparent 100%)" }}
       animate={{ x: ["-100%", "100%"] }}
       transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
     />
@@ -72,7 +72,7 @@ const WalletAction = ({ icon: Icon, label, color, onClick, delay = 0, testId }) 
         style={{ background: color, filter: "blur(20px)", opacity: 0 }}
       />
     </div>
-    <span className="text-[11px] text-[#555] group-hover:text-white/80 transition-colors duration-300 font-medium">
+    <span className="text-[11px] text-[#475569] group-hover:text-[#0f172a] transition-colors duration-300 font-medium">
       {label}
     </span>
   </motion.button>
@@ -83,15 +83,16 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
   <motion.div
     className="flex-1 rounded-2xl px-4 py-3"
     style={{
-      background: "rgba(255,255,255,0.018)",
-      border: "1px solid rgba(255,255,255,0.04)",
+      background: "rgba(255,255,255,0.9)",
+      border: "1px solid rgba(15,23,42,0.06)",
+      boxShadow: "0 12px 28px rgba(15,23,42,0.06)",
     }}
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay, ...slide }}
   >
-    <p className="text-[9px] text-[#3A3A3A] uppercase tracking-[0.12em] font-semibold mb-1">{label}</p>
-    <p className="text-[15px] font-semibold font-outfit text-white/90">{value}</p>
+    <p className="text-[9px] text-[#64748B] uppercase tracking-[0.12em] font-semibold mb-1">{label}</p>
+    <p className="text-[15px] font-semibold font-outfit text-[#0f172a]">{value}</p>
     {trend !== undefined && (
       <div className="flex items-center gap-1 mt-0.5">
         {trend >= 0 ? (
@@ -275,14 +276,14 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     <motion.div
       data-testid="wallet-page"
       className="min-h-screen relative overflow-hidden"
-      style={{ background: "#030303" }}
+      style={{ background: "linear-gradient(180deg, #f7f9fc 0%, #eef4fb 100%)" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       {/* Ambient glow */}
       <motion.div
         className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[500px] h-[80vw] max-h-[500px] rounded-full pointer-events-none"
-        style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.045)" }}
+        style={{ filter: "blur(140px)", background: "rgba(0,194,255,0.09)" }}
       />
 
       {/* Header */}
@@ -290,14 +291,14 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         <div className="flex items-center gap-3">
           <motion.button
             data-testid="wallet-back-btn"
-            className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center"
+            className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center"
             whileTap={{ scale: 0.88 }}
             onClick={() => onNavigate("/")}
           >
-            <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
+            <ArrowLeft size={15} strokeWidth={1.5} className="text-slate-600" />
           </motion.button>
           <motion.h1
-            className="text-[15px] font-semibold font-outfit text-white tracking-tight"
+            className="text-[15px] font-semibold font-outfit text-slate-900 tracking-tight"
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.05 }}
@@ -308,12 +309,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         <motion.button
           data-testid="toggle-balance-btn"
           onClick={() => setShowBalance(!showBalance)}
-          className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center"
+          className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center"
           whileTap={{ scale: 0.88 }}
         >
           {showBalance
-            ? <Eye size={15} strokeWidth={1.5} className="text-[#444]" />
-            : <EyeOff size={15} strokeWidth={1.5} className="text-[#444]" />}
+            ? <Eye size={15} strokeWidth={1.5} className="text-slate-600" />
+            : <EyeOff size={15} strokeWidth={1.5} className="text-slate-600" />}
         </motion.button>
       </div>
 
@@ -342,7 +343,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         >
           <div className="flex items-center justify-center gap-1.5 mb-2">
             <Shield size={11} className="text-[#00C2FF]/60" />
-            <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase">{t("wallet.available")}</p>
+            <p className="text-[10px] text-slate-500 font-semibold tracking-[0.14em] uppercase">{t("wallet.available")}</p>
           </div>
 
           <AnimatePresence mode="wait">
@@ -355,8 +356,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-baseline justify-center gap-1.5"
               >
-                <span className="text-[24px] text-[#2A2A2A] font-outfit font-light">{currency || "EUR"}</span>
-                <span className="text-[48px] font-bold font-outfit text-white/15 tracking-[-0.03em] leading-none">
+                <span className="text-[24px] text-slate-500 font-outfit font-light">{currency || "EUR"}</span>
+                <span className="text-[48px] font-bold font-outfit text-slate-300 tracking-[-0.03em] leading-none">
                   &#8226;&#8226;&#8226;,&#8226;&#8226;
                 </span>
               </motion.div>
@@ -370,9 +371,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               >
                 {showBalance ? (
                   <div className="flex items-baseline justify-center gap-1 px-2 max-w-full overflow-hidden">
-                    <span className="text-[18px] sm:text-[24px] text-[#2A2A2A] font-outfit font-light flex-shrink-0">{currency}</span>
+                    <span className="text-[18px] sm:text-[24px] text-slate-500 font-outfit font-light flex-shrink-0">{currency}</span>
                     <motion.span
-                      className="font-bold font-outfit text-white tracking-[-0.03em] leading-none truncate min-w-0"
+                      className="font-bold font-outfit text-slate-900 tracking-[-0.03em] leading-none truncate min-w-0"
                       style={{ fontSize: "clamp(28px, 9vw, 48px)" }}
                       key={balance}
                       initial={{ opacity: 0, y: 10 }}
@@ -383,9 +384,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                     </motion.span>
                   </div>
                 ) : (
-                  <p className="font-bold font-outfit text-[#1A1A1A] tracking-[-0.03em] leading-none text-center" style={{ fontSize: "clamp(28px, 9vw, 48px)" }}>
+                  <p className="font-bold font-outfit text-slate-900 tracking-[-0.03em] leading-none text-center" style={{ fontSize: "clamp(28px, 9vw, 48px)" }}>
                     {currency}
-                    <span className="text-[#1A1A1A]">{"••••••"}</span>
+                    <span className="text-slate-900">{"••••••"}</span>
                   </p>
                 )}
               </motion.div>
@@ -414,7 +415,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           {/* Balance glow */}
           <div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-40 pointer-events-none"
-            style={{ filter: "blur(80px)", background: "radial-gradient(ellipse, rgba(0,194,255,0.06), transparent 70%)" }}
+            style={{ filter: "blur(80px)", background: "radial-gradient(ellipse, rgba(0,194,255,0.12), transparent 70%)" }}
           />
         </motion.div>
 
@@ -475,13 +476,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18 }}
-            className="mb-5 p-4 rounded-2xl bg-gradient-to-br from-[#00C2FF]/10 to-[#8B5CF6]/10 border border-[#00C2FF]/20"
+            className="mb-5 p-4 rounded-2xl bg-gradient-to-br from-[#00C2FF]/12 to-[#8B5CF6]/10 border border-[#00C2FF]/18 shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
             data-testid="user-number-card"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Deine Nummer</p>
-                <p className="text-xl font-bold text-white" data-testid="user-number-value">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Deine Nummer</p>
+                <p className="text-xl font-bold text-slate-900" data-testid="user-number-value">
                   {wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number || "Laden..."}
                 </p>
               </div>
@@ -499,7 +500,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 Kopieren
               </button>
             </div>
-            <p className="text-xs text-white/40 mt-2">Teile diese Nummer, um Geld zu empfangen</p>
+            <p className="text-xs text-slate-500 mt-2">Teile diese Nummer, um Geld zu empfangen</p>
           </motion.div>
         )}
 
@@ -513,7 +514,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             data-testid="quick-send-section"
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-white">Schnell senden</h3>
+              <h3 className="text-sm font-bold text-slate-900">Schnell senden</h3>
               <button
                 data-testid="quick-send-show-all-btn"
                 onClick={() => setShowSendMoney(true)}

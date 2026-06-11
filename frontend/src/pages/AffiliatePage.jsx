@@ -76,8 +76,8 @@ export const AffiliatePage = ({ onBack }) => {
 
   if (loading || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
-        <Loader2 size={22} className="animate-spin text-white/40" />
+      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fc]">
+        <Loader2 size={22} className="animate-spin text-slate-400" />
       </div>
     );
   }
@@ -88,16 +88,16 @@ export const AffiliatePage = ({ onBack }) => {
 
   return (
     <div data-testid="affiliate-page" className="min-h-screen pb-24"
-      style={{ background: "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.2), transparent 50%), #050505" }}>
+      style={{ background: "radial-gradient(circle at 50% 0%, rgba(168,85,247,0.12), transparent 45%), linear-gradient(180deg, #f7f9fc 0%, #eef4fb 100%)" }}>
       {/* Header */}
-      <div className="sticky top-0 z-30 backdrop-blur-xl bg-[#050505]/90 border-b border-white/[0.06]">
+      <div className="sticky top-0 z-30 backdrop-blur-xl bg-white/90 border-b border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">
           <motion.button onClick={onBack} data-testid="affiliate-back"
-            className="w-9 h-9 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center"
             whileTap={{ scale: 0.92 }}>
-            <ArrowLeft size={15} className="text-white/70" />
+            <ArrowLeft size={15} className="text-slate-600" />
           </motion.button>
-          <h1 className="text-[14px] font-bold text-white">Partner-Programm</h1>
+          <h1 className="text-[14px] font-bold text-slate-900">Partner-Programm</h1>
           <div className="w-9" />
         </div>
       </div>
@@ -133,9 +133,9 @@ export const AffiliatePage = ({ onBack }) => {
         </motion.div>
 
         {/* Partner-Link Box */}
-        <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4">
-          <p className="text-[11px] font-bold text-white/60 uppercase tracking-wider mb-2">Dein Partner-Link</p>
-          <div className="flex items-center gap-2 bg-black/30 rounded-xl p-3 mb-3">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Dein Partner-Link</p>
+          <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-3 mb-3 border border-slate-200">
             <p className="text-[13px] font-mono text-[#00C2FF] flex-1 truncate" data-testid="affiliate-link">
               {data.link}
             </p>
@@ -167,10 +167,10 @@ export const AffiliatePage = ({ onBack }) => {
         </div>
 
         {/* How it works */}
-        <div className="bg-gradient-to-br from-[#00D26A]/10 to-[#00C2FF]/10 border border-[#00D26A]/20 rounded-2xl p-4">
+        <div className="bg-gradient-to-br from-[#00D26A]/10 to-[#00C2FF]/10 border border-[#00D26A]/20 rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={14} className="text-[#00D26A]" />
-            <h2 className="text-[13px] font-bold text-white">So verdienst Du</h2>
+            <h2 className="text-[13px] font-bold text-slate-900">So verdienst Du</h2>
           </div>
           <div className="space-y-2.5">
             {[
@@ -182,8 +182,8 @@ export const AffiliatePage = ({ onBack }) => {
               <div key={i} className="flex items-start gap-3">
                 <span className="text-[18px] flex-shrink-0">{s.icon}</span>
                 <div>
-                  <p className="text-[12px] font-bold text-white">{s.title}</p>
-                  <p className="text-[10px] text-white/60">{s.desc}</p>
+                  <p className="text-[12px] font-bold text-slate-900">{s.title}</p>
+                  <p className="text-[10px] text-slate-500">{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -193,17 +193,17 @@ export const AffiliatePage = ({ onBack }) => {
         {/* Recent Earnings */}
         {earnings.length > 0 && (
           <div>
-            <h2 className="text-[11px] font-bold text-white/50 uppercase tracking-wider mb-2">
+            <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
               Letzte Einnahmen
             </h2>
             <div className="space-y-1.5">
               {earnings.map((e, i) => (
-                <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2.5 flex items-center justify-between" data-testid={`earning-${i}`}>
+                <div key={i} className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between shadow-[0_8px_22px_rgba(15,23,42,0.04)]" data-testid={`earning-${i}`}>
                   <div>
-                    <p className="text-[11px] font-bold text-white">
+                    <p className="text-[11px] font-bold text-slate-900">
                       {e.type === "signup" ? "🎁 Neue Anmeldung" : "💰 Transaktion"}
                     </p>
-                    <p className="text-[9px] text-white/40">{new Date(e.created_at).toLocaleDateString("de-DE")}</p>
+                    <p className="text-[9px] text-slate-500">{new Date(e.created_at).toLocaleDateString("de-DE")}</p>
                   </div>
                   <p className="text-[13px] font-bold text-[#00D26A]">+€{e.amount.toFixed(2)}</p>
                 </div>
@@ -217,11 +217,11 @@ export const AffiliatePage = ({ onBack }) => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Trophy size={13} className="text-amber-400" />
-              <h2 className="text-[11px] font-bold text-white/50 uppercase tracking-wider">Top Partner</h2>
+              <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Top Partner</h2>
             </div>
             <div className="space-y-1.5">
               {lb.map((e) => (
-                <div key={e.rank} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2.5 flex items-center gap-3">
+                <div key={e.rank} className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center gap-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
                   <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
                     style={{
                       background: e.rank === 1 ? "#FFB800" : e.rank === 2 ? "#C0C0C0" : e.rank === 3 ? "#CD7F32" : "rgba(255,255,255,0.05)",
@@ -230,8 +230,8 @@ export const AffiliatePage = ({ onBack }) => {
                     {e.rank}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-white truncate">{e.display_name}</p>
-                    <p className="text-[9px] text-white/40">{e.referrals} Referrals</p>
+                    <p className="text-[12px] font-bold text-slate-900 truncate">{e.display_name}</p>
+                    <p className="text-[9px] text-slate-500">{e.referrals} Referrals</p>
                   </div>
                   <p className="text-[12px] font-bold text-[#00D26A]">€{e.total_earned.toFixed(2)}</p>
                 </div>

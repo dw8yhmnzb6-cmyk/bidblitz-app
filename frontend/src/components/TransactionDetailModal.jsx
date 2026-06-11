@@ -122,24 +122,24 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
 
         {/* Modal */}
         <motion.div
-          className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-md bg-[#f8fafc] rounded-t-[32px] sm:rounded-[32px] border border-slate-200 overflow-hidden max-h-[90vh] overflow-y-auto shadow-[0_24px_64px_rgba(15,23,42,0.16)]"
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-[#0A0A0A] flex items-center justify-between p-4 sm:p-5 border-b border-white/5 z-10">
-            <h2 className="text-lg font-semibold font-outfit text-white">
+          <div className="sticky top-0 bg-white/92 flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 z-10">
+            <h2 className="text-lg font-semibold font-outfit text-slate-900">
               Transaction Details
             </h2>
             <motion.button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"
+              className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              <X size={16} className="text-white/60" />
+              <X size={16} className="text-slate-600" />
             </motion.button>
           </div>
 
@@ -158,12 +158,12 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
               </div>
               
               <p className={`text-3xl font-bold font-outfit ${
-                isPositive ? 'text-[#00D26A]' : 'text-white'
+                isPositive ? 'text-[#00D26A]' : 'text-slate-900'
               }`}>
                 {formatCurrency(transaction.amount)}
               </p>
               
-              <p className="text-[#888] text-sm mt-1">
+              <p className="text-slate-500 text-sm mt-1">
                 {transaction.merchantName || transaction.description}
               </p>
 
@@ -185,10 +185,10 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
             </div>
 
             {/* Details List */}
-            <div className="bg-[#141414] rounded-2xl border border-white/5 divide-y divide-white/5">
+            <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
               {details.map((detail, index) => (
                 <div key={index} className="flex justify-between items-center p-3.5">
-                  <span className="text-sm text-[#666]">{detail.label}</span>
+                  <span className="text-sm text-slate-500">{detail.label}</span>
                   <span 
                     className="text-sm font-medium text-right max-w-[60%] truncate"
                     style={{ color: detail.color || '#fff' }}
@@ -204,32 +204,32 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
               <motion.button
                 data-testid="copy-ref-btn"
                 onClick={handleCopyReference}
-                className="flex-1 py-3 flex items-center justify-center gap-2 bg-[#141414] rounded-xl border border-white/5 text-sm"
+                className="flex-1 py-3 flex items-center justify-center gap-2 bg-white rounded-xl border border-slate-200 text-sm"
                 whileTap={{ scale: 0.98 }}
               >
                 {copied ? <Check size={14} className="text-[#00D26A]" /> : <Copy size={14} className="text-[#888]" />}
-                <span className={copied ? "text-[#00D26A]" : "text-white"}>{copied ? "Copied" : "Copy"}</span>
+                <span className={copied ? "text-[#00D26A]" : "text-slate-900"}>{copied ? "Copied" : "Copy"}</span>
               </motion.button>
 
               <motion.button
                 data-testid="download-pdf-btn"
                 onClick={handleDownloadPDF}
                 disabled={downloading}
-                className="flex-1 py-3 flex items-center justify-center gap-2 bg-[#141414] rounded-xl border border-white/5 text-sm disabled:opacity-50"
+                className="flex-1 py-3 flex items-center justify-center gap-2 bg-white rounded-xl border border-slate-200 text-sm disabled:opacity-50"
                 whileTap={{ scale: 0.98 }}
               >
                 {downloading ? <Loader2 size={14} className="text-[#00C2FF] animate-spin" /> : <Download size={14} className="text-[#00C2FF]" />}
-                <span className="text-white">PDF</span>
+                <span className="text-slate-900">PDF</span>
               </motion.button>
 
               <motion.button
                 data-testid="print-btn"
                 onClick={handlePrint}
-                className="flex-1 py-3 flex items-center justify-center gap-2 bg-[#141414] rounded-xl border border-white/5 text-sm"
+                className="flex-1 py-3 flex items-center justify-center gap-2 bg-white rounded-xl border border-slate-200 text-sm"
                 whileTap={{ scale: 0.98 }}
               >
                 <Printer size={14} className="text-[#FFB800]" />
-                <span className="text-white">Print</span>
+                <span className="text-slate-900">Print</span>
               </motion.button>
             </div>
 

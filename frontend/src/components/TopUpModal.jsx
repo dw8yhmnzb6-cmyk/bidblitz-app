@@ -243,7 +243,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
         />
 
         <motion.div
-          className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-md bg-[#f8fafc] rounded-t-[32px] sm:rounded-[32px] border border-slate-200 overflow-hidden max-h-[90vh] overflow-y-auto shadow-[0_24px_64px_rgba(15,23,42,0.16)]"
           style={{ paddingBottom: "max(env(safe-area-inset-bottom, 24px), 32px)" }}
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -251,8 +251,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/5">
-            <h2 className="text-lg font-semibold font-outfit text-white">
+          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-white/90">
+            <h2 className="text-lg font-semibold font-outfit text-slate-900">
               {step === "amount" && (t("topup.title") || "Add Money")}
               {step === "redirecting" && (t("topup.redirecting") || "Redirecting...")}
               {step === "verifying" && (t("topup.verifying") || "Verifying Payment")}
@@ -263,10 +263,10 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
               <motion.button
                 data-testid="topup-close-btn"
                 onClick={handleClose}
-                className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"
+                className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center"
                 whileTap={{ scale: 0.9 }}
               >
-                <X size={16} className="text-white/60" />
+                <X size={16} className="text-slate-600" />
               </motion.button>
             )}
           </div>
@@ -282,7 +282,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <p className="text-sm text-[#666] mb-4">
+                  <p className="text-sm text-slate-500 mb-4">
                     {t("topup.current") || "Current balance"}: {formatCurrency(currentBalance, "EUR", false)}
                   </p>
 
@@ -296,7 +296,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                         className={`py-4 rounded-xl text-base font-bold transition-all ${
                           selectedId === preset.id
                             ? "bg-[#00C2FF] text-[#0A0A0A] scale-105"
-                            : "bg-[#1A1A1A] text-white border border-white/10 hover:border-[#00C2FF]/40"
+                            : "bg-white text-slate-900 border border-slate-200 hover:border-[#00C2FF]/40"
                         }`}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -308,21 +308,21 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   {/* Summary */}
                   {selectedPreset && (
                     <motion.div
-                      className="bg-[#141414] rounded-2xl p-4 mb-4 border border-white/5 space-y-2"
+                      className="bg-white rounded-2xl p-4 mb-4 border border-slate-200 space-y-2 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                     >
                       <div className="flex justify-between text-sm">
                         <span className="text-[#666]">{t("topup.amount") || "Amount"}</span>
-                        <span className="text-white">&euro;{selectedPreset.amount.toFixed(2)}</span>
+                        <span className="text-slate-900">&euro;{selectedPreset.amount.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-[#666]">{t("topup.fee") || "Fee"}</span>
                         <span className="text-[#00D26A]">{t("topup.free") || "Free"}</span>
                       </div>
                       <div className="border-t border-white/5 pt-2 flex justify-between">
-                        <span className="text-white font-medium">{t("topup.total") || "Total"}</span>
-                        <span className="text-white font-bold">&euro;{selectedPreset.amount.toFixed(2)}</span>
+                        <span className="text-slate-900 font-medium">{t("topup.total") || "Total"}</span>
+                        <span className="text-slate-900 font-bold">&euro;{selectedPreset.amount.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 pt-1">
                         <CreditCard size={12} className="text-[#444]" />

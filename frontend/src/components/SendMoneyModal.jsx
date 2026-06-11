@@ -215,7 +215,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
         exit={{ y: "100%" }}
         transition={spring}
       >
-        <div className="bg-[#0A0A0A] rounded-t-[32px] sm:rounded-[32px] min-h-[85vh] sm:min-h-0 sm:max-h-[90vh] overflow-hidden border border-white/[0.08]">
+        <div className="bg-[#f8fafc] rounded-t-[32px] sm:rounded-[32px] min-h-[85vh] sm:min-h-0 sm:max-h-[90vh] overflow-hidden border border-slate-200 shadow-[0_24px_64px_rgba(15,23,42,0.16)]">
           
           {/* ═══════════════════════════════════════════════════════════════
               STEP 1: SELECT RECIPIENT
@@ -232,20 +232,20 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 {/* Header */}
                 <div className="px-6 pt-6 pb-4">
                   <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-[22px] font-bold text-white">Geld senden</h1>
+                    <h1 className="text-[22px] font-bold text-slate-900">Geld senden</h1>
                     <motion.button
                       onClick={onClose}
-                      className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center"
+                      className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center"
                       whileTap={{ scale: 0.9 }}
                     >
-                      <X size={18} className="text-white/60" />
+                      <X size={18} className="text-slate-600" />
                     </motion.button>
                   </div>
                   
                   {/* Balance Card */}
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#00C2FF]/20 to-[#00C2FF]/5 border border-[#00C2FF]/20 mb-6">
-                    <p className="text-[12px] text-[#00C2FF]/70 font-medium mb-1">Verfügbar</p>
-                    <p className="text-[36px] font-bold text-white tracking-tight">€{balance.toFixed(2)}</p>
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-[#00C2FF]/12 to-[#8B5CF6]/10 border border-[#00C2FF]/18 mb-6 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+                    <p className="text-[12px] text-[#00C2FF] font-medium mb-1">Verfügbar</p>
+                    <p className="text-[36px] font-bold text-slate-900 tracking-tight">€{balance.toFixed(2)}</p>
                   </div>
                   
                   {/* Quick Actions */}
@@ -263,20 +263,20 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                         whileTap={{ scale: 0.95 }}
                       >
                         <item.icon size={22} style={{ color: item.color }} />
-                        <span className="text-[10px] font-semibold text-white/70">{item.label}</span>
+                        <span className="text-[10px] font-semibold text-slate-700">{item.label}</span>
                       </motion.button>
                     ))}
                   </div>
                   
                   {/* Search */}
                   <div className="relative">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => handleSearch(e.target.value)}
                       placeholder="Username, E-Mail oder BidBlitz ID..."
-                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white text-[15px] placeholder-white/30 outline-none focus:border-[#00C2FF]/40 transition-colors"
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 text-[15px] placeholder-slate-400 outline-none focus:border-[#00C2FF]/40 transition-colors"
                       autoFocus
                     />
                   </div>

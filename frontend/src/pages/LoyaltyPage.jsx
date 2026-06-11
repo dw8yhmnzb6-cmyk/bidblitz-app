@@ -10,8 +10,8 @@ import { useI18n } from "../store/I18nContext";
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
 const glass = "backdrop-blur-xl";
-const panelBg = "rgba(8,12,20,0.7)";
-const panelBorder = "1px solid rgba(255,255,255,0.04)";
+const panelBg = "rgba(255,255,255,0.9)";
+const panelBorder = "1px solid rgba(15,23,42,0.06)";
 
 const LEVEL_ICONS = {
   bronze: Medal,
@@ -84,8 +84,8 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}>
-        <Loader2 size={24} className="text-white/20 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#f7f9fc" }}>
+        <Loader2 size={24} className="text-slate-400 animate-spin" />
       </div>
     );
   }
@@ -98,29 +98,29 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
     <motion.div
       data-testid="loyalty-page"
       className="min-h-screen pb-24"
-      style={{ background: "#040610" }}
+      style={{ background: "linear-gradient(180deg, #f7f9fc 0%, #eef4fb 100%)" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       {/* Header */}
       <div
         className="sticky top-0 z-30 backdrop-blur-xl"
-        style={{ background: "rgba(4,6,16,0.85)", borderBottom: panelBorder }}
+        style={{ background: "rgba(255,255,255,0.9)", borderBottom: panelBorder }}
       >
         <div className="max-w-2xl mx-auto flex items-center gap-3 px-4 py-3">
           <motion.button
             data-testid="loyalty-back"
             onClick={onBack}
             whileTap={{ scale: 0.9 }}
-            className="w-9 h-9 rounded-full bg-white/[0.03] border border-white/[0.05] flex items-center justify-center"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center"
           >
-            <ArrowLeft size={15} className="text-white/40" />
+            <ArrowLeft size={15} className="text-slate-600" />
           </motion.button>
           <div className="flex-1">
-            <h1 className="text-[15px] font-bold text-white/90 font-outfit">
+            <h1 className="text-[15px] font-bold text-slate-900 font-outfit">
               {t("loyalty.title") || "Coins & Cashback"}
             </h1>
-            <p className="text-[9px] text-white/25">
+            <p className="text-[9px] text-slate-500">
               {t("loyalty.subtitle") || "Verdiene mit jeder Transaktion"}
             </p>
           </div>
@@ -141,15 +141,16 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
         <motion.div
           className={`rounded-2xl p-5 ${glass}`}
           style={{
-            background: "linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(8,12,20,0.9) 100%)",
-            border: "1px solid rgba(255,215,0,0.15)",
+            background: "linear-gradient(135deg, rgba(255,245,200,0.92) 0%, rgba(255,255,255,0.98) 100%)",
+            border: "1px solid rgba(255,215,0,0.22)",
+            boxShadow: "0 18px 34px rgba(15,23,42,0.07)",
           }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[9px] text-white/40 uppercase tracking-widest font-semibold mb-1">
+              <p className="text-[9px] text-slate-500 uppercase tracking-widest font-semibold mb-1">
                 {t("loyalty.coins_balance") || "Coins Balance"}
               </p>
               <div className="flex items-baseline gap-2">
@@ -158,18 +159,18 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
                   {status?.coins_balance?.toLocaleString() || 0}
                 </span>
               </div>
-              <p className="text-[10px] text-white/30 mt-1">
+              <p className="text-[10px] text-slate-500 mt-1">
                 {t("loyalty.total_earned") || "Total verdient"}: {status?.total_coins_earned?.toLocaleString() || 0}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[9px] text-white/40 uppercase tracking-widest font-semibold mb-1">
+              <p className="text-[9px] text-slate-500 uppercase tracking-widest font-semibold mb-1">
                 {t("loyalty.cashback") || "Cashback"}
               </p>
               <p className="text-[28px] font-black text-[#00E89D] font-mono">
                 €{(status?.total_cashback_earned || 0).toFixed(2)}
               </p>
-              <p className="text-[10px] text-white/30 mt-1">
+              <p className="text-[10px] text-slate-500 mt-1">
                 {t("loyalty.credited_to_wallet") || "Im Wallet gutgeschrieben"}
               </p>
             </div>
@@ -193,15 +194,15 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
                 <LevelIcon size={20} style={{ color: levelColor }} />
               </div>
               <div>
-                <p className="text-[12px] font-bold text-white/80">{status?.level_name}</p>
-                <p className="text-[9px] text-white/30">
+                <p className="text-[12px] font-bold text-slate-900">{status?.level_name}</p>
+                <p className="text-[9px] text-slate-500">
                   {status?.coin_multiplier}x Coins • +{((status?.cashback_bonus || 0) * 100).toFixed(0)}% Cashback
                 </p>
               </div>
             </div>
             {!progress.is_max_level && (
               <div className="text-right">
-                <p className="text-[9px] text-white/40">{t("loyalty.next_level") || "Nächstes Level"}</p>
+                <p className="text-[9px] text-slate-500">{t("loyalty.next_level") || "Nächstes Level"}</p>
                 <p className="text-[11px] font-bold" style={{ color: LEVEL_COLORS[progress.next_level] }}>
                   {progress.next_level?.charAt(0).toUpperCase() + progress.next_level?.slice(1)}
                 </p>
@@ -211,7 +212,7 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
 
           {!progress.is_max_level && (
             <>
-              <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden mb-2">
+              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mb-2">
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: `linear-gradient(90deg, ${levelColor}, ${LEVEL_COLORS[progress.next_level]})` }}
@@ -220,7 +221,7 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
                   transition={{ duration: 1, ease: "easeOut" }}
                 />
               </div>
-              <div className="flex justify-between text-[8px] text-white/30">
+              <div className="flex justify-between text-[8px] text-slate-500">
                 <span>{progress.progress?.toFixed(0)}%</span>
                 <span>{progress.next_level}</span>
               </div>
@@ -231,13 +232,13 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
                   <div
                     key={key}
                     className="p-2 rounded-lg text-center"
-                    style={{ background: "rgba(255,255,255,0.02)", border: panelBorder }}
+                    style={{ background: "rgba(248,250,252,0.96)", border: panelBorder }}
                   >
-                    <p className="text-[8px] text-white/30 capitalize">{key === "spend" ? "Ausgaben" : key === "transactions" ? "Transaktionen" : "Coins"}</p>
-                    <p className="text-[10px] font-bold text-white/60">
+                    <p className="text-[8px] text-slate-500 capitalize">{key === "spend" ? "Ausgaben" : key === "transactions" ? "Transaktionen" : "Coins"}</p>
+                    <p className="text-[10px] font-bold text-slate-900">
                       {typeof req.current === "number" ? (key === "spend" ? `€${req.current.toFixed(0)}` : req.current) : req.current}
                     </p>
-                    <p className="text-[8px] text-white/20">
+                    <p className="text-[8px] text-slate-400">
                       / {key === "spend" ? `€${req.required}` : req.required}
                     </p>
                   </div>
@@ -263,8 +264,8 @@ const LoyaltyPage = ({ onBack, onNavigate }) => {
               whileTap={{ scale: 0.95 }}
               className={`flex-1 py-2 rounded-xl text-[10px] font-bold ${
                 activeTab === tab
-                  ? "bg-white/10 text-white/80 border border-white/10"
-                  : "bg-white/[0.02] text-white/30 border border-white/[0.03]"
+                  ? "bg-[#002FA7] text-white border border-[#002FA7]"
+                  : "bg-white text-slate-500 border border-slate-200"
               }`}
             >
               {tab === "overview" && (t("loyalty.overview") || "Übersicht")}
