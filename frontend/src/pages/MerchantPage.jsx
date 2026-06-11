@@ -41,7 +41,10 @@ function triggerPayoutRefresh(fetchBalance, fetchPayouts, refreshDashboard) {
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.detail || "Request failed");
+  const errorMessage = typeof d?.detail === "string"
+    ? d.detail
+    : d?.detail?.message || d?.message || d?.error || `Request failed (${r.status})`;
+  if (!r.ok) throw new Error(errorMessage);
   return d;
 }
 
@@ -122,15 +125,15 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
 
   return (
     <AnimatePresence>
-      <motion.div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div data-testid="payout-modal" className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
         <motion.div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={step === "form" ? handleClose : undefined} />
         <motion.div className="relative w-full max-w-md bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border border-white/10 overflow-hidden"
           initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}>
           <div className="flex items-center justify-between p-4 border-b border-white/5">
-            <h2 className="text-lg font-semibold font-outfit text-white">
+            <h2 data-testid="payout-modal-title" className="text-lg font-semibold font-outfit text-white">
               {step === "form" ? "Request Payout" : step === "success" ? "Payout Requested" : "Failed"}
             </h2>
-            <motion.button onClick={handleClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center" whileTap={{ scale: 0.9 }}>
+            <motion.button data-testid="payout-modal-close-button" onClick={handleClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center" whileTap={{ scale: 0.9 }}>
               <X size={16} className="text-white/60" />
             </motion.button>
           </div>
@@ -138,7 +141,7 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
             <AnimatePresence mode="wait">
               {step === "form" && (
                 <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <p className="text-sm text-[#666] mb-1">Available: <span className="text-white font-semibold">&euro;{available.toFixed(2)}</span></p>
+                  <p className="text-sm text-[#666] mb-1" data-testid="payout-modal-available-balance">Available: <span className="text-white font-semibold">&euro;{available.toFixed(2)}</span></p>
                   <p className="text-[10px] text-[#444] mb-4">Min. payout: &euro;{minPayout.toFixed(2)} &middot; Fee: &euro;{flatFee.toFixed(2)}</p>
                   <div className={`flex items-center gap-3 px-4 py-3 rounded-[14px] mb-4 transition-all border ${num > 0 ? "bg-white/[0.04] border-[#00C2FF]/25" : "bg-white/[0.02] border-white/[0.05]"}`}>
                     <span className="text-white/40 text-lg font-outfit">&euro;</span>
@@ -146,16 +149,16 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
                       placeholder="0.00" className="flex-1 bg-transparent text-xl text-white font-bold font-outfit outline-none placeholder:text-[#2A2A2A]" autoFocus />
                   </div>
                   {num > 0 && (
-                    <motion.div className="bg-[#141414] rounded-2xl p-4 mb-4 border border-white/5 space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <motion.div data-testid="payout-modal-summary" className="bg-[#141414] rounded-2xl p-4 mb-4 border border-white/5 space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                       <div className="flex justify-between text-sm"><span className="text-[#666]">Amount</span><span className="text-white">&euro;{num.toFixed(2)}</span></div>
                       <div className="flex justify-between text-sm"><span className="text-[#666]">Fee</span><span className="text-[#FF6B6B]">-&euro;{fee.toFixed(2)}</span></div>
                       <div className="border-t border-white/5 pt-2 flex justify-between">
                         <span className="text-white font-medium">You receive</span>
-                        <span className="text-[#00D26A] font-bold">&euro;{net.toFixed(2)}</span>
+                        <span data-testid="payout-modal-net-amount" className="text-[#00D26A] font-bold">&euro;{net.toFixed(2)}</span>
                       </div>
                     </motion.div>
                   )}
-                  {num > available && <p className="text-[11px] text-[#FF4757] mb-3">Amount exceeds available balance</p>}
+                  {num > available && <p data-testid="payout-modal-error-message" className="text-[11px] text-[#FF4757] mb-3">Amount exceeds available balance</p>}
                   <motion.button data-testid="payout-submit-btn" onClick={handleSubmit} disabled={!valid || loading}
                     className="w-full py-3.5 bg-[#00D26A] text-white font-semibold rounded-full disabled:opacity-40 flex items-center justify-center gap-2"
                     whileTap={valid && !loading ? { scale: 0.98 } : {}}>
@@ -165,25 +168,25 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
                 </motion.div>
               )}
               {step === "success" && (
-                <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-6 text-center">
+                <motion.div key="success" data-testid="payout-success-state" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-6 text-center">
                   <motion.div className="w-16 h-16 rounded-full bg-[#00D26A]/10 flex items-center justify-center mx-auto mb-4"
                     initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.1 }}>
                     <Check size={28} className="text-[#00D26A]" />
                   </motion.div>
                   <p className="text-white font-semibold text-lg mb-1">Payout Requested</p>
-                  <p className="text-2xl font-bold font-outfit text-[#00D26A] mb-1">&euro;{net.toFixed(2)}</p>
+                  <p data-testid="payout-success-net-amount" className="text-2xl font-bold font-outfit text-[#00D26A] mb-1">&euro;{net.toFixed(2)}</p>
                   <p className="text-sm text-[#666] mb-6">Your payout will be processed shortly</p>
-                  <motion.button onClick={handleClose} className="w-full py-3.5 bg-[#00D26A] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>Done</motion.button>
+                  <motion.button data-testid="payout-success-done-button" onClick={handleClose} className="w-full py-3.5 bg-[#00D26A] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>Done</motion.button>
                 </motion.div>
               )}
               {step === "error" && (
-                <motion.div key="error" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-6 text-center">
+                <motion.div key="error" data-testid="payout-error-state" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-6 text-center">
                   <motion.div className="w-16 h-16 rounded-full bg-[#FF4757]/10 flex items-center justify-center mx-auto mb-4"><AlertCircle size={28} className="text-[#FF4757]" /></motion.div>
                   <p className="text-white font-semibold text-lg mb-1">Payout Failed</p>
-                  <p className="text-sm text-[#666] mb-6">{error || "Something went wrong"}</p>
+                  <p data-testid="payout-error-message" className="text-sm text-[#666] mb-6">{error || "Something went wrong"}</p>
                   <div className="flex gap-3">
-                    <motion.button onClick={handleClose} className="flex-1 py-3.5 bg-[#141414] text-white font-semibold rounded-full border border-white/10" whileTap={{ scale: 0.98 }}>Cancel</motion.button>
-                    <motion.button onClick={() => { setStep("form"); setError(null); }} className="flex-1 py-3.5 bg-[#FF4757] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>Retry</motion.button>
+                    <motion.button data-testid="payout-error-cancel-button" onClick={handleClose} className="flex-1 py-3.5 bg-[#141414] text-white font-semibold rounded-full border border-white/10" whileTap={{ scale: 0.98 }}>Cancel</motion.button>
+                    <motion.button data-testid="payout-error-retry-button" onClick={() => { setStep("form"); setError(null); }} className="flex-1 py-3.5 bg-[#FF4757] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>Retry</motion.button>
                   </div>
                 </motion.div>
               )}

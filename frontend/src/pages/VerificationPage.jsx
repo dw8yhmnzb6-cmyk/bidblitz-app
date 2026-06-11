@@ -22,6 +22,7 @@ const VerificationPage = ({ onBack }) => {
   const [success, setSuccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState(null);
+  const [submitFeedback, setSubmitFeedback] = useState(null);
 
   const load = useCallback(async () => {
     const res = await api.getKycStatus();
@@ -61,6 +62,14 @@ const VerificationPage = ({ onBack }) => {
     return () => clearInterval(timer);
   }, [data?.kyc_status, refreshStatus]);
 
+  const resetUploads = useCallback(() => {
+    setFiles({ id_front: null, id_back: null, selfie: null });
+    setPreviews({ id_front: null, id_back: null, selfie: null });
+    setError("");
+    setSuccess(false);
+    setSubmitFeedback(null);
+  }, []);
+
   const handleFile = (key, file) => {
     if (!file) return;
     setFiles(p => ({ ...p, [key]: file }));
@@ -74,20 +83,27 @@ const VerificationPage = ({ onBack }) => {
     }
     setUploading(true);
     setError("");
+    setSubmitFeedback(null);
     try {
       const fd = new FormData();
       fd.append("id_front", files.id_front);
       fd.append("id_back", files.id_back);
       fd.append("selfie", files.selfie);
       fd.append("document_type", "national_id");
-      await api.submitKycFormData(fd);
-      setSuccess(true);
+      const response = await api.submitKycFormData(fd);
+      setSuccess(response?.status !== "rejected");
+      setSubmitFeedback({
+        tone: response?.status === "approved" ? "success" : response?.status === "rejected" ? "error" : "pending",
+        title: response?.status === "approved" ? "Verifizierung abgeschlossen" : response?.status === "rejected" ? "Verifizierung abgelehnt" : "Dokumente eingereicht",
+        message: response?.message || "KYC-Status aktualisiert.",
+      });
       const nextStatus = await refreshStatus({ silent: true });
       if (nextStatus?.kyc_status === "approved") {
         setSuccess(false);
       }
     } catch (e) {
       setError(e?.message || "KYC Upload fehlgeschlagen");
+      setSubmitFeedback({ tone: "error", title: "Upload fehlgeschlagen", message: e?.message || "KYC Upload fehlgeschlagen" });
     }
     setUploading(false);
   };
@@ -112,6 +128,13 @@ const VerificationPage = ({ onBack }) => {
   const syncLabel = lastSyncAt
     ? `Zuletzt aktualisiert: ${lastSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "Status wird geladen";
+  const autoRefreshActive = ["pending", "submitted"].includes(status);
+  const infoTone = submitFeedback?.tone === "error"
+    ? { bg: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.14)", color: "#FF7C87", icon: AlertCircle }
+    : submitFeedback?.tone === "success"
+      ? { bg: "rgba(0,232,157,0.06)", border: "1px solid rgba(0,232,157,0.14)", color: "#00E89D", icon: Check }
+      : { bg: "rgba(0,224,255,0.06)", border: "1px solid rgba(0,224,255,0.14)", color: "#00E0FF", icon: Clock };
+  const FeedbackIcon = infoTone.icon;
 
   return (
     <motion.div data-testid="verification-page" className="min-h-screen pb-24" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -154,12 +177,41 @@ const VerificationPage = ({ onBack }) => {
               Aktualisieren
             </button>
           </div>
-          {(status === "pending" || success) && (
+          {autoRefreshActive && (
             <p className="text-[10px] text-cyan-300/80 mt-3" data-testid="kyc-auto-refresh-hint">
-              Auto-Refresh ist aktiv. Der Status wird im Hintergrund erneut geprüft.
+              Auto-Refresh ist aktiv. Der Status wird alle 15 Sekunden erneut geprüft.
             </p>
           )}
         </motion.div>
+
+        {submitFeedback && (
+          <motion.div
+            data-testid="kyc-submit-feedback-card"
+            className={`rounded-2xl p-4 ${glass}`}
+            style={{ background: infoTone.bg, border: infoTone.border }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <FeedbackIcon size={18} style={{ color: infoTone.color }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-bold" style={{ color: infoTone.color }} data-testid="kyc-submit-feedback-title">{submitFeedback.title}</p>
+                <p className="text-[11px] text-white/70 mt-1" data-testid="kyc-submit-feedback-message">{submitFeedback.message}</p>
+              </div>
+              {submitFeedback.tone === "error" && (
+                <button
+                  onClick={() => setSubmitFeedback(null)}
+                  className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/70 text-[10px] font-semibold"
+                  data-testid="kyc-feedback-dismiss-button"
+                >
+                  Schließen
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Status Banner */}
         {status === "pending" && (
@@ -180,7 +232,7 @@ const VerificationPage = ({ onBack }) => {
         )}
 
         {status === "rejected" && (
-          <motion.div className={`rounded-2xl p-4 text-center ${glass}`} style={{ background: "rgba(255,71,87,0.04)", border: "1px solid rgba(255,71,87,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div data-testid="kyc-rejected-banner" className={`rounded-2xl p-4 text-center ${glass}`} style={{ background: "rgba(255,71,87,0.04)", border: "1px solid rgba(255,71,87,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <X size={28} className="text-[#FF4757] mx-auto mb-2" />
             <p className="text-[13px] font-bold text-[#FF4757]">{t("verify.rejected_title") || "Verification Rejected"}</p>
             <p className="text-[10px] text-white/30 mt-1">{data?.rejection_reason || t("verify.rejected_desc") || "Please re-submit clear documents."}</p>
@@ -193,7 +245,7 @@ const VerificationPage = ({ onBack }) => {
                 Status neu laden
               </button>
               <button
-                onClick={() => setError("")}
+                onClick={resetUploads}
                 className="px-3 py-2 rounded-xl bg-[#FF4757]/10 border border-[#FF4757]/20 text-[#FF7C87] text-[11px] font-semibold"
                 data-testid="kyc-retry-upload-button"
               >
@@ -206,6 +258,22 @@ const VerificationPage = ({ onBack }) => {
         {/* Upload Form — only show if no pending/approved verification */}
         {(!status || status === "rejected") && !success && (
           <>
+            <motion.div data-testid="kyc-upload-guidance-card" className={`rounded-2xl p-4 ${glass}`} style={{ background: "rgba(0,224,255,0.03)", border: "1px solid rgba(0,224,255,0.1)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold text-[#00E0FF]">Klare Fotos beschleunigen die Prüfung</p>
+                  <p className="text-[10px] text-white/55 mt-1">Alle 3 Bilder müssen gut lesbar, vollständig und ohne starke Spiegelung sein.</p>
+                </div>
+                <button
+                  onClick={resetUploads}
+                  className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white/70 text-[11px] font-semibold"
+                  data-testid="kyc-reset-upload-button"
+                >
+                  Reset
+                </button>
+              </div>
+            </motion.div>
+
             <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">{t("verify.upload_docs") || "Upload Documents"}</p>
 
@@ -273,7 +341,23 @@ const VerificationPage = ({ onBack }) => {
             <Check size={28} className="text-[#00E89D] mx-auto mb-2" />
             <p className="text-[13px] font-bold text-[#00E89D]">{t("verify.submitted") || "Documents Submitted"}</p>
             <p className="text-[10px] text-white/30 mt-1">{t("verify.wait_review") || "Please wait for admin review."}</p>
-            <p className="text-[10px] text-cyan-300/80 mt-2">Status wird automatisch aktualisiert. Du kannst zusätzlich manuell refreshen.</p>
+            <p className="text-[10px] text-cyan-300/80 mt-2" data-testid="kyc-success-refresh-hint">Status wird automatisch aktualisiert. Du kannst zusätzlich jederzeit manuell prüfen.</p>
+            <div className="flex gap-2 justify-center mt-3">
+              <button
+                onClick={() => refreshStatus({ silent: true })}
+                className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white/70 text-[11px] font-semibold"
+                data-testid="kyc-success-refresh-button"
+              >
+                Jetzt prüfen
+              </button>
+              <button
+                onClick={resetUploads}
+                className="px-3 py-2 rounded-xl bg-[#00E89D]/10 border border-[#00E89D]/20 text-[#00E89D] text-[11px] font-semibold"
+                data-testid="kyc-success-reset-button"
+              >
+                Neue Dateien wählen
+              </button>
+            </div>
           </motion.div>
         )}
 
