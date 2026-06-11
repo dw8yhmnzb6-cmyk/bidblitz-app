@@ -1,102 +1,77 @@
 {
-  "project_context": {
-    "domain": "Super-App / Ride Hailing Mobile Web App",
-    "theme": "LIGHT",
-    "archetype": "4_Swiss_High_Contrast",
-    "archetype_reasoning": "A ride-hailing map view demands absolute clarity, objective functional hierarchy, and instantaneous readability under physical stress (walking, sunlight). Swiss High-Contrast maximizes contrast against a visually complex map, addressing the user's specific complaint about bad legibility ('Das kann man nicht sehen')."
+  "theme": "light",
+  "archetype": "5 (Luxury - Light Theme)",
+  "vibe": "Premium, minimal, clean, trust-first, high contrast with generous whitespace. Smooth mobile bottom-sheet modals for a native-like feel.",
+  "language": "German",
+  "colors": {
+    "background": "#FCFCFC",
+    "surface": "#FFFFFF",
+    "primary_accent": "#0F172A",
+    "secondary_accent": "#D4AF37",
+    "text_primary": "#111827",
+    "text_secondary": "#6B7280",
+    "success": "#10B981",
+    "danger": "#EF4444",
+    "border": "#F3F4F6",
+    "surface_glass": "rgba(255, 255, 255, 0.85)"
   },
-  "design_system": {
-    "typography": {
-      "heading_font": "Chivo",
-      "body_font": "IBM Plex Sans",
-      "rules": "Tight letter spacing (tracking-tight) on headings, high weight contrast (Black vs Light). Never use Inter or generic sans. Label texts must be uppercase, tiny, and wide-spaced.",
-      "scales": {
-        "h1_sheet": "text-3xl font-black tracking-tighter text-zinc-950",
-        "h2_section": "text-lg font-bold tracking-tight text-zinc-900",
-        "body_primary": "text-base font-medium text-zinc-900",
-        "body_secondary": "text-sm font-normal text-zinc-500",
-        "label": "text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500"
-      }
+  "typography": {
+    "headings": "Outfit",
+    "body": "Manrope",
+    "numbers": "Outfit",
+    "rules": [
+      "Use Outfit for big balance numbers and headings.",
+      "Use Manrope for all transaction lists, labels, and small text.",
+      "Use tracking-tight on large numeric balances."
+    ]
+  },
+  "spacing_and_layout": {
+    "general": "Use p-4 to p-6 for standard mobile container padding. Avoid cramming elements.",
+    "cards": "rounded-[24px] border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] bg-white",
+    "modals": "Always use Bottom Sheets (Sheet component or tailored sliding divs) for mobile edit modals. Must use rounded-t-[32px] with a prominent top drag handle.",
+    "buttons": "rounded-full, h-14, text-base font-semibold. Primary: bg-slate-900 text-white hover:bg-slate-800 focus:ring-2 focus:ring-slate-300. Secondary: bg-gray-100 text-slate-900 hover:bg-gray-200."
+  },
+  "components": {
+    "wallet_card": {
+      "style": "A premium card inside the wallet subpage. Uses the abstract wave image as background, combined with a subtle white gradient overlay to ensure text contrast. Text should be Slate-900.",
+      "classes": "relative overflow-hidden rounded-[24px] border border-gray-200 shadow-md p-6 h-52 flex flex-col justify-between"
     },
-    "colors": {
-      "background": {
-        "bottom_sheet": "#FFFFFF",
-        "input_surface": "#F4F4F5",
-        "map_fallback_overlay": "rgba(0,0,0,0.15)"
-      },
-      "text": {
-        "primary": "#0A0A0A",
-        "secondary": "#52525B",
-        "inverse": "#FFFFFF",
-        "accent": "#002FA7"
-      },
-      "accents": {
-        "primary": "#002FA7",
-        "warning": "#FFCC00",
-        "error": "#FF3B30",
-        "success": "#34C759"
-      }
+    "transaction_list": {
+      "style": "Clean rows without individual card wrappers. Just a flex container with border-b on items.",
+      "classes": "flex items-center justify-between py-4 border-b border-gray-100 last:border-0"
     },
-    "surfaces": {
-      "floating_pill": "backdrop-blur-xl bg-white/90 border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.12)]",
-      "bottom_sheet": "bg-white shadow-[0_-12px_40px_rgba(0,0,0,0.12)] rounded-t-[32px] border-t border-black/5"
+    "loyalty_tier": {
+      "style": "A premium status card indicating loyalty status. Subtle gold/bronze accents.",
+      "classes": "bg-gradient-to-br from-amber-50 to-white border border-amber-200 text-amber-900 rounded-[24px] p-6 shadow-sm"
     },
-    "spacing": {
-      "padding": "Generous. Use p-6 inside the bottom sheet, gap-4 for lists.",
-      "layout": "Mobile-first absolute positioning. Map z-0, Pills z-10, Bottom Sheet z-20."
+    "affiliate_stats": {
+      "style": "Bento grid for affiliate stats.",
+      "classes": "grid grid-cols-2 gap-4"
+    },
+    "edit_modal": {
+      "style": "Bottom sheet modal for quick actions (edit profile, withdraw, wallet settings).",
+      "classes": "fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.1)] pb-8 pt-4 px-6"
     }
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "Thin stroke width (strokeWidth={1.5}) for a precise, elegant look."
+  },
+  "motion_and_interactions": {
+    "hover_states": "Subtle scale up (scale-[1.02]) on interactive cards.",
+    "active_states": "scale-[0.98] on buttons for tactile feedback."
   },
   "media": {
     "image_urls": [
       {
-        "url": "https://images.unsplash.com/photo-1620662892011-f5c2d523fae2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjh8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBtaW5pbWFsJTIwY2l0eSUyMG1hcCUyMGFlcmlhbCUyMHZpZXd8ZW58MHx8fHwxNzgxMDY5NjAwfDA&ixlib=rb-4.1.0&q=85",
-        "category": "map_fallback_background",
-        "description": "Aerial dark map view for fallback when interactive map is loading or fails."
+        "url": "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMGFic3RyYWN0JTIwZ3JhZGllbnQlMjB0ZXh0dXJlfGVufDB8fHx8MTc4MTE3Mjc0M3ww&ixlib=rb-4.1.0&q=85",
+        "category": "wallet_card_background",
+        "description": "Premium white abstract wavy texture for the virtual wallet card background."
       }
     ]
   },
-  "components": {
-    "taxi_view_container": {
-      "structure": "relative h-[100dvh] w-full overflow-hidden bg-zinc-900"
-    },
-    "map_layer": {
-      "structure": "absolute inset-0 z-0",
-      "instructions": "Render map fallback image with object-cover and opacity-80 to ensure UI pops."
-    },
-    "gps_status_pill": {
-      "structure": "absolute top-safe-12 left-1/2 -translate-x-1/2 z-10 rounded-full px-4 py-2 flex items-center gap-2",
-      "instructions": "Apply floating_pill surface. Use a pulsing green dot (w-2 h-2 rounded-full bg-success animate-pulse) next to text 'Standort genau' (text-xs font-bold text-zinc-800). Fallback state: orange dot 'GPS wird gesucht...'.",
-      "data_testid": "gps-status-indicator"
-    },
-    "bottom_sheet": {
-      "structure": "absolute bottom-0 w-full z-20 pt-6 pb-12 px-6 flex flex-col gap-6",
-      "instructions": "Apply bottom_sheet surface. Top must have a visual drag handle (w-12 h-1.5 bg-zinc-200 rounded-full mx-auto mb-2). Main content: H1 'Wohin soll\\'s gehen?'.",
-      "data_testid": "booking-bottom-sheet"
-    },
-    "quick_actions_toggle": {
-      "structure": "flex bg-zinc-100 rounded-full p-1 w-fit",
-      "instructions": "Segmented control for Now/Later. 'Jetzt' (active: bg-white shadow-sm text-zinc-900 px-4 py-1.5 rounded-full font-bold text-sm) vs 'Später' (inactive: text-zinc-500 px-4 py-1.5 font-medium text-sm).",
-      "data_testid": "time-toggle-group"
-    },
-    "destination_search_input": {
-      "structure": "flex items-center gap-3 bg-zinc-100 rounded-2xl p-4 w-full transition-transform active:scale-[0.98]",
-      "instructions": "Use Phosphor 'MagnifyingGlass' icon (size 24, text-zinc-500). Text should be text-lg text-zinc-500 'Ziel suchen...'.",
-      "data_testid": "destination-search-input"
-    },
-    "saved_places": {
-      "structure": "flex flex-col gap-0",
-      "instructions": "List of places (Zuhause, Arbeit). Each item is flex row, items-center, gap-4, py-4, border-b border-zinc-100 last:border-none. Icon container: w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center. Use Phosphor 'House' and 'Briefcase'.",
-      "data_testid": "saved-places-list"
-    }
-  },
-  "instructions_to_main_agent": [
-    "INSTALL @phosphor-icons/react using yarn and use it for icons (MapPin, House, Briefcase, MagnifyingGlass).",
-    "Do NOT use generic 'Inter' font. Use 'Chivo' for headings and 'IBM Plex Sans' for body. Import them via Google Fonts.",
-    "Adhere strictly to the Swiss High-Contrast color palette (Black, White, Zinc-100, and International Klein Blue #002FA7 for accents).",
-    "The user complained 'Das kann man nicht sehen gar nix sehen' - meaning the old design had terrible contrast against the map. Ensure the bottom sheet is entirely opaque, white, with crisp black text, and floating elements use strong crystal glassmorphism.",
-    "Do not use Shadcn card for the bottom sheet. Build it cleanly with tailwind HTML (div, section) to get the exact rounded-t-[32px] and shadow specs.",
-    "Use 100dvh for container height and safe-area padding equivalents (e.g., pb-8 or iOS safe area inset classes) for bottom sheet to look premium on iPhones.",
-    "Make sure all interactive items have data-testid attributes.",
-    "Ensure German language is used exactly as specified (Zuhause, Arbeit, Wohin soll\\'s gehen?, Jetzt, Später, Standort genau, Ziel suchen...)."
-  ]
+  "testing_rules": [
+    "All interactive elements MUST have data-testid attributes (e.g., data-testid='edit-wallet-modal-button')."
+  ],
+  "instructions_to_main_agent": "Refactor the Wallet, Loyalty, and Affiliate pages to use this lighter, high-contrast, premium styling. Update all Edit Modals in these flows to be Bottom Sheets (rounded-t-[32px]) rather than centered popups to fit the mobile context. Ensure text and backgrounds follow the high-contrast luxury light theme. Apply generous padding and crisp 1px borders. Use the provided abstract wavy texture for the Wallet balance card."
 }
