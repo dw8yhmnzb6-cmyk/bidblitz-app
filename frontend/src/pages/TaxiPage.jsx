@@ -592,8 +592,8 @@ export default function TaxiPage({ onNavigate }) {
   const fallbackMapConfig = useMemo(() => {
     const hasPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng) && pickup.lat !== 0 && pickup.lng !== 0;
     const hasDropoff = Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng) && dropoff.lat !== 0 && dropoff.lng !== 0;
-    const baseLat = hasPickup ? pickup.lat : hasDropoff ? dropoff.lat : null;
-    const baseLng = hasPickup ? pickup.lng : hasDropoff ? dropoff.lng : null;
+    const baseLat = hasPickup ? pickup.lat : hasDropoff ? dropoff.lat : 52.52;
+    const baseLng = hasPickup ? pickup.lng : hasDropoff ? dropoff.lng : 13.405;
     const pins = [];
 
     if (hasPickup) {
@@ -608,8 +608,34 @@ export default function TaxiPage({ onNavigate }) {
       }
     }
 
-    return { lat: baseLat, lng: baseLng, pins };
+    const polyline = [];
+    if (hasPickup) polyline.push([pickup.lat, pickup.lng]);
+    if (hasDropoff) polyline.push([dropoff.lat, dropoff.lng]);
+    return { lat: baseLat, lng: baseLng, pins, polyline };
   }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
+
+  const handleFallbackMapClick = useCallback(async ({ lat, lng }) => {
+    try {
+      const result = await api.reverseGeocode(lat, lng);
+      const address = result?.address || result?.name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (!pickup?.lat || pickup.lat === 0 || searchSheetMode === 'pickup') {
+        setPickup({ lat, lng, address });
+        if (searchSheetMode === 'pickup') setSearchSheetMode(null);
+      } else {
+        setDropoff({ lat, lng, address });
+        if (searchSheetMode === 'dropoff') setSearchSheetMode(null);
+      }
+    } catch {
+      const address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      if (!pickup?.lat || pickup.lat === 0 || searchSheetMode === 'pickup') {
+        setPickup({ lat, lng, address });
+        if (searchSheetMode === 'pickup') setSearchSheetMode(null);
+      } else {
+        setDropoff({ lat, lng, address });
+        if (searchSheetMode === 'dropoff') setSearchSheetMode(null);
+      }
+    }
+  }, [pickup?.lat, searchSheetMode, setPickup, setDropoff, setSearchSheetMode]);
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] text-zinc-950 font-taxi-body" data-mapflow={inMapBookingFlow ? '1' : '0'}>
@@ -639,11 +665,14 @@ export default function TaxiPage({ onNavigate }) {
               lat={fallbackMapConfig.lat}
               lng={fallbackMapConfig.lng}
               pins={fallbackMapConfig.pins}
+              polyline={fallbackMapConfig.polyline}
               autoFitPins={fallbackMapConfig.pins.length > 1}
               zoom={14}
               height="100%"
               className="absolute inset-0 rounded-none"
               testId="taxi-map-fallback"
+              interactive
+              onMapClick={handleFallbackMapClick}
             />
           )}
 
@@ -652,7 +681,7 @@ export default function TaxiPage({ onNavigate }) {
           {/* Map error overlay (token/network failure) */}
           {mapError && (
             <div
-              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+80px)] mx-4 z-30 rounded-[28px] bg-white/96 border border-black/5 shadow-[0_18px_48px_rgba(15,23,42,0.18)] backdrop-blur-xl p-5 flex items-start gap-4"
+              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+80px)] mx-4 z-30 rounded-[24px] bg-white/92 border border-black/5 shadow-[0_18px_48px_rgba(15,23,42,0.14)] backdrop-blur-xl p-4 flex items-start gap-3 max-w-[640px]"
               data-testid="taxi-map-error"
             >
               <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-500 flex items-center justify-center shrink-0">
@@ -664,21 +693,30 @@ export default function TaxiPage({ onNavigate }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-500">Kartenstatus</p>
-                <p className="text-lg font-taxi-heading font-black tracking-tight text-zinc-950 mt-1">Fallback-Karte aktiv</p>
-                <p className="text-sm text-zinc-600 mt-2 leading-snug">{mapError}</p>
+                <p className="text-base font-taxi-heading font-black tracking-tight text-zinc-950 mt-1">Fallback-Karte aktiv</p>
+                <p className="text-sm text-zinc-600 mt-1.5 leading-snug">{mapError}</p>
                 <p className="text-xs text-zinc-500 mt-1" data-testid="taxi-map-error-hint">
                   {mapRetrying
                     ? 'Wir verbinden die Karte gerade neu – deine Eingaben bleiben erhalten.'
-                    : 'Suche und Bestellung bleiben trotzdem klar nutzbar.'}
+                    : 'Tippe direkt auf die Karte, um Abholort oder Ziel zu setzen.'}
                 </p>
-                <button
-                  onClick={() => retryMap('manual')}
-                  data-testid="taxi-map-error-reload"
-                  disabled={mapRetrying}
-                  className="mt-3 text-xs px-4 py-2 rounded-full bg-[#002FA7] hover:bg-[#00258a] text-white font-semibold transition-colors disabled:opacity-60"
-                >
-                  {mapRetrying ? 'Karte wird neu verbunden…' : 'Karte neu verbinden'}
-                </button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => retryMap('manual')}
+                    data-testid="taxi-map-error-reload"
+                    disabled={mapRetrying}
+                    className="text-xs px-4 py-2 rounded-full bg-[#002FA7] hover:bg-[#00258a] text-white font-semibold transition-colors disabled:opacity-60"
+                  >
+                    {mapRetrying ? 'Karte wird neu verbunden…' : 'Karte neu verbinden'}
+                  </button>
+                  <button
+                    onClick={() => setSearchSheetMode(pickup?.lat ? 'dropoff' : 'pickup')}
+                    data-testid="taxi-map-open-search"
+                    className="text-xs px-4 py-2 rounded-full bg-black/5 hover:bg-black/10 text-zinc-900 font-semibold transition-colors"
+                  >
+                    Adresse suchen
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -874,7 +912,9 @@ export default function TaxiPage({ onNavigate }) {
                     if (r?.valid) {
                       setPromo({ code: r.code, label: r.label, discount: r.discount });
                     }
-                  } catch {}
+                  } catch (error) {
+                    void error;
+                  }
                 }}
                 lastRide={(rideHistory || []).find((r) => r.status === 'completed')}
                 onUseLastRide={(r) => {

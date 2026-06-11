@@ -13,6 +13,14 @@ async function readJson(res) {
   try { return await res.json(); } catch { return null; }
 }
 
+async function safeFetch(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    return null;
+  }
+}
+
 // ── Driver availability (taxi.eu live count) ─────────────────────────────
 export async function fetchNearbyDriversCount({
   lat, lng, radius = 10, carType, withPet, luggage, assistance,
@@ -25,7 +33,8 @@ export async function fetchNearbyDriversCount({
   if (withPet) qs.set("with_pet", "true");
   if (luggage && luggage !== "none") qs.set("luggage", luggage);
   if (assistance) qs.set("assistance", "true");
-  const res = await fetch(`${API}/api/taxi/drivers/nearby?${qs.toString()}`);
+  const res = await safeFetch(`${API}/api/taxi/drivers/nearby?${qs.toString()}`);
+  if (!res) return { count: 0, drivers: [] };
   if (!res.ok) return { count: 0, drivers: [] };
   const data = await readJson(res);
   return { count: data?.total || 0, drivers: data?.drivers || [] };
@@ -33,23 +42,27 @@ export async function fetchNearbyDriversCount({
 
 // ── User / Module ──────────────────────────────────────────────────────────
 export async function fetchMe() {
-  const res = await fetch(`${API}/api/auth/me`, cred);
+  const res = await safeFetch(`${API}/api/auth/me`, cred);
+  if (!res) return null;
   return res.ok ? readJson(res) : null;
 }
 
 export async function fetchTaxiStatus() {
-  const res = await fetch(`${API}/api/taxi/status`, cred);
+  const res = await safeFetch(`${API}/api/taxi/status`, cred);
+  if (!res) return null;
   return res.ok ? readJson(res) : null;
 }
 
 export async function fetchModeSettings() {
-  const res = await fetch(`${API}/api/admin/taxi/public/mode-settings`);
+  const res = await safeFetch(`${API}/api/admin/taxi/public/mode-settings`);
+  if (!res) return null;
   return res.ok ? readJson(res) : null;
 }
 
 // ── Favorites ──────────────────────────────────────────────────────────────
 export async function fetchFavorites() {
-  const res = await fetch(`${API}/api/user/favorite-locations`, cred);
+  const res = await safeFetch(`${API}/api/user/favorite-locations`, cred);
+  if (!res) return [];
   if (!res.ok) return [];
   const data = await readJson(res);
   return data?.favorites || [];
@@ -80,12 +93,15 @@ export async function markFavoriteUsed(favoriteId) {
       ...cred,
       method: "POST",
     });
-  } catch {}
+  } catch (error) {
+    void error;
+  }
 }
 
 // ── Saved Places ───────────────────────────────────────────────────────────
 export async function fetchSavedPlaces() {
-  const res = await fetch(`${API}/api/taxi/saved-places`, cred);
+  const res = await safeFetch(`${API}/api/taxi/saved-places`, cred);
+  if (!res) return [];
   if (!res.ok) return [];
   const data = await readJson(res);
   return data?.places || [];
@@ -93,7 +109,8 @@ export async function fetchSavedPlaces() {
 
 // ── Recent Addresses (auto-tracked on booking) ─────────────────────────────
 export async function fetchRecentAddresses(limit = 10) {
-  const res = await fetch(`${API}/api/taxi/recent-addresses?limit=${limit}`, cred);
+  const res = await safeFetch(`${API}/api/taxi/recent-addresses?limit=${limit}`, cred);
+  if (!res) return [];
   if (!res.ok) return [];
   const data = await readJson(res);
   return data?.addresses || [];
@@ -106,7 +123,8 @@ export async function clearRecentAddresses() {
 
 // ── Favorite Routes (top-N pickup→dropoff pairs from ride history) ─────────
 export async function fetchFavoriteRoutes(limit = 5) {
-  const res = await fetch(`${API}/api/taxi/favorite-routes?limit=${limit}`, cred);
+  const res = await safeFetch(`${API}/api/taxi/favorite-routes?limit=${limit}`, cred);
+  if (!res) return [];
   if (!res.ok) return [];
   const data = await readJson(res);
   return data?.routes || [];
@@ -115,7 +133,8 @@ export async function fetchFavoriteRoutes(limit = 5) {
 // ── City Defaults ──────────────────────────────────────────────────────────
 export async function fetchCityDefault(city) {
   if (!city) return null;
-  const res = await fetch(`${API}/api/taxi/city-defaults/${encodeURIComponent(city)}`, cred);
+  const res = await safeFetch(`${API}/api/taxi/city-defaults/${encodeURIComponent(city)}`, cred);
+  if (!res) return null;
   if (!res.ok) return null;
   const data = await readJson(res);
   return data?.default || null;
@@ -149,17 +168,20 @@ export async function deletePlaceApi(placeId) {
 
 // ── Rides ──────────────────────────────────────────────────────────────────
 export async function fetchActiveRide() {
-  const res = await fetch(`${API}/api/taxi/rides/active`, cred);
+  const res = await safeFetch(`${API}/api/taxi/rides/active`, cred);
+  if (!res) return null;
   return res.ok ? readJson(res) : null;
 }
 
 export async function fetchRide(rideId) {
-  const res = await fetch(`${API}/api/taxi/ride/${rideId}`, cred);
+  const res = await safeFetch(`${API}/api/taxi/ride/${rideId}`, cred);
+  if (!res) return null;
   return res.ok ? readJson(res) : null;
 }
 
 export async function fetchRideHistory() {
-  const res = await fetch(`${API}/api/taxi/rides/history`, cred);
+  const res = await safeFetch(`${API}/api/taxi/rides/history`, cred);
+  if (!res) return [];
   if (!res.ok) return [];
   const data = await readJson(res);
   return data?.rides || [];
@@ -173,11 +195,12 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
     dropoff_lng: dropoff.lng,
   };
   if (promoCode) body.promo_code = promoCode;
-  const res = await fetch(`${API}/api/taxi/estimate`, {
+  const res = await safeFetch(`${API}/api/taxi/estimate`, {
     ...credJson,
     method: "POST",
     body: JSON.stringify(body),
   });
+  if (!res) return { ok: false, error: "Taxi-Server momentan nicht erreichbar" };
   const data = await readJson(res);
   return res.ok
     ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null, tariff_zone: data?.tariff_zone || null, time_tariff: data?.time_tariff || null }
@@ -185,7 +208,8 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
 }
 
 export async function validatePromoCode(code) {
-  const res = await fetch(`${API}/api/taxi/promo/validate?code=${encodeURIComponent(code)}`, credJson);
+  const res = await safeFetch(`${API}/api/taxi/promo/validate?code=${encodeURIComponent(code)}`, credJson);
+  if (!res) return null;
   return await readJson(res);
 }
 
@@ -214,21 +238,23 @@ export async function bookRideApi({
     scheduled_at: options.scheduledAt || null,
     promo_code: promoCode || null,
   };
-  const res = await fetch(`${API}/api/taxi/book`, {
+  const res = await safeFetch(`${API}/api/taxi/book`, {
     ...credJson,
     method: "POST",
     body: JSON.stringify(body),
   });
+  if (!res) return { ok: false, error: "Buchung momentan nicht möglich" };
   const data = await readJson(res);
   return res.ok ? { ok: true, ride: data?.ride } : { ok: false, error: data?.detail || "Buchung fehlgeschlagen" };
 }
 
 export async function cancelRideApi(rideId, reason = null) {
-  const res = await fetch(`${API}/api/taxi/cancel`, {
+  const res = await safeFetch(`${API}/api/taxi/cancel`, {
     ...credJson,
     method: "POST",
     body: JSON.stringify({ ride_id: rideId, ...(reason ? { reason } : {}) }),
   });
+  if (!res) return { ok: false, error: "Stornierung momentan nicht möglich" };
   const data = await readJson(res);
   return res.ok ? { ok: true } : { ok: false, error: data?.detail || "Stornierung fehlgeschlagen" };
 }
@@ -240,7 +266,9 @@ export async function setDriverStatus(rideId, status) {
       method: "POST",
       body: JSON.stringify({ ride_id: rideId, status }),
     });
-  } catch {}
+  } catch (error) {
+    void error;
+  }
 }
 
 // ── Geocoding (Mapbox) ─────────────────────────────────────────────────────
@@ -249,7 +277,8 @@ export async function forwardGeocode(query) {
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
     query,
   )}.json?access_token=${MAPBOX_TOKEN}&country=de,at,ch&language=de&limit=1`;
-  const res = await fetch(url);
+  const res = await safeFetch(url);
+  if (!res) return null;
   if (!res.ok) return null;
   const data = await readJson(res);
   const f = data?.features?.[0];
@@ -261,7 +290,8 @@ export async function reverseGeocode(lat, lng, signal) {
   if (!MAPBOX_TOKEN) return null;
   const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`;
   try {
-    const res = await fetch(url, { signal });
+    const res = await safeFetch(url, { signal });
+    if (!res) return null;
     if (!res.ok) return null;
     const data = await readJson(res);
     const f = data?.features?.[0];

@@ -1,0 +1,43 @@
+{
+  "test_name": "Taxi Map Fix - Error Handling & Fallback",
+  "timestamp": "2026-06-11T21:27:36.135927",
+  "base_url": "https://taxi-uber-style.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Page loads without uncaught fetch errors",
+      "status": "PASS",
+      "details": {
+        "status_code": 200,
+        "has_error_boundary": false,
+        "has_uncaught_error": false,
+        "page_size": 9681
+      }
+    },
+    {
+      "test": "Fallback map element present",
+      "status": "PASS",
+      "details": {
+        "has_fallback_testid": false,
+        "has_leaflet_reference": true
+      }
+    },
+    {
+      "test": "Reload button visible",
+      "status": "FAIL",
+      "details": {
+        "has_reload_testid": false,
+        "has_reconnect_text": false
+      }
+    },
+    {
+      "test": "UI remains usable",
+      "status": "FAIL",
+      "details": {
+        "has_search_inputs": false,
+        "has_map_container": false,
+        "button_count": 0,
+        "input_count": 0
+      }
+    }
+  ]
+}

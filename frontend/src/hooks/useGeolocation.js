@@ -32,6 +32,44 @@ function persistLastKnownPickup(location) {
   }
 }
 
+function moveMapTo(mapInstance, lng, lat, zoom = 14) {
+  if (!mapInstance) return;
+  try {
+    if (typeof mapInstance.flyTo === 'function') {
+      mapInstance.flyTo({ center: [lng, lat], zoom });
+      return;
+    }
+  } catch (error) {
+    void error;
+  }
+  try {
+    if (typeof mapInstance.setView === 'function') {
+      mapInstance.setView([lat, lng], zoom);
+    }
+  } catch (error) {
+    void error;
+  }
+}
+
+function moveMarkerTo(markerInstance, lng, lat) {
+  if (!markerInstance) return;
+  try {
+    if (typeof markerInstance.setLngLat === 'function') {
+      markerInstance.setLngLat([lng, lat]);
+      return;
+    }
+  } catch (error) {
+    void error;
+  }
+  try {
+    if (typeof markerInstance.setLatLng === 'function') {
+      markerInstance.setLatLng([lat, lng]);
+    }
+  } catch (error) {
+    void error;
+  }
+}
+
 export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
   const [currentAddress, setCurrentAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -97,10 +135,10 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
 
         // Update map center & pickup marker (Mapbox)
         if (mapRef?.current) {
-          mapRef.current.flyTo({ center: [longitude, latitude], zoom: 14 });
+          moveMapTo(mapRef.current, longitude, latitude, 14);
         }
         if (pickupMarkerRef?.current) {
-          pickupMarkerRef.current.setLngLat([longitude, latitude]);
+          moveMarkerTo(pickupMarkerRef.current, longitude, latitude);
         }
 
         // Reverse geocode to get address
@@ -130,10 +168,10 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
             address: prev.address || lastKnown.address || '',
           }));
           if (mapRef?.current) {
-            mapRef.current.flyTo({ center: [lastKnown.lng, lastKnown.lat], zoom: 13.5 });
+            moveMapTo(mapRef.current, lastKnown.lng, lastKnown.lat, 13.5);
           }
           if (pickupMarkerRef?.current) {
-            pickupMarkerRef.current.setLngLat([lastKnown.lng, lastKnown.lat]);
+            moveMarkerTo(pickupMarkerRef.current, lastKnown.lng, lastKnown.lat);
           }
         }
         

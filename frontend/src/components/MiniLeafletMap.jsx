@@ -13,9 +13,14 @@ const MiniLeafletMap = ({
   autoFitPins = false,
   className = "",
   testId = "mini-leaflet-map",
+  interactive = true,
+  onMapClick,
+  polyline = [],
 }) => {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const markerRefs = useRef([]);
+  const lineRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current || lat == null || lng == null) return;
@@ -35,12 +40,12 @@ const MiniLeafletMap = ({
       if (!mounted) return;
 
       const map = L.map(containerRef.current, {
-        zoomControl: false,
+        zoomControl: interactive,
         attributionControl: false,
-        dragging: !autoFitPins,
-        scrollWheelZoom: !autoFitPins,
-        doubleClickZoom: !autoFitPins,
-        touchZoom: !autoFitPins,
+        dragging: interactive,
+        scrollWheelZoom: interactive,
+        doubleClickZoom: interactive,
+        touchZoom: interactive,
       }).setView([lat, lng], zoom);
       mapRef.current = map;
 
@@ -51,23 +56,46 @@ const MiniLeafletMap = ({
 
       // Render pins
       const allPins = pins.length > 0 ? pins : [{ lat, lng, color: "#3B82F6" }];
+      markerRefs.current = [];
       allPins.forEach((p) => {
+        if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return;
         const icon = L.divIcon({
           html: `<div style="width:24px;height:24px;border-radius:50%;background:${p.color || "#3B82F6"};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold;">${p.label || "•"}</div>`,
           className: "",
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         });
-        L.marker([p.lat, p.lng], { icon }).addTo(map);
+        const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
+        markerRefs.current.push(marker);
       });
 
-      if (autoFitPins && allPins.length > 1) {
-        const points = allPins
+      const routePoints = polyline
+        .filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+        .map((p) => [p[0], p[1]]);
+      if (routePoints.length > 1) {
+        lineRef.current = L.polyline(routePoints, {
+          color: "#0F6FFF",
+          weight: 5,
+          opacity: 0.9,
+        }).addTo(map);
+      }
+
+      if (autoFitPins && (allPins.length > 1 || routePoints.length > 1)) {
+        const points = [
+          ...allPins
           .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
-          .map((p) => [p.lat, p.lng]);
+          .map((p) => [p.lat, p.lng]),
+          ...routePoints,
+        ];
         if (points.length > 1) {
           map.fitBounds(points, { padding: [48, 48], maxZoom: zoom });
         }
+      }
+
+      if (interactive && onMapClick) {
+        map.on("click", (event) => {
+          onMapClick({ lat: event.latlng.lat, lng: event.latlng.lng });
+        });
       }
 
       cleanupFns.push(() => map.remove());
@@ -84,7 +112,7 @@ const MiniLeafletMap = ({
       });
       mapRef.current = null;
     };
-  }, [lat, lng, zoom, autoFitPins, JSON.stringify(pins)]);
+  }, [lat, lng, zoom, autoFitPins, interactive, onMapClick, JSON.stringify(pins), JSON.stringify(polyline)]);
 
   if (lat == null || lng == null) {
     return (
