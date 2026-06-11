@@ -21,6 +21,23 @@ import GuestCTABar from "../components/GuestCTABar";
 const API = process.env.REACT_APP_BACKEND_URL;
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
+function sanitizeAmountInput(value) {
+  const cleaned = String(value ?? "").replace(/,/g, ".").replace(/[^0-9.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  return firstDot === -1 ? cleaned : `${cleaned.slice(0, firstDot + 1)}${cleaned.slice(firstDot + 1).replace(/\./g, "")}`;
+}
+
+function parseAmountInput(value) {
+  const amount = Number.parseFloat(sanitizeAmountInput(value));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function triggerPayoutRefresh(fetchBalance, fetchPayouts, refreshDashboard) {
+  void fetchBalance();
+  void fetchPayouts();
+  refreshDashboard?.();
+}
+
 async function api(path, opts = {}) {
   const r = await fetch(`${API}${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...opts });
   const d = await r.json().catch(() => ({}));
@@ -82,7 +99,7 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
   const [error, setError] = useState(null);
   const [step, setStep] = useState("form"); // form | success | error
 
-  const num = parseFloat(amount) || 0;
+  const num = parseAmountInput(amount);
   const fee = flatFee;
   const net = Math.max(0, num - fee);
   const valid = num >= minPayout && num <= available;
@@ -125,7 +142,7 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
                   <p className="text-[10px] text-[#444] mb-4">Min. payout: &euro;{minPayout.toFixed(2)} &middot; Fee: &euro;{flatFee.toFixed(2)}</p>
                   <div className={`flex items-center gap-3 px-4 py-3 rounded-[14px] mb-4 transition-all border ${num > 0 ? "bg-white/[0.04] border-[#00C2FF]/25" : "bg-white/[0.02] border-white/[0.05]"}`}>
                     <span className="text-white/40 text-lg font-outfit">&euro;</span>
-                    <input data-testid="payout-amount-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+                    <input data-testid="payout-amount-input" type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))}
                       placeholder="0.00" className="flex-1 bg-transparent text-xl text-white font-bold font-outfit outline-none placeholder:text-[#2A2A2A]" autoFocus />
                   </div>
                   {num > 0 && (
@@ -183,7 +200,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
   const merchant = useMerchant();
   const realStats = useMerchantStats();
   const { t } = useI18n();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showPayout, setShowPayout] = useState(false);
   const [error, setError] = useState(null);
   const [balance, setBalance] = useState({ available: 0, pending_payout: 0, total_paid_out: 0, total_fees: 0, total_earnings: 0, gross_earnings: 0, min_payout: 5, payout_flat_fee: 0.5 });
@@ -225,12 +242,8 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
   }, [isGuest, error]);
 
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 500);
-    fetchBalance(); fetchPayouts();
-    return () => clearTimeout(t);
+    void Promise.all([fetchBalance(), fetchPayouts()]);
   }, [fetchBalance, fetchPayouts]);
-
-  const handlePayoutSuccess = () => { fetchBalance(); fetchPayouts(); merchant.refreshDashboard && merchant.refreshDashboard(); };
 
   const handleRetry = () => {
     setError(null);
@@ -290,7 +303,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
 
         {/* ── Earnings Hero ── */}
         <motion.div className="text-center pt-4 pb-5 relative" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06, ...slide }}>
-          <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase mb-3">Today's Earnings</p>
+          <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase mb-3">Today&apos;s Earnings</p>
           <AnimatePresence mode="wait">
             {isLoading ? <Skeleton className="h-[48px] w-40 mx-auto" /> : (
               <motion.div initial={{ opacity: 0, y: 8, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 0.25 }}>
@@ -530,7 +543,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
       {/* Payout Modal */}
       <PayoutModal isOpen={showPayout} onClose={() => setShowPayout(false)}
         available={displayBalance.available} minPayout={displayBalance.min_payout} flatFee={displayBalance.payout_flat_fee}
-        onSuccess={handlePayoutSuccess} />
+        onSuccess={() => triggerPayoutRefresh(fetchBalance, fetchPayouts, merchant.refreshDashboard)} />
     </motion.div>
   );
 };

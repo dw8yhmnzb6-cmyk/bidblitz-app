@@ -1,0 +1,100 @@
+{
+  "summary": {
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "success_rate": "100.0%",
+    "timestamp": "2026-06-11T18:45:28.020297"
+  },
+  "tests": [
+    {
+      "test_name": "Login with admin@bidblitz.com",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "id": "69cface7afddbc3de2cabb39",
+        "email": "admin@bidblitz.com",
+        "name": "Admin Updated",
+        "role": "admin",
+        "modes": [
+          "personal",
+          "kids",
+          "merchant"
+        ],
+        "balance": 7969.51,
+        "currency": "EUR",
+        "card_number": "4721 9980 8906 9791",
+        "card_expiry": "09/28",
+        "created_at": "2026-04-03T12:04:55.708517+00:00",
+        "language": "de",
+        "notifications_enabled": true,
+        "email_notifications": true,
+        "biometric_enabled": false,
+        "dark_mode": true
+      },
+      "expected": "200 OK with user data",
+      "actual": "Status 200, User ID: 69cface7afddbc3de2cabb39, Email: admin@bidblitz.com",
+      "notes": "Login successful. Session cookies: ['access_token', 'refresh_token', '__cf_bm']",
+      "timestamp": "2026-06-11T18:45:27.224021"
+    },
+    {
+      "test_name": "Mining Withdraw - 10 BLZ to EUR",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "withdrawn_blz": 10.0,
+        "received_eur": 1.0,
+        "new_blz_balance": 225902.86039750007,
+        "new_eur_balance": 7970.509999999998
+      },
+      "expected": "BLZ deducted: 10.0, EUR added: 1.0",
+      "actual": "BLZ: 225912.86039750007 \u2192 225902.86039750007, EUR: \u20ac7969.51 \u2192 \u20ac7970.509999999998",
+      "notes": "Successfully withdrew 10.0 BLZ and received \u20ac1.0",
+      "timestamp": "2026-06-11T18:45:27.585062"
+    },
+    {
+      "test_name": "Payout Balance - Get Balance",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "available": 14.5,
+        "pending_payout": 5.0,
+        "total_paid_out": 0,
+        "total_earnings": 19.5,
+        "gross_earnings": 20.0,
+        "total_fees": 0.5,
+        "min_payout": 5.0,
+        "payout_flat_fee": 0.5
+      },
+      "expected": "200 OK with balance fields",
+      "actual": "Available: \u20ac14.5, Pending: \u20ac5.0, Total Earnings: \u20ac19.5",
+      "notes": "Payout balance retrieved successfully. Available: \u20ac14.5",
+      "timestamp": "2026-06-11T18:45:27.696677"
+    },
+    {
+      "test_name": "Payout Request - Existing Pending Check",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "pending_count": 1
+      },
+      "expected": "No pending payouts or handle existing",
+      "actual": "Found 1 pending payout(s)",
+      "notes": "There are already 1 pending payout(s). Skipping new payout request test.",
+      "timestamp": "2026-06-11T18:45:27.909387"
+    },
+    {
+      "test_name": "Payout History - Get History",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "payouts_count": 1,
+        "total": 1
+      },
+      "expected": "200 OK with payouts array",
+      "actual": "Found 1 payout(s), Total: 1",
+      "notes": "Payout history retrieved successfully. 1 payout(s) in history.",
+      "timestamp": "2026-06-11T18:45:28.019965"
+    }
+  ]
+}

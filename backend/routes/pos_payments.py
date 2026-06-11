@@ -162,7 +162,7 @@ async def refresh_barcode(request: Request):
 
 @router.post("/barcode-lookup")
 async def barcode_lookup(request: Request):
-    merchant_user = await get_current_user(request)
+    await get_current_user(request)
     body = await request.json()
     barcode = body.get("barcode", "")
 
@@ -252,6 +252,18 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         await db.merchant_profiles.update_one(
             {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
         )
+        if merchant_owner_id:
+            await db.merchants.update_one(
+                {"user_id": merchant_owner_id},
+                {"$inc": {
+                    "gross_earnings": req.amount,
+                    "total_earnings": net,
+                    "total_fees": fee,
+                    "total_transactions": 1,
+                    "available_payout": net,
+                }},
+                upsert=True,
+            )
         
         # WALLET-ONLY ECOSYSTEM: Credit merchant wallet directly
         if merchant_owner_id:
@@ -397,6 +409,18 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
         await db.merchant_profiles.update_one(
             {"_id": mp["_id"]}, {"$inc": {"total_revenue": req.amount, "total_fees": fee}},
         )
+        if merchant_owner_id:
+            await db.merchants.update_one(
+                {"user_id": merchant_owner_id},
+                {"$inc": {
+                    "gross_earnings": req.amount,
+                    "total_earnings": net,
+                    "total_fees": fee,
+                    "total_transactions": 1,
+                    "available_payout": net,
+                }},
+                upsert=True,
+            )
         await db.merchant_transactions.insert_one({
             "merchant_id": mid, "branch_id": "", "device_id": req.device_id or "nfc",
             "amount": req.amount, "fee": fee, "net": net,
@@ -729,7 +753,7 @@ def create_receipt_pdf(txn: dict) -> bytes:
         try:
             dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
             date_str = dt.strftime("%d.%m.%Y %H:%M")
-        except:
+        except ValueError:
             date_str = created[:16]
     else:
         date_str = datetime.now().strftime("%d.%m.%Y %H:%M")
@@ -870,7 +894,7 @@ async def get_receipt_data(transaction_id: str, request: Request):
         dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
         date_str = dt.strftime("%d.%m.%Y")
         time_str = dt.strftime("%H:%M:%S")
-    except:
+    except ValueError:
         date_str = created[:10] if created else ""
         time_str = created[11:19] if len(created) > 18 else ""
 
@@ -1165,8 +1189,6 @@ async def get_voucher_stats(request: Request):
     merchant_uid = str(merchant_user["_id"])
     
     all_vouchers = await db.vouchers.find({"merchant_id": merchant_uid}).to_list(1000)
-    
-    now = datetime.now(timezone.utc)
     
     stats = {
         "total_created": len(all_vouchers),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Cpu, Server, Zap, Flame, Atom, ChevronRight,
@@ -31,28 +31,42 @@ const TIER_COLORS = { starter: "#00E89D", pro: "#00C2FF", elite: "#A855F7", tita
 
 const VIP_COLORS = { Bronze: "#CD7F32", Silver: "#C0C0C0", Gold: "#FFD700", Platinum: "#E5E4E2", Diamond: "#B9F2FF" };
 
+function sanitizeAmountInput(value) {
+  const cleaned = String(value ?? "").replace(/,/g, ".").replace(/[^0-9.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  return firstDot === -1 ? cleaned : `${cleaned.slice(0, firstDot + 1)}${cleaned.slice(firstDot + 1).replace(/\./g, "")}`;
+}
+
+function parseAmountInput(value) {
+  const amount = Number.parseFloat(sanitizeAmountInput(value));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function subscribeToSecondTick(callback) {
+  const id = window.setInterval(callback, 1000);
+  return () => window.clearInterval(id);
+}
+
+function getNowSnapshot() {
+  return Date.now();
+}
+
 // ── Auto-Reward Countdown Component ──
 function AutoRewardCard({ reward, data, t }) {
-  const [countdown, setCountdown] = useState("");
-
-  useEffect(() => {
-    if (!reward?.claimed || !reward?.next_reward_at) {
-      setCountdown("");
-      return;
-    }
+  const nowMs = useSyncExternalStore(subscribeToSecondTick, getNowSnapshot, getNowSnapshot);
+  let countdown = "";
+  if (reward?.claimed && reward?.next_reward_at) {
     const target = new Date(reward.next_reward_at).getTime();
-    const tick = () => {
-      const diff = target - Date.now();
-      if (diff <= 0) { setCountdown("00:00:00"); return; }
+    const diff = target - nowMs;
+    if (diff <= 0) {
+      countdown = "00:00:00";
+    } else {
       const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
       const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
       const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
-      setCountdown(`${h}:${m}:${s}`);
-    };
-    tick();
-    const iv = setInterval(tick, 1000);
-    return () => clearInterval(iv);
-  }, [reward?.claimed, reward?.next_reward_at]);
+      countdown = `${h}:${m}:${s}`;
+    }
+  }
 
   const isClaimed = reward?.claimed;
   const streak = data?.streak || 0;
@@ -139,17 +153,22 @@ export default function MiningPage({ onBack, onNavigate }) {
   const [launchpad, setLaunchpad] = useState([]);
   const [buyingLaunch, setBuyingLaunch] = useState(null);
 
+  const fetchMiningData = useCallback(async () => {
+    const [dash, pkgs, costs, mkt, crd, lp] = await Promise.all([
+      api("/api/mining/dashboard").catch(() => ({})),
+      api("/api/mining/packages").catch(() => ({ packages: [] })),
+      api("/api/mining/upgrade-costs").catch(() => ({ costs: {} })),
+      api("/api/mining/marketplace").catch(() => ({ listings: [] })),
+      api("/api/mining/card").catch(() => null),
+      api("/api/mining/launchpad").catch(() => ({ projects: [] })),
+    ]);
+    return { dash, pkgs, costs, mkt, crd, lp };
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [dash, pkgs, costs, mkt, crd, lp] = await Promise.all([
-        api("/api/mining/dashboard").catch(() => ({})),
-        api("/api/mining/packages").catch(() => ({ packages: [] })),
-        api("/api/mining/upgrade-costs").catch(() => ({ costs: {} })),
-        api("/api/mining/marketplace").catch(() => ({ listings: [] })),
-        api("/api/mining/card").catch(() => null),
-        api("/api/mining/launchpad").catch(() => ({ projects: [] })),
-      ]);
+      const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
       setData(dash);
       setPackages(pkgs.packages || []);
       setUpgradeCosts(costs.costs || {});
@@ -160,9 +179,29 @@ export default function MiningPage({ onBack, onNavigate }) {
       console.error(e);
     }
     setLoading(false);
-  }, []);
+  }, [fetchMiningData]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { dash, pkgs, costs, mkt, crd, lp } = await fetchMiningData();
+        if (!active) return;
+        setData(dash);
+        setPackages(pkgs.packages || []);
+        setUpgradeCosts(costs.costs || {});
+        setMarketplace(mkt.listings || []);
+        setCardData(crd);
+        setLaunchpad(lp.projects || []);
+      } catch (e) {
+        console.error(e);
+      }
+      if (active) setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [fetchMiningData]);
 
   const buyMiner = async (pkgId) => {
     setPurchaseError(null);
@@ -197,8 +236,11 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const withdraw = async () => {
-    const amt = parseFloat(withdrawAmt);
-    if (!amt || amt <= 0) return;
+    const amt = parseAmountInput(withdrawAmt);
+    if (!amt || amt <= 0) {
+      toast.error("Bitte gültigen Betrag eingeben");
+      return;
+    }
     setWithdrawing(true);
     try {
       const r = await api("/api/mining/withdraw", { method: "POST", body: JSON.stringify({ amount: amt }) });
@@ -211,8 +253,11 @@ export default function MiningPage({ onBack, onNavigate }) {
   };
 
   const sendBLZ = async () => {
-    const amt = parseFloat(sendAmt);
-    if (!amt || amt <= 0 || !sendEmail) return;
+    const amt = parseAmountInput(sendAmt);
+    if (!amt || amt <= 0 || !sendEmail) {
+      toast.error("Bitte gültige Daten eingeben");
+      return;
+    }
     setSending(true);
     try {
       await api("/api/mining/send", { method: "POST", body: JSON.stringify({ recipient_email: sendEmail, amount: amt }) });
@@ -334,6 +379,7 @@ export default function MiningPage({ onBack, onNavigate }) {
   const ref = data?.referral || {};
   const miners = data?.miners || [];
   const txns = data?.recent_transactions || [];
+  const parsedWithdrawAmt = parseAmountInput(withdrawAmt);
 
   return (
     <motion.div data-testid="mining-page" className="min-h-screen pb-24 relative" style={{ background: "#030303" }}
@@ -460,15 +506,15 @@ export default function MiningPage({ onBack, onNavigate }) {
                       <p className="text-[12px] font-bold text-white">BLZ in EUR umwandeln</p>
                     </div>
                     <p className="text-[10px] text-white/40">1 BLZ = €0,10 · Direkt auf dein Wallet</p>
-                    <input data-testid="withdraw-amount" type="number" step="0.01" min="0" value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)}
+                    <input data-testid="withdraw-amount" type="text" inputMode="decimal" value={withdrawAmt} onChange={e => setWithdrawAmt(sanitizeAmountInput(e.target.value))}
                       placeholder="Betrag in BLZ" className={inputCls} />
-                    {withdrawAmt > 0 && (
+                    {parsedWithdrawAmt > 0 && (
                       <div className="text-center p-2 rounded-xl bg-[#00E89D]/5 border border-[#00E89D]/10">
-                        <p className="text-[13px] font-bold text-[#00E89D]">{parseFloat(withdrawAmt || 0).toFixed(2)} BLZ → €{(parseFloat(withdrawAmt || 0) * 0.10).toFixed(2)}</p>
+                        <p className="text-[13px] font-bold text-[#00E89D]">{parsedWithdrawAmt.toFixed(2)} BLZ → €{(parsedWithdrawAmt * 0.10).toFixed(2)}</p>
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <motion.button data-testid="withdraw-confirm" onClick={withdraw} disabled={withdrawing}
+                      <motion.button data-testid="withdraw-confirm" onClick={withdraw} disabled={withdrawing || parsedWithdrawAmt <= 0}
                         className="flex-1 py-3 rounded-xl text-[12px] font-bold bg-[#00E89D]/15 text-[#00E89D] border border-[#00E89D]/25 flex items-center justify-center"
                         whileTap={{ scale: 0.96 }}>{withdrawing ? <Loader2 size={14} className="animate-spin" /> : "Auszahlen"}</motion.button>
                       <motion.button onClick={() => setShowWithdraw(false)} className="px-5 py-3 rounded-xl text-[12px] font-bold text-white/40 bg-white/[0.03] border border-white/[0.06]"
@@ -489,7 +535,7 @@ export default function MiningPage({ onBack, onNavigate }) {
                     </div>
                     <input data-testid="send-email" type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
                       placeholder="E-Mail des Empfängers" className={inputCls} />
-                    <input data-testid="send-amount" type="number" step="0.01" min="0" value={sendAmt} onChange={e => setSendAmt(e.target.value)}
+                    <input data-testid="send-amount" type="text" inputMode="decimal" value={sendAmt} onChange={e => setSendAmt(sanitizeAmountInput(e.target.value))}
                       placeholder="Betrag in BLZ" className={inputCls} />
                     <div className="flex gap-2">
                       <motion.button data-testid="send-confirm" onClick={sendBLZ} disabled={sending}

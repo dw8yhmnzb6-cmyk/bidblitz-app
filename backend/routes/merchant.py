@@ -13,6 +13,72 @@ import logging
 router = APIRouter(prefix="/api/merchant", tags=["merchant"])
 logger = logging.getLogger("bidblitz.merchant")
 
+
+def _as_amount(value) -> float:
+    try:
+        return round(float(value or 0), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+async def _build_dashboard_summary(user_id: str, merchant: dict | None = None, merchant_profile: dict | None = None):
+    merchant = merchant or await db.merchants.find_one({"user_id": user_id})
+    merchant_profile = merchant_profile or await db.merchant_profiles.find_one({"user_id": user_id})
+
+    merchant_refs = [user_id]
+    if merchant and merchant.get("_id"):
+        merchant_refs.append(str(merchant["_id"]))
+    if merchant_profile and merchant_profile.get("_id"):
+        merchant_refs.append(str(merchant_profile["_id"]))
+    merchant_refs = list(dict.fromkeys([ref for ref in merchant_refs if ref]))
+
+    recent = await db.merchant_transactions.find(
+        {"merchant_id": {"$in": merchant_refs}},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(10).to_list(10)
+
+    all_merchant_txns = await db.merchant_transactions.find(
+        {"merchant_id": {"$in": merchant_refs}},
+        {"_id": 0},
+    ).to_list(5000)
+
+    gross_from_tx = round(sum(_as_amount(t.get("amount")) for t in all_merchant_txns if t.get("status") == "completed"), 2)
+    fees_from_tx = round(sum(_as_amount(t.get("fee")) for t in all_merchant_txns if t.get("status") == "completed"), 2)
+    earnings_from_tx = round(sum(_as_amount(t.get("net", _as_amount(t.get("amount")) - _as_amount(t.get("fee")))) for t in all_merchant_txns if t.get("status") == "completed"), 2)
+
+    payouts = await db.payouts.find(
+        {"user_id": user_id},
+        {"_id": 0, "amount": 1, "status": 1},
+    ).to_list(2000)
+    pending_requested = round(sum(_as_amount(p.get("amount")) for p in payouts if p.get("status") in ("pending", "approved")), 2)
+    processed_requested = round(sum(_as_amount(p.get("amount")) for p in payouts if p.get("status") == "processed"), 2)
+
+    gross_earnings = round(max(
+        _as_amount((merchant or {}).get("gross_earnings")),
+        _as_amount((merchant_profile or {}).get("total_revenue")),
+        gross_from_tx,
+    ), 2)
+    total_fees = round(max(
+        _as_amount((merchant or {}).get("total_fees")),
+        _as_amount((merchant_profile or {}).get("total_fees")),
+        fees_from_tx,
+    ), 2)
+    total_earnings = round(max(
+        _as_amount((merchant or {}).get("total_earnings")),
+        max(_as_amount((merchant_profile or {}).get("total_revenue")) - _as_amount((merchant_profile or {}).get("total_fees")), 0.0),
+        earnings_from_tx,
+    ), 2)
+    available_payout = round(max(total_earnings - pending_requested - processed_requested, 0.0), 2)
+
+    return {
+        "recent": recent,
+        "all_merchant_txns": all_merchant_txns,
+        "gross_earnings": gross_earnings,
+        "total_fees": total_fees,
+        "total_earnings": total_earnings,
+        "available_payout": available_payout,
+    }
+
 # ══════════════════════════════════════════════════════════════════════════════
 # MERCHANT PLANS & PRICING
 # ══════════════════════════════════════════════════════════════════════════════
@@ -74,7 +140,8 @@ async def get_dashboard(request: Request):
     user_id = str(user["_id"])
 
     merchant = await db.merchants.find_one({"user_id": user_id}, {"_id": 0})
-    if not merchant:
+    merchant_profile = await db.merchant_profiles.find_one({"user_id": user_id})
+    if not merchant and not merchant_profile:
         return {
             "merchant_id": user_id,
             "business_name": f"{user.get('name', 'User')}'s Store",
@@ -89,16 +156,13 @@ async def get_dashboard(request: Request):
             "recent_payments": [],
         }
 
-    merchant_id = merchant.get("user_id", user_id)
+    summary = await _build_dashboard_summary(user_id, merchant, merchant_profile)
+    merchant_id = user_id
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_start_str = today_start.isoformat()
 
-    # Get recent merchant transactions from merchant_transactions collection
-    recent = await db.merchant_transactions.find(
-        {"merchant_id": merchant_id},
-        {"_id": 0}
-    ).sort("created_at", -1).limit(10).to_list(10)
+    recent = summary["recent"]
 
     # Fallback to old transactions collection
     if not recent:
@@ -108,10 +172,7 @@ async def get_dashboard(request: Request):
         ).sort("created_at", -1).limit(10).to_list(10)
 
     # Calculate today's revenue - check both string and datetime comparisons
-    all_merchant_txns = await db.merchant_transactions.find(
-        {"merchant_id": merchant_id},
-        {"_id": 0}
-    ).to_list(1000)
+    all_merchant_txns = summary["all_merchant_txns"]
     
     today_earnings = 0
     today_count = 0
@@ -140,19 +201,14 @@ async def get_dashboard(request: Request):
                 today_earnings += abs(t.get("amount", 0))
                 today_count += 1
 
-    # Get total from merchant profile or calculate from transactions
-    total_earnings = merchant.get("total_earnings", 0.0)
-    if total_earnings == 0 and all_merchant_txns:
-        total_earnings = sum(abs(t.get("net", 0)) for t in all_merchant_txns if t.get("status") == "completed")
-
     return {
         "merchant_id": merchant_id,
-        "business_name": merchant.get("business_name", ""),
-        "gross_earnings": merchant.get("gross_earnings", total_earnings),
-        "total_earnings": round(total_earnings, 2),
-        "total_fees": merchant.get("total_fees", 0.0),
-        "total_transactions": merchant.get("total_transactions", len(all_merchant_txns) if all_merchant_txns else len(recent)),
-        "available_payout": merchant.get("available_payout", 0.0),
+        "business_name": (merchant or {}).get("business_name") or (merchant_profile or {}).get("business_name", ""),
+        "gross_earnings": summary["gross_earnings"],
+        "total_earnings": summary["total_earnings"],
+        "total_fees": summary["total_fees"],
+        "total_transactions": (merchant or {}).get("total_transactions", len(all_merchant_txns) if all_merchant_txns else len(recent)),
+        "available_payout": summary["available_payout"],
         "today_earnings": round(today_earnings, 2),
         "today_transactions": today_count,
         "fee_percent": FEES["payment"] * 100,
@@ -454,9 +510,9 @@ async def get_merchant_listings(request: Request):
     ).sort("created_at", -1).to_list(200)
     
     # Calculate stats
-    active = [l for l in listings if l.get("status") == "active"]
-    boosted = [l for l in active if l.get("boost") and l["boost"].get("expires_at", "") > now]
-    vip = [l for l in active if l.get("is_vip")]
+    active_listings = [listing for listing in listings if listing.get("status") == "active"]
+    boosted_listings = [listing for listing in active_listings if listing.get("boost") and listing["boost"].get("expires_at", "") > now]
+    vip_listings = [listing for listing in active_listings if listing.get("is_vip")]
     
     plan_info = MERCHANT_PLANS.get(merchant.get("plan", "basic"), MERCHANT_PLANS["basic"])
     max_listings = plan_info.get("max_listings", 10)
@@ -465,15 +521,15 @@ async def get_merchant_listings(request: Request):
         "listings": listings,
         "stats": {
             "total": len(listings),
-            "active": len(active),
-            "boosted": len(boosted),
-            "vip": len(vip),
-            "sold": len([l for l in listings if l.get("status") == "sold"]),
-            "views": sum(l.get("views", 0) for l in listings),
+            "active": len(active_listings),
+            "boosted": len(boosted_listings),
+            "vip": len(vip_listings),
+            "sold": len([listing for listing in listings if listing.get("status") == "sold"]),
+            "views": sum(listing.get("views", 0) for listing in listings),
         },
         "plan": merchant.get("plan", "basic"),
         "max_listings": max_listings,
-        "can_create_more": max_listings == -1 or len(active) < max_listings,
+        "can_create_more": max_listings == -1 or len(active_listings) < max_listings,
     }
 
 
