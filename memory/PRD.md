@@ -1134,3 +1134,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - React-Fehlerschleife auf `/verification` beseitigt; Seite rendert jetzt stabil.
 - Tests: manueller Browser-Test für Merchant + KYC erfolgreich, Frontend-Testagent 16/16 PASS, Backend-Stability-Check PASS.
 - Preview-Hinweis: Für die Browser-Verifikation wurde im Merchant-Bereich des Admin-Users ein echter Testsaldo von 17,55 EUR vorbereitet (kein MOCK).
+
+
+## Update 2026-06-11 — Taxi Kartenstabilität / Mobile Fallback
+- Taxi-Kartenfehler auf Mobile/iPhone gehärtet: kein harter Seiten-Reload mehr beim Kartenproblem. Der Karten-Button verbindet die Map nun intern neu.
+- GPS-/Fallback-Verhalten verbessert: letzter bekannter Standort wird zwischengespeichert, GPS-denied bleibt benutzbar, Suche/Bestellung bleiben offen.
+- Auto-Retry für Kartenverbindung ergänzt (begrenzt, ohne Reload-Loop).
+- Spezialfall für Mapbox-/postMessage-Fehler abgefangen, damit sofort auf sicheren Fallback gewechselt wird.
+- Tests: Mobile-Browser-Smoke mit blockierter Mapbox, Frontend-Testagent PASS für Kartenstabilität/GPS-denied/kein Reload-Bug.
+- Offene Kleinigkeit: optional z-index des BackToHomeBar-Overlays über Locate/GPS-Buttons feintunen.
