@@ -13,9 +13,9 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
     >
       {/* Animated gradient overlay */}
       <motion.div 
-        className="absolute inset-0 opacity-40"
+        className="absolute inset-0 opacity-60"
         style={{
-          background: "linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)"
+          background: "linear-gradient(135deg, rgba(0, 194, 255, 0.12) 0%, transparent 40%, rgba(139, 92, 246, 0.08) 100%)"
         }}
         animate={{
           background: [
@@ -28,7 +28,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
       />
       
       {/* Light reflection */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/20 to-transparent pointer-events-none" />
       
       {/* Noise texture */}
       <div 
@@ -41,7 +41,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
       {/* Card glow edges */}
       <div className="absolute inset-0 rounded-[1.25rem] pointer-events-none"
         style={{
-          boxShadow: "inset 0 0 30px rgba(0, 194, 255, 0.1), inset 0 1px 0 rgba(255,255,255,0.1)"
+          boxShadow: "inset 0 0 30px rgba(0, 194, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.7)"
         }}
       />
 
@@ -58,10 +58,10 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
               <span className="text-[10px] font-bold text-white">BB</span>
             </div>
             <div>
-              <span className="text-[9px] uppercase tracking-[0.25em] text-[#888] font-semibold block">
+              <span className="text-[9px] uppercase tracking-[0.25em] text-slate-500 font-semibold block">
                 BidBlitz
               </span>
-              <span className="text-sm font-semibold text-white font-outfit">
+              <span className="text-sm font-semibold text-slate-900 font-outfit">
                 Premium
               </span>
             </div>
@@ -79,7 +79,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
             animate={{ rotate: [0, 10, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           >
-            <Wifi size={22} className="text-white/80 rotate-90" strokeWidth={1.5} />
+            <Wifi size={22} className="text-slate-600 rotate-90" strokeWidth={1.5} />
           </motion.div>
         </div>
       </div>
@@ -124,12 +124,12 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
             {[1, 2, 3, 4].map((dot) => (
               <div
                 key={dot}
-                className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white/30"
+                className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-400/40"
               />
             ))}
           </div>
         ))}
-        <span className="text-base sm:text-xl font-medium tracking-[0.15em] text-white font-outfit">
+        <span className="text-base sm:text-xl font-medium tracking-[0.15em] text-slate-900 font-outfit">
           {cardNumber.split(" ").pop()}
         </span>
       </motion.div>
@@ -142,18 +142,18 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
         transition={{ delay: 0.6 }}
       >
         <div className="min-w-0 flex-1 mr-2">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-[#666] block mb-1 font-semibold">
+          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 block mb-1 font-semibold">
             Card Holder
           </span>
-          <span className="text-white font-medium text-xs sm:text-sm tracking-wide font-outfit truncate block">
+          <span className="text-slate-900 font-medium text-xs sm:text-sm tracking-wide font-outfit truncate block">
             {holder}
           </span>
         </div>
         <div className="text-right mr-2">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-[#666] block mb-1 font-semibold">
+          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 block mb-1 font-semibold">
             Valid Thru
           </span>
-          <span className="text-white font-medium text-xs sm:text-sm tracking-wide font-outfit whitespace-nowrap">
+          <span className="text-slate-900 font-medium text-xs sm:text-sm tracking-wide font-outfit whitespace-nowrap">
             {expiry}
           </span>
         </div>

@@ -387,10 +387,10 @@ h1, h2, h3, h4, h5, h6 {
     @apply border-border;
   }
   html {
-    background: #050505;
+    background: #f7f9fc;
   }
   body {
-    @apply bg-[#050505] text-white;
+    @apply bg-[#f7f9fc] text-[#0f172a];
     overscroll-behavior: none;
   }
 }
