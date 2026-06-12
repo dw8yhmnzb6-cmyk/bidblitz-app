@@ -161,6 +161,7 @@ const RetentionHubPage = lazy(() => import("./pages/RetentionHubPage"));
 const MarketingHubPage = lazy(() => import("./pages/MarketingHubPage"));
 const AdminRevenueDashboardPage = lazy(() => import("./pages/AdminRevenueDashboardPage"));
 const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage"));
+const ExecutiveCenterPage = lazy(() => import("./pages/ExecutiveCenterPage"));
 const KYCTestPage = lazy(() => import("./pages/KYCTestPage"));
 import KYCFlow from "./pages/KYCFlow";
 const ContactsPage = lazy(() => import("./pages/ContactsPage"));
@@ -598,6 +599,10 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/investor":
         return <InvestorPage onBack={() => handleNavigate("/more")} />;
+      case "/executive":
+        return (!user.isAuthenticated || !["admin", "investor", "merchant"].includes(user.role))
+          ? <HomePage {...homeProps} />
+          : <ExecutiveCenterPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/rewards":
         return <RewardsPage onBack={() => handleNavigate("/more")} />;
       case "/verification":

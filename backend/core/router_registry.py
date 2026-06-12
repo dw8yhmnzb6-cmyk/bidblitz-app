@@ -184,6 +184,7 @@ def register_all_routers(app):
         ("routes.revenue", "router"),
         ("routes.revenue2", "router"),
         ("routes.merchant_payments", "router"),
+        ("routes.executive_center", "router"),
         
         # Engagement
         ("routes.reengage", "router"),

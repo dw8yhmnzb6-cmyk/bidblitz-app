@@ -365,9 +365,28 @@ export const api = {
   // Rewards
   getRewardStatus: () => request("/api/rewards/status"),
   claimRewardsDailyReward: () => request("/api/rewards/daily-claim", { method: "POST" }),
+  getRewardsDashboardV3: () => request("/api/rewards/dashboard-v3"),
+  getRewardsHistoryV3: (rewardType = "") => request(`/api/rewards/history${rewardType ? `?reward_type=${encodeURIComponent(rewardType)}` : ""}`),
+  exportRewardsHistoryCSV: (rewardType = "") => downloadCSV(`/api/rewards/history/export.csv${rewardType ? `?reward_type=${encodeURIComponent(rewardType)}` : ""}`, "rewards_history.csv"),
+  exportRewardsHistoryPDF: async (rewardType = "") => {
+    const url = `${API_URL}/api/rewards/history/export.pdf${rewardType ? `?reward_type=${encodeURIComponent(rewardType)}` : ""}`;
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) throw new Error("PDF Export fehlgeschlagen");
+    const blob = await res.blob();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "rewards_history.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
   claimMilestone: (id) => request(`/api/rewards/milestone/${id}`, { method: "POST" }),
   getRewardNotifications: () => request("/api/rewards/notifications"),
   markRewardNotificationsRead: () => request("/api/rewards/notifications/read", { method: "POST" }),
+  getMerchantRewardsV3: () => request("/api/rewards/merchant-rewards"),
+  createMerchantRewardV3: (body) => request("/api/rewards/merchant-rewards", { method: "POST", body: JSON.stringify(body) }),
+  getRewardsAdminConfig: () => request("/api/rewards/admin/config"),
+  updateRewardsAdminConfig: (body) => request("/api/rewards/admin/config", { method: "POST", body: JSON.stringify(body) }),
   // Role Requests
   requestRole: (body) => request("/api/role-requests/request", { method: "POST", body: JSON.stringify(body) }),
   getMyRoleStatus: () => request("/api/role-requests/my-status"),

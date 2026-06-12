@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Flame, Gift, Trophy, Star, Zap, Target,
-  Check, Loader2, Bell, ChevronRight, Clock
+  Check, Loader2, Bell, ChevronRight, Clock, Wallet, Download, Filter, Crown, BadgeDollarSign
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
@@ -37,6 +37,10 @@ const RewardsPage = ({ onBack }) => {
   const [notifs, setNotifs] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [justClaimed, setJustClaimed] = useState(null);
+  const [dashboardV3, setDashboardV3] = useState(null);
+  const [historyFilter, setHistoryFilter] = useState("");
+  const [merchantRewardDraft, setMerchantRewardDraft] = useState({ title: "", description: "", reward_type: "voucher", cost_bidcoins: 100, cashback_amount: 0, voucher_code: "", free_product_name: "" });
+  const [creatingMerchantReward, setCreatingMerchantReward] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -46,7 +50,11 @@ const RewardsPage = ({ onBack }) => {
       ]);
       setData(status);
       setNotifs(notifsData.notifications || []);
-    } catch {}
+      const v3 = await api.getRewardsDashboardV3().catch(() => null);
+      setDashboardV3(v3);
+    } catch (error) {
+      void error;
+    }
     setLoading(false);
   }, []);
 
@@ -55,7 +63,7 @@ const RewardsPage = ({ onBack }) => {
   const claimDaily = async () => {
     setClaiming(true);
     try {
-      const res = await api.claimDailyReward();
+      const res = await api.claimRewardsDailyReward();
       setJustClaimed({
         credits: res.credits_awarded,
         streak: res.streak_day,
@@ -63,7 +71,9 @@ const RewardsPage = ({ onBack }) => {
         comebackMsg: res.comeback_message,
       });
       await load();
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setClaiming(false);
   };
 
@@ -72,8 +82,30 @@ const RewardsPage = ({ onBack }) => {
     try {
       await api.claimMilestone(id);
       await load();
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setClaimingMs(null);
+  };
+
+  const exportCsv = async () => {
+    try { await api.exportRewardsHistoryCSV(historyFilter); } catch (error) { void error; }
+  };
+
+  const exportPdf = async () => {
+    try { await api.exportRewardsHistoryPDF(historyFilter); } catch (error) { void error; }
+  };
+
+  const createMerchantReward = async () => {
+    setCreatingMerchantReward(true);
+    try {
+      await api.createMerchantRewardV3(merchantRewardDraft);
+      setMerchantRewardDraft({ title: "", description: "", reward_type: "voucher", cost_bidcoins: 100, cashback_amount: 0, voucher_code: "", free_product_name: "" });
+      await load();
+    } catch (error) {
+      void error;
+    }
+    setCreatingMerchantReward(false);
   };
 
   if (loading) {
@@ -165,6 +197,26 @@ const RewardsPage = ({ onBack }) => {
             </div>
           </div>
         </motion.div>
+
+        {dashboardV3 && (
+          <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.02 }} data-testid="rewards-v3-dashboard-card">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Rewards Center V3</p>
+                <p className="text-[12px] text-white/70 mt-1">BidCoins · Cashback · Streak · Challenges</p>
+              </div>
+              <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] text-[#FFD700] font-bold flex items-center gap-1" data-testid="rewards-v3-badge-pill">
+                <Crown size={12} /> {dashboardV3.active_badge}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <V3Card icon={BadgeDollarSign} label="BidCoins" value={dashboardV3.available_bidcoins} color="#00E0FF" testid="rewards-v3-bidcoins" />
+              <V3Card icon={Wallet} label="Cashback" value={`€${(dashboardV3.cashback_balance || 0).toFixed(2)}`} color="#00E89D" testid="rewards-v3-cashback" />
+              <V3Card icon={Flame} label="Streak" value={dashboardV3.active_streak} color="#FF6B6B" testid="rewards-v3-streak" />
+              <V3Card icon={Target} label="Challenges" value={dashboardV3.current_challenges?.length || 0} color="#FFD166" testid="rewards-v3-challenges" />
+            </div>
+          </motion.div>
+        )}
 
         {/* Daily Reward Claim */}
         <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
@@ -311,10 +363,93 @@ const RewardsPage = ({ onBack }) => {
           )}
         </AnimatePresence>
 
+        {dashboardV3 && (
+          <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} data-testid="rewards-v3-history-card">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Rewards History</p>
+              <div className="flex items-center gap-2">
+                <button onClick={exportCsv} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[10px] flex items-center gap-1" data-testid="rewards-export-csv"><Download size={12} /> CSV</button>
+                <button onClick={exportPdf} className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[10px] flex items-center gap-1" data-testid="rewards-export-pdf"><Download size={12} /> PDF</button>
+              </div>
+            </div>
+            <div className="mb-3 flex items-center gap-2 rounded-xl bg-white/[0.02] border border-white/[0.04] px-3 py-2">
+              <Filter size={12} className="text-white/30" />
+              <select value={historyFilter} onChange={(e) => setHistoryFilter(e.target.value)} className="bg-transparent text-[11px] text-white/70 outline-none w-full" data-testid="rewards-history-filter">
+                <option value="">Alle</option>
+                <option value="daily_login">Daily Login</option>
+                <option value="referral">Referral</option>
+                <option value="merchant_loyalty">Merchant Loyalty</option>
+                <option value="cashback">Cashback</option>
+                <option value="promotion_rewards">Promotion Rewards</option>
+                <option value="walk_earn">Walk & Earn</option>
+              </select>
+            </div>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {(dashboardV3.history || []).filter((item) => !historyFilter || item.source_type === historyFilter).slice(0, 30).map((item, idx) => (
+                <div key={`${item.event_id || idx}`} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 flex items-center justify-between" data-testid={`rewards-history-item-${idx}`}>
+                  <div>
+                    <p className="text-[11px] text-white/80 font-medium">{item.description || item.source_type}</p>
+                    <p className="text-[8px] text-white/25">{item.created_at?.slice(0, 16)} · {item.source_type}</p>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#00E89D]">+{item.bidcoins || 0}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {dashboardV3 && (
+          <motion.div className={`rounded-2xl p-4 ${glass}`} style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} data-testid="merchant-rewards-v3-card">
+            <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">Merchant Rewards</p>
+            <div className="grid grid-cols-1 gap-2 mb-4">
+              <input value={merchantRewardDraft.title} onChange={(e) => setMerchantRewardDraft((p) => ({ ...p, title: e.target.value }))} placeholder="Reward Titel" className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] text-[11px] text-white outline-none" data-testid="merchant-reward-title-input" />
+              <input value={merchantRewardDraft.description} onChange={(e) => setMerchantRewardDraft((p) => ({ ...p, description: e.target.value }))} placeholder="Beschreibung" className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] text-[11px] text-white outline-none" data-testid="merchant-reward-description-input" />
+              <div className="grid grid-cols-2 gap-2">
+                <select value={merchantRewardDraft.reward_type} onChange={(e) => setMerchantRewardDraft((p) => ({ ...p, reward_type: e.target.value }))} className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] text-[11px] text-white outline-none" data-testid="merchant-reward-type-select">
+                  <option value="voucher">Gutschein</option>
+                  <option value="free_product">Gratisprodukt</option>
+                  <option value="cashback">Cashback</option>
+                </select>
+                <input type="number" value={merchantRewardDraft.cost_bidcoins} onChange={(e) => setMerchantRewardDraft((p) => ({ ...p, cost_bidcoins: Number(e.target.value || 0) }))} placeholder="BidCoins" className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] text-[11px] text-white outline-none" data-testid="merchant-reward-cost-input" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={merchantRewardDraft.voucher_code} onChange={(e) => setMerchantRewardDraft((p) => ({ ...p, voucher_code: e.target.value }))} placeholder="Voucher Code" className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] text-[11px] text-white outline-none" data-testid="merchant-reward-voucher-input" />
+                <input value={merchantRewardDraft.free_product_name} onChange={(e) => setMerchantRewardDraft((p) => ({ ...p, free_product_name: e.target.value }))} placeholder="Gratisprodukt" className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] text-[11px] text-white outline-none" data-testid="merchant-reward-product-input" />
+              </div>
+              <button onClick={createMerchantReward} disabled={creatingMerchantReward} className="px-4 py-2 rounded-xl bg-[#00E0FF]/10 border border-[#00E0FF]/20 text-[#00E0FF] text-[11px] font-bold" data-testid="merchant-reward-create-btn">
+                {creatingMerchantReward ? "Speichert..." : "Merchant Reward anlegen"}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {(dashboardV3.merchant_rewards || []).slice(0, 6).map((reward, idx) => (
+                <div key={reward.reward_id || idx} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-medium text-white/85">{reward.title}</p>
+                    <p className="text-[8px] text-white/30">{reward.reward_type} · {reward.merchant_name || "Merchant"}</p>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#FFD166]">{reward.cost_bidcoins} BC</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         <div className="text-center py-3"><p className="text-[9px] text-white/10">bidblitz.ae</p></div>
       </div>
     </motion.div>
   );
 };
+
+function V3Card({ icon: Icon, label, value, color, testid }) {
+  return (
+    <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3" data-testid={testid}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={14} style={{ color }} />
+        <span className="text-[9px] text-white/30 uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="text-[20px] font-black" style={{ color }}>{value}</p>
+    </div>
+  );
+}
 
 export default RewardsPage;
