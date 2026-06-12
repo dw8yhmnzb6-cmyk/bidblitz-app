@@ -8,14 +8,21 @@ import {
   Calendar, Hotel, Briefcase, Ticket, UtensilsCrossed, Heart,
   TrendingUp, Wallet, Clock, MapPin, Phone, Mail, Globe,
   Settings, Loader2, Check, Save, Scissors, ChevronRight,
-  Building2, Image as ImageIcon
+  Building2, Image as ImageIcon, Gift, Megaphone, Store, LineChart, Link2
 } from "lucide-react";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const MerchantPortalPage = ({ onBack, onNavigate }) => {
+  const { lang } = useI18n();
+  const locale = (lang || "de").startsWith("sq") ? "sq" : (lang || "de").startsWith("en") ? "en" : "de";
   const [tab, setTab] = useState("dashboard");
   const [dash, setDash] = useState(null);
+  const [enterprise, setEnterprise] = useState(null);
+  const [merchantProgram, setMerchantProgram] = useState(null);
+  const [growth, setGrowth] = useState(null);
+  const [franchiseApplications, setFranchiseApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [txns, setTxns] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -38,6 +45,19 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         const d = await res.json();
         setDash(d);
         if (d.profile) setProfile(prev => ({ ...prev, ...d.profile }));
+      }
+      const [entRes, progRes, growthRes, fraRes] = await Promise.all([
+        fetch(`${API}/api/merchant-portal/enterprise-overview`, { credentials: "include" }),
+        fetch(`${API}/api/referral/merchant-program`, { credentials: "include" }),
+        fetch(`${API}/api/referral/growth-dashboard`, { credentials: "include" }),
+        fetch(`${API}/api/referral/franchise/applications`, { credentials: "include" }),
+      ]);
+      if (entRes.ok) setEnterprise(await entRes.json());
+      if (progRes.ok) setMerchantProgram(await progRes.json());
+      if (growthRes.ok) setGrowth(await growthRes.json());
+      if (fraRes.ok) {
+        const data = await fraRes.json();
+        setFranchiseApplications(data.applications || []);
       }
     } catch {}
     setLoading(false);
@@ -74,6 +94,8 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
 
   const TABS = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "ecosystem", label: locale === "sq" ? "Ekosistemi" : locale === "en" ? "Ecosystem" : "Ökosystem", icon: Store },
+    { id: "growth", label: locale === "sq" ? "Rritja" : locale === "en" ? "Growth" : "Wachstum", icon: LineChart },
     { id: "transactions", label: "Finanzen", icon: DollarSign },
     { id: "reservations", label: "Reservierungen", icon: UtensilsCrossed },
     { id: "hotels", label: "Buchungen", icon: Hotel },
@@ -184,6 +206,8 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-2">
             {[
+              { label: locale === "sq" ? "Refero tregtarë" : locale === "en" ? "Refer merchants" : "Merchants werben", route: "/referral", icon: Gift, color: "#10B981" },
+              { label: locale === "sq" ? "Faqja publike" : locale === "en" ? "Public page" : "Öffentliche Seite", route: dash?.public_slug ? `/business/${dash.public_slug}` : "/merchant-portal", icon: Link2, color: "#3B82F6" },
               { label: "Restaurant erstellen", route: "/restaurants", icon: UtensilsCrossed, color: "#F59E0B" },
               { label: "Hotel einstellen", route: "/hotels", icon: Hotel, color: "#6366F1" },
               { label: "Job posten", route: "/jobs", icon: Briefcase, color: "#6366F1" },
@@ -196,6 +220,110 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                 <ChevronRight size={12} className="text-gray-600 ml-auto" />
               </motion.button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "ecosystem" && (
+        <div className="p-4 space-y-4" data-testid="merchant-ecosystem-tab">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-[#111118] rounded-2xl border border-white/5 p-4" data-testid="merchant-ecosystem-branches">
+              <p className="text-[9px] text-gray-500">Branches</p>
+              <p className="text-2xl font-bold text-[#10B981] mt-1">{enterprise?.kpis?.branches ?? 0}</p>
+            </div>
+            <div className="bg-[#111118] rounded-2xl border border-white/5 p-4" data-testid="merchant-ecosystem-low-stock">
+              <p className="text-[9px] text-gray-500">Low Stock</p>
+              <p className="text-2xl font-bold text-[#F59E0B] mt-1">{enterprise?.kpis?.low_stock ?? 0}</p>
+            </div>
+            <div className="bg-[#111118] rounded-2xl border border-white/5 p-4" data-testid="merchant-ecosystem-referrals">
+              <p className="text-[9px] text-gray-500">Merchant Referrals</p>
+              <p className="text-2xl font-bold text-[#00C2FF] mt-1">{merchantProgram?.stats?.completed ?? 0}</p>
+            </div>
+            <div className="bg-[#111118] rounded-2xl border border-white/5 p-4" data-testid="merchant-ecosystem-franchise">
+              <p className="text-[9px] text-gray-500">Franchise Applications</p>
+              <p className="text-2xl font-bold text-[#A855F7] mt-1">{franchiseApplications.length}</p>
+            </div>
+          </div>
+
+          <div className="bg-[#111118] rounded-2xl border border-white/5 p-4" data-testid="merchant-ecosystem-referral-card">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-bold">Merchant Referral Program</p>
+                <p className="text-[10px] text-gray-500">Code: {merchantProgram?.code || "—"}</p>
+              </div>
+              <Gift size={16} className="text-[#10B981]" />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl bg-white/5 p-3">
+                <p className="text-[9px] text-gray-500">Free Month</p>
+                <p className="text-lg font-bold text-white">{merchantProgram?.stats?.free_months ?? 0}</p>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3">
+                <p className="text-[9px] text-gray-500">Cashback</p>
+                <p className="text-lg font-bold text-[#00C2FF]">€{(merchantProgram?.stats?.cashback || 0).toFixed(2)}</p>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3">
+                <p className="text-[9px] text-gray-500">Revenue Share</p>
+                <p className="text-lg font-bold text-[#F59E0B]">€{(merchantProgram?.stats?.revenue_share || 0).toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#111118] rounded-2xl border border-white/5 p-4" data-testid="merchant-ecosystem-public-page-card">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-bold">Public Merchant Page</p>
+                <p className="text-[10px] text-gray-500">bidblitz.ae/business/{dash?.public_slug || "merchant"}</p>
+              </div>
+              <Link2 size={16} className="text-[#3B82F6]" />
+            </div>
+            <button onClick={() => onNavigate?.(dash?.public_slug ? `/business/${dash.public_slug}` : "/merchant-portal")} className="w-full py-2 rounded-xl bg-[#3B82F6]/15 text-[#60A5FA] text-xs font-bold" data-testid="merchant-open-public-page">
+              Öffnen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tab === "growth" && (
+        <div className="p-4 space-y-4" data-testid="merchant-growth-tab">
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "User Growth", value: growth?.monthly?.user_growth ?? 0, color: "#10B981" },
+              { label: "Merchant Growth", value: growth?.monthly?.merchant_growth ?? 0, color: "#3B82F6" },
+              { label: "Referral Growth", value: growth?.monthly?.referral_growth ?? 0, color: "#A855F7" },
+              { label: "Revenue Growth", value: `€${(growth?.monthly?.revenue_growth || 0).toFixed(0)}`, color: "#F59E0B" },
+            ].map((item) => (
+              <div key={item.label} className="bg-[#111118] rounded-2xl border border-white/5 p-4">
+                <p className="text-[9px] text-gray-500">{item.label}</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: item.color }}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-[#111118] rounded-2xl border border-white/5 p-4" data-testid="merchant-growth-analytics-card">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-bold">Growth Dashboard</p>
+                <p className="text-[10px] text-gray-500">Daily · Weekly · Monthly · Yearly</p>
+              </div>
+              <Megaphone size={16} className="text-[#F59E0B]" />
+            </div>
+            <div className="space-y-2 text-[11px]">
+              {[
+                ["Daily", growth?.daily],
+                ["Weekly", growth?.weekly],
+                ["Monthly", growth?.monthly],
+                ["Yearly", growth?.yearly],
+              ].map(([label, item]) => (
+                <div key={label} className="rounded-xl bg-white/5 p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{label}</p>
+                    <p className="text-gray-500">Users {item?.user_growth ?? 0} · Merchants {item?.merchant_growth ?? 0} · Referrals {item?.referral_growth ?? 0}</p>
+                  </div>
+                  <span className="font-bold text-[#10B981]">€{(item?.revenue_growth || 0).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

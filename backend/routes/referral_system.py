@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 from bson import ObjectId
 
 from core.database import db
@@ -91,6 +91,77 @@ class AdminConfigRequest(BaseModel):
     daily_bonus_enabled: Optional[bool] = None
 
 
+class MerchantReferralApplyRequest(BaseModel):
+    code: str = Field(..., min_length=3, max_length=32)
+
+
+class FranchiseApplicationRequest(BaseModel):
+    business_name: str = Field(..., min_length=2, max_length=120)
+    city: str = Field(..., min_length=2, max_length=120)
+    country: str = Field(..., min_length=2, max_length=2)
+    experience: str = Field("", max_length=1200)
+    capital_available: float = Field(0, ge=0)
+    message: str = Field("", max_length=1200)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+async def _ensure_referral_code(user: dict) -> str:
+    existing = user.get("referral_code")
+    if existing:
+        return existing
+    referral_code = generate_referral_code(user.get("name", ""))
+    while await db.users.find_one({"referral_code": referral_code}):
+        referral_code = generate_referral_code(user.get("name", ""))
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"referral_code": referral_code}})
+    return referral_code
+
+
+async def _build_growth_snapshot() -> Dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    week_start = (now - timedelta(days=7)).isoformat()
+    month_start = (now - timedelta(days=30)).isoformat()
+    year_start = (now - timedelta(days=365)).isoformat()
+
+    sales = await db.pos_sales.find(
+        {"created_at": {"$gte": year_start}, "status": "completed"},
+        {"_id": 0, "created_at": 1, "total": 1},
+    ).to_list(50000)
+
+    def revenue_since(start: str) -> float:
+        return round(sum(float(s.get("total", 0) or 0) for s in sales if str(s.get("created_at", "")) >= start), 2)
+
+    return {
+        "daily": {
+            "user_growth": await db.users.count_documents({"created_at": {"$gte": day_start}}),
+            "merchant_growth": await db.merchants.count_documents({"created_at": {"$gte": day_start}}),
+            "referral_growth": await db.referrals.count_documents({"created_at": {"$gte": day_start}}),
+            "revenue_growth": revenue_since(day_start),
+        },
+        "weekly": {
+            "user_growth": await db.users.count_documents({"created_at": {"$gte": week_start}}),
+            "merchant_growth": await db.merchants.count_documents({"created_at": {"$gte": week_start}}),
+            "referral_growth": await db.referrals.count_documents({"created_at": {"$gte": week_start}}),
+            "revenue_growth": revenue_since(week_start),
+        },
+        "monthly": {
+            "user_growth": await db.users.count_documents({"created_at": {"$gte": month_start}}),
+            "merchant_growth": await db.merchants.count_documents({"created_at": {"$gte": month_start}}),
+            "referral_growth": await db.referrals.count_documents({"created_at": {"$gte": month_start}}),
+            "revenue_growth": revenue_since(month_start),
+        },
+        "yearly": {
+            "user_growth": await db.users.count_documents({"created_at": {"$gte": year_start}}),
+            "merchant_growth": await db.merchants.count_documents({"created_at": {"$gte": year_start}}),
+            "referral_growth": await db.referrals.count_documents({"created_at": {"$gte": year_start}}),
+            "revenue_growth": revenue_since(year_start),
+        },
+    }
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # GET MY REFERRAL CODE
 # ══════════════════════════════════════════════════════════════════════════════
@@ -99,22 +170,7 @@ class AdminConfigRequest(BaseModel):
 async def get_my_referral_code(request: Request):
     """Get or generate user's referral code."""
     user = await get_current_user(request)
-    user_id = str(user["_id"])
-    
-    referral_code = user.get("referral_code")
-    
-    # Generate if doesn't exist
-    if not referral_code:
-        referral_code = generate_referral_code(user.get("name", ""))
-        
-        # Ensure uniqueness
-        while await db.users.find_one({"referral_code": referral_code}):
-            referral_code = generate_referral_code(user.get("name", ""))
-        
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {"referral_code": referral_code}}
-        )
+    referral_code = await _ensure_referral_code(user)
     
     # Build share URL
     base_url = "https://bidblitz.ae"  # Or use environment variable
@@ -404,7 +460,109 @@ async def get_referral_dashboard(request: Request):
             "inviter_gets": config["inviter_bonus"],
         },
         "is_influencer": user.get("is_influencer", False),
+        "merchant_referral": {
+            "free_months_earned": int(user.get("merchant_free_months", 0) or 0),
+            "cashback_earned": round(float(user.get("merchant_cashback_earned", 0) or 0), 2),
+            "revenue_share_earned": round(float(user.get("merchant_revenue_share_earned", 0) or 0), 2),
+        },
+        "growth": await _build_growth_snapshot(),
     }
+
+
+@router.get("/merchant-program")
+async def get_merchant_referral_program(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    code = await _ensure_referral_code(user)
+    referrals = await db.merchant_partner_referrals.find({"inviter_user_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    completed = [ref for ref in referrals if ref.get("status") == "completed"]
+    return {
+        "code": code,
+        "stats": {
+            "total": len(referrals),
+            "pending": len([ref for ref in referrals if ref.get("status") == "pending"]),
+            "completed": len(completed),
+            "free_months": sum(int(ref.get("free_months_awarded", 0) or 0) for ref in completed),
+            "cashback": round(sum(float(ref.get("cashback_awarded", 0) or 0) for ref in completed), 2),
+            "revenue_share": round(sum(float(ref.get("revenue_share_awarded", 0) or 0) for ref in completed), 2),
+        },
+        "rewards": {
+            "free_month": 1,
+            "cashback": 25,
+            "revenue_share_rate": 0.01,
+        },
+        "referrals": referrals,
+    }
+
+
+@router.post("/merchant-program/apply")
+async def apply_merchant_referral(req: MerchantReferralApplyRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    code = req.code.upper().strip()
+    inviter = await db.users.find_one({"referral_code": code})
+    if not inviter:
+        raise HTTPException(status_code=404, detail="Referral-Code nicht gefunden")
+    inviter_id = str(inviter["_id"])
+    if inviter_id == user_id:
+        raise HTTPException(status_code=400, detail="Eigenen Code kannst du nicht nutzen")
+    existing = await db.merchant_partner_referrals.find_one({"invited_user_id": user_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Merchant-Referral bereits vorhanden")
+
+    doc = {
+        "referral_id": secrets.token_hex(8),
+        "inviter_user_id": inviter_id,
+        "inviter_name": inviter.get("name", ""),
+        "invited_user_id": user_id,
+        "invited_name": user.get("name", ""),
+        "code_used": code,
+        "status": "pending",
+        "free_months_awarded": 0,
+        "cashback_awarded": 0.0,
+        "revenue_share_awarded": 0.0,
+        "created_at": _now_iso(),
+    }
+    await db.merchant_partner_referrals.insert_one(doc)
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"merchant_referred_by": inviter_id, "merchant_referred_by_code": code}})
+    return {"ok": True, "message": "Merchant-Referral gespeichert", "referral": doc}
+
+
+@router.get("/growth-dashboard")
+async def get_growth_dashboard(request: Request):
+    await get_current_user(request)
+    return await _build_growth_snapshot()
+
+
+@router.post("/franchise/apply")
+async def submit_franchise_application(req: FranchiseApplicationRequest, request: Request):
+    user = await get_current_user(request)
+    doc = {
+        "application_id": f"FRA-{secrets.token_hex(5).upper()}",
+        "user_id": str(user["_id"]),
+        "user_name": user.get("name", ""),
+        "email": user.get("email", ""),
+        "business_name": req.business_name,
+        "city": req.city,
+        "country": req.country.upper(),
+        "experience": req.experience,
+        "capital_available": round(float(req.capital_available or 0), 2),
+        "message": req.message,
+        "status": "pending",
+        "created_at": _now_iso(),
+    }
+    await db.franchise_applications.insert_one(doc)
+    return {"ok": True, "application": doc}
+
+
+@router.get("/franchise/applications")
+async def get_franchise_applications(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") == "admin":
+        items = await db.franchise_applications.find({}, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+        return {"applications": items}
+    items = await db.franchise_applications.find({"user_id": str(user["_id"])}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    return {"applications": items}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

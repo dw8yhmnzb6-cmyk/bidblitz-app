@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../store/I18nContext';
 import { 
   ChevronLeft, Copy, Share2, Gift, Users, Wallet, 
-  Check, Clock, Flame, Calendar, TrendingUp, Star
+  Check, Clock, Flame, Calendar, TrendingUp, Star, Building2, LineChart, BadgeDollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -421,6 +421,65 @@ export default function ReferralSystemPage({ onNavigate }) {
               <p className="text-2xl font-bold text-cyan-400">€{dashboard?.stats?.total_earnings?.toFixed(2) || '0.00'}</p>
               <p className="text-xs text-gray-500">{t.total_earned}</p>
             </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-[#111] rounded-2xl p-5 border border-white/5"
+          data-testid="merchant-referral-program-card"
+        >
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-cyan-400" />
+            Merchant Referral Program
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-[#0A0A0A] rounded-xl p-3 text-center">
+              <Gift className="w-5 h-5 text-green-400 mx-auto mb-1" />
+              <p className="text-xl font-bold">{dashboard?.merchant_referral?.free_months_earned || 0}</p>
+              <p className="text-xs text-gray-500">Free Months</p>
+            </div>
+            <div className="bg-[#0A0A0A] rounded-xl p-3 text-center">
+              <BadgeDollarSign className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
+              <p className="text-xl font-bold text-yellow-400">€{dashboard?.merchant_referral?.cashback_earned?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-500">Cashback</p>
+            </div>
+            <div className="bg-[#0A0A0A] rounded-xl p-3 text-center">
+              <LineChart className="w-5 h-5 text-purple-400 mx-auto mb-1" />
+              <p className="text-xl font-bold text-purple-400">€{dashboard?.merchant_referral?.revenue_share_earned?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-500">Revenue Share</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.38 }}
+          className="bg-[#111] rounded-2xl p-5 border border-white/5"
+          data-testid="growth-dashboard-card"
+        >
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <LineChart className="w-5 h-5 text-green-400" />
+            Growth Dashboard
+          </h3>
+          <div className="space-y-3 text-sm">
+            {[
+              ['Daily', dashboard?.growth?.daily],
+              ['Weekly', dashboard?.growth?.weekly],
+              ['Monthly', dashboard?.growth?.monthly],
+              ['Yearly', dashboard?.growth?.yearly],
+            ].map(([label, item]) => (
+              <div key={label} className="bg-[#0A0A0A] rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{label}</p>
+                  <p className="text-xs text-gray-500">Users {item?.user_growth || 0} · Merchants {item?.merchant_growth || 0} · Referrals {item?.referral_growth || 0}</p>
+                </div>
+                <p className="font-bold text-green-400">€{(item?.revenue_growth || 0).toFixed(2)}</p>
+              </div>
+            ))}
           </div>
         </motion.div>
 

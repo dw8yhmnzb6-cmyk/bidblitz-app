@@ -14,6 +14,28 @@ router = APIRouter(prefix="/api/merchant", tags=["merchant"])
 logger = logging.getLogger("bidblitz.merchant")
 
 
+def _slugify(value: str) -> str:
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in value).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug[:60] or f"business-{secrets.token_hex(3)}"
+
+
+async def _ensure_public_slug(user_id: str, business_name: str):
+    merchant = await db.merchants.find_one({"user_id": user_id}, {"_id": 0, "public_slug": 1})
+    if merchant and merchant.get("public_slug"):
+        return merchant["public_slug"]
+    slug = _slugify(business_name)
+    candidate = slug
+    idx = 1
+    while await db.merchants.find_one({"public_slug": candidate}):
+        idx += 1
+        candidate = f"{slug[:54]}-{idx}"
+    await db.merchants.update_one({"user_id": user_id}, {"$set": {"public_slug": candidate}}, upsert=True)
+    await db.merchant_profiles.update_one({"user_id": user_id}, {"$set": {"public_slug": candidate}}, upsert=True)
+    return candidate
+
+
 def _as_amount(value) -> float:
     try:
         return round(float(value or 0), 2)
@@ -154,6 +176,7 @@ async def get_dashboard(request: Request):
             "today_transactions": 0,
             "fee_percent": FEES["payment"] * 100,
             "recent_payments": [],
+            "public_slug": _slugify(f"{user.get('name', 'User')}-store"),
         }
 
     summary = await _build_dashboard_summary(user_id, merchant, merchant_profile)
@@ -201,9 +224,11 @@ async def get_dashboard(request: Request):
                 today_earnings += abs(t.get("amount", 0))
                 today_count += 1
 
+    business_name = (merchant or {}).get("business_name") or (merchant_profile or {}).get("business_name", "")
+    public_slug = await _ensure_public_slug(user_id, business_name or f"business-{user_id[:6]}")
     return {
         "merchant_id": merchant_id,
-        "business_name": (merchant or {}).get("business_name") or (merchant_profile or {}).get("business_name", ""),
+        "business_name": business_name,
         "gross_earnings": summary["gross_earnings"],
         "total_earnings": summary["total_earnings"],
         "total_fees": summary["total_fees"],
@@ -213,6 +238,46 @@ async def get_dashboard(request: Request):
         "today_transactions": today_count,
         "fee_percent": FEES["payment"] * 100,
         "recent_payments": recent,
+        "public_slug": public_slug,
+    }
+
+
+@router.get("/public/{slug}")
+async def get_public_merchant_page(slug: str):
+    merchant = await db.merchants.find_one({"public_slug": slug}, {"_id": 0})
+    if not merchant:
+        profile = await db.merchant_profiles.find_one({"public_slug": slug}, {"_id": 0})
+        if not profile:
+            raise HTTPException(status_code=404, detail="Business nicht gefunden")
+        merchant = await db.merchants.find_one({"user_id": profile.get("user_id")}, {"_id": 0}) or {}
+        merchant_profile = profile
+    else:
+        merchant_profile = await db.merchant_profiles.find_one({"user_id": merchant.get("user_id")}, {"_id": 0}) or {}
+
+    owner_user_id = merchant.get("user_id") or merchant_profile.get("user_id")
+    business_name = merchant.get("business_name") or merchant_profile.get("business_name") or slug
+    products = await db.pos_products.find({"merchant_id": merchant.get("merchant_id"), "active": True}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    vouchers = await db.vouchers.find({"merchant_id": owner_user_id, "status": "active"}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    promos = await db.promotions.find({"active": True, "target": {"$in": ["all", "merchants"]}}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    reviews = await db.directory_reviews.find({"owner_email": merchant.get("email", "")}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    return {
+        "slug": slug,
+        "business_name": business_name,
+        "description": merchant.get("description") or merchant_profile.get("description", ""),
+        "phone": merchant.get("phone") or merchant_profile.get("phone", ""),
+        "email": merchant.get("email") or merchant_profile.get("email", ""),
+        "website": merchant_profile.get("website", ""),
+        "address": merchant.get("address") or merchant_profile.get("address", ""),
+        "city": merchant_profile.get("city", ""),
+        "logo_url": merchant_profile.get("logo_url", ""),
+        "products": products,
+        "vouchers": vouchers,
+        "promotions": promos,
+        "reviews": reviews,
+        "qr_payment": {
+            "merchant_id": merchant.get("merchant_id") or owner_user_id,
+            "merchant_name": business_name,
+        },
     }
 
 

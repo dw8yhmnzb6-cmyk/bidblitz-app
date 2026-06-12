@@ -179,6 +179,7 @@ const ParcelPage = lazy(() => import("./pages/ParcelPage"));
 const CVBuilderPage = lazy(() => import("./pages/CVBuilderPage"));
 const NearbyPage = lazy(() => import("./pages/NearbyPage"));
 const MerchantPortalPage = lazy(() => import("./pages/MerchantPortalPage"));
+const PublicMerchantBusinessPage = lazy(() => import("./pages/PublicMerchantBusinessPage"));
 const KidsAppPage = lazy(() => import("./pages/KidsAppPage"));
 const ParentControlsPage = lazy(() => import("./pages/ParentControlsPage"));
 const AdminAuctionImagesPage = lazy(() => import("./pages/AdminAuctionImagesPage"));
@@ -559,6 +560,9 @@ function AppContent() {
     }
     if (currentPath.startsWith("/pay/merchant/")) {
       return <PayMerchantDetailPage slug={currentPath.split("/")[3]} onBack={() => handleNavigate("/pay/directory")} onNavigate={handleNavigate} />;
+    }
+    if (currentPath.startsWith("/business/")) {
+      return <PublicMerchantBusinessPage slug={currentPath.split("/")[2]} onBack={() => handleNavigate("/merchant-portal")} onNavigate={handleNavigate} />;
     }
     if (currentPath === "/pay/directory" || currentPath === "/marketplace") {
       return <PayDirectoryPage onBack={() => handleNavigate("/merchant-landing")} onNavigate={handleNavigate} />;
