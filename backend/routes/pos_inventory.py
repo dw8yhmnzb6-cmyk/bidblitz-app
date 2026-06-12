@@ -237,6 +237,11 @@ class PurchaseOrderCreate(BaseModel):
     note: Optional[str] = ""
 
 
+class PurchaseOrderDeliveryUpdate(BaseModel):
+    delivery_note_number: Optional[str] = None
+    note: Optional[str] = ""
+
+
 @router.post("/purchase-orders/create")
 async def create_purchase_order(req: PurchaseOrderCreate, request: Request):
     user = await get_current_user(request)
@@ -296,6 +301,40 @@ async def list_purchase_orders(request: Request, status: Optional[str] = None):
     return {"purchase_orders": items}
 
 
+@router.post("/purchase-orders/{po_id}/submit")
+async def submit_purchase_order(po_id: str, request: Request):
+    user = await get_current_user(request)
+    merchant = await _require_merchant(user)
+    po = await db.pos_purchase_orders.find_one({"po_id": po_id})
+    if not po or po["merchant_id"] != merchant["merchant_id"]:
+        raise HTTPException(status_code=404, detail="PO nicht gefunden")
+    if po.get("status") != "draft":
+        raise HTTPException(status_code=400, detail="Nur Entwürfe können eingereicht werden")
+    await db.pos_purchase_orders.update_one(
+        {"po_id": po_id},
+        {"$set": {"status": "submitted", "submitted_at": now_iso(), "submitted_by": str(user["_id"])}}
+    )
+    await _audit(str(user["_id"]), "po.submit", {"po_id": po_id})
+    return {"ok": True, "status": "submitted"}
+
+
+@router.post("/purchase-orders/{po_id}/approve")
+async def approve_purchase_order(po_id: str, request: Request):
+    user = await get_current_user(request)
+    merchant = await _require_merchant(user)
+    po = await db.pos_purchase_orders.find_one({"po_id": po_id})
+    if not po or po["merchant_id"] != merchant["merchant_id"]:
+        raise HTTPException(status_code=404, detail="PO nicht gefunden")
+    if po.get("status") not in {"draft", "submitted"}:
+        raise HTTPException(status_code=400, detail="Diese Bestellung kann nicht freigegeben werden")
+    await db.pos_purchase_orders.update_one(
+        {"po_id": po_id},
+        {"$set": {"status": "approved", "approved_at": now_iso(), "approved_by": str(user["_id"])}}
+    )
+    await _audit(str(user["_id"]), "po.approve", {"po_id": po_id})
+    return {"ok": True, "status": "approved"}
+
+
 @router.post("/purchase-orders/{po_id}/order")
 async def mark_po_ordered(po_id: str, request: Request):
     user = await get_current_user(request)
@@ -303,13 +342,36 @@ async def mark_po_ordered(po_id: str, request: Request):
     po = await db.pos_purchase_orders.find_one({"po_id": po_id})
     if not po or po["merchant_id"] != merchant["merchant_id"]:
         raise HTTPException(status_code=404, detail="PO nicht gefunden")
-    if po["status"] != "draft":
-        raise HTTPException(status_code=400, detail="Nur Entwürfe können bestellt werden")
+    if po["status"] not in {"draft", "submitted", "approved"}:
+        raise HTTPException(status_code=400, detail="Diese Bestellung kann nicht bestellt werden")
     await db.pos_purchase_orders.update_one(
         {"po_id": po_id}, {"$set": {"status": "ordered", "ordered_at": now_iso()}}
     )
     await _audit(str(user["_id"]), "po.order", {"po_id": po_id})
     return {"ok": True}
+
+
+@router.post("/purchase-orders/{po_id}/deliver")
+async def mark_po_delivered(po_id: str, req: PurchaseOrderDeliveryUpdate, request: Request):
+    user = await get_current_user(request)
+    merchant = await _require_merchant(user)
+    po = await db.pos_purchase_orders.find_one({"po_id": po_id})
+    if not po or po["merchant_id"] != merchant["merchant_id"]:
+        raise HTTPException(status_code=404, detail="PO nicht gefunden")
+    if po.get("status") not in {"approved", "ordered"}:
+        raise HTTPException(status_code=400, detail="Lieferung erst nach Freigabe/Bestellung möglich")
+    await db.pos_purchase_orders.update_one(
+        {"po_id": po_id},
+        {"$set": {
+            "status": "delivered",
+            "delivery_note_number": req.delivery_note_number,
+            "delivery_note": req.note or "",
+            "delivered_at": now_iso(),
+            "delivered_by": str(user["_id"]),
+        }}
+    )
+    await _audit(str(user["_id"]), "po.deliver", {"po_id": po_id})
+    return {"ok": True, "status": "delivered"}
 
 
 @router.post("/purchase-orders/{po_id}/receive")
@@ -320,7 +382,7 @@ async def receive_purchase_order(po_id: str, request: Request):
     po = await db.pos_purchase_orders.find_one({"po_id": po_id})
     if not po or po["merchant_id"] != merchant["merchant_id"]:
         raise HTTPException(status_code=404, detail="PO nicht gefunden")
-    if po["status"] not in {"draft", "ordered"}:
+    if po["status"] not in {"draft", "submitted", "approved", "ordered", "delivered"}:
         raise HTTPException(status_code=400, detail=f"PO Status {po['status']} — nicht empfangsfähig")
 
     for line in po["items"]:
@@ -356,6 +418,88 @@ async def receive_purchase_order(po_id: str, request: Request):
     )
     await _audit(str(user["_id"]), "po.receive", {"po_id": po_id})
     return {"ok": True, "status": "received"}
+
+
+@router.get("/purchase-orders/{po_id}/timeline")
+async def purchase_order_timeline(po_id: str, request: Request):
+    user = await get_current_user(request)
+    merchant = await _require_merchant(user)
+    po = await db.pos_purchase_orders.find_one({"po_id": po_id}, {"_id": 0})
+    if not po or po["merchant_id"] != merchant["merchant_id"]:
+        raise HTTPException(status_code=404, detail="PO nicht gefunden")
+    timeline = []
+    for step, ts_key, actor_key, status in [
+        ("created", "created_at", "created_by", "draft"),
+        ("submitted", "submitted_at", "submitted_by", "submitted"),
+        ("approved", "approved_at", "approved_by", "approved"),
+        ("ordered", "ordered_at", None, "ordered"),
+        ("delivered", "delivered_at", "delivered_by", "delivered"),
+        ("received", "received_at", "received_by", "received"),
+        ("cancelled", "cancelled_at", None, "cancelled"),
+    ]:
+        if po.get(ts_key):
+            timeline.append({"step": step, "status": status, "timestamp": po.get(ts_key), "actor_id": po.get(actor_key)})
+    return {"status": po.get("status"), "timeline": timeline}
+
+
+@router.get("/stock/insights")
+async def stock_insights(request: Request, store_id: Optional[str] = None):
+    user = await get_current_user(request)
+    merchant = await _require_merchant(user)
+    q = {"merchant_id": merchant["merchant_id"], "active": True}
+    if store_id:
+        q["store_id"] = store_id
+    products = await db.pos_products.find(q, {"_id": 0}).to_list(5000)
+    low_stock = []
+    auto_reorder = []
+    stock_value_cost = 0.0
+    stock_value_retail = 0.0
+    for product in products:
+        stock = float(product.get("stock", 0) or 0)
+        minimum = float(product.get("minimum_stock", 0) or 0)
+        target = float(product.get("reorder_target_stock", 0) or minimum)
+        stock_value_cost += stock * float(product.get("purchase_price", 0) or 0)
+        stock_value_retail += stock * float(product.get("price", 0) or 0)
+        if product.get("track_stock") and minimum > 0 and stock <= minimum:
+            low_stock.append(product)
+        if product.get("auto_reorder_enabled") and target > stock:
+            auto_reorder.append({
+                "product_id": product["product_id"],
+                "name": product.get("name"),
+                "store_id": product.get("store_id"),
+                "stock": stock,
+                "minimum_stock": minimum,
+                "target_stock": target,
+                "suggested_qty": round(target - stock, 2),
+                "supplier_id": product.get("supplier_id"),
+            })
+
+    batch_query: Dict[str, Any] = {"quantity_remaining": {"$gt": 0}, "expiry_date": {"$ne": None, "$lte": (datetime.now(timezone.utc) + timedelta(days=14)).date().isoformat()}}
+    if store_id:
+        batch_query["store_id"] = store_id
+    else:
+        batch_query["merchant_id"] = merchant["merchant_id"]
+    expiring_batches = await db.pos_batches.find(batch_query, {"_id": 0}).sort("expiry_date", 1).to_list(100)
+
+    po_query: Dict[str, Any] = {"merchant_id": merchant["merchant_id"], "status": {"$in": ["draft", "submitted", "approved", "ordered", "delivered"]}}
+    if store_id:
+        po_query["store_id"] = store_id
+    return {
+        "summary": {
+            "products_total": len(products),
+            "low_stock_count": len(low_stock),
+            "auto_reorder_count": len(auto_reorder),
+            "expiring_batches_count": len(expiring_batches),
+            "purchase_orders_open": await db.pos_purchase_orders.count_documents(po_query),
+            "purchase_orders_need_approval": await db.pos_purchase_orders.count_documents({**po_query, "status": "submitted"}),
+            "suppliers_total": await db.pos_suppliers.count_documents({"merchant_id": merchant["merchant_id"], "active": {"$ne": False}}),
+            "stock_value_cost": round(stock_value_cost, 2),
+            "stock_value_retail": round(stock_value_retail, 2),
+        },
+        "low_stock": low_stock[:12],
+        "auto_reorder": sorted(auto_reorder, key=lambda item: item["suggested_qty"], reverse=True)[:12],
+        "expiring_batches": expiring_batches[:12],
+    }
 
 
 @router.get("/purchase-orders/{po_id}/delivery-note.pdf")
@@ -589,6 +733,14 @@ async def report_sales(request: Request, period: str = "30d"):
             row["revenue"] = round(row["revenue"] + float(it["line_total"]), 2)
     top_list = sorted(top.values(), key=lambda r: r["revenue"], reverse=True)[:30]
 
+    worst_products = sorted(top.values(), key=lambda r: r["revenue"])[:30]
+    by_cashier: Dict[str, Dict[str, Any]] = {}
+    for sale in sales:
+        cashier_id = sale.get("cashier_id") or "unknown"
+        row = by_cashier.setdefault(cashier_id, {"cashier_id": cashier_id, "sales": 0, "revenue": 0})
+        row["sales"] += 1
+        row["revenue"] = round(row["revenue"] + float(sale.get("merchant_received", sale.get("total", 0))), 2)
+
     return {
         "period": period,
         "sales_count": len(sales),
@@ -596,6 +748,8 @@ async def report_sales(request: Request, period: str = "30d"):
         "fees_paid": round(sum(s.get("fee", 0) for s in sales), 2),
         "net": round(sum(s.get("merchant_received", s["total"]) for s in sales), 2),
         "top_products": top_list,
+        "worst_products": worst_products,
+        "employee_performance": sorted(by_cashier.values(), key=lambda row: row["revenue"], reverse=True)[:20],
     }
 
 
@@ -622,6 +776,7 @@ async def report_inventory(request: Request, store_id: Optional[str] = None):
         ):
             low.append(p)
 
+    insights = await stock_insights(request, store_id)
     return {
         "products_total": len(products),
         "stock_value_cost": round(total_stock_value_cost, 2),
@@ -629,6 +784,8 @@ async def report_inventory(request: Request, store_id: Optional[str] = None):
         "potential_margin": round(total_stock_value_retail - total_stock_value_cost, 2),
         "low_stock_count": len(low),
         "low_stock": low[:50],
+        "auto_reorder": insights["auto_reorder"],
+        "expiring_batches": insights["expiring_batches"],
     }
 
 

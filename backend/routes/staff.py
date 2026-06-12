@@ -1218,6 +1218,75 @@ async def get_staff_summary(
         "today_shifts": today_shifts
     }
 
+
+@router.get("/enterprise-dashboard")
+async def get_enterprise_dashboard(merchant_id: str = Depends(get_merchant_id)):
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    members = await db.staff_members.find({"merchant_id": merchant_id, "active": True}, {"_id": 0, "id": 1, "name": 1, "role": 1}).to_list(1000)
+    events = await db.staff_clock_events.find(
+        {"merchant_id": merchant_id, "timestamp": {"$gte": today_start}},
+        {"_id": 0, "staff_id": 1, "action": 1, "timestamp": 1, "source": 1, "lat": 1, "lng": 1},
+    ).sort("timestamp", 1).to_list(5000)
+
+    latest = {}
+    source_counts: dict[str, int] = {}
+    checked_in = set()
+    gps_events = 0
+    for event in events:
+        latest[event.get("staff_id")] = event
+        source = event.get("source") or ("gps" if event.get("lat") is not None and event.get("lng") is not None else "web")
+        source_counts[source] = source_counts.get(source, 0) + 1
+        if event.get("lat") is not None and event.get("lng") is not None:
+            gps_events += 1
+        if event.get("action") == "clock_in":
+            checked_in.add(event.get("staff_id"))
+
+    active_now = 0
+    on_break = 0
+    for event in latest.values():
+        if event.get("action") in {"clock_in", "break_end"}:
+            active_now += 1
+        elif event.get("action") == "break_start":
+            on_break += 1
+
+    member_map = {member["id"]: member for member in members}
+    next_shifts = await db.staff_shifts.find(
+        {"merchant_id": merchant_id, "start_time": {"$gte": now.isoformat()}},
+        {"_id": 0, "id": 1, "staff_id": 1, "title": 1, "start_time": 1, "end_time": 1, "location": 1},
+    ).sort("start_time", 1).limit(10).to_list(10)
+    started_shifts = await db.staff_shifts.find(
+        {"merchant_id": merchant_id, "start_time": {"$gte": today_start, "$lte": now.isoformat()}},
+        {"_id": 0, "staff_id": 1, "title": 1, "start_time": 1, "location": 1},
+    ).to_list(500)
+
+    late_staff = []
+    for shift in started_shifts:
+        if shift.get("staff_id") not in checked_in:
+            late_staff.append({
+                "staff_id": shift.get("staff_id"),
+                "name": member_map.get(shift.get("staff_id"), {}).get("name", "Unbekannt"),
+                "title": shift.get("title"),
+                "start_time": shift.get("start_time"),
+                "location": shift.get("location"),
+            })
+
+    return {
+        "success": True,
+        "summary": {
+            "active_members": len(members),
+            "active_now": active_now,
+            "on_break": on_break,
+            "events_today": len(events),
+            "gps_events": gps_events,
+            "nfc_events": source_counts.get("nfc", 0),
+            "late_count": len(late_staff),
+        },
+        "source_mix": [{"source": source, "count": count} for source, count in sorted(source_counts.items(), key=lambda item: item[1], reverse=True)],
+        "next_shifts": [{**shift, "name": member_map.get(shift.get("staff_id"), {}).get("name", "Unbekannt")} for shift in next_shifts],
+        "late_staff": late_staff[:8],
+    }
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 6. QR CHECK-IN (Full Implementation)
 # ═══════════════════════════════════════════════════════════════════════════

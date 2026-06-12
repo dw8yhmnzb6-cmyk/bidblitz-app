@@ -171,6 +171,11 @@ class ProductCreate(BaseModel):
     track_stock: bool = True
     allow_negative_stock: bool = False
     supplier_id: Optional[str] = None
+    reorder_target_stock: float = 0
+    auto_reorder_enabled: bool = False
+    expiry_tracking: bool = False
+    batch_tracking: bool = False
+    qr_code: Optional[str] = None
     image_url: Optional[str] = None
 
 
@@ -182,6 +187,16 @@ class ProductUpdate(BaseModel):
     category: Optional[str] = None
     stock: Optional[float] = None
     active: Optional[bool] = None
+    minimum_stock: Optional[float] = None
+    purchase_price: Optional[float] = None
+    supplier_id: Optional[str] = None
+    reorder_target_stock: Optional[float] = None
+    auto_reorder_enabled: Optional[bool] = None
+    expiry_tracking: Optional[bool] = None
+    batch_tracking: Optional[bool] = None
+    barcode: Optional[str] = None
+    sku: Optional[str] = None
+    unit: Optional[str] = None
 
 
 class ShiftOpen(BaseModel):
@@ -434,6 +449,11 @@ async def create_product(req: ProductCreate, request: Request):
         "track_stock": req.track_stock,
         "allow_negative_stock": req.allow_negative_stock,
         "supplier_id": req.supplier_id,
+        "reorder_target_stock": req.reorder_target_stock,
+        "auto_reorder_enabled": req.auto_reorder_enabled,
+        "expiry_tracking": req.expiry_tracking,
+        "batch_tracking": req.batch_tracking,
+        "qr_code": req.qr_code or req.barcode or product_id,
         "image_url": req.image_url,
         "active": True,
         "created_at": now_iso(),
