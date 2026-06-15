@@ -133,6 +133,7 @@ export default function TaxiPage({ onNavigate }) {
 
   // Map-error state surfaced when Mapbox fails (invalid token, network, etc.)
   const [mapError, setMapError] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
   const [mapRetrySeed, setMapRetrySeed] = useState(0);
   const [mapRetrying, setMapRetrying] = useState(false);
   const [mapRetryCount, setMapRetryCount] = useState(0);
@@ -180,6 +181,7 @@ export default function TaxiPage({ onNavigate }) {
       ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng }
       : null,
     onError: setMapError,
+    onReadyChange: setMapReady,
     surgeZones,
     showTripReplay,
     nearbyDrivers,
@@ -656,11 +658,11 @@ export default function TaxiPage({ onNavigate }) {
           <div
             ref={mapContainerRef}
             className="absolute inset-0"
-            style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+            style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: mapReady && !mapError ? 1 : 0, transition: 'opacity 220ms ease' }}
             data-testid="taxi-map-container"
           />
 
-          {mapError && (
+          {(!mapReady || mapError) && (
             <MiniLeafletMap
               lat={fallbackMapConfig.lat}
               lng={fallbackMapConfig.lng}
@@ -671,7 +673,7 @@ export default function TaxiPage({ onNavigate }) {
               height="100%"
               className="absolute inset-0 rounded-none"
               testId="taxi-map-fallback"
-              interactive
+              interactive={!mapReady || !!mapError}
               onMapClick={handleFallbackMapClick}
             />
           )}
@@ -718,6 +720,16 @@ export default function TaxiPage({ onNavigate }) {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {!mapError && !mapReady && (
+            <div
+              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+84px)] z-20 mx-auto flex w-fit max-w-[calc(100%-32px)] items-center gap-2 rounded-full border border-black/5 bg-white/92 px-4 py-2 text-xs font-semibold text-zinc-700 shadow-[0_12px_30px_rgba(15,23,42,0.12)]"
+              data-testid="taxi-map-loading-chip"
+            >
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#0F6FFF]" />
+              Sichere Karte aktiv – Live-Karte wird verbunden…
             </div>
           )}
 

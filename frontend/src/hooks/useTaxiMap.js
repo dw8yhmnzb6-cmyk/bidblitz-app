@@ -70,6 +70,7 @@ export function useTaxiMap({
   setPoiLoading,
   driverLocation, // { lat, lng } | null  — live driver marker (tracking view)
   onError,        // callback (msg: string) — fired when Mapbox fails
+  onReadyChange,
   surgeZones,     // [{lat, lng, multiplier}] | null — UNIQUE heatmap overlay
   showTripReplay, // bool — animates collected driverPath after ride completion
   nearbyDrivers,  // [{id, lat, lng}] — pulse markers for available taxis on booking map
@@ -102,6 +103,10 @@ export function useTaxiMap({
     onError?.(null);
   }, [onError]);
 
+  const setReady = useCallback((value) => {
+    onReadyChange?.(value);
+  }, [onReadyChange]);
+
   // Track latest pickup in a ref so map.on('load') can read current value
   // even when the closure was created at fallback-init time.
   const latestPickupRef = useRef(pickup);
@@ -110,6 +115,7 @@ export function useTaxiMap({
   // Init map when booking flow opens (taxiType set)
   useEffect(() => {
     if (!mapContainerRef.current) return;
+    setReady(false);
     if (mapRef.current) {
       try { mapRef.current.remove(); } catch (removeError) { void removeError; }
       mapRef.current = null;
@@ -123,6 +129,7 @@ export function useTaxiMap({
     // Hard-fail visibly if the token is missing in this build
     if (!MAPBOX_TOKEN) {
       console.error("[taxi] REACT_APP_MAPBOX_TOKEN missing in build — map cannot load.");
+      setReady(false);
       pushMapError("Karte nicht verfügbar. Du kannst Straße oder Ort trotzdem direkt suchen und bestellen.");
       return;
     }
@@ -181,6 +188,12 @@ export function useTaxiMap({
         };
         map.on("load", () => { clearMapError(); resizeSoon(); recenterOnLatestPickup(); });
         map.on("style.load", () => { clearMapError(); resizeSoon(); recenterOnLatestPickup(); });
+        map.once("idle", () => {
+          clearMapError();
+          resizeSoon();
+          recenterOnLatestPickup();
+          setReady(true);
+        });
         setTimeout(resizeSoon, 250);
         setTimeout(resizeSoon, 800);
         // Surface Mapbox-internal errors (invalid token, tile load failures)
@@ -188,10 +201,13 @@ export function useTaxiMap({
           const msg = ev?.error?.message || "";
           console.error("[taxi] Mapbox error:", msg, ev?.error);
           if (/request object could not be cloned|postmessage/i.test(msg)) {
+            setReady(false);
             pushMapError("Karte konnte nicht stabil geladen werden. Wir schalten auf die sichere Fallback-Karte um und versuchen die Live-Karte automatisch erneut.");
           } else if (/unauthorized|access token|401|forbidden/i.test(msg)) {
+            setReady(false);
             pushMapError("Karte konnte nicht geladen werden. Straßensuche und Bestellung bleiben verfügbar.");
           } else if (/network|fetch|load/i.test(msg)) {
+            setReady(false);
             pushMapError("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
           }
         });
@@ -224,32 +240,36 @@ export function useTaxiMap({
         mapRef.current = map;
       } catch (err) {
         console.error("❌ Mapbox initialization error:", err);
+        setReady(false);
         pushMapError("Karte konnte nicht initialisiert werden. Suche und Bestellung bleiben aktiv.");
       }
     }).catch((err) => {
       console.error("❌ Mapbox bundle load failed:", err);
+      setReady(false);
       pushMapError("Karte konnte nicht geladen werden. Suche und Bestellung bleiben aktiv.");
     });
 
     return () => {
       cancelled = true;
+      setReady(false);
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taxiType, retrySeed, pushMapError, clearMapError]);
+  }, [taxiType, retrySeed, pushMapError, clearMapError, setReady]);
 
   // Unmount cleanup
   useEffect(() => {
     return () => {
+      setReady(false);
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [setReady]);
 
   // Style switch
   useEffect(() => {
