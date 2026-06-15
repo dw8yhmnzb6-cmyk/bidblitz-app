@@ -5,9 +5,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — Phase 3 Mobility Ecosystem
-- Zentrale BidBlitz-Mobilitätskarte mit OpenStreetMap + Leaflet + Nominatim ist jetzt als eigenständiger Flow unter `/mobility-map` aktiv.
-- Restaurant-/Café-Tischsystem bleibt vorhanden; Preview-Einschränkung für echte USB-/LAN-Drucker gilt weiterhin.
+## Current Focus — Phase 4 Game Center / Reward Plinko
+- Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
+- Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
+
+### 15.06.2026 (Reward Plinko P0) ✅
+- 🟢 **Reward-Plinko Backend live ergänzt** (`backend/routes/rewards.py`): neue Endpunkte `GET /api/rewards/plinko/status`, `GET /api/rewards/plinko/history`, `POST /api/rewards/plinko/drop` inkl. Cooldown, Tageslimits, Premium-Free-Drops, BidCoin-Einsatz, Historie und Audit-Logs.
+- 🟢 **Move-&-Earn Ticket-Inventar produktiv angebunden** (`move_profiles.inventory.plinko_tickets` ↔ Reward Hub): vorhandene Plinko-Tickets aus Move & Earn werden jetzt im Reward-Plinko-Flow direkt verbraucht und im Status angezeigt.
+- 🟢 **Reward Hub erweitert** (`frontend/src/pages/RewardsPage.jsx`, `frontend/src/services/api.js`): Plinko-Summary, Verlauf, CTA und zusätzliche Admin-Config-Felder für Free/Premium-Drops, BidCoin-Kosten und Enable/Disable ergänzt.
+- 🟢 **Neue Reward-Plinko Seite gebaut** (`frontend/src/pages/RewardPlinkoPage.jsx`, `frontend/src/App.js`, `frontend/src/pages/MorePage.jsx`): eigener UI-Flow mit Drop-Quellen (Gratis/Ticket/BidCoins), Board-Animation, History, Stats und Navigation aus More + Reward Hub.
+- ✅ **Verifiziert**: Backend-Test 6/6 PASS (`deep_testing_backend_v2`), Frontend-Test PASS (`auto_frontend_testing_agent`) — direkter Aufruf `/reward-plinko`, Reward-Hub-Summary und UI-Rendering erfolgreich.
 
 ### 15.06.2026 (Reward Hub Build-Fix + Move & Earn V1) ✅
 - 🟢 **Frontend-Buildfehler behoben** (`frontend/package.json`, Frontend Tooling): fehlerhafte ESLint-Paketmischung bereinigt; der Rewards-/Frontend-Build läuft wieder ohne den vorherigen Rule-Definition-Blocker.

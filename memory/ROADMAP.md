@@ -1,13 +1,14 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Keine offenen P0-Blocker; Reward Hub Build-Fix und Move & Earn V1 sind live
+- Commerce Center V1 gemäß User-Priorität als Nächstes bauen (Marketplace, Penny Auctions, Live Shopping, Flash Sales)
 
 ## P1
+- Mobility Center V1 weiter ausbauen (E-Scooter, E-Bike, Carsharing, EV Charging, Parking enger zusammenziehen)
 - Move & Earn: echte native Schrittquellen (HealthKit/Google Fit/Pedometer) sauber anbinden und Preview-Sync von simulierten Device-Werten auf reale Sensor-Provider erweitern
 - Move & Earn: Ride & Earn / Eco Rewards noch tiefer mit realen Scooter-/Bike-/Taxi-/EV-Events, Merchant-QR-Events und Referral-/Friends-Logik koppeln
 - Move & Earn: Admin-Analytics um DAU/MAU, Reward-Kosten pro Typ, ROI und gesponserte Rewards ausbauen
-- Move & Earn: Reward-Tickets direkt in Reward Hub / Spin Wheel / Plinko UI nutzbar machen
+- Move & Earn: Reward-Tickets auch für Spin Wheel / Mystery Boxes direkt im Reward Hub einlösbar machen
 - Mobility: Stripe-Checkout zusätzlich per Webhook/Session-Resume noch robuster gegen abgebrochene Browser-Sessions machen
 - Mobility: Tracking für Shuttle/VIP und weitere Transportarten mit echterer Live-Progression vertiefen
 - Mobility: Tracking-Seite um echte Map-Animation und Fortschritts-Polylines weiter ausbauen

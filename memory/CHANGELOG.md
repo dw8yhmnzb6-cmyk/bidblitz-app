@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 15.06.2026
+- Reward Plinko als P0-Modul live ergänzt: neue Backend-APIs `/api/rewards/plinko/status`, `/api/rewards/plinko/history`, `/api/rewards/plinko/drop`
+- Reward Hub um Plinko-Summary, Verlauf, CTA und Admin-Config für Drops/Kosten/Enable-Status erweitert
+- Neue Seite `/reward-plinko` mit Drop-Quellen (Gratis, Ticket, BidCoins), Board-Animation, Stats und Verlauf gebaut
+- Move-&-Earn Plinko-Tickets jetzt direkt im Reward-Plinko-Flow nutzbar
+- Verifiziert: Backend 6/6 PASS (`deep_testing_backend_v2`), Frontend PASS (`auto_frontend_testing_agent`)
+
 ## 10.06.2026
 - Home Wallet-/Euro-Karte aufgehellt und kontrastreicher gemacht
 - Quick-Action-Reihe und BlitzPoints-Karte lesbarer gestaltet
