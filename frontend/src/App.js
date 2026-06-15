@@ -82,6 +82,7 @@ const OrderTrackingPage = lazy(() => import("./pages/OrderTrackingPage"));
 const FoodOrderTrackingPage = lazy(() => import("./pages/FoodOrderTrackingPage"));
 const ChallengesPage = lazy(() => import("./pages/ChallengesPage"));
 const AchievementsPage = lazy(() => import("./pages/AchievementsPage"));
+const MoveEarnPage = lazy(() => import("./pages/MoveEarnPage"));
 const FriendsPage = lazy(() => import("./pages/FriendsPage"));
 const TwoFactorSettingsPage = lazy(() => import("./pages/TwoFactorSettingsPage"));
 const CreditScorePage = lazy(() => import("./pages/CreditScorePage"));
@@ -764,8 +765,11 @@ function AppContent() {
         return <ClassifiedsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/quests":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <QuestsPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
+      case "/move":
+      case "/move-earn":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MoveEarnPage onBack={() => handleNavigate("/more")} />;
       case "/rewards-hub":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RetentionHubPage onBack={() => handleNavigate("/")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardsPage onBack={() => handleNavigate("/more")} />;
       case "/marketing-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketingHubPage onBack={() => handleNavigate("/")} />;
       case "/admin/revenue":

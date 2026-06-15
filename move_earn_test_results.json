@@ -1,0 +1,1375 @@
+{
+  "summary": {
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "success_rate": 100.0
+  },
+  "results": [
+    {
+      "test": "Test 1: Admin Login",
+      "passed": true,
+      "details": "Admin logged in successfully as admin@bidblitz.com",
+      "timestamp": "2026-06-15T19:04:59.006587",
+      "status_code": 200,
+      "response_body": {
+        "id": "69cface7afddbc3de2cabb39",
+        "email": "admin@bidblitz.com",
+        "name": "Admin Updated",
+        "role": "admin",
+        "modes": [
+          "personal",
+          "kids",
+          "merchant"
+        ],
+        "balance": 7968.56,
+        "currency": "EUR",
+        "card_number": "4721 9980 8906 9791",
+        "card_expiry": "09/28",
+        "created_at": "2026-04-03T12:04:55.708517+00:00",
+        "language": "de",
+        "notifications_enabled": true,
+        "email_notifications": true,
+        "biometric_enabled": false,
+        "dark_mode": true
+      }
+    },
+    {
+      "test": "Test 2: Move Status",
+      "passed": true,
+      "details": "Complete payload received: 8 missions, 4200 total steps, 4200 steps today, AI Coach: preparing",
+      "timestamp": "2026-06-15T19:04:59.072125",
+      "status_code": 200,
+      "response_body": {
+        "profile": {
+          "level": {
+            "id": "bronze",
+            "label": "Bronze",
+            "min_xp": 0,
+            "color": "#C48648"
+          },
+          "next_level": {
+            "id": "silver",
+            "label": "Silber",
+            "min_xp": 500,
+            "color": "#D4E1F5"
+          },
+          "total_xp": 156,
+          "total_steps": 4200,
+          "total_move_coins": 85,
+          "energy_balance": 14,
+          "streak_days": 1,
+          "is_premium": true,
+          "is_suspicious": false,
+          "inventory": {
+            "mystery_box_tickets": 0,
+            "spin_wheel_tickets": 0,
+            "plinko_tickets": 0
+          },
+          "reward_stats": {
+            "bid_credits": 0,
+            "cashback_eur": 0,
+            "coupons": 0
+          }
+        },
+        "daily": {
+          "date": "2026-06-15",
+          "accepted_steps": 4200,
+          "latest_device_total": 4200,
+          "goal": 10000,
+          "progress_pct": 42,
+          "energy_earned": 12,
+          "move_coins_earned": 75,
+          "xp_earned": 138,
+          "ride_xp": 0,
+          "eco_xp": 0,
+          "daily_checkin_claimed": true,
+          "remaining_steps_capacity": 25800
+        },
+        "claim_cards": [
+          {
+            "reward_code": "slot:3000",
+            "tier": "bronze",
+            "title": "Bronze Reward",
+            "unlock_steps": 3000,
+            "energy_cost": 2,
+            "unlocked": true,
+            "claimed": false
+          },
+          {
+            "reward_code": "slot:6000",
+            "tier": "silber",
+            "title": "Silber Reward",
+            "unlock_steps": 6000,
+            "energy_cost": 3,
+            "unlocked": false,
+            "claimed": false
+          },
+          {
+            "reward_code": "slot:10000",
+            "tier": "gold",
+            "title": "Gold Reward",
+            "unlock_steps": 10000,
+            "energy_cost": 4,
+            "unlocked": false,
+            "claimed": false
+          },
+          {
+            "reward_code": "slot:15000",
+            "tier": "diamond",
+            "title": "Diamond Reward",
+            "unlock_steps": 15000,
+            "energy_cost": 6,
+            "unlocked": false,
+            "claimed": false
+          }
+        ],
+        "daily_checkin": {
+          "reward_code": "checkin",
+          "claimable": false,
+          "streak_days": 1
+        },
+        "ride_earn": {
+          "today_rides": 0,
+          "eco_trips": 0,
+          "merchant_events": 0,
+          "qr_events": 0,
+          "linked_children": 2
+        },
+        "missions": [
+          {
+            "mission_id": "daily_steps",
+            "title": "Daily Goal",
+            "scope": "daily",
+            "progress": 4200,
+            "target": 10000,
+            "reward": {
+              "type": "bid_credits",
+              "value": 1,
+              "label": "1 Bid Credit"
+            },
+            "scope_key": "2026-06-15",
+            "claim_code": "mission:daily_steps:2026-06-15",
+            "completed": false,
+            "claimed": false
+          },
+          {
+            "mission_id": "ride_earn",
+            "title": "Ride & Earn",
+            "scope": "daily",
+            "progress": 0,
+            "target": 1,
+            "reward": {
+              "type": "spin_ticket",
+              "value": 1,
+              "label": "Spin Wheel Ticket"
+            },
+            "scope_key": "2026-06-15",
+            "claim_code": "mission:ride_earn:2026-06-15",
+            "completed": false,
+            "claimed": false
+          },
+          {
+            "mission_id": "eco_rewards",
+            "title": "Eco Rewards",
+            "scope": "daily",
+            "progress": 0,
+            "target": 1,
+            "reward": {
+              "type": "cashback",
+              "value": 0.1,
+              "label": "0,10 \u20ac Cashback Bonus"
+            },
+            "scope_key": "2026-06-15",
+            "claim_code": "mission:eco_rewards:2026-06-15",
+            "completed": false,
+            "claimed": false
+          },
+          {
+            "mission_id": "merchant_challenge",
+            "title": "Merchant Challenge",
+            "scope": "daily",
+            "progress": 0,
+            "target": 1,
+            "reward": {
+              "type": "coupon",
+              "value": 5.0,
+              "label": "H\u00e4ndler-Gutschein"
+            },
+            "scope_key": "2026-06-15",
+            "claim_code": "mission:merchant_challenge:2026-06-15",
+            "completed": false,
+            "claimed": false
+          },
+          {
+            "mission_id": "qr_challenge",
+            "title": "QR Challenge",
+            "scope": "daily",
+            "progress": 0,
+            "target": 1,
+            "reward": {
+              "type": "plinko_ticket",
+              "value": 1,
+              "label": "Plinko Ticket"
+            },
+            "scope_key": "2026-06-15",
+            "claim_code": "mission:qr_challenge:2026-06-15",
+            "completed": false,
+            "claimed": false
+          },
+          {
+            "mission_id": "family_challenge",
+            "title": "Family Challenge",
+            "scope": "daily",
+            "progress": 2,
+            "target": 1,
+            "reward": {
+              "type": "mystery_box_ticket",
+              "value": 1,
+              "label": "Mystery Box"
+            },
+            "scope_key": "2026-06-15",
+            "claim_code": "mission:family_challenge:2026-06-15",
+            "completed": true,
+            "claimed": false
+          },
+          {
+            "mission_id": "weekly_consistency",
+            "title": "Wochenserie",
+            "scope": "weekly",
+            "progress": 1,
+            "target": 5,
+            "reward": {
+              "type": "bid_credits",
+              "value": 5,
+              "label": "5 Bid Credits"
+            },
+            "scope_key": "2026-W25",
+            "claim_code": "mission:weekly_consistency:2026-W25",
+            "completed": false,
+            "claimed": false
+          },
+          {
+            "mission_id": "monthly_distance",
+            "title": "Monatsstrecke",
+            "scope": "monthly",
+            "progress": 4200,
+            "target": 120000,
+            "reward": {
+              "type": "bid_credits",
+              "value": 10,
+              "label": "10 Bid Credits"
+            },
+            "scope_key": "2026-06",
+            "claim_code": "mission:monthly_distance:2026-06",
+            "completed": false,
+            "claimed": false
+          }
+        ],
+        "leaderboard_preview": [
+          {
+            "user_name": "Admin Updated",
+            "total_steps": 4200,
+            "total_xp": 156,
+            "level": "bronze",
+            "ride_stats": {
+              "rides_count": 0,
+              "eco_trips": 0,
+              "merchant_challenges": 0,
+              "qr_challenges": 0
+            }
+          }
+        ],
+        "history_preview": [
+          {
+            "reward_id": "MCHK-31351384",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "reward_type": "checkin",
+            "reward_value": 18,
+            "label": "Daily Check-in",
+            "source_code": "checkin",
+            "cost_estimate_eur": 0,
+            "created_at": "2026-06-15T19:01:57.966433+00:00"
+          }
+        ],
+        "ai_coach": {
+          "status": "preparing",
+          "average_steps_last_7d": 4200,
+          "best_day_steps": 4200,
+          "suggested_goal": 10000,
+          "next_hint": "AI Coach wird auf Basis von Bewegung, Rides und Streaks vorbereitet."
+        },
+        "settings": {
+          "max_steps_per_day": 30000,
+          "premium_multiplier": 1.5
+        }
+      }
+    },
+    {
+      "test": "Test 3: Sync Steps Valid",
+      "passed": true,
+      "details": "Steps synced: +800 steps, +14 coins, +2 energy, +26 XP",
+      "timestamp": "2026-06-15T19:04:59.131022",
+      "status_code": 200,
+      "response_body": {
+        "ok": true,
+        "accepted_delta": 800,
+        "coins_gain": 14,
+        "energy_gain": 2,
+        "xp_gain": 26,
+        "suspicious_reasons": [],
+        "status": {
+          "profile": {
+            "level": {
+              "id": "bronze",
+              "label": "Bronze",
+              "min_xp": 0,
+              "color": "#C48648"
+            },
+            "next_level": {
+              "id": "silver",
+              "label": "Silber",
+              "min_xp": 500,
+              "color": "#D4E1F5"
+            },
+            "total_xp": 182,
+            "total_steps": 5000,
+            "total_move_coins": 99,
+            "energy_balance": 16,
+            "streak_days": 1,
+            "is_premium": true,
+            "is_suspicious": false,
+            "inventory": {
+              "mystery_box_tickets": 0,
+              "spin_wheel_tickets": 0,
+              "plinko_tickets": 0
+            },
+            "reward_stats": {
+              "bid_credits": 0,
+              "cashback_eur": 0,
+              "coupons": 0
+            }
+          },
+          "daily": {
+            "date": "2026-06-15",
+            "accepted_steps": 5000,
+            "latest_device_total": 5000,
+            "goal": 10000,
+            "progress_pct": 50,
+            "energy_earned": 14,
+            "move_coins_earned": 89,
+            "xp_earned": 164,
+            "ride_xp": 0,
+            "eco_xp": 0,
+            "daily_checkin_claimed": true,
+            "remaining_steps_capacity": 25000
+          },
+          "claim_cards": [
+            {
+              "reward_code": "slot:3000",
+              "tier": "bronze",
+              "title": "Bronze Reward",
+              "unlock_steps": 3000,
+              "energy_cost": 2,
+              "unlocked": true,
+              "claimed": false
+            },
+            {
+              "reward_code": "slot:6000",
+              "tier": "silber",
+              "title": "Silber Reward",
+              "unlock_steps": 6000,
+              "energy_cost": 3,
+              "unlocked": false,
+              "claimed": false
+            },
+            {
+              "reward_code": "slot:10000",
+              "tier": "gold",
+              "title": "Gold Reward",
+              "unlock_steps": 10000,
+              "energy_cost": 4,
+              "unlocked": false,
+              "claimed": false
+            },
+            {
+              "reward_code": "slot:15000",
+              "tier": "diamond",
+              "title": "Diamond Reward",
+              "unlock_steps": 15000,
+              "energy_cost": 6,
+              "unlocked": false,
+              "claimed": false
+            }
+          ],
+          "daily_checkin": {
+            "reward_code": "checkin",
+            "claimable": false,
+            "streak_days": 1
+          },
+          "ride_earn": {
+            "today_rides": 0,
+            "eco_trips": 0,
+            "merchant_events": 0,
+            "qr_events": 0,
+            "linked_children": 2
+          },
+          "missions": [
+            {
+              "mission_id": "daily_steps",
+              "title": "Daily Goal",
+              "scope": "daily",
+              "progress": 5000,
+              "target": 10000,
+              "reward": {
+                "type": "bid_credits",
+                "value": 1,
+                "label": "1 Bid Credit"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:daily_steps:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "ride_earn",
+              "title": "Ride & Earn",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "spin_ticket",
+                "value": 1,
+                "label": "Spin Wheel Ticket"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:ride_earn:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "eco_rewards",
+              "title": "Eco Rewards",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "cashback",
+                "value": 0.1,
+                "label": "0,10 \u20ac Cashback Bonus"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:eco_rewards:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "merchant_challenge",
+              "title": "Merchant Challenge",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "coupon",
+                "value": 5.0,
+                "label": "H\u00e4ndler-Gutschein"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:merchant_challenge:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "qr_challenge",
+              "title": "QR Challenge",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "plinko_ticket",
+                "value": 1,
+                "label": "Plinko Ticket"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:qr_challenge:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "family_challenge",
+              "title": "Family Challenge",
+              "scope": "daily",
+              "progress": 2,
+              "target": 1,
+              "reward": {
+                "type": "mystery_box_ticket",
+                "value": 1,
+                "label": "Mystery Box"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:family_challenge:2026-06-15",
+              "completed": true,
+              "claimed": false
+            },
+            {
+              "mission_id": "weekly_consistency",
+              "title": "Wochenserie",
+              "scope": "weekly",
+              "progress": 1,
+              "target": 5,
+              "reward": {
+                "type": "bid_credits",
+                "value": 5,
+                "label": "5 Bid Credits"
+              },
+              "scope_key": "2026-W25",
+              "claim_code": "mission:weekly_consistency:2026-W25",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "monthly_distance",
+              "title": "Monatsstrecke",
+              "scope": "monthly",
+              "progress": 5000,
+              "target": 120000,
+              "reward": {
+                "type": "bid_credits",
+                "value": 10,
+                "label": "10 Bid Credits"
+              },
+              "scope_key": "2026-06",
+              "claim_code": "mission:monthly_distance:2026-06",
+              "completed": false,
+              "claimed": false
+            }
+          ],
+          "leaderboard_preview": [
+            {
+              "user_name": "Admin Updated",
+              "total_steps": 5000,
+              "total_xp": 182,
+              "level": "bronze",
+              "ride_stats": {
+                "rides_count": 0,
+                "eco_trips": 0,
+                "merchant_challenges": 0,
+                "qr_challenges": 0
+              }
+            }
+          ],
+          "history_preview": [
+            {
+              "reward_id": "MCHK-31351384",
+              "user_id": "69cface7afddbc3de2cabb39",
+              "reward_type": "checkin",
+              "reward_value": 18,
+              "label": "Daily Check-in",
+              "source_code": "checkin",
+              "cost_estimate_eur": 0,
+              "created_at": "2026-06-15T19:01:57.966433+00:00"
+            }
+          ],
+          "ai_coach": {
+            "status": "preparing",
+            "average_steps_last_7d": 5000,
+            "best_day_steps": 5000,
+            "suggested_goal": 10000,
+            "next_hint": "AI Coach wird auf Basis von Bewegung, Rides und Streaks vorbereitet."
+          },
+          "settings": {
+            "max_steps_per_day": 30000,
+            "premium_multiplier": 1.5
+          }
+        }
+      }
+    },
+    {
+      "test": "Test 4: Anti-Fraud Logic",
+      "passed": true,
+      "details": "Too large increment: \u2713 Clamped to 8000 steps, suspicious: ['too_large_increment']; Decreasing total: \u2713 Detected decreasing total: ['decreasing_total']; Max steps/day clamp: \u2713 Day limit enforced: ['too_large_increment']",
+      "timestamp": "2026-06-15T19:04:59.888842"
+    },
+    {
+      "test": "Test 5: Daily Check-in",
+      "passed": true,
+      "details": "Already claimed today: Daily Check-in bereits beansprucht",
+      "timestamp": "2026-06-15T19:05:00.486236"
+    },
+    {
+      "test": "Test 6: Slot Reward",
+      "passed": true,
+      "details": "Slot reward claimed: 1 Bid Credit",
+      "timestamp": "2026-06-15T19:05:01.113541",
+      "status_code": 200,
+      "response_body": {
+        "ok": true,
+        "reward": {
+          "reward_type": "bid_credits",
+          "reward_value": 1,
+          "label": "1 Bid Credit"
+        },
+        "status": {
+          "profile": {
+            "level": {
+              "id": "silver",
+              "label": "Silber",
+              "min_xp": 500,
+              "color": "#D4E1F5"
+            },
+            "next_level": {
+              "id": "gold",
+              "label": "Gold",
+              "min_xp": 2000,
+              "color": "#FFD766"
+            },
+            "total_xp": 710,
+            "total_steps": 21000,
+            "total_move_coins": 387,
+            "energy_balance": 62,
+            "streak_days": 1,
+            "is_premium": true,
+            "is_suspicious": true,
+            "inventory": {
+              "mystery_box_tickets": 0,
+              "spin_wheel_tickets": 0,
+              "plinko_tickets": 0
+            },
+            "reward_stats": {
+              "bid_credits": 1,
+              "cashback_eur": 0,
+              "coupons": 0
+            }
+          },
+          "daily": {
+            "date": "2026-06-15",
+            "accepted_steps": 21000,
+            "latest_device_total": 100000,
+            "goal": 10000,
+            "progress_pct": 100,
+            "energy_earned": 62,
+            "move_coins_earned": 377,
+            "xp_earned": 692,
+            "ride_xp": 0,
+            "eco_xp": 0,
+            "daily_checkin_claimed": true,
+            "remaining_steps_capacity": 9000
+          },
+          "claim_cards": [
+            {
+              "reward_code": "slot:3000",
+              "tier": "bronze",
+              "title": "Bronze Reward",
+              "unlock_steps": 3000,
+              "energy_cost": 2,
+              "unlocked": true,
+              "claimed": true
+            },
+            {
+              "reward_code": "slot:6000",
+              "tier": "silber",
+              "title": "Silber Reward",
+              "unlock_steps": 6000,
+              "energy_cost": 3,
+              "unlocked": true,
+              "claimed": false
+            },
+            {
+              "reward_code": "slot:10000",
+              "tier": "gold",
+              "title": "Gold Reward",
+              "unlock_steps": 10000,
+              "energy_cost": 4,
+              "unlocked": true,
+              "claimed": false
+            },
+            {
+              "reward_code": "slot:15000",
+              "tier": "diamond",
+              "title": "Diamond Reward",
+              "unlock_steps": 15000,
+              "energy_cost": 6,
+              "unlocked": true,
+              "claimed": false
+            }
+          ],
+          "daily_checkin": {
+            "reward_code": "checkin",
+            "claimable": false,
+            "streak_days": 1
+          },
+          "ride_earn": {
+            "today_rides": 0,
+            "eco_trips": 0,
+            "merchant_events": 0,
+            "qr_events": 0,
+            "linked_children": 2
+          },
+          "missions": [
+            {
+              "mission_id": "daily_steps",
+              "title": "Daily Goal",
+              "scope": "daily",
+              "progress": 21000,
+              "target": 10000,
+              "reward": {
+                "type": "bid_credits",
+                "value": 1,
+                "label": "1 Bid Credit"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:daily_steps:2026-06-15",
+              "completed": true,
+              "claimed": false
+            },
+            {
+              "mission_id": "ride_earn",
+              "title": "Ride & Earn",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "spin_ticket",
+                "value": 1,
+                "label": "Spin Wheel Ticket"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:ride_earn:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "eco_rewards",
+              "title": "Eco Rewards",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "cashback",
+                "value": 0.1,
+                "label": "0,10 \u20ac Cashback Bonus"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:eco_rewards:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "merchant_challenge",
+              "title": "Merchant Challenge",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "coupon",
+                "value": 5.0,
+                "label": "H\u00e4ndler-Gutschein"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:merchant_challenge:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "qr_challenge",
+              "title": "QR Challenge",
+              "scope": "daily",
+              "progress": 0,
+              "target": 1,
+              "reward": {
+                "type": "plinko_ticket",
+                "value": 1,
+                "label": "Plinko Ticket"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:qr_challenge:2026-06-15",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "family_challenge",
+              "title": "Family Challenge",
+              "scope": "daily",
+              "progress": 2,
+              "target": 1,
+              "reward": {
+                "type": "mystery_box_ticket",
+                "value": 1,
+                "label": "Mystery Box"
+              },
+              "scope_key": "2026-06-15",
+              "claim_code": "mission:family_challenge:2026-06-15",
+              "completed": true,
+              "claimed": false
+            },
+            {
+              "mission_id": "weekly_consistency",
+              "title": "Wochenserie",
+              "scope": "weekly",
+              "progress": 1,
+              "target": 5,
+              "reward": {
+                "type": "bid_credits",
+                "value": 5,
+                "label": "5 Bid Credits"
+              },
+              "scope_key": "2026-W25",
+              "claim_code": "mission:weekly_consistency:2026-W25",
+              "completed": false,
+              "claimed": false
+            },
+            {
+              "mission_id": "monthly_distance",
+              "title": "Monatsstrecke",
+              "scope": "monthly",
+              "progress": 21000,
+              "target": 120000,
+              "reward": {
+                "type": "bid_credits",
+                "value": 10,
+                "label": "10 Bid Credits"
+              },
+              "scope_key": "2026-06",
+              "claim_code": "mission:monthly_distance:2026-06",
+              "completed": false,
+              "claimed": false
+            }
+          ],
+          "leaderboard_preview": [
+            {
+              "user_name": "Admin Updated",
+              "total_steps": 21000,
+              "total_xp": 710,
+              "level": "silver",
+              "ride_stats": {
+                "rides_count": 0,
+                "eco_trips": 0,
+                "merchant_challenges": 0,
+                "qr_challenges": 0
+              }
+            }
+          ],
+          "history_preview": [
+            {
+              "reward_id": "MOVR-D9BCA2F2",
+              "user_id": "69cface7afddbc3de2cabb39",
+              "reward_type": "bid_credits",
+              "reward_value": 1,
+              "label": "1 Bid Credit",
+              "source_code": "slot:3000",
+              "cost_estimate_eur": 0.08,
+              "created_at": "2026-06-15T19:05:01.087550+00:00"
+            },
+            {
+              "reward_id": "MCHK-31351384",
+              "user_id": "69cface7afddbc3de2cabb39",
+              "reward_type": "checkin",
+              "reward_value": 18,
+              "label": "Daily Check-in",
+              "source_code": "checkin",
+              "cost_estimate_eur": 0,
+              "created_at": "2026-06-15T19:01:57.966433+00:00"
+            }
+          ],
+          "ai_coach": {
+            "status": "preparing",
+            "average_steps_last_7d": 21000,
+            "best_day_steps": 21000,
+            "suggested_goal": 20000,
+            "next_hint": "AI Coach wird auf Basis von Bewegung, Rides und Streaks vorbereitet."
+          },
+          "settings": {
+            "max_steps_per_day": 30000,
+            "premium_multiplier": 1.5
+          }
+        }
+      }
+    },
+    {
+      "test": "Test 7: Move History",
+      "passed": true,
+      "details": "History retrieved: 2 rewards, 1 days, 2 transactions",
+      "timestamp": "2026-06-15T19:05:01.158689",
+      "status_code": 200,
+      "response_body": {
+        "rewards": [
+          {
+            "reward_id": "MOVR-D9BCA2F2",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "reward_type": "bid_credits",
+            "reward_value": 1,
+            "label": "1 Bid Credit",
+            "source_code": "slot:3000",
+            "cost_estimate_eur": 0.08,
+            "created_at": "2026-06-15T19:05:01.087550+00:00"
+          },
+          {
+            "reward_id": "MCHK-31351384",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "reward_type": "checkin",
+            "reward_value": 18,
+            "label": "Daily Check-in",
+            "source_code": "checkin",
+            "cost_estimate_eur": 0,
+            "created_at": "2026-06-15T19:01:57.966433+00:00"
+          }
+        ],
+        "days": [
+          {
+            "date": "2026-06-15",
+            "accepted_steps": 21000,
+            "energy_earned": 62,
+            "move_coins_earned": 377,
+            "xp_earned": 692,
+            "daily_checkin_claimed": true
+          }
+        ],
+        "reward_transactions": [
+          {
+            "reward_tx_id": "MRW-ED4978B3",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "reward_type": "bid_credits",
+            "amount": 1,
+            "description": "1 Bid Credit",
+            "metadata": {
+              "source": "slot:3000"
+            },
+            "created_at": "2026-06-15T19:05:01.087214+00:00"
+          },
+          {
+            "reward_tx_id": "MRW-D53BFDC3",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "reward_type": "checkin",
+            "amount": 18,
+            "description": "Daily Check-in",
+            "metadata": {
+              "coins": 10,
+              "energy": 2
+            },
+            "created_at": "2026-06-15T19:01:57.990969+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "test": "Test 8: Leaderboard",
+      "passed": true,
+      "details": "Leaderboard retrieved: 1 entries, me: found",
+      "timestamp": "2026-06-15T19:05:01.202777",
+      "status_code": 200,
+      "response_body": {
+        "leaderboard": [
+          {
+            "rank": 1,
+            "user_id": "69cface7afddbc3de2cabb39",
+            "user_name": "Admin Updated",
+            "level": "silver",
+            "total_xp": 710,
+            "total_steps": 21000,
+            "eco_trips": 0
+          }
+        ],
+        "me": {
+          "rank": 1,
+          "user_id": "69cface7afddbc3de2cabb39",
+          "user_name": "Admin Updated",
+          "level": "silver",
+          "total_xp": 710,
+          "total_steps": 21000,
+          "eco_trips": 0
+        }
+      }
+    },
+    {
+      "test": "Test 9: Admin Get Settings",
+      "passed": true,
+      "details": "Settings retrieved: enabled=True, daily_goal=10000, max_steps=30000",
+      "timestamp": "2026-06-15T19:05:01.249382",
+      "status_code": 200,
+      "response_body": {
+        "settings": {
+          "enabled": true,
+          "daily_step_goal": 10000,
+          "max_steps_per_day": 30000,
+          "max_sync_increment": 8000,
+          "max_step_speed_kmh": 22.0,
+          "device_limit_per_day": 2,
+          "max_accounts_per_device": 3,
+          "sensor_confidence_min": 0.2,
+          "premium_multiplier": 1.5,
+          "coins_per_1000_steps": 12,
+          "energy_per_1000_steps": 2,
+          "xp_per_1000_steps": 22,
+          "ride_xp": 35,
+          "ride_coins": 18,
+          "eco_xp": 20,
+          "eco_coins": 8,
+          "daily_checkin_xp": 18,
+          "daily_checkin_energy": 2,
+          "daily_checkin_coins": 10,
+          "step_claim_slots": [
+            {
+              "threshold": 3000,
+              "tier": "bronze",
+              "energy_cost": 2
+            },
+            {
+              "threshold": 6000,
+              "tier": "silber",
+              "energy_cost": 3
+            },
+            {
+              "threshold": 10000,
+              "tier": "gold",
+              "energy_cost": 4
+            },
+            {
+              "threshold": 15000,
+              "tier": "diamond",
+              "energy_cost": 6
+            }
+          ],
+          "reward_catalog": [
+            {
+              "code": "bc1",
+              "label": "1 Bid Credit",
+              "type": "bid_credits",
+              "value": 1,
+              "weight": 28,
+              "min_unlock_steps": 3000,
+              "cost_estimate_eur": 0.08
+            },
+            {
+              "code": "bc5",
+              "label": "5 Bid Credits",
+              "type": "bid_credits",
+              "value": 5,
+              "weight": 18,
+              "min_unlock_steps": 6000,
+              "cost_estimate_eur": 0.4
+            },
+            {
+              "code": "bc10",
+              "label": "10 Bid Credits",
+              "type": "bid_credits",
+              "value": 10,
+              "weight": 8,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 0.8
+            },
+            {
+              "code": "cb10",
+              "label": "0,10 \u20ac Cashback Bonus",
+              "type": "cashback",
+              "value": 0.1,
+              "weight": 18,
+              "min_unlock_steps": 3000,
+              "cost_estimate_eur": 0.1
+            },
+            {
+              "code": "cb50",
+              "label": "0,50 \u20ac Cashback Bonus",
+              "type": "cashback",
+              "value": 0.5,
+              "weight": 6,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 0.5
+            },
+            {
+              "code": "cpn",
+              "label": "H\u00e4ndler-Gutschein",
+              "type": "coupon",
+              "value": 5.0,
+              "weight": 10,
+              "min_unlock_steps": 6000,
+              "cost_estimate_eur": 5.0
+            },
+            {
+              "code": "mbx",
+              "label": "Mystery Box",
+              "type": "mystery_box_ticket",
+              "value": 1,
+              "weight": 5,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 1.25
+            },
+            {
+              "code": "spin",
+              "label": "Spin Wheel Ticket",
+              "type": "spin_ticket",
+              "value": 1,
+              "weight": 5,
+              "min_unlock_steps": 6000,
+              "cost_estimate_eur": 0.65
+            },
+            {
+              "code": "plinko",
+              "label": "Plinko Ticket",
+              "type": "plinko_ticket",
+              "value": 1,
+              "weight": 2,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 0.95
+            }
+          ],
+          "ai_coach_enabled": false
+        }
+      }
+    },
+    {
+      "test": "Test 10: Admin Update Settings",
+      "passed": true,
+      "details": "Settings updated successfully: daily_goal=10000",
+      "timestamp": "2026-06-15T19:05:01.315218",
+      "status_code": 200,
+      "response_body": {
+        "ok": true,
+        "settings": {
+          "enabled": true,
+          "daily_step_goal": 10000,
+          "max_steps_per_day": 30000,
+          "max_sync_increment": 8000,
+          "max_step_speed_kmh": 22.0,
+          "device_limit_per_day": 2,
+          "max_accounts_per_device": 3,
+          "sensor_confidence_min": 0.2,
+          "premium_multiplier": 1.5,
+          "coins_per_1000_steps": 12,
+          "energy_per_1000_steps": 2,
+          "xp_per_1000_steps": 22,
+          "ride_xp": 35,
+          "ride_coins": 18,
+          "eco_xp": 20,
+          "eco_coins": 8,
+          "daily_checkin_xp": 18,
+          "daily_checkin_energy": 2,
+          "daily_checkin_coins": 10,
+          "step_claim_slots": [
+            {
+              "threshold": 3000,
+              "tier": "bronze",
+              "energy_cost": 2
+            },
+            {
+              "threshold": 6000,
+              "tier": "silber",
+              "energy_cost": 3
+            },
+            {
+              "threshold": 10000,
+              "tier": "gold",
+              "energy_cost": 4
+            },
+            {
+              "threshold": 15000,
+              "tier": "diamond",
+              "energy_cost": 6
+            }
+          ],
+          "reward_catalog": [
+            {
+              "code": "bc1",
+              "label": "1 Bid Credit",
+              "type": "bid_credits",
+              "value": 1,
+              "weight": 28,
+              "min_unlock_steps": 3000,
+              "cost_estimate_eur": 0.08
+            },
+            {
+              "code": "bc5",
+              "label": "5 Bid Credits",
+              "type": "bid_credits",
+              "value": 5,
+              "weight": 18,
+              "min_unlock_steps": 6000,
+              "cost_estimate_eur": 0.4
+            },
+            {
+              "code": "bc10",
+              "label": "10 Bid Credits",
+              "type": "bid_credits",
+              "value": 10,
+              "weight": 8,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 0.8
+            },
+            {
+              "code": "cb10",
+              "label": "0,10 \u20ac Cashback Bonus",
+              "type": "cashback",
+              "value": 0.1,
+              "weight": 18,
+              "min_unlock_steps": 3000,
+              "cost_estimate_eur": 0.1
+            },
+            {
+              "code": "cb50",
+              "label": "0,50 \u20ac Cashback Bonus",
+              "type": "cashback",
+              "value": 0.5,
+              "weight": 6,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 0.5
+            },
+            {
+              "code": "cpn",
+              "label": "H\u00e4ndler-Gutschein",
+              "type": "coupon",
+              "value": 5.0,
+              "weight": 10,
+              "min_unlock_steps": 6000,
+              "cost_estimate_eur": 5.0
+            },
+            {
+              "code": "mbx",
+              "label": "Mystery Box",
+              "type": "mystery_box_ticket",
+              "value": 1,
+              "weight": 5,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 1.25
+            },
+            {
+              "code": "spin",
+              "label": "Spin Wheel Ticket",
+              "type": "spin_ticket",
+              "value": 1,
+              "weight": 5,
+              "min_unlock_steps": 6000,
+              "cost_estimate_eur": 0.65
+            },
+            {
+              "code": "plinko",
+              "label": "Plinko Ticket",
+              "type": "plinko_ticket",
+              "value": 1,
+              "weight": 2,
+              "min_unlock_steps": 10000,
+              "cost_estimate_eur": 0.95
+            }
+          ],
+          "ai_coach_enabled": false,
+          "key": "global"
+        }
+      }
+    },
+    {
+      "test": "Test 11: Admin Stats",
+      "passed": true,
+      "details": "Stats retrieved: 1 profiles, 1 active today, 1 top users, 5 fraud logs",
+      "timestamp": "2026-06-15T19:05:01.370814",
+      "status_code": 200,
+      "response_body": {
+        "summary": {
+          "profiles_count": 1,
+          "active_today": 1,
+          "suspicious_profiles": 1,
+          "blocked_users": 0,
+          "fraud_today": 5,
+          "total_reward_cost_eur": 0.08,
+          "total_steps_today": 21000,
+          "total_move_coins_today": 377,
+          "total_energy_today": 62
+        },
+        "top_users": [
+          {
+            "user_id": "69cface7afddbc3de2cabb39",
+            "user_name": "Admin Updated",
+            "total_steps": 21000,
+            "total_xp": 710,
+            "level": "silver",
+            "is_blocked": false,
+            "is_suspicious": true
+          }
+        ],
+        "fraud_logs": [
+          {
+            "fraud_id": "MFR-6387B024",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "device_fingerprint": "f712d38ba9b9c286c823406aa572410d",
+            "kind": "decreasing_total",
+            "details": {
+              "previous_total": 100000,
+              "new_total": 3500
+            },
+            "severe": false,
+            "created_at": "2026-06-15T19:05:00.523759+00:00"
+          },
+          {
+            "fraud_id": "MFR-41598C85",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "device_fingerprint": "f712d38ba9b9c286c823406aa572410d",
+            "kind": "too_large_increment",
+            "details": {
+              "raw_delta": 50000,
+              "accepted": 8000
+            },
+            "severe": false,
+            "created_at": "2026-06-15T19:04:59.859321+00:00"
+          },
+          {
+            "fraud_id": "MFR-7C7E7F9E",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "device_fingerprint": "f712d38ba9b9c286c823406aa572410d",
+            "kind": "decreasing_total",
+            "details": {
+              "previous_total": 50000,
+              "new_total": 5000
+            },
+            "severe": false,
+            "created_at": "2026-06-15T19:04:59.799750+00:00"
+          },
+          {
+            "fraud_id": "MFR-D7E9A0A2",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "device_fingerprint": "f712d38ba9b9c286c823406aa572410d",
+            "kind": "decreasing_total",
+            "details": {
+              "previous_total": 50000,
+              "new_total": 10000
+            },
+            "severe": false,
+            "created_at": "2026-06-15T19:04:59.237535+00:00"
+          },
+          {
+            "fraud_id": "MFR-DF6F83DE",
+            "user_id": "69cface7afddbc3de2cabb39",
+            "device_fingerprint": "f712d38ba9b9c286c823406aa572410d",
+            "kind": "too_large_increment",
+            "details": {
+              "raw_delta": 45000,
+              "accepted": 8000
+            },
+            "severe": false,
+            "created_at": "2026-06-15T19:04:59.162644+00:00"
+          }
+        ],
+        "activity": {
+          "ride_xp": 0,
+          "eco_xp": 0,
+          "merchant_events": 0,
+          "qr_events": 0
+        }
+      }
+    },
+    {
+      "test": "Test 12: Admin Block User",
+      "passed": true,
+      "details": "User 69cface7afddbc3de2cabb39 blocked and unblocked successfully",
+      "timestamp": "2026-06-15T19:05:01.559087",
+      "status_code": 200,
+      "response_body": {
+        "ok": true,
+        "user_id": "69cface7afddbc3de2cabb39",
+        "blocked": true
+      }
+    },
+    {
+      "test": "Test 13: No 500 Errors",
+      "passed": true,
+      "details": "No 500 Internal Server Errors detected in any test",
+      "timestamp": "2026-06-15T19:05:01.559172"
+    }
+  ]
+}

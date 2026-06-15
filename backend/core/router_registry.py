@@ -65,6 +65,7 @@ def register_all_routers(app):
         ("routes.influencer", "router"),
         ("routes.investor", "router"),
         ("routes.rewards", "router"),
+        ("routes.move_earn", "router"),
         ("routes.role_requests", "router"),
         ("routes.verification", "router"),
         ("routes.merchant_hierarchy", "router"),

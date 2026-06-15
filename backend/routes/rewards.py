@@ -4,6 +4,8 @@ Daily login, streak rewards, comeback bonus, milestones, unified rewards dashboa
 All rewards paid in bid_credits / platform reward systems.
 """
 import logging
+import random
+import secrets
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
@@ -11,6 +13,7 @@ from pydantic import BaseModel, Field
 from core.database import db
 import csv
 import io
+from bson import ObjectId
 
 router = APIRouter(prefix="/api/rewards", tags=["Rewards"])
 logger = logging.getLogger("bidblitz.rewards")
@@ -30,6 +33,95 @@ DEFAULT_REWARDS_V3_CONFIG = {
     "streak_bonus_100": 120,
     "max_daily_reward_credits": 25,
     "merchant_reward_limit": 1000,
+}
+
+DEFAULT_REWARD_HUB_CONFIG = {
+    "spin_enabled": True,
+    "premium_daily_spins": 3,
+    "free_daily_spins": 1,
+    "premium_cashback_multiplier": 1.5,
+    "mystery_boxes": [
+        {
+            "box_key": "bronze",
+            "name": "Bronze Box",
+            "tier": "bronze",
+            "price_bidcoins": 35,
+            "price_eur": 0.0,
+            "premium_free_opens_per_month": 0,
+            "color": "#B7794B",
+            "gradient": ["#6B4226", "#C48757"],
+            "rewards": [
+                {"type": "bid_credits", "value": 5, "weight": 32, "label": "+5 Bid Credits"},
+                {"type": "cashback", "value": 1.0, "weight": 26, "label": "1% Cashback Boost"},
+                {"type": "coupon", "value": 5, "weight": 18, "label": "5€ Coupon"},
+                {"type": "bidcoins", "value": 25, "weight": 16, "label": "+25 BidCoins"},
+                {"type": "cash_eur", "value": 0.5, "weight": 8, "label": "0.50 € Wallet"},
+            ],
+        },
+        {
+            "box_key": "silber",
+            "name": "Silber Box",
+            "tier": "silber",
+            "price_bidcoins": 90,
+            "price_eur": 0.0,
+            "premium_free_opens_per_month": 1,
+            "color": "#B8C2D1",
+            "gradient": ["#7A879A", "#E6EDF7"],
+            "rewards": [
+                {"type": "bid_credits", "value": 10, "weight": 28, "label": "+10 Bid Credits"},
+                {"type": "cashback", "value": 2.5, "weight": 24, "label": "2.5% Cashback Boost"},
+                {"type": "coupon", "value": 10, "weight": 20, "label": "10€ Coupon"},
+                {"type": "bidcoins", "value": 60, "weight": 18, "label": "+60 BidCoins"},
+                {"type": "cash_eur", "value": 1.0, "weight": 10, "label": "1 € Wallet"},
+            ],
+        },
+        {
+            "box_key": "gold",
+            "name": "Gold Box",
+            "tier": "gold",
+            "price_bidcoins": 180,
+            "price_eur": 0.0,
+            "premium_free_opens_per_month": 1,
+            "color": "#F5B700",
+            "gradient": ["#A56A00", "#FFD766"],
+            "rewards": [
+                {"type": "bid_credits", "value": 25, "weight": 27, "label": "+25 Bid Credits"},
+                {"type": "cashback", "value": 5.0, "weight": 25, "label": "5% Cashback Boost"},
+                {"type": "coupon", "value": 20, "weight": 18, "label": "20€ Coupon"},
+                {"type": "bidcoins", "value": 150, "weight": 15, "label": "+150 BidCoins"},
+                {"type": "cash_eur", "value": 2.0, "weight": 10, "label": "2 € Wallet"},
+                {"type": "premium_trial", "value": 7, "weight": 5, "label": "7 Tage Premium"},
+            ],
+        },
+        {
+            "box_key": "diamond",
+            "name": "Diamond Box",
+            "tier": "diamond",
+            "price_bidcoins": 360,
+            "price_eur": 0.0,
+            "premium_free_opens_per_month": 2,
+            "color": "#65D9FF",
+            "gradient": ["#035A83", "#9FF1FF"],
+            "rewards": [
+                {"type": "bid_credits", "value": 60, "weight": 25, "label": "+60 Bid Credits"},
+                {"type": "cashback", "value": 8.0, "weight": 23, "label": "8% Cashback Boost"},
+                {"type": "coupon", "value": 35, "weight": 18, "label": "35€ Coupon"},
+                {"type": "bidcoins", "value": 350, "weight": 14, "label": "+350 BidCoins"},
+                {"type": "cash_eur", "value": 5.0, "weight": 12, "label": "5 € Wallet"},
+                {"type": "premium_trial", "value": 30, "weight": 8, "label": "30 Tage Premium"},
+            ],
+        },
+    ],
+    "spin_rewards": [
+        {"label": "5 BidCoins", "type": "bidcoins", "value": 5, "weight": 28, "color": "#00D26A"},
+        {"label": "10 BidCoins", "type": "bidcoins", "value": 10, "weight": 22, "color": "#00C2FF"},
+        {"label": "3 Bid Credits", "type": "bid_credits", "value": 3, "weight": 16, "color": "#A855F7"},
+        {"label": "1% Cashback", "type": "cashback", "value": 1, "weight": 14, "color": "#FFB800"},
+        {"label": "5€ Coupon", "type": "coupon", "value": 5, "weight": 8, "color": "#FF6B9D"},
+        {"label": "0.50 € Wallet", "type": "cash_eur", "value": 0.5, "weight": 7, "color": "#FFD700"},
+        {"label": "7 Tage Premium", "type": "premium_trial", "value": 7, "weight": 3, "color": "#3B82F6"},
+        {"label": "25 Bid Credits", "type": "bid_credits", "value": 25, "weight": 2, "color": "#EF4444"},
+    ],
 }
 
 MILESTONES = {
@@ -61,6 +153,30 @@ class MerchantRewardCreate(BaseModel):
     is_active: bool = True
 
 
+class RewardHubConfigUpdate(BaseModel):
+    spin_enabled: bool | None = None
+    premium_daily_spins: int | None = Field(default=None, ge=1, le=20)
+    free_daily_spins: int | None = Field(default=None, ge=0, le=10)
+    premium_cashback_multiplier: float | None = Field(default=None, ge=1.0, le=10.0)
+    mystery_boxes: list[dict] | None = None
+    spin_rewards: list[dict] | None = None
+
+
+class MysteryBoxOpenRequest(BaseModel):
+    box_key: str = Field(..., min_length=2, max_length=40)
+
+
+def _generate_reward_code(prefix: str = "RW") -> str:
+    return f"{prefix}-{secrets.token_hex(4).upper()}-{secrets.token_hex(2).upper()}"
+
+
+def _oid(value: str):
+    try:
+        return ObjectId(value)
+    except Exception:
+        return value
+
+
 async def get_current_user(request: Request):
     from routes.auth import get_current_user as auth_user
     return await auth_user(request)
@@ -86,6 +202,291 @@ def _now_iso() -> str:
 async def _get_rewards_v3_config() -> dict:
     row = await db.platform_config.find_one({"key": "rewards_v3_config"}, {"_id": 0})
     return {**DEFAULT_REWARDS_V3_CONFIG, **(row.get("settings", {}) if row else {})}
+
+
+async def _get_reward_hub_config() -> dict:
+    row = await db.platform_config.find_one({"key": "reward_hub_config"}, {"_id": 0})
+    settings = row.get("settings", {}) if row else {}
+    config = {**DEFAULT_REWARD_HUB_CONFIG, **settings}
+    config["mystery_boxes"] = settings.get("mystery_boxes") or DEFAULT_REWARD_HUB_CONFIG["mystery_boxes"]
+    config["spin_rewards"] = settings.get("spin_rewards") or DEFAULT_REWARD_HUB_CONFIG["spin_rewards"]
+    return config
+
+
+async def _has_active_premium(user_id: str) -> bool:
+    if not user_id:
+        return False
+    if await db.premium_subscriptions.find_one({"user_id": user_id, "active": True}):
+        return True
+    if await db.premium_subs.find_one({"user_email": {"$exists": True}}):
+        user = await db.users.find_one({"_id": _oid(user_id)}, {"_id": 0, "email": 1, "is_premium": 1})
+        if user and user.get("is_premium"):
+            return True
+    user = await db.users.find_one({"_id": _oid(user_id)}, {"_id": 0, "is_premium": 1, "premium_plan": 1})
+    return bool(user and (user.get("is_premium") or user.get("premium_plan")))
+
+
+async def _record_wallet_transaction(user_id: str, tx_type: str, amount: float, description: str, metadata: dict | None = None):
+    now = _now_iso()
+    payload = {
+        "transaction_id": _generate_reward_code("WTX"),
+        "user_id": user_id,
+        "type": tx_type,
+        "amount": round(float(amount or 0), 2),
+        "currency": "EUR",
+        "description": description,
+        "status": "completed",
+        "metadata": metadata or {},
+        "created_at": now,
+    }
+    await db.wallet_transactions.insert_one(dict(payload))
+    return payload
+
+
+async def _record_transaction(user_id: str, tx_type: str, amount: float, description: str, category: str, reference: str, currency: str = "EUR"):
+    await db.transactions.insert_one({
+        "id": _generate_reward_code("TXN"),
+        "user_id": user_id,
+        "type": tx_type,
+        "amount": round(float(amount or 0), 2),
+        "currency": currency,
+        "description": description,
+        "merchant_name": "BidBlitz Rewards",
+        "status": "completed",
+        "reference": reference,
+        "category": category,
+        "created_at": _now_iso(),
+    })
+
+
+async def _ensure_user_reward_profile(user_id: str, is_premium: bool):
+    now = _now_iso()
+    profile = await db.reward_user_profiles.find_one({"user_id": user_id}, {"_id": 0})
+    if profile:
+        return profile
+    doc = {
+        "user_id": user_id,
+        "cashback_multiplier": 1.0,
+        "premium_bonus_active": is_premium,
+        "last_spin_date": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.reward_user_profiles.insert_one(doc)
+    return doc
+
+
+def _pick_weighted(items: list[dict]) -> tuple[int, dict]:
+    total = sum(max(0, int(item.get("weight", 0) or 0)) for item in items)
+    if total <= 0:
+        return 0, items[0]
+    roll = random.uniform(0, total)
+    acc = 0
+    chosen_index = 0
+    for idx, item in enumerate(items):
+        acc += max(0, int(item.get("weight", 0) or 0))
+        if roll <= acc:
+            chosen_index = idx
+            break
+    return chosen_index, items[chosen_index]
+
+
+async def _issue_coupon_reward(user: dict, amount: float, source: str, source_id: str, label: str):
+    user_id = str(user["_id"])
+    code = _generate_reward_code("CPN")
+    now = datetime.now(timezone.utc)
+    expires_at = (now + timedelta(days=30)).isoformat()
+    coupon = {
+        "coupon_id": _generate_reward_code("RCP"),
+        "code": code,
+        "coupon_type": "reward_coupon",
+        "value": round(float(amount or 0), 2),
+        "description": label,
+        "reward_source": source,
+        "reward_source_id": source_id,
+        "assigned_user_id": user_id,
+        "assigned_user_email": user.get("email", ""),
+        "discount_amount": round(float(amount or 0), 2),
+        "currency": "EUR",
+        "active": True,
+        "max_uses": 1,
+        "used_count": 0,
+        "used_by": [],
+        "expires_at": expires_at,
+        "created_at": now.isoformat(),
+    }
+    await db.coupons.insert_one(dict(coupon))
+    await db.reward_coupons.insert_one({**coupon, "status": "available"})
+    return {"type": "coupon", "code": code, "amount": round(float(amount or 0), 2), "expires_at": expires_at}
+
+
+async def _apply_reward_payload(user: dict, reward: dict, source: str, source_id: str):
+    user_id = str(user["_id"])
+    reward_type = reward.get("type")
+    value = reward.get("value", 0)
+    label = reward.get("label") or f"{reward_type}:{value}"
+    result = {
+        "reward_type": reward_type,
+        "reward_value": value,
+        "label": label,
+        "transaction_effect": {},
+    }
+
+    if reward_type == "bidcoins":
+        await _credit_bidcoins(user_id, int(value), source, label, source_id)
+        result["transaction_effect"] = {"bidcoins": int(value)}
+    elif reward_type == "bid_credits":
+        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"bid_credits": int(value), "total_reward_credits": int(value)}})
+        await _record_transaction(user_id, "reward_credit", float(value), f"{label} ({source})", source, source_id, currency="BIDCREDITS")
+        await db.reward_events.insert_one({
+            "event_id": _generate_reward_code("RWD"),
+            "user_id": user_id,
+            "source_type": source,
+            "source_id": source_id,
+            "bidcoins": int(value),
+            "reward_currency": "bid_credits",
+            "description": label,
+            "created_at": _now_iso(),
+        })
+        result["transaction_effect"] = {"bid_credits": int(value)}
+    elif reward_type == "cash_eur":
+        eur_value = round(float(value or 0), 2)
+        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": eur_value}})
+        await _record_transaction(user_id, "reward_wallet_credit", eur_value, f"{label} ({source})", source, source_id)
+        await _record_wallet_transaction(user_id, source, eur_value, label, {"source_id": source_id})
+        result["transaction_effect"] = {"wallet_eur": eur_value}
+    elif reward_type == "cashback":
+        cashback_amount = round(float(value or 0), 2)
+        profile = await _ensure_user_reward_profile(user_id, await _has_active_premium(user_id))
+        multiplier = float(profile.get("cashback_multiplier", 1.0) or 1.0)
+        await db.cashback_claims.insert_one({
+            "claim_id": _generate_reward_code("CBK"),
+            "user_id": user_id,
+            "user_email": user.get("email", ""),
+            "cashback_amount": cashback_amount,
+            "cashback_multiplier": multiplier,
+            "description": label,
+            "source": source,
+            "source_id": source_id,
+            "created_at": _now_iso(),
+        })
+        await db.reward_events.insert_one({
+            "event_id": _generate_reward_code("RWD"),
+            "user_id": user_id,
+            "source_type": source,
+            "source_id": source_id,
+            "bidcoins": int(cashback_amount),
+            "reward_currency": "cashback",
+            "description": label,
+            "created_at": _now_iso(),
+        })
+        result["transaction_effect"] = {"cashback_percent": cashback_amount, "cashback_multiplier": multiplier}
+    elif reward_type == "coupon":
+        result["coupon"] = await _issue_coupon_reward(user, value, source, source_id, label)
+        result["transaction_effect"] = {"coupon_amount": round(float(value or 0), 2)}
+    elif reward_type == "premium_trial":
+        days = int(value or 0)
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+        await db.premium_subscriptions.update_one(
+            {"user_id": user_id, "reward_source_id": source_id},
+            {"$set": {"active": True, "plan": "premium", "started_at": _now_iso(), "expires_at": expires_at, "reward_source_id": source_id}},
+            upsert=True,
+        )
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"is_premium": True, "premium_plan": "premium"}})
+        result["transaction_effect"] = {"premium_days": days, "expires_at": expires_at}
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported reward type: {reward_type}")
+
+    await db.audit_logs.insert_one({
+        "timestamp": _now_iso(),
+        "event": f"reward_{source}_granted",
+        "user_id": user_id,
+        "severity": "info",
+        "details": {"source_id": source_id, "reward_type": reward_type, "reward_value": value, "label": label},
+    })
+    return result
+
+
+async def _get_spin_status(user: dict, config: dict):
+    uid = str(user["_id"])
+    today = datetime.now(timezone.utc).date().isoformat()
+    is_premium = await _has_active_premium(uid)
+    limit = int(config.get("premium_daily_spins", 3) if is_premium else config.get("free_daily_spins", 1))
+    spins_today = await db.spin_wheel_log.count_documents({"user_id": uid, "date": today})
+    remaining = max(0, limit - spins_today)
+    next_reset = (datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)).isoformat()
+    return {
+        "spins_today": spins_today,
+        "limit": limit,
+        "remaining": remaining,
+        "is_premium": is_premium,
+        "next_reset": next_reset,
+        "prizes": config.get("spin_rewards", []),
+    }
+
+
+async def _build_mystery_boxes_payload(user: dict, config: dict):
+    uid = str(user["_id"])
+    is_premium = await _has_active_premium(uid)
+    loyalty = await _ensure_user_loyalty(uid)
+    history = await db.reward_box_openings.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+    monthly_free = await db.reward_box_openings.count_documents({"user_id": uid, "month_key": month_key, "payment_type": "premium_free"})
+    boxes = []
+    for box in config.get("mystery_boxes", []):
+        boxes.append({
+            **box,
+            "can_open_with_bidcoins": int(loyalty.get("coins_balance", 0) or 0) >= int(box.get("price_bidcoins", 0) or 0),
+            "premium_can_open_free": bool(is_premium and monthly_free < int(box.get("premium_free_opens_per_month", 0) or 0)),
+        })
+    return {
+        "boxes": boxes,
+        "history": history,
+        "bidcoins_balance": int(loyalty.get("coins_balance", 0) or 0),
+        "premium_free_used_this_month": monthly_free,
+        "is_premium": is_premium,
+    }
+
+
+async def _build_reward_coupons(user_id: str):
+    coupons = await db.reward_coupons.find({"assigned_user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    return coupons
+
+
+async def _build_reward_hub_dashboard(user: dict):
+    uid = str(user["_id"])
+    config = await _get_reward_hub_config()
+    await _ensure_user_loyalty(uid)
+    reward_status = await get_reward_status_payload(user)
+    loyalty = await db.user_loyalty.find_one({"user_id": uid}, {"_id": 0}) or {}
+    spin_status = await _get_spin_status(user, config)
+    spin_history = await get_spin_history(request=None, user=user, limit=10)
+    box_data = await _build_mystery_boxes_payload(user, config)
+    coupons = await _build_reward_coupons(uid)
+    cashback_claims = await db.cashback_claims.find({"user_id": uid}, {"_id": 0, "cashback_amount": 1}).to_list(500)
+    cashback_total = round(sum(float(row.get("cashback_amount", 0) or 0) for row in cashback_claims), 2)
+    recent_activity = await db.reward_events.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    open_count = await db.reward_box_openings.count_documents({"user_id": uid})
+    return {
+        "overview": {
+            "bidcoins_balance": int(loyalty.get("coins_balance", 0) or 0),
+            "bid_credits": int(user.get("bid_credits", 0) or 0),
+            "cashback_total": cashback_total,
+            "wallet_balance": round(float(user.get("balance", 0) or 0), 2),
+            "active_streak": reward_status.get("streak", 0),
+            "boxes_opened": open_count,
+            "is_premium": await _has_active_premium(uid),
+        },
+        "spin": {**spin_status, "history": spin_history.get("items", []), "stats": spin_history.get("stats", {})},
+        "mystery_boxes": box_data,
+        "coupons": coupons,
+        "recent_activity": recent_activity,
+        "reward_status": reward_status,
+        "config": {
+            "spin_enabled": config.get("spin_enabled", True),
+            "premium_cashback_multiplier": config.get("premium_cashback_multiplier", 1.5),
+        },
+    }
 
 
 def _badge_for_points(points: int) -> str:
@@ -206,6 +607,7 @@ async def _build_rewards_dashboard(user: dict):
         "history": history,
         "merchant_rewards": merchant_rewards,
         "reward_status": reward_status,
+        "reward_hub": await _build_reward_hub_dashboard(user),
     }
 
 
@@ -421,6 +823,197 @@ async def get_rewards_dashboard_v3(request: Request):
     return await _build_rewards_dashboard(user)
 
 
+@router.get("/hub")
+async def get_reward_hub(request: Request):
+    user = await get_current_user(request)
+    return await _build_reward_hub_dashboard(user)
+
+
+@router.get("/mystery-boxes")
+async def get_mystery_boxes(request: Request):
+    user = await get_current_user(request)
+    return await _build_mystery_boxes_payload(user, await _get_reward_hub_config())
+
+
+@router.post("/mystery-boxes/open")
+async def open_mystery_box(req: MysteryBoxOpenRequest, request: Request):
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    config = await _get_reward_hub_config()
+    box = next((item for item in config.get("mystery_boxes", []) if item.get("box_key") == req.box_key), None)
+    if not box:
+        raise HTTPException(status_code=404, detail="Mystery Box nicht gefunden")
+
+    is_premium = await _has_active_premium(uid)
+    loyalty = await _ensure_user_loyalty(uid)
+    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+    monthly_free_used = await db.reward_box_openings.count_documents({"user_id": uid, "month_key": month_key, "payment_type": "premium_free"})
+    free_limit = int(box.get("premium_free_opens_per_month", 0) or 0)
+
+    payment_type = "bidcoins"
+    if is_premium and monthly_free_used < free_limit:
+        payment_type = "premium_free"
+    else:
+        price_bidcoins = int(box.get("price_bidcoins", 0) or 0)
+        if int(loyalty.get("coins_balance", 0) or 0) < price_bidcoins:
+            raise HTTPException(status_code=400, detail="Nicht genug BidCoins für diese Box")
+        await db.user_loyalty.update_one({"user_id": uid}, {"$inc": {"coins_balance": -price_bidcoins}, "$set": {"updated_at": _now_iso()}})
+        await db.transactions.insert_one({
+            "id": _generate_reward_code("BOXPAY"),
+            "user_id": uid,
+            "type": "reward_box_purchase",
+            "amount": -float(price_bidcoins),
+            "currency": "BIDCOINS",
+            "description": f"Mystery Box gekauft: {box.get('name')}",
+            "merchant_name": "BidBlitz Rewards",
+            "status": "completed",
+            "reference": _generate_reward_code("BOX"),
+            "category": "mystery_box",
+            "created_at": _now_iso(),
+        })
+
+    reward_index, reward = _pick_weighted(box.get("rewards", []))
+    opening_id = _generate_reward_code("MBX")
+    grant_result = await _apply_reward_payload(user, reward, "mystery_box", opening_id)
+    open_doc = {
+        "opening_id": opening_id,
+        "user_id": uid,
+        "box_key": box.get("box_key"),
+        "box_name": box.get("name"),
+        "box_tier": box.get("tier"),
+        "payment_type": payment_type,
+        "reward_index": reward_index,
+        "reward": reward,
+        "reward_result": grant_result,
+        "month_key": month_key,
+        "created_at": _now_iso(),
+    }
+    await db.reward_box_openings.insert_one(dict(open_doc))
+    await db.audit_logs.insert_one({
+        "timestamp": _now_iso(),
+        "event": "mystery_box_opened",
+        "user_id": uid,
+        "severity": "info",
+        "details": {"opening_id": opening_id, "box_key": box.get("box_key"), "payment_type": payment_type, "reward": reward},
+    })
+    return {
+        "ok": True,
+        "opening_id": opening_id,
+        "box": {"box_key": box.get("box_key"), "name": box.get("name"), "tier": box.get("tier"), "color": box.get("color")},
+        "reward": grant_result,
+        "payment_type": payment_type,
+    }
+
+
+@router.get("/spin-wheel/status")
+async def reward_spin_status(request: Request):
+    user = await get_current_user(request)
+    return await _get_spin_status(user, await _get_reward_hub_config())
+
+
+async def get_spin_history(request: Request | None = None, user: dict | None = None, limit: int = 20):
+    current_user = user or await get_current_user(request)
+    uid = str(current_user["_id"])
+    items = await db.spin_wheel_log.find(
+        {"user_id": uid},
+        {"_id": 0, "spin_id": 1, "prize_label": 1, "prize_type": 1, "prize_value": 1, "prize_index": 1, "created_at": 1, "date": 1},
+    ).sort("created_at", -1).limit(min(max(limit, 1), 50)).to_list(50)
+    total_spins = await db.spin_wheel_log.count_documents({"user_id": uid})
+    totals = {"total_spins": total_spins, "total_bidcoins_won": 0, "total_bid_credits_won": 0, "total_cashback_won": 0, "total_eur_won": 0.0}
+    for item in items:
+        prize_type = item.get("prize_type")
+        prize_value = float(item.get("prize_value", 0) or 0)
+        if prize_type == "bidcoins":
+            totals["total_bidcoins_won"] += int(prize_value)
+        elif prize_type == "bid_credits":
+            totals["total_bid_credits_won"] += int(prize_value)
+        elif prize_type == "cashback":
+            totals["total_cashback_won"] += prize_value
+        elif prize_type == "cash_eur":
+            totals["total_eur_won"] += prize_value
+    totals["total_eur_won"] = round(totals["total_eur_won"], 2)
+    totals["total_cashback_won"] = round(totals["total_cashback_won"], 2)
+    return {"items": items, "stats": totals}
+
+
+@router.get("/spin-wheel/history")
+async def reward_spin_history(request: Request, limit: int = 20):
+    return await get_spin_history(request=request, limit=limit)
+
+
+@router.post("/spin-wheel/spin")
+async def reward_spin(request: Request):
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    config = await _get_reward_hub_config()
+    if not config.get("spin_enabled", True):
+        raise HTTPException(status_code=400, detail="Glücksrad ist derzeit deaktiviert")
+    status = await _get_spin_status(user, config)
+    if status["remaining"] <= 0:
+        raise HTTPException(status_code=400, detail="Heute keine Freispiele mehr verfügbar")
+    rewards = config.get("spin_rewards", [])
+    prize_index, prize = _pick_weighted(rewards)
+    spin_id = _generate_reward_code("SPN")
+    reward_result = await _apply_reward_payload(user, prize, "spin_wheel", spin_id)
+    await db.spin_wheel_log.insert_one({
+        "spin_id": spin_id,
+        "user_id": uid,
+        "date": datetime.now(timezone.utc).date().isoformat(),
+        "prize_type": prize.get("type"),
+        "prize_value": prize.get("value"),
+        "prize_label": prize.get("label"),
+        "prize_index": prize_index,
+        "created_at": _now_iso(),
+    })
+    await db.audit_logs.insert_one({
+        "timestamp": _now_iso(),
+        "event": "reward_spin_completed",
+        "user_id": uid,
+        "severity": "info",
+        "details": {"spin_id": spin_id, "prize": prize, "prize_index": prize_index},
+    })
+    updated_status = await _get_spin_status(user, config)
+    return {
+        "ok": True,
+        "spin_id": spin_id,
+        "prize_index": prize_index,
+        "prize": {**prize, **reward_result},
+        "remaining": updated_status["remaining"],
+    }
+
+
+@router.get("/spin-wheel/leaderboard")
+async def reward_spin_leaderboard(request: Request, limit: int = 20):
+    await get_current_user(request)
+    pipeline = [
+        {"$group": {"_id": "$user_id", "spins": {"$sum": 1}, "wallet_eur": {"$sum": {"$cond": [{"$eq": ["$prize_type", "cash_eur"]}, "$prize_value", 0]}}, "bidcoins": {"$sum": {"$cond": [{"$eq": ["$prize_type", "bidcoins"]}, "$prize_value", 0]}}, "bid_credits": {"$sum": {"$cond": [{"$eq": ["$prize_type", "bid_credits"]}, "$prize_value", 0]}}}},
+        {"$sort": {"bid_credits": -1, "bidcoins": -1, "wallet_eur": -1, "spins": -1}},
+        {"$limit": min(max(limit, 1), 50)},
+    ]
+    rows = await db.spin_wheel_log.aggregate(pipeline).to_list(50)
+    leaderboard = []
+    for idx, row in enumerate(rows):
+        user = await db.users.find_one({"_id": _oid(row.get("_id"))}, {"_id": 0, "name": 1, "email": 1}) or {}
+        raw_name = user.get("name") or user.get("email", "Anonym")
+        parts = raw_name.split(" ", 1)
+        masked = parts[0] + (f" {parts[1][0]}." if len(parts) > 1 and parts[1] else "")
+        leaderboard.append({
+            "rank": idx + 1,
+            "name": masked,
+            "spins": int(row.get("spins", 0) or 0),
+            "bidcoins": int(row.get("bidcoins", 0) or 0),
+            "bid_credits": int(row.get("bid_credits", 0) or 0),
+            "wallet_eur": round(float(row.get("wallet_eur", 0) or 0), 2),
+        })
+    return {"leaderboard": leaderboard, "total": len(leaderboard)}
+
+
+@router.get("/coupons")
+async def get_my_reward_coupons(request: Request):
+    user = await get_current_user(request)
+    return {"coupons": await _build_reward_coupons(str(user["_id"]))}
+
+
 @router.get("/history")
 async def get_rewards_history_v3(request: Request, reward_type: str | None = None, limit: int = 100):
     user = await get_current_user(request)
@@ -509,13 +1102,31 @@ async def get_rewards_admin_config(request: Request):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Nur Admin")
     config = await _get_rewards_v3_config()
+    reward_hub_config = await _get_reward_hub_config()
     suspicious = await db.reward_events.aggregate([
         {"$group": {"_id": "$user_id", "count": {"$sum": 1}, "coins": {"$sum": "$bidcoins"}}},
         {"$match": {"$or": [{"coins": {"$gte": 2000}}, {"count": {"$gte": 50}}]}},
         {"$sort": {"coins": -1}},
         {"$limit": 30},
     ]).to_list(30)
-    return {"config": config, "suspicious_users": suspicious}
+    spin_count = await db.spin_wheel_log.count_documents({})
+    box_count = await db.reward_box_openings.count_documents({})
+    coupon_count = await db.reward_coupons.count_documents({})
+    recent_audits = await db.audit_logs.find(
+        {"event": {"$regex": "reward|spin|box", "$options": "i"}},
+        {"_id": 0},
+    ).sort("timestamp", -1).limit(25).to_list(25)
+    return {
+        "config": config,
+        "reward_hub_config": reward_hub_config,
+        "suspicious_users": suspicious,
+        "stats": {
+            "spin_count": spin_count,
+            "box_open_count": box_count,
+            "coupon_count": coupon_count,
+        },
+        "recent_audits": recent_audits,
+    }
 
 
 @router.post("/admin/config")
@@ -529,3 +1140,23 @@ async def update_rewards_admin_config(req: RewardConfigUpdate, request: Request)
         await db.platform_config.update_one({"key": "rewards_v3_config"}, {"$set": {"settings": {**current, **updates}}}, upsert=True)
         await db.audit_logs.insert_one({"timestamp": _now_iso(), "event": "rewards_v3_config_updated", "user_id": str(user["_id"]), "severity": "info", "details": updates})
     return {"ok": True, "config": await _get_rewards_v3_config()}
+
+
+@router.post("/admin/reward-hub-config")
+async def update_reward_hub_config(req: RewardHubConfigUpdate, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    updates = {k: v for k, v in req.dict(exclude_none=True).items()}
+    if updates:
+        current = await _get_reward_hub_config()
+        merged = {**current, **updates}
+        await db.platform_config.update_one({"key": "reward_hub_config"}, {"$set": {"settings": merged}}, upsert=True)
+        await db.audit_logs.insert_one({
+            "timestamp": _now_iso(),
+            "event": "reward_hub_config_updated",
+            "user_id": str(user["_id"]),
+            "severity": "info",
+            "details": {"updated_keys": list(updates.keys())},
+        })
+    return {"ok": True, "reward_hub_config": await _get_reward_hub_config()}

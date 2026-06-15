@@ -6,8 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Gift, Crown, Clock, Trophy, History } from "lucide-react";
 import { toast } from "sonner";
-
-const API = process.env.REACT_APP_BACKEND_URL;
+import { api } from "../services/api";
 
 const PRIZE_COLORS = [
   "#00D26A", "#00C2FF", "#A855F7", "#FFB800",
@@ -43,14 +42,19 @@ export default function SpinWheelPage({ onBack, onNavigate }) {
 
   const load = useCallback(async () => {
     try {
-      const [statusRes, historyRes] = await Promise.all([
-        fetch(`${API}/api/spin-wheel/status`, { credentials: "include" }),
-        fetch(`${API}/api/spin-wheel/history?limit=20`, { credentials: "include" }),
+      const [status, hist] = await Promise.all([
+        api.getRewardSpinStatus(),
+        api.getRewardSpinHistory(20),
       ]);
-      const status = await statusRes.json();
-      const hist = await historyRes.json();
       setData(status);
-      if (historyRes.ok) setHistory(hist);
+      setHistory({
+        items: hist.items || [],
+        stats: {
+          total_spins: hist.stats?.total_spins || 0,
+          total_blz_won: hist.stats?.total_bidcoins_won || 0,
+          total_eur_won: hist.stats?.total_eur_won || 0,
+        },
+      });
     } catch { toast.error("Fehler beim Laden"); }
   }, []);
 
@@ -61,9 +65,7 @@ export default function SpinWheelPage({ onBack, onNavigate }) {
     setSpinning(true);
     setLastPrize(null);
     try {
-      const r = await fetch(`${API}/api/spin-wheel/spin`, { method: "POST", credentials: "include" });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.detail || "Fehler");
+      const j = await api.spinRewardWheel();
       const n = data.prizes.length;
       const segmentAngle = 360 / n;
       const target = 360 * 6 + (360 - (j.prize_index * segmentAngle + segmentAngle / 2));
