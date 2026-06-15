@@ -9,6 +9,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Zentrale BidBlitz-Mobilitätskarte mit OpenStreetMap + Leaflet + Nominatim ist jetzt als eigenständiger Flow unter `/mobility-map` aktiv.
 - Restaurant-/Café-Tischsystem bleibt vorhanden; Preview-Einschränkung für echte USB-/LAN-Drucker gilt weiterhin.
 
+### 15.06.2026 (Reward Hub Build-Fix + Move & Earn V1) ✅
+- 🟢 **Frontend-Buildfehler behoben** (`frontend/package.json`, Frontend Tooling): fehlerhafte ESLint-Paketmischung bereinigt; der Rewards-/Frontend-Build läuft wieder ohne den vorherigen Rule-Definition-Blocker.
+- 🟢 **Move & Earn Backend produktiv ergänzt** (`backend/routes/move_earn.py`, `backend/core/router_registry.py`): neue APIs `GET /api/move/status`, `POST /api/move/sync-steps`, `POST /api/move/claim-reward`, `GET /api/move/history`, `GET /api/move/leaderboard`, `GET/PUT /api/admin/move/settings`, `GET /api/admin/move/stats`, `POST /api/admin/move/users/{user_id}/block` live geschaltet.
+- 🟢 **Move & Earn Datenmodell/Engine ergänzt** (`move_profiles`, `move_daily_steps`, `move_rewards`, `move_settings`, `move_fraud_logs`, `reward_transactions`): Steps, Energy, XP, Streaks, Level-System, Reward-Slots, Mission-System, Anti-Fraud, Tickets/Coupons/Cashback und Admin-Statistiken serverseitig umgesetzt.
+- 🟢 **Ride & Earn / Eco / Merchant / QR / Family / AI-Coach-Vorbereitung angebunden** (`move_earn.py`): externe Rewards werden aus bestehenden Scooter-/Mobility-/EV-/Merchant-/Kids-Daten serverseitig in Missionen und Fortschritt übersetzt.
+- 🟢 **Move & Earn Frontend + Navigation ergänzt** (`frontend/src/pages/MoveEarnPage.jsx`, `frontend/src/pages/MorePage.jsx`, `frontend/src/App.js`, `frontend/src/services/api.js`): mobiles Neon-Fitness-Dashboard mit Kreis-Progress, Sync-CTA, Reward-Karten, Missionen, Verlauf, Leaderboard, AI-Coach-Karten und Admin-Bereich umgesetzt.
+- ✅ **Verifiziert**: Backend-Tests vollständig grün (13/13 PASS via `deep_testing_backend_v2`), Frontend-Test grün (11/12 PASS mit nur nichtkritischen Hinweisen), zusätzlicher Smoke-Test auf `/move` und `/rewards` erfolgreich.
+
 ### 10.06.2026 (Mobility Master Prompt P0 geschlossen) ✅
 - 🟢 **Credit Card + Cash live ergänzt** (`backend/routes/mobility_platform.py`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): Payment-Optionen zeigen jetzt explizit `Credit Card` und `Cash`; `Credit Card` erzeugt echte Stripe-Checkout-Sessions, `Cash` erzeugt echte serverseitige Direktbuchungen mit `payment_status=cash_due` ohne Wallet-Abzug.
 - 🟢 **Favoriten + Recent Addresses komplett angebunden** (`mobility_platform.py`, `mobilityPlatformApi.js`, `BidBlitzMobilityPlatformPage.jsx`): Favoriten lassen sich speichern/laden/löschen; Recent-Adressen inkrementieren `use_count`; UI zeigt eigene Karten für Favoriten und zuletzt genutzte Adressen inkl. Schnellbuttons für Start/Ziel/Zuhause/Arbeit.

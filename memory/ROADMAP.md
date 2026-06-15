@@ -1,9 +1,13 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Keine offenen P0-Blocker im aktuellen Mobility-Map-Core nach `iteration_142`
+- Keine offenen P0-Blocker; Reward Hub Build-Fix und Move & Earn V1 sind live
 
 ## P1
+- Move & Earn: echte native Schrittquellen (HealthKit/Google Fit/Pedometer) sauber anbinden und Preview-Sync von simulierten Device-Werten auf reale Sensor-Provider erweitern
+- Move & Earn: Ride & Earn / Eco Rewards noch tiefer mit realen Scooter-/Bike-/Taxi-/EV-Events, Merchant-QR-Events und Referral-/Friends-Logik koppeln
+- Move & Earn: Admin-Analytics um DAU/MAU, Reward-Kosten pro Typ, ROI und gesponserte Rewards ausbauen
+- Move & Earn: Reward-Tickets direkt in Reward Hub / Spin Wheel / Plinko UI nutzbar machen
 - Mobility: Stripe-Checkout zusätzlich per Webhook/Session-Resume noch robuster gegen abgebrochene Browser-Sessions machen
 - Mobility: Tracking für Shuttle/VIP und weitere Transportarten mit echterer Live-Progression vertiefen
 - Mobility: Tracking-Seite um echte Map-Animation und Fortschritts-Polylines weiter ausbauen
@@ -14,6 +18,7 @@
 - Floorplan-/Raumplan-Editor für Tische mit Mehrraum/Zoom/Snapping ausbauen
 
 ## P2
+- Move & Earn: AI Coach später mit echten Empfehlungen, Coaching-Plänen und optionalem GPS-/Sensor-Scoring ausbauen
 - Mobility: echte Live-Positionsupdates/Tracking für Shuttle, VIP und weitere Transportarten vertiefen
 - Mobility: serverseitige Ranking-Heuristik für Autocomplete und Empfehlungslogik weiter schärfen
 - Printer-Diagnose später um echte Live-Socket-Logs/Retry-Historie pro Gerät vertiefen
