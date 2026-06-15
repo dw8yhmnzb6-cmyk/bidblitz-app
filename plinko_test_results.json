@@ -1,0 +1,42 @@
+{
+  "test_date": "2026-06-15T19:32:21.376401",
+  "base_url": "https://game-center-hub-1.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Admin Login",
+      "passed": true,
+      "details": "Login successful - Status: 200, Has cookies: True, User: N/A",
+      "timestamp": "2026-06-15T19:32:21.856120"
+    },
+    {
+      "test": "Plinko Status",
+      "passed": true,
+      "details": "Status OK - enabled: True, free_remaining: 0, ticket_balance: 0, bidcoin_cost: 40, payouts: 11 items, is_premium: True",
+      "timestamp": "2026-06-15T19:32:21.989167"
+    },
+    {
+      "test": "Plinko Drop (free)",
+      "passed": true,
+      "details": "No free drops available (expected if already used today) - Status: 400, Error: Heute kein Gratis-Drop mehr verf\u00fcgbar, free_remaining was: 0",
+      "timestamp": "2026-06-15T19:32:22.119140"
+    },
+    {
+      "test": "Plinko History",
+      "passed": true,
+      "details": "History retrieved - items: 2, total_drops: 2, total_bidcoins_won: 114, best_multiplier: 6.0x",
+      "timestamp": "2026-06-15T19:32:22.263087"
+    },
+    {
+      "test": "Reward Hub (plinko data)",
+      "passed": true,
+      "details": "Reward hub contains plinko data - enabled: True, free_remaining: 0, ticket_balance: 0, history items: 2, stats: {'total_drops': 2, 'total_bidcoins_won': 114, 'total_net_bidcoins': 114, 'best_multiplier': 6.0}",
+      "timestamp": "2026-06-15T19:32:22.399945"
+    },
+    {
+      "test": "Rate Limit Protection",
+      "passed": true,
+      "details": "No free drops available (acceptable) - Status: 400, Error: Heute kein Gratis-Drop mehr verf\u00fcgbar",
+      "timestamp": "2026-06-15T19:32:22.636302"
+    }
+  ]
+}
