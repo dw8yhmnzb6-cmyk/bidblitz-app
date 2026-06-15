@@ -9,6 +9,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
 - Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
 
+### 15.06.2026 (Admin Login-/Registrierungs-Tracking) ✅
+- 🟢 **Auth-Metadaten erweitert** (`backend/routes/auth.py`): `registered_at`, `last_login_at`, `last_login_ip`, `last_login_user_agent`, `login_count` werden jetzt bei Register/Login/2FA-Login gepflegt.
+- 🟢 **Admin-Wallet-Userliste erweitert** (`backend/routes/admin_wallet.py`, `frontend/src/pages/AdminWalletPage.jsx`): pro User sind jetzt Registrierungsdatum, letzte Anmeldung und Login-Anzahl direkt sichtbar.
+- 🟢 **Komplette Login-Historie ergänzt** (`GET /api/admin/wallet/users/{user_id}/login-history`): Admin sieht Login-/Registrierungsereignisse mit Zeitstempel und IP direkt im ausgewählten User-Bereich.
+- ✅ **Verifiziert**: Backend-Test 5/5 PASS (`deep_testing_backend_v2`), Frontend-Test 8/8 PASS (`auto_frontend_testing_agent`).
+
 ### 15.06.2026 (Taxi Map White-Screen Fix) ✅
 - 🟢 **Taxi-Map Dual-Fallback gehärtet** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/hooks/useTaxiMap.js`): die Taxi-Seite zeigt jetzt sofort eine sichere Leaflet-Fallback-Karte, solange Mapbox noch lädt oder Fehler wirft; die Live-Karte blendet erst ein, wenn sie wirklich ready ist.
 - 🟢 **Weiße iPhone/Safari-Karte entschärft** (`TaxiPage.jsx`): `taxi-map-container` bleibt zunächst unsichtbar, `MiniLeafletMap` deckt die Fläche sofort ab; zusätzlicher Loading-Chip erklärt den Verbindungsstatus klar.

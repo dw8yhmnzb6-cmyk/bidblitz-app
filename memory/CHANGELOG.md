@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 15.06.2026 — Admin Login-/Registrierungs-Tracking
+- Auth erweitert: `registered_at`, `last_login_at`, `last_login_ip`, `last_login_user_agent`, `login_count`
+- Admin-Wallet-Userliste zeigt jetzt direkt Registrierungsdatum, letzte Anmeldung und Login-Anzahl
+- Neue Admin-API `/api/admin/wallet/users/{user_id}/login-history` liefert Login-/Registrierungs-Historie mit Zeitstempel + IP
+- Verifiziert: Backend 5/5 PASS (`deep_testing_backend_v2`), Frontend 8/8 PASS (`auto_frontend_testing_agent`)
+
 ## 15.06.2026 — Taxi Map White-Screen Fix
 - Taxi-Seite `/taxi` gegen weißen Kartenbereich auf iPhone/Safari gehärtet
 - Sofort sichtbare Leaflet-Fallback-Karte eingebaut, solange Mapbox noch lädt oder fehlschlägt
