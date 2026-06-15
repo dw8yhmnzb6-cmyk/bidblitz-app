@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 15.06.2026 — Taxi Map White-Screen Fix
+- Taxi-Seite `/taxi` gegen weißen Kartenbereich auf iPhone/Safari gehärtet
+- Sofort sichtbare Leaflet-Fallback-Karte eingebaut, solange Mapbox noch lädt oder fehlschlägt
+- Live-Map blendet jetzt erst nach echtem Ready-State ein; zusätzlicher Loading-Chip erklärt den Status
+- Verifiziert: Frontend 5/5 PASS (`auto_frontend_testing_agent`)
+
 ## 15.06.2026
 - Reward Plinko als P0-Modul live ergänzt: neue Backend-APIs `/api/rewards/plinko/status`, `/api/rewards/plinko/history`, `/api/rewards/plinko/drop`
 - Reward Hub um Plinko-Summary, Verlauf, CTA und Admin-Config für Drops/Kosten/Enable-Status erweitert

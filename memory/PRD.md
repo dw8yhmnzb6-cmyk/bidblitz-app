@@ -9,6 +9,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
 - Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
 
+### 15.06.2026 (Taxi Map White-Screen Fix) ✅
+- 🟢 **Taxi-Map Dual-Fallback gehärtet** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/hooks/useTaxiMap.js`): die Taxi-Seite zeigt jetzt sofort eine sichere Leaflet-Fallback-Karte, solange Mapbox noch lädt oder Fehler wirft; die Live-Karte blendet erst ein, wenn sie wirklich ready ist.
+- 🟢 **Weiße iPhone/Safari-Karte entschärft** (`TaxiPage.jsx`): `taxi-map-container` bleibt zunächst unsichtbar, `MiniLeafletMap` deckt die Fläche sofort ab; zusätzlicher Loading-Chip erklärt den Verbindungsstatus klar.
+- ✅ **Verifiziert**: Frontend-Test 5/5 PASS (`auto_frontend_testing_agent`) — `/taxi` ohne White-Screen, Fallback-Strategie und GPS-off-Bedienbarkeit bestätigt.
+
 ### 15.06.2026 (Reward Plinko P0) ✅
 - 🟢 **Reward-Plinko Backend live ergänzt** (`backend/routes/rewards.py`): neue Endpunkte `GET /api/rewards/plinko/status`, `GET /api/rewards/plinko/history`, `POST /api/rewards/plinko/drop` inkl. Cooldown, Tageslimits, Premium-Free-Drops, BidCoin-Einsatz, Historie und Audit-Logs.
 - 🟢 **Move-&-Earn Ticket-Inventar produktiv angebunden** (`move_profiles.inventory.plinko_tickets` ↔ Reward Hub): vorhandene Plinko-Tickets aus Move & Earn werden jetzt im Reward-Plinko-Flow direkt verbraucht und im Status angezeigt.
