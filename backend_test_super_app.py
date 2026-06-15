@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://taxi-uber-style.preview.emergentagent.com/api"
+BASE_URL = "https://game-center-hub-1.preview.emergentagent.com/api"
 TEST_USER_EMAIL = "kunde@bidblitz.com"
 TEST_USER_PASSWORD = "Kunde2026!"
 

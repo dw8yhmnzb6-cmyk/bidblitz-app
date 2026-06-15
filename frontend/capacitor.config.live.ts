@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://taxi-uber-style.preview.emergentagent.com',
+    url: 'https://game-center-hub-1.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

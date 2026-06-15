@@ -25,7 +25,7 @@ yarn cap open android       # or: yarn cap open ios
 ```
 
 The LIVE-RELOAD config (`capacitor.config.live.ts`) points the WebView
-at `https://taxi-uber-style.preview.emergentagent.com` so code changes
+at `https://game-center-hub-1.preview.emergentagent.com` so code changes
 reflect instantly without rebuilding the native bundle.
 
 ## Production Build

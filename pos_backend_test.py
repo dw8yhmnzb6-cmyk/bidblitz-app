@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from frontend/.env
-BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
+BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
 API_URL = f"{BASE_URL}/api"
 
 # Test credentials

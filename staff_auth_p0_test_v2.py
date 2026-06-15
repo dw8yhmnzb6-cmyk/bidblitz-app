@@ -11,7 +11,7 @@ Test Scope:
 4. GET /api/staff/auth/me excludes sensitive fields (password_hash, pin, pin_hash)
 5. POST /api/staff/auth/terminal-pin with correct PIN returns member data
 
-External URL: https://taxi-uber-style.preview.emergentagent.com
+External URL: https://game-center-hub-1.preview.emergentagent.com
 """
 
 import requests
@@ -21,7 +21,7 @@ import time
 import sys
 
 # Configuration
-BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
+BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials from test_credentials.md

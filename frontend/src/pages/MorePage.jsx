@@ -7,7 +7,7 @@ import {
   Pencil, Loader2, Check, X, ShieldCheck, Clock, AlertCircle, MapPin,
   Trophy, TrendingUp, Star, Store, Monitor, Scan, Wallet, Cpu, Car, Zap, ShoppingBag, Coins,
   Split, CreditCardIcon, PiggyBank, BadgePercent, Banknote, Bitcoin, GiftIcon, Gamepad2,
-  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2, Building2, Phone, AtSign, Radio, Heart, MessageSquare, Home
+  MessageCircle, BarChart3, Crown, Wifi, Search, Package, FileText, Share2, Building2, Phone, AtSign, Radio, Heart, MessageSquare, Home, Target
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { api } from "../services/api";
@@ -913,6 +913,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "reward-hub", icon: Gift, label: "Reward Hub", desc: "Mystery Boxen, Glücksrad, Cashback & Coupons", color: "#8FEFFF", action: gatedAction(() => onNavigate("/rewards")), roles: ["all"] },
     { id: "move-earn", icon: Activity, label: "Move & Earn", desc: "Schritte, Rides, Eco Rewards und Missionen", color: "#37FF8B", action: gatedAction(() => onNavigate("/move")), roles: ["all"] },
     { id: "spin-wheel", icon: Sparkles, label: "Glücksrad", desc: "Direkt ins Daily Spin Wheel", color: "#FFD700", action: gatedAction(() => onNavigate("/spin-wheel")), roles: ["all"] },
+    { id: "reward-plinko", icon: Target, label: "Reward Plinko", desc: "Tickets droppen, BidCoins gewinnen, Premium-Boost sichern", color: "#FF7A45", action: gatedAction(() => onNavigate("/reward-plinko")), roles: ["all"] },
     { id: "classifieds", icon: Sparkles, label: "Kleinanzeigen", desc: "Lokal kaufen & verkaufen · Gratis inserieren", color: "#00C2FF", action: () => onNavigate("/classifieds"), roles: ["all"] },
     { id: "premium", icon: Crown, label: "BidBlitz Premium", desc: "2× Mining · 0€ Gebühren · 50 BLZ/Monat · 5% Cashback", color: "#FFD700", action: gatedAction(() => onNavigate("/premium")), roles: ["all"] },
     { id: "lottery", icon: Sparkles, label: "BLZ Lotterie", desc: "Tägliche Ziehung · Jackpot 5000 BLZ · Nur 10 BLZ/Los", color: "#A855F7", action: gatedAction(() => onNavigate("/lottery")), roles: ["all"] },

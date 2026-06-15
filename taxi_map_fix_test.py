@@ -12,7 +12,7 @@ import requests
 import json
 from datetime import datetime
 
-BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
+BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
 
 def test_taxi_map_fix():
     """Brief test of taxi map fix focusing on error handling and fallback"""

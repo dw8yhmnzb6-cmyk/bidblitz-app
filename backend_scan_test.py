@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
+BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 MANAGER_EMAIL = "haendler@bidblitz.com"

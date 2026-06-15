@@ -2,7 +2,7 @@
 """
 BidBlitz Taxi Tariff Zones P1 Backend Testing
 ==============================================
-Tests against: https://taxi-uber-style.preview.emergentagent.com
+Tests against: https://game-center-hub-1.preview.emergentagent.com
 
 Test Coverage:
 1. Backend runs without dead imports (taxi_operator/taxi_driver)
@@ -18,7 +18,7 @@ import json
 from datetime import datetime
 
 # Test Configuration
-BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
+BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

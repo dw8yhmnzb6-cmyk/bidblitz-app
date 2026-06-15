@@ -83,6 +83,7 @@ const FoodOrderTrackingPage = lazy(() => import("./pages/FoodOrderTrackingPage")
 const ChallengesPage = lazy(() => import("./pages/ChallengesPage"));
 const AchievementsPage = lazy(() => import("./pages/AchievementsPage"));
 const MoveEarnPage = lazy(() => import("./pages/MoveEarnPage"));
+const RewardPlinkoPage = lazy(() => import("./pages/RewardPlinkoPage"));
 const FriendsPage = lazy(() => import("./pages/FriendsPage"));
 const TwoFactorSettingsPage = lazy(() => import("./pages/TwoFactorSettingsPage"));
 const CreditScorePage = lazy(() => import("./pages/CreditScorePage"));
@@ -605,7 +606,7 @@ function AppContent() {
           ? <HomePage {...homeProps} />
           : <ExecutiveCenterPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/rewards":
-        return <RewardsPage onBack={() => handleNavigate("/more")} />;
+        return <RewardsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/verification":
         return <VerificationPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-dashboard":
@@ -768,8 +769,10 @@ function AppContent() {
       case "/move":
       case "/move-earn":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MoveEarnPage onBack={() => handleNavigate("/more")} />;
+      case "/reward-plinko":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardPlinkoPage onBack={() => handleNavigate("/rewards")} onNavigate={handleNavigate} />;
       case "/rewards-hub":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <RewardsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/marketing-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketingHubPage onBack={() => handleNavigate("/")} />;
       case "/admin/revenue":

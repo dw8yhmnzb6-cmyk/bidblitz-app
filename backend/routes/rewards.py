@@ -40,6 +40,24 @@ DEFAULT_REWARD_HUB_CONFIG = {
     "premium_daily_spins": 3,
     "free_daily_spins": 1,
     "premium_cashback_multiplier": 1.5,
+    "plinko_enabled": True,
+    "premium_daily_plinko_drops": 2,
+    "free_daily_plinko_drops": 0,
+    "plinko_energy_cost": 0,
+    "plinko_bidcoin_cost": 40,
+    "plinko_payouts": [
+        {"multiplier": 6.0, "weight": 1, "color": "#FF6B6B", "label": "6x"},
+        {"multiplier": 2.5, "weight": 4, "color": "#FF9F43", "label": "2.5x"},
+        {"multiplier": 1.4, "weight": 9, "color": "#FFD166", "label": "1.4x"},
+        {"multiplier": 1.1, "weight": 12, "color": "#8FE388", "label": "1.1x"},
+        {"multiplier": 0.8, "weight": 14, "color": "#56CCF2", "label": "0.8x"},
+        {"multiplier": 0.5, "weight": 18, "color": "#6C8CFF", "label": "0.5x"},
+        {"multiplier": 0.8, "weight": 14, "color": "#56CCF2", "label": "0.8x"},
+        {"multiplier": 1.1, "weight": 12, "color": "#8FE388", "label": "1.1x"},
+        {"multiplier": 1.4, "weight": 9, "color": "#FFD166", "label": "1.4x"},
+        {"multiplier": 2.5, "weight": 4, "color": "#FF9F43", "label": "2.5x"},
+        {"multiplier": 6.0, "weight": 1, "color": "#FF6B6B", "label": "6x"},
+    ],
     "mystery_boxes": [
         {
             "box_key": "bronze",
@@ -158,12 +176,22 @@ class RewardHubConfigUpdate(BaseModel):
     premium_daily_spins: int | None = Field(default=None, ge=1, le=20)
     free_daily_spins: int | None = Field(default=None, ge=0, le=10)
     premium_cashback_multiplier: float | None = Field(default=None, ge=1.0, le=10.0)
+    plinko_enabled: bool | None = None
+    premium_daily_plinko_drops: int | None = Field(default=None, ge=0, le=20)
+    free_daily_plinko_drops: int | None = Field(default=None, ge=0, le=10)
+    plinko_energy_cost: int | None = Field(default=None, ge=0, le=50)
+    plinko_bidcoin_cost: int | None = Field(default=None, ge=0, le=500)
+    plinko_payouts: list[dict] | None = None
     mystery_boxes: list[dict] | None = None
     spin_rewards: list[dict] | None = None
 
 
 class MysteryBoxOpenRequest(BaseModel):
     box_key: str = Field(..., min_length=2, max_length=40)
+
+
+class RewardPlinkoDropRequest(BaseModel):
+    source: str = Field(default="ticket", pattern="^(ticket|bidcoins|free)$")
 
 
 def _generate_reward_code(prefix: str = "RW") -> str:
@@ -274,6 +302,10 @@ async def _ensure_user_reward_profile(user_id: str, is_premium: bool):
     }
     await db.reward_user_profiles.insert_one(doc)
     return doc
+
+
+async def _get_move_profile(user_id: str) -> dict:
+    return await db.move_profiles.find_one({"user_id": user_id}, {"_id": 0}) or {}
 
 
 def _pick_weighted(items: list[dict]) -> tuple[int, dict]:
@@ -460,7 +492,9 @@ async def _build_reward_hub_dashboard(user: dict):
     reward_status = await get_reward_status_payload(user)
     loyalty = await db.user_loyalty.find_one({"user_id": uid}, {"_id": 0}) or {}
     spin_status = await _get_spin_status(user, config)
+    plinko_status = await _get_plinko_status(user, config)
     spin_history = await get_spin_history(request=None, user=user, limit=10)
+    plinko_history = await get_plinko_history(request=None, user=user, limit=10)
     box_data = await _build_mystery_boxes_payload(user, config)
     coupons = await _build_reward_coupons(uid)
     cashback_claims = await db.cashback_claims.find({"user_id": uid}, {"_id": 0, "cashback_amount": 1}).to_list(500)
@@ -478,6 +512,7 @@ async def _build_reward_hub_dashboard(user: dict):
             "is_premium": await _has_active_premium(uid),
         },
         "spin": {**spin_status, "history": spin_history.get("items", []), "stats": spin_history.get("stats", {})},
+        "plinko": {**plinko_status, "history": plinko_history.get("items", []), "stats": plinko_history.get("stats", {})},
         "mystery_boxes": box_data,
         "coupons": coupons,
         "recent_activity": recent_activity,
@@ -936,9 +971,183 @@ async def get_spin_history(request: Request | None = None, user: dict | None = N
     return {"items": items, "stats": totals}
 
 
+async def _get_plinko_status(user: dict, config: dict):
+    uid = str(user["_id"])
+    today = datetime.now(timezone.utc).date().isoformat()
+    is_premium = await _has_active_premium(uid)
+    reward_profile = await _ensure_user_reward_profile(uid, is_premium)
+    move_profile = await _get_move_profile(uid)
+    free_limit = int(config.get("premium_daily_plinko_drops", 2) if is_premium else config.get("free_daily_plinko_drops", 0))
+    free_used = await db.reward_plinko_drops.count_documents({"user_id": uid, "date": today, "source": "free"})
+    next_reset = (datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)).isoformat()
+    inventory = move_profile.get("inventory", {}) if move_profile else {}
+    tickets = int(inventory.get("plinko_tickets", 0) or 0)
+    premium_multiplier = float(config.get("premium_cashback_multiplier", 1.5) or 1.5) if is_premium else 1.0
+    last_drop = reward_profile.get("last_plinko_drop_at")
+    return {
+        "enabled": bool(config.get("plinko_enabled", True)),
+        "is_premium": is_premium,
+        "free_limit": free_limit,
+        "free_remaining": max(0, free_limit - free_used),
+        "ticket_balance": tickets,
+        "bidcoin_cost": int(config.get("plinko_bidcoin_cost", 40) or 0),
+        "premium_multiplier": premium_multiplier,
+        "energy_cost": int(config.get("plinko_energy_cost", 0) or 0),
+        "next_reset": next_reset,
+        "payouts": config.get("plinko_payouts", DEFAULT_REWARD_HUB_CONFIG["plinko_payouts"]),
+        "last_drop_at": last_drop,
+    }
+
+
+async def get_plinko_history(request: Request | None = None, user: dict | None = None, limit: int = 20):
+    current_user = user or await get_current_user(request)
+    uid = str(current_user["_id"])
+    items = await db.reward_plinko_drops.find(
+        {"user_id": uid},
+        {"_id": 0, "drop_id": 1, "slot_index": 1, "multiplier": 1, "payout_bidcoins": 1, "net_bidcoins": 1, "source": 1, "created_at": 1, "path": 1},
+    ).sort("created_at", -1).limit(min(max(limit, 1), 50)).to_list(50)
+    total_drops = await db.reward_plinko_drops.count_documents({"user_id": uid})
+    totals = {"total_drops": total_drops, "total_bidcoins_won": 0, "total_net_bidcoins": 0, "best_multiplier": 0}
+    for item in items:
+        payout = int(round(float(item.get("payout_bidcoins", 0) or 0)))
+        net = int(round(float(item.get("net_bidcoins", 0) or 0)))
+        multiplier = float(item.get("multiplier", 0) or 0)
+        totals["total_bidcoins_won"] += payout
+        totals["total_net_bidcoins"] += net
+        totals["best_multiplier"] = max(totals["best_multiplier"], multiplier)
+    totals["best_multiplier"] = round(float(totals["best_multiplier"] or 0), 2)
+    return {"items": items, "stats": totals}
+
+
+def _plinko_pick_slot(payouts: list[dict]) -> tuple[int, dict]:
+    weights = [max(1, int(item.get("weight", 1) or 1)) for item in payouts]
+    indices = list(range(len(payouts)))
+    slot_index = random.choices(indices, weights=weights, k=1)[0]
+    return slot_index, payouts[slot_index]
+
+
+def _plinko_path_for_slot(slot_index: int, rows: int = 10) -> list[int]:
+    rights = max(0, min(rows, slot_index))
+    path = [1] * rights + [-1] * (rows - rights)
+    random.shuffle(path)
+    return path
+
+
 @router.get("/spin-wheel/history")
 async def reward_spin_history(request: Request, limit: int = 20):
     return await get_spin_history(request=request, limit=limit)
+
+
+@router.get("/plinko/status")
+async def reward_plinko_status(request: Request):
+    user = await get_current_user(request)
+    return await _get_plinko_status(user, await _get_reward_hub_config())
+
+
+@router.get("/plinko/history")
+async def reward_plinko_history(request: Request, limit: int = 20):
+    return await get_plinko_history(request=request, limit=limit)
+
+
+@router.post("/plinko/drop")
+async def reward_plinko_drop(req: RewardPlinkoDropRequest, request: Request):
+    user = await get_current_user(request)
+    uid = str(user["_id"])
+    config = await _get_reward_hub_config()
+    if not config.get("plinko_enabled", True):
+        raise HTTPException(status_code=400, detail="Plinko ist derzeit deaktiviert")
+
+    reward_profile = await _ensure_user_reward_profile(uid, await _has_active_premium(uid))
+    last_drop_at = reward_profile.get("last_plinko_drop_at")
+    if last_drop_at:
+        try:
+            last_dt = datetime.fromisoformat(last_drop_at)
+            if (datetime.now(timezone.utc) - last_dt).total_seconds() < 2:
+                raise HTTPException(status_code=429, detail="Bitte kurz warten, bevor du erneut droppst")
+        except ValueError:
+            pass
+
+    status = await _get_plinko_status(user, config)
+    if req.source == "free":
+        if status["free_remaining"] <= 0:
+            raise HTTPException(status_code=400, detail="Heute kein Gratis-Drop mehr verfügbar")
+        entry_cost = 0
+    elif req.source == "ticket":
+        if status["ticket_balance"] <= 0:
+            raise HTTPException(status_code=400, detail="Kein Plinko Ticket verfügbar")
+        entry_cost = 0
+        await db.move_profiles.update_one({"user_id": uid}, {"$inc": {"inventory.plinko_tickets": -1}, "$set": {"updated_at": _now_iso()}})
+    else:
+        entry_cost = int(config.get("plinko_bidcoin_cost", 40) or 0)
+        loyalty = await _ensure_user_loyalty(uid)
+        if int(loyalty.get("coins_balance", 0) or 0) < entry_cost:
+            raise HTTPException(status_code=400, detail="Nicht genug BidCoins für Plinko")
+        await db.user_loyalty.update_one({"user_id": uid}, {"$inc": {"coins_balance": -entry_cost}, "$set": {"updated_at": _now_iso()}})
+        await db.transactions.insert_one({
+            "id": _generate_reward_code("PLPAY"),
+            "user_id": uid,
+            "type": "reward_plinko_entry",
+            "amount": -float(entry_cost),
+            "currency": "BIDCOINS",
+            "description": "Reward Plinko Einsatz",
+            "merchant_name": "BidBlitz Rewards",
+            "status": "completed",
+            "reference": _generate_reward_code("PLINKO"),
+            "category": "reward_plinko",
+            "created_at": _now_iso(),
+        })
+
+    payouts = config.get("plinko_payouts", DEFAULT_REWARD_HUB_CONFIG["plinko_payouts"])
+    slot_index, slot = _plinko_pick_slot(payouts)
+    multiplier = round(float(slot.get("multiplier", 0) or 0), 2)
+    if req.source == "free":
+        reward_amount = max(1, int(round(multiplier * 10)))
+    elif req.source == "ticket":
+        reward_amount = max(1, int(round(multiplier * 14)))
+    else:
+        reward_amount = max(1, int(round(entry_cost * multiplier)))
+    premium_multiplier = float(status.get("premium_multiplier", 1.0) or 1.0)
+    if premium_multiplier > 1 and multiplier >= 1:
+        reward_amount = int(round(reward_amount * premium_multiplier))
+    net_bidcoins = reward_amount - entry_cost
+    path = _plinko_path_for_slot(slot_index)
+    drop_id = _generate_reward_code("PLK")
+    await _credit_bidcoins(uid, reward_amount, "reward_plinko", f"Reward Plinko {multiplier}x", drop_id)
+    drop_doc = {
+        "drop_id": drop_id,
+        "user_id": uid,
+        "date": datetime.now(timezone.utc).date().isoformat(),
+        "source": req.source,
+        "entry_bidcoins": entry_cost,
+        "slot_index": slot_index,
+        "multiplier": multiplier,
+        "payout_bidcoins": reward_amount,
+        "net_bidcoins": net_bidcoins,
+        "path": path,
+        "created_at": _now_iso(),
+    }
+    await db.reward_plinko_drops.insert_one(dict(drop_doc))
+    await db.reward_user_profiles.update_one({"user_id": uid}, {"$set": {"last_plinko_drop_at": _now_iso(), "updated_at": _now_iso()}}, upsert=True)
+    await db.audit_logs.insert_one({
+        "timestamp": _now_iso(),
+        "event": "reward_plinko_drop_completed",
+        "user_id": uid,
+        "severity": "info",
+        "details": {"drop_id": drop_id, "source": req.source, "slot_index": slot_index, "multiplier": multiplier, "payout_bidcoins": reward_amount},
+    })
+    updated_status = await _get_plinko_status(user, config)
+    return {
+        "ok": True,
+        "drop_id": drop_id,
+        "source": req.source,
+        "path": path,
+        "slot_index": slot_index,
+        "multiplier": multiplier,
+        "payout_bidcoins": reward_amount,
+        "net_bidcoins": net_bidcoins,
+        "free_remaining": updated_status.get("free_remaining", 0),
+        "ticket_balance": updated_status.get("ticket_balance", 0),
+    }
 
 
 @router.post("/spin-wheel/spin")

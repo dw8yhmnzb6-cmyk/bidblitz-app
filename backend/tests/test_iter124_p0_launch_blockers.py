@@ -17,7 +17,7 @@ import pathlib
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
-    BASE_URL = "https://taxi-uber-style.preview.emergentagent.com"
+    BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
 
 # Test credentials from /app/memory/test_credentials.md
 STAFF_EMAIL = "mitarbeiter@bidblitz.com"

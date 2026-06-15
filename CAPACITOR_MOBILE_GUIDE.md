@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://taxi-uber-style.preview.emergentagent.com',
+  url: 'https://game-center-hub-1.preview.emergentagent.com',
   cleartext: false,
 }
 ```

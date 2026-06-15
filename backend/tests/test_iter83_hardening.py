@@ -13,7 +13,7 @@ import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://taxi-uber-style.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://game-center-hub-1.preview.emergentagent.com").rstrip("/")
 MERCHANT_EMAIL = "haendler@bidblitz.com"
 MERCHANT_PASS = "Haendler2026!"
 MONGO_URL = "mongodb://localhost:27017"  # backend env

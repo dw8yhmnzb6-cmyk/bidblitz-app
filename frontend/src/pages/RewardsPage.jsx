@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
   RefreshCw,
   ChevronRight,
   Check,
+  Target,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -29,6 +30,7 @@ const copy = {
     title: "Reward Hub",
     subtitle: "Mystery Boxen, Glücksrad, Cashback und Coupons an einem Ort.",
     spinTitle: "Spin Wheel",
+    plinkoTitle: "Reward Plinko",
     boxTitle: "Mystery Boxen",
     overviewTitle: "Übersicht",
     activityTitle: "Letzte Rewards",
@@ -61,14 +63,18 @@ const copy = {
     couponCode: "Code",
     expires: "Läuft ab",
     spins: "Spins",
+    drops: "Drops",
     boxHistory: "Box-Verlauf",
     spinHistory: "Spin-Verlauf",
+    plinkoHistory: "Plinko-Verlauf",
     won: "Gewonnen",
+    openPlinko: "Plinko öffnen",
   },
   en: {
     title: "Reward Hub",
     subtitle: "Mystery boxes, wheel spins, cashback and coupons in one place.",
     spinTitle: "Spin Wheel",
+    plinkoTitle: "Reward Plinko",
     boxTitle: "Mystery Boxes",
     overviewTitle: "Overview",
     activityTitle: "Recent rewards",
@@ -101,9 +107,12 @@ const copy = {
     couponCode: "Code",
     expires: "Expires",
     spins: "Spins",
+    drops: "Drops",
     boxHistory: "Box history",
     spinHistory: "Spin history",
+    plinkoHistory: "Plinko history",
     won: "Won",
+    openPlinko: "Open Plinko",
   },
 };
 
@@ -130,7 +139,7 @@ const RewardChip = ({ reward }) => (
   </div>
 );
 
-export default function RewardsPage({ onBack }) {
+export default function RewardsPage({ onBack, onNavigate }) {
   const { lang } = useI18n();
   const user = useUser();
   const ui = copy[lang?.startsWith("de") ? "de" : "en"];
@@ -155,9 +164,22 @@ export default function RewardsPage({ onBack }) {
     premium_daily_spins: 3,
     premium_cashback_multiplier: 1.5,
     spin_enabled: true,
+    free_daily_plinko_drops: 0,
+    premium_daily_plinko_drops: 2,
+    plinko_bidcoin_cost: 40,
+    plinko_enabled: true,
   });
 
-  const load = useCallback(async (silent = false) => {
+  const applyHubData = (hubData, adminRes) => {
+    setHub(hubData);
+    if (adminRes) {
+      setAdminData(adminRes);
+      setAdminRewardConfig((prev) => ({ ...prev, ...(adminRes.config || {}) }));
+      setAdminHubConfig((prev) => ({ ...prev, ...(adminRes.reward_hub_config || {}) }));
+    }
+  };
+
+  const load = async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
@@ -165,30 +187,49 @@ export default function RewardsPage({ onBack }) {
         api.getRewardHub(),
         user?.role === "admin" ? api.getRewardsAdminConfig().catch(() => null) : Promise.resolve(null),
       ]);
-      setHub(hubData);
-      if (adminRes) {
-        setAdminData(adminRes);
-        setAdminRewardConfig((prev) => ({ ...prev, ...(adminRes.config || {}) }));
-        setAdminHubConfig((prev) => ({ ...prev, ...(adminRes.reward_hub_config || {}) }));
-      }
+      applyHubData(hubData, adminRes);
     } catch (error) {
       toast.error(error.message || "Reward Hub konnte nicht geladen werden");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.role]);
+  };
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    const boot = async () => {
+      setLoading(true);
+      try {
+        const [hubData, adminRes] = await Promise.all([
+          api.getRewardHub(),
+          user?.role === "admin" ? api.getRewardsAdminConfig().catch(() => null) : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+        applyHubData(hubData, adminRes);
+      } catch (error) {
+        if (!cancelled) toast.error(error.message || "Reward Hub konnte nicht geladen werden");
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    };
+    boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role]);
 
   const spinSegments = hub?.spin?.prizes || [];
+  const plinkoStatus = hub?.plinko || {};
   const overview = hub?.overview || {};
   const mysteryBoxes = hub?.mystery_boxes?.boxes || [];
   const rewardCoupons = hub?.coupons || [];
   const recentActivity = hub?.recent_activity || [];
   const spinHistory = hub?.spin?.history || [];
+  const plinkoHistory = hub?.plinko?.history || [];
   const handleSpin = async () => {
     if (!hub?.spin?.remaining || spinning) return;
     setSpinning(true);
@@ -241,8 +282,12 @@ export default function RewardsPage({ onBack }) {
         api.updateRewardHubAdminConfig({
           free_daily_spins: Number(adminHubConfig.free_daily_spins || 0),
           premium_daily_spins: Number(adminHubConfig.premium_daily_spins || 1),
+          free_daily_plinko_drops: Number(adminHubConfig.free_daily_plinko_drops || 0),
+          premium_daily_plinko_drops: Number(adminHubConfig.premium_daily_plinko_drops || 0),
+          plinko_bidcoin_cost: Number(adminHubConfig.plinko_bidcoin_cost || 0),
           premium_cashback_multiplier: Number(adminHubConfig.premium_cashback_multiplier || 1),
           spin_enabled: !!adminHubConfig.spin_enabled,
+          plinko_enabled: !!adminHubConfig.plinko_enabled,
         }),
       ]);
       toast.success("Reward Konfiguration gespeichert");
@@ -316,6 +361,20 @@ export default function RewardsPage({ onBack }) {
                   )}
                 </div>
                 <p className="text-sm text-white/65" data-testid="reward-hub-next-reset">Reset: {hub?.spin?.next_reset?.slice(0, 16)?.replace("T", " ")}</p>
+              </div>
+
+              <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-4" data-testid="reward-hub-plinko-summary-card">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/45">{ui.plinkoTitle}</p>
+                    <p className="mt-1 text-3xl font-black text-[#FFB08A]" data-testid="reward-hub-plinko-ticket-count">{plinkoStatus.ticket_balance ?? 0}</p>
+                    <p className="text-sm text-white/55">{plinkoStatus.free_remaining ?? 0} frei · {plinkoStatus.bidcoin_cost ?? 0} {ui.bidCoins}</p>
+                  </div>
+                  <button onClick={() => onNavigate && onNavigate("/reward-plinko")} data-testid="reward-hub-open-plinko-button" className="rounded-2xl border border-[#FFB08A]/20 bg-[#FFB08A]/10 px-3 py-2 text-xs font-bold text-[#FFB08A]">
+                    {ui.openPlinko}
+                  </button>
+                </div>
+                <p className="text-sm text-white/65" data-testid="reward-hub-plinko-best-multiplier">Top Multiplikator: {hub?.plinko?.stats?.best_multiplier || 0}x</p>
               </div>
 
               <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-4" data-testid="reward-hub-coupons-summary-card">
@@ -410,6 +469,34 @@ export default function RewardsPage({ onBack }) {
                     {!spinHistory.length && <div className="text-sm text-white/45">{ui.noActivity}</div>}
                   </div>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section className={`${panel} p-5`} data-testid="reward-plinko-section">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black">{ui.plinkoTitle}</h2>
+                <p className="text-sm text-white/55">{plinkoStatus.ticket_balance ?? 0} Tickets · {plinkoStatus.free_remaining ?? 0} frei</p>
+              </div>
+              <button onClick={() => onNavigate && onNavigate("/reward-plinko")} data-testid="reward-plinko-open-page-button" className="rounded-2xl bg-gradient-to-r from-[#FFB08A] to-[#FFD166] px-4 py-3 text-sm font-black text-[#0B1120]">
+                {ui.openPlinko}
+              </button>
+            </div>
+
+            <div className="rounded-[24px] border border-white/8 bg-white/[0.04] p-4" data-testid="reward-plinko-history-card">
+              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white/85"><Target size={15} className="text-[#FFB08A]" /> {ui.plinkoHistory}</div>
+              <div className="space-y-2">
+                {plinkoHistory.slice(0, 5).map((item, idx) => (
+                  <div key={item.drop_id || idx} className="flex items-center justify-between rounded-2xl border border-white/6 bg-black/20 px-3 py-2" data-testid={`reward-plinko-history-${idx}`}>
+                    <div>
+                      <div className="text-sm font-semibold text-white/85">{item.multiplier}x · Slot {Number(item.slot_index || 0) + 1}</div>
+                      <div className="text-xs text-white/45">{item.source} · {item.created_at?.slice(0, 16)?.replace("T", " ")}</div>
+                    </div>
+                    <div className="text-sm font-black text-[#FFB08A]">+{item.payout_bidcoins}</div>
+                  </div>
+                ))}
+                {!plinkoHistory.length && <div className="text-sm text-white/45">{ui.noActivity}</div>}
               </div>
             </div>
           </section>
@@ -553,6 +640,9 @@ export default function RewardsPage({ onBack }) {
                 {[
                   ["free_daily_spins", "Free Daily Spins", "number"],
                   ["premium_daily_spins", "Premium Daily Spins", "number"],
+                  ["free_daily_plinko_drops", "Free Daily Plinko", "number"],
+                  ["premium_daily_plinko_drops", "Premium Daily Plinko", "number"],
+                  ["plinko_bidcoin_cost", "Plinko BidCoin Cost", "number"],
                   ["premium_cashback_multiplier", "Premium Cashback Multiplier", "number"],
                 ].map(([key, label, type]) => (
                   <label key={key} className="block text-sm text-white/70">
@@ -573,6 +663,14 @@ export default function RewardsPage({ onBack }) {
                 >
                   <span>Spin Enabled</span>
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${adminHubConfig.spin_enabled ? "bg-[#00D26A]/20 text-[#8FFFC2]" : "bg-[#FF6B6B]/20 text-[#FFB3B3]"}`}>{adminHubConfig.spin_enabled ? "ON" : "OFF"}</span>
+                </button>
+                <button
+                  onClick={() => setAdminHubConfig((prev) => ({ ...prev, plinko_enabled: !prev.plinko_enabled }))}
+                  data-testid="reward-admin-toggle-plinko-enabled"
+                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#08101D] px-4 py-3 text-sm font-semibold text-white/85"
+                >
+                  <span>Plinko Enabled</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${adminHubConfig.plinko_enabled ? "bg-[#00D26A]/20 text-[#8FFFC2]" : "bg-[#FF6B6B]/20 text-[#FFB3B3]"}`}>{adminHubConfig.plinko_enabled ? "ON" : "OFF"}</span>
                 </button>
               </div>
             </div>
