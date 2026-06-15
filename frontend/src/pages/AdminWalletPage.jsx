@@ -24,12 +24,13 @@ async function api(path, opts = {}) {
     ...opts,
   });
   let d = {};
-  try { d = await r.clone().json(); } catch {}
+  try { d = await r.clone().json(); } catch (parseError) { d = {}; }
   if (!r.ok) throw new Error(d.detail || d.message || `Error ${r.status}`);
   return d;
 }
 
 const fmt = (n, d = 2) => Number(n || 0).toFixed(d);
+const fmtDateTime = (value) => value ? new Date(value).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "—";
 
 // ── Tab: Send to User ──
 const SendTab = ({ onDone }) => {
@@ -42,6 +43,28 @@ const SendTab = ({ onDone }) => {
   const [reason, setReason] = useState("");
   const [mode, setMode] = useState("credit"); // credit|debit
   const [busy, setBusy] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [loginHistory, setLoginHistory] = useState([]);
+
+  const handleSelectUser = async (user) => {
+    setSelected(user);
+    setLoginHistory([]);
+    setHistoryLoading(true);
+    try {
+      const res = await api(`/api/admin/wallet/users/${user.user_id}/login-history?limit=12`);
+      setLoginHistory(res.history || []);
+      setSelected((prev) => prev ? {
+        ...prev,
+        registered_at: res.user?.registered_at || prev.registered_at,
+        last_login_at: res.user?.last_login_at || prev.last_login_at,
+        login_count: res.user?.login_count ?? prev.login_count,
+      } : prev);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const search = useCallback(async (q) => {
     setSearching(true);
@@ -134,7 +157,7 @@ const SendTab = ({ onDone }) => {
               key={u.user_id}
               data-testid={`user-row-${u.user_id}`}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setSelected(u)}
+              onClick={() => handleSelectUser(u)}
               className="w-full rounded-xl p-3 flex items-center gap-3 text-left"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
             >
@@ -146,10 +169,17 @@ const SendTab = ({ onDone }) => {
                 <p className="text-[10px] text-white/40 truncate">
                   {u.username} · {u.role}
                 </p>
+                <p className="text-[9px] text-white/28 truncate" data-testid={`user-row-register-${u.user_id}`}>
+                  Registriert: {fmtDateTime(u.registered_at || u.created_at)}
+                </p>
+                <p className="text-[9px] text-white/28 truncate" data-testid={`user-row-last-login-${u.user_id}`}>
+                  Letzte Anmeldung: {fmtDateTime(u.last_login_at)}
+                </p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-[15px] font-bold text-[#00E89D] leading-tight">{fmt(u.balance_eur)}€</p>
                 <p className="text-[12px] font-semibold text-[#FFD700] leading-tight">{fmt(u.balance_blz, 0)} BLZ</p>
+                <p className="text-[9px] text-white/28">{Number(u.login_count || 0)} Logins</p>
               </div>
             </motion.button>
           ))}
@@ -169,10 +199,16 @@ const SendTab = ({ onDone }) => {
               <p className="text-[12px] text-white/70 font-medium">
                 💶 {fmt(selected.balance_eur)}€ · 🪙 {fmt(selected.balance_blz, 0)} BLZ
               </p>
+              <p className="text-[10px] text-white/60 mt-1" data-testid="selected-user-register-at">
+                Registriert: {fmtDateTime(selected.registered_at || selected.created_at)}
+              </p>
+              <p className="text-[10px] text-white/60" data-testid="selected-user-last-login-at">
+                Letzte Anmeldung: {fmtDateTime(selected.last_login_at)} · {Number(selected.login_count || 0)} Logins
+              </p>
             </div>
             <button
               data-testid="clear-user"
-              onClick={() => setSelected(null)}
+              onClick={() => { setSelected(null); setLoginHistory([]); }}
               className="text-white/40 hover:text-white"
             >
               <X size={14} />
@@ -252,6 +288,25 @@ const SendTab = ({ onDone }) => {
             {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
             {mode === "credit" ? "Geld senden" : "Geld abziehen"}
           </motion.button>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3" data-testid="selected-user-login-history-card">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/55">Login-Historie</p>
+              {historyLoading && <Loader2 size={12} className="animate-spin text-white/40" />}
+            </div>
+            <div className="space-y-2 max-h-[180px] overflow-y-auto">
+              {loginHistory.map((entry, idx) => (
+                <div key={`${entry.event}-${entry.timestamp}-${idx}`} className="rounded-lg border border-white/6 bg-black/20 px-3 py-2" data-testid={`selected-user-login-history-${idx}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-white">{entry.event === "register" ? "Registrierung" : "Login"}</p>
+                    <p className="text-[10px] text-white/45">{fmtDateTime(entry.timestamp)}</p>
+                  </div>
+                  <p className="mt-1 text-[10px] text-white/45 truncate">IP: {entry.ip || "—"}</p>
+                </div>
+              ))}
+              {!historyLoading && !loginHistory.length && <p className="text-[10px] text-white/35">Noch keine Login-Daten gefunden.</p>}
+            </div>
+          </div>
         </motion.div>
       )}
     </div>
@@ -265,17 +320,25 @@ const SelfTopupTab = () => {
   const [busy, setBusy] = useState(false);
   const [balance, setBalance] = useState({ eur: 0, blz: 0 });
 
-  const loadBalance = useCallback(async () => {
-    try {
-      const r = await api("/api/wallet/balance");
-      setBalance({
-        eur: Number(r.balance || r.balance_eur || 0),
-        blz: Number(r.balance_blz || 0),
-      });
-    } catch {}
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      try {
+        const r = await api("/api/wallet/balance");
+        if (!mounted) return;
+        setBalance({
+          eur: Number(r.balance || r.balance_eur || 0),
+          blz: Number(r.balance_blz || 0),
+        });
+      } catch (error) {
+        void error;
+      }
+    };
+    run();
+    return () => {
+      mounted = false;
+    };
   }, []);
-
-  useEffect(() => { loadBalance(); }, [loadBalance]);
 
   const submit = async () => {
     const eur = parseFloat(amountEur) || 0;

@@ -54,9 +54,6 @@ async def overview(request: Request):
     # Calculate total revenue from different sources
     total_revenue = 0
     
-    # Stripe top-ups (platform keeps processing fee)
-    stripe_txns = await db.transactions.count_documents({"type": "top_up", "status": "completed"})
-    
     # Auction credits purchases
     auction_revenue = await db.transactions.aggregate([
         {"$match": {"type": "credit_purchase", "status": "completed"}},
@@ -173,6 +170,9 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
             "balance": u.get("balance", u.get("bids_balance", 0)),
             "transaction_count": txn_map.get(uid, 0),
             "created_at": u.get("created_at", ""),
+            "registered_at": u.get("registered_at", u.get("created_at", "")),
+            "last_login_at": u.get("last_login_at", ""),
+            "login_count": int(u.get("login_count", 0) or 0),
         })
 
     return {"users": result, "total": total}
@@ -506,7 +506,7 @@ async def get_compliance_checks(
 # ── Feature Flags Management ──
 @router.get("/feature-flags")
 async def get_feature_flags(request: Request):
-    admin = await require_admin(request)
+    await require_admin(request)
     from core.feature_flags import get_all_flags
     flags = await get_all_flags()
     return {"flags": flags}
@@ -515,11 +515,10 @@ async def get_feature_flags(request: Request):
 @router.put("/feature-flags/{flag_name}")
 async def update_feature_flag(flag_name: str, request: Request):
     admin = await require_admin(request)
-    from core.feature_flags import update_flag, DEFAULT_FLAGS
+    from core.feature_flags import update_flag, DEFAULT_FLAGS, get_all_flags
     body = await request.json()
     if flag_name not in DEFAULT_FLAGS and flag_name not in (await get_all_flags()):
         raise HTTPException(status_code=404, detail="Unknown feature flag")
-    from core.feature_flags import get_all_flags
     result = await update_flag(
         flag_name,
         enabled=body.get("enabled"),

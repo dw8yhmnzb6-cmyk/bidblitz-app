@@ -20,6 +20,20 @@ logger = logging.getLogger("bidblitz.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+async def _record_login_success(user_id: str, ip: str, user_agent: str):
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "last_login_at": datetime.now(timezone.utc).isoformat(),
+                "last_login_ip": ip,
+                "last_login_user_agent": (user_agent or "")[:256],
+            },
+            "$inc": {"login_count": 1},
+        },
+    )
+
+
 def generate_card_number():
     groups = [str(random.randint(1000, 9999)) for _ in range(4)]
     return " ".join(groups)
@@ -83,6 +97,11 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "payment_barcode": f"BLZ-{secrets.token_hex(6).upper()}",
         "welcome_bonus_received": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "registered_at": datetime.now(timezone.utc).isoformat(),
+        "last_login_at": None,
+        "last_login_ip": "",
+        "last_login_user_agent": "",
+        "login_count": 0,
     }
     # Save requested role if provided (admin approval required)
     if req.requested_role and req.requested_role in ("merchant", "influencer", "manager", "investor"):
@@ -283,6 +302,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     set_auth_cookies(response, access_token, refresh_token, req.remember_me)
+    await _record_login_success(user_id, ip, ua)
 
     await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
                     ip=ip, user_agent=ua, details={"role": user.get("role", "user")})
@@ -510,6 +530,7 @@ async def verify_2fa_login(request: Request, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     set_auth_cookies(response, access_token, refresh_token, remember=True)
+    await _record_login_success(user_id, ip, ua)
     
     await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
                     ip=ip, user_agent=ua, details={"role": user.get("role", "user"), "2fa": True})

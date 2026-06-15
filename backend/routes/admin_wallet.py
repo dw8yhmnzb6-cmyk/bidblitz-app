@@ -13,6 +13,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
@@ -26,6 +27,23 @@ async def _require_admin(request: Request):
     if (user.get("role") or "") not in ("admin", "super_admin"):
         raise HTTPException(403, "Admin-Rechte erforderlich.")
     return user
+
+
+async def _serialize_login_history(user_id: str, limit: int = 20):
+    rows = await db.audit_logs.find(
+        {"user_id": user_id, "event": {"$in": ["login_success", "register"]}},
+        {"_id": 0, "event": 1, "timestamp": 1, "ip": 1, "user_agent": 1, "details": 1},
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    return [
+        {
+            "event": row.get("event", ""),
+            "timestamp": row.get("timestamp", ""),
+            "ip": row.get("ip", ""),
+            "user_agent": row.get("user_agent", ""),
+            "details": row.get("details", {}),
+        }
+        for row in rows
+    ]
 
 
 @router.get("/users")
@@ -43,7 +61,8 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
         }
     cur = db.users.find(query, {
         "_id": 1, "id": 1, "email": 1, "username": 1, "full_name": 1,
-        "role": 1, "wallet_balance": 1, "created_at": 1,
+        "role": 1, "wallet_balance": 1, "created_at": 1, "registered_at": 1,
+        "last_login_at": 1, "login_count": 1,
     }).sort("created_at", -1).limit(limit)
 
     users = []
@@ -59,8 +78,38 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
             "balance_eur": float((wallet or {}).get("balance", u.get("wallet_balance", 0)) or 0),
             "balance_blz": float((wallet or {}).get("balance_blz", 0) or 0),
             "created_at": u.get("created_at"),
+            "registered_at": u.get("registered_at") or u.get("created_at"),
+            "last_login_at": u.get("last_login_at"),
+            "login_count": int(u.get("login_count", 0) or 0),
         })
     return {"users": users, "count": len(users)}
+
+
+@router.get("/users/{user_id}/login-history")
+async def user_login_history(user_id: str, request: Request, limit: int = 20):
+    await _require_admin(request)
+    try:
+        target = await db.users.find_one(
+            {"_id": ObjectId(user_id)},
+            {"_id": 1, "email": 1, "name": 1, "username": 1, "role": 1, "created_at": 1, "registered_at": 1, "last_login_at": 1, "login_count": 1},
+        )
+    except Exception as exc:
+        raise HTTPException(404, "User nicht gefunden.") from exc
+    if not target:
+        raise HTTPException(404, "User nicht gefunden.")
+    history = await _serialize_login_history(user_id, min(max(limit, 1), 50))
+    return {
+        "user": {
+            "user_id": str(target["_id"]),
+            "email": target.get("email", ""),
+            "name": target.get("name") or target.get("username", ""),
+            "role": target.get("role", "user"),
+            "registered_at": target.get("registered_at") or target.get("created_at"),
+            "last_login_at": target.get("last_login_at"),
+            "login_count": int(target.get("login_count", 0) or 0),
+        },
+        "history": history,
+    }
 
 
 class CreditReq(BaseModel):

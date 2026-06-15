@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-06-15T21:02:42.656922",
+  "base_url": "https://game-center-hub-1.preview.emergentagent.com",
+  "tests": [
+    {
+      "name": "Admin Login",
+      "passed": true,
+      "details": "Login successful - Status: 200, Email: admin@bidblitz.com, Role: admin, Cookies set: True"
+    },
+    {
+      "name": "Admin User Search with Tracking Fields",
+      "passed": true,
+      "details": "Found admin user with all tracking fields - user_id: 69cface7afddbc3de2cabb39, registered_at: 2026-04-03T12:04:55.708517+00:00, last_login_at: 2026-06-15T21:02:43.154000+00:00, login_count: 2"
+    },
+    {
+      "name": "Login History Endpoint",
+      "passed": true,
+      "details": "Login history retrieved successfully - 5 entries, user_id: 69cface7afddbc3de2cabb39, registered_at: 2026-04-03T12:04:55.708517+00:00, last_login_at: 2026-06-15T21:02:43.154000+00:00, login_count: 2, History: Entry 0: event=login_success, timestamp=2026-06-15T21:02:43.154640+00:00, ip=10.79.128.145; Entry 1: event=login_success, timestamp=2026-06-15T21:00:47.184458+00:00, ip=10.79.128.146; Entry 2: event=login_success, timestamp=2026-06-15T19:36:13.561405+00:00, ip=10.79.128.145"
+    },
+    {
+      "name": "No 500 Errors",
+      "passed": true,
+      "details": "All endpoints returned proper status codes (no 500 Internal Server Errors)"
+    },
+    {
+      "name": "Regression - Admin Wallet User Search",
+      "passed": true,
+      "details": "User search working correctly - Found 10 users, Response structure valid"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
+  }
+}
