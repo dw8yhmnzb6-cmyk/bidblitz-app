@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 15.06.2026 — Game Center Coins-Aufladen Fix
+- Game-Center-Gaming-Router sauber registriert; `/api/gaming/profile` und `/api/gaming/buy-coins` liefern 200 statt 404
+- Gaming Buy-Coins-Flow verbessert: bei zu wenig Wallet-Guthaben geht es jetzt automatisch zu `/wallet?action=topup`
+- Verifiziert: Backend 5/5 PASS (`deep_testing_backend_v2`), Frontend 5/5 PASS (`auto_frontend_testing_agent`)
+
 ## 15.06.2026 — Mobile Taxi GPS + Overlap Fix
 - Taxi-GPS verbessert: High-Accuracy-Fallback, bessere iPhone-Hinweise und stabilerer Last-Known-Location-Flow
 - `/taxi` Mobile-Abstände zwischen GPS-CTA, Loading-Chip, Karte und Bottom-Sheet verbessert

@@ -9,6 +9,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
 - Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
 
+### 15.06.2026 (Game Center Coins-Aufladen Fix) ✅
+- 🟢 **Gaming-API korrekt registriert** (`backend/core/router_registry.py`): `routes.gaming` war für den Game-Center-Coins-Flow nicht aktiv genug im Live-Flow; `/api/gaming/profile` und `/api/gaming/buy-coins` laufen jetzt sauber über den registrierten Router.
+- 🟢 **Game-Center Top-up-UX verbessert** (`frontend/src/pages/GamingPage.jsx`): falls Wallet-Guthaben nicht reicht, führt der Buy-Coins-Flow jetzt automatisch zur Wallet-Topup-Seite statt nur einen Fehler stehenzulassen.
+- ✅ **Verifiziert**: Backend-Test 5/5 PASS (`deep_testing_backend_v2`), Frontend-Test 5/5 PASS (`auto_frontend_testing_agent`) — `/gaming`, Coin-Balance, Buy-Coins-Modal und Confirm-Flow funktionieren ohne 404/Unexpected Error.
+
 ### 15.06.2026 (Mobile Taxi GPS + Overlap Fix) ✅
 - 🟢 **Taxi-GPS-Flow gehärtet** (`frontend/src/hooks/useGeolocation.js`): Fallback von High-Accuracy auf coarse GPS, klarere iPhone-Hinweise bei verweigerter Berechtigung und bessere letzte bekannte Position.
 - 🟢 **Taxi-Mobile-Layout entzerrt** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/taxi/TaxiBottomSheet.jsx`): GPS-CTA, Loading-Chip und Bottom-Sheet haben jetzt mehr vertikalen Abstand und kollidieren auf iPhone nicht mehr.
