@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 15.06.2026 — Mobile Taxi GPS + Overlap Fix
+- Taxi-GPS verbessert: High-Accuracy-Fallback, bessere iPhone-Hinweise und stabilerer Last-Known-Location-Flow
+- `/taxi` Mobile-Abstände zwischen GPS-CTA, Loading-Chip, Karte und Bottom-Sheet verbessert
+- `/taxi/pro` Tabs mobil auf horizontal scrollbaren Strip umgestellt, damit nichts mehr überlappt
+- Verifiziert: Frontend PASS (`auto_frontend_testing_agent`) auf mobilem Viewport für `/taxi` und `/taxi/pro`
+
 ## 15.06.2026 — Admin Login-/Registrierungs-Tracking
 - Auth erweitert: `registered_at`, `last_login_at`, `last_login_ip`, `last_login_user_agent`, `login_count`
 - Admin-Wallet-Userliste zeigt jetzt direkt Registrierungsdatum, letzte Anmeldung und Login-Anzahl

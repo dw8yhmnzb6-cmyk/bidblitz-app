@@ -9,6 +9,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
 - Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
 
+### 15.06.2026 (Mobile Taxi GPS + Overlap Fix) ✅
+- 🟢 **Taxi-GPS-Flow gehärtet** (`frontend/src/hooks/useGeolocation.js`): Fallback von High-Accuracy auf coarse GPS, klarere iPhone-Hinweise bei verweigerter Berechtigung und bessere letzte bekannte Position.
+- 🟢 **Taxi-Mobile-Layout entzerrt** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/components/taxi/TaxiBottomSheet.jsx`): GPS-CTA, Loading-Chip und Bottom-Sheet haben jetzt mehr vertikalen Abstand und kollidieren auf iPhone nicht mehr.
+- 🟢 **Taxi Pro Suite mobil verbessert** (`frontend/src/pages/TaxiProSuitePage.jsx`): Tab-Leiste ist jetzt horizontal scrollbar mit Safe-Area-Abständen statt überlappender Buttons.
+- ✅ **Verifiziert**: Frontend-Test PASS (`auto_frontend_testing_agent`) für `/taxi` und `/taxi/pro` auf mobilem Viewport; User-relevante Überlagerungen behoben.
+
 ### 15.06.2026 (Admin Login-/Registrierungs-Tracking) ✅
 - 🟢 **Auth-Metadaten erweitert** (`backend/routes/auth.py`): `registered_at`, `last_login_at`, `last_login_ip`, `last_login_user_agent`, `login_count` werden jetzt bei Register/Login/2FA-Login gepflegt.
 - 🟢 **Admin-Wallet-Userliste erweitert** (`backend/routes/admin_wallet.py`, `frontend/src/pages/AdminWalletPage.jsx`): pro User sind jetzt Registrierungsdatum, letzte Anmeldung und Login-Anzahl direkt sichtbar.
