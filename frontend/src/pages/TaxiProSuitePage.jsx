@@ -19,7 +19,7 @@ const Tab = ({ active, onClick, icon: Icon, label, testId }) => (
   <button
     onClick={onClick}
     data-testid={testId}
-    className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold rounded-xl border transition-colors ${
+    className={`min-w-[144px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
       active
         ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
         : "bg-white/[0.03] text-gray-400 border-white/[0.04] hover:bg-white/5"
@@ -440,7 +440,7 @@ export default function TaxiProSuitePage({ onBack }) {
   const [tab, setTab] = useState("scheduled");
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col" data-testid="taxi-pro-suite">
-      <div className="sticky top-0 z-30 bg-black/85 backdrop-blur-md border-b border-white/[0.06] px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-30 bg-black/90 backdrop-blur-md border-b border-white/[0.06] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center gap-3">
         <button onClick={onBack} className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center" data-testid="pro-back">
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -450,14 +450,16 @@ export default function TaxiProSuitePage({ onBack }) {
         </div>
       </div>
 
-      <div className="px-3 pt-2 pb-1 grid grid-cols-4 gap-1.5 bg-[#050505] border-b border-white/[0.04]">
+      <div className="sticky top-[calc(env(safe-area-inset-top,0px)+68px)] z-20 bg-[#050505]/96 border-b border-white/[0.04]">
+        <div className="px-3 pt-2 pb-2 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-testid="pro-tabs-strip">
         <Tab active={tab === "scheduled"} onClick={() => setTab("scheduled")} icon={Calendar} label="Geplant" testId="pro-tab-scheduled" />
         <Tab active={tab === "recurring"} onClick={() => setTab("recurring")} icon={Repeat} label="Pendler" testId="pro-tab-recurring" />
         <Tab active={tab === "corporate"} onClick={() => setTab("corporate")} icon={Building2} label="Firma" testId="pro-tab-corporate" />
         <Tab active={tab === "lostfound"} onClick={() => setTab("lostfound")} icon={Search} label="Lost+Found" testId="pro-tab-lostfound" />
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-3 pb-[calc(env(safe-area-inset-bottom,0px)+28px)]">
         {tab === "scheduled" && <ScheduledTab />}
         {tab === "recurring" && <RecurringTab />}
         {tab === "corporate" && <CorporateTab />}

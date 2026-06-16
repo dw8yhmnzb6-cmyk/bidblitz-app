@@ -196,6 +196,7 @@ export default function TaxiPage({ onNavigate }) {
     currentAddress,
     loadingLocation,
     permissionState,
+    gpsHelperText,
     getCurrentLocation,
   } = useGeolocation({ setPickup, mapRef, pickupMarkerRef });
 
@@ -725,7 +726,7 @@ export default function TaxiPage({ onNavigate }) {
 
           {!mapError && !mapReady && (
             <div
-              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+84px)] z-20 mx-auto flex w-fit max-w-[calc(100%-32px)] items-center gap-2 rounded-full border border-black/5 bg-white/92 px-4 py-2 text-xs font-semibold text-zinc-700 shadow-[0_12px_30px_rgba(15,23,42,0.12)]"
+              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+126px)] z-20 mx-auto flex w-fit max-w-[calc(100%-32px)] items-center gap-2 rounded-full border border-black/5 bg-white/92 px-4 py-2 text-xs font-semibold text-zinc-700 shadow-[0_12px_30px_rgba(15,23,42,0.12)] sm:top-[calc(env(safe-area-inset-top,0px)+98px)]"
               data-testid="taxi-map-loading-chip"
             >
               <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#0F6FFF]" />
@@ -757,7 +758,7 @@ export default function TaxiPage({ onNavigate }) {
                       <button
                         onClick={() => getCurrentLocation()}
                         data-testid="map-flow-gps-denied-cta"
-                        className="flex-1 max-w-[min(56vw,420px)] bg-white/90 border border-red-200 rounded-full px-4 py-2.5 text-left min-w-0 flex items-center gap-3 shadow-[0_8px_24px_rgba(15,23,42,0.14)] hover:bg-white active:scale-[0.98] transition-all pointer-events-auto"
+                        className="flex-1 max-w-[min(54vw,420px)] bg-white/92 border border-red-200 rounded-[26px] px-4 py-2.5 text-left min-w-0 flex items-center gap-3 shadow-[0_8px_24px_rgba(15,23,42,0.14)] hover:bg-white active:scale-[0.98] transition-all pointer-events-auto"
                       >
                         <span className="relative flex h-3 w-3 shrink-0">
                           <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-45 animate-ping" />
@@ -772,13 +773,18 @@ export default function TaxiPage({ onNavigate }) {
                           <p className="text-sm text-zinc-900 truncate leading-tight mt-1 font-medium">
                             {permissionState === 'granted' ? 'Wird automatisch neu verbunden…' : 'Tippen, um zu aktivieren'}
                           </p>
+                          {gpsHelperText && (
+                            <p className="mt-1 text-[11px] leading-snug text-zinc-500 whitespace-normal" data-testid="map-flow-gps-helper-text">
+                              {gpsHelperText}
+                            </p>
+                          )}
                         </span>
                       </button>
                     );
                   }
                   return (
                     <div
-                      className="flex-1 max-w-[min(56vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-full px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto"
+                      className="flex-1 max-w-[min(54vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-[26px] px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto"
                       data-testid="map-flow-current-address"
                     >
                       <p className="text-[10px] text-[#002FA7] font-semibold uppercase tracking-[0.2em] leading-none">
@@ -789,7 +795,7 @@ export default function TaxiPage({ onNavigate }) {
                   );
                 })()
               ) : (
-                <div className="flex-1 max-w-[min(56vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-full px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto" data-testid="map-flow-current-address">
+                <div className="flex-1 max-w-[min(54vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-[26px] px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto" data-testid="map-flow-current-address">
                   <p className="text-[10px] text-[#002FA7] font-semibold uppercase tracking-[0.2em] leading-none">GPS wird gesucht</p>
                   <p className="text-sm text-zinc-700 truncate leading-tight mt-1 font-medium">Wir holen deinen Standort jetzt.</p>
                 </div>
@@ -799,7 +805,7 @@ export default function TaxiPage({ onNavigate }) {
                 <button
                   onClick={getCurrentLocation}
                   disabled={loadingLocation}
-                  className="w-12 h-12 rounded-full bg-white/88 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(15,23,42,0.14)] text-zinc-900 flex items-center justify-center disabled:opacity-50"
+                  className="mt-1 h-11 w-11 rounded-full bg-white/88 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(15,23,42,0.14)] text-zinc-900 flex items-center justify-center disabled:opacity-50 sm:mt-0 sm:h-12 sm:w-12"
                   data-testid="map-flow-locate"
                   title="Standort"
                 >

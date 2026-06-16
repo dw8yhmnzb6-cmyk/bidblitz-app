@@ -74,6 +74,7 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
   const [currentAddress, setCurrentAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [permissionState, setPermissionState] = useState('prompt');
+  const [gpsHelperText, setGpsHelperText] = useState('');
   const lastAutoRetryAtRef = useRef(0);
 
   // Reverse geocode coordinates to address.
@@ -125,58 +126,79 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
     }
 
     setLoadingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        console.log('✓ GPS Position:', latitude, longitude);
+    const applyResolvedPosition = async (position) => {
+      const { latitude, longitude } = position.coords;
+      console.log('✓ GPS Position:', latitude, longitude);
 
-        setPickup(prev => ({ ...prev, lat: latitude, lng: longitude }));
-        persistLastKnownPickup({ lat: latitude, lng: longitude });
+      setPermissionState('granted');
+      setGpsHelperText('');
+      setPickup(prev => ({ ...prev, lat: latitude, lng: longitude }));
+      persistLastKnownPickup({ lat: latitude, lng: longitude });
 
-        // Update map center & pickup marker (Mapbox)
+      if (mapRef?.current) {
+        moveMapTo(mapRef.current, longitude, latitude, 14);
+      }
+      if (pickupMarkerRef?.current) {
+        moveMarkerTo(pickupMarkerRef.current, longitude, latitude);
+      }
+
+      await reverseGeocode(latitude, longitude);
+      setLoadingLocation(false);
+    };
+
+    const handleGeoError = (error, attempt = 'precise') => {
+      console.error('❌ Geolocation error:', error, attempt);
+      if ((error.code === 2 || error.code === 3) && attempt === 'precise') {
+        navigator.geolocation.getCurrentPosition(
+          applyResolvedPosition,
+          (fallbackError) => handleGeoError(fallbackError, 'coarse'),
+          {
+            enableHighAccuracy: false,
+            timeout: 16000,
+            maximumAge: 120000,
+          }
+        );
+        return;
+      }
+
+      let errorMsg = 'Standort konnte nicht ermittelt werden';
+      let helper = '';
+      if (error.code === 1) {
+        setPermissionState('denied');
+        errorMsg = 'Standortzugriff verweigert. Bitte Berechtigung in Safari erlauben.';
+        helper = 'iPhone: aA → Website-Einstellungen → Standort → Erlauben';
+      } else if (error.code === 2) {
+        errorMsg = 'Standort nicht verfügbar. Bitte GPS-Signal prüfen.';
+        helper = 'Wir nutzen solange die sichere Karte und deinen letzten bekannten Punkt.';
+      } else if (error.code === 3) {
+        errorMsg = 'Standortabfrage Timeout. Bitte erneut versuchen.';
+        helper = 'Falls du drinnen bist: kurz nach draußen gehen oder WLAN aktiv lassen.';
+      }
+      setGpsHelperText(helper);
+      if (!silent) setCurrentAddress(errorMsg);
+
+      const lastKnown = readLastKnownPickup();
+      if (lastKnown) {
+        setPickup(prev => ({
+          ...prev,
+          lat: prev.lat && prev.lat !== 0 ? prev.lat : lastKnown.lat,
+          lng: prev.lng && prev.lng !== 0 ? prev.lng : lastKnown.lng,
+          address: prev.address || lastKnown.address || '',
+        }));
         if (mapRef?.current) {
-          moveMapTo(mapRef.current, longitude, latitude, 14);
+          moveMapTo(mapRef.current, lastKnown.lng, lastKnown.lat, 13.5);
         }
         if (pickupMarkerRef?.current) {
-          moveMarkerTo(pickupMarkerRef.current, longitude, latitude);
+          moveMarkerTo(pickupMarkerRef.current, lastKnown.lng, lastKnown.lat);
         }
+      }
 
-        // Reverse geocode to get address
-        await reverseGeocode(latitude, longitude);
-        setLoadingLocation(false);
-      },
-      (error) => {
-        console.error('❌ Geolocation error:', error);
-        
-        // Provide helpful error message based on error code
-        let errorMsg = 'Standort konnte nicht ermittelt werden';
-        if (error.code === 1) {
-          errorMsg = 'Standortzugriff verweigert. Bitte Berechtigung in den Geräte-Einstellungen aktivieren.';
-        } else if (error.code === 2) {
-          errorMsg = 'Standort nicht verfügbar. Bitte GPS-Signal prüfen.';
-        } else if (error.code === 3) {
-          errorMsg = 'Standortabfrage Timeout. Bitte erneut versuchen.';
-        }
-        if (!silent) setCurrentAddress(errorMsg);
+      setLoadingLocation(false);
+    };
 
-        const lastKnown = readLastKnownPickup();
-        if (lastKnown) {
-          setPickup(prev => ({
-            ...prev,
-            lat: prev.lat && prev.lat !== 0 ? prev.lat : lastKnown.lat,
-            lng: prev.lng && prev.lng !== 0 ? prev.lng : lastKnown.lng,
-            address: prev.address || lastKnown.address || '',
-          }));
-          if (mapRef?.current) {
-            moveMapTo(mapRef.current, lastKnown.lng, lastKnown.lat, 13.5);
-          }
-          if (pickupMarkerRef?.current) {
-            moveMarkerTo(pickupMarkerRef.current, lastKnown.lng, lastKnown.lat);
-          }
-        }
-        
-        setLoadingLocation(false);
-      },
+    navigator.geolocation.getCurrentPosition(
+      applyResolvedPosition,
+      (error) => handleGeoError(error, 'precise'),
       {
         enableHighAccuracy: true,
         timeout: 10000,
@@ -228,6 +250,7 @@ export function useGeolocation({ setPickup, mapRef, pickupMarkerRef }) {
     loadingLocation,
     setLoadingLocation,
     permissionState,
+    gpsHelperText,
     getCurrentLocation,
     reverseGeocode,
   };
