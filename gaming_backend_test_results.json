@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-06-16T14:14:07.387304",
+  "base_url": "https://game-center-hub-1.preview.emergentagent.com",
+  "tests": [
+    {
+      "name": "Admin Login",
+      "passed": true,
+      "details": "Status: 200, Has cookies: True, User: admin@bidblitz.com"
+    },
+    {
+      "name": "Gaming Profile",
+      "passed": true,
+      "details": "Status: 200, Coins: 6220, Has stats: True"
+    },
+    {
+      "name": "Buy Coins - Response Structure",
+      "passed": true,
+      "details": "Status: 200, ok: True, coins_added: 1000, new_balance: 7220"
+    },
+    {
+      "name": "Buy Coins - Balance Update",
+      "passed": true,
+      "details": "Initial: 6220, Added: 1000, New: 7220, Expected: 7220"
+    },
+    {
+      "name": "Regression Check - No 500 Errors",
+      "passed": true,
+      "details": "\n    \u2705 GET /api/gaming/profile: 200\n    \u2705 GET /api/gaming/leaderboard: 200\n    \u2705 GET /api/gaming/coin-history: 200"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5
+  }
+}

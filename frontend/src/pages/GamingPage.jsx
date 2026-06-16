@@ -62,6 +62,11 @@ const GamingPage = ({ onNavigate, onBack }) => {
         setShowBuyCoins(false);
       } else {
         const err = await res.json();
+        if (/nicht genug guthaben/i.test(err.detail || "")) {
+          setShowBuyCoins(false);
+          onNavigate?.("/wallet?action=topup");
+          return;
+        }
         alert(err.detail || t("gaming.buy_error"));
       }
     } catch (err) { alert(t("gaming.error")); }

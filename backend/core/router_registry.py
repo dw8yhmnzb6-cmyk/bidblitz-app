@@ -174,6 +174,7 @@ def register_all_routers(app):
         ("routes.pay_sdk", "router"),  # BidBlitz Pay SDK for 3rd-party websites
         
         # Entertainment
+        ("routes.gaming", "router"),
         ("routes.casino", "router"),
         ("routes.arcade", "router"),
         ("routes.nft_generator", "router"),
