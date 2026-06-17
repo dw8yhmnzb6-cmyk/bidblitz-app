@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 17.06.2026 — Legacy-Password-Report + Secure Reset Flow
+- Admin-Report für Legacy-Passwortformate ergänzt: User ID, E-Mail, Registrierungsdatum, Passwortformat, Risiko-Level, empfohlene Aktion
+- Passwort-Reset gehärtet: gehashte Reset-Tokens, Verify-Endpoint, Ablaufzeit, Audit-Logs, neue Reset-Seite `/reset-password`
+- Admin-Reset nun per sicherem Reset-Link statt direkter Passwortvergabe
+- Verifiziert: Backend PASS (`deep_testing_backend_v2`), Frontend PASS (`auto_frontend_testing_agent`), E2E-Reset für `max.weber@bidblitz.com` erfolgreich
+- Bekannte Live-Einschränkung: Resend-Testmodus blockiert echte Kundenzustellung bis eine Senderdomain verifiziert ist
+
 ## 17.06.2026 — Kundenlogin / Legacy-Auth Fix
 - Kundenlogin für alte User-Records repariert: Support für Legacy-Passworthashes im Feld `password` plus automatische Migration nach `password_hash`
 - Auth-UI verbessert: festhängende Meldung `Session abgelaufen. Bitte erneut anmelden.` wird beim Tippen sofort entfernt

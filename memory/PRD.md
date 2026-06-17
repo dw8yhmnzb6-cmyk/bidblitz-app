@@ -9,6 +9,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
 - Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
 
+### 17.06.2026 (Legacy-Password-Report + Secure Reset Flow) ✅
+- 🟢 **Vollständiger Admin-Report live** (`backend/routes/admin_management.py`, `frontend/src/pages/AdminManagementPage.jsx`): Report listet jetzt User ID, E-Mail, Registrierungsdatum, Passwortformat, Risiko-Level und empfohlene Aktion inkl. Summary-Zählern für alle nicht-admin Kundenkonten.
+- 🟢 **Sicherer Passwort-Reset-Flow gehärtet** (`backend/routes/auth.py`, `frontend/src/pages/ResetPasswordPage.jsx`, `frontend/src/App.js`): gehashte Reset-Tokens, Verify-Endpoint, Ablaufzeit, Audit-Logs, Legacy-Passwortbereinigung und echte Reset-Seite `/reset-password` sind live.
+- 🟢 **Admin-Reset auf Reset-Link umgestellt** (`backend/routes/admin_management.py`, `frontend/src/pages/AdminManagementPage.jsx`): statt direkter Passwortvergabe verschickt Admin jetzt einen sicheren Reset-Link per E-Mail.
+- ✅ **Verifiziert**: Backend PASS (`deep_testing_backend_v2`), Frontend PASS (`auto_frontend_testing_agent`), E2E-Reset mit `max.weber@bidblitz.com` erfolgreich (alter Login 401, neuer Login 200 nach Reset).
+- ⚠️ **Live-E-Mail-Einschränkung**: Der vorhandene Resend-Account ist aktuell im Testmodus und darf nur an die verifizierte Kontoadresse zustellen. Für echte Kundenmails muss die Senderdomain in Resend verifiziert werden.
+
 ### 17.06.2026 (Kundenlogin / Legacy-Auth Fix) ✅
 - 🟢 **Legacy-Kundenlogin repariert** (`backend/routes/auth.py`): Login prüft jetzt alte Kundenkonten sowohl gegen `password_hash` als auch gegen das alte Feld `password` und migriert erfolgreiche Legacy-Logins automatisch auf `password_hash`.
 - 🟢 **Login-Screen entstört** (`frontend/src/pages/AuthPage.jsx`, `frontend/src/store/UserContext.jsx`): die rote Meldung `Session abgelaufen. Bitte erneut anmelden.` bleibt nicht mehr hängen und wird beim Tippen direkt gelöscht.
