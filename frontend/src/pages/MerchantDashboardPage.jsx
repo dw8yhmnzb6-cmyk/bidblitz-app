@@ -106,6 +106,8 @@ const MerchantDashboardPage = ({ onBack }) => {
         setPayRevenue({ total_paid: paid, total_sessions: total });
       }).catch(() => undefined);
       api.getMySessions(30).then(d => setPaySessions(d.sessions || [])).catch(() => undefined);
+    }
+    if (tab === "invoice-links") {
       api.getMyInvoices?.().then(d => setInvoiceLinks((d.invoices || []).slice(0, 20))).catch(() => undefined);
     }
   }, [tab, selectedBranch]);

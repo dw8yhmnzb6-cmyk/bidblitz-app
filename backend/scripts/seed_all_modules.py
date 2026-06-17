@@ -442,11 +442,15 @@ invoices = []
 for i in range(8):
     amount = round(random.uniform(50, 5000), 2)
     tax = round(amount * 0.19, 2)
+    owner_email = random.choice(["admin@bidblitz.com", "buchhaltung@bidblitz.com"])
     invoices.append({
         "invoice_id": f"inv_{rid()}",
         "invoice_number": f"INV-2026-{1000+i}",
+        "user_email": owner_email,
         "from_name": random.choice(["BidBlitz GmbH", "Max Mustermann", "Webdesign Studio Berlin"]),
-        "from_email": random.choice(["admin@bidblitz.com", "buchhaltung@bidblitz.com"]),
+        "from_email": owner_email,
+        "client_name": random.choice(NAMES),
+        "client_email": f"kunde{random.randint(1,20)}@email.de",
         "to_name": random.choice(NAMES),
         "to_email": f"kunde{random.randint(1,20)}@email.de",
         "items": [
