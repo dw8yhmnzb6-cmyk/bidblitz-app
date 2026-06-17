@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Store, Plus, Users, Monitor, Key, Loader2,
   Check, X, Activity, RefreshCw, BarChart3, Copy, Eye, EyeOff,
-  Zap, CircleDollarSign, Clock, Filter, ExternalLink, Wallet
+  Zap, CircleDollarSign, Clock, Filter, ExternalLink, Wallet, FileText, Mail, QrCode
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
@@ -41,6 +41,7 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [paySessions, setPaySessions] = useState([]);
   const [payRevenue, setPayRevenue] = useState(null);
   const [createdKey, setCreatedKey] = useState(null);
+  const [invoiceLinks, setInvoiceLinks] = useState([]);
   const refreshRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -55,34 +56,47 @@ const MerchantDashboardPage = ({ onBack }) => {
       setRegisters(reg.registers || []);
       setStaff(st.staff || []);
       setRevenue(rev);
-    } catch {}
+    } catch {
+      // noop
+    }
     setLoading(false);
   }, [selectedBranch]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      if (active) {
+        await load();
+      }
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, [load]);
 
   // Load tab-specific data
   useEffect(() => {
     if (tab === "branch-summary") {
-      api.getBranchSummary().then(d => setBranchSummary(d.branches || [])).catch(() => {});
+      api.getBranchSummary().then(d => setBranchSummary(d.branches || [])).catch(() => undefined);
     }
     if (tab === "commission") {
-      api.getCommissionSummary().then(d => setCommData(d)).catch(() => {});
+      api.getCommissionSummary().then(d => setCommData(d)).catch(() => undefined);
     }
     if (tab === "api-keys") {
-      api.getApiKeys(selectedBranch || "").then(d => setApiKeys(d.api_keys || [])).catch(() => {});
+      api.getApiKeys(selectedBranch || "").then(d => setApiKeys(d.api_keys || [])).catch(() => undefined);
     }
     if (tab === "reports") {
-      api.getDailyReport().then(d => setDailyReport(d)).catch(() => {});
+      api.getDailyReport().then(d => setDailyReport(d)).catch(() => undefined);
       const now = new Date();
-      api.getMonthlyReport(now.getFullYear(), now.getMonth() + 1).then(d => setMonthlyReport(d)).catch(() => {});
+      api.getMonthlyReport(now.getFullYear(), now.getMonth() + 1).then(d => setMonthlyReport(d)).catch(() => undefined);
     }
     if (tab === "shifts") {
-      api.getShifts().then(d => setShifts(d.shifts || [])).catch(() => {});
-      api.getActiveShift().then(d => setActiveShift(d.active_shift)).catch(() => {});
+      api.getShifts().then(d => setShifts(d.shifts || [])).catch(() => undefined);
+      api.getActiveShift().then(d => setActiveShift(d.active_shift)).catch(() => undefined);
     }
     if (tab === "refunds") {
-      api.getRefunds().then(d => setRefunds(d.refunds || [])).catch(() => {});
+      api.getRefunds().then(d => setRefunds(d.refunds || [])).catch(() => undefined);
     }
     if (tab === "pay-keys") {
       api.getMyPayKeys().then(d => {
@@ -90,15 +104,16 @@ const MerchantDashboardPage = ({ onBack }) => {
         const paid = (d.keys || []).reduce((sum, k) => sum + (k.total_paid || 0), 0);
         const total = (d.keys || []).reduce((sum, k) => sum + (k.total_sessions || 0), 0);
         setPayRevenue({ total_paid: paid, total_sessions: total });
-      }).catch(() => {});
-      api.getMySessions(30).then(d => setPaySessions(d.sessions || [])).catch(() => {});
+      }).catch(() => undefined);
+      api.getMySessions(30).then(d => setPaySessions(d.sessions || [])).catch(() => undefined);
+      api.getMyInvoices?.().then(d => setInvoiceLinks((d.invoices || []).slice(0, 20))).catch(() => undefined);
     }
   }, [tab, selectedBranch]);
 
   // Load register transactions
   useEffect(() => {
     if (tab === "transactions") {
-      api.getRegisterTransactions(selectedDevice, selectedBranch || "", txnPeriod).then(d => setRegTxns(d)).catch(() => {});
+      api.getRegisterTransactions(selectedDevice, selectedBranch || "", txnPeriod).then(d => setRegTxns(d)).catch(() => undefined);
     }
   }, [tab, selectedDevice, selectedBranch, txnPeriod]);
 
@@ -109,7 +124,9 @@ const MerchantDashboardPage = ({ onBack }) => {
         try {
           const rev = await api.getMerchantRevenue(selectedBranch || "");
           setRevenue(rev);
-        } catch {}
+        } catch {
+          // noop
+        }
       }, 10000);
     }
     return () => { if (refreshRef.current) clearInterval(refreshRef.current); };
@@ -120,30 +137,39 @@ const MerchantDashboardPage = ({ onBack }) => {
     try {
       await api.createBranch({ name: form.name, address: form.address, city: form.city, country: form.country, contact_person: form.contact });
       setShowAdd(""); setForm({}); await load();
-    } catch {} setSaving(false);
+    } catch {
+      // noop
+    }
+    setSaving(false);
   };
   const createRegister = async (branchId) => {
     setSaving(true);
     try {
       await api.createRegister({ branch_id: branchId, label: form.regLabel || "" });
       setShowAdd(""); setForm({}); await load();
-    } catch {} setSaving(false);
+    } catch {
+      // noop
+    }
+    setSaving(false);
   };
   const addStaff = async (branchId) => {
     setSaving(true);
     try {
       await api.addStaff({ branch_id: branchId, user_email: form.staffEmail, staff_role: form.staffRole || "staff" });
       setShowAdd(""); setForm({}); await load();
-    } catch {} setSaving(false);
+    } catch {
+      // noop
+    }
+    setSaving(false);
   };
   const toggleReg = async (deviceId) => { await api.toggleRegister(deviceId); await load(); };
   const regenKey = async (deviceId) => {
     const res = await api.regenerateApiKey(deviceId);
     setShowKey(p => ({ ...p, [deviceId]: res.api_key }));
-    if (tab === "api-keys") api.getApiKeys(selectedBranch || "").then(d => setApiKeys(d.api_keys || [])).catch(() => {});
+    if (tab === "api-keys") api.getApiKeys(selectedBranch || "").then(d => setApiKeys(d.api_keys || [])).catch(() => undefined);
     await load();
   };
-  const copyKey = (key) => { navigator.clipboard.writeText(key).catch(() => {}); };
+  const copyKey = (key) => { navigator.clipboard.writeText(key).catch(() => undefined); };
 
   const tabs = [
     { id: "overview", label: t("merch.overview") || "Overview", icon: BarChart3 },
@@ -159,6 +185,7 @@ const MerchantDashboardPage = ({ onBack }) => {
     { id: "shifts", label: t("merch.shifts") || "Shifts", icon: Clock },
     { id: "refunds", label: t("merch.refunds") || "Refunds", icon: RefreshCw },
     { id: "pay-keys", label: "Pay Keys", icon: Wallet },
+    { id: "invoice-links", label: "Invoice Links", icon: FileText },
   ];
 
   if (loading) {
@@ -681,7 +708,9 @@ const MerchantDashboardPage = ({ onBack }) => {
                         await api.closeShift({ notes: "Closed from dashboard" });
                         api.getShifts().then(d => setShifts(d.shifts || []));
                         setActiveShift(null);
-                      } catch {}
+                      } catch {
+      // noop
+    }
                       setSaving(false);
                     }}
                     whileTap={{ scale: 0.95 }}
@@ -702,7 +731,9 @@ const MerchantDashboardPage = ({ onBack }) => {
                         const res = await api.openShift({ opening_balance: 0, notes: "Dashboard shift" });
                         setActiveShift(res.shift);
                         api.getShifts().then(d => setShifts(d.shifts || []));
-                      } catch {}
+                      } catch {
+      // noop
+    }
                       setSaving(false);
                     }}
                     whileTap={{ scale: 0.95 }}
@@ -788,7 +819,9 @@ const MerchantDashboardPage = ({ onBack }) => {
                         const total = (d.keys || []).reduce((sum, k) => sum + (k.total_sessions || 0), 0);
                         setPayRevenue({ total_paid: paid, total_sessions: total });
                       });
-                    } catch {} setSaving(false);
+                    } catch {
+      // noop
+    } setSaving(false);
                   }} disabled={saving} saving={saving} />
                   <CancelBtn onClick={() => { setShowAdd(""); setForm({}); }} />
                 </div>
@@ -840,7 +873,9 @@ const MerchantDashboardPage = ({ onBack }) => {
                             const total = (d.keys || []).reduce((sum, k) => sum + (k.total_sessions || 0), 0);
                             setPayRevenue({ total_paid: paid, total_sessions: total });
                           });
-                        } catch {}
+                        } catch {
+      // noop
+    }
                       }} whileTap={{ scale: 0.9 }} className="px-2 py-0.5 rounded text-[7px] font-bold bg-[#FF4757]/10 text-[#FF4757] border border-[#FF4757]/20">
                         Widerrufen
                       </motion.button>
@@ -868,6 +903,37 @@ const MerchantDashboardPage = ({ onBack }) => {
                   ))}
                 </div>
               ) : <Empty text="Noch keine Transaktionen" />}
+            </Panel>
+          </>
+        )}
+
+        {tab === "invoice-links" && (
+          <>
+            <Panel title="Smart Invoice & Payment Links">
+              {invoiceLinks.length > 0 ? invoiceLinks.map((inv, i) => (
+                <motion.div key={inv.invoice_id} data-testid={`merchant-invoice-link-${inv.invoice_id}`} className="py-3 border-b border-white/[0.02] last:border-0" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-cyan-400/10 border border-cyan-400/20"><QrCode size={16} className="text-cyan-200" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold text-white/85">{inv.invoice_number}</p>
+                      <p className="text-[9px] text-white/35">{inv.client_name} · €{Number(inv.total || 0).toFixed(2)}</p>
+                      <p className="text-[8px] text-white/20 break-all mt-1">{inv.public_pay_url}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <motion.button onClick={() => navigator.clipboard.writeText(inv.public_pay_url || "").catch(() => undefined)} whileTap={{ scale: 0.95 }} className="px-2 py-1 rounded-lg text-[8px] font-bold bg-white/[0.04] border border-white/[0.06] text-white/75" data-testid={`merchant-invoice-copy-${inv.invoice_id}`}>
+                          <Copy size={10} className="inline mr-1" /> Copy Link
+                        </motion.button>
+                        <motion.button onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/invoicing/${inv.invoice_id}/payment-pdf`, "_blank", "noopener,noreferrer")} whileTap={{ scale: 0.95 }} className="px-2 py-1 rounded-lg text-[8px] font-bold bg-orange-400/10 border border-orange-400/20 text-orange-100" data-testid={`merchant-invoice-pdf-${inv.invoice_id}`}>
+                          <ExternalLink size={10} className="inline mr-1" /> PDF / QR
+                        </motion.button>
+                        <motion.button onClick={() => window.open(`mailto:?subject=${encodeURIComponent(`Zahlungslink ${inv.invoice_number}`)}&body=${encodeURIComponent(inv.public_pay_url || "")}`)} whileTap={{ scale: 0.95 }} className="px-2 py-1 rounded-lg text-[8px] font-bold bg-cyan-400/10 border border-cyan-400/20 text-cyan-100" data-testid={`merchant-invoice-email-${inv.invoice_id}`}>
+                          <Mail size={10} className="inline mr-1" /> Send Link
+                        </motion.button>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[7px] font-bold ${inv.status === "paid" ? "bg-[#00E89D]/10 text-[#00E89D]" : "bg-[#FFB800]/10 text-[#FFB800]"}`}>{inv.status}</span>
+                  </div>
+                </motion.div>
+              )) : <Empty text="Noch keine Invoice Links verfügbar" />}
             </Panel>
           </>
         )}

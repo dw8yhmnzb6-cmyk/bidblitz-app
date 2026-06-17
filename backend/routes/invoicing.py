@@ -1,21 +1,35 @@
 """BidBlitz V2 - Rechnungen, Task-Center, Client-Health & Reminder MVP."""
 
 import asyncio
+import base64
 import csv
 import io
 import secrets
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
+from urllib.parse import quote
 
+import qrcode
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
+from pymongo import ReturnDocument
 from pydantic import BaseModel, Field
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas
 
 from core.audit import get_client_info, log_audit
+from core.config import STRIPE_API_KEY
 from core.database import db
 from core.email import FRONTEND_URL, get_base_template, send_email_detailed
 from core.security import get_current_user
+from emergentintegrations.payments.stripe.checkout import CheckoutSessionRequest, StripeCheckout
 
 router = APIRouter(prefix="/api/invoicing", tags=["invoicing"])
+public_router = APIRouter(prefix="/api/pay", tags=["invoice-payments"])
+webhook_router = APIRouter(tags=["stripe-webhook"])
 
 
 def _now() -> datetime:
@@ -28,6 +42,10 @@ def _now_iso() -> str:
 
 def _make_scan_code() -> str:
     return f"BBINV-{secrets.token_hex(5).upper()}"
+
+
+def _make_payment_token() -> str:
+    return secrets.token_urlsafe(24)
 
 
 def _make_id(prefix: str) -> str:
@@ -60,6 +78,13 @@ def _iso_after_days(days: int, base: Optional[datetime] = None) -> str:
     return ((base or _now()) + timedelta(days=days)).isoformat()
 
 
+def _format_date_short(value: Optional[str]) -> str:
+    parsed = _parse_iso(value)
+    if not parsed:
+        return "—"
+    return parsed.strftime("%d.%m.%Y")
+
+
 def _advance_date(value: Optional[str], frequency: str) -> str:
     base = _parse_iso(value) or _now()
     if frequency == "weekly":
@@ -73,23 +98,56 @@ def _public_pay_url(scan_code: str, origin: str = "") -> str:
     return f"{base}{path}" if base else path
 
 
+def _secure_pay_url(token: str, origin: str = "") -> str:
+    base = (origin or FRONTEND_URL or "").rstrip("/")
+    path = f"/pay/{token}"
+    return f"{base}{path}" if base else path
+
+
+def _host_origin(request: Request, provided_origin: str = "") -> str:
+    if provided_origin:
+        return provided_origin.rstrip("/")
+    origin = (request.headers.get("origin") or "").rstrip("/")
+    if origin:
+        return origin
+    return (FRONTEND_URL or "").rstrip("/")
+
+
+def _share_links(public_url: str, invoice: dict) -> dict:
+    invoice_number = invoice.get("invoice_number", "Rechnung")
+    amount = round(float(invoice.get("total", 0) or 0), 2)
+    text = f"Bitte bezahle {invoice_number} über diesen sicheren BidBlitz-Link: {public_url}"
+    mail_subject = quote(f"Zahlungslink {invoice_number}")
+    mail_body = quote(f"Hallo,\n\nbitte bezahle {invoice_number} ({amount:.2f} EUR) hier:\n{public_url}\n\nDanke.")
+    return {
+        "copy": public_url,
+        "whatsapp": f"https://wa.me/?text={quote(text)}",
+        "sms": f"sms:?body={quote(text)}",
+        "email": f"mailto:?subject={mail_subject}&body={mail_body}",
+    }
+
+
 def _reminder_subject(invoice: dict, kind: str) -> str:
-    label = "Überfällige Rechnung" if kind == "overdue" else "Zahlungserinnerung"
+    if kind == "manual":
+        label = "Sicherer Zahlungslink"
+    else:
+        label = "Überfällige Rechnung" if kind == "overdue" else "Zahlungserinnerung"
     return f"{label}: {invoice.get('invoice_number', 'Rechnung')}"
 
 
 def _reminder_html(invoice: dict, payment_link: str, kind: str) -> str:
     overdue = kind == "overdue"
-    accent = "#FF8E53" if overdue else "#00C2FF"
-    headline = "Deine Rechnung ist überfällig" if overdue else "Freundliche Zahlungserinnerung"
+    manual = kind == "manual"
+    accent = "#00E89D" if manual else ("#FF8E53" if overdue else "#00C2FF")
+    headline = "Dein sicherer BidBlitz Zahlungslink" if manual else ("Deine Rechnung ist überfällig" if overdue else "Freundliche Zahlungserinnerung")
     total = float(invoice.get("total", 0) or 0)
     due_at = invoice.get("due_at") or ""
+    intro = "Hier ist dein sicherer Link, um die Rechnung direkt per BidBlitz Pay zu bezahlen." if manual else f"Bitte begleiche die Rechnung <strong style=\"color:#fff;\">{invoice.get('invoice_number')}</strong>. Offener Betrag: <strong style=\"color:{accent};\">€{total:.2f}</strong>."
     content = f"""
         <h2 style=\"color:#fff;font-size:18px;margin:0 0 15px;\">{headline}</h2>
         <p style=\"color:#AAA;font-size:14px;line-height:1.6;margin:0 0 18px;\">Hallo {invoice.get('client_name') or 'liebes Team'},</p>
         <p style=\"color:#AAA;font-size:14px;line-height:1.6;margin:0 0 25px;\">
-            Bitte begleiche die Rechnung <strong style=\"color:#fff;\">{invoice.get('invoice_number')}</strong>.
-            Offener Betrag: <strong style=\"color:{accent};\">€{total:.2f}</strong>.
+            {intro}
         </p>
         <div style=\"background:#111;border-radius:12px;padding:18px;margin:0 0 24px;\">
             <table width=\"100%\" style=\"border-collapse:collapse;\">
@@ -103,16 +161,255 @@ def _reminder_html(invoice: dict, payment_link: str, kind: str) -> str:
                 </tr>
                 <tr>
                     <td style=\"color:#666;font-size:13px;padding:6px 0;\">Status</td>
-                    <td style=\"color:{accent};font-size:13px;text-align:right;font-weight:700;\">{'Überfällig' if overdue else 'Offen'}</td>
+                    <td style=\"color:{accent};font-size:13px;text-align:right;font-weight:700;\">{'Zahlungslink' if manual else ('Überfällig' if overdue else 'Offen')}</td>
                 </tr>
             </table>
         </div>
         <a href=\"{payment_link}\" style=\"display:inline-block;padding:14px 28px;background:{accent};color:#050505;text-decoration:none;border-radius:12px;font-weight:700;font-size:14px;\">
             Mit BidBlitz Pay bezahlen
         </a>
-        <p style=\"color:#666;font-size:12px;margin:22px 0 0;\">Falls die Zahlung bereits erfolgt ist, kannst du diese Nachricht ignorieren.</p>
+        <p style=\"color:#666;font-size:12px;margin:22px 0 0;\">{('Falls du Fragen hast, antworte einfach auf diese Nachricht.' if manual else 'Falls die Zahlung bereits erfolgt ist, kannst du diese Nachricht ignorieren.')}</p>
     """
     return get_base_template(content, _reminder_subject(invoice, kind))
+
+
+async def _get_payment_link_by_invoice(invoice: dict, origin: str = "", force_refresh: bool = False) -> dict:
+    invoice_id = invoice.get("invoice_id")
+    if not invoice_id:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    now_iso = _now_iso()
+    existing = await db.payment_links.find_one(
+        {"invoice_id": invoice_id, "status": {"$nin": ["replaced", "cancelled", "expired"]}},
+        {"_id": 0},
+        sort=[("created_at", -1)],
+    )
+    token = existing.get("token") if existing and not force_refresh else _make_payment_token()
+    link_id = existing.get("link_id") if existing and not force_refresh else _make_id("plink")
+    public_url = _secure_pay_url(token, origin)
+    status = "paid" if invoice.get("status") == "paid" else "active"
+
+    payload = {
+        "link_id": link_id,
+        "invoice_id": invoice_id,
+        "invoice_number": invoice.get("invoice_number"),
+        "owner_user_id": invoice.get("owner_user_id", ""),
+        "owner_user_email": invoice.get("user_email", ""),
+        "client_name": invoice.get("client_name", ""),
+        "client_email": invoice.get("client_email", ""),
+        "amount": round(float(invoice.get("total", 0) or 0), 2),
+        "currency": "EUR",
+        "token": token,
+        "status": status,
+        "payment_status": "paid" if invoice.get("status") == "paid" else "pending",
+        "public_url": public_url,
+        "updated_at": now_iso,
+    }
+
+    if existing and force_refresh:
+        await db.payment_links.update_many(
+            {"invoice_id": invoice_id, "status": {"$in": ["active", "processing"]}},
+            {"$set": {"status": "replaced", "updated_at": now_iso}},
+        )
+
+    await db.payment_links.update_one(
+        {"link_id": link_id},
+        {
+            "$set": payload,
+            "$setOnInsert": {
+                "created_at": existing.get("created_at") if existing and not force_refresh else now_iso,
+                "paid_at": existing.get("paid_at") if existing else None,
+                "paid_via": existing.get("paid_via") if existing else None,
+                "stripe_session_id": existing.get("stripe_session_id") if existing else None,
+                "payment_reference": existing.get("payment_reference") if existing else None,
+            },
+        },
+        upsert=True,
+    )
+
+    await db.invoices.update_one(
+        {"invoice_id": invoice_id},
+        {
+            "$set": {
+                "payment_link_id": link_id,
+                "payment_link_token": token,
+                "payment_link_url": public_url,
+                "public_pay_url": public_url,
+                "updated_at": now_iso,
+            }
+        },
+    )
+
+    result = {**payload}
+    result["share_links"] = _share_links(public_url, invoice)
+    result["qr_value"] = public_url
+    result["pdf_url"] = f"/api/invoicing/{invoice_id}/payment-pdf"
+    return result
+
+
+async def _payment_links_map(invoices: List[dict], origin: str = "") -> Dict[str, dict]:
+    if not invoices:
+        return {}
+    invoice_ids = [invoice.get("invoice_id") for invoice in invoices if invoice.get("invoice_id")]
+    rows = await db.payment_links.find(
+        {"invoice_id": {"$in": invoice_ids}, "status": {"$nin": ["replaced", "cancelled", "expired"]}},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+
+    mapped: Dict[str, dict] = {}
+    for row in rows:
+        invoice_id = row.get("invoice_id")
+        if invoice_id and invoice_id not in mapped:
+            public_url = row.get("public_url") or _secure_pay_url(row.get("token", ""), origin)
+            mapped[invoice_id] = {
+                **row,
+                "public_url": public_url,
+                "share_links": _share_links(public_url, {"invoice_number": row.get("invoice_number"), "total": row.get("amount")}),
+                "qr_value": public_url,
+                "pdf_url": f"/api/invoicing/{invoice_id}/payment-pdf",
+            }
+
+    missing = [invoice for invoice in invoices if invoice.get("invoice_id") and invoice.get("invoice_id") not in mapped]
+    for invoice in missing:
+        mapped[invoice["invoice_id"]] = await _get_payment_link_by_invoice(invoice, origin)
+    return mapped
+
+
+async def _get_invoice_and_link_by_token(token: str, origin: str = "") -> tuple[dict, dict]:
+    link = await db.payment_links.find_one({"token": token}, {"_id": 0})
+    if not link:
+        raise HTTPException(status_code=404, detail="Zahlungslink nicht gefunden")
+    invoice = await db.invoices.find_one({"invoice_id": link.get("invoice_id")}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    if invoice.get("status") == "paid" and link.get("status") != "paid":
+        await db.payment_links.update_one(
+            {"token": token},
+            {"$set": {"status": "paid", "payment_status": "paid", "updated_at": _now_iso()}},
+        )
+        link["status"] = "paid"
+        link["payment_status"] = "paid"
+    link_payload = {
+        **link,
+        "public_url": link.get("public_url") or _secure_pay_url(token, origin),
+    }
+    link_payload["share_links"] = _share_links(link_payload["public_url"], invoice)
+    link_payload["qr_value"] = link_payload["public_url"]
+    link_payload["pdf_url"] = f"/api/invoicing/{invoice.get('invoice_id')}/payment-pdf"
+    return invoice, link_payload
+
+
+async def _mark_invoice_paid(invoice: dict, link: dict, now_iso: str, method: str, payer_email: str = "", payer_user_id: str = "", payment_reference: str = "") -> dict:
+    invoice_id = invoice.get("invoice_id")
+    updated = await db.invoices.find_one_and_update(
+        {"invoice_id": invoice_id, "status": {"$ne": "paid"}},
+        {
+            "$set": {
+                "status": "paid",
+                "paid_at": now_iso,
+                "paid_by_email": payer_email,
+                "paid_by_user_id": payer_user_id,
+                "payment_method": method,
+                "payment_reference": payment_reference,
+                "updated_at": now_iso,
+            }
+        },
+        projection={"_id": 0},
+        return_document=ReturnDocument.AFTER,
+    )
+    if updated is None:
+        current = await db.invoices.find_one({"invoice_id": invoice_id}, {"_id": 0})
+        await db.payment_links.update_one(
+            {"token": link.get("token")},
+            {"$set": {"status": "paid", "payment_status": "paid", "updated_at": now_iso}},
+        )
+        return current or invoice
+
+    await db.payment_links.update_one(
+        {"token": link.get("token")},
+        {
+            "$set": {
+                "status": "paid",
+                "payment_status": "paid",
+                "paid_at": now_iso,
+                "paid_via": method,
+                "payment_reference": payment_reference,
+                "updated_at": now_iso,
+            }
+        },
+    )
+    return updated
+
+
+async def _create_invoice_payment_pdf(invoice: dict, payment_link: dict) -> bytes:
+    public_url = payment_link.get("public_url") or _secure_pay_url(payment_link.get("token", ""), FRONTEND_URL)
+    buf = io.BytesIO()
+    pdf = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+
+    pdf.setFillColorRGB(0.03, 0.04, 0.07)
+    pdf.rect(0, 0, width, height, fill=1, stroke=0)
+
+    pdf.setFillColorRGB(0.0, 0.76, 1.0)
+    pdf.roundRect(18 * mm, height - 42 * mm, width - 36 * mm, 22 * mm, 8 * mm, fill=1, stroke=0)
+    pdf.setFillColorRGB(0.02, 0.03, 0.05)
+    pdf.setFont("Helvetica-Bold", 18)
+    pdf.drawString(24 * mm, height - 28 * mm, "BidBlitz Smart Invoice")
+
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(20 * mm, height - 58 * mm, invoice.get("invoice_number", "Rechnung"))
+    pdf.setFont("Helvetica", 10)
+    pdf.setFillColorRGB(0.72, 0.78, 0.88)
+    pdf.drawString(20 * mm, height - 64 * mm, f"Kunde: {invoice.get('client_name', '—')}")
+    pdf.drawString(20 * mm, height - 70 * mm, f"Fällig: {_format_date_short(invoice.get('due_at'))}")
+    pdf.drawString(20 * mm, height - 76 * mm, f"Betrag: €{float(invoice.get('total', 0) or 0):.2f}")
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=2)
+    qr.add_data(public_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    qr_buffer = io.BytesIO()
+    img.save(qr_buffer, format="PNG")
+    qr_buffer.seek(0)
+    pdf.drawImage(ImageReader(qr_buffer), width - 70 * mm, height - 98 * mm, 42 * mm, 42 * mm, mask="auto")
+
+    pdf.setFillColorRGB(0.82, 0.86, 0.92)
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(20 * mm, height - 94 * mm, "Sicherer Zahlungslink")
+    pdf.setFont("Helvetica", 9)
+    text_obj = pdf.beginText(20 * mm, height - 100 * mm)
+    text_obj.setFillColorRGB(0.82, 0.86, 0.92)
+    safe_chunks = [public_url[i:i + 68] for i in range(0, len(public_url), 68)]
+    for line in safe_chunks[:4]:
+        text_obj.textLine(line)
+    pdf.drawText(text_obj)
+
+    y = height - 124 * mm
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(20 * mm, y, "Rechnungspositionen")
+    y -= 8 * mm
+    pdf.setFont("Helvetica", 10)
+    for item in invoice.get("items", [])[:10]:
+        pdf.setFillColorRGB(0.85, 0.88, 0.92)
+        pdf.drawString(20 * mm, y, f"{item.get('quantity', 1)} × {item.get('description', 'Position')}")
+        pdf.drawRightString(width - 20 * mm, y, f"€{float(item.get('total', 0) or 0):.2f}")
+        y -= 6 * mm
+
+    y -= 4 * mm
+    pdf.setFillColorRGB(0.0, 0.90, 0.62)
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawRightString(width - 20 * mm, y, f"Gesamt: €{float(invoice.get('total', 0) or 0):.2f}")
+    y -= 10 * mm
+    pdf.setFillColorRGB(0.72, 0.78, 0.88)
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(20 * mm, y, "Zahlbar per Karte, Apple Pay, Google Pay oder eingeloggt mit BidBlitz Wallet.")
+
+    pdf.showPage()
+    pdf.save()
+    buf.seek(0)
+    return buf.getvalue()
 
 
 def _invoice_public_payload(invoice: dict, origin: str = "") -> dict:
@@ -145,6 +442,10 @@ def _invoice_public_payload(invoice: dict, origin: str = "") -> dict:
         "paid_at": invoice.get("paid_at"),
         "pay_url": pay_url,
         "public_pay_url": public_pay_url,
+        "payment_link_token": invoice.get("payment_link_token"),
+        "payment_link_url": invoice.get("payment_link_url") or public_pay_url,
+        "qr_value": invoice.get("payment_link_url") or public_pay_url,
+        "payment_pdf_url": f"/api/invoicing/{invoice.get('invoice_id')}/payment-pdf",
         "reminder_count": reminder_count,
         "last_reminder_at": invoice.get("last_reminder_at"),
         "recurring": invoice.get("recurring") or {"enabled": False, "frequency": None, "next_invoice_date": None},
@@ -549,7 +850,13 @@ class UpdateInvoice(BaseModel):
 
 
 class ReminderRequest(BaseModel):
-    kind: Literal["payment", "overdue"] = "payment"
+    kind: Literal["payment", "overdue", "manual"] = "payment"
+
+
+class PaymentLinkCheckoutRequest(BaseModel):
+    method: Literal["stripe", "wallet"] = "stripe"
+    origin_url: str = ""
+    payer_email: str = ""
 
 
 class CompleteTaskRequest(BaseModel):
@@ -642,6 +949,7 @@ async def create_invoice(req: CreateInvoice, request: Request):
         "updated_at": now_iso,
     }
     await db.invoices.insert_one(invoice)
+    payment_link = await _get_payment_link_by_invoice(invoice, request.headers.get("origin", ""))
     await _ensure_client(user_id, user_email, invoice["client_name"], invoice["client_email"])
     ip, ua = get_client_info(request)
     await log_audit(
@@ -665,7 +973,8 @@ async def create_invoice(req: CreateInvoice, request: Request):
         "invoice_number": inv_num,
         "scan_code": invoice["scan_code"],
         "pay_url": invoice["pay_url"],
-        "public_pay_url": invoice["public_pay_url"],
+        "public_pay_url": payment_link["public_url"],
+        "payment_link_token": payment_link["token"],
         "total": total,
         "message": f"Rechnung {inv_num} erstellt: {total:.2f} EUR",
     }
@@ -703,6 +1012,8 @@ async def update_invoice(invoice_id: str, req: UpdateInvoice, request: Request):
         "updated_at": _now_iso(),
     }
     await db.invoices.update_one({"invoice_id": invoice_id, "user_email": user_email}, {"$set": update_doc})
+    refreshed_invoice = {**existing, **update_doc, "invoice_id": invoice_id}
+    await _get_payment_link_by_invoice(refreshed_invoice, request.headers.get("origin", ""))
     await _ensure_client(str(user.get("_id")), user_email, update_doc["client_name"], update_doc["client_email"])
     ip, ua = get_client_info(request)
     await log_audit(
@@ -729,10 +1040,19 @@ async def my_invoices(request: Request):
     invoices = await db.invoices.find({"user_email": user.get("email", "")}, {"_id": 0}).sort("created_at", -1).to_list(200)
     reminder_map = await _invoice_reminder_map([inv.get("invoice_id") for inv in invoices])
     origin = request.headers.get("origin", "")
+    payment_links = await _payment_links_map(invoices, origin)
     payload = []
     for inv in invoices:
         reminder_info = reminder_map.get(inv.get("invoice_id"), {})
-        enriched = {**inv, "reminder_count": reminder_info.get("count", 0), "last_reminder_at": reminder_info.get("last")}
+        link = payment_links.get(inv.get("invoice_id"), {})
+        enriched = {
+            **inv,
+            "reminder_count": reminder_info.get("count", 0),
+            "last_reminder_at": reminder_info.get("last"),
+            "payment_link_token": link.get("token") or inv.get("payment_link_token"),
+            "payment_link_url": link.get("public_url") or inv.get("payment_link_url"),
+            "public_pay_url": link.get("public_url") or inv.get("public_pay_url"),
+        }
         payload.append(_invoice_public_payload(enriched, origin))
     return {"invoices": payload}
 
@@ -955,7 +1275,8 @@ async def send_invoice_reminder(invoice_id: str, req: ReminderRequest, request: 
     if not invoice.get("client_email"):
         raise HTTPException(status_code=400, detail="Kunden-E-Mail fehlt")
 
-    payment_link = _public_pay_url(invoice.get("scan_code", ""), request.headers.get("origin", ""))
+    payment_link_meta = await _get_payment_link_by_invoice(invoice, request.headers.get("origin", ""))
+    payment_link = payment_link_meta["public_url"]
     result = await asyncio.to_thread(
         send_email_detailed,
         invoice.get("client_email"),
@@ -971,6 +1292,7 @@ async def send_invoice_reminder(invoice_id: str, req: ReminderRequest, request: 
         "kind": req.kind,
         "channel": "email",
         "payment_link": payment_link,
+        "payment_token": payment_link_meta["token"],
         "sent_at": _now_iso(),
         "sent_by": user_email,
         "result": result,
@@ -1033,6 +1355,7 @@ async def generate_next_invoice(invoice_id: str, request: Request):
         },
     }
     await db.invoices.insert_one(new_invoice)
+    payment_link = await _get_payment_link_by_invoice(new_invoice, request.headers.get("origin", ""))
     await db.invoices.update_one({"invoice_id": invoice_id, "user_email": user_email}, {"$set": {"recurring.next_invoice_date": next_next_date, "recurring.last_generated_at": _now_iso(), "updated_at": _now_iso()}})
     await _ensure_client(user_id, user_email, new_invoice.get("client_name", ""), new_invoice.get("client_email", ""))
     ip, ua = get_client_info(request)
@@ -1050,7 +1373,11 @@ async def generate_next_invoice(invoice_id: str, request: Request):
             "owner_user_email": user_email,
         },
     )
-    return {"ok": True, "invoice": _invoice_public_payload(new_invoice, request.headers.get("origin", "")), "message": "Nächste Rechnung erzeugt"}
+    return {
+        "ok": True,
+        "invoice": _invoice_public_payload({**new_invoice, "payment_link_token": payment_link["token"], "payment_link_url": payment_link["public_url"], "public_pay_url": payment_link["public_url"]}, request.headers.get("origin", "")),
+        "message": "Nächste Rechnung erzeugt",
+    }
 
 
 @router.get("/public/{scan_code}")
@@ -1061,7 +1388,10 @@ async def public_invoice(scan_code: str, request: Request):
     )
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
-    return _invoice_public_payload(invoice, request.headers.get("origin", ""))
+    payment_link = await _get_payment_link_by_invoice(invoice, request.headers.get("origin", ""))
+    payload = _invoice_public_payload({**invoice, "payment_link_token": payment_link["token"], "payment_link_url": payment_link["public_url"], "public_pay_url": payment_link["public_url"]}, request.headers.get("origin", ""))
+    payload["payment_link"] = payment_link
+    return payload
 
 
 @router.post("/public/{scan_code}/pay")
@@ -1139,3 +1469,283 @@ async def pay_invoice(scan_code: str, request: Request):
         },
     )
     return {"ok": True, "invoice": _invoice_public_payload(paid_invoice, request.headers.get("origin", "")), "message": "Rechnung erfolgreich bezahlt"}
+
+
+@router.post("/{invoice_id}/payment-link")
+async def create_or_refresh_payment_link(invoice_id: str, request: Request):
+    user = await get_current_user(request)
+    invoice = await db.invoices.find_one({"invoice_id": invoice_id, "user_email": user.get("email", "")}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    link = await _get_payment_link_by_invoice(invoice, request.headers.get("origin", ""), force_refresh=False)
+    return {"ok": True, "payment_link": link}
+
+
+@router.get("/{invoice_id}/payment-pdf")
+async def invoice_payment_pdf(invoice_id: str, request: Request):
+    user = await get_current_user(request)
+    invoice = await db.invoices.find_one({"invoice_id": invoice_id, "user_email": user.get("email", "")}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+    link = await _get_payment_link_by_invoice(invoice, request.headers.get("origin", ""))
+    pdf_bytes = await _create_invoice_payment_pdf(invoice, link)
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={invoice.get('invoice_number', 'invoice')}-payment-link.pdf"},
+    )
+
+
+@public_router.get("/{token}")
+async def public_payment_link_detail(token: str, request: Request):
+    invoice, link = await _get_invoice_and_link_by_token(token, request.headers.get("origin", ""))
+    issuer = await db.users.find_one({"email": invoice.get("user_email", "")}, {"_id": 0, "business_name": 1, "name": 1, "email": 1})
+    payload = _invoice_public_payload(
+        {
+            **invoice,
+            "payment_link_token": link.get("token"),
+            "payment_link_url": link.get("public_url"),
+            "public_pay_url": link.get("public_url"),
+        },
+        request.headers.get("origin", ""),
+    )
+    payload["payment_link"] = link
+    payload["merchant_name"] = (issuer or {}).get("business_name") or (issuer or {}).get("name") or invoice.get("user_email", "")
+    payload["available_methods"] = ["stripe", "wallet"]
+    return payload
+
+
+@public_router.post("/{token}/checkout")
+async def public_payment_link_checkout(token: str, req: PaymentLinkCheckoutRequest, request: Request):
+    invoice, link = await _get_invoice_and_link_by_token(token, request.headers.get("origin", ""))
+    if invoice.get("status") == "paid":
+        raise HTTPException(status_code=409, detail="Rechnung wurde bereits bezahlt")
+
+    now_iso = _now_iso()
+    amount = round(float(invoice.get("total", 0) or 0), 2)
+    owner = await db.users.find_one({"email": invoice.get("user_email", "")})
+    if not owner:
+        raise HTTPException(status_code=404, detail="Rechnungssteller nicht gefunden")
+
+    if req.method == "wallet":
+        user = await get_current_user(request)
+        payer_user_id = str(user.get("_id"))
+        lock = await db.payment_links.find_one_and_update(
+            {"token": token, "status": "active"},
+            {"$set": {"status": "processing", "updated_at": now_iso, "processing_method": "wallet", "processing_by": payer_user_id}},
+            projection={"_id": 0},
+            return_document=ReturnDocument.BEFORE,
+        )
+        if not lock:
+            current = await db.payment_links.find_one({"token": token}, {"_id": 0})
+            if current and current.get("status") == "paid":
+                raise HTTPException(status_code=409, detail="Rechnung wurde bereits bezahlt")
+            raise HTTPException(status_code=409, detail="Zahlung wird bereits verarbeitet")
+
+        debit = await db.users.update_one({"_id": user["_id"], "balance": {"$gte": amount}}, {"$inc": {"balance": -amount}})
+        if debit.modified_count == 0:
+            await db.payment_links.update_one({"token": token}, {"$set": {"status": "active", "updated_at": _now_iso()}})
+            raise HTTPException(status_code=402, detail=f"Nicht genug Guthaben (benötigt: €{amount:.2f})")
+
+        await db.users.update_one({"_id": owner["_id"]}, {"$inc": {"balance": amount}})
+        tx_reference = f"INV-WALLET-{secrets.token_hex(5).upper()}"
+        payment_tx_id = _make_id("ptx")
+        await db.payment_transactions.insert_one({
+            "payment_id": payment_tx_id,
+            "session_id": None,
+            "invoice_id": invoice.get("invoice_id"),
+            "invoice_number": invoice.get("invoice_number"),
+            "payment_link_token": token,
+            "amount": amount,
+            "currency": "EUR",
+            "type": "invoice_wallet_payment",
+            "status": "completed",
+            "payment_status": "paid",
+            "payer_user_id": payer_user_id,
+            "payer_email": user.get("email", ""),
+            "owner_user_id": invoice.get("owner_user_id", ""),
+            "owner_user_email": invoice.get("user_email", ""),
+            "reference": tx_reference,
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "metadata": {"method": "wallet", "link_id": link.get("link_id")},
+        })
+        await db.transactions.insert_many([
+            {
+                "id": secrets.token_hex(8),
+                "user_id": payer_user_id,
+                "type": "invoice_payment",
+                "amount": -amount,
+                "description": f"Rechnung bezahlt {invoice.get('invoice_number')}",
+                "status": "completed",
+                "reference": tx_reference,
+                "category": "invoice",
+                "counterparty_email": invoice.get("user_email", ""),
+                "created_at": now_iso,
+            },
+            {
+                "id": secrets.token_hex(8),
+                "user_id": str(owner["_id"]),
+                "type": "invoice_payment_received",
+                "amount": amount,
+                "description": f"Rechnung bezahlt {invoice.get('invoice_number')}",
+                "status": "completed",
+                "reference": tx_reference,
+                "category": "invoice",
+                "counterparty_email": user.get("email", ""),
+                "created_at": now_iso,
+            },
+        ])
+        paid_invoice = await _mark_invoice_paid(invoice, link, now_iso, "wallet", user.get("email", ""), payer_user_id, tx_reference)
+        return {
+            "ok": True,
+            "method": "wallet",
+            "invoice": _invoice_public_payload({**paid_invoice, "payment_link_token": token, "payment_link_url": link.get("public_url"), "public_pay_url": link.get("public_url")}, request.headers.get("origin", "")),
+            "message": "Rechnung erfolgreich mit Wallet bezahlt",
+        }
+
+    origin = _host_origin(request, req.origin_url)
+    if not origin:
+        raise HTTPException(status_code=400, detail="Origin URL fehlt")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{str(request.base_url).rstrip('/')}/api/webhook/stripe")
+    success_url = f"{origin}/pay/{token}?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/pay/{token}?cancelled=1"
+    metadata = {
+        "type": "invoice_payment_link",
+        "token": token,
+        "invoice_id": invoice.get("invoice_id", ""),
+        "invoice_number": invoice.get("invoice_number", ""),
+        "link_id": link.get("link_id", ""),
+        "owner_user_id": invoice.get("owner_user_id", ""),
+        "owner_user_email": invoice.get("user_email", ""),
+    }
+    session = await stripe_checkout.create_checkout_session(
+        CheckoutSessionRequest(
+            amount=float(amount),
+            currency="eur",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata=metadata,
+            payment_methods=["card"],
+        )
+    )
+    await db.payment_transactions.insert_one({
+        "payment_id": _make_id("ptx"),
+        "session_id": session.session_id,
+        "invoice_id": invoice.get("invoice_id"),
+        "invoice_number": invoice.get("invoice_number"),
+        "payment_link_token": token,
+        "amount": amount,
+        "currency": "EUR",
+        "type": "invoice_stripe_payment",
+        "status": "initiated",
+        "payment_status": "pending",
+        "payer_user_id": None,
+        "payer_email": req.payer_email or invoice.get("client_email", ""),
+        "owner_user_id": invoice.get("owner_user_id", ""),
+        "owner_user_email": invoice.get("user_email", ""),
+        "reference": session.session_id,
+        "created_at": now_iso,
+        "updated_at": now_iso,
+        "metadata": metadata,
+    })
+    await db.payment_links.update_one(
+        {"token": token},
+        {"$set": {"stripe_session_id": session.session_id, "last_checkout_created_at": now_iso, "updated_at": now_iso}},
+    )
+    return {"ok": True, "method": "stripe", "session_id": session.session_id, "checkout_url": session.url}
+
+
+@public_router.get("/{token}/checkout-status/{session_id}")
+async def public_payment_checkout_status(token: str, session_id: str, request: Request):
+    invoice, link = await _get_invoice_and_link_by_token(token, request.headers.get("origin", ""))
+    tx = await db.payment_transactions.find_one({"session_id": session_id, "payment_link_token": token}, {"_id": 0})
+    if not tx:
+        raise HTTPException(status_code=404, detail="Checkout-Session nicht gefunden")
+
+    if invoice.get("status") == "paid":
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {"status": "completed", "payment_status": "paid", "updated_at": _now_iso()}},
+        )
+        return {
+            "status": "completed",
+            "payment_status": "paid",
+            "invoice": _invoice_public_payload({**invoice, "payment_link_token": token, "payment_link_url": link.get("public_url"), "public_pay_url": link.get("public_url")}, request.headers.get("origin", "")),
+        }
+
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{str(request.base_url).rstrip('/')}/api/webhook/stripe")
+    checkout_status = await stripe_checkout.get_checkout_status(session_id)
+    now_iso = _now_iso()
+    new_status = "completed" if checkout_status.payment_status == "paid" else checkout_status.status
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": new_status, "payment_status": checkout_status.payment_status, "updated_at": now_iso}},
+    )
+
+    if checkout_status.payment_status == "paid":
+        tx_lock = await db.payment_transactions.find_one_and_update(
+            {"session_id": session_id, "status": {"$nin": ["credited"]}},
+            {"$set": {"status": "credited", "payment_status": "paid", "updated_at": now_iso}},
+            projection={"_id": 0},
+            return_document=ReturnDocument.BEFORE,
+        )
+        if tx_lock:
+            owner = await db.users.find_one({"email": invoice.get("user_email", "")})
+            if owner and invoice.get("status") != "paid":
+                link_lock = await db.payment_links.find_one_and_update(
+                    {"token": token, "status": "active"},
+                    {"$set": {"status": "processing", "updated_at": now_iso, "processing_method": "stripe", "processing_session_id": session_id}},
+                    projection={"_id": 0},
+                    return_document=ReturnDocument.BEFORE,
+                )
+                if link_lock:
+                    await db.users.update_one({"_id": owner["_id"]}, {"$inc": {"balance": amount if (amount := round(float(invoice.get('total', 0) or 0), 2)) else 0}})
+                    reference = f"INV-STRIPE-{session_id[:12].upper()}"
+                    await db.transactions.insert_one({
+                        "id": secrets.token_hex(8),
+                        "user_id": str(owner["_id"]),
+                        "type": "invoice_payment_received",
+                        "amount": amount,
+                        "description": f"Öffentliche Rechnung bezahlt {invoice.get('invoice_number')}",
+                        "status": "completed",
+                        "reference": reference,
+                        "category": "invoice",
+                        "counterparty_email": tx_lock.get("payer_email", ""),
+                        "created_at": now_iso,
+                    })
+                    invoice = await _mark_invoice_paid(invoice, link, now_iso, "stripe", tx_lock.get("payer_email", ""), "", reference)
+                    await db.payment_transactions.update_one(
+                        {"session_id": session_id},
+                        {"$set": {"reference": reference, "credited_to_user_id": str(owner["_id"]), "updated_at": now_iso}},
+                    )
+
+    refreshed_invoice = await db.invoices.find_one({"invoice_id": invoice.get("invoice_id")}, {"_id": 0}) or invoice
+    return {
+        "status": new_status,
+        "payment_status": checkout_status.payment_status,
+        "invoice": _invoice_public_payload({**refreshed_invoice, "payment_link_token": token, "payment_link_url": link.get("public_url"), "public_pay_url": link.get("public_url")}, request.headers.get("origin", "")),
+    }
+
+
+@webhook_router.post("/api/webhook/stripe")
+async def invoice_payment_webhook(request: Request):
+    body = await request.body()
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{str(request.base_url).rstrip('/')}/api/webhook/stripe")
+    try:
+        event = await stripe_checkout.handle_webhook(body, request.headers.get("Stripe-Signature"))
+    except Exception:
+        return {"received": True, "processed": False}
+
+    metadata = dict(event.metadata or {})
+    if metadata.get("type") != "invoice_payment_link":
+        return {"received": True, "processed": False}
+
+    token = metadata.get("token", "")
+    session_id = event.session_id or ""
+    if token and session_id and event.payment_status == "paid":
+        try:
+            await public_payment_checkout_status(token, session_id, request)
+        except Exception:
+            pass
+    return {"received": True, "processed": True}

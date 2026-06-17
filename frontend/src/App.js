@@ -36,6 +36,7 @@ const PayCheckoutPage = lazy(() => import("./pages/PayCheckoutPage"));
 const PayMerchantDetailPage = lazy(() => import("./pages/PayMerchantDetailPage"));
 const PayDeveloperDocsPage = lazy(() => import("./pages/PayDeveloperDocsPage"));
 const InvoicePayPage = lazy(() => import("./pages/InvoicePayPage"));
+const PublicInvoicePaymentPage = lazy(() => import("./pages/PublicInvoicePaymentPage"));
 const PayDirectoryPage = lazy(() => import("./pages/PayDirectoryPage"));
 const PayForBusinessPage = lazy(() => import("./pages/PayForBusinessPage"));
 const MiningPage = lazy(() => import("./pages/MiningPage"));
@@ -535,6 +536,9 @@ function AppContent() {
     }
     if (currentPath.startsWith("/invoice/pay/")) {
       return <InvoicePayPage scanCode={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
+    }
+    if (currentPath.startsWith("/pay/") && !currentPath.startsWith("/pay/checkout/") && !currentPath.startsWith("/pay/merchant/")) {
+      return <PublicInvoicePaymentPage token={currentPath.split("/")[2]} onNavigate={handleNavigate} />;
     }
     if (currentPath === "/ev" || currentPath === "/ev/map") {
       return <EVChargingMapPage onNavigate={handleNavigate} />;
@@ -1153,16 +1157,17 @@ function AppContent() {
   };
 
   const isCheckout = currentPath.startsWith("/pay/checkout/");
+  const isPublicInvoicePayment = currentPath.startsWith("/pay/") && !currentPath.startsWith("/pay/checkout/") && !currentPath.startsWith("/pay/merchant/");
   const isQrOrder = currentPath.startsWith("/order/qr/");
   const isRestaurantTableGuest = currentPath.startsWith("/table/");
   const isInvoicePay = currentPath.startsWith("/invoice/pay/");
   const isMobilityShell = currentPath === "/scooter" || currentPath === "/ev" || currentPath === "/ev/map" || currentPath === "/ev/history" || currentPath.startsWith("/ev/start/") || currentPath.startsWith("/ev/session/");
   const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
   const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
-  const showBottomNav = !isDesktopViewport && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
+  const showBottomNav = !isDesktopViewport && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
 
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
-  const showBackToHome = !isHomePath && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isMobilityShell && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
+  const showBackToHome = !isHomePath && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isMobilityShell && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
 
   return (
     <div className="app-container" data-testid="app-container">
@@ -1219,14 +1224,15 @@ function AppContent() {
       {showOnboarding && !user.isAuthenticated &&
        !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory", "/marketplace"].includes(currentPath) &&
        !currentPath.startsWith("/pay/checkout/") &&
+       !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&
        !currentPath.startsWith("/pay/merchant/") && (
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && <AIChatWidget />}
+      {user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
-      {!isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && (
+      {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && (
         <SuperAppOverlay
           currentPath={currentPath}
           onNavigate={handleNavigate}

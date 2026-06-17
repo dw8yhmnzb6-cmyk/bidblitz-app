@@ -176,6 +176,12 @@ export const api = {
   // Merchant
   getMerchantDashboard: () => request("/api/merchant/dashboard"),
 
+  // Smart Invoice Payment Links
+  getPublicInvoicePaymentLink: (token) => request(`/api/pay/${token}`),
+  checkoutInvoicePaymentLink: (token, body) => request(`/api/pay/${token}/checkout`, { method: "POST", body: JSON.stringify(body) }),
+  getInvoicePaymentCheckoutStatus: (token, sessionId) => request(`/api/pay/${token}/checkout-status/${sessionId}`),
+  createInvoicePaymentLink: (invoiceId) => request(`/api/invoicing/${invoiceId}/payment-link`, { method: "POST" }),
+
   // Transactions
   getTransactions: (params = {}) => {
     const query = new URLSearchParams();
@@ -511,6 +517,7 @@ export const api = {
     request(`/api/kids/children/${childId}/tasks/${taskId}/complete`, { method: "POST" }),
   
   // BidBlitz Pay SDK (Merchant Keys Self-Service)
+  getMyInvoices: () => request("/api/invoicing/my-invoices"),
   getMyPayKeys: () => request("/api/pay/my-keys"),
   createPayKey: (label) => request("/api/pay/my-keys/create", { method: "POST", body: JSON.stringify({ label }) }),
   revokePayKey: (keyId) => request(`/api/pay/my-keys/${keyId}/revoke`, { method: "POST" }),

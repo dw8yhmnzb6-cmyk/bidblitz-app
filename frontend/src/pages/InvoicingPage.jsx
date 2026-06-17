@@ -9,10 +9,12 @@ import {
   CheckCircle2,
   ClipboardList,
   Copy,
+  ExternalLink,
   FileText,
   LayoutDashboard,
   Loader2,
   Lock,
+  Mail,
   MessageCircle,
   Plus,
   Repeat,
@@ -24,6 +26,7 @@ import {
   Unlock,
   Upload,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -427,8 +430,14 @@ function InvoicingPage({ onBack }) {
   };
 
   useEffect(() => {
-    loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let active = true;
+    const run = async () => {
+      if (active) await loadAll();
+    };
+    run();
+    return () => {
+      active = false;
+    };
   }, [demoMode]);
 
   const taskList = useMemo(() => {
@@ -638,6 +647,43 @@ function InvoicingPage({ onBack }) {
     } catch {
       toast.error("Link konnte nicht kopiert werden");
     }
+  };
+
+  const ensurePaymentLink = async (invoice) => {
+    if (demoMode) return invoice;
+    const result = await api(`/api/invoicing/${invoice.invoice_id}/payment-link`, { method: "POST" });
+    const paymentLink = result?.payment_link || {};
+    const merged = {
+      ...invoice,
+      public_pay_url: paymentLink.public_url || invoice.public_pay_url,
+      payment_link_token: paymentLink.token || invoice.payment_link_token,
+      payment_link_url: paymentLink.public_url || invoice.payment_link_url,
+      payment_pdf_url: paymentLink.pdf_url || invoice.payment_pdf_url,
+    };
+    setInvoices((prev) => prev.map((item) => (item.invoice_id === invoice.invoice_id ? { ...item, ...merged } : item)));
+    return merged;
+  };
+
+  const openPublicPayPage = async (invoice) => {
+    try {
+      const enriched = await ensurePaymentLink(invoice);
+      window.open(buildPaymentLink(enriched), "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(error.message || "Payment Link konnte nicht erstellt werden");
+    }
+  };
+
+  const openPaymentPdf = async (invoice) => {
+    try {
+      const enriched = await ensurePaymentLink(invoice);
+      window.open(`${API}${enriched.payment_pdf_url || `/api/invoicing/${invoice.invoice_id}/payment-pdf`}`, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(error.message || "PDF konnte nicht geöffnet werden");
+    }
+  };
+
+  const shareByEmail = async (invoice) => {
+    await sendReminder(invoice, "manual");
   };
 
   const shareWhatsApp = (invoice) => {
@@ -987,7 +1033,7 @@ function InvoicingPage({ onBack }) {
               </div>
             </SectionCard>
 
-            <SectionCard title="Reminder & BidBlitz Pay" meta="E-Mail, WhatsApp, Copy Link, Overdue-Badge und Reminder-Historie." testId="invoice-list-section">
+            <SectionCard title="Reminder & BidBlitz Pay" meta="E-Mail, WhatsApp, Copy Link, QR-Code, PDF und öffentliche Payment-Seite." testId="invoice-list-section">
               <div className="space-y-4">
                 {invoices.length === 0 && (
                   <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 px-5 py-14 text-center" data-testid="invoice-list-empty-state">
@@ -1047,9 +1093,26 @@ function InvoicingPage({ onBack }) {
                           <button onClick={() => copyPaymentLink(invoice)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/75" data-testid={`invoice-copy-link-${invoice.invoice_id}`}>
                             <Copy size={14} className="mr-2 inline-block" /> Copy Link
                           </button>
-                          <button onClick={() => window.open(buildPaymentLink(invoice), "_blank", "noopener,noreferrer")} className="rounded-2xl border border-orange-400/20 bg-orange-400/15 px-3 py-2 text-xs font-bold text-orange-100" data-testid={`invoice-bidblitz-pay-${invoice.invoice_id}`}>
+                          <button onClick={() => openPublicPayPage(invoice)} className="rounded-2xl border border-orange-400/20 bg-orange-400/15 px-3 py-2 text-xs font-bold text-orange-100" data-testid={`invoice-bidblitz-pay-${invoice.invoice_id}`}>
                             <Send size={14} className="mr-2 inline-block" /> BidBlitz Pay
                           </button>
+                        </div>
+                        <div className="mt-3 grid grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/20 p-3" data-testid={`invoice-payment-link-box-${invoice.invoice_id}`}>
+                          <div className="rounded-2xl bg-white p-2">
+                            <QRCodeSVG value={buildPaymentLink(invoice)} size={72} includeMargin data-testid={`invoice-payment-qr-${invoice.invoice_id}`} />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-white/80">Smart Payment Link</p>
+                            <p className="mt-1 break-all text-[10px] text-white/40">{buildPaymentLink(invoice)}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button onClick={() => shareByEmail(invoice)} className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-3 py-2 text-[11px] font-bold text-cyan-100" data-testid={`invoice-send-link-email-${invoice.invoice_id}`}>
+                                <Mail size={13} className="mr-1 inline-block" /> Send Link
+                              </button>
+                              <button onClick={() => openPaymentPdf(invoice)} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-bold text-white/75" data-testid={`invoice-open-pdf-${invoice.invoice_id}`}>
+                                <ExternalLink size={13} className="mr-1 inline-block" /> PDF / QR
+                              </button>
+                            </div>
+                          </div>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button onClick={() => startEdit(invoice)} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/70" data-testid={`invoice-edit-${invoice.invoice_id}`}>

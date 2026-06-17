@@ -165,6 +165,8 @@ def register_all_routers(app):
         ("routes.p2p_transfer", "router"),
         ("routes.split_bill", "router"),
         ("routes.invoicing", "router"),
+        ("routes.invoicing", "public_router"),
+        ("routes.invoicing", "webhook_router"),
         ("routes.virtual_cards", "router"),
         ("routes.credit_system", "router"),
         ("routes.bills", "router"),
