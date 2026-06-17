@@ -9,6 +9,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
 - Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
 
+### 17.06.2026 (Kundenlogin / Legacy-Auth Fix) ✅
+- 🟢 **Legacy-Kundenlogin repariert** (`backend/routes/auth.py`): Login prüft jetzt alte Kundenkonten sowohl gegen `password_hash` als auch gegen das alte Feld `password` und migriert erfolgreiche Legacy-Logins automatisch auf `password_hash`.
+- 🟢 **Login-Screen entstört** (`frontend/src/pages/AuthPage.jsx`, `frontend/src/store/UserContext.jsx`): die rote Meldung `Session abgelaufen. Bitte erneut anmelden.` bleibt nicht mehr hängen und wird beim Tippen direkt gelöscht.
+- ✅ **Verifiziert**: Backend 5/5 PASS (`deep_testing_backend_v2`) mit `max.weber@bidblitz.com / Pioneer2026!`, Frontend 4/4 PASS (`auto_frontend_testing_agent`) inkl. erfolgreichem UI-Login und Redirect.
+
 ### 15.06.2026 (Game Center Coins-Aufladen Fix) ✅
 - 🟢 **Gaming-API korrekt registriert** (`backend/core/router_registry.py`): `routes.gaming` war für den Game-Center-Coins-Flow nicht aktiv genug im Live-Flow; `/api/gaming/profile` und `/api/gaming/buy-coins` laufen jetzt sauber über den registrierten Router.
 - 🟢 **Game-Center Top-up-UX verbessert** (`frontend/src/pages/GamingPage.jsx`): falls Wallet-Guthaben nicht reicht, führt der Buy-Coins-Flow jetzt automatisch zur Wallet-Topup-Seite statt nur einen Fehler stehenzulassen.

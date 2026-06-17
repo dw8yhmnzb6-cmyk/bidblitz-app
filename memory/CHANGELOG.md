@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 17.06.2026 — Kundenlogin / Legacy-Auth Fix
+- Kundenlogin für alte User-Records repariert: Support für Legacy-Passworthashes im Feld `password` plus automatische Migration nach `password_hash`
+- Auth-UI verbessert: festhängende Meldung `Session abgelaufen. Bitte erneut anmelden.` wird beim Tippen sofort entfernt
+- Verifiziert: Backend 5/5 PASS (`deep_testing_backend_v2`), Frontend 4/4 PASS (`auto_frontend_testing_agent`)
+
 ## 15.06.2026 — Game Center Coins-Aufladen Fix
 - Game-Center-Gaming-Router sauber registriert; `/api/gaming/profile` und `/api/gaming/buy-coins` liefern 200 statt 404
 - Gaming Buy-Coins-Flow verbessert: bei zu wenig Wallet-Guthaben geht es jetzt automatisch zu `/wallet?action=topup`
