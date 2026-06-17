@@ -6,6 +6,7 @@ const AUTH_ACTIONS = {
   LOGOUT: 'LOGOUT',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
+  CLEAR_ERROR: 'CLEAR_ERROR',
   SESSION_CHECKED: 'SESSION_CHECKED',
   SET_2FA_PENDING: 'SET_2FA_PENDING',
   SET_MODE: 'SET_MODE',
@@ -67,6 +68,8 @@ function authReducer(state, action) {
       return { ...state, isLoading: action.payload, error: null };
     case AUTH_ACTIONS.SET_ERROR:
       return { ...state, error: action.payload, isLoading: false };
+    case AUTH_ACTIONS.CLEAR_ERROR:
+      return { ...state, error: null };
     case AUTH_ACTIONS.SET_USER: {
       const u = action.payload;
       const mapped = mapUser(u);
@@ -236,6 +239,10 @@ export function UserProvider({ children }) {
     dispatch({ type: AUTH_ACTIONS.SET_MODE, payload: mode });
   }, []);
 
+  const clearError = useCallback(() => {
+    dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+  }, []);
+
   // CRITICAL FIX: Wrap context value in useMemo to prevent React 19 StrictMode cloning issues
   // React 19 tries to clone the entire context value during reconciliation
   // Functions cannot be cloned → "The object can not be cloned" error
@@ -267,7 +274,8 @@ export function UserProvider({ children }) {
     logout,
     refreshUser,
     setMode,
-  }), [state, login, verify2FA, cancel2FA, register, logout, refreshUser, setMode]);
+    clearError,
+  }), [state, login, verify2FA, cancel2FA, register, logout, refreshUser, setMode, clearError]);
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield
@@ -77,6 +77,13 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const { t } = useI18n();
 
   const user = useUser();
+
+  useEffect(() => {
+    if (!user.error) return;
+    if ((email || password || otpCode || name || confirm) && typeof user.clearError === "function") {
+      user.clearError();
+    }
+  }, [email, password, otpCode, name, confirm, user]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

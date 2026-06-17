@@ -34,6 +34,25 @@ async def _record_login_success(user_id: str, ip: str, user_agent: str):
     )
 
 
+def _get_password_hash(user: dict) -> str:
+    return (user.get("password_hash") or user.get("password") or "").strip()
+
+
+def _verify_legacy_password(plain_password: str, user: dict) -> str | None:
+    candidates = []
+    for key in ("password_hash", "password"):
+        value = (user.get(key) or "").strip()
+        if value and value not in candidates:
+            candidates.append(value)
+    for hashed_value in candidates:
+        try:
+            if verify_password(plain_password, hashed_value):
+                return hashed_value
+        except Exception:
+            continue
+    return None
+
+
 def generate_card_number():
     groups = [str(random.randint(1000, 9999)) for _ in range(4)]
     return " ".join(groups)
@@ -226,7 +245,8 @@ async def login(req: LoginRequest, request: Request, response: Response):
     if user and not await is_email_whitelisted(email):
         raise HTTPException(status_code=403, detail="Access restricted during soft launch. Contact support.")
 
-    if not user or not verify_password(req.password, user["password_hash"]):
+    matched_hash = _verify_legacy_password(req.password, user) if user else None
+    if not user or not matched_hash:
         # Track failed attempt
         if attempt:
             new_attempts = attempt.get("attempts", 0) + 1
@@ -244,6 +264,17 @@ async def login(req: LoginRequest, request: Request, response: Response):
 
     # Clear failed attempts on success
     await db.login_attempts.delete_many({"identifier": identifier})
+
+    if user.get("password") or user.get("password_hash") != matched_hash:
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {"password_hash": matched_hash},
+                "$unset": {"password": ""},
+            },
+        )
+        user["password_hash"] = matched_hash
+        user.pop("password", None)
 
     user_id = str(user["_id"])
     

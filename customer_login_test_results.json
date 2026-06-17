@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-06-17T08:03:45.071644",
+  "base_url": "https://game-center-hub-1.preview.emergentagent.com",
+  "results": {
+    "test1_legacy_login": true,
+    "test2_auth_me": true,
+    "test3_password_hash_support": true,
+    "test4_admin_regression": true,
+    "test5_no_session_expired": true
+  },
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "success_rate": "100%"
+  }
+}
