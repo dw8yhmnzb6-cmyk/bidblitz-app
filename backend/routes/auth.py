@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from datetime import datetime, timezone, timedelta
+import hashlib
 from bson import ObjectId
 from core.database import db
 from core.security import (
@@ -51,6 +52,97 @@ def _verify_legacy_password(plain_password: str, user: dict) -> str | None:
         except Exception:
             continue
     return None
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _parse_reset_expiry(value) -> datetime:
+    parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+async def _issue_password_reset(
+    email: str,
+    request: Request | None = None,
+    issued_by: str = "self_service",
+    reason: str = "forgot_password",
+    force_password_change: bool = False,
+):
+    user = await db.users.find_one({"email": email})
+    if not user:
+        return None
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = _hash_reset_token(raw_token)
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(hours=1)
+    ip, ua = get_client_info(request) if request else ("", "")
+
+    await db.password_resets.update_many(
+        {"email": email, "used_at": None},
+        {"$set": {"revoked_at": now.isoformat(), "revoked_reason": "superseded"}},
+    )
+
+    await db.password_resets.insert_one({
+        "email": email,
+        "user_id": str(user["_id"]),
+        "token_hash": token_hash,
+        "expires_at": expires,
+        "created_at": now,
+        "used_at": None,
+        "verified_at": None,
+        "issued_by": issued_by,
+        "reason": reason,
+        "requested_ip": ip,
+        "requested_user_agent": ua,
+        "force_password_change": force_password_change,
+    })
+
+    if force_password_change:
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "force_password_change": True,
+                "force_password_change_reason": reason,
+                "force_password_change_requested_at": now.isoformat(),
+            }},
+        )
+
+    await log_audit(
+        "password_reset_requested",
+        user_id=str(user["_id"]),
+        email=email,
+        ip=ip,
+        user_agent=ua,
+        details={
+            "issued_by": issued_by,
+            "reason": reason,
+            "expires_at": expires.isoformat(),
+            "force_password_change": force_password_change,
+        },
+        severity="info",
+    )
+
+    email_sent = False
+    try:
+        from core.email import send_password_reset_email
+        user_name = user.get("name") or user.get("full_name") or user.get("username", "")
+        email_sent = bool(send_password_reset_email(email, raw_token, user_name))
+    except Exception as e:
+        logger.error(f"Failed to send password reset email to {email}: {e}")
+
+    return {
+        "token": raw_token,
+        "expires_at": expires.isoformat(),
+        "user_id": str(user["_id"]),
+        "email": email,
+        "force_password_change": force_password_change,
+        "email_sent": email_sent,
+    }
 
 
 def generate_card_number():
@@ -262,6 +354,18 @@ async def login(req: LoginRequest, request: Request, response: Response):
                         details={"reason": "invalid_credentials"}, severity="warn")
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    if user.get("force_password_change"):
+        await log_audit(
+            "password_reset_enforced",
+            user_id=str(user["_id"]),
+            email=email,
+            ip=ip,
+            user_agent=ua,
+            details={"reason": user.get("force_password_change_reason", "password_reset_required")},
+            severity="info",
+        )
+        raise HTTPException(status_code=403, detail="Passwort-Reset erforderlich. Bitte prüfe deine E-Mail und setze dein Passwort neu.")
+
     # Clear failed attempts on success
     await db.login_attempts.delete_many({"identifier": identifier})
 
@@ -420,31 +524,23 @@ async def forgot_password(request: Request):
     if not user:
         # Don't reveal if email exists
         return {"ok": True, "message": "If account exists, reset link sent"}
-    
-    # Generate reset token
-    reset_token = secrets.token_urlsafe(32)
-    expires = datetime.now(timezone.utc) + timedelta(hours=1)
-    
-    await db.password_resets.update_one(
-        {"email": email},
-        {"$set": {
-            "token": reset_token,
-            "expires_at": expires.isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }},
-        upsert=True
-    )
-    
-    # Send password reset email
-    try:
-        from core.email import send_password_reset_email
-        user_name = user.get("name", "")
-        send_password_reset_email(email, reset_token, user_name)
-        logger.info(f"Password reset email sent to {email}")
-    except Exception as e:
-        logger.error(f"Failed to send password reset email to {email}: {e}")
-    
+
+    await _issue_password_reset(email, request=request, issued_by="self_service", reason="forgot_password", force_password_change=False)
     return {"ok": True, "message": "If account exists, reset link sent"}
+
+
+@router.get("/reset-password/verify")
+async def verify_password_reset_token(token: str):
+    token_hash = _hash_reset_token(token.strip())
+    entry = await db.password_resets.find_one({"token_hash": token_hash, "used_at": None})
+    if not entry:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    if datetime.now(timezone.utc) > _parse_reset_expiry(entry.get("expires_at")):
+        raise HTTPException(status_code=400, detail="Token expired")
+    await db.password_resets.update_one({"_id": entry["_id"]}, {"$set": {"verified_at": datetime.now(timezone.utc).isoformat()}})
+    expires_value = entry.get("expires_at")
+    expires_iso = expires_value.isoformat() if isinstance(expires_value, datetime) else str(expires_value)
+    return {"ok": True, "email": entry.get("email", ""), "expires_at": expires_iso}
 
 
 @router.post("/reset-password")
@@ -453,21 +549,24 @@ async def reset_password(request: Request):
     body = await request.json()
     token = body.get("token", "").strip()
     new_password = body.get("password", "")
+    confirm_password = body.get("confirm_password", "")
     
     if not token or not new_password:
         raise HTTPException(status_code=400, detail="Token and password required")
+    if confirm_password and confirm_password != new_password:
+        raise HTTPException(status_code=400, detail="Passwörter stimmen nicht überein")
     
     if len(new_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     
-    reset_entry = await db.password_resets.find_one({"token": token})
+    reset_entry = await db.password_resets.find_one({"token_hash": _hash_reset_token(token), "used_at": None})
     if not reset_entry:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
     
     # Check expiry
-    expires = datetime.fromisoformat(reset_entry["expires_at"])
+    expires = _parse_reset_expiry(reset_entry["expires_at"])
     if datetime.now(timezone.utc) > expires:
-        await db.password_resets.delete_one({"token": token})
+        await db.password_resets.update_one({"_id": reset_entry["_id"]}, {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "used_reason": "expired"}})
         raise HTTPException(status_code=400, detail="Token expired")
     
     email = reset_entry["email"]
@@ -480,12 +579,28 @@ async def reset_password(request: Request):
     
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {"password_hash": hashed}}
+        {"$set": {
+            "password_hash": hashed,
+            "password_reset_at": datetime.now(timezone.utc).isoformat(),
+            "force_password_change": False,
+            "force_password_change_reason": None,
+            "force_password_change_requested_at": None,
+        }, "$unset": {"password": ""}}
     )
-    
-    # Delete reset token
-    await db.password_resets.delete_one({"token": token})
-    
+
+    await db.password_resets.update_one({"_id": reset_entry["_id"]}, {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "used_reason": "password_reset_completed"}})
+
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.PASSWORD_CHANGE,
+        user_id=str(user["_id"]),
+        email=email,
+        ip=ip,
+        user_agent=ua,
+        details={"via": "password_reset", "issued_by": reset_entry.get("issued_by", "self_service")},
+        severity="info",
+    )
+
     logger.info(f"Password reset completed for {email}")
     
     return {"ok": True, "message": "Password updated successfully"}

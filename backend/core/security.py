@@ -73,6 +73,8 @@ def serialize_user(user: dict) -> dict:
         "card_number": user.get("card_number", ""),
         "card_expiry": user.get("card_expiry", ""),
         "created_at": user.get("created_at", ""),
+        "registered_at": user.get("registered_at", user.get("created_at", "")),
+        "force_password_change": bool(user.get("force_password_change", False)),
         "language": user.get("language", "de"),
         "notifications_enabled": user.get("notifications_enabled", True),
         "email_notifications": user.get("email_notifications", True),

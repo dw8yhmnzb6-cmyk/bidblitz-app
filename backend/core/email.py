@@ -24,7 +24,8 @@ except ImportError:
     EMAIL_ENABLED = False
     logger.warning("Resend not installed - emails will be logged only")
 
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "BidBlitz <noreply@bidblitz.ae>")
+_configured_from = os.environ.get("FROM_EMAIL") or os.environ.get("SENDER_EMAIL") or "BidBlitz <onboarding@resend.dev>"
+FROM_EMAIL = "BidBlitz <onboarding@resend.dev>" if "bidblitz.ae" in _configured_from.lower() else _configured_from
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://bidblitz.ae")
 
 

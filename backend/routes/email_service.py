@@ -13,7 +13,8 @@ from core.database import db
 logger = logging.getLogger("bidblitz.email")
 
 RESEND_KEY = os.environ.get("RESEND_API_KEY", "")
-SENDER = os.environ.get("SENDER_EMAIL", "noreply@bidblitz.ae")
+_configured_sender = os.environ.get("SENDER_EMAIL") or os.environ.get("FROM_EMAIL") or "onboarding@resend.dev"
+SENDER = "onboarding@resend.dev" if "bidblitz.ae" in _configured_sender.lower() else _configured_sender
 DOMAIN = "https://bidblitz.ae"
 
 

@@ -41,6 +41,7 @@ const PayForBusinessPage = lazy(() => import("./pages/PayForBusinessPage"));
 const MiningPage = lazy(() => import("./pages/MiningPage"));
 const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const EVStartChargingPage = lazy(() => import("./pages/EVStartChargingPage"));
 const EVLiveSessionPage = lazy(() => import("./pages/EVLiveSessionPage"));
 const EVChargingMapPage = lazy(() => import("./pages/EVChargingMapPage"));
@@ -823,6 +824,8 @@ function AppContent() {
         return <MarketplacePage onNavigate={handleNavigate} />;
       case "/chat":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChatPage onNavigate={handleNavigate} />;
+      case "/reset-password":
+        return <ResetPasswordPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/support-chat":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SupportChatPage onBack={() => handleNavigate("/more")} />;
       case "/admin/support":

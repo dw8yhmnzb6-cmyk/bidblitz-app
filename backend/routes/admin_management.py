@@ -10,6 +10,8 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
+from core.audit import log_audit, AuditEvent, get_client_info
+from routes.auth import _issue_password_reset
 
 router = APIRouter(prefix="/api/admin", tags=["admin-management"])
 
@@ -143,24 +145,69 @@ async def change_role(user_id: str, req: RoleRequest, request: Request):
 
 
 class ResetPasswordRequest(BaseModel):
-    new_password: str = Field(..., min_length=6)
+    reason: Optional[str] = "Admin security reset"
+
+
+def _password_format_info(user: dict):
+    pwd_hash = (user.get("password_hash") or "").strip()
+    legacy_pwd = (user.get("password") or "").strip()
+    registered_at = user.get("registered_at") or user.get("created_at") or ""
+    if pwd_hash and legacy_pwd and pwd_hash != legacy_pwd:
+        return {"registered_at": registered_at, "password_format": "conflicting_hash_fields", "risk_level": "high", "recommended_action": "Sofort Reset-Link senden und Legacy-Feld bereinigen"}
+    if legacy_pwd and not pwd_hash:
+        return {"registered_at": registered_at, "password_format": "legacy_password_field_bcrypt" if legacy_pwd.startswith("$2") else "legacy_password_field_unknown", "risk_level": "medium", "recommended_action": "Reset-Link senden oder Auto-Migration beim nächsten Login zulassen"}
+    if pwd_hash and legacy_pwd and pwd_hash == legacy_pwd:
+        return {"registered_at": registered_at, "password_format": "duplicate_hash_fields", "risk_level": "medium", "recommended_action": "Legacy-Feld bereinigen und Passwortstatus prüfen"}
+    if pwd_hash:
+        return {"registered_at": registered_at, "password_format": "password_hash_bcrypt" if pwd_hash.startswith("$2") else "password_hash_unknown", "risk_level": "low", "recommended_action": "Keine Aktion erforderlich"}
+    return {"registered_at": registered_at, "password_format": "missing_password_fields", "risk_level": "critical", "recommended_action": "Sofort Reset-Link senden und Konto prüfen"}
 
 
 @router.post("/customers/{user_id}/reset-password")
 async def reset_password(user_id: str, req: ResetPasswordRequest, request: Request):
-    """Passwort zurücksetzen (Admin-only)."""
-    from core.security import hash_password
-    await _require_admin(request)
-    result = await db.users.update_one(
-        {"_id": _oid(user_id)},
-        {"$set": {
-            "password_hash": hash_password(req.new_password),
-            "password_reset_at": datetime.now(timezone.utc).isoformat(),
-        }},
-    )
-    if result.matched_count == 0:
+    """Sicheren Reset-Link per E-Mail senden (Admin-only)."""
+    admin = await _require_admin(request)
+    user = await db.users.find_one({"_id": _oid(user_id)}, {"email": 1})
+    if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
-    return {"ok": True}
+    issued = await _issue_password_reset(user.get("email", ""), request=request, issued_by=str(admin.get("_id") or admin.get("id") or "admin"), reason=req.reason or "admin_security_reset", force_password_change=True)
+    if not issued:
+        raise HTTPException(404, "Kunde nicht gefunden")
+    if not issued.get("email_sent", False):
+        raise HTTPException(502, "Reset-E-Mail konnte nicht zugestellt werden. Bitte Resend-Senderdomain prüfen.")
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin.get("_id") or admin.get("id") or ""),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={"action": "send_password_reset_link", "target_user_id": user_id, "target_email": user.get("email", ""), "reason": req.reason or "admin_security_reset"},
+        severity="info",
+    )
+    return {"ok": True, "email": user.get("email", ""), "expires_at": issued.get("expires_at")}
+
+
+@router.get("/customers-report/legacy-passwords")
+async def legacy_password_report(request: Request, role: Optional[str] = None):
+    await _require_admin(request)
+    query = {"role": {"$nin": ["admin", "super_admin"]}}
+    if role:
+        query["role"] = role
+    cursor = db.users.find(query, {"_id": 1, "email": 1, "role": 1, "created_at": 1, "registered_at": 1, "password_hash": 1, "password": 1}).sort("created_at", -1)
+    report = []
+    async for user in cursor:
+        info = _password_format_info(user)
+        report.append({
+            "user_id": str(user["_id"]),
+            "email": user.get("email", ""),
+            "registered_at": info["registered_at"],
+            "password_format": info["password_format"],
+            "risk_level": info["risk_level"],
+            "recommended_action": info["recommended_action"],
+            "role": user.get("role", "user"),
+        })
+    return {"items": report, "summary": {"total": len(report), "critical": len([r for r in report if r["risk_level"] == "critical"]), "high": len([r for r in report if r["risk_level"] == "high"]), "medium": len([r for r in report if r["risk_level"] == "medium"]), "low": len([r for r in report if r["risk_level"] == "low"])}}
 
 
 @router.delete("/customers/{user_id}")

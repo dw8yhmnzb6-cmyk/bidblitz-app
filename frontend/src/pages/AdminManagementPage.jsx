@@ -86,6 +86,9 @@ const CustomersTab = () => {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [legacyReport, setLegacyReport] = useState({ items: [], summary: null });
+  const [legacyLoading, setLegacyLoading] = useState(true);
+  const [sendingResetId, setSendingResetId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,8 +112,96 @@ const CustomersTab = () => {
     return () => clearTimeout(t);
   }, [load, q]);
 
+  const loadLegacyReport = useCallback(async () => {
+    setLegacyLoading(true);
+    try {
+      const res = await fetch(`${API}/api/admin/customers-report/legacy-passwords`, { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Report konnte nicht geladen werden");
+      setLegacyReport({ items: data.items || [], summary: data.summary || null });
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setLegacyLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadLegacyReport();
+  }, [loadLegacyReport]);
+
+  const sendResetLink = async (customer) => {
+    setSendingResetId(customer.user_id);
+    try {
+      const res = await fetch(`${API}/api/admin/customers/${customer.user_id}/reset-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Legacy password cleanup" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Reset-Link konnte nicht gesendet werden");
+      toast.success(`Reset-Link an ${data.email} gesendet`);
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setSendingResetId(null);
+  };
+
   return (
     <div>
+      <div className="bg-white rounded-2xl p-3 mb-3 shadow-sm" data-testid="legacy-password-report-card">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <p className="text-[13px] font-bold text-gray-900">Legacy-Passwort-Report</p>
+            <p className="text-[11px] text-gray-500">Alle Kundenkonten mit Passwortformat, Risiko-Level und empfohlener Aktion.</p>
+          </div>
+          <button onClick={loadLegacyReport} data-testid="legacy-password-report-refresh" className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+            <RefreshCw size={14} className={legacyLoading ? "animate-spin" : ""} />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+          {[
+            ["Gesamt", legacyReport.summary?.total || 0],
+            ["Kritisch", legacyReport.summary?.critical || 0],
+            ["Hoch", legacyReport.summary?.high || 0],
+            ["Mittel", legacyReport.summary?.medium || 0],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl bg-gray-50 px-3 py-2" data-testid={`legacy-password-summary-${String(label).toLowerCase()}`}>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-gray-400">{label}</p>
+              <p className="text-[18px] font-bold text-gray-900">{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-2 max-h-[320px] overflow-y-auto">
+          {legacyLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="animate-spin text-gray-400" size={18} /></div>
+          ) : legacyReport.items.map((item, idx) => (
+            <div key={item.user_id} className="rounded-xl border border-gray-100 p-3" data-testid={`legacy-password-row-${idx}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-gray-900 truncate">{item.email}</p>
+                  <p className="text-[10px] text-gray-500 break-all">User ID: {item.user_id}</p>
+                  <p className="text-[10px] text-gray-500">Registriert: {item.registered_at ? new Date(item.registered_at).toLocaleString("de-DE") : "—"}</p>
+                  <p className="text-[10px] text-gray-500">Passwortformat: {item.password_format}</p>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${item.risk_level === "critical" ? "bg-red-50 text-red-600" : item.risk_level === "high" ? "bg-orange-50 text-orange-600" : item.risk_level === "medium" ? "bg-yellow-50 text-yellow-700" : "bg-green-50 text-green-600"}`}>{item.risk_level}</span>
+              </div>
+              <p className="mt-2 text-[10px] text-gray-600">Empfohlene Aktion: {item.recommended_action}</p>
+              {item.risk_level !== "low" && (
+                <button
+                  onClick={() => sendResetLink(item)}
+                  disabled={sendingResetId === item.user_id}
+                  data-testid={`legacy-password-reset-${item.user_id}`}
+                  className="mt-2 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+                >
+                  {sendingResetId === item.user_id ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />} Reset-Link senden
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl p-3 mb-3 shadow-sm">
         <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2">
           <Search size={14} className="text-gray-400" />
@@ -193,7 +284,6 @@ const CustomersTab = () => {
 
 const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
   const [loading, setLoading] = useState(false);
-  const [newPw, setNewPw] = useState("");
   const [showPwForm, setShowPwForm] = useState(false);
 
   const doAction = async (url, body, successMsg, method = "POST") => {
@@ -218,9 +308,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
   const ban = () => doAction(`/api/admin/customers/${customer.user_id}/ban`, { banned: !customer.banned, reason: "Admin action" }, customer.banned ? "Kunde entsperrt" : "Kunde gesperrt");
   const setRole = (role) => doAction(`/api/admin/customers/${customer.user_id}/role`, { role }, `Rolle: ${role}`);
   const resetPw = () => {
-    if (newPw.length < 6) { toast.error("Mind. 6 Zeichen"); return; }
-    doAction(`/api/admin/customers/${customer.user_id}/reset-password`, { new_password: newPw }, "Passwort zurückgesetzt");
-    setShowPwForm(false); setNewPw("");
+    doAction(`/api/admin/customers/${customer.user_id}/reset-password`, { reason: "Admin security reset" }, "Reset-Link gesendet");
+    setShowPwForm(false);
   };
   const del = () => {
     if (!window.confirm(`Kunde ${customer.email} wirklich dauerhaft löschen?`)) return;
@@ -289,21 +378,16 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
               onClick={() => setShowPwForm(true)}
               className="w-full py-2.5 rounded-xl bg-gray-100 text-[13px] font-semibold flex items-center justify-center gap-2"
             >
-              <Key size={14} /> Passwort zurücksetzen
+              <Key size={14} /> Reset-Link senden
             </button>
           ) : (
             <div className="space-y-2">
-              <input
-                type="text"
-                value={newPw}
-                onChange={(e) => setNewPw(e.target.value)}
-                placeholder="Neues Passwort"
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px]"
-                data-testid="customer-new-pw-input"
-              />
+              <div className="rounded-xl bg-gray-50 px-3 py-3 text-[12px] text-gray-600" data-testid="customer-reset-password-hint">
+                Es wird ein sicherer Reset-Link per E-Mail verschickt. Beim nächsten Login muss der Kunde zuerst ein neues Passwort setzen.
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowPwForm(false)} className="flex-1 py-2 rounded-xl bg-gray-100 text-[12px] font-semibold">Abbrechen</button>
-                <button onClick={resetPw} data-testid="customer-pw-save" disabled={loading} className="flex-1 py-2 rounded-xl bg-blue-500 text-white text-[12px] font-semibold">Speichern</button>
+                <button onClick={resetPw} data-testid="customer-pw-save" disabled={loading} className="flex-1 py-2 rounded-xl bg-blue-500 text-white text-[12px] font-semibold">Reset-Link senden</button>
               </div>
             </div>
           )}
