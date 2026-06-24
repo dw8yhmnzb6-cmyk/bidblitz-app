@@ -5,9 +5,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — Phase 4 Game Center / Reward Plinko
-- Reward Plinko ist jetzt als eigener Reward-Hub-Flow unter `/reward-plinko` live und mit Reward Hub, Admin-Config und Move-&-Earn-Tickets verbunden.
+## Current Focus — Smart Invoice & Payment Links
+- Smart Invoice & Payment Links sind jetzt live: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
+
+### 17.06.2026 (Smart Invoice & Payment Links) ✅
+- 🟢 **Sichere Invoice-Payment-Links live** (`backend/routes/invoicing.py`, `backend/core/router_registry.py`): neue Flows für `POST /api/invoicing/{invoice_id}/payment-link`, `GET /api/pay/{token}`, `POST /api/pay/{token}/checkout`, `GET /api/invoicing/{invoice_id}/payment-pdf` und Stripe-Webhook-Verarbeitung sind produktiv angebunden.
+- 🟢 **Öffentliche Bezahlseite ohne Login** (`frontend/src/pages/PublicInvoicePaymentPage.jsx`, `frontend/src/App.js`): `/pay/:token` zeigt Rechnung, QR-Code, Share-Aktionen, Stripe/Karte/Apple-Pay-Checkout und Wallet-Option in eigenem Public-Flow.
+- 🟢 **Invoice- und Merchant-UI erweitert** (`frontend/src/pages/InvoicingPage.jsx`, `frontend/src/pages/InvoicePayPage.jsx`, `frontend/src/pages/MerchantDashboardPage.jsx`, `frontend/src/services/api.js`): Smart Payment Link Box, Copy/WhatsApp/E-Mail/PDF/QR, Send-Link-Aktion und Merchant-Tab `Invoice Links` sind live.
+- 🟢 **Reminder-/Send-Link-Basis ergänzt** (`backend/routes/invoicing.py`): `kind=manual` versendet sichere Zahlungslinks per bestehender Mail-Logik, validiert `client_email` serverseitig und schreibt Historie.
+- 🟢 **Seed-/Merchant-Datenfeed verbessert** (`backend/scripts/seed_all_modules.py`): Test-/Seed-Rechnungen enthalten jetzt die nötigen Owner-Felder, damit Invoice Links im Merchant-Dashboard korrekt erscheinen.
+- ✅ **Verifiziert**: Self-Tests per curl + PDF-Check PASS, Frontend-Smoke auf `/pay/:token` PASS, `testing_agent` Iteration 144 grün für Kernflows, zusätzlicher Frontend-Retest für Merchant `Invoice Links` PASS, Backend-Retest 6/6 PASS (`deep_testing_backend_v2`).
+- ⚠️ **Live-E-Mail-Einschränkung**: Der aktuelle Resend-Account ist im Testmodus; Reminder-Historie und API funktionieren, echte Zustellung an fremde Domains bleibt bis zur Domain-Verifikation extern limitiert.
 
 ### 17.06.2026 (Legacy-Password-Report + Secure Reset Flow) ✅
 - 🟢 **Vollständiger Admin-Report live** (`backend/routes/admin_management.py`, `frontend/src/pages/AdminManagementPage.jsx`): Report listet jetzt User ID, E-Mail, Registrierungsdatum, Passwortformat, Risiko-Level und empfohlene Aktion inkl. Summary-Zählern für alle nicht-admin Kundenkonten.

@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 17.06.2026 — Smart Invoice & Payment Links
+- Sichere Payment-Link-APIs ergänzt: `POST /api/invoicing/{invoice_id}/payment-link`, `GET /api/pay/{token}`, `POST /api/pay/{token}/checkout`, `GET /api/invoicing/{invoice_id}/payment-pdf`
+- Öffentliche Bezahlseite `/pay/:token` mit QR-Code, Share-Aktionen, Stripe/Karte/Apple Pay und Wallet-Option live geschaltet
+- Invoicing-UI und Merchant-Dashboard um Payment-Link-Boxen, PDF/QR, Send-Link und Invoice-Links-Tab erweitert
+- Reminder `kind=manual` speichert Historie und nutzt bestehende E-Mail-Logik; Zustellung bleibt wegen Resend-Testmodus extern eingeschränkt
+- Verifiziert: Self-Test PASS, `iteration_144.json` Kernflows PASS, Frontend-Retest PASS, Backend-Retest 6/6 PASS
+
 ## 17.06.2026 — Legacy-Password-Report + Secure Reset Flow
 - Admin-Report für Legacy-Passwortformate ergänzt: User ID, E-Mail, Registrierungsdatum, Passwortformat, Risiko-Level, empfohlene Aktion
 - Passwort-Reset gehärtet: gehashte Reset-Tokens, Verify-Endpoint, Ablaufzeit, Audit-Logs, neue Reset-Seite `/reset-password`

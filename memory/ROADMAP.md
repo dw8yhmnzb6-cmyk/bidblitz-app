@@ -2,6 +2,7 @@
 
 ## P0
 - Commerce Center V1 gemäß User-Priorität als Nächstes bauen (Marketplace, Penny Auctions, Live Shopping, Flash Sales)
+- Smart Invoice Follow-up: Payment-Link Reminder-Kampagnen (Batch/Schedule), echte Webhook-Settlement-Härtung und öffentliche Payment-Seite um Success/Retry/Resume weiter vertiefen
 
 ## P1
 - Mobility Center V1 weiter ausbauen (E-Scooter, E-Bike, Carsharing, EV Charging, Parking enger zusammenziehen)
