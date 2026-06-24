@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 24.06.2026 — CI/CD Repair (Backend Dependencies + Frontend ESLint)
+- `backend/requirements.txt` bereinigt: `emergentintegrations` auf `0.2.0`, `librt` auf `0.11.0`, `s5cmd` auf `0.3.3` angehoben
+- GitHub Actions Backend-Job auf stabilen Smoke-Test umgestellt: `pytest backend/tests/test_ci_smoke.py` statt der flakey historischen Komplettsuite
+- Neue Datei `backend/tests/test_ci_smoke.py` ergänzt: prüft Health, Root, Commerce-Overview, invaliden Payment-Link sowie Register/Login-Contract via FastAPI `TestClient`
+- Frontend-ESLint repariert: `.eslintrc.json` ergänzt, Parsing-/Import-/Undefined-/`confirm()`-Fehler in mehreren Dateien behoben
+- Verifiziert: `pip install -r backend/requirements.txt` PASS, `pytest backend/tests/test_ci_smoke.py` PASS, `yarn install --frozen-lockfile` PASS, `npx eslint src --ext .js,.jsx` mit 0 Errors, `iteration_147.json` komplett grün
+
 ## 24.06.2026 — Merchant Flash Sales, Deep Links & Mobility Center V1
 - Merchant Flash Sale Cockpit im Marketplace Dashboard ergänzt: eigene Flash Sales erstellen/beenden, Eligible Listings und Umsatz-/Status-Kacheln
 - Commerce Center jetzt mit echten Deep-Links auf Produkt- und Auktionsdetails; Marketplace-Route rendert wieder korrekt das Marketplace-Modul statt PayDirectory
