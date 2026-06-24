@@ -68,7 +68,8 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   const openListingById = useCallback(async (listingId) => {
     if (!listingId) return;
     try {
-      const res = await fetch(`${API}/api/marketplace/${listingId}`, { credentials: 'include' });
+      setView('detail');
+      const res = await fetch(`${API}/api/marketplace/catalog/${listingId}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setSelectedListing(data);
@@ -112,7 +113,7 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
 
   const fetchMyListings = async () => {
     try {
-      const res = await fetch(`${API}/api/marketplace/my-listings`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/marketplace/dashboard/my-listings`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setMyListings(data.listings || []);
@@ -122,7 +123,7 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
 
   const fetchFavorites = async () => {
     try {
-      const res = await fetch(`${API}/api/marketplace/favorites`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/marketplace/meta/favorites`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setFavorites(data.favorites?.map(f => f.listing_id) || []);
@@ -143,8 +144,9 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   }, [view]);
 
   useEffect(() => {
-    if (routeParams?.listing_id && selectedListing?.listing_id !== routeParams.listing_id) {
-      openListingById(routeParams.listing_id);
+    const listingId = routeParams?.listing_id || new URLSearchParams(window.location.search).get('listing_id');
+    if (listingId && selectedListing?.listing_id !== listingId) {
+      openListingById(listingId);
     }
   }, [openListingById, routeParams?.listing_id, selectedListing?.listing_id]);
 
@@ -161,7 +163,7 @@ export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   // View listing detail
   const viewListing = async (listing) => {
     try {
-      const res = await fetch(`${API}/api/marketplace/${listing.listing_id}`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/marketplace/catalog/${listing.listing_id}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setSelectedListing(data);

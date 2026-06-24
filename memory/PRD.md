@@ -8,7 +8,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 ## Current Focus — Commerce Center V1
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub ist jetzt live: zentraler Einstieg für Marketplace, Flash Sales, Penny Auctions und Live Commerce auf Basis der bestehenden Module.
-- Nächster Schwerpunkt: Commerce-Center-Polish (Merchant-Steuerung für Flash Sales / Deep Links / Live-Produkt-Pinning) und danach Mobility Center V1.
+- Merchant-gesteuerte Flash Sales, echte Deep-Links auf Listing-/Auktionsdetails und ein erster Mobility Center Hub sind jetzt ebenfalls live.
+- Nächster Schwerpunkt: Mobility Center V1 vertiefen (Parking, Carsharing, EV Charging, Parking/Tracking zusammenziehen) und danach Game Center / Commerce Analytics.
+
+### 24.06.2026 (Merchant Flash Sales + Deep Links + Mobility Center V1) ✅
+- 🟢 **Merchant Flash Sale Cockpit live** (`backend/routes/commerce_center.py`, `frontend/src/pages/MarketplaceDashboardPage.jsx`, `frontend/src/App.js`): Händler können im Marketplace Dashboard eigene Flash Sales starten/beenden; API-Flow über `GET /api/commerce-center/merchant-dashboard`, `POST /api/commerce-center/flash-sales`, `DELETE /api/commerce-center/flash-sales/{sale_id}`.
+- 🟢 **Commerce-Deep-Links fertig** (`frontend/src/pages/CommerceCenterPage.jsx`, `frontend/src/pages/MarketplacePage.jsx`, `frontend/src/pages/AuctionsPage.jsx`, `frontend/src/pages/LiveAuctionsPage.jsx`, `backend/routes/marketplace.py`): Commerce Center springt jetzt direkt auf Produkt- und Auktionsdetails (`/marketplace?listing_id=...`, `/auctions?auction_id=...`, `/live-auctions?auction_id=...`). Zusätzlich wurde die alte `/marketplace` → PayDirectory-Kollision in `App.js` bereinigt.
+- 🟢 **Mobility Center V1 Hub ergänzt** (`frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/App.js`, `frontend/src/pages/HomePage.jsx`, `frontend/src/pages/MorePage.jsx`, `frontend/src/pages/AllServicesPage.jsx`): neuer zentraler Einstieg `/mobility-center` bündelt Taxi, Scooter, EV, Car Rental, Wallet/Methoden und letzte Mobility-Buchungen.
+- ✅ **Verifiziert**: Self-Tests PASS (Merchant Listing → Flash Sale Create/Cancel, Favorites-Alias, Marketplace-Katalog-Detail, Mobility Payment Options), Browser-Smoke PASS auf `/commerce-center` und `/marketplace?listing_id=...`, `testing_agent` Iteration 146 bestätigt Backend-/Frontend-Flows; Deep-Link-Bug danach per Self-Test behoben.
+- ⚠️ **Hinweis**: Für Seller-Dashboard-Demos werden eigene Listings benötigt; Seed-Daten mit `seller_id`-losen Legacy-Listings taugen nur für Public Commerce, nicht für Merchant-Steuerung.
 
 ### 24.06.2026 (Commerce Center V1 Hub) ✅
 - 🟢 **Neues Commerce Center live** (`backend/routes/commerce_center.py`, `frontend/src/pages/CommerceCenterPage.jsx`, `frontend/src/App.js`): zentraler Hub `/commerce-center` bündelt Marketplace, Flash Sales, Penny Auctions, Live Auctions und Live Shopping in einem eigenen Commerce-Flow.

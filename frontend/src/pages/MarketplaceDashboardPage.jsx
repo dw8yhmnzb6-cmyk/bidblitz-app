@@ -46,7 +46,7 @@ export default function MarketplaceDashboardPage({ onBack, onNavigate }) {
     setLoading(true);
     try {
       const [dashRes, balRes, optRes, flashRes] = await Promise.all([
-        fetch(`${API}/api/marketplace/my`, { credentials: 'include' }),
+        fetch(`${API}/api/marketplace/dashboard/my`, { credentials: 'include' }),
         fetch(`${API}/api/wallet/balance`, { credentials: 'include' }),
         fetch(`${API}/api/marketplace/boost-options`),
         fetch(`${API}/api/commerce-center/merchant-dashboard`, { credentials: 'include' }),

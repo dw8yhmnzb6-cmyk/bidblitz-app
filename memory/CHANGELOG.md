@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 24.06.2026 — Merchant Flash Sales, Deep Links & Mobility Center V1
+- Merchant Flash Sale Cockpit im Marketplace Dashboard ergänzt: eigene Flash Sales erstellen/beenden, Eligible Listings und Umsatz-/Status-Kacheln
+- Commerce Center jetzt mit echten Deep-Links auf Produkt- und Auktionsdetails; Marketplace-Route rendert wieder korrekt das Marketplace-Modul statt PayDirectory
+- Marketplace-Backend um stabile Alias-Routen ergänzt (`/catalog/{listing_id}`, `/dashboard/my`, `/dashboard/my-listings`, `/meta/favorites`)
+- Neues Mobility Center `/mobility-center` als V1-Hub für Taxi, Scooter, EV Charging, Car Rental und letzte Buchungen
+- Navigation ergänzt: Home, More und All Services verlinken jetzt auch ins Mobility Center
+- Verifiziert: Self-Tests PASS, Deep-Link Browser-Smoke PASS, `iteration_146.json` grün bis auf Marketplace-Deep-Link; danach per Self-Test behoben
+
 ## 24.06.2026 — Commerce Center V1 Hub
 - Neues Commerce Center `/commerce-center` gebaut: zentraler Hub für Marketplace, Flash Sales, Penny Auctions, Live Auctions und Live Shopping
 - Neue Backend-API `/api/commerce-center/overview` aggregiert echte Daten aus bestehenden Commerce-Modulen ohne neue Mock-Flows

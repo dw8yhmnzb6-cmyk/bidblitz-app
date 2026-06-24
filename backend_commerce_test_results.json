@@ -1,0 +1,97 @@
+{
+  "timestamp": "2026-06-24T20:22:04.393997",
+  "base_url": "https://commerce-hub-565.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Auth-Login",
+      "passed": true,
+      "status_code": 200,
+      "timestamp": "2026-06-24T20:22:04.835246",
+      "response_summary": {
+        "email": "admin@bidblitz.com",
+        "role": "admin",
+        "has_access_token": true
+      }
+    },
+    {
+      "test": "Merchant Dashboard",
+      "passed": true,
+      "status_code": 200,
+      "timestamp": "2026-06-24T20:22:04.943077",
+      "response_summary": {
+        "stats": {
+          "total_listings": 1,
+          "eligible_listings": 1,
+          "active_flash_sales": 0,
+          "completed_flash_sales": 0,
+          "flash_sale_revenue": 0
+        },
+        "flash_sales_count": 5,
+        "eligible_listings_count": 1
+      }
+    },
+    {
+      "test": "Flash Sale CREATE",
+      "passed": true,
+      "status_code": 200,
+      "timestamp": "2026-06-24T20:22:05.051841",
+      "response_summary": {
+        "sale_id": "flash_d6bd3ab111",
+        "listing_id": "971e11c2d8c52248",
+        "sale_price": 79.99,
+        "status": "active"
+      }
+    },
+    {
+      "test": "Flash Sale DELETE",
+      "passed": true,
+      "status_code": 200,
+      "timestamp": "2026-06-24T20:22:05.161119",
+      "response_summary": {
+        "sale_id": "flash_d6bd3ab111",
+        "deleted": true
+      }
+    },
+    {
+      "test": "Marketplace Favorites",
+      "passed": true,
+      "status_code": 200,
+      "timestamp": "2026-06-24T20:22:05.282116",
+      "response_summary": {
+        "favorites_count": 0,
+        "has_favorites_array": true
+      }
+    },
+    {
+      "test": "Marketplace Catalog",
+      "passed": true,
+      "status_code": 200,
+      "timestamp": "2026-06-24T20:22:05.519521",
+      "response_summary": {
+        "listing_id": "971e11c2d8c52248",
+        "title": "Test Product for Flash Sale",
+        "price": 99.99,
+        "views": 2
+      }
+    },
+    {
+      "test": "Mobility Payment Options",
+      "passed": true,
+      "status_code": 200,
+      "timestamp": "2026-06-24T20:22:05.643633",
+      "response_summary": {
+        "wallet_balance": 7884.5,
+        "payment_methods_count": 7,
+        "payment_methods": [
+          "wallet",
+          "nfc",
+          "qr",
+          "apple_pay",
+          "google_pay",
+          "credit_card",
+          "cash"
+        ]
+      }
+    }
+  ]
+}

@@ -282,6 +282,7 @@ async def list_listings(
     }
 
 
+@router.get("/catalog/{listing_id}")
 @router.get("/{listing_id}")
 async def get_listing(listing_id: str):
     """Get listing details (public)."""
@@ -780,6 +781,7 @@ async def upgrade_to_vip(request: Request):
 # USER DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 
+@router.get("/dashboard/my-listings")
 @router.get("/my-listings")
 async def get_my_listings(request: Request):
     """Get user's own listings."""
@@ -793,9 +795,9 @@ async def get_my_listings(request: Request):
     
     stats = {
         "total": len(listings),
-        "active": len([l for l in listings if l.get("status") == "active"]),
-        "sold": len([l for l in listings if l.get("status") == "sold"]),
-        "total_views": sum(l.get("views", 0) for l in listings),
+        "active": len([listing for listing in listings if listing.get("status") == "active"]),
+        "sold": len([listing for listing in listings if listing.get("status") == "sold"]),
+        "total_views": sum(listing.get("views", 0) for listing in listings),
     }
     
     return {"listings": listings, "stats": stats}
@@ -874,6 +876,7 @@ async def toggle_favorite(listing_id: str, request: Request):
         return {"ok": True, "favorited": True}
 
 
+@router.get("/meta/favorites")
 @router.get("/favorites")
 async def get_favorites(request: Request):
     """Get user's favorite listings."""
@@ -940,6 +943,7 @@ async def admin_delete_listing(listing_id: str, request: Request):
 # MERCHANT DASHBOARD - STATS
 # ══════════════════════════════════════════════════════════════════════════════
 
+@router.get("/dashboard/my")
 @router.get("/my")
 async def get_my_dashboard(request: Request):
     """Get user's marketplace dashboard with listings and stats."""
@@ -955,9 +959,9 @@ async def get_my_dashboard(request: Request):
     now = datetime.now(timezone.utc).isoformat()
     
     # Calculate stats
-    active_listings = [l for l in listings if l.get("status") == "active"]
-    boosted_listings = [l for l in active_listings if l.get("boost") and l["boost"].get("expires_at", "") > now]
-    vip_listings = [l for l in active_listings if l.get("is_vip")]
+    active_listings = [listing for listing in listings if listing.get("status") == "active"]
+    boosted_listings = [listing for listing in active_listings if listing.get("boost") and listing["boost"].get("expires_at", "") > now]
+    vip_listings = [listing for listing in active_listings if listing.get("is_vip")]
     
     # Get boost/VIP transactions to calculate spent
     boost_txns = await db.transactions.find({
@@ -977,9 +981,9 @@ async def get_my_dashboard(request: Request):
             "active_listings": len(active_listings),
             "boosted_listings": len(boosted_listings),
             "vip_listings": len(vip_listings),
-            "sold_listings": len([l for l in listings if l.get("status") == "sold"]),
-            "total_views": sum(l.get("views", 0) for l in listings),
-            "total_favorites": sum(l.get("favorites", 0) for l in listings),
+            "sold_listings": len([listing for listing in listings if listing.get("status") == "sold"]),
+            "total_views": sum(listing.get("views", 0) for listing in listings),
+            "total_favorites": sum(listing.get("favorites", 0) for listing in listings),
             "total_spent_on_boost": round(total_spent, 2),
         }
     }
@@ -1004,9 +1008,9 @@ async def get_my_stats(request: Request):
         {"boost": 1, "is_vip": 1, "views": 1, "favorites": 1}
     ).to_list(100)
     
-    boosted = sum(1 for l in active_listings if l.get("boost") and l["boost"].get("expires_at", "") > now)
-    vip = sum(1 for l in active_listings if l.get("is_vip"))
-    total_views = sum(l.get("views", 0) for l in active_listings)
+    boosted = sum(1 for listing in active_listings if listing.get("boost") and listing["boost"].get("expires_at", "") > now)
+    vip = sum(1 for listing in active_listings if listing.get("is_vip"))
+    total_views = sum(listing.get("views", 0) for listing in active_listings)
     
     # Get total spent on promotions
     boost_txns = await db.transactions.find({

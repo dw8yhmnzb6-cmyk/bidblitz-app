@@ -1,12 +1,12 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Commerce Center V1 polishen: Merchant-gesteuerte Flash-Sales, Deep-Links direkt auf Produkt-/Auktionsdetails und Live-Produkt-Pinning aus Streams ergänzen
+- Mobility Center V1 vertiefen: Parking, Carsharing, EV Charging, Booking-Tracking und Saved/Frequent Routes enger im neuen Hub bündeln
 - Smart Invoice Follow-up: Payment-Link Reminder-Kampagnen (Batch/Schedule), echte Webhook-Settlement-Härtung und öffentliche Payment-Seite um Success/Retry/Resume weiter vertiefen
 
 ## P1
-- Mobility Center V1 weiter ausbauen (E-Scooter, E-Bike, Carsharing, EV Charging, Parking enger zusammenziehen)
-- Commerce: Live-Auctions-Seed/Programmplanung und dedizierte Commerce-Analytics für Conversion, Flash-Sale-Umsatz und CTA-Klicks ergänzen
+- Commerce: Live-Auctions-Seed/Programmplanung, Live-Produkt-Pinning und dedizierte Commerce-Analytics für Conversion, Flash-Sale-Umsatz und CTA-Klicks ergänzen
+- Merchant Commerce: Bulk-Flash-Sale-Kampagnen, Scheduler und Performance-Rankings ergänzen
 - Move & Earn: echte native Schrittquellen (HealthKit/Google Fit/Pedometer) sauber anbinden und Preview-Sync von simulierten Device-Werten auf reale Sensor-Provider erweitern
 - Move & Earn: Ride & Earn / Eco Rewards noch tiefer mit realen Scooter-/Bike-/Taxi-/EV-Events, Merchant-QR-Events und Referral-/Friends-Logik koppeln
 - Move & Earn: Admin-Analytics um DAU/MAU, Reward-Kosten pro Typ, ROI und gesponserte Rewards ausbauen
