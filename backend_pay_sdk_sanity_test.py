@@ -13,7 +13,7 @@ import json
 import httpx
 
 # Backend URL from environment
-BACKEND_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://game-center-hub-1.preview.emergentagent.com")
+BACKEND_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://commerce-hub-565.preview.emergentagent.com")
 API_BASE = f"{BACKEND_URL}/api"
 
 def print_test(name, passed, details=""):

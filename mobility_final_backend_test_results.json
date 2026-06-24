@@ -1,6 +1,6 @@
 {
   "test_date": "2026-06-09T18:56:11.757091",
-  "base_url": "https://game-center-hub-1.preview.emergentagent.com",
+  "base_url": "https://commerce-hub-565.preview.emergentagent.com",
   "tests": [
     {
       "test": "GET /api/mobility-platform/preferences",

@@ -1,7 +1,7 @@
 {
   "test_run": {
     "timestamp": "2026-05-17T17:46:54.476815",
-    "base_url": "https://game-center-hub-1.preview.emergentagent.com",
+    "base_url": "https://commerce-hub-565.preview.emergentagent.com",
     "total": 5,
     "passed": 4,
     "failed": 1

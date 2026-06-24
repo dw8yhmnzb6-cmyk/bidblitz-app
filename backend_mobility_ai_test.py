@@ -2,14 +2,14 @@
 """
 BidBlitz Mobility AI Integration Backend Testing
 Tests the new AI recommendation endpoint and regression checks for existing endpoints
-External Preview URL: https://game-center-hub-1.preview.emergentagent.com
+External Preview URL: https://commerce-hub-565.preview.emergentagent.com
 """
 
 import json
 import requests
 from datetime import datetime
 
-BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
+BASE_URL = "https://commerce-hub-565.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

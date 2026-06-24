@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://game-center-hub-1.preview.emergentagent.com',
+  url: 'https://commerce-hub-565.preview.emergentagent.com',
   cleartext: false,
 }
 ```

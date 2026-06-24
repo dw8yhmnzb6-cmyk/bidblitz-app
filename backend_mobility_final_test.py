@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 BidBlitz Mobility Platform - Final Backend Flow Testing
-Testing gegen externe Preview-URL: https://game-center-hub-1.preview.emergentagent.com
+Testing gegen externe Preview-URL: https://commerce-hub-565.preview.emergentagent.com
 
 Fokus:
 1. GET/POST /api/mobility-platform/preferences
@@ -16,7 +16,7 @@ import json
 import requests
 from datetime import datetime
 
-BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
+BASE_URL = "https://commerce-hub-565.preview.emergentagent.com"
 API_URL = f"{BASE_URL}/api"
 
 # Test credentials from /app/memory/test_credentials.md

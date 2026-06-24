@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://game-center-hub-1.preview.emergentagent.com',
+    url: 'https://commerce-hub-565.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

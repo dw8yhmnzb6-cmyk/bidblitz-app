@@ -94,7 +94,7 @@ class TestMobilityCheckoutSession:
         payload = {
             "transport_type": "taxi",
             "payment_method": "qr",
-            "origin_url": "https://game-center-hub-1.preview.emergentagent.com",
+            "origin_url": "https://commerce-hub-565.preview.emergentagent.com",
             "pickup": {"address": "Pristina Center", "lat": 42.6629, "lng": 21.1655},
             "dropoff": {"address": "Pristina Airport", "lat": 42.5728, "lng": 21.0358},
             "preferences": {"priority": "balance", "luggage": False, "childSeat": False},
@@ -114,7 +114,7 @@ class TestMobilityCheckoutSession:
         payload = {
             "transport_type": "scooter",
             "payment_method": "apple_pay",
-            "origin_url": "https://game-center-hub-1.preview.emergentagent.com",
+            "origin_url": "https://commerce-hub-565.preview.emergentagent.com",
             "pickup": {"address": "Pristina Center", "lat": 42.6629, "lng": 21.1655},
             "dropoff": {"address": "Pristina Airport", "lat": 42.5728, "lng": 21.0358}
         }
@@ -130,7 +130,7 @@ class TestMobilityCheckoutSession:
         payload = {
             "transport_type": "car_rental",
             "payment_method": "google_pay",
-            "origin_url": "https://game-center-hub-1.preview.emergentagent.com",
+            "origin_url": "https://commerce-hub-565.preview.emergentagent.com",
             "pickup": {"address": "Pristina Center", "lat": 42.6629, "lng": 21.1655},
             "dropoff": {"address": "Pristina Airport", "lat": 42.5728, "lng": 21.0358}
         }
@@ -145,7 +145,7 @@ class TestMobilityCheckoutSession:
         payload = {
             "transport_type": "vip",
             "payment_method": "nfc",
-            "origin_url": "https://game-center-hub-1.preview.emergentagent.com",
+            "origin_url": "https://commerce-hub-565.preview.emergentagent.com",
             "pickup": {"address": "Pristina Center", "lat": 42.6629, "lng": 21.1655},
             "dropoff": {"address": "Pristina Airport", "lat": 42.5728, "lng": 21.0358}
         }

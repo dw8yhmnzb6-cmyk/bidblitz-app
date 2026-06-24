@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # External preview URL
-BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
+BASE_URL = "https://commerce-hub-565.preview.emergentagent.com"
 
 # Test credentials
 LEGACY_CUSTOMER_EMAIL = "max.weber@bidblitz.com"

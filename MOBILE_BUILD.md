@@ -40,7 +40,7 @@ npx cap open ios
 In `capacitor.config.ts`:
 ```ts
 server: {
-  url: 'https://game-center-hub-1.preview.emergentagent.com',
+  url: 'https://commerce-hub-565.preview.emergentagent.com',
   cleartext: true,
 }
 ```
@@ -86,7 +86,7 @@ npx cap sync
 npx cap run android   # oder ios
 
 # Code änderen → die App auf dem Handy lädt automatisch neu
-# (lädt von https://game-center-hub-1.preview.emergentagent.com)
+# (lädt von https://commerce-hub-565.preview.emergentagent.com)
 
 # Vor Release zurück:
 git checkout capacitor.config.ts

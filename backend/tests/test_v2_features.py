@@ -281,7 +281,7 @@ class TestKidsCheckout:
         """POST /api/kids/create-checkout should create Stripe checkout for monthly plan"""
         response = self.session.post(
             f"{BASE_URL}/api/kids/create-checkout",
-            json={"plan": "monthly", "origin_url": "https://game-center-hub-1.preview.emergentagent.com"}
+            json={"plan": "monthly", "origin_url": "https://commerce-hub-565.preview.emergentagent.com"}
         )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
@@ -296,7 +296,7 @@ class TestKidsCheckout:
         """POST /api/kids/create-checkout should create Stripe checkout for yearly plan"""
         response = self.session.post(
             f"{BASE_URL}/api/kids/create-checkout",
-            json={"plan": "yearly", "origin_url": "https://game-center-hub-1.preview.emergentagent.com"}
+            json={"plan": "yearly", "origin_url": "https://commerce-hub-565.preview.emergentagent.com"}
         )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
@@ -310,7 +310,7 @@ class TestKidsCheckout:
         """POST /api/kids/create-checkout should reject invalid plan"""
         response = self.session.post(
             f"{BASE_URL}/api/kids/create-checkout",
-            json={"plan": "invalid_plan", "origin_url": "https://game-center-hub-1.preview.emergentagent.com"}
+            json={"plan": "invalid_plan", "origin_url": "https://commerce-hub-565.preview.emergentagent.com"}
         )
         assert response.status_code == 400, f"Expected 400, got {response.status_code}"
         print("Invalid plan correctly rejected")

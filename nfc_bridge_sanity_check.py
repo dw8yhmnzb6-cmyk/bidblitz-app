@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://game-center-hub-1.preview.emergentagent.com"
+BASE_URL = "https://commerce-hub-565.preview.emergentagent.com"
 CREDENTIALS = {
     "email": "admin@bidblitz.com",
     "password": "BidBlitz2026!"
