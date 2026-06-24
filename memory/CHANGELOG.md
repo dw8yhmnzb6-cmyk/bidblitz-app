@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 24.06.2026 — Commerce Center V1 Hub
+- Neues Commerce Center `/commerce-center` gebaut: zentraler Hub für Marketplace, Flash Sales, Penny Auctions, Live Auctions und Live Shopping
+- Neue Backend-API `/api/commerce-center/overview` aggregiert echte Daten aus bestehenden Commerce-Modulen ohne neue Mock-Flows
+- Neuer Flash-Sale-Kauf `POST /api/commerce-center/flash-sales/{sale_id}/buy` nutzt echtes Wallet-Debit, erzeugt Order, aktualisiert Listing/Sale-Status und schreibt Revenue
+- Navigation ergänzt: Home, More und All Services verlinken jetzt direkt ins Commerce Center
+- Router-Registrierung erweitert: `routes.commerce_center`, `routes.live_shopping`, `routes.live_auctions`
+- Verifiziert: Self-Test PASS, Screenshot-Smoke PASS, `iteration_145.json` komplett grün (Backend 12/12, Frontend 100%)
+
 ## 17.06.2026 — Smart Invoice & Payment Links
 - Sichere Payment-Link-APIs ergänzt: `POST /api/invoicing/{invoice_id}/payment-link`, `GET /api/pay/{token}`, `POST /api/pay/{token}/checkout`, `GET /api/invoicing/{invoice_id}/payment-pdf`
 - Öffentliche Bezahlseite `/pay/:token` mit QR-Code, Share-Aktionen, Stripe/Karte/Apple Pay und Wallet-Option live geschaltet

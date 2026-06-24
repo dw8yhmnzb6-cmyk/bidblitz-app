@@ -5,9 +5,17 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — Smart Invoice & Payment Links
-- Smart Invoice & Payment Links sind jetzt live: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
-- Als Nächstes folgt gemäß User-Priorität Commerce Center V1.
+## Current Focus — Commerce Center V1
+- Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
+- Commerce Center V1 Hub ist jetzt live: zentraler Einstieg für Marketplace, Flash Sales, Penny Auctions und Live Commerce auf Basis der bestehenden Module.
+- Nächster Schwerpunkt: Commerce-Center-Polish (Merchant-Steuerung für Flash Sales / Deep Links / Live-Produkt-Pinning) und danach Mobility Center V1.
+
+### 24.06.2026 (Commerce Center V1 Hub) ✅
+- 🟢 **Neues Commerce Center live** (`backend/routes/commerce_center.py`, `frontend/src/pages/CommerceCenterPage.jsx`, `frontend/src/App.js`): zentraler Hub `/commerce-center` bündelt Marketplace, Flash Sales, Penny Auctions, Live Auctions und Live Shopping in einem eigenen Commerce-Flow.
+- 🟢 **Flash-Sale-Orchestrierung mit echtem Wallet-Kauf** (`backend/routes/commerce_center.py`, `frontend/src/services/api.js`): `GET /api/commerce-center/overview` aggregiert echte Daten aus `marketplace_listings`, `auctions`, `live_auctions`, `live_streams`; `POST /api/commerce-center/flash-sales/{sale_id}/buy` kauft per Wallet, erzeugt Order, reduziert Bestand und schreibt Revenue.
+- 🟢 **Vorhandene Module sauber wiederverwendet** (`backend/core/router_registry.py`, `frontend/src/pages/HomePage.jsx`, `frontend/src/pages/MorePage.jsx`, `frontend/src/pages/AllServicesPage.jsx`): Commerce Center ist über Home/More/All Services erreichbar; Legacy-Router `live_shopping` und `live_auctions` sind registriert und CTA-Sprünge führen direkt in bestehende Flows.
+- ✅ **Verifiziert**: Self-Tests per curl PASS, Browser-Smoke auf `/commerce-center` PASS, `testing_agent` Iteration 145 komplett grün (Backend 12/12 PASS, Frontend 100% PASS).
+- ⚠️ **Bekannter Seed-Zustand**: aktive `live_auctions` können je nach Seed/Endzeit temporär `0` sein; UI bleibt stabil und CTA führt korrekt in den vorhandenen Live-Auktions-Flow.
 
 ### 17.06.2026 (Smart Invoice & Payment Links) ✅
 - 🟢 **Sichere Invoice-Payment-Links live** (`backend/routes/invoicing.py`, `backend/core/router_registry.py`): neue Flows für `POST /api/invoicing/{invoice_id}/payment-link`, `GET /api/pay/{token}`, `POST /api/pay/{token}/checkout`, `GET /api/invoicing/{invoice_id}/payment-pdf` und Stripe-Webhook-Verarbeitung sind produktiv angebunden.

@@ -94,11 +94,18 @@ async def _ensure_flash_sales() -> list[dict]:
             continue
         discount = FLASH_SALE_DISCOUNTS[index % len(FLASH_SALE_DISCOUNTS)]
         sale_price = round(max(0.5, base_price * (1 - discount)), 2)
+        seller_name = listing.get("seller_name") or ""
+        seller_email = listing.get("seller_email") or ""
+        if not seller_name and seller_email:
+            seller_name = seller_email.split("@")[0].replace(".", " ").title()
+        if not seller_name:
+            seller_name = "BidBlitz Deals"
+
         sale = {
             "sale_id": f"flash_{secrets.token_hex(5)}",
             "listing_id": listing["listing_id"],
             "seller_id": listing.get("seller_id", "") or "",
-            "seller_name": listing.get("seller_name") or (listing.get("seller_email") or "BidBlitz Deals").split("@")[0].replace(".", " ").title(),
+            "seller_name": seller_name,
             "title": listing.get("title", "Flash Deal"),
             "category": listing.get("category", "other"),
             "category_label": listing.get("category_label") or listing.get("category", "Sonstiges"),
