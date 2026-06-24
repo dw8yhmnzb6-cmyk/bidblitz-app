@@ -300,7 +300,7 @@ const WheelGame = ({ onBack, userCoins,  onCoinsUpdate }) => {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
-  const [spinsLeft, setSpinsLeft] = useState(dailySpins);
+  const [spinsLeft, setSpinsLeft] = useState(3);
 
   const PRIZES = [
     { label: "10", points: 10, color: "#FF6B6B" },

@@ -119,7 +119,7 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
   };
 
   const deleteZone = async (zoneId) => {
-    if (!confirm("Zone wirklich löschen?")) return;
+    if (!window.confirm("Zone wirklich löschen?")) return;
     try {
       await fetchAPI(`/api/kids/gps/zones/${zoneId}`, { method: "DELETE" });
       setSuccess("Zone gelöscht");
@@ -300,7 +300,7 @@ const KidsGPSModal = ({ isOpen, onClose, child, allChildren }) => {
                     <div className="text-center">
                       <Navigation size={32} className="text-gray-600 mx-auto mb-2" />
                       <p className="text-gray-500 text-sm">Kein GPS-Signal</p>
-                      <p className="text-gray-600 text-[10px] mt-1">Tippe "Standort senden" um die Position zu aktualisieren</p>
+                      <p className="text-gray-600 text-[10px] mt-1">Tippe &quot;Standort senden&quot; um die Position zu aktualisieren</p>
                     </div>
                   </div>
                 )}

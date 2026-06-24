@@ -124,7 +124,7 @@ export default function FriendsPage({ onBack }) {
   };
 
   const handleRemove = async (friendId) => {
-    if (!confirm("Freund wirklich entfernen?")) return;
+    if (!window.confirm("Freund wirklich entfernen?")) return;
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/friends/remove/${friendId}`, {
         method: "DELETE",

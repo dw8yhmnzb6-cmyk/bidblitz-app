@@ -109,7 +109,7 @@ const HotelBookingPage = ({ onBack, onNavigate }) => {
   };
 
   const cancelBooking = async (id) => {
-    if (!confirm("Buchung wirklich stornieren?")) return;
+    if (!window.confirm("Buchung wirklich stornieren?")) return;
     const res = await fetch(`${API}/api/hotels/cancel/${id}`, { method: "POST", credentials: "include" });
     if (res.ok) loadBookings();
   };

@@ -60,7 +60,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   };
 
   const handleRestart = async (email) => {
-    if (!confirm(`Session von ${email} neustarten?`)) return;
+    if (!window.confirm(`Session von ${email} neustarten?`)) return;
     try {
       const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/restart`, { method: "POST" });
       toast.success(d.message);

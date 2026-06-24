@@ -46,7 +46,7 @@ export default function TaxiPromoManagerPage({ onBack }) {
   useEffect(() => { load(); }, [load]);
 
   const archive = async (code) => {
-    if (!confirm(`Promo "${code}" archivieren?`)) return;
+    if (!window.confirm(`Promo "${code}" archivieren?`)) return;
     try {
       await api(`/api/taxi/admin/promos/${code}`, { method: "DELETE" });
       toast.success("Archiviert");

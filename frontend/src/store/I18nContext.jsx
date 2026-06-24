@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import extraTranslations from "./translations_extra";
 
 const STORAGE_KEY = "bidblitz_lang";
 const DEFAULT_LANG = "de";
@@ -76,9 +77,6 @@ export function useI18n() {
   if (!ctx) throw new Error("useI18n must be used within I18nProvider");
   return ctx;
 }
-
-// ── Merge extra translations ──
-import extraTranslations from "./translations_extra";
 
 // ── Translation Dictionaries ──
 const _base = {

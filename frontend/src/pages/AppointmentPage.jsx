@@ -63,7 +63,7 @@ const AppointmentPage = ({ onBack }) => {
   };
 
   const cancelApt = async (id) => {
-    if (!confirm("Termin stornieren?")) return;
+    if (!window.confirm("Termin stornieren?")) return;
     await fetch(`${API}/api/appointments/cancel/${id}`, { method: "POST", credentials: "include" });
     loadApts();
   };

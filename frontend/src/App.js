@@ -4,12 +4,30 @@ import { Toaster } from "sonner";
 import "@/App.css";
 
 import { AppProvider, useUser, useI18n } from "./store";
-import { ThemeProvider, useTheme } from "./store/ThemeContext";
+import { ThemeProvider } from "./store/ThemeContext";
 import AIChatWidget from "./components/AIChatWidget";
 import SuperAppOverlay from "./components/SuperAppOverlay";
 import InAppUpdateManager from "./components/InAppUpdateManager";
 import BackToHomeBar from "./components/BackToHomeBar";
 import ErrorBoundary, { setupGlobalErrorHandler } from "./components/ErrorBoundary";
+import KYCFlow from "./pages/KYCFlow";
+import { LandingChatbot } from "./components/LandingChatbot";
+import CookieBanner from "./components/CookieBanner";
+import { initSentryIfConsented } from "./utils/sentry";
+import {
+  CarListPage, CarDetailPage, MyCarBookingsPage, MyBookingDetailPage,
+  VendorCarRentalDashboardPage, VendorCarsPage, VendorBookingsPage,
+  VendorBookingDetailPage, VendorInvoicesPage, VendorPayoutsPage,
+  VendorDamagesPage, VendorSettingsPage, VendorStaffPage, VendorReportsPage,
+  AdminCarRentalPage, AdminDisputesPage,
+} from "./modules/car-rental/pages";
+import BottomNav from "./components/BottomNav";
+import BarcodeModal from "./components/BarcodeModal";
+import AuthGateOverlay from "./components/AuthGateOverlay";
+import DemoBanner from "./components/DemoBanner";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import PushPermissionPrompt from "./components/PushPermissionPrompt";
+import { tracker } from "./services/tracker";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
@@ -170,7 +188,6 @@ const AdminRevenueDashboardPage = lazy(() => import("./pages/AdminRevenueDashboa
 const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage"));
 const ExecutiveCenterPage = lazy(() => import("./pages/ExecutiveCenterPage"));
 const KYCTestPage = lazy(() => import("./pages/KYCTestPage"));
-import KYCFlow from "./pages/KYCFlow";
 const ContactsPage = lazy(() => import("./pages/ContactsPage"));
 const UserStatsPage = lazy(() => import("./pages/UserStatsPage"));
 const CurrencyConverterPage = lazy(() => import("./pages/CurrencyConverterPage"));
@@ -240,9 +257,6 @@ const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const WalletDashboard = lazy(() => import("./components/WalletDashboard").then(m => ({ default: m.WalletDashboard })));
 const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
-import { LandingChatbot } from "./components/LandingChatbot";
-import CookieBanner from "./components/CookieBanner";
-import { initSentryIfConsented } from "./utils/sentry";
 const CreatorsPage = lazy(() => import("./pages/CreatorsPage"));
 const P2PPage = lazy(() => import("./pages/P2PPage"));
 const CardPage = lazy(() => import("./pages/CardPage"));
@@ -262,23 +276,6 @@ const FieldAgentPortalPage = lazy(() => import("./pages/FieldAgentPortalPage"));
 const DirectoryPage = lazy(() => import("./pages/DirectoryPage"));
 const AdCampaignManagerPage = lazy(() => import("./pages/AdCampaignManagerPage"));
 const BookingPage = lazy(() => import("./pages/BookingPage"));
-
-// Car Rental Module
-import {
-  CarListPage, CarDetailPage, MyCarBookingsPage, MyBookingDetailPage,
-  VendorCarRentalDashboardPage, VendorCarsPage, VendorBookingsPage,
-  VendorBookingDetailPage, VendorInvoicesPage, VendorPayoutsPage,
-  VendorDamagesPage, VendorSettingsPage, VendorStaffPage, VendorReportsPage,
-  AdminCarRentalPage, AdminDisputesPage
-} from "./modules/car-rental/pages";
-
-import BottomNav from "./components/BottomNav";
-import BarcodeModal from "./components/BarcodeModal";
-import AuthGateOverlay from "./components/AuthGateOverlay";
-import DemoBanner from "./components/DemoBanner";
-import PWAInstallPrompt from "./components/PWAInstallPrompt";
-import PushPermissionPrompt from "./components/PushPermissionPrompt";
-import { tracker } from "./services/tracker";
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
 

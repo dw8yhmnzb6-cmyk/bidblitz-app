@@ -17,7 +17,7 @@ const STEPS = [
   {
     section: "stock",
     title: "📦 Bestand+ — Inventur, Auto-PO, Etiketten",
-    body: "Hier siehst du deine offene DEMO-Inventur. Klick „Abschließen" — der Bestand wird automatisch korrigiert. Außerdem: CSV-Import (z. B. von deinem alten System), Etiketten-PDF drucken und Auto-Bestellung für niedrige Artikel.",
+    body: "Hier siehst du deine offene DEMO-Inventur. Klick „Abschließen“ — der Bestand wird automatisch korrigiert. Außerdem: CSV-Import (z. B. von deinem alten System), Etiketten-PDF drucken und Auto-Bestellung für niedrige Artikel.",
     cta: "Weiter",
     duration: 6,
   },
@@ -31,7 +31,7 @@ const STEPS = [
   {
     section: "ops",
     title: "📅 Schicht & Reservierung",
-    body: "Deine DEMO-Reservierung „Familie Müller, 4 Personen, 19:00" ist drin. Die Schicht für heute auch. Schichtplan + Tisch-Reservierungen + Kassierer-Performance — alles an einem Ort.",
+    body: "Deine DEMO-Reservierung „Familie Müller, 4 Personen, 19:00“ ist drin. Die Schicht für heute auch. Schichtplan + Tisch-Reservierungen + Kassierer-Performance — alles an einem Ort.",
     cta: "Weiter",
     duration: 6,
   },
@@ -45,7 +45,7 @@ const STEPS = [
   {
     section: "ki",
     title: "🤖 KI-Tools — OCR & Voice",
-    body: "Lieferschein vom Großhändler bekommen? Foto machen → Gemini Vision liest alle Artikel automatisch ein. Hände voll? Sprich „2 Coca-Cola hinzufügen" — Whisper macht den Rest.",
+    body: "Lieferschein vom Großhändler bekommen? Foto machen → Gemini Vision liest alle Artikel automatisch ein. Hände voll? Sprich „2 Coca-Cola hinzufügen“ — Whisper macht den Rest.",
     cta: "Weiter",
     duration: 6,
   },
@@ -62,12 +62,11 @@ export default function POSGuidedTour({ onClose, onSetSection }) {
   const [step, setStep] = useState(0);
   const current = STEPS[step];
 
-  // Auto-switch section when step changes
   useEffect(() => {
     if (current.section && onSetSection) {
       onSetSection(current.section);
     }
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [current.section, onSetSection]);
 
   const next = () => {
     if (step < STEPS.length - 1) {

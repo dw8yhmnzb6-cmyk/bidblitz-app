@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "../store/ThemeContext";
 import {
   ArrowLeft, User, CreditCard, Bell, Shield, Moon, Settings,
   HelpCircle, LogOut, ChevronRight, ChevronLeft, Sparkles,
@@ -499,8 +500,6 @@ const ActiveSessionsView = ({ onBack, t }) => {
     </SubPage>
   );
 };
-
-import { useTheme } from "../store/ThemeContext";
 
 const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) => {
   const userCtx = useUser();

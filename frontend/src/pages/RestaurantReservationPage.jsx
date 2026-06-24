@@ -69,7 +69,7 @@ const RestaurantReservationPage = ({ onBack, onNavigate }) => {
   };
 
   const cancelReservation = async (id) => {
-    if (!confirm("Reservierung wirklich stornieren?")) return;
+    if (!window.confirm("Reservierung wirklich stornieren?")) return;
     const res = await fetch(`${API}/api/restaurants/cancel/${id}`, { method: "POST", credentials: "include" });
     if (res.ok) loadReservations();
   };

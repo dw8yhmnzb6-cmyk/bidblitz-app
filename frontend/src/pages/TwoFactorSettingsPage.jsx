@@ -81,7 +81,7 @@ export default function TwoFactorSettingsPage({ onBack }) {
   };
 
   const handleDisable = async () => {
-    if (!confirm("2FA wirklich deaktivieren? Dein Konto wird weniger sicher.")) return;
+    if (!window.confirm("2FA wirklich deaktivieren? Dein Konto wird weniger sicher.")) return;
     
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/2fa/disable`, {

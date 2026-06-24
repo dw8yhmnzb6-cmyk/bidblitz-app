@@ -75,6 +75,28 @@ const TABS = [
   { id: "admin", label: "Admin", icon: ShieldCheck },
 ];
 
+function ApprovalsTab({ storeId }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="pos-approvals-tab">
+      <h3 className="text-sm font-semibold text-white">Freigaben</h3>
+      <p className="mt-2 text-xs text-white/70">
+        Freigaben für Store {storeId || "—"} laufen aktuell über Supervisor- und Admin-Tools.
+      </p>
+    </div>
+  );
+}
+
+function ChatTab({ storeId }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="pos-chat-tab">
+      <h3 className="text-sm font-semibold text-white">Team-Chat</h3>
+      <p className="mt-2 text-xs text-white/70">
+        Der Team-Chat für Store {storeId || "—"} ist im aktuellen Build als kompakter Hinweis eingebunden.
+      </p>
+    </div>
+  );
+}
+
 // ───────────────────────── Main shell
 export default function POSPage({ onBack }) {
   const [tab, setTab] = useState("dashboard");

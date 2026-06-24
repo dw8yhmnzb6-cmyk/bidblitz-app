@@ -81,7 +81,7 @@ export default function TelemedizinPage({ onBack }) {
   };
 
   const cancel = async (id) => {
-    if (!confirm("Termin stornieren?")) return;
+    if (!window.confirm("Termin stornieren?")) return;
     const r = await fetch(`${API}/api/telemedizin/cancel/${id}`, { method: "POST", credentials: "include" });
     if (r.ok) loadAppts();
   };

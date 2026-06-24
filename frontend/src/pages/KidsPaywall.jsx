@@ -55,7 +55,7 @@ const QUICK_ACTIONS = [
 ];
 
 // ── Kids Dashboard (post-subscription) ──
-const KidsDashboard = ({ onBack, t, subStatus }) => {
+const KidsDashboard = ({ onBack, onNavigate, t, subStatus }) => {
   const user = useUser();
   const [children, setChildren] = useState([]);
   const [childWallets, setChildWallets] = useState({});

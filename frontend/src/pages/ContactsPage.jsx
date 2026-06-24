@@ -49,7 +49,7 @@ const ContactsPage = ({ onBack, onNavigate }) => {
   };
 
   const remove = async (id) => {
-    if (!confirm("Kontakt entfernen?")) return;
+    if (!window.confirm("Kontakt entfernen?")) return;
     await fetch(`${API}/api/contacts/${id}`, { method: "DELETE", credentials: "include" });
     setContacts(p => p.filter(c => c.contact_id !== id));
   };

@@ -27,6 +27,13 @@ export default function BlitzJobsPage({ onBack }) {
   const [jobs, setJobs] = useState([]);
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [filters, setFilters] = useState({
+    sort: "newest",
+    remote: false,
+    urgent: false,
+    budget: "",
+  });
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,13 +68,18 @@ export default function BlitzJobsPage({ onBack }) {
     // Step 6: Review
   });
 
-  useEffect(() => { if (view === "browse") loadJobs(); }, [category, search]);
+  useEffect(() => { if (view === "browse") loadJobs(); }, [category, search, locationFilter, filters]);
 
   const loadJobs = async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (category) params.set("category", category);
     if (search) params.set("search", search);
+    if (locationFilter) params.set("location", locationFilter);
+    if (filters.sort) params.set("sort", filters.sort);
+    if (filters.remote) params.set("remote", "true");
+    if (filters.urgent) params.set("urgent", "true");
+    if (filters.budget) params.set("budget", filters.budget);
     try {
       const res = await fetch(`${API}/api/jobs/feed?${params}`, { credentials: "include" });
       if (res.ok) { const d = await res.json(); setJobs(d.jobs || []); }

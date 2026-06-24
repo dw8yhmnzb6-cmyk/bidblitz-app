@@ -180,7 +180,7 @@ const AuctionAdminPage = ({ onBack }) => {
   };
 
   const handleEnd = async (auctionId) => {
-    if (!confirm("Auktion wirklich beenden?")) return;
+    if (!window.confirm("Auktion wirklich beenden?")) return;
     const res = await api(`/api/auctions/admin/auction/${auctionId}/end`, { method: "POST" });
     if (res.ok) {
       toast.success(`Beendet. Gewinner: ${res.winner_name || "Keiner"}, Preis: €${res.final_price?.toFixed(2)}`);
@@ -191,7 +191,7 @@ const AuctionAdminPage = ({ onBack }) => {
   };
 
   const handleDelete = async (auctionId) => {
-    if (!confirm("Auktion löschen? (Nur ohne echte Gebote)")) return;
+    if (!window.confirm("Auktion löschen? (Nur ohne echte Gebote)")) return;
     const res = await api(`/api/auctions/admin/auction/${auctionId}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("Gelöscht");
@@ -221,7 +221,7 @@ const AuctionAdminPage = ({ onBack }) => {
   };
 
   const handleRefreshAll = async () => {
-    if (!confirm("Alle aktiven Auktionen beenden und neue starten?")) return;
+    if (!window.confirm("Alle aktiven Auktionen beenden und neue starten?")) return;
     const res = await api("/api/auctions/admin/refresh", { method: "POST" });
     if (res.refreshed) {
       toast.success(`${res.refreshed} neue Auktionen gestartet`);

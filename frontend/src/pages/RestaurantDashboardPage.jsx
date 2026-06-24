@@ -209,7 +209,7 @@ const RestaurantDashboardPage = ({ onNavigate }) => {
   };
 
   const deleteMenuItem = async (itemId) => {
-    if (!confirm("Artikel wirklich löschen?")) return;
+    if (!window.confirm("Artikel wirklich löschen?")) return;
     try {
       await fetchAPI(`/api/restaurant-dashboard/menu/${itemId}`, { method: "DELETE" });
       setSuccess("Artikel gelöscht");

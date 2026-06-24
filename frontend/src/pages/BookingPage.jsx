@@ -2,7 +2,7 @@
  * Booking & Reservation System
  * Hotels, Restaurants, Ärzte, Handwerker buchen
  */
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, Clock, Users, MapPin, Search, ArrowLeft, Check,
