@@ -146,6 +146,7 @@ def register_all_routers(app):
         ("routes.mining_phase2", "router"),
         ("routes.blitz_mine", "router"),
         ("routes.marketplace", "router"),
+        ("routes.commerce_center", "router"),
         
         # Communication
         ("routes.chat", "router"),
@@ -232,6 +233,8 @@ def register_all_routers(app):
         ("routes.auction_push", "router"),
         ("routes.super_app_features", "router"),
         ("routes.livekit_streaming", "router"),
+        ("routes.live_shopping", "router"),
+        ("routes.live_auctions", "router"),
         ("routes.landing_chatbot", "router"),
         ("routes.readiness", "router"),
         ("routes.scan_router", "router"),

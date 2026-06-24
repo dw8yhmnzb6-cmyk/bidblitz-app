@@ -69,6 +69,7 @@ const DriverDashboardPage = lazy(() => import("./pages/DriverDashboardPage"));
 const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
 const ChildModePage = lazy(() => import("./pages/ChildModePage"));
 const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
+const CommerceCenterPage = lazy(() => import("./pages/CommerceCenterPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
 const ReferralSystemPage = lazy(() => import("./pages/ReferralSystemPage"));
@@ -826,6 +827,8 @@ function AppContent() {
         return <ChildModePage />;
       case "/marketplace":
         return <MarketplacePage onNavigate={handleNavigate} />;
+      case "/commerce-center":
+        return <CommerceCenterPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/chat":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChatPage onNavigate={handleNavigate} />;
       case "/reset-password":

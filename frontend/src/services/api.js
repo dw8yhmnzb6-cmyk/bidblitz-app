@@ -182,6 +182,10 @@ export const api = {
   getInvoicePaymentCheckoutStatus: (token, sessionId) => request(`/api/pay/${token}/checkout-status/${sessionId}`),
   createInvoicePaymentLink: (invoiceId) => request(`/api/invoicing/${invoiceId}/payment-link`, { method: "POST" }),
 
+  // Commerce Center
+  getCommerceCenterOverview: () => request("/api/commerce-center/overview"),
+  buyCommerceFlashSale: (saleId, body = {}) => request(`/api/commerce-center/flash-sales/${saleId}/buy`, { method: "POST", body: JSON.stringify(body) }),
+
   // Transactions
   getTransactions: (params = {}) => {
     const query = new URLSearchParams();

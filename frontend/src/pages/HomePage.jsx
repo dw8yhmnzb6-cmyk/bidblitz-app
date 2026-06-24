@@ -313,7 +313,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     const routeMap = {
       wallet: "/wallet", auctions: "/auctions", mining: "/mining",
       merchant: "/merchant-landing", nfc: "/nfc", vip: "/vip",
-      referral: "/referral", marketplace: "/marketplace", rewards: "/rewards",
+      referral: "/referral", marketplace: "/marketplace", rewards: "/rewards", commerce: "/commerce-center",
     };
     if (routeMap[featureId]) { onNavigate(routeMap[featureId]); }
   };
@@ -330,6 +330,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     { id: "nfc", icon: Smartphone, title: t("home.f_nfc") || "NFC Pay", desc: t("home.f_nfc_d") || "Tap to pay contactless", color: "#00C2FF", route: "/nfc" },
     { id: "vip", icon: Star, title: t("home.f_vip") || "VIP", desc: t("home.f_vip_d") || "Premium subscriptions", color: "#FFD700", route: "/vip" },
     { id: "referral", icon: Gift, title: t("home.f_referral") || "Referrals", desc: t("home.f_referral_d") || "Invite friends, earn rewards", color: "#00E89D", route: "/referral" },
+    { id: "commerce", icon: Sparkles, title: "Commerce Center", desc: "Flash Sales, Live Shopping, Marketplace", color: "#FF7A18", route: "/commerce-center" },
     { id: "marketplace", icon: ShoppingBag, title: t("home.f_marketplace") || "Marketplace", desc: t("home.f_marketplace_d") || "Buy & sell items", color: "#FF6B6B", route: "/marketplace" },
     { id: "rewards", icon: Sparkles, title: t("home.f_rewards_more") || "Rewards", desc: t("home.f_rewards_more_d") || "Daily rewards & streaks", color: "#A855F7", route: "/rewards" },
   ];

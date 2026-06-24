@@ -45,6 +45,37 @@ const MenuRow = ({ icon: Icon, label, desc, color, onClick, isLast, testId, righ
   </motion.button>
 );
 
+const GridTile = ({ item, color }) => (
+  <motion.button
+    data-testid={`grid-${item.id}`}
+    whileTap={{ scale: 0.95 }}
+    onClick={item.action}
+    className="relative rounded-xl p-3 text-left overflow-hidden"
+    style={{
+      background: "rgba(255,255,255,0.02)",
+      border: "1px solid rgba(255,255,255,0.04)",
+      minHeight: 92,
+    }}
+  >
+    <div
+      className="w-9 h-9 rounded-lg flex items-center justify-center mb-2"
+      style={{ background: `${item.color || color}15`, border: `1px solid ${item.color || color}25` }}
+    >
+      <item.icon size={15} strokeWidth={1.6} style={{ color: item.color || color }} />
+    </div>
+    <p className="text-[12px] font-semibold text-white leading-tight truncate">{item.label}</p>
+    <p className="text-[9px] text-white/40 leading-tight truncate mt-0.5">{item.desc}</p>
+    {item.badge && (
+      <span
+        className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[8px] font-bold"
+        style={{ background: "rgba(255,184,0,0.2)", color: "#FFB800" }}
+      >
+        {item.badge}
+      </span>
+    )}
+  </motion.button>
+);
+
 // ── Toggle Switch ──
 const Toggle = ({ on, onToggle }) => (
   <motion.button
@@ -432,7 +463,7 @@ const ActiveSessionsView = ({ onBack, t }) => {
     api.getSessions().then(d => setSessions(d.sessions || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
   const revokeAll = async () => {
-    try { await api.revokeAllSessions(); setSessions([]); } catch {}
+    try { await api.revokeAllSessions(); setSessions([]); } catch (error) { void error; }
   };
   return (
     <SubPage title={t("settings.active_sessions")} onBack={onBack}>
@@ -484,7 +515,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
 
   const persistSetting = async (field, value) => {
     setSaving(true);
-    try { await api.updateProfile({ [field]: value }); } catch {}
+    try { await api.updateProfile({ [field]: value }); } catch (error) { void error; }
     setSaving(false);
   };
 
@@ -742,6 +773,7 @@ const KYCView = ({ onBack, t }) => {
 // ── Main More Page ──
 export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
   const user = useUser();
+  const { refreshUser } = user;
   const { t, lang: locale, setLang: setLocale } = useI18n();
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
@@ -752,7 +784,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     try {
       const saved = JSON.parse(localStorage.getItem("more_open_groups") || "null");
       if (saved) return saved;
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     // Default: open Mobility, Finance, and Admin sections
     return { mobility: true, finance: true, admin: true };
   });
@@ -864,6 +898,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "split-bill", icon: Users, label: t("split.title") || "Rechnung teilen", desc: t("split.menu_desc") || "Split bills with friends", color: "#FF8C42", action: gatedAction(() => onNavigate("/split-bill")) },
     { id: "p2p-handle", icon: AtSign, label: "Senden & Empfangen", desc: "Per @handle wie Venmo/Revolut", color: "#00E0FF", action: gatedAction(() => onNavigate("/p2p")) },
     { id: "card", icon: CreditCard, label: "BidBlitz Card", desc: "Virtuelle & physische Debit-Card", color: "#FFD166", action: gatedAction(() => onNavigate("/card")) },
+    { id: "commerce-center", icon: Sparkles, label: "Commerce Center", desc: "Marketplace, Flash Sales, Penny Auctions, Live Shopping", color: "#FF7A18", action: gatedAction(() => onNavigate("/commerce-center")) },
     { id: "live", icon: Radio, label: "Live Shopping", desc: "Streams, Auktionen & Deals live", color: "#FF4060", action: () => onNavigate("/live") },
     { id: "groupchat", icon: MessageSquare, label: "Gruppenchat", desc: "WeChat-style mit @handle-Invites", color: "#00E89D", action: gatedAction(() => onNavigate("/groupchat")) },
     { id: "roundup", icon: PiggyBank, label: "Round-up Sparen", desc: "Auto-runden & beiseite legen", color: "#FF6B9D", action: gatedAction(() => onNavigate("/roundup")) },
@@ -1074,7 +1109,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const toggleGroup = (id) => {
     setOpenGroups((p) => {
       const nxt = { ...p, [id]: !p[id] };
-      try { localStorage.setItem("more_open_groups", JSON.stringify(nxt)); } catch {}
+      try { localStorage.setItem("more_open_groups", JSON.stringify(nxt)); } catch (error) { void error; }
       return nxt;
     });
   };
@@ -1089,37 +1124,6 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
         ),
       })).filter((g) => g.items.length > 0)
     : GRID_GROUPS;
-
-  const GridTile = ({ item, color }) => (
-    <motion.button
-      data-testid={`grid-${item.id}`}
-      whileTap={{ scale: 0.95 }}
-      onClick={item.action}
-      className="relative rounded-xl p-3 text-left overflow-hidden"
-      style={{
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.04)",
-        minHeight: 92,
-      }}
-    >
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center mb-2"
-        style={{ background: `${item.color || color}15`, border: `1px solid ${item.color || color}25` }}
-      >
-        <item.icon size={15} strokeWidth={1.6} style={{ color: item.color || color }} />
-      </div>
-      <p className="text-[12px] font-semibold text-white leading-tight truncate">{item.label}</p>
-      <p className="text-[9px] text-white/40 leading-tight truncate mt-0.5">{item.desc}</p>
-      {item.badge && (
-        <span
-          className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[8px] font-bold"
-          style={{ background: "rgba(255,184,0,0.2)", color: "#FFB800" }}
-        >
-          {item.badge}
-        </span>
-      )}
-    </motion.button>
-  );
 
   const renderGridGroups = () => (
     <div className="space-y-3">
@@ -1173,7 +1177,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       })}
       {filteredGroups.length === 0 && (
         <div className="text-center py-10 text-[12px] text-white/40">
-          Keine Treffer für „{search}"
+          Keine Treffer für „{search}“
         </div>
       )}
     </div>
