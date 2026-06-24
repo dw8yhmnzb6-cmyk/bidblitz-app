@@ -21,6 +21,12 @@ class FlashSalePurchaseRequest(BaseModel):
     use_shipping: bool = False
 
 
+class FlashSaleCreateRequest(BaseModel):
+    listing_id: str
+    sale_price: float
+    duration_minutes: int = 180
+
+
 def _serialize_value(value: Any):
     if isinstance(value, datetime):
         return value.isoformat()
@@ -126,6 +132,139 @@ async def _ensure_flash_sales() -> list[dict]:
         created_sales.append(sale)
 
     return active_sales + created_sales
+
+
+@router.get("/merchant-dashboard")
+async def get_merchant_flash_sales_dashboard(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    listings = await db.marketplace_listings.find(
+        {"seller_id": user_id},
+        {"_id": 0, "listing_id": 1, "title": 1, "price": 1, "status": 1, "views": 1, "images": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(100)
+
+    flash_sales = await db.commerce_flash_sales.find(
+        {"seller_id": user_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(100)
+
+    for sale in flash_sales:
+        sale["remaining_seconds"] = _remaining_seconds(sale.get("ends_at"))
+        if not sale.get("seller_name"):
+            sale["seller_name"] = user.get("name") or user.get("email") or "BidBlitz Deals"
+
+    active_sales = [sale for sale in flash_sales if sale.get("status") in {"active", "processing"} and sale.get("remaining_seconds", 0) > 0]
+    blocked_listing_ids = {sale.get("listing_id") for sale in active_sales}
+    eligible_listings = [listing for listing in listings if listing.get("status") == "active" and listing.get("listing_id") not in blocked_listing_ids]
+
+    commerce_orders = await db.commerce_orders.find(
+        {"seller_id": user_id, "status": "completed"},
+        {"_id": 0, "seller_amount": 1},
+    ).to_list(500)
+    total_flash_revenue = round(sum(float(order.get("seller_amount") or 0) for order in commerce_orders), 2)
+
+    return {
+        "stats": {
+            "total_listings": len(listings),
+            "eligible_listings": len(eligible_listings),
+            "active_flash_sales": len(active_sales),
+            "completed_flash_sales": len([sale for sale in flash_sales if sale.get("status") == "sold"]),
+            "flash_sale_revenue": total_flash_revenue,
+        },
+        "flash_sales": [_serialize_doc(sale) for sale in flash_sales],
+        "eligible_listings": [_serialize_doc(listing) for listing in eligible_listings[:12]],
+    }
+
+
+@router.post("/flash-sales")
+async def create_flash_sale(req: FlashSaleCreateRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    if req.sale_price <= 0:
+        raise HTTPException(status_code=400, detail="sale_price muss größer als 0 sein")
+    if req.duration_minutes < 15 or req.duration_minutes > 1440:
+        raise HTTPException(status_code=400, detail="duration_minutes muss zwischen 15 und 1440 liegen")
+
+    listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id}, {"_id": 0})
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing nicht gefunden")
+    if listing.get("seller_id") != user_id:
+        raise HTTPException(status_code=403, detail="Nur eigene Listings können als Flash Sale gestartet werden")
+    if listing.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Nur aktive Listings können als Flash Sale gestartet werden")
+
+    base_price = round(float(listing.get("price") or 0), 2)
+    sale_price = round(float(req.sale_price), 2)
+    if sale_price >= base_price:
+        raise HTTPException(status_code=400, detail="Der Flash-Sale-Preis muss unter dem Listing-Preis liegen")
+
+    existing = await db.commerce_flash_sales.find_one(
+        {
+            "listing_id": req.listing_id,
+            "status": {"$in": ["active", "processing"]},
+            "ends_at": {"$gt": now_iso},
+        },
+        {"_id": 0, "sale_id": 1},
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Für dieses Listing läuft bereits ein aktiver Flash Sale")
+
+    sale = {
+        "sale_id": f"flash_{secrets.token_hex(5)}",
+        "listing_id": req.listing_id,
+        "seller_id": user_id,
+        "seller_name": listing.get("seller_name") or user.get("name") or user.get("email") or "BidBlitz Deals",
+        "title": listing.get("title", "Flash Deal"),
+        "category": listing.get("category", "other"),
+        "category_label": listing.get("category_label") or listing.get("category", "Sonstiges"),
+        "image_url": (listing.get("images") or [""])[0],
+        "location": listing.get("location", ""),
+        "original_price": base_price,
+        "sale_price": sale_price,
+        "discount_pct": int(round(((base_price - sale_price) / base_price) * 100)),
+        "shipping_available": bool(listing.get("shipping_available")),
+        "shipping_cost": round(float(listing.get("shipping_cost") or 0), 2),
+        "remaining_units": 1,
+        "status": "active",
+        "starts_at": now_iso,
+        "ends_at": (now + timedelta(minutes=req.duration_minutes)).isoformat(),
+        "created_at": now_iso,
+        "created_via": "merchant_dashboard",
+    }
+    await db.commerce_flash_sales.insert_one(sale)
+    sale.pop("_id", None)
+    sale["remaining_seconds"] = _remaining_seconds(sale.get("ends_at"))
+    return {"ok": True, "sale": _serialize_doc(sale)}
+
+
+@router.delete("/flash-sales/{sale_id}")
+async def cancel_flash_sale(sale_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    sale = await db.commerce_flash_sales.find_one({"sale_id": sale_id}, {"_id": 0})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Flash Sale nicht gefunden")
+    if sale.get("seller_id") != user_id:
+        raise HTTPException(status_code=403, detail="Du kannst nur eigene Flash Sales beenden")
+    if sale.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Nur aktive Flash Sales können beendet werden")
+    if sale.get("order_id"):
+        raise HTTPException(status_code=400, detail="Verkaufte Flash Sales können nicht storniert werden")
+
+    await db.commerce_flash_sales.update_one(
+        {"sale_id": sale_id, "seller_id": user_id},
+        {
+            "$set": {"status": "cancelled", "cancelled_at": now_iso, "remaining_units": 0},
+            "$unset": {"reserved_by": "", "reserved_at": ""},
+        },
+    )
+    return {"ok": True, "sale_id": sale_id}
 
 
 @router.get("/overview")

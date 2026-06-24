@@ -70,6 +70,7 @@ const CATEGORIES = [
       { icon: Sparkles, label: "Reinigung", desc: "Wohnung & Büro reinigen", route: "/reinigung", color: "#8B5CF6" },
       { icon: ShoppingBag, label: "Marktplatz", desc: "Kaufen & Verkaufen", route: "/marketplace", color: "#8B5CF6" },
       { icon: Sparkles, label: "Commerce Center", desc: "Flash Sales, Live Shopping, Auktionen", route: "/commerce-center", color: "#F97316" },
+      { icon: Car, label: "Mobility Center", desc: "Taxi, Scooter, EV und Tracking", route: "/mobility-center", color: "#06B6D4" },
       { icon: Gavel, label: "Auktionen", desc: "Bieten & gewinnen", route: "/auctions", color: "#A855F7" },
       { icon: Tag, label: "Reselling", desc: "Sneakers, Streetwear, Gaming", route: "/reselling", color: "#F43F5E" },
       { icon: Briefcase, label: "BlitzJobs", desc: "Micro-Jobs, Geld verdienen", route: "/blitzjobs", color: "#22C55E" },

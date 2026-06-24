@@ -26,7 +26,7 @@ const CATEGORY_ICONS = {
   other: '📦',
 };
 
-export default function MarketplacePage({ onNavigate }) {
+export default function MarketplacePage({ onNavigate, routeParams = {} }) {
   const { t } = useI18n();
   
   // Navigation helper (replaces useNavigate)
@@ -65,6 +65,20 @@ export default function MarketplacePage({ onNavigate }) {
   const [messageText, setMessageText] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
 
+  const openListingById = useCallback(async (listingId) => {
+    if (!listingId) return;
+    try {
+      const res = await fetch(`${API}/api/marketplace/${listingId}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedListing(data);
+        setView('detail');
+      }
+    } catch (err) {
+      void err;
+    }
+  }, []);
+
   // Fetch data
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -93,7 +107,7 @@ export default function MarketplacePage({ onNavigate }) {
         const data = await res.json();
         setUserBalance(data.balance || 0);
       }
-    } catch (err) {}
+    } catch (err) { void err; }
   };
 
   const fetchMyListings = async () => {
@@ -103,7 +117,7 @@ export default function MarketplacePage({ onNavigate }) {
         const data = await res.json();
         setMyListings(data.listings || []);
       }
-    } catch (err) {}
+    } catch (err) { void err; }
   };
 
   const fetchFavorites = async () => {
@@ -113,7 +127,7 @@ export default function MarketplacePage({ onNavigate }) {
         const data = await res.json();
         setFavorites(data.favorites?.map(f => f.listing_id) || []);
       }
-    } catch (err) {}
+    } catch (err) { void err; }
   };
 
   useEffect(() => {
@@ -128,6 +142,22 @@ export default function MarketplacePage({ onNavigate }) {
     }
   }, [view]);
 
+  useEffect(() => {
+    if (routeParams?.listing_id && selectedListing?.listing_id !== routeParams.listing_id) {
+      openListingById(routeParams.listing_id);
+    }
+  }, [openListingById, routeParams?.listing_id, selectedListing?.listing_id]);
+
+  useEffect(() => {
+    if (routeParams?.tab === 'my-listings') {
+      setView('my-listings');
+      return;
+    }
+    if (routeParams?.tab === 'create') {
+      setView('create');
+    }
+  }, [routeParams?.tab]);
+
   // View listing detail
   const viewListing = async (listing) => {
     try {
@@ -137,7 +167,7 @@ export default function MarketplacePage({ onNavigate }) {
         setSelectedListing(data);
         setView('detail');
       }
-    } catch (err) {}
+    } catch (err) { void err; }
   };
 
   // Toggle favorite
@@ -156,7 +186,7 @@ export default function MarketplacePage({ onNavigate }) {
           setFavorites(favorites.filter(id => id !== listingId));
         }
       }
-    } catch (err) {}
+    } catch (err) { void err; }
   };
 
   // Create listing
@@ -179,7 +209,7 @@ export default function MarketplacePage({ onNavigate }) {
         setView('my-listings');
         fetchMyListings();
       }
-    } catch (err) {}
+    } catch (err) { void err; }
     setLoading(false);
   };
 
@@ -210,7 +240,7 @@ export default function MarketplacePage({ onNavigate }) {
         const err = await res.json();
         alert(err.detail || 'Fehler beim Kauf');
       }
-    } catch (err) {}
+    } catch (err) { void err; }
     setLoading(false);
   };
 
@@ -233,7 +263,7 @@ export default function MarketplacePage({ onNavigate }) {
         setMessageText('');
         alert('Nachricht gesendet!');
       }
-    } catch (err) {}
+    } catch (err) { void err; }
     setSendingMessage(false);
   };
 
@@ -248,7 +278,7 @@ export default function MarketplacePage({ onNavigate }) {
       if (res.ok) {
         fetchMyListings();
       }
-    } catch (err) {}
+    } catch (err) { void err; }
   };
 
   return (
@@ -257,7 +287,7 @@ export default function MarketplacePage({ onNavigate }) {
       <div className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <button onClick={() => view === 'browse' ? navigate('/') : setView('browse')} className="p-2 -ml-2 text-gray-400 hover:text-white">
+            <button onClick={() => view === 'browse' ? navigate('/') : (view === 'detail' && routeParams?.listing_id ? navigate('/marketplace') : setView('browse'))} className="p-2 -ml-2 text-gray-400 hover:text-white" data-testid="marketplace-back-button">
               <ChevronLeft className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-bold">Marketplace</h1>
@@ -270,15 +300,17 @@ export default function MarketplacePage({ onNavigate }) {
               { id: 'browse', label: 'Stöbern' },
               { id: 'my-listings', label: 'Meine' },
               { id: 'create', label: 'Verkaufen' },
+              { id: 'dashboard', label: 'Dashboard' },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setView(tab.id)}
+                onClick={() => tab.id === 'dashboard' ? navigate('/marketplace-dashboard?tab=flash-sales') : setView(tab.id)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                  view === tab.id
+                  view === tab.id || (tab.id === 'dashboard' && routeParams?.tab === 'flash-sales')
                     ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                 }`}
+                data-testid={`marketplace-tab-${tab.id}`}
               >
                 {tab.label}
               </button>
@@ -487,7 +519,7 @@ export default function MarketplacePage({ onNavigate }) {
               </div>
 
               {/* Info */}
-              <div className="bg-[#111] rounded-2xl p-4 border border-white/5">
+              <div className="bg-[#111] rounded-2xl p-4 border border-white/5" data-testid="marketplace-detail-card">
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-xl font-bold">{selectedListing.title}</h2>

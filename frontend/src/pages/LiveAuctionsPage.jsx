@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Gavel, Clock, TrendingUp, Plus, Users, Loader2 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-export default function LiveAuctionsPage({ onBack }) {
+export default function LiveAuctionsPage({ onBack, onNavigate, routeParams = {} }) {
   const [auctions, setAuctions] = useState([]);
   const [selected, setSelected] = useState(null);
   const [bidAmount, setBidAmount] = useState("");
@@ -13,10 +13,48 @@ export default function LiveAuctionsPage({ onBack }) {
   const timerRef = useRef(null);
   const [now, setNow] = useState(Date.now());
 
-  useEffect(() => { loadAuctions(); timerRef.current = setInterval(() => { setNow(Date.now()); loadAuctions(); }, 5000); return () => clearInterval(timerRef.current); }, []);
+  const loadAuctions = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/api/live-auctions/active`, { credentials: "include" });
+      if (r.ok) {
+        const d = await r.json();
+        setAuctions(d.auctions || []);
+      }
+    } catch (error) {
+      void error;
+    }
+  }, []);
 
-  const loadAuctions = async () => {
-    try { const r = await fetch(`${API}/api/live-auctions/active`, { credentials: "include" }); if (r.ok) { const d = await r.json(); setAuctions(d.auctions || []); } } catch {}
+  useEffect(() => { loadAuctions(); timerRef.current = setInterval(() => { setNow(Date.now()); loadAuctions(); }, 5000); return () => clearInterval(timerRef.current); }, [loadAuctions]);
+
+  useEffect(() => {
+    const openAuction = async () => {
+      if (!routeParams?.auction_id || selected?.auction_id === routeParams.auction_id) return;
+      const cached = auctions.find((item) => item.auction_id === routeParams.auction_id);
+      if (cached) {
+        setSelected(cached);
+        setBidAmount(String((cached.current_price + 1).toFixed(2)));
+        return;
+      }
+      try {
+        const r = await fetch(`${API}/api/live-auctions/auction/${routeParams.auction_id}`, { credentials: "include" });
+        if (r.ok) {
+          const data = await r.json();
+          setSelected(data);
+          setBidAmount(String(((data.current_price || data.start_price || 0) + 1).toFixed(2)));
+        }
+      } catch (error) {
+        void error;
+      }
+    };
+    openAuction();
+  }, [auctions, routeParams?.auction_id, selected?.auction_id]);
+
+  const closeSelected = () => {
+    setSelected(null);
+    if (routeParams?.auction_id && onNavigate) {
+      onNavigate("/live-auctions");
+    }
   };
 
   const bid = async () => {
@@ -82,7 +120,7 @@ export default function LiveAuctionsPage({ onBack }) {
 
       <AnimatePresence>
         {selected && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end" onClick={() => setSelected(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end" onClick={closeSelected}>
             <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="w-full bg-[#111] rounded-t-3xl p-6" onClick={e => e.stopPropagation()}>
               <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between mb-3">

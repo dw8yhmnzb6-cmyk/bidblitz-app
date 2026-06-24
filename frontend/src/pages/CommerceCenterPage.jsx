@@ -48,6 +48,10 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
 
   const heroStats = useMemo(() => statCards.map((item) => ({ ...item, value: overview?.stats?.[item.key] || 0 })), [overview]);
 
+  const openMarketplaceDetail = (listingId) => onNavigate(`/marketplace?listing_id=${listingId}&source=commerce-center`);
+  const openAuctionDetail = (auctionId) => onNavigate(`/auctions?auction_id=${auctionId}&source=commerce-center`);
+  const openLiveAuctionDetail = (auctionId) => onNavigate(auctionId ? `/live-auctions?auction_id=${auctionId}&source=commerce-center` : "/live-auctions");
+
   const handleBuyFlashSale = async (saleId) => {
     if (!user?.isAuthenticated) {
       toast.error("Bitte zuerst anmelden, um einen Flash Sale zu kaufen.");
@@ -125,6 +129,17 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
               </button>
             ))}
           </div>
+
+          {user?.isAuthenticated && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button onClick={() => onNavigate("/marketplace-dashboard?tab=flash-sales")} data-testid="commerce-center-flash-dashboard-button" className="rounded-full bg-white/10 px-4 py-3 text-sm font-semibold text-white">
+                Flash-Sales Dashboard öffnen
+              </button>
+              <button onClick={() => onNavigate("/mobility-center")} data-testid="commerce-center-mobility-button" className="rounded-full border border-white/10 px-4 py-3 text-sm font-semibold text-white/75">
+                Zum Mobility Center
+              </button>
+            </div>
+          )}
         </motion.header>
 
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -159,14 +174,19 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                       <Currency value={sale.sale_price} testId={`flash-sale-price-${sale.sale_id}`} className="block text-2xl font-black text-white" />
                       <Currency value={sale.original_price} testId={`flash-sale-original-price-${sale.sale_id}`} className="block text-sm text-white/35 line-through" />
                     </div>
-                    <button
-                      onClick={() => handleBuyFlashSale(sale.sale_id)}
-                      disabled={buyingSaleId === sale.sale_id}
-                      data-testid={`flash-sale-buy-${sale.sale_id}`}
-                      className="rounded-full bg-[#ff7a18] px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.02] disabled:opacity-50"
-                    >
-                      {buyingSaleId === sale.sale_id ? "Kaufe…" : "Jetzt kaufen"}
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button onClick={() => openMarketplaceDetail(sale.listing_id)} data-testid={`flash-sale-detail-${sale.sale_id}`} className="rounded-full border border-white/10 px-4 py-3 text-sm font-semibold text-white/80">
+                        Details
+                      </button>
+                      <button
+                        onClick={() => handleBuyFlashSale(sale.sale_id)}
+                        disabled={buyingSaleId === sale.sale_id}
+                        data-testid={`flash-sale-buy-${sale.sale_id}`}
+                        className="rounded-full bg-[#ff7a18] px-4 py-3 text-sm font-bold text-black transition hover:scale-[1.02] disabled:opacity-50"
+                      >
+                        {buyingSaleId === sale.sale_id ? "Kaufe…" : "Jetzt kaufen"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -231,7 +251,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
 
             <div className="mt-5 space-y-3">
               {(overview?.penny_auctions || []).map((auction) => (
-                <button key={auction.auction_id} onClick={() => onNavigate("/auctions")} data-testid={`commerce-penny-auction-${auction.auction_id}`} className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
+                <button key={auction.auction_id} onClick={() => openAuctionDetail(auction.auction_id)} data-testid={`commerce-penny-auction-${auction.auction_id}`} className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold">{auction.title}</p>
@@ -260,7 +280,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {(overview?.marketplace || []).slice(0, 4).map((item) => (
-                <button key={item.listing_id} onClick={() => onNavigate("/marketplace")} data-testid={`commerce-market-item-${item.listing_id}`} className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
+                <button key={item.listing_id} onClick={() => openMarketplaceDetail(item.listing_id)} data-testid={`commerce-market-item-${item.listing_id}`} className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                   <p className="text-sm font-bold line-clamp-2">{item.title}</p>
                   <div className="mt-3 flex items-end justify-between gap-3">
                     <div>
@@ -278,8 +298,9 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-white/45">Live Auktionen</p>
                   <p className="mt-1 text-sm text-white/65">Echtzeit-Bieten mit verlängertem Countdown im eigenen Live-Modul.</p>
+                  {overview?.live_auctions?.[0] && <p className="mt-1 text-xs text-white/40">Direktlink: {overview.live_auctions[0].title}</p>}
                 </div>
-                <button onClick={() => onNavigate("/live-auctions")} data-testid="commerce-live-auctions-button" className="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold">Öffnen</button>
+                <button onClick={() => openLiveAuctionDetail(overview?.live_auctions?.[0]?.auction_id)} data-testid="commerce-live-auctions-button" className="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold">Öffnen</button>
               </div>
             </div>
           </motion.div>

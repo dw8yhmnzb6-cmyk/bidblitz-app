@@ -60,7 +60,7 @@ const DailyReward = ({ onClaimed }) => {
       setShowDone(true); setAvailable(false);
       setSecs(86400);
       setTimeout(() => setShowDone(false), 2500);
-    } catch {}
+    } catch (error) { void error; }
     setClaiming(false);
   };
 
@@ -436,7 +436,7 @@ const NotifToast = ({ notifs, onDismiss }) => {
 /* ════════════════════════════════════════════
    MAIN AUCTIONS PAGE
    ════════════════════════════════════════════ */
-const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
+const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, routeParams = {} }) => {
   const { t, lang } = useI18n();
   const user = useUser();
   const [auctions, setAuctions] = useState([]);
@@ -473,8 +473,8 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       console.error('Fetch auctions failed:', e);
     }
   }, []);
-  const fetchCredits = useCallback(async () => { if (isGuest) return; try { const r = await api.getBidCredits(); setCredits(r.bid_credits || 0); } catch {} }, [isGuest]);
-  const fetchWatchlist = useCallback(async () => { if (isGuest) return; try { const r = await api.getWatchlist(); setWatchlist(r.watchlist || []); } catch {} }, [isGuest]);
+  const fetchCredits = useCallback(async () => { if (isGuest) return; try { const r = await api.getBidCredits(); setCredits(r.bid_credits || 0); } catch (error) { void error; } }, [isGuest]);
+  const fetchWatchlist = useCallback(async () => { if (isGuest) return; try { const r = await api.getWatchlist(); setWatchlist(r.watchlist || []); } catch (error) { void error; } }, [isGuest]);
   const fetchNotifs = useCallback(async () => {
     if (isGuest) return;
     try {
@@ -485,7 +485,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
         setShowNotifToast(true);
         setTimeout(() => setShowNotifToast(false), 5000);
       }
-    } catch {}
+    } catch (error) { void error; }
   }, [isGuest, auctionNotifs]);
 
   useEffect(() => {
@@ -493,6 +493,12 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
     pollRef.current = setInterval(() => { fetchAuctions(); fetchNotifs(); }, LIST_POLL_MS);
     return () => clearInterval(pollRef.current);
   }, [fetchAuctions, fetchCredits, fetchWatchlist, fetchNotifs]);
+
+  useEffect(() => {
+    if (routeParams?.auction_id && selected !== routeParams.auction_id) {
+      setSelected(routeParams.auction_id);
+    }
+  }, [routeParams?.auction_id, selected]);
 
   // Stripe Success Redirect Handler — poll /credits-purchase-status when URL has ?status=success&session_id=
   useEffect(() => {
@@ -536,7 +542,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
             return;
           }
         }
-      } catch {}
+      } catch (error) { void error; }
       if (attempts < 12) setTimeout(poll, 1500);
       else {
         import("sonner").then(({ toast }) => toast.info("Zahlung wird verarbeitet… Du erhältst eine E-Mail."));
@@ -573,7 +579,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       const r = await api.toggleWatchlist(auctionId);
       if (r.watched) setWatchlist(p => [...p, auctionId]);
       else setWatchlist(p => p.filter(id => id !== auctionId));
-    } catch {}
+    } catch (error) { void error; }
   };
 
   const dismissNotif = () => {
@@ -584,7 +590,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
   if (selected) return (
     <LazyErrorBoundary onReset={() => setSelected(null)}>
       <Suspense fallback={<AuctionLazyFallback />}>
-        <AuctionDetail auctionId={selected} onBack={() => { setSelected(null); fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} onBuyCredits={() => setShowCredits(true)} onNavigate={onNavigate} />
+        <AuctionDetail auctionId={selected} onBack={() => { if (routeParams?.auction_id) { onNavigate('/auctions'); } else { setSelected(null); } fetchAuctions(); fetchCredits(); fetchWatchlist(); }} isGuest={isGuest} onAuthRequired={onAuthRequired} userCredits={credits} onCreditsChanged={setCredits} onBuyCredits={() => setShowCredits(true)} onNavigate={onNavigate} />
       </Suspense>
     </LazyErrorBoundary>
   );

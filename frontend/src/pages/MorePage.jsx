@@ -899,6 +899,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "p2p-handle", icon: AtSign, label: "Senden & Empfangen", desc: "Per @handle wie Venmo/Revolut", color: "#00E0FF", action: gatedAction(() => onNavigate("/p2p")) },
     { id: "card", icon: CreditCard, label: "BidBlitz Card", desc: "Virtuelle & physische Debit-Card", color: "#FFD166", action: gatedAction(() => onNavigate("/card")) },
     { id: "commerce-center", icon: Sparkles, label: "Commerce Center", desc: "Marketplace, Flash Sales, Penny Auctions, Live Shopping", color: "#FF7A18", action: gatedAction(() => onNavigate("/commerce-center")) },
+    { id: "mobility-center", icon: Car, label: "Mobility Center", desc: "Taxi, Scooter, EV Charging und Tracking zentral", color: "#00C2FF", action: gatedAction(() => onNavigate("/mobility-center")) },
     { id: "live", icon: Radio, label: "Live Shopping", desc: "Streams, Auktionen & Deals live", color: "#FF4060", action: () => onNavigate("/live") },
     { id: "groupchat", icon: MessageSquare, label: "Gruppenchat", desc: "WeChat-style mit @handle-Invites", color: "#00E89D", action: gatedAction(() => onNavigate("/groupchat")) },
     { id: "roundup", icon: PiggyBank, label: "Round-up Sparen", desc: "Auto-runden & beiseite legen", color: "#FF6B9D", action: gatedAction(() => onNavigate("/roundup")) },

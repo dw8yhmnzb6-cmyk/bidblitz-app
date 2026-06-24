@@ -68,6 +68,7 @@ const FoodPage = lazy(() => import("./pages/FoodPage"));
 const DriverDashboardPage = lazy(() => import("./pages/DriverDashboardPage"));
 const RestaurantDashboardPage = lazy(() => import("./pages/RestaurantDashboardPage"));
 const ChildModePage = lazy(() => import("./pages/ChildModePage"));
+const MarketplaceDashboardPage = lazy(() => import("./pages/MarketplaceDashboardPage"));
 const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
 const CommerceCenterPage = lazy(() => import("./pages/CommerceCenterPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
@@ -78,6 +79,7 @@ const VipPage = lazy(() => import("./pages/VipPage"));
 const LoyaltyPage = lazy(() => import("./pages/LoyaltyPage"));
 const KidsPaywall = lazy(() => import("./pages/KidsPaywall"));
 const MobilityMapPage = lazy(() => import("./pages/MobilityMapPage"));
+const MobilityCenterPage = lazy(() => import("./pages/MobilityCenterPage"));
 const MobilityBookingTrackingPage = lazy(() => import("./pages/MobilityBookingTrackingPage"));
 const NotificationSettingsPage = lazy(() => import("./pages/NotificationSettingsPage"));
 const FriendsMapPage = lazy(() => import("./pages/FriendsMapPage"));
@@ -573,7 +575,7 @@ function AppContent() {
     if (currentPath.startsWith("/business/")) {
       return <PublicMerchantBusinessPage slug={currentPath.split("/")[2]} onBack={() => handleNavigate("/merchant-portal")} onNavigate={handleNavigate} />;
     }
-    if (currentPath === "/pay/directory" || currentPath === "/marketplace") {
+    if (currentPath === "/pay/directory") {
       return <PayDirectoryPage onBack={() => handleNavigate("/merchant-landing")} onNavigate={handleNavigate} />;
     }
     if (currentPath === "/pay/docs") {
@@ -617,6 +619,8 @@ function AppContent() {
         return <VerificationPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-dashboard":
         return <MerchantDashboardPage onBack={() => handleNavigate("/more")} />;
+      case "/marketplace-dashboard":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketplaceDashboardPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/pay":
         return <PaymentPage onBack={() => handleNavigate("/more")} />;
       case "/terminal":
@@ -796,7 +800,7 @@ function AppContent() {
       case "/more":
         return <MorePage {...pageProps} />;
       case "/auctions":
-        return <AuctionsPage {...pageProps} />;
+        return <AuctionsPage {...pageProps} routeParams={routeParams} />;
       case "/auction-admin":
         return user.role === "admin"
           ? <AuctionAdminPage onBack={() => handleNavigate("/admin")} />
@@ -826,9 +830,11 @@ function AppContent() {
       case "/child-mode":
         return <ChildModePage />;
       case "/marketplace":
-        return <MarketplacePage onNavigate={handleNavigate} />;
+        return <MarketplacePage onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/commerce-center":
         return <CommerceCenterPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+      case "/mobility-center":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MobilityCenterPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/chat":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChatPage onNavigate={handleNavigate} />;
       case "/reset-password":
@@ -974,7 +980,7 @@ function AppContent() {
       case "/stories":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <StoriesPage onBack={() => handleNavigate("/more")} />;
       case "/live-auctions":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveAuctionsPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LiveAuctionsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/social-hub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SocialHubPage onBack={() => handleNavigate("/more")} />;
       case "/blitzlearn":
@@ -1167,7 +1173,7 @@ function AppContent() {
   const isMobilityShell = currentPath === "/scooter" || currentPath === "/ev" || currentPath === "/ev/map" || currentPath === "/ev/history" || currentPath.startsWith("/ev/start/") || currentPath.startsWith("/ev/session/");
   const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
   const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
-  const showBottomNav = !isDesktopViewport && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/marketplace" && currentPath !== "/scan";
+  const showBottomNav = !isDesktopViewport && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/scan";
 
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
   const showBackToHome = !isHomePath && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isMobilityShell && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
@@ -1225,7 +1231,7 @@ function AppContent() {
       </AnimatePresence>
       {/* Onboarding Tour — skip on public marketing/merchant routes */}
       {showOnboarding && !user.isAuthenticated &&
-       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory", "/marketplace"].includes(currentPath) &&
+       !["/merchant-landing", "/merchant-pricing", "/partners", "/landing", "/pay/directory"].includes(currentPath) &&
        !currentPath.startsWith("/pay/checkout/") &&
        !isPublicInvoicePayment &&
        !currentPath.startsWith("/invoice/pay/") &&
