@@ -89,6 +89,8 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
   }, []);
 
   const comparePresets = useMemo(() => buildComparePresets(bookings, savedLocations), [bookings, savedLocations]);
+  const activeBookings = useMemo(() => bookings.filter((item) => ["payment_pending", "confirmed", "in_progress"].includes(item.status)), [bookings]);
+  const leadActiveBooking = activeBookings[0] || null;
 
   useEffect(() => {
     if (!comparePresets.length) return;
@@ -296,6 +298,26 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
               </div>
               <button onClick={() => onNavigate('/mobility-map')} data-testid="mobility-center-open-map-button" className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/75">Zur Karte</button>
             </div>
+
+            {leadActiveBooking ? (
+              <div className="mt-5 rounded-[1.75rem] border border-[#8EEBFF]/20 bg-[#00C2FF]/10 p-4" data-testid="mobility-center-active-tracking-card">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#8EEBFF]">Live Tracking</p>
+                    <h3 className="mt-2 text-lg font-bold">{leadActiveBooking.transport_label || leadActiveBooking.transport_type || 'Aktive Fahrt'}</h3>
+                    <p className="mt-2 text-sm text-white/75">{leadActiveBooking.pickup?.address || 'Pickup'} → {leadActiveBooking.dropoff?.address || 'Dropoff'}</p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-white/10 px-3 py-1.5 font-semibold text-white" data-testid="mobility-center-active-booking-status">{leadActiveBooking.status || 'confirmed'}</span>
+                      <span className="rounded-full bg-white/10 px-3 py-1.5 font-semibold text-white" data-testid="mobility-center-active-booking-price">€{Number(leadActiveBooking.price_eur || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => onNavigate(`/mobility-booking/${leadActiveBooking.booking_id}`)} data-testid="mobility-center-open-active-tracking-button" className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#0b1220]">Tracking öffnen</button>
+                    <button onClick={() => onNavigate('/mobility-map')} data-testid="mobility-center-open-active-map-button" className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-white/85">Auf Karte</button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-5 space-y-3">
               {loading && <div className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm text-white/55" data-testid="mobility-center-loading">Mobility Center lädt…</div>}

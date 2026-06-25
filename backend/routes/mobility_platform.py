@@ -227,6 +227,162 @@ def _round_money(value: float) -> float:
     return round(float(value or 0), 2)
 
 
+def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def _normalize_route_points(geometry: Optional[list]) -> list[dict]:
+    points = []
+    for item in geometry or []:
+        if not isinstance(item, (list, tuple)) or len(item) < 2:
+            continue
+        lng, lat = item[0], item[1]
+        if lat is None or lng is None:
+            continue
+        points.append({"lat": float(lat), "lng": float(lng)})
+    return points
+
+
+def _interpolate_live_position(route_points: list[dict], ratio: float) -> Optional[dict]:
+    if len(route_points) < 2:
+        return route_points[0] if route_points else None
+
+    clamped_ratio = max(0.0, min(1.0, ratio))
+    segment_lengths = []
+    total_length = 0.0
+    for index in range(len(route_points) - 1):
+        start = route_points[index]
+        end = route_points[index + 1]
+        segment = haversine_distance(start["lat"], start["lng"], end["lat"], end["lng"])
+        segment_lengths.append(segment)
+        total_length += segment
+
+    if total_length <= 0:
+        return route_points[-1]
+
+    target_distance = total_length * clamped_ratio
+    walked = 0.0
+    for index, segment in enumerate(segment_lengths):
+        if walked + segment >= target_distance:
+            local_ratio = 0 if segment == 0 else (target_distance - walked) / segment
+            start = route_points[index]
+            end = route_points[index + 1]
+            return {
+                "lat": round(start["lat"] + ((end["lat"] - start["lat"]) * local_ratio), 6),
+                "lng": round(start["lng"] + ((end["lng"] - start["lng"]) * local_ratio), 6),
+            }
+        walked += segment
+    return route_points[-1]
+
+
+def _build_tracking_timeline(status: str, live_status: str) -> list[dict]:
+    order = ["payment_pending", "confirmed", "resource_assigned", "en_route", "almost_arrived", "completed"]
+    current = live_status if live_status in order else status
+    current_index = order.index(current) if current in order else 1
+    labels = {
+        "payment_pending": ("Checkout offen", "Zahlung wird bestätigt"),
+        "confirmed": ("Buchung bestätigt", "Deine Mobility-Buchung ist aktiv"),
+        "resource_assigned": ("Fahrzeug zugewiesen", "Ein passendes Fahrzeug ist für dich reserviert"),
+        "en_route": ("Unterwegs", "Die Fahrt läuft live auf der Karte"),
+        "almost_arrived": ("Fast da", "Die Ankunft steht kurz bevor"),
+        "completed": ("Abgeschlossen", "Die Buchung wurde erfolgreich beendet"),
+    }
+    timeline = []
+    for index, key in enumerate(order):
+        label, detail = labels[key]
+        timeline.append({
+            "id": key,
+            "label": label,
+            "detail": detail,
+            "done": current_index >= index,
+            "active": current_index == index,
+        })
+    if status == "cancelled":
+        timeline.append({
+            "id": "cancelled",
+            "label": "Storniert",
+            "detail": "Diese Buchung wurde beendet, bevor sie abgeschlossen wurde.",
+            "done": True,
+            "active": True,
+        })
+    return timeline
+
+
+def _build_tracking_payload(booking: dict, route_doc: Optional[dict]) -> dict:
+    status = booking.get("tracking_status") or booking.get("status") or "confirmed"
+    total_minutes = max(1, int(booking.get("duration_min") or 1))
+    created_at = _parse_iso_datetime(booking.get("confirmed_at") or booking.get("created_at"))
+    now = datetime.now(timezone.utc)
+    elapsed_minutes = 0.0
+    if created_at:
+        elapsed_minutes = max(0.0, (now - created_at).total_seconds() / 60)
+
+    if status == "cancelled":
+        progress_percent = 0
+    elif status == "completed":
+        progress_percent = 100
+    elif status == "payment_pending":
+        progress_percent = 6
+    else:
+        progress_percent = max(12, min(96, round((elapsed_minutes / total_minutes) * 100)))
+
+    if status == "cancelled":
+        live_status = "cancelled"
+        phase_label = "Buchung storniert"
+        next_event_label = "Keine weiteren Live-Updates"
+    elif status == "payment_pending":
+        live_status = "payment_pending"
+        phase_label = "Checkout abschließen"
+        next_event_label = "Nach erfolgreicher Zahlung startet das Tracking automatisch"
+    elif status == "completed":
+        live_status = "completed"
+        phase_label = "Ziel erreicht"
+        next_event_label = "Danke für deine Buchung"
+    elif progress_percent < 28:
+        live_status = "resource_assigned"
+        phase_label = "Fahrzeug wird bereitgestellt"
+        next_event_label = "Der Fahrer fährt zur Abholung"
+    elif progress_percent < 76:
+        live_status = "en_route"
+        phase_label = "Unterwegs auf deiner Route"
+        next_event_label = "Nächster Schritt: Ankunft am Ziel"
+    else:
+        live_status = "almost_arrived"
+        phase_label = "Fast am Ziel"
+        next_event_label = "Bitte halte dein Ziel im Blick"
+
+    eta_minutes = 0 if status == "completed" else max(0, int(round(total_minutes * max(0, 1 - (progress_percent / 100)))))
+    route_points = _normalize_route_points((route_doc or {}).get("geometry") or [])
+    live_position = None
+    if live_status in {"resource_assigned", "en_route", "almost_arrived", "completed"}:
+        live_position = _interpolate_live_position(route_points, 1 if status == "completed" else min(0.98, max(0.08, progress_percent / 100)))
+
+    resource = {**(booking.get("assigned_resource") or {})}
+    if live_position:
+        resource["live_position"] = live_position
+        resource.setdefault("lat", live_position["lat"])
+        resource.setdefault("lng", live_position["lng"])
+
+    return {
+        "status": status,
+        "live_status": live_status,
+        "phase_label": phase_label,
+        "next_event_label": next_event_label,
+        "eta_minutes": eta_minutes,
+        "assigned_resource": resource,
+        "support_channel": "/support-chat",
+        "can_cancel": booking.get("status") in {"confirmed", "payment_pending"},
+        "progress_percent": progress_percent,
+        "timeline": _build_tracking_timeline(status, live_status),
+        "route_points": route_points,
+    }
+
+
 def _service_marker(marker_type: str, marker_id: str, label: str, lat: float, lng: float, **extra):
     return {
         "id": marker_id,
@@ -1222,17 +1378,13 @@ async def get_mobility_booking_detail(booking_id: str, request: Request):
     booking = await db.mobility_bookings.find_one({"booking_id": booking_id, "user_id": str(user["_id"])}, {"_id": 0})
     if not booking:
         raise HTTPException(404, "Buchung nicht gefunden")
-    resource = booking.get("assigned_resource") or {}
-    eta_minutes = resource.get("eta_minutes") or booking.get("duration_min") or 0
+    route_doc = None
+    if booking.get("route_id"):
+        route_doc = await db.mobility_routes.find_one({"route_id": booking.get("route_id")}, {"_id": 0, "geometry": 1})
+    tracking = _build_tracking_payload(booking, route_doc)
     return {
         "booking": booking,
-        "tracking": {
-            "status": booking.get("tracking_status") or booking.get("status"),
-            "eta_minutes": eta_minutes,
-            "assigned_resource": resource,
-            "support_channel": "/support-chat",
-            "can_cancel": booking.get("status") in {"confirmed", "payment_pending"},
-        },
+        "tracking": tracking,
     }
 
 

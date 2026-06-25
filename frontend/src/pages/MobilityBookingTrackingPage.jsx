@@ -9,11 +9,24 @@ import { cancelMobilityBooking, getMobilityBookingDetail } from "../services/mob
 const STATUS_LABELS = {
   payment_pending: "Zahlung ausstehend",
   confirmed: "Bestätigt",
+  resource_assigned: "Fahrzeug zugewiesen",
+  en_route: "Unterwegs",
+  almost_arrived: "Fast am Ziel",
+  completed: "Abgeschlossen",
   cancelled: "Storniert",
 };
 
 function money(value) {
   return `€${Number(value || 0).toFixed(2)}`;
+}
+
+function makeLiveMarkerIcon(color = "#0F766E") {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:38px;height:38px;border-radius:19px;background:${color};display:flex;align-items:center;justify-content:center;border:3px solid rgba(255,255,255,0.94);box-shadow:0 10px 24px rgba(15,23,42,0.24);font-size:16px;">🚘</div>`,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+  });
 }
 
 export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavigate }) {
@@ -75,13 +88,19 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
     layer.clearLayers();
     const pickupMarker = L.marker([booking.pickup.lat, booking.pickup.lng]).addTo(layer).bindPopup("Start");
     const dropoffMarker = L.marker([booking.dropoff.lat, booking.dropoff.lng]).addTo(layer).bindPopup("Ziel");
-    const routePoints = [[booking.pickup.lat, booking.pickup.lng]];
-    if (tracking?.assigned_resource?.lat && tracking?.assigned_resource?.lng) {
-      L.marker([tracking.assigned_resource.lat, tracking.assigned_resource.lng]).addTo(layer).bindPopup(tracking.assigned_resource.label || "Live");
-      routePoints.push([tracking.assigned_resource.lat, tracking.assigned_resource.lng]);
+    const routePoints = (tracking?.route_points || []).map((point) => [point.lat, point.lng]);
+    const driverLat = tracking?.assigned_resource?.live_position?.lat || tracking?.assigned_resource?.lat;
+    const driverLng = tracking?.assigned_resource?.live_position?.lng || tracking?.assigned_resource?.lng;
+    if (routePoints.length > 1) {
+      L.polyline(routePoints, { color: "#d6cdbf", weight: 5, opacity: 0.8, dashArray: "8 8" }).addTo(layer);
     }
-    routePoints.push([booking.dropoff.lat, booking.dropoff.lng]);
-    const polyline = L.polyline(routePoints, { color: "#0F766E", weight: 5, opacity: 0.85 }).addTo(layer);
+    const progressPoints = [[booking.pickup.lat, booking.pickup.lng]];
+    if (driverLat && driverLng) {
+      L.marker([driverLat, driverLng], { icon: makeLiveMarkerIcon(tracking?.status === "cancelled" ? "#F97316" : "#0F766E") }).addTo(layer).bindPopup(tracking?.assigned_resource?.label || "Live");
+      progressPoints.push([driverLat, driverLng]);
+    }
+    progressPoints.push([booking.dropoff.lat, booking.dropoff.lng]);
+    const polyline = L.polyline(progressPoints, { color: "#0F766E", weight: 5, opacity: 0.9 }).addTo(layer);
     map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
     return () => {
       pickupMarker.remove();
@@ -121,11 +140,16 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
               <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Transport</p>
               <h2 className="text-xl font-bold mt-1">{booking?.transport_label}</h2>
               <p className="text-sm text-[#18202a]/62 mt-2">{booking?.pickup?.address} → {booking?.dropoff?.address}</p>
+              <p className="mt-3 inline-flex rounded-full bg-[#0F766E]/10 px-3 py-1 text-xs font-semibold text-[#0F766E]" data-testid="mobility-booking-phase-pill">{tracking?.phase_label || "Tracking aktiv"}</p>
             </div>
             <div className="text-right">
               <div className="text-lg font-bold">{money(booking?.price_eur)}</div>
               <div className="text-[11px] text-[#18202a]/50 mt-1">{booking?.duration_min} Min · {booking?.distance_km} km</div>
             </div>
+          </div>
+          <div className="mt-4 rounded-2xl bg-[#f8f3e9] px-4 py-3" data-testid="mobility-booking-next-event-card">
+            <div className="text-[10px] uppercase tracking-[0.14em] text-[#18202a]/35">Nächster Schritt</div>
+            <div className="mt-1 text-sm font-semibold text-[#18202a]">{tracking?.next_event_label || "Live-Update folgt"}</div>
           </div>
         </div>
 
@@ -146,6 +170,34 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
             <div className="h-3 rounded-full bg-[#f3eadc] overflow-hidden" data-testid="mobility-booking-progress-track">
               <div className="h-full rounded-full bg-[#0F766E] transition-[width] duration-500" style={{ width: `${progressPercent}%` }} data-testid="mobility-booking-progress-bar"></div>
             </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-white border border-[#18202a]/8 p-5" data-testid="mobility-booking-timeline-card">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Booking Timeline</p>
+              <h3 className="text-base font-bold mt-1">Von Checkout bis Ankunft</h3>
+            </div>
+            <div className="text-right text-xs text-[#18202a]/55" data-testid="mobility-booking-live-status-label">{STATUS_LABELS[tracking?.live_status] || STATUS_LABELS[tracking?.status] || booking?.status}</div>
+          </div>
+          <div className="space-y-3">
+            {(tracking?.timeline || []).map((step) => (
+              <div key={step.id} className={`rounded-2xl border px-4 py-3 ${step.active ? 'border-[#0F766E]/30 bg-[#0F766E]/8' : step.done ? 'border-[#18202a]/10 bg-[#f8f3e9]' : 'border-[#18202a]/8 bg-white'}`} data-testid={`mobility-booking-timeline-step-${step.id}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${step.active ? 'bg-[#0F766E] text-white' : step.done ? 'bg-[#18202a] text-white' : 'bg-[#f3eadc] text-[#18202a]/45'}`}>
+                    {step.done ? '✓' : '•'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-[#18202a]">{step.label}</p>
+                      {step.active ? <span className="rounded-full bg-[#0F766E]/12 px-2 py-0.5 text-[10px] font-semibold text-[#0F766E]">Jetzt</span> : null}
+                    </div>
+                    <p className="mt-1 text-xs text-[#18202a]/55">{step.detail}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
