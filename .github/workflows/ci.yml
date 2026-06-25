@@ -35,7 +35,19 @@ jobs:
       - name: Install backend deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          python - <<'PY'
+          from pathlib import Path
+          src = Path('backend/requirements.txt')
+          dst = Path('/tmp/backend-requirements-ci.txt')
+          filtered = []
+          for line in src.read_text().splitlines():
+              if line.strip().startswith('emergentintegrations=='):
+                  continue
+              filtered.append(line)
+          dst.write_text('\n'.join(filtered) + '\n')
+          print(f'Wrote filtered CI requirements to {dst}')
+          PY
+          pip install -r /tmp/backend-requirements-ci.txt
 
       - name: Run backend CI smoke suite
         env:
