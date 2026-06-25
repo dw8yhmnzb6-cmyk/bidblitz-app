@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Car, CheckCircle2, Clock3, Loader2, MapPin, Navigation, Phone, Search, ShieldCheck, Star } from 'lucide-react';
+import { ArrowLeft, Car, Clock3, Loader2, MapPin, Navigation, Search, Star } from 'lucide-react';
+import { toast } from 'sonner';
 import { useUser } from '../store/UserContext';
 import { TaxiMap } from '../components/RealMap';
+import ActiveRideTracker from '../components/taxi/ActiveRideTracker';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 import * as api from '../services/taxiApi';
 
@@ -32,88 +34,41 @@ function RideStatusBadge({ ride }) {
   return <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${item.tone}`} data-testid="taxi-customer-ride-status-badge">{item.label}</span>;
 }
 
-function DriverInfoCard({ ride }) {
-  const driver = ride?.driver || {};
-  const vehicle = driver.vehicle || {};
-  if (!ride) return null;
+function RideChatPanel({ messages, loading, draft, onDraftChange, onSend }) {
   return (
-    <div className="mt-4 rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-800 p-4 text-white shadow-sm" data-testid="taxi-customer-driver-card">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-lg font-black text-cyan-300" data-testid="taxi-customer-driver-avatar">
-            {(driver.name || 'F').slice(0, 1)}
-          </div>
-          <div>
-            <p className="text-lg font-black" data-testid="taxi-customer-driver-name">{driver.name || 'Fahrer wird gesucht'}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/75">
-              <span className="rounded-full bg-white/10 px-2 py-1" data-testid="taxi-customer-driver-rating">⭐ {(driver.rating || 5).toFixed ? driver.rating.toFixed(1) : driver.rating || 5}</span>
-              <span className="rounded-full bg-white/10 px-2 py-1" data-testid="taxi-customer-driver-rides">{driver.total_rides || 0} Fahrten</span>
-              <span className="rounded-full bg-cyan-400/15 px-2 py-1 text-cyan-200" data-testid="taxi-customer-driver-eta-pill">{driver.eta_minutes || ride.eta_minutes || 4} Min</span>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl bg-white/10 px-3 py-2 text-right">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/50">Fahrzeug</p>
-          <p className="mt-1 text-sm font-bold" data-testid="taxi-customer-driver-vehicle">{vehicle.model || ride.vehicle_model || 'Taxi'}</p>
-          <p className="text-xs text-white/65" data-testid="taxi-customer-driver-plate">{vehicle.plate || ride.vehicle_plate || '—'}</p>
-        </div>
-      </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-2xl bg-white/10 px-3 py-3" data-testid="taxi-customer-driver-safety-card">
-          <div className="flex items-center gap-2 text-cyan-200"><ShieldCheck size={14} /><span className="text-xs font-semibold">Sicher</span></div>
-          <p className="mt-1 text-[11px] text-white/70">Fahrer und Fahrzeug sind geprüft.</p>
-        </div>
-        <div className="rounded-2xl bg-white/10 px-3 py-3" data-testid="taxi-customer-driver-contact-card">
-          <div className="flex items-center gap-2 text-cyan-200"><Phone size={14} /><span className="text-xs font-semibold">Kontakt</span></div>
-          <p className="mt-1 text-[11px] text-white/70">{driver.phone || 'Nummer folgt nach Fahrerzuweisung'}</p>
-        </div>
-        <div className="rounded-2xl bg-white/10 px-3 py-3" data-testid="taxi-customer-driver-price-card">
-          <div className="flex items-center gap-2 text-cyan-200"><Clock3 size={14} /><span className="text-xs font-semibold">Preis</span></div>
-          <p className="mt-1 text-[11px] text-white/70">€{Number(ride.final_fare || ride.fare_estimate || ride.estimated_fare || 0).toFixed(2)}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TrackingTimeline({ ride }) {
-  const steps = [
-    { id: 'requested', label: 'Anfrage gesendet', desc: 'Wir suchen gerade den besten Fahrer für dich.' },
-    { id: 'accepted', label: 'Fahrer bestätigt', desc: 'Dein Fahrer hat die Fahrt angenommen.' },
-    { id: 'arriving', label: 'Fahrer kommt an', desc: 'Der Fahrer ist auf dem Weg zu deiner Abholung.' },
-    { id: 'started', label: 'Fahrt läuft', desc: 'Du bist jetzt unterwegs.' },
-    { id: 'completed', label: 'Angekommen', desc: 'Deine Fahrt wurde abgeschlossen.' },
-  ];
-  const order = { requested: 0, accepted: 1, arriving: 2, started: 3, completed: 4, cancelled: -1 };
-  const currentIndex = order[ride?.status] ?? 0;
-  return (
-    <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-tracking-timeline-card">
+    <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-chat-panel">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Tracking</p>
-          <h3 className="mt-1 text-lg font-black">Deine Fahrt Schritt für Schritt</h3>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Chat</p>
+          <h3 className="mt-1 text-lg font-black">Nachricht an Fahrer senden</h3>
         </div>
-        <div className="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white" data-testid="taxi-customer-tracking-current-status">{ride?.status || 'requested'}</div>
+        <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600" data-testid="taxi-customer-chat-count">{messages.length} Nachrichten</div>
       </div>
-      <div className="mt-4 space-y-3">
-        {steps.map((step, index) => {
-          const done = currentIndex >= index;
-          const active = currentIndex === index;
+      <div className="mt-4 space-y-2" data-testid="taxi-customer-chat-message-list">
+        {loading ? <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">Lade Chat…</div> : null}
+        {!loading && messages.length === 0 ? <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">Noch keine Nachrichten. Schreib dem Fahrer kurz, wo du genau stehst.</div> : null}
+        {messages.map((message) => {
+          const ownMessage = message.sender_role === 'customer' || message.sender_role === 'admin';
           return (
-            <motion.div key={step.id} layout className="flex items-start gap-3 rounded-2xl border px-3 py-3 transition-all ${active ? 'border-cyan-200 bg-cyan-50' : 'border-slate-200 bg-slate-50'}" data-testid={`taxi-customer-timeline-step-${step.id}`}>
-              <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full ${done ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
-                <CheckCircle2 size={16} />
+            <div key={message.message_id} className={`rounded-2xl px-4 py-3 ${ownMessage ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'}`} data-testid={`taxi-customer-chat-message-${message.message_id}`}>
+              <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.14em]">
+                <span>{ownMessage ? 'Du' : message.sender_name || 'Fahrer'}</span>
+                <span className={ownMessage ? 'text-white/60' : 'text-slate-500'}>{message.sent_at ? new Date(message.sent_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold text-slate-900">{step.label}</p>
-                  {active ? <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-700">Jetzt</span> : null}
-                </div>
-                <p className="mt-1 text-xs text-slate-500">{step.desc}</p>
-              </div>
-            </motion.div>
+              <p className={`mt-2 text-sm ${ownMessage ? 'text-white' : 'text-slate-700'}`}>{message.text}</p>
+            </div>
           );
         })}
+      </div>
+      <div className="mt-4 flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          placeholder="z. B. Ich stehe am Haupteingang"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none placeholder:text-slate-400"
+          data-testid="taxi-customer-chat-input"
+        />
+        <button onClick={onSend} className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white" data-testid="taxi-customer-chat-send-button">Senden</button>
       </div>
     </div>
   );
@@ -149,6 +104,10 @@ export default function TaxiPage({ onNavigate }) {
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [suggestedPlaces, setSuggestedPlaces] = useState([]);
+  const [rideMessages, setRideMessages] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [messageDraft, setMessageDraft] = useState('');
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -171,6 +130,19 @@ export default function TaxiPage({ onNavigate }) {
     const data = await api.fetchActiveRide();
     const ride = data?.rides?.[0] || null;
     setActiveRide(ride);
+  }, []);
+
+  const loadRideMessages = useCallback(async (rideId) => {
+    if (!rideId) return;
+    setChatLoading(true);
+    const result = await api.fetchRideMessages(rideId);
+    if (!result.ok) {
+      setChatLoading(false);
+      toast.error(result.error || 'Chat konnte nicht geladen werden');
+      return;
+    }
+    setRideMessages(result.messages || []);
+    setChatLoading(false);
   }, []);
 
   useEffect(() => {
@@ -218,6 +190,21 @@ export default function TaxiPage({ onNavigate }) {
     const timer = window.setInterval(loadActiveRide, 4000);
     return () => window.clearInterval(timer);
   }, [activeRide, loadActiveRide]);
+
+  useEffect(() => {
+    if (!chatOpen || !activeRide?.ride_id) return undefined;
+    loadRideMessages(activeRide.ride_id);
+    const timer = window.setInterval(() => loadRideMessages(activeRide.ride_id), 5000);
+    return () => window.clearInterval(timer);
+  }, [chatOpen, activeRide?.ride_id, loadRideMessages]);
+
+  useEffect(() => {
+    if (!activeRide?.ride_id) {
+      setChatOpen(false);
+      setRideMessages([]);
+      setMessageDraft('');
+    }
+  }, [activeRide?.ride_id]);
 
   useEffect(() => {
     const merged = [];
@@ -293,6 +280,30 @@ export default function TaxiPage({ onNavigate }) {
     })).filter((driver) => Number.isFinite(driver.lat) && Number.isFinite(driver.lng)),
     [nearbyDrivers],
   );
+
+  const activeRideTrackerData = useMemo(() => {
+    if (!activeRide) return null;
+    return {
+      ...activeRide,
+      driver_name: activeRide.driver?.name || activeRide.driver_name || 'Fahrer wird gesucht',
+      driver_phone: activeRide.driver?.phone || activeRide.driver_phone || '',
+      driver_rating: activeRide.driver?.rating || activeRide.driver_rating || 5,
+      vehicle_model: activeRide.driver?.vehicle?.model || activeRide.vehicle_model || activeRide.driver_car?.model || 'Taxi',
+      vehicle_plate: activeRide.driver?.vehicle?.plate || activeRide.vehicle_plate || activeRide.driver_car?.license_plate || '—',
+      pickup_address: activeRide.pickup?.address || activeRide.pickup_address || 'Aktueller Standort',
+      dropoff_address: activeRide.dropoff?.address || activeRide.dropoff_address || '—',
+      estimated_price: Number(activeRide.final_fare || activeRide.fare_estimate || activeRide.estimated_fare || 0),
+      eta_minutes: activeRide.driver?.eta_minutes || activeRide.eta_minutes || 0,
+    };
+  }, [activeRide]);
+
+  const liveMovementLabel = useMemo(() => {
+    if (!activeRide) return '';
+    if (activeRide.status === 'arriving') return 'Dein Fahrer bewegt sich live auf der Karte zu deiner Abholung.';
+    if (activeRide.status === 'started') return 'Dein Fahrzeug bewegt sich live auf der Karte Richtung Ziel.';
+    if (activeRide.status === 'accepted') return 'Fahrer bestätigt — Live-Position aktualisiert sich automatisch.';
+    return '';
+  }, [activeRide]);
 
   const handleAddressChange = (type, value) => {
     if (type === 'pickup') {
@@ -412,6 +423,53 @@ export default function TaxiPage({ onNavigate }) {
     }
     setActiveRide(null);
     await loadActiveRide();
+  };
+
+  const handleOpenRideChat = async () => {
+    if (!activeRide?.ride_id) return;
+    const nextOpen = !chatOpen;
+    setChatOpen(nextOpen);
+    if (nextOpen) {
+      await loadRideMessages(activeRide.ride_id);
+    }
+  };
+
+  const handleSendRideMessage = async () => {
+    if (!activeRide?.ride_id) return;
+    const text = messageDraft.trim();
+    if (!text) return;
+    const result = await api.sendRideMessage(activeRide.ride_id, text);
+    if (!result.ok) {
+      toast.error(result.error || 'Nachricht konnte nicht gesendet werden');
+      return;
+    }
+    setMessageDraft('');
+    setRideMessages((prev) => [...prev, result.message].slice(-50));
+  };
+
+  const handleCallDriver = () => {
+    const phone = activeRide?.driver?.phone || activeRide?.driver_phone;
+    if (!phone) {
+      toast.error('Telefonnummer ist noch nicht verfügbar');
+      return;
+    }
+    window.location.href = `tel:${phone}`;
+  };
+
+  const handleShareTrip = async () => {
+    if (!activeRide) return;
+    const shareText = `Meine BidBlitz Fahrt: ${activeRide.pickup?.address || 'Abholung'} → ${activeRide.dropoff?.address || 'Ziel'} · ${activeRide.driver?.name || 'Fahrer'} · ETA ${activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'BidBlitz Taxi', text: shareText, url: window.location.href });
+        return;
+      }
+      await navigator.clipboard.writeText(`${shareText} · ${window.location.href}`);
+      toast.success('Fahrt-Link in die Zwischenablage kopiert');
+    } catch (error) {
+      void error;
+      toast.error('Teilen war gerade nicht möglich');
+    }
   };
 
   return (
@@ -625,22 +683,24 @@ export default function TaxiPage({ onNavigate }) {
                   <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-price">€{Number(activeRide.final_fare || activeRide.estimated_fare || 0).toFixed(2)}</div>
                   <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-eta">{activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min</div>
                 </div>
-                <DriverInfoCard ride={activeRide} />
-                <TrackingTimeline ride={activeRide} />
-                <div className="mt-4 space-y-2" data-testid="taxi-customer-live-tracking-steps">
-                  {[
-                    { id: 'requested', label: 'Anfrage gesendet', done: ['requested', 'accepted', 'arriving', 'started', 'completed'].includes(activeRide.status) },
-                    { id: 'accepted', label: 'Fahrer bestätigt', done: ['accepted', 'arriving', 'started', 'completed'].includes(activeRide.status) },
-                    { id: 'arriving', label: 'Fahrer kommt zu dir', done: ['arriving', 'started', 'completed'].includes(activeRide.status) },
-                    { id: 'started', label: 'Du bist unterwegs', done: ['started', 'completed'].includes(activeRide.status) },
-                  ].map((step) => (
-                    <div key={step.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3" data-testid={`taxi-customer-live-step-${step.id}`}>
-                      <div className={`rounded-full p-1.5 ${step.done ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}><CheckCircle2 size={14} /></div>
-                      <div className="text-sm font-medium text-slate-700">{step.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={handleCancelRide} className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700" data-testid="taxi-customer-cancel-ride-button">Fahrt stornieren</button>
+                <ActiveRideTracker
+                  ride={activeRideTrackerData}
+                  onCancel={handleCancelRide}
+                  onOpenLiveChat={handleOpenRideChat}
+                  onCallDriver={handleCallDriver}
+                  onShareTrip={handleShareTrip}
+                  canCall={Boolean(activeRide.driver?.phone || activeRide.driver_phone)}
+                  liveMovementLabel={liveMovementLabel}
+                />
+                {chatOpen ? (
+                  <RideChatPanel
+                    messages={rideMessages}
+                    loading={chatLoading}
+                    draft={messageDraft}
+                    onDraftChange={setMessageDraft}
+                    onSend={handleSendRideMessage}
+                  />
+                ) : null}
               </div>
             ) : (
               <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-vehicles-card">
@@ -705,6 +765,9 @@ export default function TaxiPage({ onNavigate }) {
               pickup={pickup?.lat ? pickup : null}
               dropoff={dropoff?.lat ? dropoff : null}
               driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
+              driverBearing={activeRide?.driver_bearing || 0}
+              driverTarget={activeRide?.status === 'started' ? activeRide?.dropoff : activeRide?.pickup}
+              driverPath={(activeRide?.driver_path || []).map((point) => [point.lat, point.lng]).filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]))}
               height="100%"
               nearbyDrivers={mapDrivers}
             />
@@ -719,6 +782,7 @@ export default function TaxiPage({ onNavigate }) {
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Vorschau</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{pickup.address || 'Abholung'} → {dropoff.address || 'Ziel auswählen'}</p>
+                {activeRide ? <p className="mt-1 text-xs text-slate-500" data-testid="taxi-customer-map-live-movement-copy">{liveMovementLabel || 'Live-Position wird laufend aktualisiert.'}</p> : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-map-driver-count">{mapDrivers.length} Fahrer</div>

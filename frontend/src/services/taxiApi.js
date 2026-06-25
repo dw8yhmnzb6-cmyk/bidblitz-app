@@ -189,6 +189,28 @@ export async function fetchRide(rideId) {
   return res.ok ? readJson(res) : null;
 }
 
+export async function fetchRideMessages(rideId) {
+  const res = await safeFetch(`${API}/api/taxi/rides/${rideId}/messages`, cred);
+  if (!res) return { ok: false, messages: [], error: 'Chat momentan nicht erreichbar' };
+  const data = await readJson(res);
+  return res.ok
+    ? { ok: true, messages: data?.messages || [], role: data?.role || 'customer' }
+    : { ok: false, messages: [], error: data?.detail || 'Chat konnte nicht geladen werden' };
+}
+
+export async function sendRideMessage(rideId, text) {
+  const res = await safeFetch(`${API}/api/taxi/rides/${rideId}/messages`, {
+    ...credJson,
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+  if (!res) return { ok: false, error: 'Nachricht konnte nicht gesendet werden' };
+  const data = await readJson(res);
+  return res.ok
+    ? { ok: true, message: data?.message }
+    : { ok: false, error: data?.detail || 'Nachricht konnte nicht gesendet werden' };
+}
+
 export async function fetchRideHistory() {
   const res = await safeFetch(`${API}/api/taxi/rides/history`, cred);
   if (!res) return [];

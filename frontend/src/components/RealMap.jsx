@@ -51,6 +51,82 @@ export const ICONS = {
   delivery: createIcon('#FFB800', '📦'),
 };
 
+const createMovingDriverIcon = (rotation = 0) => L.divIcon({
+  className: 'custom-driver-marker',
+  html: `<div style="
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: rgba(0, 210, 106, 0.18);
+      border: 2px solid rgba(255,255,255,0.92);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    ">
+      <div style="
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: #00D26A;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        transform: rotate(${rotation}deg);
+      ">🚗</div>
+    </div>`,
+  iconSize: [44, 44],
+  iconAnchor: [22, 22],
+  popupAnchor: [0, -20],
+});
+
+const AnimatedMarker = ({ position, popup, rotation = 0 }) => {
+  const [displayPosition, setDisplayPosition] = useState(position);
+  const frameRef = useRef(null);
+
+  useEffect(() => {
+    if (!position) return undefined;
+    if (!displayPosition) {
+      setDisplayPosition(position);
+      return undefined;
+    }
+
+    const [fromLat, fromLng] = displayPosition;
+    const [toLat, toLng] = position;
+    if (fromLat === toLat && fromLng === toLng) return undefined;
+
+    const startedAt = performance.now();
+    const duration = 2200;
+    const animate = (now) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - ((1 - progress) ** 3);
+      setDisplayPosition([
+        fromLat + ((toLat - fromLat) * eased),
+        fromLng + ((toLng - fromLng) * eased),
+      ]);
+      if (progress < 1) {
+        frameRef.current = window.requestAnimationFrame(animate);
+      }
+    };
+
+    frameRef.current = window.requestAnimationFrame(animate);
+    return () => {
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+    };
+  }, [position, displayPosition]);
+
+  if (!displayPosition) return null;
+
+  return (
+    <Marker position={displayPosition} icon={createMovingDriverIcon(rotation)}>
+      {popup ? <Popup>{popup}</Popup> : null}
+    </Marker>
+  );
+};
+
 // Component to update map center
 const MapUpdater = ({ center, zoom }) => {
   const map = useMap();
@@ -167,14 +243,12 @@ export const TaxiMap = ({
   pickup,
   dropoff,
   driverLocation,
+  driverBearing = 0,
+  driverTarget = null,
+  driverPath = [],
   nearbyDrivers = [],
-  onPickupSelect,
-  onDropoffSelect,
   height = '250px',
 }) => {
-  const [selectMode, setSelectMode] = useState(null); // 'pickup' or 'dropoff'
-  const mapRef = useRef(null);
-
   const markers = [];
   
   if (pickup) {
@@ -197,16 +271,6 @@ export const TaxiMap = ({
     });
   }
   
-  if (driverLocation) {
-    markers.push({
-      id: 'driver',
-      lat: driverLocation.lat,
-      lng: driverLocation.lng,
-      icon: ICONS.driver,
-      popup: 'Dein Fahrer',
-    });
-  }
-
   nearbyDrivers.forEach((driver, index) => {
     markers.push({
       id: `nearby-driver-${driver.id || index}`,
@@ -218,14 +282,39 @@ export const TaxiMap = ({
   });
 
   const route = pickup && dropoff ? [[pickup.lat, pickup.lng], [dropoff.lat, dropoff.lng]] : null;
+  const fitBounds = [
+    pickup ? [pickup.lat, pickup.lng] : null,
+    dropoff ? [dropoff.lat, dropoff.lng] : null,
+    driverLocation ? [driverLocation.lat, driverLocation.lng] : null,
+  ].filter(Boolean);
 
   return (
     <RealMap
       height={height}
       markers={markers}
       route={route}
-      fitBounds={pickup && dropoff ? [[pickup.lat, pickup.lng], [dropoff.lat, dropoff.lng]] : null}
-    />
+      fitBounds={fitBounds.length >= 2 ? fitBounds : null}
+    >
+      {driverPath.length >= 2 ? (
+        <Polyline
+          positions={driverPath}
+          pathOptions={{ color: '#0F766E', weight: 4, opacity: 0.6, dashArray: '8 8' }}
+        />
+      ) : null}
+      {driverLocation ? (
+        <AnimatedMarker
+          position={[driverLocation.lat, driverLocation.lng]}
+          rotation={driverBearing}
+          popup="Dein Fahrer bewegt sich live"
+        />
+      ) : null}
+      {driverLocation && driverTarget ? (
+        <Polyline
+          positions={[[driverLocation.lat, driverLocation.lng], [driverTarget.lat, driverTarget.lng]]}
+          pathOptions={{ color: '#00C2FF', weight: 3, opacity: 0.55 }}
+        />
+      ) : null}
+    </RealMap>
   );
 };
 

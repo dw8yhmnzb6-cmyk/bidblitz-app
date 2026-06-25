@@ -21,6 +21,57 @@ const FORWARD_PARAMS =
   "language=de&limit=8&types=address,poi,place,locality,neighborhood,postcode,district";
 const COUNTRY_HINT = "de,at,ch,xk,al,mk,me";
 
+function buildDirectUrl(query, proximity) {
+  const hasProx = proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng)
+    && proximity.lat !== 0;
+  const prox = hasProx ? `&proximity=${proximity.lng},${proximity.lat}` : "";
+  const country = `&country=${COUNTRY_HINT}`;
+  const bbox = hasProx
+    ? `&bbox=${proximity.lng - 1.4},${proximity.lat - 1.4},${proximity.lng + 1.4},${proximity.lat + 1.4}`
+    : "";
+  return `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+    query,
+  )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true${country}${prox}${bbox}`;
+}
+
+function buildProxyUrl(query, proximity, limit = 8) {
+  return `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(query)}&limit=${limit}${
+    proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng) && proximity.lat !== 0
+      ? `&lat=${proximity.lat}&lng=${proximity.lng}`
+      : ""
+  }&country=${encodeURIComponent(COUNTRY_HINT)}`;
+}
+
+async function fetchFeatures(url, signal) {
+  const res = await fetch(url, { signal });
+  if (!res.ok) {
+    throw new Error(`Geocode failed: ${res.status}`);
+  }
+  const data = await res.json();
+  return data?.features || [];
+}
+
+async function fetchWithFallback(query, proximity, signal) {
+  const directUrl = MAPBOX_TOKEN ? buildDirectUrl(query, proximity) : null;
+  const proxyUrl = BACKEND_URL ? buildProxyUrl(query, proximity) : null;
+  const urls = [directUrl, proxyUrl].filter(Boolean);
+
+  let lastError = null;
+  for (const url of urls) {
+    try {
+      const features = await fetchFeatures(url, signal);
+      if (features.length > 0 || url === urls[urls.length - 1]) {
+        return features;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) throw lastError;
+  return [];
+}
+
 function parseFeature(f) {
   const ctx = f.context || [];
   const postcode = (ctx.find((c) => (c.id || "").startsWith("postcode")) || {}).text || "";
@@ -92,43 +143,17 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
         return;
       }
 
-      // Proximity bias toward user's GPS for relevant local-first results.
-      // Mapbox expects "lng,lat" string. Plus tight bbox (~200km) to suppress
-      // unrelated worldwide matches (Mallaig GB / Ali Mallan YE etc.).
-      const hasProx = proximity && Number.isFinite(proximity.lat) && Number.isFinite(proximity.lng)
-        && proximity.lat !== 0;
-      const prox = hasProx ? `&proximity=${proximity.lng},${proximity.lat}` : "";
-      const country = `&country=${COUNTRY_HINT}`;
-      const bbox = hasProx
-        ? `&bbox=${proximity.lng - 1.4},${proximity.lat - 1.4},${proximity.lng + 1.4},${proximity.lat + 1.4}`
-        : "";
-
       timers[key] = setTimeout(async () => {
         const controller = new AbortController();
         aborters[key] = controller;
         try {
-          let url;
-          if (MAPBOX_TOKEN) {
-            url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-              q,
-            )}.json?access_token=${MAPBOX_TOKEN}&${FORWARD_PARAMS}&autocomplete=true${country}${prox}${bbox}`;
-          } else if (BACKEND_URL) {
-            url = `${BACKEND_URL}/api/taxi/geocode?q=${encodeURIComponent(q)}&limit=8${
-              hasProx ? `&lat=${proximity.lat}&lng=${proximity.lng}` : ""
-            }&country=${encodeURIComponent(COUNTRY_HINT)}`;
-          } else {
+          if (!MAPBOX_TOKEN && !BACKEND_URL) {
             setSuggestions([]);
             setVisibility(false);
             return;
           }
-          const res = await fetch(url, { signal: controller.signal });
-          if (!res.ok) {
-            setSuggestions([]);
-            setVisibility(false);
-            return;
-          }
-          const data = await res.json();
-          const results = (data.features || [])
+          const features = await fetchWithFallback(q, proximity, controller.signal);
+          const results = features
             .slice()
             .sort((a, b) => scoreFeature(b, q, proximity) - scoreFeature(a, q, proximity))
             .map(parseFeature)

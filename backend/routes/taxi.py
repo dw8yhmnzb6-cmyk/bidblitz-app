@@ -1180,6 +1180,10 @@ class CarType(str, Enum):
     VAN = "van"
 
 
+class RideMessageRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=400)
+
+
 def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Calculate distance in km using Haversine formula."""
     R = 6371
@@ -1187,6 +1191,19 @@ def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> fl
     dlat, dlng = math.radians(lat2 - lat1), math.radians(lng2 - lng1)
     a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+
+def calculate_bearing(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Return visual bearing in degrees for rotating the taxi marker."""
+    start_lat = math.radians(lat1)
+    start_lng = math.radians(lng1)
+    end_lat = math.radians(lat2)
+    end_lng = math.radians(lng2)
+    d_lng = end_lng - start_lng
+    x = math.sin(d_lng) * math.cos(end_lat)
+    y = math.cos(start_lat) * math.sin(end_lat) - math.sin(start_lat) * math.cos(end_lat) * math.cos(d_lng)
+    bearing = math.degrees(math.atan2(x, y))
+    return (bearing + 360) % 360
 
 
 def calculate_fare(distance_km: float, duration_minutes: float, car_type: str, region: str = "germany") -> dict:
@@ -2268,6 +2285,13 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
     except Exception:
         eta = None
     car = d.get("car") or {}
+    target = ride.get("dropoff") if ride.get("status") == RideStatus.STARTED.value else ride.get("pickup")
+    driver_bearing = None
+    try:
+        if loc.get("lat") is not None and target and target.get("lat") is not None:
+            driver_bearing = calculate_bearing(loc["lat"], loc["lng"], target["lat"], target["lng"])
+    except Exception:
+        driver_bearing = None
     ride["driver"] = {
         "driver_id": d.get("driver_id"),
         "name": d.get("user_name") or ride.get("driver_name") or "",
@@ -2287,7 +2311,82 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
     if loc.get("lat") is not None:
         ride["driver_lat"] = loc["lat"]
         ride["driver_lng"] = loc["lng"]
+    if driver_bearing is not None:
+        ride["driver_bearing"] = round(driver_bearing, 2)
     return ride
+
+
+async def _get_ride_party_role(ride: dict, user: dict) -> Optional[str]:
+    user_id = str(user.get("_id") or user.get("id") or "")
+    if ride.get("customer_id") == user_id:
+        return "customer"
+    driver = await db.drivers.find_one({"user_id": user_id}, {"_id": 0, "driver_id": 1})
+    if driver and ride.get("driver_id") == driver.get("driver_id"):
+        return "driver"
+    if user.get("role") == "admin":
+        return "admin"
+    return None
+
+
+def _normalize_ride_messages(ride: dict) -> List[dict]:
+    messages = ride.get("ride_messages") or []
+    normalized = []
+    for message in messages[-50:]:
+        normalized.append({
+            "message_id": message.get("message_id"),
+            "sender_role": message.get("sender_role", "customer"),
+            "sender_name": message.get("sender_name", "BidBlitz"),
+            "text": message.get("text", ""),
+            "sent_at": message.get("sent_at", ""),
+        })
+    return normalized
+
+
+@router.get("/rides/{ride_id}/messages")
+async def get_ride_messages(ride_id: str, request: Request):
+    """Customer or assigned driver gets ride chat messages."""
+    user = await get_current_user(request)
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    role = await _get_ride_party_role(ride, user)
+    if not role:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Fahrt")
+    return {"ok": True, "role": role, "messages": _normalize_ride_messages(ride)}
+
+
+@router.post("/rides/{ride_id}/messages")
+async def send_ride_message(ride_id: str, req: RideMessageRequest, request: Request):
+    """Customer or assigned driver sends a short ride message."""
+    user = await get_current_user(request)
+    ride = await db.taxi_rides.find_one({"ride_id": ride_id}, {"_id": 0})
+    if not ride:
+        raise HTTPException(status_code=404, detail="Fahrt nicht gefunden")
+    role = await _get_ride_party_role(ride, user)
+    if not role:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Fahrt")
+
+    now = datetime.now(timezone.utc)
+    text = (req.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Nachricht darf nicht leer sein")
+
+    sender_name = user.get("name") or ("Fahrer" if role == "driver" else "Kunde")
+    message = {
+        "message_id": secrets.token_hex(6),
+        "sender_role": role,
+        "sender_name": sender_name,
+        "text": text[:400],
+        "sent_at": now.isoformat(),
+    }
+    await db.taxi_rides.update_one(
+        {"ride_id": ride_id},
+        {
+            "$push": {"ride_messages": {"$each": [message], "$slice": -50}},
+            "$set": {"updated_at": now.isoformat()},
+        },
+    )
+    return {"ok": True, "message": message}
 
 
 @router.get("/rides/history")
