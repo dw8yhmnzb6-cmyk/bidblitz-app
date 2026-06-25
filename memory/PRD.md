@@ -42,6 +42,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Buchungsmodi erweitert** (`frontend/src/pages/TaxiPage.jsx`, `backend/models/taxi.py`, `backend/routes/taxi.py`): `Jetzt bestellen`, `Später bestellen` und `Für jemand anderen` sind jetzt als echte Optionen im Kundenflow vorhanden; Backend akzeptiert `booking_mode`, `scheduled_at`, `recipient_name`, `recipient_phone`.
 - ✅ **Verifiziert**: `testing_agent` Iteration 153 = Backend 16/16 PASS, Frontend 100% PASS. Geprüft wurden Quick Places, Home/Work Save, Favoriten-CTA, Smart Suggestions, Later-Booking-Datetime und Recipient-Felder.
 
+### 25.06.2026 (Taxi Uber-Flow Phase 2: Driver Card + Tracking + stärkere CTAs) ✅
+- 🟢 **Driver Card ergänzt** (`frontend/src/pages/TaxiPage.jsx`): aktive Fahrten zeigen jetzt eine vollwertige Fahrerkarte mit Name, Rating, Gesamtfahrten, ETA, Fahrzeug, Kennzeichen, Safety- und Kontaktbereich.
+- 🟢 **Tracking-Timeline ausgebaut**: aktive Fahrt besitzt jetzt eine klarere, animierte Status-Timeline (`requested`, `accepted`, `arriving`, `started`, `completed`) mit aktuellem Zustand.
+- 🟢 **Bottom-Sheet-CTA geschärft**: nach Zielauswahl zeigt das Taxi-Bottom-Sheet einen klaren Statusblock `Ausgewählt`, Fahrzeugtyp und Zieladresse; zusätzlich wurde eine zweite intelligente Vorschlagskarte für schnellere Wiederholbuchungen ergänzt.
+- ✅ **Verifiziert**: `testing_agent` Iteration 154 = Frontend 26/26 PASS. Bestätigt wurden CTA-States im Bottom-Sheet, intelligente Vorschlagszonen, Driver-Card-/Tracking-Komponenten und das Fortbestehen aller bisherigen Uber-like Taxi-Features.
+
 ### 24.06.2026 (CI/CD Repair: Backend Dependencies + Frontend ESLint) ✅
 - 🟢 **Backend-CI stabilisiert** (`backend/requirements.txt`, `.github/workflows/ci.yml`, `backend/tests/test_ci_smoke.py`): problematische Versionen für `emergentintegrations`, `librt` und `s5cmd` wurden auf installierbare Releases angehoben; der GitHub-Workflow nutzt jetzt gezielt `pytest backend/tests/test_ci_smoke.py` als zuverlässigen Backend-Gate.
 - 🟢 **Frontend-ESLint wieder grün auf Error-Level** (`frontend/.eslintrc.json`, `frontend/src/App.js`, `frontend/src/components/POSGuidedTour.jsx` plus mehrere betroffene Pages/Stores): fehlende ESLint-Konfiguration ergänzt, Parsing-/Import-Reihenfolge-/Undefined-/`confirm()`-Blocker bereinigt. `npx eslint src --ext .js,.jsx` läuft jetzt mit **0 Errors**.

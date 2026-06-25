@@ -31,6 +31,10 @@
 - `backend/models/taxi.py` + `backend/routes/taxi.py`: neue Buchungsfelder ergänzt; scheduled bookings blockieren nicht mehr an aktiver Sofortfahrt; gespeicherte/empfohlene Taxi-Ziele lassen sich jetzt vollständig durch den neuen Kundenflow nutzen
 - Verifiziert: `testing_agent` Iteration 153 PASS (Backend 16/16, Frontend 100%)
 
+## 25.06.2026 — Taxi Uber-Flow Phase 2
+- `frontend/src/pages/TaxiPage.jsx`: neue DriverInfoCard und TrackingTimeline ergänzt; intelligenterer Bestellflow mit zusätzlicher Karte `Deine intelligenten Vorschläge` und klareren CTA-States im Fahrzeug-Bottom-Sheet
+- Verifiziert: `testing_agent` Iteration 154 PASS (Frontend 26/26), inklusive Bottom-Sheet-CTA-State, intelligenter Vorschlagszone, Driver-Card-/Timeline-Komponenten und Regression-Check der bisherigen Taxi-Features
+
 ## 24.06.2026 — CI/CD Repair (Backend Dependencies + Frontend ESLint)
 - `backend/requirements.txt` bereinigt: `emergentintegrations` auf `0.2.0`, `librt` auf `0.11.0`, `s5cmd` auf `0.3.3` angehoben
 - GitHub Actions Backend-Job auf stabilen Smoke-Test umgestellt: `pytest backend/tests/test_ci_smoke.py` statt der flakey historischen Komplettsuite
