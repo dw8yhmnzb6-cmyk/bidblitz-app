@@ -1,0 +1,36 @@
+{
+  "test_date": "2026-06-25T15:12:06.761575",
+  "base_url": "https://commerce-hub-565.preview.emergentagent.com",
+  "tests": [
+    {
+      "test_name": "TEST 1: GET /api/taxi/geocode?q=Pris",
+      "passed": true,
+      "details": "Geocode returned 8 results for 'Pris'. First result: Pristina, Kosovo",
+      "timestamp": "2026-06-25T15:12:07.394979"
+    },
+    {
+      "test_name": "TEST 2: GET /api/taxi/rides/active - Live Movement Fields",
+      "passed": true,
+      "details": "Active ride found with live movement fields. Present: ['driver_lat', 'driver_lng', 'driver_bearing', 'driver_path']. Missing (optional): []. Driver: Admin Updated, Status: arriving, driver_lat=52.5202, driver_lng=13.4052, driver_bearing=211.32",
+      "timestamp": "2026-06-25T15:12:07.882076"
+    },
+    {
+      "test_name": "TEST 3: GET /api/taxi/rides/{ride_id}/messages - Authentication",
+      "passed": true,
+      "details": "GET messages successful for ride 53c2a269ce3e87d8. Role: customer, Message count: 4",
+      "timestamp": "2026-06-25T15:12:08.135556"
+    },
+    {
+      "test_name": "TEST 4: POST /api/taxi/rides/{ride_id}/messages - Authentication",
+      "passed": true,
+      "details": "POST message successful for ride 53c2a269ce3e87d8. Message sent: 'Backend Phase 3 Test Message - Alles funktioniert!'",
+      "timestamp": "2026-06-25T15:12:08.384711"
+    },
+    {
+      "test_name": "TEST 5: No 500 Errors or Serialization Problems",
+      "passed": true,
+      "details": "No 500 Internal Server Errors or serialization problems detected in any tested endpoint.",
+      "timestamp": "2026-06-25T15:12:08.385331"
+    }
+  ]
+}
