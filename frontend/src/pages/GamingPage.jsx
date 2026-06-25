@@ -23,13 +23,14 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const GamingPage = ({ onNavigate, onBack }) => {
   const { t } = useI18n();
   const [userCoins, setUserCoins] = useState(0);
-  const [ setDailySpins] = useState(50);
   const [activeGame, setActiveGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showBuyCoins, setShowBuyCoins] = useState(false);
   const [buyAmount, setBuyAmount] = useState("5");
   const [buying, setBuying] = useState(false);
   const [overview, setOverview] = useState(null);
+  const [claimingMilestone, setClaimingMilestone] = useState(null);
+  const [claimingPerk, setClaimingPerk] = useState(null);
 
   useEffect(() => {
     loadUserData();
@@ -96,6 +97,50 @@ const GamingPage = ({ onNavigate, onBack }) => {
         alert(data.message);
       } else { alert(data.detail || t("gaming.error")); }
     } catch (err) { alert(t("gaming.error")); }
+  };
+
+  const handleSeasonClaim = async (points) => {
+    setClaimingMilestone(points);
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/season-claim`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ points }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || t("gaming.error"));
+      } else {
+        alert(`Claim erfolgreich: +${data.coins_added} Coins und +${data.blz_added} BLZ`);
+        await loadUserData();
+      }
+    } catch (err) {
+      alert(t("gaming.error"));
+    }
+    setClaimingMilestone(null);
+  };
+
+  const handleVipClaim = async (perkType) => {
+    setClaimingPerk(perkType);
+    try {
+      const res = await fetch(`${API_URL}/api/gaming/vip-claim`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ perk_type: perkType }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || t("gaming.error"));
+      } else {
+        alert(`VIP Perk aktiviert: ${data.perk}`);
+        await loadUserData();
+      }
+    } catch (err) {
+      alert(t("gaming.error"));
+    }
+    setClaimingPerk(null);
   };
 
   const GAMES = [
@@ -275,12 +320,34 @@ const GamingPage = ({ onNavigate, onBack }) => {
                 {(overview?.season?.milestones || []).map((milestone) => (
                   <div key={`milestone-${milestone.points}`} className="rounded-xl bg-white/[0.04] px-3 py-2" data-testid={`game-center-milestone-${milestone.points}`}>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[12px] font-semibold text-white">{milestone.points} XP</span>
-                      <span className="text-[11px] text-green-300">{milestone.reward}</span>
+                      <div>
+                        <span className="text-[12px] font-semibold text-white">{milestone.points} XP</span>
+                        <p className="text-[10px] text-green-300">{milestone.reward}</p>
+                      </div>
+                      <button onClick={() => handleSeasonClaim(milestone.points)} disabled={milestone.claimed || claimingMilestone === milestone.points || (overview?.season?.user_points || 0) < milestone.points} className="rounded-full border border-green-400/30 px-3 py-1 text-[10px] font-semibold text-green-300 disabled:opacity-40" data-testid={`game-center-season-claim-${milestone.points}`}>{milestone.claimed ? 'Geclaimt' : claimingMilestone === milestone.points ? 'Claim…' : 'XP claimen'}</button>
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/8 p-4" data-testid="game-center-vip-perks-panel">
+            <div className="flex items-center gap-2 text-yellow-300"><Crown size={16} /><span className="text-[12px] font-semibold">VIP Perk Aktivierungen</span></div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              {[
+                { id: 'vip_spin', label: 'VIP Spin', desc: 'Sofortiger VIP-Boost mit Coin-Reward' },
+                { id: 'xp_boost', label: 'XP Boost', desc: 'Season-Claim-Verstärker für aktive VIPs' },
+                { id: 'season_drop', label: 'Season Drop', desc: 'Exklusiver Reward-Drop pro Season' },
+              ].map((perk) => {
+                const perkStatus = overview?.vip_club?.claimable_perks?.find((item) => item.id === perk.id);
+                return (
+                <div key={perk.id} className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid={`game-center-vip-perk-${perk.id}`}>
+                  <p className="text-sm font-bold text-white">{perk.label}</p>
+                  <p className="mt-2 text-[11px] text-gray-400">{perk.desc}</p>
+                  <button onClick={() => handleVipClaim(perk.id)} disabled={!overview?.vip_club?.active || perkStatus?.claimed || claimingPerk === perk.id} className="mt-4 rounded-full border border-yellow-400/30 px-3 py-2 text-[10px] font-semibold text-yellow-300 disabled:opacity-40" data-testid={`game-center-vip-claim-${perk.id}`}>{perkStatus?.claimed ? 'Bereits aktiv' : claimingPerk === perk.id ? 'Aktiviert…' : 'Perk aktivieren'}</button>
+                </div>
+              );})}
             </div>
           </div>
         </div>

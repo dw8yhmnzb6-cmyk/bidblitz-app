@@ -30,6 +30,7 @@ export default function VipPage({ onBack, onNavigate }) {
   const [buying, setBuying] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [balance, setBalance] = useState(0);
+  const [activatingPerk, setActivatingPerk] = useState(null);
 
   // Fetch plans and current subscription
   useEffect(() => {
@@ -120,6 +121,27 @@ export default function VipPage({ onBack, onNavigate }) {
     } catch (e) {
       toast.error('Fehler beim Kündigen');
     }
+  };
+
+  const handleActivatePerk = async (perkType) => {
+    setActivatingPerk(perkType);
+    try {
+      const res = await fetch(`${API}/api/gaming/vip-claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ perk_type: perkType })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast.success(`${data.perk} aktiviert`);
+      } else {
+        toast.error(data.detail || 'Perk konnte nicht aktiviert werden');
+      }
+    } catch (e) {
+      toast.error('Perk-Aktivierung fehlgeschlagen');
+    }
+    setActivatingPerk(null);
   };
 
   if (loading) {
@@ -216,6 +238,18 @@ export default function VipPage({ onBack, onNavigate }) {
                   Kündigen
                 </motion.button>
               )}
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-3" data-testid="vip-activation-grid">
+              {[
+                { id: 'vip_spin', label: 'VIP Spin' },
+                { id: 'xp_boost', label: 'XP Boost' },
+                { id: 'season_drop', label: 'Season Drop' },
+              ].map((perk) => (
+                <button key={perk.id} onClick={() => handleActivatePerk(perk.id)} disabled={activatingPerk === perk.id} className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-left text-[11px] font-semibold text-white disabled:opacity-40" data-testid={`vip-activate-${perk.id}`}>
+                  {activatingPerk === perk.id ? 'Aktiviert…' : `${perk.label} aktivieren`}
+                </button>
+              ))}
             </div>
           </motion.div>
         )}

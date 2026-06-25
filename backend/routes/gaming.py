@@ -32,6 +32,14 @@ class RedeemRequest(BaseModel):
     coins: int
 
 
+class SeasonClaimRequest(BaseModel):
+    points: int
+
+
+class VipPerkClaimRequest(BaseModel):
+    perk_type: str
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CONSTANTS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -125,6 +133,15 @@ async def get_user_achievement_stats(user_id: str) -> dict:
         "total_unlocked": len(unlocked),
         "reward_blz": sum(item.get("reward_blz", 0) for item in unlocked),
     }
+
+
+async def _get_or_create_season_claims(user_id: str, season_id: str) -> dict:
+    claims = await db.gaming_season_claims.find_one({"user_id": user_id, "season_id": season_id}, {"_id": 0})
+    if claims:
+        return claims
+    claims = {"user_id": user_id, "season_id": season_id, "claimed_points": [], "vip_claims": [], "updated_at": datetime.now(timezone.utc).isoformat()}
+    await db.gaming_season_claims.insert_one(claims)
+    return claims
 
 
 async def update_daily_stats(user_id: str, coins_won: int, coins_bet: int, game_type: str):
@@ -261,6 +278,7 @@ async def get_game_center_overview(request: Request):
         completed_challenges = sum(1 for value in challenges_today["challenges"].values() if value.get("completed"))
 
     target_points = max(3000, ((user_points // 500) + 1) * 500)
+    claims = await _get_or_create_season_claims(user_id, season_start.strftime("%Y-%m"))
 
     return {
         "profile": profile,
@@ -274,9 +292,9 @@ async def get_game_center_overview(request: Request):
             "progress_pct": min(100, round((user_points / target_points) * 100)) if target_points else 0,
             "podium": podium,
             "milestones": [
-                {"points": 500, "reward": "VIP Spin"},
-                {"points": 1500, "reward": "Legendary Badge"},
-                {"points": 3000, "reward": "Season Chest"},
+                {"points": 500, "reward": "VIP Spin", "claimed": 500 in claims.get("claimed_points", [])},
+                {"points": 1500, "reward": "Legendary Badge", "claimed": 1500 in claims.get("claimed_points", [])},
+                {"points": 3000, "reward": "Season Chest", "claimed": 3000 in claims.get("claimed_points", [])},
             ],
         },
         "achievements": {
@@ -295,8 +313,73 @@ async def get_game_center_overview(request: Request):
                 "Exklusive Season Drops",
                 "Priority Support im Game Center",
             ],
+            "claimable_perks": [
+                {"id": "vip_spin", "label": "VIP Spin", "claimed": "vip_spin" in claims.get("vip_claims", [])},
+                {"id": "xp_boost", "label": "XP Boost", "claimed": "xp_boost" in claims.get("vip_claims", [])},
+                {"id": "season_drop", "label": "Season Drop", "claimed": "season_drop" in claims.get("vip_claims", [])},
+            ],
         },
     }
+
+
+@router.post("/season-claim")
+async def claim_season_xp(req: SeasonClaimRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    overview = await get_game_center_overview(request)
+    season = overview["season"]
+    milestone = next((item for item in season["milestones"] if item["points"] == req.points), None)
+    if not milestone:
+        raise HTTPException(status_code=404, detail="Milestone nicht gefunden")
+    if season["user_points"] < req.points:
+        raise HTTPException(status_code=400, detail="Noch nicht genug XP für diesen Claim")
+    claims = await _get_or_create_season_claims(user_id, season["season_id"])
+    if req.points in claims.get("claimed_points", []):
+        raise HTTPException(status_code=400, detail="Milestone bereits geclaimt")
+
+    reward_coins = req.points // 2
+    reward_blz = max(10, req.points // 25)
+    await add_coins(user_id, reward_coins, f"Season Claim {req.points} XP", "season_claim")
+    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": reward_blz}})
+    await db.gaming_season_claims.update_one(
+        {"user_id": user_id, "season_id": season["season_id"]},
+        {"$addToSet": {"claimed_points": req.points}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True, "claimed_points": req.points, "reward": milestone["reward"], "coins_added": reward_coins, "blz_added": reward_blz, "new_balance": await get_user_coins(user_id)}
+
+
+@router.post("/vip-claim")
+async def claim_vip_perk(req: VipPerkClaimRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    overview = await get_game_center_overview(request)
+    vip = overview["vip_club"]
+    if not vip["active"]:
+        raise HTTPException(status_code=400, detail="VIP Club nicht aktiv")
+
+    season_id = overview["season"]["season_id"]
+    claims = await _get_or_create_season_claims(user_id, season_id)
+    if req.perk_type in claims.get("vip_claims", []):
+        raise HTTPException(status_code=400, detail="VIP Perk in dieser Season bereits aktiviert")
+
+    perk_rewards = {
+        "vip_spin": {"coins": 250, "blz": 20, "label": "VIP Spin"},
+        "xp_boost": {"coins": 400, "blz": 25, "label": "XP Boost"},
+        "season_drop": {"coins": 600, "blz": 40, "label": "Season Drop"},
+    }
+    reward = perk_rewards.get(req.perk_type)
+    if not reward:
+        raise HTTPException(status_code=404, detail="VIP Perk unbekannt")
+
+    await add_coins(user_id, reward["coins"], f"VIP Perk: {reward['label']}", "vip_perk")
+    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": reward["blz"]}})
+    await db.gaming_season_claims.update_one(
+        {"user_id": user_id, "season_id": season_id},
+        {"$addToSet": {"vip_claims": req.perk_type}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True, "perk": reward["label"], "coins_added": reward["coins"], "blz_added": reward["blz"], "new_balance": await get_user_coins(user_id)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

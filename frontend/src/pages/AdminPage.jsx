@@ -465,7 +465,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
     setLoading(false);
   }, [search, payoutFilter, roleFilter, verFilter]);
 
-  useEffect(() => { setError(null); load(tab); }, [tab, load]);
+  useEffect(() => { setError(null); load(tab); }, [load, tab]);
 
   const handlePayoutAction = async (ref, action) => {
     setActionLoading(ref);

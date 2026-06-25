@@ -182,3 +182,32 @@ export async function getMobilityCompareSummary(payload) {
   const data = await readJson(res);
   return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Vergleich fehlgeschlagen" };
 }
+
+export async function getFrequentMobilityRoutes() {
+  const res = await fetch(`${API}/api/mobility-platform/frequent-routes`, { credentials: "include" });
+  if (!res.ok) return [];
+  const data = await readJson(res);
+  return data?.routes || [];
+}
+
+export async function saveFrequentMobilityRoute(payload) {
+  const res = await fetch(`${API}/api/mobility-platform/frequent-routes`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Frequent Route konnte nicht gespeichert werden" };
+}
+
+export async function bookBestMobilityRoute(payload) {
+  const res = await fetch(`${API}/api/mobility-platform/best-route-book`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Best Route konnte nicht gebucht werden" };
+}

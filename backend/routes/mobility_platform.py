@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from core.config import STRIPE_API_KEY
 from core.database import db
+from core.payment_engine import debit_wallet, TransactionType
 from core.security import get_current_user
 
 load_dotenv()
@@ -184,6 +185,20 @@ class MobilityCompareSummaryRequest(BaseModel):
     pickup: MobilityBookingLocation
     dropoff: MobilityBookingLocation
     focus_modes: Optional[List[str]] = Field(default_factory=lambda: ["taxi", "scooter", "ev", "car_rental"])
+
+
+class BestRouteBookRequest(BaseModel):
+    route_id: str
+    transport_type: str
+    payment_method: str = Field(default="wallet")
+
+
+class FrequentRouteSaveRequest(BaseModel):
+    label: str
+    pickup: MobilityBookingLocation
+    dropoff: MobilityBookingLocation
+    preferred_transport_type: str = Field(default="taxi")
+    payment_method: str = Field(default="wallet")
 
 
 def _cache_key(path: str, params: dict) -> str:
@@ -517,6 +532,77 @@ async def _upsert_trip_snapshot(booking: dict):
         {"$set": trip_doc, "$setOnInsert": {"created_at": booking.get("created_at") or now}},
         upsert=True,
     )
+
+
+async def _build_frequent_route_cards(user_id: str, limit: int = 6) -> list[dict]:
+    pipeline = [
+        {"$match": {"user_id": user_id, "status": {"$in": ["confirmed", "payment_pending", "completed", "in_progress"]}}},
+        {"$group": {
+            "_id": {
+                "pickup": "$pickup.address",
+                "dropoff": "$dropoff.address",
+                "transport_type": "$transport_type",
+            },
+            "count": {"$sum": 1},
+            "last_used_at": {"$max": "$created_at"},
+            "avg_price": {"$avg": "$price_eur"},
+            "avg_duration": {"$avg": "$duration_min"},
+            "pickup": {"$first": "$pickup"},
+            "dropoff": {"$first": "$dropoff"},
+            "transport_label": {"$first": "$transport_label"},
+            "payment_method": {"$first": "$payment_method"},
+            "last_route_id": {"$first": "$route_id"},
+            "last_booking_id": {"$first": "$booking_id"},
+        }},
+        {"$sort": {"count": -1, "last_used_at": -1}},
+        {"$limit": limit},
+    ]
+    saved = await db.mobility_frequent_routes.find({"user_id": user_id}, {"_id": 0}).sort("updated_at", -1).limit(limit).to_list(limit)
+    rows = await db.mobility_bookings.aggregate(pipeline).to_list(limit)
+    cards = []
+    for item in saved:
+        cards.append({
+            "route_id": item.get("route_id"),
+            "source_route_id": item.get("source_route_id"),
+            "source_booking_id": item.get("source_booking_id"),
+            "label": item.get("label") or f"{(item.get('pickup') or {}).get('address', 'Start')} → {(item.get('dropoff') or {}).get('address', 'Ziel')}",
+            "pickup": item.get("pickup") or {},
+            "dropoff": item.get("dropoff") or {},
+            "transport_type": item.get("transport_type") or "taxi",
+            "transport_label": item.get("transport_label") or "Mobility Ride",
+            "payment_method": item.get("payment_method") or "wallet",
+            "usage_count": int(item.get("usage_count") or 0),
+            "avg_price_eur": _round_money(item.get("avg_price_eur") or 0),
+            "avg_duration_min": int(item.get("avg_duration_min") or 0),
+            "last_used_at": item.get("updated_at"),
+            "is_saved": True,
+        })
+    for item in rows:
+        cards.append({
+            "route_id": f"freq-{str(item.get('last_booking_id') or uuid4().hex[:10])}",
+            "source_route_id": item.get("last_route_id"),
+            "source_booking_id": item.get("last_booking_id"),
+            "label": f"{(item.get('pickup') or {}).get('address', 'Start')} → {(item.get('dropoff') or {}).get('address', 'Ziel')}",
+            "pickup": item.get("pickup") or {},
+            "dropoff": item.get("dropoff") or {},
+            "transport_type": item.get("_id", {}).get("transport_type") or "taxi",
+            "transport_label": item.get("transport_label") or "Mobility Ride",
+            "payment_method": item.get("payment_method") or "wallet",
+            "usage_count": int(item.get("count") or 0),
+            "avg_price_eur": _round_money(item.get("avg_price") or 0),
+            "avg_duration_min": int(round(item.get("avg_duration") or 0)),
+            "last_used_at": item.get("last_used_at"),
+            "is_saved": False,
+        })
+    deduped = []
+    seen = set()
+    for item in cards:
+        key = (item.get("pickup", {}).get("address"), item.get("dropoff", {}).get("address"), item.get("transport_type"))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped[:limit]
 
 
 async def _sync_nearby_inventory(markers: list[dict], counts: dict, lat: float, lng: float):
@@ -879,6 +965,137 @@ async def get_my_mobility_bookings(request: Request):
         {"_id": 0},
     ).sort("created_at", -1).limit(20).to_list(20)
     return {"bookings": bookings}
+
+
+@router.get("/frequent-routes")
+async def get_frequent_routes(request: Request):
+    user = await get_current_user(request)
+    items = await _build_frequent_route_cards(str(user["_id"]))
+    return {"routes": items}
+
+
+@router.post("/frequent-routes")
+async def save_frequent_route(req: FrequentRouteSaveRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now = datetime.now(timezone.utc).isoformat()
+    route_id = f"fr-{uuid4().hex[:12]}"
+    doc = {
+        "route_id": route_id,
+        "user_id": user_id,
+        "label": req.label,
+        "pickup": req.pickup.model_dump(),
+        "dropoff": req.dropoff.model_dump(),
+        "transport_type": req.preferred_transport_type,
+        "transport_label": req.preferred_transport_type.replace("_", " ").title(),
+        "payment_method": req.payment_method,
+        "usage_count": 1,
+        "avg_price_eur": 0,
+        "avg_duration_min": 0,
+        "updated_at": now,
+        "created_at": now,
+    }
+    await db.mobility_frequent_routes.update_one(
+        {"user_id": user_id, "label": req.label},
+        {"$set": doc},
+        upsert=True,
+    )
+    return {"ok": True, "route_id": route_id}
+
+
+@router.post("/best-route-book")
+async def book_best_route(req: BestRouteBookRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    frequent = await db.mobility_frequent_routes.find_one({"route_id": req.route_id, "user_id": user_id}, {"_id": 0})
+    source = frequent
+    if not source:
+        candidates = await _build_frequent_route_cards(user_id, limit=8)
+        source = next((item for item in candidates if item.get("route_id") == req.route_id), None)
+    if not source:
+        raise HTTPException(404, "Frequent Route nicht gefunden")
+
+    route_payload = await _compute_route_payload(
+        source["pickup"]["lat"],
+        source["pickup"]["lng"],
+        source["dropoff"]["lat"],
+        source["dropoff"]["lng"],
+        source["pickup"]["address"],
+        source["dropoff"]["address"],
+    )
+    option = _find_option(route_payload["options"], req.transport_type or source.get("transport_type") or "taxi")
+    if not option:
+        raise HTTPException(404, "Transportart nicht verfügbar")
+    route_doc = await _store_route_snapshot(user_id, route_payload, "frequent_route_rebook", transport_type=option["type"])
+    ai_recommendation = await _generate_ai_route_recommendation(MobilityAiRecommendationRequest(
+        pickup_address=source["pickup"]["address"],
+        dropoff_address=source["dropoff"]["address"],
+        distance_km=route_payload["distance_km"],
+        duration_min=route_payload["duration_min"],
+        options=route_payload["options"],
+        recommendations=route_payload["recommendations"],
+        preferences={"source": "frequent_route"},
+    ))
+
+    payment_result = None
+    if req.payment_method == "wallet":
+        payment_result = await debit_wallet(
+            user_id=user_id,
+            amount=float(option["price_eur"]),
+            tx_type=TransactionType.PAYMENT,
+            description=f"Mobility Rebook: {option['label']}",
+            reference=f"MOB-FREQ-{uuid4().hex[:8].upper()}",
+            metadata={"type": "mobility_rebook", "route_id": req.route_id, "transport_type": option["type"]},
+        )
+        if not payment_result.success:
+            raise HTTPException(400, payment_result.error or "Wallet-Zahlung fehlgeschlagen")
+
+    booking_id = f"mob-{uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc).isoformat()
+    booking = {
+        "booking_id": booking_id,
+        "user_id": user_id,
+        "transport_type": option["type"],
+        "transport_label": option["label"],
+        "price_eur": option["price_eur"],
+        "distance_km": option["distance_km"],
+        "duration_min": option["duration_min"],
+        "pickup": source["pickup"],
+        "dropoff": source["dropoff"],
+        "preferences": {"source": "frequent_route", "route_id": req.route_id},
+        "payment_method": req.payment_method,
+        "payment_status": "paid" if req.payment_method == "wallet" else "pending",
+        "status": "confirmed" if req.payment_method == "wallet" else "payment_pending",
+        "tracking_status": "confirmed" if req.payment_method == "wallet" else "payment_pending",
+        "route_id": route_doc["route_id"],
+        "assigned_resource": await _assign_booking_resource(option["type"], source["pickup"]),
+        "ai_recommendation": ai_recommendation,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.mobility_bookings.insert_one(booking)
+    await _upsert_trip_snapshot(booking)
+    booking_response = {k: v for k, v in booking.items() if k != "_id"}
+    await db.mobility_frequent_routes.update_one(
+        {"user_id": user_id, "label": source.get("label") or f"{source['pickup']['address']} → {source['dropoff']['address']}"},
+        {"$set": {
+            "route_id": source.get("route_id") if str(source.get("route_id", "")).startswith("fr-") else f"fr-{uuid4().hex[:12]}",
+            "user_id": user_id,
+            "label": source.get("label") or f"{source['pickup']['address']} → {source['dropoff']['address']}",
+            "pickup": source["pickup"],
+            "dropoff": source["dropoff"],
+            "transport_type": option["type"],
+            "transport_label": option["label"],
+            "payment_method": req.payment_method,
+            "source_route_id": route_doc["route_id"],
+            "source_booking_id": booking_id,
+            "avg_price_eur": option["price_eur"],
+            "avg_duration_min": option["duration_min"],
+            "updated_at": now,
+        }, "$inc": {"usage_count": 1}},
+        upsert=True,
+    )
+    return {"ok": True, "booking": booking_response, "new_balance": payment_result.new_balance if payment_result else None}
 
 
 @router.post("/checkout/session")

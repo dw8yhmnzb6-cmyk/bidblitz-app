@@ -4,7 +4,7 @@
  * Zeiterfassung, Mitarbeiterverwaltung, Schichtplanung
  * Crewmeister/Papershift Alternative
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Users, Clock, Calendar, UmbrellaIcon, FileText, Plus,
@@ -77,19 +77,21 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
   // ═════════════════════════════════════════════════════════════════════════
   // Subscription Loading
   // ═════════════════════════════════════════════════════════════════════════
-  useEffect(() => {
-    loadSubscription();
-    // Handle Stripe return: ?session_id=cs_test_...
-    const url = new URL(window.location.href);
-    const sessionId = url.searchParams.get("session_id");
-    if (sessionId) {
-      pollStripe(sessionId);
-      url.searchParams.delete("session_id");
-      window.history.replaceState({}, "", url.toString());
+  const loadSubscription = useCallback(async () => {
+    setSubscriptionLoading(true);
+    try {
+      const res = await fetch(`${API}/api/staff/subscription/status`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscription(data);
+      }
+    } catch (e) {
+      console.error("Subscription load failed:", e);
     }
+    setSubscriptionLoading(false);
   }, []);
 
-  const pollStripe = async (sessionId, attempts = 0) => {
+  const pollStripe = useCallback(async (sessionId, attempts = 0) => {
     if (attempts >= 5) {
       toast.error("Zahlungsstatus-Check Timeout");
       return;
@@ -104,33 +106,28 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
           return;
         }
       }
-    } catch (e) {}
-    setTimeout(() => pollStripe(sessionId, attempts + 1), 2000);
-  };
-
-  const loadSubscription = async () => {
-    setSubscriptionLoading(true);
-    try {
-      const res = await fetch(`${API}/api/staff/subscription/status`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setSubscription(data);
-      }
     } catch (e) {
-      console.error("Subscription load failed:", e);
+      console.error("Stripe poll failed:", e);
     }
-    setSubscriptionLoading(false);
-  };
+    setTimeout(() => pollStripe(sessionId, attempts + 1), 2000);
+  }, [loadSubscription]);
+
+  useEffect(() => {
+    loadSubscription();
+    const url = new URL(window.location.href);
+    const sessionId = url.searchParams.get("session_id");
+    if (sessionId) {
+      pollStripe(sessionId);
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [loadSubscription, pollStripe]);
 
   // ═════════════════════════════════════════════════════════════════════════
   // Data Fetching
   // ═════════════════════════════════════════════════════════════════════════
 
-  useEffect(() => {
-    if (subscription?.active) loadData();
-  }, [tab, subscription?.active]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [membersRes, eventsRes, summaryRes] = await Promise.all([
@@ -159,7 +156,9 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
           const data = await swapsRes.json();
           setPendingSwaps(data.count || 0);
         }
-      } catch {}
+      } catch (e) {
+        console.error("Pending swaps load failed:", e);
+      }
 
       // Load shifts if on calendar tab
       if (tab === "shifts") {
@@ -184,7 +183,11 @@ export default function StaffManagementPage({ onBack, onNavigate }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab]);
+
+  useEffect(() => {
+    if (subscription?.active) loadData();
+  }, [loadData, subscription?.active, tab]);
 
   // ═════════════════════════════════════════════════════════════════════════
   // Actions
@@ -776,7 +779,7 @@ function LeaveTab({ requests, members, onApprove }) {
                     {req.start_date} bis {req.end_date}
                   </p>
                   {req.reason && (
-                    <p className="text-[10px] text-slate-500 mb-3 italic">"{req.reason}"</p>
+                    <p className="text-[10px] text-slate-500 mb-3 italic">&quot;{req.reason}&quot;</p>
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     <button

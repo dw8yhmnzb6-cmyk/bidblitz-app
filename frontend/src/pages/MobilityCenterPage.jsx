@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bike, Car, Crown, MapPinned, Route, Sparkles, Ticket, Wallet, Zap } from "lucide-react";
+import { toast } from "sonner";
 
-import { getMobilityCompareSummary, getMobilityPaymentOptions, getMyMobilityBookings, getSavedMobilityLocations } from "../services/mobilityPlatformApi";
+import { bookBestMobilityRoute, getFrequentMobilityRoutes, getMobilityCompareSummary, getMobilityPaymentOptions, getMyMobilityBookings, getSavedMobilityLocations, saveFrequentMobilityRoute } from "../services/mobilityPlatformApi";
 
 const moduleCards = [
   { id: "mobility-map", label: "Mobility Map", route: "/mobility-map", icon: MapPinned, tone: "#00C2FF", desc: "Vergleiche Taxi, Scooter, EV, Car Rental, Shuttle und VIP auf einer Karte." },
@@ -67,6 +68,8 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
   const [selectedPresetId, setSelectedPresetId] = useState("");
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareSummary, setCompareSummary] = useState(null);
+  const [frequentRoutes, setFrequentRoutes] = useState([]);
+  const [bookingBestRouteId, setBookingBestRouteId] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -79,6 +82,7 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
       setBookings(bookingData || []);
       setSavedLocations(locationData || []);
       setPaymentOptions(paymentData || { wallet_balance: 0, methods: [] });
+      setFrequentRoutes(await getFrequentMobilityRoutes());
       setLoading(false);
     };
     load();
@@ -119,6 +123,33 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
   }), [bookings, paymentOptions.methods, savedLocations.length]);
 
   const selectedPreset = comparePresets.find((item) => item.id === selectedPresetId) || null;
+
+  const handleSaveCurrentRoute = async () => {
+    if (!selectedPreset) return;
+    const result = await saveFrequentMobilityRoute({
+      label: `${selectedPreset.pickup?.address || 'Start'} → ${selectedPreset.dropoff?.address || 'Ziel'}`,
+      pickup: selectedPreset.pickup,
+      dropoff: selectedPreset.dropoff,
+      preferred_transport_type: compareSummary?.best?.balance?.type || "taxi",
+      payment_method: "wallet",
+    });
+    if (!result.ok) return toast.error(result.error || "Route konnte nicht gespeichert werden");
+    toast.success("Route als Frequent Route gespeichert");
+    setFrequentRoutes(await getFrequentMobilityRoutes());
+  };
+
+  const handleBookBestRoute = async (route) => {
+    setBookingBestRouteId(route.route_id);
+    const result = await bookBestMobilityRoute({
+      route_id: route.route_id,
+      transport_type: route.transport_type || compareSummary?.best?.balance?.type || "taxi",
+      payment_method: route.payment_method || "wallet",
+    });
+    setBookingBestRouteId("");
+    if (!result.ok) return toast.error(result.error || "Best Route konnte nicht gebucht werden");
+    toast.success("Frequent Route erneut gebucht");
+    onNavigate(`/mobility-booking/${result.booking.booking_id}`);
+  };
 
   return (
     <div className="min-h-screen bg-[#050911] text-white pb-24" data-testid="mobility-center-page">
@@ -194,6 +225,8 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
                 </button>
               ))}
             </div>
+
+            {selectedPreset ? <button onClick={handleSaveCurrentRoute} data-testid="mobility-center-save-frequent-route-button" className="mt-4 rounded-full border border-white/10 px-3 py-2 text-xs text-white/80">Als Frequent Route speichern</button> : null}
 
             {selectedPreset && (
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="mobility-center-compare-route-card">
@@ -307,6 +340,35 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
               </div>
             </div>
           </motion.div>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" data-testid="mobility-center-frequent-routes-section">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-white/45">Best Route Flow</p>
+            <h2 className="mt-2 text-base md:text-lg font-bold">Frequent Routes automatisch erkannt und mit einem Tap wieder buchbar</h2>
+            <p className="mt-2 text-sm text-white/65">Wiederkehrende Strecken werden gesammelt und direkt per Rebook-CTA neu gebucht.</p>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {frequentRoutes.map((route) => (
+              <div key={route.route_id} className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid={`mobility-frequent-route-${route.route_id}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold">{route.label}</p>
+                    <p className="mt-1 text-xs text-white/55">{route.transport_label} · {route.usage_count}× genutzt</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold">€{Number(route.avg_price_eur || 0).toFixed(2)}</p>
+                    <p className="text-[11px] text-white/55">Ø {route.avg_duration_min} Min</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button onClick={() => handleBookBestRoute(route)} disabled={bookingBestRouteId === route.route_id} data-testid={`mobility-frequent-route-book-${route.route_id}`} className="rounded-full bg-[#00C2FF]/15 px-3 py-2 text-xs font-semibold text-[#8EEBFF] disabled:opacity-50">{bookingBestRouteId === route.route_id ? 'Bucht…' : 'Mit 1 Tap buchen'}</button>
+                  <button onClick={() => onNavigate('/mobility-map')} data-testid={`mobility-frequent-route-open-map-${route.route_id}`} className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/70">Best Route ansehen</button>
+                </div>
+              </div>
+            ))}
+            {frequentRoutes.length === 0 ? <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-5 text-sm text-white/55" data-testid="mobility-frequent-routes-empty">Nach ein paar wiederkehrenden Fahrten erscheinen hier automatisch deine Frequent Routes.</div> : null}
+          </div>
         </section>
       </div>
     </div>
