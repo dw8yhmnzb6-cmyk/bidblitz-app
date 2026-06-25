@@ -8,6 +8,13 @@
 - `frontend/src/pages/AchievementsPage.jsx` + `frontend/src/App.js`: Back-Button und sauberer Rücksprung vom Achievements-Screen zurück ins Game Center ergänzt
 - Verifiziert: FastAPI-TestClient PASS, Browser-Smoke PASS, `testing_agent` Iteration 148 PASS (14/14 Backend, 100% Frontend)
 
+## 25.06.2026 — Taxi Customer Flow komplett neu (Uber-artig)
+- `frontend/src/pages/TaxiPage.jsx` komplett ersetzt: neue reine Kundenansicht mit großer Pickup-/Dropoff-Suche, einfacher Fahrzeugwahl (UberX, Comfort, XL), Preis/ETA und Ride-Status
+- `frontend/src/components/taxi/useTaxiGeocoder.js` auf kurze Eingaben und relevantere Treffer verschärft; Zielsuche reagiert jetzt schon bei 2–3 Buchstaben
+- `frontend/src/components/RealMap.jsx` erweitert: Nearby-Fahrer zusätzlich im Taxi-Kartenbild, Route/Marker-Zoom sauberer im neuen Kundenflow
+- `frontend/src/App.js`: alte Frontend-Routen `/taxi-partner`, `/taxi-dashboard`, `/taxi/pro` aus dem Kundenpfad entfernt und auf Home umgeleitet
+- Verifiziert: `testing_agent` Iteration 150 PASS (Backend 15/15, Frontend 100%), inklusive Kurzsuche `Pot`/`Ale`, Karten-Zoom und B2B-Redirects
+
 ## 24.06.2026 — CI/CD Repair (Backend Dependencies + Frontend ESLint)
 - `backend/requirements.txt` bereinigt: `emergentintegrations` auf `0.2.0`, `librt` auf `0.11.0`, `s5cmd` auf `0.3.3` angehoben
 - GitHub Actions Backend-Job auf stabilen Smoke-Test umgestellt: `pytest backend/tests/test_ci_smoke.py` statt der flakey historischen Komplettsuite
