@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Car, Clock3, Loader2, MapPin, Navigation, Search, Star } from 'lucide-react';
+import { ArrowLeft, Car, CheckCircle2, Clock3, Loader2, MapPin, Navigation, Search, Star } from 'lucide-react';
 import { useUser } from '../store/UserContext';
 import { TaxiMap } from '../components/RealMap';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
@@ -10,6 +10,13 @@ const VEHICLES = [
   { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig', accent: '#111827' },
   { id: 'premium', label: 'Comfort', subtitle: 'Mehr Platz & Komfort', accent: '#0F766E' },
   { id: 'van', label: 'XL', subtitle: 'Für Gruppen & Gepäck', accent: '#7C3AED' },
+];
+
+const QUICK_PLACES = [
+  { id: 'home', label: 'Home', subtitle: 'Zuhause speichern oder wählen', icon: '🏠' },
+  { id: 'work', label: 'Work', subtitle: 'Arbeitsadresse', icon: '💼' },
+  { id: 'airport', label: 'Flughafen', subtitle: 'BER Terminal 1-2', icon: '✈️', preset: { address: 'Flughafen Berlin Brandenburg (BER)', lat: 52.3667, lng: 13.5033 } },
+  { id: 'station', label: 'Bahnhof', subtitle: 'Berlin Hauptbahnhof', icon: '🚉', preset: { address: 'Berlin Hauptbahnhof', lat: 52.5251, lng: 13.3694 } },
 ];
 
 function RideStatusBadge({ ride }) {
@@ -44,6 +51,8 @@ export default function TaxiPage({ onNavigate }) {
   const [nearbyDrivers, setNearbyDrivers] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
   const [searchMode, setSearchMode] = useState('dropoff');
+  const [savedPlaces, setSavedPlaces] = useState([]);
+  const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -71,6 +80,18 @@ export default function TaxiPage({ onNavigate }) {
   useEffect(() => {
     loadActiveRide();
   }, [loadActiveRide]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSaved = async () => {
+      const places = await api.fetchSavedPlaces();
+      if (!cancelled) setSavedPlaces(places || []);
+    };
+    loadSaved();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!activeRide) return undefined;
@@ -107,6 +128,7 @@ export default function TaxiPage({ onNavigate }) {
     setSurge(result.surge || null);
     const recommended = (result.estimates || []).find((item) => item.vehicle_type === selectedVehicle) || result.estimates?.[0];
     if (recommended?.vehicle_type) setSelectedVehicle(recommended.vehicle_type);
+    setBottomSheetOpen(true);
     setEstimating(false);
   }, [pickup, dropoff, selectedVehicle]);
 
@@ -149,6 +171,26 @@ export default function TaxiPage({ onNavigate }) {
       setDropoff(payload);
       setShowDropoffSuggestions(false);
     }
+  };
+
+  const resolveQuickPlace = (place) => {
+    if (place.preset) return place.preset;
+    const saved = savedPlaces.find((entry) => (entry.icon || '').toLowerCase() === place.id || (entry.name || '').toLowerCase() === place.id);
+    if (saved) {
+      return { address: saved.address, lat: saved.lat || saved.latitude, lng: saved.lng || saved.longitude };
+    }
+    return null;
+  };
+
+  const handleQuickPlace = (place) => {
+    const resolved = resolveQuickPlace(place);
+    if (!resolved) {
+      setError(`${place.label} ist noch nicht gespeichert.`);
+      return;
+    }
+    setDropoff(resolved);
+    setSearchMode('dropoff');
+    setError('');
   };
 
   const handleBookRide = async () => {
@@ -261,6 +303,15 @@ export default function TaxiPage({ onNavigate }) {
               ) : null}
             </AnimatePresence>
 
+            <div className="mt-4 grid grid-cols-2 gap-2" data-testid="taxi-customer-quick-places">
+              {QUICK_PLACES.map((place) => (
+                <button key={place.id} onClick={() => handleQuickPlace(place)} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left" data-testid={`taxi-customer-quick-place-${place.id}`}>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><span>{place.icon}</span>{place.label}</div>
+                  <p className="mt-1 text-[11px] text-slate-500">{place.subtitle}</p>
+                </button>
+              ))}
+            </div>
+
             {activeRide ? (
               <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-active-ride-card">
                 <div className="flex items-start justify-between gap-3">
@@ -283,6 +334,19 @@ export default function TaxiPage({ onNavigate }) {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-price">€{Number(activeRide.final_fare || activeRide.estimated_fare || 0).toFixed(2)}</div>
                   <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-eta">{activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min</div>
+                </div>
+                <div className="mt-4 space-y-2" data-testid="taxi-customer-live-tracking-steps">
+                  {[
+                    { id: 'requested', label: 'Anfrage gesendet', done: ['requested', 'accepted', 'arriving', 'started', 'completed'].includes(activeRide.status) },
+                    { id: 'accepted', label: 'Fahrer bestätigt', done: ['accepted', 'arriving', 'started', 'completed'].includes(activeRide.status) },
+                    { id: 'arriving', label: 'Fahrer kommt zu dir', done: ['arriving', 'started', 'completed'].includes(activeRide.status) },
+                    { id: 'started', label: 'Du bist unterwegs', done: ['started', 'completed'].includes(activeRide.status) },
+                  ].map((step) => (
+                    <div key={step.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3" data-testid={`taxi-customer-live-step-${step.id}`}>
+                      <div className={`rounded-full p-1.5 ${step.done ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}><CheckCircle2 size={14} /></div>
+                      <div className="text-sm font-medium text-slate-700">{step.label}</div>
+                    </div>
+                  ))}
                 </div>
                 <button onClick={handleCancelRide} className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700" data-testid="taxi-customer-cancel-ride-button">Fahrt stornieren</button>
               </div>
@@ -373,6 +437,45 @@ export default function TaxiPage({ onNavigate }) {
           </div>
         </section>
       </div>
+
+      <AnimatePresence>
+        {!activeRide && bottomSheetOpen && selectedEstimate ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[700] bg-black/30" onClick={() => setBottomSheetOpen(false)}>
+            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: 'spring', stiffness: 180, damping: 24 }} className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-2xl rounded-t-[32px] bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()} data-testid="taxi-customer-vehicle-bottom-sheet">
+              <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-slate-200" />
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Fahrzeuge</p>
+                  <h3 className="mt-1 text-lg font-black">Wähle deine Fahrt</h3>
+                </div>
+                <button onClick={() => setBottomSheetOpen(false)} className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600" data-testid="taxi-customer-bottom-sheet-close">Schließen</button>
+              </div>
+              <div className="mt-4 space-y-3">
+                {VEHICLES.map((vehicle) => {
+                  const estimate = estimates.find((item) => item.vehicle_type === vehicle.id);
+                  const selected = selectedVehicle === vehicle.id;
+                  return (
+                    <button key={`sheet-${vehicle.id}`} onClick={() => setSelectedVehicle(vehicle.id)} className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left ${selected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-900'}`} data-testid={`taxi-customer-bottom-sheet-vehicle-${vehicle.id}`}>
+                      <div>
+                        <div className="text-sm font-bold">{vehicle.label}</div>
+                        <div className={`mt-1 text-xs ${selected ? 'text-white/65' : 'text-slate-500'}`}>{vehicle.subtitle}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-black">{estimate ? `€${Number(estimate.total || estimate.fare || 0).toFixed(2)}` : '—'}</div>
+                        <div className={`mt-1 text-xs ${selected ? 'text-white/65' : 'text-slate-500'}`}>{estimate ? `${estimate.eta_minutes || estimate.duration_minutes || 5} Min` : '—'}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <button onClick={handleBookRide} disabled={!selectedEstimate || booking} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-semibold text-white disabled:opacity-50" data-testid="taxi-customer-bottom-sheet-book-button">
+                {booking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
+                {booking ? 'Bucht…' : `Bestellen · €${Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}`}
+              </button>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
