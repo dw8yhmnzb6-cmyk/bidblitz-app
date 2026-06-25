@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 25.06.2026 — Taxi Uber-Flow Phase 3
+- `frontend/src/components/taxi/useTaxiGeocoder.js`: Suchflow gehärtet; Frontend fällt jetzt sauber zwischen direkter Mapbox-Suche und Backend-Proxy zurück, damit Teilbegriffe wie `Pris` auch bei Token-/Deploy-Abweichungen stabil Treffer liefern
+- `backend/routes/taxi.py`: aktive Fahrten um `driver_bearing` ergänzt sowie neue Ride-Chat-Endpunkte `GET/POST /api/taxi/rides/{ride_id}/messages` eingebaut
+- `frontend/src/components/RealMap.jsx`: fahrendes Auto als weich animierter Live-Marker plus Fahrerpfad/Target-Linie auf der Karte ergänzt
+- `frontend/src/components/taxi/ActiveRideTracker.jsx` + `frontend/src/pages/TaxiPage.jsx`: Driver Card auf Chat / Anruf / Share-Trip erweitert, Live-Movement-Banner und Ride-Chat-Panel für aktive Fahrten ergänzt
+- Verifiziert: Browser-Smoke PASS, Ride-Chat-API per curl PASS, `testing_agent` Iteration 155 PASS (Backend 14/14, Frontend 15/15)
+
 ## 25.06.2026 — Mobility Compare + Game Center V1
 - `backend/routes/mobility_platform.py`: EV Drive als reguläre Mobility-Option ergänzt, neuer Endpoint `POST /api/mobility-platform/compare-summary` gebaut und Nearby-Inventory um EV-Hubs/Counts erweitert
 - `frontend/src/pages/MobilityCenterPage.jsx`: neues 4-Wege-Vergleichsmodul mit Presets aus letzter Fahrt bzw. Home/Work, Compare Cards und Best-of-Kacheln für günstigste/schnellste/eco/balance

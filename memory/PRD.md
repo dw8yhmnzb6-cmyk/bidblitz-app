@@ -5,12 +5,18 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — Mobility Center V1 vertieft + Game Center V1 live
+## Current Focus — Taxi Uber-Flow Phase 3 verifiziert, Mobility/Commerce als Nächstes
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
 - Die GitHub-Actions-CI bleibt stabil: Backend-Abhängigkeiten installieren wieder sauber, Frontend-ESLint läuft ohne Errors, und der Backend-Job nutzt einen stabilen FastAPI-Smoke-Test statt flakey historischer E2E-Suiten.
-- Neu live: Mobility Center mit klarem 4-Wege-Vergleich (Taxi, Scooter, EV Drive, Car Rental), EV-Live-Countern auf der Mobility Map und Game Center V1 Hub für Seasons, Achievements und VIP Club.
+- Neu live: Taxi Phase 3 mit gehärteter Zielsuche, Live-Movement-Daten (`driver_bearing`, `driver_path`) und aktiver Fahrerkarte mit Chat / Call / Share-Trip; zusätzlich bleiben Mobility Center mit 4-Wege-Vergleich sowie Game Center V1 Hub live.
 - Nächster Schwerpunkt: Mobility Center weiter vertiefen (Parking, Carsharing, EV Charging, Booking-Tracking enger bündeln) und danach Commerce-/Game-Analytics ausbauen.
+
+### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
+- 🟢 **Zielsuche gehärtet** (`frontend/src/components/taxi/useTaxiGeocoder.js`): Taxi-Suche fällt jetzt robust zwischen direkter Mapbox-Abfrage und Backend-Proxy zurück. Damit bleiben Vorschläge auch dann stabil, wenn ein Frontend-Token auf einzelnen Geräten/Deployments fehlschlägt.
+- 🟢 **Live-Ride-Daten erweitert** (`backend/routes/taxi.py`, `frontend/src/components/RealMap.jsx`): aktive Fahrten liefern zusätzlich `driver_bearing` und nutzen vorhandene `driver_path`-/Location-Updates für eine sichtbar weich animierte Fahrerbewegung auf der Karte.
+- 🟢 **Driver Card auf Phase 3 gehoben** (`frontend/src/components/taxi/ActiveRideTracker.jsx`, `frontend/src/pages/TaxiPage.jsx`, `frontend/src/services/taxiApi.js`): neue Ride-Karte mit Live-Movement-Hinweis, Chat-, Call- und Share-Trip-Aktionen; Ride-Chat ist über neue Endpunkte `GET/POST /api/taxi/rides/{ride_id}/messages` authentifiziert nutzbar.
+- ✅ **Verifiziert**: JS-Lint PASS, Python-Lint PASS, Browser-Smoke für Suchbegriff `Pris` PASS, API-Self-Tests für Ride-Chat PASS, `testing_agent` Iteration 155 = Backend 14/14 PASS und Frontend 15/15 PASS.
 
 ### 25.06.2026 (Mobility Compare + Game Center V1) ✅
 - 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.
