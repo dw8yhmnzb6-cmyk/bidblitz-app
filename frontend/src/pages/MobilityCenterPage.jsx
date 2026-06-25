@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bike, Car, Crown, MapPinned, Route, Sparkles, Ticket, Wallet, Zap } from "lucide-react";
 
-import { getMobilityPaymentOptions, getMyMobilityBookings, getSavedMobilityLocations } from "../services/mobilityPlatformApi";
+import { getMobilityCompareSummary, getMobilityPaymentOptions, getMyMobilityBookings, getSavedMobilityLocations } from "../services/mobilityPlatformApi";
 
 const moduleCards = [
-  { id: "mobility-map", label: "Mobility Map", route: "/mobility-map", icon: MapPinned, tone: "#00C2FF", desc: "Vergleiche Taxi, Scooter, Bike, Shuttle und VIP auf einer Karte." },
+  { id: "mobility-map", label: "Mobility Map", route: "/mobility-map", icon: MapPinned, tone: "#00C2FF", desc: "Vergleiche Taxi, Scooter, EV, Car Rental, Shuttle und VIP auf einer Karte." },
   { id: "taxi", label: "Taxi & Ride", route: "/taxi", icon: Car, tone: "#38BDF8", desc: "Sofortfahrten, Fahreransicht und Reservierungen bündeln." },
   { id: "scooter", label: "Scooter & Bike", route: "/scooter", icon: Zap, tone: "#84CC16", desc: "Kurzstrecken, QR-Rides und stationenbasierte Micro-Mobility." },
   { id: "ev", label: "EV Charging", route: "/ev", icon: Crown, tone: "#F97316", desc: "Laden, Sessions tracken und Stationen verwalten." },
@@ -13,11 +13,60 @@ const moduleCards = [
   { id: "bookings", label: "Meine Fahrten", route: "/mobility-map", icon: Route, tone: "#FACC15", desc: "Aktive Buchungen, Tracking und Favoriten im selben Flow." },
 ];
 
+const compareMeta = {
+  taxi: { label: "Taxi", tone: "#38BDF8" },
+  scooter: { label: "Scooter", tone: "#84CC16" },
+  ev: { label: "EV Drive", tone: "#F97316" },
+  car_rental: { label: "Car Rental", tone: "#A78BFA" },
+};
+
+function formatMoney(value) {
+  return `€${Math.abs(Number(value || 0)).toFixed(2)}`;
+}
+
+function buildComparePresets(bookings, savedLocations) {
+  const presets = [];
+  const latestBooking = bookings.find((item) => item.pickup?.lat && item.dropoff?.lat);
+  if (latestBooking) {
+    presets.push({
+      id: `booking-${latestBooking.booking_id}`,
+      label: latestBooking.transport_label || "Letzte Fahrt",
+      pickup: latestBooking.pickup,
+      dropoff: latestBooking.dropoff,
+      hint: "Basierend auf deiner letzten Buchung",
+    });
+  }
+
+  const home = savedLocations.find((item) => item.kind === "home");
+  const work = savedLocations.find((item) => item.kind === "work");
+  if (home && work) {
+    presets.push({
+      id: "home-work",
+      label: "Home → Work",
+      pickup: { address: home.address, lat: home.lat, lng: home.lng },
+      dropoff: { address: work.address, lat: work.lat, lng: work.lng },
+      hint: "Ideal für tägliche Pendelwege",
+    });
+    presets.push({
+      id: "work-home",
+      label: "Work → Home",
+      pickup: { address: work.address, lat: work.lat, lng: work.lng },
+      dropoff: { address: home.address, lat: home.lat, lng: home.lng },
+      hint: "Schneller Feierabend-Vergleich",
+    });
+  }
+
+  return presets.slice(0, 3);
+}
+
 export default function MobilityCenterPage({ onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [savedLocations, setSavedLocations] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState({ wallet_balance: 0, methods: [] });
+  const [selectedPresetId, setSelectedPresetId] = useState("");
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareSummary, setCompareSummary] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -35,11 +84,41 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
     load();
   }, []);
 
+  const comparePresets = useMemo(() => buildComparePresets(bookings, savedLocations), [bookings, savedLocations]);
+
+  useEffect(() => {
+    if (!comparePresets.length) return;
+    setSelectedPresetId((prev) => prev || comparePresets[0].id);
+  }, [comparePresets]);
+
+  useEffect(() => {
+    const preset = comparePresets.find((item) => item.id === selectedPresetId);
+    if (!preset?.pickup?.lat || !preset?.dropoff?.lat) return;
+    let active = true;
+    const loadCompare = async () => {
+      setCompareLoading(true);
+      const result = await getMobilityCompareSummary({
+        pickup: preset.pickup,
+        dropoff: preset.dropoff,
+        focus_modes: ["taxi", "scooter", "ev", "car_rental"],
+      });
+      if (!active) return;
+      setCompareSummary(result.ok ? result : null);
+      setCompareLoading(false);
+    };
+    loadCompare();
+    return () => {
+      active = false;
+    };
+  }, [comparePresets, selectedPresetId]);
+
   const stats = useMemo(() => ({
     activeBookings: bookings.filter((item) => ["pending", "confirmed", "in_progress"].includes(item.status)).length,
     savedPlaces: savedLocations.length,
     paymentMethods: (paymentOptions.methods || []).length,
   }), [bookings, paymentOptions.methods, savedLocations.length]);
+
+  const selectedPreset = comparePresets.find((item) => item.id === selectedPresetId) || null;
 
   return (
     <div className="min-h-screen bg-[#050911] text-white pb-24" data-testid="mobility-center-page">
@@ -59,7 +138,7 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
           <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight" data-testid="mobility-center-title">Alles für Rides, EV, Scooter und Tracking in einem Hub.</h1>
-              <p className="mt-4 text-sm sm:text-base text-white/70" data-testid="mobility-center-subtitle">Das Mobility Center bündelt die bestehenden Taxi-, Scooter-, EV- und Car-Rental-Module und gibt dir einen schnellen Einstieg in Preisvergleich, Buchungen und Tracking.</p>
+              <p className="mt-4 text-sm sm:text-base text-white/70" data-testid="mobility-center-subtitle">Das Mobility Center bündelt Taxi, Scooter, EV und Car Rental — inklusive klarem 4-Wege Preis-/Zeitvergleich, Buchungen und Tracking.</p>
             </div>
             <div className="grid w-full max-w-md grid-cols-2 gap-3">
               {[
@@ -90,6 +169,89 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
               <p className="mt-2 text-sm text-white/65">{card.desc}</p>
             </motion.button>
           ))}
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Klarer 4-Wege Vergleich</p>
+                <h2 className="mt-2 text-base md:text-lg font-bold" data-testid="mobility-center-compare-title">Taxi, Scooter, EV Drive und Car Rental direkt gegenübergestellt</h2>
+                <p className="mt-2 text-sm text-white/65" data-testid="mobility-center-compare-subtitle">Ich nutze automatisch deine letzte Fahrt oder Home/Work, damit du sofort Preis, ETA und die beste Option siehst.</p>
+              </div>
+              <button onClick={() => onNavigate('/mobility-map')} data-testid="mobility-center-compare-open-map-button" className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/75">Auf Karte öffnen</button>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2" data-testid="mobility-center-compare-preset-list">
+              {comparePresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => setSelectedPresetId(preset.id)}
+                  data-testid={`mobility-center-compare-preset-${preset.id}`}
+                  className={`rounded-full border px-3 py-2 text-xs font-semibold ${selectedPresetId === preset.id ? 'border-[#8EEBFF]/50 bg-[#00C2FF]/14 text-[#8EEBFF]' : 'border-white/10 bg-black/20 text-white/70'}`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {selectedPreset && (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="mobility-center-compare-route-card">
+                <p className="text-xs text-white/55">{selectedPreset.hint}</p>
+                <p className="mt-2 text-sm font-semibold">{selectedPreset.pickup?.address || 'Start'} → {selectedPreset.dropoff?.address || 'Ziel'}</p>
+                {compareSummary?.route && (
+                  <p className="mt-2 text-xs text-white/55" data-testid="mobility-center-compare-route-summary">{compareSummary.route.distance_km?.toFixed(1)} km · Basis {compareSummary.route.duration_min} Min</p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {compareLoading && <div className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm text-white/55" data-testid="mobility-center-compare-loading">Vergleich wird berechnet…</div>}
+              {!compareLoading && (compareSummary?.cards || []).map((card) => (
+                <div key={card.type} className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid={`mobility-center-compare-card-${card.type}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: compareMeta[card.type]?.tone || '#fff' }}>{compareMeta[card.type]?.label || card.label}</p>
+                      <p className="mt-1 text-xs text-white/55">{card.duration_min} Min · {card.distance_km.toFixed(1)} km</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black">€{Number(card.price_eur || 0).toFixed(2)}</p>
+                      <p className="text-[11px] text-white/45">Eco {card.eco_score}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(card.tags || []).slice(0, 2).map((tag) => (
+                      <span key={`${card.type}-${tag}`} className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-white/80">{tag}</span>
+                    ))}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-white/60">
+                    <div className="rounded-xl bg-white/5 px-3 py-2">vs Taxi {card.price_delta_vs_taxi > 0 ? '+' : '-'}{formatMoney(card.price_delta_vs_taxi)}</div>
+                    <div className="rounded-xl bg-white/5 px-3 py-2">ETA {card.time_delta_vs_taxi > 0 ? '+' : ''}{card.time_delta_vs_taxi} Min</div>
+                  </div>
+                </div>
+              ))}
+              {!compareLoading && comparePresets.length === 0 && <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-5 text-sm text-white/55" data-testid="mobility-center-compare-empty">Sobald du eine Mobility-Fahrt oder Home/Work gespeichert hast, erscheint hier automatisch dein 4-Wege Vergleich.</div>}
+            </div>
+          </motion.div>
+
+          <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <p className="text-xs uppercase tracking-[0.22em] text-white/45">Smart entscheiden</p>
+            <h2 className="mt-2 text-base md:text-lg font-bold">Was der Vergleich sofort zeigt</h2>
+            <div className="mt-5 grid gap-3">
+              {[
+                { id: 'cheapest', label: 'Günstigste', value: compareSummary?.best?.cheapest?.label || '—', desc: compareSummary?.best?.cheapest?.reason || 'Preisleader wird automatisch markiert.' },
+                { id: 'fastest', label: 'Schnellste', value: compareSummary?.best?.fastest?.label || '—', desc: compareSummary?.best?.fastest?.reason || 'Die schnellste ETA ist sofort sichtbar.' },
+                { id: 'eco', label: 'Eco', value: compareSummary?.best?.eco?.label || '—', desc: compareSummary?.best?.eco?.reason || 'Für nachhaltige Wege priorisiert.' },
+                { id: 'balance', label: 'Balance', value: compareSummary?.best?.balance?.label || '—', desc: compareSummary?.best?.balance?.reason || 'Beste Mischung aus Preis und Zeit.' },
+              ].map((item) => (
+                <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid={`mobility-center-best-${item.id}`}>
+                  <p className="text-xs text-white/50">{item.label}</p>
+                  <p className="mt-2 text-lg font-black">{item.value}</p>
+                  <p className="mt-1 text-xs text-white/55">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">

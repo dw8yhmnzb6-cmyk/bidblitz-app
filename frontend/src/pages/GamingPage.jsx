@@ -29,6 +29,7 @@ const GamingPage = ({ onNavigate, onBack }) => {
   const [showBuyCoins, setShowBuyCoins] = useState(false);
   const [buyAmount, setBuyAmount] = useState("5");
   const [buying, setBuying] = useState(false);
+  const [overview, setOverview] = useState(null);
 
   useEffect(() => {
     loadUserData();
@@ -36,10 +37,17 @@ const GamingPage = ({ onNavigate, onBack }) => {
 
   const loadUserData = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/gaming/profile`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
+      const [profileRes, overviewRes] = await Promise.all([
+        fetch(`${API_URL}/api/gaming/profile`, { credentials: "include" }),
+        fetch(`${API_URL}/api/gaming/game-center-overview`, { credentials: "include" }),
+      ]);
+      if (profileRes.ok) {
+        const data = await profileRes.json();
         setUserCoins(data.coins || 0);
+      }
+      if (overviewRes.ok) {
+        const data = await overviewRes.json();
+        setOverview(data);
       }
     } catch (err) {
       console.error(err);
@@ -206,6 +214,77 @@ const GamingPage = ({ onNavigate, onBack }) => {
 
       {/* Games Grid */}
       <div className="px-4 pt-4">
+        <div className="mb-4 rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-sky-500/5 to-transparent p-4" data-testid="game-center-v1-overview-card">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/80">Game Center V1</p>
+              <h2 className="mt-1 text-[18px] font-bold text-white">Seasons, Achievements und VIP Club jetzt direkt im Hub</h2>
+              <p className="mt-2 text-[11px] text-gray-400">Fortschritt, Belohnungen und VIP-Vorteile sind jetzt als Einstiegsblock sichtbar.</p>
+            </div>
+            <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-right" data-testid="game-center-season-rank-card">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-yellow-300/70">Season Rank</p>
+              <p className="mt-1 text-[18px] font-black text-yellow-300">#{overview?.season?.user_rank || '—'}</p>
+              <p className="text-[10px] text-yellow-100/70">{overview?.season?.user_points || 0} XP</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <button onClick={() => onNavigate?.('/achievements')} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left" data-testid="game-center-achievements-entry">
+              <div className="flex items-center gap-2 text-cyan-300"><Award size={16} /><span className="text-[12px] font-semibold">Achievements</span></div>
+              <p className="mt-3 text-[22px] font-black text-white">{overview?.achievements?.total_unlocked || 0}</p>
+              <p className="mt-1 text-[11px] text-gray-400">Freigeschaltet · {overview?.achievements?.reward_blz || 0} BLZ verdient</p>
+            </button>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" data-testid="game-center-season-entry">
+              <div className="flex items-center gap-2 text-fuchsia-300"><Sparkles size={16} /><span className="text-[12px] font-semibold">{overview?.season?.name || 'Aktuelle Season'}</span></div>
+              <p className="mt-3 text-[22px] font-black text-white">{overview?.season?.days_left || 0}</p>
+              <p className="mt-1 text-[11px] text-gray-400">Tage übrig · Ziel {overview?.season?.target_points || 0} XP</p>
+              <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden" data-testid="game-center-season-progress-track">
+                <div className="h-full rounded-full bg-fuchsia-400 transition-[width] duration-500" style={{ width: `${overview?.season?.progress_pct || 0}%` }} data-testid="game-center-season-progress-bar" />
+              </div>
+            </div>
+
+            <button onClick={() => onNavigate?.('/vip')} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left" data-testid="game-center-vip-entry">
+              <div className="flex items-center gap-2 text-yellow-300"><Crown size={16} /><span className="text-[12px] font-semibold">VIP Club</span></div>
+              <p className="mt-3 text-[18px] font-black text-white">{overview?.vip_club?.plan_name || 'Kein Plan aktiv'}</p>
+              <p className="mt-1 text-[11px] text-gray-400">{overview?.vip_club?.active ? 'VIP aktiv' : 'Exklusive Perks und Season Drops'}</p>
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_0.9fr]">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="game-center-season-podium-card">
+              <div className="flex items-center gap-2 text-yellow-300"><Trophy size={16} /><span className="text-[12px] font-semibold">Season Podium</span></div>
+              <div className="mt-3 space-y-2">
+                {(overview?.season?.podium || []).length > 0 ? (overview.season.podium.map((player) => (
+                  <div key={`season-podium-${player.rank}`} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2" data-testid={`game-center-season-podium-${player.rank}`}>
+                    <div>
+                      <p className="text-[12px] font-semibold text-white">#{player.rank} {player.name}</p>
+                      <p className="text-[10px] text-gray-400">{player.games} Games</p>
+                    </div>
+                    <p className="text-[13px] font-bold text-yellow-300">{player.points}</p>
+                  </div>
+                ))) : (
+                  <div className="rounded-xl bg-white/[0.04] px-3 py-3 text-[11px] text-gray-400">Noch keine Season-Daten vorhanden — starte ein Spiel und fülle dein Ranking.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="game-center-milestones-card">
+              <div className="flex items-center gap-2 text-green-300"><Gift size={16} /><span className="text-[12px] font-semibold">Season Milestones</span></div>
+              <div className="mt-3 space-y-2">
+                {(overview?.season?.milestones || []).map((milestone) => (
+                  <div key={`milestone-${milestone.points}`} className="rounded-xl bg-white/[0.04] px-3 py-2" data-testid={`game-center-milestone-${milestone.points}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[12px] font-semibold text-white">{milestone.points} XP</span>
+                      <span className="text-[11px] text-green-300">{milestone.reward}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           {GAMES.map((game, idx) => (
             <motion.button
@@ -1309,7 +1388,7 @@ const HighLowGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       });
       const data = await res.json();
       if (res.ok) setCoins(data.new_balance);
-    } catch (err) {}
+    } catch (err) { console.error(err); }
 
     setResult({ nextCard, correct, winAmount: Math.round(winAmount) });
     setCurrentCard(nextCard);
@@ -1419,7 +1498,7 @@ const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
         });
         const data = await res.json();
         if (res.ok) setCoins(data.new_balance);
-      } catch {}
+      } catch (err) { console.error(err); }
     } else {
       const newSafe = safeCount + 1;
       setSafeCount(newSafe);
@@ -1440,7 +1519,7 @@ const MinesGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       });
       const data = await res.json();
       if (res.ok) setCoins(data.new_balance);
-    } catch {}
+    } catch (err) { console.error(err); }
   };
 
   return (
@@ -1640,7 +1719,7 @@ const CrashGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       });
       const data = await res.json();
       if (res.ok) setCoins(data.new_balance);
-    } catch (err) {}
+    } catch (err) { console.error(err); }
   };
 
   return (
@@ -1741,7 +1820,7 @@ const PlinkoGame = ({ onBack, userCoins, onCoinsUpdate }) => {
       if (res.ok) setCoins(data.new_balance);
       setResult({ slotIdx, mult, winAmount: data.coins_won || winAmount, net: data.net });
       onCoinsUpdate?.();
-    } catch {}
+    } catch (err) { console.error(err); }
 
     await new Promise(r => setTimeout(r, 600));
     setBallPos(null);

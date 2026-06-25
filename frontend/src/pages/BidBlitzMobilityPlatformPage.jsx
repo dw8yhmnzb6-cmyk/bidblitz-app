@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import L from "leaflet";
@@ -14,6 +13,7 @@ import { addRecentMobilityLocation, cancelMobilityBooking, createMobilityBooking
 const TRANSPORT_META = {
   taxi: { icon: Car, color: "#00C2FF", details: { de: "Direkt, schnell und klassisch wie Uber/Bolt.", en: "Direct, fast and classic like Uber/Bolt.", sq: "Direkt, e shpejtë dhe klasike si Uber/Bolt." } },
   scooter: { icon: Zap, color: "#7CFF5B", details: { de: "Ideal für kurze City-Strecken und günstig.", en: "Ideal for short city rides and affordable.", sq: "Ideale për udhëtime të shkurtra në qytet dhe me kosto të ulët." } },
+  ev: { icon: Zap, color: "#F97316", label: "EV Drive", details: { de: "Elektrische Selbstfahrer-Option mit starkem Eco-Score.", en: "Electric self-drive option with strong eco score.", sq: "Opsion elektrik vetë-drejtues me rezultat të lartë eco." } },
   bike: { icon: Bike, color: "#FACC15", details: { de: "Die günstigste und nachhaltigste Kurzstrecke.", en: "The cheapest and most sustainable short trip.", sq: "Opsioni më i lirë dhe më i qëndrueshëm për distanca të shkurtra." } },
   car_rental: { icon: Car, color: "#A78BFA", details: { de: "Für eigene Flexibilität über mehrere Stunden.", en: "For full flexibility over several hours.", sq: "Për fleksibilitet të plotë për disa orë." } },
   airport_shuttle: { icon: Plane, color: "#FB7185", details: { de: "Perfekt für Flughafen und große Gepäckmengen.", en: "Perfect for airports and heavy luggage.", sq: "Perfekt për aeroport dhe bagazh të madh." } },
@@ -59,6 +59,7 @@ function makeServiceIcon(type) {
   const glyph = {
     taxi: "🚕",
     scooter: "🛴",
+    ev: "🔋",
     bike: "🚲",
     car_rental: "🚗",
     airport_shuttle: "✈️",
@@ -87,6 +88,44 @@ function RecommendationChip({ label, reason, active }) {
       <div className="font-semibold">{label}</div>
       <div className="text-[10px] mt-0.5 opacity-80">{reason}</div>
     </div>
+  );
+}
+
+function FocusCompareCard({ option, compareToTaxi, highlight, lang, onOpen }) {
+  if (!option) return null;
+  const meta = TRANSPORT_META[option.type] || TRANSPORT_META.taxi;
+  const Icon = meta.icon;
+  const priceDelta = compareToTaxi ? Number(option.price_eur || 0) - Number(compareToTaxi.price_eur || 0) : 0;
+  const timeDelta = compareToTaxi ? Number(option.duration_min || 0) - Number(compareToTaxi.duration_min || 0) : 0;
+  return (
+    <button
+      onClick={() => onOpen(option)}
+      className={`rounded-2xl border p-4 text-left transition-all ${highlight ? 'border-[#0F766E]/30 bg-[#0F766E]/8' : 'border-[#18202a]/8 bg-white'}`}
+      data-testid={`mobility-focus-card-${option.type}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: `${meta.color}18`, color: meta.color }}>
+            <Icon size={18} />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-[#18202a]">{option.label}</span>
+              {highlight ? <span className="rounded-full bg-[#0F766E]/12 px-2 py-0.5 text-[10px] font-semibold text-[#0F766E]">Core Pick</span> : null}
+            </div>
+            <p className="mt-1 text-[11px] text-[#18202a]/55">{meta.details?.[lang] || meta.details?.de}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-base font-bold text-[#18202a]">{formatPrice(option.price_eur)}</p>
+          <p className="text-[10px] text-[#18202a]/45">{option.duration_min} Min</p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[#18202a]/62">
+        <div className="rounded-xl bg-[#f8f3e9] px-3 py-2">vs Taxi {priceDelta > 0 ? '+' : ''}{formatPrice(priceDelta)}</div>
+        <div className="rounded-xl bg-[#f8f3e9] px-3 py-2">Zeit {timeDelta > 0 ? '+' : ''}{timeDelta} Min</div>
+      </div>
+    </button>
   );
 }
 
@@ -162,12 +201,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const [loadingAiRecommendation, setLoadingAiRecommendation] = useState(false);
   const [bookingTransportType, setBookingTransportType] = useState("");
   const [routeSummary, setRouteSummary] = useState(null);
-  const [nearbyCounts, setNearbyCounts] = useState({ taxi: 0, scooter: 0, car_rental: 0 });
+  const [nearbyCounts, setNearbyCounts] = useState({ taxi: 0, scooter: 0, ev: 0, car_rental: 0 });
   const [availableModes, setAvailableModes] = useState([]);
   const [selectedNearby, setSelectedNearby] = useState(null);
   const [aiRecommendation, setAiRecommendation] = useState(null);
   const [routeSnapshot, setRouteSnapshot] = useState(null);
   const [searchTarget, setSearchTarget] = useState("dropoff");
+  const focusModes = useMemo(() => ["taxi", "scooter", "ev", "car_rental"], []);
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
   const nearbyLayerRef = useRef(null);
@@ -214,7 +254,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     setLoadingNearby(true);
     const data = await getMobilityNearby({ lat, lng, radius: 6 });
     setLoadingNearby(false);
-    setNearbyCounts(data?.counts || { taxi: 0, scooter: 0, car_rental: 0 });
+    setNearbyCounts(data?.counts || { taxi: 0, scooter: 0, ev: 0, car_rental: 0 });
     setAvailableModes(data?.available_modes || []);
     const map = mapRef.current;
     const layer = nearbyLayerRef.current;
@@ -378,6 +418,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     if (!options.length || !recommendationMode) return null;
     return options.find((item) => item.type === recommendationMode.type) || options[0];
   }, [options, recommendationMode]);
+
+  const focusOptions = useMemo(() => {
+    const subset = options.filter((item) => focusModes.includes(item.type));
+    return focusModes.map((mode) => subset.find((item) => item.type === mode)).filter(Boolean);
+  }, [focusModes, options]);
+
+  const taxiFocusOption = useMemo(() => focusOptions.find((item) => item.type === "taxi") || null, [focusOptions]);
 
   const triggerSearch = async (kind, value) => {
     const prox = pickup.lat && pickup.lng ? { lat: pickup.lat, lng: pickup.lng } : undefined;
@@ -562,6 +609,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-[11px] font-semibold" data-testid="mobility-live-count-taxi">{nearbyCounts.taxi || 0} {ui.liveTaxi}</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#7CFF5B]/16 text-[#256C1B] text-[11px] font-semibold" data-testid="mobility-live-count-scooter">{nearbyCounts.scooter || 0} Scooter</span>
+                <span className="px-3 py-1.5 rounded-full bg-[#F97316]/16 text-[#C2410C] text-[11px] font-semibold" data-testid="mobility-live-count-ev">{nearbyCounts.ev || 0} EV</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#F59E0B]/16 text-[#92400E] text-[11px] font-semibold" data-testid="mobility-live-count-cars">{nearbyCounts.car_rental || 0} {ui.rentalCars}</span>
               </div>
               {loadingNearby && <Loader2 size={16} className="animate-spin text-[#0F766E]" />}
@@ -634,6 +682,30 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               </button>
             ))}
           </div>
+
+          {focusOptions.length > 0 && (
+            <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-core-comparison-panel">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Core Vergleich</p>
+                  <h3 className="text-base font-bold mt-1">Taxi · Scooter · EV · Car Rental</h3>
+                </div>
+                <div className="text-right text-[11px] text-[#18202a]/55">Klarer Preis-/Zeitfokus</div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {focusOptions.map((option) => (
+                  <FocusCompareCard
+                    key={option.type}
+                    option={option}
+                    compareToTaxi={taxiFocusOption}
+                    highlight={selectedOption?.type === option.type || aiRecommendation?.best_option_type === option.type}
+                    lang={lang}
+                    onOpen={setDetailOption}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 rounded-2xl bg-white border border-[#18202a]/8 p-4" data-testid="mobility-preferences-panel">
             <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">{ui.aiPrefs}</p>

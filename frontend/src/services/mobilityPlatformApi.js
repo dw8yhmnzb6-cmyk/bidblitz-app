@@ -171,3 +171,14 @@ export async function getMobilityPaymentOptions() {
   if (!res.ok) return { wallet_balance: 0, methods: [] };
   return await readJson(res);
 }
+
+export async function getMobilityCompareSummary(payload) {
+  const res = await fetch(`${API}/api/mobility-platform/compare-summary`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readJson(res);
+  return res.ok ? { ok: true, ...data } : { ok: false, error: data?.detail || "Vergleich fehlgeschlagen" };
+}

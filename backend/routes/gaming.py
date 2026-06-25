@@ -119,6 +119,14 @@ async def get_user_daily_stats(user_id: str) -> dict:
     return stats
 
 
+async def get_user_achievement_stats(user_id: str) -> dict:
+    unlocked = await db.user_achievements.find({"user_id": user_id}, {"_id": 0, "reward_blz": 1}).to_list(200)
+    return {
+        "total_unlocked": len(unlocked),
+        "reward_blz": sum(item.get("reward_blz", 0) for item in unlocked),
+    }
+
+
 async def update_daily_stats(user_id: str, coins_won: int, coins_bet: int, game_type: str):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     await db.gaming_daily_stats.update_one(
@@ -189,6 +197,105 @@ async def get_gaming_profile(request: Request):
         "min_bet": MIN_BET,
         "max_bet": MAX_BET,
         "coins_to_eur_rate": COINS_TO_EUR_RATE,
+    }
+
+
+@router.get("/game-center-overview")
+async def get_game_center_overview(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now = datetime.now(timezone.utc)
+    season_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    next_month = (season_start + timedelta(days=32)).replace(day=1)
+    season_name = season_start.strftime("Season %m/%Y")
+
+    profile = await get_gaming_profile(request)
+    achievement_stats = await get_user_achievement_stats(user_id)
+    active_subscription = await db.subscriptions.find_one({
+        "user_id": user_id,
+        "status": "active",
+        "expires_at": {"$gt": now.isoformat()},
+    }, {"_id": 0, "plan": 1, "plan_name": 1, "expires_at": 1, "auto_renew": 1})
+
+    season_results = await db.gaming_history.aggregate([
+        {"$match": {"created_at": {"$gte": season_start.isoformat()}}},
+        {"$group": {
+            "_id": "$user_id",
+            "season_points": {"$sum": {"$max": ["$net", 0]}},
+            "games": {"$sum": 1},
+        }},
+        {"$sort": {"season_points": -1, "games": 1}},
+        {"$limit": 25},
+    ]).to_list(25)
+
+    user_rank = None
+    user_points = 0
+    podium = []
+    for idx, entry in enumerate(season_results, start=1):
+        user_doc = await db.users.find_one({"_id": ObjectId(entry["_id"])}, {"name": 1}) if ObjectId.is_valid(entry["_id"]) else None
+        player = {
+            "rank": idx,
+            "name": user_doc.get("name", "Anonym") if user_doc else ("Du" if entry["_id"] == user_id else "Anonym"),
+            "points": int(entry.get("season_points") or 0),
+            "games": int(entry.get("games") or 0),
+            "is_current_user": entry["_id"] == user_id,
+        }
+        if idx <= 3:
+            podium.append(player)
+        if entry["_id"] == user_id:
+            user_rank = idx
+            user_points = player["points"]
+
+    if user_rank is None:
+        user_points = max(0, int(profile.get("daily_coins_won") or 0) + int(profile.get("games_played") or 0) * 8)
+        user_rank = len(season_results) + 1
+
+    challenges_today = await db.daily_challenge_progress.find_one({
+        "user_id": user_id,
+        "date": now.strftime("%Y-%m-%d"),
+    }, {"_id": 0, "challenges": 1})
+    completed_challenges = 0
+    total_challenges = 0
+    if challenges_today and isinstance(challenges_today.get("challenges"), dict):
+        total_challenges = len(challenges_today["challenges"])
+        completed_challenges = sum(1 for value in challenges_today["challenges"].values() if value.get("completed"))
+
+    target_points = max(3000, ((user_points // 500) + 1) * 500)
+
+    return {
+        "profile": profile,
+        "season": {
+            "season_id": season_start.strftime("%Y-%m"),
+            "name": season_name,
+            "days_left": max(1, (next_month - now).days),
+            "user_rank": user_rank,
+            "user_points": user_points,
+            "target_points": target_points,
+            "progress_pct": min(100, round((user_points / target_points) * 100)) if target_points else 0,
+            "podium": podium,
+            "milestones": [
+                {"points": 500, "reward": "VIP Spin"},
+                {"points": 1500, "reward": "Legendary Badge"},
+                {"points": 3000, "reward": "Season Chest"},
+            ],
+        },
+        "achievements": {
+            "total_unlocked": achievement_stats["total_unlocked"],
+            "reward_blz": achievement_stats["reward_blz"],
+            "completed_today": completed_challenges,
+            "total_today": total_challenges,
+        },
+        "vip_club": {
+            "active": bool(active_subscription),
+            "plan_name": active_subscription.get("plan_name") if active_subscription else "Kein VIP Plan aktiv",
+            "expires_at": active_subscription.get("expires_at") if active_subscription else None,
+            "auto_renew": active_subscription.get("auto_renew") if active_subscription else False,
+            "perks": [
+                "VIP Multipliers in Events",
+                "Exklusive Season Drops",
+                "Priority Support im Game Center",
+            ],
+        },
     }
 
 

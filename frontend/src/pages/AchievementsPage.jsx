@@ -9,7 +9,7 @@ const RARITY_COLORS = {
   legendary: "from-yellow-400 to-orange-500",
 };
 
-export default function AchievementsPage() {
+export default function AchievementsPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [achievements, setAchievements] = useState([]);
   const [stats, setStats] = useState(null);
@@ -59,6 +59,7 @@ export default function AchievementsPage() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-md mx-auto px-4 py-4">
+          {onBack ? <button onClick={onBack} className="mb-3 rounded-full border border-white/10 px-3 py-2 text-xs text-white/70" data-testid="achievements-back-button">Zurück</button> : null}
           <h1 className="text-2xl font-black">Achievements</h1>
           <p className="text-sm text-white/60">Schalte Badges frei & verdiene BLZ</p>
         </div>
@@ -95,6 +96,7 @@ export default function AchievementsPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
+              data-testid={`achievements-category-${cat}`}
               className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition ${
                 selectedCategory === cat
                   ? "bg-[#00E0FF] text-black"
@@ -113,6 +115,7 @@ export default function AchievementsPage() {
           <motion.button
             key={achievement.id}
             onClick={() => setSelectedAchievement(achievement)}
+            data-testid={`achievement-card-${achievement.id}`}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ scale: 1.05 }}

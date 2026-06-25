@@ -83,6 +83,7 @@ def build_option(
     base = {
         "taxi": {"label": "Taxi", "icon": "car-front", "base": 2.4, "per_km": 1.15, "per_min": 0.16, "speed_factor": 1.0, "wallet_only": False},
         "scooter": {"label": "E-Scooter", "icon": "zap", "base": 0.35, "per_km": 0.28, "per_min": 0.06, "speed_factor": 1.25, "wallet_only": True},
+        "ev": {"label": "EV Drive", "icon": "zap", "base": 4.2, "per_km": 0.42, "per_min": 0.08, "speed_factor": 1.08, "wallet_only": False},
         "bike": {"label": "Fahrrad", "icon": "bike", "base": 0.15, "per_km": 0.18, "per_min": 0.03, "speed_factor": 1.55, "wallet_only": True},
         "car_rental": {"label": "Mietwagen", "icon": "car", "base": 8.5, "per_km": 0.32, "per_min": 0.05, "speed_factor": 1.05, "wallet_only": False},
         "airport_shuttle": {"label": "Airport Shuttle", "icon": "plane", "base": 5.0, "per_km": 0.48, "per_min": 0.07, "speed_factor": 1.12, "wallet_only": False},
@@ -177,6 +178,12 @@ class MobilityPreferencesRequest(BaseModel):
     priority: str = Field(default="balance")
     luggage: bool = False
     childSeat: bool = False
+
+
+class MobilityCompareSummaryRequest(BaseModel):
+    pickup: MobilityBookingLocation
+    dropoff: MobilityBookingLocation
+    focus_modes: Optional[List[str]] = Field(default_factory=lambda: ["taxi", "scooter", "ev", "car_rental"])
 
 
 def _cache_key(path: str, params: dict) -> str:
@@ -356,6 +363,7 @@ async def _compute_route_payload(
     options = [
         build_option("taxi", distance_km, duration_min, demand_multiplier, 55),
         build_option("scooter", distance_km, duration_min, 1.0, 86),
+        build_option("ev", distance_km, duration_min, 1.0, 92),
         build_option("bike", distance_km, duration_min, 1.0, 96),
         build_option("car_rental", distance_km, duration_min, 1.0, 48),
         build_option("airport_shuttle", distance_km, duration_min, 1.0, 63),
@@ -374,6 +382,80 @@ async def _compute_route_payload(
 
 def _find_option(options: list[dict], transport_type: str):
     return next((item for item in options if item.get("type") == transport_type), None)
+
+
+def _focus_mode_cards(route_payload: dict, focus_modes: Optional[list[str]] = None) -> list[dict]:
+    focus = [mode for mode in (focus_modes or ["taxi", "scooter", "ev", "car_rental"]) if mode]
+    cards = [item for item in route_payload.get("options") or [] if item.get("type") in focus]
+    cards.sort(key=lambda item: focus.index(item.get("type")) if item.get("type") in focus else 999)
+    if not cards:
+        return []
+
+    cheapest = min(cards, key=lambda item: item.get("price_eur") or 0)
+    fastest = min(cards, key=lambda item: item.get("duration_min") or 0)
+    eco = max(cards, key=lambda item: item.get("eco_score") or 0)
+    balance = min(cards, key=lambda item: (item.get("price_eur") or 0) * 0.45 + (item.get("duration_min") or 0) * 0.55)
+    taxi_option = _find_option(cards, "taxi") or cheapest
+
+    summary_cards = []
+    for item in cards:
+        tags = []
+        if item.get("type") == cheapest.get("type"):
+            tags.append("Günstigste")
+        if item.get("type") == fastest.get("type"):
+            tags.append("Schnellste")
+        if item.get("type") == eco.get("type"):
+            tags.append("Eco")
+        if item.get("type") == balance.get("type"):
+            tags.append("Beste Balance")
+        summary_cards.append({
+            "type": item.get("type"),
+            "label": item.get("label"),
+            "price_eur": _round_money(item.get("price_eur") or 0),
+            "duration_min": int(item.get("duration_min") or 0),
+            "distance_km": round(float(item.get("distance_km") or 0), 2),
+            "eco_score": int(item.get("eco_score") or 0),
+            "price_delta_vs_taxi": _round_money((item.get("price_eur") or 0) - (taxi_option.get("price_eur") or 0)),
+            "time_delta_vs_taxi": int((item.get("duration_min") or 0) - (taxi_option.get("duration_min") or 0)),
+            "tags": tags,
+        })
+
+    return summary_cards
+
+
+def _build_compare_summary(route_payload: dict, focus_modes: Optional[list[str]] = None) -> dict:
+    cards = _focus_mode_cards(route_payload, focus_modes)
+    if not cards:
+        return {
+            "cards": [],
+            "best": {},
+            "route": {
+                "pickup": route_payload.get("pickup") or {},
+                "dropoff": route_payload.get("dropoff") or {},
+                "distance_km": round(float(route_payload.get("distance_km") or 0), 2),
+                "duration_min": int(route_payload.get("duration_min") or 0),
+            },
+        }
+
+    cheapest = min(cards, key=lambda item: item["price_eur"])
+    fastest = min(cards, key=lambda item: item["duration_min"])
+    eco = max(cards, key=lambda item: item["eco_score"])
+    balance = min(cards, key=lambda item: item["price_eur"] * 0.45 + item["duration_min"] * 0.55)
+    return {
+        "route": {
+            "pickup": route_payload.get("pickup") or {},
+            "dropoff": route_payload.get("dropoff") or {},
+            "distance_km": round(float(route_payload.get("distance_km") or 0), 2),
+            "duration_min": int(route_payload.get("duration_min") or 0),
+        },
+        "cards": cards,
+        "best": {
+            "cheapest": {"type": cheapest["type"], "label": cheapest["label"], "reason": "Niedrigster Preis"},
+            "fastest": {"type": fastest["type"], "label": fastest["label"], "reason": "Kürzeste ETA"},
+            "eco": {"type": eco["type"], "label": eco["label"], "reason": "Beste Eco-Bilanz"},
+            "balance": {"type": balance["type"], "label": balance["label"], "reason": "Preis und Zeit am ausgewogensten"},
+        },
+    }
 
 
 async def _store_route_snapshot(
@@ -655,6 +737,26 @@ async def mobility_ai_recommendation(req: MobilityAiRecommendationRequest):
     if not req.options:
         raise HTTPException(400, "Keine Transportoptionen für AI-Empfehlung übergeben")
     return await _generate_ai_route_recommendation(req)
+
+
+@router.post("/compare-summary")
+async def get_compare_summary(req: MobilityCompareSummaryRequest, request: Request):
+    user = await get_current_user(request)
+    try:
+        payload = await _compute_route_payload(
+            req.pickup.lat,
+            req.pickup.lng,
+            req.dropoff.lat,
+            req.dropoff.lng,
+            req.pickup.address,
+            req.dropoff.address,
+        )
+        await _store_route_snapshot(str(user["_id"]), payload, "mobility_center_compare", transport_type="comparison")
+        return _build_compare_summary(payload, req.focus_modes)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Vergleich aktuell nicht erreichbar: {exc}")
 
 
 @router.get("/preferences")
@@ -963,8 +1065,13 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
         {"_id": 0, "car_id": 1, "title": 1, "brand": 1, "model": 1, "city": 1, "lat": 1, "lng": 1, "price_per_day": 1, "main_image": 1},
     ).to_list(150)
 
+    ev_rows = await db.charging_stations.find(
+        {"status": {"$in": ["available", "active", "online"]}},
+        {"_id": 0, "station_id": 1, "name": 1, "address": 1, "city": 1, "lat": 1, "lng": 1, "connector_types": 1},
+    ).to_list(120)
+
     markers = []
-    counts = {"taxi": 0, "scooter": 0, "car_rental": 0}
+    counts = {"taxi": 0, "scooter": 0, "ev": 0, "car_rental": 0}
 
     for driver in driver_rows:
         loc = driver_loc_map.get(driver.get("driver_id")) or driver.get("location") or {}
@@ -1033,6 +1140,26 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
             payment_methods=TRANSPORT_PAYMENT_METHODS,
         ))
 
+    for station in ev_rows:
+        elat = station.get("lat")
+        elng = station.get("lng")
+        if not elat or not elng:
+            continue
+        distance_km = haversine_distance(lat, lng, elat, elng)
+        if distance_km > radius_km:
+            continue
+        counts["ev"] += 1
+        markers.append(_service_marker(
+            "ev",
+            station.get("station_id") or f"ev-{counts['ev']}",
+            station.get("name") or "EV Hub",
+            elat,
+            elng,
+            distance_km=round(distance_km, 2),
+            subtitle=station.get("city") or station.get("address") or "EV Charging & Pick-up",
+            payment_methods=TRANSPORT_PAYMENT_METHODS,
+        ))
+
     markers.sort(key=lambda item: (item.get("distance_km") or 999, item.get("label") or ""))
     await _sync_nearby_inventory(markers[:60], counts, lat, lng)
 
@@ -1044,6 +1171,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
         "available_modes": [
             {"type": "taxi", "label": "Taxi", "live": counts["taxi"] > 0, "count": counts["taxi"]},
             {"type": "scooter", "label": "E-Scooter", "live": counts["scooter"] > 0, "count": counts["scooter"]},
+            {"type": "ev", "label": "EV Drive", "live": counts["ev"] > 0, "count": counts["ev"]},
             {"type": "bike", "label": "Fahrrad", "live": True, "count": None},
             {"type": "car_rental", "label": "Mietwagen", "live": counts["car_rental"] > 0, "count": counts["car_rental"]},
             {"type": "airport_shuttle", "label": "Airport Shuttle", "live": True, "count": None},
