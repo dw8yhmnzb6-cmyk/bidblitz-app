@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Car, CheckCircle2, Clock3, Loader2, MapPin, Navigation, Search, Star } from 'lucide-react';
+import { ArrowLeft, Car, CheckCircle2, Clock3, Loader2, MapPin, Navigation, Phone, Search, ShieldCheck, Star } from 'lucide-react';
 import { useUser } from '../store/UserContext';
 import { TaxiMap } from '../components/RealMap';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
@@ -32,6 +32,93 @@ function RideStatusBadge({ ride }) {
   return <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${item.tone}`} data-testid="taxi-customer-ride-status-badge">{item.label}</span>;
 }
 
+function DriverInfoCard({ ride }) {
+  const driver = ride?.driver || {};
+  const vehicle = driver.vehicle || {};
+  if (!ride) return null;
+  return (
+    <div className="mt-4 rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-800 p-4 text-white shadow-sm" data-testid="taxi-customer-driver-card">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-lg font-black text-cyan-300" data-testid="taxi-customer-driver-avatar">
+            {(driver.name || 'F').slice(0, 1)}
+          </div>
+          <div>
+            <p className="text-lg font-black" data-testid="taxi-customer-driver-name">{driver.name || 'Fahrer wird gesucht'}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/75">
+              <span className="rounded-full bg-white/10 px-2 py-1" data-testid="taxi-customer-driver-rating">⭐ {(driver.rating || 5).toFixed ? driver.rating.toFixed(1) : driver.rating || 5}</span>
+              <span className="rounded-full bg-white/10 px-2 py-1" data-testid="taxi-customer-driver-rides">{driver.total_rides || 0} Fahrten</span>
+              <span className="rounded-full bg-cyan-400/15 px-2 py-1 text-cyan-200" data-testid="taxi-customer-driver-eta-pill">{driver.eta_minutes || ride.eta_minutes || 4} Min</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white/10 px-3 py-2 text-right">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-white/50">Fahrzeug</p>
+          <p className="mt-1 text-sm font-bold" data-testid="taxi-customer-driver-vehicle">{vehicle.model || ride.vehicle_model || 'Taxi'}</p>
+          <p className="text-xs text-white/65" data-testid="taxi-customer-driver-plate">{vehicle.plate || ride.vehicle_plate || '—'}</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-2xl bg-white/10 px-3 py-3" data-testid="taxi-customer-driver-safety-card">
+          <div className="flex items-center gap-2 text-cyan-200"><ShieldCheck size={14} /><span className="text-xs font-semibold">Sicher</span></div>
+          <p className="mt-1 text-[11px] text-white/70">Fahrer und Fahrzeug sind geprüft.</p>
+        </div>
+        <div className="rounded-2xl bg-white/10 px-3 py-3" data-testid="taxi-customer-driver-contact-card">
+          <div className="flex items-center gap-2 text-cyan-200"><Phone size={14} /><span className="text-xs font-semibold">Kontakt</span></div>
+          <p className="mt-1 text-[11px] text-white/70">{driver.phone || 'Nummer folgt nach Fahrerzuweisung'}</p>
+        </div>
+        <div className="rounded-2xl bg-white/10 px-3 py-3" data-testid="taxi-customer-driver-price-card">
+          <div className="flex items-center gap-2 text-cyan-200"><Clock3 size={14} /><span className="text-xs font-semibold">Preis</span></div>
+          <p className="mt-1 text-[11px] text-white/70">€{Number(ride.final_fare || ride.fare_estimate || ride.estimated_fare || 0).toFixed(2)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrackingTimeline({ ride }) {
+  const steps = [
+    { id: 'requested', label: 'Anfrage gesendet', desc: 'Wir suchen gerade den besten Fahrer für dich.' },
+    { id: 'accepted', label: 'Fahrer bestätigt', desc: 'Dein Fahrer hat die Fahrt angenommen.' },
+    { id: 'arriving', label: 'Fahrer kommt an', desc: 'Der Fahrer ist auf dem Weg zu deiner Abholung.' },
+    { id: 'started', label: 'Fahrt läuft', desc: 'Du bist jetzt unterwegs.' },
+    { id: 'completed', label: 'Angekommen', desc: 'Deine Fahrt wurde abgeschlossen.' },
+  ];
+  const order = { requested: 0, accepted: 1, arriving: 2, started: 3, completed: 4, cancelled: -1 };
+  const currentIndex = order[ride?.status] ?? 0;
+  return (
+    <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-tracking-timeline-card">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Tracking</p>
+          <h3 className="mt-1 text-lg font-black">Deine Fahrt Schritt für Schritt</h3>
+        </div>
+        <div className="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white" data-testid="taxi-customer-tracking-current-status">{ride?.status || 'requested'}</div>
+      </div>
+      <div className="mt-4 space-y-3">
+        {steps.map((step, index) => {
+          const done = currentIndex >= index;
+          const active = currentIndex === index;
+          return (
+            <motion.div key={step.id} layout className="flex items-start gap-3 rounded-2xl border px-3 py-3 transition-all ${active ? 'border-cyan-200 bg-cyan-50' : 'border-slate-200 bg-slate-50'}" data-testid={`taxi-customer-timeline-step-${step.id}`}>
+              <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full ${done ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                <CheckCircle2 size={16} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-slate-900">{step.label}</p>
+                  {active ? <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-700">Jetzt</span> : null}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{step.desc}</p>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function TaxiPage({ onNavigate }) {
   const { user } = useUser();
   const { search } = useTaxiGeocoder({ debounceMs: 180 });
@@ -61,6 +148,7 @@ export default function TaxiPage({ onNavigate }) {
   const [forOther, setForOther] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
+  const [suggestedPlaces, setSuggestedPlaces] = useState([]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -130,6 +218,29 @@ export default function TaxiPage({ onNavigate }) {
     const timer = window.setInterval(loadActiveRide, 4000);
     return () => window.clearInterval(timer);
   }, [activeRide, loadActiveRide]);
+
+  useEffect(() => {
+    const merged = [];
+    favoriteRoutes.slice(0, 2).forEach((route) => {
+      if (route?.dropoff?.address) merged.push({ type: 'route', label: route.dropoff.address, subtitle: route.pickup?.address || 'Häufig gefahren', lat: route.dropoff.lat, lng: route.dropoff.lng });
+    });
+    recentAddresses.slice(0, 3).forEach((address) => {
+      if (address?.address) merged.push({ type: 'recent', label: address.address, subtitle: `Zuletzt genutzt · ${address.use_count || 1}×`, lat: address.lat, lng: address.lng });
+    });
+    favorites.slice(0, 3).forEach((favorite) => {
+      if (favorite?.address) merged.push({ type: 'favorite', label: favorite.name, subtitle: favorite.address, lat: favorite.latitude, lng: favorite.longitude });
+    });
+    const deduped = [];
+    const seen = new Set();
+    merged.forEach((item) => {
+      const key = `${item.label}-${item.subtitle}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(item);
+      }
+    });
+    setSuggestedPlaces(deduped.slice(0, 6));
+  }, [favoriteRoutes, recentAddresses, favorites]);
 
   useEffect(() => {
     if (!pickup?.lat) return;
@@ -265,6 +376,11 @@ export default function TaxiPage({ onNavigate }) {
   const handleFavoriteRouteSelect = (route) => {
     if (route?.pickup) setPickup(route.pickup);
     if (route?.dropoff) setDropoff(route.dropoff);
+    setError('');
+  };
+
+  const handleSuggestedPlace = (place) => {
+    setDropoff({ address: place.subtitle && place.type === 'favorite' ? place.subtitle : place.label, lat: place.lat, lng: place.lng });
     setError('');
   };
 
@@ -440,7 +556,7 @@ export default function TaxiPage({ onNavigate }) {
               ))}
             </div>
 
-            <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-smart-suggestions-card">
+            <div className={`mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm ${bottomSheetOpen ? 'opacity-40' : ''}`} data-testid="taxi-customer-smart-suggestions-card">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Intelligente Suche</p>
@@ -469,6 +585,23 @@ export default function TaxiPage({ onNavigate }) {
               </div>
             </div>
 
+            <div className={`mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm ${bottomSheetOpen ? 'opacity-40' : ''}`} data-testid="taxi-customer-best-flow-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Schneller bestellen</p>
+                  <h3 className="mt-1 text-lg font-black">Deine intelligenten Vorschläge</h3>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {suggestedPlaces.map((place, index) => (
+                  <button key={`suggested-${index}`} onClick={() => handleSuggestedPlace(place)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left" data-testid={`taxi-customer-suggested-place-${index}`}>
+                    <div className="text-sm font-semibold text-slate-900">{place.label}</div>
+                    <div className="mt-1 text-[11px] text-slate-500">{place.subtitle}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {activeRide ? (
               <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-active-ride-card">
                 <div className="flex items-start justify-between gap-3">
@@ -492,6 +625,8 @@ export default function TaxiPage({ onNavigate }) {
                   <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-price">€{Number(activeRide.final_fare || activeRide.estimated_fare || 0).toFixed(2)}</div>
                   <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-eta">{activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min</div>
                 </div>
+                <DriverInfoCard ride={activeRide} />
+                <TrackingTimeline ride={activeRide} />
                 <div className="mt-4 space-y-2" data-testid="taxi-customer-live-tracking-steps">
                   {[
                     { id: 'requested', label: 'Anfrage gesendet', done: ['requested', 'accepted', 'arriving', 'started', 'completed'].includes(activeRide.status) },
@@ -624,6 +759,13 @@ export default function TaxiPage({ onNavigate }) {
                     </button>
                   );
                 })}
+              </div>
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" data-testid="taxi-customer-bottom-sheet-cta-state">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-semibold text-slate-700">Ausgewählt</span>
+                  <span className="font-black text-slate-900">{VEHICLES.find((v) => v.id === selectedVehicle)?.label || 'Fahrt'}</span>
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{dropoff.address ? `Ziel: ${dropoff.address}` : 'Bitte Ziel auswählen'}</div>
               </div>
               <button onClick={handleBookRide} disabled={!selectedEstimate || booking} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-semibold text-white disabled:opacity-50" data-testid="taxi-customer-bottom-sheet-book-button">
                 {booking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
