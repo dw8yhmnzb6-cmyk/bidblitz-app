@@ -5,11 +5,19 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — CI/CD Stabilisierung abgeschlossen
+## Current Focus — Mobility Center V1 vertieft + Game Center V1 live
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
-- Die GitHub-Actions-CI wurde jetzt repariert: Backend-Abhängigkeiten installieren wieder sauber, Frontend-ESLint läuft ohne Errors, und der Backend-Job nutzt nun einen stabilen FastAPI-Smoke-Test statt flakey historischer E2E-Suiten.
-- Nächster Schwerpunkt: Mobility Center V1 vertiefen (Parking, Carsharing, EV Charging, Booking-Tracking enger bündeln) und danach Game Center / Commerce Analytics.
+- Die GitHub-Actions-CI bleibt stabil: Backend-Abhängigkeiten installieren wieder sauber, Frontend-ESLint läuft ohne Errors, und der Backend-Job nutzt einen stabilen FastAPI-Smoke-Test statt flakey historischer E2E-Suiten.
+- Neu live: Mobility Center mit klarem 4-Wege-Vergleich (Taxi, Scooter, EV Drive, Car Rental), EV-Live-Countern auf der Mobility Map und Game Center V1 Hub für Seasons, Achievements und VIP Club.
+- Nächster Schwerpunkt: Mobility Center weiter vertiefen (Parking, Carsharing, EV Charging, Booking-Tracking enger bündeln) und danach Commerce-/Game-Analytics ausbauen.
+
+### 25.06.2026 (Mobility Compare + Game Center V1) ✅
+- 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.
+- 🟢 **Game Center V1 Hub live** (`backend/routes/gaming.py`, `frontend/src/pages/GamingPage.jsx`, `frontend/src/pages/AchievementsPage.jsx`, `frontend/src/App.js`): Season-Overview, Rank, Milestones, Achievements-Summary und VIP-Club-Einstieg sind jetzt direkt im Gaming-Hub sichtbar; Achievements-Seite hat einen sauberen Rückweg zurück ins Game Center.
+- 🟢 **Testbarkeit erweitert**: neue `data-testid`-Abdeckung für Mobility Compare Cards, Best-of-Widgets, EV-Live-Counter, Game-Center-V1-Widgets und Achievements-Navigation.
+- ✅ **Verifiziert**: Python-Lint auf geänderten Backend-Dateien PASS, JS-Lint auf geänderten Frontend-Dateien PASS, FastAPI-TestClient PASS, Browser-Smoke PASS, `testing_agent` Iteration 148 = 14/14 Backend + 100% Frontend PASS.
+- ⚠️ **Hinweis**: Historische globale ESLint-Warnings außerhalb der geänderten Dateien bleiben im Projekt als separater Backlog-Punkt bestehen, blockieren diesen Ausbau aber nicht.
 
 ### 24.06.2026 (CI/CD Repair: Backend Dependencies + Frontend ESLint) ✅
 - 🟢 **Backend-CI stabilisiert** (`backend/requirements.txt`, `.github/workflows/ci.yml`, `backend/tests/test_ci_smoke.py`): problematische Versionen für `emergentintegrations`, `librt` und `s5cmd` wurden auf installierbare Releases angehoben; der GitHub-Workflow nutzt jetzt gezielt `pytest backend/tests/test_ci_smoke.py` als zuverlässigen Backend-Gate.

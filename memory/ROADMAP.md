@@ -4,10 +4,13 @@
 - Mobility Center V1 vertiefen: Parking, Carsharing, EV Charging, Booking-Tracking und Saved/Frequent Routes enger im neuen Hub bündeln
 - Smart Invoice Follow-up: Payment-Link Reminder-Kampagnen (Batch/Schedule), echte Webhook-Settlement-Härtung und öffentliche Payment-Seite um Success/Retry/Resume weiter vertiefen
 - Frontend-ESLint-Warnings schrittweise abbauen, damit die Codebase nach dem CI-Fix nicht nur fehlerfrei, sondern langfristig wartbarer wird
+- Game Center V1 nach dem neuen Hub um echte Season-Quests, XP-Claims und VIP-Perk-Aktivierungen vertiefen
 
 ## P1
 - Commerce: Live-Auctions-Seed/Programmplanung, Live-Produkt-Pinning und dedizierte Commerce-Analytics für Conversion, Flash-Sale-Umsatz und CTA-Klicks ergänzen
 - Merchant Commerce: Bulk-Flash-Sale-Kampagnen, Scheduler und Performance-Rankings ergänzen
+- Mobility: Compare-Flow nach dem neuen 4-Wege-Vergleich um Saved/Frequent Routes, One-Tap-Rebook und Parking-/Carsharing-Kombinationen erweitern
+- Game Center: Achievements-/Season-Daten stärker mit Rewards, Referral und VIP Drops koppeln
 - Move & Earn: echte native Schrittquellen (HealthKit/Google Fit/Pedometer) sauber anbinden und Preview-Sync von simulierten Device-Werten auf reale Sensor-Provider erweitern
 - Move & Earn: Ride & Earn / Eco Rewards noch tiefer mit realen Scooter-/Bike-/Taxi-/EV-Events, Merchant-QR-Events und Referral-/Friends-Logik koppeln
 - Move & Earn: Admin-Analytics um DAU/MAU, Reward-Kosten pro Typ, ROI und gesponserte Rewards ausbauen

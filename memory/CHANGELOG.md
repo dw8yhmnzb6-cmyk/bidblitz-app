@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 25.06.2026 — Mobility Compare + Game Center V1
+- `backend/routes/mobility_platform.py`: EV Drive als reguläre Mobility-Option ergänzt, neuer Endpoint `POST /api/mobility-platform/compare-summary` gebaut und Nearby-Inventory um EV-Hubs/Counts erweitert
+- `frontend/src/pages/MobilityCenterPage.jsx`: neues 4-Wege-Vergleichsmodul mit Presets aus letzter Fahrt bzw. Home/Work, Compare Cards und Best-of-Kacheln für günstigste/schnellste/eco/balance
+- `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`: EV in Live-Countern ergänzt und neues Core-Comparison-Panel für Taxi, Scooter, EV und Car Rental direkt nach Routenberechnung eingebaut
+- `backend/routes/gaming.py` + `frontend/src/pages/GamingPage.jsx`: Game Center V1 Hub mit Season Rank, Season Milestones, Achievements-Summary, VIP Club und Podium ergänzt
+- `frontend/src/pages/AchievementsPage.jsx` + `frontend/src/App.js`: Back-Button und sauberer Rücksprung vom Achievements-Screen zurück ins Game Center ergänzt
+- Verifiziert: FastAPI-TestClient PASS, Browser-Smoke PASS, `testing_agent` Iteration 148 PASS (14/14 Backend, 100% Frontend)
+
 ## 24.06.2026 — CI/CD Repair (Backend Dependencies + Frontend ESLint)
 - `backend/requirements.txt` bereinigt: `emergentintegrations` auf `0.2.0`, `librt` auf `0.11.0`, `s5cmd` auf `0.3.3` angehoben
 - GitHub Actions Backend-Job auf stabilen Smoke-Test umgestellt: `pytest backend/tests/test_ci_smoke.py` statt der flakey historischen Komplettsuite
