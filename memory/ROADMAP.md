@@ -1,7 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- Mobility Center V1 vertiefen: Parking, Carsharing, EV Charging, Booking-Tracking und Saved/Frequent Routes enger im neuen Hub bündeln
+- Mobility Center V1 vertiefen: Parking, Carsharing, EV Charging sowie Saved/Frequent Routes enger im neuen Hub bündeln
 - Smart Invoice Follow-up: Payment-Link Reminder-Kampagnen (Batch/Schedule), echte Webhook-Settlement-Härtung und öffentliche Payment-Seite um Success/Retry/Resume weiter vertiefen
 - Frontend-ESLint-Warnings schrittweise abbauen, damit die Codebase nach dem CI-Fix nicht nur fehlerfrei, sondern langfristig wartbarer wird
 - Game Center V1 nach dem neuen Hub um echte Season-Quests, XP-Claims und VIP-Perk-Aktivierungen vertiefen
@@ -10,6 +10,7 @@
 - CI-/Build-Härtung fortsetzen: historische Dependency-Pins weiter reduzieren und Integrations-abhängige Module langfristig sauberer von Core-/Smoke-Tests entkoppeln
 - Taxi nächster Schritt: letzte Ziele noch stärker personalisieren, Fahrerkarte/Ankunfts-Tracking weiter glätten und gespeicherte Orte/Empfängerflows noch stärker in den Bestell-Button-Flow einbinden
 - Taxi nächster Schritt: Vorschlagslogik noch stärker personalisieren (Home/Work/Favoriten/letzte Ziele dynamischer mischen) und Search-to-Book noch direkter machen
+- Mobility nächster Schritt: Tracking jetzt mit Rebook/Support/Push-Remindern verknüpfen und danach Commerce Center wieder priorisieren
 
 ## P1
 - Commerce: Live-Auctions-Seed/Programmplanung, Live-Produkt-Pinning und dedizierte Commerce-Analytics für Conversion, Flash-Sale-Umsatz und CTA-Klicks ergänzen

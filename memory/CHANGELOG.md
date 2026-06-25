@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 25.06.2026 — Mobility Booking Tracking enger gebündelt
+- `backend/routes/mobility_platform.py`: Tracking-Payload für Booking-Details erweitert um `live_status`, `phase_label`, `next_event_label`, `progress_percent`, `timeline`, `route_points` und interpolierte `assigned_resource.live_position`
+- `frontend/src/pages/MobilityBookingTrackingPage.jsx`: Phase-Pill, Next-Event-Karte, Timeline-Karte und verbesserte Live-Map-/Fortschrittsdarstellung ergänzt
+- `frontend/src/pages/MobilityCenterPage.jsx`: aktive Tracking-Entry-Card für laufende Buchungen inkl. CTA `Tracking öffnen` ergänzt
+- Verifiziert: Browser-Smoke PASS, API-Checks PASS, `testing_agent` Iteration 156 PASS (Backend 22/22, Frontend 18/18), dedizierter Frontend-Check PASS, dedizierter Backend-Check PASS
+
 ## 25.06.2026 — Taxi Uber-Flow Phase 3
 - `frontend/src/components/taxi/useTaxiGeocoder.js`: Suchflow gehärtet; Frontend fällt jetzt sauber zwischen direkter Mapbox-Suche und Backend-Proxy zurück, damit Teilbegriffe wie `Pris` auch bei Token-/Deploy-Abweichungen stabil Treffer liefern
 - `backend/routes/taxi.py`: aktive Fahrten um `driver_bearing` ergänzt sowie neue Ride-Chat-Endpunkte `GET/POST /api/taxi/rides/{ride_id}/messages` eingebaut
