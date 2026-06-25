@@ -25,6 +25,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Alte Taxi-B2B-Flows aus dem Kundenpfad entfernt** (`frontend/src/App.js`): `/taxi-partner`, `/taxi-dashboard` und `/taxi/pro` führen im Frontend nicht mehr in die alte Taxi-B2B-Oberfläche zurück.
 - ✅ **Verifiziert**: Browser-Smoke PASS und `testing_agent` Iteration 150 = Backend 15/15 PASS, Frontend 100% PASS. Kurzsuche `Pot` / `Ale`, Auto-Zoom, Preis-Updates und Umleitungen wurden explizit bestätigt.
 
+### 25.06.2026 (CI-Pin-Fix + Taxi noch näher an Uber) ✅
+- 🟢 **Gemeldeten CI-Fehler repariert** (`backend/requirements.txt`): problematische Linux-x64 Pins bereinigt. Verifiziert wurden explizit: `greenlet==3.2.5`, `http_ece` entfernt, `jq` entfernt, `multitasking==0.0.13`, `numpy==2.2.6`.
+- 🟢 **Taxi weiter in Richtung Uber geschärft** (`frontend/src/pages/TaxiPage.jsx`): Fahrzeug-Bottom-Sheet nach Zielauswahl, Schnellziele `Home` / `Work` / `Flughafen` / `Bahnhof` direkt unter der Suche und eine glattere Live-Tracking-Ansicht nach Buchung ergänzt.
+- 🟢 **Kundenfluss priorisiert**: alte Taxi-Pro-/Partner-Routen bleiben aus dem Kundenpfad draußen; `/taxi` ist weiterhin klar auf einfache Endkunden-Buchung fokussiert.
+- ✅ **Verifiziert**: `testing_agent` Iteration 151 = Backend 13/13 PASS, Frontend 100% PASS. Der gemeldete CI-Bug wurde explizit gegen Requirements geprüft, und der neue Taxi-Kundenflow inkl. Kurzsuche, Bottom-Sheet, Schnellzielen und Redirects wurde erfolgreich getestet.
+
 ### 24.06.2026 (CI/CD Repair: Backend Dependencies + Frontend ESLint) ✅
 - 🟢 **Backend-CI stabilisiert** (`backend/requirements.txt`, `.github/workflows/ci.yml`, `backend/tests/test_ci_smoke.py`): problematische Versionen für `emergentintegrations`, `librt` und `s5cmd` wurden auf installierbare Releases angehoben; der GitHub-Workflow nutzt jetzt gezielt `pytest backend/tests/test_ci_smoke.py` als zuverlässigen Backend-Gate.
 - 🟢 **Frontend-ESLint wieder grün auf Error-Level** (`frontend/.eslintrc.json`, `frontend/src/App.js`, `frontend/src/components/POSGuidedTour.jsx` plus mehrere betroffene Pages/Stores): fehlende ESLint-Konfiguration ergänzt, Parsing-/Import-Reihenfolge-/Undefined-/`confirm()`-Blocker bereinigt. `npx eslint src --ext .js,.jsx` läuft jetzt mit **0 Errors**.

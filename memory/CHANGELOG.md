@@ -15,6 +15,11 @@
 - `frontend/src/App.js`: alte Frontend-Routen `/taxi-partner`, `/taxi-dashboard`, `/taxi/pro` aus dem Kundenpfad entfernt und auf Home umgeleitet
 - Verifiziert: `testing_agent` Iteration 150 PASS (Backend 15/15, Frontend 100%), inklusive Kurzsuche `Pot`/`Ale`, Karten-Zoom und B2B-Redirects
 
+## 25.06.2026 — CI Pin Fix + Taxi UX weiter verfeinert
+- `backend/requirements.txt` bereinigt: `greenlet` auf `3.2.5`, `multitasking` auf `0.0.13`, `numpy` auf `2.2.6`; unnötige/problematische Pins `http_ece` und `jq` entfernt
+- `frontend/src/pages/TaxiPage.jsx` erweitert: Bottom-Sheet für Fahrzeuge, Schnellziele `Home` / `Work` / `Flughafen` / `Bahnhof`, glattere Live-Tracking-Steps für aktive Fahrt
+- Verifiziert: `testing_agent` Iteration 151 PASS (Backend 13/13, Frontend 100%), inklusive expliziter CI-Requirements-Prüfung und Taxi-UX-Flow-Test
+
 ## 24.06.2026 — CI/CD Repair (Backend Dependencies + Frontend ESLint)
 - `backend/requirements.txt` bereinigt: `emergentintegrations` auf `0.2.0`, `librt` auf `0.11.0`, `s5cmd` auf `0.3.3` angehoben
 - GitHub Actions Backend-Job auf stabilen Smoke-Test umgestellt: `pytest backend/tests/test_ci_smoke.py` statt der flakey historischen Komplettsuite
