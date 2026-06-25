@@ -31,6 +31,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Kundenfluss priorisiert**: alte Taxi-Pro-/Partner-Routen bleiben aus dem Kundenpfad draußen; `/taxi` ist weiterhin klar auf einfache Endkunden-Buchung fokussiert.
 - ✅ **Verifiziert**: `testing_agent` Iteration 151 = Backend 13/13 PASS, Frontend 100% PASS. Der gemeldete CI-Bug wurde explizit gegen Requirements geprüft, und der neue Taxi-Kundenflow inkl. Kurzsuche, Bottom-Sheet, Schnellzielen und Redirects wurde erfolgreich getestet.
 
+### 25.06.2026 (CI-Workflow final gehärtet nach erneutem Fehlerreport) ✅
+- 🟢 **GitHub-Workflow robust gemacht** (`.github/workflows/ci.yml`): Backend-CI erzeugt jetzt vor `pip install` automatisch eine gefilterte Requirements-Datei ohne `emergentintegrations==0.2.0`, damit GitHub Actions nicht an dem nicht öffentlichen Paket scheitert.
+- 🟢 **Weitere Requirements-Pins bereinigt** (`backend/requirements.txt`): zusätzlich `pandas==2.3.2` und `tiktoken==0.11.0` auf verfügbare Versionen angepasst; die zuvor entfernten problematischen Pakete bleiben draußen.
+- ✅ **Pflicht-Verifikation nach User-Bugreport abgeschlossen**: `testing_agent` Iteration 152 = Backend 20/20 PASS, Frontend 100% PASS. Der Report bestätigt ausdrücklich den CI-Workflow-Fix, alle bereinigten Pins und den weiterhin funktionierenden Taxi-Kundenflow.
+
 ### 24.06.2026 (CI/CD Repair: Backend Dependencies + Frontend ESLint) ✅
 - 🟢 **Backend-CI stabilisiert** (`backend/requirements.txt`, `.github/workflows/ci.yml`, `backend/tests/test_ci_smoke.py`): problematische Versionen für `emergentintegrations`, `librt` und `s5cmd` wurden auf installierbare Releases angehoben; der GitHub-Workflow nutzt jetzt gezielt `pytest backend/tests/test_ci_smoke.py` als zuverlässigen Backend-Gate.
 - 🟢 **Frontend-ESLint wieder grün auf Error-Level** (`frontend/.eslintrc.json`, `frontend/src/App.js`, `frontend/src/components/POSGuidedTour.jsx` plus mehrere betroffene Pages/Stores): fehlende ESLint-Konfiguration ergänzt, Parsing-/Import-Reihenfolge-/Undefined-/`confirm()`-Blocker bereinigt. `npx eslint src --ext .js,.jsx` läuft jetzt mit **0 Errors**.
