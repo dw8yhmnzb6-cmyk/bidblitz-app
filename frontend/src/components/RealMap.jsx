@@ -167,6 +167,7 @@ export const TaxiMap = ({
   pickup,
   dropoff,
   driverLocation,
+  nearbyDrivers = [],
   onPickupSelect,
   onDropoffSelect,
   height = '250px',
@@ -205,6 +206,16 @@ export const TaxiMap = ({
       popup: 'Dein Fahrer',
     });
   }
+
+  nearbyDrivers.forEach((driver, index) => {
+    markers.push({
+      id: `nearby-driver-${driver.id || index}`,
+      lat: driver.lat,
+      lng: driver.lng,
+      icon: ICONS.driver,
+      popup: driver.popup || 'Fahrer in der Nähe',
+    });
+  });
 
   const route = pickup && dropoff ? [[pickup.lat, pickup.lng], [dropoff.lat, dropoff.lng]] : null;
 

@@ -1,1306 +1,378 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useI18n } from '../store/I18nContext';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, Car, Clock3, Loader2, MapPin, Navigation, Search, Star } from 'lucide-react';
 import { useUser } from '../store/UserContext';
-import ReviewModal from '../components/ReviewModal';
-import SplitPaymentModal from '../components/SplitPaymentModal';
-import LiveChat from '../components/LiveChat';
-import GroupOrderModal from '../components/GroupOrderModal';
-import GroupTrackerBanner from '../components/GroupTrackerBanner';
-import KYCBanner from '../components/KYCBanner';
-import TaxiHistoryView from '../components/taxi/TaxiHistoryView';
-import TaxiFavoritesModal from '../components/taxi/TaxiFavoritesModal';
-import TaxiSaveFavoriteModal from '../components/taxi/TaxiSaveFavoriteModal';
-import TaxiDriverOnboardingModal from '../components/taxi/TaxiDriverOnboardingModal';
-import TaxiBookingSheet from '../components/taxi/TaxiBookingSheet';
-import TaxiBookingForm from '../components/taxi/TaxiBookingForm';
-import TaxiTrackingSheet from '../components/taxi/TaxiTrackingSheet';
-import useTaxiVoiceover from '../hooks/useTaxiVoiceover';
-import TaxiBottomSheet from '../components/taxi/TaxiBottomSheet';
-import TaxiAddressSearchSheet from '../components/taxi/TaxiAddressSearchSheet';
-import TaxiOrderOptions from '../components/taxi/TaxiOrderOptions';
-import TaxiSideMenu from '../components/taxi/TaxiSideMenu';
-import TaxiNoteModal from '../components/taxi/TaxiNoteModal';
-import TaxiHeader from '../components/taxi/TaxiHeader';
-import TaxiTypeSelector from '../components/taxi/TaxiTypeSelector';
-import MiniLeafletMap from '../components/MiniLeafletMap';
+import { TaxiMap } from '../components/RealMap';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
-import { useTaxiState } from '../hooks/useTaxiState';
-import { useGeolocation } from '../hooks/useGeolocation';
-import { useTaxiMap } from '../hooks/useTaxiMap';
 import * as api from '../services/taxiApi';
 
+const VEHICLES = [
+  { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig', accent: '#111827' },
+  { id: 'premium', label: 'Comfort', subtitle: 'Mehr Platz & Komfort', accent: '#0F766E' },
+  { id: 'van', label: 'XL', subtitle: 'Für Gruppen & Gepäck', accent: '#7C3AED' },
+];
+
+function RideStatusBadge({ ride }) {
+  const statusMap = {
+    requested: { label: 'Fahrer wird gesucht', tone: 'bg-amber-500/15 text-amber-300' },
+    accepted: { label: 'Fahrer bestätigt', tone: 'bg-cyan-500/15 text-cyan-300' },
+    arriving: { label: 'Fahrer kommt', tone: 'bg-cyan-500/15 text-cyan-300' },
+    started: { label: 'Fahrt läuft', tone: 'bg-emerald-500/15 text-emerald-300' },
+    completed: { label: 'Abgeschlossen', tone: 'bg-emerald-500/15 text-emerald-300' },
+    cancelled: { label: 'Storniert', tone: 'bg-red-500/15 text-red-300' },
+  };
+  const item = statusMap[ride?.status] || statusMap.requested;
+  return <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${item.tone}`} data-testid="taxi-customer-ride-status-badge">{item.label}</span>;
+}
+
 export default function TaxiPage({ onNavigate }) {
-  const { t } = useI18n();
   const { user } = useUser();
-  const { search: geocodeSearch, geocodeOnBlur: geocodeOnBlurHook } = useTaxiGeocoder();
-  
-  // Navigation helper (replaces useNavigate)
-  const navigate = (path) => {
-    if (onNavigate) onNavigate(path);
-  };
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HOOKS: Extracted State Management
-  // ═══════════════════════════════════════════════════════════════════════════
-  
-  const state = useTaxiState();
-  
-  // Destructure commonly used state
-  const {
-    view, setView,
-    taxiType, setTaxiType,
-    pickup, setPickup,
-    dropoff, setDropoff,
-    estimates, setEstimates,
-    selectedVehicle, setSelectedVehicle,
-    loading, setLoading,
-    error, setError,
-    activeRide, setActiveRide,
-    rideHistory, setRideHistory,
-    moduleEnabled, setModuleEnabled,
-    moduleMessage, setModuleMessage,
-    surge, setSurge,
-    userBalance, setUserBalance,
-    mapStyle, setMapStyle,
-    showMapStyles, setShowMapStyles,
-    showReview, setShowReview,
-    reviewRideId, setReviewRideId,
-    showSplit, setShowSplit,
-    splitRideId, setSplitRideId,
-    splitTotal, setSplitTotal,
-    showLiveChat, setShowLiveChat,
-    showGroupRide, setShowGroupRide,
-    showDriverOnboarding, setShowDriverOnboarding,
-    onboardingType, setOnboardingType,
-    favorites, setFavorites,
-    showFavorites, setShowFavorites,
-    showSaveFavorite, setShowSaveFavorite,
-    favoriteForm, setFavoriteForm,
-    pickupSuggestions, setPickupSuggestions,
-    dropoffSuggestions, setDropoffSuggestions,
-    showPickupSugg, setShowPickupSugg,
-    showDropoffSugg, setShowDropoffSugg,
-    savedPlaces, setSavedPlaces,
-    showSaveModal, setShowSaveModal,
-    saveName, setSaveName,
-    saveIcon, setSaveIcon,
-    activePoiCategory, setActivePoiCategory,
-    showPoiFilter, setShowPoiFilter,
-    poiLoading, setPoiLoading,
-    orderOptions, setOrderOptions,
-    showOrderOptions, setShowOrderOptions,
-    searchSheetMode, setSearchSheetMode,
-    waypoints, setWaypoints,
-    recentAddresses, setRecentAddresses,
-    showSideMenu, setShowSideMenu,
-  } = state;
+  const { search } = useTaxiGeocoder({ debounceMs: 180 });
 
-  // Inline editor state for per-address notes
-  const [noteTarget, setNoteTarget] = useState(null); // null | { type: 'pickup' | 'dropoff' | 'waypoint', index?: number }
-  const [vehiclePriority, setVehiclePriority] = useState('fastest');
-  const [pickupCity, setPickupCity] = useState('');
-  const [citySaved, setCitySaved] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
+  const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
+  const [pickupSuggestions, setPickupSuggestions] = useState([]);
+  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+  const [estimating, setEstimating] = useState(false);
+  const [booking, setBooking] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedVehicle, setSelectedVehicle] = useState('standard');
+  const [estimates, setEstimates] = useState([]);
+  const [surge, setSurge] = useState(null);
+  const [nearbyDrivers, setNearbyDrivers] = useState([]);
+  const [activeRide, setActiveRide] = useState(null);
+  const [searchMode, setSearchMode] = useState('dropoff');
 
-  // Live driver availability (count near pickup, filtered by options)
-  const [nearbyCount, setNearbyCount] = useState(null); // null = unknown, 0+ = known
-  const [nearbyDrivers, setNearbyDrivers] = useState([]); // for live pulse markers on map
-  const [promo, setPromo] = useState(null); // {code, label, discount}
-  const [tariffZone, setTariffZone] = useState(null); // {id, name}
-  const [timeTariff, setTimeTariff] = useState(null); // {multiplier, label, night, weekend, holiday}
-
-  // Favorite routes (top pickup→dropoff pairs from ride history)
-  const [favoriteRoutes, setFavoriteRoutes] = useState([]);
-
-  // Toggle body class for fullscreen booking mode (hides BottomNav, AIChat, FAB-cluster, cookie banner)
   useEffect(() => {
-    const inMapFlow = moduleEnabled && (
-      (view === 'book' && taxiType) ||
-      (view === 'tracking' && activeRide)
+    if (!navigator.geolocation) {
+      setPickup((prev) => ({ ...prev, address: 'Berlin Mitte' }));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const next = { lat: position.coords.latitude, lng: position.coords.longitude, address: 'Dein Standort' };
+        setPickup(next);
+        const address = await api.reverseGeocode(next.lat, next.lng);
+        if (address) setPickup((prev) => ({ ...prev, address }));
+      },
+      () => setPickup((prev) => ({ ...prev, address: 'Berlin Mitte' })),
+      { enableHighAccuracy: true, timeout: 10000 },
     );
-    if (inMapFlow) {
-      document.body.classList.add('taxi-fullscreen-mode');
-    } else {
-      document.body.classList.remove('taxi-fullscreen-mode');
-    }
-    return () => document.body.classList.remove('taxi-fullscreen-mode');
-  }, [view, taxiType, moduleEnabled, activeRide]);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HOOKS: Map + Geolocation
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // Map-error state surfaced when Mapbox fails (invalid token, network, etc.)
-  const [mapError, setMapError] = useState(null);
-  const [mapReady, setMapReady] = useState(false);
-  const [mapRetrySeed, setMapRetrySeed] = useState(0);
-  const [mapRetrying, setMapRetrying] = useState(false);
-  const [mapRetryCount, setMapRetryCount] = useState(0);
-  const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
-  const [showTripReplay, setShowTripReplay] = useState(false);
-  const [scheduleMode, setScheduleMode] = useState("now"); // 'now' | 'later'
-
-  // Surge zones — synthesized from `surge` state in nearby cells for the heatmap overlay.
-  // In production this would come from a backend `/api/taxi/surge-zones` endpoint.
-  const surgeZones = useMemo(() => {
-    if (!surge?.active || !pickup?.lat) return null;
-    const m = surge.multiplier || 1.2;
-    // Generate 8 zones around the pickup (radius ~600m) for visual interest
-    const zones = [];
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const dx = Math.cos(angle) * 0.005;
-      const dy = Math.sin(angle) * 0.005;
-      zones.push({
-        lat: pickup.lat + dy,
-        lng: pickup.lng + dx,
-        multiplier: m * (0.9 + Math.random() * 0.3),
-      });
-    }
-    // hot center
-    zones.push({ lat: pickup.lat, lng: pickup.lng, multiplier: m });
-    return zones;
-  }, [surge?.active, surge?.multiplier, pickup?.lat, pickup?.lng]);
-
-  const {
-    mapContainerRef,
-    mapRef,
-    pickupMarkerRef,
-    loadPOIs,
-    driverPathRef,
-  } = useTaxiMap({
-    pickup, setPickup,
-    dropoff, setDropoff,
-    taxiType,
-    retrySeed: mapRetrySeed,
-    mapStyle,
-    activePoiCategory, setActivePoiCategory,
-    setPoiLoading,
-    driverLocation: activeRide?.driver_lat && activeRide?.driver_lng
-      ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng }
-      : null,
-    onError: setMapError,
-    onReadyChange: setMapReady,
-    surgeZones,
-    showTripReplay,
-    nearbyDrivers,
-  });
-
-  // Expose so the activeRide-status effect can preload the server-recorded path on completion.
-  useEffect(() => {
-    if (typeof window !== "undefined") window.__taxiDriverPathRef = driverPathRef;
-  }, [driverPathRef]);
-
-  const {
-    currentAddress,
-    loadingLocation,
-    permissionState,
-    gpsHelperText,
-    getCurrentLocation,
-  } = useGeolocation({ setPickup, mapRef, pickupMarkerRef });
-
-  const retryMap = useCallback((source = 'manual') => {
-    setMapRetrying(true);
-    setMapRetrySeed((prev) => prev + 1);
-    setMapError(null);
-    setMapRetryCount((prev) => (source === 'auto' ? prev + 1 : 1));
-    if ((!pickup?.lat || pickup.lat === 0) && !loadingLocation) {
-      getCurrentLocation({ silent: source === 'auto' });
-    }
-    window.setTimeout(() => setMapRetrying(false), 1400);
-  }, [pickup?.lat, loadingLocation, getCurrentLocation]);
-
-  useEffect(() => {
-    if (!mapError) {
-      setMapRetryCount(0);
-      return;
-    }
-    if (mapRetryCount >= 2) return;
-    const timer = window.setTimeout(() => {
-      retryMap('auto');
-    }, mapRetryCount === 0 ? 1800 : 3200);
-    return () => window.clearTimeout(timer);
-  }, [mapError, mapRetryCount, retryMap]);
-
-  // Voiceover (Web Speech API) — announces ride status transitions in German
-  const voiceover = useTaxiVoiceover(activeRide);
-
-  // Get current GPS location on mount + fetch recent addresses + favorite routes
-  useEffect(() => {
-    getCurrentLocation();
-    (async () => {
-      try {
-        const [recent, routes] = await Promise.all([
-          api.fetchRecentAddresses(10),
-          api.fetchFavoriteRoutes(5),
-        ]);
-        setRecentAddresses(recent);
-        setFavoriteRoutes(routes);
-      } catch {}
-    })();
-  }, [getCurrentLocation, setRecentAddresses]);
-
-  // City detection from pickup address (used for City-Defaults feature)
-  useEffect(() => {
-    if (!pickup?.address) { setPickupCity(''); return; }
-    // Cheap heuristic: city is usually 2nd-to-last comma segment, or zip+city
-    const parts = pickup.address.split(',').map(s => s.trim()).filter(Boolean);
-    let city = '';
-    for (const p of parts) {
-      const m = p.match(/^\d{4,5}\s+(.+)$/);
-      if (m) { city = m[1]; break; }
-    }
-    if (!city && parts.length >= 2) {
-      city = parts[parts.length - 2].replace(/^\d{4,5}\s+/, '');
-    }
-    setPickupCity(city.split(' ')[0] || '');
-  }, [pickup?.address]);
-
-  // Load saved city defaults whenever pickupCity changes
-  useEffect(() => {
-    if (!pickupCity) { setCitySaved(false); return; }
-    (async () => {
-      const saved = await api.fetchCityDefault(pickupCity);
-      if (saved?.options) {
-        setOrderOptions((prev) => ({ ...prev, ...saved.options }));
-        setCitySaved(true);
-      } else {
-        setCitySaved(false);
-      }
-    })();
-  }, [pickupCity, setOrderOptions]);
-
-  const handleSaveCityDefault = async () => {
-    if (!pickupCity) return;
-    const ok = await api.saveCityDefault(pickupCity, orderOptions);
-    if (ok) setCitySaved(true);
-  };
-
-  // Live driver count: refetch when pickup coords or options change (debounced)
-  useEffect(() => {
-    if (!moduleEnabled || !taxiType) { setNearbyCount(null); setNearbyDrivers([]); return; }
-    if (!pickup?.lat || pickup.lat === 0) { setNearbyCount(null); setNearbyDrivers([]); return; }
-    const carType = selectedVehicle || 'standard';
-    const t = setTimeout(async () => {
-      const { count, drivers } = await api.fetchNearbyDriversCount({
-        lat: pickup.lat,
-        lng: pickup.lng,
-        carType,
-        withPet: orderOptions.withPet,
-        luggage: orderOptions.luggage,
-        assistance: orderOptions.assistance,
-      });
-      setNearbyCount(count);
-      setNearbyDrivers(drivers || []);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [
-    moduleEnabled, taxiType,
-    pickup?.lat, pickup?.lng,
-    selectedVehicle,
-    orderOptions.withPet, orderOptions.luggage, orderOptions.assistance,
-  ]);
-
-  const handlePickupChange = (text) => {
-    setPickup(p => ({ ...p, address: text }));
-    geocodeSearch('pickup', text, setPickupSuggestions, setShowPickupSugg, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
-  };
-
-  const handleDropoffChange = (text) => {
-    setDropoff(p => ({ ...p, address: text }));
-    geocodeSearch('dropoff', text, setDropoffSuggestions, setShowDropoffSugg, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
-  };
-
-  // Auto-geocode on blur if no coords yet
-  const geocodeOnBlur = async (type) => {
-    const target = type === 'pickup' ? pickup : dropoff;
-    const setter = type === 'pickup' ? setPickup : setDropoff;
-    await geocodeOnBlurHook(target, setter);
-  };
-
-  const selectPickupSugg = (s) => {
-    setPickup({ lat: s.lat, lng: s.lng, address: s.address });
-    setShowPickupSugg(false); setPickupSuggestions([]);
-  };
-
-  const selectDropoffSugg = (s) => {
-    setDropoff({ lat: s.lat, lng: s.lng, address: s.address });
-    if (!selectedVehicle && Array.isArray(estimates) && estimates.length > 0) {
-      setSelectedVehicle(estimates[0].vehicle_type);
-    }
-    setShowDropoffSugg(false); setDropoffSuggestions([]);
-  };
-  const [businessDrivers, setBusinessDrivers] = useState(0);
-  const [privateDrivers, setPrivateDrivers] = useState(0);
-  const [modeSettings, setModeSettings] = useState({
-    business: { enabled: true, label: 'Unternehmer-Taxi', description: '' },
-    private: { enabled: true, label: 'Privat-Taxi', description: '' },
-  });
-
-  const pollingRef = useRef(null);
-
-  // ─── API-backed actions ──────────────────────────────────────────────────
-  const fetchUserData = useCallback(async () => {
-    const data = await api.fetchMe();
-    if (data) setUserBalance(data.balance || 0);
-  }, [setUserBalance]);
-
-  const refreshFavorites = useCallback(async () => {
-    setFavorites(await api.fetchFavorites());
-  }, [setFavorites]);
-
-  const refreshSavedPlaces = useCallback(async () => {
-    setSavedPlaces(await api.fetchSavedPlaces());
-  }, [setSavedPlaces]);
-
-  const checkModuleStatus = useCallback(async () => {
-    const data = await api.fetchTaxiStatus();
-    if (!data) return;
-    if (data.module_enabled === false) {
-      setModuleEnabled(false);
-      setModuleMessage(data.message || 'Taxi-Modul wird derzeit vorbereitet');
-    } else {
-      setBusinessDrivers(data.business_drivers || 0);
-      setPrivateDrivers(data.private_drivers || 0);
-    }
-  }, [setModuleEnabled, setModuleMessage]);
-
-  const loadModeSettings = useCallback(async () => {
-    const data = await api.fetchModeSettings();
-    if (data) setModeSettings(data);
   }, []);
 
-  const startPolling = useCallback((rideId) => {
-    if (pollingRef.current) clearInterval(pollingRef.current);
-    pollingRef.current = setInterval(async () => {
-      const data = await api.fetchRide(rideId);
-      if (!data?.ride) return;
-      setActiveRide(data.ride);
-      if (['completed', 'cancelled'].includes(data.ride.status)) {
-        clearInterval(pollingRef.current);
-        fetchUserData();
-      }
-    }, 3000);
-  }, [setActiveRide, fetchUserData]);
-
-  const checkActiveRide = useCallback(async () => {
+  const loadActiveRide = useCallback(async () => {
     const data = await api.fetchActiveRide();
-    if (data?.has_active_ride && data.ride) {
-      setActiveRide(data.ride);
-      setView('tracking');
-      startPolling(data.ride.ride_id);
-    }
-  }, [setActiveRide, setView, startPolling]);
-
-  useEffect(() => {
-    fetchUserData();
-    checkActiveRide();
-    checkModuleStatus();
-    loadModeSettings();
-    refreshFavorites();
-    refreshSavedPlaces();
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const ride = data?.rides?.[0] || null;
+    setActiveRide(ride);
   }, []);
 
-  const saveFavorite = async (locationData, name, icon) => {
-    const result = await api.saveFavoriteApi({
-      name, address: locationData.address, latitude: locationData.lat, longitude: locationData.lng, icon,
-    });
-    if (result.ok) {
-      await refreshFavorites();
-      setShowSaveFavorite(false);
-      setFavoriteForm({ name: '', icon: 'star' });
-    } else {
-      setError(result.error);
-    }
-  };
-
-  const deleteFavorite = async (favoriteId) => {
-    if (await api.deleteFavoriteApi(favoriteId)) await refreshFavorites();
-  };
-
-  const selectFavorite = async (favorite) => {
-    setPickup({ lat: favorite.latitude, lng: favorite.longitude, address: favorite.address });
-    setShowFavorites(false);
-    await api.markFavoriteUsed(favorite.id);
-    await refreshFavorites();
-  };
-
-  const savePlace = async (address, lat, lng) => {
-    if (!saveName || !address) return;
-    if (await api.savePlaceApi({ name: saveName, icon: saveIcon, address, lat, lng })) {
-      refreshSavedPlaces();
-      setShowSaveModal(false); setSaveName(''); setSaveIcon('star');
-    }
-  };
-
-  const getEstimates = async () => {
-    // Auto-geocode dropoff if needed
-    if (dropoff.address && (!dropoff.lat || dropoff.lat === 0)) {
-      const geo = await api.forwardGeocode(dropoff.address);
-      if (!geo) { setError('Ziel nicht gefunden. Bitte Vorschlag auswählen.'); return; }
-      setDropoff(geo);
-    }
-    if (!pickup.lat || !dropoff.address) {
-      setError('Bitte Start und Ziel eingeben');
-      return;
-    }
-    setLoading(true); setError('');
-    const result = await api.estimateRide({ pickup, dropoff, promoCode: promo?.code });
-    if (result.ok) {
-      setEstimates(result.estimates);
-      if (Array.isArray(result.estimates) && result.estimates.length > 0) {
-        const hasCurrentSelection = result.estimates.some((item) => item.vehicle_type === selectedVehicle);
-        if (!hasCurrentSelection) {
-          setSelectedVehicle(result.estimates[0].vehicle_type);
-        }
-      }
-      setSurge(result.surge);
-      setTariffZone(result.tariff_zone || null);
-      setTimeTariff(result.time_tariff || null);
-      if (result.promo && !result.promo.valid && promo) {
-        // server says applied promo no longer valid → clear
-        setPromo(null);
-      }
-    } else {
-      setError(result.error);
-    }
-    setLoading(false);
-  };
-
-  // Auto-fetch estimates when both pickup + dropoff are valid (Uber/Bolt parity).
-  // Also re-trigger when promo changes.
   useEffect(() => {
-    if (!moduleEnabled || !taxiType) return;
+    loadActiveRide();
+  }, [loadActiveRide]);
+
+  useEffect(() => {
+    if (!activeRide) return undefined;
+    if (!['requested', 'accepted', 'arriving', 'started'].includes(activeRide.status)) return undefined;
+    const timer = window.setInterval(loadActiveRide, 4000);
+    return () => window.clearInterval(timer);
+  }, [activeRide, loadActiveRide]);
+
+  useEffect(() => {
+    if (!pickup?.lat) return;
+    let cancelled = false;
+    const loadNearby = async () => {
+      const data = await api.fetchNearbyDriversCount({ lat: pickup.lat, lng: pickup.lng, carType: selectedVehicle });
+      if (!cancelled) setNearbyDrivers(data.drivers || []);
+    };
+    loadNearby();
+    return () => {
+      cancelled = true;
+    };
+  }, [pickup?.lat, pickup?.lng, selectedVehicle]);
+
+  const estimateRide = useCallback(async () => {
     if (!pickup?.lat || !dropoff?.lat) return;
-    if (loading) return;
-    const t = setTimeout(() => { getEstimates(); }, 400);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleEnabled, taxiType, pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, promo?.code]);
-
-  const bookRide = async () => {
-    const estimate = estimates.find(e => e.vehicle_type === selectedVehicle);
-    if (!estimate) return;
-    if (userBalance < estimate.fare) {
-      setError(`Nicht genug Guthaben. Benötigt: €${estimate.fare.toFixed(2)}`);
+    setEstimating(true);
+    setError('');
+    const result = await api.estimateRide({ pickup, dropoff });
+    if (!result.ok) {
+      setEstimates([]);
+      setError(result.error || 'Keine Fahrten verfügbar');
+      setEstimating(false);
       return;
     }
-    setLoading(true); setError('');
-    const result = await api.bookRideApi({
-      pickup, dropoff, vehicleType: selectedVehicle,
-      options: orderOptions,
-      stops: waypoints,
-      promoCode: promo?.code || null,
-    });
-    if (result.ok) {
-      setActiveRide(result.ride);
-      setView('tracking');
-      startPolling(result.ride.ride_id);
-      // Refresh recent addresses + favorite routes (newly-used pair tracked)
-      api.fetchRecentAddresses(10).then(setRecentAddresses).catch(() => {});
-      api.fetchFavoriteRoutes(5).then(setFavoriteRoutes).catch(() => {});
-    } else {
-      setError(result.error);
-    }
-    setLoading(false);
-  };
-
-  const cancelRide = async (reason = null) => {
-    if (!activeRide) return;
-    setLoading(true);
-    const result = await api.cancelRideApi(activeRide.ride_id, reason);
-    if (result.ok) {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      setActiveRide(null);
-      setView('book');
-      fetchUserData();
-    } else {
-      setError(result.error);
-    }
-    setLoading(false);
-    setCancelReasonOpen(false);
-  };
-
-  // Trigger trip-replay automatically when ride completes (one-shot)
-  useEffect(() => {
-    if (activeRide?.status === 'completed' && !showTripReplay) {
-      // Fetch server-recorded path for reliable replay (works after page reload too)
-      const rid = activeRide.ride_id;
-      if (rid) {
-        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/taxi/rides/${rid}/path`, { credentials: 'include' })
-          .then(r => r.ok ? r.json() : null)
-          .then(d => {
-            if (d?.path?.length >= 2) {
-              // Inject server path into the map hook by setting both refs
-              // (the hook reads driverPathRef on showTripReplay=true)
-              const path = d.path.map(p => [p.lng, p.lat]);
-              if (window.__taxiDriverPathRef) {
-                window.__taxiDriverPathRef.current = path;
-              }
-            }
-          })
-          .catch(() => {});
-      }
-      setShowTripReplay(true);
-    }
-    if (!activeRide || activeRide.status !== 'completed') {
-      if (showTripReplay) setShowTripReplay(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRide?.status]);
-
-  const fetchHistory = async () => {
-    setRideHistory(await api.fetchRideHistory());
-  };
+    setEstimates(result.estimates || []);
+    setSurge(result.surge || null);
+    const recommended = (result.estimates || []).find((item) => item.vehicle_type === selectedVehicle) || result.estimates?.[0];
+    if (recommended?.vehicle_type) setSelectedVehicle(recommended.vehicle_type);
+    setEstimating(false);
+  }, [pickup, dropoff, selectedVehicle]);
 
   useEffect(() => {
-    if (view === 'history') fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
+    if (dropoff?.lat) estimateRide();
+  }, [dropoff?.lat, dropoff?.lng, estimateRide]);
 
-  const simulateDriverArrival = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'arriving');
-  const simulateStartTrip     = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'started');
-  const simulateCompleteTrip  = () => activeRide && api.setDriverStatus(activeRide.ride_id, 'completed');
-
-  // Order options summary text for the sheet button
-  const optionsSummary = (() => {
-    const tags = [];
-    if (orderOptions.scheduledAt) {
-      const d = new Date(orderOptions.scheduledAt);
-      tags.push(d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }));
-    } else {
-      tags.push('Jetzt');
-    }
-    if (orderOptions.withPet) tags.push('🐾');
-    if (orderOptions.luggage === 'much' || orderOptions.luggage === 'much_combi') tags.push('🧳');
-    if (orderOptions.assistance) tags.push('♿');
-    if (orderOptions.language && orderOptions.language !== 'de') tags.push(orderOptions.language.toUpperCase());
-    return tags.join(' · ');
-  })();
-  const scheduledLabel = orderOptions.scheduledAt
-    ? new Date(orderOptions.scheduledAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-    : null;
-
-  // taxi.eu-style: render map full-screen with bottom-sheet during booking OR active tracking
-  const inMapBookingFlow = moduleEnabled && (
-    (view === 'book' && taxiType) ||
-    (view === 'tracking' && activeRide)
+  const selectedEstimate = useMemo(
+    () => estimates.find((item) => item.vehicle_type === selectedVehicle) || estimates[0] || null,
+    [estimates, selectedVehicle],
   );
 
-  const fallbackMapConfig = useMemo(() => {
-    const hasPickup = Number.isFinite(pickup?.lat) && Number.isFinite(pickup?.lng) && pickup.lat !== 0 && pickup.lng !== 0;
-    const hasDropoff = Number.isFinite(dropoff?.lat) && Number.isFinite(dropoff?.lng) && dropoff.lat !== 0 && dropoff.lng !== 0;
-    const baseLat = hasPickup ? pickup.lat : hasDropoff ? dropoff.lat : 52.52;
-    const baseLng = hasPickup ? pickup.lng : hasDropoff ? dropoff.lng : 13.405;
-    const pins = [];
+  const mapDrivers = useMemo(
+    () => nearbyDrivers.slice(0, 10).map((driver) => ({
+      id: driver.driver_id,
+      lat: driver.location?.lat || driver.lat,
+      lng: driver.location?.lng || driver.lng,
+      popup: `${driver.user_name || driver.name || 'Fahrer'} · ${driver.eta_minutes || 4} Min`,
+    })).filter((driver) => Number.isFinite(driver.lat) && Number.isFinite(driver.lng)),
+    [nearbyDrivers],
+  );
 
-    if (hasPickup) {
-      pins.push({ lat: pickup.lat, lng: pickup.lng, color: '#00C2FF', label: 'A' });
+  const handleAddressChange = (type, value) => {
+    if (type === 'pickup') {
+      setPickup((prev) => ({ ...prev, address: value }));
+      search('pickup-customer', value, setPickupSuggestions, setShowPickupSuggestions, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
+    } else {
+      setDropoff((prev) => ({ ...prev, address: value }));
+      search('dropoff-customer', value, setDropoffSuggestions, setShowDropoffSuggestions, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
     }
-    if (hasDropoff) {
-      pins.push({ lat: dropoff.lat, lng: dropoff.lng, color: '#EF4444', label: 'Z' });
-    }
-    if (!pins.length) {
-      if (Number.isFinite(baseLat) && Number.isFinite(baseLng)) {
-        pins.push({ lat: baseLat, lng: baseLng, color: '#00C2FF', label: '•' });
-      }
-    }
+  };
 
-    const polyline = [];
-    if (hasPickup) polyline.push([pickup.lat, pickup.lng]);
-    if (hasDropoff) polyline.push([dropoff.lat, dropoff.lng]);
-    return { lat: baseLat, lng: baseLng, pins, polyline };
-  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
-
-  const handleFallbackMapClick = useCallback(async ({ lat, lng }) => {
-    try {
-      const result = await api.reverseGeocode(lat, lng);
-      const address = result?.address || result?.name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      if (!pickup?.lat || pickup.lat === 0 || searchSheetMode === 'pickup') {
-        setPickup({ lat, lng, address });
-        if (searchSheetMode === 'pickup') setSearchSheetMode(null);
-      } else {
-        setDropoff({ lat, lng, address });
-        if (searchSheetMode === 'dropoff') setSearchSheetMode(null);
-      }
-    } catch {
-      const address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      if (!pickup?.lat || pickup.lat === 0 || searchSheetMode === 'pickup') {
-        setPickup({ lat, lng, address });
-        if (searchSheetMode === 'pickup') setSearchSheetMode(null);
-      } else {
-        setDropoff({ lat, lng, address });
-        if (searchSheetMode === 'dropoff') setSearchSheetMode(null);
-      }
+  const handleSuggestionSelect = (type, item) => {
+    const payload = { address: item.address || item.name, lat: item.lat, lng: item.lng };
+    if (type === 'pickup') {
+      setPickup(payload);
+      setShowPickupSuggestions(false);
+      setSearchMode('dropoff');
+    } else {
+      setDropoff(payload);
+      setShowDropoffSuggestions(false);
     }
-  }, [pickup?.lat, searchSheetMode, setPickup, setDropoff, setSearchSheetMode]);
+  };
+
+  const handleBookRide = async () => {
+    if (!selectedEstimate) return;
+    setBooking(true);
+    setError('');
+    const result = await api.bookRideApi({ pickup, dropoff, vehicleType: selectedEstimate.vehicle_type, paymentMethod: 'wallet' });
+    setBooking(false);
+    if (!result.ok) {
+      setError(result.error || 'Buchung fehlgeschlagen');
+      return;
+    }
+    setActiveRide(result.ride);
+  };
+
+  const handleCancelRide = async () => {
+    if (!activeRide?.ride_id) return;
+    const result = await api.cancelRideApi(activeRide.ride_id);
+    if (!result.ok) {
+      setError(result.error || 'Stornierung fehlgeschlagen');
+      return;
+    }
+    setActiveRide(null);
+    await loadActiveRide();
+  };
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] text-zinc-950 font-taxi-body" data-mapflow={inMapBookingFlow ? '1' : '0'}>
-      {!inMapBookingFlow && (
-        <TaxiHeader
-          onBack={() => navigate('/')}
-          view={view}
-          setView={setView}
-          moduleEnabled={moduleEnabled}
-          userBalance={userBalance}
-        />
-      )}
-
-      {/* FULL-SCREEN MAP BOOKING FLOW (taxi.eu parity) */}
-      {inMapBookingFlow && (
-        <div className="fixed inset-0 z-10">
-          {/* Map fills entire viewport */}
-          <div
-            ref={mapContainerRef}
-            className="absolute inset-0"
-            style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: mapReady && !mapError ? 1 : 0, transition: 'opacity 220ms ease' }}
-            data-testid="taxi-map-container"
-          />
-
-          {(!mapReady || mapError) && (
-            <MiniLeafletMap
-              lat={fallbackMapConfig.lat}
-              lng={fallbackMapConfig.lng}
-              pins={fallbackMapConfig.pins}
-              polyline={fallbackMapConfig.polyline}
-              autoFitPins={fallbackMapConfig.pins.length > 1}
-              zoom={14}
-              height="100%"
-              className="absolute inset-0 rounded-none"
-              testId="taxi-map-fallback"
-              interactive={!mapReady || !!mapError}
-              onMapClick={handleFallbackMapClick}
-            />
-          )}
-
-          <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(180deg,rgba(255,255,255,0.2)_0%,rgba(255,255,255,0.02)_22%,rgba(255,255,255,0)_48%,rgba(255,255,255,0.16)_100%)]" />
-
-          {/* Map error overlay (token/network failure) */}
-          {mapError && (
-            <div
-              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+80px)] mx-4 z-30 rounded-[24px] bg-white/92 border border-black/5 shadow-[0_18px_48px_rgba(15,23,42,0.14)] backdrop-blur-xl p-4 flex items-start gap-3 max-w-[640px]"
-              data-testid="taxi-map-error"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-500 flex items-center justify-center shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-500">Kartenstatus</p>
-                <p className="text-base font-taxi-heading font-black tracking-tight text-zinc-950 mt-1">Fallback-Karte aktiv</p>
-                <p className="text-sm text-zinc-600 mt-1.5 leading-snug">{mapError}</p>
-                <p className="text-xs text-zinc-500 mt-1" data-testid="taxi-map-error-hint">
-                  {mapRetrying
-                    ? 'Wir verbinden die Karte gerade neu – deine Eingaben bleiben erhalten.'
-                    : 'Tippe direkt auf die Karte, um Abholort oder Ziel zu setzen.'}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => retryMap('manual')}
-                    data-testid="taxi-map-error-reload"
-                    disabled={mapRetrying}
-                    className="text-xs px-4 py-2 rounded-full bg-[#002FA7] hover:bg-[#00258a] text-white font-semibold transition-colors disabled:opacity-60"
-                  >
-                    {mapRetrying ? 'Karte wird neu verbunden…' : 'Karte neu verbinden'}
-                  </button>
-                  <button
-                    onClick={() => setSearchSheetMode(pickup?.lat ? 'dropoff' : 'pickup')}
-                    data-testid="taxi-map-open-search"
-                    className="text-xs px-4 py-2 rounded-full bg-black/5 hover:bg-black/10 text-zinc-900 font-semibold transition-colors"
-                  >
-                    Adresse suchen
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!mapError && !mapReady && (
-            <div
-              className="absolute inset-x-0 top-[calc(env(safe-area-inset-top,0px)+126px)] z-20 mx-auto flex w-fit max-w-[calc(100%-32px)] items-center gap-2 rounded-full border border-black/5 bg-white/92 px-4 py-2 text-xs font-semibold text-zinc-700 shadow-[0_12px_30px_rgba(15,23,42,0.12)] sm:top-[calc(env(safe-area-inset-top,0px)+98px)]"
-              data-testid="taxi-map-loading-chip"
-            >
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#0F6FFF]" />
-              Sichere Karte aktiv – Live-Karte wird verbunden…
-            </div>
-          )}
-
-          {/* Top bar overlay */}
-          <div className="absolute top-0 inset-x-0 z-40 px-4 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-2">
-            <div className="flex items-start justify-between gap-3">
-              <button
-                onClick={() => setShowSideMenu(true)}
-                className="w-12 h-12 rounded-full bg-white/88 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(15,23,42,0.14)] text-zinc-900 flex items-center justify-center shrink-0 pointer-events-auto"
-                data-testid="map-flow-menu"
-                title="Menü"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
-
-              {currentAddress ? (
-                (() => {
-                  const isDenied = /verweigert|denied|verboten/i.test(currentAddress);
-                  if (isDenied) {
-                    return (
-                      <button
-                        onClick={() => getCurrentLocation()}
-                        data-testid="map-flow-gps-denied-cta"
-                        className="flex-1 max-w-[min(54vw,420px)] bg-white/92 border border-red-200 rounded-[26px] px-4 py-2.5 text-left min-w-0 flex items-center gap-3 shadow-[0_8px_24px_rgba(15,23,42,0.14)] hover:bg-white active:scale-[0.98] transition-all pointer-events-auto"
-                      >
-                        <span className="relative flex h-3 w-3 shrink-0">
-                          <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-45 animate-ping" />
-                          <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
-                        </span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" className="shrink-0 hidden">
-                          <circle cx="12" cy="12" r="3" />
-                          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-                        </svg>
-                        <span className="flex-1 min-w-0">
-                          <p className="text-[10px] text-red-500 font-semibold uppercase tracking-[0.2em] leading-none">GPS aus</p>
-                          <p className="text-sm text-zinc-900 truncate leading-tight mt-1 font-medium">
-                            {permissionState === 'granted' ? 'Wird automatisch neu verbunden…' : 'Tippen, um zu aktivieren'}
-                          </p>
-                          {gpsHelperText && (
-                            <p className="mt-1 text-[11px] leading-snug text-zinc-500 whitespace-normal" data-testid="map-flow-gps-helper-text">
-                              {gpsHelperText}
-                            </p>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  }
-                  return (
-                    <div
-                      className="flex-1 max-w-[min(54vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-[26px] px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto"
-                      data-testid="map-flow-current-address"
-                    >
-                      <p className="text-[10px] text-[#002FA7] font-semibold uppercase tracking-[0.2em] leading-none">
-                        Standort genau
-                      </p>
-                      <p className="text-sm text-zinc-900 truncate leading-tight mt-1 font-medium">{currentAddress}</p>
-                    </div>
-                  );
-                })()
-              ) : (
-                <div className="flex-1 max-w-[min(54vw,420px)] bg-white/88 backdrop-blur-xl border border-white/70 rounded-[26px] px-4 py-2.5 text-left min-w-0 shadow-[0_8px_24px_rgba(15,23,42,0.14)] pointer-events-auto" data-testid="map-flow-current-address">
-                  <p className="text-[10px] text-[#002FA7] font-semibold uppercase tracking-[0.2em] leading-none">GPS wird gesucht</p>
-                  <p className="text-sm text-zinc-700 truncate leading-tight mt-1 font-medium">Wir holen deinen Standort jetzt.</p>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 shrink-0 pointer-events-auto">
-                <button
-                  onClick={getCurrentLocation}
-                  disabled={loadingLocation}
-                  className="mt-1 h-11 w-11 rounded-full bg-white/88 backdrop-blur-xl border border-white/70 shadow-[0_8px_24px_rgba(15,23,42,0.14)] text-zinc-900 flex items-center justify-center disabled:opacity-50 sm:mt-0 sm:h-12 sm:w-12"
-                  data-testid="map-flow-locate"
-                  title="Standort"
-                >
-                  {loadingLocation ? (
-                    <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581" />
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#002FA7" strokeWidth="2">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-                    </svg>
-                  )}
-                </button>
-
-                {view === 'tracking' && (
-                  <button
-                    onClick={() => {
-                      voiceover.setEnabled(!voiceover.enabled);
-                      if (!voiceover.enabled) {
-                        voiceover.speak("Stimme aktiviert.");
-                      }
-                    }}
-                    className={`w-12 h-12 rounded-full backdrop-blur-xl border shadow-[0_8px_24px_rgba(15,23,42,0.14)] flex items-center justify-center transition-colors ${
-                      voiceover.enabled
-                        ? "bg-[#002FA7] border-[#002FA7] text-white"
-                        : "bg-white/88 border-white/70 text-zinc-600"
-                    }`}
-                    data-testid="map-flow-voice-toggle"
-                    title={voiceover.enabled ? "Stimme ausschalten" : "Stimme einschalten"}
-                  >
-                    {voiceover.enabled ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                        <path d="M15.54 8.46a5 5 0 010 7.07" />
-                        <path d="M19.07 4.93a10 10 0 010 14.14" />
-                      </svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                        <line x1="23" y1="9" x2="17" y2="15" />
-                        <line x1="17" y1="9" x2="23" y2="15" />
-                      </svg>
-                    )}
-                  </button>
-                )}
-              </div>
+    <div className="min-h-screen bg-[#f5f7fb] text-[#111827]" data-testid="taxi-customer-page">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col lg:flex-row">
+        <section className="w-full lg:w-[460px] xl:w-[520px] border-r border-slate-200 bg-white">
+          <div className="flex items-center gap-3 px-5 pt-5">
+            <button onClick={() => onNavigate?.('/')} className="rounded-full border border-slate-200 p-2 text-slate-600" data-testid="taxi-customer-back-button">
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Taxi</p>
+              <h1 className="text-2xl font-black">Fahrt buchen</h1>
             </div>
           </div>
 
-          {/* Draggable Bottom Sheet (starts collapsed for max map area) */}
-          <TaxiBottomSheet
-            key={`${view}-${dropoff?.address ? 'route-ready' : 'route-empty'}`}
-            defaultSnap={view === 'tracking' ? 'half' : (dropoff?.address ? 'half' : 'collapsed')}
-          >
-            {view === 'tracking' ? (
-              <TaxiTrackingSheet
-                activeRide={activeRide}
-                loading={loading}
-                cancelRide={cancelRide}
-                onRequestCancel={() => setCancelReasonOpen(true)}
-                simulateDriverArrival={simulateDriverArrival}
-                simulateStartTrip={simulateStartTrip}
-                simulateCompleteTrip={simulateCompleteTrip}
-                onOpenLiveChat={() => setShowLiveChat(true)}
-                onOpenSplit={() => {
-                  setSplitRideId(activeRide.ride_id);
-                  setSplitTotal(activeRide.final_fare || activeRide.fare_estimate || 0);
-                  setShowSplit(true);
-                }}
-                onOpenReview={() => { setReviewRideId(activeRide.ride_id); setShowReview(true); }}
-                onResetToBook={() => { setActiveRide(null); setView('book'); }}
-              />
-            ) : (
-              <TaxiBookingSheet
-                taxiType={taxiType}
-                onChangeType={() => setTaxiType('')}
-                userName={user?.name?.split(" ")?.[0] || user?.first_name || null}
-                pickup={pickup}
-                dropoff={dropoff}
-                onTapPickup={() => setSearchSheetMode('pickup')}
-                onTapDropoff={() => setSearchSheetMode('dropoff')}
-                onClearDropoff={() => { setDropoff({ lat: 0, lng: 0, address: '' }); setEstimates([]); }}
-                onEditPickupNotes={() => setNoteTarget({ type: 'pickup' })}
-                onEditDropoffNotes={() => setNoteTarget({ type: 'dropoff' })}
-                waypoints={waypoints}
-                onAddWaypoint={() => {
-                  setWaypoints((prev) => [...prev, { lat: 0, lng: 0, address: '', notes: '' }]);
-                  setSearchSheetMode(`waypoint:${waypoints.length}`);
-                }}
-                onTapWaypoint={(idx) => setSearchSheetMode(`waypoint:${idx}`)}
-                onRemoveWaypoint={(idx) => setWaypoints((prev) => prev.filter((_, i) => i !== idx))}
-                onEditWaypointNotes={(idx) => setNoteTarget({ type: 'waypoint', index: idx })}
-                savedPlaces={savedPlaces}
-                onPickSavedPlace={(p) => setDropoff({ lat: p.lat, lng: p.lng, address: p.address })}
-                estimates={estimates}
-                selectedVehicle={selectedVehicle}
-                setSelectedVehicle={setSelectedVehicle}
-                surge={surge}
-                loading={loading}
-                error={error}
-                optionsSummary={optionsSummary}
-                onOpenOptions={() => setShowOrderOptions(true)}
-                noDriversAvailable={nearbyCount === 0}
-                nearbyCount={nearbyCount}
-                onGetEstimates={getEstimates}
-                onBook={bookRide}
-                scheduledLabel={scheduledLabel}
-                pickupCity={pickupCity}
-                citySaved={citySaved}
-                onSaveCityDefault={handleSaveCityDefault}
-                favoriteRoutes={favoriteRoutes}
-                onPickFavoriteRoute={(r) => {
-                  setPickup({ lat: r.pickup.lat, lng: r.pickup.lng, address: r.pickup.address });
-                  setDropoff({ lat: r.dropoff.lat, lng: r.dropoff.lng, address: r.dropoff.address });
-                }}
-                promo={promo}
-                onPromoChange={setPromo}
-                onApplyPromoCode={async (code) => {
-                  try {
-                    const r = await api.validatePromoCode(code);
-                    if (r?.valid) {
-                      setPromo({ code: r.code, label: r.label, discount: r.discount });
-                    }
-                  } catch (error) {
-                    void error;
-                  }
-                }}
-                lastRide={(rideHistory || []).find((r) => r.status === 'completed')}
-                onUseLastRide={(r) => {
-                  // Set dropoff to last completed ride's dropoff (1-tap reorder)
-                  const drop = r.dropoff || { lat: r.dropoff_lat, lng: r.dropoff_lng, address: r.dropoff_address };
-                  if (drop?.lat && drop?.lng) {
-                    setDropoff({ lat: drop.lat, lng: drop.lng, address: drop.address || r.dropoff_address || '' });
-                  }
-                }}
-                scheduleMode={scheduleMode}
-                onScheduleModeChange={setScheduleMode}
-                onOpenScheduled={() => { window.location.href = '/taxi/pro'; }}
-                tariffZone={tariffZone}
-                timeTariff={timeTariff}
-              />
-            )}
-          </TaxiBottomSheet>
+          <div className="px-5 pb-8 pt-5">
+            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 shadow-sm" data-testid="taxi-customer-search-card">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Wie bei Uber</p>
+                  <h2 className="mt-1 text-lg font-black">Einfach Adresse eingeben und sofort Preis sehen</h2>
+                </div>
+                <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700" data-testid="taxi-customer-live-driver-badge">
+                  {mapDrivers.length} Fahrer in der Nähe
+                </div>
+              </div>
 
-          {/* Address search overlay */}
-          <TaxiAddressSearchSheet
-            mode={searchSheetMode}
-            onClose={() => setSearchSheetMode(null)}
-            currentLocation={currentAddress ? { address: currentAddress, lat: pickup.lat, lng: pickup.lng } : null}
-            pickup={pickup}
-            dropoff={dropoff}
-            onSelectPickup={(p) => setPickup({ ...p })}
-            onSelectDropoff={(d) => setDropoff({ ...d })}
-            onSelectWaypoint={(idx, sel) => {
-              setWaypoints((prev) => {
-                const next = [...prev];
-                next[idx] = { ...next[idx], lat: sel.lat, lng: sel.lng, address: sel.address };
-                return next;
-              });
-            }}
-            onUseCurrentLocation={getCurrentLocation}
-            onPickOnMap={() => setSearchSheetMode(null)}
-            favorites={favorites}
-            savedPlaces={savedPlaces}
-            recentAddresses={recentAddresses}
-          />
+              <div className="space-y-3">
+                {[
+                  { id: 'pickup', label: 'Abholung', value: pickup.address, placeholder: 'Dein Standort', active: searchMode === 'pickup', suggestions: pickupSuggestions, show: showPickupSuggestions },
+                  { id: 'dropoff', label: 'Wohin?', value: dropoff.address, placeholder: 'Adresse, Hotel, Flughafen, Bahnhof…', active: searchMode === 'dropoff', suggestions: dropoffSuggestions, show: showDropoffSuggestions },
+                ].map((field) => (
+                  <div key={field.id} className="relative" data-testid={`taxi-customer-field-${field.id}`}>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{field.label}</label>
+                    <div className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 transition ${field.active ? 'border-[#00C2FF] shadow-[0_0_0_4px_rgba(0,194,255,0.12)]' : 'border-slate-200'}`}>
+                      {field.id === 'pickup' ? <Navigation className="h-4 w-4 text-[#00C2FF]" /> : <Search className="h-4 w-4 text-slate-400" />}
+                      <input
+                        value={field.value}
+                        onFocus={() => setSearchMode(field.id)}
+                        onChange={(e) => handleAddressChange(field.id, e.target.value)}
+                        placeholder={field.placeholder}
+                        className="w-full bg-transparent text-[15px] font-medium outline-none placeholder:text-slate-400"
+                        data-testid={`taxi-customer-input-${field.id}`}
+                      />
+                    </div>
+                    {field.show && field.suggestions.length > 0 ? (
+                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl" data-testid={`taxi-customer-suggestions-${field.id}`}>
+                        {field.suggestions.slice(0, 6).map((item, index) => (
+                          <button
+                            key={`${field.id}-${index}`}
+                            onMouseDown={() => handleSuggestionSelect(field.id, item)}
+                            className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
+                            data-testid={`taxi-customer-suggestion-${field.id}-${index}`}
+                          >
+                            <div className="mt-0.5 rounded-xl bg-slate-100 p-2 text-slate-500"><MapPin size={14} /></div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold text-slate-900">{item.name || item.address}</div>
+                              <div className="truncate text-xs text-slate-500">{item.cityZip || item.address}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
 
-          {/* Per-address driver notes modal */}
-          <TaxiNoteModal
-            isOpen={Boolean(noteTarget)}
-            title={
-              noteTarget?.type === 'pickup' ? 'Hinweis für Abholung' :
-              noteTarget?.type === 'dropoff' ? 'Hinweis für Ziel' :
-              `Hinweis für Stop ${(noteTarget?.index ?? 0) + 1}`
-            }
-            initialValue={
-              noteTarget?.type === 'pickup' ? (pickup.notes || '') :
-              noteTarget?.type === 'dropoff' ? (dropoff.notes || '') :
-              noteTarget?.type === 'waypoint' ? (waypoints[noteTarget.index]?.notes || '') : ''
-            }
-            onClose={() => setNoteTarget(null)}
-            onSave={(text) => {
-              if (!noteTarget) return;
-              if (noteTarget.type === 'pickup')      setPickup((p) => ({ ...p, notes: text }));
-              else if (noteTarget.type === 'dropoff') setDropoff((d) => ({ ...d, notes: text }));
-              else {
-                setWaypoints((prev) => {
-                  const next = [...prev];
-                  if (next[noteTarget.index]) next[noteTarget.index] = { ...next[noteTarget.index], notes: text };
-                  return next;
-                });
-              }
-            }}
-          />
-
-          {/* Order options overlay */}
-          <TaxiOrderOptions
-            isOpen={showOrderOptions}
-            onClose={() => setShowOrderOptions(false)}
-            options={orderOptions}
-            setOptions={setOrderOptions}
-          />
-
-          {/* Side menu (hamburger) */}
-          <TaxiSideMenu
-            isOpen={showSideMenu}
-            onClose={() => setShowSideMenu(false)}
-            user={currentUser}
-            userBalance={userBalance}
-            favoritesCount={favorites.length}
-            recentAddressesCount={recentAddresses.length}
-            onOpenFavorites={() => setShowFavorites(true)}
-            onOpenHistory={() => setView('history')}
-            onOpenSaved={() => setShowFavorites(true)}
-            onOpenDriverOnboarding={() => setShowDriverOnboarding(true)}
-            onNavigate={onNavigate}
-          />
-        </div>
-      )}
-
-      {!inMapBookingFlow && (
-      <div className="max-w-lg mx-auto px-4 py-6">
-        <KYCBanner onNavigate={onNavigate} />
-        {/* MODULE DISABLED NOTICE */}
-        {!moduleEnabled && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-16 text-center"
-          >
-            <div className="w-24 h-24 mb-6 rounded-full bg-cyan-500/10 flex items-center justify-center">
-              <svg className="w-12 h-12 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+              <div className="mt-4 rounded-2xl bg-slate-900 p-4 text-white" data-testid="taxi-customer-route-preview-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Route</p>
+                    <p className="mt-1 text-sm font-semibold">{pickup.address || 'Abholung wählen'} → {dropoff.address || 'Ziel wählen'}</p>
+                  </div>
+                  {estimating ? <Loader2 className="h-5 w-5 animate-spin text-white/60" /> : null}
+                </div>
+                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">Suche reagiert schon ab wenigen Buchstaben und zoomt direkt auf Pickup + Ziel.</p>
+              </div>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Taxi Demnächst</h2>
-            <p className="text-gray-400 mb-6 max-w-sm">
-              {moduleMessage || 'Das Taxi-Modul wartet auf echte Fahrer-Onboarding. Bald verfügbar!'}
-            </p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-xl font-semibold text-black"
-            >
-              Zur Startseite
-            </button>
-          </motion.div>
-        )}
 
-        {moduleEnabled && (
-        <AnimatePresence mode="wait">
-          {/* GROUP-RIDE LIVE-TRACKER BANNER (alle Views) */}
-          <GroupTrackerBanner
-            serviceType="taxi"
-            onOpenGroup={() => setShowGroupRide(true)}
-          />
+            <AnimatePresence>
+              {error ? (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" data-testid="taxi-customer-error-card">
+                  {error}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
-          {/* BOOKING VIEW */}
-          {view === 'book' && (
-            <motion.div
-              key="book"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
-            >
-              {/* TAXI TYPE SELECTION */}
-              {!taxiType && (
-                <TaxiTypeSelector
-                  modeSettings={modeSettings}
-                  businessDrivers={businessDrivers}
-                  privateDrivers={privateDrivers}
-                  onPick={setTaxiType}
-                />
-              )}
+            {activeRide ? (
+              <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-active-ride-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Aktive Fahrt</p>
+                    <h3 className="mt-1 text-lg font-black">{activeRide.driver?.name || 'Fahrer wird gesucht'}</h3>
+                  </div>
+                  <RideStatusBadge ride={activeRide} />
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-slate-50 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Abholung</p>
+                    <p className="mt-1 text-sm font-semibold">{activeRide.pickup?.address}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Ziel</p>
+                    <p className="mt-1 text-sm font-semibold">{activeRide.dropoff?.address}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-price">€{Number(activeRide.final_fare || activeRide.estimated_fare || 0).toFixed(2)}</div>
+                  <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-eta">{activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min</div>
+                </div>
+                <button onClick={handleCancelRide} className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700" data-testid="taxi-customer-cancel-ride-button">Fahrt stornieren</button>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-vehicles-card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Fahrten</p>
+                    <h3 className="mt-1 text-lg font-black">Wähle dein Fahrzeug</h3>
+                  </div>
+                  {surge?.active ? <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700" data-testid="taxi-customer-surge-badge">Surge x{Number(surge.multiplier || 1).toFixed(1)}</span> : null}
+                </div>
 
-              {/* BOOKING FORM - extracted to TaxiBookingForm component */}
-              {taxiType && (
-                <TaxiBookingForm
-                  taxiType={taxiType}
-                  setTaxiType={setTaxiType}
-                  pickup={pickup}
-                  dropoff={dropoff}
-                  setDropoff={setDropoff}
-                  handlePickupChange={handlePickupChange}
-                  handleDropoffChange={handleDropoffChange}
-                  geocodeOnBlur={geocodeOnBlur}
-                  pickupSuggestions={pickupSuggestions}
-                  dropoffSuggestions={dropoffSuggestions}
-                  showPickupSugg={showPickupSugg}
-                  setShowPickupSugg={setShowPickupSugg}
-                  showDropoffSugg={showDropoffSugg}
-                  setShowDropoffSugg={setShowDropoffSugg}
-                  selectPickupSugg={selectPickupSugg}
-                  selectDropoffSugg={selectDropoffSugg}
-                  mapContainerRef={mapContainerRef}
-                  getCurrentLocation={getCurrentLocation}
-                  loadingLocation={loadingLocation}
-                  currentAddress={currentAddress}
-                  mapStyle={mapStyle}
-                  setMapStyle={setMapStyle}
-                  showMapStyles={showMapStyles}
-                  setShowMapStyles={setShowMapStyles}
-                  showPoiFilter={showPoiFilter}
-                  setShowPoiFilter={setShowPoiFilter}
-                  activePoiCategory={activePoiCategory}
-                  loadPOIs={loadPOIs}
-                  poiLoading={poiLoading}
-                  favoritesCount={favorites.length}
-                  onFavoritesClick={() => setShowFavorites(!showFavorites)}
-                  savedPlaces={savedPlaces}
-                  showSaveModal={showSaveModal}
-                  setShowSaveModal={setShowSaveModal}
-                  saveName={saveName}
-                  setSaveName={setSaveName}
-                  saveIcon={saveIcon}
-                  setSaveIcon={setSaveIcon}
-                  onSavePlace={() => savePlace(dropoff.address, dropoff.lat, dropoff.lng)}
-                  estimates={estimates}
-                  selectedVehicle={selectedVehicle}
-                  setSelectedVehicle={setSelectedVehicle}
-                  surge={surge}
-                  error={error}
-                  loading={loading}
-                  getEstimates={getEstimates}
-                  bookRide={bookRide}
-                  onOpenGroupRide={() => setShowGroupRide(true)}
-                />
-              )}
-            </motion.div>
-          )}
+                <div className="mt-4 space-y-3">
+                  {VEHICLES.map((vehicle) => {
+                    const estimate = estimates.find((item) => item.vehicle_type === vehicle.id);
+                    const selected = selectedVehicle === vehicle.id;
+                    return (
+                      <button
+                        key={vehicle.id}
+                        onClick={() => setSelectedVehicle(vehicle.id)}
+                        className={`w-full rounded-2xl border px-4 py-4 text-left transition ${selected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'}`}
+                        data-testid={`taxi-customer-vehicle-${vehicle.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`rounded-2xl p-3 ${selected ? 'bg-white/10' : 'bg-slate-100'}`}><Car size={18} /></div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold">{vehicle.label}</span>
+                                {vehicle.id === 'standard' ? <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">Empfohlen</span> : null}
+                              </div>
+                              <p className={`mt-1 text-xs ${selected ? 'text-white/60' : 'text-slate-500'}`}>{vehicle.subtitle}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-base font-black">{estimate ? `€${Number(estimate.total || estimate.fare || 0).toFixed(2)}` : '—'}</p>
+                            <p className={`text-xs ${selected ? 'text-white/60' : 'text-slate-500'}`}>{estimate ? `${estimate.eta_minutes || estimate.duration_minutes || 5} Min` : 'Berechne…'}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-          {/* TRACKING VIEW now lives inside fullscreen Map+Sheet (see inMapBookingFlow above) */}
+                <button
+                  onClick={handleBookRide}
+                  disabled={!selectedEstimate || booking || !dropoff?.lat}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  data-testid="taxi-customer-book-button"
+                >
+                  {booking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
+                  {booking ? 'Bucht…' : selectedEstimate ? `Bestellen · €${Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}` : 'Ziel eingeben'}
+                </button>
+                <p className="mt-3 text-center text-xs text-slate-500" data-testid="taxi-customer-wallet-hint">Bezahlung aktuell direkt per Wallet. Guthaben: €{Number(user?.balance || 0).toFixed(2)}</p>
+              </div>
+            )}
+          </div>
+        </section>
 
-          {/* HISTORY VIEW */}
-          {view === 'history' && (
-            <TaxiHistoryView
-              rideHistory={rideHistory}
-              onRefresh={fetchHistory}
-              onReview={(rideId) => { setReviewRideId(rideId); setShowReview(true); }}
+        <section className="relative flex-1 bg-slate-100">
+          <div className="absolute inset-0">
+            <TaxiMap
+              pickup={pickup?.lat ? pickup : null}
+              dropoff={dropoff?.lat ? dropoff : null}
+              driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
+              height="100%"
+              nearbyDrivers={mapDrivers}
             />
-          )}
-        </AnimatePresence>
-        )}
+          </div>
+          <div className="pointer-events-none absolute left-6 right-6 top-6 z-[500] flex justify-center">
+            <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm" data-testid="taxi-customer-map-helper">
+              <Navigation size={14} className="text-[#00C2FF]" /> Karte zoomt automatisch auf Abholung und Ziel
+            </div>
+          </div>
+          <div className="pointer-events-none absolute bottom-6 left-6 right-6 z-[500]">
+            <div className="pointer-events-auto mx-auto flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-[24px] border border-white/70 bg-white/92 px-4 py-3 shadow-lg" data-testid="taxi-customer-map-summary-card">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Vorschau</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{pickup.address || 'Abholung'} → {dropoff.address || 'Ziel auswählen'}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-map-driver-count">{mapDrivers.length} Fahrer</div>
+                {selectedEstimate ? <div className="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white" data-testid="taxi-customer-map-price">€{Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}</div> : null}
+                {selectedEstimate ? <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-map-eta">{selectedEstimate.eta_minutes || selectedEstimate.duration_minutes || 5} Min</div> : null}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-      )}
-
-      {/* Super-App Parity Modals */}
-      <ReviewModal
-        isOpen={showReview}
-        onClose={() => setShowReview(false)}
-        serviceType="taxi"
-        serviceId={reviewRideId}
-        onSubmit={() => fetchHistory && fetchHistory()}
-      />
-      <SplitPaymentModal
-        isOpen={showSplit}
-        onClose={() => setShowSplit(false)}
-        type="taxi"
-        itemId={splitRideId}
-        totalAmount={splitTotal}
-      />
-      <AnimatePresence>
-        {showLiveChat && activeRide?.ride_id && (
-          <LiveChat
-            rideId={activeRide.ride_id}
-            userRole="passenger"
-            onClose={() => setShowLiveChat(false)}
-          />
-        )}
-        {cancelReasonOpen && (
-          <CancelReasonModal
-            onClose={() => setCancelReasonOpen(false)}
-            onConfirm={(reason) => cancelRide(reason)}
-            loading={loading}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Driver Onboarding Modal */}
-      <TaxiDriverOnboardingModal
-        isOpen={showDriverOnboarding}
-        onClose={() => setShowDriverOnboarding(false)}
-        onboardingType={onboardingType}
-      />
-      
-      <GroupOrderModal
-        isOpen={showGroupRide}
-        onClose={() => setShowGroupRide(false)}
-        serviceType="taxi"
-        details={{
-          pickup,
-          destination: dropoff,
-          vehicle_type: selectedVehicle,
-        }}
-      />
-
-      {/* Favoriten Modal */}
-      <TaxiFavoritesModal
-        isOpen={showFavorites}
-        onClose={() => setShowFavorites(false)}
-        favorites={favorites}
-        onSelect={selectFavorite}
-        onDelete={deleteFavorite}
-        pickupAddress={pickup.address}
-        onSaveCurrentAddress={() => { setShowSaveFavorite(true); setShowFavorites(false); }}
-      />
-
-      {/* Save Favorite Modal */}
-      <TaxiSaveFavoriteModal
-        isOpen={showSaveFavorite}
-        onClose={() => setShowSaveFavorite(false)}
-        form={favoriteForm}
-        setForm={setFavoriteForm}
-        address={pickup.address}
-        onSubmit={() => {
-          if (!favoriteForm.name) {
-            setError('Bitte Name eingeben');
-            return;
-          }
-          saveFavorite(pickup, favoriteForm.name, favoriteForm.icon);
-        }}
-      />
     </div>
-  );
-}
-
-
-function CancelReasonModal({ onClose, onConfirm, loading }) {
-  const REASONS = [
-    { key: "wrong_address", label: "Falsche Adresse eingegeben" },
-    { key: "too_long_wait", label: "Wartezeit zu lange" },
-    { key: "no_longer_needed", label: "Brauche das Taxi nicht mehr" },
-    { key: "driver_no_show", label: "Fahrer nicht aufgetaucht" },
-    { key: "found_other", label: "Habe eine andere Option gefunden" },
-    { key: "other", label: "Anderer Grund" },
-  ];
-  const [selected, setSelected] = useState(null);
-  return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      onClick={onClose}
-      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
-      data-testid="cancel-reason-overlay"
-    >
-      <motion.div
-        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-md bg-[#0A0A0A] border-t sm:border border-white/10 rounded-t-3xl sm:rounded-3xl p-5 space-y-3"
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-white">Warum brichst du die Fahrt ab?</h3>
-          <button onClick={onClose} className="text-white/50 hover:text-white p-1.5" data-testid="cancel-reason-close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-        <p className="text-xs text-white/55">Deine Antwort hilft uns, den Service zu verbessern.</p>
-        <div className="space-y-1.5">
-          {REASONS.map((r) => (
-            <button
-              key={r.key}
-              onClick={() => setSelected(r.key)}
-              data-testid={`cancel-reason-${r.key}`}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-sm transition-colors ${
-                selected === r.key
-                  ? "bg-red-500/15 border-red-500/40 text-white"
-                  : "bg-white/[0.03] border-white/[0.08] text-white/80 hover:bg-white/[0.06]"
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2 pt-1">
-          <button
-            onClick={onClose}
-            data-testid="cancel-reason-back"
-            className="flex-1 py-3 rounded-2xl bg-white/[0.04] border border-white/10 text-sm font-semibold text-white/80"
-          >
-            Doch nicht abbrechen
-          </button>
-          <button
-            disabled={!selected || loading}
-            onClick={() => onConfirm(selected)}
-            data-testid="cancel-reason-confirm"
-            className="flex-1 py-3 rounded-2xl text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, #EF4444, #DC2626)" }}
-          >
-            {loading ? "..." : "Bestätigen"}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }

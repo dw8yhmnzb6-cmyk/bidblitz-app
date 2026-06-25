@@ -680,9 +680,7 @@ function AppContent() {
           ? <TaxiPromoManagerPage onBack={() => handleNavigate("/merchant/dashboard")} />
           : <HomePage {...homeProps} />;
       case "/taxi/pro":
-        return user
-          ? <TaxiProSuitePage onBack={() => handleNavigate("/taxi")} />
-          : <HomePage {...homeProps} />;
+        return <HomePage {...homeProps} />;
       case "/merchant/staff/live-map":
         return user.role === "merchant" || user.role === "admin"
           ? <ManagerStaffLiveMapPage onBack={() => handleNavigate("/merchant/staff")} />
@@ -805,9 +803,9 @@ function AppContent() {
       case "/taxi":
         return <TaxiPage onNavigate={handleNavigate} />;
       case "/taxi-partner":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiOperatorPage onNavigate={handleNavigate} />;
+        return <HomePage {...homeProps} />;
       case "/taxi-dashboard":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <TaxiOperatorDashboard onNavigate={handleNavigate} />;
+        return <HomePage {...homeProps} />;
       case "/scooter":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ScooterPage onNavigate={handleNavigate} />;
       case "/food":

@@ -86,7 +86,7 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
       if (aborters[key]) aborters[key].abort();
 
       const q = (query || "").trim();
-      if (q.length < 1) {
+      if (q.length < 2) {
         setSuggestions([]);
         setVisibility(false);
         return;
@@ -132,7 +132,11 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
             .slice()
             .sort((a, b) => scoreFeature(b, q, proximity) - scoreFeature(a, q, proximity))
             .map(parseFeature)
-            .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
+            .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng))
+            .filter((r) => {
+              const hay = `${r.name || ''} ${r.cityZip || ''} ${r.address || ''}`.toLowerCase();
+              return hay.includes(q.toLowerCase());
+            });
           setSuggestions(results);
           setVisibility(results.length > 0);
         } catch (err) {
