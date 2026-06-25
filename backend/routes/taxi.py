@@ -1214,6 +1214,15 @@ def calculate_fare(distance_km: float, duration_minutes: float, car_type: str, r
     }
 
 
+async def _get_operator(request: Request):
+    user = await get_current_user(request)
+    email = (user.get("email") or "").lower().strip()
+    operator = await db.taxi_operators.find_one({"email": email})
+    if not operator:
+        raise HTTPException(status_code=403, detail="Kein Taxi-Operator-Zugang")
+    return operator, user
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # DRIVER REGISTRATION & MANAGEMENT
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1668,7 +1677,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "customer_id": user_id,
         "status": {"$in": ["requested", "accepted", "arriving", "started"]}
     })
-    if active:
+    if active and not req.scheduled_at:
         raise HTTPException(status_code=400, detail="Du hast bereits eine aktive Fahrt")
     
     p_lat, p_lng, d_lat, d_lng, p_addr, d_addr, car_type = req.get_coords()
@@ -1743,12 +1752,17 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "fare_estimate_original": fare_estimate["total"],
         "promo": promo_applied,
         "status": RideStatus.REQUESTED.value,
+        "recipient": {
+            "name": (req.recipient_name or "").strip(),
+            "phone": (req.recipient_phone or req.rider_phone or "").strip(),
+        },
         "options": {
             "language": req.language or "de",
             "with_pet": bool(req.with_pet),
             "luggage": req.luggage or "none",
             "assistance": bool(req.assistance),
             "notes": req.notes or "",
+            "booking_mode": req.booking_mode or ("later" if req.scheduled_at else "now"),
             "scheduled_at": req.scheduled_at,  # None = now
         },
         "created_at": now.isoformat(),
@@ -2245,7 +2259,8 @@ async def _enrich_ride_with_driver(ride: dict) -> dict:
             from math import radians, sin, cos, asin, sqrt
             lat1, lon1 = radians(loc["lat"]), radians(loc["lng"])
             lat2, lon2 = radians(pickup["lat"]), radians(pickup["lng"])
-            dlat = lat2 - lat1; dlon = lon2 - lon1
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
             a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
             km = 2 * asin(sqrt(a)) * 6371
             # rough: 30 km/h avg city → minutes

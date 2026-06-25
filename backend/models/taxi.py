@@ -156,6 +156,9 @@ class FlexBookRequest(BaseModel):
     notes: Optional[str] = None
     rider_email: Optional[str] = None  # Book for another user
     rider_phone: Optional[str] = None
+    recipient_name: Optional[str] = Field(None, max_length=120)
+    recipient_phone: Optional[str] = Field(None, max_length=30)
+    booking_mode: Optional[str] = Field(None, max_length=20)
 
     # Multiple waypoints (between pickup and dropoff)
     stops: List[Stop] = Field(default_factory=list)

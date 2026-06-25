@@ -61,7 +61,7 @@ export async function fetchModeSettings() {
 
 // ── Favorites ──────────────────────────────────────────────────────────────
 export async function fetchFavorites() {
-  const res = await safeFetch(`${API}/api/user/favorite-locations`, cred);
+  const res = await safeFetch(`${API}/api/taxi/user/favorite-locations`, cred);
   if (!res) return [];
   if (!res.ok) return [];
   const data = await readJson(res);
@@ -69,7 +69,7 @@ export async function fetchFavorites() {
 }
 
 export async function saveFavoriteApi({ name, address, latitude, longitude, icon }) {
-  const res = await fetch(`${API}/api/user/favorite-locations`, {
+  const res = await fetch(`${API}/api/taxi/user/favorite-locations`, {
     ...credJson,
     method: "POST",
     body: JSON.stringify({ name, address, latitude, longitude, icon }),
@@ -80,7 +80,7 @@ export async function saveFavoriteApi({ name, address, latitude, longitude, icon
 }
 
 export async function deleteFavoriteApi(favoriteId) {
-  const res = await fetch(`${API}/api/user/favorite-locations/${favoriteId}`, {
+  const res = await fetch(`${API}/api/taxi/user/favorite-locations/${favoriteId}`, {
     ...cred,
     method: "DELETE",
   });
@@ -89,7 +89,7 @@ export async function deleteFavoriteApi(favoriteId) {
 
 export async function markFavoriteUsed(favoriteId) {
   try {
-    await fetch(`${API}/api/user/favorite-locations/${favoriteId}/use`, {
+    await fetch(`${API}/api/taxi/user/favorite-locations/${favoriteId}/use`, {
       ...cred,
       method: "POST",
     });
@@ -156,6 +156,16 @@ export async function savePlaceApi({ name, icon, address, lat, lng }) {
     body: JSON.stringify({ name, icon, address, lat, lng }),
   });
   return res.ok;
+}
+
+export async function saveFavoriteFromSearch({ name, address, lat, lng, icon = "star" }) {
+  return await saveFavoriteApi({
+    name,
+    address,
+    latitude: lat,
+    longitude: lng,
+    icon,
+  });
 }
 
 export async function deletePlaceApi(placeId) {
@@ -236,6 +246,9 @@ export async function bookRideApi({
     assistance: !!options.assistance,
     notes: options.notes || "",
     scheduled_at: options.scheduledAt || null,
+    recipient_name: options.recipientName || null,
+    recipient_phone: options.recipientPhone || null,
+    booking_mode: options.bookingMode || "now",
     promo_code: promoCode || null,
   };
   const res = await safeFetch(`${API}/api/taxi/book`, {

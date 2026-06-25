@@ -53,6 +53,14 @@ export default function TaxiPage({ onNavigate }) {
   const [searchMode, setSearchMode] = useState('dropoff');
   const [savedPlaces, setSavedPlaces] = useState([]);
   const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [recentAddresses, setRecentAddresses] = useState([]);
+  const [favoriteRoutes, setFavoriteRoutes] = useState([]);
+  const [bookingMode, setBookingMode] = useState('now');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [forOther, setForOther] = useState(false);
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -84,13 +92,36 @@ export default function TaxiPage({ onNavigate }) {
   useEffect(() => {
     let cancelled = false;
     const loadSaved = async () => {
-      const places = await api.fetchSavedPlaces();
-      if (!cancelled) setSavedPlaces(places || []);
+      const [places, favs, recents, routes] = await Promise.all([
+        api.fetchSavedPlaces(),
+        api.fetchFavorites(),
+        api.fetchRecentAddresses(6),
+        api.fetchFavoriteRoutes(4),
+      ]);
+      if (!cancelled) {
+        setSavedPlaces(places || []);
+        setFavorites(favs || []);
+        setRecentAddresses(recents || []);
+        setFavoriteRoutes(routes || []);
+      }
     };
     loadSaved();
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  const refreshTaxiCollections = useCallback(async () => {
+    const [places, favs, recents, routes] = await Promise.all([
+      api.fetchSavedPlaces(),
+      api.fetchFavorites(),
+      api.fetchRecentAddresses(6),
+      api.fetchFavoriteRoutes(4),
+    ]);
+    setSavedPlaces(places || []);
+    setFavorites(favs || []);
+    setRecentAddresses(recents || []);
+    setFavoriteRoutes(routes || []);
   }, []);
 
   useEffect(() => {
@@ -121,6 +152,7 @@ export default function TaxiPage({ onNavigate }) {
     if (!result.ok) {
       setEstimates([]);
       setError(result.error || 'Keine Fahrten verfügbar');
+      if (bookingMode === 'now') setBookingMode('later');
       setEstimating(false);
       return;
     }
@@ -173,6 +205,22 @@ export default function TaxiPage({ onNavigate }) {
     }
   };
 
+  const handleSaveSuggestionAsFavorite = async (item) => {
+    const labelBase = item.name || item.address || 'Favorit';
+    const result = await api.saveFavoriteFromSearch({
+      name: labelBase,
+      address: item.address || item.name,
+      lat: item.lat,
+      lng: item.lng,
+      icon: 'star',
+    });
+    if (!result.ok) {
+      setError(result.error || 'Favorit konnte nicht gespeichert werden');
+      return;
+    }
+    setFavorites(await api.fetchFavorites());
+  };
+
   const resolveQuickPlace = (place) => {
     if (place.preset) return place.preset;
     const saved = savedPlaces.find((entry) => (entry.icon || '').toLowerCase() === place.id || (entry.name || '').toLowerCase() === place.id);
@@ -193,11 +241,44 @@ export default function TaxiPage({ onNavigate }) {
     setError('');
   };
 
+  const handleSaveHomeWork = async (kind) => {
+    const source = dropoff?.lat ? dropoff : pickup;
+    if (!source?.lat || !source?.address) {
+      setError('Bitte zuerst einen Ort auswählen.');
+      return;
+    }
+    const ok = await api.savePlaceApi({
+      name: kind === 'home' ? 'Home' : 'Work',
+      icon: kind,
+      address: source.address,
+      lat: source.lat,
+      lng: source.lng,
+    });
+    if (!ok) {
+      setError(`${kind === 'home' ? 'Home' : 'Work'} konnte nicht gespeichert werden.`);
+      return;
+    }
+    setError('');
+    await refreshTaxiCollections();
+  };
+
+  const handleFavoriteRouteSelect = (route) => {
+    if (route?.pickup) setPickup(route.pickup);
+    if (route?.dropoff) setDropoff(route.dropoff);
+    setError('');
+  };
+
   const handleBookRide = async () => {
     if (!selectedEstimate) return;
     setBooking(true);
     setError('');
-    const result = await api.bookRideApi({ pickup, dropoff, vehicleType: selectedEstimate.vehicle_type, paymentMethod: 'wallet' });
+    const bookOptions = {
+      bookingMode,
+      scheduledAt: bookingMode === 'later' ? scheduledAt : null,
+      recipientName: forOther ? recipientName : null,
+      recipientPhone: forOther ? recipientPhone : null,
+    };
+    const result = await api.bookRideApi({ pickup, dropoff, vehicleType: selectedEstimate.vehicle_type, paymentMethod: 'wallet', options: bookOptions });
     setBooking(false);
     if (!result.ok) {
       setError(result.error || 'Buchung fehlgeschlagen');
@@ -264,18 +345,16 @@ export default function TaxiPage({ onNavigate }) {
                     {field.show && field.suggestions.length > 0 ? (
                       <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl" data-testid={`taxi-customer-suggestions-${field.id}`}>
                         {field.suggestions.slice(0, 6).map((item, index) => (
-                          <button
-                            key={`${field.id}-${index}`}
-                            onMouseDown={() => handleSuggestionSelect(field.id, item)}
-                            className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
-                            data-testid={`taxi-customer-suggestion-${field.id}-${index}`}
-                          >
-                            <div className="mt-0.5 rounded-xl bg-slate-100 p-2 text-slate-500"><MapPin size={14} /></div>
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold text-slate-900">{item.name || item.address}</div>
-                              <div className="truncate text-xs text-slate-500">{item.cityZip || item.address}</div>
-                            </div>
-                          </button>
+                          <div key={`${field.id}-${index}`} className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 hover:bg-slate-50" data-testid={`taxi-customer-suggestion-${field.id}-${index}`}>
+                            <button onMouseDown={() => handleSuggestionSelect(field.id, item)} className="flex min-w-0 flex-1 items-start gap-3 text-left">
+                              <div className="mt-0.5 rounded-xl bg-slate-100 p-2 text-slate-500"><MapPin size={14} /></div>
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-semibold text-slate-900">{item.name || item.address}</div>
+                                <div className="truncate text-xs text-slate-500">{item.cityZip || item.address}</div>
+                              </div>
+                            </button>
+                            {field.id === 'dropoff' ? <button onMouseDown={() => handleSaveSuggestionAsFavorite(item)} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-600" data-testid={`taxi-customer-save-suggestion-${index}`}>Speichern</button> : null}
+                          </div>
                         ))}
                       </div>
                     ) : null}
@@ -293,12 +372,41 @@ export default function TaxiPage({ onNavigate }) {
                 </div>
                 <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">Suche reagiert schon ab wenigen Buchstaben und zoomt direkt auf Pickup + Ziel.</p>
               </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-3" data-testid="taxi-customer-booking-mode-tabs">
+                {[
+                  { id: 'now', label: 'Jetzt bestellen' },
+                  { id: 'later', label: 'Später bestellen' },
+                  { id: 'other', label: 'Für jemand anderen' },
+                ].map((mode) => (
+                  <button key={mode.id} onClick={() => { setBookingMode(mode.id === 'other' ? 'now' : mode.id); setForOther(mode.id === 'other'); }} className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold ${((mode.id === 'other' && forOther) || (mode.id !== 'other' && bookingMode === mode.id && !forOther)) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700'}`} data-testid={`taxi-customer-booking-mode-${mode.id}`}>
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {bookingMode === 'later' ? (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3" data-testid="taxi-customer-schedule-box">
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Abholzeit</label>
+                  <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" data-testid="taxi-customer-scheduled-at-input" />
+                </div>
+              ) : null}
+
+              {forOther ? (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3" data-testid="taxi-customer-recipient-box">
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Name der Person</label>
+                  <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="Max Mustermann" data-testid="taxi-customer-recipient-name-input" />
+                  <label className="mt-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Telefon</label>
+                  <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="+49 …" data-testid="taxi-customer-recipient-phone-input" />
+                </div>
+              ) : null}
             </div>
 
             <AnimatePresence>
               {error ? (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" data-testid="taxi-customer-error-card">
                   {error}
+                  {bookingMode === 'later' ? <button onClick={() => setBottomSheetOpen(true)} className="mt-3 block rounded-full border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700" data-testid="taxi-customer-error-open-later-button">Später planen öffnen</button> : null}
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -310,6 +418,55 @@ export default function TaxiPage({ onNavigate }) {
                   <p className="mt-1 text-[11px] text-slate-500">{place.subtitle}</p>
                 </button>
               ))}
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2" data-testid="taxi-customer-home-work-management">
+              <button onClick={() => handleSaveHomeWork('home')} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left" data-testid="taxi-customer-save-home-button">
+                <div className="text-sm font-bold text-slate-900">Home speichern</div>
+                <p className="mt-1 text-[11px] text-slate-500">Aktuellen Ort als Zuhause merken</p>
+              </button>
+              <button onClick={() => handleSaveHomeWork('work')} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left" data-testid="taxi-customer-save-work-button">
+                <div className="text-sm font-bold text-slate-900">Work speichern</div>
+                <p className="mt-1 text-[11px] text-slate-500">Aktuellen Ort als Arbeit merken</p>
+              </button>
+            </div>
+
+            <div className="mt-3 grid gap-2" data-testid="taxi-customer-saved-home-work-list">
+              {savedPlaces.filter((place) => ['home', 'work'].includes((place.icon || '').toLowerCase()) || ['home', 'work'].includes((place.name || '').toLowerCase())).slice(0, 2).map((place) => (
+                <button key={place.place_id || place.name} onClick={() => setDropoff({ address: place.address, lat: place.lat, lng: place.lng })} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left" data-testid={`taxi-customer-saved-place-${(place.icon || place.name || '').toLowerCase()}`}>
+                  <div className="text-sm font-semibold text-slate-900">{place.name}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">{place.address}</div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-smart-suggestions-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Intelligente Suche</p>
+                  <h3 className="mt-1 text-lg font-black">Letzte Ziele und häufige Orte</h3>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {favoriteRoutes.slice(0, 2).map((route, index) => (
+                  <button key={`fav-route-${index}`} onClick={() => handleFavoriteRouteSelect(route)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left" data-testid={`taxi-customer-favorite-route-${index}`}>
+                    <div className="text-sm font-semibold text-slate-900">{route.pickup?.address} → {route.dropoff?.address}</div>
+                    <div className="mt-1 text-[11px] text-slate-500">Häufig gefahren · Ø €{Number(route.avg_fare || 0).toFixed(2)}</div>
+                  </button>
+                ))}
+                {recentAddresses.slice(0, 3).map((address, index) => (
+                  <button key={`recent-address-${index}`} onClick={() => setDropoff({ address: address.address, lat: address.lat, lng: address.lng })} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left" data-testid={`taxi-customer-recent-address-${index}`}>
+                    <div className="text-sm font-semibold text-slate-900">{address.address}</div>
+                    <div className="mt-1 text-[11px] text-slate-500">Zuletzt genutzt · {address.use_count || 1}×</div>
+                  </button>
+                ))}
+                {favorites.slice(0, 3).map((favorite, index) => (
+                  <button key={`favorite-address-${index}`} onClick={() => setDropoff({ address: favorite.address, lat: favorite.latitude, lng: favorite.longitude })} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left" data-testid={`taxi-customer-favorite-address-${index}`}>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900"><Star size={14} className="text-amber-500" /> {favorite.name}</div>
+                    <div className="mt-1 text-[11px] text-slate-500">{favorite.address}</div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {activeRide ? (
