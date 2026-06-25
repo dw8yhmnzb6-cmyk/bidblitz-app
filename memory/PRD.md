@@ -36,6 +36,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Weitere Requirements-Pins bereinigt** (`backend/requirements.txt`): zusätzlich `pandas==2.3.2` und `tiktoken==0.11.0` auf verfügbare Versionen angepasst; die zuvor entfernten problematischen Pakete bleiben draußen.
 - ✅ **Pflicht-Verifikation nach User-Bugreport abgeschlossen**: `testing_agent` Iteration 152 = Backend 20/20 PASS, Frontend 100% PASS. Der Report bestätigt ausdrücklich den CI-Workflow-Fix, alle bereinigten Pins und den weiterhin funktionierenden Taxi-Kundenflow.
 
+### 25.06.2026 (Taxi-Suche + Buchungsmodi weiter in Richtung Uber) ✅
+- 🟢 **Home/Work-Verwaltung ergänzt** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/services/taxiApi.js`): Nutzer können Home/Work direkt aus dem Taxi-Flow speichern und als Schnellziel wiederverwenden.
+- 🟢 **Favoriten direkt aus Suchtreffern**: jeder Zieltreffer im Dropoff-Autocomplete hat jetzt eine `Speichern`-Aktion; Favoriten und letzte Ziele erscheinen zusätzlich in der smarten Suggestions-Zone.
+- 🟢 **Buchungsmodi erweitert** (`frontend/src/pages/TaxiPage.jsx`, `backend/models/taxi.py`, `backend/routes/taxi.py`): `Jetzt bestellen`, `Später bestellen` und `Für jemand anderen` sind jetzt als echte Optionen im Kundenflow vorhanden; Backend akzeptiert `booking_mode`, `scheduled_at`, `recipient_name`, `recipient_phone`.
+- ✅ **Verifiziert**: `testing_agent` Iteration 153 = Backend 16/16 PASS, Frontend 100% PASS. Geprüft wurden Quick Places, Home/Work Save, Favoriten-CTA, Smart Suggestions, Later-Booking-Datetime und Recipient-Felder.
+
 ### 24.06.2026 (CI/CD Repair: Backend Dependencies + Frontend ESLint) ✅
 - 🟢 **Backend-CI stabilisiert** (`backend/requirements.txt`, `.github/workflows/ci.yml`, `backend/tests/test_ci_smoke.py`): problematische Versionen für `emergentintegrations`, `librt` und `s5cmd` wurden auf installierbare Releases angehoben; der GitHub-Workflow nutzt jetzt gezielt `pytest backend/tests/test_ci_smoke.py` als zuverlässigen Backend-Gate.
 - 🟢 **Frontend-ESLint wieder grün auf Error-Level** (`frontend/.eslintrc.json`, `frontend/src/App.js`, `frontend/src/components/POSGuidedTour.jsx` plus mehrere betroffene Pages/Stores): fehlende ESLint-Konfiguration ergänzt, Parsing-/Import-Reihenfolge-/Undefined-/`confirm()`-Blocker bereinigt. `npx eslint src --ext .js,.jsx` läuft jetzt mit **0 Errors**.

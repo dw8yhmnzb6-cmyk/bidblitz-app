@@ -25,6 +25,12 @@
 - `backend/requirements.txt` weiter bereinigt: `pandas==2.3.2`, `tiktoken==0.11.0`
 - Verifiziert: `testing_agent` Iteration 152 PASS (Backend 20/20, Frontend 100%), inklusive expliziter Prüfung des CI-Workflow-Filters und aller bereinigten Requirements-Pins
 
+## 25.06.2026 — Taxi Uber-Flow weiter ausgebaut
+- `frontend/src/pages/TaxiPage.jsx`: Home/Work speichern, Smart Suggestions für letzte Ziele/häufige Orte, Favoriten-CTA direkt in Ziel-Suchtreffern, Booking-Modes `Jetzt` / `Später` / `Für jemand anderen`
+- `frontend/src/services/taxiApi.js`: Favoriten-Endpunkte korrekt auf `/api/taxi/user/favorite-locations` verdrahtet; Book-API erweitert um `booking_mode`, `scheduled_at`, `recipient_name`, `recipient_phone`
+- `backend/models/taxi.py` + `backend/routes/taxi.py`: neue Buchungsfelder ergänzt; scheduled bookings blockieren nicht mehr an aktiver Sofortfahrt; gespeicherte/empfohlene Taxi-Ziele lassen sich jetzt vollständig durch den neuen Kundenflow nutzen
+- Verifiziert: `testing_agent` Iteration 153 PASS (Backend 16/16, Frontend 100%)
+
 ## 24.06.2026 — CI/CD Repair (Backend Dependencies + Frontend ESLint)
 - `backend/requirements.txt` bereinigt: `emergentintegrations` auf `0.2.0`, `librt` auf `0.11.0`, `s5cmd` auf `0.3.3` angehoben
 - GitHub Actions Backend-Job auf stabilen Smoke-Test umgestellt: `pytest backend/tests/test_ci_smoke.py` statt der flakey historischen Komplettsuite
