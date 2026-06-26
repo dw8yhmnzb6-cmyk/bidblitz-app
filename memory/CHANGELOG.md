@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 26.06.2026 — Auktionsreset auf 30 neue 2026-Artikel
+- `backend/routes/auctions.py`: neuer `ACTIVE_AUCTION_CATALOG` mit exakt 30 neuen 2026-Produkten; Auto-Respawn, Maintenance, Admin-Reseed, Refresh und Catalog-Endpunkte auf 2026-only umgestellt
+- `backend/scripts/reset_auctions_2026.py`: Hard-Reset-Script ergänzt, das alle bisherigen Auktionen entfernt und 30 neue Auktionen mit Endzeit 18:00 UTC in 3/4/5 Tagen erzeugt
+- Datenbank direkt zurückgesetzt: alte Auktionen vollständig gelöscht, 30 neue 2026-Auktionen live
+- Verifiziert: `/api/auctions/active` = 30, alle Titel enthalten `2026`, alle Endzeiten = 18:00 UTC, Commerce Center zeigt `Penny Auktionen: 30`, `testing_agent` Iteration 157 PASS, dedizierte Frontend-/Backend-Checks PASS
+
 ## 25.06.2026 — Mobility Booking Tracking enger gebündelt
 - `backend/routes/mobility_platform.py`: Tracking-Payload für Booking-Details erweitert um `live_status`, `phase_label`, `next_event_label`, `progress_percent`, `timeline`, `route_points` und interpolierte `assigned_resource.live_position`
 - `frontend/src/pages/MobilityBookingTrackingPage.jsx`: Phase-Pill, Next-Event-Karte, Timeline-Karte und verbesserte Live-Map-/Fortschrittsdarstellung ergänzt

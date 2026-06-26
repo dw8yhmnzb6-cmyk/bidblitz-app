@@ -5,12 +5,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — Taxi Phase 3 + Mobility Booking Tracking verifiziert, Commerce als Nächstes
+## Current Focus — 2026-Auktionsreset live, Commerce Center als Nächstes
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
 - Die GitHub-Actions-CI bleibt stabil: Backend-Abhängigkeiten installieren wieder sauber, Frontend-ESLint läuft ohne Errors, und der Backend-Job nutzt einen stabilen FastAPI-Smoke-Test statt flakey historischer E2E-Suiten.
-- Neu live: Taxi Phase 3 mit gehärteter Zielsuche, Live-Movement-Daten (`driver_bearing`, `driver_path`) und aktiver Fahrerkarte mit Chat / Call / Share-Trip; zusätzlich ist das Mobility Booking Tracking jetzt mit Timeline, Live-Phase, Next-Event-Hinweis und Active-Tracking-Entry im Mobility Center verifiziert.
-- Nächster Schwerpunkt: Commerce Center wieder aufnehmen und danach Mobility-Personalisierung (häufige Ziele, Vorschläge, Rebook-Logik) weiter ausbauen.
+- Neu live: Der komplette Auktionsbestand wurde auf genau 30 neue 2026-Produkte zurückgesetzt; alle enden rotierend in 3/4/5 Tagen jeweils um 18:00 Uhr, und auch Auto-Respawn/Refresh/Reseed verwenden jetzt denselben 2026-Katalog.
+- Nächster Schwerpunkt: Commerce Center wieder aufnehmen und danach Mobility-/Taxi-Personalisierung weiter ausbauen.
 
 ### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
 - 🟢 **Zielsuche gehärtet** (`frontend/src/components/taxi/useTaxiGeocoder.js`): Taxi-Suche fällt jetzt robust zwischen direkter Mapbox-Abfrage und Backend-Proxy zurück. Damit bleiben Vorschläge auch dann stabil, wenn ein Frontend-Token auf einzelnen Geräten/Deployments fehlschlägt.
@@ -23,6 +23,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Tracking-Page vertieft** (`frontend/src/pages/MobilityBookingTrackingPage.jsx`): neue Phase-Pill, Next-Event-Karte, Timeline mit 6 Schritten und verbesserte Live-Karte/Fortschrittsanzeige.
 - 🟢 **Mobility Center Einstieg ergänzt** (`frontend/src/pages/MobilityCenterPage.jsx`): aktive Buchungen zeigen jetzt eine direkte Tracking-Entry-Card mit CTA `Tracking öffnen`.
 - ✅ **Verifiziert**: API-Self-Tests PASS, Browser-Smoke PASS, `testing_agent` Iteration 156 = Backend 22/22 PASS und Frontend 18/18 PASS; dedizierter Frontend-Check PASS, dedizierter Backend-Check PASS.
+
+### 26.06.2026 (Auktionsreset auf 30 neue 2026-Artikel) ✅
+- 🟢 **Kompletter Datenreset** (`backend/scripts/reset_auctions_2026.py`): alle bestehenden Auktionen sowie zugehörige Auktion-Bids/Notifications/Watchlist/Auto-Bids gelöscht und exakt 30 neue 2026-Auktionen erzeugt.
+- 🟢 **2026-only Katalog durchgezogen** (`backend/routes/auctions.py`): aktiver Katalog jetzt exakt 30 Produkte; Maintenance-Loop, Auto-Respawn, Admin-Reseed und Refresh arbeiten ebenfalls ausschließlich mit diesem 2026-Katalog.
+- 🟢 **Zeitlogik fixiert**: alle 30 Auktionen enden exakt um 18:00 UTC, verteilt mit je 10 Auktionen auf 3, 4 und 5 Tage.
+- ✅ **Verifiziert**: API-Self-Test PASS (`/api/auctions/active` => 30, alle Titel `2026`, alle `ends_at` 18:00), Browser-Smoke PASS auf `/auctions`, `testing_agent` Iteration 157 = Backend 13/13 PASS und Frontend 6/6 PASS; dedizierter Frontend-Check PASS, dedizierter Backend-Check PASS.
 
 ### 25.06.2026 (Mobility Compare + Game Center V1) ✅
 - 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.
