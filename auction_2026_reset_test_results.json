@@ -1,0 +1,14 @@
+{
+  "test_time": "2026-06-26T10:59:43.156886+00:00",
+  "base_url": "https://commerce-hub-565.preview.emergentagent.com",
+  "results": {
+    "test1_active_auctions": true,
+    "test2_titles_2026": true,
+    "test3_ends_at_18utc": true,
+    "test4_no_old_products": true,
+    "test5_commerce_center": true
+  },
+  "passed": 5,
+  "total": 5,
+  "success_rate": "100%"
+}
