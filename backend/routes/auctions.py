@@ -1304,6 +1304,49 @@ with open(_catalog_path, 'r', encoding='utf-8') as f:
 # Enforce €2000 retail-price cap globally — no bot/seed/listing may exceed this.
 PRODUCT_CATALOG = [p for p in PRODUCT_CATALOG if (p.get("retail_price") or 0) <= 2000]
 
+# Curated 2026-only auction lineup (exactly 30 products for active penny auctions)
+ACTIVE_AUCTION_CATALOG = [
+    {"title": "iPhone 17 Pro Max 2026", "description": "Apple Flagship 2026 mit Titan-Finish und Pro-Kamera-System.", "retail_price": 1499, "category": "tech"},
+    {"title": "Samsung Galaxy S26 Ultra 2026", "description": "Samsung Ultra-Modell 2026 mit AI Zoom und S-Pen.", "retail_price": 1399, "category": "tech"},
+    {"title": "Google Pixel 10 Pro 2026", "description": "Pixel 10 Pro aus der 2026 Generation mit starker Kamera-AI.", "retail_price": 1099, "category": "tech"},
+    {"title": "MacBook Pro M5 14 2026", "description": "MacBook Pro 14 Zoll mit M5 Performance für 2026.", "retail_price": 1999, "category": "tech"},
+    {"title": "iPad Pro M5 13 2026", "description": "iPad Pro 13 Zoll der 2026 Serie für Work und Studio.", "retail_price": 1299, "category": "tech"},
+    {"title": "Apple Watch Ultra 3 2026", "description": "Robuste Ultra-Smartwatch 2026 für Sport und Alltag.", "retail_price": 899, "category": "tech"},
+    {"title": "AirPods Pro 3 2026", "description": "AirPods Pro Generation 2026 mit verbesserter ANC.", "retail_price": 279, "category": "tech"},
+    {"title": "Sony WH-1000XM6 2026", "description": "Premium Noise-Cancelling Kopfhörer 2026 von Sony.", "retail_price": 449, "category": "tech"},
+    {"title": "Nintendo Switch 2 2026", "description": "Neue Switch 2 Konsole für die Saison 2026.", "retail_price": 399, "category": "gaming"},
+    {"title": "PlayStation 5 Pro 2026", "description": "PS5 Pro Line-up 2026 mit High-FPS Performance.", "retail_price": 799, "category": "gaming"},
+    {"title": "Xbox Series X 2TB 2026", "description": "Xbox Series X 2TB Variante für 2026 Releases.", "retail_price": 649, "category": "gaming"},
+    {"title": "Meta Quest 4 2026", "description": "VR Headset 2026 mit starkem Mixed-Reality Fokus.", "retail_price": 599, "category": "tech"},
+    {"title": "DJI Mavic 4 Pro 2026", "description": "DJI Mavic 4 Pro aus der 2026 Klasse für Creator.", "retail_price": 1899, "category": "tech"},
+    {"title": "GoPro Hero 14 Black 2026", "description": "Action Cam 2026 für Travel, Sport und Creator.", "retail_price": 549, "category": "tech"},
+    {"title": "Dyson V16 Absolute 2026", "description": "Dyson V16 Absolute 2026 für modernes Smart Home.", "retail_price": 799, "category": "lifestyle"},
+    {"title": "Roborock S9 MaxV Ultra 2026", "description": "Roborock Premium Cleaning Robot aus der 2026 Serie.", "retail_price": 1599, "category": "lifestyle"},
+    {"title": "DeLonghi La Specialista 2026", "description": "Siebträger-Upgrade 2026 für Coffee Lovers.", "retail_price": 899, "category": "lifestyle"},
+    {"title": "Breville Barista Touch 2026", "description": "Barista Touch 2026 mit smarter One-Touch Bedienung.", "retail_price": 999, "category": "lifestyle"},
+    {"title": "KitchenAid Artisan Mixer 2026", "description": "KitchenAid Artisan 2026 in Premium-Ausführung.", "retail_price": 649, "category": "lifestyle"},
+    {"title": "Weber Genesis EX-335 2026", "description": "Smart Grill 2026 für Sommer, Garten und Events.", "retail_price": 1299, "category": "lifestyle"},
+    {"title": "Segway Ninebot Max G3 2026", "description": "E-Scooter Modell 2026 mit großer Reichweite.", "retail_price": 999, "category": "mobility"},
+    {"title": "VanMoof S5 2026", "description": "Urban E-Bike 2026 für City und Pendler.", "retail_price": 1999, "category": "mobility"},
+    {"title": "Cowboy 5 2026", "description": "Connected E-Bike 2026 mit starkem Designfokus.", "retail_price": 1990, "category": "mobility"},
+    {"title": "Samsung Odyssey G9 2026", "description": "Ultra-Wide Gaming Monitor 2026 für Setup Upgrades.", "retail_price": 1699, "category": "gaming"},
+    {"title": "LG UltraGear 45 2026", "description": "Curved OLED Gaming Monitor 2026 von LG.", "retail_price": 1499, "category": "gaming"},
+    {"title": "XGIMI Horizon Ultra 2026", "description": "Heimkino-Projektor 2026 mit Premium Bildqualität.", "retail_price": 1799, "category": "tech"},
+    {"title": "Theragun Pro Plus 2026", "description": "Recovery Gadget 2026 für Wellness und Sport.", "retail_price": 649, "category": "lifestyle"},
+    {"title": "Bose QuietComfort Ultra 2026", "description": "Bose Audio-Fokus 2026 mit Premium ANC.", "retail_price": 499, "category": "tech"},
+    {"title": "Kindle Scribe 2 2026", "description": "E-Ink Notebook 2026 für Lesen und Notizen.", "retail_price": 449, "category": "tech"},
+    {"title": "Apple Vision Pro 2026", "description": "Spatial Computing Headset 2026 in Premium Edition.", "retail_price": 1999, "category": "tech"},
+]
+
+TARGET_ACTIVE_AUCTIONS = 30
+
+
+def _schedule_auction_end(now: datetime, slot_index: int = 0) -> tuple[datetime, int]:
+    days_until_end = 3 + (slot_index % 3)  # 3, 4, 5 Tage rotierend
+    end_at = datetime(now.year, now.month, now.day, 18, 0, tzinfo=timezone.utc) + timedelta(days=days_until_end)
+    duration_seconds = max(3600, int((end_at - now).total_seconds()))
+    return end_at, duration_seconds
+
 
 # ── Seed demo auctions ──
 def _bot_target_for(retail_price: float) -> float:
@@ -1324,10 +1367,10 @@ def _bot_target_for(retail_price: float) -> float:
     return round(_r.uniform(200, 350), 2)
 
 
-def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
+def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int = 0) -> dict:
     """Build a full auction document with bot auto-bidding config."""
     auction_id = secrets.token_hex(8)
-    ends_at = (now + timedelta(seconds=d["duration"])).isoformat()
+    scheduled_end_at, duration_seconds = _schedule_auction_end(now, slot_index)
     return {
         "auction_id": auction_id,
         "title": d["title"],
@@ -1340,8 +1383,8 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
         "current_price": 0.00,
         "price_increment": PRICE_INCREMENT,
         "timer_extension": TIMER_EXTENSION_SECONDS,
-        "duration_seconds": d["duration"],
-        "ends_at": ends_at,
+        "duration_seconds": duration_seconds,
+        "ends_at": scheduled_end_at.isoformat(),
         "status": "active",
         "winner_id": None,
         "winner_name": None,
@@ -1367,14 +1410,14 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime) -> dict:
 
 
 async def seed_demo_auctions():
-    """Seed all 30 auctions from product catalog if none exist (with bot auto-bidding)."""
+    """Seed exactly 30 active 2026 auctions if none exist (with bot auto-bidding)."""
     count = await db.auctions.count_documents({"status": "active"})
     if count > 0:
         return
 
     now = datetime.now(timezone.utc)
-    for d in PRODUCT_CATALOG:
-        auction = _build_auction_doc(d, "system", now)
+    for index, d in enumerate(ACTIVE_AUCTION_CATALOG[:TARGET_ACTIVE_AUCTIONS]):
+        auction = _build_auction_doc(d, "system", now, index)
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
 
@@ -1385,9 +1428,6 @@ async def seed_demo_auctions():
 # - Auto-creates new auctions to keep count at TARGET_ACTIVE_AUCTIONS
 # - Naturally fluctuates viewer counts for realism
 # ══════════════════════════════════════════════════════════════
-TARGET_ACTIVE_AUCTIONS = 60
-
-
 async def _next_product_for_restart() -> dict:
     """Pick a product to spawn — least recently used wins."""
     # Find the product titles that were ended most-long-ago
@@ -1403,7 +1443,7 @@ async def _next_product_for_restart() -> dict:
     def score(p):
         return last_ended.get(p["title"]) or "0000"
 
-    sorted_catalog = sorted(PRODUCT_CATALOG, key=score)
+    sorted_catalog = sorted(ACTIVE_AUCTION_CATALOG, key=score)
     return sorted_catalog[0]
 
 
@@ -1495,7 +1535,7 @@ async def auction_maintenance_loop():
 
                 spawned = 0
                 sorted_cat = sorted(
-                    PRODUCT_CATALOG, key=lambda p: last_ended_map.get(p["title"], "")
+                    ACTIVE_AUCTION_CATALOG, key=lambda p: last_ended_map.get(p["title"], "")
                 )
 
                 for d in sorted_cat:
@@ -1506,7 +1546,7 @@ async def auction_maintenance_loop():
                     if d["title"] in in_cooldown:
                         # Recently ended — wait the 5-min cool-down before respawn
                         continue
-                    auction = _build_auction_doc(d, "system_auto", now)
+                    auction = _build_auction_doc(d, "system_auto", now, spawned)
                     await db.auctions.insert_one(auction)
                     created_titles.add(d["title"])
                     spawned += 1
@@ -1588,8 +1628,8 @@ async def admin_reseed_auctions(request: Request):
     )
 
     created = []
-    for d in PRODUCT_CATALOG[:TARGET_ACTIVE_AUCTIONS]:
-        auction = _build_auction_doc(d, str(user.get("_id") or "admin"), now)
+    for index, d in enumerate(ACTIVE_AUCTION_CATALOG[:TARGET_ACTIVE_AUCTIONS]):
+        auction = _build_auction_doc(d, str(user.get("_id") or "admin"), now, index)
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
         created.append({"auction_id": auction["auction_id"], "title": auction["title"]})
@@ -1616,8 +1656,8 @@ async def refresh_auctions(request: Request):
 
     # Create new auctions from full catalog (with bot auto-bidding)
     created = []
-    for d in PRODUCT_CATALOG:
-        auction = _build_auction_doc(d, str(user["_id"]), now)
+    for index, d in enumerate(ACTIVE_AUCTION_CATALOG[:TARGET_ACTIVE_AUCTIONS]):
+        auction = _build_auction_doc(d, str(user["_id"]), now, index)
         await db.auctions.insert_one(auction)
         auction.pop("_id", None)
         created.append(auction["auction_id"])
@@ -1632,7 +1672,7 @@ async def get_catalog(request: Request):
     user = await get_current_user(request)
     if user.get("role") not in ("admin",):
         raise HTTPException(status_code=403, detail="Admin only")
-    return {"catalog": PRODUCT_CATALOG, "total": len(PRODUCT_CATALOG)}
+    return {"catalog": ACTIVE_AUCTION_CATALOG, "total": len(ACTIVE_AUCTION_CATALOG)}
 
 
 # ── Watchlist Toggle ──
@@ -2169,7 +2209,7 @@ async def get_automation_config(request: Request):
         "active_auctions": active_count,
         "scheduled_auctions": scheduled_count,
         "ended_today": ended_today,
-        "catalog_size": len(PRODUCT_CATALOG),
+        "catalog_size": len(ACTIVE_AUCTION_CATALOG),
     }
 
     # Win-rate stats: heute wer hat wieviel gewonnen?
@@ -2216,10 +2256,10 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     
-    if req.product_index >= len(PRODUCT_CATALOG):
-        raise HTTPException(status_code=400, detail=f"Invalid product index. Max: {len(PRODUCT_CATALOG)-1}")
+    if req.product_index >= len(ACTIVE_AUCTION_CATALOG):
+        raise HTTPException(status_code=400, detail=f"Invalid product index. Max: {len(ACTIVE_AUCTION_CATALOG)-1}")
     
-    product = PRODUCT_CATALOG[req.product_index]
+    product = ACTIVE_AUCTION_CATALOG[req.product_index]
     now = datetime.now(timezone.utc)
     
     if req.start_at:
@@ -2295,10 +2335,10 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
     created = []
     
     for i, idx in enumerate(req.product_indices):
-        if idx >= len(PRODUCT_CATALOG):
+        if idx >= len(ACTIVE_AUCTION_CATALOG):
             continue
         
-        product = PRODUCT_CATALOG[idx]
+        product = ACTIVE_AUCTION_CATALOG[idx]
         start_time = now + timedelta(minutes=i * req.stagger_minutes)
         duration_seconds = req.duration_hours * 3600
         ends_at = start_time + timedelta(seconds=duration_seconds)
@@ -2643,5 +2683,5 @@ async def get_auction_stats(request: Request):
             "estimated_from_bids": revenue_estimate,
             "total_credit_purchases": round(total_credit_revenue, 2),
         },
-        "catalog_size": len(PRODUCT_CATALOG),
+        "catalog_size": len(ACTIVE_AUCTION_CATALOG),
     }
