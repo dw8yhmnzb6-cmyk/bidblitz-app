@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield
@@ -9,7 +9,7 @@ import KYCVerificationModal from "../components/KYCVerificationModal";
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
 // Floating input
-const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFocus }) => {
+const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFocus, inputRef, name }) => {
   const [focused, setFocused] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const isPw = type === "password";
@@ -30,10 +30,13 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
       >
         <Icon size={16} strokeWidth={1.5} className={`flex-shrink-0 ${focused ? "text-[#00C2FF]" : "text-white/50"}`} />
         <input
+          ref={inputRef}
+          name={name}
           data-testid={testId}
           type={isPw ? (showPw ? "text" : "password") : (type || "text")}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onInput={(e) => onChange(e.currentTarget.value)}
           placeholder={placeholder}
           autoFocus={autoFocus}
           onFocus={() => setFocused(true)}
@@ -42,6 +45,10 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
           className="flex-1 min-w-0 w-full bg-transparent text-[13px] text-white placeholder:text-white/35 outline-none font-medium"
           style={{ WebkitTextFillColor: "#fff" }}
           autoComplete={isPw ? (placeholder && placeholder.toLowerCase().includes("confirm") || placeholder && placeholder.toLowerCase().includes("bestätigen") ? "new-password" : "current-password") : "email"}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint={isPw ? "go" : "next"}
         />
         {isPw && value && (
           <motion.button
@@ -60,6 +67,8 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
 };
 
 export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
   const [mode, setMode] = useState(initialMode || "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -87,7 +96,12 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const result = await user.login(email, password, rememberMe);
+    const formData = new FormData(e.currentTarget);
+    const liveEmail = String(formData.get("login-email") || emailRef.current?.value || email || "").trim();
+    const livePassword = String(formData.get("login-password") || passwordRef.current?.value || password || "");
+    if (liveEmail !== email) setEmail(liveEmail);
+    if (livePassword !== password) setPassword(livePassword);
+    const result = await user.login(liveEmail, livePassword, rememberMe);
     if (result === true && typeof onAuthSuccess === "function") {
       onAuthSuccess();
     }
@@ -349,6 +363,8 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                 placeholder={t("auth.email") || "E-Mail-Adresse"}
                 testId="login-email-input"
                 autoFocus
+                inputRef={emailRef}
+                name="login-email"
               />
               <Field
                 icon={Lock}
@@ -357,6 +373,8 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                 onChange={setPassword}
                 placeholder={t("auth.password") || "Passwort"}
                 testId="login-password-input"
+                inputRef={passwordRef}
+                name="login-password"
               />
 
               {/* Remember Me + Forgot Password Row */}
