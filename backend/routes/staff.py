@@ -321,10 +321,11 @@ async def staff_logout(response: Response):
 
 class TerminalPinBody(BaseModel):
     pin: str
+    identifier: Optional[str] = None
 
 
 @router.post("/auth/terminal-pin")
-async def terminal_pin_lookup(data: TerminalPinBody, request: Request):
+async def terminal_pin_lookup(data: TerminalPinBody, request: Request, response: Response):
     """
     Kiosk/Terminal-PIN-Authentifizierung.
     Findet aktiven Mitarbeiter, dessen PIN dem eingegebenen 4-stelligen Code entspricht.
@@ -359,6 +360,12 @@ async def terminal_pin_lookup(data: TerminalPinBody, request: Request):
 
     # Query staff_members with PIN match (active only)
     query = {"pin": pin, "active": {"$ne": False}}
+    raw_identifier = (data.identifier or "").strip().lower()
+    if raw_identifier:
+        if "@" in raw_identifier:
+            query["email"] = {"$in": _staff_email_candidates(raw_identifier)}
+        else:
+            query["phone"] = data.identifier.strip()
     if merchant_id:
         # If we have merchant context, scope to that merchant
         query["$or"] = [{"merchant_id": merchant_id}, {"merchant_id": {"$exists": False}}]
@@ -377,6 +384,14 @@ async def terminal_pin_lookup(data: TerminalPinBody, request: Request):
             raise HTTPException(404, "PIN nicht zugeordnet")
 
     await _reset_staff_auth_failures(identifier)
+
+    response.set_cookie(
+        key="staff_session",
+        value=member["id"],
+        httponly=True,
+        max_age=86400 * 30,
+        samesite="lax",
+    )
 
     # Log terminal access
     await db.staff_terminal_log.insert_one({

@@ -115,7 +115,7 @@ export default function StaffMobilePage({ onBack }) {
       const pos = await new Promise((resolve, reject) =>
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 }));
       lat = pos.coords.latitude; lng = pos.coords.longitude;
-    } catch (e) {}
+    } catch (error) { void error; }
 
     const payload = { staff_id: staff.id, action, lat, lng, source: "self_service" };
     if (attachments) {
@@ -355,10 +355,10 @@ function StaffMobileLogin({ onSuccess, onBack }) {
 
   const pinLogin = async () => {
     if (!identifier || !pin) return toast.error("Bitte alle Felder ausfüllen");
-    const res = await fetch(`${API}/api/staff/auth/login`, {
+    const res = await fetch(`${API}/api/staff/auth/terminal-pin`, {
       method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: identifier, password: pin }),
+      body: JSON.stringify({ identifier, pin }),
     });
     if (res.ok) { toast.success("Erfolgreich angemeldet"); onSuccess(); }
     else toast.error("Login fehlgeschlagen");
