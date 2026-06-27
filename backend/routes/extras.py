@@ -144,8 +144,8 @@ async def get_leaderboard(type: str = "balance"):
         users = await db.users.find({}, {"_id": 0, "name": 1, "email": 1, "balance": 1, "is_premium": 1, "role": 1}).sort("balance", -1).limit(100).to_list(100)
         return {
             "type": "Wallet Ranking",
-            "privacy_mode": True,
-            "entries": _leaderboard_entries(users, lambda _: "Privat"),
+            "hide_values": True,
+            "entries": _leaderboard_entries(users, lambda _: ""),
         }
     elif type == "gaming":
         users = await db.users.find({"gaming_coins": {"$gt": 0}}, {"_id": 0, "name": 1, "email": 1, "gaming_coins": 1, "role": 1, "is_premium": 1}).sort("gaming_coins", -1).limit(100).to_list(100)
