@@ -5,11 +5,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — 2026-Auktionsreset live, Commerce Center als Nächstes
+## Current Focus — Taxi-Startscreen komplett neu gestaltet, Commerce Center als Nächstes
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
 - Die GitHub-Actions-CI bleibt stabil: Backend-Abhängigkeiten installieren wieder sauber, Frontend-ESLint läuft ohne Errors, und der Backend-Job nutzt einen stabilen FastAPI-Smoke-Test statt flakey historischer E2E-Suiten.
-- Neu live: Der komplette Auktionsbestand wurde auf genau 30 neue 2026-Produkte zurückgesetzt; alle enden rotierend in 3/4/5 Tagen jeweils um 18:00 Uhr, und auch Auto-Respawn/Refresh/Reseed verwenden jetzt denselben 2026-Katalog.
+- Neu live: Die Taxi-Startseite wurde vollständig neu aufgebaut — klarer Map/Botton-Sheet-Aufbau, störende Floating-Buttons im Taxi-Flow entfernt und regionale Schnellziele (Flughafen/Bahnhof) dynamisch statt fest auf Berlin verdrahtet.
 - Nächster Schwerpunkt: Commerce Center wieder aufnehmen und danach Mobility-/Taxi-Personalisierung weiter ausbauen.
 
 ### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
@@ -29,6 +29,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **2026-only Katalog durchgezogen** (`backend/routes/auctions.py`): aktiver Katalog jetzt exakt 30 Produkte; Maintenance-Loop, Auto-Respawn, Admin-Reseed und Refresh arbeiten ebenfalls ausschließlich mit diesem 2026-Katalog.
 - 🟢 **Zeitlogik fixiert**: alle 30 Auktionen enden exakt um 18:00 UTC, verteilt mit je 10 Auktionen auf 3, 4 und 5 Tage.
 - ✅ **Verifiziert**: API-Self-Test PASS (`/api/auctions/active` => 30, alle Titel `2026`, alle `ends_at` 18:00), Browser-Smoke PASS auf `/auctions`, `testing_agent` Iteration 157 = Backend 13/13 PASS und Frontend 6/6 PASS; dedizierter Frontend-Check PASS, dedizierter Backend-Check PASS.
+
+### 27.06.2026 (Taxi-Startscreen komplett neu gestaltet) ✅
+- 🟢 **Design komplett neu** (`frontend/src/pages/TaxiPage.jsx`): unruhiges altes Layout ersetzt durch klare mobile Map-Hälfte + Bottom-Sheet-Hälfte, große "Wohin?"-Suche, reduzierte Schnellziele und saubere Fahrzeug-/Buchungsbereiche.
+- 🟢 **Störende Floating-Buttons entfernt**: auf `/taxi` sind `hub-toggle-btn`, `ai-chat-fab` und `floating-chatbot-bubble` im Fullscreen-Modus nicht mehr sichtbar.
+- 🟢 **Regionale Standortlogik verbessert** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/services/taxiApi.js`): Flughafen/Bahnhof werden jetzt dynamisch anhand des Pickup-Kontexts geladen; Berlin zeigt BER/Berlin Hbf, Kosovo zeigt Flughafen Kosovo/Busbahnhof Prishtina, weitere Presets für Wien/Zürich plus Fallback.
+- ✅ **Verifiziert**: Browser-Smoke PASS, `testing_agent` Iteration 159 = Backend 3/3 PASS und Frontend 22/22 PASS; dedizierter Frontend-Abschlusscheck PASS, dedizierter Backend-Abschlusscheck PASS. Keine MOCKED APIs.
 
 ### 25.06.2026 (Mobility Compare + Game Center V1) ✅
 - 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.

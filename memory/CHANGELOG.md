@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 27.06.2026 — Taxi Startscreen komplett neu gestaltet
+- `frontend/src/pages/TaxiPage.jsx`: kompletter mobiler Taxi-Startscreen neu aufgebaut (große Map-Fläche, klares Bottom Sheet, reduzierte Schnellziele, sauberere Fahrzeug-/Buchungsstruktur)
+- `frontend/src/services/taxiApi.js`: `fetchRegionalPlaceHints()` ergänzt, damit Flughafen/Bahnhof dynamisch per Region/Pickup geladen werden können
+- `/taxi`: störende Floating-Buttons im Taxi-Fullscreen nicht mehr sichtbar (`hub-toggle-btn`, `ai-chat-fab`, `floating-chatbot-bubble`)
+- Regionale Schnellziele verifiziert: Berlin → BER/Berlin Hbf, Kosovo → Flughafen Kosovo/Busbahnhof Prishtina, zusätzlich Wien/Zürich-Presets + Fallback
+- Verifiziert: `testing_agent` Iteration 159 PASS, dedizierter Frontend-Check PASS, dedizierter Backend-Check PASS
+
 ## 26.06.2026 — Auktionsreset auf 30 neue 2026-Artikel
 - `backend/routes/auctions.py`: neuer `ACTIVE_AUCTION_CATALOG` mit exakt 30 neuen 2026-Produkten; Auto-Respawn, Maintenance, Admin-Reseed, Refresh und Catalog-Endpunkte auf 2026-only umgestellt
 - `backend/scripts/reset_auctions_2026.py`: Hard-Reset-Script ergänzt, das alle bisherigen Auktionen entfernt und 30 neue Auktionen mit Endzeit 18:00 UTC in 3/4/5 Tagen erzeugt
