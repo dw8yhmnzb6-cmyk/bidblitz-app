@@ -9,6 +9,16 @@
 - UX-Feinschliff: Growth-Karten zeigen bei Merchants ohne aktuelle Umsätze/Profite kontextgebende Hilfstexte statt nur irritierende negative Prozentwerte
 - Verifiziert: Python-Lint PASS, JS-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 165 PASS (Backend 4/4, Frontend 12/12), Executive AI streamt mit Provider `openai`
 
+## 27.06.2026 — Merchant Platform V5 Modul 2: Business Automation + Login Redirect Fix
+- `frontend/src/App.js`: Login-Redirect-Bug behoben; nach erfolgreicher Anmeldung wird Browser-URL jetzt sauber von `/login` auf `/` synchronisiert, inklusive `popstate`-Handling für die Custom-Routing-Schicht
+- `backend/routes/merchant_portal.py`: Business-Automation-Leitstand ergänzt mit Dashboard-Aggregation, Settings-Handling und Run-Endpunkten für Procurement, Operations, Revenue und Full Run
+- Neue MongoDB-Collections: `merchant_automation_settings` (persistente Schalter/Thresholds) und `merchant_automation_runs` (Run-History mit Summary/Details)
+- Reuse bestehender Module: `pos_purchase_orders`, `pos_products`, `pos_suppliers`, `staff_tasks`, `staff_members`, `staff_shifts`, `marketplace_listings`, `commerce_flash_sales`
+- `frontend/src/pages/MerchantPortalPage.jsx`: neuer Tab `Business Automation` mit KPI-Overview, Modul-Toggles, Stepper-Controls, Procurement-/Operations-/Revenue-Cards, Supplier Escalations, offenen POs und Automation-History
+- `frontend/src/services/api.js`: neue API-Helper für Business Automation Settings und Runs ergänzt
+- Robustheit: Leere Datensituationen liefern `skipped` statt Fehlern, Full Automation Run läuft ohne 500er durch und schreibt History-Einträge
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 166 PASS (Backend 9/9, Frontend 16/16), Login-Redirect live verifiziert
+
 ## 27.06.2026 — Login-Fix + `.ae` Alias-Logins
 - `backend/routes/auth.py`: Login akzeptiert jetzt `.ae` und `.com` als Aliase für dieselben Seed-Konten
 - `backend/routes/staff.py`: Staff-Login akzeptiert ebenfalls `.ae` und `.com` als Aliase

@@ -10,6 +10,8 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
 - Neu live: Merchant Platform V5 Modul 1 ergänzt das Händler-Portal um ein Enterprise Dashboard und Executive AI auf Basis bestehender Merchant-, POS-, Wallet-, Inventory-, Staff- und Analytics-Module.
 - Executive AI nutzt `emergentintegrations.llm.chat` serverseitig mit Streaming-Antworten, speichert Executive-Briefings historisiert und fällt bei Modellproblemen deterministisch auf einen regelbasierten Bericht zurück.
+- Neu live: Merchant Platform V5 Modul 2 ergänzt `Business Automation` als gemeinsamen Leitstand für Procurement-, Operations- und Revenue-Automation inklusive Settings, Automations-History und robusten Run-Endpunkten.
+- Login-Fix live: Nach erfolgreichem Login auf Live- und Preview-Seite bleibt die App nicht mehr auf `/login` hängen, sondern synchronisiert URL und In-App-Route korrekt auf `/`.
 - Nächster Schwerpunkt: Omnichannel Commerce weiter vertiefen (Sync/Automation) und danach Digital Signage + Smart Pricing als nächstes V5-Modul ergänzen.
 
 ### 27.06.2026 (Merchant Platform V5 — Enterprise Dashboard + Executive AI) ✅
@@ -19,6 +21,14 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Merchant-Portal UI erweitert** (`frontend/src/pages/MerchantPortalPage.jsx`, `frontend/src/services/api.js`): neue Tabs `Enterprise V5` und `Executive AI`, KPI-Karten für Revenue/Profit/Branches/Wallet, Executive Overview, Merchant KPIs, Branch-Übersicht, Inventory/POS, Staff/Attendance, Alerts, Forecast-Karten, Purchase-Recommendations-Liste und Executive-AI-History mit vollständigen `data-testid`-Attributen.
 - 🟢 **UX-Härtung** (`frontend/src/pages/MerchantPortalPage.jsx`): Growth-Karten zeigen bei neuen/ruhigen Merchants zusätzliche Hinweise wie `Keine Umsätze in den letzten 30 Tagen`, damit negative Prozentwerte ohne Kontext nicht missverständlich wirken.
 - ✅ **Verifiziert**: Python-Lint PASS, JS-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 165 = Backend 4/4 PASS und Frontend 12/12 PASS; Executive AI streamt erfolgreich mit Provider `openai`. Keine MOCKED APIs.
+
+### 27.06.2026 (Merchant Platform V5 — Business Automation V1 + Login Redirect Fix) ✅
+- 🟢 **Login-Redirect-Fix live** (`frontend/src/App.js`): Browser-URL und interner Router werden jetzt synchron gehalten (`syncBrowserPath`, `popstate`, `handleAuthSuccess`), sodass erfolgreiche Logins auf Live-/Preview-Domain sauber von `/login` nach `/` wechseln.
+- 🟢 **Business Automation Backend live** (`backend/routes/merchant_portal.py`): neue Endpunkte `GET /api/merchant-portal/v5/business-automation`, `POST /api/merchant-portal/v5/business-automation/settings`, `POST /api/merchant-portal/v5/business-automation/run/procurement`, `POST /api/merchant-portal/v5/business-automation/run/operations`, `POST /api/merchant-portal/v5/business-automation/run/revenue`, `POST /api/merchant-portal/v5/business-automation/run/full`.
+- 🟢 **Bestehende Module wiederverwendet**: Procurement nutzt `pos_products`, `pos_suppliers`, `pos_purchase_orders`; Operations nutzt `staff_tasks`, `staff_members`, `staff_shifts` und bestehende Alerts; Revenue nutzt `marketplace_listings` + `commerce_flash_sales`; keine neuen Insel-Systeme.
+- 🟢 **Persistenz ergänzt**: neue Collections `merchant_automation_settings` und `merchant_automation_runs` speichern Schalter/Thresholds sowie Run-Historie, Summaries und Details der Automationsläufe.
+- 🟢 **Business Automation UI ergänzt** (`frontend/src/pages/MerchantPortalPage.jsx`, `frontend/src/services/api.js`): neuer Merchant-Portal-Tab `Business Automation` mit KPI-Overview, Modul-Toggles, Stepper-Einstellungen, Procurement-/Operations-/Revenue-Action-Cards, Escalations, offenen POs und Run-History.
+- ✅ **Verifiziert**: JS-Lint PASS, Python-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 166 = Backend 9/9 PASS und Frontend 16/16 PASS. Login-Redirect verifiziert, Automation-Endpoints laufen robust auch bei leeren Datensätzen (`skipped` statt Fehler). Keine MOCKED APIs.
 
 ### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
 - 🟢 **Zielsuche gehärtet** (`frontend/src/components/taxi/useTaxiGeocoder.js`): Taxi-Suche fällt jetzt robust zwischen direkter Mapbox-Abfrage und Backend-Proxy zurück. Damit bleiben Vorschläge auch dann stabil, wenn ein Frontend-Token auf einzelnen Geräten/Deployments fehlschlägt.
