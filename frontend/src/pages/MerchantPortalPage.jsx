@@ -8,9 +8,11 @@ import {
   Calendar, Hotel, Briefcase, Ticket, UtensilsCrossed, Heart,
   TrendingUp, Wallet, Clock, MapPin, Phone, Mail, Globe,
   Settings, Loader2, Check, Save, Scissors, ChevronRight,
-  Building2, Image as ImageIcon, Gift, Megaphone, Store, LineChart, Link2
+  Building2, Image as ImageIcon, Gift, Megaphone, Store, LineChart, Link2,
+  BrainCircuit, Boxes, ReceiptText, AlertTriangle, Sparkles, Activity, ShieldAlert, PackageCheck
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
+import { api } from "../services/api";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -23,6 +25,12 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [merchantProgram, setMerchantProgram] = useState(null);
   const [growth, setGrowth] = useState(null);
   const [franchiseApplications, setFranchiseApplications] = useState([]);
+  const [v5, setV5] = useState(null);
+  const [executiveAi, setExecutiveAi] = useState(null);
+  const [executiveAiHistory, setExecutiveAiHistory] = useState([]);
+  const [executiveAiText, setExecutiveAiText] = useState("");
+  const [executiveAiFocus, setExecutiveAiFocus] = useState("full executive briefing");
+  const [executiveAiStreaming, setExecutiveAiStreaming] = useState(false);
   const [loading, setLoading] = useState(true);
   const [txns, setTxns] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -46,20 +54,31 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         setDash(d);
         if (d.profile) setProfile(prev => ({ ...prev, ...d.profile }));
       }
-      const [entRes, progRes, growthRes, fraRes] = await Promise.all([
+      const [entRes, v5Res, aiRes, progRes, growthRes, fraRes] = await Promise.all([
         fetch(`${API}/api/merchant-portal/enterprise-overview`, { credentials: "include" }),
+        fetch(`${API}/api/merchant-portal/v5/dashboard`, { credentials: "include" }),
+        fetch(`${API}/api/merchant-portal/v5/executive-ai/latest`, { credentials: "include" }),
         fetch(`${API}/api/referral/merchant-program`, { credentials: "include" }),
         fetch(`${API}/api/referral/growth-dashboard`, { credentials: "include" }),
         fetch(`${API}/api/referral/franchise/applications`, { credentials: "include" }),
       ]);
       if (entRes.ok) setEnterprise(await entRes.json());
+      if (v5Res.ok) setV5(await v5Res.json());
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        setExecutiveAi(aiData.report || null);
+        setExecutiveAiHistory(aiData.history || []);
+        setExecutiveAiText(aiData.report?.report_text || "");
+      }
       if (progRes.ok) setMerchantProgram(await progRes.json());
       if (growthRes.ok) setGrowth(await growthRes.json());
       if (fraRes.ok) {
         const data = await fraRes.json();
         setFranchiseApplications(data.applications || []);
       }
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setLoading(false);
   }, []);
 
@@ -73,7 +92,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     };
     const ep = endpoints[t];
     if (ep) {
-      try { const res = await fetch(`${API}${ep.url}`, { credentials: "include" }); if (res.ok) ep.setter(await res.json()); } catch {}
+      try { const res = await fetch(`${API}${ep.url}`, { credentials: "include" }); if (res.ok) ep.setter(await res.json()); } catch (error) { void error; }
     }
   }, []);
 
@@ -88,12 +107,74 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         body: JSON.stringify(profile),
       });
       if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setSaving(false);
   };
 
+  const loadExecutiveAiHistory = useCallback(async () => {
+    try {
+      const data = await api.getMerchantExecutiveAiLatest();
+      setExecutiveAi(data.report || null);
+      setExecutiveAiHistory(data.history || []);
+      if (!executiveAiStreaming) {
+        setExecutiveAiText(data.report?.report_text || "");
+      }
+    } catch (error) {
+      void error;
+    }
+  }, [executiveAiStreaming]);
+
+  const runExecutiveAi = useCallback(async () => {
+    setExecutiveAiStreaming(true);
+    setExecutiveAiText("");
+    try {
+      const response = await fetch(`${API}/api/merchant-portal/v5/executive-ai/stream`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ focus: executiveAiFocus || "full executive briefing" }),
+      });
+      if (!response.ok || !response.body) {
+        throw new Error("Executive AI konnte nicht gestartet werden.");
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finished = false;
+
+      while (!finished) {
+        const result = await reader.read();
+        finished = result.done;
+        buffer += decoder.decode(result.value || new Uint8Array(), { stream: !finished });
+        const packets = buffer.split("\n\n");
+        buffer = packets.pop() || "";
+        packets.forEach((packet) => {
+          const line = packet.split("\n").find((entry) => entry.startsWith("data: "));
+          if (!line) return;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.type === "chunk") {
+              setExecutiveAiText((prev) => `${prev}${payload.content}`);
+            }
+          } catch (error) {
+            void error;
+          }
+        });
+      }
+      await loadExecutiveAiHistory();
+    } catch (error) {
+      setExecutiveAiText((prev) => prev || `Executive AI Fehler: ${error.message}`);
+    } finally {
+      setExecutiveAiStreaming(false);
+    }
+  }, [executiveAiFocus, loadExecutiveAiHistory]);
+
   const TABS = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "enterprise-v5", label: "Enterprise V5", icon: Building2 },
+    { id: "executive-ai", label: "Executive AI", icon: BrainCircuit },
     { id: "ecosystem", label: locale === "sq" ? "Ekosistemi" : locale === "en" ? "Ecosystem" : "Ökosystem", icon: Store },
     { id: "growth", label: locale === "sq" ? "Rritja" : locale === "en" ? "Growth" : "Wachstum", icon: LineChart },
     { id: "transactions", label: "Finanzen", icon: DollarSign },
@@ -220,6 +301,337 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                 <ChevronRight size={12} className="text-gray-600 ml-auto" />
               </motion.button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "enterprise-v5" && v5 && (
+        <div className="p-4 space-y-4" data-testid="merchant-v5-dashboard">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.22),_transparent_35%),linear-gradient(145deg,_rgba(11,18,32,0.98),_rgba(5,10,20,0.98))] p-5"
+            data-testid="merchant-v5-hero"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-300/75">Merchant Platform V5</p>
+                <h2 className="mt-2 text-2xl font-black leading-tight text-white">Enterprise Dashboard</h2>
+                <p className="mt-2 max-w-xl text-sm text-slate-300">
+                  Ein gemeinsamer Steuerstand für Revenue, Profit, Filialen, Inventory, POS, Staff, Wallet und Executive KPIs.
+                </p>
+              </div>
+              <button
+                onClick={() => setTab("executive-ai")}
+                className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-xs font-bold text-emerald-200 transition hover:bg-emerald-400/20"
+                data-testid="merchant-v5-open-executive-ai"
+              >
+                Executive AI öffnen
+              </button>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[
+                { label: "Revenue 30T", value: `€${(v5.executive_overview?.revenue_30d || 0).toFixed(0)}`, icon: TrendingUp, color: "#34d399", testid: "merchant-v5-revenue-30d" },
+                { label: "Profit 30T", value: `€${(v5.executive_overview?.profit_30d || 0).toFixed(0)}`, icon: ReceiptText, color: "#60a5fa", testid: "merchant-v5-profit-30d" },
+                { label: "Branches", value: v5.executive_overview?.branches ?? 0, icon: Building2, color: "#f59e0b", testid: "merchant-v5-branches" },
+                { label: "Wallet", value: `€${(v5.executive_overview?.wallet_balance || 0).toFixed(0)}`, icon: Wallet, color: "#f472b6", testid: "merchant-v5-wallet" },
+              ].map((card) => (
+                <div key={card.label} className="rounded-2xl border border-white/8 bg-white/5 p-4" data-testid={card.testid}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">{card.label}</span>
+                    <card.icon size={16} style={{ color: card.color }} />
+                  </div>
+                  <div className="mt-3 text-2xl font-black" style={{ color: card.color }}>{card.value}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              { label: "Profit Margin", value: `${(v5.financials?.margin_pct || 0).toFixed(1)}%`, icon: Sparkles, testid: "merchant-v5-margin" },
+              { label: "Inventory", value: v5.executive_overview?.inventory_items ?? 0, icon: Boxes, testid: "merchant-v5-inventory-items" },
+              { label: "POS Register", value: v5.executive_overview?.pos_registers ?? 0, icon: ShoppingBag, testid: "merchant-v5-pos-registers" },
+              { label: "Staff", value: v5.executive_overview?.staff_active ?? 0, icon: Users, testid: "merchant-v5-staff-active" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/8 bg-[#101826] p-4" data-testid={item.testid}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">{item.label}</span>
+                  <item.icon size={15} className="text-cyan-300" />
+                </div>
+                <p className="mt-3 text-2xl font-black text-white">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-financial-health">
+              <div className="mb-4 flex items-center gap-2">
+                <Activity size={16} className="text-cyan-300" />
+                <h3 className="text-sm font-bold text-white">Executive Overview</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <MetricPill label="Revenue Growth" value={`${(v5.financials?.revenue_growth_pct || 0).toFixed(1)}%`} testid="merchant-v5-revenue-growth" />
+                <MetricPill label="Profit Growth" value={`${(v5.financials?.profit_growth_pct || 0).toFixed(1)}%`} testid="merchant-v5-profit-growth" />
+                <MetricPill label="Avg Ticket" value={`€${(v5.financials?.avg_ticket || 0).toFixed(2)}`} testid="merchant-v5-avg-ticket" />
+                <MetricPill label="Refunds Pending" value={v5.financials?.refunds_pending ?? 0} testid="merchant-v5-refunds-pending" />
+                <MetricPill label="Wallet Inflow" value={`€${(v5.financials?.wallet_inflow_30d || 0).toFixed(0)}`} testid="merchant-v5-wallet-inflow" />
+                <MetricPill label="Wallet Outflow" value={`€${(v5.financials?.wallet_outflow_30d || 0).toFixed(0)}`} testid="merchant-v5-wallet-outflow" />
+              </div>
+              <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4" data-testid="merchant-v5-summary-card">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Executive Summary</p>
+                <div className="mt-3 space-y-2 text-sm text-slate-200">
+                  {(v5.insights?.executive_summary || []).map((item, index) => (
+                    <div key={`${item}-${index}`} className="flex gap-2">
+                      <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" />
+                      <p>{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-merchant-kpis">
+              <div className="mb-4 flex items-center gap-2">
+                <Sparkles size={16} className="text-amber-300" />
+                <h3 className="text-sm font-bold text-white">Merchant KPIs</h3>
+              </div>
+              <div className="space-y-3">
+                <KpiRow label="Revenue pro Branch" value={`€${(v5.merchant_kpis?.revenue_per_branch || 0).toFixed(0)}`} testid="merchant-v5-kpi-revenue-branch" />
+                <KpiRow label="Profit pro Branch" value={`€${(v5.merchant_kpis?.profit_per_branch || 0).toFixed(0)}`} testid="merchant-v5-kpi-profit-branch" />
+                <KpiRow label="Revenue pro Staff" value={`€${(v5.merchant_kpis?.revenue_per_staff || 0).toFixed(0)}`} testid="merchant-v5-kpi-revenue-staff" />
+                <KpiRow label="Stock Turnover" value={`${(v5.merchant_kpis?.stock_turnover_estimate || 0).toFixed(2)}x`} testid="merchant-v5-kpi-stock-turnover" />
+                <KpiRow label="Wallet Runway" value={v5.merchant_kpis?.wallet_runway_days ? `${v5.merchant_kpis.wallet_runway_days} Tage` : "n/a"} testid="merchant-v5-kpi-wallet-runway" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-branches-card">
+              <div className="mb-4 flex items-center gap-2">
+                <Building2 size={16} className="text-emerald-300" />
+                <h3 className="text-sm font-bold text-white">Branches</h3>
+              </div>
+              <div className="space-y-3">
+                {(v5.branches || []).slice(0, 5).map((branch) => (
+                  <div key={branch.store_id} className="rounded-2xl border border-white/5 bg-white/5 p-4" data-testid={`merchant-v5-branch-${branch.store_id}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-white">{branch.name}</p>
+                        <p className="text-[11px] text-slate-400">{branch.city || "—"} · {branch.registers} Register · {branch.products} Produkte</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200">
+                        €{(branch.revenue_30d || 0).toFixed(0)}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                      <span className="rounded-full bg-white/5 px-2.5 py-1">Profit €{(branch.profit_30d || 0).toFixed(0)}</span>
+                      <span className="rounded-full bg-white/5 px-2.5 py-1">Marge {(branch.margin_pct || 0).toFixed(1)}%</span>
+                      <span className="rounded-full bg-white/5 px-2.5 py-1">Low Stock {branch.low_stock}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-inventory-card">
+              <div className="mb-4 flex items-center gap-2">
+                <Boxes size={16} className="text-fuchsia-300" />
+                <h3 className="text-sm font-bold text-white">Inventory & POS</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <MetricPill label="Low Stock" value={v5.insights?.inventory?.low_stock_count ?? 0} testid="merchant-v5-low-stock-count" />
+                <MetricPill label="Auto Reorder" value={v5.insights?.inventory?.auto_reorder_count ?? 0} testid="merchant-v5-auto-reorder-count" />
+                <MetricPill label="Expiring" value={v5.insights?.inventory?.expiring_batches_count ?? 0} testid="merchant-v5-expiring-count" />
+                <MetricPill label="Dead Stock" value={v5.insights?.inventory?.dead_stock_count ?? 0} testid="merchant-v5-dead-stock-count" />
+              </div>
+              <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4" data-testid="merchant-v5-top-products">
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+                  <PackageCheck size={15} className="text-cyan-300" />
+                  Top Products
+                </div>
+                <div className="space-y-2">
+                  {(v5.pos?.top_products || []).slice(0, 4).map((product) => (
+                    <div key={product.product_id || product.name} className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2" data-testid={`merchant-v5-top-product-${String(product.product_id || product.name).replace(/[^a-zA-Z0-9_-]/g, '-')}`}>
+                      <div>
+                        <p className="text-sm text-white">{product.name}</p>
+                        <p className="text-[11px] text-slate-400">{product.qty} Einheiten</p>
+                      </div>
+                      <span className="text-sm font-bold text-emerald-300">€{(product.revenue || 0).toFixed(0)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-staff-card">
+              <div className="mb-4 flex items-center gap-2">
+                <Users size={16} className="text-amber-300" />
+                <h3 className="text-sm font-bold text-white">Staff & Attendance</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <MetricPill label="Active" value={v5.insights?.staff?.active_staff ?? 0} testid="merchant-v5-staff-total" />
+                <MetricPill label="Clocked In" value={v5.insights?.staff?.clocked_in ?? 0} testid="merchant-v5-staff-clocked-in" />
+                <MetricPill label="Late" value={v5.insights?.staff?.late_staff_count ?? 0} testid="merchant-v5-staff-late" />
+              </div>
+              <div className="mt-4 space-y-2">
+                {(v5.staff?.late_staff || []).slice(0, 4).map((member, index) => (
+                  <div key={`${member.staff_id}-${index}`} className="rounded-xl border border-amber-400/15 bg-amber-400/5 px-3 py-2 text-sm text-amber-100" data-testid={`merchant-v5-late-staff-${index}`}>
+                    <div className="font-semibold">{member.name}</div>
+                    <div className="text-[11px] text-amber-200/80">{member.title || "Shift"} · {member.location || "Standort offen"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-alerts-card">
+              <div className="mb-4 flex items-center gap-2">
+                <AlertTriangle size={16} className="text-rose-300" />
+                <h3 className="text-sm font-bold text-white">Business Alerts</h3>
+              </div>
+              <div className="space-y-2">
+                {(v5.insights?.business_alerts || []).slice(0, 5).map((alert, index) => (
+                  <div key={`${alert.title}-${index}`} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-alert-${index}`}>
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert size={15} className={alert.severity === "high" ? "text-rose-300" : alert.severity === "medium" ? "text-amber-300" : "text-cyan-300"} />
+                      <p className="text-sm font-bold text-white">{alert.title}</p>
+                    </div>
+                    <p className="mt-2 text-[12px] leading-5 text-slate-300">{alert.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "executive-ai" && (
+        <div className="p-4 space-y-4" data-testid="merchant-v5-executive-ai">
+          <div className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_right,_rgba(6,182,212,0.22),_transparent_30%),linear-gradient(145deg,_rgba(9,14,28,1),_rgba(17,24,39,1))] p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">Executive AI</p>
+                <h2 className="mt-2 text-2xl font-black text-white">Board-ready Insights aus bestehenden BidBlitz Modulen</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                  Nutzt Merchant-, POS-, Wallet-, Inventory-, Staff- und Analytics-Daten für Revenue Insights, Forecasts, Purchase Recommendations und Alerts.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  value={executiveAiFocus}
+                  onChange={(e) => setExecutiveAiFocus(e.target.value)}
+                  placeholder="z. B. weekly board review"
+                  className="h-11 min-w-[240px] rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-white outline-none placeholder:text-slate-500"
+                  data-testid="merchant-v5-executive-ai-focus-input"
+                />
+                <button
+                  onClick={runExecutiveAi}
+                  disabled={executiveAiStreaming}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 text-sm font-black text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  data-testid="merchant-v5-executive-ai-run"
+                >
+                  {executiveAiStreaming ? <Loader2 size={16} className="animate-spin" /> : <BrainCircuit size={16} />}
+                  {executiveAiStreaming ? "Analysiert..." : "Executive Briefing erzeugen"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-executive-ai-report-card">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-white">Executive Summary</p>
+                  <p className="text-[11px] text-slate-400">Streaming Briefing, basierend auf Live-Unternehmensdaten</p>
+                </div>
+                <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold text-cyan-200" data-testid="merchant-v5-executive-ai-provider">
+                  {executiveAi?.provider || "bereit"}
+                </span>
+              </div>
+              <div className="min-h-[420px] rounded-2xl border border-white/6 bg-black/20 p-4">
+                {executiveAiText ? (
+                  <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-100" data-testid="merchant-v5-executive-ai-output">
+                    {executiveAiText}
+                  </pre>
+                ) : (
+                  <div className="flex h-full min-h-[360px] items-center justify-center text-center text-sm text-slate-500" data-testid="merchant-v5-executive-ai-empty">
+                    Starte ein Executive Briefing, um Revenue Insights, Inventory Insights, Staff Insights, Forecasts und Alerts zu erzeugen.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-forecast-card">
+                <div className="mb-3 flex items-center gap-2">
+                  <TrendingUp size={16} className="text-emerald-300" />
+                  <h3 className="text-sm font-bold text-white">Sales Forecast</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <MetricPill label="Nächste 7 Tage" value={`€${(v5?.insights?.sales_forecast?.next_7_days_revenue || 0).toFixed(0)}`} testid="merchant-v5-forecast-7d" />
+                  <MetricPill label="Nächste 30 Tage" value={`€${(v5?.insights?.sales_forecast?.next_30_days_revenue || 0).toFixed(0)}`} testid="merchant-v5-forecast-30d" />
+                  <MetricPill label="Profit 30 Tage" value={`€${(v5?.insights?.sales_forecast?.next_30_days_profit || 0).toFixed(0)}`} testid="merchant-v5-forecast-profit" />
+                  <MetricPill label="Confidence" value={v5?.insights?.sales_forecast?.confidence || "n/a"} testid="merchant-v5-forecast-confidence" />
+                </div>
+              </div>
+
+              <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-purchase-recommendations-card">
+                <div className="mb-3 flex items-center gap-2">
+                  <Boxes size={16} className="text-fuchsia-300" />
+                  <h3 className="text-sm font-bold text-white">Purchase Recommendations</h3>
+                </div>
+                <div className="space-y-2">
+                  {(v5?.insights?.purchase_recommendations || []).slice(0, 5).map((item, index) => (
+                    <div key={`${item.product_id}-${index}`} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-purchase-recommendation-${index}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{item.name}</p>
+                          <p className="text-[11px] text-slate-400">{item.reason} · Supplier {item.supplier_name || item.supplier_id || "offen"}</p>
+                        </div>
+                        <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200">+{item.suggested_qty}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                        <span className="rounded-full bg-black/20 px-2.5 py-1">Stock {item.stock}</span>
+                        <span className="rounded-full bg-black/20 px-2.5 py-1">Sold 30T {item.qty_sold_30d}</span>
+                        <span className="rounded-full bg-black/20 px-2.5 py-1">Cover {item.days_of_cover ?? "n/a"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-executive-ai-history-card">
+                <div className="mb-3 flex items-center gap-2">
+                  <Clock size={16} className="text-amber-300" />
+                  <h3 className="text-sm font-bold text-white">Letzte Briefings</h3>
+                </div>
+                <div className="space-y-2">
+                  {executiveAiHistory.length === 0 ? (
+                    <p className="text-sm text-slate-500">Noch kein Executive Briefing erzeugt.</p>
+                  ) : executiveAiHistory.map((item, index) => (
+                    <button
+                      key={item.report_id || index}
+                      onClick={() => {
+                        setExecutiveAi(item);
+                        setExecutiveAiText(item.report_text || "");
+                      }}
+                      className="w-full rounded-2xl border border-white/6 bg-white/5 p-3 text-left transition hover:bg-white/10"
+                      data-testid={`merchant-v5-executive-ai-history-${index}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{item.focus || "Executive Briefing"}</p>
+                          <p className="text-[11px] text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleString("de-DE") : "—"}</p>
+                        </div>
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-slate-300">{item.provider || item.status}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -431,7 +843,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
               className="bg-[#111118] rounded-xl border border-white/5 p-3 flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-medium">{t.sender_name || t.sender_email}</p>
-                {t.message && <p className="text-[9px] text-gray-500 mt-0.5">"{t.message}"</p>}
+                {t.message && <p className="text-[9px] text-gray-500 mt-0.5">&quot;{t.message}&quot;</p>}
               </div>
               <span className="text-sm font-bold text-[#F59E0B]">+€{t.amount?.toFixed(2)}</span>
             </motion.div>
@@ -497,5 +909,23 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     </div>
   );
 };
+
+function MetricPill({ label, value, testid }) {
+  return (
+    <div className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={testid}>
+      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-2 text-lg font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function KpiRow({ label, value, testid }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/6 bg-white/5 px-4 py-3" data-testid={testid}>
+      <span className="text-sm text-slate-300">{label}</span>
+      <span className="text-sm font-black text-white">{value}</span>
+    </div>
+  );
+}
 
 export default MerchantPortalPage;

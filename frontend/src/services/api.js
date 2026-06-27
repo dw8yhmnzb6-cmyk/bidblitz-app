@@ -175,6 +175,8 @@ export const api = {
 
   // Merchant
   getMerchantDashboard: () => request("/api/merchant/dashboard"),
+  getMerchantV5Dashboard: () => request("/api/merchant-portal/v5/dashboard"),
+  getMerchantExecutiveAiLatest: () => request("/api/merchant-portal/v5/executive-ai/latest"),
 
   // Smart Invoice Payment Links
   getPublicInvoicePaymentLink: (token) => request(`/api/pay/${token}`),
