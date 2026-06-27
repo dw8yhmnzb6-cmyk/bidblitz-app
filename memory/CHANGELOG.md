@@ -41,6 +41,11 @@
 - KYC-Freigabe live durchgeführt: `POST /api/kyc/admin/decide` mit Entscheidung `approve`
 - Verifiziert: Live-API Login PASS, Live-Browser Login PASS, Wallet-Zugriff PASS; Konto ist jetzt als verifizierter Händler aktiv nutzbar
 
+## 27.06.2026 — POS Wallet Top-up strikt auf Kundennummer umgestellt
+- `backend/routes/pos_vouchers.py`: Wallet-Aufladung am POS akzeptiert jetzt nur noch `customer_user_number`; E-Mail, Barcode-Strings und NFC-Werte werden aktiv abgelehnt
+- `frontend/src/components/pos/POSVoucherComponents.jsx`: POS-Top-up-Formular auf `Kundennummer` umgestellt, inklusive deutlichem Hinweis `Keine E-Mail, kein Scan, kein NFC`
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, API-Test PASS — E-Mail liefert den erwarteten Blocker `Bitte nur die Kundennummer verwenden`, unbekannte Nummer sauberen `404`
+
 ## 27.06.2026 — Login-Fix + `.ae` Alias-Logins
 - `backend/routes/auth.py`: Login akzeptiert jetzt `.ae` und `.com` als Aliase für dieselben Seed-Konten
 - `backend/routes/staff.py`: Staff-Login akzeptiert ebenfalls `.ae` und `.com` als Aliase

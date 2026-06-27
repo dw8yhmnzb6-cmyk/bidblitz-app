@@ -133,15 +133,15 @@ export function POSVoucherSale({ storeId, registerId, onComplete }) {
 }
 
 export function POSWalletTopUp({ storeId, registerId, onComplete }) {
-  const [email, setEmail] = useState("");
+  const [customerNumber, setCustomerNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
   const topUp = async () => {
-    if (!email || !amount || parseFloat(amount) <= 0) {
-      return toast.error("E-Mail und Betrag erforderlich");
+    if (!customerNumber || !amount || parseFloat(amount) <= 0) {
+      return toast.error("Kundennummer und Betrag erforderlich");
     }
 
     setLoading(true);
@@ -151,7 +151,7 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
         body: {
           store_id: storeId,
           register_id: registerId,
-          customer_email: email,
+          customer_user_number: customerNumber.trim().toUpperCase(),
           amount: parseFloat(amount),
           payment_method: paymentMethod,
         },
@@ -171,7 +171,8 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
       <div className="p-6 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl border border-blue-500/20 text-center">
         <Check size={48} className="text-blue-400 mx-auto mb-3" />
         <h3 className="text-lg font-bold mb-2">Wallet aufgeladen!</h3>
-        <p className="text-sm text-white/60 mb-3">{result.email}</p>
+          <p className="text-sm text-white/60 mb-1">{result.user_number}</p>
+          <p className="text-[11px] text-white/40 mb-3">{result.email}</p>
         <div className="grid grid-cols-2 gap-3 text-center">
           <div className="bg-white/5 p-3 rounded-lg">
             <p className="text-[10px] text-white/40">Vorher</p>
@@ -185,7 +186,7 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
         <button
           onClick={() => {
             setResult(null);
-            setEmail("");
+            setCustomerNumber("");
             setAmount("");
           }}
           className="mt-4 px-4 py-2 rounded-lg bg-white/10 text-sm"
@@ -204,13 +205,17 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
       </div>
 
       <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Kunden-E-Mail"
+        type="text"
+        value={customerNumber}
+        onChange={(e) => setCustomerNumber(e.target.value.toUpperCase())}
+        placeholder="Kundennummer"
         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"
-        data-testid="topup-email"
+        data-testid="topup-customer-number"
       />
+
+      <p className="text-[11px] text-white/45" data-testid="topup-customer-number-hint">
+        Nur Kundennummer. Keine E-Mail, kein Scan, kein NFC.
+      </p>
 
       <input
         type="number"

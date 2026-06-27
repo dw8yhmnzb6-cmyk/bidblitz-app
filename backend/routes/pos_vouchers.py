@@ -28,7 +28,7 @@ class VoucherCreateRequest(BaseModel):
 class WalletTopUpRequest(BaseModel):
     store_id: str
     register_id: str
-    customer_email: str
+    customer_user_number: str
     amount: float
     payment_method: str = "cash"
 
@@ -222,9 +222,13 @@ async def wallet_topup_at_pos(req: WalletTopUpRequest, request: Request):
     if req.amount <= 0 or req.amount > 500:
         raise HTTPException(400, "Aufladebetrag muss zwischen €0.01 und €500 liegen")
 
-    customer = await db.users.find_one({"email": req.customer_email})
+    customer_number = (req.customer_user_number or "").strip().upper()
+    if not customer_number or "@" in customer_number or customer_number.startswith("BLZ-"):
+        raise HTTPException(400, "Bitte nur die Kundennummer verwenden — keine E-Mail, kein Scan, kein NFC")
+
+    customer = await db.users.find_one({"user_number": customer_number})
     if not customer:
-        raise HTTPException(404, f"Kunde {req.customer_email} nicht gefunden")
+        raise HTTPException(404, f"Kunde mit Nummer {customer_number} nicht gefunden")
 
     customer_id = str(customer["_id"])
     old_balance = float(customer.get("balance", 0))
@@ -288,12 +292,13 @@ async def wallet_topup_at_pos(req: WalletTopUpRequest, request: Request):
         "customer": {
             "email": customer["email"],
             "name": customer.get("name"),
+            "user_number": customer.get("user_number"),
             "old_balance": round(old_balance, 2),
             "new_balance": round(result.new_balance or (old_balance + req.amount), 2),
             "topped_up": req.amount,
         },
         "sale": sale,
-        "message": f"€{req.amount:.2f} aufgeladen für {customer['email']}",
+        "message": f"€{req.amount:.2f} aufgeladen für Kundennummer {customer.get('user_number')}",
     }
 
 
