@@ -1,0 +1,31 @@
+{
+  "total": 6,
+  "passed": 6,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "Admin Login (.ae)",
+      "status": "PASS"
+    },
+    {
+      "name": "Manager Login (.ae)",
+      "status": "PASS"
+    },
+    {
+      "name": "Staff Login (.ae)",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin Login (.com) Regression",
+      "status": "PASS"
+    },
+    {
+      "name": "Manager Login (.com) Regression",
+      "status": "PASS"
+    },
+    {
+      "name": "Staff Login (.com) Regression",
+      "status": "PASS"
+    }
+  ]
+}
