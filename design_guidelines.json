@@ -1,77 +1,68 @@
 {
-  "theme": "light",
-  "archetype": "5 (Luxury - Light Theme)",
-  "vibe": "Premium, minimal, clean, trust-first, high contrast with generous whitespace. Smooth mobile bottom-sheet modals for a native-like feel.",
-  "language": "German",
+  "theme": "Light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "emotional_tone": "Fast, Reliable, Frictionless, Location-Aware",
   "colors": {
-    "background": "#FCFCFC",
+    "background": "#F9FAFB",
     "surface": "#FFFFFF",
-    "primary_accent": "#0F172A",
-    "secondary_accent": "#D4AF37",
-    "text_primary": "#111827",
-    "text_secondary": "#6B7280",
-    "success": "#10B981",
-    "danger": "#EF4444",
-    "border": "#F3F4F6",
-    "surface_glass": "rgba(255, 255, 255, 0.85)"
+    "primary": "#000000",
+    "primary_foreground": "#FFFFFF",
+    "accent": "#FFD500",
+    "accent_foreground": "#000000",
+    "muted": "#F3F4F6",
+    "muted_foreground": "#6B7280",
+    "border": "#E5E7EB"
   },
   "typography": {
-    "headings": "Outfit",
-    "body": "Manrope",
-    "numbers": "Outfit",
-    "rules": [
-      "Use Outfit for big balance numbers and headings.",
-      "Use Manrope for all transaction lists, labels, and small text.",
-      "Use tracking-tight on large numeric balances."
-    ]
+    "heading_font": "Outfit",
+    "body_font": "Manrope",
+    "h1": "text-4xl sm:text-5xl font-black tracking-tight leading-none text-black",
+    "h2": "text-2xl sm:text-3xl font-bold tracking-tight text-black",
+    "h3": "text-xl sm:text-2xl font-bold tracking-tight text-black",
+    "body": "text-base font-medium text-gray-800 leading-relaxed",
+    "small": "text-sm font-semibold tracking-wide text-gray-500 uppercase"
   },
-  "spacing_and_layout": {
-    "general": "Use p-4 to p-6 for standard mobile container padding. Avoid cramming elements.",
-    "cards": "rounded-[24px] border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] bg-white",
-    "modals": "Always use Bottom Sheets (Sheet component or tailored sliding divs) for mobile edit modals. Must use rounded-t-[32px] with a prominent top drag handle.",
-    "buttons": "rounded-full, h-14, text-base font-semibold. Primary: bg-slate-900 text-white hover:bg-slate-800 focus:ring-2 focus:ring-slate-300. Secondary: bg-gray-100 text-slate-900 hover:bg-gray-200."
+  "layout_and_spacing": {
+    "spacing_scale": "Generous. Use p-4, p-6 for mobile containers",
+    "border_radius": "rounded-3xl for main panels/bottom sheet, rounded-xl for inputs and buttons",
+    "container_style": "Flat, high contrast, 1px border (border-gray-200) instead of blurry shadows.",
+    "bottom_sheet": "Fixed to bottom, rounded-t-[32px], bg-white, subtle top shadow shadow-[0_-8px_30px_rgba(0,0,0,0.08)] and z-50"
   },
   "components": {
-    "wallet_card": {
-      "style": "A premium card inside the wallet subpage. Uses the abstract wave image as background, combined with a subtle white gradient overlay to ensure text contrast. Text should be Slate-900.",
-      "classes": "relative overflow-hidden rounded-[24px] border border-gray-200 shadow-md p-6 h-52 flex flex-col justify-between"
-    },
-    "transaction_list": {
-      "style": "Clean rows without individual card wrappers. Just a flex container with border-b on items.",
-      "classes": "flex items-center justify-between py-4 border-b border-gray-100 last:border-0"
-    },
-    "loyalty_tier": {
-      "style": "A premium status card indicating loyalty status. Subtle gold/bronze accents.",
-      "classes": "bg-gradient-to-br from-amber-50 to-white border border-amber-200 text-amber-900 rounded-[24px] p-6 shadow-sm"
-    },
-    "affiliate_stats": {
-      "style": "Bento grid for affiliate stats.",
-      "classes": "grid grid-cols-2 gap-4"
-    },
-    "edit_modal": {
-      "style": "Bottom sheet modal for quick actions (edit profile, withdraw, wallet settings).",
-      "classes": "fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.1)] pb-8 pt-4 px-6"
-    }
-  },
-  "icons": {
-    "library": "lucide-react",
-    "style": "Thin stroke width (strokeWidth={1.5}) for a precise, elegant look."
+    "buttons": "h-14 px-8 rounded-xl font-bold text-lg transition-transform active:scale-95 flex items-center justify-center gap-2",
+    "primary_button": "bg-black text-white hover:bg-gray-900",
+    "accent_button": "bg-[#FFD500] text-black hover:bg-[#FFC107]",
+    "inputs": "h-16 px-6 rounded-xl bg-gray-50 border border-gray-200 text-lg font-medium focus:ring-2 focus:ring-black focus:border-black outline-none w-full",
+    "quick_destination_card": "flex items-center gap-4 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-300 transition-colors cursor-pointer w-full"
   },
   "motion_and_interactions": {
-    "hover_states": "Subtle scale up (scale-[1.02]) on interactive cards.",
-    "active_states": "scale-[0.98] on buttons for tactile feedback."
+    "hover": "Subtle border color change, zero layout shift",
+    "active": "transform active:scale-[0.98] duration-100",
+    "transitions": "transition-all duration-200 ease-out"
   },
-  "media": {
-    "image_urls": [
-      {
-        "url": "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMGFic3RyYWN0JTIwZ3JhZGllbnQlMjB0ZXh0dXJlfGVufDB8fHx8MTc4MTE3Mjc0M3ww&ixlib=rb-4.1.0&q=85",
-        "category": "wallet_card_background",
-        "description": "Premium white abstract wavy texture for the virtual wallet card background."
-      }
-    ]
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "style": "weight='fill' for active/primary icons (like Home/Work), weight='bold' for standard UI outlines"
   },
-  "testing_rules": [
-    "All interactive elements MUST have data-testid attributes (e.g., data-testid='edit-wallet-modal-button')."
+  "specific_design_rules": [
+    "COMPLETELY REMOVE the floating plus button at the bottom right. It causes clutter.",
+    "Start screen must follow the '3-Tap Booking Rule'. Large 'Where to?' (Wohin?) input takes absolute priority on the bottom sheet.",
+    "Visual Anchoring: Use clear, bold icons in circular colored chips for quick destinations (Home, Work, Airport).",
+    "Dynamic Location Logic (CRITICAL): Do NOT hardcode 'Berlin' or 'BER' for the airport/train targets. Implement a mocked state (e.g. currentRegion) that dynamically renders the correct target. (Example: If region === 'Kosovo' show 'Kosovo Airport'. If region === 'Berlin' show 'BER').",
+    "Map Area: The upper 50% of the screen should be reserved for the map background. If a real map isn't available, use a solid #F3F4F6 background with a grid pattern and a central 'current location' marker.",
+    "All interactive and key informational elements MUST include a data-testid attribute (e.g. data-testid='where-to-input', data-testid='quick-dest-airport')."
   ],
-  "instructions_to_main_agent": "Refactor the Wallet, Loyalty, and Affiliate pages to use this lighter, high-contrast, premium styling. Update all Edit Modals in these flows to be Bottom Sheets (rounded-t-[32px]) rather than centered popups to fit the mobile context. Ensure text and backgrounds follow the high-contrast luxury light theme. Apply generous padding and crisp 1px borders. Use the provided abstract wavy texture for the Wallet balance card."
+  "image_urls": {
+    "map_placeholder": {
+      "url": "https://images.pexels.com/photos/5825560/pexels-photo-5825560.jpeg",
+      "description": "Stylized map texture, can be heavily blurred and overlaid to simulate a map background if required.",
+      "category": "background"
+    },
+    "taxi_marker": {
+      "url": "https://images.pexels.com/photos/3617388/pexels-photo-3617388.jpeg",
+      "description": "Taxi context image, can be used for ride type selection thumbnails if applicable.",
+      "category": "thumbnail"
+    }
+  },
+  "instructions_to_main_agent": "Implement a completely redesigned mobile-first Taxi App start screen in Javascript (.js). Delete the existing messy layout and the floating plus button. Build a 100vh layout: Upper half is a map area (mocked with background and center pin), lower half is an overlapping bottom sheet (rounded-t-[32px]). Inside the bottom sheet, place a prominent 'Where to?' input field. Below that, map a list of Quick Destinations (Schnellziele). Ensure the logic for Airport/Station is dynamic based on a mocked 'userRegion' variable—do not hardcode 'Berlin'. Use Archetype 4 styling: high contrast, no muddy shadows, stark black and white with Taxi Yellow (#FFD500) accents. Ensure strict adherence to the data-testid rules for all interactive elements."
 }
