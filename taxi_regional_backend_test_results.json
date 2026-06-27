@@ -1,0 +1,1021 @@
+{
+  "timestamp": "2026-06-27T12:12:55.977595",
+  "summary": {
+    "total_tests": 4,
+    "passed": 4,
+    "failed": 0,
+    "success_rate": "100%"
+  },
+  "tests": {
+    "test1_geocode_kosovo": {
+      "passed": true,
+      "data": {
+        "features": [
+          {
+            "id": "place.124152",
+            "type": "Feature",
+            "place_type": [
+              "region",
+              "place"
+            ],
+            "relevance": 1,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpBZVQ0",
+              "wikidata": "Q25270"
+            },
+            "text_de": "Pristina",
+            "language_de": "de",
+            "place_name_de": "Pristina, Kosovo",
+            "text": "Pristina",
+            "language": "de",
+            "place_name": "Pristina, Kosovo",
+            "bbox": [
+              21.091061,
+              42.573119,
+              21.501154,
+              42.816969
+            ],
+            "center": [
+              21.164085,
+              42.663877
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                21.164085,
+                42.663877
+              ]
+            },
+            "context": [
+              {
+                "id": "country.8952",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdmc",
+                "wikidata": "Q1246",
+                "short_code": "xk",
+                "text_de": "Kosovo",
+                "language_de": "de",
+                "text": "Kosovo",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.2469357010474930",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.9375,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6N2JjZTFlZDUtOTc2MS00YTUyLWI0N2YtN2MwZTFjNjFiOTdl"
+            },
+            "text_de": "Kristina Hoshi",
+            "place_name_de": "Kristina Hoshi, Pristina 10000, Kosovo",
+            "text": "Kristina Hoshi",
+            "place_name": "Kristina Hoshi, Pristina 10000, Kosovo",
+            "center": [
+              21.15791,
+              42.675684
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                21.15791,
+                42.675684
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.241400",
+                "mapbox_id": "dXJuOm1ieHBsYzpBNjc0",
+                "text_de": "10000",
+                "text": "10000"
+              },
+              {
+                "id": "place.124152",
+                "mapbox_id": "dXJuOm1ieHBsYzpBZVQ0",
+                "wikidata": "Q25270",
+                "text_de": "Pristina",
+                "language_de": "de",
+                "text": "Pristina",
+                "language": "de"
+              },
+              {
+                "id": "country.8952",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdmc",
+                "wikidata": "Q1246",
+                "short_code": "xk",
+                "text_de": "Kosovo",
+                "language_de": "de",
+                "text": "Kosovo",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.1695284344129184",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.9375,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6OWE4YmY2Y2MtZGM1NC00ZTU3LWI2OTYtYzIzM2FkZWE1NDlj"
+            },
+            "text_de": "Prishtina",
+            "place_name_de": "Prishtina, Fush\u00eb Kosova 12000, Kosovo",
+            "text": "Prishtina",
+            "place_name": "Prishtina, Fush\u00eb Kosova 12000, Kosovo",
+            "center": [
+              21.086863,
+              42.650294
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                21.086863,
+                42.650294
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.315128",
+                "mapbox_id": "dXJuOm1ieHBsYzpCTTc0",
+                "text_de": "12000",
+                "text": "12000"
+              },
+              {
+                "id": "place.238840",
+                "mapbox_id": "dXJuOm1ieHBsYzpBNlQ0",
+                "wikidata": "Q786124",
+                "text_de": "Fush\u00eb Kosova",
+                "language_de": "de",
+                "text": "Fush\u00eb Kosova",
+                "language": "de"
+              },
+              {
+                "id": "country.8952",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdmc",
+                "wikidata": "Q1246",
+                "short_code": "xk",
+                "text_de": "Kosovo",
+                "language_de": "de",
+                "text": "Kosovo",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.1265286291064484",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.9375,
+            "properties": {
+              "accuracy": "street"
+            },
+            "text_de": "Prishtina Mall",
+            "place_name_de": "Prishtina Mall, Gra\u010danica 14000, Kosovo",
+            "text": "Prishtina Mall",
+            "place_name": "Prishtina Mall, Gra\u010danica 14000, Kosovo",
+            "center": [
+              21.136299,
+              42.566047
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                21.136299,
+                42.566047
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.356088",
+                "mapbox_id": "dXJuOm1ieHBsYzpCVzc0",
+                "text_de": "14000",
+                "text": "14000"
+              },
+              {
+                "id": "place.42232",
+                "mapbox_id": "dXJuOm1ieHBsYzpwUGc",
+                "wikidata": "Q1544186",
+                "text_de": "Gra\u010danica",
+                "language_de": "de",
+                "text": "Gra\u010danica",
+                "language": "de"
+              },
+              {
+                "id": "country.8952",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdmc",
+                "wikidata": "Q1246",
+                "short_code": "xk",
+                "text_de": "Kosovo",
+                "language_de": "de",
+                "text": "Kosovo",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.514614022888460",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.9375,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6MTY2M2JhOWQtNzJjNi00NzAyLWFlY2UtMjkxM2UyMzc0ZjNk"
+            },
+            "text_de": "Prishtina",
+            "place_name_de": "Prishtina, Prizren 20000, Kosovo",
+            "text": "Prishtina",
+            "place_name": "Prishtina, Prizren 20000, Kosovo",
+            "center": [
+              20.768071,
+              42.246999
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                20.768071,
+                42.246999
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.405240",
+                "mapbox_id": "dXJuOm1ieHBsYzpCaTc0",
+                "text_de": "20000",
+                "text": "20000"
+              },
+              {
+                "id": "place.83192",
+                "mapbox_id": "dXJuOm1ieHBsYzpBVVQ0",
+                "wikidata": "Q200061",
+                "text_de": "Prizren",
+                "language_de": "de",
+                "text": "Prizren",
+                "language": "de"
+              },
+              {
+                "id": "country.8952",
+                "mapbox_id": "dXJuOm1ieHBsYzpJdmc",
+                "wikidata": "Q1246",
+                "short_code": "xk",
+                "text_de": "Kosovo",
+                "language_de": "de",
+                "text": "Kosovo",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.4707158762647608",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.9375,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6NGY3MTMyYzMtOTIwNS00YTA4LTg4OGEtN2I3ZWYwMDAyODBi"
+            },
+            "text_de": "Prishtina",
+            "place_name_de": "Prishtina, 1054 Kamza, Albanien",
+            "text": "Prishtina",
+            "place_name": "Prishtina, 1054 Kamza, Albanien",
+            "center": [
+              19.765741,
+              41.371898
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                19.765741,
+                41.371898
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.216583",
+                "mapbox_id": "dXJuOm1ieHBsYzpBMDRI",
+                "text_de": "1054",
+                "text": "1054"
+              },
+              {
+                "id": "locality.1059335",
+                "mapbox_id": "dXJuOm1ieHBsYzpFQ29I",
+                "text_de": "Bathore",
+                "text": "Bathore"
+              },
+              {
+                "id": "place.157703",
+                "mapbox_id": "dXJuOm1ieHBsYzpBbWdI",
+                "wikidata": "Q605160",
+                "text_de": "Kamza",
+                "language_de": "de",
+                "text": "Kamza",
+                "language": "de"
+              },
+              {
+                "id": "region.82951",
+                "mapbox_id": "dXJuOm1ieHBsYzpBVVFI",
+                "wikidata": "Q229892",
+                "short_code": "AL-11",
+                "text_de": "Qark Tirana",
+                "language_de": "de",
+                "text": "Qark Tirana",
+                "language": "de"
+              },
+              {
+                "id": "country.8711",
+                "mapbox_id": "dXJuOm1ieHBsYzpJZ2M",
+                "wikidata": "Q222",
+                "short_code": "al",
+                "text_de": "Albanien",
+                "language_de": "de",
+                "text": "Albanien",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "test2_geocode_berlin": {
+      "passed": true,
+      "data": {
+        "features": [
+          {
+            "id": "address.8083931518788980",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.536296,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6MTMxZTVhZTYtMjQ2MC00Y2MwLWFjMjktYWVlYjIyOTYyZGFk"
+            },
+            "text_de": "Bergstra\u00dfe",
+            "language_de": "de",
+            "place_name_de": "Bergstra\u00dfe, 14550 Gro\u00df Kreutz, Deutschland",
+            "text": "Bergstra\u00dfe",
+            "language": "de",
+            "place_name": "Bergstra\u00dfe, 14550 Gro\u00df Kreutz, Deutschland",
+            "center": [
+              12.734792,
+              52.442508
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                12.734792,
+                52.442508
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.6778426",
+                "mapbox_id": "dXJuOm1ieHBsYzpaMjQ2",
+                "text_de": "14550",
+                "language_de": "de",
+                "text": "14550",
+                "language": "de"
+              },
+              {
+                "id": "locality.55749178",
+                "mapbox_id": "dXJuOm1ieHBsYzpBMUtxT2c",
+                "wikidata": "Q1182519",
+                "text_de": "Deetz",
+                "language_de": "de",
+                "text": "Deetz",
+                "language": "de"
+              },
+              {
+                "id": "place.28174394",
+                "mapbox_id": "dXJuOm1ieHBsYzpBYTNvT2c",
+                "wikidata": "Q625962",
+                "text_de": "Gro\u00df Kreutz",
+                "language_de": "de",
+                "text": "Gro\u00df Kreutz",
+                "language": "de"
+              },
+              {
+                "id": "district.1599034",
+                "mapbox_id": "dXJuOm1ieHBsYzpHR1k2",
+                "wikidata": "Q6142",
+                "text_de": "Kreis Potsdam-Mittelmark",
+                "language_de": "de",
+                "text": "Kreis Potsdam-Mittelmark",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.1898650652513726",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.536296,
+            "properties": {
+              "accuracy": "street"
+            },
+            "text_de": "Berliner Damm",
+            "language_de": "de",
+            "place_name_de": "Berliner Damm, 16775 Gransee, Deutschland",
+            "text": "Berliner Damm",
+            "language": "de",
+            "place_name": "Berliner Damm, 16775 Gransee, Deutschland",
+            "center": [
+              13.156161,
+              53.002016
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.156161,
+                53.002016
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.7786042",
+                "mapbox_id": "dXJuOm1ieHBsYzpkczQ2",
+                "text_de": "16775",
+                "language_de": "de",
+                "text": "16775",
+                "language": "de"
+              },
+              {
+                "id": "place.27084858",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWjFJT2c",
+                "wikidata": "Q585627",
+                "text_de": "Gransee",
+                "language_de": "de",
+                "text": "Gransee",
+                "language": "de"
+              },
+              {
+                "id": "district.1435194",
+                "mapbox_id": "dXJuOm1ieHBsYzpGZVk2",
+                "wikidata": "Q6119",
+                "text_de": "Kreis Oberhavel",
+                "language_de": "de",
+                "text": "Kreis Oberhavel",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.5953393247934464",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.536296,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6YjUyN2Q1NjQtNGMzZi00ZTQyLWFiNjAtNmFlOTMzZTg4MzRh"
+            },
+            "text_de": "Bergstra\u00dfe",
+            "language_de": "de",
+            "place_name_de": "Bergstra\u00dfe, 16775 Stechlin, Deutschland",
+            "text": "Bergstra\u00dfe",
+            "language": "de",
+            "place_name": "Bergstra\u00dfe, 16775 Stechlin, Deutschland",
+            "center": [
+              13.023458,
+              53.074624
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.023458,
+                53.074624
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.7786042",
+                "mapbox_id": "dXJuOm1ieHBsYzpkczQ2",
+                "text_de": "16775",
+                "language_de": "de",
+                "text": "16775",
+                "language": "de"
+              },
+              {
+                "id": "locality.61737530",
+                "mapbox_id": "dXJuOm1ieHBsYzpBNjRLT2c",
+                "text_de": "Dollgow",
+                "language_de": "de",
+                "text": "Dollgow",
+                "language": "de"
+              },
+              {
+                "id": "place.75278394",
+                "mapbox_id": "dXJuOm1ieHBsYzpCSHlvT2c",
+                "wikidata": "Q583033",
+                "text_de": "Stechlin",
+                "language_de": "de",
+                "text": "Stechlin",
+                "language": "de"
+              },
+              {
+                "id": "district.1435194",
+                "mapbox_id": "dXJuOm1ieHBsYzpGZVk2",
+                "wikidata": "Q6119",
+                "text_de": "Kreis Oberhavel",
+                "language_de": "de",
+                "text": "Kreis Oberhavel",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.7830807458052832",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.536296,
+            "properties": {
+              "accuracy": "street",
+              "mapbox_id": "dXJuOm1ieGFkci1zdHI6N2U2ZTkyNjAtYWQwNC00MmViLWE5Y2UtNGFmODM5MDcxNWJi"
+            },
+            "text_de": "Berliner Stra\u00dfe",
+            "language_de": "de",
+            "place_name_de": "Berliner Stra\u00dfe, 16775 Stechlin, Deutschland",
+            "text": "Berliner Stra\u00dfe",
+            "language": "de",
+            "place_name": "Berliner Stra\u00dfe, 16775 Stechlin, Deutschland",
+            "center": [
+              13.051728,
+              53.098851
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.051728,
+                53.098851
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.7786042",
+                "mapbox_id": "dXJuOm1ieHBsYzpkczQ2",
+                "text_de": "16775",
+                "language_de": "de",
+                "text": "16775",
+                "language": "de"
+              },
+              {
+                "id": "locality.211651130",
+                "mapbox_id": "dXJuOm1ieHBsYzpESjJLT2c",
+                "wikidata": "Q1767603",
+                "text_de": "Menz",
+                "language_de": "de",
+                "text": "Menz",
+                "language": "de"
+              },
+              {
+                "id": "place.75278394",
+                "mapbox_id": "dXJuOm1ieHBsYzpCSHlvT2c",
+                "wikidata": "Q583033",
+                "text_de": "Stechlin",
+                "language_de": "de",
+                "text": "Stechlin",
+                "language": "de"
+              },
+              {
+                "id": "district.1435194",
+                "mapbox_id": "dXJuOm1ieHBsYzpGZVk2",
+                "wikidata": "Q6119",
+                "text_de": "Kreis Oberhavel",
+                "language_de": "de",
+                "text": "Kreis Oberhavel",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "address.7207376929061414",
+            "type": "Feature",
+            "place_type": [
+              "address"
+            ],
+            "relevance": 0.5,
+            "properties": {
+              "accuracy": "street"
+            },
+            "text_de": "Flughafen",
+            "language_de": "de",
+            "place_name_de": "Flughafen, 12529 Sch\u00f6nefeld, Deutschland",
+            "text": "Flughafen",
+            "language": "de",
+            "place_name": "Flughafen, 12529 Sch\u00f6nefeld, Deutschland",
+            "center": [
+              13.518446,
+              52.390923
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.518446,
+                52.390923
+              ]
+            },
+            "context": [
+              {
+                "id": "postcode.5991994",
+                "mapbox_id": "dXJuOm1ieHBsYzpXMjQ2",
+                "text_de": "12529",
+                "language_de": "de",
+                "text": "12529",
+                "language": "de"
+              },
+              {
+                "id": "place.71108666",
+                "mapbox_id": "dXJuOm1ieHBsYzpCRDBJT2c",
+                "wikidata": "Q521475",
+                "text_de": "Sch\u00f6nefeld",
+                "language_de": "de",
+                "text": "Sch\u00f6nefeld",
+                "language": "de"
+              },
+              {
+                "id": "district.362042",
+                "mapbox_id": "dXJuOm1ieHBsYzpCWVk2",
+                "wikidata": "Q6173",
+                "text_de": "Kreis Dahme-Spreewald",
+                "language_de": "de",
+                "text": "Kreis Dahme-Spreewald",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "place.10422330",
+            "type": "Feature",
+            "place_type": [
+              "place"
+            ],
+            "relevance": 0.315062,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpud2c2",
+              "wikidata": "Q3931"
+            },
+            "text_de": "Brandenburg an der Havel",
+            "language_de": "de",
+            "place_name_de": "Brandenburg an der Havel, Brandenburg, Deutschland",
+            "text": "Brandenburg an der Havel",
+            "language": "de",
+            "place_name": "Brandenburg an der Havel, Brandenburg, Deutschland",
+            "bbox": [
+              12.361091,
+              52.311631,
+              12.725772,
+              52.541708
+            ],
+            "center": [
+              12.552944,
+              52.412933
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                12.552944,
+                52.412933
+              ]
+            },
+            "context": [
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          },
+          {
+            "id": "place.74311738",
+            "type": "Feature",
+            "place_type": [
+              "place"
+            ],
+            "relevance": 0.296296,
+            "properties": {
+              "mapbox_id": "dXJuOm1ieHBsYzpCRzNvT2c",
+              "wikidata": "Q583178"
+            },
+            "text_de": "Sonnenberg",
+            "language_de": "de",
+            "place_name_de": "Sonnenberg, Kreis Oberhavel, Brandenburg, Deutschland",
+            "text": "Sonnenberg",
+            "language": "de",
+            "place_name": "Sonnenberg, Kreis Oberhavel, Brandenburg, Deutschland",
+            "matching_text": "Brandenburg",
+            "matching_place_name": "Brandenburg, Kreis Oberhavel, Brandenburg, Deutschland",
+            "bbox": [
+              13.006571,
+              52.95214,
+              13.14774,
+              53.068617
+            ],
+            "center": [
+              13.088682,
+              53.019108
+            ],
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.088682,
+                53.019108
+              ]
+            },
+            "context": [
+              {
+                "id": "district.1435194",
+                "mapbox_id": "dXJuOm1ieHBsYzpGZVk2",
+                "wikidata": "Q6119",
+                "text_de": "Kreis Oberhavel",
+                "language_de": "de",
+                "text": "Kreis Oberhavel",
+                "language": "de"
+              },
+              {
+                "id": "region.99386",
+                "mapbox_id": "dXJuOm1ieHBsYzpBWVE2",
+                "wikidata": "Q1208",
+                "short_code": "DE-BB",
+                "text_de": "Brandenburg",
+                "language_de": "de",
+                "text": "Brandenburg",
+                "language": "de"
+              },
+              {
+                "id": "country.8762",
+                "mapbox_id": "dXJuOm1ieHBsYzpJam8",
+                "wikidata": "Q183",
+                "short_code": "de",
+                "text_de": "Deutschland",
+                "language_de": "de",
+                "text": "Deutschland",
+                "language": "de"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "test3_estimate_kosovo": {
+      "passed": true,
+      "data": {
+        "module_enabled": true,
+        "estimates": [
+          {
+            "vehicle_type": "standard",
+            "name": "Standard",
+            "description": "Komfortabel & g\u00fcnstig",
+            "capacity": 4,
+            "fare": 12.8,
+            "fare_range": {
+              "min": 11.52,
+              "max": 14.72
+            },
+            "eta_minutes": 3,
+            "distance_km": 14.59,
+            "duration_minutes": 29,
+            "fare_breakdown": {
+              "base_fare": 1.5,
+              "distance_cost": 7.3,
+              "time_cost": 2.34,
+              "total": 12.8,
+              "driver_earnings": 10.88,
+              "platform_fee": 1.92,
+              "region": "kosovo",
+              "region_label": "KS-Tarif",
+              "zone_surcharge": 0.0,
+              "time_multiplier": 1.15,
+              "time_label": "Wochenende"
+            }
+          },
+          {
+            "vehicle_type": "premium",
+            "name": "Premium",
+            "description": "Luxus & Stil",
+            "capacity": 4,
+            "fare": 20.33,
+            "fare_range": {
+              "min": 18.3,
+              "max": 23.38
+            },
+            "eta_minutes": 3,
+            "distance_km": 14.59,
+            "duration_minutes": 29,
+            "fare_breakdown": {
+              "base_fare": 2.5,
+              "distance_cost": 11.68,
+              "time_cost": 3.5,
+              "total": 20.33,
+              "driver_earnings": 17.28,
+              "platform_fee": 3.05,
+              "region": "kosovo",
+              "region_label": "KS-Tarif",
+              "zone_surcharge": 0.0,
+              "time_multiplier": 1.15,
+              "time_label": "Wochenende"
+            }
+          },
+          {
+            "vehicle_type": "van",
+            "name": "Van / XL",
+            "description": "Mehr Platz, Gep\u00e4ck",
+            "capacity": 7,
+            "fare": 16.57,
+            "fare_range": {
+              "min": 14.91,
+              "max": 19.06
+            },
+            "eta_minutes": 3,
+            "distance_km": 14.59,
+            "duration_minutes": 29,
+            "fare_breakdown": {
+              "base_fare": 2.0,
+              "distance_cost": 9.49,
+              "time_cost": 2.92,
+              "total": 16.57,
+              "driver_earnings": 14.08,
+              "platform_fee": 2.49,
+              "region": "kosovo",
+              "region_label": "KS-Tarif",
+              "zone_surcharge": 0.0,
+              "time_multiplier": 1.15,
+              "time_label": "Wochenende"
+            }
+          }
+        ],
+        "surge": {
+          "active": false,
+          "multiplier": 1.0
+        },
+        "region": "kosovo",
+        "region_label": "KS-Tarif",
+        "promo": null,
+        "tariff_zone": null,
+        "time_tariff": {
+          "multiplier": 1.15,
+          "label": "Wochenende",
+          "night": false,
+          "weekend": true,
+          "holiday": false
+        }
+      }
+    },
+    "test4_no_500_errors": {
+      "passed": true,
+      "data": [
+        {
+          "test": "Geocode with Kosovo coords",
+          "status": 200,
+          "passed": true
+        },
+        {
+          "test": "Geocode with Berlin coords",
+          "status": 200,
+          "passed": true
+        },
+        {
+          "test": "Estimate with Kosovo coords",
+          "status": 200,
+          "passed": true
+        },
+        {
+          "test": "Estimate with Berlin coords",
+          "status": 200,
+          "passed": true
+        }
+      ]
+    }
+  }
+}
