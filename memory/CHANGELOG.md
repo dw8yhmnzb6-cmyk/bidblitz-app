@@ -28,6 +28,13 @@
 - `/app/memory/test_credentials.md`: unverifiziertes E2E-Testkonto `kycgate.1782580398@test.com / TestPass2026!` ergänzt
 - Verifiziert: Browser-Test PASS mit unverifiziertem Konto — Home-Gate sichtbar, Wallet-Klick leitet nach `/kyc`, More-Seite blendet gesperrte Bereiche aus
 
+## 27.06.2026 — Öffentlichen Live-Kundenlogin `agimk@me.com` wiederhergestellt
+- Live-Analyse ergab: `agimk@me.com` existierte bereits auf `bidblitz.ae` mit 5€ Welcome Bonus, aber der Passwortzustand war unbrauchbar; direkte Logins liefen in `401`, Admin-Reset-Link in `502` wegen fehlgeschlagener Reset-E-Mail-Zustellung
+- Nach expliziter Freigabe wurde das bestehende Live-Konto per Admin-API gelöscht und unmittelbar mit derselben Ziel-Mail neu registriert
+- Neuer verifizierter Live-Login: `agimk@me.com / Aldink56600`
+- Browser-Verifikation auf `https://bidblitz.ae` erfolgreich: Login landet auf `/`, Konto ist wieder erreichbar, KYC-Hinweis bleibt sichtbar
+- Hinweis zum KYC-Produktverhalten: 5€ Welcome Balance ist sichtbar, aber sensible Nutzung bleibt weiterhin an Verifizierung gekoppelt
+
 ## 27.06.2026 — Login-Fix + `.ae` Alias-Logins
 - `backend/routes/auth.py`: Login akzeptiert jetzt `.ae` und `.com` als Aliase für dieselben Seed-Konten
 - `backend/routes/staff.py`: Staff-Login akzeptiert ebenfalls `.ae` und `.com` als Aliase
