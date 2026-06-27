@@ -33,6 +33,18 @@ def _auth_email_candidates(raw_email: str) -> list[str]:
     return list(dict.fromkeys(candidates))
 
 
+def _auth_email_query(email_candidates: list[str]) -> dict:
+    normalized = [candidate for candidate in email_candidates if candidate]
+    if not normalized:
+        return {"email": ""}
+    return {
+        "$or": [
+            {"email": {"$in": normalized}},
+            {"email_aliases": {"$in": normalized}},
+        ]
+    }
+
+
 async def _record_login_success(user_id: str, ip: str, user_agent: str):
     await db.users.update_one(
         {"_id": ObjectId(user_id)},
@@ -84,7 +96,7 @@ async def _issue_password_reset(
     reason: str = "forgot_password",
     force_password_change: bool = False,
 ):
-    user = await db.users.find_one({"email": email})
+    user = await db.users.find_one(_auth_email_query(_auth_email_candidates(email)))
     if not user:
         return None
 
@@ -344,13 +356,8 @@ async def login(req: LoginRequest, request: Request, response: Response):
         else:
             await db.login_attempts.delete_one({"identifier": identifier})
 
-    user = None
-    matched_email = email
-    for candidate in email_candidates:
-        user = await db.users.find_one({"email": candidate})
-        if user:
-            matched_email = candidate
-            break
+    user = await db.users.find_one(_auth_email_query(email_candidates))
+    matched_email = (user or {}).get("email", email)
 
     # Soft launch gate (before password check to avoid leaking user existence)
     if user and not await is_email_whitelisted(matched_email):
@@ -539,12 +546,13 @@ async def forgot_password(request: Request):
     if not email:
         raise HTTPException(status_code=400, detail="Email required")
     
-    user = await db.users.find_one({"email": email})
+    email_candidates = _auth_email_candidates(email)
+    user = await db.users.find_one(_auth_email_query(email_candidates))
     if not user:
         # Don't reveal if email exists
         return {"ok": True, "message": "If account exists, reset link sent"}
 
-    await _issue_password_reset(email, request=request, issued_by="self_service", reason="forgot_password", force_password_change=False)
+    await _issue_password_reset(user.get("email", email), request=request, issued_by="self_service", reason="forgot_password", force_password_change=False)
     return {"ok": True, "message": "If account exists, reset link sent"}
 
 

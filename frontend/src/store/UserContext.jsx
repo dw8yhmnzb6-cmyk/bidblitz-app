@@ -35,6 +35,8 @@ const guestState = {
   email_notifications: true,
   biometric_enabled: false,
   dark_mode: true,
+  kyc_status: 'not_started',
+  kyc_verified: false,
   requires2FA: false,
   twoFAEmailHint: '',
 };
@@ -59,6 +61,8 @@ function mapUser(u) {
     email_notifications: u.email_notifications !== false,
     biometric_enabled: u.biometric_enabled === true,
     dark_mode: u.dark_mode !== false,
+    kyc_status: u.kyc_status || 'not_started',
+    kyc_verified: u.kyc_verified === true || u.kyc_status === 'approved',
   };
 }
 

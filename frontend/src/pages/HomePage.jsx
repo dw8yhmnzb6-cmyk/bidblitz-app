@@ -641,7 +641,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         )}
 
         {/* ═══════════ AUTHENTICATED SECTIONS ═══════════ */}
-        {!isGuest && (
+        {!isGuest && !showKycRestrictedExperience && (
           <>
             {/* (Hero Balance Card now rendered at the very top — banking-app feel) */}
 
