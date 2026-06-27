@@ -5,12 +5,20 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
-## Current Focus — Taxi-Startscreen komplett neu gestaltet, Commerce Center als Nächstes
+## Current Focus — Merchant Platform V5 gestartet: Enterprise Dashboard + Executive AI live
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
-- Die GitHub-Actions-CI bleibt stabil: Backend-Abhängigkeiten installieren wieder sauber, Frontend-ESLint läuft ohne Errors, und der Backend-Job nutzt einen stabilen FastAPI-Smoke-Test statt flakey historischer E2E-Suiten.
-- Neu live: Die Taxi-Startseite wurde vollständig neu aufgebaut — klarer Map/Botton-Sheet-Aufbau, störende Floating-Buttons im Taxi-Flow entfernt und regionale Schnellziele (Flughafen/Bahnhof) dynamisch statt fest auf Berlin verdrahtet.
-- Nächster Schwerpunkt: Commerce Center wieder aufnehmen und danach Mobility-/Taxi-Personalisierung weiter ausbauen.
+- Neu live: Merchant Platform V5 Modul 1 ergänzt das Händler-Portal um ein Enterprise Dashboard und Executive AI auf Basis bestehender Merchant-, POS-, Wallet-, Inventory-, Staff- und Analytics-Module.
+- Executive AI nutzt `emergentintegrations.llm.chat` serverseitig mit Streaming-Antworten, speichert Executive-Briefings historisiert und fällt bei Modellproblemen deterministisch auf einen regelbasierten Bericht zurück.
+- Nächster Schwerpunkt: Omnichannel Commerce weiter vertiefen (Sync/Automation) und danach Digital Signage + Smart Pricing als nächstes V5-Modul ergänzen.
+
+### 27.06.2026 (Merchant Platform V5 — Enterprise Dashboard + Executive AI) ✅
+- 🟢 **Enterprise-Datenhub gebaut** (`backend/routes/merchant_portal.py`): neuer Aggregations-Helper `/_build_enterprise_overview_data` bündelt Revenue, Profit, Filialen, Inventory, POS, Staff, Wallet, Loyalty, Forecasts, Alerts und Merchant KPIs aus bestehenden Collections wie `pos_merchants`, `pos_stores`, `pos_registers`, `pos_products`, `pos_sales`, `transactions`, `payouts`, `staff_members`, `staff_clock_events`, `staff_shifts`, `pos_loyalty`.
+- 🟢 **Neue V5-API live** (`backend/routes/merchant_portal.py`): `GET /api/merchant-portal/v5/dashboard`, `GET /api/merchant-portal/v5/executive-ai/latest`, `POST /api/merchant-portal/v5/executive-ai/stream` liefern das neue Enterprise Dashboard und Executive-AI-Briefings inklusive History.
+- 🟢 **Executive AI produktionsnah integriert** (`backend/routes/merchant_portal.py`, `backend/services/product_image_generator.py` als Referenzmuster): Streaming über `LlmChat` mit persisted Reports in `merchant_executive_ai_reports`, Provider-/Modell-Fallbacks, strukturierten Briefings für Executive Summary, Revenue Insights, Inventory Insights, Staff Insights, Sales Forecasts, Purchase Recommendations und Business Alerts.
+- 🟢 **Merchant-Portal UI erweitert** (`frontend/src/pages/MerchantPortalPage.jsx`, `frontend/src/services/api.js`): neue Tabs `Enterprise V5` und `Executive AI`, KPI-Karten für Revenue/Profit/Branches/Wallet, Executive Overview, Merchant KPIs, Branch-Übersicht, Inventory/POS, Staff/Attendance, Alerts, Forecast-Karten, Purchase-Recommendations-Liste und Executive-AI-History mit vollständigen `data-testid`-Attributen.
+- 🟢 **UX-Härtung** (`frontend/src/pages/MerchantPortalPage.jsx`): Growth-Karten zeigen bei neuen/ruhigen Merchants zusätzliche Hinweise wie `Keine Umsätze in den letzten 30 Tagen`, damit negative Prozentwerte ohne Kontext nicht missverständlich wirken.
+- ✅ **Verifiziert**: Python-Lint PASS, JS-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 165 = Backend 4/4 PASS und Frontend 12/12 PASS; Executive AI streamt erfolgreich mit Provider `openai`. Keine MOCKED APIs.
 
 ### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
 - 🟢 **Zielsuche gehärtet** (`frontend/src/components/taxi/useTaxiGeocoder.js`): Taxi-Suche fällt jetzt robust zwischen direkter Mapbox-Abfrage und Backend-Proxy zurück. Damit bleiben Vorschläge auch dann stabil, wenn ein Frontend-Token auf einzelnen Geräten/Deployments fehlschlägt.
@@ -1170,6 +1178,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - LiveKit Recording → S3/local storage
 - birth_year range error i18n + better UX
 - AdminLandingLeadsPage Lead-Export als CSV
+- Merchant Platform V5 später um Multi-Company-Drilldowns, Document Center und Maintenance Tracker vertiefen
 
 ## P0 — User Action Required (External)
 - Generate Android Release Keystore via `/app/frontend/build-mobile-final.sh`

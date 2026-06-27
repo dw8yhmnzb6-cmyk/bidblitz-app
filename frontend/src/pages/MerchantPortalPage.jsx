@@ -371,8 +371,18 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                 <h3 className="text-sm font-bold text-white">Executive Overview</h3>
               </div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                <MetricPill label="Revenue Growth" value={`${(v5.financials?.revenue_growth_pct || 0).toFixed(1)}%`} testid="merchant-v5-revenue-growth" />
-                <MetricPill label="Profit Growth" value={`${(v5.financials?.profit_growth_pct || 0).toFixed(1)}%`} testid="merchant-v5-profit-growth" />
+                <MetricPill
+                  label="Revenue Growth"
+                  value={`${(v5.financials?.revenue_growth_pct || 0).toFixed(1)}%`}
+                  helper={v5.financials?.revenue_30d <= 0 ? (v5.financials?.revenue_previous_30d > 0 ? "Keine Umsätze in den letzten 30 Tagen" : "Noch keine Vergleichsbasis") : null}
+                  testid="merchant-v5-revenue-growth"
+                />
+                <MetricPill
+                  label="Profit Growth"
+                  value={`${(v5.financials?.profit_growth_pct || 0).toFixed(1)}%`}
+                  helper={v5.financials?.profit_30d <= 0 ? (v5.financials?.profit_previous_30d > 0 ? "Kein Profit in den letzten 30 Tagen" : "Noch keine Vergleichsbasis") : null}
+                  testid="merchant-v5-profit-growth"
+                />
                 <MetricPill label="Avg Ticket" value={`€${(v5.financials?.avg_ticket || 0).toFixed(2)}`} testid="merchant-v5-avg-ticket" />
                 <MetricPill label="Refunds Pending" value={v5.financials?.refunds_pending ?? 0} testid="merchant-v5-refunds-pending" />
                 <MetricPill label="Wallet Inflow" value={`€${(v5.financials?.wallet_inflow_30d || 0).toFixed(0)}`} testid="merchant-v5-wallet-inflow" />
@@ -910,11 +920,12 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   );
 };
 
-function MetricPill({ label, value, testid }) {
+function MetricPill({ label, value, helper, testid }) {
   return (
     <div className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={testid}>
       <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{label}</p>
       <p className="mt-2 text-lg font-black text-white">{value}</p>
+      {helper ? <p className="mt-1 text-[10px] text-slate-500">{helper}</p> : null}
     </div>
   );
 }

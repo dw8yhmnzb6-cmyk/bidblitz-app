@@ -1,5 +1,14 @@
 # BidBlitz — CHANGELOG
 
+## 27.06.2026 — Merchant Platform V5 Modul 1: Enterprise Dashboard + Executive AI
+- `backend/routes/merchant_portal.py`: neue Enterprise-Aggregation für Revenue, Profit, Branches, Inventory, POS, Staff, Wallet, Loyalty, Alerts, Forecasts und Merchant KPIs aus bestehenden BidBlitz-Modulen ergänzt
+- Neue APIs live: `GET /api/merchant-portal/v5/dashboard`, `GET /api/merchant-portal/v5/executive-ai/latest`, `POST /api/merchant-portal/v5/executive-ai/stream`
+- `merchant_executive_ai_reports` als neue Persistenz für historisierte Executive-AI-Briefings ergänzt; Reports speichern Fokus, Context-Snapshot, Provider/Modell, Status und finalen Report-Text
+- `frontend/src/pages/MerchantPortalPage.jsx`: Händler-Portal um Tabs `Enterprise V5` und `Executive AI` erweitert, inklusive KPI-Karten, Branch-Übersicht, Inventory/POS/Staff/Alerts-Sektionen, Forecasts, Purchase Recommendations und AI-History
+- `frontend/src/services/api.js`: API-Helper für V5-Dashboard und Executive-AI-Latest ergänzt
+- UX-Feinschliff: Growth-Karten zeigen bei Merchants ohne aktuelle Umsätze/Profite kontextgebende Hilfstexte statt nur irritierende negative Prozentwerte
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 165 PASS (Backend 4/4, Frontend 12/12), Executive AI streamt mit Provider `openai`
+
 ## 27.06.2026 — Login-Fix + `.ae` Alias-Logins
 - `backend/routes/auth.py`: Login akzeptiert jetzt `.ae` und `.com` als Aliase für dieselben Seed-Konten
 - `backend/routes/staff.py`: Staff-Login akzeptiert ebenfalls `.ae` und `.com` als Aliase

@@ -1,6 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## P0
+- Merchant Platform V5: Omnichannel Commerce nach dem neuen Enterprise Dashboard als nächstes vertiefen — kanalübergreifender Bestand, Sync-Status, Order-Funnel und operative Automationen auf Basis der bestehenden POS-/Inventory-/Merchant-Module
+- Merchant Platform V5: Executive AI nach Modul 1 weiter ausbauen — Drilldowns pro Filiale, recurring Briefings, Alert-Subscriptions und Automation-Vorschläge für Einkauf/Staffing
 - Mobility Center V1 vertiefen: Parking, Carsharing, EV Charging sowie Saved/Frequent Routes enger im neuen Hub bündeln
 - Smart Invoice Follow-up: Payment-Link Reminder-Kampagnen (Batch/Schedule), echte Webhook-Settlement-Härtung und öffentliche Payment-Seite um Success/Retry/Resume weiter vertiefen
 - Frontend-ESLint-Warnings schrittweise abbauen, damit die Codebase nach dem CI-Fix nicht nur fehlerfrei, sondern langfristig wartbarer wird
@@ -13,6 +15,8 @@
 - Mobility nächster Schritt: Tracking jetzt mit Rebook/Support/Push-Remindern verknüpfen und danach Commerce Center wieder priorisieren
 
 ## P1
+- Merchant Platform V5: Digital Signage + Smart Pricing auf dem neuen Enterprise-Datenmodell aufsetzen (Preisregeln, Promotion-Slots, Filialausspielung)
+- Merchant Platform V5: Procurement AI + Business Automation ergänzen (PO-Automation, Reorder-Workflows, Lieferanten-Eskalationen, Staff-/Inventory-Playbooks)
 - Commerce: Live-Auctions-Seed/Programmplanung, Live-Produkt-Pinning und dedizierte Commerce-Analytics für Conversion, Flash-Sale-Umsatz und CTA-Klicks ergänzen
 - Merchant Commerce: Bulk-Flash-Sale-Kampagnen, Scheduler und Performance-Rankings ergänzen
 - Mobility: Compare-Flow nach dem neuen 4-Wege-Vergleich um Saved/Frequent Routes, One-Tap-Rebook und Parking-/Carsharing-Kombinationen erweitern
@@ -31,6 +35,7 @@
 - Floorplan-/Raumplan-Editor für Tische mit Mehrraum/Zoom/Snapping ausbauen
 
 ## P2
+- Merchant Platform V5: Multi-Company Management, Document Center und Maintenance Tracker auf Basis der neuen Enterprise-Struktur ergänzen
 - Move & Earn: AI Coach später mit echten Empfehlungen, Coaching-Plänen und optionalem GPS-/Sensor-Scoring ausbauen
 - Mobility: echte Live-Positionsupdates/Tracking für Shuttle, VIP und weitere Transportarten vertiefen
 - Mobility: serverseitige Ranking-Heuristik für Autocomplete und Empfehlungslogik weiter schärfen
