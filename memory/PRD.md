@@ -52,10 +52,10 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Live-Fix ausgeführt**: Konto auf `bidblitz.ae` neu registriert, per Admin-API auf Rolle `merchant` umgestellt und via `POST /api/kyc/admin/decide` auf `approved` gesetzt.
 - 🟢 **Live-Verifikation erfolgreich**: API-Login PASS, Browser-Login PASS, Wallet-Zugriff PASS. Das Konto ist jetzt als verifizierter Händler nutzbar.
 
-### 27.06.2026 (POS Wallet Top-up nur noch per Kundennummer) ✅
-- 🟢 **Backend gehärtet** (`backend/routes/pos_vouchers.py`): `POST /api/pos/vouchers/topup` akzeptiert jetzt ausschließlich `customer_user_number`. E-Mail, Barcode-/Scan-Werte oder NFC-Tokens werden im Top-up-Flow aktiv mit klarer Fehlermeldung abgewiesen.
-- 🟢 **POS-UI angepasst** (`frontend/src/components/pos/POSVoucherComponents.jsx`): Feld `Kunden-E-Mail` wurde durch `Kundennummer` ersetzt; zusätzlicher Hinweistext macht den Modus eindeutig: `Nur Kundennummer. Keine E-Mail, kein Scan, kein NFC.`
-- ✅ **Verifiziert**: Python-Lint PASS, JS-Lint PASS, API-Selbsttest PASS — E-Mail wird korrekt blockiert, unbekannte Kundennummer liefert sauberen `404`.
+### 27.06.2026 (POS Wallet Top-up: Scan/NFC zuerst, Kundennummer als Fallback) ✅
+- 🟢 **Backend gehärtet** (`backend/routes/pos_vouchers.py`): `POST /api/pos/vouchers/topup` akzeptiert weiterhin ausschließlich `customer_user_number`, zusätzlich gibt es jetzt `POST /api/pos/vouchers/resolve-customer` für die Vorauflösung per `barcode`, `nfc` oder `user_number`.
+- 🟢 **POS-UI angepasst** (`frontend/src/components/pos/POSVoucherComponents.jsx`): Top-up-Flow startet jetzt mit Lookup-Modus `Scan / NFC / Nummer`; erst Barcode/NFC versuchen, bei Bedarf auf Kundennummer zurückfallen. Aufgeladen wird dennoch immer mit der finalen Kundennummer.
+- ✅ **Verifiziert**: Python-Lint PASS, JS-Lint PASS, API-Selbsttest PASS — E-Mail wird im Top-up weiterhin korrekt blockiert; Resolve-Flow für Kundennummer reagiert sauber.
 
 ### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
 - 🟢 **Zielsuche gehärtet** (`frontend/src/components/taxi/useTaxiGeocoder.js`): Taxi-Suche fällt jetzt robust zwischen direkter Mapbox-Abfrage und Backend-Proxy zurück. Damit bleiben Vorschläge auch dann stabil, wenn ein Frontend-Token auf einzelnen Geräten/Deployments fehlschlägt.

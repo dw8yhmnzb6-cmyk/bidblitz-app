@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Gift, CreditCard, Check, Loader2 } from "lucide-react";
+import { Gift, CreditCard, Check, Loader2, ScanLine, Smartphone } from "lucide-react";
 import { toast } from "sonner";
+import { scanNFC } from "../../utils/nfcService";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -134,10 +135,50 @@ export function POSVoucherSale({ storeId, registerId, onComplete }) {
 
 export function POSWalletTopUp({ storeId, registerId, onComplete }) {
   const [customerNumber, setCustomerNumber] = useState("");
+  const [lookupValue, setLookupValue] = useState("");
+  const [lookupMode, setLookupMode] = useState("barcode");
+  const [resolvedCustomer, setResolvedCustomer] = useState(null);
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [result, setResult] = useState(null);
+
+  const resolveCustomer = async (mode = lookupMode, value = lookupValue) => {
+    const finalValue = (value || "").trim();
+    if (!finalValue) {
+      return toast.error(mode === "user_number" ? "Bitte Kundennummer eingeben" : mode === "barcode" ? "Bitte Barcode scannen oder eingeben" : "Bitte NFC zuerst auslesen");
+    }
+    setResolving(true);
+    try {
+      const data = await apiCall("/api/pos/vouchers/resolve-customer", {
+        method: "POST",
+        body: { lookup_type: mode, value: finalValue },
+      });
+      setResolvedCustomer(data.customer);
+      setCustomerNumber(data.customer.user_number || "");
+      toast.success(`Kunde erkannt: ${data.customer.user_number}`);
+    } catch (e) {
+      setResolvedCustomer(null);
+      toast.error(e.message);
+    }
+    setResolving(false);
+  };
+
+  const startNfcLookup = async () => {
+    setResolving(true);
+    try {
+      const res = await scanNFC({ timeout: 12000 });
+      if (!res.ok) throw new Error(res.error || "NFC konnte nicht gelesen werden");
+      const candidate = `${res.payload || ""} ${res.uid || ""}`.trim();
+      setLookupMode("nfc");
+      setLookupValue(candidate);
+      await resolveCustomer("nfc", candidate);
+    } catch (e) {
+      toast.error(e.message);
+    }
+    setResolving(false);
+  };
 
   const topUp = async () => {
     if (!customerNumber || !amount || parseFloat(amount) <= 0) {
@@ -151,7 +192,7 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
         body: {
           store_id: storeId,
           register_id: registerId,
-          customer_user_number: customerNumber.trim().toUpperCase(),
+          customer_user_number: (resolvedCustomer?.user_number || customerNumber).trim().toUpperCase(),
           amount: parseFloat(amount),
           payment_method: paymentMethod,
         },
@@ -187,6 +228,8 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
           onClick={() => {
             setResult(null);
             setCustomerNumber("");
+            setLookupValue("");
+            setResolvedCustomer(null);
             setAmount("");
           }}
           className="mt-4 px-4 py-2 rounded-lg bg-white/10 text-sm"
@@ -204,17 +247,75 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
         <h3 className="text-sm font-bold">Wallet aufladen</h3>
       </div>
 
+      <div className="grid grid-cols-3 gap-2" data-testid="topup-lookup-mode-switcher">
+        {[
+          { id: "barcode", label: "Scan", icon: ScanLine },
+          { id: "nfc", label: "NFC", icon: Smartphone },
+          { id: "user_number", label: "Nummer", icon: CreditCard },
+        ].map((mode) => (
+          <button
+            key={mode.id}
+            onClick={() => setLookupMode(mode.id)}
+            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-bold ${lookupMode === mode.id ? "border-[#00C2FF] bg-[#00C2FF]/15 text-[#00C2FF]" : "border-white/10 bg-white/5 text-white/70"}`}
+            data-testid={`topup-lookup-mode-${mode.id}`}
+          >
+            <mode.icon size={13} /> {mode.label}
+          </button>
+        ))}
+      </div>
+
+      {lookupMode !== "nfc" && (
+        <input
+          type="text"
+          value={lookupValue}
+          onChange={(e) => setLookupValue(e.target.value.toUpperCase())}
+          placeholder={lookupMode === "barcode" ? "Barcode scannen oder eingeben" : "Kundennummer eingeben"}
+          className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"
+          data-testid="topup-lookup-input"
+        />
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => lookupMode === "nfc" ? startNfcLookup() : resolveCustomer()}
+          disabled={resolving}
+          className="py-2.5 rounded-xl bg-white/10 text-white text-sm font-bold disabled:opacity-50"
+          data-testid="topup-resolve-btn"
+        >
+          {resolving ? <Loader2 size={16} className="animate-spin inline" /> : lookupMode === "barcode" ? "Scan prüfen" : lookupMode === "nfc" ? "NFC lesen" : "Kundennummer prüfen"}
+        </button>
+        <button
+          onClick={() => {
+            setLookupMode("user_number");
+            setResolvedCustomer(null);
+            setCustomerNumber("");
+          }}
+          className="py-2.5 rounded-xl border border-white/10 bg-black/20 text-white text-sm font-bold"
+          data-testid="topup-fallback-number-btn"
+        >
+          Fallback Kundennummer
+        </button>
+      </div>
+
+      {resolvedCustomer && (
+        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3" data-testid="topup-resolved-customer-card">
+          <p className="text-sm font-bold text-white">{resolvedCustomer.name || resolvedCustomer.email}</p>
+          <p className="mt-1 text-[11px] text-emerald-100/80">Kundennummer: {resolvedCustomer.user_number}</p>
+          <p className="text-[11px] text-emerald-100/60">Status: {resolvedCustomer.kyc_status || "not_started"}</p>
+        </div>
+      )}
+
       <input
         type="text"
         value={customerNumber}
         onChange={(e) => setCustomerNumber(e.target.value.toUpperCase())}
-        placeholder="Kundennummer"
+        placeholder="Kundennummer (Fallback)"
         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"
         data-testid="topup-customer-number"
       />
 
       <p className="text-[11px] text-white/45" data-testid="topup-customer-number-hint">
-        Immer mit Kundennummer. Scan/NFC dürfen nur helfen, die Kundennummer zu erfassen.
+        Erst Scan/NFC versuchen. Wenn das nicht funktioniert, Kundennummer als Fallback verwenden.
       </p>
 
       <input

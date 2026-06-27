@@ -3,6 +3,8 @@ BidBlitz POS - Gutschein & Karten-Aufladung System
 Ermöglicht Verkauf von Gutscheinen und Wallet-Aufladungen am POS
 """
 
+import re
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
@@ -31,6 +33,57 @@ class WalletTopUpRequest(BaseModel):
     customer_user_number: str
     amount: float
     payment_method: str = "cash"
+
+
+class CustomerResolveRequest(BaseModel):
+    lookup_type: str
+    value: str
+
+
+def _extract_nfc_token(raw_value: str) -> Optional[str]:
+    match = re.search(r"(BPY-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})", (raw_value or "").upper())
+    return match.group(1) if match else None
+
+
+async def _resolve_customer_lookup(lookup_type: str, raw_value: str):
+    value = (raw_value or "").strip()
+    if not value:
+        raise HTTPException(400, "Kein Suchwert übergeben")
+
+    lookup = (lookup_type or "").strip().lower()
+    customer = None
+
+    if lookup == "user_number":
+        customer = await db.users.find_one({"user_number": value.upper()})
+    elif lookup == "barcode":
+        bc = await db.payment_barcodes.find_one({"barcode": value, "active": True})
+        if not bc:
+            raise HTTPException(404, "Barcode ungültig oder abgelaufen")
+        expires = datetime.fromisoformat(bc["expires_at"])
+        if expires < datetime.now(timezone.utc):
+            await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
+            raise HTTPException(400, "Barcode abgelaufen")
+        customer = await db.users.find_one({"_id": ObjectId(bc["user_id"])})
+    elif lookup == "nfc":
+        token = _extract_nfc_token(value)
+        if not token:
+            raise HTTPException(400, "Kein gültiger NFC-Token erkannt")
+        token_doc = await db.nfc_tokens.find_one({"nfc_token": token, "active": True})
+        if not token_doc:
+            raise HTTPException(404, "NFC-Token ungültig oder inaktiv")
+        customer = await db.users.find_one({"email": token_doc["user_email"]})
+    else:
+        raise HTTPException(400, "Unbekannter Lookup-Typ")
+
+    if not customer:
+        raise HTTPException(404, "Kunde nicht gefunden")
+
+    return {
+        "user_number": customer.get("user_number"),
+        "name": customer.get("name"),
+        "email": customer.get("email"),
+        "kyc_status": customer.get("kyc_status", "not_started"),
+    }
 
 
 class VoucherRedeemPayRequest(BaseModel):
@@ -300,6 +353,13 @@ async def wallet_topup_at_pos(req: WalletTopUpRequest, request: Request):
         "sale": sale,
         "message": f"€{req.amount:.2f} aufgeladen für Kundennummer {customer.get('user_number')}",
     }
+
+
+@router.post("/resolve-customer")
+async def resolve_wallet_topup_customer(req: CustomerResolveRequest, request: Request):
+    await get_current_user(request)
+    customer = await _resolve_customer_lookup(req.lookup_type, req.value)
+    return {"ok": True, "customer": customer}
 
 
 @router.get("/check/{code}")
