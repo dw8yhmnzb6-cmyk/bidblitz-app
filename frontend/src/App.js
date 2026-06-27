@@ -328,12 +328,34 @@ function AppContent() {
   const user = useUser();
   const { setLang } = useI18n();
 
+  const syncBrowserPath = useCallback((path, mode = "push") => {
+    if (typeof window === "undefined" || !path) return;
+    const next = path.startsWith("/") ? path : `/${path}`;
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current === next) return;
+    if (mode === "replace") {
+      window.history.replaceState({}, "", next);
+    } else {
+      window.history.pushState({}, "", next);
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onResize = () => setIsDesktopViewport(window.innerWidth >= 1024);
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handlePopState = () => {
+      const nextPath = `${window.location.pathname}${window.location.search || ""}` || "/";
+      setCurrentPath(nextPath);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
@@ -352,8 +374,10 @@ function AppContent() {
     setShowAuthGate(false);
     setIsDemoMode(false);
     const nextPath = resolvePostAuthPath();
-    setCurrentPath(nextPath === "/login" || nextPath === "/register" ? "/" : nextPath);
-  }, [resolvePostAuthPath]);
+    const resolvedPath = nextPath === "/login" || nextPath === "/register" ? "/" : nextPath;
+    syncBrowserPath(resolvedPath, "replace");
+    setCurrentPath(resolvedPath);
+  }, [resolvePostAuthPath, syncBrowserPath]);
 
   // Close auth gate after login
   useEffect(() => {
@@ -363,12 +387,13 @@ function AppContent() {
         setShowFullAuth("");
         setIsDemoMode(false);
         if (currentPath === "/login" || currentPath === "/register") {
+          syncBrowserPath("/", "replace");
           setCurrentPath("/");
         }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentPath, user.isAuthenticated]);
+  }, [currentPath, syncBrowserPath, user.isAuthenticated]);
 
   const isGuest = !user.isAuthenticated;
 
@@ -440,6 +465,7 @@ function AppContent() {
       requireAuth();
       return;
     }
+    syncBrowserPath(path);
     setCurrentPath(path);
   };
 

@@ -177,6 +177,12 @@ export const api = {
   getMerchantDashboard: () => request("/api/merchant/dashboard"),
   getMerchantV5Dashboard: () => request("/api/merchant-portal/v5/dashboard"),
   getMerchantExecutiveAiLatest: () => request("/api/merchant-portal/v5/executive-ai/latest"),
+  getMerchantBusinessAutomation: () => request("/api/merchant-portal/v5/business-automation"),
+  updateMerchantBusinessAutomationSettings: (body) => request("/api/merchant-portal/v5/business-automation/settings", { method: "POST", body: JSON.stringify(body) }),
+  runMerchantBusinessAutomationFull: () => request("/api/merchant-portal/v5/business-automation/run/full", { method: "POST" }),
+  runMerchantBusinessAutomationProcurement: (body = {}) => request("/api/merchant-portal/v5/business-automation/run/procurement", { method: "POST", body: JSON.stringify(body) }),
+  runMerchantBusinessAutomationOperations: (body = {}) => request("/api/merchant-portal/v5/business-automation/run/operations", { method: "POST", body: JSON.stringify(body) }),
+  runMerchantBusinessAutomationRevenue: (body = {}) => request("/api/merchant-portal/v5/business-automation/run/revenue", { method: "POST", body: JSON.stringify(body) }),
 
   // Smart Invoice Payment Links
   getPublicInvoicePaymentLink: (token) => request(`/api/pay/${token}`),

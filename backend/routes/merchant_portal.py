@@ -25,6 +25,8 @@ router = APIRouter(prefix="/api/merchant-portal", tags=["merchant-portal"])
 EXECUTIVE_AI_COLLECTION = "merchant_executive_ai_reports"
 EXECUTIVE_AI_PROVIDER = "openai"
 EXECUTIVE_AI_MODEL = "gpt-5.4"
+BUSINESS_AUTOMATION_SETTINGS_COLLECTION = "merchant_automation_settings"
+BUSINESS_AUTOMATION_RUNS_COLLECTION = "merchant_automation_runs"
 EXECUTIVE_AI_FALLBACKS = [
     ("openai", "gpt-5.4"),
     ("openai", "gpt-5.2"),
@@ -48,6 +50,29 @@ class MerchantProfileUpdate(BaseModel):
 
 class ExecutiveAiBriefRequest(BaseModel):
     focus: str = "full executive briefing"
+
+
+class BusinessAutomationSettingsUpdate(BaseModel):
+    procurement_enabled: Optional[bool] = None
+    operations_enabled: Optional[bool] = None
+    revenue_enabled: Optional[bool] = None
+    reorder_days_cover_threshold: Optional[int] = None
+    flash_sale_discount_pct: Optional[int] = None
+    flash_sale_duration_minutes: Optional[int] = None
+    late_shift_grace_minutes: Optional[int] = None
+
+
+class ProcurementAutomationRunRequest(BaseModel):
+    max_purchase_orders: int = 5
+
+
+class OperationsAutomationRunRequest(BaseModel):
+    assign_late_staff_tasks: bool = True
+    convert_alerts_to_tasks: bool = True
+
+
+class RevenueAutomationRunRequest(BaseModel):
+    limit: int = 3
 
 
 async def require_merchant(request: Request):
@@ -76,6 +101,17 @@ async def _get_pos_merchant_for_user(user: dict):
 
 def _today_start_iso() -> str:
     return datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _remaining_seconds(ends_at: Optional[str]) -> int:
+    end_dt = _parse_iso(ends_at)
+    if not end_dt:
+        return 0
+    return max(0, int((end_dt - datetime.now(timezone.utc)).total_seconds()))
 
 
 def _parse_iso(value: Any) -> Optional[datetime]:
@@ -107,6 +143,170 @@ def _chunk_text(text: str, chunk_size: int = 220):
     if not text:
         return []
     return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+
+def _business_automation_defaults() -> Dict[str, Any]:
+    return {
+        "procurement_enabled": True,
+        "operations_enabled": True,
+        "revenue_enabled": True,
+        "reorder_days_cover_threshold": 14,
+        "flash_sale_discount_pct": 18,
+        "flash_sale_duration_minutes": 180,
+        "late_shift_grace_minutes": 15,
+    }
+
+
+async def _get_business_automation_settings(user_id: str) -> Dict[str, Any]:
+    stored = await db[BUSINESS_AUTOMATION_SETTINGS_COLLECTION].find_one({"user_id": user_id}, {"_id": 0})
+    defaults = _business_automation_defaults()
+    if not stored:
+        return defaults
+    return {**defaults, **stored}
+
+
+async def _record_business_automation_run(user_id: str, merchant_id: Optional[str], run_type: str, status: str, summary: str, details: Dict[str, Any]):
+    doc = {
+        "run_id": f"auto_{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "merchant_id": merchant_id,
+        "run_type": run_type,
+        "status": status,
+        "summary": summary,
+        "details": details,
+        "created_at": _now_iso(),
+    }
+    await db[BUSINESS_AUTOMATION_RUNS_COLLECTION].insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+def _build_revenue_opportunities(listings: List[dict], settings: Dict[str, Any]) -> List[dict]:
+    opportunities = []
+    discount_pct = int(settings.get("flash_sale_discount_pct") or 18)
+    duration_minutes = int(settings.get("flash_sale_duration_minutes") or 180)
+    now = datetime.now(timezone.utc)
+    for listing in listings:
+        created_at = _parse_iso(listing.get("created_at"))
+        age_days = (now - created_at).days if created_at else 0
+        views = int(listing.get("views") or 0)
+        favorites = int(listing.get("favorites") or 0)
+        messages_count = int(listing.get("messages_count") or 0)
+        if age_days < 7:
+            continue
+        if favorites > 1 and messages_count > 0:
+            continue
+        if views < 8 and age_days < 14:
+            continue
+        price = round(_num(listing.get("price")), 2)
+        if price <= 0:
+            continue
+        opportunity_discount = discount_pct + (4 if age_days >= 21 else 0) + (3 if views >= 30 and favorites == 0 else 0)
+        opportunity_discount = int(_clamp(opportunity_discount, 10, 35))
+        sale_price = round(price * (1 - opportunity_discount / 100), 2)
+        if sale_price >= price:
+            continue
+        opportunities.append({
+            "listing_id": listing.get("listing_id"),
+            "title": listing.get("title"),
+            "price": price,
+            "views": views,
+            "favorites": favorites,
+            "messages_count": messages_count,
+            "age_days": age_days,
+            "discount_pct": opportunity_discount,
+            "sale_price": sale_price,
+            "duration_minutes": duration_minutes,
+            "image_url": (listing.get("images") or [""])[0],
+            "reason": "Stale listing" if age_days >= 14 else "Low conversion",
+        })
+    return sorted(opportunities, key=lambda item: (-item.get("age_days", 0), -item.get("views", 0), item.get("favorites", 0)))
+
+
+async def _build_business_automation_dashboard(user: dict) -> Dict[str, Any]:
+    uid = str(user["_id"])
+    enterprise = await _build_enterprise_overview_data(user)
+    merchant_id = enterprise.get("company", {}).get("merchant_id")
+    settings = await _get_business_automation_settings(uid)
+
+    open_purchase_orders = await db.pos_purchase_orders.find(
+        {"merchant_id": merchant_id, "status": {"$in": ["draft", "submitted", "approved", "ordered", "delivered"]}} if merchant_id else {"merchant_id": "__none__"},
+        {"_id": 0, "po_id": 1, "supplier_name": 1, "status": 1, "created_at": 1, "ordered_at": 1, "delivered_at": 1, "total_cost": 1, "items": 1},
+    ).sort("created_at", -1).to_list(50)
+    staff_tasks = await db.staff_tasks.find(
+        {"merchant_id": uid, "status": "open", "tags": {"$in": ["automation"]}},
+        {"_id": 0, "id": 1, "title": 1, "staff_id": 1, "priority": 1, "due_date": 1, "tags": 1, "created_at": 1},
+    ).sort("created_at", -1).limit(8).to_list(8)
+    recent_runs = await db[BUSINESS_AUTOMATION_RUNS_COLLECTION].find(
+        {"user_id": uid},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(12).to_list(12)
+    listings = await db.marketplace_listings.find(
+        {"seller_id": uid, "status": "active"},
+        {"_id": 0, "listing_id": 1, "title": 1, "price": 1, "views": 1, "favorites": 1, "messages_count": 1, "created_at": 1, "images": 1},
+    ).sort("created_at", -1).to_list(60)
+    active_flash_sale_ids = set(await db.commerce_flash_sales.distinct(
+        "listing_id",
+        {"seller_id": uid, "status": {"$in": ["active", "processing"]}, "remaining_units": {"$gt": 0}},
+    ))
+
+    revenue_opportunities = [item for item in _build_revenue_opportunities(listings, settings) if item.get("listing_id") not in active_flash_sale_ids]
+
+    escalations = []
+    now = datetime.now(timezone.utc)
+    for po in open_purchase_orders:
+        base_date = _parse_iso(po.get("ordered_at") or po.get("created_at"))
+        if not base_date:
+            continue
+        age_days = (now - base_date).days
+        if po.get("status") in {"ordered", "approved"} and age_days >= 5:
+            escalations.append({
+                "po_id": po.get("po_id"),
+                "supplier_name": po.get("supplier_name"),
+                "status": po.get("status"),
+                "age_days": age_days,
+                "severity": "high" if age_days >= 10 else "medium",
+                "total_cost": round(_num(po.get("total_cost")), 2),
+            })
+
+    procurement_queue = []
+    for item in enterprise.get("insights", {}).get("purchase_recommendations", [])[:10]:
+        procurement_queue.append({
+            **item,
+            "priority": "high" if (item.get("days_of_cover") is not None and item.get("days_of_cover") <= 7) or item.get("stock", 0) <= item.get("minimum_stock", 0) else "medium",
+        })
+
+    return {
+        "generated_at": _now_iso(),
+        "settings": settings,
+        "overview": {
+            "procurement_actions": len(procurement_queue),
+            "operations_actions": len(enterprise.get("staff", {}).get("late_staff", [])) + len(enterprise.get("insights", {}).get("business_alerts", [])),
+            "revenue_actions": len(revenue_opportunities),
+            "open_automation_tasks": len(staff_tasks),
+            "active_flash_sales": len(active_flash_sale_ids),
+            "runs_today": len([run for run in recent_runs if str(run.get("created_at", ""))[:10] == str(_now_iso())[:10]]),
+        },
+        "procurement": {
+            "queue": procurement_queue,
+            "open_purchase_orders": open_purchase_orders[:8],
+            "escalations": escalations[:6],
+            "submitted_count": len([po for po in open_purchase_orders if po.get("status") == "submitted"]),
+        },
+        "operations": {
+            "late_staff": enterprise.get("staff", {}).get("late_staff", [])[:8],
+            "alerts": enterprise.get("insights", {}).get("business_alerts", [])[:8],
+            "automation_tasks": staff_tasks,
+            "next_shifts": enterprise.get("staff", {}).get("next_shifts", [])[:5],
+        },
+        "revenue": {
+            "opportunities": revenue_opportunities[:8],
+            "active_flash_sales": len(active_flash_sale_ids),
+            "top_products": enterprise.get("pos", {}).get("top_products", [])[:4],
+            "slow_products": enterprise.get("pos", {}).get("slow_products", [])[:4],
+        },
+        "history": recent_runs,
+    }
 
 
 def _build_executive_ai_prompt(context: Dict[str, Any]) -> str:
@@ -1081,3 +1281,273 @@ async def stream_v5_executive_ai(request: Request, payload: ExecutiveAiBriefRequ
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/v5/business-automation")
+async def get_v5_business_automation(request: Request):
+    user = await require_merchant(request)
+    return await _build_business_automation_dashboard(user)
+
+
+@router.post("/v5/business-automation/settings")
+async def update_v5_business_automation_settings(request: Request, payload: BusinessAutomationSettingsUpdate):
+    user = await require_merchant(request)
+    uid = str(user["_id"])
+    updates = payload.model_dump(exclude_none=True)
+    if "reorder_days_cover_threshold" in updates:
+        updates["reorder_days_cover_threshold"] = int(_clamp(int(updates["reorder_days_cover_threshold"]), 3, 45))
+    if "flash_sale_discount_pct" in updates:
+        updates["flash_sale_discount_pct"] = int(_clamp(int(updates["flash_sale_discount_pct"]), 5, 40))
+    if "flash_sale_duration_minutes" in updates:
+        updates["flash_sale_duration_minutes"] = int(_clamp(int(updates["flash_sale_duration_minutes"]), 15, 1440))
+    if "late_shift_grace_minutes" in updates:
+        updates["late_shift_grace_minutes"] = int(_clamp(int(updates["late_shift_grace_minutes"]), 0, 120))
+    updates["user_id"] = uid
+    updates["updated_at"] = _now_iso()
+    await db[BUSINESS_AUTOMATION_SETTINGS_COLLECTION].update_one(
+        {"user_id": uid},
+        {"$set": updates},
+        upsert=True,
+    )
+    return {"ok": True, "settings": await _get_business_automation_settings(uid)}
+
+
+@router.post("/v5/business-automation/run/procurement")
+async def run_v5_business_automation_procurement(request: Request, payload: ProcurementAutomationRunRequest):
+    user = await require_merchant(request)
+    uid = str(user["_id"])
+    enterprise = await _build_enterprise_overview_data(user)
+    merchant_id = enterprise.get("company", {}).get("merchant_id")
+    if not merchant_id:
+        run = await _record_business_automation_run(uid, None, "procurement", "skipped", "Kein POS-Händlerprofil für Procurement Automation vorhanden", {"created_purchase_orders": []})
+        return {"ok": True, "run": run, "purchase_orders": []}
+
+    queue = enterprise.get("insights", {}).get("purchase_recommendations", [])[: max(1, min(payload.max_purchase_orders, 12))]
+    if not queue:
+        run = await _record_business_automation_run(uid, merchant_id, "procurement", "skipped", "Keine Nachbestell-Empfehlungen vorhanden", {"created_purchase_orders": []})
+        return {"ok": True, "run": run, "purchase_orders": []}
+
+    created_purchase_orders = []
+    open_purchase_orders = await db.pos_purchase_orders.find(
+        {"merchant_id": merchant_id, "status": {"$in": ["draft", "submitted", "approved", "ordered", "delivered"]}},
+        {"_id": 0, "po_id": 1, "supplier_id": 1, "store_id": 1, "items": 1},
+    ).to_list(500)
+    existing_signatures = set()
+    for po in open_purchase_orders:
+        for item in po.get("items", []):
+            existing_signatures.add((po.get("supplier_id"), po.get("store_id"), item.get("product_id")))
+
+    grouped: Dict[tuple, list] = {}
+    for recommendation in queue:
+        signature = (recommendation.get("supplier_id"), recommendation.get("store_id"), recommendation.get("product_id"))
+        if not signature[0] or signature in existing_signatures:
+            continue
+        grouped.setdefault((recommendation.get("supplier_id"), recommendation.get("store_id")), []).append(recommendation)
+
+    for (supplier_id, store_id), items in list(grouped.items())[: max(1, min(payload.max_purchase_orders, 12))]:
+        supplier = await db.pos_suppliers.find_one({"supplier_id": supplier_id, "merchant_id": merchant_id}, {"_id": 0, "name": 1})
+        if not supplier:
+            continue
+        enriched_items = []
+        total_cost = 0.0
+        for item in items:
+            product = await db.pos_products.find_one({"product_id": item.get("product_id"), "merchant_id": merchant_id}, {"_id": 0})
+            if not product:
+                continue
+            quantity = round(max(_num(item.get("suggested_qty")), 1), 2)
+            purchase_price = round(_num(product.get("purchase_price")), 2)
+            line_total = round(quantity * purchase_price, 2)
+            total_cost += line_total
+            enriched_items.append({
+                "product_id": product.get("product_id"),
+                "product_name": product.get("name"),
+                "barcode": product.get("barcode"),
+                "quantity": quantity,
+                "purchase_price": purchase_price,
+                "line_total": line_total,
+                "received": 0,
+                "reorder_note": f"Auto-generated · {item.get('reason', 'Reorder')} · Cover {item.get('days_of_cover') or 'n/a'} Tage",
+            })
+        if not enriched_items:
+            continue
+
+        po_id = f"POAUTO{uuid.uuid4().hex[:8].upper()}"
+        po_doc = {
+            "po_id": po_id,
+            "merchant_id": merchant_id,
+            "store_id": store_id,
+            "supplier_id": supplier_id,
+            "supplier_name": supplier.get("name") or supplier_id,
+            "items": enriched_items,
+            "total_cost": round(total_cost, 2),
+            "status": "submitted",
+            "note": "Auto-generated by Merchant Platform V5 Business Automation",
+            "created_by": uid,
+            "created_at": _now_iso(),
+            "submitted_at": _now_iso(),
+            "submitted_by": uid,
+            "automation_source": "business_automation",
+        }
+        await db.pos_purchase_orders.insert_one(po_doc)
+        created_purchase_orders.append({k: v for k, v in po_doc.items() if k != "_id"})
+
+    run = await _record_business_automation_run(
+        uid,
+        merchant_id,
+        "procurement",
+        "completed" if created_purchase_orders else "skipped",
+        f"{len(created_purchase_orders)} automatische PO(s) erstellt",
+        {"created_purchase_orders": created_purchase_orders},
+    )
+    return {"ok": True, "run": run, "purchase_orders": created_purchase_orders}
+
+
+@router.post("/v5/business-automation/run/operations")
+async def run_v5_business_automation_operations(request: Request, payload: OperationsAutomationRunRequest):
+    user = await require_merchant(request)
+    uid = str(user["_id"])
+    enterprise = await _build_enterprise_overview_data(user)
+    staff_members = await db.staff_members.find({"merchant_id": uid, "active": True}, {"_id": 0, "id": 1, "name": 1, "role": 1}).to_list(500)
+    if not staff_members:
+        run = await _record_business_automation_run(uid, enterprise.get("company", {}).get("merchant_id"), "operations", "skipped", "Keine aktiven Mitarbeiter für Operations Automation vorhanden", {"tasks": []})
+        return {"ok": True, "run": run, "tasks": []}
+    manager_assignee = next((member for member in staff_members if member.get("role") in {"manager", "lead", "supervisor"}), staff_members[0])
+    created_tasks = []
+    now_iso = _now_iso()
+
+    async def ensure_task(staff_id: str, title: str, description: str, tags: List[str], priority: str = "normal", due_date: Optional[str] = None):
+        existing = await db.staff_tasks.find_one(
+            {"merchant_id": uid, "staff_id": staff_id, "title": title, "status": "open"},
+            {"_id": 0, "id": 1},
+        )
+        if existing:
+            return None
+        task = {
+            "id": str(uuid.uuid4()),
+            "merchant_id": uid,
+            "staff_id": staff_id,
+            "title": title,
+            "description": description,
+            "due_date": due_date,
+            "status": "open",
+            "priority": priority,
+            "tags": tags,
+            "subtasks": [],
+            "attachments": [],
+            "comment_count": 0,
+            "created_at": now_iso,
+            "completed_at": None,
+        }
+        await db.staff_tasks.insert_one(task)
+        created_tasks.append({k: v for k, v in task.items() if k != "_id"})
+        return task
+
+    if payload.assign_late_staff_tasks:
+        for item in enterprise.get("staff", {}).get("late_staff", [])[:8]:
+            await ensure_task(
+                item.get("staff_id"),
+                "Clock-in Ausnahme prüfen",
+                f"Bitte Schichtstatus für {item.get('title') or 'heutige Schicht'} am Standort {item.get('location') or 'offen'} bestätigen.",
+                ["automation", "attendance"],
+                "high",
+                now_iso,
+            )
+
+    if payload.convert_alerts_to_tasks:
+        for alert in enterprise.get("insights", {}).get("business_alerts", [])[:6]:
+            await ensure_task(
+                manager_assignee.get("id"),
+                f"Automation Alert: {alert.get('title')}",
+                alert.get("body") or "Bitte prüfen und Maßnahme einleiten.",
+                ["automation", "alert", alert.get("severity") or "info"],
+                "high" if alert.get("severity") == "high" else "normal",
+                now_iso,
+            )
+
+    run = await _record_business_automation_run(
+        uid,
+        enterprise.get("company", {}).get("merchant_id"),
+        "operations",
+        "completed" if created_tasks else "skipped",
+        f"{len(created_tasks)} Operations-Task(s) erzeugt",
+        {"tasks": created_tasks},
+    )
+    return {"ok": True, "run": run, "tasks": created_tasks}
+
+
+@router.post("/v5/business-automation/run/revenue")
+async def run_v5_business_automation_revenue(request: Request, payload: RevenueAutomationRunRequest):
+    user = await require_merchant(request)
+    uid = str(user["_id"])
+    settings = await _get_business_automation_settings(uid)
+    dashboard = await _build_business_automation_dashboard(user)
+    opportunities = dashboard.get("revenue", {}).get("opportunities", [])[: max(1, min(payload.limit, 6))]
+    created_sales = []
+    now = datetime.now(timezone.utc)
+
+    for item in opportunities:
+        listing = await db.marketplace_listings.find_one({"listing_id": item.get("listing_id"), "seller_id": uid, "status": "active"}, {"_id": 0})
+        if not listing:
+            continue
+        existing = await db.commerce_flash_sales.find_one(
+            {"listing_id": item.get("listing_id"), "status": {"$in": ["active", "processing"]}, "remaining_units": {"$gt": 0}},
+            {"_id": 0, "sale_id": 1},
+        )
+        if existing:
+            continue
+        sale = {
+            "sale_id": f"flash_{secrets.token_hex(5)}",
+            "listing_id": item.get("listing_id"),
+            "seller_id": uid,
+            "seller_name": listing.get("seller_name") or user.get("name") or user.get("email") or "BidBlitz Deals",
+            "title": listing.get("title", "Flash Deal"),
+            "category": listing.get("category", "other"),
+            "category_label": listing.get("category_label") or listing.get("category", "Sonstiges"),
+            "image_url": (listing.get("images") or [""])[0],
+            "location": listing.get("location", ""),
+            "original_price": round(_num(listing.get("price")), 2),
+            "sale_price": round(_num(item.get("sale_price")), 2),
+            "discount_pct": int(item.get("discount_pct") or settings.get("flash_sale_discount_pct") or 18),
+            "shipping_available": bool(listing.get("shipping_available")),
+            "shipping_cost": round(_num(listing.get("shipping_cost")), 2),
+            "remaining_units": 1,
+            "status": "active",
+            "starts_at": now.isoformat(),
+            "ends_at": (now + timedelta(minutes=int(item.get("duration_minutes") or settings.get("flash_sale_duration_minutes") or 180))).isoformat(),
+            "created_at": now.isoformat(),
+            "created_via": "business_automation",
+        }
+        await db.commerce_flash_sales.insert_one(sale)
+        created_sales.append({**sale, "remaining_seconds": _remaining_seconds(sale.get("ends_at"))})
+
+    run = await _record_business_automation_run(
+        uid,
+        dashboard.get("overview", {}).get("merchant_id"),
+        "revenue",
+        "completed" if created_sales else "skipped",
+        f"{len(created_sales)} Flash-Sale-Aktion(en) erzeugt",
+        {"flash_sales": created_sales},
+    )
+    return {"ok": True, "run": run, "flash_sales": created_sales}
+
+
+@router.post("/v5/business-automation/run/full")
+async def run_v5_business_automation_full(request: Request):
+    user = await require_merchant(request)
+    procurement = await run_v5_business_automation_procurement(request, ProcurementAutomationRunRequest(max_purchase_orders=4))
+    operations = await run_v5_business_automation_operations(request, OperationsAutomationRunRequest(assign_late_staff_tasks=True, convert_alerts_to_tasks=True))
+    revenue = await run_v5_business_automation_revenue(request, RevenueAutomationRunRequest(limit=3))
+    summary = {
+        "purchase_orders_created": len(procurement.get("purchase_orders", [])),
+        "tasks_created": len(operations.get("tasks", [])),
+        "flash_sales_created": len(revenue.get("flash_sales", [])),
+    }
+    run = await _record_business_automation_run(
+        str(user["_id"]),
+        None,
+        "full",
+        "completed",
+        f"Full automation run: {summary['purchase_orders_created']} POs, {summary['tasks_created']} Tasks, {summary['flash_sales_created']} Flash Sales",
+        summary,
+    )
+    return {"ok": True, "summary": summary, "run": run, "procurement": procurement, "operations": operations, "revenue": revenue}

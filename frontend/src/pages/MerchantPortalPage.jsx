@@ -9,7 +9,8 @@ import {
   TrendingUp, Wallet, Clock, MapPin, Phone, Mail, Globe,
   Settings, Loader2, Check, Save, Scissors, ChevronRight,
   Building2, Image as ImageIcon, Gift, Megaphone, Store, LineChart, Link2,
-  BrainCircuit, Boxes, ReceiptText, AlertTriangle, Sparkles, Activity, ShieldAlert, PackageCheck
+  BrainCircuit, Boxes, ReceiptText, AlertTriangle, Sparkles, Activity, ShieldAlert, PackageCheck,
+  Bot, Settings2, ClipboardList, Truck, Zap, PlayCircle
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
@@ -31,6 +32,9 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [executiveAiText, setExecutiveAiText] = useState("");
   const [executiveAiFocus, setExecutiveAiFocus] = useState("full executive briefing");
   const [executiveAiStreaming, setExecutiveAiStreaming] = useState(false);
+  const [businessAutomation, setBusinessAutomation] = useState(null);
+  const [automationSettings, setAutomationSettings] = useState(null);
+  const [automationRunning, setAutomationRunning] = useState("");
   const [loading, setLoading] = useState(true);
   const [txns, setTxns] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -54,10 +58,11 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         setDash(d);
         if (d.profile) setProfile(prev => ({ ...prev, ...d.profile }));
       }
-      const [entRes, v5Res, aiRes, progRes, growthRes, fraRes] = await Promise.all([
+      const [entRes, v5Res, aiRes, automationRes, progRes, growthRes, fraRes] = await Promise.all([
         fetch(`${API}/api/merchant-portal/enterprise-overview`, { credentials: "include" }),
         fetch(`${API}/api/merchant-portal/v5/dashboard`, { credentials: "include" }),
         fetch(`${API}/api/merchant-portal/v5/executive-ai/latest`, { credentials: "include" }),
+        fetch(`${API}/api/merchant-portal/v5/business-automation`, { credentials: "include" }),
         fetch(`${API}/api/referral/merchant-program`, { credentials: "include" }),
         fetch(`${API}/api/referral/growth-dashboard`, { credentials: "include" }),
         fetch(`${API}/api/referral/franchise/applications`, { credentials: "include" }),
@@ -69,6 +74,11 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         setExecutiveAi(aiData.report || null);
         setExecutiveAiHistory(aiData.history || []);
         setExecutiveAiText(aiData.report?.report_text || "");
+      }
+      if (automationRes.ok) {
+        const automationData = await automationRes.json();
+        setBusinessAutomation(automationData);
+        setAutomationSettings(automationData.settings || null);
       }
       if (progRes.ok) setMerchantProgram(await progRes.json());
       if (growthRes.ok) setGrowth(await growthRes.json());
@@ -171,10 +181,49 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     }
   }, [executiveAiFocus, loadExecutiveAiHistory]);
 
+  const loadBusinessAutomation = useCallback(async () => {
+    try {
+      const data = await api.getMerchantBusinessAutomation();
+      setBusinessAutomation(data);
+      setAutomationSettings(data.settings || null);
+    } catch (error) {
+      void error;
+    }
+  }, []);
+
+  const saveAutomationSettings = useCallback(async (updates) => {
+    const previous = automationSettings || {};
+    const next = { ...previous, ...updates };
+    setAutomationSettings(next);
+    try {
+      const data = await api.updateMerchantBusinessAutomationSettings(updates);
+      setAutomationSettings(data.settings || next);
+      await loadBusinessAutomation();
+    } catch (error) {
+      setAutomationSettings(previous);
+    }
+  }, [automationSettings, loadBusinessAutomation]);
+
+  const runBusinessAutomation = useCallback(async (kind) => {
+    setAutomationRunning(kind);
+    try {
+      if (kind === "full") await api.runMerchantBusinessAutomationFull();
+      if (kind === "procurement") await api.runMerchantBusinessAutomationProcurement({ max_purchase_orders: 4 });
+      if (kind === "operations") await api.runMerchantBusinessAutomationOperations({ assign_late_staff_tasks: true, convert_alerts_to_tasks: true });
+      if (kind === "revenue") await api.runMerchantBusinessAutomationRevenue({ limit: 3 });
+      await loadDash();
+    } catch (error) {
+      void error;
+    } finally {
+      setAutomationRunning("");
+    }
+  }, [loadBusinessAutomation, loadDash]);
+
   const TABS = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "enterprise-v5", label: "Enterprise V5", icon: Building2 },
     { id: "executive-ai", label: "Executive AI", icon: BrainCircuit },
+    { id: "business-automation", label: "Business Automation", icon: Bot },
     { id: "ecosystem", label: locale === "sq" ? "Ekosistemi" : locale === "en" ? "Ecosystem" : "Ökosystem", icon: Store },
     { id: "growth", label: locale === "sq" ? "Rritja" : locale === "en" ? "Growth" : "Wachstum", icon: LineChart },
     { id: "transactions", label: "Finanzen", icon: DollarSign },
@@ -646,6 +695,224 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         </div>
       )}
 
+      {tab === "business-automation" && businessAutomation && automationSettings && (
+        <div className="p-4 space-y-4" data-testid="merchant-v5-business-automation">
+          <div className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_32%),linear-gradient(145deg,_rgba(15,23,42,1),_rgba(17,24,39,1))] p-5" data-testid="merchant-v5-business-automation-hero">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-amber-200/80">Merchant Platform V5</p>
+                <h2 className="mt-2 text-2xl font-black text-white">Business Automation</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                  V1 bündelt Einkauf, Operations und Revenue-Automation in einem gemeinsamen Leitstand — ohne neue Insel-Systeme.
+                </p>
+              </div>
+              <button
+                onClick={() => runBusinessAutomation("full")}
+                disabled={automationRunning === "full"}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-amber-300 px-5 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                data-testid="merchant-v5-business-automation-run-full"
+              >
+                {automationRunning === "full" ? <Loader2 size={16} className="animate-spin" /> : <PlayCircle size={16} />}
+                {automationRunning === "full" ? "Läuft..." : "Full Automation Run"}
+              </button>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <MetricPill label="Procurement" value={businessAutomation.overview?.procurement_actions ?? 0} testid="merchant-v5-automation-procurement-count" />
+              <MetricPill label="Operations" value={businessAutomation.overview?.operations_actions ?? 0} testid="merchant-v5-automation-operations-count" />
+              <MetricPill label="Revenue" value={businessAutomation.overview?.revenue_actions ?? 0} testid="merchant-v5-automation-revenue-count" />
+              <MetricPill label="Open Tasks" value={businessAutomation.overview?.open_automation_tasks ?? 0} testid="merchant-v5-automation-open-tasks" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="space-y-4">
+              <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-automation-settings-card">
+                <div className="mb-4 flex items-center gap-2">
+                  <Settings2 size={16} className="text-amber-300" />
+                  <h3 className="text-sm font-bold text-white">Automation Controls</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  {[
+                    ["procurement_enabled", "Procurement", "merchant-v5-automation-toggle-procurement"],
+                    ["operations_enabled", "Operations", "merchant-v5-automation-toggle-operations"],
+                    ["revenue_enabled", "Revenue", "merchant-v5-automation-toggle-revenue"],
+                  ].map(([key, label, testid]) => (
+                    <button
+                      key={key}
+                      onClick={() => saveAutomationSettings({ [key]: !automationSettings[key] })}
+                      className={`rounded-2xl border px-4 py-3 text-left transition ${automationSettings[key] ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-white/8 bg-white/5 text-slate-300"}`}
+                      data-testid={testid}
+                    >
+                      <div className="text-[11px] uppercase tracking-[0.2em]">{label}</div>
+                      <div className="mt-2 text-sm font-black">{automationSettings[key] ? "Aktiv" : "Pausiert"}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <SettingStepper label="Days of cover" value={automationSettings.reorder_days_cover_threshold || 14} min={3} max={45} step={1} onChange={(value) => saveAutomationSettings({ reorder_days_cover_threshold: value })} testid="merchant-v5-automation-setting-cover" />
+                  <SettingStepper label="Flash Discount" value={automationSettings.flash_sale_discount_pct || 18} min={5} max={40} step={1} suffix="%" onChange={(value) => saveAutomationSettings({ flash_sale_discount_pct: value })} testid="merchant-v5-automation-setting-discount" />
+                  <SettingStepper label="Flash Minutes" value={automationSettings.flash_sale_duration_minutes || 180} min={15} max={1440} step={15} onChange={(value) => saveAutomationSettings({ flash_sale_duration_minutes: value })} testid="merchant-v5-automation-setting-duration" />
+                  <SettingStepper label="Late Grace" value={automationSettings.late_shift_grace_minutes || 15} min={0} max={120} step={5} suffix="m" onChange={(value) => saveAutomationSettings({ late_shift_grace_minutes: value })} testid="merchant-v5-automation-setting-grace" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <AutomationActionCard
+                  title="Procurement"
+                  subtitle="Auto-Reorder · POs · Eskalationen"
+                  icon={Truck}
+                  accent="text-emerald-300"
+                  buttonLabel="Procurement Run"
+                  running={automationRunning === "procurement"}
+                  onRun={() => runBusinessAutomation("procurement")}
+                  testid="merchant-v5-automation-card-procurement"
+                  buttonTestid="merchant-v5-automation-run-procurement"
+                />
+                <AutomationActionCard
+                  title="Operations"
+                  subtitle="Alerts → Tasks · Staff Exceptions"
+                  icon={ClipboardList}
+                  accent="text-cyan-300"
+                  buttonLabel="Operations Run"
+                  running={automationRunning === "operations"}
+                  onRun={() => runBusinessAutomation("operations")}
+                  testid="merchant-v5-automation-card-operations"
+                  buttonTestid="merchant-v5-automation-run-operations"
+                />
+                <AutomationActionCard
+                  title="Revenue"
+                  subtitle="Flash Sales · Low-Conversion Aktionen"
+                  icon={Zap}
+                  accent="text-fuchsia-300"
+                  buttonLabel="Revenue Run"
+                  running={automationRunning === "revenue"}
+                  onRun={() => runBusinessAutomation("revenue")}
+                  testid="merchant-v5-automation-card-revenue"
+                  buttonTestid="merchant-v5-automation-run-revenue"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-automation-procurement-queue">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Truck size={16} className="text-emerald-300" />
+                    <h3 className="text-sm font-bold text-white">Procurement Queue</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {(businessAutomation.procurement?.queue || []).slice(0, 4).map((item, index) => (
+                      <div key={`${item.product_id}-${index}`} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-automation-procurement-item-${index}`}>
+                        <p className="text-sm font-semibold text-white">{item.name}</p>
+                        <p className="text-[11px] text-slate-400">Supplier {item.supplier_name || item.supplier_id || "offen"}</p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                          <span className="rounded-full bg-black/20 px-2.5 py-1">+{item.suggested_qty}</span>
+                          <span className="rounded-full bg-black/20 px-2.5 py-1">Stock {item.stock}</span>
+                          <span className="rounded-full bg-black/20 px-2.5 py-1">Cover {item.days_of_cover ?? "n/a"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-automation-operations-queue">
+                  <div className="mb-3 flex items-center gap-2">
+                    <ClipboardList size={16} className="text-cyan-300" />
+                    <h3 className="text-sm font-bold text-white">Operations Queue</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {(businessAutomation.operations?.automation_tasks || []).slice(0, 4).map((task, index) => (
+                      <div key={task.id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-automation-task-${index}`}>
+                        <p className="text-sm font-semibold text-white">{task.title}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">Staff {task.staff_id} · Priorität {task.priority}</p>
+                      </div>
+                    ))}
+                    {(businessAutomation.operations?.late_staff || []).slice(0, 2).map((member, index) => (
+                      <div key={`${member.staff_id}-${index}`} className="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-3" data-testid={`merchant-v5-automation-late-staff-${index}`}>
+                        <p className="text-sm font-semibold text-amber-100">{member.name}</p>
+                        <p className="mt-1 text-[11px] text-amber-200/80">{member.title || "Shift"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-automation-revenue-queue">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Zap size={16} className="text-fuchsia-300" />
+                    <h3 className="text-sm font-bold text-white">Revenue Opportunities</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {(businessAutomation.revenue?.opportunities || []).slice(0, 4).map((item, index) => (
+                      <div key={item.listing_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-automation-revenue-item-${index}`}>
+                        <p className="text-sm font-semibold text-white">{item.title}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">{item.reason} · {item.age_days} Tage live</p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                          <span className="rounded-full bg-black/20 px-2.5 py-1">€{item.price}</span>
+                          <span className="rounded-full bg-black/20 px-2.5 py-1">→ €{item.sale_price}</span>
+                          <span className="rounded-full bg-black/20 px-2.5 py-1">{item.discount_pct}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-automation-escalations-card">
+                <div className="mb-3 flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-rose-300" />
+                  <h3 className="text-sm font-bold text-white">Supplier Escalations</h3>
+                </div>
+                <div className="space-y-2">
+                  {(businessAutomation.procurement?.escalations || []).slice(0, 5).map((item, index) => (
+                    <div key={item.po_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-automation-escalation-${index}`}>
+                      <p className="text-sm font-semibold text-white">{item.supplier_name}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">{item.po_id} · {item.status} · {item.age_days} Tage</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-automation-open-pos-card">
+                <div className="mb-3 flex items-center gap-2">
+                  <Truck size={16} className="text-emerald-300" />
+                  <h3 className="text-sm font-bold text-white">Open Purchase Orders</h3>
+                </div>
+                <div className="space-y-2">
+                  {(businessAutomation.procurement?.open_purchase_orders || []).slice(0, 5).map((po, index) => (
+                    <div key={po.po_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-automation-open-po-${index}`}>
+                      <p className="text-sm font-semibold text-white">{po.supplier_name}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">{po.po_id} · {po.status}</p>
+                      <p className="mt-2 text-[11px] text-emerald-200">€{(po.total_cost || 0).toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-v5-automation-history-card">
+                <div className="mb-3 flex items-center gap-2">
+                  <Clock size={16} className="text-amber-300" />
+                  <h3 className="text-sm font-bold text-white">Automation History</h3>
+                </div>
+                <div className="space-y-2">
+                  {(businessAutomation.history || []).slice(0, 6).map((run, index) => (
+                    <div key={run.run_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-v5-automation-history-${index}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{run.run_type}</p>
+                          <p className="text-[11px] text-slate-400">{run.created_at ? new Date(run.created_at).toLocaleString("de-DE") : "—"}</p>
+                        </div>
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-slate-300">{run.status}</span>
+                      </div>
+                      <p className="mt-2 text-[11px] text-slate-300">{run.summary}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab === "ecosystem" && (
         <div className="p-4 space-y-4" data-testid="merchant-ecosystem-tab">
           <div className="grid grid-cols-2 gap-2">
@@ -935,6 +1202,56 @@ function KpiRow({ label, value, testid }) {
     <div className="flex items-center justify-between rounded-2xl border border-white/6 bg-white/5 px-4 py-3" data-testid={testid}>
       <span className="text-sm text-slate-300">{label}</span>
       <span className="text-sm font-black text-white">{value}</span>
+    </div>
+  );
+}
+
+function AutomationActionCard({ title, subtitle, icon: Icon, accent, buttonLabel, running, onRun, testid, buttonTestid }) {
+  return (
+    <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid={testid}>
+      <div className="flex items-center gap-2">
+        <Icon size={16} className={accent} />
+        <h3 className="text-sm font-bold text-white">{title}</h3>
+      </div>
+      <p className="mt-2 text-[11px] text-slate-400">{subtitle}</p>
+      <button
+        onClick={onRun}
+        disabled={running}
+        className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+        data-testid={buttonTestid}
+      >
+        {running ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
+        {running ? "Läuft..." : buttonLabel}
+      </button>
+    </div>
+  );
+}
+
+function SettingStepper({ label, value, min, max, step, suffix = "", onChange, testid }) {
+  const canDecrease = value > min;
+  const canIncrease = value < max;
+  return (
+    <div className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={testid}>
+      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button
+          onClick={() => canDecrease && onChange(Math.max(min, value - step))}
+          disabled={!canDecrease}
+          className="h-8 w-8 rounded-full border border-white/10 bg-black/20 text-sm font-bold text-white disabled:opacity-40"
+          data-testid={`${testid}-decrease`}
+        >
+          -
+        </button>
+        <span className="text-sm font-black text-white" data-testid={`${testid}-value`}>{value}{suffix}</span>
+        <button
+          onClick={() => canIncrease && onChange(Math.min(max, value + step))}
+          disabled={!canIncrease}
+          className="h-8 w-8 rounded-full border border-white/10 bg-black/20 text-sm font-bold text-white disabled:opacity-40"
+          data-testid={`${testid}-increase`}
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }
