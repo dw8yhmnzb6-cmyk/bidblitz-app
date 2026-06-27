@@ -16,6 +16,15 @@ router = APIRouter(prefix="/api/commerce-center", tags=["commerce-center"])
 PLATFORM_COMMISSION = 0.05
 FLASH_SALE_DISCOUNTS = [0.12, 0.18, 0.22, 0.15]
 
+CATEGORY_THEME = {
+    "tech": {"label": "Tech", "accent": "#38bdf8"},
+    "gaming": {"label": "Gaming", "accent": "#8b5cf6"},
+    "mobility": {"label": "Mobility", "accent": "#10b981"},
+    "lifestyle": {"label": "Lifestyle", "accent": "#f97316"},
+    "premium": {"label": "Premium", "accent": "#f43f5e"},
+    "other": {"label": "More", "accent": "#94a3b8"},
+}
+
 
 class FlashSalePurchaseRequest(BaseModel):
     use_shipping: bool = False
@@ -57,6 +66,124 @@ def _remaining_seconds(value: Any) -> int:
     if not dt_value:
         return 0
     return max(0, int((dt_value - datetime.now(timezone.utc)).total_seconds()))
+
+
+def _normalize_category(raw_category: Any, raw_label: Any = None) -> dict:
+    key = str(raw_category or "other").strip().lower()
+    if key in {"electronics", "gadgets"}:
+        key = "tech"
+    elif key in {"home", "kitchen", "fashion", "beauty"}:
+        key = "lifestyle"
+    elif key in {"bikes", "scooter", "ebike"}:
+        key = "mobility"
+    elif key in {"luxury", "collectibles"}:
+        key = "premium"
+    theme = CATEGORY_THEME.get(key, CATEGORY_THEME["other"])
+    return {
+        "key": key if key in CATEGORY_THEME else "other",
+        "label": raw_label or theme["label"],
+        "accent": theme["accent"],
+    }
+
+
+def _build_category_mix(*groups: list[dict]) -> list[dict]:
+    category_map: dict[str, dict] = {}
+    for items in groups:
+        for item in items:
+            category = _normalize_category(item.get("category"), item.get("category_label"))
+            entry = category_map.setdefault(
+                category["key"],
+                {"key": category["key"], "label": category["label"], "accent": category["accent"], "count": 0},
+            )
+            entry["count"] += 1
+    return sorted(category_map.values(), key=lambda item: item["count"], reverse=True)
+
+
+def _build_spotlight_deal(flash_sales: list[dict], penny_auctions: list[dict], live_auctions: list[dict]) -> dict:
+    flash_sale = max(flash_sales, key=lambda sale: sale.get("discount_pct", 0), default=None)
+    if flash_sale:
+        category = _normalize_category(flash_sale.get("category"), flash_sale.get("category_label"))
+        return {
+            "type": "flash_sale",
+            "title": flash_sale.get("title", "Flash Deal"),
+            "subtitle": f"{flash_sale.get('discount_pct', 0)}% Deal · {category['label']}",
+            "price": flash_sale.get("sale_price", 0),
+            "original_price": flash_sale.get("original_price", 0),
+            "remaining_seconds": flash_sale.get("remaining_seconds", 0),
+            "route": f"/marketplace?listing_id={flash_sale.get('listing_id', '')}&source=commerce-spotlight",
+            "cta": "Deal öffnen",
+            "category": category,
+        }
+
+    live_auction = min(live_auctions, key=lambda item: item.get("remaining_seconds", 10**9), default=None)
+    if live_auction:
+        category = _normalize_category(live_auction.get("category"), live_auction.get("category"))
+        return {
+            "type": "live_auction",
+            "title": live_auction.get("title", "Live Auktion"),
+            "subtitle": f"Live Format · {category['label']}",
+            "price": live_auction.get("current_price", 0),
+            "original_price": live_auction.get("start_price", 0),
+            "remaining_seconds": live_auction.get("remaining_seconds", 0),
+            "route": f"/live-auctions?auction_id={live_auction.get('auction_id', '')}&source=commerce-spotlight",
+            "cta": "Live bieten",
+            "category": category,
+        }
+
+    auction = min(penny_auctions, key=lambda item: item.get("remaining_seconds", 10**9), default=None)
+    if auction:
+        category = _normalize_category(auction.get("category"), auction.get("category_label"))
+        return {
+            "type": "penny_auction",
+            "title": auction.get("title", "Penny Auktion"),
+            "subtitle": "Knappste Auktion im Feed",
+            "price": auction.get("current_price", 0),
+            "original_price": auction.get("retail_price", 0),
+            "remaining_seconds": auction.get("remaining_seconds", 0),
+            "route": f"/auctions?auction_id={auction.get('auction_id', '')}&source=commerce-spotlight",
+            "cta": "Auktion öffnen",
+            "category": category,
+        }
+    return {}
+
+
+def _build_live_insights(flash_sales: list[dict], penny_auctions: list[dict], live_streams: list[dict], category_mix: list[dict]) -> list[dict]:
+    biggest_discount = max((sale.get("discount_pct", 0) for sale in flash_sales), default=0)
+    ending_soon = min(
+        [item.get("remaining_seconds", 0) for item in [*flash_sales, *penny_auctions] if item.get("remaining_seconds", 0) > 0],
+        default=0,
+    )
+    hottest_category = category_mix[0] if category_mix else CATEGORY_THEME["other"]
+    return [
+        {
+            "id": "ending_soon",
+            "label": "Nächster Deadline-Moment",
+            "value": ending_soon,
+            "value_type": "seconds",
+            "detail": "Schnellster Countdown im Commerce Center",
+        },
+        {
+            "id": "biggest_discount",
+            "label": "Bester Flash-Discount",
+            "value": biggest_discount,
+            "value_type": "percent",
+            "detail": "Maximaler Preisvorteil aktuell live",
+        },
+        {
+            "id": "hottest_category",
+            "label": "Stärkste Kategorie",
+            "value": hottest_category.get("label", "Mixed"),
+            "value_type": "text",
+            "detail": f"{hottest_category.get('count', 0)} Deals aktuell im Hub",
+        },
+        {
+            "id": "live_now",
+            "label": "Live jetzt",
+            "value": len(live_streams),
+            "value_type": "count",
+            "detail": "Streams mit direktem Shopping-Entry",
+        },
+    ]
 
 
 async def _ensure_flash_sales() -> list[dict]:
@@ -315,6 +442,7 @@ async def get_commerce_overview():
             "ends_at": 1,
             "status": 1,
             "shipping": 1,
+            "category": 1,
         },
     ).sort("ends_at", 1).limit(6).to_list(6)
     for auction in penny_auctions:
@@ -380,6 +508,10 @@ async def get_commerce_overview():
         "active_live_streams": await db.live_streams.count_documents({"status": "live"}),
     }
 
+    category_mix = _build_category_mix(marketplace_items[:6], penny_auctions[:4], flash_sales[:4])
+    spotlight = _build_spotlight_deal(flash_sales[:4], penny_auctions[:4], live_auctions)
+    live_insights = _build_live_insights(flash_sales[:4], penny_auctions[:4], live_streams, category_mix)
+
     return {
         "stats": stats,
         "flash_sales": [_serialize_doc(item) for item in flash_sales[:4]],
@@ -388,6 +520,9 @@ async def get_commerce_overview():
         "live_auctions": [_serialize_doc(item) for item in live_auctions],
         "live_streams": [_serialize_doc(item) for item in live_streams],
         "upcoming_streams": [_serialize_doc(item) for item in upcoming_streams],
+        "spotlight": _serialize_doc(spotlight),
+        "category_mix": [_serialize_doc(item) for item in category_mix],
+        "live_insights": [_serialize_doc(item) for item in live_insights],
     }
 
 

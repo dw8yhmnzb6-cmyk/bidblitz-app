@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock3, Flame, Gavel, PlayCircle, Radio, ShoppingBag, Sparkles, TicketPercent } from "lucide-react";
+import { ArrowRight, Clock3, Flame, Gavel, PlayCircle, Radio, ShoppingBag, Sparkles, TicketPercent, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "../services/api";
@@ -24,11 +24,30 @@ const Currency = ({ value, testId, className = "" }) => (
   <span data-testid={testId} className={className}>€{Number(value || 0).toFixed(2)}</span>
 );
 
+const formatInsightValue = (item) => {
+  if (!item) return "—";
+  if (item.value_type === "seconds") return formatSeconds(item.value);
+  if (item.value_type === "percent") return `${item.value || 0}%`;
+  if (item.value_type === "count") return String(item.value || 0);
+  return item.value || "—";
+};
+
+const categoryKeysFromOverview = (overview) => [
+  { key: "all", label: "Alle", accent: "#ffffff" },
+  ...((overview?.category_mix || []).slice(0, 5).map((item) => ({ key: item.key, label: item.label, accent: item.accent }))),
+];
+
+const matchesCategory = (item, activeCategory) => {
+  if (activeCategory === "all") return true;
+  return (item?.category || "").toLowerCase() === activeCategory;
+};
+
 export default function CommerceCenterPage({ onBack, onNavigate }) {
   const user = useUser();
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [buyingSaleId, setBuyingSaleId] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -47,10 +66,18 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
   }, [loadOverview]);
 
   const heroStats = useMemo(() => statCards.map((item) => ({ ...item, value: overview?.stats?.[item.key] || 0 })), [overview]);
+  const categoryTabs = useMemo(() => categoryKeysFromOverview(overview), [overview]);
+  const filteredFlashSales = useMemo(() => (overview?.flash_sales || []).filter((item) => matchesCategory(item, activeCategory)), [overview, activeCategory]);
+  const filteredAuctions = useMemo(() => (overview?.penny_auctions || []).filter((item) => matchesCategory(item, activeCategory)), [overview, activeCategory]);
+  const filteredMarketplace = useMemo(() => (overview?.marketplace || []).filter((item) => matchesCategory(item, activeCategory)), [overview, activeCategory]);
 
   const openMarketplaceDetail = (listingId) => onNavigate(`/marketplace?listing_id=${listingId}&source=commerce-center`);
   const openAuctionDetail = (auctionId) => onNavigate(`/auctions?auction_id=${auctionId}&source=commerce-center`);
   const openLiveAuctionDetail = (auctionId) => onNavigate(auctionId ? `/live-auctions?auction_id=${auctionId}&source=commerce-center` : "/live-auctions");
+  const openSpotlight = () => {
+    const route = overview?.spotlight?.route;
+    if (route) onNavigate(route);
+  };
 
   const handleBuyFlashSale = async (saleId) => {
     if (!user?.isAuthenticated) {
@@ -142,6 +169,84 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
           )}
         </motion.header>
 
+        <section className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
+          <motion.div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(56,189,248,0.14),rgba(11,14,28,0.92))] p-5 sm:p-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.02 }}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-[#bfeaff]" data-testid="commerce-center-spotlight-badge">
+                  <TrendingUp className="h-4 w-4" /> Spotlight Deal
+                </div>
+                <h2 className="mt-4 text-2xl sm:text-3xl font-black" data-testid="commerce-center-spotlight-title">{overview?.spotlight?.title || "Commerce Spotlight lädt…"}</h2>
+                <p className="mt-2 text-sm text-white/70" data-testid="commerce-center-spotlight-subtitle">{overview?.spotlight?.subtitle || "Deals, Auktionen und Live-Momente werden hier priorisiert."}</p>
+                <div className="mt-5 flex flex-wrap items-end gap-4">
+                  <div>
+                    <Currency value={overview?.spotlight?.price} testId="commerce-center-spotlight-price" className="block text-3xl font-black text-white" />
+                    {overview?.spotlight?.original_price ? <Currency value={overview?.spotlight?.original_price} testId="commerce-center-spotlight-original-price" className="block text-sm text-white/35 line-through" /> : null}
+                  </div>
+                  <div className="rounded-2xl bg-black/25 px-4 py-3" data-testid="commerce-center-spotlight-timer">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Timing</p>
+                    <p className="mt-1 text-sm font-bold text-[#8fefff]">{formatSeconds(overview?.spotlight?.remaining_seconds || 0)}</p>
+                  </div>
+                </div>
+              </div>
+              <button onClick={openSpotlight} data-testid="commerce-center-spotlight-cta" className="rounded-full bg-white px-5 py-3 text-sm font-bold text-[#06111f] transition hover:scale-[1.02]">
+                {overview?.spotlight?.cta || "Jetzt öffnen"}
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2" data-testid="commerce-center-category-tabs">
+              {categoryTabs.map((tab) => {
+                const active = activeCategory === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveCategory(tab.key)}
+                    data-testid={`commerce-center-category-tab-${tab.key}`}
+                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${active ? "text-black" : "text-white/72"}`}
+                    style={{
+                      borderColor: active ? tab.accent : "rgba(255,255,255,0.12)",
+                      background: active ? tab.accent : "rgba(0,0,0,0.18)",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Commerce Pulse</p>
+                <h2 className="mt-2 text-base md:text-lg font-bold">Was gerade am stärksten zieht</h2>
+              </div>
+              <div className="rounded-full bg-white/5 px-3 py-2 text-xs text-white/60" data-testid="commerce-center-category-mix-count">{overview?.category_mix?.length || 0} Kategorien</div>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {(overview?.live_insights || []).map((item) => (
+                <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid={`commerce-center-insight-${item.id}`}>
+                  <p className="text-xs text-white/55">{item.label}</p>
+                  <p className="mt-3 text-2xl font-black text-white">{formatInsightValue(item)}</p>
+                  <p className="mt-2 text-xs text-white/45">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-black/15 p-4" data-testid="commerce-center-category-mix-panel">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/45">Mix im Hub</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(overview?.category_mix || []).map((item) => (
+                  <div key={item.key} className="rounded-full px-3 py-2 text-xs font-semibold" data-testid={`commerce-center-category-pill-${item.key}`} style={{ background: `${item.accent}22`, color: item.accent }}>
+                    {item.label} · {item.count}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </section>
+
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <motion.div className="rounded-[2rem] border border-[#ff7a18]/20 bg-[linear-gradient(180deg,rgba(255,122,24,0.12),rgba(7,10,22,0.9))] p-5 sm:p-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
             <div className="flex items-center justify-between gap-3">
@@ -153,7 +258,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {(overview?.flash_sales || []).map((sale) => (
+              {filteredFlashSales.map((sale) => (
                 <div key={sale.sale_id} data-testid={`flash-sale-card-${sale.sale_id}`} className="rounded-[1.5rem] border border-white/10 bg-black/25 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -190,6 +295,11 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                   </div>
                 </div>
               ))}
+              {filteredFlashSales.length === 0 && (
+                <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-black/20 p-5 text-sm text-white/55" data-testid="commerce-center-flash-empty-filter">
+                  Für diese Kategorie läuft aktuell kein Flash Sale. Wechsle den Filter oder öffne den Marketplace.
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -250,7 +360,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
             </div>
 
             <div className="mt-5 space-y-3">
-              {(overview?.penny_auctions || []).map((auction) => (
+              {filteredAuctions.map((auction) => (
                 <button key={auction.auction_id} onClick={() => openAuctionDetail(auction.auction_id)} data-testid={`commerce-penny-auction-${auction.auction_id}`} className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -266,6 +376,11 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                   </div>
                 </button>
               ))}
+              {filteredAuctions.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-5 text-sm text-white/55" data-testid="commerce-center-auctions-empty-filter">
+                  Für diese Kategorie sind aktuell keine Penny Auktionen sichtbar.
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -279,7 +394,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {(overview?.marketplace || []).slice(0, 4).map((item) => (
+              {filteredMarketplace.slice(0, 4).map((item) => (
                 <button key={item.listing_id} onClick={() => openMarketplaceDetail(item.listing_id)} data-testid={`commerce-market-item-${item.listing_id}`} className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                   <p className="text-sm font-bold line-clamp-2">{item.title}</p>
                   <div className="mt-3 flex items-end justify-between gap-3">
@@ -291,6 +406,11 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                   </div>
                 </button>
               ))}
+              {filteredMarketplace.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-5 text-sm text-white/55" data-testid="commerce-center-market-empty-filter">
+                  Gerade keine Marketplace Highlights für diese Kategorie — wechsel den Filter oder öffne den gesamten Marketplace.
+                </div>
+              )}
             </div>
 
             <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-black/15 p-4" data-testid="commerce-live-auctions-strip">
