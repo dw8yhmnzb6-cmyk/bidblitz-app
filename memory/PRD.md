@@ -41,6 +41,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Frontend-Login-Redirect gefixt** (`frontend/src/pages/AuthPage.jsx`, `frontend/src/App.js`): nach erfolgreichem Login bleibt die App nicht mehr auf der Login-Ansicht hängen, sondern schließt den Auth-Screen sauber und zeigt die eingeloggte Oberfläche.
 - ✅ **Verifiziert**: API-Login-Test PASS (`/api/auth/login`, `/api/staff/auth/login`) und Browser-Formular-Login PASS mit `admin@bidblitz.ae / BidBlitz2026!`.
 
+### 27.06.2026 (iPad Login + sichtbare Demo/Test-Hinweise bereinigt) ✅
+- 🟢 **iPad-Login verifiziert**: Login auf Tablet-/iPad-Viewport (820×1180) funktioniert sichtbar mit `admin@bidblitz.ae / BidBlitz2026!` und landet korrekt in der eingeloggten Home-Ansicht.
+- 🟢 **Kundensichtbare Demo-Hinweise reduziert** (`frontend/src/components/GuestCTABar.jsx`, `frontend/src/pages/HomePage.jsx`, `frontend/src/components/DemoBanner.jsx`, `frontend/src/components/TopUpModal.jsx`): Demo-Button im Gastbereich entfernt, Banner auf neutrale Vorschau umgestellt und Stripe-Testmodus-Hinweis aus der UI entfernt.
+- ✅ **Verifiziert**: `testing_agent` Iteration 160 = Frontend 12/12 PASS; keine sichtbaren Texte wie `Try Demo`, `Demo Mode`, `Testmodus` oder `Powered by Stripe (Test Mode)` mehr auf den geprüften Hauptflächen.
+
 ### 25.06.2026 (Mobility Compare + Game Center V1) ✅
 - 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.
 - 🟢 **Game Center V1 Hub live** (`backend/routes/gaming.py`, `frontend/src/pages/GamingPage.jsx`, `frontend/src/pages/AchievementsPage.jsx`, `frontend/src/App.js`): Season-Overview, Rank, Milestones, Achievements-Summary und VIP-Club-Einstieg sind jetzt direkt im Gaming-Hub sichtbar; Achievements-Seite hat einen sauberen Rückweg zurück ins Game Center.

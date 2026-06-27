@@ -6,6 +6,13 @@
 - `frontend/src/pages/AuthPage.jsx` + `frontend/src/App.js`: erfolgreicher Login schließt den Auth-Screen jetzt korrekt und führt den Nutzer sichtbar in die eingeloggte App statt auf der Login-Ansicht zu verharren
 - Verifiziert: API-Login PASS für Admin/Händler/Staff mit `.ae`; Browser-Login PASS mit `admin@bidblitz.ae / BidBlitz2026!`
 
+## 27.06.2026 — iPad Login + Demo/Test-Hinweise bereinigt
+- `frontend/src/components/GuestCTABar.jsx`: Demo-Button im kundensichtbaren Gastbereich entfernt
+- `frontend/src/pages/HomePage.jsx`: prominenter `Try Demo` CTA entfernt
+- `frontend/src/components/DemoBanner.jsx`: Text von Demo/Testsprache auf neutrales `Vorschau` umgestellt
+- `frontend/src/components/TopUpModal.jsx` + `store/I18nContext.jsx`: sichtbaren Stripe-Testmodus-Hinweis aus Haupt-UI entfernt
+- Verifiziert: `testing_agent` Iteration 160 PASS (Frontend 12/12), iPad-Login mit `.ae` funktioniert, keine sichtbaren Demo-/Testtexte auf den geprüften Hauptflächen
+
 ## 27.06.2026 — Taxi Startscreen komplett neu gestaltet
 - `frontend/src/pages/TaxiPage.jsx`: kompletter mobiler Taxi-Startscreen neu aufgebaut (große Map-Fläche, klares Bottom Sheet, reduzierte Schnellziele, sauberere Fahrzeug-/Buchungsstruktur)
 - `frontend/src/services/taxiApi.js`: `fetchRegionalPlaceHints()` ergänzt, damit Flughafen/Bahnhof dynamisch per Region/Pickup geladen werden können
