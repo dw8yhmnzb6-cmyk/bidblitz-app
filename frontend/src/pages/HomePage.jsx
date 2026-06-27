@@ -273,6 +273,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const { percentageChange } = useWalletStats();
   const { t, lang } = useI18n();
   const gt = useGuestTranslations(lang);
+  const isKycVerified = user.role === "admin" || user.kyc_status === "approved" || user.kyc_verified;
+  const showKycRestrictedExperience = !isGuest && !isDemoMode && !isKycVerified;
   
   // Use total balance if available, otherwise fall back to EUR balance
   const displayBalance = totalBalanceEur > 0 ? totalBalanceEur : balance;
@@ -429,7 +431,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         )}
 
         {/* ── BANKING-APP TOP: Wallet + Quick Actions (auth users only) ── */}
-        {!isGuest && (
+        {!isGuest && !showKycRestrictedExperience && (
           <>
             {/* Hero Balance Card */}
             <motion.div
@@ -828,6 +830,50 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               </div>
             </motion.div>
           </>
+        )}
+
+        {!isGuest && showKycRestrictedExperience && (
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 rounded-[26px] border border-amber-400/15 bg-[linear-gradient(145deg,rgba(30,22,10,0.96),rgba(17,24,39,0.98))] p-5"
+            data-testid="pre-kyc-home-gate"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-300/10">
+                <Shield size={18} className="text-amber-300" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200/75">Vor Verifizierung</p>
+                <h3 className="mt-2 text-xl font-black text-white">Zugriff bewusst reduziert</h3>
+                <p className="mt-2 max-w-xl text-sm text-slate-300">
+                  Vor der Identitätsprüfung zeigen wir nur die sicheren Grundbereiche. Wallet, Auktionen, Marketplace und weitere Finanzfunktionen werden erst nach KYC freigeschaltet.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                  <span className="rounded-full bg-white/5 px-3 py-1">Profil</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1">KYC Starten</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1">Support</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1">Status prüfen</span>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => onNavigate("/kyc")}
+                    className="rounded-2xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-950"
+                    data-testid="pre-kyc-home-start-button"
+                  >
+                    Identität verifizieren
+                  </button>
+                  <button
+                    onClick={() => onNavigate("/more")}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-white"
+                    data-testid="pre-kyc-home-open-more-button"
+                  >
+                    Erlaubte Bereiche öffnen
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.section>
         )}
 
       </div>

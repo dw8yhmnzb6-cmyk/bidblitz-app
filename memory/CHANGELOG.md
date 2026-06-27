@@ -19,6 +19,15 @@
 - Robustheit: Leere Datensituationen liefern `skipped` statt Fehlern, Full Automation Run läuft ohne 500er durch und schreibt History-Einträge
 - Verifiziert: Python-Lint PASS, JS-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 166 PASS (Backend 9/9, Frontend 16/16), Login-Redirect live verifiziert
 
+## 27.06.2026 — KYC-Sichtbarkeit für unverifizierte Kunden verschärft
+- `backend/core/security.py`: `serialize_user()` liefert jetzt `kyc_status` und `kyc_verified` an das Frontend, damit zentrale Client-Gates zuverlässig auf echten Verifizierungsstatus reagieren
+- `frontend/src/App.js`: sensible Finance-/Commerce-Routen werden für unverifizierte Kunden automatisch in den KYC-Flow umgeleitet
+- `frontend/src/pages/HomePage.jsx`: authentifizierte, aber unverifizierte Kunden sehen statt Wallet/Auktionen/Feature-Flut jetzt ein reduziertes Pre-KYC-Panel mit klarer Verifizierungs-CTA
+- `frontend/src/pages/MorePage.jsx`: `Alle Services` wird vor KYC ausgeblendet; sichtbare Menüs werden auf Konto, App, Hilfe und Rechtliches reduziert
+- `frontend/src/pages/KYCFlow.jsx`: bestehender `data-testid="kyc-flow"` für Redirect-Tests weiterverwendet
+- `/app/memory/test_credentials.md`: unverifiziertes E2E-Testkonto `kycgate.1782580398@test.com / TestPass2026!` ergänzt
+- Verifiziert: Browser-Test PASS mit unverifiziertem Konto — Home-Gate sichtbar, Wallet-Klick leitet nach `/kyc`, More-Seite blendet gesperrte Bereiche aus
+
 ## 27.06.2026 — Login-Fix + `.ae` Alias-Logins
 - `backend/routes/auth.py`: Login akzeptiert jetzt `.ae` und `.com` als Aliase für dieselben Seed-Konten
 - `backend/routes/staff.py`: Staff-Login akzeptiert ebenfalls `.ae` und `.com` als Aliase

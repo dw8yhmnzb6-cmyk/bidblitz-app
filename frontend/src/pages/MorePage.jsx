@@ -774,6 +774,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const user = useUser();
   const { refreshUser } = user;
   const { t, lang: locale, setLang: setLocale } = useI18n();
+  const isKycVerified = user.role === "admin" || user.kyc_status === "approved" || user.kyc_verified;
+  const showKycRestrictedExperience = !isGuest && !isDemoMode && !isKycVerified;
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -1106,6 +1108,27 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     ...(adminMenu.length ? [{ id: "admin", title: "Admin", color: "#F97316", items: adminMenu }] : []),
   ].filter((g) => g.items && g.items.length > 0);
 
+  const PRE_KYC_ALLOWED_IDS = new Set([
+    "profile",
+    "notifications-settings",
+    "security",
+    "notifications",
+    "settings",
+    "help",
+    "support-chat",
+    "legal-agb",
+    "legal-datenschutz",
+    "legal-impressum",
+    "legal-sicherheit",
+  ]);
+
+  const visibleGroups = showKycRestrictedExperience
+    ? GRID_GROUPS.map((group) => ({
+        ...group,
+        items: (group.items || []).filter((item) => PRE_KYC_ALLOWED_IDS.has(item.id)),
+      })).filter((group) => group.items.length > 0)
+    : GRID_GROUPS;
+
   const toggleGroup = (id) => {
     setOpenGroups((p) => {
       const nxt = { ...p, [id]: !p[id] };
@@ -1116,14 +1139,14 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const searchNorm = search.trim().toLowerCase();
   const filteredGroups = searchNorm
-    ? GRID_GROUPS.map((g) => ({
+    ? visibleGroups.map((g) => ({
         ...g,
         items: g.items.filter((it) =>
           (it.label || "").toLowerCase().includes(searchNorm) ||
           (it.desc || "").toLowerCase().includes(searchNorm)
         ),
       })).filter((g) => g.items.length > 0)
-    : GRID_GROUPS;
+    : visibleGroups;
 
   const renderGridGroups = () => (
     <div className="space-y-3">
@@ -1268,7 +1291,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
         </motion.div>
 
         {/* ── Alle Services ── */}
-        <motion.button
+        {!showKycRestrictedExperience && <motion.button
           onClick={() => onNavigate("/all-services")}
           className="w-full flex items-center gap-3 p-3.5 rounded-2xl mb-3"
           style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.08), rgba(16,185,129,0.06))", border: "1px solid rgba(0,194,255,0.12)" }}
@@ -1284,7 +1307,33 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
             <p className="text-[10px] text-[#555]">60+ Features entdecken</p>
           </div>
           <ChevronRight size={14} className="text-[#333]" />
-        </motion.button>
+        </motion.button>}
+
+        {showKycRestrictedExperience && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 rounded-2xl border border-amber-400/15 bg-amber-400/5 p-4"
+            data-testid="pre-kyc-more-gate"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-300/10">
+                <ShieldCheck size={16} className="text-amber-300" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold text-white">Vor KYC nur Basisbereiche sichtbar</p>
+                <p className="mt-1 text-[11px] text-slate-300">Erst nach Identitätsprüfung werden Wallet, Marketplace, Auktionen und weitere Commerce-/Finance-Module freigeschaltet.</p>
+                <button
+                  onClick={() => onNavigate("/kyc")}
+                  className="mt-3 rounded-xl bg-amber-300 px-3.5 py-2 text-[11px] font-black text-slate-950"
+                  data-testid="pre-kyc-more-start-button"
+                >
+                  KYC jetzt starten
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Search Bar ── */}
         <motion.div

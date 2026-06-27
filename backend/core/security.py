@@ -67,6 +67,8 @@ def serialize_user(user: dict) -> dict:
         "email": user["email"],
         "name": user.get("name", ""),
         "role": role,
+        "kyc_status": user.get("kyc_status", "not_started"),
+        "kyc_verified": bool(user.get("kyc_status") == "approved" or user.get("kyc_verified")),
         "modes": modes,
         "balance": round(user.get("balance", user.get("bids_balance", 0.0)), 2),
         "currency": user.get("currency", "EUR"),

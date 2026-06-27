@@ -327,6 +327,35 @@ function AppContent() {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
+  const isKycVerified = user.role === "admin" || user.kyc_status === "approved" || user.kyc_verified;
+
+  const isKycRestrictedPath = useCallback((path) => {
+    const basePath = (path || "/").split("?")[0];
+    const restrictedPrefixes = [
+      "/wallet",
+      "/auctions",
+      "/live-auctions",
+      "/marketplace",
+      "/commerce-center",
+      "/merchant-portal",
+      "/merchant-dashboard",
+      "/merchant/staff",
+      "/pay",
+      "/terminal",
+      "/blitzpay",
+      "/p2p",
+      "/card",
+      "/crypto",
+      "/bnpl",
+      "/budget",
+      "/gift-cards",
+      "/bills",
+      "/instant-credit",
+      "/merchant-connect",
+      "/marketplace-dashboard",
+    ];
+    return restrictedPrefixes.some((prefix) => basePath === prefix || basePath.startsWith(`${prefix}/`));
+  }, []);
 
   const syncBrowserPath = useCallback((path, mode = "push") => {
     if (typeof window === "undefined" || !path) return;
@@ -465,6 +494,11 @@ function AppContent() {
       requireAuth();
       return;
     }
+    if (!isGuest && !isDemoMode && !isKycVerified && isKycRestrictedPath(path)) {
+      syncBrowserPath("/kyc");
+      setCurrentPath("/kyc");
+      return;
+    }
     syncBrowserPath(path);
     setCurrentPath(path);
   };
@@ -545,6 +579,9 @@ function AppContent() {
         });
       },
     };
+    if (!isGuest && !isDemoMode && !isKycVerified && isKycRestrictedPath(currentPath)) {
+      return <KYCFlow onBack={() => handleNavigate("/")} onComplete={() => handleNavigate("/kyc/status")} />;
+    }
     if (currentPath === "/staff/system-check") {
       return <StaffSystemCheckPage onBack={() => handleNavigate("/")} />;
     }

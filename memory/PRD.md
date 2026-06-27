@@ -12,6 +12,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Executive AI nutzt `emergentintegrations.llm.chat` serverseitig mit Streaming-Antworten, speichert Executive-Briefings historisiert und fällt bei Modellproblemen deterministisch auf einen regelbasierten Bericht zurück.
 - Neu live: Merchant Platform V5 Modul 2 ergänzt `Business Automation` als gemeinsamen Leitstand für Procurement-, Operations- und Revenue-Automation inklusive Settings, Automations-History und robusten Run-Endpunkten.
 - Login-Fix live: Nach erfolgreichem Login auf Live- und Preview-Seite bleibt die App nicht mehr auf `/login` hängen, sondern synchronisiert URL und In-App-Route korrekt auf `/`.
+- KYC-Sichtbarkeit gehärtet: unverifizierte Kunden sehen vor der Identitätsprüfung nicht mehr Wallet-, Auktions-, Marketplace- und ähnliche Finance/Commerce-Bereiche, sondern werden zentral in den KYC-Flow geführt.
 - Nächster Schwerpunkt: Omnichannel Commerce weiter vertiefen (Sync/Automation) und danach Digital Signage + Smart Pricing als nächstes V5-Modul ergänzen.
 
 ### 27.06.2026 (Merchant Platform V5 — Enterprise Dashboard + Executive AI) ✅
@@ -29,6 +30,13 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Persistenz ergänzt**: neue Collections `merchant_automation_settings` und `merchant_automation_runs` speichern Schalter/Thresholds sowie Run-Historie, Summaries und Details der Automationsläufe.
 - 🟢 **Business Automation UI ergänzt** (`frontend/src/pages/MerchantPortalPage.jsx`, `frontend/src/services/api.js`): neuer Merchant-Portal-Tab `Business Automation` mit KPI-Overview, Modul-Toggles, Stepper-Einstellungen, Procurement-/Operations-/Revenue-Action-Cards, Escalations, offenen POs und Run-History.
 - ✅ **Verifiziert**: JS-Lint PASS, Python-Lint PASS, Browser-Smoke PASS, `testing_agent` Iteration 166 = Backend 9/9 PASS und Frontend 16/16 PASS. Login-Redirect verifiziert, Automation-Endpoints laufen robust auch bei leeren Datensätzen (`skipped` statt Fehler). Keine MOCKED APIs.
+
+### 27.06.2026 (KYC-Gating für Kundensicht verschärft) ✅
+- 🟢 **User-Serialisierung erweitert** (`backend/core/security.py`): `serialize_user()` liefert jetzt `kyc_status` und `kyc_verified` zuverlässig ans Frontend, damit Sichtbarkeitsregeln nicht nur über Banner, sondern zentral über echte Statusdaten greifen.
+- 🟢 **Router-Gate ergänzt** (`frontend/src/App.js`): sensible Pfade wie `/wallet`, `/auctions`, `/marketplace`, `/commerce-center`, `/merchant-portal`, `/pay`, `/terminal`, `/crypto`, `/bnpl` etc. werden für unverifizierte Kunden automatisch auf `/kyc` umgeleitet.
+- 🟢 **Kundensicht reduziert** (`frontend/src/pages/HomePage.jsx`, `frontend/src/pages/MorePage.jsx`): vor KYC verschwinden Wallet-/Auktions-/All-Services-/Marketplace-nahe Einstiege; stattdessen erscheinen klare `Pre-KYC`-Hinweise und ein direkter CTA in den Verifizierungsflow.
+- 🟢 **Testbarkeit konsistent gehalten** (`frontend/src/pages/KYCFlow.jsx`): bestehender KYC-Testpunkt `data-testid="kyc-flow"` bleibt für Redirect-Checks stabil nutzbar.
+- ✅ **Verifiziert**: Browser-Test mit unverifiziertem Konto `kycgate.1782580398@test.com` PASS — Home-Gate sichtbar, Wallet-Versuch leitet auf `/kyc`, More-Seite blendet `Alle Services` aus und zeigt nur Basisbereiche.
 
 ### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
 - 🟢 **Zielsuche gehärtet** (`frontend/src/components/taxi/useTaxiGeocoder.js`): Taxi-Suche fällt jetzt robust zwischen direkter Mapbox-Abfrage und Backend-Proxy zurück. Damit bleiben Vorschläge auch dann stabil, wenn ein Frontend-Token auf einzelnen Geräten/Deployments fehlschlägt.
