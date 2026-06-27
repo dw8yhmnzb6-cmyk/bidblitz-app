@@ -14,6 +14,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Login-Fix live: Nach erfolgreichem Login auf Live- und Preview-Seite bleibt die App nicht mehr auf `/login` hängen, sondern synchronisiert URL und In-App-Route korrekt auf `/`.
 - KYC-Sichtbarkeit gehärtet: unverifizierte Kunden sehen vor der Identitätsprüfung nicht mehr Wallet-, Auktions-, Marketplace- und ähnliche Finance/Commerce-Bereiche, sondern werden zentral in den KYC-Flow geführt.
 - Live-Kundenkonto `agimk@me.com` wurde auf der öffentlichen Instanz per Admin-Workaround neu angelegt und mit funktionierendem Login `Aldink56600` verifiziert.
+- Live-Händlerkonto `haendler@bidblitz.ae` wurde auf der öffentlichen Instanz neu angelegt, auf Rolle `merchant` gesetzt und per Admin-KYC freigegeben, damit Login und Wallet-Zugriff sauber funktionieren.
 - Nächster Schwerpunkt: Omnichannel Commerce weiter vertiefen (Sync/Automation) und danach Digital Signage + Smart Pricing als nächstes V5-Modul ergänzen.
 
 ### 27.06.2026 (Merchant Platform V5 — Enterprise Dashboard + Executive AI) ✅
@@ -44,6 +45,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Sicherer Live-Workaround nach User-Freigabe**: bestehendes Live-Konto wurde per Admin-API gelöscht und direkt mit derselben Ziel-Mail neu registriert.
 - 🟢 **Live-Zugang verifiziert**: `agimk@me.com / Aldink56600` funktioniert jetzt auf der öffentlichen Domain wieder, inklusive erfolgreichem Browser-Login.
 - 🟢 **KYC-Verhalten bestätigt**: Das Live-Konto ist unverifiziert und hat weiterhin die 5€ Welcome Balance; Wallet bleibt sichtbar mit KYC-Hinweis, Nutzung sensibler Funktionen ist durch Verifizierungspflicht eingeschränkt.
+
+### 27.06.2026 (Live-Händlerlogin `haendler@bidblitz.ae` wiederhergestellt + verifiziert) ✅
+- 🟢 **Root Cause bestätigt**: Das Händlerkonto aus den internen Testdaten existierte auf der öffentlichen Instanz nicht, daher liefen Live-Logins für `haendler@bidblitz.ae / Haendler2026!` in `401`.
+- 🟢 **Live-Fix ausgeführt**: Konto auf `bidblitz.ae` neu registriert, per Admin-API auf Rolle `merchant` umgestellt und via `POST /api/kyc/admin/decide` auf `approved` gesetzt.
+- 🟢 **Live-Verifikation erfolgreich**: API-Login PASS, Browser-Login PASS, Wallet-Zugriff PASS. Das Konto ist jetzt als verifizierter Händler nutzbar.
 
 ### 25.06.2026 (Taxi Uber-Flow Phase 3: Live-Movement + Chat/Call/Share + Suchhärtung) ✅
 - 🟢 **Zielsuche gehärtet** (`frontend/src/components/taxi/useTaxiGeocoder.js`): Taxi-Suche fällt jetzt robust zwischen direkter Mapbox-Abfrage und Backend-Proxy zurück. Damit bleiben Vorschläge auch dann stabil, wenn ein Frontend-Token auf einzelnen Geräten/Deployments fehlschlägt.

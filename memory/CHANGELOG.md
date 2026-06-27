@@ -35,6 +35,12 @@
 - Browser-Verifikation auf `https://bidblitz.ae` erfolgreich: Login landet auf `/`, Konto ist wieder erreichbar, KYC-Hinweis bleibt sichtbar
 - Hinweis zum KYC-Produktverhalten: 5€ Welcome Balance ist sichtbar, aber sensible Nutzung bleibt weiterhin an Verifizierung gekoppelt
 
+## 27.06.2026 — Öffentlichen Live-Händlerlogin `haendler@bidblitz.ae` wiederhergestellt und verifiziert
+- Live-Analyse ergab: Das Händlerkonto aus den internen Testdaten war auf `bidblitz.ae` nicht vorhanden, daher scheiterte der Login in `401`
+- Live-Fix ausgeführt: `haendler@bidblitz.ae` mit `Haendler2026!` registriert, anschließend per Admin-API auf Rolle `merchant` gesetzt
+- KYC-Freigabe live durchgeführt: `POST /api/kyc/admin/decide` mit Entscheidung `approve`
+- Verifiziert: Live-API Login PASS, Live-Browser Login PASS, Wallet-Zugriff PASS; Konto ist jetzt als verifizierter Händler aktiv nutzbar
+
 ## 27.06.2026 — Login-Fix + `.ae` Alias-Logins
 - `backend/routes/auth.py`: Login akzeptiert jetzt `.ae` und `.com` als Aliase für dieselben Seed-Konten
 - `backend/routes/staff.py`: Staff-Login akzeptiert ebenfalls `.ae` und `.com` als Aliase
