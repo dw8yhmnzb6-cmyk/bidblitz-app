@@ -13,6 +13,13 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
   const [focused, setFocused] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const isPw = type === "password";
+  const handleBlur = (e) => {
+    const liveValue = e.currentTarget.value;
+    if (liveValue !== value) {
+      onChange(liveValue);
+    }
+    setFocused(false);
+  };
 
   return (
     <motion.div
@@ -40,7 +47,7 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
           placeholder={placeholder}
           autoFocus={autoFocus}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={handleBlur}
           inputMode={type === "email" ? "email" : undefined}
           className="flex-1 min-w-0 w-full bg-transparent text-[13px] text-white placeholder:text-white/35 outline-none font-medium"
           style={{ WebkitTextFillColor: "#fff" }}
@@ -69,6 +76,7 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
 export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  const loginSnapshotRef = useRef({ email: "", password: "" });
   const [mode, setMode] = useState(initialMode || "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -94,11 +102,18 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
     }
   }, [email, password, otpCode, name, confirm, user]);
 
+  const captureLoginSnapshot = () => {
+    loginSnapshotRef.current = {
+      email: String(emailRef.current?.value || email || "").trim(),
+      password: String(passwordRef.current?.value || password || ""),
+    };
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const liveEmail = String(formData.get("login-email") || emailRef.current?.value || email || "").trim();
-    const livePassword = String(formData.get("login-password") || passwordRef.current?.value || password || "");
+    const liveEmail = String(formData.get("login-email") || loginSnapshotRef.current.email || emailRef.current?.value || email || "").trim();
+    const livePassword = String(formData.get("login-password") || loginSnapshotRef.current.password || passwordRef.current?.value || password || "");
     if (liveEmail !== email) setEmail(liveEmail);
     if (livePassword !== password) setPassword(livePassword);
     const result = await user.login(liveEmail, livePassword, rememberMe);
@@ -436,6 +451,9 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
               <motion.button
                 data-testid="login-submit-btn"
                 type="submit"
+                onMouseDownCapture={captureLoginSnapshot}
+                onTouchStartCapture={captureLoginSnapshot}
+                onPointerDownCapture={captureLoginSnapshot}
                 disabled={user.isLoading || forgotLoading}
                 className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
                 style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
