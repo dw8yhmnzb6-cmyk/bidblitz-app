@@ -13,6 +13,11 @@
 - `frontend/src/components/TopUpModal.jsx` + `store/I18nContext.jsx`: sichtbaren Stripe-Testmodus-Hinweis aus Haupt-UI entfernt
 - Verifiziert: `testing_agent` Iteration 160 PASS (Frontend 12/12), iPad-Login mit `.ae` funktioniert, keine sichtbaren Demo-/Testtexte auf den geprüften Hauptflächen
 
+## 27.06.2026 — iPad Händler-/Staff-Login vollständig verifiziert
+- `frontend/src/pages/StaffMobilePage.jsx`: PIN-Login nutzt jetzt korrekt `POST /api/staff/auth/terminal-pin` statt den normalen Staff-Password-Login
+- `backend/routes/staff.py`: `POST /api/staff/auth/terminal-pin` akzeptiert optional `identifier` und setzt nach erfolgreichem PIN-Login die `staff_session`-Cookie-Session
+- Verifiziert: `testing_agent` Iteration 161 PASS (Backend 7/7, Frontend 16/16); iPad Händler-Login mit `haendler@bidblitz.ae / Haendler2026!` PASS, iPad Staff-Login mit `mitarbeiter@bidblitz.ae + PIN 1234` PASS
+
 ## 27.06.2026 — Taxi Startscreen komplett neu gestaltet
 - `frontend/src/pages/TaxiPage.jsx`: kompletter mobiler Taxi-Startscreen neu aufgebaut (große Map-Fläche, klares Bottom Sheet, reduzierte Schnellziele, sauberere Fahrzeug-/Buchungsstruktur)
 - `frontend/src/services/taxiApi.js`: `fetchRegionalPlaceHints()` ergänzt, damit Flughafen/Bahnhof dynamisch per Region/Pickup geladen werden können

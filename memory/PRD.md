@@ -46,6 +46,12 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Kundensichtbare Demo-Hinweise reduziert** (`frontend/src/components/GuestCTABar.jsx`, `frontend/src/pages/HomePage.jsx`, `frontend/src/components/DemoBanner.jsx`, `frontend/src/components/TopUpModal.jsx`): Demo-Button im Gastbereich entfernt, Banner auf neutrale Vorschau umgestellt und Stripe-Testmodus-Hinweis aus der UI entfernt.
 - ✅ **Verifiziert**: `testing_agent` Iteration 160 = Frontend 12/12 PASS; keine sichtbaren Texte wie `Try Demo`, `Demo Mode`, `Testmodus` oder `Powered by Stripe (Test Mode)` mehr auf den geprüften Hauptflächen.
 
+### 27.06.2026 (iPad Händler- und Mitarbeiter-Login vollständig verifiziert) ✅
+- 🟢 **Merchant Login auf iPad bestätigt**: `haendler@bidblitz.ae / Haendler2026!` funktioniert auf Tablet-/iPad-Viewport sichtbar über `/login`.
+- 🟢 **Staff PIN Login korrigiert** (`frontend/src/pages/StaffMobilePage.jsx`, `backend/routes/staff.py`): mobiler Mitarbeiter-Login nutzt jetzt den korrekten PIN-Endpoint `/api/staff/auth/terminal-pin`; der Endpoint setzt anschließend auch die `staff_session`-Cookie-Session.
+- 🟢 **Identifier + PIN unterstützt**: Staff-PIN-Login akzeptiert jetzt sauber `mitarbeiter@bidblitz.ae` + `1234` und führt direkt ins Staff-Dashboard.
+- ✅ **Verifiziert**: `testing_agent` Iteration 161 = Backend 7/7 PASS und Frontend 16/16 PASS; Händler-Login auf iPad PASS, Mitarbeiter-PIN-Login auf iPad PASS, `/api/staff/auth/me` nach PIN-Login PASS.
+
 ### 25.06.2026 (Mobility Compare + Game Center V1) ✅
 - 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.
 - 🟢 **Game Center V1 Hub live** (`backend/routes/gaming.py`, `frontend/src/pages/GamingPage.jsx`, `frontend/src/pages/AchievementsPage.jsx`, `frontend/src/App.js`): Season-Overview, Rank, Milestones, Achievements-Summary und VIP-Club-Einstieg sind jetzt direkt im Gaming-Hub sichtbar; Achievements-Seite hat einen sauberen Rückweg zurück ins Game Center.
