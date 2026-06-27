@@ -18,6 +18,10 @@
 - `backend/routes/staff.py`: `POST /api/staff/auth/terminal-pin` akzeptiert optional `identifier` und setzt nach erfolgreichem PIN-Login die `staff_session`-Cookie-Session
 - Verifiziert: `testing_agent` Iteration 161 PASS (Backend 7/7, Frontend 16/16); iPad Händler-Login mit `haendler@bidblitz.ae / Haendler2026!` PASS, iPad Staff-Login mit `mitarbeiter@bidblitz.ae + PIN 1234` PASS
 
+## 27.06.2026 — iPad Autofill-Login Edge-Case gefixt
+- `frontend/src/pages/AuthPage.jsx`: Login liest nun Snapshot-Werte bereits in der Capture-Phase des Submit-Klicks, damit iOS/iPad-Autofill-Werte nicht mehr durch Blur verloren gehen
+- Verifiziert: `testing_agent` Iteration 163 PASS; zuvor fehlschlagender Edge-Case (`autoFocus + pure DOM manipulation + submit`) jetzt erfolgreich
+
 ## 27.06.2026 — Taxi Startscreen komplett neu gestaltet
 - `frontend/src/pages/TaxiPage.jsx`: kompletter mobiler Taxi-Startscreen neu aufgebaut (große Map-Fläche, klares Bottom Sheet, reduzierte Schnellziele, sauberere Fahrzeug-/Buchungsstruktur)
 - `frontend/src/services/taxiApi.js`: `fetchRegionalPlaceHints()` ergänzt, damit Flughafen/Bahnhof dynamisch per Region/Pickup geladen werden können

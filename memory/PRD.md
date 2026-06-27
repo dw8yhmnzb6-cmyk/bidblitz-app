@@ -52,6 +52,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Identifier + PIN unterstützt**: Staff-PIN-Login akzeptiert jetzt sauber `mitarbeiter@bidblitz.ae` + `1234` und führt direkt ins Staff-Dashboard.
 - ✅ **Verifiziert**: `testing_agent` Iteration 161 = Backend 7/7 PASS und Frontend 16/16 PASS; Händler-Login auf iPad PASS, Mitarbeiter-PIN-Login auf iPad PASS, `/api/staff/auth/me` nach PIN-Login PASS.
 
+### 27.06.2026 (iPad Safari/Autofill Login Edge-Case endgültig gefixt) ✅
+- 🟢 **Root Cause beseitigt** (`frontend/src/pages/AuthPage.jsx`): iOS/iPad-Autofill konnte sichtbare Werte ins DOM setzen, ohne den React-State zu aktualisieren; beim Submit löschte `blur` den Email-Wert vor dem Login.
+- 🟢 **Technischer Fix**: Login-Snapshot wird jetzt bereits auf `onPointerDownCapture` / `onMouseDownCapture` / `onTouchStartCapture` des Submit-Buttons gespeichert; zusätzlich bleibt `onBlur` synchron mit dem echten DOM-Wert.
+- ✅ **Verifiziert**: `testing_agent` Iteration 163 = Backend 1/1 PASS und Frontend 2/2 PASS; der zuvor fehlgeschlagene iPad-Edge-Case (`focused email + pure DOM manipulation + submit`) ist jetzt grün.
+
 ### 25.06.2026 (Mobility Compare + Game Center V1) ✅
 - 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.
 - 🟢 **Game Center V1 Hub live** (`backend/routes/gaming.py`, `frontend/src/pages/GamingPage.jsx`, `frontend/src/pages/AchievementsPage.jsx`, `frontend/src/App.js`): Season-Overview, Rank, Milestones, Achievements-Summary und VIP-Club-Einstieg sind jetzt direkt im Gaming-Hub sichtbar; Achievements-Seite hat einen sauberen Rückweg zurück ins Game Center.
