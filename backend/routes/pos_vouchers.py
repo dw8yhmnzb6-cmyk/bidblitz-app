@@ -224,7 +224,7 @@ async def wallet_topup_at_pos(req: WalletTopUpRequest, request: Request):
 
     customer_number = (req.customer_user_number or "").strip().upper()
     if not customer_number or "@" in customer_number or customer_number.startswith("BLZ-"):
-        raise HTTPException(400, "Bitte nur die Kundennummer verwenden — keine E-Mail, kein Scan, kein NFC")
+        raise HTTPException(400, "Bitte immer mit Kundennummer arbeiten — Scan/NFC dürfen nur die Kundennummer liefern")
 
     customer = await db.users.find_one({"user_number": customer_number})
     if not customer:

@@ -214,7 +214,7 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
       />
 
       <p className="text-[11px] text-white/45" data-testid="topup-customer-number-hint">
-        Nur Kundennummer. Keine E-Mail, kein Scan, kein NFC.
+        Immer mit Kundennummer. Scan/NFC dürfen nur helfen, die Kundennummer zu erfassen.
       </p>
 
       <input
