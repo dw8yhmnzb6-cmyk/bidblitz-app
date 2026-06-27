@@ -11,6 +11,57 @@ import secrets
 
 router = APIRouter(prefix="/api/extras", tags=["extras"])
 
+PUBLIC_LEADERBOARD_BLOCKLIST = [
+    "test",
+    "demo",
+    "admin",
+    "bidblitz",
+    "mitarbeiter",
+    "staff",
+    "merchant",
+    "haendler",
+    "system",
+]
+
+
+def _is_public_leaderboard_candidate(user: dict) -> bool:
+    role = str(user.get("role") or "").lower()
+    if role in {"admin", "merchant", "staff"}:
+        return False
+
+    haystack = " ".join([
+        str(user.get("name") or ""),
+        str(user.get("email") or ""),
+    ]).lower()
+    return not any(token in haystack for token in PUBLIC_LEADERBOARD_BLOCKLIST)
+
+
+def _public_name(user: dict) -> str:
+    name = str(user.get("name") or "").strip()
+    email = str(user.get("email") or "").strip()
+    if name:
+        return name
+    return email.split("@")[0] if email else "Nutzer"
+
+
+def _leaderboard_entries(users: list[dict], formatter) -> list[dict]:
+    entries = []
+    for user in users:
+        if not _is_public_leaderboard_candidate(user):
+            continue
+        entries.append({
+            "name": _public_name(user),
+            "premium": user.get("is_premium", False),
+            "value": formatter(user),
+        })
+        if len(entries) >= 20:
+            break
+
+    return [
+        {"rank": index + 1, **entry}
+        for index, entry in enumerate(entries)
+    ]
+
 
 # ═══ PROMO CODES ═══
 class PromoRedeem(BaseModel):
@@ -90,14 +141,18 @@ async def list_promos(request: Request):
 @router.get("/leaderboard")
 async def get_leaderboard(type: str = "balance"):
     if type == "balance":
-        users = await db.users.find({}, {"_id": 0, "name": 1, "email": 1, "balance": 1, "is_premium": 1}).sort("balance", -1).limit(20).to_list(20)
-        return {"type": "Top Guthaben", "entries": [{"rank": i+1, "name": u.get("name", u.get("email","")), "value": f"€{u.get('balance',0):.2f}", "premium": u.get("is_premium", False)} for i, u in enumerate(users)]}
+        users = await db.users.find({}, {"_id": 0, "name": 1, "email": 1, "balance": 1, "is_premium": 1, "role": 1}).sort("balance", -1).limit(100).to_list(100)
+        return {
+            "type": "Wallet Ranking",
+            "privacy_mode": True,
+            "entries": _leaderboard_entries(users, lambda _: "Privat"),
+        }
     elif type == "gaming":
-        users = await db.users.find({"gaming_coins": {"$gt": 0}}, {"_id": 0, "name": 1, "email": 1, "gaming_coins": 1}).sort("gaming_coins", -1).limit(20).to_list(20)
-        return {"type": "Top Gamer", "entries": [{"rank": i+1, "name": u.get("name", u.get("email","")), "value": f"{u.get('gaming_coins',0)} Coins"} for i, u in enumerate(users)]}
+        users = await db.users.find({"gaming_coins": {"$gt": 0}}, {"_id": 0, "name": 1, "email": 1, "gaming_coins": 1, "role": 1, "is_premium": 1}).sort("gaming_coins", -1).limit(100).to_list(100)
+        return {"type": "Top Gamer", "entries": _leaderboard_entries(users, lambda user: f"{user.get('gaming_coins', 0)} Coins")}
     elif type == "rating":
-        users = await db.users.find({"avg_rating": {"$gt": 0}}, {"_id": 0, "name": 1, "email": 1, "avg_rating": 1, "rating_count": 1}).sort("avg_rating", -1).limit(20).to_list(20)
-        return {"type": "Top Bewertungen", "entries": [{"rank": i+1, "name": u.get("name", u.get("email","")), "value": f"{u.get('avg_rating',0)}/5 ({u.get('rating_count',0)})"} for i, u in enumerate(users)]}
+        users = await db.users.find({"avg_rating": {"$gt": 0}}, {"_id": 0, "name": 1, "email": 1, "avg_rating": 1, "rating_count": 1, "role": 1, "is_premium": 1}).sort("avg_rating", -1).limit(100).to_list(100)
+        return {"type": "Top Bewertungen", "entries": _leaderboard_entries(users, lambda user: f"{user.get('avg_rating', 0)}/5 ({user.get('rating_count', 0)})")}
     else:
         return {"type": "Unbekannt", "entries": []}
 

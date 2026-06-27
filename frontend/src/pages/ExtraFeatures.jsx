@@ -82,7 +82,7 @@ export default function LeaderboardPage({ onBack }) {
   const topThree = data.entries?.slice(0, 3) || [];
   const restEntries = data.entries?.slice(3) || [];
   const typeMeta = {
-    balance: { accent: "#FACC15", label: "Top Guthaben", hint: "Die höchsten Wallet-Stände live sortiert." },
+    balance: { accent: "#FACC15", label: "Wallet Ranking", hint: "Nur Platzierungen sichtbar — Guthaben bleibt privat." },
     gaming: { accent: "#A855F7", label: "Top Gamer", hint: "Die aktivsten Coin-Spieler auf einen Blick." },
     rating: { accent: "#22C55E", label: "Top Bewertet", hint: "Die bestbewerteten Nutzer im System." },
   }[type];
@@ -95,7 +95,7 @@ export default function LeaderboardPage({ onBack }) {
           <h1 className="text-base font-bold flex items-center gap-2"><Trophy size={18} className="text-yellow-400" /> Rangliste</h1>
         </div>
         <div className="flex gap-2 mt-3">
-          {[{ id: "balance", label: "Top Guthaben" }, { id: "gaming", label: "Top Gamer" }, { id: "rating", label: "Top Bewertet" }].map(t => (
+          {[{ id: "balance", label: "Wallet Ranking" }, { id: "gaming", label: "Top Gamer" }, { id: "rating", label: "Top Bewertet" }].map(t => (
             <button data-testid={`leaderboard-filter-${t.id}`} key={t.id} onClick={() => setType(t.id)}
               className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${type === t.id ? "bg-yellow-500 text-black" : "bg-white/5 text-gray-400"}`}>{t.label}</button>
           ))}
@@ -159,7 +159,7 @@ export default function LeaderboardPage({ onBack }) {
                   <div className="w-12 h-12 rounded-full mx-auto mb-3 bg-white/10 flex items-center justify-center text-sm font-black">{(entry.name || "?")[0]}</div>
                   <p className="text-center text-lg">{rankIcon(realRank)}</p>
                   <p className="text-xs font-bold text-center mt-2 truncate">{entry.name}</p>
-                  <p className="text-[11px] text-center text-white/65 mt-1 break-words">{entry.value}</p>
+                  <p className="text-[11px] text-center text-white/65 mt-1 break-words">{type === "balance" ? "Privat" : entry.value}</p>
                 </div>
               );
             })}
@@ -176,7 +176,7 @@ export default function LeaderboardPage({ onBack }) {
               <p className="text-sm font-bold truncate">{e.name}</p>
               {e.premium && <span className="text-[8px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 font-bold">VIP</span>}
             </div>
-            <p className="text-sm font-bold" style={{ color: "#fff" }}>{e.value}</p>
+            <p className="text-sm font-bold" style={{ color: "#fff" }}>{type === "balance" ? "Privat" : e.value}</p>
           </motion.div>
         ))}
 
