@@ -36,6 +36,11 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - 🟢 **Regionale Standortlogik verbessert** (`frontend/src/pages/TaxiPage.jsx`, `frontend/src/services/taxiApi.js`): Flughafen/Bahnhof werden jetzt dynamisch anhand des Pickup-Kontexts geladen; Berlin zeigt BER/Berlin Hbf, Kosovo zeigt Flughafen Kosovo/Busbahnhof Prishtina, weitere Presets für Wien/Zürich plus Fallback.
 - ✅ **Verifiziert**: Browser-Smoke PASS, `testing_agent` Iteration 159 = Backend 3/3 PASS und Frontend 22/22 PASS; dedizierter Frontend-Abschlusscheck PASS, dedizierter Backend-Abschlusscheck PASS. Keine MOCKED APIs.
 
+### 27.06.2026 (Login-Fix + .ae Alias-Logins) ✅
+- 🟢 **Auth-Login robuster gemacht** (`backend/routes/auth.py`, `backend/routes/staff.py`): `.ae`- und `.com`-Adressen werden jetzt als Alias erkannt; dadurch funktionieren `admin@bidblitz.ae`, `haendler@bidblitz.ae` und `mitarbeiter@bidblitz.ae` gegen bestehende Seed-Konten.
+- 🟢 **Frontend-Login-Redirect gefixt** (`frontend/src/pages/AuthPage.jsx`, `frontend/src/App.js`): nach erfolgreichem Login bleibt die App nicht mehr auf der Login-Ansicht hängen, sondern schließt den Auth-Screen sauber und zeigt die eingeloggte Oberfläche.
+- ✅ **Verifiziert**: API-Login-Test PASS (`/api/auth/login`, `/api/staff/auth/login`) und Browser-Formular-Login PASS mit `admin@bidblitz.ae / BidBlitz2026!`.
+
 ### 25.06.2026 (Mobility Compare + Game Center V1) ✅
 - 🟢 **Mobility Center vertieft** (`backend/routes/mobility_platform.py`, `frontend/src/services/mobilityPlatformApi.js`, `frontend/src/pages/MobilityCenterPage.jsx`, `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`): neuer authentifizierter Endpoint `POST /api/mobility-platform/compare-summary`, 4-Wege-Vergleich für Taxi / Scooter / EV Drive / Car Rental, EV-Option jetzt auch im normalen Routing sowie EV-Hubs in Nearby-Counts und der Mobility Map.
 - 🟢 **Game Center V1 Hub live** (`backend/routes/gaming.py`, `frontend/src/pages/GamingPage.jsx`, `frontend/src/pages/AchievementsPage.jsx`, `frontend/src/App.js`): Season-Overview, Rank, Milestones, Achievements-Summary und VIP-Club-Einstieg sind jetzt direkt im Gaming-Hub sichtbar; Achievements-Seite hat einen sauberen Rückweg zurück ins Game Center.

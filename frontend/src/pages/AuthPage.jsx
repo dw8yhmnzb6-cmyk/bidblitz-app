@@ -59,7 +59,7 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
   );
 };
 
-export const AuthPage = ({ onBack, initialMode }) => {
+export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
   const [mode, setMode] = useState(initialMode || "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,13 +88,19 @@ export const AuthPage = ({ onBack, initialMode }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     const result = await user.login(email, password, rememberMe);
+    if (result === true && typeof onAuthSuccess === "function") {
+      onAuthSuccess();
+    }
     // If result is '2fa_required', the UserContext will set requires2FA=true
     // which triggers the 2FA UI automatically
   };
 
   const handleVerify2FA = async (e) => {
     e.preventDefault();
-    await user.verify2FA(otpCode);
+    const ok = await user.verify2FA(otpCode);
+    if (ok && typeof onAuthSuccess === "function") {
+      onAuthSuccess();
+    }
   };
 
   const handleCancel2FA = () => {
@@ -106,6 +112,9 @@ export const AuthPage = ({ onBack, initialMode }) => {
     e.preventDefault();
     const ok = await user.register(name, email, password, confirm, requestedRole);
     if (ok) {
+      if (typeof onAuthSuccess === "function") {
+        onAuthSuccess();
+      }
       // Check for ?ref= in URL and auto-claim referral bonus
       try {
         const params = new URLSearchParams(window.location.search);

@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
 import "@/App.css";
@@ -342,6 +342,19 @@ function AppContent() {
     }
   }, [user.isAuthenticated, user.language, setLang]);
 
+  const resolvePostAuthPath = useCallback(() => {
+    if (currentPath === "/login" || currentPath === "/register") return "/";
+    return currentPath || "/";
+  }, [currentPath]);
+
+  const handleAuthSuccess = useCallback(() => {
+    setShowFullAuth("");
+    setShowAuthGate(false);
+    setIsDemoMode(false);
+    const nextPath = resolvePostAuthPath();
+    setCurrentPath(nextPath === "/login" || nextPath === "/register" ? "/" : nextPath);
+  }, [resolvePostAuthPath]);
+
   // Close auth gate after login
   useEffect(() => {
     if (user.isAuthenticated) {
@@ -349,10 +362,13 @@ function AppContent() {
         setShowAuthGate(false);
         setShowFullAuth("");
         setIsDemoMode(false);
+        if (currentPath === "/login" || currentPath === "/register") {
+          setCurrentPath("/");
+        }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [user.isAuthenticated]);
+  }, [currentPath, user.isAuthenticated]);
 
   const isGuest = !user.isAuthenticated;
 
@@ -443,11 +459,23 @@ function AppContent() {
     );
   }
 
+  if ((currentPath === "/login" || currentPath === "/register") && !user.isAuthenticated) {
+    return (
+      <div className="relative">
+        <AuthPage
+          onBack={() => handleNavigate("/")}
+          initialMode={currentPath === "/register" ? "register" : "login"}
+          onAuthSuccess={handleAuthSuccess}
+        />
+      </div>
+    );
+  }
+
   // Full-screen auth (from header Sign In or homepage CTA)
   if (showFullAuth && !user.isAuthenticated) {
     return (
       <div className="relative">
-        <AuthPage onBack={() => setShowFullAuth("")} initialMode={showFullAuth} />
+        <AuthPage onBack={() => setShowFullAuth("")} initialMode={showFullAuth} onAuthSuccess={handleAuthSuccess} />
       </div>
     );
   }

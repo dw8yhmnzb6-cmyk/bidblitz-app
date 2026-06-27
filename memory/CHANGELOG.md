@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 27.06.2026 — Login-Fix + `.ae` Alias-Logins
+- `backend/routes/auth.py`: Login akzeptiert jetzt `.ae` und `.com` als Aliase für dieselben Seed-Konten
+- `backend/routes/staff.py`: Staff-Login akzeptiert ebenfalls `.ae` und `.com` als Aliase
+- `frontend/src/pages/AuthPage.jsx` + `frontend/src/App.js`: erfolgreicher Login schließt den Auth-Screen jetzt korrekt und führt den Nutzer sichtbar in die eingeloggte App statt auf der Login-Ansicht zu verharren
+- Verifiziert: API-Login PASS für Admin/Händler/Staff mit `.ae`; Browser-Login PASS mit `admin@bidblitz.ae / BidBlitz2026!`
+
 ## 27.06.2026 — Taxi Startscreen komplett neu gestaltet
 - `frontend/src/pages/TaxiPage.jsx`: kompletter mobiler Taxi-Startscreen neu aufgebaut (große Map-Fläche, klares Bottom Sheet, reduzierte Schnellziele, sauberere Fahrzeug-/Buchungsstruktur)
 - `frontend/src/services/taxiApi.js`: `fetchRegionalPlaceHints()` ergänzt, damit Flughafen/Bahnhof dynamisch per Region/Pickup geladen werden können
