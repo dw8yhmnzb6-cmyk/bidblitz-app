@@ -335,3 +335,26 @@ export async function reverseGeocode(lat, lng, signal) {
     return null;
   }
 }
+
+export async function fetchRegionalPlaceHints(query, { lat, lng, limit = 2 } = {}) {
+  if (!query || !Number.isFinite(lat) || !Number.isFinite(lng)) return [];
+  const qs = new URLSearchParams({ q: query, limit: String(limit), lat: String(lat), lng: String(lng) });
+  const res = await safeFetch(`${API}/api/taxi/geocode?${qs.toString()}`, cred);
+  if (!res || !res.ok) return [];
+  const data = await readJson(res);
+  return (data?.features || [])
+    .map((feature) => {
+      const center = feature?.center || [];
+      const context = feature?.context || [];
+      const city = (context.find((item) => (item.id || '').startsWith('place')) || context.find((item) => (item.id || '').startsWith('locality')) || {}).text || '';
+      return {
+        id: feature.id || `${query}-${feature.place_name}`,
+        name: feature.text || feature.place_name?.split(',')?.[0] || query,
+        subtitle: city || feature.place_name || '',
+        address: feature.place_name || query,
+        lat: center[1],
+        lng: center[0],
+      };
+    })
+    .filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng));
+}

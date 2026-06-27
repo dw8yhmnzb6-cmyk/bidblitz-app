@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Car, Clock3, Loader2, MapPin, Navigation, Search, Star } from 'lucide-react';
+import { ArrowLeft, Car, Clock3, Loader2, MapPin, Navigation, Search, Star, Plane, Train, Home, Briefcase, Sparkles, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '../store/UserContext';
 import { TaxiMap } from '../components/RealMap';
@@ -9,17 +9,66 @@ import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 import * as api from '../services/taxiApi';
 
 const VEHICLES = [
-  { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig', accent: '#111827' },
-  { id: 'premium', label: 'Comfort', subtitle: 'Mehr Platz & Komfort', accent: '#0F766E' },
-  { id: 'van', label: 'XL', subtitle: 'Für Gruppen & Gepäck', accent: '#7C3AED' },
+  { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig' },
+  { id: 'premium', label: 'Comfort', subtitle: 'Mehr Komfort & Ruhe' },
+  { id: 'van', label: 'XL', subtitle: 'Für Gruppen & Gepäck' },
 ];
 
-const QUICK_PLACES = [
-  { id: 'home', label: 'Home', subtitle: 'Zuhause speichern oder wählen', icon: '🏠' },
-  { id: 'work', label: 'Work', subtitle: 'Arbeitsadresse', icon: '💼' },
-  { id: 'airport', label: 'Flughafen', subtitle: 'BER Terminal 1-2', icon: '✈️', preset: { address: 'Flughafen Berlin Brandenburg (BER)', lat: 52.3667, lng: 13.5033 } },
-  { id: 'station', label: 'Bahnhof', subtitle: 'Berlin Hauptbahnhof', icon: '🚉', preset: { address: 'Berlin Hauptbahnhof', lat: 52.5251, lng: 13.3694 } },
+const REGION_PRESETS = [
+  {
+    key: 'kosovo',
+    matches: ['kosovo', 'prishtin', 'pristina', ', xk', ' republic of kosovo'],
+    airportQuery: 'Pristina International Airport',
+    stationQuery: 'Prishtina Bus Station',
+    airportLabel: 'Flughafen Kosovo',
+    stationLabel: 'Busbahnhof Prishtina',
+    regionLabel: 'Kosovo',
+  },
+  {
+    key: 'berlin',
+    matches: ['berlin', ', de'],
+    airportQuery: 'Flughafen Berlin Brandenburg BER',
+    stationQuery: 'Berlin Hauptbahnhof',
+    airportLabel: 'BER Flughafen',
+    stationLabel: 'Berlin Hbf',
+    regionLabel: 'Berlin',
+  },
+  {
+    key: 'vienna',
+    matches: ['wien', 'vienna', ', at'],
+    airportQuery: 'Vienna International Airport',
+    stationQuery: 'Wien Hauptbahnhof',
+    airportLabel: 'Flughafen Wien',
+    stationLabel: 'Wien Hbf',
+    regionLabel: 'Wien',
+  },
+  {
+    key: 'zurich',
+    matches: ['zürich', 'zurich', ', ch'],
+    airportQuery: 'Zurich Airport',
+    stationQuery: 'Zürich Hauptbahnhof',
+    airportLabel: 'Flughafen Zürich',
+    stationLabel: 'Zürich HB',
+    regionLabel: 'Zürich',
+  },
 ];
+
+const DEFAULT_REGION = {
+  key: 'default',
+  airportQuery: 'Airport',
+  stationQuery: 'Central Station',
+  airportLabel: 'Nächster Flughafen',
+  stationLabel: 'Nächster Bahnhof',
+  regionLabel: 'Deine Region',
+};
+
+function formatSeconds(value) {
+  const total = Math.max(0, Number(value || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes} Min`;
+}
 
 function RideStatusBadge({ ride }) {
   const statusMap = {
@@ -74,6 +123,17 @@ function RideChatPanel({ messages, loading, draft, onDraftChange, onSend }) {
   );
 }
 
+function detectRegion(address = '') {
+  const hay = String(address || '').toLowerCase();
+  return REGION_PRESETS.find((region) => region.matches.some((token) => hay.includes(token))) || DEFAULT_REGION;
+}
+
+function resolveHomeWork(savedPlaces) {
+  const home = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'home' || (place.name || '').toLowerCase() === 'home');
+  const work = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'work' || (place.name || '').toLowerCase() === 'work');
+  return { home, work };
+}
+
 export default function TaxiPage({ onNavigate }) {
   const { user } = useUser();
   const { search } = useTaxiGeocoder({ debounceMs: 180 });
@@ -94,7 +154,6 @@ export default function TaxiPage({ onNavigate }) {
   const [activeRide, setActiveRide] = useState(null);
   const [searchMode, setSearchMode] = useState('dropoff');
   const [savedPlaces, setSavedPlaces] = useState([]);
-  const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [recentAddresses, setRecentAddresses] = useState([]);
   const [favoriteRoutes, setFavoriteRoutes] = useState([]);
@@ -103,11 +162,16 @@ export default function TaxiPage({ onNavigate }) {
   const [forOther, setForOther] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
-  const [suggestedPlaces, setSuggestedPlaces] = useState([]);
   const [rideMessages, setRideMessages] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
+  const [regionalQuickPlaces, setRegionalQuickPlaces] = useState([]);
+
+  useEffect(() => {
+    document.body.classList.add('taxi-fullscreen-mode');
+    return () => document.body.classList.remove('taxi-fullscreen-mode');
+  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -207,27 +271,26 @@ export default function TaxiPage({ onNavigate }) {
   }, [activeRide?.ride_id]);
 
   useEffect(() => {
-    const merged = [];
-    favoriteRoutes.slice(0, 2).forEach((route) => {
-      if (route?.dropoff?.address) merged.push({ type: 'route', label: route.dropoff.address, subtitle: route.pickup?.address || 'Häufig gefahren', lat: route.dropoff.lat, lng: route.dropoff.lng });
-    });
-    recentAddresses.slice(0, 3).forEach((address) => {
-      if (address?.address) merged.push({ type: 'recent', label: address.address, subtitle: `Zuletzt genutzt · ${address.use_count || 1}×`, lat: address.lat, lng: address.lng });
-    });
-    favorites.slice(0, 3).forEach((favorite) => {
-      if (favorite?.address) merged.push({ type: 'favorite', label: favorite.name, subtitle: favorite.address, lat: favorite.latitude, lng: favorite.longitude });
-    });
-    const deduped = [];
-    const seen = new Set();
-    merged.forEach((item) => {
-      const key = `${item.label}-${item.subtitle}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        deduped.push(item);
+    if (!pickup?.lat || !pickup?.lng) return undefined;
+    let cancelled = false;
+    const region = detectRegion(pickup.address);
+    const loadRegional = async () => {
+      const [airport, station] = await Promise.all([
+        api.fetchRegionalPlaceHints(region.airportQuery, { lat: pickup.lat, lng: pickup.lng, limit: 1 }),
+        api.fetchRegionalPlaceHints(region.stationQuery, { lat: pickup.lat, lng: pickup.lng, limit: 1 }),
+      ]);
+      if (!cancelled) {
+        setRegionalQuickPlaces([
+          airport[0] ? { ...airport[0], id: 'airport', icon: Plane, label: region.airportLabel, caption: region.regionLabel } : null,
+          station[0] ? { ...station[0], id: 'station', icon: Train, label: region.stationLabel, caption: region.regionLabel } : null,
+        ].filter(Boolean));
       }
-    });
-    setSuggestedPlaces(deduped.slice(0, 6));
-  }, [favoriteRoutes, recentAddresses, favorites]);
+    };
+    loadRegional();
+    return () => {
+      cancelled = true;
+    };
+  }, [pickup?.lat, pickup?.lng, pickup?.address]);
 
   useEffect(() => {
     if (!pickup?.lat) return;
@@ -258,9 +321,8 @@ export default function TaxiPage({ onNavigate }) {
     setSurge(result.surge || null);
     const recommended = (result.estimates || []).find((item) => item.vehicle_type === selectedVehicle) || result.estimates?.[0];
     if (recommended?.vehicle_type) setSelectedVehicle(recommended.vehicle_type);
-    setBottomSheetOpen(true);
     setEstimating(false);
-  }, [pickup, dropoff, selectedVehicle]);
+  }, [bookingMode, pickup, dropoff, selectedVehicle]);
 
   useEffect(() => {
     if (dropoff?.lat) estimateRide();
@@ -280,6 +342,9 @@ export default function TaxiPage({ onNavigate }) {
     })).filter((driver) => Number.isFinite(driver.lat) && Number.isFinite(driver.lng)),
     [nearbyDrivers],
   );
+
+  const { home, work } = useMemo(() => resolveHomeWork(savedPlaces), [savedPlaces]);
+  const region = useMemo(() => detectRegion(pickup.address), [pickup.address]);
 
   const activeRideTrackerData = useMemo(() => {
     if (!activeRide) return null;
@@ -305,6 +370,20 @@ export default function TaxiPage({ onNavigate }) {
     return '';
   }, [activeRide]);
 
+  const suggestionCards = useMemo(() => {
+    const cards = [];
+    favoriteRoutes.slice(0, 2).forEach((route, index) => {
+      if (route?.dropoff?.address) cards.push({ id: `route-${index}`, kind: 'route', title: route.dropoff.address, subtitle: route.pickup?.address || 'Häufig gefahren', lat: route.dropoff.lat, lng: route.dropoff.lng });
+    });
+    recentAddresses.slice(0, 2).forEach((address, index) => {
+      if (address?.address) cards.push({ id: `recent-${index}`, kind: 'recent', title: address.address, subtitle: `Zuletzt genutzt · ${address.use_count || 1}×`, lat: address.lat, lng: address.lng });
+    });
+    favorites.slice(0, 2).forEach((favorite, index) => {
+      if (favorite?.address) cards.push({ id: `favorite-${index}`, kind: 'favorite', title: favorite.name, subtitle: favorite.address, lat: favorite.latitude, lng: favorite.longitude, favoriteId: favorite.id });
+    });
+    return cards.slice(0, 4);
+  }, [favoriteRoutes, recentAddresses, favorites]);
+
   const handleAddressChange = (type, value) => {
     if (type === 'pickup') {
       setPickup((prev) => ({ ...prev, address: value }));
@@ -325,42 +404,18 @@ export default function TaxiPage({ onNavigate }) {
       setDropoff(payload);
       setShowDropoffSuggestions(false);
     }
+    setError('');
   };
 
   const handleSaveSuggestionAsFavorite = async (item) => {
     const labelBase = item.name || item.address || 'Favorit';
-    const result = await api.saveFavoriteFromSearch({
-      name: labelBase,
-      address: item.address || item.name,
-      lat: item.lat,
-      lng: item.lng,
-      icon: 'star',
-    });
+    const result = await api.saveFavoriteFromSearch({ name: labelBase, address: item.address || item.name, lat: item.lat, lng: item.lng, icon: 'star' });
     if (!result.ok) {
       setError(result.error || 'Favorit konnte nicht gespeichert werden');
       return;
     }
     setFavorites(await api.fetchFavorites());
-  };
-
-  const resolveQuickPlace = (place) => {
-    if (place.preset) return place.preset;
-    const saved = savedPlaces.find((entry) => (entry.icon || '').toLowerCase() === place.id || (entry.name || '').toLowerCase() === place.id);
-    if (saved) {
-      return { address: saved.address, lat: saved.lat || saved.latitude, lng: saved.lng || saved.longitude };
-    }
-    return null;
-  };
-
-  const handleQuickPlace = (place) => {
-    const resolved = resolveQuickPlace(place);
-    if (!resolved) {
-      setError(`${place.label} ist noch nicht gespeichert.`);
-      return;
-    }
-    setDropoff(resolved);
-    setSearchMode('dropoff');
-    setError('');
+    toast.success('Favorit gespeichert');
   };
 
   const handleSaveHomeWork = async (kind) => {
@@ -369,13 +424,7 @@ export default function TaxiPage({ onNavigate }) {
       setError('Bitte zuerst einen Ort auswählen.');
       return;
     }
-    const ok = await api.savePlaceApi({
-      name: kind === 'home' ? 'Home' : 'Work',
-      icon: kind,
-      address: source.address,
-      lat: source.lat,
-      lng: source.lng,
-    });
+    const ok = await api.savePlaceApi({ name: kind === 'home' ? 'Home' : 'Work', icon: kind, address: source.address, lat: source.lat, lng: source.lng });
     if (!ok) {
       setError(`${kind === 'home' ? 'Home' : 'Work'} konnte nicht gespeichert werden.`);
       return;
@@ -384,14 +433,10 @@ export default function TaxiPage({ onNavigate }) {
     await refreshTaxiCollections();
   };
 
-  const handleFavoriteRouteSelect = (route) => {
-    if (route?.pickup) setPickup(route.pickup);
-    if (route?.dropoff) setDropoff(route.dropoff);
-    setError('');
-  };
-
-  const handleSuggestedPlace = (place) => {
-    setDropoff({ address: place.subtitle && place.type === 'favorite' ? place.subtitle : place.label, lat: place.lat, lng: place.lng });
+  const handleQuickDestination = (item) => {
+    if (!item?.lat || !item?.lng) return;
+    setDropoff({ address: item.address || item.title || item.label, lat: item.lat, lng: item.lng });
+    setSearchMode('dropoff');
     setError('');
   };
 
@@ -429,9 +474,7 @@ export default function TaxiPage({ onNavigate }) {
     if (!activeRide?.ride_id) return;
     const nextOpen = !chatOpen;
     setChatOpen(nextOpen);
-    if (nextOpen) {
-      await loadRideMessages(activeRide.ride_id);
-    }
+    if (nextOpen) await loadRideMessages(activeRide.ride_id);
   };
 
   const handleSendRideMessage = async () => {
@@ -473,61 +516,96 @@ export default function TaxiPage({ onNavigate }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] text-[#111827]" data-testid="taxi-customer-page">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col lg:flex-row">
-        <section className="w-full lg:w-[460px] xl:w-[520px] border-r border-slate-200 bg-white">
-          <div className="flex items-center gap-3 px-5 pt-5">
-            <button onClick={() => onNavigate?.('/')} className="rounded-full border border-slate-200 p-2 text-slate-600" data-testid="taxi-customer-back-button">
-              <ArrowLeft size={18} />
-            </button>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Taxi</p>
-              <h1 className="text-2xl font-black">Fahrt buchen</h1>
+    <div className="min-h-screen bg-[#f3f4f6] text-black" data-testid="taxi-customer-page">
+      <div className="relative min-h-screen overflow-hidden">
+        <section className="relative h-[46vh] min-h-[340px] w-full bg-[#eef2f7]" data-testid="taxi-customer-map-zone">
+          <TaxiMap
+            pickup={pickup?.lat ? pickup : null}
+            dropoff={dropoff?.lat ? dropoff : null}
+            driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
+            driverBearing={activeRide?.driver_bearing || 0}
+            driverTarget={activeRide?.status === 'started' ? activeRide?.dropoff : activeRide?.pickup}
+            driverPath={(activeRide?.driver_path || []).map((point) => [point.lat, point.lng]).filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]))}
+            height="100%"
+            nearbyDrivers={mapDrivers}
+          />
+
+          <div className="absolute inset-x-0 top-0 z-[500] bg-gradient-to-b from-white via-white/90 to-transparent px-4 pb-10 pt-4">
+            <div className="mx-auto flex max-w-3xl items-start justify-between gap-3" data-testid="taxi-customer-topbar">
+              <div className="flex items-center gap-3">
+                <button onClick={() => onNavigate?.('/')} className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-black" data-testid="taxi-customer-back-button">
+                  <ArrowLeft size={18} />
+                </button>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/45">Taxi</p>
+                  <h1 className="text-2xl font-black" data-testid="taxi-customer-hero-title">Wohin willst du fahren?</h1>
+                </div>
+              </div>
+              <div className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black/70" data-testid="taxi-customer-region-pill">
+                {region.regionLabel}
+              </div>
             </div>
           </div>
 
-          <div className="px-5 pb-8 pt-5">
-            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 shadow-sm" data-testid="taxi-customer-search-card">
-              <div className="mb-3 flex items-center justify-between">
+          <div className="pointer-events-none absolute bottom-5 left-4 right-4 z-[500]">
+            <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between gap-3 rounded-[22px] border border-white/80 bg-white/92 px-4 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.08)]" data-testid="taxi-customer-map-summary-card">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-black/35">Live Karte</p>
+                <p className="mt-1 text-sm font-semibold text-black">{pickup.address || 'Abholung'} → {dropoff.address || 'Ziel auswählen'}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <div className="rounded-full bg-black px-3 py-2 text-xs font-bold text-white" data-testid="taxi-customer-map-driver-count">{mapDrivers.length} Fahrer</div>
+                {selectedEstimate ? <div className="rounded-full bg-[#FFD500] px-3 py-2 text-xs font-bold text-black" data-testid="taxi-customer-map-price">€{Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}</div> : null}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative z-[600] -mt-8 rounded-t-[34px] border-t border-black/8 bg-white px-4 pb-10 pt-5 shadow-[0_-12px_40px_rgba(0,0,0,0.08)]" data-testid="taxi-customer-bottom-sheet">
+          <div className="mx-auto max-w-3xl">
+            <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-black/10" />
+
+            <div className="rounded-[28px] border border-black/8 bg-[#f8fafc] p-4 sm:p-5" data-testid="taxi-customer-search-card">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Wie bei Uber</p>
-                  <h2 className="mt-1 text-lg font-black">Einfach Adresse eingeben und sofort Preis sehen</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">3 Tap Booking</p>
+                  <h2 className="mt-1 text-xl font-black text-black">Suchen, wählen, bestellen</h2>
                 </div>
-                <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700" data-testid="taxi-customer-live-driver-badge">
+                <div className="rounded-full bg-black px-3 py-2 text-[11px] font-semibold text-white" data-testid="taxi-customer-live-driver-badge">
                   {mapDrivers.length} Fahrer in der Nähe
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="mt-4 space-y-3">
                 {[
                   { id: 'pickup', label: 'Abholung', value: pickup.address, placeholder: 'Dein Standort', active: searchMode === 'pickup', suggestions: pickupSuggestions, show: showPickupSuggestions },
-                  { id: 'dropoff', label: 'Wohin?', value: dropoff.address, placeholder: 'Adresse, Hotel, Flughafen, Bahnhof…', active: searchMode === 'dropoff', suggestions: dropoffSuggestions, show: showDropoffSuggestions },
+                  { id: 'dropoff', label: 'Wohin?', value: dropoff.address, placeholder: 'Adresse, Hotel, Flughafen oder Ort', active: searchMode === 'dropoff', suggestions: dropoffSuggestions, show: showDropoffSuggestions },
                 ].map((field) => (
                   <div key={field.id} className="relative" data-testid={`taxi-customer-field-${field.id}`}>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{field.label}</label>
-                    <div className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 transition ${field.active ? 'border-[#00C2FF] shadow-[0_0_0_4px_rgba(0,194,255,0.12)]' : 'border-slate-200'}`}>
-                      {field.id === 'pickup' ? <Navigation className="h-4 w-4 text-[#00C2FF]" /> : <Search className="h-4 w-4 text-slate-400" />}
+                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">{field.label}</label>
+                    <div className={`flex items-center gap-3 rounded-[22px] border bg-white px-4 py-4 transition ${field.active ? 'border-black shadow-[0_0_0_4px_rgba(0,0,0,0.06)]' : 'border-black/10'}`}>
+                      {field.id === 'pickup' ? <LocateFixed className="h-5 w-5 text-[#0F766E]" /> : <Search className="h-5 w-5 text-black/45" />}
                       <input
                         value={field.value}
                         onFocus={() => setSearchMode(field.id)}
                         onChange={(e) => handleAddressChange(field.id, e.target.value)}
                         placeholder={field.placeholder}
-                        className="w-full bg-transparent text-[15px] font-medium outline-none placeholder:text-slate-400"
+                        className="w-full bg-transparent text-[15px] font-semibold outline-none placeholder:text-black/35"
                         data-testid={`taxi-customer-input-${field.id}`}
                       />
                     </div>
                     {field.show && field.suggestions.length > 0 ? (
-                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl" data-testid={`taxi-customer-suggestions-${field.id}`}>
+                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-[22px] border border-black/10 bg-white shadow-xl" data-testid={`taxi-customer-suggestions-${field.id}`}>
                         {field.suggestions.slice(0, 6).map((item, index) => (
-                          <div key={`${field.id}-${index}`} className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 hover:bg-slate-50" data-testid={`taxi-customer-suggestion-${field.id}-${index}`}>
+                          <div key={`${field.id}-${index}`} className="flex items-start gap-3 border-b border-black/5 px-4 py-3 last:border-b-0 hover:bg-slate-50" data-testid={`taxi-customer-suggestion-${field.id}-${index}`}>
                             <button onMouseDown={() => handleSuggestionSelect(field.id, item)} className="flex min-w-0 flex-1 items-start gap-3 text-left">
-                              <div className="mt-0.5 rounded-xl bg-slate-100 p-2 text-slate-500"><MapPin size={14} /></div>
+                              <div className="mt-0.5 rounded-xl bg-black/5 p-2 text-black/60"><MapPin size={14} /></div>
                               <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-semibold text-slate-900">{item.name || item.address}</div>
-                                <div className="truncate text-xs text-slate-500">{item.cityZip || item.address}</div>
+                                <div className="truncate text-sm font-semibold text-black">{item.name || item.address}</div>
+                                <div className="truncate text-xs text-black/45">{item.cityZip || item.address}</div>
                               </div>
                             </button>
-                            {field.id === 'dropoff' ? <button onMouseDown={() => handleSaveSuggestionAsFavorite(item)} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-600" data-testid={`taxi-customer-save-suggestion-${index}`}>Speichern</button> : null}
+                            {field.id === 'dropoff' ? <button onMouseDown={() => handleSaveSuggestionAsFavorite(item)} className="rounded-full border border-black/10 px-2 py-1 text-[10px] font-semibold text-black/65" data-testid={`taxi-customer-save-suggestion-${index}`}>Speichern</button> : null}
                           </div>
                         ))}
                       </div>
@@ -536,152 +614,208 @@ export default function TaxiPage({ onNavigate }) {
                 ))}
               </div>
 
-              <div className="mt-4 rounded-2xl bg-slate-900 p-4 text-white" data-testid="taxi-customer-route-preview-card">
+              <div className="mt-4 rounded-[24px] bg-black px-4 py-4 text-white" data-testid="taxi-customer-route-preview-card">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Route</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Route</p>
                     <p className="mt-1 text-sm font-semibold">{pickup.address || 'Abholung wählen'} → {dropoff.address || 'Ziel wählen'}</p>
                   </div>
-                  {estimating ? <Loader2 className="h-5 w-5 animate-spin text-white/60" /> : null}
+                  {estimating ? <Loader2 className="h-5 w-5 animate-spin text-white/60" /> : <Sparkles className="h-5 w-5 text-[#FFD500]" />}
                 </div>
-                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">Suche reagiert schon ab wenigen Buchstaben und zoomt direkt auf Pickup + Ziel.</p>
+                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">Die Suche ist jetzt regional: Flughafen und Bahnhof passen sich an deinen Standort an.</p>
               </div>
+            </div>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-3" data-testid="taxi-customer-booking-mode-tabs">
-                {[
-                  { id: 'now', label: 'Jetzt bestellen' },
-                  { id: 'later', label: 'Später bestellen' },
-                  { id: 'other', label: 'Für jemand anderen' },
-                ].map((mode) => (
-                  <button key={mode.id} onClick={() => { setBookingMode(mode.id === 'other' ? 'now' : mode.id); setForOther(mode.id === 'other'); }} className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold ${((mode.id === 'other' && forOther) || (mode.id !== 'other' && bookingMode === mode.id && !forOther)) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700'}`} data-testid={`taxi-customer-booking-mode-${mode.id}`}>
-                    {mode.label}
+            <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-quick-destinations-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Schnellziele</p>
+                    <h3 className="mt-1 text-lg font-black">Passend zu deinem Standort</h3>
+                  </div>
+                  <div className="rounded-full bg-[#FFD500] px-3 py-2 text-[11px] font-bold text-black" data-testid="taxi-customer-region-summary-pill">{region.regionLabel}</div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <button onClick={() => (home ? handleQuickDestination({ ...home, lat: home.lat || home.latitude, lng: home.lng || home.longitude, address: home.address }) : handleSaveHomeWork('home'))} className="rounded-[22px] border border-black/8 bg-[#f8fafc] p-4 text-left" data-testid="taxi-customer-quick-place-home">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"><Home size={18} /></div>
+                      <div>
+                        <div className="text-sm font-bold text-black">Home</div>
+                        <div className="mt-1 text-[11px] text-black/45">{home?.address || 'Zuhause speichern'}</div>
+                      </div>
+                    </div>
                   </button>
-                ))}
+
+                  <button onClick={() => (work ? handleQuickDestination({ ...work, lat: work.lat || work.latitude, lng: work.lng || work.longitude, address: work.address }) : handleSaveHomeWork('work'))} className="rounded-[22px] border border-black/8 bg-[#f8fafc] p-4 text-left" data-testid="taxi-customer-quick-place-work">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFD500] text-black"><Briefcase size={18} /></div>
+                      <div>
+                        <div className="text-sm font-bold text-black">Work</div>
+                        <div className="mt-1 text-[11px] text-black/45">{work?.address || 'Arbeitsort speichern'}</div>
+                      </div>
+                    </div>
+                  </button>
+
+                  {regionalQuickPlaces.map((place) => {
+                    const Icon = place.icon;
+                    return (
+                      <button key={place.id} onClick={() => handleQuickDestination(place)} className="rounded-[22px] border border-black/8 bg-[#f8fafc] p-4 text-left" data-testid={`taxi-customer-quick-place-${place.id}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black border border-black/10"><Icon size={18} /></div>
+                          <div>
+                            <div className="text-sm font-bold text-black">{place.label}</div>
+                            <div className="mt-1 text-[11px] text-black/45">{place.address}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {bookingMode === 'later' ? (
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3" data-testid="taxi-customer-schedule-box">
-                  <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Abholzeit</label>
-                  <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" data-testid="taxi-customer-scheduled-at-input" />
-                </div>
-              ) : null}
+              <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-booking-modes-card">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Buchung</p>
+                <h3 className="mt-1 text-lg font-black">Flexibel buchen</h3>
 
-              {forOther ? (
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3" data-testid="taxi-customer-recipient-box">
-                  <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Name der Person</label>
-                  <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="Max Mustermann" data-testid="taxi-customer-recipient-name-input" />
-                  <label className="mt-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Telefon</label>
-                  <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="+49 …" data-testid="taxi-customer-recipient-phone-input" />
+                <div className="mt-4 grid gap-2" data-testid="taxi-customer-booking-mode-tabs">
+                  {[
+                    { id: 'now', label: 'Jetzt bestellen' },
+                    { id: 'later', label: 'Später bestellen' },
+                    { id: 'other', label: 'Für jemand anderen' },
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => { setBookingMode(mode.id === 'other' ? 'now' : mode.id); setForOther(mode.id === 'other'); }}
+                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-semibold ${((mode.id === 'other' && forOther) || (mode.id !== 'other' && bookingMode === mode.id && !forOther)) ? 'border-black bg-black text-white' : 'border-black/10 bg-[#f8fafc] text-black/70'}`}
+                      data-testid={`taxi-customer-booking-mode-${mode.id}`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
+
+                {bookingMode === 'later' ? (
+                  <div className="mt-3 rounded-[18px] border border-black/10 bg-[#f8fafc] p-3" data-testid="taxi-customer-schedule-box">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Abholzeit</label>
+                    <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="mt-2 w-full rounded-xl border border-black/10 px-3 py-3 text-sm" data-testid="taxi-customer-scheduled-at-input" />
+                  </div>
+                ) : null}
+
+                {forOther ? (
+                  <div className="mt-3 rounded-[18px] border border-black/10 bg-[#f8fafc] p-3" data-testid="taxi-customer-recipient-box">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Name der Person</label>
+                    <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="mt-2 w-full rounded-xl border border-black/10 px-3 py-3 text-sm" placeholder="Max Mustermann" data-testid="taxi-customer-recipient-name-input" />
+                    <label className="mt-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Telefon</label>
+                    <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} className="mt-2 w-full rounded-xl border border-black/10 px-3 py-3 text-sm" placeholder="+49 …" data-testid="taxi-customer-recipient-phone-input" />
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <AnimatePresence>
               {error ? (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" data-testid="taxi-customer-error-card">
                   {error}
-                  {bookingMode === 'later' ? <button onClick={() => setBottomSheetOpen(true)} className="mt-3 block rounded-full border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700" data-testid="taxi-customer-error-open-later-button">Später planen öffnen</button> : null}
                 </motion.div>
               ) : null}
             </AnimatePresence>
 
-            <div className="mt-4 grid grid-cols-2 gap-2" data-testid="taxi-customer-quick-places">
-              {QUICK_PLACES.map((place) => (
-                <button key={place.id} onClick={() => handleQuickPlace(place)} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left" data-testid={`taxi-customer-quick-place-${place.id}`}>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900"><span>{place.icon}</span>{place.label}</div>
-                  <p className="mt-1 text-[11px] text-slate-500">{place.subtitle}</p>
-                </button>
-              ))}
-            </div>
+            {!activeRide ? (
+              <div className="mt-4 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-suggestions-card">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Für dich</p>
+                      <h3 className="mt-1 text-lg font-black">Persönliche Schnellwahl</h3>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-2">
+                    {suggestionCards.map((place) => (
+                      <button key={place.id} onClick={() => handleQuickDestination(place)} className="rounded-[20px] border border-black/8 bg-[#f8fafc] px-4 py-4 text-left" data-testid={`taxi-customer-suggested-place-${place.id}`}>
+                        <div className="text-sm font-semibold text-black">{place.title}</div>
+                        <div className="mt-1 text-[11px] text-black/45">{place.subtitle}</div>
+                      </button>
+                    ))}
+                    {suggestionCards.length === 0 ? <div className="rounded-[20px] border border-dashed border-black/10 bg-[#f8fafc] px-4 py-4 text-sm text-black/45" data-testid="taxi-customer-suggested-empty">Deine letzten Ziele und Favoriten erscheinen hier automatisch.</div> : null}
+                  </div>
+                </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2" data-testid="taxi-customer-home-work-management">
-              <button onClick={() => handleSaveHomeWork('home')} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left" data-testid="taxi-customer-save-home-button">
-                <div className="text-sm font-bold text-slate-900">Home speichern</div>
-                <p className="mt-1 text-[11px] text-slate-500">Aktuellen Ort als Zuhause merken</p>
-              </button>
-              <button onClick={() => handleSaveHomeWork('work')} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left" data-testid="taxi-customer-save-work-button">
-                <div className="text-sm font-bold text-slate-900">Work speichern</div>
-                <p className="mt-1 text-[11px] text-slate-500">Aktuellen Ort als Arbeit merken</p>
-              </button>
-            </div>
+                <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-vehicles-card">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Fahrten</p>
+                      <h3 className="mt-1 text-lg font-black">Wähle dein Fahrzeug</h3>
+                    </div>
+                    {surge?.active ? <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700" data-testid="taxi-customer-surge-badge">Surge x{Number(surge.multiplier || 1).toFixed(1)}</span> : null}
+                  </div>
 
-            <div className="mt-3 grid gap-2" data-testid="taxi-customer-saved-home-work-list">
-              {savedPlaces.filter((place) => ['home', 'work'].includes((place.icon || '').toLowerCase()) || ['home', 'work'].includes((place.name || '').toLowerCase())).slice(0, 2).map((place) => (
-                <button key={place.place_id || place.name} onClick={() => setDropoff({ address: place.address, lat: place.lat, lng: place.lng })} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left" data-testid={`taxi-customer-saved-place-${(place.icon || place.name || '').toLowerCase()}`}>
-                  <div className="text-sm font-semibold text-slate-900">{place.name}</div>
-                  <div className="mt-1 text-[11px] text-slate-500">{place.address}</div>
-                </button>
-              ))}
-            </div>
+                  <div className="mt-4 space-y-3">
+                    {VEHICLES.map((vehicle) => {
+                      const estimate = estimates.find((item) => item.vehicle_type === vehicle.id);
+                      const selected = selectedVehicle === vehicle.id;
+                      return (
+                        <button
+                          key={vehicle.id}
+                          onClick={() => setSelectedVehicle(vehicle.id)}
+                          className={`w-full rounded-[22px] border px-4 py-4 text-left transition ${selected ? 'border-black bg-black text-white' : 'border-black/8 bg-[#f8fafc] text-black'}`}
+                          data-testid={`taxi-customer-vehicle-${vehicle.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`rounded-2xl p-3 ${selected ? 'bg-white/10' : 'bg-white border border-black/8'}`}><Car size={18} /></div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold">{vehicle.label}</span>
+                                  {vehicle.id === 'standard' ? <span className="rounded-full bg-[#FFD500] px-2 py-0.5 text-[10px] font-bold text-black">Empfohlen</span> : null}
+                                </div>
+                                <p className={`mt-1 text-xs ${selected ? 'text-white/60' : 'text-black/45'}`}>{vehicle.subtitle}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-base font-black">{estimate ? `€${Number(estimate.total || estimate.fare || 0).toFixed(2)}` : '—'}</p>
+                              <p className={`text-xs ${selected ? 'text-white/60' : 'text-black/45'}`}>{estimate ? `${estimate.eta_minutes || estimate.duration_minutes || 5} Min` : 'Berechne…'}</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-            <div className={`mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm ${bottomSheetOpen ? 'opacity-40' : ''}`} data-testid="taxi-customer-smart-suggestions-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Intelligente Suche</p>
-                  <h3 className="mt-1 text-lg font-black">Letzte Ziele und häufige Orte</h3>
+                  <button
+                    onClick={handleBookRide}
+                    disabled={!selectedEstimate || booking || !dropoff?.lat}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-[22px] bg-black px-4 py-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    data-testid="taxi-customer-book-button"
+                  >
+                    {booking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
+                    {booking ? 'Bucht…' : selectedEstimate ? `Bestellen · €${Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}` : 'Ziel eingeben'}
+                  </button>
+                  <p className="mt-3 text-center text-xs text-black/45" data-testid="taxi-customer-wallet-hint">Wallet-Guthaben: €{Number(user?.balance || 0).toFixed(2)}</p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-2">
-                {favoriteRoutes.slice(0, 2).map((route, index) => (
-                  <button key={`fav-route-${index}`} onClick={() => handleFavoriteRouteSelect(route)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left" data-testid={`taxi-customer-favorite-route-${index}`}>
-                    <div className="text-sm font-semibold text-slate-900">{route.pickup?.address} → {route.dropoff?.address}</div>
-                    <div className="mt-1 text-[11px] text-slate-500">Häufig gefahren · Ø €{Number(route.avg_fare || 0).toFixed(2)}</div>
-                  </button>
-                ))}
-                {recentAddresses.slice(0, 3).map((address, index) => (
-                  <button key={`recent-address-${index}`} onClick={() => setDropoff({ address: address.address, lat: address.lat, lng: address.lng })} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left" data-testid={`taxi-customer-recent-address-${index}`}>
-                    <div className="text-sm font-semibold text-slate-900">{address.address}</div>
-                    <div className="mt-1 text-[11px] text-slate-500">Zuletzt genutzt · {address.use_count || 1}×</div>
-                  </button>
-                ))}
-                {favorites.slice(0, 3).map((favorite, index) => (
-                  <button key={`favorite-address-${index}`} onClick={() => setDropoff({ address: favorite.address, lat: favorite.latitude, lng: favorite.longitude })} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left" data-testid={`taxi-customer-favorite-address-${index}`}>
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900"><Star size={14} className="text-amber-500" /> {favorite.name}</div>
-                    <div className="mt-1 text-[11px] text-slate-500">{favorite.address}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className={`mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm ${bottomSheetOpen ? 'opacity-40' : ''}`} data-testid="taxi-customer-best-flow-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Schneller bestellen</p>
-                  <h3 className="mt-1 text-lg font-black">Deine intelligenten Vorschläge</h3>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-2">
-                {suggestedPlaces.map((place, index) => (
-                  <button key={`suggested-${index}`} onClick={() => handleSuggestedPlace(place)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left" data-testid={`taxi-customer-suggested-place-${index}`}>
-                    <div className="text-sm font-semibold text-slate-900">{place.label}</div>
-                    <div className="mt-1 text-[11px] text-slate-500">{place.subtitle}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {activeRide ? (
-              <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-active-ride-card">
+            ) : (
+              <div className="mt-4 rounded-[28px] border border-black/8 bg-white p-4 shadow-sm" data-testid="taxi-customer-active-ride-card">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Aktive Fahrt</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Aktive Fahrt</p>
                     <h3 className="mt-1 text-lg font-black">{activeRide.driver?.name || 'Fahrer wird gesucht'}</h3>
                   </div>
                   <RideStatusBadge ride={activeRide} />
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Abholung</p>
+                  <div className="rounded-2xl bg-[#f8fafc] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Abholung</p>
                     <p className="mt-1 text-sm font-semibold">{activeRide.pickup?.address}</p>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Ziel</p>
+                  <div className="rounded-2xl bg-[#f8fafc] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Ziel</p>
                     <p className="mt-1 text-sm font-semibold">{activeRide.dropoff?.address}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-price">€{Number(activeRide.final_fare || activeRide.estimated_fare || 0).toFixed(2)}</div>
-                  <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-active-ride-eta">{activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min</div>
+                  <div className="rounded-full bg-[#f3f4f6] px-3 py-2 text-xs font-semibold text-black/70" data-testid="taxi-customer-active-ride-price">€{Number(activeRide.final_fare || activeRide.estimated_fare || 0).toFixed(2)}</div>
+                  <div className="rounded-full bg-[#f3f4f6] px-3 py-2 text-xs font-semibold text-black/70" data-testid="taxi-customer-active-ride-eta">{activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min</div>
                 </div>
                 <ActiveRideTracker
                   ride={activeRideTrackerData}
@@ -693,152 +827,13 @@ export default function TaxiPage({ onNavigate }) {
                   liveMovementLabel={liveMovementLabel}
                 />
                 {chatOpen ? (
-                  <RideChatPanel
-                    messages={rideMessages}
-                    loading={chatLoading}
-                    draft={messageDraft}
-                    onDraftChange={setMessageDraft}
-                    onSend={handleSendRideMessage}
-                  />
+                  <RideChatPanel messages={rideMessages} loading={chatLoading} draft={messageDraft} onDraftChange={setMessageDraft} onSend={handleSendRideMessage} />
                 ) : null}
-              </div>
-            ) : (
-              <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-vehicles-card">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Fahrten</p>
-                    <h3 className="mt-1 text-lg font-black">Wähle dein Fahrzeug</h3>
-                  </div>
-                  {surge?.active ? <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700" data-testid="taxi-customer-surge-badge">Surge x{Number(surge.multiplier || 1).toFixed(1)}</span> : null}
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {VEHICLES.map((vehicle) => {
-                    const estimate = estimates.find((item) => item.vehicle_type === vehicle.id);
-                    const selected = selectedVehicle === vehicle.id;
-                    return (
-                      <button
-                        key={vehicle.id}
-                        onClick={() => setSelectedVehicle(vehicle.id)}
-                        className={`w-full rounded-2xl border px-4 py-4 text-left transition ${selected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'}`}
-                        data-testid={`taxi-customer-vehicle-${vehicle.id}`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`rounded-2xl p-3 ${selected ? 'bg-white/10' : 'bg-slate-100'}`}><Car size={18} /></div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold">{vehicle.label}</span>
-                                {vehicle.id === 'standard' ? <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">Empfohlen</span> : null}
-                              </div>
-                              <p className={`mt-1 text-xs ${selected ? 'text-white/60' : 'text-slate-500'}`}>{vehicle.subtitle}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-base font-black">{estimate ? `€${Number(estimate.total || estimate.fare || 0).toFixed(2)}` : '—'}</p>
-                            <p className={`text-xs ${selected ? 'text-white/60' : 'text-slate-500'}`}>{estimate ? `${estimate.eta_minutes || estimate.duration_minutes || 5} Min` : 'Berechne…'}</p>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  onClick={handleBookRide}
-                  disabled={!selectedEstimate || booking || !dropoff?.lat}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  data-testid="taxi-customer-book-button"
-                >
-                  {booking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
-                  {booking ? 'Bucht…' : selectedEstimate ? `Bestellen · €${Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}` : 'Ziel eingeben'}
-                </button>
-                <p className="mt-3 text-center text-xs text-slate-500" data-testid="taxi-customer-wallet-hint">Bezahlung aktuell direkt per Wallet. Guthaben: €{Number(user?.balance || 0).toFixed(2)}</p>
               </div>
             )}
           </div>
         </section>
-
-        <section className="relative flex-1 bg-slate-100">
-          <div className="absolute inset-0">
-            <TaxiMap
-              pickup={pickup?.lat ? pickup : null}
-              dropoff={dropoff?.lat ? dropoff : null}
-              driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
-              driverBearing={activeRide?.driver_bearing || 0}
-              driverTarget={activeRide?.status === 'started' ? activeRide?.dropoff : activeRide?.pickup}
-              driverPath={(activeRide?.driver_path || []).map((point) => [point.lat, point.lng]).filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]))}
-              height="100%"
-              nearbyDrivers={mapDrivers}
-            />
-          </div>
-          <div className="pointer-events-none absolute left-6 right-6 top-6 z-[500] flex justify-center">
-            <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm" data-testid="taxi-customer-map-helper">
-              <Navigation size={14} className="text-[#00C2FF]" /> Karte zoomt automatisch auf Abholung und Ziel
-            </div>
-          </div>
-          <div className="pointer-events-none absolute bottom-6 left-6 right-6 z-[500]">
-            <div className="pointer-events-auto mx-auto flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-[24px] border border-white/70 bg-white/92 px-4 py-3 shadow-lg" data-testid="taxi-customer-map-summary-card">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Vorschau</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{pickup.address || 'Abholung'} → {dropoff.address || 'Ziel auswählen'}</p>
-                {activeRide ? <p className="mt-1 text-xs text-slate-500" data-testid="taxi-customer-map-live-movement-copy">{liveMovementLabel || 'Live-Position wird laufend aktualisiert.'}</p> : null}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-map-driver-count">{mapDrivers.length} Fahrer</div>
-                {selectedEstimate ? <div className="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white" data-testid="taxi-customer-map-price">€{Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}</div> : null}
-                {selectedEstimate ? <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700" data-testid="taxi-customer-map-eta">{selectedEstimate.eta_minutes || selectedEstimate.duration_minutes || 5} Min</div> : null}
-              </div>
-            </div>
-          </div>
-        </section>
       </div>
-
-      <AnimatePresence>
-        {!activeRide && bottomSheetOpen && selectedEstimate ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[700] bg-black/30" onClick={() => setBottomSheetOpen(false)}>
-            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: 'spring', stiffness: 180, damping: 24 }} className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-2xl rounded-t-[32px] bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()} data-testid="taxi-customer-vehicle-bottom-sheet">
-              <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-slate-200" />
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Fahrzeuge</p>
-                  <h3 className="mt-1 text-lg font-black">Wähle deine Fahrt</h3>
-                </div>
-                <button onClick={() => setBottomSheetOpen(false)} className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600" data-testid="taxi-customer-bottom-sheet-close">Schließen</button>
-              </div>
-              <div className="mt-4 space-y-3">
-                {VEHICLES.map((vehicle) => {
-                  const estimate = estimates.find((item) => item.vehicle_type === vehicle.id);
-                  const selected = selectedVehicle === vehicle.id;
-                  return (
-                    <button key={`sheet-${vehicle.id}`} onClick={() => setSelectedVehicle(vehicle.id)} className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left ${selected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-900'}`} data-testid={`taxi-customer-bottom-sheet-vehicle-${vehicle.id}`}>
-                      <div>
-                        <div className="text-sm font-bold">{vehicle.label}</div>
-                        <div className={`mt-1 text-xs ${selected ? 'text-white/65' : 'text-slate-500'}`}>{vehicle.subtitle}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-black">{estimate ? `€${Number(estimate.total || estimate.fare || 0).toFixed(2)}` : '—'}</div>
-                        <div className={`mt-1 text-xs ${selected ? 'text-white/65' : 'text-slate-500'}`}>{estimate ? `${estimate.eta_minutes || estimate.duration_minutes || 5} Min` : '—'}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" data-testid="taxi-customer-bottom-sheet-cta-state">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-semibold text-slate-700">Ausgewählt</span>
-                  <span className="font-black text-slate-900">{VEHICLES.find((v) => v.id === selectedVehicle)?.label || 'Fahrt'}</span>
-                </div>
-                <div className="mt-1 text-xs text-slate-500">{dropoff.address ? `Ziel: ${dropoff.address}` : 'Bitte Ziel auswählen'}</div>
-              </div>
-              <button onClick={handleBookRide} disabled={!selectedEstimate || booking} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-4 text-sm font-semibold text-white disabled:opacity-50" data-testid="taxi-customer-bottom-sheet-book-button">
-                {booking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
-                {booking ? 'Bucht…' : `Bestellen · €${Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}`}
-              </button>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
     </div>
   );
 }
