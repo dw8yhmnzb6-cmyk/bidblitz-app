@@ -21,6 +21,18 @@ import bcrypt
 
 router = APIRouter(prefix="/api/staff", tags=["staff"])
 
+
+def _staff_email_candidates(raw_email: str) -> list[str]:
+    email = (raw_email or "").strip().lower()
+    if not email:
+        return [""]
+    candidates = [email]
+    if email.endswith("@bidblitz.ae"):
+        candidates.append(email[:-2] + "com")
+    elif email.endswith("@bidblitz.com"):
+        candidates.append(email[:-3] + "ae")
+    return list(dict.fromkeys(candidates))
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Database Dependency
 # ═══════════════════════════════════════════════════════════════════════════
@@ -247,12 +259,17 @@ async def _reset_staff_auth_failures(identifier: str):
 @router.post("/auth/login")
 async def staff_login(data: StaffLogin, request: Request, response: Response):
     """Mitarbeiter Login für Self-Service Portal"""
-    email = (data.email or "").strip().lower()
+    email_candidates = _staff_email_candidates(data.email)
+    email = email_candidates[0]
     identifier = _staff_auth_identifier(request, "staff_login", email or "unknown")
     await _ensure_staff_auth_allowed(identifier)
 
     # Find staff member by email
-    staff = await db.staff_members.find_one({"email": email}, {"_id": 0})
+    staff = None
+    for candidate in email_candidates:
+        staff = await db.staff_members.find_one({"email": candidate}, {"_id": 0})
+        if staff:
+            break
     
     if not staff:
         await _record_staff_auth_failure(identifier)

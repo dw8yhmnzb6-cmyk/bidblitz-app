@@ -21,6 +21,18 @@ logger = logging.getLogger("bidblitz.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+def _auth_email_candidates(raw_email: str) -> list[str]:
+    email = (raw_email or "").lower().strip()
+    if not email:
+        return [""]
+    candidates = [email]
+    if email.endswith("@bidblitz.ae"):
+        candidates.append(email[:-2] + "com")
+    elif email.endswith("@bidblitz.com"):
+        candidates.append(email[:-3] + "ae")
+    return list(dict.fromkeys(candidates))
+
+
 async def _record_login_success(user_id: str, ip: str, user_agent: str):
     await db.users.update_one(
         {"_id": ObjectId(user_id)},
@@ -316,7 +328,8 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 @router.post("/login")
 @limiter.limit(RATE_LOGIN)
 async def login(req: LoginRequest, request: Request, response: Response):
-    email = req.email.lower().strip()
+    email_candidates = _auth_email_candidates(req.email)
+    email = email_candidates[0]
     ip, ua = get_client_info(request)
     identifier = f"{ip}:{email}"
 
@@ -331,10 +344,16 @@ async def login(req: LoginRequest, request: Request, response: Response):
         else:
             await db.login_attempts.delete_one({"identifier": identifier})
 
-    user = await db.users.find_one({"email": email})
+    user = None
+    matched_email = email
+    for candidate in email_candidates:
+        user = await db.users.find_one({"email": candidate})
+        if user:
+            matched_email = candidate
+            break
 
     # Soft launch gate (before password check to avoid leaking user existence)
-    if user and not await is_email_whitelisted(email):
+    if user and not await is_email_whitelisted(matched_email):
         raise HTTPException(status_code=403, detail="Access restricted during soft launch. Contact support.")
 
     matched_hash = _verify_legacy_password(req.password, user) if user else None
@@ -350,7 +369,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         else:
             await db.login_attempts.insert_one({"identifier": identifier, "attempts": 1})
 
-        await log_audit(AuditEvent.LOGIN_FAILED, email=email, ip=ip, user_agent=ua,
+        await log_audit(AuditEvent.LOGIN_FAILED, email=matched_email, ip=ip, user_agent=ua,
                         details={"reason": "invalid_credentials"}, severity="warn")
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -358,7 +377,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         await log_audit(
             "password_reset_enforced",
             user_id=str(user["_id"]),
-            email=email,
+            email=matched_email,
             ip=ip,
             user_agent=ua,
             details={"reason": user.get("force_password_change_reason", "password_reset_required")},
@@ -413,7 +432,7 @@ async def login(req: LoginRequest, request: Request, response: Response):
         # Send OTP email
         try:
             from core.email import send_otp_email
-            send_otp_email(email, otp, "login", user.get("name", ""))
+            send_otp_email(matched_email, otp, "login", user.get("name", ""))
         except Exception as e:
             logger.warning(f"Failed to send OTP email: {e}")
         
