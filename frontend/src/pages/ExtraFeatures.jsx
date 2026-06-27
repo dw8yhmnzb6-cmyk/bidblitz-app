@@ -15,7 +15,9 @@ export const GlobalSearch = ({ onNavigate, onClose }) => {
       try {
         const r = await fetch(`${API}/api/extras/search?q=${encodeURIComponent(query)}`, { credentials: "include" });
         if (r.ok) { const d = await r.json(); setResults(d.results || []); }
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     }, 300);
     return () => clearTimeout(timer);
   }, [query]);
@@ -46,7 +48,7 @@ export const GlobalSearch = ({ onNavigate, onClose }) => {
             </motion.button>
           ))}
           {query.length >= 2 && results.length === 0 && (
-            <p className="text-center text-gray-600 py-8">Keine Ergebnisse für "{query}"</p>
+            <p className="text-center text-gray-600 py-8">Keine Ergebnisse für &quot;{query}&quot;</p>
           )}
         </div>
       </div>
@@ -226,7 +228,7 @@ export const OnboardingTour = ({ onComplete }) => {
         {step < steps.length - 1 ? (
           <button onClick={() => setStep(step + 1)} className="w-full py-4 bg-cyan-500 rounded-2xl font-bold text-black">Weiter</button>
         ) : (
-          <button onClick={onComplete} className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl font-bold text-black" data-testid="onboarding-done">Los geht's!</button>
+          <button onClick={onComplete} className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl font-bold text-black" data-testid="onboarding-done">Los geht&apos;s!</button>
         )}
         {step < steps.length - 1 && (
           <button onClick={onComplete} className="w-full py-3 text-gray-500 text-sm mt-2">Überspringen</button>

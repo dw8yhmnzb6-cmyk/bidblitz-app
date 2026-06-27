@@ -168,13 +168,13 @@ async def global_search(q: str = "", limit: int = 10):
     
     # Restaurants
     restaurants = await db.food_restaurants.find({"name": regex, "status": "approved"}, {"_id": 0, "restaurant_id": 1, "name": 1, "category": 1}).limit(3).to_list(3)
-    for r in restaurants:
-        results.append({"type": "restaurant", "icon": "🍕", "title": r["name"], "subtitle": r.get("category",""), "route": f"/food"})
+    for restaurant in restaurants:
+        results.append({"type": "restaurant", "icon": "🍕", "title": restaurant["name"], "subtitle": restaurant.get("category", ""), "route": "/food"})
     
     # Reselling
     listings = await db.resell_listings.find({"title": regex, "status": "active"}, {"_id": 0, "listing_id": 1, "title": 1, "price": 1}).limit(3).to_list(3)
-    for l in listings:
-        results.append({"type": "listing", "icon": "🏷️", "title": l["title"], "subtitle": f"€{l['price']:.2f}", "route": "/reselling"})
+    for listing in listings:
+        results.append({"type": "listing", "icon": "🏷️", "title": listing["title"], "subtitle": f"€{listing['price']:.2f}", "route": "/reselling"})
     
     # BlitzJobs
     jobs = await db.blitz_jobs.find({"title": regex, "status": "open"}, {"_id": 0, "job_id": 1, "title": 1, "budget": 1}).limit(3).to_list(3)
@@ -203,7 +203,6 @@ async def abo_calculator(request: Request):
     
     # Calculate monthly savings with Premium
     resell_tx = await db.resell_transactions.count_documents({"seller_email": email})
-    jobs_done = await db.blitz_jobs.count_documents({"worker_email": email, "status": "completed"})
     cashback_claims = await db.cashback_claims.count_documents({"user_email": email})
     cashout_count = await db.cashouts.count_documents({"user_email": email})
     
