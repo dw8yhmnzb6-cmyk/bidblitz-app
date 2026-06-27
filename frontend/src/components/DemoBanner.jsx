@@ -18,10 +18,10 @@ export const DemoBanner = ({ onExit }) => (
     <div className="flex items-center gap-2">
       <FlaskConical size={13} className="text-[#FFB800]" />
       <span className="text-[11px] font-semibold text-[#FFB800] tracking-wide uppercase">
-        Demo Mode
+        Vorschau
       </span>
       <span className="text-[10px] text-[#FFB800]/60 font-medium hidden sm:inline">
-        — No real transactions
+        — keine Live-Transaktionen
       </span>
     </div>
     <motion.button
@@ -35,7 +35,7 @@ export const DemoBanner = ({ onExit }) => (
       whileTap={{ scale: 0.92 }}
       onClick={onExit}
     >
-      Exit Demo
+      Schließen
       <X size={10} />
     </motion.button>
   </motion.div>

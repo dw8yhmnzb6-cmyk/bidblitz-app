@@ -546,11 +546,6 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <motion.button data-testid="cta-login-btn" className="flex-1 py-[12px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#fff" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, ...slide }} whileTap={{ scale: 0.96 }} onClick={onLogin}>
                 <LogIn size={14} strokeWidth={2} />{t("auth.signin") || "Login"}
               </motion.button>
-              {!isDemoMode && (
-                <motion.button data-testid="try-demo-btn" className="flex-1 py-[12px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2" style={{ background: "rgba(255,184,0,0.06)", border: "1px solid rgba(255,184,0,0.12)", color: "#FFB800" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26, ...slide }} whileTap={{ scale: 0.96 }} onClick={onStartDemo}>
-                  <FlaskConical size={14} strokeWidth={1.8} />Try Demo
-                </motion.button>
-              )}
             </div>
           </div>
         ) : null}

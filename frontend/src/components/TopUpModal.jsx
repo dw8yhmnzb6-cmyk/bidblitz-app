@@ -326,7 +326,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       </div>
                       <div className="flex items-center gap-1.5 pt-1">
                         <CreditCard size={12} className="text-[#444]" />
-                        <span className="text-[10px] text-[#444]">Powered by Stripe (Test Mode)</span>
+                        <span className="text-[10px] text-[#444]">Powered by Stripe</span>
                       </div>
                     </motion.div>
                   )}

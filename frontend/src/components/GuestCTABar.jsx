@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { LogIn, UserPlus, FlaskConical } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
-export const GuestCTABar = ({ onLogin, onRegister, onStartDemo, isDemoMode }) => (
+export const GuestCTABar = ({ onLogin, onRegister }) => (
   <motion.div
     data-testid="guest-cta-bar"
     className="flex items-center gap-2 px-5 py-3 mb-1"
@@ -31,18 +31,6 @@ export const GuestCTABar = ({ onLogin, onRegister, onStartDemo, isDemoMode }) =>
       <LogIn size={13} strokeWidth={2} />
       Login
     </motion.button>
-    {!isDemoMode && (
-      <motion.button
-        data-testid="page-demo-btn"
-        className="py-[10px] px-3 rounded-xl font-semibold text-[11px] flex items-center justify-center gap-1.5"
-        style={{ background: "rgba(255,184,0,0.06)", border: "1px solid rgba(255,184,0,0.12)", color: "#FFB800" }}
-        whileTap={{ scale: 0.95 }}
-        onClick={onStartDemo}
-      >
-        <FlaskConical size={13} strokeWidth={1.8} />
-        Demo
-      </motion.button>
-    )}
   </motion.div>
 );
 
