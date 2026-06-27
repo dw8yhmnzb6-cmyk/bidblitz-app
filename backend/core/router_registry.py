@@ -44,6 +44,7 @@ def register_all_routers(app):
         ("routes.monitoring", "router"),
         ("routes.diag", "router"),
         ("routes.merchant_admin", "router"),
+        ("routes.merchant_portal", "router"),
         ("routes.blitz_transfer", "router"),
         ("routes.smm_boost", "router"),
         ("routes.export", "router"),

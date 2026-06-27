@@ -108,6 +108,8 @@ async def get_dashboard(request: Request):
 
     # Profile
     profile = await db.merchant_profiles.find_one({"user_id": uid}, {"_id": 0})
+    merchant_doc = await db.merchants.find_one({"user_id": uid}, {"_id": 0, "public_slug": 1, "business_name": 1})
+    public_slug = (profile or {}).get("public_slug") or (merchant_doc or {}).get("public_slug")
 
     return {
         "revenue": {
@@ -127,6 +129,7 @@ async def get_dashboard(request: Request):
         "appointments": appointments,
         "restaurants": len(my_restaurants),
         "hotels": len(my_hotels),
+        "public_slug": public_slug,
         "profile": profile,
     }
 
