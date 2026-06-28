@@ -18,6 +18,8 @@ DEFAULT_FLAGS = {
     "kids": {"enabled": True, "access": "all", "label": "BidBlitz Kids"},
     "scanner": {"enabled": True, "access": "all", "label": "Barcode Scanner"},
     "export": {"enabled": True, "access": "all", "label": "Data Export"},
+    "biopay": {"enabled": True, "access": "merchant", "label": "BioPay / PalmPay"},
+    "biopay_face": {"enabled": False, "access": "admin", "label": "BioPay FacePay"},
 }
 
 # Access levels: "all", "admin", "beta", "merchant"

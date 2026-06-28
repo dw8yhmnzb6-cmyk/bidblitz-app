@@ -21,6 +21,7 @@ import BarcodeModal from "../components/BarcodeModal";
 import SendMoneyModal from "../components/SendMoneyModal";
 import QuickSendButton from "../components/QuickSendButton";
 import { api } from "../services/api";
+import { WalletBioPayCard, WalletPaymentPinCard } from "../components/wallet/WalletSecurityCards";
 import { useI18n } from "../store";
 import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
 import GuestCTABar from "../components/GuestCTABar";
@@ -577,6 +578,19 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             delay={0.30}
           />
         </motion.div>
+
+        {!isGuest && (
+          <motion.div
+            className="grid gap-4 mb-5 lg:grid-cols-2"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.28, ...slide }}
+            data-testid="wallet-security-grid"
+          >
+            <WalletPaymentPinCard />
+            <WalletBioPayCard />
+          </motion.div>
+        )}
 
         {/* ── Gespeicherte Zahlungsmethode ── */}
         {!isGuest && (

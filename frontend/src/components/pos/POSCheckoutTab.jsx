@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { ScanLine, Search, Trash2, Loader2, Check, QrCode, CreditCard, Smartphone, Banknote, Download, Gift, Wallet, Ticket, WifiOff, Wifi } from "lucide-react";
+import { ScanLine, Search, Trash2, Loader2, Check, QrCode, CreditCard, Smartphone, Banknote, Download, Gift, Wallet, Ticket, WifiOff, Wifi, Hand } from "lucide-react";
 import { toast } from "sonner";
 import { printReceipt } from "../../utils/escposPrinter";
 import { POSVoucherSale, POSWalletTopUp } from "./POSVoucherComponents";
 import { POSSecurePaymentPanel } from "./POSSecurePaymentPanel";
+import { POSBioPayPanel } from "./POSBioPayPanel";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -97,7 +98,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   const [cashReceived, setCashReceived] = useState("");
   const [cardRef, setCardRef] = useState("");
   const [discountPct, setDiscountPct] = useState(0);
-  const [specialMode, setSpecialMode] = useState(null); // null | "voucher" | "topup" | "secure-payment"
+  const [specialMode, setSpecialMode] = useState(null); // null | "voucher" | "topup" | "secure-payment" | "biopay"
   const [voucherPayCode, setVoucherPayCode] = useState("");
   const [voucherChecking, setVoucherChecking] = useState(false);
   const [appliedVouchers, setAppliedVouchers] = useState([]); // [{code, applied}]
@@ -494,6 +495,12 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
             data-testid="pos-toggle-secure-payment">
             <CreditCard size={11} /> Secure Pay
           </button>
+          <button onClick={() => setSpecialMode(specialMode === "biopay" ? null : "biopay")}
+            className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"
+            style={{ background: specialMode === "biopay" ? "rgba(125,244,210,0.2)" : "rgba(255,255,255,0.05)", color: specialMode === "biopay" ? "#7df4d2" : "white" }}
+            data-testid="pos-toggle-biopay">
+            <Hand size={11} /> PalmPay
+          </button>
         </div>
       </div>
 
@@ -510,6 +517,11 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
       {specialMode === "secure-payment" && (
         <Card title="Secure Payment" testid="pos-secure-payment-card">
           <POSSecurePaymentPanel storeId={storeId} registerId={registerId} />
+        </Card>
+      )}
+      {specialMode === "biopay" && (
+        <Card title="PalmPay / BioPay" testid="pos-biopay-card">
+          <POSBioPayPanel storeId={storeId} registerId={registerId} />
         </Card>
       )}
 

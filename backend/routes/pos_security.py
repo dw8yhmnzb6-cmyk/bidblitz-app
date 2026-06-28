@@ -361,7 +361,7 @@ async def pos_security_dashboard(store_id: str, request: Request):
     locked_employees = await db.pos_employee_security_state.find({"merchant_id": merchant_id, "locked_until": {"$gt": now.isoformat()}}, {"_id": 0, "user_id": 1, "store_id": 1, "locked_until": 1, "failed_lookup_count": 1}).to_list(50)
     limits = await get_effective_limits(merchant_id, store_id, actor["user_id"], actor["role"])
     role_configs = await get_role_configs(merchant_id)
-    return {"generated_at": now_iso(), "alerts": alerts, "fraud_alerts": [item for item in alerts if item.get("type") in {"payment_pin_lock", "failed_customer_lookups", "unusual_topup", "suspicious_cashier_activity", "excessive_refunds"}], "locked_customers": locked_customers, "locked_employees": locked_employees, "transaction_limits": limits, "approval_queue": approvals, "role_configs": list(role_configs.values())}
+    return {"generated_at": now_iso(), "merchant_id": merchant_id, "store_id": actor["store_id"], "alerts": alerts, "fraud_alerts": [item for item in alerts if item.get("type") in {"payment_pin_lock", "failed_customer_lookups", "unusual_topup", "suspicious_cashier_activity", "excessive_refunds", "biopay_failed_verify"}], "locked_customers": locked_customers, "locked_employees": locked_employees, "transaction_limits": limits, "approval_queue": approvals, "role_configs": list(role_configs.values())}
 
 
 @router.get("/pos/security/reports")
@@ -455,6 +455,12 @@ async def pos_security_approval_decision(approval_id: str, req: ApprovalDecision
             result_payload = await execute_refund_action({**payload, "amount": approval.get("amount", 0)}, actor, request=request, approval_id=approval_id)
         elif approval.get("approval_type") == "gift_card_create":
             result_payload = await execute_gift_card_action({**payload, "amount": approval.get("amount", 0)}, actor, request=request, approval_id=approval_id)
+        elif approval.get("approval_type") == "manual_wallet_adjustment":
+            result_payload = {"status": "approved", "next_step": "apply_manual_wallet_adjustment", "payload": payload}
+        elif approval.get("approval_type") == "customer_account_change":
+            result_payload = {"status": "approved", "next_step": "apply_customer_account_change", "payload": payload}
+        elif approval.get("approval_type") == "biopay_payment":
+            result_payload = {"status": "approved", "next_step": "cashier_retry_biopay", "payload": payload}
     await db.pos_security_approvals.update_one({"approval_id": approval_id}, {"$set": {"status": req.decision, "decided_at": now_iso(), "decided_by": actor["user_id"], "decision_note": req.note, "result": sanitize_audit_value(result_payload or {})}})
     await audit_pos_security_event("pos_manager_approval", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"approval_id": approval_id, "decision": req.decision, "approval_type": approval.get("approval_type")}, severity="info")
     return {"ok": True, "approval_id": approval_id, "decision": req.decision, "result": result_payload}

@@ -44,8 +44,14 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [invoiceLinks, setInvoiceLinks] = useState([]);
   const [securityData, setSecurityData] = useState(null);
   const [securityRoles, setSecurityRoles] = useState([]);
+  const [securityPermissions, setSecurityPermissions] = useState([]);
   const [securityReports, setSecurityReports] = useState(null);
   const [securityPeriod, setSecurityPeriod] = useState("daily");
+  const [securityLimitScopeType, setSecurityLimitScopeType] = useState("branch");
+  const [securityLimitScopeId, setSecurityLimitScopeId] = useState("");
+  const [securityLimitValues, setSecurityLimitValues] = useState({});
+  const [biopayData, setBiopayData] = useState({ terminals: [], sessions: [], facepay_enabled: false });
+  const [biopayTerminalForm, setBiopayTerminalForm] = useState({ label: "", register_id: "", palm_enabled: true, face_enabled: false });
   const refreshRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -118,11 +124,76 @@ const MerchantDashboardPage = ({ onBack }) => {
       const activeStoreId = selectedBranch || branches[0]?.branch_id || branches[0]?.store_id;
       if (activeStoreId) {
         api.getPosSecurityDashboard(activeStoreId).then(d => setSecurityData(d)).catch(() => undefined);
-        api.getPosSecurityRoles(activeStoreId).then(d => setSecurityRoles(d.roles || [])).catch(() => undefined);
+        api.getPosSecurityRoles(activeStoreId).then(d => { setSecurityRoles(d.roles || []); setSecurityPermissions(d.all_permissions || []); }).catch(() => undefined);
         api.getPosSecurityReports(activeStoreId, securityPeriod).then(d => setSecurityReports(d)).catch(() => undefined);
+        api.getPosSecurityLimits("branch", activeStoreId).then(d => { setSecurityLimitScopeType("branch"); setSecurityLimitScopeId(activeStoreId); setSecurityLimitValues(d.values || {}); }).catch(() => undefined);
+        api.getBioPayDashboard(activeStoreId).then(d => setBiopayData(d)).catch(() => undefined);
       }
     }
   }, [tab, selectedBranch, branches, securityPeriod]);
+
+  const activeSecurityStoreId = selectedBranch || branches[0]?.branch_id || branches[0]?.store_id || "";
+
+  const refreshSecurity = async () => {
+    if (!activeSecurityStoreId) return;
+    const [dashboard, rolesData, reportsData, limitsData, biopayDashboard] = await Promise.all([
+      api.getPosSecurityDashboard(activeSecurityStoreId).catch(() => null),
+      api.getPosSecurityRoles(activeSecurityStoreId).catch(() => ({ roles: [], all_permissions: [] })),
+      api.getPosSecurityReports(activeSecurityStoreId, securityPeriod).catch(() => null),
+      api.getPosSecurityLimits(securityLimitScopeType, securityLimitScopeId || activeSecurityStoreId).catch(() => null),
+      api.getBioPayDashboard(activeSecurityStoreId).catch(() => ({ terminals: [], sessions: [], facepay_enabled: false })),
+    ]);
+    if (dashboard) setSecurityData(dashboard);
+    setSecurityRoles(rolesData.roles || []);
+    setSecurityPermissions(rolesData.all_permissions || []);
+    if (reportsData) setSecurityReports(reportsData);
+    if (limitsData) setSecurityLimitValues(limitsData.values || {});
+    setBiopayData(biopayDashboard || { terminals: [], sessions: [], facepay_enabled: false });
+  };
+
+  const toggleRolePermission = (roleKey, permission) => {
+    setSecurityRoles((prev) => prev.map((role) => {
+      if (role.role !== roleKey) return role;
+      const permissions = new Set(role.permissions || []);
+      if (permissions.has(permission)) permissions.delete(permission); else permissions.add(permission);
+      return { ...role, permissions: Array.from(permissions) };
+    }));
+  };
+
+  const saveRolePermissions = async (role) => {
+    await api.updatePosSecurityRole(role.role, activeSecurityStoreId, { permissions: role.permissions || [] });
+    await refreshSecurity();
+  };
+
+  const loadLimitScope = async (scopeType, scopeId) => {
+    if (!scopeId) return;
+    const data = await api.getPosSecurityLimits(scopeType, scopeId);
+    setSecurityLimitScopeType(scopeType);
+    setSecurityLimitScopeId(scopeId);
+    setSecurityLimitValues(data.values || {});
+  };
+
+  const saveSecurityLimits = async () => {
+    if (!securityLimitScopeId) return;
+    await api.updatePosSecurityLimits({ scope_type: securityLimitScopeType, scope_id: securityLimitScopeId, values: securityLimitValues });
+    await refreshSecurity();
+  };
+
+  const decideApproval = async (approvalId, decision) => {
+    await api.decidePosSecurityApproval(approvalId, { decision, note: `Merchant dashboard ${decision}` });
+    await refreshSecurity();
+  };
+
+  const createBioPayTerminal = async () => {
+    await api.createBioPayTerminal({ store_id: activeSecurityStoreId, ...biopayTerminalForm });
+    setBiopayTerminalForm({ label: "", register_id: "", palm_enabled: true, face_enabled: false });
+    await refreshSecurity();
+  };
+
+  const updateTerminal = async (terminalId, patch) => {
+    await api.updateBioPayTerminal(terminalId, patch);
+    await refreshSecurity();
+  };
 
   // Load register transactions
   useEffect(() => {
@@ -222,7 +293,7 @@ const MerchantDashboardPage = ({ onBack }) => {
         </div>
         <div className="max-w-3xl mx-auto flex gap-1 px-4 pb-2 overflow-x-auto">
           {tabs.map(tb => (
-            <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }}
+            <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }} data-testid={`merchant-tab-${tb.id}`}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-semibold whitespace-nowrap ${tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "text-[#444] bg-white/[0.01] border border-white/[0.03]"}`}>
               <tb.icon size={10} /> {tb.label}
             </motion.button>
@@ -984,6 +1055,10 @@ const MerchantDashboardPage = ({ onBack }) => {
                         </div>
                         <p className="text-[11px] font-bold text-[#FFB800]">€{Number(item.amount || 0).toFixed(2)}</p>
                       </div>
+                      <div className="mt-3 flex gap-2">
+                        <button type="button" onClick={() => decideApproval(item.approval_id, "approved")} className="rounded-lg bg-[#00D26A]/15 px-3 py-1.5 text-[10px] font-bold text-[#00D26A]" data-testid={`merchant-approval-approve-${item.approval_id}`}>Approve</button>
+                        <button type="button" onClick={() => decideApproval(item.approval_id, "rejected")} className="rounded-lg bg-[#FF5A5A]/15 px-3 py-1.5 text-[10px] font-bold text-[#FF8B8B]" data-testid={`merchant-approval-reject-${item.approval_id}`}>Reject</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1015,6 +1090,26 @@ const MerchantDashboardPage = ({ onBack }) => {
 
             <Panel title="Transaction Limits & Roles">
               <div className="space-y-2">
+                <div className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-3" data-testid="merchant-security-limit-editor">
+                  <div className="grid grid-cols-[130px,1fr,auto] gap-2 mb-3">
+                    <select value={securityLimitScopeType} onChange={(e) => setSecurityLimitScopeType(e.target.value)} className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-2 py-2 text-white/80" data-testid="merchant-limit-scope-type-select">
+                      <option value="branch">Branch</option>
+                      <option value="merchant">Merchant</option>
+                      <option value="employee">Employee</option>
+                    </select>
+                    <input value={securityLimitScopeId} onChange={(e) => setSecurityLimitScopeId(e.target.value)} placeholder={securityLimitScopeType === "merchant" ? (securityData?.merchant_id || "Merchant ID") : securityLimitScopeType === "branch" ? activeSecurityStoreId : "Employee User ID"} className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-limit-scope-id-input" />
+                    <button type="button" onClick={() => loadLimitScope(securityLimitScopeType, securityLimitScopeId || (securityLimitScopeType === "merchant" ? securityData?.merchant_id : activeSecurityStoreId))} className="rounded-lg bg-white/[0.06] px-3 py-2 text-[10px] font-bold text-white/80" data-testid="merchant-limit-load-button">Load</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2" data-testid="merchant-security-limit-input-grid">
+                    {Object.entries(securityLimitValues || {}).map(([key, value]) => (
+                      <label key={key} className="rounded-lg bg-black/15 p-2 border border-white/[0.04]">
+                        <p className="text-[9px] text-white/35">{key}</p>
+                        <input value={value} onChange={(e) => setSecurityLimitValues((prev) => ({ ...prev, [key]: e.target.value }))} className="mt-1 w-full bg-transparent text-[11px] font-bold text-white/85 outline-none" data-testid={`merchant-limit-input-${key}`} />
+                      </label>
+                    ))}
+                  </div>
+                  <button type="button" onClick={saveSecurityLimits} className="mt-3 rounded-lg bg-[#00C2FF]/15 px-3 py-2 text-[10px] font-bold text-[#00C2FF]" data-testid="merchant-limit-save-button">Limits speichern</button>
+                </div>
                 <div className="grid grid-cols-2 gap-2" data-testid="merchant-security-limits-grid">
                   {Object.entries(securityData?.transaction_limits || {}).map(([key, value]) => (
                     <div key={key} className="rounded-lg bg-white/[0.02] p-2 border border-white/[0.04]">
@@ -1027,10 +1122,71 @@ const MerchantDashboardPage = ({ onBack }) => {
                   {securityRoles.map((role) => (
                     <div key={role.role} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
                       <p className="text-[11px] font-bold text-white/85">{role.label}</p>
-                      <p className="text-[9px] text-white/35 mt-1">{(role.permissions || []).join(", ")}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {securityPermissions.map((permission) => {
+                          const active = (role.permissions || []).includes(permission) || (role.permissions || []).includes("*");
+                          return (
+                            <button key={`${role.role}-${permission}`} type="button" onClick={() => toggleRolePermission(role.role, permission)} className={`rounded-full px-2 py-1 text-[9px] font-semibold ${active ? "bg-[#00C2FF]/15 text-[#00C2FF] border border-[#00C2FF]/25" : "bg-white/[0.04] text-white/55 border border-white/[0.05]"}`} data-testid={`merchant-role-permission-${role.role}-${permission.replace(/[^a-z0-9]+/gi, '-')}`}>
+                              {permission}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button type="button" onClick={() => saveRolePermissions(role)} className="mt-3 rounded-lg bg-[#00D26A]/15 px-3 py-1.5 text-[10px] font-bold text-[#00D26A]" data-testid={`merchant-role-save-${role.role}`}>Permissions speichern</button>
                     </div>
                   ))}
                 </div>
+              </div>
+            </Panel>
+
+            <Panel title="BioPay Terminals & Sessions">
+              <div className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-3 mb-3" data-testid="merchant-biopay-terminal-create-form">
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <input value={biopayTerminalForm.label} onChange={(e) => setBiopayTerminalForm((prev) => ({ ...prev, label: e.target.value }))} placeholder="Terminal Label" className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-biopay-terminal-label-input" />
+                  <input value={biopayTerminalForm.register_id} onChange={(e) => setBiopayTerminalForm((prev) => ({ ...prev, register_id: e.target.value }))} placeholder="Register ID (optional)" className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-biopay-terminal-register-input" />
+                </div>
+                <div className="flex items-center gap-3 mb-3 text-[10px] text-white/70">
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={biopayTerminalForm.palm_enabled} onChange={(e) => setBiopayTerminalForm((prev) => ({ ...prev, palm_enabled: e.target.checked }))} data-testid="merchant-biopay-terminal-palm-checkbox" /> PalmPay</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={biopayTerminalForm.face_enabled} onChange={(e) => setBiopayTerminalForm((prev) => ({ ...prev, face_enabled: e.target.checked }))} disabled={!biopayData?.facepay_enabled} data-testid="merchant-biopay-terminal-face-checkbox" /> FacePay</label>
+                </div>
+                <button type="button" onClick={createBioPayTerminal} className="rounded-lg bg-[#7df4d2]/15 px-3 py-2 text-[10px] font-bold text-[#7df4d2]" data-testid="merchant-biopay-terminal-create-button">Terminal anlegen</button>
+              </div>
+
+              <div className="space-y-2 mb-3" data-testid="merchant-biopay-terminal-list">
+                {(biopayData?.terminals || []).length === 0 ? <Empty text="Keine BioPay-Terminals angelegt" /> : biopayData.terminals.map((terminal) => (
+                  <div key={terminal.terminal_id} className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-bold text-white/85">{terminal.label}</p>
+                        <p className="text-[9px] text-white/35">{terminal.terminal_id} · {terminal.register_id || "kein Register"}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-white/75">{terminal.status}</p>
+                        <p className="text-[9px] text-white/35">{terminal.last_seen_at ? String(terminal.last_seen_at).slice(0, 16).replace("T", " ") : "noch nie aktiv"}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => updateTerminal(terminal.terminal_id, { status: terminal.status === "active" ? "inactive" : "active" })} className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-[10px] font-bold text-white/80" data-testid={`merchant-biopay-toggle-status-${terminal.terminal_id}`}>{terminal.status === "active" ? "Deaktivieren" : "Aktivieren"}</button>
+                      <button type="button" onClick={() => updateTerminal(terminal.terminal_id, { palm_enabled: !terminal.palm_enabled })} className="rounded-lg bg-[#7df4d2]/12 px-3 py-1.5 text-[10px] font-bold text-[#7df4d2]" data-testid={`merchant-biopay-toggle-palm-${terminal.terminal_id}`}>{terminal.palm_enabled ? "Palm an" : "Palm aus"}</button>
+                      <button type="button" onClick={() => updateTerminal(terminal.terminal_id, { face_enabled: !terminal.face_enabled })} disabled={!biopayData?.facepay_enabled} className="rounded-lg bg-[#ffb36f]/12 px-3 py-1.5 text-[10px] font-bold text-[#ffb36f] disabled:opacity-50" data-testid={`merchant-biopay-toggle-face-${terminal.terminal_id}`}>{terminal.face_enabled ? "Face an" : "Face aus"}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div data-testid="merchant-biopay-session-list" className="space-y-2">
+                {(biopayData?.sessions || []).map((session) => (
+                  <div key={session.session_id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.04] bg-black/15 px-3 py-2 text-[10px] text-white/70">
+                    <div>
+                      <p className="font-semibold text-white/85">{session.verification_type} · {session.modality}</p>
+                      <p className="text-white/35">{session.principal_user_number || session.session_id}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={session.status === "matched" ? "text-[#00D26A] font-bold" : "text-[#FF8B8B] font-bold"}>{session.status}</p>
+                      <p className="text-white/35">{String(session.created_at || "").slice(0, 16).replace("T", " ")}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </Panel>
 
