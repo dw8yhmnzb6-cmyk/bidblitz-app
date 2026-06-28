@@ -1,5 +1,17 @@
 # BidBlitz — CHANGELOG
 
+## 28.06.2026 — POS Security V2 / Bank-Grade POS Security
+- `backend/services/pos_security.py`: zentrales Security-Layer für POS ergänzt — Rollen `owner/admin/manager/cashier/employee`, konfigurierbare Permissions, Limits auf Merchant-/Branch-/Employee-Ebene, Manager-Approval-Queue, Fraud-/Security-Alerts, PIN-Lock, Customer-Masking und Audit-Hooks
+- Neue APIs live: `POST /api/pos/customer/resolve`, `POST /api/pos/wallet/top-up`, `POST /api/pos/payment/prepare`, `POST /api/pos/payment/confirm-pin`, `POST /api/customer/payment-pin/set`, `POST /api/customer/payment-pin/reset`, `POST /api/customer/payment-pin/verify`, `GET /api/pos/security/dashboard`, `GET /api/pos/security/reports`, `GET /api/pos/security/approvals`, `GET /api/pos/security/roles`, `GET/POST /api/pos/security/limits`, `POST /api/pos/security/gift-cards/request`, `POST /api/pos/security/manual-wallet-adjustment/request`, `POST /api/pos/security/customer-account-change/request`
+- `backend/routes/pos_vouchers.py` auf sichere Top-up-Privacy umgestellt: Resolve/Top-up liefern nur `masked_name`, `customer_number`, `verification_status`; keine Balance-/Profil-Leaks mehr
+- `backend/routes/pos_system.py` um Refund-Limits und Approval-Flow erweitert; hohe Refunds erzeugen Approval-Queue statt direkter Auszahlung
+- `frontend/src/components/pos/POSVoucherComponents.jsx`: Secure Top-up Flow mit Scan/NFC/Kundennummer-Fallback, maskierter Kundenkarte, Approval-State und neuen `data-testid`s
+- `frontend/src/components/pos/POSSecurePaymentPanel.jsx`: neuer Secure-Payment-Flow mit Scan/NFC/Kundennummer, 4-stelliger PIN, Success/Declined/App-Confirmation-Zuständen
+- `frontend/src/components/pos/POSCheckoutTab.jsx`: neuer Kassier-Modus `Secure Pay`
+- `frontend/src/pages/MerchantDashboardPage.jsx`: neuer Tab `Security` mit Security Alerts, Fraud Alerts, Locked Customers, Locked Employees, Transaction Limits, Approval Queue und Daily/Weekly/Monthly Reports
+- `frontend/src/components/CookieBanner.jsx`: Banner auf Desktop in kompakte Bottom-Right-Card verschoben, damit Dashboards nicht mehr verdeckt werden
+- Verifiziert: Python-Lint PASS, Frontend-Lint PASS, manuelle API-E2E-Tests PASS, `testing_agent` Iteration 168 PASS (Backend 12/13 + 1 log-verifiziert, Frontend 8/8). Keine MOCKS.
+
 ## 27.06.2026 — Merchant Platform V5 Modul 1: Enterprise Dashboard + Executive AI
 - `backend/routes/merchant_portal.py`: neue Enterprise-Aggregation für Revenue, Profit, Branches, Inventory, POS, Staff, Wallet, Loyalty, Alerts, Forecasts und Merchant KPIs aus bestehenden BidBlitz-Modulen ergänzt
 - Neue APIs live: `GET /api/merchant-portal/v5/dashboard`, `GET /api/merchant-portal/v5/executive-ai/latest`, `POST /api/merchant-portal/v5/executive-ai/stream`

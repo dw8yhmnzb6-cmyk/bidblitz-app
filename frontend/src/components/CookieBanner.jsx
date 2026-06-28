@@ -65,11 +65,11 @@ export default function CookieBanner({ onNavigate }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="fixed bottom-0 left-0 right-0 z-[10000] p-3 sm:p-4"
+        className="fixed inset-x-0 bottom-0 z-[10000] p-3 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[420px] sm:p-0"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
         data-testid="cookie-banner"
       >
-        <div className="max-w-3xl mx-auto bg-[#0A0A0F]/98 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl">
+        <div className="max-w-3xl mx-auto bg-[#0A0A0F]/98 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl sm:max-w-none">
           <div className="flex items-start gap-3 mb-3">
             <Cookie size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">

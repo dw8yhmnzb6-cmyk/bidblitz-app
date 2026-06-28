@@ -1345,6 +1345,21 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Preview-Hinweis: Für die Browser-Verifikation wurde im Merchant-Bereich des Admin-Users ein echter Testsaldo von 17,55 EUR vorbereitet (kein MOCK).
 
 
+## Update 2026-06-28 — POS Security V2 / Bank-Grade POS Security
+- Ziel umgesetzt: vollständiger sicherer POS-Flow für Wallet-Top-up und Customer-Payment auf bestehender BidBlitz-POS-/Wallet-Architektur, ohne neue Mock-Systeme.
+- Datenschutz am POS gehärtet: `POST /api/pos/customer/resolve` sowie die wiederverwendeten Voucher-/Checkout-Flows liefern nur noch `masked_name`, `customer_number`, `verification_status`. Wallet-Balance, E-Mail, Telefon, Adresse und Historie bleiben unsichtbar.
+- Secure Payment live: `POST /api/pos/payment/prepare` + `POST /api/pos/payment/confirm-pin` erzwingen 4-stellige Payment-PIN, gehasht in MongoDB (`payment_pin_hash`), ohne Klartext-Logging. Falsche PINs führen nur zu `Payment declined`.
+- PIN-Schutz live: Fehlversuche werden gezählt, nach 5 Fehlversuchen wird der Kunden-PIN temporär gesperrt (`payment_pin_locked_until`), Audit-Events `pos_wrong_pin` / `pos_pin_lock` werden erzeugt, Fraud-/Security-Alert erscheint im Merchant-Dashboard.
+- High-Value-Schutz live: Beträge über `payment_app_confirmation_limit` verlangen nach korrekter PIN zusätzlich eine App-Bestätigung via `POST /api/pos/payment/customer-approve/{payment_id}`.
+- Rollen & Berechtigungen live: Owner, Admin, Manager, Cashier, Employee mit zentralen Permission-Sets; Update-/Read-APIs für Rollen, Limits und Approvals vorhanden.
+- Limits & Freigaben live: Merchant-/Branch-/Employee-Limits für Top-up, Payment und Refund; Freigabe-Queue für große Top-ups, hohe Refunds, Gift Cards, Manual Wallet Adjustments und Customer Account Changes.
+- Fraud-/Security-Layer live: Security Alerts, Fraud Alerts, Locked Customers, Locked Employees, Approval Queue, Daily/Weekly/Monthly Reports im neuen Merchant-Dashboard-Tab `Security`.
+- Neue/erweiterte Collections: `pos_customer_resolutions`, `pos_secure_payments`, `pos_security_alerts`, `pos_security_approvals`, `pos_security_limits`, `pos_security_role_configs`, `pos_security_role_assignments`, `pos_employee_security_state`; bestehende `users` erweitert um `payment_pin_hash`, Lock-/Attempt-Felder.
+- Frontend ergänzt: `POSVoucherComponents.jsx` (Secure Top-up), `POSSecurePaymentPanel.jsx` (Secure Payment), `POSCheckoutTab.jsx` (Secure Pay Mode), `MerchantDashboardPage.jsx` (Security Center), `CookieBanner.jsx` (kompakter Desktop-Stack).
+- Verifikation abgeschlossen: Python-Lint PASS, JS-Lint PASS, manuelle API-E2E-Tests PASS, `testing_agent` Iteration 168 PASS (Backend 12/13 + log-verifizierter PIN-Lock, Frontend 8/8). Keine MOCKS.
+- Offene nächste Schritte: BioPay V3 auf diesem Security-Fundament aufbauen, danach UI-Editoren für Rollen/Limits/Approvals direkt im Merchant Dashboard vertiefen.
+
+
 ## Update 2026-06-11 — Taxi Kartenstabilität / Mobile Fallback
 - Taxi-Kartenfehler auf Mobile/iPhone gehärtet: kein harter Seiten-Reload mehr beim Kartenproblem. Der Karten-Button verbindet die Map nun intern neu.
 - GPS-/Fallback-Verhalten verbessert: letzter bekannter Standort wird zwischengespeichert, GPS-denied bleibt benutzbar, Suche/Bestellung bleiben offen.
