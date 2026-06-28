@@ -3,6 +3,7 @@ import { ScanLine, Search, Trash2, Loader2, Check, QrCode, CreditCard, Smartphon
 import { toast } from "sonner";
 import { printReceipt } from "../../utils/escposPrinter";
 import { POSVoucherSale, POSWalletTopUp } from "./POSVoucherComponents";
+import { POSSecurePaymentPanel } from "./POSSecurePaymentPanel";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -96,7 +97,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   const [cashReceived, setCashReceived] = useState("");
   const [cardRef, setCardRef] = useState("");
   const [discountPct, setDiscountPct] = useState(0);
-  const [specialMode, setSpecialMode] = useState(null); // null | "voucher" | "topup"
+  const [specialMode, setSpecialMode] = useState(null); // null | "voucher" | "topup" | "secure-payment"
   const [voucherPayCode, setVoucherPayCode] = useState("");
   const [voucherChecking, setVoucherChecking] = useState(false);
   const [appliedVouchers, setAppliedVouchers] = useState([]); // [{code, applied}]
@@ -114,8 +115,7 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
     window.addEventListener("online", onOn);
     window.addEventListener("offline", onOff);
     return () => { window.removeEventListener("online", onOn); window.removeEventListener("offline", onOff); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [syncOfflineQueue]);
 
   const persistQueue = (next) => {
     setQueuedSales(next);
@@ -151,7 +151,6 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
     }
     persistQueue(remaining);
     if (synced > 0) toast.success(`${synced} Offline-Verkäufe synchronisiert`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const totals = useMemo(() => {
@@ -350,7 +349,9 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
           toast.error(`Zahlung ${status.status}`);
           setActivePayment(null);
         }
-      } catch {}
+      } catch {
+        // polling keeps running until next successful status check
+      }
     }, 2500);
   };
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
@@ -487,6 +488,12 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
             data-testid="pos-toggle-topup">
             <Wallet size={11} /> Aufladen
           </button>
+          <button onClick={() => setSpecialMode(specialMode === "secure-payment" ? null : "secure-payment")}
+            className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"
+            style={{ background: specialMode === "secure-payment" ? "rgba(255,179,111,0.2)" : "rgba(255,255,255,0.05)", color: specialMode === "secure-payment" ? "#ffb36f" : "white" }}
+            data-testid="pos-toggle-secure-payment">
+            <CreditCard size={11} /> Secure Pay
+          </button>
         </div>
       </div>
 
@@ -498,6 +505,11 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
       {specialMode === "topup" && (
         <Card title="Wallet aufladen" testid="pos-topup-card">
           <POSWalletTopUp storeId={storeId} registerId={registerId} onComplete={() => setSpecialMode(null)} />
+        </Card>
+      )}
+      {specialMode === "secure-payment" && (
+        <Card title="Secure Payment" testid="pos-secure-payment-card">
+          <POSSecurePaymentPanel storeId={storeId} registerId={registerId} />
         </Card>
       )}
 

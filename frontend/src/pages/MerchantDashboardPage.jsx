@@ -42,6 +42,10 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [payRevenue, setPayRevenue] = useState(null);
   const [createdKey, setCreatedKey] = useState(null);
   const [invoiceLinks, setInvoiceLinks] = useState([]);
+  const [securityData, setSecurityData] = useState(null);
+  const [securityRoles, setSecurityRoles] = useState([]);
+  const [securityReports, setSecurityReports] = useState(null);
+  const [securityPeriod, setSecurityPeriod] = useState("daily");
   const refreshRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -110,7 +114,15 @@ const MerchantDashboardPage = ({ onBack }) => {
     if (tab === "invoice-links") {
       api.getMyInvoices?.().then(d => setInvoiceLinks((d.invoices || []).slice(0, 20))).catch(() => undefined);
     }
-  }, [tab, selectedBranch]);
+    if (tab === "security") {
+      const activeStoreId = selectedBranch || branches[0]?.branch_id || branches[0]?.store_id;
+      if (activeStoreId) {
+        api.getPosSecurityDashboard(activeStoreId).then(d => setSecurityData(d)).catch(() => undefined);
+        api.getPosSecurityRoles(activeStoreId).then(d => setSecurityRoles(d.roles || [])).catch(() => undefined);
+        api.getPosSecurityReports(activeStoreId, securityPeriod).then(d => setSecurityReports(d)).catch(() => undefined);
+      }
+    }
+  }, [tab, selectedBranch, branches, securityPeriod]);
 
   // Load register transactions
   useEffect(() => {
@@ -188,6 +200,7 @@ const MerchantDashboardPage = ({ onBack }) => {
     { id: "refunds", label: t("merch.refunds") || "Refunds", icon: RefreshCw },
     { id: "pay-keys", label: "Pay Keys", icon: Wallet },
     { id: "invoice-links", label: "Invoice Links", icon: FileText },
+    { id: "security", label: "Security", icon: Activity },
   ];
 
   if (loading) {
@@ -940,6 +953,106 @@ const MerchantDashboardPage = ({ onBack }) => {
           </>
         )}
 
+        {tab === "security" && (
+          <>
+            <Panel title="POS Security Center">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-[10px] text-white/45 uppercase tracking-widest">Security Reports</p>
+                <select value={securityPeriod} onChange={(e) => setSecurityPeriod(e.target.value)} className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-2 py-1 text-white/80" data-testid="merchant-security-period-select">
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <SecurityMiniCard label="Alerts" value={securityData?.alerts?.length || 0} testId="merchant-security-alert-count" />
+                <SecurityMiniCard label="Fraud Alerts" value={securityData?.fraud_alerts?.length || 0} testId="merchant-fraud-alert-count" />
+                <SecurityMiniCard label="Locked Customers" value={securityData?.locked_customers?.length || 0} testId="merchant-locked-customers-count" />
+                <SecurityMiniCard label="Approval Queue" value={securityData?.approval_queue?.length || 0} testId="merchant-approval-queue-count" />
+              </div>
+            </Panel>
+
+            <Panel title="Approval Queue">
+              {(securityData?.approval_queue || []).length === 0 ? <Empty text="Keine offenen Freigaben" /> : (
+                <div className="space-y-2" data-testid="merchant-security-approval-list">
+                  {(securityData?.approval_queue || []).map((item) => (
+                    <div key={item.approval_id} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }} data-testid={`merchant-security-approval-${item.approval_id}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-bold text-white/85">{item.approval_type}</p>
+                          <p className="text-[9px] text-white/35">{item.reason}</p>
+                        </div>
+                        <p className="text-[11px] font-bold text-[#FFB800]">€{Number(item.amount || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
+
+            <Panel title="Locked Entities">
+              <div className="space-y-2">
+                <div data-testid="merchant-security-locked-customers-list">
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2">Locked Customers</p>
+                  {(securityData?.locked_customers || []).length === 0 ? <Empty text="Keine gesperrten Kunden" /> : securityData.locked_customers.map((item) => (
+                    <div key={`${item.customer_number}-${item.locked_until}`} className="flex items-center justify-between py-1.5 text-[10px] text-white/70">
+                      <span>{item.masked_name} · {item.customer_number}</span>
+                      <span>{String(item.locked_until || "").slice(0, 16).replace("T", " ")}</span>
+                    </div>
+                  ))}
+                </div>
+                <div data-testid="merchant-security-locked-employees-list">
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2">Locked Employees</p>
+                  {(securityData?.locked_employees || []).length === 0 ? <Empty text="Keine gesperrten Mitarbeiter" /> : securityData.locked_employees.map((item) => (
+                    <div key={`${item.user_id}-${item.locked_until}`} className="flex items-center justify-between py-1.5 text-[10px] text-white/70">
+                      <span>{String(item.user_id || "").slice(0, 8)} · {item.failed_lookup_count || 0} Fehl-Lookups</span>
+                      <span>{String(item.locked_until || "").slice(0, 16).replace("T", " ")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Panel>
+
+            <Panel title="Transaction Limits & Roles">
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2" data-testid="merchant-security-limits-grid">
+                  {Object.entries(securityData?.transaction_limits || {}).map(([key, value]) => (
+                    <div key={key} className="rounded-lg bg-white/[0.02] p-2 border border-white/[0.04]">
+                      <p className="text-[9px] text-white/30">{key}</p>
+                      <p className="text-[11px] font-bold text-white/80">€{Number(value || 0).toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+                <div data-testid="merchant-security-role-list" className="space-y-2">
+                  {securityRoles.map((role) => (
+                    <div key={role.role} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                      <p className="text-[11px] font-bold text-white/85">{role.label}</p>
+                      <p className="text-[9px] text-white/35 mt-1">{(role.permissions || []).join(", ")}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Panel>
+
+            <Panel title="Security Reports">
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <SecurityMiniCard label="Events" value={securityReports?.summary?.events || 0} testId="merchant-security-report-events" />
+                <SecurityMiniCard label="Wrong PIN" value={securityReports?.summary?.wrong_pin || 0} testId="merchant-security-report-wrong-pin" />
+                <SecurityMiniCard label="Declined" value={securityReports?.summary?.payments_declined || 0} testId="merchant-security-report-declined" />
+                <SecurityMiniCard label="Refunds" value={securityReports?.summary?.refunds || 0} testId="merchant-security-report-refunds" />
+              </div>
+              <div className="space-y-1" data-testid="merchant-security-report-events-list">
+                {(securityReports?.recent_events || []).slice().reverse().map((item, index) => (
+                  <div key={`${item.event}-${index}`} className="flex items-center justify-between gap-3 py-1 text-[9px] text-white/65">
+                    <span>{item.event}</span>
+                    <span>{String(item.timestamp || "").slice(0, 16).replace("T", " ")}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </>
+        )}
+
       </div>
     </motion.div>
   );
@@ -957,6 +1070,12 @@ const StatCard = ({ val, label, color }) => (
     <p className="text-[16px] font-black font-mono" style={{ color }}>{val}</p>
     <p className="text-[8px] text-white/20 mt-0.5">{label}</p>
   </motion.div>
+);
+const SecurityMiniCard = ({ label, value, testId }) => (
+  <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }} data-testid={testId}>
+    <p className="text-[9px] text-white/30 uppercase tracking-widest">{label}</p>
+    <p className="mt-1 text-[15px] font-black text-white/85">{value}</p>
+  </div>
 );
 const Empty = ({ text }) => <p className="text-[10px] text-white/15 text-center py-4">{text || "—"}</p>;
 const StatusBadge = ({ status }) => (

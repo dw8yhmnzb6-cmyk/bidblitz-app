@@ -3,17 +3,26 @@ BidBlitz POS - Gutschein & Karten-Aufladung System
 Ermöglicht Verkauf von Gutscheinen und Wallet-Aufladungen am POS
 """
 
-import re
-
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone, timedelta
-from bson import ObjectId
 import secrets
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import credit_wallet, TransactionType
+from services.pos_security import (
+    audit_pos_security_event,
+    build_customer_public_view,
+    create_security_alert,
+    evaluate_transaction_limits,
+    execute_secure_topup,
+    get_actor_context,
+    get_effective_limits,
+    get_resolution_customer,
+    request_manager_approval,
+    require_permission,
+)
 
 router = APIRouter(prefix="/api/pos/vouchers", tags=["POS Vouchers"])
 
@@ -30,7 +39,8 @@ class VoucherCreateRequest(BaseModel):
 class WalletTopUpRequest(BaseModel):
     store_id: str
     register_id: str
-    customer_user_number: str
+    customer_user_number: str | None = None
+    resolution_id: str | None = None
     amount: float
     payment_method: str = "cash"
 
@@ -38,52 +48,8 @@ class WalletTopUpRequest(BaseModel):
 class CustomerResolveRequest(BaseModel):
     lookup_type: str
     value: str
-
-
-def _extract_nfc_token(raw_value: str) -> Optional[str]:
-    match = re.search(r"(BPY-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})", (raw_value or "").upper())
-    return match.group(1) if match else None
-
-
-async def _resolve_customer_lookup(lookup_type: str, raw_value: str):
-    value = (raw_value or "").strip()
-    if not value:
-        raise HTTPException(400, "Kein Suchwert übergeben")
-
-    lookup = (lookup_type or "").strip().lower()
-    customer = None
-
-    if lookup == "user_number":
-        customer = await db.users.find_one({"user_number": value.upper()})
-    elif lookup == "barcode":
-        bc = await db.payment_barcodes.find_one({"barcode": value, "active": True})
-        if not bc:
-            raise HTTPException(404, "Barcode ungültig oder abgelaufen")
-        expires = datetime.fromisoformat(bc["expires_at"])
-        if expires < datetime.now(timezone.utc):
-            await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
-            raise HTTPException(400, "Barcode abgelaufen")
-        customer = await db.users.find_one({"_id": ObjectId(bc["user_id"])})
-    elif lookup == "nfc":
-        token = _extract_nfc_token(value)
-        if not token:
-            raise HTTPException(400, "Kein gültiger NFC-Token erkannt")
-        token_doc = await db.nfc_tokens.find_one({"nfc_token": token, "active": True})
-        if not token_doc:
-            raise HTTPException(404, "NFC-Token ungültig oder inaktiv")
-        customer = await db.users.find_one({"email": token_doc["user_email"]})
-    else:
-        raise HTTPException(400, "Unbekannter Lookup-Typ")
-
-    if not customer:
-        raise HTTPException(404, "Kunde nicht gefunden")
-
-    return {
-        "user_number": customer.get("user_number"),
-        "name": customer.get("name"),
-        "email": customer.get("email"),
-        "kyc_status": customer.get("kyc_status", "not_started"),
-    }
+    store_id: str
+    register_id: str = ""
 
 
 class VoucherRedeemPayRequest(BaseModel):
@@ -269,97 +235,44 @@ async def redeem_voucher_as_payment(req: VoucherRedeemPayRequest, request: Reque
 
 @router.post("/topup")
 async def wallet_topup_at_pos(req: WalletTopUpRequest, request: Request):
-    """Kunde lädt Wallet am POS auf (zahlt bar/Karte)."""
     cashier = await get_current_user(request)
-
-    if req.amount <= 0 or req.amount > 500:
-        raise HTTPException(400, "Aufladebetrag muss zwischen €0.01 und €500 liegen")
-
-    customer_number = (req.customer_user_number or "").strip().upper()
-    if not customer_number or "@" in customer_number or customer_number.startswith("BLZ-"):
-        raise HTTPException(400, "Bitte immer mit Kundennummer arbeiten — Scan/NFC dürfen nur die Kundennummer liefern")
-
-    customer = await db.users.find_one({"user_number": customer_number})
-    if not customer:
-        raise HTTPException(404, f"Kunde mit Nummer {customer_number} nicht gefunden")
-
-    customer_id = str(customer["_id"])
-    old_balance = float(customer.get("balance", 0))
-
-    result = await credit_wallet(
-        user_id=customer_id,
-        amount=req.amount,
-        tx_type=TransactionType.WALLET_TOPUP_POS,
-        description=f"Aufladung am POS (Filiale {req.store_id})",
-        metadata={
-            "store_id": req.store_id,
-            "register_id": req.register_id,
-            "payment_method": req.payment_method,
-            "cashier": str(cashier["_id"]),
-        },
-    )
-    if not result.success:
-        raise HTTPException(500, f"Aufladung fehlgeschlagen: {result.error}")
-
-    now = datetime.now(timezone.utc)
-    sale = {
-        "sale_id": f"SALE-{secrets.token_hex(6).upper()}",
-        "receipt_id": f"TOP-{secrets.token_hex(4).upper()}",
-        "store_id": req.store_id,
-        "register_id": req.register_id,
-        "cashier_user_id": str(cashier["_id"]),
-        "customer_user_id": customer_id,
-        "type": "wallet_topup",
-        "items": [{
-            "product_id": "WALLET_TOPUP",
-            "name": "BidBlitz Wallet Aufladung",
-            "quantity": 1,
-            "price": req.amount,
-            "tax_rate": 0.0,
-        }],
-        "subtotal": req.amount,
-        "tax_total": 0.0,
-        "discount": 0.0,
-        "total": req.amount,
-        "method": req.payment_method,
-        "status": "completed",
-        "created_at": now.isoformat(),
-    }
-    await db.pos_sales.insert_one(sale)
-    sale.pop("_id", None)
-
-    try:
-        await db.notifications.insert_one({
-            "user_id": customer_id,
-            "type": "wallet_topup",
-            "title": "💰 Wallet aufgeladen",
-            "message": f"Dein Wallet wurde um €{req.amount:.2f} aufgeladen. Neuer Stand: €{result.new_balance:.2f}",
-            "read": False,
-            "created_at": now.isoformat(),
-        })
-    except Exception:
-        pass
-
-    return {
-        "ok": True,
-        "customer": {
-            "email": customer["email"],
-            "name": customer.get("name"),
-            "user_number": customer.get("user_number"),
-            "old_balance": round(old_balance, 2),
-            "new_balance": round(result.new_balance or (old_balance + req.amount), 2),
-            "topped_up": req.amount,
-        },
-        "sale": sale,
-        "message": f"€{req.amount:.2f} aufgeladen für Kundennummer {customer.get('user_number')}",
-    }
+    actor = await get_actor_context(cashier, req.store_id, req.register_id)
+    require_permission(actor, "wallet.topup")
+    if req.amount <= 0 or req.amount > 5000:
+        raise HTTPException(400, "Aufladebetrag muss zwischen €0.01 und €5000 liegen")
+    customer = await get_resolution_customer(actor, req.resolution_id, req.customer_user_number)
+    limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
+    policy = evaluate_transaction_limits(actor, "topup", req.amount, limits)
+    await audit_pos_security_event("pos_topup_attempt", request=request, user_id=actor["user_id"], email=cashier.get("email", ""), details={"amount": req.amount, "customer_number": customer.get("user_number", ""), "store_id": req.store_id, "register_id": req.register_id, "payment_method": req.payment_method}, severity="info")
+    if policy["hard_limit"] and req.amount > policy["hard_limit"]:
+        raise HTTPException(403, "Top-up überschreitet das zulässige Limit")
+    if policy["needs_approval"]:
+        approval = await request_manager_approval(actor, "wallet_topup", req.amount, {"store_id": req.store_id, "register_id": req.register_id, "customer_id": str(customer["_id"]), "payment_method": req.payment_method}, "Large top-up requires manager approval")
+        return {"ok": True, "status": "approval_required", "approval": approval, "customer": build_customer_public_view(customer), "message": "Top-up wartet auf Manager-Freigabe"}
+    if req.amount >= 300:
+        await create_security_alert(actor["merchant_id"], actor["store_id"], "unusual_topup", "Ungewöhnlich hoher POS-Top-up erkannt", {"customer_number": customer.get("user_number", ""), "amount": req.amount}, "medium", actor["user_id"], str(customer["_id"]))
+    return await execute_secure_topup(actor, customer, req.amount, req.payment_method, request=request)
 
 
 @router.post("/resolve-customer")
 async def resolve_wallet_topup_customer(req: CustomerResolveRequest, request: Request):
-    await get_current_user(request)
-    customer = await _resolve_customer_lookup(req.lookup_type, req.value)
-    return {"ok": True, "customer": customer}
+    cashier = await get_current_user(request)
+    actor = await get_actor_context(cashier, req.store_id, req.register_id)
+    require_permission(actor, "customer.resolve")
+    await audit_pos_security_event("pos_customer_lookup_attempt", request=request, user_id=actor["user_id"], email=cashier.get("email", ""), details={"lookup_type": req.lookup_type, "store_id": req.store_id, "register_id": req.register_id}, severity="info")
+    try:
+        from services.pos_security import resolve_customer_by_lookup, create_resolution_session, reset_lookup_failures, register_failed_lookup
+        customer = await resolve_customer_by_lookup(req.lookup_type, req.value)
+    except HTTPException:
+        from services.pos_security import register_failed_lookup
+        await register_failed_lookup(actor, request, req.lookup_type, req.value)
+        await audit_pos_security_event("pos_customer_lookup_failed", request=request, user_id=actor["user_id"], email=cashier.get("email", ""), details={"lookup_type": req.lookup_type, "store_id": req.store_id, "register_id": req.register_id}, severity="warning")
+        raise
+    from services.pos_security import create_resolution_session, reset_lookup_failures
+    await reset_lookup_failures(actor)
+    resolution = await create_resolution_session(actor, customer, req.lookup_type)
+    await audit_pos_security_event("pos_customer_lookup_success", request=request, user_id=actor["user_id"], email=cashier.get("email", ""), details={"lookup_type": req.lookup_type, "customer_number": customer.get("user_number", ""), "resolution_id": resolution["resolution_id"]}, severity="info")
+    return {"ok": True, "resolution_id": resolution["resolution_id"], "expires_at": resolution["expires_at"], "customer": build_customer_public_view(customer, req.lookup_type)}
 
 
 @router.get("/check/{code}")

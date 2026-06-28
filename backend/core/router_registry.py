@@ -82,6 +82,7 @@ def register_all_routers(app):
         ("routes.pos_advanced", "router"),
         ("routes.pos_pro", "router"),
         ("routes.pos_vouchers", "router"),
+        ("routes.pos_security", "router"),
         ("routes.pos_kassenmeldung", "router"),
         ("routes.pos_rksv", "router"),
         ("routes.pos_features", "router"),

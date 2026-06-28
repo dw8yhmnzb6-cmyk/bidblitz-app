@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Gift, CreditCard, Check, Loader2, ScanLine, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { scanNFC } from "../../utils/nfcService";
+import { api } from "../../services/api";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -100,6 +101,7 @@ export function POSVoucherSale({ storeId, registerId, onComplete }) {
         value={paymentMethod}
         onChange={(e) => setPaymentMethod(e.target.value)}
         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"
+        data-testid="voucher-payment-method-select"
       >
         <option value="cash">Bar bezahlt</option>
         <option value="card_external">Karte bezahlt</option>
@@ -136,8 +138,9 @@ export function POSVoucherSale({ storeId, registerId, onComplete }) {
 export function POSWalletTopUp({ storeId, registerId, onComplete }) {
   const [customerNumber, setCustomerNumber] = useState("");
   const [lookupValue, setLookupValue] = useState("");
-  const [lookupMode, setLookupMode] = useState("barcode");
+  const [lookupMode, setLookupMode] = useState("scan");
   const [resolvedCustomer, setResolvedCustomer] = useState(null);
+  const [resolutionId, setResolutionId] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(false);
@@ -147,19 +150,23 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
   const resolveCustomer = async (mode = lookupMode, value = lookupValue) => {
     const finalValue = (value || "").trim();
     if (!finalValue) {
-      return toast.error(mode === "user_number" ? "Bitte Kundennummer eingeben" : mode === "barcode" ? "Bitte Barcode scannen oder eingeben" : "Bitte NFC zuerst auslesen");
+      return toast.error(mode === "customer_number" ? "Bitte Kundennummer eingeben" : mode === "scan" ? "Bitte Scan eingeben" : "Bitte NFC zuerst auslesen");
     }
     setResolving(true);
     try {
-      const data = await apiCall("/api/pos/vouchers/resolve-customer", {
-        method: "POST",
-        body: { lookup_type: mode, value: finalValue },
+      const data = await api.posResolveCustomer({
+        store_id: storeId,
+        register_id: registerId,
+        lookup_type: mode,
+        value: finalValue,
       });
       setResolvedCustomer(data.customer);
-      setCustomerNumber(data.customer.user_number || "");
-      toast.success(`Kunde erkannt: ${data.customer.user_number}`);
+      setCustomerNumber(data.customer.customer_number || "");
+      setResolutionId(data.resolution_id || "");
+      toast.success(`Kunde erkannt: ${data.customer.customer_number}`);
     } catch (e) {
       setResolvedCustomer(null);
+      setResolutionId("");
       toast.error(e.message);
     }
     setResolving(false);
@@ -187,20 +194,22 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
 
     setLoading(true);
     try {
-      const data = await apiCall("/api/pos/vouchers/topup", {
-        method: "POST",
-        body: {
-          store_id: storeId,
-          register_id: registerId,
-          customer_user_number: (resolvedCustomer?.user_number || customerNumber).trim().toUpperCase(),
-          amount: parseFloat(amount),
-          payment_method: paymentMethod,
-        },
+      const data = await api.posWalletTopUpSecure({
+        store_id: storeId,
+        register_id: registerId,
+        resolution_id: resolutionId || undefined,
+        customer_user_number: (resolvedCustomer?.customer_number || customerNumber).trim().toUpperCase(),
+        amount: parseFloat(amount),
+        payment_method: paymentMethod,
       });
-
-      setResult(data.customer);
-      toast.success(data.message);
-      setTimeout(() => onComplete && onComplete(), 3000);
+      if (data.status === "approval_required") {
+        setResult({ ...data.customer, pending: true, approval_id: data.approval?.approval_id || "" });
+        toast.success(data.message || "Top-up wartet auf Freigabe");
+      } else {
+        setResult(data.customer);
+        toast.success(data.message);
+        setTimeout(() => onComplete && onComplete(), 3000);
+      }
     } catch (e) {
       toast.error(e.message);
     }
@@ -211,28 +220,22 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
     return (
       <div className="p-6 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl border border-blue-500/20 text-center">
         <Check size={48} className="text-blue-400 mx-auto mb-3" />
-        <h3 className="text-lg font-bold mb-2">Wallet aufgeladen!</h3>
-          <p className="text-sm text-white/60 mb-1">{result.user_number}</p>
-          <p className="text-[11px] text-white/40 mb-3">{result.email}</p>
-        <div className="grid grid-cols-2 gap-3 text-center">
-          <div className="bg-white/5 p-3 rounded-lg">
-            <p className="text-[10px] text-white/40">Vorher</p>
-            <p className="text-lg font-bold">€{result.old_balance.toFixed(2)}</p>
-          </div>
-          <div className="bg-white/5 p-3 rounded-lg">
-            <p className="text-[10px] text-white/40">Jetzt</p>
-            <p className="text-lg font-bold text-[#00C2FF]">€{result.new_balance.toFixed(2)}</p>
-          </div>
-        </div>
+        <h3 className="text-lg font-bold mb-2">{result.pending ? "Freigabe angefordert" : "Wallet aufgeladen!"}</h3>
+        <p className="text-sm text-white/80 mb-1" data-testid="topup-result-masked-name">{result.masked_name}</p>
+        <p className="text-[11px] text-white/60 mb-1" data-testid="topup-result-customer-number">{result.customer_number}</p>
+        <p className="text-[11px] text-white/40 mb-3" data-testid="topup-result-verification-status">Status: {result.verification_status}</p>
+        {result.pending ? <p className="text-[11px] text-amber-300" data-testid="topup-result-approval">Approval Queue: {result.approval_id}</p> : null}
         <button
           onClick={() => {
             setResult(null);
             setCustomerNumber("");
             setLookupValue("");
             setResolvedCustomer(null);
+            setResolutionId("");
             setAmount("");
           }}
           className="mt-4 px-4 py-2 rounded-lg bg-white/10 text-sm"
+          data-testid="topup-reset-button"
         >
           Neue Aufladung
         </button>
@@ -249,9 +252,9 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
 
       <div className="grid grid-cols-3 gap-2" data-testid="topup-lookup-mode-switcher">
         {[
-          { id: "barcode", label: "Scan", icon: ScanLine },
+          { id: "scan", label: "Scan", icon: ScanLine },
           { id: "nfc", label: "NFC", icon: Smartphone },
-          { id: "user_number", label: "Nummer", icon: CreditCard },
+          { id: "customer_number", label: "Nummer", icon: CreditCard },
         ].map((mode) => (
           <button
             key={mode.id}
@@ -269,7 +272,7 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
           type="text"
           value={lookupValue}
           onChange={(e) => setLookupValue(e.target.value.toUpperCase())}
-          placeholder={lookupMode === "barcode" ? "Barcode scannen oder eingeben" : "Kundennummer eingeben"}
+          placeholder={lookupMode === "scan" ? "Scan eingeben" : "Kundennummer eingeben"}
           className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"
           data-testid="topup-lookup-input"
         />
@@ -282,13 +285,14 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
           className="py-2.5 rounded-xl bg-white/10 text-white text-sm font-bold disabled:opacity-50"
           data-testid="topup-resolve-btn"
         >
-          {resolving ? <Loader2 size={16} className="animate-spin inline" /> : lookupMode === "barcode" ? "Scan prüfen" : lookupMode === "nfc" ? "NFC lesen" : "Kundennummer prüfen"}
+          {resolving ? <Loader2 size={16} className="animate-spin inline" /> : lookupMode === "scan" ? "Scan prüfen" : lookupMode === "nfc" ? "NFC lesen" : "Kundennummer prüfen"}
         </button>
         <button
           onClick={() => {
-            setLookupMode("user_number");
+            setLookupMode("customer_number");
             setResolvedCustomer(null);
             setCustomerNumber("");
+            setResolutionId("");
           }}
           className="py-2.5 rounded-xl border border-white/10 bg-black/20 text-white text-sm font-bold"
           data-testid="topup-fallback-number-btn"
@@ -299,9 +303,9 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
 
       {resolvedCustomer && (
         <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3" data-testid="topup-resolved-customer-card">
-          <p className="text-sm font-bold text-white">{resolvedCustomer.name || resolvedCustomer.email}</p>
-          <p className="mt-1 text-[11px] text-emerald-100/80">Kundennummer: {resolvedCustomer.user_number}</p>
-          <p className="text-[11px] text-emerald-100/60">Status: {resolvedCustomer.kyc_status || "not_started"}</p>
+          <p className="text-sm font-bold text-white" data-testid="topup-resolved-masked-name">{resolvedCustomer.masked_name}</p>
+          <p className="mt-1 text-[11px] text-emerald-100/80" data-testid="topup-resolved-customer-number">Kundennummer: {resolvedCustomer.customer_number}</p>
+          <p className="text-[11px] text-emerald-100/60" data-testid="topup-resolved-verification-status">Status: {resolvedCustomer.verification_status || "not_started"}</p>
         </div>
       )}
 
@@ -323,7 +327,7 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
         step="0.01"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="Betrag € (max. 500)"
+        placeholder="Betrag € (max. 5000)"
         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-base"
         data-testid="topup-amount"
       />
@@ -332,6 +336,7 @@ export function POSWalletTopUp({ storeId, registerId, onComplete }) {
         value={paymentMethod}
         onChange={(e) => setPaymentMethod(e.target.value)}
         className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"
+        data-testid="topup-payment-method-select"
       >
         <option value="cash">Bar bezahlt</option>
         <option value="card_external">Karte bezahlt</option>

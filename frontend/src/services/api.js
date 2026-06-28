@@ -197,6 +197,24 @@ export const api = {
   cancelCommerceFlashSale: (saleId) => request(`/api/commerce-center/flash-sales/${saleId}`, { method: "DELETE" }),
   buyCommerceFlashSale: (saleId, body = {}) => request(`/api/commerce-center/flash-sales/${saleId}/buy`, { method: "POST", body: JSON.stringify(body) }),
 
+  // POS Security V2
+  posResolveCustomer: (body) => request("/api/pos/customer/resolve", { method: "POST", body: JSON.stringify(body) }),
+  posWalletTopUpSecure: (body) => request("/api/pos/wallet/top-up", { method: "POST", body: JSON.stringify(body) }),
+  posPreparePaymentSecure: (body) => request("/api/pos/payment/prepare", { method: "POST", body: JSON.stringify(body) }),
+  posConfirmPaymentPin: (body) => request("/api/pos/payment/confirm-pin", { method: "POST", body: JSON.stringify(body) }),
+  posApproveHighValuePayment: (paymentId) => request(`/api/pos/payment/customer-approve/${paymentId}`, { method: "POST" }),
+  setCustomerPaymentPin: (body) => request("/api/customer/payment-pin/set", { method: "POST", body: JSON.stringify(body) }),
+  resetCustomerPaymentPin: (body) => request("/api/customer/payment-pin/reset", { method: "POST", body: JSON.stringify(body) }),
+  verifyCustomerPaymentPin: (body) => request("/api/customer/payment-pin/verify", { method: "POST", body: JSON.stringify(body) }),
+  getPosSecurityDashboard: (storeId) => request(`/api/pos/security/dashboard?store_id=${encodeURIComponent(storeId)}`),
+  getPosSecurityReports: (storeId, period = "daily") => request(`/api/pos/security/reports?store_id=${encodeURIComponent(storeId)}&period=${encodeURIComponent(period)}`),
+  getPosSecurityRoles: (storeId) => request(`/api/pos/security/roles?store_id=${encodeURIComponent(storeId)}`),
+  updatePosSecurityRole: (roleKey, storeId, body) => request(`/api/pos/security/roles/${roleKey}?store_id=${encodeURIComponent(storeId)}`, { method: "POST", body: JSON.stringify(body) }),
+  getPosSecurityLimits: (scopeType, scopeId) => request(`/api/pos/security/limits?scope_type=${encodeURIComponent(scopeType)}&scope_id=${encodeURIComponent(scopeId)}`),
+  updatePosSecurityLimits: (body) => request("/api/pos/security/limits", { method: "POST", body: JSON.stringify(body) }),
+  getPosSecurityApprovals: (storeId) => request(`/api/pos/security/approvals?store_id=${encodeURIComponent(storeId)}`),
+  decidePosSecurityApproval: (approvalId, body) => request(`/api/pos/security/approvals/${approvalId}/decision`, { method: "POST", body: JSON.stringify(body) }),
+
   // Transactions
   getTransactions: (params = {}) => {
     const query = new URLSearchParams();

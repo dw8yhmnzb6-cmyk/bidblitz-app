@@ -21,6 +21,17 @@ from core.database import db
 from core.security import get_current_user
 from core.payment_engine import debit_wallet, credit_wallet, TransactionType
 from services.pos_auto_order import run_auto_order_for_store
+from services.pos_security import (
+    audit_pos_security_event,
+    build_customer_public_view,
+    create_security_alert,
+    evaluate_transaction_limits,
+    execute_refund_action,
+    get_actor_context,
+    get_effective_limits,
+    request_manager_approval,
+    require_permission,
+)
 
 router = APIRouter(prefix="/api/pos", tags=["POS System"])
 logger = logging.getLogger("bidblitz.pos")
@@ -840,6 +851,7 @@ async def create_payment(req: PaymentCreate, request: Request):
     if cart["status"] != "open":
         raise HTTPException(status_code=400, detail="Cart bereits abgeschlossen")
     await _require_store_access(user, cart["store_id"])
+    actor = await get_actor_context(user, cart["store_id"], cart["register_id"])
 
     merchant = await db.pos_merchants.find_one({"merchant_id": cart["merchant_id"]})
     if merchant.get("status") != "approved" and req.method in ("wallet_qr", "barcode"):
@@ -849,6 +861,17 @@ async def create_payment(req: PaymentCreate, request: Request):
     total = float(cart["total"])
     payment_id = short_id("PAY", 12)
     now = datetime.now(timezone.utc)
+
+    if req.method in ("wallet_qr", "barcode"):
+        require_permission(actor, "payment.collect")
+        limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
+        policy = evaluate_transaction_limits(actor, "payment", total, limits)
+        await audit_pos_security_event("pos_payment_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"amount": total, "store_id": cart["store_id"], "register_id": cart["register_id"], "cart_id": cart["cart_id"]}, severity="info")
+        if policy["hard_limit"] and total > policy["hard_limit"]:
+            raise HTTPException(status_code=403, detail="Zahlung überschreitet das zulässige Limit")
+        if policy["needs_approval"]:
+            approval = await request_manager_approval(actor, "secure_payment", total, {"store_id": cart["store_id"], "register_id": cart["register_id"], "cart_id": cart["cart_id"], "description": f"POS Cart {cart['cart_id']}"}, "Large payment requires manager approval")
+            return {"ok": True, "status": "approval_required", "approval": approval, "message": "Zahlung wartet auf Manager-Freigabe"}
 
     payment_doc = {
         "payment_id": payment_id,
@@ -1033,60 +1056,28 @@ async def refund_payment(req: RefundRequest, request: Request):
 
     # Authorisation: merchant_admin / store_manager / accountant only
     await _require_store_access(user, payment["store_id"], {"merchant_admin", "store_manager", "accountant"})
+    actor = await get_actor_context(user, payment["store_id"], payment.get("register_id", ""))
+    require_permission(actor, "refund.issue")
 
     refund_amount = float(req.amount) if req.amount else float(payment["amount"])
     if refund_amount <= 0 or refund_amount > float(payment["amount"]):
         raise HTTPException(status_code=400, detail="Refund-Betrag ungültig")
 
-    refund_id = short_id("RFD", 10)
-    method = payment["method"]
+    limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
+    policy = evaluate_transaction_limits(actor, "refund", refund_amount, limits)
+    await audit_pos_security_event("pos_refund_attempt", request=request, user_id=actor["user_id"], email=user.get("email", ""), details={"payment_id": req.payment_id, "amount": refund_amount, "store_id": payment["store_id"]}, severity="info")
+    if policy["hard_limit"] and refund_amount > policy["hard_limit"]:
+        raise HTTPException(status_code=403, detail="Refund überschreitet das zulässige Limit")
+    if policy["needs_approval"] or refund_amount >= limits.get("refund_approval_limit", 0):
+        approval = await request_manager_approval(actor, "refund", refund_amount, {"payment_id": req.payment_id, "reason": req.reason or ""}, "High-value refund requires manager approval")
+        if refund_amount >= 100:
+            await create_security_alert(actor["merchant_id"], actor["store_id"], "excessive_refunds", "Refund wartet auf Freigabe", {"payment_id": req.payment_id, "amount": refund_amount}, "medium", actor["user_id"])
+        return {"ok": True, "status": "approval_required", "approval": approval, "message": "Refund wartet auf Manager-Freigabe"}
 
-    if method in ("wallet_qr", "barcode") and payment.get("customer_id"):
-        # Reverse wallet flow: take from merchant owner, credit customer
-        merchant = await db.pos_merchants.find_one({"merchant_id": payment["merchant_id"]})
-        if merchant:
-            await db.users.update_one(
-                {"_id": ObjectId(merchant["owner_id"])},
-                {"$inc": {"balance": -refund_amount}},
-            )
-            await db.pos_merchants.update_one(
-                {"merchant_id": payment["merchant_id"]},
-                {"$inc": {"settlement_balance": -refund_amount}},
-            )
-        await credit_wallet(
-            user_id=payment["customer_id"],
-            amount=refund_amount,
-            tx_type=TransactionType.REFUND,
-            description=f"POS Refund {payment['payment_id']}",
-            reference=refund_id,
-        )
-
-    # For cash/card_external the refund is informational; merchant settles outside.
-    refund_doc = {
-        "refund_id": refund_id,
-        "payment_id": payment["payment_id"],
-        "store_id": payment["store_id"],
-        "merchant_id": payment["merchant_id"],
-        "amount": refund_amount,
-        "method": method,
-        "reason": req.reason or "",
-        "issued_by": str(user["_id"]),
-        "issued_at": now_iso(),
-    }
-    await db.pos_refunds.insert_one(refund_doc)
-    refund_doc.pop("_id", None)
-
-    new_status = PAYMENT_STATUS_REFUNDED if refund_amount >= float(payment["amount"]) else "partial_refund"
-    await db.pos_payments.update_one(
-        {"payment_id": payment["payment_id"]},
-        {"$set": {"status": new_status}, "$inc": {"refunded_total": refund_amount}},
-    )
-    await db.pos_shifts.update_one(
-        {"shift_id": payment.get("shift_id") or ""},
-        {"$inc": {"refund_total": refund_amount}},
-    )
+    refund_doc = await execute_refund_action({"payment_id": req.payment_id, "amount": refund_amount, "reason": req.reason or ""}, actor, request=request)
+    await db.pos_shifts.update_one({"shift_id": payment.get("shift_id") or ""}, {"$inc": {"refund_total": refund_amount}})
     await _audit(str(user["_id"]), "payment.refund", {"payment_id": payment["payment_id"], "amount": refund_amount})
-    return {"ok": True, "refund": refund_doc, "new_status": new_status}
+    return {"ok": True, "refund": refund_doc, "new_status": PAYMENT_STATUS_REFUNDED if refund_amount >= float(payment["amount"]) else "partial_refund"}
 
 
 # ───────────────────────────────────────────────────────────────────────
