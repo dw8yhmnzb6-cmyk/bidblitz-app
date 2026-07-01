@@ -126,6 +126,9 @@ def test_customer_intelligence_overview_contract_and_no_objectid(base_url: str, 
         "segments",
         "heatmap",
         "privacy_policy",
+        "campaign_templates",
+        "campaign_metrics",
+        "radar_history",
         "timeline_monthly",
         "timeline_yearly",
     ]:
@@ -138,6 +141,9 @@ def test_customer_intelligence_overview_contract_and_no_objectid(base_url: str, 
     assert isinstance(payload["recent_customer_events"], list)
     assert isinstance(payload["timeline_monthly"], list)
     assert isinstance(payload["timeline_yearly"], list)
+    assert isinstance(payload["campaign_templates"], list)
+    assert isinstance(payload["campaign_metrics"], dict)
+    assert isinstance(payload["radar_history"], list)
 
     # New Live Radar + Segments + Heatmap + Privacy contract assertions
     assert isinstance(payload["radar_alerts"], list)
@@ -173,6 +179,22 @@ def test_customer_intelligence_overview_contract_and_no_objectid(base_url: str, 
         "recommended_next_step",
     ]:
         assert key in payload["privacy_policy"]
+
+    for metric_key in [
+        "total_actions",
+        "coupons_issued",
+        "coupons_redeemed",
+        "redemption_rate",
+        "coupon_value_issued",
+        "by_type",
+        "by_template",
+        "daily",
+    ]:
+        assert metric_key in payload["campaign_metrics"]
+
+    for template in payload["campaign_templates"][:5]:
+        for template_key in ["template_id", "name", "action_type", "coupon_value", "message", "segment", "active"]:
+            assert template_key in template
 
     assert _contains_forbidden_serialization(payload) is False
 
@@ -271,6 +293,129 @@ def test_radar_action_rejects_non_admin(base_url: str, api_client: requests.Sess
         timeout=25,
     )
     assert response.status_code == 403
+
+
+def test_radar_templates_reject_unauthenticated(base_url: str, api_client: requests.Session):
+    response = api_client.post(
+        f"{base_url}/api/admin/customer-intelligence/radar/templates",
+        json={
+            "name": "QA unauth template",
+            "action_type": "coupon_push_alert",
+            "coupon_value": 6,
+            "message": "Template should be blocked",
+            "segment": "all",
+            "active": True,
+        },
+        timeout=25,
+    )
+    assert response.status_code in (401, 403)
+
+
+def test_radar_history_reject_unauthenticated(base_url: str, api_client: requests.Session):
+    response = api_client.get(
+        f"{base_url}/api/admin/customer-intelligence/radar/history?limit=20",
+        timeout=25,
+    )
+    assert response.status_code in (401, 403)
+
+
+def test_radar_templates_reject_non_admin(base_url: str, api_client: requests.Session):
+    login = _login(api_client, base_url, NON_ADMIN_EMAIL, NON_ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    response = api_client.post(
+        f"{base_url}/api/admin/customer-intelligence/radar/templates",
+        json={
+            "name": "QA non-admin template",
+            "action_type": "coupon_push_alert",
+            "coupon_value": 6,
+            "message": "Template should be blocked",
+            "segment": "all",
+            "active": True,
+        },
+        timeout=25,
+    )
+    assert response.status_code == 403
+
+
+def test_radar_history_reject_non_admin(base_url: str, api_client: requests.Session):
+    login = _login(api_client, base_url, NON_ADMIN_EMAIL, NON_ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    response = api_client.get(
+        f"{base_url}/api/admin/customer-intelligence/radar/history?limit=20",
+        timeout=25,
+    )
+    assert response.status_code == 403
+
+
+def test_radar_template_create_and_apply_sets_template_id(
+    base_url: str, api_client: requests.Session, admin_radar_target: dict[str, str]
+):
+    login = _login(api_client, base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    template_payload = {
+        "name": f"QA Template {int(time.time())}",
+        "action_type": "coupon_push_alert",
+        "coupon_value": 9.0,
+        "message": "QA template apply message",
+        "segment": "all",
+        "active": True,
+    }
+    create_response = api_client.post(
+        f"{base_url}/api/admin/customer-intelligence/radar/templates",
+        json=template_payload,
+        timeout=30,
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+    assert created.get("ok") is True
+    created_template = created.get("template") or {}
+    assert created_template.get("template_id", "").startswith("tpl-")
+    assert created_template.get("name") == template_payload["name"]
+    assert created_template.get("action_type") == template_payload["action_type"]
+    assert created_template.get("message") == template_payload["message"]
+
+    action_response = api_client.post(
+        f"{base_url}/api/admin/customer-intelligence/radar/action",
+        json={
+            "action_type": "coupon",
+            "user_id": admin_radar_target["user_id"],
+            "alert_id": admin_radar_target.get("alert_id", ""),
+            "store_id": admin_radar_target.get("store_id", ""),
+            "merchant_id": admin_radar_target.get("merchant_id", ""),
+            "template_id": created_template["template_id"],
+            "message": "",
+            "coupon_value": 1,
+        },
+        timeout=30,
+    )
+    assert action_response.status_code == 200
+    action_data = action_response.json()
+    assert action_data.get("ok") is True
+    assert action_data.get("action", {}).get("template_id") == created_template["template_id"]
+    assert action_data.get("action", {}).get("action_type") == "coupon_push_alert"
+    assert action_data.get("coupon") and action_data["coupon"].get("code", "").startswith("RADAR-")
+    assert action_data.get("notification") and action_data["notification"].get("notif_id")
+    assert action_data.get("manager_alert") and action_data["manager_alert"].get("alert_id", "").startswith("MRA-")
+    assert _contains_forbidden_serialization(action_data) is False
+
+    history_response = api_client.get(
+        f"{base_url}/api/admin/customer-intelligence/radar/history?limit=40",
+        timeout=30,
+    )
+    assert history_response.status_code == 200
+    history_data = history_response.json()
+    assert history_data.get("ok") is True
+    assert isinstance(history_data.get("history"), list)
+    assert isinstance(history_data.get("metrics"), dict)
+    matched = [
+        item for item in (history_data.get("history") or [])
+        if item.get("template_id") == created_template["template_id"]
+    ]
+    assert len(matched) >= 1
+    assert _contains_forbidden_serialization(history_data) is False
 
 
 @pytest.fixture()

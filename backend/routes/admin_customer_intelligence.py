@@ -22,8 +22,18 @@ class RadarActionRequest(BaseModel):
     alert_id: str = ""
     store_id: str = ""
     merchant_id: str = ""
+    template_id: str = ""
     coupon_value: float = 5.0
     message: str = ""
+
+
+class RadarTemplateRequest(BaseModel):
+    name: str
+    action_type: str = "coupon_push_alert"
+    coupon_value: float = 5.0
+    message: str
+    segment: str = "all"
+    active: bool = True
 
 
 async def require_admin(request: Request):
@@ -422,6 +432,101 @@ def build_coupon_code(prefix: str = "RADAR") -> str:
     return f"{prefix}-{secrets.token_hex(3).upper()}"
 
 
+def default_radar_templates() -> list[dict]:
+    return [
+        {
+            "template_id": "tpl-vip-near-shop",
+            "name": "VIP nahe Shop",
+            "action_type": "coupon_push_alert",
+            "coupon_value": 10.0,
+            "message": "VIP-Angebot aktiviert: Dein persönlicher BidBlitz Coupon wartet jetzt.",
+            "segment": "vip_seconds_buyers",
+            "active": True,
+            "system": True,
+        },
+        {
+            "template_id": "tpl-omni-bundle",
+            "name": "Omnichannel Bundle",
+            "action_type": "coupon_push_alert",
+            "coupon_value": 7.5,
+            "message": "Exklusives Bundle für deine nächsten BidBlitz- und Shop-Käufe ist aktiv.",
+            "segment": "omnichannel_buyers",
+            "active": True,
+            "system": True,
+        },
+        {
+            "template_id": "tpl-manager-only",
+            "name": "Manager Alert only",
+            "action_type": "manager_alert",
+            "coupon_value": 0.0,
+            "message": "Top-Kunde in Shopnähe: persönliches Angebot oder Service-Touchpoint prüfen.",
+            "segment": "pos_loyalists",
+            "active": True,
+            "system": True,
+        },
+        {
+            "template_id": "tpl-reactivation",
+            "name": "Reaktivierung",
+            "action_type": "coupon_push_alert",
+            "coupon_value": 5.0,
+            "message": "Wir vermissen dich: Dein Reaktivierungs-Coupon ist 14 Tage aktiv.",
+            "segment": "dormant_high_value",
+            "active": True,
+            "system": True,
+        },
+    ]
+
+
+async def load_radar_templates(include_inactive: bool = False) -> list[dict]:
+    query = {} if include_inactive else {"active": {"$ne": False}}
+    custom = await db.customer_radar_templates.find(query, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    defaults = default_radar_templates()
+    templates = custom + defaults
+    return [tpl for tpl in templates if include_inactive or tpl.get("active", True)]
+
+
+async def find_radar_template(template_id: str) -> dict | None:
+    if not template_id:
+        return None
+    custom = await db.customer_radar_templates.find_one({"template_id": template_id}, {"_id": 0})
+    if custom:
+        return custom
+    return next((tpl for tpl in default_radar_templates() if tpl["template_id"] == template_id), None)
+
+
+async def build_radar_metrics() -> dict:
+    actions = await db.customer_radar_actions.find({}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+    coupons = await db.coupons.find({"source": "admin_customer_radar"}, {"_id": 0, "used_count": 1, "value": 1, "created_at": 1}).to_list(1000)
+    by_type = defaultdict(int)
+    by_template = defaultdict(int)
+    daily = defaultdict(int)
+    for action in actions:
+        by_type[action.get("action_type", "unknown")] += 1
+        if action.get("template_id"):
+            by_template[action["template_id"]] += 1
+        daily[str(action.get("created_at", ""))[:10]] += 1
+    redeemed = [coupon for coupon in coupons if int(coupon.get("used_count", 0) or 0) > 0]
+    return {
+        "total_actions": len(actions),
+        "coupons_issued": len(coupons),
+        "coupons_redeemed": len(redeemed),
+        "redemption_rate": round((len(redeemed) / len(coupons)) * 100, 2) if coupons else 0,
+        "coupon_value_issued": round(sum(safe_float(c.get("value")) for c in coupons), 2),
+        "by_type": dict(by_type),
+        "by_template": dict(by_template),
+        "daily": [{"date": key, "actions": daily[key]} for key in sorted(daily.keys())[-30:]],
+    }
+
+
+async def load_radar_history(limit: int = 80) -> list[dict]:
+    actions = await db.customer_radar_actions.find({}, {"_id": 0}).sort("created_at", -1).limit(min(max(limit, 1), 200)).to_list(min(max(limit, 1), 200))
+    user_ids = {action.get("user_id", "") for action in actions if action.get("user_id")}
+    users = await load_user_map(user_ids)
+    for action in actions:
+        action["user"] = public_customer(users.get(action.get("user_id", "")), action.get("user_id", ""))
+    return actions
+
+
 async def create_radar_coupon(admin: dict, user: dict, req: RadarActionRequest) -> dict:
     value = round(max(1.0, min(float(req.coupon_value or 5.0), 100.0)), 2)
     code = build_coupon_code("RADAR")
@@ -444,6 +549,7 @@ async def create_radar_coupon(admin: dict, user: dict, req: RadarActionRequest) 
         "active": True,
         "source": "admin_customer_radar",
         "alert_id": req.alert_id,
+        "template_id": req.template_id,
     }
     await db.coupons.insert_one(doc.copy())
     await db.promo_codes.update_one(
@@ -577,6 +683,9 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
                     store_visit_matches += 1
     radar_alerts = build_radar_alerts(customer_markers, store_markers, top_customers)
     heatmap = build_heatmap(customer_markers, top_customers)
+    templates = await load_radar_templates()
+    metrics = await build_radar_metrics()
+    history = await load_radar_history(30)
 
     return {
         "ok": True,
@@ -601,6 +710,9 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
         "segments": segments,
         "heatmap": heatmap,
         "privacy_policy": privacy_policy_summary(),
+        "campaign_templates": templates,
+        "campaign_metrics": metrics,
+        "radar_history": history,
         "timeline_monthly": timeline,
         "timeline_yearly": yearly_rows,
     }
@@ -644,6 +756,12 @@ async def customer_intelligence_detail(user_id: str, request: Request, days: int
 @router.post("/radar/action")
 async def execute_radar_action(req: RadarActionRequest, request: Request):
     admin = await require_admin(request)
+    template = await find_radar_template(req.template_id)
+    if template:
+        req.action_type = template.get("action_type", req.action_type)
+        req.coupon_value = safe_float(template.get("coupon_value"), req.coupon_value)
+        if not req.message:
+            req.message = template.get("message", "")
     allowed = {"coupon", "push", "manager_alert", "coupon_push_alert"}
     if req.action_type not in allowed:
         raise HTTPException(status_code=400, detail="Ungültige Radar-Aktion")
@@ -668,6 +786,7 @@ async def execute_radar_action(req: RadarActionRequest, request: Request):
         "store_id": req.store_id,
         "merchant_id": req.merchant_id,
         "alert_id": req.alert_id,
+        "template_id": req.template_id,
         "coupon_code": (coupon or {}).get("code", ""),
         "notification_id": (notification or {}).get("notif_id", ""),
         "manager_alert_id": (manager_alert or {}).get("alert_id", ""),
@@ -679,3 +798,40 @@ async def execute_radar_action(req: RadarActionRequest, request: Request):
     await log_audit(AuditEvent.ADMIN_ACTION, user_id=str(admin.get("_id")), email=admin.get("email", ""), ip=ip, user_agent=ua, details={"action": "execute_customer_radar_action", "action_type": req.action_type, "target_user": action_doc["user_id"], "coupon_code": action_doc["coupon_code"]})
     action_doc.pop("_id", None)
     return {"ok": True, "action": action_doc, "coupon": coupon, "notification": notification, "manager_alert": manager_alert}
+
+
+@router.get("/radar/templates")
+async def get_radar_templates(request: Request):
+    await require_admin(request)
+    return {"ok": True, "templates": await load_radar_templates(include_inactive=True)}
+
+
+@router.post("/radar/templates")
+async def create_radar_template(req: RadarTemplateRequest, request: Request):
+    admin = await require_admin(request)
+    allowed = {"coupon", "push", "manager_alert", "coupon_push_alert"}
+    if req.action_type not in allowed:
+        raise HTTPException(status_code=400, detail="Ungültiger Template-Aktionstyp")
+    doc = {
+        "template_id": f"tpl-{secrets.token_hex(5)}",
+        "name": req.name.strip()[:80],
+        "action_type": req.action_type,
+        "coupon_value": round(max(0, min(req.coupon_value, 100)), 2),
+        "message": req.message.strip()[:280],
+        "segment": req.segment,
+        "active": req.active,
+        "system": False,
+        "created_by": str(admin.get("_id")),
+        "created_at": now_utc().isoformat(),
+    }
+    if not doc["name"] or not doc["message"]:
+        raise HTTPException(status_code=400, detail="Name und Nachricht erforderlich")
+    await db.customer_radar_templates.insert_one(doc.copy())
+    doc.pop("_id", None)
+    return {"ok": True, "template": doc}
+
+
+@router.get("/radar/history")
+async def get_radar_history(request: Request, limit: int = Query(80, ge=1, le=200)):
+    await require_admin(request)
+    return {"ok": True, "history": await load_radar_history(limit), "metrics": await build_radar_metrics()}

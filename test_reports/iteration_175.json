@@ -1,0 +1,54 @@
+{
+  "summary": "Executed backend+frontend validation for Admin Customer Intelligence campaign templates, metrics, radar history, auth gates, and CORS preflight. Backend feature flows passed including template creation and template-based radar action application with persisted template_id. External preview CORS preflight remains blocked by edge interception; frontend customer-intelligence UI automation was blocked by selector mismatch in rendered admin shell.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight via preview URL)",
+        "issue": "External preflight still returns wildcard CORS (access-control-allow-origin: *) and omits access-control-allow-credentials=true; local FastAPI endpoint returns explicit origin + credentials correctly.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Admin customer intelligence navigation",
+        "issue": "Automation could not reach customer-intelligence tab using expected selectors/text; rendered admin shell appears different from expected DOM contract for tested selectors.",
+        "selector": "[data-testid=\"admin-grid-customer-intelligence\"], text=Kunden Live-Map",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/test_reports/pytest/iter175_admin_customer_intelligence.xml"
+  ],
+  "action_items": [
+    "Fix/align preview edge ingress CORS for credentialed OPTIONS so external preflight matches app contract (explicit origin + allow-credentials=true).",
+    "Verify deployed admin shell exposes stable data-testid hooks for customer-intelligence navigation, then re-run UI flow for template create/apply and timeline confirmation.",
+    "Re-run /app/backend/tests/test_admin_customer_intelligence.py after edge CORS change."
+  ],
+  "critical_code_review_comments": [
+    "Backend overview response includes campaign_templates, campaign_metrics, and radar_history as requested with no _id/ObjectId serialization leaks in tested payloads.",
+    "POST /api/admin/customer-intelligence/radar/templates and template-based POST /api/admin/customer-intelligence/radar/action flow works end-to-end; action.template_id persisted and history endpoint returns matching entries with metrics.",
+    "Auth gates behave correctly for unauth/non-admin across overview, radar action, templates, and history endpoints."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/test_reports/iteration_175.json"
+  ],
+  "success_rate": {
+    "backend": "94% (17/18)",
+    "frontend": "20% (admin page load/login only; target tab flow blocked)"
+  },
+  "seed_data_creation": "Created QA radar template and multiple radar actions (coupon/push/manager_alert/coupon_push_alert) against existing user data during automated tests.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend regression is strong and can be reused from updated test_admin_customer_intelligence.py. For UI, preview currently renders an admin shell where expected customer-intelligence selectors/text were not discoverable by Playwright despite successful admin login; start by inventorying live DOM testids in /admin before attempting customer-intelligence assertions.",
+  "rca of the issue": "CORS failure reproduces only on external preview URL where Cloudflare/edge answers OPTIONS with wildcard and no credentials header. Local FastAPI OPTIONS on localhost:8001 returns explicit allow-origin and allow-credentials=true, indicating infrastructure interception/override before backend app middleware.",
+  "test_credentials": "Used /app/memory/test_credentials.md accounts: admin@bidblitz.com and haendler@bidblitz.com.",
+  "mocked_api": "No MOCKED APIs used."
+}

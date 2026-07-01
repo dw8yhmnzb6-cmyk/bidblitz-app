@@ -13,6 +13,7 @@ export const AdminCustomerIntelligenceTab = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [query, setQuery] = useState("");
   const [acting, setActing] = useState("");
+  const [templateForm, setTemplateForm] = useState({ name: "", action_type: "coupon_push_alert", coupon_value: 5, message: "", segment: "vip_seconds_buyers" });
 
   const load = async () => {
     setLoading(true);
@@ -37,7 +38,7 @@ export const AdminCustomerIntelligenceTab = () => {
 
   const maxMonth = Math.max(...(data?.timeline_monthly || []).map((row) => row.seconds_revenue + row.commerce_revenue + row.pos_revenue), 1);
 
-  const executeRadarAction = async (alert, actionType) => {
+  const executeRadarAction = async (alert, actionType, templateId = "") => {
     const userId = alert?.user?.user_id;
     if (!userId) return toast.error("Kunde fehlt");
     setActing(`${alert.alert_id}-${actionType}`);
@@ -48,6 +49,7 @@ export const AdminCustomerIntelligenceTab = () => {
         alert_id: alert.alert_id,
         store_id: alert.store?.store_id || "",
         merchant_id: alert.store?.merchant_id || "",
+        template_id: templateId,
         coupon_value: alert.severity === "high" ? 10 : 5,
         message: alert.recommended_action || "Persönliches BidBlitz-Angebot",
       });
@@ -55,6 +57,21 @@ export const AdminCustomerIntelligenceTab = () => {
       await load();
     } catch (error) {
       toast.error(error.message || "Radar-Aktion fehlgeschlagen");
+    } finally {
+      setActing("");
+    }
+  };
+
+  const createTemplate = async () => {
+    if (!templateForm.name.trim() || !templateForm.message.trim()) return toast.error("Template-Name und Nachricht eingeben");
+    setActing("create-template");
+    try {
+      await api.createAdminCustomerRadarTemplate(templateForm);
+      toast.success("Kampagnen-Template gespeichert");
+      setTemplateForm({ name: "", action_type: "coupon_push_alert", coupon_value: 5, message: "", segment: "vip_seconds_buyers" });
+      await load();
+    } catch (error) {
+      toast.error(error.message || "Template konnte nicht gespeichert werden");
     } finally {
       setActing("");
     }
@@ -102,6 +119,35 @@ export const AdminCustomerIntelligenceTab = () => {
           <PolicyRow label="Analytics Retention" value={`${data?.privacy_policy?.aggregated_analytics_retention_days || 1095} Tage`} />
           <PolicyRow label="Zugriff" value="Admin + Audit" />
           <p className="mt-3 text-[10px] leading-relaxed text-white/35" data-testid="admin-ci-privacy-next-step">{data?.privacy_policy?.recommended_next_step}</p>
+        </div>
+      </section>
+
+      <section className="grid lg:grid-cols-[0.9fr_1.1fr] gap-3" data-testid="admin-ci-campaign-section">
+        <div className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-template-panel">
+          <div className="flex items-center justify-between mb-3"><p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Kampagnen-Templates</p><span className="text-[9px] text-white/30">{data?.campaign_templates?.length || 0}</span></div>
+          <div className="space-y-2 mb-3 max-h-[180px] overflow-y-auto pr-1">
+            {(data?.campaign_templates || []).slice(0, 8).map((tpl) => <TemplateRow key={tpl.template_id} template={tpl} alerts={data?.radar_alerts || []} onApply={executeRadarAction} acting={acting} />)}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={templateForm.name} onChange={(e) => setTemplateForm((p) => ({ ...p, name: e.target.value }))} placeholder="Template Name" data-testid="admin-ci-template-name-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+            <select value={templateForm.action_type} onChange={(e) => setTemplateForm((p) => ({ ...p, action_type: e.target.value }))} data-testid="admin-ci-template-action-select" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none"><option value="coupon_push_alert">Auto</option><option value="coupon">Coupon</option><option value="push">Push</option><option value="manager_alert">Manager</option></select>
+            <input type="number" min="0" max="100" value={templateForm.coupon_value} onChange={(e) => setTemplateForm((p) => ({ ...p, coupon_value: Number(e.target.value) }))} placeholder="€" data-testid="admin-ci-template-value-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+            <select value={templateForm.segment} onChange={(e) => setTemplateForm((p) => ({ ...p, segment: e.target.value }))} data-testid="admin-ci-template-segment-select" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none"><option value="vip_seconds_buyers">VIP Sekunden</option><option value="omnichannel_buyers">Omnichannel</option><option value="pos_loyalists">POS Loyal</option><option value="dormant_high_value">Reaktivierung</option><option value="all">Alle</option></select>
+          </div>
+          <textarea value={templateForm.message} onChange={(e) => setTemplateForm((p) => ({ ...p, message: e.target.value }))} placeholder="Nachricht" rows={2} data-testid="admin-ci-template-message-input" className="mt-2 w-full rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+          <button onClick={createTemplate} disabled={acting === "create-template"} data-testid="admin-ci-template-save-button" className="mt-2 w-full rounded-xl bg-[#00D4FF]/15 border border-[#00D4FF]/25 px-3 py-2 text-xs font-bold text-[#00D4FF] disabled:opacity-50">{acting === "create-template" ? "Speichert…" : "Template speichern"}</button>
+        </div>
+        <div className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-metrics-panel">
+          <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold mb-3">Erfolgsmessung</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+            <MetricPill label="Actions" value={data?.campaign_metrics?.total_actions || 0} />
+            <MetricPill label="Coupons" value={data?.campaign_metrics?.coupons_issued || 0} />
+            <MetricPill label="Redeemed" value={data?.campaign_metrics?.coupons_redeemed || 0} />
+            <MetricPill label="Rate" value={`${data?.campaign_metrics?.redemption_rate || 0}%`} />
+          </div>
+          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1" data-testid="admin-ci-history-timeline">
+            {(data?.radar_history || []).length === 0 ? <p className="py-6 text-center text-[11px] text-white/30">Noch keine Radar-Actions</p> : (data?.radar_history || []).slice(0, 18).map((item) => <HistoryRow key={item.action_id} item={item} />)}
+          </div>
         </div>
       </section>
 
@@ -217,6 +263,19 @@ function PolicyRow({ label, value }) {
 
 function SegmentCard({ icon: Icon, title, rows, testId }) {
   return <div data-testid={testId} className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-1.5"><Icon size={13} className="text-[#00D4FF]" /><p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">{title}</p></div><span className="text-[10px] font-bold text-white/50">{rows.length}</span></div><div className="space-y-1.5">{rows.slice(0, 3).map((row) => <div key={row.user.user_id} className="rounded-lg bg-black/18 px-2 py-1.5"><p className="text-[11px] font-bold text-white truncate">{row.user.name}</p><p className="text-[9px] text-white/35">€{money(row.total_revenue)} · {row.channels || 1} Kanäle</p></div>)}{rows.length === 0 && <p className="py-3 text-center text-[10px] text-white/25">Noch keine Treffer</p>}</div></div>;
+}
+
+function TemplateRow({ template, alerts, onApply, acting }) {
+  const firstAlert = alerts?.[0];
+  return <div data-testid={`admin-ci-template-row-${template.template_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-xs font-bold text-white truncate">{template.name}</p><p className="text-[9px] text-white/35 truncate">{template.action_type} · €{money(template.coupon_value)} · {template.segment}</p></div><button type="button" disabled={!firstAlert || Boolean(acting)} onClick={() => onApply(firstAlert, template.action_type, template.template_id)} data-testid={`admin-ci-template-apply-${template.template_id}`} className="rounded-lg bg-[#10D981]/12 border border-[#10D981]/20 px-2 py-1 text-[9px] font-bold text-[#10D981] disabled:opacity-40">Apply</button></div><p className="mt-1 text-[9px] text-white/30 line-clamp-2">{template.message}</p></div>;
+}
+
+function MetricPill({ label, value }) {
+  return <div data-testid={`admin-ci-metric-${label.toLowerCase()}`} className="rounded-xl bg-black/20 border border-white/[0.04] p-2"><p className="text-[9px] uppercase tracking-widest text-white/30">{label}</p><p className="text-sm font-black text-white mt-0.5">{value}</p></div>;
+}
+
+function HistoryRow({ item }) {
+  return <div data-testid={`admin-ci-history-${item.action_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2 flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold text-white truncate">{item.action_type} · {item.user?.name || item.user_id}</p><p className="text-[9px] text-white/30 truncate">{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {item.coupon_code || item.manager_alert_id || item.notification_id || "Action"}</p></div><span className="text-[9px] text-[#00D4FF] font-bold">{item.template_id || "manual"}</span></div>;
 }
 
 function CustomerRow({ row, onClick }) {

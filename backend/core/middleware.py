@@ -7,7 +7,7 @@ import logging
 import time
 import traceback
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from starlette.middleware.cors import CORSMiddleware
 
 from core.config import IS_PRODUCTION, CORS_ORIGINS
@@ -18,6 +18,33 @@ access_logger = logging.getLogger("bidblitz.access")
 
 def setup_middleware(app):
     """Configure all middleware for the FastAPI app"""
+
+    def allowed_origin(origin: str) -> str:
+        if origin and origin in CORS_ORIGINS:
+            return origin
+        return CORS_ORIGINS[0] if CORS_ORIGINS else ""
+
+    @app.middleware("http")
+    async def credentialed_options_guard(request: Request, call_next):
+        if request.method == "OPTIONS" and request.url.path.startswith("/api/"):
+            origin = allowed_origin(request.headers.get("origin", ""))
+            headers = {
+                "Access-Control-Allow-Methods": request.headers.get("access-control-request-method", "GET,POST,PUT,PATCH,DELETE,OPTIONS"),
+                "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "authorization,content-type"),
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "600",
+                "Vary": "Origin",
+            }
+            if origin:
+                headers["Access-Control-Allow-Origin"] = origin
+            return Response(status_code=204, headers=headers)
+        response = await call_next(request)
+        origin = allowed_origin(request.headers.get("origin", ""))
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Vary"] = "Origin"
+        return response
     
     # ── CORS Middleware ──
     app.add_middleware(

@@ -217,6 +217,8 @@ export const api = {
   getAdminCustomerIntelligence: (days = 365) => request(`/api/admin/customer-intelligence/overview?days=${encodeURIComponent(days)}`),
   getAdminCustomerIntelligenceCustomer: (userId, days = 365) => request(`/api/admin/customer-intelligence/customer/${encodeURIComponent(userId)}?days=${encodeURIComponent(days)}`),
   executeAdminCustomerRadarAction: (body) => request("/api/admin/customer-intelligence/radar/action", { method: "POST", body: JSON.stringify(body) }),
+  createAdminCustomerRadarTemplate: (body) => request("/api/admin/customer-intelligence/radar/templates", { method: "POST", body: JSON.stringify(body) }),
+  getAdminCustomerRadarHistory: (limit = 80) => request(`/api/admin/customer-intelligence/radar/history?limit=${encodeURIComponent(limit)}`),
 
   // Transactions
   getTransactions: (params = {}) => {
