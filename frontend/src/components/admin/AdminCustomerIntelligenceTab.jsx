@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Clock, Loader2, MapPin, Search, ShoppingBag, Store, Zap } from "lucide-react";
+import { AlertTriangle, BarChart3, Clock, Flame, Loader2, MapPin, Search, ShieldCheck, ShoppingBag, Sparkles, Store, Target, Zap } from "lucide-react";
 import { api } from "../../services/api";
 
 const colors = ["#00D4FF", "#10D981", "#FFB800", "#FF5A5A", "#A78BFA"];
@@ -61,6 +61,25 @@ export const AdminCustomerIntelligenceTab = () => {
         <InsightCard icon={MapPin} label="Live Signale" value={data?.summary?.located_customers || 0} sub={`${data?.summary?.store_visit_matches || 0} Shop-Matches`} color="#FF5A5A" testId="admin-ci-location-summary" />
       </div>
 
+      <section className="grid lg:grid-cols-[1.2fr_0.8fr] gap-3" data-testid="admin-ci-radar-section">
+        <div className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-radar-alerts-panel">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2"><Target size={14} className="text-[#FF5A5A]" /><p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Live Radar Alerts</p></div>
+            <span className="text-[9px] text-white/30">{data?.radar_alerts?.length || 0} Signale</span>
+          </div>
+          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+            {(data?.radar_alerts || []).length === 0 ? <p className="py-5 text-center text-[11px] text-white/30" data-testid="admin-ci-radar-empty">Keine Radar-Alerts</p> : (data?.radar_alerts || []).slice(0, 8).map((alert) => <RadarAlertRow key={alert.alert_id} alert={alert} />)}
+          </div>
+        </div>
+        <div className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-privacy-panel">
+          <div className="flex items-center gap-2 mb-3"><ShieldCheck size={14} className="text-[#10D981]" /><p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Privacy Guard</p></div>
+          <PolicyRow label="Präzise Rohdaten" value={`${data?.privacy_policy?.precise_location_retention_hours || 24}h`} />
+          <PolicyRow label="Analytics Retention" value={`${data?.privacy_policy?.aggregated_analytics_retention_days || 1095} Tage`} />
+          <PolicyRow label="Zugriff" value="Admin + Audit" />
+          <p className="mt-3 text-[10px] leading-relaxed text-white/35" data-testid="admin-ci-privacy-next-step">{data?.privacy_policy?.recommended_next_step}</p>
+        </div>
+      </section>
+
       <section className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-map-panel">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Kundenkarte</p>
@@ -74,7 +93,15 @@ export const AdminCustomerIntelligenceTab = () => {
           </div>
           {(data?.map?.stores || []).map((store, index) => <MapDot key={store.marker_id} item={store} index={index} type="store" />)}
           {(data?.map?.customers || []).map((customer, index) => <MapDot key={customer.marker_id} item={customer} index={index} type="customer" />)}
+          {(data?.heatmap || []).slice(0, 10).map((cell, index) => <HeatDot key={cell.cell_id} cell={cell} index={index} />)}
         </div>
+      </section>
+
+      <section className="grid lg:grid-cols-4 gap-2.5" data-testid="admin-ci-segments-panel">
+        <SegmentCard icon={Sparkles} title="VIP Sekunden" rows={data?.segments?.vip_seconds_buyers || []} testId="admin-ci-segment-vip" />
+        <SegmentCard icon={Zap} title="Omnichannel" rows={data?.segments?.omnichannel_buyers || []} testId="admin-ci-segment-omni" />
+        <SegmentCard icon={Store} title="POS Loyal" rows={data?.segments?.pos_loyalists || []} testId="admin-ci-segment-pos" />
+        <SegmentCard icon={Flame} title="Reaktivieren" rows={data?.segments?.dormant_high_value || []} testId="admin-ci-segment-dormant" />
       </section>
 
       <section className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-yearly-analysis-panel">
@@ -141,6 +168,26 @@ function MapDot({ item, index, type }) {
   const top = `${12 + ((Math.abs(Number(item.lat || 0)) * 41 + index * 7) % 70)}%`;
   const color = type === "customer" ? "#00D4FF" : "#FFB800";
   return <div className="absolute group" style={{ left, top }} data-testid={`admin-ci-map-${type}-marker`}><div className="w-3 h-3 rounded-full" style={{ background: color, boxShadow: `0 0 20px ${color}` }} /><div className="absolute left-4 top-[-10px] hidden group-hover:block whitespace-nowrap rounded-lg bg-black/80 border border-white/10 px-2 py-1 text-[10px] text-white z-20">{type === "customer" ? item.user?.name : item.store_name}</div></div>;
+}
+
+function HeatDot({ cell, index }) {
+  const left = `${8 + ((Math.abs(Number(cell.lng || 0)) * 29 + index * 13) % 82)}%`;
+  const top = `${10 + ((Math.abs(Number(cell.lat || 0)) * 31 + index * 9) % 72)}%`;
+  const size = 26 + Math.min(54, Number(cell.intensity || 0));
+  return <div className="absolute rounded-full pointer-events-none" data-testid="admin-ci-heatmap-cell" style={{ left, top, width: size, height: size, transform: "translate(-50%, -50%)", background: "radial-gradient(circle, rgba(255,90,90,0.26), rgba(255,184,0,0.12), transparent 68%)" }} />;
+}
+
+function RadarAlertRow({ alert }) {
+  const high = alert.severity === "high";
+  return <div data-testid={`admin-ci-radar-alert-${alert.alert_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2.5"><div className="flex items-start gap-2"><AlertTriangle size={14} className={high ? "text-[#FF5A5A]" : "text-[#FFB800]"} /><div className="min-w-0 flex-1"><p className="text-xs font-bold text-white truncate">{alert.title}</p><p className="text-[10px] text-white/45 mt-0.5">{alert.message}</p><p className="text-[9px] text-[#00D4FF] mt-1">{alert.recommended_action}</p></div></div></div>;
+}
+
+function PolicyRow({ label, value }) {
+  return <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-b-0" data-testid={`admin-ci-policy-${label.toLowerCase().replace(/\s+/g, "-")}`}><span className="text-[10px] text-white/35">{label}</span><span className="text-[10px] font-bold text-white/70">{value}</span></div>;
+}
+
+function SegmentCard({ icon: Icon, title, rows, testId }) {
+  return <div data-testid={testId} className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-1.5"><Icon size={13} className="text-[#00D4FF]" /><p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">{title}</p></div><span className="text-[10px] font-bold text-white/50">{rows.length}</span></div><div className="space-y-1.5">{rows.slice(0, 3).map((row) => <div key={row.user.user_id} className="rounded-lg bg-black/18 px-2 py-1.5"><p className="text-[11px] font-bold text-white truncate">{row.user.name}</p><p className="text-[9px] text-white/35">€{money(row.total_revenue)} · {row.channels || 1} Kanäle</p></div>)}{rows.length === 0 && <p className="py-3 text-center text-[10px] text-white/25">Noch keine Treffer</p>}</div></div>;
 }
 
 function CustomerRow({ row, onClick }) {

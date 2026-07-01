@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Any
 
 import pytest
@@ -83,6 +84,10 @@ def test_customer_intelligence_overview_contract_and_no_objectid(base_url: str, 
         "recent_seconds_purchases",
         "recent_customer_events",
         "map",
+        "radar_alerts",
+        "segments",
+        "heatmap",
+        "privacy_policy",
         "timeline_monthly",
         "timeline_yearly",
     ]:
@@ -95,6 +100,42 @@ def test_customer_intelligence_overview_contract_and_no_objectid(base_url: str, 
     assert isinstance(payload["recent_customer_events"], list)
     assert isinstance(payload["timeline_monthly"], list)
     assert isinstance(payload["timeline_yearly"], list)
+
+    # New Live Radar + Segments + Heatmap + Privacy contract assertions
+    assert isinstance(payload["radar_alerts"], list)
+    assert isinstance(payload["segments"], dict)
+    assert isinstance(payload["heatmap"], list)
+    assert isinstance(payload["privacy_policy"], dict)
+
+    for segment_key in ["vip_seconds_buyers", "omnichannel_buyers", "pos_loyalists", "dormant_high_value"]:
+        assert segment_key in payload["segments"]
+        assert isinstance(payload["segments"][segment_key], list)
+        for row in payload["segments"][segment_key][:3]:
+            assert "user" in row
+            assert "total_revenue" in row
+            assert "seconds_revenue" in row
+            assert "seconds_credits" in row
+            assert "channels" in row
+            assert "last_event_at" in row
+
+    for cell in payload["heatmap"][:3]:
+        for key in ["cell_id", "lat", "lng", "customers", "revenue", "intensity"]:
+            assert key in cell
+
+    for alert in payload["radar_alerts"][:3]:
+        for key in ["severity", "title", "message", "recommended_action"]:
+            assert key in alert
+
+    for key in [
+        "status",
+        "precise_location_retention_hours",
+        "aggregated_analytics_retention_days",
+        "admin_access",
+        "consent_mode",
+        "recommended_next_step",
+    ]:
+        assert key in payload["privacy_policy"]
+
     assert _contains_forbidden_serialization(payload) is False
 
 
@@ -162,7 +203,7 @@ def test_auth_preflight_has_credentials_and_explicit_origin(base_url: str, api_c
 
 
 def test_auth_bruteforce_lockout_after_five_failures(base_url: str, api_client: requests.Session):
-    email = "bruteforce.qa.customer@example.com"
+    email = f"bruteforce.qa.customer+{int(time.time() * 1000)}@example.com"
     statuses = []
     for _ in range(6):
         response = _login(api_client, base_url, email, "wrong-password")

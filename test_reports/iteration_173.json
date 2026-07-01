@@ -1,0 +1,44 @@
+{
+  "summary": "Completed backend + frontend regression for Admin Customer Intelligence Live Radar enhancements. New overview fields, serialization safety, admin auth gates, and UI panels/drawer/map/segments all passed. One auth CORS preflight contract issue remains.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Response missing access-control-allow-credentials=true for credentialed CORS preflight; explicit allow-origin+credentials contract still failing.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/test_reports/pytest/iter173_admin_customer_intelligence.xml"
+  ],
+  "action_items": [
+    "Fix preview edge/ingress CORS preflight handling for /api/auth/login OPTIONS to include access-control-allow-credentials=true and explicit access-control-allow-origin.",
+    "Re-run /app/backend/tests/test_admin_customer_intelligence.py after CORS fix to confirm auth hardening contract is fully green."
+  ],
+  "critical_code_review_comments": [
+    "Admin Customer Intelligence overview now returns radar_alerts, segments, heatmap, privacy_policy and preserves existing contract keys.",
+    "No Mongo ObjectId/_id serialization leaks detected in tested overview/detail payloads, including segments and heatmap cells.",
+    "Auth lockout behavior matched required 5x401 then 429 pattern when using isolated test identifier; prior all-429 run was stale lockout state contamination."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/test_reports/iteration_173.json"
+  ],
+  "success_rate": {
+    "backend": "86% (6/7)",
+    "frontend": "100% (critical requested flows)"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "UI login selector uses placeholders in current build (no stable login data-testid observed during run). Admin path /admin/customer-intelligence loaded and verified: radar alerts panel, privacy panel, segments panel, heatmap cells, summary/map/yearly/monthly/customer drawer. Backend tests extended to assert new radar/segments/heatmap/privacy contract fields and serialization safety.",
+  "rca of the issue": "CORS middleware in app is configured with allow_credentials=True and explicit origins, but deployed OPTIONS response at preview URL omits access-control-allow-credentials. This indicates upstream preflight interception/override (edge/ingress) rather than route-level admin-customer-intelligence regression. Repro: OPTIONS /api/auth/login with Origin + Access-Control-Request-* headers."
+}

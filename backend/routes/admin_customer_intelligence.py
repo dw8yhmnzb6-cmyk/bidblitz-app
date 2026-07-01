@@ -86,6 +86,18 @@ def year_key(value: str) -> str:
     return raw[:4] if len(raw) >= 4 else "unknown"
 
 
+def hours_since(value: str) -> float | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return round((now_utc() - parsed).total_seconds() / 3600, 2)
+    except Exception:
+        return None
+
+
 def public_customer(user: dict | None, fallback_id: str = "") -> dict:
     user = user or {}
     return {
@@ -298,6 +310,102 @@ async def build_customer_markers(since_iso: str) -> tuple[list[dict], list[dict]
     return markers, store_markers
 
 
+def customer_segments(customer_rows: list[dict]) -> dict:
+    segments = {
+        "vip_seconds_buyers": [],
+        "omnichannel_buyers": [],
+        "pos_loyalists": [],
+        "dormant_high_value": [],
+    }
+    for row in customer_rows:
+        channels = sum(1 for key in ["seconds_revenue", "commerce_revenue", "pos_revenue"] if safe_float(row.get(key)) > 0)
+        payload = {
+            "user": row["user"],
+            "total_revenue": row.get("total_revenue", 0),
+            "seconds_revenue": round(row.get("seconds_revenue", 0), 2),
+            "seconds_credits": row.get("seconds_credits", 0),
+            "channels": channels,
+            "last_event_at": row.get("last_event_at", ""),
+        }
+        if row.get("seconds_revenue", 0) >= 100 or row.get("seconds_credits", 0) >= 50:
+            segments["vip_seconds_buyers"].append(payload)
+        if channels >= 2:
+            segments["omnichannel_buyers"].append(payload)
+        if row.get("pos_revenue", 0) >= 25 or (row.get("pos_revenue", 0) > 0 and row.get("purchases", 0) >= 3):
+            segments["pos_loyalists"].append(payload)
+        age_hours = hours_since(row.get("last_event_at", ""))
+        if row.get("total_revenue", 0) >= 100 and age_hours is not None and age_hours > 24 * 60:
+            payload["inactive_days"] = int(age_hours / 24)
+            segments["dormant_high_value"].append(payload)
+    return {key: value[:12] for key, value in segments.items()}
+
+
+def build_heatmap(customer_markers: list[dict], customer_rows: list[dict]) -> list[dict]:
+    revenue_by_user = {row["user"]["user_id"]: row.get("total_revenue", 0) for row in customer_rows}
+    cells = {}
+    for marker in customer_markers:
+        if not valid_coord(marker.get("lat"), marker.get("lng")):
+            continue
+        lat_bucket = round(safe_float(marker.get("lat")), 2)
+        lng_bucket = round(safe_float(marker.get("lng")), 2)
+        key = f"{lat_bucket}:{lng_bucket}"
+        cell = cells.setdefault(key, {"cell_id": key, "lat": lat_bucket, "lng": lng_bucket, "customers": 0, "revenue": 0.0, "last_seen": ""})
+        cell["customers"] += 1
+        cell["revenue"] += safe_float(revenue_by_user.get(marker.get("user", {}).get("user_id", "")))
+        cell["last_seen"] = max(cell["last_seen"], marker.get("last_seen", ""))
+    rows = [{**cell, "revenue": round(cell["revenue"], 2), "intensity": min(100, cell["customers"] * 25 + int(cell["revenue"] / 20))} for cell in cells.values()]
+    rows.sort(key=lambda item: (item["customers"], item["revenue"]), reverse=True)
+    return rows[:40]
+
+
+def build_radar_alerts(customer_markers: list[dict], store_markers: list[dict], customer_rows: list[dict]) -> list[dict]:
+    rows_by_user = {row["user"]["user_id"]: row for row in customer_rows}
+    alerts = []
+    for marker in customer_markers:
+        user = marker.get("user", {})
+        row = rows_by_user.get(user.get("user_id", ""), {})
+        for store in store_markers:
+            if not valid_coord(marker.get("lat"), marker.get("lng")) or not valid_coord(store.get("lat"), store.get("lng")):
+                continue
+            distance = haversine_km(marker["lat"], marker["lng"], store["lat"], store["lng"])
+            if distance <= 1.0:
+                alerts.append({
+                    "alert_id": f"near-{user.get('user_id','')}-{store.get('store_id','')}",
+                    "type": "customer_near_shop",
+                    "severity": "high" if row.get("total_revenue", 0) >= 100 else "medium",
+                    "title": "Kunde nahe Partner-Shop",
+                    "message": f"{user.get('name', 'Kunde')} ist ca. {distance} km von {store.get('store_name', 'Shop')} entfernt.",
+                    "user": user,
+                    "store": store,
+                    "distance_km": distance,
+                    "last_seen": marker.get("last_seen", ""),
+                    "recommended_action": "VIP-Angebot, Push-Coupon oder Shop-Personal-Hinweis prüfen",
+                })
+    for row in customer_rows[:20]:
+        if row.get("seconds_revenue", 0) >= 100:
+            alerts.append({
+                "alert_id": f"vip-seconds-{row['user']['user_id']}",
+                "type": "vip_seconds_buyer",
+                "severity": "medium",
+                "title": "VIP Sekunden-Käufer",
+                "message": f"{row['user']['name']} hat €{round(row.get('seconds_revenue', 0), 2)} in Sekunden/Credits gekauft.",
+                "user": row["user"],
+                "recommended_action": "High-value Retention oder Premium Bundle anbieten",
+            })
+    return alerts[:30]
+
+
+def privacy_policy_summary() -> dict:
+    return {
+        "status": "policy_ready",
+        "precise_location_retention_hours": 24,
+        "aggregated_analytics_retention_days": 1095,
+        "admin_access": "Nur Admin-Rolle; Zugriff wird im Audit-Log protokolliert",
+        "consent_mode": "Standortsignale werden nur aus vorhandenen App-Funktionen gelesen; Consent-Collection ist vorbereitet, falls granularer Opt-in aktiviert wird",
+        "recommended_next_step": "Granulare Standort-Einwilligung pro Use-Case und automatische Löschung präziser Rohdaten aktivieren",
+    }
+
+
 @router.get("/overview")
 async def customer_intelligence_overview(request: Request, days: int = Query(365, ge=1, le=1095)):
     admin = await require_admin(request)
@@ -349,6 +457,7 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
         total = stats["seconds_revenue"] + stats["commerce_revenue"] + stats["pos_revenue"]
         top_customers.append({"user": user, **stats, "total_revenue": round(total, 2)})
     top_customers.sort(key=lambda x: x["total_revenue"], reverse=True)
+    segments = customer_segments(top_customers)
 
     timeline = []
     for key in sorted(monthly.keys()):
@@ -369,6 +478,8 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
             if valid_coord(customer.get("lat"), customer.get("lng")) and valid_coord(store.get("lat"), store.get("lng")):
                 if haversine_km(customer["lat"], customer["lng"], store["lat"], store["lng"]) <= 1.0:
                     store_visit_matches += 1
+    radar_alerts = build_radar_alerts(customer_markers, store_markers, top_customers)
+    heatmap = build_heatmap(customer_markers, top_customers)
 
     return {
         "ok": True,
@@ -389,6 +500,10 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
         "recent_seconds_purchases": seconds[:50],
         "recent_customer_events": sorted((commerce + pos)[:120], key=lambda e: e.get("created_at", ""), reverse=True)[:80],
         "map": {"customers": customer_markers[:200], "stores": store_markers[:100]},
+        "radar_alerts": radar_alerts,
+        "segments": segments,
+        "heatmap": heatmap,
+        "privacy_policy": privacy_policy_summary(),
         "timeline_monthly": timeline,
         "timeline_yearly": yearly_rows,
     }
