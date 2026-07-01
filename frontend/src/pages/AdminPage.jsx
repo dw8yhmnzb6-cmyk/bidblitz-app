@@ -194,6 +194,7 @@ const ADMIN_SECTIONS = [
       { id: "sustainability", icon: Leaf, label: "Nachhaltigkeit", tab: "flags" },
       { id: "passwords", icon: Lock, label: "Passwörter", tab: "settings" },
       { id: "logs", icon: ScrollText, label: "Systemlogs", tab: "audit" },
+      { id: "biopay-audit-center", icon: Shield, label: "BioPay Audit", tab: "biopay-audit", highlight: true },
       { id: "debug", icon: Bug, label: "Debug Reports", tab: "audit" },
       { id: "system-health", icon: Activity, label: "System", tab: "flags" },
       { id: "database", icon: Database, label: "Daten-Manager", tab: "settings" },
@@ -284,6 +285,7 @@ const tabs = [
   { id: "transactions", key: "admin.txns", icon: CreditCard },
   { id: "flags", key: "admin.flags", icon: Flag },
   { id: "audit", key: "admin.audit", icon: FileText },
+  { id: "biopay-audit", key: "BioPay Audit", icon: Shield },
   { id: "compliance", key: "admin.compliance", icon: Shield },
   { id: "analytics", key: "admin.analytics", icon: TrendingUp },
   { id: "promos", key: "admin.promos", icon: Gift },
@@ -369,6 +371,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
     setLoading(true);
     setError(null);
     try {
+      if (t === "biopay-audit") { setLoading(false); return; }
       if (t === "overview") { const d = await api("/api/admin/overview"); setOverview(d); }
       if (t === "users") { const d = await api(`/api/admin/users?search=${encodeURIComponent(search)}`); setUsers(d.users); }
       if (t === "merchants") { const d = await api(`/api/admin/merchants?search=${encodeURIComponent(search)}`); setMerchants(d.merchants); }
@@ -628,6 +631,10 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
                   key={section.id}
                   section={section}
                   onItemClick={(targetTab) => {
+                    if (targetTab === "biopay-audit") {
+                      onNavigate("/admin/biopay-audit");
+                      return;
+                    }
                     setTab(targetTab);
                     setShowGridMenu(false);
                   }}
@@ -644,7 +651,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
         <div className="px-5 mb-4 relative z-10">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {tabs.filter(tb => tb.id !== "overview").slice(0, 8).map((tb) => (
-              <motion.button key={tb.id} onClick={() => setTab(tb.id)} whileTap={{ scale: 0.95 }}
+              <motion.button key={tb.id} onClick={() => tb.id === "biopay-audit" ? onNavigate("/admin/biopay-audit") : setTab(tb.id)} whileTap={{ scale: 0.95 }}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-medium whitespace-nowrap ${
                   tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#555] border border-white/[0.04]"
                 }`}>

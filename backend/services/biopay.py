@@ -70,6 +70,11 @@ def public_terminal_view(terminal: dict) -> dict:
         "register_id": terminal.get("register_id", ""),
         "label": terminal.get("label", ""),
         "status": terminal.get("status", "inactive"),
+        "health_status": terminal.get("health_status", "healthy"),
+        "diagnostic_score": round(float(terminal.get("diagnostic_score", 100)), 1),
+        "diagnostic_flags": terminal.get("diagnostic_flags", []),
+        "firmware_version": terminal.get("firmware_version", "1.0.0"),
+        "last_verification_at": terminal.get("last_verification_at"),
         "palm_enabled": bool(terminal.get("palm_enabled", True)),
         "face_enabled": bool(terminal.get("face_enabled", False)),
         "created_at": terminal.get("created_at"),
@@ -255,6 +260,10 @@ async def create_biopay_terminal(actor: dict, label: str, palm_enabled: bool, fa
         "palm_enabled": bool(palm_enabled),
         "face_enabled": bool(face_enabled and face_allowed),
         "status": "active",
+        "health_status": "healthy",
+        "diagnostic_score": 100.0,
+        "diagnostic_flags": [],
+        "firmware_version": "1.0.0",
         "created_by": actor["user_id"],
         "created_at": now_iso(),
         "updated_at": now_iso(),
@@ -265,17 +274,106 @@ async def create_biopay_terminal(actor: dict, label: str, palm_enabled: bool, fa
 
 
 async def touch_terminal(terminal_id: str):
-    await db.biopay_terminals.update_one({"terminal_id": terminal_id}, {"$set": {"last_seen_at": now_iso(), "updated_at": now_iso()}})
+    await db.biopay_terminals.update_one({"terminal_id": terminal_id}, {"$set": {"last_seen_at": now_iso(), "last_verification_at": now_iso(), "updated_at": now_iso()}})
+
+
+async def write_terminal_diagnostic(terminal_id: str, check_type: str, score: float, flags: list[str], details: dict | None = None):
+    score = max(0.0, min(float(score), 100.0))
+    diagnostic = {
+        "diagnostic_id": f"BTD-{secrets.token_hex(5).upper()}",
+        "terminal_id": terminal_id,
+        "check_type": check_type,
+        "score": round(score, 2),
+        "flags": flags,
+        "details": details or {},
+        "created_at": now_iso(),
+    }
+    health_status = "healthy" if score >= 85 else "warning" if score >= 60 else "critical"
+    await db.biopay_terminal_diagnostics.insert_one(diagnostic)
+    await db.biopay_terminals.update_one({"terminal_id": terminal_id}, {"$set": {"diagnostic_score": round(score, 2), "diagnostic_flags": flags, "health_status": health_status, "updated_at": now_iso()}})
+    diagnostic.pop("_id", None)
+    return diagnostic
+
+
+async def get_terminal_diagnostics(merchant_id: str) -> list[dict]:
+    pipeline = [
+        {"$lookup": {"from": "biopay_terminals", "localField": "terminal_id", "foreignField": "terminal_id", "as": "terminal"}},
+        {"$unwind": "$terminal"},
+        {"$match": {"terminal.merchant_id": merchant_id}},
+        {"$project": {"_id": 0, "diagnostic_id": 1, "terminal_id": 1, "check_type": 1, "score": 1, "flags": 1, "details": 1, "created_at": 1}},
+        {"$sort": {"created_at": -1}},
+        {"$limit": 50},
+    ]
+    return await db.biopay_terminal_diagnostics.aggregate(pipeline).to_list(50)
+
+
+async def compute_fraud_summary(merchant_id: str) -> dict:
+    now = now_utc()
+    since_day = (now - timedelta(days=1)).isoformat()
+    since_week = (now - timedelta(days=7)).isoformat()
+    alerts = await db.pos_security_alerts.find({"merchant_id": merchant_id, "created_at": {"$gte": since_week}}, {"_id": 0}).to_list(200)
+    sessions = await db.biopay_sessions.find({"merchant_id": merchant_id, "created_at": {"$gte": since_week}}, {"_id": 0}).to_list(500)
+    approvals = await db.pos_security_approvals.find({"merchant_id": merchant_id, "created_at": {"$gte": since_week}}, {"_id": 0}).to_list(200)
+    cashier_scores = {}
+    terminal_scores = {}
+    risk_signals = []
+    for session in sessions:
+        actor_id = session.get("actor_user_id", "")
+        terminal_id = session.get("terminal_id", "")
+        status = session.get("status", "")
+        amount = float(session.get("amount") or 0)
+        if actor_id:
+            cashier_scores.setdefault(actor_id, {"cashier_id": actor_id, "score": 0.0, "failed_biopay": 0, "high_value_count": 0})
+        if terminal_id:
+            terminal_scores.setdefault(terminal_id, {"terminal_id": terminal_id, "score": 0.0, "failed_biopay": 0, "high_value_count": 0})
+        if status != "matched":
+            if actor_id:
+                cashier_scores[actor_id]["failed_biopay"] += 1
+                cashier_scores[actor_id]["score"] += 12
+            if terminal_id:
+                terminal_scores[terminal_id]["failed_biopay"] += 1
+                terminal_scores[terminal_id]["score"] += 10
+        if amount >= 250:
+            if actor_id:
+                cashier_scores[actor_id]["high_value_count"] += 1
+                cashier_scores[actor_id]["score"] += 4
+            if terminal_id:
+                terminal_scores[terminal_id]["high_value_count"] += 1
+                terminal_scores[terminal_id]["score"] += 3
+    for alert in alerts:
+        employee_id = alert.get("employee_id", "")
+        terminal_id = (alert.get("details") or {}).get("terminal_id", "")
+        severity = alert.get("severity", "medium")
+        delta = 5 if severity == "medium" else 12 if severity == "high" else 2
+        if employee_id:
+            cashier_scores.setdefault(employee_id, {"cashier_id": employee_id, "score": 0.0, "failed_biopay": 0, "high_value_count": 0})
+            cashier_scores[employee_id]["score"] += delta
+        if terminal_id:
+            terminal_scores.setdefault(terminal_id, {"terminal_id": terminal_id, "score": 0.0, "failed_biopay": 0, "high_value_count": 0})
+            terminal_scores[terminal_id]["score"] += delta
+        risk_signals.append({"type": alert.get("type", "alert"), "severity": severity, "created_at": alert.get("created_at"), "title": alert.get("title", ""), "details": alert.get("details", {})})
+    pending_approvals = [item for item in approvals if item.get("status") == "pending"]
+    approval_pressure = len(pending_approvals)
+    if approval_pressure >= 5:
+        risk_signals.append({"type": "approval_backlog", "severity": "warning", "created_at": now_iso(), "title": "Hoher Approval-Backlog", "details": {"pending_approvals": approval_pressure}})
+    top_cashiers = sorted(cashier_scores.values(), key=lambda item: item["score"], reverse=True)[:10]
+    top_terminals = sorted(terminal_scores.values(), key=lambda item: item["score"], reverse=True)[:10]
+    network_score = min(100.0, round(sum(item["score"] for item in top_cashiers[:5]) / 5 + sum(item["score"] for item in top_terminals[:5]) / 5 + approval_pressure * 2, 2)) if (top_cashiers or top_terminals) else min(100.0, approval_pressure * 5)
+    return {"generated_at": now_iso(), "network_risk_score": network_score, "cashier_risk_scores": top_cashiers, "terminal_risk_scores": top_terminals, "risk_signals": risk_signals[:50], "pending_approvals": approval_pressure, "sessions_last_24h": len([item for item in sessions if item.get("created_at", "") >= since_day])}
 
 
 async def get_biopay_summary_for_store(actor: dict) -> dict:
     profiles = await db.biometric_profiles.count_documents({"status": "active"})
     terminals = await db.biopay_terminals.find({"merchant_id": actor["merchant_id"]}, {"_id": 0}).sort("created_at", -1).to_list(20)
     sessions = await db.biopay_sessions.find({"merchant_id": actor["merchant_id"]}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    diagnostics = await get_terminal_diagnostics(actor["merchant_id"])
+    fraud_summary = await compute_fraud_summary(actor["merchant_id"])
     return {
         "profiles_total": profiles,
         "terminals": [public_terminal_view(item) for item in terminals],
         "sessions": [public_session_view(item) for item in sessions],
+        "diagnostics": diagnostics,
+        "fraud_summary": fraud_summary,
         "facepay_enabled": await is_facepay_enabled(),
     }
 

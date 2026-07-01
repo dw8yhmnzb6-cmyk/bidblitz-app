@@ -7,9 +7,11 @@ from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 from services.biopay import (
+    compute_fraud_summary,
     create_biopay_session,
     create_biopay_terminal,
     get_biopay_summary_for_store,
+    get_terminal_diagnostics,
     get_profiles_for_user,
     get_staff_clock_target,
     handle_biopay_failure,
@@ -24,6 +26,7 @@ from services.biopay import (
     upsert_profile_for_user,
     validate_modality,
     verify_principal_token,
+    write_terminal_diagnostic,
 )
 from services.pos_security import (
     audit_pos_security_event,
@@ -90,6 +93,16 @@ class BioPayStaffClockRequest(BaseModel):
     terminal_id: str | None = None
     store_id: str = ""
     register_id: str = ""
+
+
+class BioPayDiagnosticRequest(BaseModel):
+    store_id: str
+    register_id: str = ""
+    terminal_id: str
+    check_type: str = "manual_check"
+    score: float = Field(..., ge=0, le=100)
+    flags: list[str] = []
+    details: dict = {}
 
 
 @router.get("/customer/payment-pin/status")
@@ -252,6 +265,71 @@ async def biopay_dashboard(store_id: str, request: Request):
     actor = await get_actor_context(user, store_id)
     require_permission(actor, "security.view")
     return await get_biopay_summary_for_store(actor)
+
+
+@router.get("/biopay/diagnostics")
+async def biopay_diagnostics(store_id: str, request: Request):
+    user = await get_current_user(request)
+    actor = await get_actor_context(user, store_id)
+    require_permission(actor, "security.view")
+    diagnostics = await get_terminal_diagnostics(actor["merchant_id"])
+    return {"diagnostics": diagnostics}
+
+
+@router.post("/biopay/diagnostics")
+async def biopay_write_diagnostic(req: BioPayDiagnosticRequest, request: Request):
+    user = await get_current_user(request)
+    actor = await get_actor_context(user, req.store_id, req.register_id)
+    require_permission(actor, "security.view")
+    terminal = await resolve_terminal_for_actor(actor, req.terminal_id, require_active=False)
+    diagnostic = await write_terminal_diagnostic(terminal["terminal_id"], req.check_type, req.score, req.flags, req.details)
+    await audit_pos_security_event(
+        "biopay_terminal_diagnostic_written",
+        request=request,
+        user_id=actor["user_id"],
+        email=user.get("email", ""),
+        details={"terminal_id": terminal["terminal_id"], "check_type": req.check_type, "score": req.score, "flags": req.flags},
+        severity="info",
+    )
+    return {"ok": True, "diagnostic": diagnostic}
+
+
+@router.get("/biopay/fraud-summary")
+async def biopay_fraud_summary(store_id: str, request: Request):
+    user = await get_current_user(request)
+    actor = await get_actor_context(user, store_id)
+    require_permission(actor, "security.view")
+    return await compute_fraud_summary(actor["merchant_id"])
+
+
+@router.get("/biopay/facepay-readiness")
+async def biopay_facepay_readiness(store_id: str, request: Request, terminal_id: str | None = None):
+    user = await get_current_user(request)
+    actor = await get_actor_context(user, store_id)
+    require_permission(actor, "security.view")
+    terminals = await db.biopay_terminals.find({"merchant_id": actor["merchant_id"]}, {"_id": 0}).to_list(100)
+    face_enabled = await is_facepay_enabled()
+    target_terminal = next((item for item in terminals if item.get("terminal_id") == terminal_id), None) if terminal_id else None
+    readiness_flags = []
+    if not face_enabled:
+        readiness_flags.append("feature_flag_disabled")
+    if target_terminal and not target_terminal.get("face_enabled", False):
+        readiness_flags.append("terminal_face_disabled")
+    if target_terminal and target_terminal.get("health_status") not in {"healthy", "warning"}:
+        readiness_flags.append("terminal_health_not_ready")
+    diagnostics = await get_terminal_diagnostics(actor["merchant_id"])
+    return {
+        "facepay_enabled": face_enabled,
+        "target_terminal": public_terminal_view(target_terminal) if target_terminal else None,
+        "readiness_flags": readiness_flags,
+        "recommended_next_steps": [
+            "FacePay-Flag aktivieren" if not face_enabled else "FacePay-Flag aktiv",
+            "Terminal FacePay aktivieren" if target_terminal and not target_terminal.get("face_enabled", False) else "Terminal FacePay bereit",
+            "Gesundheitscheck überwachen und Diagnosewert > 85 halten",
+            "Vendor/Hardware-Abnahme abschließen bevor produktive Aktivierung erfolgt",
+        ],
+        "diagnostics": diagnostics[:10],
+    }
 
 
 @router.post("/biopay/pay")

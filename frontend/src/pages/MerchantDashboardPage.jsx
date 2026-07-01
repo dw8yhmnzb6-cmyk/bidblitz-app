@@ -52,6 +52,9 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [securityLimitValues, setSecurityLimitValues] = useState({});
   const [biopayData, setBiopayData] = useState({ terminals: [], sessions: [], facepay_enabled: false });
   const [biopayTerminalForm, setBiopayTerminalForm] = useState({ label: "", register_id: "", palm_enabled: true, face_enabled: false });
+  const [fraudSummary, setFraudSummary] = useState(null);
+  const [facePayReadiness, setFacePayReadiness] = useState(null);
+  const [diagnosticForm, setDiagnosticForm] = useState({ terminal_id: "", check_type: "manual_check", score: 95, flags: "", details: "" });
   const refreshRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -128,6 +131,8 @@ const MerchantDashboardPage = ({ onBack }) => {
         api.getPosSecurityReports(activeStoreId, securityPeriod).then(d => setSecurityReports(d)).catch(() => undefined);
         api.getPosSecurityLimits("branch", activeStoreId).then(d => { setSecurityLimitScopeType("branch"); setSecurityLimitScopeId(activeStoreId); setSecurityLimitValues(d.values || {}); }).catch(() => undefined);
         api.getBioPayDashboard(activeStoreId).then(d => setBiopayData(d)).catch(() => undefined);
+        api.getBioPayFraudSummary(activeStoreId).then(d => setFraudSummary(d)).catch(() => undefined);
+        api.getFacePayReadiness(activeStoreId).then(d => setFacePayReadiness(d)).catch(() => undefined);
       }
     }
   }, [tab, selectedBranch, branches, securityPeriod]);
@@ -136,12 +141,14 @@ const MerchantDashboardPage = ({ onBack }) => {
 
   const refreshSecurity = async () => {
     if (!activeSecurityStoreId) return;
-    const [dashboard, rolesData, reportsData, limitsData, biopayDashboard] = await Promise.all([
+    const [dashboard, rolesData, reportsData, limitsData, biopayDashboard, fraudData, facepayData] = await Promise.all([
       api.getPosSecurityDashboard(activeSecurityStoreId).catch(() => null),
       api.getPosSecurityRoles(activeSecurityStoreId).catch(() => ({ roles: [], all_permissions: [] })),
       api.getPosSecurityReports(activeSecurityStoreId, securityPeriod).catch(() => null),
       api.getPosSecurityLimits(securityLimitScopeType, securityLimitScopeId || activeSecurityStoreId).catch(() => null),
       api.getBioPayDashboard(activeSecurityStoreId).catch(() => ({ terminals: [], sessions: [], facepay_enabled: false })),
+      api.getBioPayFraudSummary(activeSecurityStoreId).catch(() => null),
+      api.getFacePayReadiness(activeSecurityStoreId).catch(() => null),
     ]);
     if (dashboard) setSecurityData(dashboard);
     setSecurityRoles(rolesData.roles || []);
@@ -149,6 +156,8 @@ const MerchantDashboardPage = ({ onBack }) => {
     if (reportsData) setSecurityReports(reportsData);
     if (limitsData) setSecurityLimitValues(limitsData.values || {});
     setBiopayData(biopayDashboard || { terminals: [], sessions: [], facepay_enabled: false });
+    if (fraudData) setFraudSummary(fraudData);
+    if (facepayData) setFacePayReadiness(facepayData);
   };
 
   const toggleRolePermission = (roleKey, permission) => {
@@ -192,6 +201,20 @@ const MerchantDashboardPage = ({ onBack }) => {
 
   const updateTerminal = async (terminalId, patch) => {
     await api.updateBioPayTerminal(terminalId, patch);
+    await refreshSecurity();
+  };
+
+  const writeDiagnostic = async () => {
+    await api.writeBioPayDiagnostic({
+      store_id: activeSecurityStoreId,
+      register_id: biopayTerminalForm.register_id || registers[0]?.register_id || "",
+      terminal_id: diagnosticForm.terminal_id,
+      check_type: diagnosticForm.check_type,
+      score: Number(diagnosticForm.score),
+      flags: (diagnosticForm.flags || "").split(",").map((flag) => flag.trim()).filter(Boolean),
+      details: diagnosticForm.details ? { note: diagnosticForm.details } : {},
+    });
+    setDiagnosticForm((prev) => ({ ...prev, flags: "", details: "" }));
     await refreshSecurity();
   };
 
@@ -1043,6 +1066,42 @@ const MerchantDashboardPage = ({ onBack }) => {
               </div>
             </Panel>
 
+            <Panel title="Fraud Scoring & FacePay Readiness">
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <SecurityMiniCard label="Network Risk" value={Number(fraudSummary?.network_risk_score || 0).toFixed(1)} testId="merchant-fraud-network-score" />
+                <SecurityMiniCard label="Sessions 24h" value={fraudSummary?.sessions_last_24h || 0} testId="merchant-fraud-sessions-24h" />
+                <SecurityMiniCard label="Pending Approvals" value={fraudSummary?.pending_approvals || 0} testId="merchant-fraud-pending-approvals" />
+                <SecurityMiniCard label="FacePay" value={facePayReadiness?.facepay_enabled ? "Flag aktiv" : "Flag aus"} testId="merchant-facepay-flag-status" />
+              </div>
+              <div className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-3 mb-3" data-testid="merchant-facepay-readiness-card">
+                <p className="text-[10px] uppercase tracking-widest text-white/35 mb-2">Readiness Flags</p>
+                {(facePayReadiness?.readiness_flags || []).length === 0 ? <Empty text="Keine Blocker erkannt" /> : facePayReadiness.readiness_flags.map((flag) => <div key={flag} className="text-[10px] text-[#ffb36f] py-1">• {flag}</div>)}
+                <div className="mt-3 space-y-1 text-[10px] text-white/65" data-testid="merchant-facepay-next-steps-list">
+                  {(facePayReadiness?.recommended_next_steps || []).map((step, index) => <div key={`${step}-${index}`}>- {step}</div>)}
+                </div>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div data-testid="merchant-fraud-cashier-list">
+                  <p className="text-[10px] uppercase tracking-widest text-white/35 mb-2">Cashier Risk</p>
+                  {(fraudSummary?.cashier_risk_scores || []).slice(0, 5).map((item) => (
+                    <div key={item.cashier_id} className="flex items-center justify-between py-1.5 text-[10px] text-white/70">
+                      <span>{String(item.cashier_id || "").slice(0, 8)}</span>
+                      <span>{Number(item.score || 0).toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div data-testid="merchant-fraud-terminal-list">
+                  <p className="text-[10px] uppercase tracking-widest text-white/35 mb-2">Terminal Risk</p>
+                  {(fraudSummary?.terminal_risk_scores || []).slice(0, 5).map((item) => (
+                    <div key={item.terminal_id} className="flex items-center justify-between py-1.5 text-[10px] text-white/70">
+                      <span>{item.terminal_id}</span>
+                      <span>{Number(item.score || 0).toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Panel>
+
             <Panel title="Approval Queue">
               {(securityData?.approval_queue || []).length === 0 ? <Empty text="Keine offenen Freigaben" /> : (
                 <div className="space-y-2" data-testid="merchant-security-approval-list">
@@ -1159,6 +1218,7 @@ const MerchantDashboardPage = ({ onBack }) => {
                       <div>
                         <p className="text-[11px] font-bold text-white/85">{terminal.label}</p>
                         <p className="text-[9px] text-white/35">{terminal.terminal_id} · {terminal.register_id || "kein Register"}</p>
+                        <p className="text-[9px] text-white/30">Health: {terminal.health_status} · Score {Number(terminal.diagnostic_score || 0).toFixed(1)} · FW {terminal.firmware_version}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold text-white/75">{terminal.status}</p>
@@ -1169,6 +1229,38 @@ const MerchantDashboardPage = ({ onBack }) => {
                       <button type="button" onClick={() => updateTerminal(terminal.terminal_id, { status: terminal.status === "active" ? "inactive" : "active" })} className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-[10px] font-bold text-white/80" data-testid={`merchant-biopay-toggle-status-${terminal.terminal_id}`}>{terminal.status === "active" ? "Deaktivieren" : "Aktivieren"}</button>
                       <button type="button" onClick={() => updateTerminal(terminal.terminal_id, { palm_enabled: !terminal.palm_enabled })} className="rounded-lg bg-[#7df4d2]/12 px-3 py-1.5 text-[10px] font-bold text-[#7df4d2]" data-testid={`merchant-biopay-toggle-palm-${terminal.terminal_id}`}>{terminal.palm_enabled ? "Palm an" : "Palm aus"}</button>
                       <button type="button" onClick={() => updateTerminal(terminal.terminal_id, { face_enabled: !terminal.face_enabled })} disabled={!biopayData?.facepay_enabled} className="rounded-lg bg-[#ffb36f]/12 px-3 py-1.5 text-[10px] font-bold text-[#ffb36f] disabled:opacity-50" data-testid={`merchant-biopay-toggle-face-${terminal.terminal_id}`}>{terminal.face_enabled ? "Face an" : "Face aus"}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-3 mb-3" data-testid="merchant-biopay-diagnostic-form">
+                <p className="text-[10px] uppercase tracking-widest text-white/35 mb-2">Terminal Diagnostics</p>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <select value={diagnosticForm.terminal_id} onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, terminal_id: e.target.value }))} className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-biopay-diagnostic-terminal-select">
+                    <option value="">Terminal wählen</option>
+                    {(biopayData?.terminals || []).map((terminal) => <option key={terminal.terminal_id} value={terminal.terminal_id}>{terminal.label} · {terminal.terminal_id}</option>)}
+                  </select>
+                  <input value={diagnosticForm.check_type} onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, check_type: e.target.value }))} placeholder="Check Type" className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-biopay-diagnostic-check-type-input" />
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  <input value={diagnosticForm.score} onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, score: e.target.value }))} placeholder="Score" className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-biopay-diagnostic-score-input" />
+                  <input value={diagnosticForm.flags} onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, flags: e.target.value }))} placeholder="Flags,comma,separated" className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-biopay-diagnostic-flags-input" />
+                  <input value={diagnosticForm.details} onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, details: e.target.value }))} placeholder="Details" className="bg-white/[0.04] border border-white/[0.06] rounded-lg text-[10px] px-3 py-2 text-white/80" data-testid="merchant-biopay-diagnostic-details-input" />
+                </div>
+                <button type="button" onClick={writeDiagnostic} className="rounded-lg bg-[#00C2FF]/15 px-3 py-2 text-[10px] font-bold text-[#00C2FF]" data-testid="merchant-biopay-diagnostic-submit-button">Diagnose speichern</button>
+              </div>
+
+              <div className="space-y-2 mb-3" data-testid="merchant-biopay-diagnostic-list">
+                {(biopayData?.diagnostics || []).slice(0, 10).map((item) => (
+                  <div key={item.diagnostic_id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.04] bg-black/15 px-3 py-2 text-[10px] text-white/70">
+                    <div>
+                      <p className="font-semibold text-white/85">{item.terminal_id} · {item.check_type}</p>
+                      <p className="text-white/35">{(item.flags || []).join(", ") || "keine Flags"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-white/85">{Number(item.score || 0).toFixed(1)}</p>
+                      <p className="text-white/35">{String(item.created_at || "").slice(0, 16).replace("T", " ")}</p>
                     </div>
                   </div>
                 ))}
