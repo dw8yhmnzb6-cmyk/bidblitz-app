@@ -22,6 +22,15 @@
 - `frontend/src/pages/MorePage.jsx`: Merchant/POS-/Security-Zugänge vor vollständiger KYC bewusst freigegeben, damit Händler Wallet/POS/BioPay/Security-Workflows weiterhin bedienen können; KYC-Hinweis bleibt sichtbar, Blocker entfällt
 - Verifiziert: Python-Lint PASS, Frontend-Lint PASS, manuelle BioPay-/PIN-/Editor-API-E2E-Tests PASS, `testing_agent` Iteration 169 PASS. Zusätzlicher Browser-Smoke-Test bestätigt Merchant Dashboard Security nach KYC-Allowlist-Fix. Keine MOCKS.
 
+## 01.07.2026 — BioPay V4 / Admin Audit Center + Terminal Diagnostics + Advanced Fraud Scoring
+- `backend/services/biopay.py` erweitert: Terminal-Gesundheit (`health_status`, `diagnostic_score`, `diagnostic_flags`, Firmware/Last-Verification), Diagnostic-Writes, aggregierte Terminal-Diagnostics und merchantweites Fraud Scoring über Cashier-/Terminal-Muster, Alerts und Approval-Backlogs
+- Neue Merchant-BioPay-APIs live: `GET /api/biopay/diagnostics`, `POST /api/biopay/diagnostics`, `GET /api/biopay/fraud-summary`, `GET /api/biopay/facepay-readiness`
+- Neues Admin-BioPay-Audit-Backend live: `GET /api/admin/biopay/overview`, `GET /api/admin/biopay/audit-center`, `GET /api/admin/biopay/terminal-diagnostics`
+- `frontend/src/pages/MerchantDashboardPage.jsx`: Security-Center ergänzt um Network Risk Score, Cashier-/Terminal-Risk-Listen, FacePay-Readiness-Block, Diagnostic-Write-Form und Diagnostic-Historie je Merchant
+- `frontend/src/pages/AdminBioPayAuditPage.jsx`: neues Admin Audit Center mit Terminal-/Session-/Diagnostic-/Alert-Übersicht, Merchant-Fraud-Summary sowie zentralen Audit-Logs/Alerts
+- `frontend/src/pages/AdminPage.jsx` + `App.js`: neue Admin-Navigation/Route `/admin/biopay-audit` sichtbar integriert
+- Voll verifiziert: manuelle API-Tests PASS, `testing_agent` Iteration 170 PASS (Backend 21/21, Frontend 100%). Kein ObjectId-Leak, keine Integrationsfehler, keine UI-Bugs, keine MOCKS.
+
 ## 27.06.2026 — Merchant Platform V5 Modul 1: Enterprise Dashboard + Executive AI
 - `backend/routes/merchant_portal.py`: neue Enterprise-Aggregation für Revenue, Profit, Branches, Inventory, POS, Staff, Wallet, Loyalty, Alerts, Forecasts und Merchant KPIs aus bestehenden BidBlitz-Modulen ergänzt
 - Neue APIs live: `GET /api/merchant-portal/v5/dashboard`, `GET /api/merchant-portal/v5/executive-ai/latest`, `POST /api/merchant-portal/v5/executive-ai/stream`

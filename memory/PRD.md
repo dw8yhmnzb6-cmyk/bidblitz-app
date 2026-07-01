@@ -1389,6 +1389,44 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - BioPay Admin Audit Center + Terminal Diagnostics + FacePay Readiness
 
 
+## Update 2026-07-01 — BioPay V4 / Admin Audit Center + Terminal Diagnostics + Advanced Fraud Scoring
+- Ziel umgesetzt: BioPay wurde von der Foundation auf ein überwachbares, administrierbares Betriebsniveau gehoben.
+- Merchant Security erweitert:
+  - Network Risk Score
+  - Cashier Risk Scores
+  - Terminal Risk Scores
+  - FacePay Readiness mit Flag-/Terminal-/Health-Blockern
+  - Diagnostic-Write-Form inkl. persistierter Diagnostic-Historie
+- Admin Audit Center live:
+  - neue Route `/admin/biopay-audit`
+  - Terminal-/Session-/Diagnostic-/Alert-Übersicht
+  - Merchant Fraud Summary über alle Merchants
+  - zentrale Audit-Log- und Security-Alert-Ansicht für BioPay- und Fraud-Ereignisse
+- Backend erweitert:
+  - `GET /api/biopay/diagnostics`
+  - `POST /api/biopay/diagnostics`
+  - `GET /api/biopay/fraud-summary`
+  - `GET /api/biopay/facepay-readiness`
+  - `GET /api/admin/biopay/overview`
+  - `GET /api/admin/biopay/audit-center`
+  - `GET /api/admin/biopay/terminal-diagnostics`
+- Datenmodell-/Betriebslogik erweitert:
+  - `biopay_terminals` nun mit Health- und Diagnostic-Feldern (`health_status`, `diagnostic_score`, `diagnostic_flags`, `firmware_version`, `last_verification_at`)
+  - neue Collection `biopay_terminal_diagnostics`
+  - Fraud Summary aggregiert Sessions, Alerts, High-Value-Muster und Approval-Backlog über Terminale/Kassierer hinweg
+- FacePay-Readiness jetzt sichtbar, aber weiterhin korrekt hinter Feature-Flag `biopay_face` geschützt.
+- Verifikation abgeschlossen:
+  - Python-Lint PASS
+  - Frontend-Lint PASS
+  - manuelle API-Tests PASS
+  - `testing_agent` Iteration 170 PASS (Backend 21/21, Frontend 100%)
+  - keine ObjectId-Serialisierungsfehler, keine UI-/Integrationsbugs, keine MOCKS
+- Nächste sinnvolle Ausbaustufen:
+  - Staff-BioTime als vollwertige Oberfläche mit Historie und Manager-Ausnahmefällen
+  - Manual Wallet Adjustment / Customer Account Change aus der Approval-Queue wirklich ausführbar machen
+  - Audit Center um Exporte, Filter, Merchant-Drilldowns und Eskalations-Playbooks erweitern
+
+
 ## Update 2026-06-11 — Taxi Kartenstabilität / Mobile Fallback
 - Taxi-Kartenfehler auf Mobile/iPhone gehärtet: kein harter Seiten-Reload mehr beim Kartenproblem. Der Karten-Button verbindet die Map nun intern neu.
 - GPS-/Fallback-Verhalten verbessert: letzter bekannter Standort wird zwischengespeichert, GPS-denied bleibt benutzbar, Suche/Bestellung bleiben offen.
