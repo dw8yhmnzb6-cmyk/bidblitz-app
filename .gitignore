@@ -77,6 +77,9 @@ agenthub/agents/youtube/db
 .cache/
 
 memory/test_credentials.md
+/memory/test_credentials.md
+.env.local
+.DS_Store
 keystore_backup/
 *.jks
 *.keystore

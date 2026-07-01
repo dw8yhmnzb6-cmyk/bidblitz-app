@@ -20,9 +20,13 @@ def setup_middleware(app):
     """Configure all middleware for the FastAPI app"""
 
     def allowed_origin(origin: str) -> str:
+        if origin and "*" in CORS_ORIGINS:
+            return origin
         if origin and origin in CORS_ORIGINS:
             return origin
-        return CORS_ORIGINS[0] if CORS_ORIGINS else ""
+        if CORS_ORIGINS and CORS_ORIGINS[0] != "*":
+            return CORS_ORIGINS[0]
+        return ""
 
     @app.middleware("http")
     async def credentialed_options_guard(request: Request, call_next):
