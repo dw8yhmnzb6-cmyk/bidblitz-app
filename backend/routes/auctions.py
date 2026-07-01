@@ -40,7 +40,7 @@ async def list_auctions(request: Request, response: Response):
     # Auto-end expired auctions
     expired = await db.auctions.find(
         {"status": "active", "ends_at": {"$lt": now}}
-    ).to_list(100)
+    ).limit(100).to_list(100)
     for auc in expired:
         # Find last bidder
         last_bid = await db.auction_bids.find_one(
@@ -83,7 +83,7 @@ async def list_auctions(request: Request, response: Response):
     auctions = await db.auctions.find(
         {"status": {"$in": ["active", "upcoming", "ended"]}},
         {"_id": 0},
-    ).sort("created_at", -1).to_list(100)
+    ).sort("created_at", -1).limit(100).to_list(100)
 
     # Enrich with final_battle info
     now_dt = datetime.now(timezone.utc)
