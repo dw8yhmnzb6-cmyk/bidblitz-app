@@ -6,6 +6,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
 ## Current Focus — Merchant Platform V5 gestartet: Enterprise Dashboard + Executive AI live
+- **01.07.2026 Admin Customer Intelligence**: Admin erhält ein Customer-Intelligence-Center für Sekunden-/Bid-Credit-Käufe, aktuelle/recent Standortsignale, Shop-Besuche, Commerce/POS-Käufe und Jahresanalyse. Backend aggregiert echte MongoDB-Daten aus Transactions, Commerce, Live Shopping, POS Sales, Mobility Locations und Store-Daten; Frontend bietet Map-Panel, Summary Cards, Timeline, Customer Search und Detail Drawer. Keine MOCKS.
 - **01.07.2026 P0-Update**: Staff BioTime ist live mit PalmPay Enrollment, biometrisch verifizierten Check-in/Check-out-/Pausenbuchungen und Staff-Mobile-UI. Manager Approval Flows führen manuelle Wallet-Anpassungen und erlaubte Account-Änderungen nach Freigabe direkt aus. Login-Bruteforce-Vertrag ist stabilisiert; lokale/app-level CORS-Konfiguration bleibt explizit credential-sicher.
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
