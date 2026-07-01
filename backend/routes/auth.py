@@ -8,7 +8,7 @@ from core.security import (
     set_auth_cookies, clear_auth_cookies, serialize_user, get_current_user
 )
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
-from core.rate_limit import limiter, RATE_REGISTER, RATE_LOGIN
+from core.rate_limit import limiter, RATE_REGISTER
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.soft_launch import is_email_whitelisted, is_registration_open, validate_invite_code, redeem_invite_code
 from schemas.models import RegisterRequest, LoginRequest
@@ -338,7 +338,6 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 
 
 @router.post("/login")
-@limiter.limit(RATE_LOGIN)
 async def login(req: LoginRequest, request: Request, response: Response):
     email_candidates = _auth_email_candidates(req.email)
     email = email_candidates[0]

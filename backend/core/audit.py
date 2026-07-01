@@ -122,6 +122,15 @@ async def log_audit(
 
 def get_client_info(request):
     """Extract IP and user-agent from request."""
-    ip = request.client.host if request.client else "unknown"
+    forwarded = request.headers.get("x-forwarded-for", "")
+    ip = ""
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
+    if not ip:
+        ip = request.headers.get("cf-connecting-ip", "").strip()
+    if not ip:
+        ip = request.headers.get("x-real-ip", "").strip()
+    if not ip:
+        ip = request.client.host if request.client else "unknown"
     ua = request.headers.get("user-agent", "")
     return ip, ua

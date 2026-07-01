@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 01.07.2026 — Staff BioTime P0 + Executable Approval Flows
+- `backend/routes/biopay.py` + `backend/services/biopay.py`: Staff-BioTime ergänzt — Staff-PalmPay Enrollment, Status, Check-in/Check-out, Pausen-Events, BioPay-Session-Tracking und öffentliche Payloads ohne `_id`, `template_token_encrypted` oder Fingerprint-Leak.
+- `frontend/src/pages/staff/StaffBioTime.jsx`, `StaffMobilePage.jsx`, `StaffBottomNav.jsx`: neuer BioTime-Tab im Staff-Mobile mit Enrollment, Terminalwahl, Palm-Token-Scan-Eingabe, Statuskarte und Event-Historie.
+- `backend/services/pos_security.py` + `routes/pos_security.py`: Manager Approval Queue führt `manual_wallet_adjustment` und `customer_account_change` nach Genehmigung direkt aus; wiederholte Entscheidungen werden blockiert.
+- `frontend/src/components/merchant/ApprovalQueuePanel.jsx` + `MerchantDashboardPage.jsx`: ausführbare Approval-Queue mit Approve-&-Execute/Reject, Notizfeld und privacy-sicherer Payload-Anzeige.
+- Auth-Härtung: `/api/auth/login` nutzt jetzt stabil den identifier-basierten MongoDB-Lockout-Vertrag; fünf Fehlversuche bleiben `401`, der sechste aktive Versuch wird `429`; proxy-sichere IP-Erkennung ergänzt.
+- Verifiziert: Python-/React-Lint PASS, Backend-Curl für Staff BioTime/Approval/Auth PASS, Browser-Smoke für `/staff/mobile` BioTime PASS, `testing_agent` Iteration 171 geprüft. Lokale/app-level CORS-Preflight-Header sind korrekt explizit; externe Preview-OPTIONS werden upstream/edge mit Wildcard abgefangen. Keine MOCKS.
+
 ## 28.06.2026 — POS Security V2 / Bank-Grade POS Security
 - `backend/services/pos_security.py`: zentrales Security-Layer für POS ergänzt — Rollen `owner/admin/manager/cashier/employee`, konfigurierbare Permissions, Limits auf Merchant-/Branch-/Employee-Ebene, Manager-Approval-Queue, Fraud-/Security-Alerts, PIN-Lock, Customer-Masking und Audit-Hooks
 - Neue APIs live: `POST /api/pos/customer/resolve`, `POST /api/pos/wallet/top-up`, `POST /api/pos/payment/prepare`, `POST /api/pos/payment/confirm-pin`, `POST /api/customer/payment-pin/set`, `POST /api/customer/payment-pin/reset`, `POST /api/customer/payment-pin/verify`, `GET /api/pos/security/dashboard`, `GET /api/pos/security/reports`, `GET /api/pos/security/approvals`, `GET /api/pos/security/roles`, `GET/POST /api/pos/security/limits`, `POST /api/pos/security/gift-cards/request`, `POST /api/pos/security/manual-wallet-adjustment/request`, `POST /api/pos/security/customer-account-change/request`

@@ -31,7 +31,7 @@ limiter_api_key = Limiter(key_func=_get_api_key_or_ip)
 
 # ── Configurable Limits ──
 RATE_REGISTER      = "5/minute"
-RATE_LOGIN         = "10/minute"
+RATE_LOGIN         = "120/minute"
 RATE_PASSWORD      = "5/minute"
 RATE_PAYMENT       = "20/minute"
 RATE_PAYOUT        = "5/minute"

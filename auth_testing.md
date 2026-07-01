@@ -17,6 +17,11 @@
 - Staff BioTime endpoints use the existing httpOnly `staff_session` cookie created by `/api/staff/auth/terminal-pin`.
 - Staff BioTime endpoints must not accept unauthenticated requests.
 
+## Auth Hardening Notes
+- `/api/auth/login` uses MongoDB identifier-based brute-force tracking; five failed attempts return `401`, the sixth active attempt returns `429`.
+- The old coarse IP-only SlowAPI login throttle was removed from `/api/auth/login` so legitimate QA/admin/merchant logins are not blocked before the per-identifier lockout contract.
+- Local FastAPI CORS preflight returns explicit `access-control-allow-origin` with credentials. If the preview edge returns wildcard on `OPTIONS`, that is an upstream ingress/preflight interception and not the app middleware response.
+
 ### Staff BioTime Smoke
 ```bash
 curl -c /tmp/staff_cookies.txt -X POST "$REACT_APP_BACKEND_URL/api/staff/auth/terminal-pin" \

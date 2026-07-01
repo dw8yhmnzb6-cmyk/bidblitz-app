@@ -6,6 +6,7 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 **User language**: GERMAN. **Mode**: STRICT FAST MODE (no filler, facts/code/terminal only).
 
 ## Current Focus — Merchant Platform V5 gestartet: Enterprise Dashboard + Executive AI live
+- **01.07.2026 P0-Update**: Staff BioTime ist live mit PalmPay Enrollment, biometrisch verifizierten Check-in/Check-out-/Pausenbuchungen und Staff-Mobile-UI. Manager Approval Flows führen manuelle Wallet-Anpassungen und erlaubte Account-Änderungen nach Freigabe direkt aus. Login-Bruteforce-Vertrag ist stabilisiert; lokale/app-level CORS-Konfiguration bleibt explizit credential-sicher.
 - Smart Invoice & Payment Links bleiben live und verifiziert: sichere Payment-Link-Erzeugung, öffentliche Bezahlseite ohne Login, QR-/PDF-Generierung, Reminder-/Send-Link-Basis sowie Merchant-Dashboard-Übersicht.
 - Commerce Center V1 Hub, Merchant Flash Sales, Deep-Links und Mobility Center V1 bleiben live und funktionsfähig.
 - Neu live: Merchant Platform V5 Modul 1 ergänzt das Händler-Portal um ein Enterprise Dashboard und Executive AI auf Basis bestehender Merchant-, POS-, Wallet-, Inventory-, Staff- und Analytics-Module.

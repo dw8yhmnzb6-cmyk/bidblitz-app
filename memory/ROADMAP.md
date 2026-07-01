@@ -1,5 +1,13 @@
 # BidBlitz — ROADMAP
 
+## Status nach 01.07.2026
+- ✅ P0 Staff-BioTime-Frontend: Check-in/Check-out via PalmPay für Mitarbeiter umgesetzt.
+- ✅ P0 Executable Approval-Flows: Manual Wallet Adjustments und Customer Account Changes werden nach Manager-Freigabe direkt ausgeführt; Reject und Repeat-Block sind aktiv.
+- 🔴 P0 verbleibend: Approval-Ausführung für weitere Sonderfälle vertiefen, falls neue Top-up-/Refund-Typen außerhalb der vorhandenen Execution-Pfade entstehen.
+- 🟡 P1: Commerce Center V1 — Marketplace, Live Shopping, Penny Auctions.
+- 🟡 P1: Mobility Center V1 — E-Scooter, E-Bike, Carsharing.
+- 🟢 P2: Externe Hardware-/Vendor-Diagnostics und restliches Game Center.
+
 ## P0
 - BioPay V4 weiter vertiefen: Staff-BioTime als vollständige operative Oberfläche, Admin-Audit-Drilldowns pro Merchant/Terminal und Ausreißer-Workflows
 - POS Security V2 operativ abrunden: Manual Wallet Adjustment und Customer Account Change auch mit kompletter Ausführungs-UI statt nur Approval-Request/Queue ergänzen
