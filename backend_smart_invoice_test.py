@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Smart Invoice Backend Extension Testing
-Tests the new Smart-Invoice-Backend-Erweiterung against https://commerce-hub-565.preview.emergentagent.com
+Tests the new Smart-Invoice-Backend-Erweiterung against https://biometric-checkout-7.preview.emergentagent.com
 Focus: Real APIs and return structures for payment links, public pay URLs, QR values, PDF URLs, reminders, and checkout
 """
 
@@ -9,7 +9,7 @@ import json
 import requests
 from datetime import datetime
 
-BASE_URL = "https://commerce-hub-565.preview.emergentagent.com"
+BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

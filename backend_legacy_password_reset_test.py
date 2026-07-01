@@ -25,7 +25,7 @@ import sys
 from datetime import datetime
 
 # External API URL
-BASE_URL = "https://commerce-hub-565.preview.emergentagent.com"
+BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.com"

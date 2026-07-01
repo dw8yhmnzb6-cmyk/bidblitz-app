@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 # Configuration
-BASE_URL = "https://commerce-hub-565.preview.emergentagent.com"
+BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials - verified driver account

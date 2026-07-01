@@ -10,7 +10,7 @@ import sys
 import requests
 
 # Get backend URL from environment
-BACKEND_URL = "https://commerce-hub-565.preview.emergentagent.com"
+BACKEND_URL = "https://biometric-checkout-7.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 # Test credentials

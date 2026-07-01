@@ -487,6 +487,132 @@ async def create_customer_account_change_request(actor: dict, customer: dict, ch
     )
 
 
+async def execute_manual_wallet_adjustment_action(payload: dict, actor: dict, amount: float, request: Request | None = None, approval_id: str = "") -> dict:
+    customer_id = payload.get("customer_id", "")
+    if not customer_id or not ObjectId.is_valid(customer_id):
+        raise HTTPException(status_code=400, detail="Ungültige Kundenreferenz")
+    customer = await db.users.find_one({"_id": ObjectId(customer_id)})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    adjustment_amount = round(float(amount or payload.get("amount") or 0), 2)
+    if adjustment_amount == 0:
+        raise HTTPException(status_code=400, detail="Adjustment-Betrag darf nicht 0 sein")
+    reason = str(payload.get("reason") or "Manual wallet adjustment")[:240]
+    reference = f"MWA-{approval_id or secrets.token_hex(5).upper()}"
+    metadata = {
+        "merchant_id": actor["merchant_id"],
+        "store_id": actor["store_id"],
+        "register_id": actor.get("register_id", ""),
+        "employee_id": actor["user_id"],
+        "approval_id": approval_id,
+        "reason": reason,
+    }
+    if adjustment_amount > 0:
+        result = await credit_wallet(
+            user_id=str(customer["_id"]),
+            amount=adjustment_amount,
+            tx_type=TransactionType.ADMIN_CREDIT,
+            description=f"POS Wallet Adjustment {actor['store_id']}",
+            reference=reference,
+            source="pos_manual_adjustment",
+            metadata=metadata,
+        )
+    else:
+        result = await debit_wallet(
+            user_id=str(customer["_id"]),
+            amount=abs(adjustment_amount),
+            tx_type=TransactionType.ADMIN_CREDIT,
+            description=f"POS Wallet Adjustment {actor['store_id']}",
+            reference=reference,
+            merchant_name=actor["merchant"].get("business_name", ""),
+            metadata=metadata,
+        )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error or "Wallet Adjustment fehlgeschlagen")
+    adjustment_doc = {
+        "adjustment_id": f"WAD-{secrets.token_hex(5).upper()}",
+        "approval_id": approval_id or None,
+        "merchant_id": actor["merchant_id"],
+        "store_id": actor["store_id"],
+        "register_id": actor.get("register_id", ""),
+        "customer_id": str(customer["_id"]),
+        "customer_number": customer.get("user_number", ""),
+        "amount": adjustment_amount,
+        "reason": reason,
+        "transaction_id": result.transaction_id,
+        "issued_by": actor["user_id"],
+        "created_at": now_iso(),
+    }
+    await db.pos_manual_wallet_adjustments.insert_one(adjustment_doc)
+    adjustment_doc.pop("_id", None)
+    await audit_pos_security_event(
+        "pos_manager_approval_manual_wallet_adjustment_executed",
+        request=request,
+        user_id=actor["user_id"],
+        email=actor["user"].get("email", ""),
+        details={"approval_id": approval_id, "customer_number": customer.get("user_number", ""), "amount": adjustment_amount, "reason": reason},
+        severity="info",
+    )
+    try:
+        await db.notifications.insert_one({"user_id": str(customer["_id"]), "type": "wallet_adjustment", "title": "Wallet angepasst", "message": "Dein Wallet wurde nach Manager-Freigabe aktualisiert.", "read": False, "created_at": now_iso(), "data": {"approval_id": approval_id}})
+    except Exception:
+        pass
+    return {"status": "executed", "adjustment": adjustment_doc, "customer": build_customer_public_view(customer)}
+
+
+async def execute_customer_account_change_action(payload: dict, actor: dict, request: Request | None = None, approval_id: str = "") -> dict:
+    customer_id = payload.get("customer_id", "")
+    if not customer_id or not ObjectId.is_valid(customer_id):
+        raise HTTPException(status_code=400, detail="Ungültige Kundenreferenz")
+    customer = await db.users.find_one({"_id": ObjectId(customer_id)})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    raw_changes = sanitize_audit_value(payload.get("change_payload") or {})
+    allowed_fields = {
+        "account_status",
+        "status",
+        "kyc_status",
+        "kyc_verified",
+        "biometric_enabled",
+        "notifications_enabled",
+        "email_notifications",
+        "phone_verified",
+        "language",
+        "payment_pin_locked_until",
+        "payment_pin_failed_attempts",
+    }
+    update = {key: value for key, value in raw_changes.items() if key in allowed_fields}
+    if raw_changes.get("unlock_payment_pin"):
+        update["payment_pin_locked_until"] = None
+        update["payment_pin_failed_attempts"] = 0
+    if not update:
+        raise HTTPException(status_code=400, detail="Keine zulässigen Account-Änderungen gefunden")
+    update["updated_at"] = now_iso()
+    await db.users.update_one({"_id": ObjectId(customer_id)}, {"$set": update})
+    change_doc = {
+        "change_id": f"CAC-{secrets.token_hex(5).upper()}",
+        "approval_id": approval_id or None,
+        "merchant_id": actor["merchant_id"],
+        "store_id": actor["store_id"],
+        "customer_id": customer_id,
+        "customer_number": customer.get("user_number", ""),
+        "changed_fields": sorted([key for key in update.keys() if key != "updated_at"]),
+        "changed_by": actor["user_id"],
+        "created_at": now_iso(),
+    }
+    await db.pos_customer_account_changes.insert_one(change_doc)
+    change_doc.pop("_id", None)
+    await audit_pos_security_event(
+        "pos_manager_approval_customer_account_change_executed",
+        request=request,
+        user_id=actor["user_id"],
+        email=actor["user"].get("email", ""),
+        details={"approval_id": approval_id, "customer_number": customer.get("user_number", ""), "changed_fields": change_doc["changed_fields"]},
+        severity="warning",
+    )
+    return {"status": "executed", "account_change": change_doc, "customer": build_customer_public_view(customer)}
+
+
 async def record_suspicious_cashier_activity(actor: dict, alert_type: str, details: dict):
     await create_security_alert(
         actor["merchant_id"],

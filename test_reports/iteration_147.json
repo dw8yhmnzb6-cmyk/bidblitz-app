@@ -27,7 +27,7 @@
       "react_app_renders": "PASS - React app root element found, visible content displayed"
     },
     "public_endpoint_tests": {
-      "health_endpoint": "PASS - https://commerce-hub-565.preview.emergentagent.com/health returns HTML (frontend serves)",
+      "health_endpoint": "PASS - https://biometric-checkout-7.preview.emergentagent.com/health returns HTML (frontend serves)",
       "commerce_overview_api": "PASS - /api/commerce-center/overview returns JSON with stats, flash_sales, marketplace, penny_auctions",
       "invalid_payment_link": "PASS - /api/pay/invalid-token-ci returns 404 'Zahlungslink nicht gefunden'"
     }

@@ -18,6 +18,8 @@ from services.pos_security import (
     create_security_alert,
     evaluate_transaction_limits,
     execute_gift_card_action,
+    execute_customer_account_change_action,
+    execute_manual_wallet_adjustment_action,
     execute_refund_action,
     execute_secure_payment,
     execute_secure_topup,
@@ -443,6 +445,8 @@ async def pos_security_approval_decision(approval_id: str, req: ApprovalDecision
         raise HTTPException(status_code=404, detail="Freigabe nicht gefunden")
     actor = await get_actor_context(user, approval["store_id"], approval.get("register_id", ""))
     require_permission(actor, "approvals.manage")
+    if approval.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Freigabe wurde bereits entschieden")
     if req.decision not in {"approved", "rejected"}:
         raise HTTPException(status_code=400, detail="Ungültige Entscheidung")
     result_payload = None
@@ -456,9 +460,9 @@ async def pos_security_approval_decision(approval_id: str, req: ApprovalDecision
         elif approval.get("approval_type") == "gift_card_create":
             result_payload = await execute_gift_card_action({**payload, "amount": approval.get("amount", 0)}, actor, request=request, approval_id=approval_id)
         elif approval.get("approval_type") == "manual_wallet_adjustment":
-            result_payload = {"status": "approved", "next_step": "apply_manual_wallet_adjustment", "payload": payload}
+            result_payload = await execute_manual_wallet_adjustment_action(payload, actor, float(approval.get("amount", 0)), request=request, approval_id=approval_id)
         elif approval.get("approval_type") == "customer_account_change":
-            result_payload = {"status": "approved", "next_step": "apply_customer_account_change", "payload": payload}
+            result_payload = await execute_customer_account_change_action(payload, actor, request=request, approval_id=approval_id)
         elif approval.get("approval_type") == "biopay_payment":
             result_payload = {"status": "approved", "next_step": "cashier_retry_biopay", "payload": payload}
     await db.pos_security_approvals.update_one({"approval_id": approval_id}, {"$set": {"status": req.decision, "decided_at": now_iso(), "decided_by": actor["user_id"], "decision_note": req.note, "result": sanitize_audit_value(result_payload or {})}})

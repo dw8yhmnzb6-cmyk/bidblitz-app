@@ -11,3 +11,31 @@
 3. Submit new password via `POST /api/auth/reset-password`
 4. Verify old password fails and new password succeeds
 5. Confirm audit log entries and `force_password_change` handling for admin-issued reset links
+
+## Staff BioTime Cookie Auth
+- Existing core cookies remain unchanged: `access_token` / `refresh_token`.
+- Staff BioTime endpoints use the existing httpOnly `staff_session` cookie created by `/api/staff/auth/terminal-pin`.
+- Staff BioTime endpoints must not accept unauthenticated requests.
+
+### Staff BioTime Smoke
+```bash
+curl -c /tmp/staff_cookies.txt -X POST "$REACT_APP_BACKEND_URL/api/staff/auth/terminal-pin" \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"mitarbeiter@bidblitz.ae","pin":"1234"}'
+
+curl -b /tmp/staff_cookies.txt "$REACT_APP_BACKEND_URL/api/biopay/staff/biotime/status"
+
+curl -b /tmp/staff_cookies.txt -X POST "$REACT_APP_BACKEND_URL/api/biopay/staff/biotime/enroll" \
+  -H "Content-Type: application/json" \
+  -d '{"template_token":"PALM-STAFF-TEST-1234","modality":"palm","nickname":"QA Palm"}'
+
+curl -b /tmp/staff_cookies.txt -X POST "$REACT_APP_BACKEND_URL/api/biopay/staff/biotime/clock" \
+  -H "Content-Type: application/json" \
+  -d '{"template_token":"PALM-STAFF-TEST-1234","event_type":"check_in","modality":"palm"}'
+```
+
+## Merchant Approval Execution Smoke
+- Login as merchant/admin.
+- Create/request pending approval.
+- Call `/api/pos/security/approvals/{approval_id}/decision` with `approved`.
+- Confirm approval status is decided and executable types return execution payloads.

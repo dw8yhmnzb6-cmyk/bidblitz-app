@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
+import { ApprovalQueuePanel } from "../components/merchant/ApprovalQueuePanel";
 
 const glass = "backdrop-blur-xl";
 const panelBg = "rgba(8,12,20,0.7)";
@@ -55,6 +56,7 @@ const MerchantDashboardPage = ({ onBack }) => {
   const [fraudSummary, setFraudSummary] = useState(null);
   const [facePayReadiness, setFacePayReadiness] = useState(null);
   const [diagnosticForm, setDiagnosticForm] = useState({ terminal_id: "", check_type: "manual_check", score: 95, flags: "", details: "" });
+  const [approvalDecisionState, setApprovalDecisionState] = useState("");
   const refreshRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -188,9 +190,14 @@ const MerchantDashboardPage = ({ onBack }) => {
     await refreshSecurity();
   };
 
-  const decideApproval = async (approvalId, decision) => {
-    await api.decidePosSecurityApproval(approvalId, { decision, note: `Merchant dashboard ${decision}` });
-    await refreshSecurity();
+  const decideApproval = async (approvalId, decision, note = "") => {
+    setApprovalDecisionState(approvalId);
+    try {
+      await api.decidePosSecurityApproval(approvalId, { decision, note: note || `Merchant dashboard ${decision}` });
+      await refreshSecurity();
+    } finally {
+      setApprovalDecisionState("");
+    }
   };
 
   const createBioPayTerminal = async () => {
@@ -1102,27 +1109,7 @@ const MerchantDashboardPage = ({ onBack }) => {
               </div>
             </Panel>
 
-            <Panel title="Approval Queue">
-              {(securityData?.approval_queue || []).length === 0 ? <Empty text="Keine offenen Freigaben" /> : (
-                <div className="space-y-2" data-testid="merchant-security-approval-list">
-                  {(securityData?.approval_queue || []).map((item) => (
-                    <div key={item.approval_id} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }} data-testid={`merchant-security-approval-${item.approval_id}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-bold text-white/85">{item.approval_type}</p>
-                          <p className="text-[9px] text-white/35">{item.reason}</p>
-                        </div>
-                        <p className="text-[11px] font-bold text-[#FFB800]">€{Number(item.amount || 0).toFixed(2)}</p>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <button type="button" onClick={() => decideApproval(item.approval_id, "approved")} className="rounded-lg bg-[#00D26A]/15 px-3 py-1.5 text-[10px] font-bold text-[#00D26A]" data-testid={`merchant-approval-approve-${item.approval_id}`}>Approve</button>
-                        <button type="button" onClick={() => decideApproval(item.approval_id, "rejected")} className="rounded-lg bg-[#FF5A5A]/15 px-3 py-1.5 text-[10px] font-bold text-[#FF8B8B]" data-testid={`merchant-approval-reject-${item.approval_id}`}>Reject</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Panel>
+            <ApprovalQueuePanel approvals={securityData?.approval_queue || []} onDecision={decideApproval} decidingId={approvalDecisionState} />
 
             <Panel title="Locked Entities">
               <div className="space-y-2">

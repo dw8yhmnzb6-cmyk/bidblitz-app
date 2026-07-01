@@ -1,0 +1,67 @@
+{
+  "summary": "Regression testing completed for Staff BioTime + executable approval queue + privacy + auth hardening. Staff mobile/BioTime and admin-accessed merchant security UI passed. Backend found 2 auth/security regressions and approval-flow retest was partially blocked by API rate limiting.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (CORS preflight)",
+        "issue": "Preflight responds with access-control-allow-origin='*' while credentials are enabled; explicit origin expected for cookie auth.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "/api/auth/login",
+        "issue": "Brute-force behavior does not match required contract 'lockout after 5 failed attempts'; observed early 429 sequence [401,401,401,429,429,429].",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "/api/pos/security/manual-wallet-adjustment/request and related approval tests",
+        "issue": "Regression tests were skipped in final full run due transient 429 rate limiting on merchant login (retry_after=60)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Merchant Dashboard access with merchant credential",
+        "issue": "Security tab check blocked by KYC gate for haendler@bidblitz.ae during UI run; merchant-tab-security selector unavailable in this state.",
+        "selector": "[data-testid='merchant-tab-security']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter171_staff_biotime_approval_privacy.py",
+    "/app/test_reports/pytest/iter171_staff_biotime_approval_privacy.xml"
+  ],
+  "action_items": [
+    "Fix CORS behavior for credentialed requests so allow-origin is explicit (not wildcard).",
+    "Align auth lockout threshold to requirement (trigger strictly after 5 failed attempts).",
+    "Re-run approval execution/privacy backend tests after rate-limit cooldown to confirm no regression.",
+    "If merchant KYC gate remains expected, keep admin-based security-tab smoke in CI and add deterministic merchant test account state for QA."
+  ],
+  "critical_code_review_comments": [
+    "staff_biotime_status/enroll/clock endpoints correctly keep _id/template_token_encrypted/token_fingerprint out of public responses.",
+    "Approval queue frontend uses masking helper and avoids rendering obvious raw email/balance fields in tested state.",
+    "Auth/CORS hardening expectations are not fully met in deployed response headers/lockout behavior."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter171_staff_biotime_approval_privacy.py",
+    "/app/test_reports/iteration_171.json"
+  ],
+  "success_rate": {
+    "backend": "56% passed (5/9), 22% failed (2/9), 22% skipped (2/9)",
+    "frontend": "67% critical flows passed (2/3)"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Staff mobile login via /staff/mobile with PIN 1234 works and BioTime tab renders. Staff BioTime backend status/enroll/clock passed with privacy checks. Merchant security UI is reachable and approval panel renders under admin session; merchant credential run was KYC-gated. Backend approval execution tests were previously passing in run #2 but skipped in final full run due temporary 429 rate-limit on merchant login, so rerun after cooldown.",
+  "rca of the issue": "1) CORS: Deployed preflight response returns wildcard origin while credentials are allowed, likely from outer CORS layer/ingress policy overriding app-level explicit origin. 2) Lockout: Login attempt counter/lock transition appears to lock earlier than specified threshold; verify MAX_LOGIN_ATTEMPTS handling and state update path. 3) Test skip cause: high request volume triggered API rate limiter on merchant login, preventing final approval regression assertions in same run.",
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  }
+}

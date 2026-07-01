@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://commerce-hub-565.preview.emergentagent.com/api"
+BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com/api"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

@@ -12,7 +12,7 @@ import asyncio
 import os
 import requests
 
-PAGE_URL_BASE = os.environ.get("REACT_APP_BACKEND_URL", "https://commerce-hub-565.preview.emergentagent.com").rstrip("/")
+PAGE_URL_BASE = os.environ.get("REACT_APP_BACKEND_URL", "https://biometric-checkout-7.preview.emergentagent.com").rstrip("/")
 
 
 def get_token_and_cookies():

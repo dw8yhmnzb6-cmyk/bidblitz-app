@@ -23,6 +23,7 @@ import StaffProfile from "./staff/StaffProfile";
 import StaffChecklists from "./staff/StaffChecklists";
 import StaffTraining from "./staff/StaffTraining";
 import StaffKnowledge from "./staff/StaffKnowledge";
+import StaffBioTime from "./staff/StaffBioTime";
 import "../styles/staff-tokens.css";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -245,6 +246,7 @@ export default function StaffMobilePage({ onBack }) {
               />
             )}
             {tab === "shifts" && <StaffShifts />}
+            {tab === "biotime" && <StaffBioTime dashboard={dashboard} onRecorded={reload} />}
             {tab === "tasks" && <StaffTasks />}
             {tab === "checklists" && <StaffChecklists />}
             {tab === "training" && <StaffTraining />}

@@ -13,6 +13,7 @@ from services.biopay import (
     get_biopay_summary_for_store,
     get_terminal_diagnostics,
     get_profiles_for_user,
+    get_profiles_for_staff_member,
     get_staff_clock_target,
     handle_biopay_failure,
     is_facepay_enabled,
@@ -23,6 +24,7 @@ from services.biopay import (
     revoke_profile,
     template_token_preview,
     touch_terminal,
+    upsert_profile_for_staff_member,
     upsert_profile_for_user,
     validate_modality,
     verify_principal_token,
@@ -95,6 +97,21 @@ class BioPayStaffClockRequest(BaseModel):
     register_id: str = ""
 
 
+class BioPayStaffBioTimeEnrollRequest(BaseModel):
+    template_token: str
+    modality: str = "palm"
+    nickname: str = ""
+
+
+class BioPayStaffBioTimeClockRequest(BaseModel):
+    template_token: str
+    event_type: str
+    modality: str = "palm"
+    terminal_id: str | None = None
+    store_id: str = ""
+    register_id: str = ""
+
+
 class BioPayDiagnosticRequest(BaseModel):
     store_id: str
     register_id: str = ""
@@ -103,6 +120,45 @@ class BioPayDiagnosticRequest(BaseModel):
     score: float = Field(..., ge=0, le=100)
     flags: list[str] = []
     details: dict = {}
+
+
+async def _get_staff_member_from_session(request: Request) -> dict:
+    session_cookie = request.cookies.get("staff_session")
+    if not session_cookie:
+        raise HTTPException(status_code=401, detail="Staff-Session erforderlich")
+    staff_member = await db.staff_members.find_one(
+        {"id": session_cookie, "active": {"$ne": False}},
+        {"_id": 0, "password_hash": 0, "pin_hash": 0, "pin": 0},
+    )
+    if not staff_member:
+        raise HTTPException(status_code=401, detail="Staff-Session ungültig")
+    return staff_member
+
+
+def _staff_public_view(staff_member: dict) -> dict:
+    return {
+        "id": staff_member.get("id", ""),
+        "name": staff_member.get("name", ""),
+        "email": staff_member.get("email", ""),
+        "role": staff_member.get("role", "employee"),
+        "merchant_id": staff_member.get("merchant_id", ""),
+        "biometric_enabled": bool(staff_member.get("biometric_enabled", False)),
+    }
+
+
+def _biotime_status_from_events(events: list[dict]) -> str:
+    status = "off"
+    for event in events:
+        action = event.get("action") or {"check_in": "clock_in", "check_out": "clock_out", "break_start": "break_start", "break_end": "break_end"}.get(event.get("event_type", ""), "")
+        if action == "clock_in":
+            status = "working"
+        elif action == "clock_out":
+            status = "off"
+        elif action == "break_start":
+            status = "break"
+        elif action == "break_end":
+            status = "working"
+    return status
 
 
 @router.get("/customer/payment-pin/status")
@@ -144,6 +200,132 @@ async def biopay_me(request: Request):
         "biometric_enabled": bool(user.get("biometric_enabled", False)),
         "can_use_staff_biotime": bool(await get_staff_clock_target(user)),
     }
+
+
+@router.get("/biopay/staff/biotime/status")
+async def staff_biotime_status(request: Request):
+    staff_member = await _get_staff_member_from_session(request)
+    profiles = await get_profiles_for_staff_member(staff_member)
+    today_start = now_utc().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    recent_events = await db.staff_clock_events.find(
+        {"merchant_id": staff_member.get("merchant_id", ""), "staff_id": staff_member.get("id", ""), "timestamp": {"$gte": today_start}},
+        {"_id": 0},
+    ).sort("timestamp", -1).limit(20).to_list(20)
+    recent_sessions = await db.biopay_sessions.find(
+        {"principal_id": staff_member.get("id", ""), "principal_type": "staff"},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(10).to_list(10)
+    terminals = await db.biopay_terminals.find(
+        {"merchant_id": staff_member.get("merchant_id", ""), "status": "active"},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(20).to_list(20)
+    return {
+        "ok": True,
+        "staff": _staff_public_view(staff_member),
+        "profiles": [public_profile_view(item) for item in profiles],
+        "has_palm_profile": any(item.get("modality") == "palm" and item.get("status") == "active" for item in profiles),
+        "recent_events": recent_events,
+        "recent_sessions": [public_session_view(item) for item in recent_sessions],
+        "terminals": [public_terminal_view(item) for item in terminals],
+        "status": _biotime_status_from_events(list(reversed(recent_events))),
+        "facepay_enabled": await is_facepay_enabled(),
+    }
+
+
+@router.post("/biopay/staff/biotime/enroll")
+async def staff_biotime_enroll(req: BioPayStaffBioTimeEnrollRequest, request: Request):
+    staff_member = await _get_staff_member_from_session(request)
+    profile = await upsert_profile_for_staff_member(staff_member, req.template_token, req.modality, req.nickname)
+    await audit_pos_security_event(
+        "staff_biotime_enroll",
+        request=request,
+        user_id=staff_member.get("id", ""),
+        email=staff_member.get("email", ""),
+        details={"profile_id": profile["profile_id"], "modality": profile["modality"], "token_preview": profile["token_preview"], "merchant_id": staff_member.get("merchant_id", "")},
+        severity="info",
+    )
+    return {"ok": True, "profile": public_profile_view(profile)}
+
+
+@router.post("/biopay/staff/biotime/clock")
+async def staff_biotime_clock(req: BioPayStaffBioTimeClockRequest, request: Request):
+    staff_member = await _get_staff_member_from_session(request)
+    modality = await validate_modality(req.modality)
+    terminal = None
+    if req.terminal_id:
+        terminal = await db.biopay_terminals.find_one({"terminal_id": req.terminal_id, "merchant_id": staff_member.get("merchant_id", "")}, {"_id": 0})
+        if not terminal:
+            raise HTTPException(status_code=404, detail="BioPay-Terminal nicht gefunden")
+        if terminal.get("status") != "active":
+            raise HTTPException(status_code=423, detail="BioPay-Terminal ist deaktiviert")
+        if modality == "palm" and not terminal.get("palm_enabled", True):
+            raise HTTPException(status_code=403, detail="PalmPay ist auf diesem Terminal deaktiviert")
+    profile, matched, score = await verify_principal_token(staff_member.get("id", ""), req.template_token, modality, "staff")
+    session = await create_biopay_session(
+        {"principal_id": staff_member.get("id", ""), "principal_type": "staff", "principal_user_number": staff_member.get("id", "")},
+        modality,
+        "staff_biotime",
+        "matched" if matched else "no_match",
+        score,
+        store_id=req.store_id or (terminal or {}).get("store_id", ""),
+        register_id=req.register_id or (terminal or {}).get("register_id", ""),
+        merchant_id=staff_member.get("merchant_id", ""),
+        terminal_id=req.terminal_id or "",
+        actor_user_id=staff_member.get("id", ""),
+    )
+    if not matched or not profile:
+        await audit_pos_security_event(
+            "staff_biotime_verify_failed",
+            request=request,
+            user_id=staff_member.get("id", ""),
+            email=staff_member.get("email", ""),
+            details={"event_type": req.event_type, "terminal_id": req.terminal_id or "", "merchant_id": staff_member.get("merchant_id", "")},
+            severity="warning",
+        )
+        return {"ok": False, "status": "declined", "message": "BioTime verification failed", "session": public_session_view(session)}
+    action_map = {"check_in": "clock_in", "check_out": "clock_out", "break_start": "break_start", "break_end": "break_end"}
+    action = action_map.get(req.event_type)
+    if not action:
+        raise HTTPException(status_code=400, detail="Ungültiger BioTime Event")
+    event_id = f"BTE-{ObjectId()}"[-18:].upper()
+    timestamp = now_iso()
+    await db.staff_biotime_events.insert_one(
+        {
+            "event_id": event_id,
+            "staff_id": staff_member.get("id", ""),
+            "merchant_id": staff_member.get("merchant_id", ""),
+            "event_type": req.event_type,
+            "biopay_session_id": session["session_id"],
+            "terminal_id": req.terminal_id or "",
+            "store_id": req.store_id or (terminal or {}).get("store_id", ""),
+            "register_id": req.register_id or (terminal or {}).get("register_id", ""),
+            "created_at": timestamp,
+        }
+    )
+    clock_event = {
+        "id": event_id,
+        "merchant_id": staff_member.get("merchant_id", ""),
+        "staff_id": staff_member.get("id", ""),
+        "action": action,
+        "timestamp": timestamp,
+        "source": "biopay",
+        "biopay_session_id": session["session_id"],
+        "terminal_id": req.terminal_id or "",
+        "created_at": timestamp,
+    }
+    await db.staff_clock_events.insert_one(clock_event)
+    clock_event.pop("_id", None)
+    if req.terminal_id:
+        await touch_terminal(req.terminal_id)
+    await audit_pos_security_event(
+        "staff_biotime_clock_event",
+        request=request,
+        user_id=staff_member.get("id", ""),
+        email=staff_member.get("email", ""),
+        details={"event_type": req.event_type, "terminal_id": req.terminal_id or "", "session_id": session["session_id"], "merchant_id": staff_member.get("merchant_id", "")},
+        severity="info",
+    )
+    return {"ok": True, "status": "recorded", "event": clock_event, "session": public_session_view(session), "event_type": req.event_type}
 
 
 @router.post("/biopay/enroll")

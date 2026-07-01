@@ -152,6 +152,53 @@ async def upsert_profile_for_user(user: dict, template_token: str, modality: str
     return profile_doc
 
 
+async def upsert_profile_for_staff_member(staff_member: dict, template_token: str, modality: str, nickname: str = "") -> dict:
+    normalized_modality = await validate_modality(modality)
+    clean_token = (template_token or "").strip()
+    if len(clean_token) < 8:
+        raise HTTPException(status_code=400, detail="Biometrischer Token ist zu kurz")
+    staff_id = staff_member.get("id") or staff_member.get("staff_id")
+    if not staff_id:
+        raise HTTPException(status_code=400, detail="Staff-Profil ungültig")
+    existing = await db.biometric_profiles.find_one(
+        {"principal_id": staff_id, "principal_type": "staff", "modality": normalized_modality, "status": {"$ne": "revoked"}},
+        {"_id": 0, "profile_id": 1},
+    )
+    profile_id = (existing or {}).get("profile_id") or f"BST-{secrets.token_hex(6).upper()}"
+    profile_doc = {
+        "profile_id": profile_id,
+        "principal_id": staff_id,
+        "principal_user_number": staff_id,
+        "principal_type": "staff",
+        "merchant_id": staff_member.get("merchant_id", ""),
+        "modality": normalized_modality,
+        "token_preview": template_token_preview(clean_token),
+        "template_token_encrypted": encrypt_template_token(clean_token),
+        "token_fingerprint": template_token_fingerprint(clean_token),
+        "nickname": nickname or "Staff PalmPay",
+        "status": "active",
+        "enrolled_at": now_iso(),
+        "updated_at": now_iso(),
+        "last_verified_at": None,
+    }
+    await db.biometric_profiles.update_one(
+        {"profile_id": profile_id},
+        {"$set": profile_doc, "$setOnInsert": {"created_at": now_iso()}},
+        upsert=True,
+    )
+    await db.staff_members.update_one({"id": staff_id}, {"$set": {"biometric_enabled": True, "biometric_updated_at": now_iso()}})
+    return profile_doc
+
+
+async def get_profiles_for_staff_member(staff_member: dict) -> list[dict]:
+    staff_id = staff_member.get("id") or staff_member.get("staff_id")
+    profiles = await db.biometric_profiles.find(
+        {"principal_id": staff_id, "principal_type": "staff", "status": {"$ne": "revoked"}},
+        {"_id": 0, "template_token_encrypted": 0, "token_fingerprint": 0},
+    ).sort("created_at", -1).to_list(10)
+    return profiles
+
+
 async def revoke_profile(profile_id: str, user: dict) -> dict:
     profile = await db.biometric_profiles.find_one({"profile_id": profile_id, "principal_id": str(user["_id"]), "status": {"$ne": "revoked"}})
     if not profile:

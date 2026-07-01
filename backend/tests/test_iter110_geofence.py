@@ -9,7 +9,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://commerce-hub-565.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://biometric-checkout-7.preview.emergentagent.com").rstrip("/")
 MERCHANT_EMAIL = "haendler@bidblitz.com"
 MERCHANT_PASSWORD = "Haendler2026!"
 STAFF_EMAIL = "mitarbeiter@bidblitz.com"

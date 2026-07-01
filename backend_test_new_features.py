@@ -16,7 +16,7 @@ from datetime import datetime
 import uuid
 
 # Backend URL from frontend/.env
-BASE_URL = "https://commerce-hub-565.preview.emergentagent.com/api"
+BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com/api"
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.ae"

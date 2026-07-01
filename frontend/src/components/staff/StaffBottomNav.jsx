@@ -6,11 +6,12 @@
  */
 import React from "react";
 import { motion } from "framer-motion";
-import { Home, Calendar, ListChecks, Wallet, User } from "lucide-react";
+import { Home, Calendar, ListChecks, Wallet, User, Fingerprint } from "lucide-react";
 
 const TABS = [
   { id: "home", label: "Home", Icon: Home },
   { id: "shifts", label: "Schichten", Icon: Calendar },
+  { id: "biotime", label: "BioTime", Icon: Fingerprint },
   { id: "tasks", label: "Aufgaben", Icon: ListChecks },
   { id: "wallet", label: "Wallet", Icon: Wallet },
   { id: "profile", label: "Profil", Icon: User },
@@ -25,8 +26,9 @@ export default function StaffBottomNav({ tab, onTab, taskBadge = 0 }) {
     >
       <div className="max-w-md mx-auto px-4 pointer-events-auto">
         <div
-          className="relative grid grid-cols-5 rounded-[28px] overflow-hidden"
+          className="relative grid rounded-[28px] overflow-hidden"
           style={{
+            gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))`,
             background: "linear-gradient(180deg, rgba(20,21,28,0.92) 0%, rgba(11,12,16,0.96) 100%)",
             border: "1px solid rgba(255,255,255,0.06)",
             backdropFilter: "blur(24px) saturate(180%)",
@@ -39,7 +41,7 @@ export default function StaffBottomNav({ tab, onTab, taskBadge = 0 }) {
             layout
             className="absolute top-1.5 bottom-1.5 rounded-[20px] pointer-events-none"
             initial={false}
-            animate={{ left: `calc(${TABS.findIndex((t) => t.id === tab)} * 20%)`, width: "20%" }}
+            animate={{ left: `calc(${Math.max(0, TABS.findIndex((t) => t.id === tab))} * ${100 / TABS.length}%)`, width: `${100 / TABS.length}%` }}
             transition={{ type: "spring", stiffness: 360, damping: 28 }}
             style={{
               background: "linear-gradient(135deg, rgba(0,212,255,0.16) 0%, rgba(126,91,246,0.16) 100%)",

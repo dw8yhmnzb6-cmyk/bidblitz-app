@@ -5,7 +5,7 @@ import pytest
 import requests
 from datetime import datetime, timezone, timedelta
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://commerce-hub-565.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://biometric-checkout-7.preview.emergentagent.com").rstrip("/")
 ADMIN = {"email": "admin@bidblitz.com", "password": "BidBlitz2026!"}
 KUNDE = {"email": "kunde@bidblitz.com", "password": "Kunde2026!"}
 
