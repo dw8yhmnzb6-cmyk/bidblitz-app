@@ -1,11 +1,12 @@
 # BidBlitz — CHANGELOG
 
 ## 01.07.2026 — Admin Customer Intelligence Center
+- Erweiterung: Customer Live Radar ergänzt — Radar-Alerts, VIP-/Omnichannel-/POS-/Reaktivierungs-Segmente, Heatmap-Zellen und Privacy Guard mit Retention-Regeln.
 - `backend/routes/admin_customer_intelligence.py`: neues Admin-Intelligence-Backend für Sekunden-/Bid-Credit-Käufe, Commerce Orders, Live-Shopping Orders, POS-Shopkäufe, Standortsignale, Store-Matches sowie Monats-/Jahresanalyse.
 - `frontend/src/components/admin/AdminCustomerIntelligenceTab.jsx`: neue Admin-Ansicht mit Summary Cards, Kunden-/Shop-Karte, Jahresanalyse, Monatsdiagramm, Suchliste, Sekunden-Kauf-Feed und Customer-Detail-Drawer.
 - `AdminPage.jsx`, `App.js`, `api.js`: Admin-Navigation und Direkt-Routen `/admin/customer-intelligence` und `/admin/customer-map` angebunden.
 - Deployment-Hygiene: `.gitignore` blockiert `.env`-Dateien nicht mehr; `CORS_ORIGINS` in Preview- und Production-Env ergänzt; Deployment-Agent meldet PASS.
-- Verifiziert: Admin API Curl PASS, Browser-Smoke PASS, Testing-Agent Iteration 172 Feature PASS mit Infrastruktur-Hinweis zu Preview-Edge-OPTIONS; lokale/app-level CORS und Deployment-Check PASS. Keine MOCKS.
+- Verifiziert: Admin API Curl PASS, Browser-Smoke PASS, Testing-Agent Iteration 172/173 Feature PASS mit Infrastruktur-Hinweis zu Preview-Edge-OPTIONS; lokale/app-level CORS und Deployment-Check PASS. Keine MOCKS.
 
 ## 01.07.2026 — Staff BioTime P0 + Executable Approval Flows
 - `backend/routes/biopay.py` + `backend/services/biopay.py`: Staff-BioTime ergänzt — Staff-PalmPay Enrollment, Status, Check-in/Check-out, Pausen-Events, BioPay-Session-Tracking und öffentliche Payloads ohne `_id`, `template_token_encrypted` oder Fingerprint-Leak.
