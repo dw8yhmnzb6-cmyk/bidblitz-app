@@ -235,6 +235,21 @@ const AdminGridMenuItem = ({ item, onClick, delay }) => {
   );
 };
 
+const AdminQuickCustomerIntelButton = ({ onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    data-testid="admin-grid-customer-intelligence"
+    className="w-full mt-3 rounded-2xl border border-[#00C2FF]/25 bg-[#00C2FF]/10 px-4 py-3 text-left flex items-center justify-between gap-3"
+  >
+    <span>
+      <span className="block text-sm font-bold text-[#00C2FF]">Kunden Live-Map</span>
+      <span className="block text-[10px] text-[#6aaec0] mt-0.5">Radar, Templates, Erfolgsmessung, Timeline</span>
+    </span>
+    <MapPin size={18} className="text-[#00C2FF]" />
+  </button>
+);
+
 // Grid Section Component (Light Theme)
 const AdminGridSection = ({ section, onItemClick, startIndex }) => {
   if (!section.label) {
@@ -656,6 +671,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {tabs.filter(tb => tb.id !== "overview").slice(0, 8).map((tb) => (
               <motion.button key={tb.id} onClick={() => tb.id === "biopay-audit" ? onNavigate("/admin/biopay-audit") : setTab(tb.id)} whileTap={{ scale: 0.95 }}
+                data-testid={`admin-tab-${tb.id}`}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-medium whitespace-nowrap ${
                   tab === tb.id ? "bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20" : "bg-white/[0.02] text-[#555] border border-white/[0.04]"
                 }`}>
@@ -673,6 +689,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
       )}
 
       <div className="px-5 pb-8 relative z-10">
+        {tab === "overview" && <AdminQuickCustomerIntelButton onClick={() => { setTab("customer-intelligence"); setShowGridMenu(false); }} />}
         {/* ── Error State ── */}
         {error && !loading && (
           <div className="mb-4">

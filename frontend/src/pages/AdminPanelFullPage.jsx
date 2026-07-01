@@ -9,7 +9,7 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, BarChart3, ArrowLeft, X, Menu, Loader2,
-  Search, Settings, LayoutGrid,
+  Search, Settings, LayoutGrid, MapPin,
 } from "lucide-react";
 
 import { ADMIN_SECTIONS } from "../components/admin/sections";
@@ -175,6 +175,18 @@ const AdminPanelFullPage = ({ onNavigate, onBack }) => {
       {/* Grid Menu */}
       {menuOpen && !activeItem && (
         <div className="px-4 pb-24 space-y-4">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onNavigate("/admin/customer-intelligence")}
+            data-testid="admin-grid-customer-intelligence"
+            className="w-full rounded-2xl bg-[#00C2FF]/10 border border-[#00C2FF]/25 p-4 flex items-center justify-between text-left shadow-sm"
+          >
+            <span>
+              <span className="block text-sm font-bold text-[#007EA0]">Kunden Live-Map</span>
+              <span className="block text-[10px] text-gray-500 mt-0.5">Radar, Templates, Erfolgsmessung, Timeline</span>
+            </span>
+            <MapPin size={20} className="text-[#00A8D8]" />
+          </motion.button>
           {filteredSections.map((section, si) => (
             <motion.div
               key={section.title}
