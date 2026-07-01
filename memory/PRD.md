@@ -1360,6 +1360,35 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Offene nächste Schritte: BioPay V3 auf diesem Security-Fundament aufbauen, danach UI-Editoren für Rollen/Limits/Approvals direkt im Merchant Dashboard vertiefen.
 
 
+## Update 2026-07-01 — BioPay V3 Foundation + Wallet PIN UI + Merchant Security Editors
+- BioPay V3 Foundation live: auf Basis des neuen POS-Security-Layers wurden PalmPay-Profilverwaltung, Terminal-Management, biometrische Verify-/Pay-Sessions und Staff-BioTime-Grundlagen ergänzt — ohne Bildspeicherung, nur mit verschlüsselten Template-Tokens und Fingerprints.
+- Customer Wallet erweitert: sichtbare Payment-PIN-Oberfläche in `WalletPage` verfügbar. Nutzer können PIN-Status sehen, PIN setzen/ändern, Lock-Status prüfen und PalmPay-Profile direkt im Wallet verwalten.
+- Merchant Security Center erweitert: Rollen-Permissions, Branch-/Merchant-/Employee-Limits und Approval-Entscheidungen sind jetzt direkt im Merchant Dashboard editierbar. Zusätzlich gibt es BioPay-Terminal- und Session-Ansichten.
+- POS erweitert: neuer PalmPay/BioPay-Modus im Checkout unterstützt denselben sicheren Resolve-Flow (Scan/NFC/Kundennummer), maskierte Kundensicht und High-Value App-Confirmation.
+- APIs hinzugefügt/erweitert:
+  - Wallet/Customer: `GET /api/customer/payment-pin/status`
+  - BioPay Customer: `GET /api/biopay/me`, `POST /api/biopay/enroll`, `POST /api/biopay/verify-self`, `DELETE /api/biopay/profile/{profile_id}`
+  - BioPay Merchant/POS: `GET/POST /api/biopay/terminals`, `POST /api/biopay/terminals/{terminal_id}`, `GET /api/biopay/dashboard`, `GET /api/biopay/sessions`, `POST /api/biopay/pay`
+  - Staff Foundation: `POST /api/biopay/staff/clock`
+- Datenmodell erweitert:
+  - `biometric_profiles`: `{profile_id, principal_id, principal_type, modality, template_token_encrypted, token_fingerprint, token_preview, status, enrolled_at, last_verified_at}`
+  - `biopay_terminals`: `{terminal_id, merchant_id, store_id, register_id, label, palm_enabled, face_enabled, status, last_seen_at}`
+  - `biopay_sessions`: Verifikations-/Zahlungs-/BioTime-Sessions mit Status, Score, Terminal, Betrag und Principal-Referenzen
+  - `staff_biotime_events`: BioTime-Basisereignisse aus PalmPay-Verifikationen
+- Feature-Flags ergänzt: `biopay` aktiv, `biopay_face` standardmäßig deaktiviert. FacePay bleibt bewusst hinter dem Flag versteckt.
+- Merchant-Zugangsfix: Die More-Page-Allowlist vor vollständiger KYC wurde gezielt erweitert, damit Händler weiter Merchant Dashboard, POS, Terminal, Staff und Pricing erreichen. Dadurch fällt der ungewollte Merchant-KYC-Blocker weg, ohne KYC-Hinweise zu entfernen.
+- Verifikation abgeschlossen:
+  - Python-Lint PASS
+  - Frontend-Lint PASS
+  - Manuelle API-E2E-Tests für Payment-PIN, BioPay, Terminal-Management, Editor-Flows PASS
+  - `testing_agent` Iteration 169 PASS
+  - zusätzlicher Browser-Smoke-Test für More → Merchant Dashboard → Security nach dem KYC-Allowlist-Fix PASS
+- Nächste sinnvolle Ausbaustufen:
+  - Staff-BioTime als vollständige Frontend-Seite mit Historie/Manager-Freigaben
+  - Ausführungsschritte für Manual Wallet Adjustment / Customer Account Change aus der Approval-Queue heraus
+  - BioPay Admin Audit Center + Terminal Diagnostics + FacePay Readiness
+
+
 ## Update 2026-06-11 — Taxi Kartenstabilität / Mobile Fallback
 - Taxi-Kartenfehler auf Mobile/iPhone gehärtet: kein harter Seiten-Reload mehr beim Kartenproblem. Der Karten-Button verbindet die Map nun intern neu.
 - GPS-/Fallback-Verhalten verbessert: letzter bekannter Standort wird zwischengespeichert, GPS-denied bleibt benutzbar, Suche/Bestellung bleiben offen.

@@ -1,8 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## P0
-- BioPay V3 als nächster großer Sicherheitsbaustein auf POS/Wallet/Staff aufsetzen: PalmPay Enrollment, Verify, verschlüsselte Template-Tokens, Terminal-Management und Audit-Ansichten auf dem neuen POS-Security-Fundament
-- POS Security V2 operativ abrunden: UI für Rollen-/Limit-Konfiguration und Approval-Entscheidungen direkt im Merchant Dashboard ergänzen
+- BioPay V3 vertiefen: echte Staff-BioTime-Oberflächen, Merchant-Terminal-Diagnostics und Admin-Audit-Center auf die neue Foundation setzen
+- POS Security V2 operativ abrunden: Manual Wallet Adjustment und Customer Account Change auch mit kompletter Ausführungs-UI statt nur Approval-Request/Queue ergänzen
 - Merchant Platform V5: Omnichannel Commerce nach dem neuen Enterprise Dashboard als nächstes vertiefen — kanalübergreifender Bestand, Sync-Status, Order-Funnel und operative Automationen auf Basis der bestehenden POS-/Inventory-/Merchant-Module
 - Merchant Platform V5: Executive AI nach Modul 1/2 weiter ausbauen — Drilldowns pro Filiale, recurring Briefings, Alert-Subscriptions und Automation-Vorschläge für Einkauf/Staffing
 - Merchant Platform V5: Business Automation nach V1 weiter vertiefen — echte Auto-PO-Freigabeketten, Supplier-SLA-Eskalationen, Task-Zuweisung nach Rolle und Revenue-Playbooks mit messbarer Conversion
@@ -18,8 +18,9 @@
 - Mobility nächster Schritt: Tracking jetzt mit Rebook/Support/Push-Remindern verknüpfen und danach Commerce Center wieder priorisieren
 
 ## P1
-- POS Security: kundennahe PIN-Management-Oberfläche in Settings/Wallet ergänzen, damit PIN-Set/Reset/Verify nicht nur per API verfügbar ist
 - POS Security: Fraud Scoring weiter vertiefen (kassiererübergreifende Muster, Echtzeit-Suspicion-Score, Auto-Eskalation an Admin)
+- BioPay: Staff-BioTime-Seite im Frontend, Check-in/out-Historie und Manager-Freigabe für Ausreißer ergänzen
+- BioPay: FacePay hinter Feature-Flag mit Merchant-sichtbarer Readiness-Anzeige weiter vorbereiten
 - Merchant Platform V5: Digital Signage + Smart Pricing auf dem neuen Enterprise-Datenmodell aufsetzen (Preisregeln, Promotion-Slots, Filialausspielung)
 - Merchant Platform V5: Procurement AI auf dem Business-Automation-V1 aufsetzen (Forecast-basierte Mengen, Supplier-Vergleich, Genehmigungslogik, Inventory-Playbooks)
 - Commerce: Live-Auctions-Seed/Programmplanung, Live-Produkt-Pinning und dedizierte Commerce-Analytics für Conversion, Flash-Sale-Umsatz und CTA-Klicks ergänzen

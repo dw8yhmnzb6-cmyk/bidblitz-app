@@ -12,6 +12,16 @@
 - `frontend/src/components/CookieBanner.jsx`: Banner auf Desktop in kompakte Bottom-Right-Card verschoben, damit Dashboards nicht mehr verdeckt werden
 - Verifiziert: Python-Lint PASS, Frontend-Lint PASS, manuelle API-E2E-Tests PASS, `testing_agent` Iteration 168 PASS (Backend 12/13 + 1 log-verifiziert, Frontend 8/8). Keine MOCKS.
 
+## 01.07.2026 — BioPay V3 Foundation + Wallet PIN UI + Merchant Security Editors
+- `backend/services/biopay.py`: BioPay-Grundlage ergänzt — verschlüsselte Template-Token (kein Bildspeicher), PalmPay/FacePay-Feature-Flag, Profilverwaltung, Terminal-Lifecycle, BioPay-Sessions, Staff-BioTime-Helfer und Fraud-/Audit-Verknüpfung
+- Neue BioPay-APIs live: `GET /api/customer/payment-pin/status`, `GET /api/biopay/me`, `POST /api/biopay/enroll`, `POST /api/biopay/verify-self`, `DELETE /api/biopay/profile/{profile_id}`, `GET/POST /api/biopay/terminals`, `POST /api/biopay/terminals/{terminal_id}`, `GET /api/biopay/dashboard`, `GET /api/biopay/sessions`, `POST /api/biopay/pay`, `POST /api/biopay/staff/clock`
+- `frontend/src/components/wallet/WalletSecurityCards.jsx`: sichtbare Wallet-UI für Payment-PIN-Management (Status, Set/Reset/Verify, Lock-Anzeige) und BioPay/PalmPay-Profilverwaltung (Enroll, Verify, Revoke)
+- `frontend/src/pages/WalletPage.jsx`: neues Security-Grid für Kunden mit PIN- und PalmPay-Karten integriert
+- `frontend/src/components/pos/POSBioPayPanel.jsx` + `POSCheckoutTab.jsx`: PalmPay-Modus in der Kasse ergänzt — Resolve per Scan/NFC/Kundennummer, maskierte Kundensicht, Template-Token-Eingabe, BioPay-Zahlung mit App-Confirmation bei High-Value
+- `frontend/src/pages/MerchantDashboardPage.jsx`: Security-Center erweitert um editierbare Rollen-Permissions, editierbare Limits, direkte Approval-Entscheidungen sowie BioPay-Terminal-/Session-Management
+- `frontend/src/pages/MorePage.jsx`: Merchant/POS-/Security-Zugänge vor vollständiger KYC bewusst freigegeben, damit Händler Wallet/POS/BioPay/Security-Workflows weiterhin bedienen können; KYC-Hinweis bleibt sichtbar, Blocker entfällt
+- Verifiziert: Python-Lint PASS, Frontend-Lint PASS, manuelle BioPay-/PIN-/Editor-API-E2E-Tests PASS, `testing_agent` Iteration 169 PASS. Zusätzlicher Browser-Smoke-Test bestätigt Merchant Dashboard Security nach KYC-Allowlist-Fix. Keine MOCKS.
+
 ## 27.06.2026 — Merchant Platform V5 Modul 1: Enterprise Dashboard + Executive AI
 - `backend/routes/merchant_portal.py`: neue Enterprise-Aggregation für Revenue, Profit, Branches, Inventory, POS, Staff, Wallet, Loyalty, Alerts, Forecasts und Merchant KPIs aus bestehenden BidBlitz-Modulen ergänzt
 - Neue APIs live: `GET /api/merchant-portal/v5/dashboard`, `GET /api/merchant-portal/v5/executive-ai/latest`, `POST /api/merchant-portal/v5/executive-ai/stream`
