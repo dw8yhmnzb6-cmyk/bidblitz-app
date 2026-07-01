@@ -3,11 +3,13 @@
 ## 01.07.2026 — Admin Customer Intelligence Center
 - Erweiterung: Customer Live Radar ergänzt — Radar-Alerts, VIP-/Omnichannel-/POS-/Reaktivierungs-Segmente, Heatmap-Zellen und Privacy Guard mit Retention-Regeln.
 - Erweiterung: Radar Actions ergänzt — Admin kann aus Radar-Alerts Coupon, Push, Manager-Alert oder Auto-Aktion auslösen; schreibt echte Coupons, Notifications, Merchant-/POS-Alerts und Action-Audit in MongoDB.
+- Erweiterung: Kampagnen-Templates, Erfolgsmessung und Radar-Historie ergänzt — Admin kann Templates speichern/anwenden, Actions nach Template messen und Timeline/History im Admin sehen.
+- Infrastruktur: FastAPI credentialed OPTIONS Guard, Nginx credentialed CORS für Produktions-Proxy und Deployment-Hygiene finalisiert; Deployment-Agent meldet PASS. Preview-Cloudflare-OPTIONS bleibt edge-vorgelagert, lokale App/Production-Proxy-Konfiguration ist korrekt.
 - `backend/routes/admin_customer_intelligence.py`: neues Admin-Intelligence-Backend für Sekunden-/Bid-Credit-Käufe, Commerce Orders, Live-Shopping Orders, POS-Shopkäufe, Standortsignale, Store-Matches sowie Monats-/Jahresanalyse.
 - `frontend/src/components/admin/AdminCustomerIntelligenceTab.jsx`: neue Admin-Ansicht mit Summary Cards, Kunden-/Shop-Karte, Jahresanalyse, Monatsdiagramm, Suchliste, Sekunden-Kauf-Feed und Customer-Detail-Drawer.
 - `AdminPage.jsx`, `App.js`, `api.js`: Admin-Navigation und Direkt-Routen `/admin/customer-intelligence` und `/admin/customer-map` angebunden.
 - Deployment-Hygiene: `.gitignore` blockiert `.env`-Dateien nicht mehr; `CORS_ORIGINS` in Preview- und Production-Env ergänzt; Deployment-Agent meldet PASS.
-- Verifiziert: Admin API Curl PASS, Browser-Smoke PASS, Testing-Agent Iteration 172/173/174 Feature PASS mit Infrastruktur-Hinweis zu Preview-Edge-OPTIONS; lokale/app-level CORS und Deployment-Check PASS. Keine MOCKS.
+- Verifiziert: Admin API Curl PASS, Browser-Smoke PASS, Testing-Agent Iteration 172/173/174/175 Feature PASS mit Infrastruktur-Hinweis zu Preview-Edge-OPTIONS; lokale/app-level CORS und Deployment-Check PASS. Keine MOCKS.
 
 ## 01.07.2026 — Staff BioTime P0 + Executable Approval Flows
 - `backend/routes/biopay.py` + `backend/services/biopay.py`: Staff-BioTime ergänzt — Staff-PalmPay Enrollment, Status, Check-in/Check-out, Pausen-Events, BioPay-Session-Tracking und öffentliche Payloads ohne `_id`, `template_token_encrypted` oder Fingerprint-Leak.

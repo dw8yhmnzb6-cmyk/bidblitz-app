@@ -1,0 +1,46 @@
+{
+  "summary": "Completed backend + frontend regression for admin customer intelligence templates/metrics/history/timeline and credentialed CORS checks. Core feature flows pass on preview except external OPTIONS preflight credentials, which is still edge-intercepted.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS via preview URL)",
+        "issue": "External preview preflight still responds with access-control-allow-origin: * and no access-control-allow-credentials=true. Local FastAPI OPTIONS returns explicit origin + credentials=true.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/test_reports/pytest/iter176_admin_customer_intelligence.xml"
+  ],
+  "action_items": [
+    "Fix edge/ingress preflight handling so external OPTIONS mirrors app credentialed CORS contract (explicit allow-origin + allow-credentials=true).",
+    "Keep app-level middleware behavior as-is; regression indicates issue is upstream of FastAPI.",
+    "Optional hardening: remove default credentials fallback in backend/core/config.py to enforce env-only fail-fast behavior."
+  ],
+  "critical_code_review_comments": [
+    "Admin customer intelligence backend contract is correct: overview includes campaign_templates/campaign_metrics/radar_history and responses do not leak _id/ObjectId in validated payloads.",
+    "Admin authz gates are correct for overview, radar/templates/history/action endpoints (unauth/non-admin blocked).",
+    "backend/core/config.py still contains default fallback values for sensitive env vars (e.g., ADMIN_EMAIL/ADMIN_PASSWORD), which conflicts with strict env-only fail-fast guidance."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_176.json"
+  ],
+  "success_rate": {
+    "backend": "94% (17/18)",
+    "frontend": "95%"
+  },
+  "test_credentials": "Used /app/memory/test_credentials.md accounts: admin@bidblitz.com / BidBlitz2026! and haendler@bidblitz.com / Haendler2026!",
+  "seed_data_creation": "Created one QA radar template via UI and executed at least one radar combo action; backend tests also created QA template/action records.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Before running pytest manually, export REACT_APP_BACKEND_URL from frontend/.env in shell; otherwise this suite will skip. UI selector contract is now stable for admin-grid-customer-intelligence and /admin/customer-intelligence panels.",
+  "rca of the issue": "Reproduced with curl: preview URL OPTIONS is answered by Cloudflare/edge with wildcard CORS and no allow-credentials, while localhost:8001 FastAPI returns explicit origin and allow-credentials=true. This indicates ingress/edge interception override, not a backend route regression.",
+  "mocked_api": "No MOCKED APIs used."
+}
