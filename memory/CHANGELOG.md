@@ -5,6 +5,7 @@
 - Erweiterung: Radar Actions ergänzt — Admin kann aus Radar-Alerts Coupon, Push, Manager-Alert oder Auto-Aktion auslösen; schreibt echte Coupons, Notifications, Merchant-/POS-Alerts und Action-Audit in MongoDB.
 - Erweiterung: Kampagnen-Templates, Erfolgsmessung und Radar-Historie ergänzt — Admin kann Templates speichern/anwenden, Actions nach Template messen und Timeline/History im Admin sehen.
 - Infrastruktur: FastAPI credentialed OPTIONS Guard, Nginx credentialed CORS für Produktions-Proxy und Deployment-Hygiene finalisiert; Deployment-Agent meldet PASS. Preview-Cloudflare-OPTIONS bleibt edge-vorgelagert, lokale App/Production-Proxy-Konfiguration ist korrekt.
+- Security-Härtung: sensible Admin-Credential-Defaults aus `backend/core/config.py` entfernt; Backend failt jetzt sauber, wenn `ADMIN_EMAIL`/`ADMIN_PASSWORD` fehlen.
 - `backend/routes/admin_customer_intelligence.py`: neues Admin-Intelligence-Backend für Sekunden-/Bid-Credit-Käufe, Commerce Orders, Live-Shopping Orders, POS-Shopkäufe, Standortsignale, Store-Matches sowie Monats-/Jahresanalyse.
 - `frontend/src/components/admin/AdminCustomerIntelligenceTab.jsx`: neue Admin-Ansicht mit Summary Cards, Kunden-/Shop-Karte, Jahresanalyse, Monatsdiagramm, Suchliste, Sekunden-Kauf-Feed und Customer-Detail-Drawer.
 - `AdminPage.jsx`, `App.js`, `api.js`: Admin-Navigation und Direkt-Routen `/admin/customer-intelligence` und `/admin/customer-map` angebunden.
