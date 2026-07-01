@@ -2,9 +2,11 @@ from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 import math
 import re
+import secrets
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel
 
 from core.audit import AuditEvent, get_client_info, log_audit
 from core.database import db
@@ -12,6 +14,16 @@ from core.security import get_current_user
 
 
 router = APIRouter(prefix="/api/admin/customer-intelligence", tags=["admin-customer-intelligence"])
+
+
+class RadarActionRequest(BaseModel):
+    action_type: str
+    user_id: str
+    alert_id: str = ""
+    store_id: str = ""
+    merchant_id: str = ""
+    coupon_value: float = 5.0
+    message: str = ""
 
 
 async def require_admin(request: Request):
@@ -406,6 +418,91 @@ def privacy_policy_summary() -> dict:
     }
 
 
+def build_coupon_code(prefix: str = "RADAR") -> str:
+    return f"{prefix}-{secrets.token_hex(3).upper()}"
+
+
+async def create_radar_coupon(admin: dict, user: dict, req: RadarActionRequest) -> dict:
+    value = round(max(1.0, min(float(req.coupon_value or 5.0), 100.0)), 2)
+    code = build_coupon_code("RADAR")
+    expires_at = (now_utc() + timedelta(days=14)).isoformat()
+    doc = {
+        "coupon_id": f"RC-{secrets.token_hex(6).upper()}",
+        "code": code,
+        "coupon_type": "customer_radar",
+        "value": value,
+        "description": f"Radar Coupon für {user.get('name', 'Kunde')}",
+        "max_uses": 1,
+        "used_count": 0,
+        "target_user_id": str(user.get("_id") or user.get("id") or req.user_id),
+        "target_user_email": user.get("email", ""),
+        "store_id": req.store_id,
+        "merchant_id": req.merchant_id,
+        "created_by": str(admin.get("_id")),
+        "created_at": now_utc().isoformat(),
+        "expires_at": expires_at,
+        "active": True,
+        "source": "admin_customer_radar",
+        "alert_id": req.alert_id,
+    }
+    await db.coupons.insert_one(doc.copy())
+    await db.promo_codes.update_one(
+        {"code": code},
+        {"$setOnInsert": {"code": code, "active": True, "created_at": doc["created_at"], "creator_email": admin.get("email", ""), "description": doc["description"], "max_uses": 1, "type": "credit", "used_count": 0, "value": value, "target_user_id": doc["target_user_id"], "expires_at": expires_at}},
+        upsert=True,
+    )
+    doc.pop("_id", None)
+    return doc
+
+
+async def create_customer_notification(user: dict, title: str, body: str, data: dict) -> dict:
+    user_id = str(user.get("_id") or user.get("id") or "")
+    doc = {
+        "notif_id": f"RAD-N-{secrets.token_hex(8)}",
+        "user_id": user_id,
+        "user_email": user.get("email", ""),
+        "category": "customer_radar",
+        "title": title,
+        "body": body,
+        "action_url": data.get("action_url", "/wallet"),
+        "read": False,
+        "created_at": now_utc().isoformat(),
+        "data": data,
+    }
+    await db.notifications.insert_one(doc.copy())
+    try:
+        from routes.web_push import send_push_to_user
+        await send_push_to_user(user_id, title, body, data=data)
+    except Exception:
+        pass
+    doc.pop("_id", None)
+    return doc
+
+
+async def create_manager_alert(admin: dict, user: dict, req: RadarActionRequest, coupon: dict | None = None) -> dict:
+    doc = {
+        "alert_id": f"MRA-{secrets.token_hex(6).upper()}",
+        "type": "customer_live_radar_action",
+        "severity": "high",
+        "status": "open",
+        "merchant_id": req.merchant_id,
+        "store_id": req.store_id,
+        "customer_id": str(user.get("_id") or user.get("id") or req.user_id),
+        "customer_name": user.get("name", ""),
+        "customer_email": user.get("email", ""),
+        "title": "Customer Radar Aktion",
+        "message": req.message or f"Kunde {user.get('name', 'Kunde')} erhält Radar-Angebot.",
+        "coupon_code": (coupon or {}).get("code", ""),
+        "created_by": str(admin.get("_id")),
+        "created_at": now_utc().isoformat(),
+        "source_alert_id": req.alert_id,
+    }
+    await db.merchant_alerts.insert_one(doc.copy())
+    await db.pos_security_alerts.insert_one({**doc, "alert_id": f"PSR-{secrets.token_hex(6).upper()}", "details": {"source": "customer_live_radar", "coupon_code": doc["coupon_code"]}})
+    doc.pop("_id", None)
+    return doc
+
+
 @router.get("/overview")
 async def customer_intelligence_overview(request: Request, days: int = Query(365, ge=1, le=1095)):
     admin = await require_admin(request)
@@ -542,3 +639,43 @@ async def customer_intelligence_detail(user_id: str, request: Request, days: int
         "locations": locations[:100],
         "store_visit_matches": visited[:50],
     }
+
+
+@router.post("/radar/action")
+async def execute_radar_action(req: RadarActionRequest, request: Request):
+    admin = await require_admin(request)
+    allowed = {"coupon", "push", "manager_alert", "coupon_push_alert"}
+    if req.action_type not in allowed:
+        raise HTTPException(status_code=400, detail="Ungültige Radar-Aktion")
+    user = await get_user_by_id(req.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
+    coupon = None
+    notification = None
+    manager_alert = None
+    if req.action_type in {"coupon", "coupon_push_alert"}:
+        coupon = await create_radar_coupon(admin, user, req)
+    if req.action_type in {"push", "coupon_push_alert"}:
+        title = "BidBlitz Radar Angebot"
+        body = req.message or (f"Dein persönlicher Coupon {coupon['code']} ist aktiv." if coupon else "Ein persönliches Angebot wartet auf dich.")
+        notification = await create_customer_notification(user, title, body, {"action_url": "/wallet", "coupon_code": (coupon or {}).get("code", ""), "source": "admin_customer_radar", "alert_id": req.alert_id})
+    if req.action_type in {"manager_alert", "coupon_push_alert"}:
+        manager_alert = await create_manager_alert(admin, user, req, coupon)
+    action_doc = {
+        "action_id": f"CRA-{secrets.token_hex(6).upper()}",
+        "action_type": req.action_type,
+        "user_id": str(user.get("_id") or user.get("id") or req.user_id),
+        "store_id": req.store_id,
+        "merchant_id": req.merchant_id,
+        "alert_id": req.alert_id,
+        "coupon_code": (coupon or {}).get("code", ""),
+        "notification_id": (notification or {}).get("notif_id", ""),
+        "manager_alert_id": (manager_alert or {}).get("alert_id", ""),
+        "created_by": str(admin.get("_id")),
+        "created_at": now_utc().isoformat(),
+    }
+    await db.customer_radar_actions.insert_one(action_doc.copy())
+    ip, ua = get_client_info(request)
+    await log_audit(AuditEvent.ADMIN_ACTION, user_id=str(admin.get("_id")), email=admin.get("email", ""), ip=ip, user_agent=ua, details={"action": "execute_customer_radar_action", "action_type": req.action_type, "target_user": action_doc["user_id"], "coupon_code": action_doc["coupon_code"]})
+    action_doc.pop("_id", None)
+    return {"ok": True, "action": action_doc, "coupon": coupon, "notification": notification, "manager_alert": manager_alert}

@@ -1,0 +1,54 @@
+{
+  "summary": "Executed backend + frontend regression for Admin Customer Intelligence Radar actions. Backend radar action contracts passed for coupon, push, manager_alert, and coupon_push_alert with auth gates and no ObjectId/_id serialization leaks. UI radar rows rendered Coupon/Push/Auto buttons and Coupon click showed success toast. One known auth preflight CORS issue remains.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS preflight)",
+        "issue": "Credentialed CORS preflight response still missing access-control-allow-credentials=true in preview response.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Admin Radar Actions",
+        "issue": "UI exposes Coupon/Push/Auto actions only; standalone Manager Alert trigger is not directly available as a dedicated action button.",
+        "affected_selectors": [
+          "[data-testid^='admin-ci-radar-coupon-']",
+          "[data-testid^='admin-ci-radar-push-']",
+          "[data-testid^='admin-ci-radar-combo-']"
+        ]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/test_reports/pytest/iter174_admin_customer_intelligence.xml"
+  ],
+  "action_items": [
+    "Fix preview edge/ingress preflight headers for credentialed auth OPTIONS requests.",
+    "Confirm product decision: if required, add dedicated Manager Alert action button in radar row UI; otherwise document Auto as manager-alert path.",
+    "Re-run this suite after CORS fix and any UI action mapping update."
+  ],
+  "critical_code_review_comments": [
+    "Radar action backend implementation writes to real collections (coupons/promo_codes, notifications, merchant_alerts, pos_security_alerts, customer_radar_actions) and strips _id from responses.",
+    "API service correctly uses process.env.REACT_APP_BACKEND_URL and includes /api prefixed admin customer intelligence routes."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/test_reports/iteration_174.json"
+  ],
+  "success_rate": {
+    "backend": "92% (12/13 passed)",
+    "frontend": "100% (requested critical UI checks passed)"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 174 added radar/action endpoint tests for unauth/non-admin rejection and action types coupon, push, manager_alert, coupon_push_alert. All passed except existing auth preflight CORS contract test. UI run confirmed customer-intelligence panels render and Coupon action toast appears after click.",
+  "rca of the issue": "CORS middleware behavior in preview still appears overridden at edge/ingress for OPTIONS /api/auth/login, causing missing access-control-allow-credentials even though app-level routes and auth flows function correctly."
+}

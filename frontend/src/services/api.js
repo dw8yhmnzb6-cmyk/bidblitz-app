@@ -216,6 +216,7 @@ export const api = {
   decidePosSecurityApproval: (approvalId, body) => request(`/api/pos/security/approvals/${approvalId}/decision`, { method: "POST", body: JSON.stringify(body) }),
   getAdminCustomerIntelligence: (days = 365) => request(`/api/admin/customer-intelligence/overview?days=${encodeURIComponent(days)}`),
   getAdminCustomerIntelligenceCustomer: (userId, days = 365) => request(`/api/admin/customer-intelligence/customer/${encodeURIComponent(userId)}?days=${encodeURIComponent(days)}`),
+  executeAdminCustomerRadarAction: (body) => request("/api/admin/customer-intelligence/radar/action", { method: "POST", body: JSON.stringify(body) }),
 
   // Transactions
   getTransactions: (params = {}) => {

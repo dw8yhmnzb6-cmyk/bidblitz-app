@@ -48,6 +48,44 @@ def _login(session: requests.Session, base_url: str, email: str, password: str) 
     )
 
 
+def _pick_radar_target(overview_payload: dict[str, Any]) -> dict[str, str]:
+    alerts = overview_payload.get("radar_alerts") or []
+    for alert in alerts:
+        user_id = (alert.get("user") or {}).get("user_id")
+        if user_id:
+            store = alert.get("store") or {}
+            return {
+                "user_id": user_id,
+                "alert_id": alert.get("alert_id", ""),
+                "store_id": store.get("store_id", ""),
+                "merchant_id": store.get("merchant_id", ""),
+            }
+
+    top_customers = overview_payload.get("top_customers") or []
+    for row in top_customers:
+        user_id = (row.get("user") or {}).get("user_id")
+        if user_id:
+            return {
+                "user_id": user_id,
+                "alert_id": "",
+                "store_id": "",
+                "merchant_id": "",
+            }
+
+    markers = ((overview_payload.get("map") or {}).get("customers") or [])
+    for marker in markers:
+        user_id = (marker.get("user") or {}).get("user_id")
+        if user_id:
+            return {
+                "user_id": user_id,
+                "alert_id": "",
+                "store_id": "",
+                "merchant_id": "",
+            }
+
+    return {}
+
+
 def test_admin_login_sets_httponly_cookie(base_url: str, api_client: requests.Session):
     response = _login(api_client, base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
     assert response.status_code == 200
@@ -211,3 +249,154 @@ def test_auth_bruteforce_lockout_after_five_failures(base_url: str, api_client: 
 
     assert statuses[:5] == [401, 401, 401, 401, 401]
     assert statuses[5] == 429
+
+
+# Radar action endpoint contracts and authorization checks
+def test_radar_action_rejects_unauthenticated(base_url: str, api_client: requests.Session):
+    response = api_client.post(
+        f"{base_url}/api/admin/customer-intelligence/radar/action",
+        json={"action_type": "coupon", "user_id": "non-existent"},
+        timeout=25,
+    )
+    assert response.status_code in (401, 403)
+
+
+def test_radar_action_rejects_non_admin(base_url: str, api_client: requests.Session):
+    login = _login(api_client, base_url, NON_ADMIN_EMAIL, NON_ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    response = api_client.post(
+        f"{base_url}/api/admin/customer-intelligence/radar/action",
+        json={"action_type": "coupon", "user_id": "non-existent"},
+        timeout=25,
+    )
+    assert response.status_code == 403
+
+
+@pytest.fixture()
+def admin_radar_target(base_url: str) -> dict[str, str]:
+    session = requests.Session()
+    session.headers.update({"Content-Type": "application/json"})
+    login = _login(session, base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
+    if login.status_code != 200:
+        pytest.skip("Admin login failed")
+
+    overview = session.get(f"{base_url}/api/admin/customer-intelligence/overview?days=365", timeout=30)
+    if overview.status_code != 200:
+        pytest.skip("Overview endpoint unavailable")
+
+    target = _pick_radar_target(overview.json())
+    if not target.get("user_id"):
+        pytest.skip("No user found for radar action test")
+    return target
+
+
+def test_radar_action_coupon_creates_contract_no_objectid(
+    base_url: str, api_client: requests.Session, admin_radar_target: dict[str, str]
+):
+    login = _login(api_client, base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    payload = {
+        "action_type": "coupon",
+        "user_id": admin_radar_target["user_id"],
+        "alert_id": admin_radar_target.get("alert_id", ""),
+        "store_id": admin_radar_target.get("store_id", ""),
+        "merchant_id": admin_radar_target.get("merchant_id", ""),
+        "coupon_value": 7.5,
+        "message": "QA coupon action",
+    }
+    response = api_client.post(f"{base_url}/api/admin/customer-intelligence/radar/action", json=payload, timeout=30)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data.get("ok") is True
+    assert data.get("action", {}).get("action_type") == "coupon"
+    assert data.get("coupon") and data["coupon"].get("code", "").startswith("RADAR-")
+    assert data.get("notification") is None
+    assert data.get("manager_alert") is None
+    assert data.get("action", {}).get("coupon_code") == data["coupon"].get("code")
+    assert _contains_forbidden_serialization(data) is False
+
+
+def test_radar_action_push_best_effort_and_contract(
+    base_url: str, api_client: requests.Session, admin_radar_target: dict[str, str]
+):
+    login = _login(api_client, base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    payload = {
+        "action_type": "push",
+        "user_id": admin_radar_target["user_id"],
+        "alert_id": admin_radar_target.get("alert_id", ""),
+        "store_id": admin_radar_target.get("store_id", ""),
+        "merchant_id": admin_radar_target.get("merchant_id", ""),
+        "message": "QA push action",
+    }
+    response = api_client.post(f"{base_url}/api/admin/customer-intelligence/radar/action", json=payload, timeout=30)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data.get("ok") is True
+    assert data.get("action", {}).get("action_type") == "push"
+    assert data.get("coupon") is None
+    assert data.get("notification") and data["notification"].get("notif_id")
+    assert data.get("action", {}).get("notification_id") == data["notification"].get("notif_id")
+    assert _contains_forbidden_serialization(data) is False
+
+
+def test_radar_action_manager_alert_contract(
+    base_url: str, api_client: requests.Session, admin_radar_target: dict[str, str]
+):
+    login = _login(api_client, base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    payload = {
+        "action_type": "manager_alert",
+        "user_id": admin_radar_target["user_id"],
+        "alert_id": admin_radar_target.get("alert_id", ""),
+        "store_id": admin_radar_target.get("store_id", ""),
+        "merchant_id": admin_radar_target.get("merchant_id", ""),
+        "message": "QA manager alert",
+    }
+    response = api_client.post(f"{base_url}/api/admin/customer-intelligence/radar/action", json=payload, timeout=30)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data.get("ok") is True
+    assert data.get("action", {}).get("action_type") == "manager_alert"
+    assert data.get("coupon") is None
+    assert data.get("notification") is None
+    assert data.get("manager_alert") and data["manager_alert"].get("alert_id", "").startswith("MRA-")
+    assert data.get("action", {}).get("manager_alert_id") == data["manager_alert"].get("alert_id")
+    assert _contains_forbidden_serialization(data) is False
+
+
+def test_radar_action_coupon_push_alert_returns_all_outputs(
+    base_url: str, api_client: requests.Session, admin_radar_target: dict[str, str]
+):
+    login = _login(api_client, base_url, ADMIN_EMAIL, ADMIN_PASSWORD)
+    assert login.status_code == 200
+
+    payload = {
+        "action_type": "coupon_push_alert",
+        "user_id": admin_radar_target["user_id"],
+        "alert_id": admin_radar_target.get("alert_id", ""),
+        "store_id": admin_radar_target.get("store_id", ""),
+        "merchant_id": admin_radar_target.get("merchant_id", ""),
+        "coupon_value": 12,
+        "message": "QA combined action",
+    }
+    response = api_client.post(f"{base_url}/api/admin/customer-intelligence/radar/action", json=payload, timeout=30)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data.get("ok") is True
+    assert data.get("action", {}).get("action_type") == "coupon_push_alert"
+    assert data.get("coupon") and data["coupon"].get("code", "").startswith("RADAR-")
+    assert data.get("notification") and data["notification"].get("notif_id")
+    assert data.get("manager_alert") and data["manager_alert"].get("alert_id", "").startswith("MRA-")
+    assert data.get("action", {}).get("coupon_code") == data["coupon"].get("code")
+    assert data.get("action", {}).get("notification_id") == data["notification"].get("notif_id")
+    assert data.get("action", {}).get("manager_alert_id") == data["manager_alert"].get("alert_id")
+    assert _contains_forbidden_serialization(data) is False

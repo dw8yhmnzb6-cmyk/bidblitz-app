@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, BarChart3, Clock, Flame, Loader2, MapPin, Search, ShieldCheck, ShoppingBag, Sparkles, Store, Target, Zap } from "lucide-react";
 import { api } from "../../services/api";
+import { toast } from "sonner";
 
 const colors = ["#00D4FF", "#10D981", "#FFB800", "#FF5A5A", "#A78BFA"];
 
@@ -11,6 +12,7 @@ export const AdminCustomerIntelligenceTab = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [query, setQuery] = useState("");
+  const [acting, setActing] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -34,6 +36,29 @@ export const AdminCustomerIntelligenceTab = () => {
   }, [data, query]);
 
   const maxMonth = Math.max(...(data?.timeline_monthly || []).map((row) => row.seconds_revenue + row.commerce_revenue + row.pos_revenue), 1);
+
+  const executeRadarAction = async (alert, actionType) => {
+    const userId = alert?.user?.user_id;
+    if (!userId) return toast.error("Kunde fehlt");
+    setActing(`${alert.alert_id}-${actionType}`);
+    try {
+      const result = await api.executeAdminCustomerRadarAction({
+        action_type: actionType,
+        user_id: userId,
+        alert_id: alert.alert_id,
+        store_id: alert.store?.store_id || "",
+        merchant_id: alert.store?.merchant_id || "",
+        coupon_value: alert.severity === "high" ? 10 : 5,
+        message: alert.recommended_action || "Persönliches BidBlitz-Angebot",
+      });
+      toast.success(result?.coupon?.code ? `Aktion ausgeführt: ${result.coupon.code}` : "Radar-Aktion ausgeführt");
+      await load();
+    } catch (error) {
+      toast.error(error.message || "Radar-Aktion fehlgeschlagen");
+    } finally {
+      setActing("");
+    }
+  };
 
   if (loading && !data) {
     return <div data-testid="admin-customer-intelligence-loading" className="py-20 flex justify-center"><Loader2 size={22} className="animate-spin text-[#00D4FF]" /></div>;
@@ -68,7 +93,7 @@ export const AdminCustomerIntelligenceTab = () => {
             <span className="text-[9px] text-white/30">{data?.radar_alerts?.length || 0} Signale</span>
           </div>
           <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-            {(data?.radar_alerts || []).length === 0 ? <p className="py-5 text-center text-[11px] text-white/30" data-testid="admin-ci-radar-empty">Keine Radar-Alerts</p> : (data?.radar_alerts || []).slice(0, 8).map((alert) => <RadarAlertRow key={alert.alert_id} alert={alert} />)}
+            {(data?.radar_alerts || []).length === 0 ? <p className="py-5 text-center text-[11px] text-white/30" data-testid="admin-ci-radar-empty">Keine Radar-Alerts</p> : (data?.radar_alerts || []).slice(0, 8).map((alert) => <RadarAlertRow key={alert.alert_id} alert={alert} onAction={executeRadarAction} acting={acting} />)}
           </div>
         </div>
         <div className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-privacy-panel">
@@ -177,9 +202,13 @@ function HeatDot({ cell, index }) {
   return <div className="absolute rounded-full pointer-events-none" data-testid="admin-ci-heatmap-cell" style={{ left, top, width: size, height: size, transform: "translate(-50%, -50%)", background: "radial-gradient(circle, rgba(255,90,90,0.26), rgba(255,184,0,0.12), transparent 68%)" }} />;
 }
 
-function RadarAlertRow({ alert }) {
+function RadarAlertRow({ alert, onAction, acting }) {
   const high = alert.severity === "high";
-  return <div data-testid={`admin-ci-radar-alert-${alert.alert_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2.5"><div className="flex items-start gap-2"><AlertTriangle size={14} className={high ? "text-[#FF5A5A]" : "text-[#FFB800]"} /><div className="min-w-0 flex-1"><p className="text-xs font-bold text-white truncate">{alert.title}</p><p className="text-[10px] text-white/45 mt-0.5">{alert.message}</p><p className="text-[9px] text-[#00D4FF] mt-1">{alert.recommended_action}</p></div></div></div>;
+  return <div data-testid={`admin-ci-radar-alert-${alert.alert_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2.5"><div className="flex items-start gap-2"><AlertTriangle size={14} className={high ? "text-[#FF5A5A]" : "text-[#FFB800]"} /><div className="min-w-0 flex-1"><p className="text-xs font-bold text-white truncate">{alert.title}</p><p className="text-[10px] text-white/45 mt-0.5">{alert.message}</p><p className="text-[9px] text-[#00D4FF] mt-1">{alert.recommended_action}</p><div className="mt-2 grid grid-cols-3 gap-1.5"><RadarActionButton testId={`admin-ci-radar-coupon-${alert.alert_id}`} disabled={Boolean(acting)} loading={acting === `${alert.alert_id}-coupon`} onClick={() => onAction(alert, "coupon")}>Coupon</RadarActionButton><RadarActionButton testId={`admin-ci-radar-push-${alert.alert_id}`} disabled={Boolean(acting)} loading={acting === `${alert.alert_id}-push`} onClick={() => onAction(alert, "push")}>Push</RadarActionButton><RadarActionButton testId={`admin-ci-radar-combo-${alert.alert_id}`} disabled={Boolean(acting)} loading={acting === `${alert.alert_id}-coupon_push_alert`} onClick={() => onAction(alert, "coupon_push_alert")}>Auto</RadarActionButton></div></div></div></div>;
+}
+
+function RadarActionButton({ children, onClick, disabled, loading, testId }) {
+  return <button type="button" onClick={onClick} disabled={disabled} data-testid={testId} className="rounded-lg bg-white/[0.05] border border-white/[0.06] px-2 py-1.5 text-[9px] font-bold text-white/70 disabled:opacity-50 active:scale-95 transition-transform">{loading ? <Loader2 size={11} className="animate-spin mx-auto" /> : children}</button>;
 }
 
 function PolicyRow({ label, value }) {
