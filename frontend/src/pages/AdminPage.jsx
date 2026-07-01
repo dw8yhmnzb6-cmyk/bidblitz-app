@@ -10,7 +10,7 @@ import {
   // Grid Menu Icons
   Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
   UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode,
-  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code, UtensilsCrossed
+  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code, UtensilsCrossed, MapPin
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ const AdminScootersTab = lazy(() => import("../components/admin/AdminScootersTab
 const AdminGutscheineTab = lazy(() => import("../components/admin/AdminGutscheineTab"));
 const AdminTestimonialsTab = lazy(() => import("../components/admin/AdminTestimonialsTab"));
 const AdminPaySdkTab = lazy(() => import("../components/admin/AdminPaySdkTab"));
+const AdminCustomerIntelligenceTab = lazy(() => import("../components/admin/AdminCustomerIntelligenceTab").then((m) => ({ default: m.AdminCustomerIntelligenceTab })));
 
 const LazyFallback = () => (
   <div className="flex items-center justify-center py-20">
@@ -118,6 +119,7 @@ const ADMIN_SECTIONS = [
       { id: "winner-control", icon: CheckCircle2, label: "Gewinner-Kontrolle", tab: "auctions" },
       { id: "product-analysis", icon: TrendingUp, label: "Produkt-Analyse", tab: "analytics" },
       { id: "user-analysis", icon: Users, label: "Benutzer-Analyse", tab: "analytics" },
+      { id: "customer-intelligence", icon: MapPin, label: "Kunden Live-Map", tab: "customer-intelligence", highlight: true },
       { id: "revenue-analysis", icon: Euro, label: "Umsatz-Analyse", tab: "analytics" },
     ]
   },
@@ -288,6 +290,7 @@ const tabs = [
   { id: "biopay-audit", key: "BioPay Audit", icon: Shield },
   { id: "compliance", key: "admin.compliance", icon: Shield },
   { id: "analytics", key: "admin.analytics", icon: TrendingUp },
+  { id: "customer-intelligence", key: "Customer Intel", icon: MapPin },
   { id: "promos", key: "admin.promos", icon: Gift },
   { id: "settings", key: "admin.config", icon: Settings },
   { id: "merchant-fees", key: "admin.merchant_fees", icon: CircleDollarSign },
@@ -418,6 +421,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
           campaigns: campaignsRes,
         });
       }
+      if (t === "customer-intelligence") { setLoading(false); return; }
       if (t === "promos") {
         const d = await api("/api/promotions/admin/all");
         setPromos(d.promotions || []);
@@ -771,6 +775,14 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
             <LazyErrorBoundary>
               <Suspense fallback={<LazyFallback />}>
                 <AdminPaySdkTab />
+              </Suspense>
+            </LazyErrorBoundary>
+          )}
+
+          {tab === "customer-intelligence" && (
+            <LazyErrorBoundary>
+              <Suspense fallback={<LazyFallback />}>
+                <AdminCustomerIntelligenceTab />
               </Suspense>
             </LazyErrorBoundary>
           )}

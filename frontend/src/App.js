@@ -1214,6 +1214,7 @@ function AppContent() {
             // Analytics
             "analytics": "analytics", "product-analysis": "analytics",
             "user-analysis": "analytics", "revenue-analysis": "analytics",
+            "customer-intelligence": "customer-intelligence", "customer-map": "customer-intelligence",
             // Promos
             "merchant-coupons": "promos", "bidder-coupons": "promos",
             "partner-coupons": "promos", "discount-codes": "promos",
