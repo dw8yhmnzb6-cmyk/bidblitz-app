@@ -610,6 +610,24 @@ async def evaluate_radar_rule(rule: dict, days: int = 365) -> dict:
         if rule.get("trigger_type") == "customer_near_shop" and safe_float(alert.get("distance_km", 999)) > safe_float(rule.get("max_distance_km", 1.0)):
             continue
         matched.append(alert)
+    if not matched and rule.get("trigger_type") == "vip_seconds_buyer":
+        for row in context["top_customers"]:
+            uid = row["user"]["user_id"]
+            if uid not in members:
+                continue
+            if safe_float(row.get("total_revenue")) < safe_float(rule.get("min_total_revenue", 0)):
+                continue
+            matched.append({
+                "alert_id": f"vip-rule-{uid}",
+                "type": "vip_seconds_buyer",
+                "severity": "medium",
+                "title": "VIP Automation Match",
+                "message": f"{row['user']['name']} erfüllt die Automation-Regel.",
+                "user": row["user"],
+                "store": {},
+                "distance_km": 0,
+                "recommended_action": "Automatisierte Radar-Kampagne ausführen",
+            })
     return {"matches": matched[: int(rule.get("daily_cap", 25) or 25)], "match_count": len(matched), "context_summary": {"alerts": len(context["alerts"]), "segment_members": len(members)}}
 
 
