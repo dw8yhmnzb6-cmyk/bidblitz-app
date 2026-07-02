@@ -13,6 +13,7 @@ export const AdminCustomerIntelligenceTab = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [query, setQuery] = useState("");
   const [acting, setActing] = useState("");
+  const [schedulerStatus, setSchedulerStatus] = useState("");
   const [templateForm, setTemplateForm] = useState({ name: "", action_type: "coupon_push_alert", coupon_value: 5, message: "", segment: "vip_seconds_buyers" });
   const [ruleForm, setRuleForm] = useState({ name: "", template_id: "", segment: "vip_seconds_buyers", min_total_revenue: 100, max_distance_km: 1, cooldown_hours: 24, daily_cap: 25, active: true });
   const [schedulerForm, setSchedulerForm] = useState({ enabled: false, interval_minutes: 15, dry_run: true, max_rules_per_tick: 10, days: 365 });
@@ -113,6 +114,7 @@ export const AdminCustomerIntelligenceTab = () => {
     setActing("save-scheduler");
     try {
       await api.updateAdminCustomerRadarScheduler(schedulerForm);
+      setSchedulerStatus("Scheduler gespeichert");
       toast.success("Scheduler gespeichert");
       await load();
     } catch (error) {
@@ -126,6 +128,7 @@ export const AdminCustomerIntelligenceTab = () => {
     setActing("trigger-scheduler");
     try {
       const result = await api.triggerAdminCustomerRadarSchedulerTick();
+      setSchedulerStatus(`${result.tick.rules_checked} Regeln geprüft`);
       toast.success(`${result.tick.rules_checked} Regeln geprüft`);
       await load();
     } catch (error) {
@@ -243,6 +246,7 @@ export const AdminCustomerIntelligenceTab = () => {
               <input type="number" value={schedulerForm.days} onChange={(e) => setSchedulerForm((p) => ({ ...p, days: Number(e.target.value) }))} data-testid="admin-ci-scheduler-days-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2"><button onClick={saveScheduler} disabled={Boolean(acting)} data-testid="admin-ci-scheduler-save-button" className="rounded-xl bg-[#00D4FF]/15 border border-[#00D4FF]/25 px-3 py-2 text-xs font-bold text-[#00D4FF] disabled:opacity-50">{acting === "save-scheduler" ? "…" : "Speichern"}</button><button onClick={triggerScheduler} disabled={Boolean(acting)} data-testid="admin-ci-scheduler-trigger-button" className="rounded-xl bg-[#10D981]/15 border border-[#10D981]/25 px-3 py-2 text-xs font-bold text-[#10D981] disabled:opacity-50">{acting === "trigger-scheduler" ? "…" : "Jetzt prüfen"}</button></div>
+            <p className="mt-2 min-h-[16px] text-[10px] text-[#10D981]" data-testid="admin-ci-scheduler-status-message">{schedulerStatus}</p>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2" data-testid="admin-ci-rule-performance-grid">
             <MetricPill label="Rule Runs" value={data?.rule_performance?.total_runs || 0} />
