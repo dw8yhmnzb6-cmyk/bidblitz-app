@@ -15,12 +15,14 @@ export const AdminCustomerIntelligenceTab = () => {
   const [acting, setActing] = useState("");
   const [templateForm, setTemplateForm] = useState({ name: "", action_type: "coupon_push_alert", coupon_value: 5, message: "", segment: "vip_seconds_buyers" });
   const [ruleForm, setRuleForm] = useState({ name: "", template_id: "", segment: "vip_seconds_buyers", min_total_revenue: 100, max_distance_km: 1, cooldown_hours: 24, daily_cap: 25, active: true });
+  const [schedulerForm, setSchedulerForm] = useState({ enabled: false, interval_minutes: 15, dry_run: true, max_rules_per_tick: 10, days: 365 });
 
   const load = async () => {
     setLoading(true);
     try {
       const res = await api.getAdminCustomerIntelligence(days);
       setData(res);
+      if (res.scheduler_config) setSchedulerForm({ enabled: Boolean(res.scheduler_config.enabled), interval_minutes: res.scheduler_config.interval_minutes || 15, dry_run: Boolean(res.scheduler_config.dry_run), max_rules_per_tick: res.scheduler_config.max_rules_per_tick || 10, days: res.scheduler_config.days || 365 });
     } finally {
       setLoading(false);
     }
@@ -102,6 +104,32 @@ export const AdminCustomerIntelligenceTab = () => {
       await load();
     } catch (error) {
       toast.error(error.message || "Rule Run fehlgeschlagen");
+    } finally {
+      setActing("");
+    }
+  };
+
+  const saveScheduler = async () => {
+    setActing("save-scheduler");
+    try {
+      await api.updateAdminCustomerRadarScheduler(schedulerForm);
+      toast.success("Scheduler gespeichert");
+      await load();
+    } catch (error) {
+      toast.error(error.message || "Scheduler konnte nicht gespeichert werden");
+    } finally {
+      setActing("");
+    }
+  };
+
+  const triggerScheduler = async () => {
+    setActing("trigger-scheduler");
+    try {
+      const result = await api.triggerAdminCustomerRadarSchedulerTick();
+      toast.success(`${result.tick.rules_checked} Regeln geprüft`);
+      await load();
+    } catch (error) {
+      toast.error(error.message || "Scheduler Tick fehlgeschlagen");
     } finally {
       setActing("");
     }
@@ -200,6 +228,31 @@ export const AdminCustomerIntelligenceTab = () => {
           <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1" data-testid="admin-ci-rule-list">
             {(data?.automation_rules || []).length === 0 ? <p className="text-center text-[11px] text-white/30 py-8">Noch keine Automation Rules</p> : (data?.automation_rules || []).map((rule) => <RuleRow key={rule.rule_id} rule={rule} onRun={runRule} acting={acting} />)}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-scheduler-panel">
+        <div className="flex items-center justify-between gap-3 mb-3"><p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Automation Scheduler & Performance</p><span className={`text-[9px] font-bold ${schedulerForm.enabled ? "text-[#10D981]" : "text-white/30"}`}>{schedulerForm.enabled ? "AKTIV" : "PAUSIERT"}</span></div>
+        <div className="grid lg:grid-cols-[0.95fr_1.05fr] gap-3">
+          <div className="rounded-xl bg-black/20 border border-white/[0.04] p-3" data-testid="admin-ci-scheduler-form">
+            <label className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] px-3 py-2 mb-2"><span className="text-xs text-white/70">Scheduler aktiv</span><input type="checkbox" checked={schedulerForm.enabled} onChange={(e) => setSchedulerForm((p) => ({ ...p, enabled: e.target.checked }))} data-testid="admin-ci-scheduler-enabled-toggle" /></label>
+            <label className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] px-3 py-2 mb-2"><span className="text-xs text-white/70">Dry Run</span><input type="checkbox" checked={schedulerForm.dry_run} onChange={(e) => setSchedulerForm((p) => ({ ...p, dry_run: e.target.checked }))} data-testid="admin-ci-scheduler-dry-run-toggle" /></label>
+            <div className="grid grid-cols-3 gap-2">
+              <input type="number" value={schedulerForm.interval_minutes} onChange={(e) => setSchedulerForm((p) => ({ ...p, interval_minutes: Number(e.target.value) }))} data-testid="admin-ci-scheduler-interval-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+              <input type="number" value={schedulerForm.max_rules_per_tick} onChange={(e) => setSchedulerForm((p) => ({ ...p, max_rules_per_tick: Number(e.target.value) }))} data-testid="admin-ci-scheduler-max-rules-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+              <input type="number" value={schedulerForm.days} onChange={(e) => setSchedulerForm((p) => ({ ...p, days: Number(e.target.value) }))} data-testid="admin-ci-scheduler-days-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2"><button onClick={saveScheduler} disabled={Boolean(acting)} data-testid="admin-ci-scheduler-save-button" className="rounded-xl bg-[#00D4FF]/15 border border-[#00D4FF]/25 px-3 py-2 text-xs font-bold text-[#00D4FF] disabled:opacity-50">{acting === "save-scheduler" ? "…" : "Speichern"}</button><button onClick={triggerScheduler} disabled={Boolean(acting)} data-testid="admin-ci-scheduler-trigger-button" className="rounded-xl bg-[#10D981]/15 border border-[#10D981]/25 px-3 py-2 text-xs font-bold text-[#10D981] disabled:opacity-50">{acting === "trigger-scheduler" ? "…" : "Jetzt prüfen"}</button></div>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2" data-testid="admin-ci-rule-performance-grid">
+            <MetricPill label="Rule Runs" value={data?.rule_performance?.total_runs || 0} />
+            <MetricPill label="Rule Actions" value={data?.rule_performance?.total_rule_actions || 0} />
+            <MetricPill label="Active Rules" value={(data?.automation_rules || []).filter((r) => r.active).length} />
+            <MetricPill label="Templates" value={data?.campaign_templates?.length || 0} />
+          </div>
+        </div>
+        <div className="mt-3 space-y-2 max-h-[180px] overflow-y-auto pr-1" data-testid="admin-ci-rule-performance-list">
+          {(data?.rule_performance?.rules || []).slice(0, 8).map((row) => <PerformanceRow key={row.rule_id} row={row} />)}
         </div>
       </section>
 
@@ -332,6 +385,10 @@ function HistoryRow({ item }) {
 
 function RuleRow({ rule, onRun, acting }) {
   return <div data-testid={`admin-ci-rule-row-${rule.rule_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold text-white truncate">{rule.name}</p><p className="text-[9px] text-white/35 truncate">{rule.segment} · €{money(rule.min_total_revenue)} · {rule.max_distance_km}km · {rule.cooldown_hours}h</p>{rule.last_result && <p className="text-[9px] text-[#00D4FF] mt-1">Letzter Lauf: {rule.last_result.match_count} Treffer / {rule.last_result.executed_count} ausgeführt</p>}</div><span className={`text-[9px] font-bold ${rule.active ? "text-[#10D981]" : "text-white/30"}`}>{rule.active ? "AKTIV" : "INAKTIV"}</span></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => onRun(rule, true)} disabled={Boolean(acting)} data-testid={`admin-ci-rule-simulate-${rule.rule_id}`} className="rounded-lg bg-white/[0.05] border border-white/[0.06] px-2 py-1.5 text-[9px] font-bold text-white/70 disabled:opacity-50">{acting === `${rule.rule_id}-dry` ? "…" : "Simulieren"}</button><button type="button" onClick={() => onRun(rule, false)} disabled={Boolean(acting) || !rule.active} data-testid={`admin-ci-rule-run-${rule.rule_id}`} className="rounded-lg bg-[#10D981]/12 border border-[#10D981]/20 px-2 py-1.5 text-[9px] font-bold text-[#10D981] disabled:opacity-50">{acting === `${rule.rule_id}-run` ? "…" : "Ausführen"}</button></div></div>;
+}
+
+function PerformanceRow({ row }) {
+  return <div data-testid={`admin-ci-rule-performance-${row.rule_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2 grid grid-cols-[1fr_64px_64px_64px] gap-2 items-center"><div className="min-w-0"><p className="text-xs font-bold text-white truncate">{row.rule_id}</p><p className="text-[9px] text-white/30 truncate">Last: {String(row.last_run_at || "—").slice(0, 16).replace("T", " ")}</p></div><span className="text-[10px] text-white/60 text-right">{row.runs} Runs</span><span className="text-[10px] text-[#00D4FF] text-right">{row.matches} Treffer</span><span className="text-[10px] text-[#10D981] text-right">{row.actions} Actions</span></div>;
 }
 
 function CustomerRow({ row, onClick }) {

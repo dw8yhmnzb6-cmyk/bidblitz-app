@@ -221,6 +221,8 @@ export const api = {
   getAdminCustomerRadarHistory: (limit = 80) => request(`/api/admin/customer-intelligence/radar/history?limit=${encodeURIComponent(limit)}`),
   createAdminCustomerRadarRule: (body) => request("/api/admin/customer-intelligence/radar/rules", { method: "POST", body: JSON.stringify(body) }),
   runAdminCustomerRadarRule: (body) => request("/api/admin/customer-intelligence/radar/rules/run", { method: "POST", body: JSON.stringify(body) }),
+  updateAdminCustomerRadarScheduler: (body) => request("/api/admin/customer-intelligence/radar/scheduler", { method: "POST", body: JSON.stringify(body) }),
+  triggerAdminCustomerRadarSchedulerTick: () => request("/api/admin/customer-intelligence/radar/scheduler/tick", { method: "POST" }),
 
   // Transactions
   getTransactions: (params = {}) => {

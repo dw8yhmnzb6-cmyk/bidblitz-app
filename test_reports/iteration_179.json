@@ -1,0 +1,46 @@
+{
+  "summary": "Tested Radar Scheduler + Performance backend and admin UI integration. Core scheduler APIs, auth gates, startup scheduling loop, and UI scheduler panel actions work. One auth playbook check failed on public preflight CORS headers at preview edge.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "OPTIONS /api/auth/login",
+        "issue": "Preflight response on public endpoint returned Access-Control-Allow-Origin: * and omitted Access-Control-Allow-Credentials, violating credentialed CORS expectation.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter179_admin_ci_scheduler.py",
+    "/app/test_reports/pytest/iter179_scheduler_backend.xml"
+  ],
+  "action_items": [
+    "Investigate/align preview ingress preflight behavior so credentialed auth endpoints return explicit origin and Access-Control-Allow-Credentials: true.",
+    "Optionally add stable UI test signal for scheduler save/tick success (persistent status/testid), since toast text is transient.",
+    "Refactor backend/routes/admin_customer_intelligence.py into smaller modules (>700 LOC)."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/admin_customer_intelligence.py is >1100 LOC and should be split (scheduler, rule engine, metrics, overview aggregation).",
+    "CORS mismatch is reproducible on public preflight path and can break browser credentialed auth flows depending on client/origin."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter179_admin_ci_scheduler.py",
+    "/app/test_reports/iteration_179.json"
+  ],
+  "success_rate": {
+    "backend": "90%",
+    "frontend": "95%"
+  },
+  "test_credentials": "Used /app/memory/test_credentials.md admin and non-admin accounts.",
+  "seed_data_creation": "Created scheduler config updates and manual scheduler ticks via API/UI; no persistent seed script changes.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pytest file test_iter179_admin_ci_scheduler.py validates: startup scheduler log, overview scheduler fields, scheduler config update/get, manual tick max_rules_per_tick+dry_run behavior, scheduler endpoint auth gates, and auth playbook checks (httpOnly cookie + brute-force lockout). One failure remains: public OPTIONS CORS headers.",
+  "rca of the issue": "Repro: send OPTIONS preflight to public REACT_APP_BACKEND_URL/api/auth/login with Origin and Access-Control-Request-* headers. Observed 204 with Access-Control-Allow-Origin '*' and no Access-Control-Allow-Credentials. Response headers include Cloudflare edge metadata, indicating preflight likely intercepted/rewritten before app middleware. Impact: credentialed browser auth may fail strict CORS checks in some flows.",
+  "mocked_api": "No MOCKED APIs used."
+}

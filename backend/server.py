@@ -211,6 +211,14 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Taxi scheduled watchdog start failed: {e}")
 
+    # Customer Radar Automation Scheduler
+    try:
+        from routes.admin_customer_intelligence import start_radar_scheduler_loop
+        start_radar_scheduler_loop()
+        logger.info("✓ Customer radar automation scheduler started")
+    except Exception as e:
+        logger.warning(f"Customer radar scheduler start failed: {e}")
+
     # Optional: Seed demo data if DEMO_SEED=true
     import os
     if os.environ.get("DEMO_SEED", "").lower() == "true":

@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
+import asyncio
 import math
 import re
 import secrets
@@ -14,6 +15,7 @@ from core.security import get_current_user
 
 
 router = APIRouter(prefix="/api/admin/customer-intelligence", tags=["admin-customer-intelligence"])
+_scheduler_task = None
 
 
 class RadarActionRequest(BaseModel):
@@ -51,6 +53,14 @@ class RadarRuleRequest(BaseModel):
 class RadarRuleRunRequest(BaseModel):
     rule_id: str
     dry_run: bool = True
+    days: int = 365
+
+
+class RadarSchedulerConfigRequest(BaseModel):
+    enabled: bool = False
+    interval_minutes: int = 15
+    dry_run: bool = True
+    max_rules_per_tick: int = 10
     days: int = 365
 
 
@@ -551,6 +561,33 @@ async def load_radar_rules(include_inactive: bool = True) -> list[dict]:
     return rules
 
 
+def default_scheduler_config() -> dict:
+    return {"enabled": False, "interval_minutes": 15, "dry_run": True, "max_rules_per_tick": 10, "days": 365, "updated_at": None, "updated_by": ""}
+
+
+async def load_scheduler_config() -> dict:
+    config = await db.customer_radar_scheduler_config.find_one({"config_id": "default"}, {"_id": 0})
+    if not config:
+        return default_scheduler_config()
+    return {**default_scheduler_config(), **config}
+
+
+async def save_scheduler_config(req: RadarSchedulerConfigRequest, admin: dict) -> dict:
+    doc = {
+        "config_id": "default",
+        "enabled": bool(req.enabled),
+        "interval_minutes": max(5, min(req.interval_minutes, 24 * 60)),
+        "dry_run": bool(req.dry_run),
+        "max_rules_per_tick": max(1, min(req.max_rules_per_tick, 50)),
+        "days": max(1, min(req.days, 1095)),
+        "updated_at": now_utc().isoformat(),
+        "updated_by": str(admin.get("_id")),
+    }
+    await db.customer_radar_scheduler_config.update_one({"config_id": "default"}, {"$set": doc}, upsert=True)
+    doc.pop("_id", None)
+    return doc
+
+
 def segment_members(segment: str, segments: dict, top_customers: list[dict]) -> set[str]:
     if segment == "all":
         return {row["user"]["user_id"] for row in top_customers}
@@ -669,6 +706,65 @@ async def execute_rule_matches(admin: dict, rule: dict, matches: list[dict], dry
         action_doc.pop("_id", None)
         executed.append(action_doc)
     return {"executed": executed, "skipped": skipped}
+
+
+async def run_radar_rule_internal(admin: dict, rule: dict, dry_run: bool, days: int) -> dict:
+    evaluation = await evaluate_radar_rule(rule, days)
+    result = await execute_rule_matches(admin, rule, evaluation["matches"], dry_run)
+    run_doc = {
+        "run_id": f"run-{secrets.token_hex(6)}",
+        "rule_id": rule.get("rule_id"),
+        "dry_run": dry_run,
+        "match_count": evaluation["match_count"],
+        "executed_count": len(result["executed"]),
+        "skipped_count": len(result["skipped"]),
+        "executed": result["executed"][:50],
+        "skipped": result["skipped"][:50],
+        "context_summary": evaluation["context_summary"],
+        "created_by": str(admin.get("_id", "system")),
+        "created_at": now_utc().isoformat(),
+        "source": "scheduler" if admin.get("system") else "manual",
+    }
+    await db.customer_radar_rule_runs.insert_one(run_doc.copy())
+    await db.customer_radar_rules.update_one({"rule_id": rule.get("rule_id")}, {"$set": {"last_run_at": run_doc["created_at"], "last_result": {"dry_run": dry_run, "match_count": run_doc["match_count"], "executed_count": run_doc["executed_count"], "skipped_count": run_doc["skipped_count"]}}})
+    run_doc.pop("_id", None)
+    return {"run": run_doc, "matches": evaluation["matches"][:30]}
+
+
+async def run_scheduler_tick(reason: str = "manual") -> dict:
+    config = await load_scheduler_config()
+    rules = await db.customer_radar_rules.find({"active": True}, {"_id": 0}).sort("updated_at", -1).limit(int(config.get("max_rules_per_tick", 10))).to_list(int(config.get("max_rules_per_tick", 10)))
+    system_admin = {"_id": "system-radar-scheduler", "email": "system@bidblitz.local", "system": True}
+    runs = []
+    for rule in rules:
+        try:
+            result = await run_radar_rule_internal(system_admin, rule, bool(config.get("dry_run", True)), int(config.get("days", 365)))
+            runs.append(result["run"])
+        except Exception as exc:
+            runs.append({"rule_id": rule.get("rule_id"), "error": str(exc), "created_at": now_utc().isoformat()})
+    tick_doc = {"tick_id": f"tick-{secrets.token_hex(6)}", "reason": reason, "enabled": config.get("enabled", False), "dry_run": config.get("dry_run", True), "rules_checked": len(rules), "runs": runs[:50], "created_at": now_utc().isoformat()}
+    await db.customer_radar_scheduler_ticks.insert_one(tick_doc.copy())
+    tick_doc.pop("_id", None)
+    return tick_doc
+
+
+async def build_rule_performance() -> dict:
+    runs = await db.customer_radar_rule_runs.find({}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+    actions = await db.customer_radar_actions.find({"rule_id": {"$ne": ""}}, {"_id": 0}).sort("created_at", -1).limit(1000).to_list(1000)
+    by_rule = defaultdict(lambda: {"runs": 0, "matches": 0, "executed": 0, "skipped": 0, "actions": 0, "coupon_codes": 0, "last_run_at": ""})
+    for run in runs:
+        rid = run.get("rule_id", "")
+        by_rule[rid]["runs"] += 1
+        by_rule[rid]["matches"] += int(run.get("match_count", 0) or 0)
+        by_rule[rid]["executed"] += int(run.get("executed_count", 0) or 0)
+        by_rule[rid]["skipped"] += int(run.get("skipped_count", 0) or 0)
+        by_rule[rid]["last_run_at"] = max(by_rule[rid]["last_run_at"], run.get("created_at", ""))
+    for action in actions:
+        rid = action.get("rule_id", "")
+        by_rule[rid]["actions"] += 1
+        if action.get("coupon_code"):
+            by_rule[rid]["coupon_codes"] += 1
+    return {"rules": [{"rule_id": rid, **stats} for rid, stats in by_rule.items() if rid], "total_runs": len(runs), "total_rule_actions": len(actions)}
 
 
 async def create_radar_coupon(admin: dict, user: dict, req: RadarActionRequest) -> dict:
@@ -831,6 +927,8 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
     metrics = await build_radar_metrics()
     history = await load_radar_history(30)
     automation_rules = await load_radar_rules(True)
+    scheduler_config = await load_scheduler_config()
+    rule_performance = await build_rule_performance()
 
     return {
         "ok": True,
@@ -859,6 +957,8 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
         "campaign_metrics": metrics,
         "radar_history": history,
         "automation_rules": automation_rules,
+        "scheduler_config": scheduler_config,
+        "rule_performance": rule_performance,
         "timeline_monthly": timeline,
         "timeline_yearly": yearly_rows,
     }
@@ -1025,22 +1125,52 @@ async def run_radar_rule(req: RadarRuleRunRequest, request: Request):
     rule = await db.customer_radar_rules.find_one({"rule_id": req.rule_id}, {"_id": 0})
     if not rule:
         raise HTTPException(status_code=404, detail="Rule nicht gefunden")
-    evaluation = await evaluate_radar_rule(rule, req.days)
-    result = await execute_rule_matches(admin, rule, evaluation["matches"], req.dry_run)
-    run_doc = {
-        "run_id": f"run-{secrets.token_hex(6)}",
-        "rule_id": req.rule_id,
-        "dry_run": req.dry_run,
-        "match_count": evaluation["match_count"],
-        "executed_count": len(result["executed"]),
-        "skipped_count": len(result["skipped"]),
-        "executed": result["executed"][:50],
-        "skipped": result["skipped"][:50],
-        "context_summary": evaluation["context_summary"],
-        "created_by": str(admin.get("_id")),
-        "created_at": now_utc().isoformat(),
-    }
-    await db.customer_radar_rule_runs.insert_one(run_doc.copy())
-    await db.customer_radar_rules.update_one({"rule_id": req.rule_id}, {"$set": {"last_run_at": run_doc["created_at"], "last_result": {"dry_run": req.dry_run, "match_count": run_doc["match_count"], "executed_count": run_doc["executed_count"], "skipped_count": run_doc["skipped_count"]}}})
-    run_doc.pop("_id", None)
-    return {"ok": True, "run": run_doc, "matches": evaluation["matches"][:30]}
+    result = await run_radar_rule_internal(admin, rule, req.dry_run, req.days)
+    return {"ok": True, **result}
+
+
+@router.get("/radar/scheduler")
+async def get_radar_scheduler(request: Request):
+    await require_admin(request)
+    ticks = await db.customer_radar_scheduler_ticks.find({}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    return {"ok": True, "config": await load_scheduler_config(), "performance": await build_rule_performance(), "ticks": ticks}
+
+
+@router.post("/radar/scheduler")
+async def update_radar_scheduler(req: RadarSchedulerConfigRequest, request: Request):
+    admin = await require_admin(request)
+    return {"ok": True, "config": await save_scheduler_config(req, admin)}
+
+
+@router.post("/radar/scheduler/tick")
+async def trigger_radar_scheduler_tick(request: Request):
+    await require_admin(request)
+    tick = await run_scheduler_tick("manual_admin")
+    return {"ok": True, "tick": tick, "performance": await build_rule_performance()}
+
+
+async def radar_scheduler_loop():
+    while True:
+        try:
+            config = await load_scheduler_config()
+            interval = int(config.get("interval_minutes", 15) or 15)
+            if config.get("enabled"):
+                last_tick = await db.customer_radar_scheduler_ticks.find_one({}, {"_id": 0, "created_at": 1}, sort=[("created_at", -1)])
+                should_run = True
+                if last_tick and last_tick.get("created_at"):
+                    last_dt = datetime.fromisoformat(str(last_tick["created_at"]).replace("Z", "+00:00"))
+                    should_run = (now_utc() - last_dt).total_seconds() >= interval * 60
+                if should_run:
+                    await run_scheduler_tick("background_loop")
+            await asyncio.sleep(max(60, min(interval * 60, 3600)))
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            await asyncio.sleep(120)
+
+
+def start_radar_scheduler_loop():
+    global _scheduler_task
+    if _scheduler_task is None or _scheduler_task.done():
+        _scheduler_task = asyncio.create_task(radar_scheduler_loop())
+    return _scheduler_task
