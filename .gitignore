@@ -791,6 +791,3 @@ credentials.json
 .credentials
 frontend/node_modules/.cache/default-development/12.pack_
 frontend/node_modules/.cache/default-development/50.pack
-.env
-.env.*
-*.env
