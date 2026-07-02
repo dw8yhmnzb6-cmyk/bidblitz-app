@@ -36,6 +36,24 @@ class RadarTemplateRequest(BaseModel):
     active: bool = True
 
 
+class RadarRuleRequest(BaseModel):
+    name: str
+    template_id: str
+    segment: str = "vip_seconds_buyers"
+    trigger_type: str = "customer_near_shop"
+    min_total_revenue: float = 0
+    max_distance_km: float = 1.0
+    cooldown_hours: int = 24
+    daily_cap: int = 25
+    active: bool = True
+
+
+class RadarRuleRunRequest(BaseModel):
+    rule_id: str
+    dry_run: bool = True
+    days: int = 365
+
+
 async def require_admin(request: Request):
     user = await get_current_user(request)
     if user.get("role") != "admin":
@@ -527,6 +545,114 @@ async def load_radar_history(limit: int = 80) -> list[dict]:
     return actions
 
 
+async def load_radar_rules(include_inactive: bool = True) -> list[dict]:
+    query = {} if include_inactive else {"active": True}
+    rules = await db.customer_radar_rules.find(query, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    return rules
+
+
+def segment_members(segment: str, segments: dict, top_customers: list[dict]) -> set[str]:
+    if segment == "all":
+        return {row["user"]["user_id"] for row in top_customers}
+    return {row["user"]["user_id"] for row in segments.get(segment, [])}
+
+
+async def build_intelligence_context(days: int = 365) -> dict:
+    since = iso_days_ago(days)
+    seconds = await seconds_purchases_since(since)
+    commerce = await commerce_events_since(since)
+    pos = await pos_events_since(since)
+    customer_markers, store_markers = await build_customer_markers(since)
+    user_ids = {e.get("user_id", "") for e in seconds + commerce + pos if e.get("user_id") and not str(e.get("user_id", "")).startswith("bot_")}
+    users = await load_user_map(user_ids)
+    by_user = defaultdict(lambda: {"seconds_revenue": 0.0, "seconds_credits": 0, "purchases": 0, "commerce_revenue": 0.0, "pos_revenue": 0.0, "last_event_at": ""})
+    for item in seconds:
+        uid = item.get("user_id", "")
+        by_user[uid]["seconds_revenue"] += item["amount"]
+        by_user[uid]["seconds_credits"] += item["credits"]
+        by_user[uid]["purchases"] += 1
+        by_user[uid]["last_event_at"] = max(by_user[uid]["last_event_at"], item.get("created_at", ""))
+    for item in commerce:
+        uid = item.get("user_id", "")
+        by_user[uid]["commerce_revenue"] += item["amount"]
+        by_user[uid]["purchases"] += 1
+        by_user[uid]["last_event_at"] = max(by_user[uid]["last_event_at"], item.get("created_at", ""))
+    for item in pos:
+        uid = item.get("user_id", "")
+        if uid:
+            by_user[uid]["pos_revenue"] += item["amount"]
+            by_user[uid]["purchases"] += 1
+            by_user[uid]["last_event_at"] = max(by_user[uid]["last_event_at"], item.get("created_at", ""))
+    top_customers = []
+    for uid, stats in by_user.items():
+        if not uid:
+            continue
+        user = public_customer(users.get(uid), uid)
+        total = stats["seconds_revenue"] + stats["commerce_revenue"] + stats["pos_revenue"]
+        top_customers.append({"user": user, **stats, "total_revenue": round(total, 2)})
+    top_customers.sort(key=lambda x: x["total_revenue"], reverse=True)
+    segments = customer_segments(top_customers)
+    alerts = build_radar_alerts(customer_markers, store_markers, top_customers)
+    return {"top_customers": top_customers, "segments": segments, "alerts": alerts, "customer_markers": customer_markers, "store_markers": store_markers}
+
+
+async def evaluate_radar_rule(rule: dict, days: int = 365) -> dict:
+    context = await build_intelligence_context(days)
+    members = segment_members(rule.get("segment", "all"), context["segments"], context["top_customers"])
+    revenue_by_user = {row["user"]["user_id"]: row.get("total_revenue", 0) for row in context["top_customers"]}
+    matched = []
+    for alert in context["alerts"]:
+        uid = alert.get("user", {}).get("user_id", "")
+        if uid not in members:
+            continue
+        if safe_float(revenue_by_user.get(uid)) < safe_float(rule.get("min_total_revenue", 0)):
+            continue
+        if rule.get("trigger_type") == "customer_near_shop" and safe_float(alert.get("distance_km", 999)) > safe_float(rule.get("max_distance_km", 1.0)):
+            continue
+        matched.append(alert)
+    return {"matches": matched[: int(rule.get("daily_cap", 25) or 25)], "match_count": len(matched), "context_summary": {"alerts": len(context["alerts"]), "segment_members": len(members)}}
+
+
+async def execute_rule_matches(admin: dict, rule: dict, matches: list[dict], dry_run: bool) -> dict:
+    template = await find_radar_template(rule.get("template_id", ""))
+    if not template:
+        raise HTTPException(status_code=404, detail="Rule Template nicht gefunden")
+    executed = []
+    skipped = []
+    cooldown_start = (now_utc() - timedelta(hours=int(rule.get("cooldown_hours", 24) or 24))).isoformat()
+    for alert in matches[: int(rule.get("daily_cap", 25) or 25)]:
+        uid = alert.get("user", {}).get("user_id", "")
+        recent = await db.customer_radar_actions.find_one({"user_id": uid, "rule_id": rule.get("rule_id"), "created_at": {"$gte": cooldown_start}}, {"_id": 0})
+        if recent:
+            skipped.append({"user_id": uid, "reason": "cooldown"})
+            continue
+        payload = RadarActionRequest(
+            action_type=template.get("action_type", "coupon_push_alert"),
+            user_id=uid,
+            alert_id=alert.get("alert_id", ""),
+            store_id=(alert.get("store") or {}).get("store_id", ""),
+            merchant_id=(alert.get("store") or {}).get("merchant_id", ""),
+            template_id=template.get("template_id", ""),
+            coupon_value=safe_float(template.get("coupon_value"), 5),
+            message=template.get("message", ""),
+        )
+        if dry_run:
+            executed.append({"user_id": uid, "status": "would_execute", "template_id": payload.template_id})
+            continue
+        user = await get_user_by_id(uid)
+        if not user:
+            skipped.append({"user_id": uid, "reason": "user_not_found"})
+            continue
+        coupon = await create_radar_coupon(admin, user, payload) if payload.action_type in {"coupon", "coupon_push_alert"} else None
+        notification = await create_customer_notification(user, "BidBlitz Radar Angebot", payload.message or "Ein persönliches Angebot wartet auf dich.", {"action_url": "/wallet", "coupon_code": (coupon or {}).get("code", ""), "source": "admin_customer_radar_rule", "rule_id": rule.get("rule_id", "")}) if payload.action_type in {"push", "coupon_push_alert"} else None
+        manager_alert = await create_manager_alert(admin, user, payload, coupon) if payload.action_type in {"manager_alert", "coupon_push_alert"} else None
+        action_doc = {"action_id": f"CRA-{secrets.token_hex(6).upper()}", "action_type": payload.action_type, "user_id": uid, "store_id": payload.store_id, "merchant_id": payload.merchant_id, "alert_id": payload.alert_id, "template_id": payload.template_id, "rule_id": rule.get("rule_id", ""), "coupon_code": (coupon or {}).get("code", ""), "notification_id": (notification or {}).get("notif_id", ""), "manager_alert_id": (manager_alert or {}).get("alert_id", ""), "created_by": str(admin.get("_id")), "created_at": now_utc().isoformat(), "source": "automation_rule"}
+        await db.customer_radar_actions.insert_one(action_doc.copy())
+        action_doc.pop("_id", None)
+        executed.append(action_doc)
+    return {"executed": executed, "skipped": skipped}
+
+
 async def create_radar_coupon(admin: dict, user: dict, req: RadarActionRequest) -> dict:
     value = round(max(1.0, min(float(req.coupon_value or 5.0), 100.0)), 2)
     code = build_coupon_code("RADAR")
@@ -686,6 +812,7 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
     templates = await load_radar_templates()
     metrics = await build_radar_metrics()
     history = await load_radar_history(30)
+    automation_rules = await load_radar_rules(True)
 
     return {
         "ok": True,
@@ -713,6 +840,7 @@ async def customer_intelligence_overview(request: Request, days: int = Query(365
         "campaign_templates": templates,
         "campaign_metrics": metrics,
         "radar_history": history,
+        "automation_rules": automation_rules,
         "timeline_monthly": timeline,
         "timeline_yearly": yearly_rows,
     }
@@ -835,3 +963,66 @@ async def create_radar_template(req: RadarTemplateRequest, request: Request):
 async def get_radar_history(request: Request, limit: int = Query(80, ge=1, le=200)):
     await require_admin(request)
     return {"ok": True, "history": await load_radar_history(limit), "metrics": await build_radar_metrics()}
+
+
+@router.get("/radar/rules")
+async def get_radar_rules(request: Request):
+    await require_admin(request)
+    return {"ok": True, "rules": await load_radar_rules(True)}
+
+
+@router.post("/radar/rules")
+async def create_radar_rule(req: RadarRuleRequest, request: Request):
+    admin = await require_admin(request)
+    template = await find_radar_template(req.template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template nicht gefunden")
+    doc = {
+        "rule_id": f"rule-{secrets.token_hex(5)}",
+        "name": req.name.strip()[:90],
+        "template_id": req.template_id,
+        "segment": req.segment,
+        "trigger_type": req.trigger_type,
+        "min_total_revenue": round(max(0, req.min_total_revenue), 2),
+        "max_distance_km": round(max(0.1, min(req.max_distance_km, 50)), 2),
+        "cooldown_hours": max(1, min(req.cooldown_hours, 24 * 30)),
+        "daily_cap": max(1, min(req.daily_cap, 250)),
+        "active": req.active,
+        "created_by": str(admin.get("_id")),
+        "created_at": now_utc().isoformat(),
+        "updated_at": now_utc().isoformat(),
+        "last_run_at": None,
+        "last_result": None,
+    }
+    if not doc["name"]:
+        raise HTTPException(status_code=400, detail="Rule-Name erforderlich")
+    await db.customer_radar_rules.insert_one(doc.copy())
+    doc.pop("_id", None)
+    return {"ok": True, "rule": doc}
+
+
+@router.post("/radar/rules/run")
+async def run_radar_rule(req: RadarRuleRunRequest, request: Request):
+    admin = await require_admin(request)
+    rule = await db.customer_radar_rules.find_one({"rule_id": req.rule_id}, {"_id": 0})
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule nicht gefunden")
+    evaluation = await evaluate_radar_rule(rule, req.days)
+    result = await execute_rule_matches(admin, rule, evaluation["matches"], req.dry_run)
+    run_doc = {
+        "run_id": f"run-{secrets.token_hex(6)}",
+        "rule_id": req.rule_id,
+        "dry_run": req.dry_run,
+        "match_count": evaluation["match_count"],
+        "executed_count": len(result["executed"]),
+        "skipped_count": len(result["skipped"]),
+        "executed": result["executed"][:50],
+        "skipped": result["skipped"][:50],
+        "context_summary": evaluation["context_summary"],
+        "created_by": str(admin.get("_id")),
+        "created_at": now_utc().isoformat(),
+    }
+    await db.customer_radar_rule_runs.insert_one(run_doc.copy())
+    await db.customer_radar_rules.update_one({"rule_id": req.rule_id}, {"$set": {"last_run_at": run_doc["created_at"], "last_result": {"dry_run": req.dry_run, "match_count": run_doc["match_count"], "executed_count": run_doc["executed_count"], "skipped_count": run_doc["skipped_count"]}}})
+    run_doc.pop("_id", None)
+    return {"ok": True, "run": run_doc, "matches": evaluation["matches"][:30]}

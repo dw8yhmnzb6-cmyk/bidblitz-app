@@ -1,0 +1,61 @@
+{
+  "summary": "Validated Radar Automation Rule Center backend + UI integration on preview URL. Core rules APIs and admin UI create/simulate/run flows work; one known external CORS preflight issue remains and live execution-with-matches branch could not be fully exercised due dataset yielding zero matches.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/auth/login (OPTIONS via preview URL)",
+        "issue": "External preview preflight still returns missing access-control-allow-credentials and wildcard/edge-handled origin behavior; app-level FastAPI contract differs.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "/api/admin/customer-intelligence/radar/rules/run",
+        "issue": "In current preview dataset, evaluated match_count is 0 for tested rules; dry_run/live contract works but execution-persistence branch with positive matches is not fully verifiable in this run."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminCustomerIntelligenceTab Rule Form",
+        "issue": "daily_cap exists in backend payload/contract but has no dedicated editable form input in UI rule form.",
+        "selector": "[data-testid=\"admin-ci-rule-form\"]",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_customer_intelligence.py",
+    "/app/backend/tests/test_admin_ci_radar_rules.py",
+    "/app/test_reports/pytest/iter177_admin_customer_intelligence.xml",
+    "/app/test_reports/pytest/iter177_admin_ci_radar_rules.xml"
+  ],
+  "action_items": [
+    "Fix preview edge/ingress OPTIONS handling so credentialed CORS contract matches backend middleware behavior.",
+    "Add daily_cap input (with data-testid) to Automation Rule form so admins can configure cap from UI.",
+    "Seed/prepare at least one matchable customer-store context in preview data, then retest live rule run for executed_count>0 and cooldown skip behavior."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/admin_customer_intelligence.py is 1000+ lines and should be split into focused modules (overview aggregation, templates/actions, rules engine) for maintainability and safer regression testing.",
+    "Rules API responses and overview payload correctly avoid _id/ObjectId leakage in tested contracts.",
+    "Rules auth gates are correctly enforced for unauthenticated/non-admin callers on list/create/run endpoints."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_ci_radar_rules.py",
+    "/app/test_reports/iteration_177.json"
+  ],
+  "success_rate": {
+    "backend": "92%",
+    "frontend": "95%"
+  },
+  "test_credentials": "Used /app/memory/test_credentials.md credentials: admin@bidblitz.com / BidBlitz2026! and haendler@bidblitz.com / Haendler2026!",
+  "seed_data_creation": "Created QA automation rules via API/UI during tests (e.g., QA Rule dry/live, QA UI Rule Iter177).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Rule Center selectors and flows are stable: admin-ci-automation-rule-center, admin-ci-rule-form, admin-ci-rule-save-button, admin-ci-rule-simulate-*, admin-ci-rule-run-*. Use test_admin_ci_radar_rules.py for regression. Live run may still show 0 actions unless preview has matchable location/store signals.",
+  "rca of the issue": "(1) CORS: failing test reproduces missing allow-credentials on external OPTIONS, indicating edge interception outside FastAPI. (2) Live rule execution branch depends on dynamic context from location/store alerts; current dataset produced 0 matches, so persistence checks for executed actions are conditional. (3) UI contract gap: daily_cap is present in backend model but not exposed as editable input in rule form.",
+  "mocked_api": "No MOCKED APIs used."
+}

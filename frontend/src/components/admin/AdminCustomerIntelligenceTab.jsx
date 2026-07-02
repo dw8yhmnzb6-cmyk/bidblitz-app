@@ -14,6 +14,7 @@ export const AdminCustomerIntelligenceTab = () => {
   const [query, setQuery] = useState("");
   const [acting, setActing] = useState("");
   const [templateForm, setTemplateForm] = useState({ name: "", action_type: "coupon_push_alert", coupon_value: 5, message: "", segment: "vip_seconds_buyers" });
+  const [ruleForm, setRuleForm] = useState({ name: "", template_id: "", segment: "vip_seconds_buyers", min_total_revenue: 100, max_distance_km: 1, cooldown_hours: 24, daily_cap: 25, active: true });
 
   const load = async () => {
     setLoading(true);
@@ -72,6 +73,35 @@ export const AdminCustomerIntelligenceTab = () => {
       await load();
     } catch (error) {
       toast.error(error.message || "Template konnte nicht gespeichert werden");
+    } finally {
+      setActing("");
+    }
+  };
+
+  const createRule = async () => {
+    const templateId = ruleForm.template_id || data?.campaign_templates?.[0]?.template_id || "";
+    if (!ruleForm.name.trim() || !templateId) return toast.error("Rule-Name und Template wählen");
+    setActing("create-rule");
+    try {
+      await api.createAdminCustomerRadarRule({ ...ruleForm, template_id: templateId, trigger_type: "customer_near_shop" });
+      toast.success("Automation Rule gespeichert");
+      setRuleForm({ name: "", template_id: "", segment: "vip_seconds_buyers", min_total_revenue: 100, max_distance_km: 1, cooldown_hours: 24, daily_cap: 25, active: true });
+      await load();
+    } catch (error) {
+      toast.error(error.message || "Rule konnte nicht gespeichert werden");
+    } finally {
+      setActing("");
+    }
+  };
+
+  const runRule = async (rule, dryRun = true) => {
+    setActing(`${rule.rule_id}-${dryRun ? "dry" : "run"}`);
+    try {
+      const result = await api.runAdminCustomerRadarRule({ rule_id: rule.rule_id, dry_run: dryRun, days });
+      toast.success(dryRun ? `${result.run.match_count} Treffer simuliert` : `${result.run.executed_count} Aktionen ausgeführt`);
+      await load();
+    } catch (error) {
+      toast.error(error.message || "Rule Run fehlgeschlagen");
     } finally {
       setActing("");
     }
@@ -147,6 +177,26 @@ export const AdminCustomerIntelligenceTab = () => {
           </div>
           <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1" data-testid="admin-ci-history-timeline">
             {(data?.radar_history || []).length === 0 ? <p className="py-6 text-center text-[11px] text-white/30">Noch keine Radar-Actions</p> : (data?.radar_history || []).slice(0, 18).map((item) => <HistoryRow key={item.action_id} item={item} />)}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl p-3 border border-white/[0.05] bg-white/[0.02]" data-testid="admin-ci-automation-rule-center">
+        <div className="flex items-center justify-between gap-3 mb-3"><p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Automation Rule Center</p><span className="text-[9px] text-white/30">{data?.automation_rules?.length || 0} Regeln</span></div>
+        <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-3">
+          <div className="rounded-xl bg-black/20 border border-white/[0.04] p-3" data-testid="admin-ci-rule-form">
+            <div className="grid grid-cols-2 gap-2">
+              <input value={ruleForm.name} onChange={(e) => setRuleForm((p) => ({ ...p, name: e.target.value }))} placeholder="Rule Name" data-testid="admin-ci-rule-name-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+              <select value={ruleForm.template_id} onChange={(e) => setRuleForm((p) => ({ ...p, template_id: e.target.value }))} data-testid="admin-ci-rule-template-select" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none"><option value="">Template wählen</option>{(data?.campaign_templates || []).map((tpl) => <option key={tpl.template_id} value={tpl.template_id}>{tpl.name}</option>)}</select>
+              <select value={ruleForm.segment} onChange={(e) => setRuleForm((p) => ({ ...p, segment: e.target.value }))} data-testid="admin-ci-rule-segment-select" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none"><option value="vip_seconds_buyers">VIP Sekunden</option><option value="omnichannel_buyers">Omnichannel</option><option value="pos_loyalists">POS Loyal</option><option value="dormant_high_value">Reaktivierung</option><option value="all">Alle</option></select>
+              <input type="number" value={ruleForm.min_total_revenue} onChange={(e) => setRuleForm((p) => ({ ...p, min_total_revenue: Number(e.target.value) }))} placeholder="Min Umsatz" data-testid="admin-ci-rule-min-revenue-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+              <input type="number" step="0.1" value={ruleForm.max_distance_km} onChange={(e) => setRuleForm((p) => ({ ...p, max_distance_km: Number(e.target.value) }))} placeholder="Radius km" data-testid="admin-ci-rule-distance-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+              <input type="number" value={ruleForm.cooldown_hours} onChange={(e) => setRuleForm((p) => ({ ...p, cooldown_hours: Number(e.target.value) }))} placeholder="Cooldown h" data-testid="admin-ci-rule-cooldown-input" className="rounded-xl bg-white/[0.04] border border-white/[0.07] px-3 py-2 text-xs text-white outline-none" />
+            </div>
+            <button onClick={createRule} disabled={acting === "create-rule"} data-testid="admin-ci-rule-save-button" className="mt-2 w-full rounded-xl bg-[#A78BFA]/15 border border-[#A78BFA]/25 px-3 py-2 text-xs font-bold text-[#C4B5FD] disabled:opacity-50">{acting === "create-rule" ? "Speichert…" : "Automation Rule speichern"}</button>
+          </div>
+          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1" data-testid="admin-ci-rule-list">
+            {(data?.automation_rules || []).length === 0 ? <p className="text-center text-[11px] text-white/30 py-8">Noch keine Automation Rules</p> : (data?.automation_rules || []).map((rule) => <RuleRow key={rule.rule_id} rule={rule} onRun={runRule} acting={acting} />)}
           </div>
         </div>
       </section>
@@ -276,6 +326,10 @@ function MetricPill({ label, value }) {
 
 function HistoryRow({ item }) {
   return <div data-testid={`admin-ci-history-${item.action_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2 flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold text-white truncate">{item.action_type} · {item.user?.name || item.user_id}</p><p className="text-[9px] text-white/30 truncate">{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {item.coupon_code || item.manager_alert_id || item.notification_id || "Action"}</p></div><span className="text-[9px] text-[#00D4FF] font-bold">{item.template_id || "manual"}</span></div>;
+}
+
+function RuleRow({ rule, onRun, acting }) {
+  return <div data-testid={`admin-ci-rule-row-${rule.rule_id}`} className="rounded-xl bg-black/20 border border-white/[0.04] px-3 py-2"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold text-white truncate">{rule.name}</p><p className="text-[9px] text-white/35 truncate">{rule.segment} · €{money(rule.min_total_revenue)} · {rule.max_distance_km}km · {rule.cooldown_hours}h</p>{rule.last_result && <p className="text-[9px] text-[#00D4FF] mt-1">Letzter Lauf: {rule.last_result.match_count} Treffer / {rule.last_result.executed_count} ausgeführt</p>}</div><span className={`text-[9px] font-bold ${rule.active ? "text-[#10D981]" : "text-white/30"}`}>{rule.active ? "AKTIV" : "INAKTIV"}</span></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => onRun(rule, true)} disabled={Boolean(acting)} data-testid={`admin-ci-rule-simulate-${rule.rule_id}`} className="rounded-lg bg-white/[0.05] border border-white/[0.06] px-2 py-1.5 text-[9px] font-bold text-white/70 disabled:opacity-50">{acting === `${rule.rule_id}-dry` ? "…" : "Simulieren"}</button><button type="button" onClick={() => onRun(rule, false)} disabled={Boolean(acting) || !rule.active} data-testid={`admin-ci-rule-run-${rule.rule_id}`} className="rounded-lg bg-[#10D981]/12 border border-[#10D981]/20 px-2 py-1.5 text-[9px] font-bold text-[#10D981] disabled:opacity-50">{acting === `${rule.rule_id}-run` ? "…" : "Ausführen"}</button></div></div>;
 }
 
 function CustomerRow({ row, onClick }) {
