@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 03.07.2026 — Admin Alias Login + KYC-Gate Bugfix
+- Auth-Fix: `admin@bidblitz.ae` und `admin@bid-blitz.ae` werden deterministisch auf den kanonischen Admin `admin@bidblitz.com` gemappt; doppelter Legacy-Admin-Datensatz wurde deaktiviert/zusammengeführt.
+- KYC-Fix: Backend `serialize_user` und Frontend `UserContext` setzen Admins immer auf `kyc_status=approved` und `kyc_verified=true`, damit Admins keine Vor-KYC-Reduzierung sehen.
+- UI-Fix bestätigt: Nach Admin-Alias-Login sind `pre-kyc-home-gate` und `pre-kyc-more-gate` nicht sichtbar; `more-all-services` ist sichtbar. Nicht-Admins behalten das KYC-Gating.
+- Verifiziert durch Testing-Agent Iteration 180. Bekannter separater Infrastruktur-Hinweis bleibt: Preview-Edge `OPTIONS /api/auth/login` überschreibt credentialed CORS vor der App.
+
 ## 03.07.2026 — Admin KYC Gate Ausnahme im More-Menü
 - More-Menü KYC-Gating präzisiert: Admin sieht trotz nicht abgeschlossenem/pending KYC alle Bereiche und den Button „Alle Services“.
 - Nicht-Admins behalten weiterhin die bestehende Vor-KYC-Basisbereich-Beschränkung.
