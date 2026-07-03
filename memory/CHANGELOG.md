@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 03.07.2026 — Admin Login-Alias Anzeige-Fix
+- Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
+- Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
+- Frontend: `UserContext` exportiert `login_email`, `canonical_email`, `display_email`; More-Profilkarte nutzt `display_email`.
+- Verifiziert durch Testing-Agent Iteration 181: Backend 6/6 Tests PASS, Playwright UI PASS, keine MOCKS.
+
 ## 03.07.2026 — Admin Alias Login + KYC-Gate Bugfix
 - Auth-Fix: `admin@bidblitz.ae` und `admin@bid-blitz.ae` werden deterministisch auf den kanonischen Admin `admin@bidblitz.com` gemappt; doppelter Legacy-Admin-Datensatz wurde deaktiviert/zusammengeführt.
 - KYC-Fix: Backend `serialize_user` und Frontend `UserContext` setzen Admins immer auf `kyc_status=approved` und `kyc_verified=true`, damit Admins keine Vor-KYC-Reduzierung sehen.
