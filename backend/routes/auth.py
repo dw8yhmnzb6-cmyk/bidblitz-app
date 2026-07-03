@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def _auth_email_candidates(raw_email: str) -> list[str]:
-    email = (raw_email or "").lower().strip()
+    email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.")
     if not email:
         return [""]
     candidates = [email]

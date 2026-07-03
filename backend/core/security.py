@@ -53,6 +53,8 @@ def clear_auth_cookies(response):
 def serialize_user(user: dict) -> dict:
     role = user.get("role", "user")
     modes = ["personal"]
+    kyc_status = "approved" if role == "admin" else user.get("kyc_status", "not_started")
+    kyc_verified = True if role == "admin" else bool(user.get("kyc_status") == "approved" or user.get("kyc_verified"))
     
     if role == "admin":
         modes = ["personal", "kids", "merchant"]
@@ -67,8 +69,8 @@ def serialize_user(user: dict) -> dict:
         "email": user["email"],
         "name": user.get("name", ""),
         "role": role,
-        "kyc_status": user.get("kyc_status", "not_started"),
-        "kyc_verified": bool(user.get("kyc_status") == "approved" or user.get("kyc_verified")),
+        "kyc_status": kyc_status,
+        "kyc_verified": kyc_verified,
         "modes": modes,
         "balance": round(user.get("balance", user.get("bids_balance", 0.0)), 2),
         "currency": user.get("currency", "EUR"),

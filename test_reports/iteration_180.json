@@ -1,0 +1,52 @@
+{
+  "summary": "Tested admin alias login normalization and KYC gating across backend + frontend. Admin aliases map to canonical admin and bypass pre-KYC gates; non-admin pre-KYC restrictions remain. One critical CORS preflight credential header issue persists on public endpoint.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "OPTIONS /api/auth/login",
+        "issue": "Public preflight response still omits Access-Control-Allow-Credentials header (expected true for credentialed auth flows).",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Home + More",
+        "issues": [
+          "Several secondary texts use very low-contrast gray on dark backgrounds (e.g., #333/#444 tones), reducing readability."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter180_admin_alias_auth.py",
+    "/app/test_reports/pytest/iter180_admin_alias_auth.xml"
+  ],
+  "action_items": [
+    "Fix credentialed CORS preflight behavior for /api/auth/login at preview/public edge so Access-Control-Allow-Credentials: true is consistently returned.",
+    "Optionally improve low-contrast secondary text colors in dark UI sections for accessibility/readability."
+  ],
+  "critical_code_review_comments": [
+    "CORS middleware in app sets credentials correctly, but public preflight still fails expected headers, suggesting ingress/edge interception mismatch.",
+    "Auth alias canonicalization and admin KYC override path are now consistent across login, /me, and /refresh responses."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter180_admin_alias_auth.py",
+    "/app/test_reports/iteration_180.json"
+  ],
+  "success_rate": {
+    "backend": "90%",
+    "frontend": "95%"
+  },
+  "test_credentials": "Used /app/memory/test_credentials.md accounts: admin@bidblitz.com, admin@bidblitz.ae, admin@bid-blitz.ae, haendler@bidblitz.com, agimk@me.com, and kycgate.1782580398@test.com.",
+  "seed_data_creation": "No new seed data created.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file covers: alias->canonical admin login, admin kyc contract in /auth/me and /auth/refresh, httpOnly auth cookies, brute-force lockout threshold, and non-admin KYC contract sanity. Frontend browser run verified admin alias has no pre-kyc gates on Home/More and unverified non-admin still sees both gates.",
+  "rca of the issue": "Repro: send OPTIONS to public REACT_APP_BACKEND_URL/api/auth/login with Origin + Access-Control-Request-* headers. Result: 200/204 without access-control-allow-credentials. App middleware config includes credentialed CORS, so likely upstream edge/ingress preflight handling is overriding or short-circuiting response headers before app middleware response reaches client.",
+  "mocked_api": "No MOCKED APIs used."
+}

@@ -42,11 +42,13 @@ const guestState = {
 };
 
 function mapUser(u) {
+  const role = u.role || 'user';
+  const isAdmin = role === 'admin';
   return {
     id: u.id,
     name: u.name,
     email: u.email,
-    role: u.role || 'user',
+    role,
     modes: u.modes || ['personal'],
     balance: u.balance ?? 0,
     currency: u.currency || 'EUR',
@@ -61,8 +63,8 @@ function mapUser(u) {
     email_notifications: u.email_notifications !== false,
     biometric_enabled: u.biometric_enabled === true,
     dark_mode: u.dark_mode !== false,
-    kyc_status: u.kyc_status || 'not_started',
-    kyc_verified: u.kyc_verified === true || u.kyc_status === 'approved',
+    kyc_status: isAdmin ? 'approved' : (u.kyc_status || 'not_started'),
+    kyc_verified: isAdmin || u.kyc_verified === true || u.kyc_status === 'approved',
   };
 }
 
