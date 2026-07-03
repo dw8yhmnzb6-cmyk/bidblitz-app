@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 03.07.2026 — Admin KYC Gate Ausnahme im More-Menü
+- More-Menü KYC-Gating präzisiert: Admin sieht trotz nicht abgeschlossenem/pending KYC alle Bereiche und den Button „Alle Services“.
+- Nicht-Admins behalten weiterhin die bestehende Vor-KYC-Basisbereich-Beschränkung.
+- Verifiziert: `MorePage.jsx` Lint PASS, Admin-Browser-Smoke PASS (`pre-kyc-more-gate=0`, `more-all-services=1`, Admin-Gruppe sichtbar), Health PASS.
+
 ## 01.07.2026 — Admin Customer Intelligence Center
 - Erweiterung: Customer Live Radar ergänzt — Radar-Alerts, VIP-/Omnichannel-/POS-/Reaktivierungs-Segmente, Heatmap-Zellen und Privacy Guard mit Retention-Regeln.
 - Erweiterung: Radar Actions ergänzt — Admin kann aus Radar-Alerts Coupon, Push, Manager-Alert oder Auto-Aktion auslösen; schreibt echte Coupons, Notifications, Merchant-/POS-Alerts und Action-Audit in MongoDB.
