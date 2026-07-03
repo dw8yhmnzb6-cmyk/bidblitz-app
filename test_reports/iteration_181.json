@@ -1,0 +1,45 @@
+{
+  "summary": "Validated admin alias login_email visibility and token persistence across backend + frontend. Admin alias/canonical/hyphen alias behaviors now match expected contract; non-admin KYC gating remains intact.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "More/Login (general dark UI)",
+        "issues": [
+          "Some secondary gray text remains low contrast on dark backgrounds."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter181_admin_alias_login_email.py",
+    "/app/test_reports/pytest/iter181_admin_alias_login_email.xml"
+  ],
+  "action_items": [
+    "Optional: improve secondary text contrast in dark theme for readability/accessibility."
+  ],
+  "critical_code_review_comments": [
+    "Auth contract for alias mapping is consistent in /api/auth/login, /api/auth/me, and /api/auth/refresh with login_email preserved.",
+    "serialize_user continues to exclude Mongo _id from responses in tested auth flows (no ObjectId serialization errors observed)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter181_admin_alias_login_email.py",
+    "/app/test_reports/iteration_181.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Used /app/memory/test_credentials.md accounts: admin@bidblitz.com, admin@bidblitz.ae, admin@bid-blitz.ae, kycgate.1782580398@test.com, agimk@me.com, haendler@bidblitz.com.",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Playwright confirmed More page displays login alias (admin@bidblitz.ae) when alias/hyphen alias is used, canonical when canonical login is used; non-admin unverified account still reaches KYC-gated experience.",
+  "rca of the issue": "Previously reported mismatch was likely frontend display source using canonical email; with user context mapping now consuming display_email/login_email from auth payloads/tokens, visible account identity matches input login alias while preserving canonical account mapping.",
+  "mocked_api": "No MOCKED APIs used."
+}

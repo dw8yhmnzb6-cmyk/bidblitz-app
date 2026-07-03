@@ -16,19 +16,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def create_access_token(user_id: str, email: str) -> str:
+def create_access_token(user_id: str, email: str, login_email: str = "") -> str:
     payload = {
         "sub": user_id,
         "email": email,
+        "login_email": login_email or email,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         "type": "access",
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str) -> str:
+def create_refresh_token(user_id: str, login_email: str = "") -> str:
     payload = {
         "sub": user_id,
+        "login_email": login_email,
         "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
         "type": "refresh",
     }
@@ -67,6 +69,8 @@ def serialize_user(user: dict) -> dict:
     return {
         "id": user.get("id") or str(user["_id"]),
         "email": user["email"],
+        "login_email": user.get("login_email") or user.get("email"),
+        "canonical_email": user.get("email"),
         "name": user.get("name", ""),
         "role": role,
         "kyc_status": kyc_status,
@@ -132,6 +136,8 @@ async def get_current_user(request: Request) -> dict:
             pass
         # Normalize user dict for downstream routes
         user["user_id"] = str(user.get("_id", user.get("id", "")))
+        if payload.get("login_email"):
+            user["login_email"] = payload.get("login_email")
         full_name = user.get("name", "") or ""
         name_parts = full_name.split(" ", 1) if full_name else ["", ""]
         if "first_name" not in user:

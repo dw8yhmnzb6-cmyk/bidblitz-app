@@ -278,8 +278,8 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     except Exception as e:
         logger.warning(f"Welcome bonus tx failed: {e}")
 
-    access_token = create_access_token(user_id, email)
-    refresh_token = create_refresh_token(user_id)
+    access_token = create_access_token(user_id, email, email)
+    refresh_token = create_refresh_token(user_id, email)
     set_auth_cookies(response, access_token, refresh_token)
 
     await log_audit(AuditEvent.REGISTER, user_id=user_id, email=email,
@@ -459,9 +459,10 @@ async def login(req: LoginRequest, request: Request, response: Response):
             "email_hint": f"{email[:3]}***{email[-10:]}",
         }
     
-    access_token = create_access_token(user_id, email)
-    refresh_token = create_refresh_token(user_id)
+    access_token = create_access_token(user_id, user.get("email", email), email)
+    refresh_token = create_refresh_token(user_id, email)
     set_auth_cookies(response, access_token, refresh_token, req.remember_me)
+    user["login_email"] = email
     await _record_login_success(user_id, ip, ua)
 
     await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
@@ -521,7 +522,8 @@ async def refresh_token(request: Request, response: Response):
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        new_access = create_access_token(str(user["_id"]), user["email"])
+        new_access = create_access_token(str(user["_id"]), user["email"], payload.get("login_email") or payload.get("email") or user["email"])
+        user["login_email"] = payload.get("login_email") or payload.get("email") or user["email"]
         from core.config import COOKIE_SECURE, COOKIE_SAMESITE, ACCESS_TOKEN_EXPIRE_MINUTES
         response.set_cookie(key="access_token", value=new_access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/")
         return serialize_user(user)
@@ -700,7 +702,7 @@ async def verify_2fa_login(request: Request, response: Response):
     ip, ua = get_client_info(request)
     
     access_token = create_access_token(user_id, email)
-    refresh_token = create_refresh_token(user_id)
+    refresh_token = create_refresh_token(user_id, user.get("login_email") or user.get("email", ""))
     set_auth_cookies(response, access_token, refresh_token, remember=True)
     await _record_login_success(user_id, ip, ua)
     

@@ -794,7 +794,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   // Demo mode: overlay mock user data
   const displayName = isDemoMode ? DEMO_USER.name : (isGuest ? "BidBlitz" : user.name);
-  const displayEmail = isDemoMode ? DEMO_USER.email : (isGuest ? (t("auth.signin") || "Sign in to view profile") : user.email);
+  const displayEmail = isDemoMode ? DEMO_USER.email : (isGuest ? (t("auth.signin") || "Sign in to view profile") : (user.display_email || user.login_email || user.email));
   const displayAvatar = isDemoMode ? DEMO_USER.avatar : user.avatar;
 
   useEffect(() => {
@@ -837,7 +837,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       return <ProfileView 
         userId={user.id}
         userName={user.name}
-        userEmail={user.email}
+        userEmail={user.display_email || user.login_email || user.email}
         userRole={user.role}
         userBalance={user.balance}
         userCurrency={user.currency}
