@@ -7,6 +7,12 @@
 - `backend/server.py`: idempotentes `seed_admin()` beim Startup wieder aktiviert und vor `ensure_admin_driver_account()` einsortiert; Admin-Alias-/KYC-Vertrag bleibt stabil.
 - Verifiziert: JS/Python Lint PASS, Self-Tests für Kosovo-Estimate, Single-Letter-Geocode, Admin-Kanonisch/Alias-Login und Operator-Status PASS; Testing-Agent Iteration 183 Backend/Frontend 100% PASS. Keine MOCKS.
 
+## 06.07.2026 — Taxi P1 Personalisierung + Kosovo-Stadtprofile
+- `frontend/src/pages/TaxiPage.jsx`: Dropoff-/Pickup-Suche mischt persönliche Treffer aus Home/Work, Favoriten, letzten Adressen und häufigen Routen vor Live-Geocode-Treffern ein.
+- UI ergänzt Quellen-Badges pro Vorschlag (`Home`, `Work`, `Favorit`, `Zuletzt`, `Häufige Route`, `Live Treffer`) mit stabilen `data-testid`s.
+- `backend/routes/taxi.py`: Kosovo-Stadtprofile für Prishtina, Prizren und Peja ergänzt; alle behalten `2€` Grundpreis und nutzen stadtbezogene Kilometerpreise ohne Zeitaufschlag.
+- Verifiziert: JS/Python Lint PASS, Self-Tests PASS, Testing-Agent Iteration 184 PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
