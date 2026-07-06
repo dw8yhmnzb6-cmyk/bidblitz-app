@@ -1,0 +1,35 @@
+{
+  "summary": "Taxi Kosovo Airport fixed fare, public feature flags, and guest taxi console-noise regression verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter185_taxi_guest_noise_feature_flags.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/routes/taxi.py",
+    "/app/backend/models/taxi.py",
+    "/app/backend/routes/feature_flags.py",
+    "/app/backend/core/router_registry.py",
+    "/app/frontend/src/pages/TaxiPage.jsx",
+    "/app/frontend/src/services/taxiApi.js",
+    "/app/backend/tests/test_iter185_taxi_guest_noise_feature_flags.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100% smoke"
+  },
+  "test_credentials": "Admin alias credentials from /app/memory/test_credentials.md used for auth/operator regression.",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "mocked_api": "No MOCKED APIs used."
+}

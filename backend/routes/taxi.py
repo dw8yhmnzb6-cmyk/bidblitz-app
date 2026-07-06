@@ -1188,6 +1188,12 @@ PLATFORM_COMMISSION = 0.15  # Platform gets 15%
 CANCELLATION_FEE = 3.00
 MIN_WALLET_BALANCE = 10.00
 
+KOSOVO_AIRPORT_FIXED_FARES = {
+    "standard": 15.00,
+    "premium": 20.00,
+    "van": 24.00,
+}
+
 
 class RideStatus(str, Enum):
     REQUESTED = "requested"
@@ -1252,6 +1258,34 @@ def calculate_fare(distance_km: float, duration_minutes: float, car_type: str, r
         "platform_fee": platform_fee,
         "region": region,
         "region_label": region_pricing.get("label", ""),
+    }
+
+
+def _looks_like_kosovo_airport(address: str, lat: float, lng: float) -> bool:
+    hay = str(address or "").lower()
+    airport_tokens = ["pristina international airport", "prishtina international airport", "flughafen kosovo", "airport adem jashari", "adem jashari", "prn"]
+    near_airport = 42.555 <= lat <= 42.590 and 21.020 <= lng <= 21.060
+    return near_airport or any(token in hay for token in airport_tokens)
+
+
+def _looks_like_prishtina_city(address: str, lat: float, lng: float) -> bool:
+    hay = str(address or "").lower()
+    near_city = 42.60 <= lat <= 42.74 and 21.08 <= lng <= 21.24
+    return near_city or any(token in hay for token in ["prishtin", "pristina"])
+
+
+def get_kosovo_airport_fixed_fare(p_addr: str, d_addr: str, p_lat: float, p_lng: float, d_lat: float, d_lng: float, car_type: str) -> Optional[dict]:
+    pickup_airport = _looks_like_kosovo_airport(p_addr, p_lat, p_lng)
+    dropoff_airport = _looks_like_kosovo_airport(d_addr, d_lat, d_lng)
+    pickup_city = _looks_like_prishtina_city(p_addr, p_lat, p_lng)
+    dropoff_city = _looks_like_prishtina_city(d_addr, d_lat, d_lng)
+    if not ((pickup_airport and dropoff_city) or (dropoff_airport and pickup_city)):
+        return None
+    fare = KOSOVO_AIRPORT_FIXED_FARES.get(car_type, KOSOVO_AIRPORT_FIXED_FARES["standard"])
+    return {
+        "fixed_fare": fare,
+        "label": "Flughafen Kosovo ↔ Prishtina Festpreis",
+        "zone": "kosovo_airport_prishtina",
     }
 
 
@@ -1604,10 +1638,26 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     }
     
     estimates = []
+    fixed_fares = {}
     for vtype in ["standard", "premium", "van"]:
         fare = calculate_fare(distance_km, duration_minutes, vtype, region)
+        fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, vtype)
+        if fixed:
+            fare = {
+                **fare,
+                "distance_cost": 0.0,
+                "time_cost": 0.0,
+                "total": fixed["fixed_fare"],
+                "driver_earnings": round(fixed["fixed_fare"] * DRIVER_COMMISSION, 2),
+                "platform_fee": round(fixed["fixed_fare"] * PLATFORM_COMMISSION, 2),
+                "fixed_fare": True,
+                "fixed_fare_label": fixed["label"],
+                "fixed_fare_zone": fixed["zone"],
+            }
+            fixed_fares[vtype] = {"active": True, **fixed}
         # Apply zone & time multipliers (P2 multi-tariff)
-        fare = apply_multi_tariff(fare, matched_zone, time_info)
+        if not fixed:
+            fare = apply_multi_tariff(fare, matched_zone, time_info)
         info = VEHICLE_INFO[vtype]
         item = {
             "vehicle_type": vtype,
@@ -1636,6 +1686,7 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
         "surge": {"active": False, "multiplier": 1.0},
         "region": region,
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
+        "fixed_fares": fixed_fares,
         "promo": promo_info,
         "tariff_zone": {
             "id": matched_zone.get("id"),
@@ -1742,6 +1793,19 @@ async def book_ride(req: FlexBookRequest, request: Request):
     duration_minutes = max(5, (distance_km / 30) * 60)
     region = detect_region(p_lat, p_lng)
     fare_estimate = calculate_fare(distance_km, duration_minutes, car_type, region)
+    fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
+    if fixed:
+        fare_estimate = {
+            **fare_estimate,
+            "distance_cost": 0.0,
+            "time_cost": 0.0,
+            "total": fixed["fixed_fare"],
+            "driver_earnings": round(fixed["fixed_fare"] * DRIVER_COMMISSION, 2),
+            "platform_fee": round(fixed["fixed_fare"] * PLATFORM_COMMISSION, 2),
+            "fixed_fare": True,
+            "fixed_fare_label": fixed["label"],
+            "fixed_fare_zone": fixed["zone"],
+        }
     fare_total = fare_estimate["total"]
 
     # Apply promo if provided & valid
@@ -1794,6 +1858,7 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "fare_breakdown": fare_estimate,
         "region": region,
         "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
+        "fixed_fare": fixed if fixed else None,
         "promo": promo_applied,
         "status": RideStatus.REQUESTED.value,
         "recipient": {

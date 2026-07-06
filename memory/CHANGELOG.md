@@ -13,6 +13,13 @@
 - `backend/routes/taxi.py`: Kosovo-Stadtprofile für Prishtina, Prizren und Peja ergänzt; alle behalten `2€` Grundpreis und nutzen stadtbezogene Kilometerpreise ohne Zeitaufschlag.
 - Verifiziert: JS/Python Lint PASS, Self-Tests PASS, Testing-Agent Iteration 184 PASS. Keine MOCKS.
 
+## 06.07.2026 — Taxi Kosovo Airport Fixed Fare + Guest Noise Cleanup
+- `backend/routes/taxi.py` + `backend/models/taxi.py`: Estimate-Requests akzeptieren Pickup-/Dropoff-Adressen; Flughafen Kosovo/PRN ↔ Prishtina wird als Festpreis erkannt.
+- Festpreise live: Standard `15€`, Comfort `20€`, XL `24€`; Fare-Breakdown enthält `fixed_fare=true`, Label und Zone `kosovo_airport_prishtina`.
+- `backend/routes/feature_flags.py` + Router-Registry: öffentlicher `/api/feature-flags` Endpoint wiederhergestellt, damit die Frontend-Flag-Initialisierung keinen 404 erzeugt.
+- `frontend/src/pages/TaxiPage.jsx`: Gastnutzer rufen keine auth-geschützten Taxi-Collections und keine Active-Ride-API mehr auf; Taxi-spezifische Guest-Console-401s reduziert.
+- Verifiziert: JS/Python Lint PASS, Pytest `backend/tests/test_iter185_taxi_guest_noise_feature_flags.py` 4/4 PASS, Browser-Smoke für `/taxi` Single-Letter-Suche PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.

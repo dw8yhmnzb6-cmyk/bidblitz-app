@@ -192,10 +192,14 @@ export default function TaxiPage({ onNavigate }) {
   }, []);
 
   const loadActiveRide = useCallback(async () => {
+    if (!user?.isAuthenticated) {
+      setActiveRide(null);
+      return;
+    }
     const data = await api.fetchActiveRide();
     const ride = data?.rides?.[0] || null;
     setActiveRide(ride);
-  }, []);
+  }, [user?.isAuthenticated]);
 
   const loadRideMessages = useCallback(async (rideId) => {
     if (!rideId) return;
@@ -211,10 +215,18 @@ export default function TaxiPage({ onNavigate }) {
   }, []);
 
   useEffect(() => {
+    if (!user?.isAuthenticated) return;
     loadActiveRide();
-  }, [loadActiveRide]);
+  }, [loadActiveRide, user?.isAuthenticated]);
 
   useEffect(() => {
+    if (!user?.isAuthenticated) {
+      setSavedPlaces([]);
+      setFavorites([]);
+      setRecentAddresses([]);
+      setFavoriteRoutes([]);
+      return undefined;
+    }
     let cancelled = false;
     const loadSaved = async () => {
       const [places, favs, recents, routes] = await Promise.all([
@@ -234,9 +246,10 @@ export default function TaxiPage({ onNavigate }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.isAuthenticated]);
 
   const refreshTaxiCollections = useCallback(async () => {
+    if (!user?.isAuthenticated) return;
     const [places, favs, recents, routes] = await Promise.all([
       api.fetchSavedPlaces(),
       api.fetchFavorites(),
@@ -247,7 +260,7 @@ export default function TaxiPage({ onNavigate }) {
     setFavorites(favs || []);
     setRecentAddresses(recents || []);
     setFavoriteRoutes(routes || []);
-  }, []);
+  }, [user?.isAuthenticated]);
 
   useEffect(() => {
     if (!activeRide) return undefined;
@@ -321,7 +334,7 @@ export default function TaxiPage({ onNavigate }) {
     }
     setEstimates(result.estimates || []);
     setSurge(result.surge || null);
-    setTariffMeta({ region: result.region, label: result.region_label, zone: result.tariff_zone, time: result.time_tariff });
+    setTariffMeta({ region: result.region, label: result.region_label, zone: result.tariff_zone, time: result.time_tariff, fixedFares: result.fixed_fares || {} });
     const recommended = (result.estimates || []).find((item) => item.vehicle_type === selectedVehicle) || result.estimates?.[0];
     if (recommended?.vehicle_type) setSelectedVehicle(recommended.vehicle_type);
     setEstimating(false);
@@ -677,7 +690,7 @@ export default function TaxiPage({ onNavigate }) {
                   </div>
                   {estimating ? <Loader2 className="h-5 w-5 animate-spin text-white/60" /> : <Sparkles className="h-5 w-5 text-[#FFD500]" />}
                 </div>
-                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">{tariffMeta?.label ? `${tariffMeta.label} · persönliche Orte zuerst.` : 'Die Suche ist jetzt regional: Flughafen, Bahnhof und persönliche Orte passen sich an deinen Standort an.'}</p>
+                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">{tariffMeta?.fixedFares?.standard?.active ? `${tariffMeta.fixedFares.standard.label} · persönliche Orte zuerst.` : tariffMeta?.label ? `${tariffMeta.label} · persönliche Orte zuerst.` : 'Die Suche ist jetzt regional: Flughafen, Bahnhof und persönliche Orte passen sich an deinen Standort an.'}</p>
               </div>
             </div>
 
@@ -830,6 +843,7 @@ export default function TaxiPage({ onNavigate }) {
                             <div className="text-right">
                               <p className="text-base font-black">{estimate ? `€${Number(estimate.total || estimate.fare || 0).toFixed(2)}` : '—'}</p>
                               <p className={`text-xs ${selected ? 'text-white/60' : 'text-black/45'}`}>{estimate ? `${estimate.eta_minutes || estimate.duration_minutes || 5} Min` : 'Berechne…'}</p>
+                              {estimate?.fare_breakdown?.fixed_fare ? <p className={`mt-1 text-[10px] font-bold ${selected ? 'text-[#FFD500]' : 'text-emerald-700'}`} data-testid={`taxi-customer-fixed-fare-${vehicle.id}`}>Festpreis</p> : null}
                             </div>
                           </div>
                         </button>

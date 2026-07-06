@@ -108,6 +108,8 @@ class EstimateRequest(BaseModel):
     pickup_lng: float = Field(..., ge=-180, le=180)
     dropoff_lat: float = Field(..., ge=-90, le=90)
     dropoff_lng: float = Field(..., ge=-180, le=180)
+    pickup_address: Optional[str] = Field(None, max_length=500)
+    dropoff_address: Optional[str] = Field(None, max_length=500)
     promo_code: Optional[str] = Field(None, max_length=32)
     
     def get_coords(self):
@@ -117,8 +119,8 @@ class EstimateRequest(BaseModel):
             self.pickup_lng,
             self.dropoff_lat,
             self.dropoff_lng,
-            "",  # pickup_address (not in EstimateRequest)
-            ""   # dropoff_address (not in EstimateRequest)
+            self.pickup_address or "",
+            self.dropoff_address or ""
         )
 
 
