@@ -34,6 +34,12 @@
 - `frontend/src/pages/AdminMerchantFeaturesPage.jsx`: Händlerliste zeigt MRR, Blockstatus und Zahlstatus; aktive Händlerkarte hat Bearbeiten-Modal, Blockieren/Freigeben-Button, Branchen-/Zahlstatus-Badges und bestehende Feature-Preissteuerung.
 - Verifiziert: JS/Python Lint PASS, Backend-Selftests PASS, Browser-Smoke PASS, Testing-Agent Iteration 188 PASS. Keine MOCKS.
 
+## 06.07.2026 — Admin Provisioning API + POS Public Flow Blueprint
+- `backend/routes/pos_features.py`: neuer Endpoint `POST /api/pos/features/admin/provision-merchant` schaltet Händler branchenspezifisch frei, aktiviert Bundle-Features, setzt Zahlstatus, speichert Admin-Notiz und erstellt optional einen einmalig sichtbaren `bbsec_` API-Key.
+- `backend/routes/pos_public_api.py`: neuer Endpoint `GET /api/pos/public/v1/payment-flow` beschreibt BidBlitz-Kassenzahlung, Gutscheinverkauf/-einlösung, Wallet-Aufladung und Admin-Kontrolle maschinenlesbar.
+- `frontend/src/pages/AdminMerchantFeaturesPage.jsx`: Dropdown `Freischalten + API` im Admin-Feature-Panel provisioniert Händler aus der UI und zeigt den API-Key einmalig per Copy-Prompt.
+- Verifiziert: JS/Python Lint PASS, Selftests PASS, Testing-Agent Iteration 189 5/5 PASS, UI-Automation PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
