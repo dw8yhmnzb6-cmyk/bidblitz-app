@@ -12,18 +12,19 @@ import { addRecentMobilityLocation, cancelMobilityBooking, createMobilityBooking
 
 const TRANSPORT_META = {
   taxi: { icon: Car, color: "#00C2FF", details: { de: "Direkt, schnell und klassisch wie Uber/Bolt.", en: "Direct, fast and classic like Uber/Bolt.", sq: "Direkt, e shpejtë dhe klasike si Uber/Bolt." } },
-  scooter: { icon: Zap, color: "#7CFF5B", details: { de: "Ideal für kurze City-Strecken und günstig.", en: "Ideal for short city rides and affordable.", sq: "Ideale për udhëtime të shkurtra në qytet dhe me kosto të ulët." } },
+  scooter: { icon: Zap, color: "#7CFF5B", label: "E-Scooter", details: { de: "Ideal für kurze City-Strecken und günstig.", en: "Ideal for short city rides and affordable.", sq: "Ideale për udhëtime të shkurtra në qytet dhe me kosto të ulët." } },
   ev: { icon: Zap, color: "#F97316", label: "EV Drive", details: { de: "Elektrische Selbstfahrer-Option mit starkem Eco-Score.", en: "Electric self-drive option with strong eco score.", sq: "Opsion elektrik vetë-drejtues me rezultat të lartë eco." } },
-  bike: { icon: Bike, color: "#FACC15", details: { de: "Die günstigste und nachhaltigste Kurzstrecke.", en: "The cheapest and most sustainable short trip.", sq: "Opsioni më i lirë dhe më i qëndrueshëm për distanca të shkurtra." } },
+  bike: { icon: Bike, color: "#FACC15", label: "E-Bike", details: { de: "Elektrische Bike-Option für leise City-Strecken mit starkem Eco-Score.", en: "Electric bike option for quiet city trips with strong eco score.", sq: "Opsion biçiklete elektrike për udhëtime të qeta në qytet me rezultat të lartë eco." } },
+  car_sharing: { icon: Car, color: "#14B8A6", label: "Carsharing", details: { de: "Flexible Minuten- oder Stundenfahrten ohne klassischen Mietprozess.", en: "Flexible minute- or hour-based rides without classic rental flow.", sq: "Udhëtime fleksibile me minuta ose orë pa proces klasik qiraje." } },
   car_rental: { icon: Car, color: "#A78BFA", details: { de: "Für eigene Flexibilität über mehrere Stunden.", en: "For full flexibility over several hours.", sq: "Për fleksibilitet të plotë për disa orë." } },
   airport_shuttle: { icon: Plane, color: "#FB7185", details: { de: "Perfekt für Flughafen und große Gepäckmengen.", en: "Perfect for airports and heavy luggage.", sq: "Perfekt për aeroport dhe bagazh të madh." } },
   vip: { icon: Crown, color: "#F59E0B", details: { de: "Premium-Fahrt mit VIP Chauffeur und maximalem Komfort.", en: "Premium ride with VIP chauffeur and maximum comfort.", sq: "Udhëtim premium me shofer VIP dhe rehati maksimale." } },
 };
 
 const MOBILITY_COPY = {
-  de: { title: "Alles auf einer Karte", pickup: "Abholort suchen oder per GPS setzen", dropoff: "Wohin möchtest du fahren?", current: "Mein Standort", mapSets: "Karte setzt", start: "Start", destination: "Ziel", compare: "Preise vergleichen", home: "Zuhause", work: "Arbeit", saveStart: "Start merken", saveDestination: "Ziel merken", aiRules: "Smartes Regelwerk aktiv", aiRulesText: "Nach Zielwahl erscheinen Preis, Fahrzeit und Empfehlung direkt wie bei Uber/Bolt.", aiPrefs: "AI Präferenzen", checkout: "Checkout-Methode", favorites: "Favoriten", recents: "Zuletzt genutzt", noFavorites: "Noch keine Favoriten gespeichert.", noRecents: "Noch keine letzten Ziele vorhanden.", bookings: "Letzte Mobility-Buchungen", directWallet: "Direkt mit Wallet buchen", directCash: "Cash-Fahrt direkt reservieren", booking: "Bucht...", bookNow: "Jetzt buchen", empty: "Gib Start und Ziel ein oder tippe auf die Karte. Danach erscheint hier sofort der Preisvergleich für Taxi, Scooter, Bike, Mietwagen, Shuttle und VIP.", recentLabel: "Letztes Ziel", used: "genutzt", recommended: "Empfohlen", bestChoice: "Beste Wahl", alternative: "Alternative", nearby: "Live in der Nähe", nearbyFallback: "Verfügbar auf der Karte", qrTitle: "QR Checkout", qrText: "Scanne den QR-Code auf einem zweiten Gerät oder öffne den Link direkt.", close: "Schließen", openStripe: "Stripe Checkout öffnen", liveTaxi: "Taxi live", rentalCars: "Mietwagen", paymentTitle: "Zahlungsmethoden", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card und Cash sind eingebunden.", price: "Preis", time: "Zeit", distance: "Distanz" },
-  en: { title: "Everything on one map", pickup: "Search pickup or set via GPS", dropoff: "Where do you want to go?", current: "My location", mapSets: "Map sets", start: "pickup", destination: "destination", compare: "Compare prices", home: "Home", work: "Work", saveStart: "Save pickup", saveDestination: "Save destination", aiRules: "Smart routing active", aiRulesText: "After choosing a destination, price, ETA and recommendation appear instantly like Uber/Bolt.", aiPrefs: "AI preferences", checkout: "Checkout method", favorites: "Favorites", recents: "Recent places", noFavorites: "No favorites saved yet.", noRecents: "No recent places yet.", bookings: "Recent mobility bookings", directWallet: "Book directly with wallet", directCash: "Reserve as cash ride", booking: "Booking...", bookNow: "Book now", empty: "Set pickup and destination or tap the map. Then the instant comparison for taxi, scooter, bike, rental car, shuttle and VIP appears here.", recentLabel: "Recent destination", used: "times used", recommended: "Recommended", bestChoice: "Best choice", alternative: "Alternative", nearby: "Live nearby", nearbyFallback: "Available on the map", qrTitle: "QR checkout", qrText: "Scan the QR code on another device or open the link directly.", close: "Close", openStripe: "Open Stripe checkout", liveTaxi: "taxis live", rentalCars: "rental cars", paymentTitle: "Payment methods", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card and Cash are integrated.", price: "Price", time: "Time", distance: "Distance" },
-  sq: { title: "Gjithçka në një hartë", pickup: "Kërko nisjen ose vendose me GPS", dropoff: "Ku dëshiron të shkosh?", current: "Vendndodhja ime", mapSets: "Harta vendos", start: "nisjen", destination: "destinacionin", compare: "Krahaso çmimet", home: "Shtëpia", work: "Puna", saveStart: "Ruaj nisjen", saveDestination: "Ruaj destinacionin", aiRules: "Rregullat smart aktive", aiRulesText: "Pas zgjedhjes së destinacionit, çmimi, ETA dhe rekomandimi shfaqen menjëherë si Uber/Bolt.", aiPrefs: "Preferencat AI", checkout: "Metoda e pagesës", favorites: "Të preferuarat", recents: "Adresat e fundit", noFavorites: "Ende nuk ka të preferuara.", noRecents: "Ende nuk ka adresa të fundit.", bookings: "Rezervimet e fundit mobility", directWallet: "Rezervo direkt me wallet", directCash: "Rezervo si udhëtim me cash", booking: "Po rezervohet...", bookNow: "Rezervo tani", empty: "Vendos nisjen dhe destinacionin ose prek hartën. Pastaj këtu shfaqet menjëherë krahasimi për taxi, scooter, bike, veturë me qira, shuttle dhe VIP.", recentLabel: "Destinacion i fundit", used: "herë përdorur", recommended: "Rekomanduar", bestChoice: "Zgjedhja më e mirë", alternative: "Alternativa", nearby: "Live afër", nearbyFallback: "I disponueshëm në hartë", qrTitle: "QR checkout", qrText: "Skano kodin QR në një pajisje tjetër ose hape linkun direkt.", close: "Mbyll", openStripe: "Hap Stripe checkout", liveTaxi: "taksi live", rentalCars: "vetura me qira", paymentTitle: "Metodat e pagesës", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card dhe Cash janë të integruara.", price: "Çmimi", time: "Koha", distance: "Distanca" },
+  de: { title: "Alles auf einer Karte", pickup: "Abholort suchen oder per GPS setzen", dropoff: "Wohin möchtest du fahren?", current: "Mein Standort", mapSets: "Karte setzt", start: "Start", destination: "Ziel", compare: "Preise vergleichen", home: "Zuhause", work: "Arbeit", saveStart: "Start merken", saveDestination: "Ziel merken", aiRules: "Smartes Regelwerk aktiv", aiRulesText: "Nach Zielwahl erscheinen Preis, Fahrzeit und Empfehlung direkt über Taxi, E-Scooter, E-Bike, Carsharing, EV und Mietwagen.", aiPrefs: "AI Präferenzen", checkout: "Checkout-Methode", favorites: "Favoriten", recents: "Zuletzt genutzt", noFavorites: "Noch keine Favoriten gespeichert.", noRecents: "Noch keine letzten Ziele vorhanden.", bookings: "Letzte Mobility-Buchungen", directWallet: "Direkt mit Wallet buchen", directCash: "Cash-Fahrt direkt reservieren", booking: "Bucht...", bookNow: "Jetzt buchen", empty: "Gib Start und Ziel ein oder tippe auf die Karte. Danach erscheint hier sofort der Preisvergleich für Taxi, E-Scooter, E-Bike, Carsharing, Mietwagen, Shuttle und VIP.", recentLabel: "Letztes Ziel", used: "genutzt", recommended: "Empfohlen", bestChoice: "Beste Wahl", alternative: "Alternative", nearby: "Live in der Nähe", nearbyFallback: "Verfügbar auf der Karte", qrTitle: "QR Checkout", qrText: "Scanne den QR-Code auf einem zweiten Gerät oder öffne den Link direkt.", close: "Schließen", openStripe: "Stripe Checkout öffnen", liveTaxi: "Taxi live", liveEbikes: "E-Bikes", liveCarsharing: "Carsharing", rentalCars: "Mietwagen", paymentTitle: "Zahlungsmethoden", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card und Cash sind eingebunden.", price: "Preis", time: "Zeit", distance: "Distanz" },
+  en: { title: "Everything on one map", pickup: "Search pickup or set via GPS", dropoff: "Where do you want to go?", current: "My location", mapSets: "Map sets", start: "pickup", destination: "destination", compare: "Compare prices", home: "Home", work: "Work", saveStart: "Save pickup", saveDestination: "Save destination", aiRules: "Smart routing active", aiRulesText: "After choosing a destination, price, ETA and recommendation appear instantly across taxi, e-scooter, e-bike, car sharing, EV and rentals.", aiPrefs: "AI preferences", checkout: "Checkout method", favorites: "Favorites", recents: "Recent places", noFavorites: "No favorites saved yet.", noRecents: "No recent places yet.", bookings: "Recent mobility bookings", directWallet: "Book directly with wallet", directCash: "Reserve as cash ride", booking: "Booking...", bookNow: "Book now", empty: "Set pickup and destination or tap the map. Then the instant comparison for taxi, e-scooter, e-bike, car sharing, rental car, shuttle and VIP appears here.", recentLabel: "Recent destination", used: "times used", recommended: "Recommended", bestChoice: "Best choice", alternative: "Alternative", nearby: "Live nearby", nearbyFallback: "Available on the map", qrTitle: "QR checkout", qrText: "Scan the QR code on another device or open the link directly.", close: "Close", openStripe: "Open Stripe checkout", liveTaxi: "taxis live", liveEbikes: "e-bikes", liveCarsharing: "car sharing", rentalCars: "rental cars", paymentTitle: "Payment methods", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card and Cash are integrated.", price: "Price", time: "Time", distance: "Distance" },
+  sq: { title: "Gjithçka në një hartë", pickup: "Kërko nisjen ose vendose me GPS", dropoff: "Ku dëshiron të shkosh?", current: "Vendndodhja ime", mapSets: "Harta vendos", start: "nisjen", destination: "destinacionin", compare: "Krahaso çmimet", home: "Shtëpia", work: "Puna", saveStart: "Ruaj nisjen", saveDestination: "Ruaj destinacionin", aiRules: "Rregullat smart aktive", aiRulesText: "Pas zgjedhjes së destinacionit, çmimi, ETA dhe rekomandimi shfaqen menjëherë për taxi, e-scooter, e-bike, carsharing, EV dhe vetura me qira.", aiPrefs: "Preferencat AI", checkout: "Metoda e pagesës", favorites: "Të preferuarat", recents: "Adresat e fundit", noFavorites: "Ende nuk ka të preferuara.", noRecents: "Ende nuk ka adresa të fundit.", bookings: "Rezervimet e fundit mobility", directWallet: "Rezervo direkt me wallet", directCash: "Rezervo si udhëtim me cash", booking: "Po rezervohet...", bookNow: "Rezervo tani", empty: "Vendos nisjen dhe destinacionin ose prek hartën. Pastaj këtu shfaqet menjëherë krahasimi për taxi, e-scooter, e-bike, carsharing, veturë me qira, shuttle dhe VIP.", recentLabel: "Destinacion i fundit", used: "herë përdorur", recommended: "Rekomanduar", bestChoice: "Zgjedhja më e mirë", alternative: "Alternativa", nearby: "Live afër", nearbyFallback: "I disponueshëm në hartë", qrTitle: "QR checkout", qrText: "Skano kodin QR në një pajisje tjetër ose hape linkun direkt.", close: "Mbyll", openStripe: "Hap Stripe checkout", liveTaxi: "taksi live", liveEbikes: "e-bike", liveCarsharing: "carsharing", rentalCars: "vetura me qira", paymentTitle: "Metodat e pagesës", paymentText: "Wallet, NFC, QR, Apple Pay, Google Pay, Credit Card dhe Cash janë të integruara.", price: "Çmimi", time: "Koha", distance: "Distanca" },
 };
 
 function formatPrice(value) {
@@ -179,6 +180,11 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const { t, lang } = useI18n();
   const { user } = useUser();
   const ui = MOBILITY_COPY[lang] || MOBILITY_COPY.de;
+  const preferredMode = typeof window !== "undefined"
+    ? ((new URLSearchParams(window.location.search).get("mode") || "")
+      .replace("ebike", "bike")
+      .replace("carsharing", "car_sharing"))
+    : "";
   const [pickup, setPickup] = useState({ address: "", lat: null, lng: null });
   const [dropoff, setDropoff] = useState({ address: "", lat: null, lng: null });
   const [activeField, setActiveField] = useState("dropoff");
@@ -201,13 +207,13 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
   const [loadingAiRecommendation, setLoadingAiRecommendation] = useState(false);
   const [bookingTransportType, setBookingTransportType] = useState("");
   const [routeSummary, setRouteSummary] = useState(null);
-  const [nearbyCounts, setNearbyCounts] = useState({ taxi: 0, scooter: 0, ev: 0, car_rental: 0 });
+  const [nearbyCounts, setNearbyCounts] = useState({ taxi: 0, scooter: 0, bike: 0, ev: 0, car_sharing: 0, car_rental: 0 });
   const [availableModes, setAvailableModes] = useState([]);
   const [selectedNearby, setSelectedNearby] = useState(null);
   const [aiRecommendation, setAiRecommendation] = useState(null);
   const [routeSnapshot, setRouteSnapshot] = useState(null);
   const [searchTarget, setSearchTarget] = useState("dropoff");
-  const focusModes = useMemo(() => ["taxi", "scooter", "ev", "car_rental"], []);
+  const focusModes = useMemo(() => ["taxi", "scooter", "bike", "ev", "car_sharing", "car_rental"], []);
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
   const nearbyLayerRef = useRef(null);
@@ -254,7 +260,7 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
     setLoadingNearby(true);
     const data = await getMobilityNearby({ lat, lng, radius: 6 });
     setLoadingNearby(false);
-    setNearbyCounts(data?.counts || { taxi: 0, scooter: 0, ev: 0, car_rental: 0 });
+    setNearbyCounts(data?.counts || { taxi: 0, scooter: 0, bike: 0, ev: 0, car_sharing: 0, car_rental: 0 });
     setAvailableModes(data?.available_modes || []);
     const map = mapRef.current;
     const layer = nearbyLayerRef.current;
@@ -609,11 +615,18 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1.5 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-[11px] font-semibold" data-testid="mobility-live-count-taxi">{nearbyCounts.taxi || 0} {ui.liveTaxi}</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#7CFF5B]/16 text-[#256C1B] text-[11px] font-semibold" data-testid="mobility-live-count-scooter">{nearbyCounts.scooter || 0} Scooter</span>
+                <span className="px-3 py-1.5 rounded-full bg-[#FACC15]/18 text-[#8A6B00] text-[11px] font-semibold" data-testid="mobility-live-count-bike">{nearbyCounts.bike || 0} {ui.liveEbikes}</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#F97316]/16 text-[#C2410C] text-[11px] font-semibold" data-testid="mobility-live-count-ev">{nearbyCounts.ev || 0} EV</span>
+                <span className="px-3 py-1.5 rounded-full bg-[#14B8A6]/16 text-[#0F766E] text-[11px] font-semibold" data-testid="mobility-live-count-carsharing">{nearbyCounts.car_sharing || 0} {ui.liveCarsharing}</span>
                 <span className="px-3 py-1.5 rounded-full bg-[#F59E0B]/16 text-[#92400E] text-[11px] font-semibold" data-testid="mobility-live-count-cars">{nearbyCounts.car_rental || 0} {ui.rentalCars}</span>
               </div>
               {loadingNearby && <Loader2 size={16} className="animate-spin text-[#0F766E]" />}
             </div>
+            {preferredMode && TRANSPORT_META[preferredMode] ? (
+              <div className="mb-2 rounded-2xl border border-[#18202a]/8 bg-white px-3 py-2 text-xs font-semibold text-[#18202a]/75" data-testid="mobility-mode-focus-banner">
+                Fokus aktiv: {TRANSPORT_META[preferredMode].label || preferredMode}
+              </div>
+            ) : null}
             <div className="space-y-2">
               <div className="relative">
                 <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0F766E]" />
@@ -688,17 +701,17 @@ export default function BidBlitzMobilityPlatformPage({ onNavigate }) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Core Vergleich</p>
-                  <h3 className="text-base font-bold mt-1">Taxi · Scooter · EV · Car Rental</h3>
+                  <h3 className="text-base font-bold mt-1">Taxi · E-Scooter · E-Bike · EV · Carsharing · Car Rental</h3>
                 </div>
                 <div className="text-right text-[11px] text-[#18202a]/55">Klarer Preis-/Zeitfokus</div>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {focusOptions.map((option) => (
                   <FocusCompareCard
                     key={option.type}
                     option={option}
                     compareToTaxi={taxiFocusOption}
-                    highlight={selectedOption?.type === option.type || aiRecommendation?.best_option_type === option.type}
+                    highlight={selectedOption?.type === option.type || aiRecommendation?.best_option_type === option.type || preferredMode === option.type}
                     lang={lang}
                     onOpen={setDetailOption}
                   />

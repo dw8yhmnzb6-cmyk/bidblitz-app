@@ -84,8 +84,9 @@ def build_option(
     base = {
         "taxi": {"label": "Taxi", "icon": "car-front", "base": 2.4, "per_km": 1.15, "per_min": 0.16, "speed_factor": 1.0, "wallet_only": False},
         "scooter": {"label": "E-Scooter", "icon": "zap", "base": 0.35, "per_km": 0.28, "per_min": 0.06, "speed_factor": 1.25, "wallet_only": True},
+        "bike": {"label": "E-Bike", "icon": "bike", "base": 0.55, "per_km": 0.22, "per_min": 0.04, "speed_factor": 1.32, "wallet_only": True},
         "ev": {"label": "EV Drive", "icon": "zap", "base": 4.2, "per_km": 0.42, "per_min": 0.08, "speed_factor": 1.08, "wallet_only": False},
-        "bike": {"label": "Fahrrad", "icon": "bike", "base": 0.15, "per_km": 0.18, "per_min": 0.03, "speed_factor": 1.55, "wallet_only": True},
+        "car_sharing": {"label": "Carsharing", "icon": "car", "base": 2.8, "per_km": 0.36, "per_min": 0.11, "speed_factor": 1.02, "wallet_only": False},
         "car_rental": {"label": "Mietwagen", "icon": "car", "base": 8.5, "per_km": 0.32, "per_min": 0.05, "speed_factor": 1.05, "wallet_only": False},
         "airport_shuttle": {"label": "Airport Shuttle", "icon": "plane", "base": 5.0, "per_km": 0.48, "per_min": 0.07, "speed_factor": 1.12, "wallet_only": False},
         "vip": {"label": "VIP Chauffeur", "icon": "crown", "base": 12.0, "per_km": 1.6, "per_min": 0.22, "speed_factor": 0.92, "wallet_only": False},
@@ -184,7 +185,7 @@ class MobilityPreferencesRequest(BaseModel):
 class MobilityCompareSummaryRequest(BaseModel):
     pickup: MobilityBookingLocation
     dropoff: MobilityBookingLocation
-    focus_modes: Optional[List[str]] = Field(default_factory=lambda: ["taxi", "scooter", "ev", "car_rental"])
+    focus_modes: Optional[List[str]] = Field(default_factory=lambda: ["taxi", "scooter", "bike", "ev", "car_sharing", "car_rental"])
 
 
 class BestRouteBookRequest(BaseModel):
@@ -436,14 +437,14 @@ async def _generate_ai_route_recommendation(payload: MobilityAiRecommendationReq
     prompt = (
         "Du bist BidBlitz Mobility AI. Analysiere die Transportoptionen und antworte NUR als gültiges JSON ohne Markdown.\n"
         "Wähle die beste Option für diese konkrete Strecke und gib eine kurze, hilfreiche Begründung auf Deutsch.\n"
-        "Die Werte im Feld best_option_type und secondary_option_type müssen exakt einem dieser Types entsprechen: taxi, scooter, bike, car_rental, airport_shuttle, vip.\n"
+        "Die Werte im Feld best_option_type und secondary_option_type müssen exakt einem dieser Types entsprechen: taxi, scooter, bike, ev, car_sharing, car_rental, airport_shuttle, vip.\n"
         "Antwortformat:\n"
         "{\n"
         '  "headline": "kurze Headline",\n'
         '  "summary": "1-2 Sätze Empfehlung",\n'
         '  "reason_short": "kurzer Hauptgrund",\n'
-        '  "best_option_type": "taxi|scooter|bike|car_rental|airport_shuttle|vip",\n'
-        '  "secondary_option_type": "taxi|scooter|bike|car_rental|airport_shuttle|vip",\n'
+        '  "best_option_type": "taxi|scooter|bike|ev|car_sharing|car_rental|airport_shuttle|vip",\n'
+        '  "secondary_option_type": "taxi|scooter|bike|ev|car_sharing|car_rental|airport_shuttle|vip",\n'
         '  "watchouts": ["Hinweis 1", "Hinweis 2"],\n'
         '  "confidence": 0-100\n'
         "}\n\n"
@@ -534,8 +535,9 @@ async def _compute_route_payload(
     options = [
         build_option("taxi", distance_km, duration_min, demand_multiplier, 55),
         build_option("scooter", distance_km, duration_min, 1.0, 86),
+        build_option("bike", distance_km, duration_min, 1.0, 94),
         build_option("ev", distance_km, duration_min, 1.0, 92),
-        build_option("bike", distance_km, duration_min, 1.0, 96),
+        build_option("car_sharing", distance_km, duration_min, 1.0, 64),
         build_option("car_rental", distance_km, duration_min, 1.0, 48),
         build_option("airport_shuttle", distance_km, duration_min, 1.0, 63),
         build_option("vip", distance_km, duration_min, 1.08, 28),
@@ -556,7 +558,7 @@ def _find_option(options: list[dict], transport_type: str):
 
 
 def _focus_mode_cards(route_payload: dict, focus_modes: Optional[list[str]] = None) -> list[dict]:
-    focus = [mode for mode in (focus_modes or ["taxi", "scooter", "ev", "car_rental"]) if mode]
+    focus = [mode for mode in (focus_modes or ["taxi", "scooter", "bike", "ev", "car_sharing", "car_rental"]) if mode]
     cards = [item for item in route_payload.get("options") or [] if item.get("type") in focus]
     cards.sort(key=lambda item: focus.index(item.get("type")) if item.get("type") in focus else 999)
     if not cards:
@@ -1440,7 +1442,7 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
     ).to_list(120)
 
     markers = []
-    counts = {"taxi": 0, "scooter": 0, "ev": 0, "car_rental": 0}
+    counts = {"taxi": 0, "scooter": 0, "bike": 0, "ev": 0, "car_sharing": 0, "car_rental": 0}
 
     for driver in driver_rows:
         loc = driver_loc_map.get(driver.get("driver_id")) or driver.get("location") or {}
@@ -1487,6 +1489,26 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
             payment_methods=TRANSPORT_PAYMENT_METHODS,
         ))
 
+    ebike_seed = [
+        item for item in markers
+        if item.get("type") == "scooter"
+    ][:3]
+    for index, seed in enumerate(ebike_seed):
+        counts["bike"] += 1
+        lat_offset = seed.get("lat", lat) + ((index + 1) * 0.00012)
+        lng_offset = seed.get("lng", lng) - ((index + 1) * 0.0001)
+        markers.append(_service_marker(
+            "bike",
+            f"ebike-{index + 1}",
+            f"E-Bike Hub {index + 1}",
+            lat_offset,
+            lng_offset,
+            distance_km=round(haversine_distance(lat, lng, lat_offset, lng_offset), 2),
+            battery_percent=seed.get("battery_percent") or 82,
+            subtitle="Leise, schnell und direkt für Kurzstrecken",
+            payment_methods=TRANSPORT_PAYMENT_METHODS,
+        ))
+
     for car in car_rows:
         clat = car.get("lat")
         clng = car.get("lng")
@@ -1505,6 +1527,25 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
             distance_km=round(distance_km, 2),
             price_hint=_round_money(car.get("price_per_day") or 0),
             subtitle=car.get("city") or f"{car.get('brand', '')} {car.get('model', '')}".strip() or "Tagesmiete",
+            image_url=car.get("main_image"),
+            payment_methods=TRANSPORT_PAYMENT_METHODS,
+        ))
+
+    for index, car in enumerate(car_rows[:3]):
+        clat = car.get("lat")
+        clng = car.get("lng")
+        if not clat or not clng:
+            continue
+        counts["car_sharing"] += 1
+        markers.append(_service_marker(
+            "car_sharing",
+            f"share-{car.get('car_id') or index + 1}",
+            f"Carsharing {car.get('brand') or ''} {car.get('model') or ''}".strip(),
+            clat + ((index + 1) * 0.00008),
+            clng + ((index + 1) * 0.00006),
+            distance_km=round(haversine_distance(lat, lng, clat, clng), 2),
+            price_hint=_round_money((car.get("price_per_day") or 12) / 12),
+            subtitle="Flexible Minuten- oder Stundenfahrt",
             image_url=car.get("main_image"),
             payment_methods=TRANSPORT_PAYMENT_METHODS,
         ))
@@ -1540,8 +1581,9 @@ async def get_nearby_mobility(lat: float, lng: float, radius: float = 5.0):
         "available_modes": [
             {"type": "taxi", "label": "Taxi", "live": counts["taxi"] > 0, "count": counts["taxi"]},
             {"type": "scooter", "label": "E-Scooter", "live": counts["scooter"] > 0, "count": counts["scooter"]},
+            {"type": "bike", "label": "E-Bike", "live": counts["bike"] > 0, "count": counts["bike"]},
             {"type": "ev", "label": "EV Drive", "live": counts["ev"] > 0, "count": counts["ev"]},
-            {"type": "bike", "label": "Fahrrad", "live": True, "count": None},
+            {"type": "car_sharing", "label": "Carsharing", "live": counts["car_sharing"] > 0, "count": counts["car_sharing"]},
             {"type": "car_rental", "label": "Mietwagen", "live": counts["car_rental"] > 0, "count": counts["car_rental"]},
             {"type": "airport_shuttle", "label": "Airport Shuttle", "live": True, "count": None},
             {"type": "vip", "label": "VIP Chauffeur", "live": True, "count": None},

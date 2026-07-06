@@ -6,18 +6,22 @@ import { toast } from "sonner";
 import { bookBestMobilityRoute, getFrequentMobilityRoutes, getMobilityCompareSummary, getMobilityPaymentOptions, getMyMobilityBookings, getSavedMobilityLocations, saveFrequentMobilityRoute } from "../services/mobilityPlatformApi";
 
 const moduleCards = [
-  { id: "mobility-map", label: "Mobility Map", route: "/mobility-map", icon: MapPinned, tone: "#00C2FF", desc: "Vergleiche Taxi, Scooter, EV, Car Rental, Shuttle und VIP auf einer Karte." },
+  { id: "mobility-map", label: "Mobility Map", route: "/mobility-map", icon: MapPinned, tone: "#00C2FF", desc: "Vergleiche Taxi, E-Scooter, E-Bike, Carsharing, EV und Car Rental auf einer Karte." },
   { id: "taxi", label: "Taxi & Ride", route: "/taxi", icon: Car, tone: "#38BDF8", desc: "Sofortfahrten, Fahreransicht und Reservierungen bündeln." },
-  { id: "scooter", label: "Scooter & Bike", route: "/scooter", icon: Zap, tone: "#84CC16", desc: "Kurzstrecken, QR-Rides und stationenbasierte Micro-Mobility." },
+  { id: "scooter", label: "E-Scooter", route: "/mobility-map?mode=scooter", icon: Zap, tone: "#84CC16", desc: "Kurzstrecken, QR-Rides und direkte Micro-Mobility-Buchungen." },
+  { id: "ebike", label: "E-Bike", route: "/mobility-map?mode=bike", icon: Bike, tone: "#FACC15", desc: "Leise City-Strecken mit Eco-Fokus und schnellem Rebook." },
   { id: "ev", label: "EV Charging", route: "/ev", icon: Crown, tone: "#F97316", desc: "Laden, Sessions tracken und Stationen verwalten." },
+  { id: "carsharing", label: "Carsharing", route: "/mobility-map?mode=car_sharing", icon: Car, tone: "#14B8A6", desc: "Flexible Minuten- oder Stundenfahrten direkt aus dem Hub." },
   { id: "car-rental", label: "Car Rental", route: "/car-rental", icon: Car, tone: "#A78BFA", desc: "Mietwagen, Vendor-Dashboards und Buchungsdetails." },
   { id: "bookings", label: "Meine Fahrten", route: "/mobility-map", icon: Route, tone: "#FACC15", desc: "Aktive Buchungen, Tracking und Favoriten im selben Flow." },
 ];
 
 const compareMeta = {
   taxi: { label: "Taxi", tone: "#38BDF8" },
-  scooter: { label: "Scooter", tone: "#84CC16" },
+  scooter: { label: "E-Scooter", tone: "#84CC16" },
+  bike: { label: "E-Bike", tone: "#FACC15" },
   ev: { label: "EV Drive", tone: "#F97316" },
+  car_sharing: { label: "Carsharing", tone: "#14B8A6" },
   car_rental: { label: "Car Rental", tone: "#A78BFA" },
 };
 
@@ -106,7 +110,7 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
       const result = await getMobilityCompareSummary({
         pickup: preset.pickup,
         dropoff: preset.dropoff,
-        focus_modes: ["taxi", "scooter", "ev", "car_rental"],
+        focus_modes: ["taxi", "scooter", "bike", "ev", "car_sharing", "car_rental"],
       });
       if (!active) return;
       setCompareSummary(result.ok ? result : null);
@@ -208,9 +212,9 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
           <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Klarer 4-Wege Vergleich</p>
-                <h2 className="mt-2 text-base md:text-lg font-bold" data-testid="mobility-center-compare-title">Taxi, Scooter, EV Drive und Car Rental direkt gegenübergestellt</h2>
-                <p className="mt-2 text-sm text-white/65" data-testid="mobility-center-compare-subtitle">Ich nutze automatisch deine letzte Fahrt oder Home/Work, damit du sofort Preis, ETA und die beste Option siehst.</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Klarer 6-Wege Vergleich</p>
+                <h2 className="mt-2 text-base md:text-lg font-bold" data-testid="mobility-center-compare-title">Taxi, E-Scooter, E-Bike, EV Drive, Carsharing und Car Rental direkt gegenübergestellt</h2>
+                <p className="mt-2 text-sm text-white/65" data-testid="mobility-center-compare-subtitle">Ich nutze automatisch deine letzte Fahrt oder Home/Work, damit du sofort Preis, ETA und die beste Option über alle Kernmodi siehst.</p>
               </div>
               <button onClick={() => onNavigate('/mobility-map')} data-testid="mobility-center-compare-open-map-button" className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/75">Auf Karte öffnen</button>
             </div>
@@ -342,7 +346,7 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
           <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-white/45">Schnellzugriffe</p>
-              <h2 className="mt-2 text-base md:text-lg font-bold">Favoriten, Wallet und EV sofort erreichbar</h2>
+                <h2 className="mt-2 text-base md:text-lg font-bold">Favoriten, Wallet und alle Kernmodi sofort erreichbar</h2>
             </div>
 
             <div className="mt-5 grid gap-3">
@@ -358,7 +362,9 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => onNavigate('/ev')} data-testid="mobility-center-ev-button" className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left text-sm font-semibold">EV Charging</button>
-                <button onClick={() => onNavigate('/scooter')} data-testid="mobility-center-scooter-button" className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left text-sm font-semibold">Scooter</button>
+                <button onClick={() => onNavigate('/mobility-map?mode=scooter')} data-testid="mobility-center-scooter-button" className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left text-sm font-semibold">E-Scooter</button>
+                <button onClick={() => onNavigate('/mobility-map?mode=bike')} data-testid="mobility-center-ebike-button" className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left text-sm font-semibold">E-Bike</button>
+                <button onClick={() => onNavigate('/mobility-map?mode=car_sharing')} data-testid="mobility-center-carsharing-button" className="rounded-2xl border border-white/10 bg-black/20 p-4 text-left text-sm font-semibold">Carsharing</button>
               </div>
             </div>
           </motion.div>
