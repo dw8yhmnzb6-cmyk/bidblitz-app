@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 06.07.2026 — P0 Router Stability Sweep / App.js entlastet
+- `frontend/src/App.js`: Pfad-Hilfslogik, Admin-Tab-Mapping, Shell-Flags und ein großer Teil des Special-Route-Handlings aus dem monolithischen Router herausgezogen.
+- Neue Module live: `frontend/src/app/pathUtils.js`, `frontend/src/app/adminRouteMap.js`, `frontend/src/app/appShellFlags.js`, `frontend/src/app/renderSpecialRoutes.jsx`.
+- Ziel erreicht: geringeres Regressionsrisiko für weitere P1/P2-Ausbauten bei unverändertem Routing-Verhalten für Login, Admin, Taxi, Mobility, KYC-Redirects und Public/Special-Routes.
+- Verifiziert: JS-Lint PASS, Browser-Smoke PASS, Testing-Agent Iteration 195 Frontend 100% PASS. Keine MOCKS.
+
 ## 06.07.2026 — Taxi Kosovo Pricing + Uber-like Single-Letter Search
 - `frontend/src/components/taxi/useTaxiGeocoder.js` und Taxi-UI: Autocomplete startet jetzt ab 1 Buchstaben mit kürzerem Debounce; Browser-Smoke auf `/taxi` zeigte 6 Treffer nach Eingabe `P`.
 - `backend/routes/taxi.py`: Kosovo-Tarif auf `2€` Grundpreis + Kilometerpreis ohne Zeitaufschlag umgestellt; Estimates und Bookings speichern Region, Region-Label und Fare-Breakdown.
