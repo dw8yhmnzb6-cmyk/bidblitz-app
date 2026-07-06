@@ -45,6 +45,12 @@
 - AdminWallet-Anzeige bleibt zweigeteilt: EUR aus `users.balance`, BLZ separat aus `users.balance_blz`.
 - Verifiziert: `/api/auth/me` und `/api/admin/wallet/users` liefern `2622000000.0` EUR; Browser-Smoke zeigt `2622000000.00€` und `0 BLZ` getrennt.
 
+## 06.07.2026 — Kundenregistrierung + KYC Submit repariert
+- `backend/schemas/models.py` + `backend/routes/auth.py`: Registrierung akzeptiert `name` oder `full_name`; erstellt Kunden mit `5€` + `10 BLZ` Welcome-Bonus und Auth-Cookies.
+- `backend/routes/kyc.py`: `driver_license` wird akzeptiert und auf internes `drivers_license` normalisiert.
+- `frontend/src/pages/KYCFlow.jsx` + `frontend/src/components/KYCVerificationModal.jsx`: FastAPI-Detail-Arrays werden lesbar formatiert; alte React-Nested-Component-Lintfehler bereinigt.
+- Verifiziert: API-Registrierung mit `full_name` PASS, API-Registrierung mit `name` PASS, Browser `/register` PASS, KYC-Submit mit Testbildern erreicht AI/Backend strukturiert, Testing-Agent Iteration 191 PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
