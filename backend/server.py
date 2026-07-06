@@ -15,8 +15,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
-from core.config import APP_ENV, IS_PRODUCTION, ADMIN_EMAIL
+from core.config import APP_ENV, IS_PRODUCTION, ADMIN_EMAIL, ADMIN_PASSWORD
 from core.database import db, create_indexes, close_connection
+from core.security import hash_password, verify_password
 from core.rate_limit import limiter
 from core.middleware import setup_middleware
 from core.router_registry import register_all_routers
@@ -164,6 +165,75 @@ async def ensure_admin_driver_account():
         logger.warning(f"Admin driver seed failed: {e}")
 
 
+async def seed_admin():
+    try:
+        import random
+
+        admin_email = ADMIN_EMAIL.lower().strip()
+        now = datetime.now(timezone.utc).isoformat()
+        existing = await db.users.find_one({"email": admin_email})
+
+        if existing is None:
+            hashed = hash_password(ADMIN_PASSWORD)
+            result = await db.users.insert_one({
+                "email": admin_email,
+                "email_aliases": ["admin@bidblitz.ae", "admin@bid-blitz.ae"],
+                "password_hash": hashed,
+                "name": "Admin",
+                "role": "admin",
+                "kyc_status": "approved",
+                "kyc_verified": True,
+                "balance": 1500.00,
+                "currency": "EUR",
+                "card_number": f"{random.randint(4000,4999)} {random.randint(1000,9999)} {random.randint(1000,9999)} {random.randint(1000,9999)}",
+                "card_expiry": "09/28",
+                "created_at": now,
+                "registered_at": now,
+                "last_login_at": None,
+                "last_login_ip": "",
+                "last_login_user_agent": "",
+                "login_count": 0,
+            })
+            await db.merchants.update_one(
+                {"user_id": str(result.inserted_id)},
+                {"$setOnInsert": {
+                    "user_id": str(result.inserted_id),
+                    "business_name": "BidBlitz HQ",
+                    "total_earnings": 0.0,
+                    "total_transactions": 0,
+                    "created_at": now,
+                }},
+                upsert=True,
+            )
+            logger.info(f"✓ Admin user seeded: {admin_email}")
+            return
+
+        updates = {
+            "role": "admin",
+            "kyc_status": "approved",
+            "kyc_verified": True,
+            "email_aliases": list(dict.fromkeys((existing.get("email_aliases") or []) + ["admin@bidblitz.ae", "admin@bid-blitz.ae"])),
+        }
+        password_hash = existing.get("password_hash") or existing.get("password") or ""
+        password_needs_update = True
+        if password_hash:
+            try:
+                password_needs_update = not verify_password(ADMIN_PASSWORD, password_hash)
+            except Exception:
+                password_needs_update = True
+        if password_needs_update:
+            updates["password_hash"] = hash_password(ADMIN_PASSWORD)
+            logger.info("✓ Admin password hash refreshed from environment")
+
+        await db.users.update_one(
+            {"_id": existing["_id"]},
+            {"$set": updates, "$unset": {"password": ""}},
+        )
+        logger.info(f"✓ Admin seed verified: {admin_email}")
+    except Exception as e:
+        logger.warning(f"Admin seed failed: {e}")
+
+
 @app.get("/pay.js", include_in_schema=False)
 @app.get("/api/pay.js", include_in_schema=False)
 async def serve_bidblitz_pay_sdk():
@@ -179,6 +249,7 @@ async def startup_event():
     logger.info("🚀 Starting BidBlitz V2...")
     await create_indexes()
     logger.info("✓ Database indexes created")
+    await seed_admin()
     await ensure_admin_driver_account()
 
     # Seed demo auctions and start background bot+maintenance loops

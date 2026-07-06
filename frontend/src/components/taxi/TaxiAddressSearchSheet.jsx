@@ -46,10 +46,10 @@ export default function TaxiAddressSearchSheet({
   savedPlaces = [],
   recentAddresses = [],
 }) {
-  const { search } = useTaxiGeocoder({ debounceMs: 120 });
+  const { search } = useTaxiGeocoder({ debounceMs: 90 });
   const computedSearchHint = mode === "pickup"
-    ? "Abholadresse suchen oder auf der Karte setzen"
-    : "Zieladresse suchen wie bei Uber oder Bolt";
+    ? "Ein Buchstabe reicht — BidBlitz sucht sofort"
+    : "Ein Buchstabe reicht — live wie bei Uber";
   const [pickupVal, setPickupVal] = useState(pickup?.address || "");
   const [dropoffVal, setDropoffVal] = useState(dropoff?.address || "");
   const [pickupSugg, setPickupSugg] = useState([]);

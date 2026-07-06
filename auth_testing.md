@@ -1,5 +1,16 @@
 # Auth Testing Playbook
 
+## Admin Seed Verification
+- Startup must call `seed_admin()` idempotently after DB indexes are created.
+- Admin must exist with `role=admin`, `kyc_status=approved`, `kyc_verified=true`, bcrypt `password_hash`, and aliases `admin@bidblitz.ae` / `admin@bid-blitz.ae`.
+- Login smoke:
+```bash
+curl -c /tmp/bidblitz_auth_cookies.txt -X POST "$REACT_APP_BACKEND_URL/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@bidblitz.com","password":"BidBlitz2026!"}'
+curl -b /tmp/bidblitz_auth_cookies.txt "$REACT_APP_BACKEND_URL/api/auth/me"
+```
+
 ## Legacy Password Report
 - Login as admin
 - GET `/api/admin/customers-report/legacy-passwords`

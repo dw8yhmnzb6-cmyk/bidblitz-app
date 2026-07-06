@@ -7,6 +7,7 @@ NO FAKE DRIVERS - Only registered verified users.
 import secrets
 import math
 import logging
+from urllib.parse import quote
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -1126,10 +1127,10 @@ REGIONAL_PRICING = {
         "label": "DE-Tarif",
     },
     "kosovo": {
-        "standard": {"base": 1.50, "per_km": 0.50, "per_minute": 0.08, "min_fare": 2.50},
-        "premium": {"base": 2.50, "per_km": 0.80, "per_minute": 0.12, "min_fare": 5.00},
-        "van": {"base": 2.00, "per_km": 0.65, "per_minute": 0.10, "min_fare": 4.00},
-        "label": "KS-Tarif",
+        "standard": {"base": 2.00, "per_km": 0.70, "per_minute": 0.00, "min_fare": 2.00},
+        "premium": {"base": 2.00, "per_km": 1.05, "per_minute": 0.00, "min_fare": 3.00},
+        "van": {"base": 2.00, "per_km": 0.90, "per_minute": 0.00, "min_fare": 3.00},
+        "label": "Kosovo-Tarif: 2€ Start + Kilometer",
     },
     "dubai": {
         "standard": {"base": 3.00, "per_km": 0.90, "per_minute": 0.15, "min_fare": 5.00},
@@ -1767,6 +1768,9 @@ async def book_ride(req: FlexBookRequest, request: Request):
         "duration_estimate_minutes": round(duration_minutes),
         "fare_estimate": fare_total,
         "fare_estimate_original": fare_estimate["total"],
+        "fare_breakdown": fare_estimate,
+        "region": region,
+        "region_label": REGIONAL_PRICING.get(region, {}).get("label", ""),
         "promo": promo_applied,
         "status": RideStatus.REQUESTED.value,
         "recipient": {
@@ -3115,8 +3119,8 @@ async def get_ride_receipt(ride_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Fahrt noch nicht abgeschlossen")
 
     fare = float(ride.get("final_fare") or ride.get("estimated_fare") or 0)
-    distance_km = float(ride.get("distance_km", 0) or 0)
-    duration_min = float(ride.get("duration_minutes", 0) or 0)
+    distance_km = float(ride.get("distance_km") or ride.get("distance_km_estimate") or 0)
+    duration_min = float(ride.get("duration_minutes") or ride.get("duration_estimate_minutes") or 0)
     car_type = ride.get("car_type", "standard")
     region = ride.get("region", "germany")
     pricing = REGIONAL_PRICING.get(region, REGIONAL_PRICING["default"]).get(car_type, {})
@@ -3236,7 +3240,7 @@ async def taxi_geocode(
     Proximity-Bias (näher gelegene Vorschläge zuerst).
     """
     q = (q or "").strip()
-    if len(q) < 2:
+    if len(q) < 1:
         return {"features": []}
 
     token = _server_mapbox_token()
@@ -3260,7 +3264,7 @@ async def taxi_geocode(
     try:
         async with httpx.AsyncClient(timeout=4.0) as client:
             r = await client.get(
-                f"https://api.mapbox.com/geocoding/v5/mapbox.places/{q}.json",
+                f"https://api.mapbox.com/geocoding/v5/mapbox.places/{quote(q)}.json",
                 params=params,
             )
             if r.status_code != 200:

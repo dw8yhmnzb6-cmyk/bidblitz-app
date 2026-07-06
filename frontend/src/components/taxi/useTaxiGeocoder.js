@@ -112,7 +112,7 @@ function scoreFeature(feature, query, proximity) {
   return score;
 }
 
-export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
+export function useTaxiGeocoder({ debounceMs = 100 } = {}) {
   const timersRef = useRef({});
   const abortersRef = useRef({});
 
@@ -137,7 +137,7 @@ export function useTaxiGeocoder({ debounceMs = 250 } = {}) {
       if (aborters[key]) aborters[key].abort();
 
       const q = (query || "").trim();
-      if (q.length < 2) {
+      if (q.length < 1) {
         setSuggestions([]);
         setVisibility(false);
         return;
