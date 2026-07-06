@@ -27,6 +27,9 @@ EXECUTIVE_AI_PROVIDER = "openai"
 EXECUTIVE_AI_MODEL = "gpt-5.4"
 BUSINESS_AUTOMATION_SETTINGS_COLLECTION = "merchant_automation_settings"
 BUSINESS_AUTOMATION_RUNS_COLLECTION = "merchant_automation_runs"
+OPS_COMPANIES_COLLECTION = "merchant_v5_companies"
+OPS_DOCUMENTS_COLLECTION = "merchant_v5_documents"
+OPS_MAINTENANCE_COLLECTION = "merchant_v5_maintenance"
 EXECUTIVE_AI_FALLBACKS = [
     ("openai", "gpt-5.4"),
     ("openai", "gpt-5.2"),
@@ -73,6 +76,41 @@ class OperationsAutomationRunRequest(BaseModel):
 
 class RevenueAutomationRunRequest(BaseModel):
     limit: int = 3
+
+
+class OpsCompanyUpsertRequest(BaseModel):
+    company_id: Optional[str] = None
+    name: str
+    legal_name: str = ""
+    country: str = ""
+    status: str = "active"
+    manager_email: str = ""
+    tax_id: str = ""
+    wallet_budget: float = 0
+    branch_count: int = 1
+
+
+class OpsDocumentUpsertRequest(BaseModel):
+    document_id: Optional[str] = None
+    title: str
+    category: str = "general"
+    status: str = "draft"
+    linked_company_id: str = ""
+    expiry_date: str = ""
+    external_url: str = ""
+    notes: str = ""
+
+
+class OpsMaintenanceUpsertRequest(BaseModel):
+    ticket_id: Optional[str] = None
+    asset_name: str
+    asset_type: str = "terminal"
+    priority: str = "medium"
+    status: str = "open"
+    linked_company_id: str = ""
+    vendor_name: str = ""
+    next_check_at: str = ""
+    notes: str = ""
 
 
 async def require_merchant(request: Request):
@@ -163,6 +201,94 @@ async def _get_business_automation_settings(user_id: str) -> Dict[str, Any]:
     if not stored:
         return defaults
     return {**defaults, **stored}
+
+
+def _ops_status(value: str, allowed: List[str], fallback: str) -> str:
+    if value in allowed:
+        return value
+    return fallback
+
+
+def _with_deadline_meta(items: List[Dict[str, Any]], field_name: str) -> List[Dict[str, Any]]:
+    now = datetime.now(timezone.utc)
+    enriched = []
+    for item in items:
+        enriched_item = {**item}
+        target = _parse_iso(item.get(field_name))
+        if target:
+            enriched_item["days_until_deadline"] = (target - now).days
+        enriched.append(enriched_item)
+    return enriched
+
+
+async def _ensure_primary_ops_company(user: dict, enterprise: Dict[str, Any]) -> None:
+    uid = str(user["_id"])
+    existing = await db[OPS_COMPANIES_COLLECTION].find_one({"user_id": uid, "is_primary": True}, {"_id": 0, "company_id": 1})
+    if existing:
+        return
+    primary_company = {
+        "company_id": f"mco_{uuid.uuid4().hex[:10]}",
+        "user_id": uid,
+        "merchant_id": enterprise.get("company", {}).get("merchant_id"),
+        "name": enterprise.get("company", {}).get("business_name") or user.get("name") or user.get("email") or "BidBlitz Merchant",
+        "legal_name": enterprise.get("company", {}).get("business_name") or user.get("name") or "BidBlitz Merchant",
+        "country": (enterprise.get("profile") or {}).get("city") or "Kosovo",
+        "status": enterprise.get("company", {}).get("status") or "active",
+        "manager_email": (enterprise.get("profile") or {}).get("email") or user.get("email") or "",
+        "tax_id": "",
+        "wallet_budget": round(_num(enterprise.get("company", {}).get("wallet_balance")), 2),
+        "branch_count": max(1, len(enterprise.get("branches") or [])),
+        "is_primary": True,
+        "created_at": _now_iso(),
+        "updated_at": _now_iso(),
+    }
+    await db[OPS_COMPANIES_COLLECTION].insert_one(primary_company)
+
+
+async def _build_ops_suite(user: dict) -> Dict[str, Any]:
+    uid = str(user["_id"])
+    enterprise = await _build_enterprise_overview_data(user)
+    await _ensure_primary_ops_company(user, enterprise)
+
+    companies = await db[OPS_COMPANIES_COLLECTION].find({"user_id": uid}, {"_id": 0}).sort("created_at", 1).to_list(50)
+    documents = await db[OPS_DOCUMENTS_COLLECTION].find({"user_id": uid}, {"_id": 0}).sort("updated_at", -1).to_list(100)
+    maintenance = await db[OPS_MAINTENANCE_COLLECTION].find({"user_id": uid}, {"_id": 0}).sort("updated_at", -1).to_list(100)
+
+    documents = _with_deadline_meta(documents, "expiry_date")
+    maintenance = _with_deadline_meta(maintenance, "next_check_at")
+    companies_by_id = {item.get("company_id"): item.get("name") for item in companies}
+
+    for item in documents:
+        item["linked_company_name"] = companies_by_id.get(item.get("linked_company_id"), "Nicht zugewiesen")
+    for item in maintenance:
+        item["linked_company_name"] = companies_by_id.get(item.get("linked_company_id"), "Nicht zugewiesen")
+
+    expiring_soon = len([item for item in documents if isinstance(item.get("days_until_deadline"), int) and item.get("days_until_deadline") <= 30])
+    overdue_maintenance = len([item for item in maintenance if isinstance(item.get("days_until_deadline"), int) and item.get("days_until_deadline") < 0])
+    open_maintenance = len([item for item in maintenance if item.get("status") not in {"done", "archived"}])
+    high_priority_open = len([item for item in maintenance if item.get("priority") == "high" and item.get("status") not in {"done", "archived"}])
+
+    return {
+        "generated_at": _now_iso(),
+        "summary": {
+            "companies_total": len(companies),
+            "active_companies": len([item for item in companies if item.get("status") == "active"]),
+            "documents_total": len(documents),
+            "documents_expiring_soon": expiring_soon,
+            "maintenance_open": open_maintenance,
+            "maintenance_overdue": overdue_maintenance,
+            "maintenance_high_priority": high_priority_open,
+        },
+        "companies": companies,
+        "documents": documents,
+        "maintenance": maintenance,
+        "enterprise_snapshot": {
+            "merchant_id": enterprise.get("company", {}).get("merchant_id"),
+            "business_name": enterprise.get("company", {}).get("business_name"),
+            "wallet_balance": enterprise.get("company", {}).get("wallet_balance"),
+            "branches": len(enterprise.get("branches") or []),
+        },
+    }
 
 
 async def _record_business_automation_run(user_id: str, merchant_id: Optional[str], run_type: str, status: str, summary: str, details: Dict[str, Any]):
@@ -1551,3 +1677,94 @@ async def run_v5_business_automation_full(request: Request):
         summary,
     )
     return {"ok": True, "summary": summary, "run": run, "procurement": procurement, "operations": operations, "revenue": revenue}
+
+
+@router.get("/v5/ops-suite")
+async def get_v5_ops_suite(request: Request):
+    user = await require_merchant(request)
+    return await _build_ops_suite(user)
+
+
+@router.post("/v5/companies/upsert")
+async def upsert_v5_ops_company(request: Request, payload: OpsCompanyUpsertRequest):
+    user = await require_merchant(request)
+    uid = str(user["_id"])
+    company_id = payload.company_id or f"mco_{uuid.uuid4().hex[:10]}"
+    current = await db[OPS_COMPANIES_COLLECTION].find_one({"user_id": uid, "company_id": company_id}, {"_id": 0, "is_primary": 1, "merchant_id": 1})
+    company_doc = {
+        "company_id": company_id,
+        "user_id": uid,
+        "merchant_id": (current or {}).get("merchant_id"),
+        "name": payload.name.strip(),
+        "legal_name": payload.legal_name.strip(),
+        "country": payload.country.strip(),
+        "status": _ops_status(payload.status, ["active", "paused", "onboarding", "archived"], "active"),
+        "manager_email": payload.manager_email.strip(),
+        "tax_id": payload.tax_id.strip(),
+        "wallet_budget": round(_num(payload.wallet_budget), 2),
+        "branch_count": max(1, min(int(payload.branch_count or 1), 999)),
+        "is_primary": bool((current or {}).get("is_primary", False)),
+        "updated_at": _now_iso(),
+    }
+    if not current:
+        company_doc["created_at"] = _now_iso()
+    await db[OPS_COMPANIES_COLLECTION].update_one(
+        {"user_id": uid, "company_id": company_id},
+        {"$set": company_doc},
+        upsert=True,
+    )
+    saved = await db[OPS_COMPANIES_COLLECTION].find_one({"user_id": uid, "company_id": company_id}, {"_id": 0})
+    return {"ok": True, "company": saved}
+
+
+@router.post("/v5/documents/upsert")
+async def upsert_v5_ops_document(request: Request, payload: OpsDocumentUpsertRequest):
+    user = await require_merchant(request)
+    uid = str(user["_id"])
+    document_id = payload.document_id or f"mdoc_{uuid.uuid4().hex[:10]}"
+    document_doc = {
+        "document_id": document_id,
+        "user_id": uid,
+        "title": payload.title.strip(),
+        "category": _ops_status(payload.category, ["compliance", "finance", "operations", "contract", "general"], "general"),
+        "status": _ops_status(payload.status, ["draft", "active", "expiring", "archived"], "draft"),
+        "linked_company_id": payload.linked_company_id.strip(),
+        "expiry_date": payload.expiry_date.strip(),
+        "external_url": payload.external_url.strip(),
+        "notes": payload.notes.strip(),
+        "updated_at": _now_iso(),
+    }
+    await db[OPS_DOCUMENTS_COLLECTION].update_one(
+        {"user_id": uid, "document_id": document_id},
+        {"$set": {**document_doc, "created_at": document_doc.get("created_at") or _now_iso()}},
+        upsert=True,
+    )
+    saved = await db[OPS_DOCUMENTS_COLLECTION].find_one({"user_id": uid, "document_id": document_id}, {"_id": 0})
+    return {"ok": True, "document": saved}
+
+
+@router.post("/v5/maintenance/upsert")
+async def upsert_v5_ops_maintenance(request: Request, payload: OpsMaintenanceUpsertRequest):
+    user = await require_merchant(request)
+    uid = str(user["_id"])
+    ticket_id = payload.ticket_id or f"mmt_{uuid.uuid4().hex[:10]}"
+    ticket_doc = {
+        "ticket_id": ticket_id,
+        "user_id": uid,
+        "asset_name": payload.asset_name.strip(),
+        "asset_type": _ops_status(payload.asset_type, ["terminal", "printer", "display", "store", "vehicle", "other"], "terminal"),
+        "priority": _ops_status(payload.priority, ["low", "medium", "high"], "medium"),
+        "status": _ops_status(payload.status, ["open", "scheduled", "in_progress", "done", "archived"], "open"),
+        "linked_company_id": payload.linked_company_id.strip(),
+        "vendor_name": payload.vendor_name.strip(),
+        "next_check_at": payload.next_check_at.strip(),
+        "notes": payload.notes.strip(),
+        "updated_at": _now_iso(),
+    }
+    await db[OPS_MAINTENANCE_COLLECTION].update_one(
+        {"user_id": uid, "ticket_id": ticket_id},
+        {"$set": {**ticket_doc, "created_at": ticket_doc.get("created_at") or _now_iso()}},
+        upsert=True,
+    )
+    saved = await db[OPS_MAINTENANCE_COLLECTION].find_one({"user_id": uid, "ticket_id": ticket_id}, {"_id": 0})
+    return {"ok": True, "ticket": saved}

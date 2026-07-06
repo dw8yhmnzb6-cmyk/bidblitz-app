@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, Fingerprint, ShieldAlert } from "lucide-react";
+import { Activity, AlertTriangle, Fingerprint, ShieldAlert, Building2, Siren, Wrench } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { api } from "../services/api";
@@ -8,19 +8,22 @@ export default function AdminBioPayAuditPage({ onBack }) {
   const [overview, setOverview] = useState({ terminals: [], sessions: [], diagnostics: [], fraud_by_merchant: [] });
   const [audit, setAudit] = useState({ audit_logs: [], alerts: [] });
   const [diagnostics, setDiagnostics] = useState({ diagnostics: [] });
+  const [vendorDiagnostics, setVendorDiagnostics] = useState({ vendors: [], warning_workflows: [], terminals: [] });
 
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [overviewRes, auditRes, diagRes] = await Promise.all([
+      const [overviewRes, auditRes, diagRes, vendorRes] = await Promise.all([
         api.getAdminBioPayOverview().catch(() => ({ terminals: [], sessions: [], diagnostics: [], fraud_by_merchant: [] })),
         api.getAdminBioPayAuditCenter().catch(() => ({ audit_logs: [], alerts: [] })),
         api.getAdminBioPayTerminalDiagnostics().catch(() => ({ diagnostics: [] })),
+        api.getAdminBioPayVendorDiagnostics().catch(() => ({ vendors: [], warning_workflows: [], terminals: [] })),
       ]);
       if (!active) return;
       setOverview(overviewRes);
       setAudit(auditRes);
       setDiagnostics(diagRes);
+      setVendorDiagnostics(vendorRes);
     };
     load();
     return () => {
@@ -44,6 +47,32 @@ export default function AdminBioPayAuditPage({ onBack }) {
           <AuditStatCard label="Sessions" value={overview.sessions?.length || 0} icon={Activity} testId="admin-biopay-sessions-count" />
           <AuditStatCard label="Diagnostics" value={diagnostics.diagnostics?.length || 0} icon={ShieldAlert} testId="admin-biopay-diagnostics-count" />
           <AuditStatCard label="Alerts" value={audit.alerts?.length || 0} icon={AlertTriangle} testId="admin-biopay-alerts-count" />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SectionCard title="Vendor Diagnostics" testId="admin-biopay-vendor-diagnostics-list">
+            {(vendorDiagnostics.vendors || []).slice(0, 10).map((item, index) => (
+              <div key={`${item.vendor_name}-${index}`} className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0" data-testid={`admin-biopay-vendor-item-${index}`}>
+                <div>
+                  <p className="text-sm font-semibold text-white/85 flex items-center gap-2"><Building2 size={14} className="text-white/45" />{item.vendor_name}</p>
+                  <p className="text-[11px] text-white/45">{item.terminals_total} Terminals · {item.warning_terminals} Warning · {item.critical_terminals} Critical</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-black text-[#7dd3fc]">{Number(item.avg_score || 0).toFixed(1)}</p>
+                  <p className="text-[11px] text-white/45">Ø Score</p>
+                </div>
+              </div>
+            ))}
+          </SectionCard>
+
+          <SectionCard title="Warning Workflows" testId="admin-biopay-warning-workflows-list">
+            {(vendorDiagnostics.warning_workflows || []).slice(0, 12).map((item, index) => (
+              <div key={item.workflow_id} className="py-2 border-b border-white/5 last:border-0" data-testid={`admin-biopay-warning-workflow-${index}`}>
+                <p className="text-sm font-semibold text-white/85 flex items-center gap-2"><Siren size={14} className={item.severity === "critical" ? "text-red-400" : "text-amber-300"} />{item.title}</p>
+                <p className="text-[11px] text-white/45 mt-1">{item.terminal_id} · {item.vendor_name} · {item.recommended_action}</p>
+              </div>
+            ))}
+          </SectionCard>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -97,6 +126,26 @@ export default function AdminBioPayAuditPage({ onBack }) {
             ))}
           </SectionCard>
         </div>
+
+        <SectionCard title="Terminal Readiness" testId="admin-biopay-terminal-readiness-list">
+          <div className="grid gap-3 lg:grid-cols-3">
+            {(vendorDiagnostics.terminals || []).slice(0, 12).map((item, index) => (
+              <div key={item.terminal_id} className="rounded-2xl border border-white/8 bg-black/20 p-3" data-testid={`admin-biopay-terminal-readiness-${index}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white/85">{item.terminal_id}</p>
+                  <Wrench size={14} className="text-white/45" />
+                </div>
+                <p className="mt-1 text-[11px] text-white/45">{item.store_id || "no store"} · {item.register_id || "no register"}</p>
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                  <span className="rounded-full bg-white/5 px-2 py-1 text-white/75">{item.health_status}</span>
+                  <span className="rounded-full bg-white/5 px-2 py-1 text-white/75">Score {Number(item.diagnostic_score || 0).toFixed(1)}</span>
+                  <span className="rounded-full bg-white/5 px-2 py-1 text-white/75">Palm {item.palm_enabled ? "on" : "off"}</span>
+                  <span className="rounded-full bg-white/5 px-2 py-1 text-white/75">Face {item.face_enabled ? "on" : "off"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
       </div>
     </div>
   );

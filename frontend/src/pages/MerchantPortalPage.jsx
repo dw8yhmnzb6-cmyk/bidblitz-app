@@ -10,7 +10,7 @@ import {
   Settings, Loader2, Check, Save, Scissors, ChevronRight,
   Building2, Image as ImageIcon, Gift, Megaphone, Store, LineChart, Link2,
   BrainCircuit, Boxes, ReceiptText, AlertTriangle, Sparkles, Activity, ShieldAlert, PackageCheck,
-  Bot, Settings2, ClipboardList, Truck, Zap, PlayCircle
+  Bot, Settings2, ClipboardList, Truck, Zap, PlayCircle, FileText, Wrench, Landmark, Plus
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
@@ -35,6 +35,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [businessAutomation, setBusinessAutomation] = useState(null);
   const [automationSettings, setAutomationSettings] = useState(null);
   const [automationRunning, setAutomationRunning] = useState("");
+  const [opsSuite, setOpsSuite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [txns, setTxns] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -49,6 +50,10 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [opsBusy, setOpsBusy] = useState("");
+  const [companyForm, setCompanyForm] = useState({ name: "", legal_name: "", country: "Kosovo", status: "active", manager_email: "", tax_id: "", wallet_budget: 0, branch_count: 1 });
+  const [documentForm, setDocumentForm] = useState({ title: "", category: "compliance", status: "draft", linked_company_id: "", expiry_date: "", external_url: "", notes: "" });
+  const [maintenanceForm, setMaintenanceForm] = useState({ asset_name: "", asset_type: "terminal", priority: "medium", status: "open", linked_company_id: "", vendor_name: "", next_check_at: "", notes: "" });
 
   const loadDash = useCallback(async () => {
     try {
@@ -58,11 +63,12 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         setDash(d);
         if (d.profile) setProfile(prev => ({ ...prev, ...d.profile }));
       }
-      const [entRes, v5Res, aiRes, automationRes, progRes, growthRes, fraRes] = await Promise.all([
+      const [entRes, v5Res, aiRes, automationRes, opsRes, progRes, growthRes, fraRes] = await Promise.all([
         fetch(`${API}/api/merchant-portal/enterprise-overview`, { credentials: "include" }),
         fetch(`${API}/api/merchant-portal/v5/dashboard`, { credentials: "include" }),
         fetch(`${API}/api/merchant-portal/v5/executive-ai/latest`, { credentials: "include" }),
         fetch(`${API}/api/merchant-portal/v5/business-automation`, { credentials: "include" }),
+        fetch(`${API}/api/merchant-portal/v5/ops-suite`, { credentials: "include" }),
         fetch(`${API}/api/referral/merchant-program`, { credentials: "include" }),
         fetch(`${API}/api/referral/growth-dashboard`, { credentials: "include" }),
         fetch(`${API}/api/referral/franchise/applications`, { credentials: "include" }),
@@ -79,6 +85,15 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         const automationData = await automationRes.json();
         setBusinessAutomation(automationData);
         setAutomationSettings(automationData.settings || null);
+      }
+      if (opsRes.ok) {
+        const opsData = await opsRes.json();
+        setOpsSuite(opsData);
+        const firstCompany = (opsData.companies || [])[0];
+        if (firstCompany) {
+          setDocumentForm((prev) => ({ ...prev, linked_company_id: prev.linked_company_id || firstCompany.company_id }));
+          setMaintenanceForm((prev) => ({ ...prev, linked_company_id: prev.linked_company_id || firstCompany.company_id }));
+        }
       }
       if (progRes.ok) setMerchantProgram(await progRes.json());
       if (growthRes.ok) setGrowth(await growthRes.json());
@@ -191,6 +206,59 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     }
   }, []);
 
+  const loadOpsSuite = useCallback(async () => {
+    try {
+      const data = await api.getMerchantOpsSuite();
+      setOpsSuite(data);
+      const firstCompany = (data.companies || [0]) ? data.companies?.[0] : null;
+      if (firstCompany) {
+        setDocumentForm((prev) => ({ ...prev, linked_company_id: prev.linked_company_id || firstCompany.company_id }));
+        setMaintenanceForm((prev) => ({ ...prev, linked_company_id: prev.linked_company_id || firstCompany.company_id }));
+      }
+    } catch (error) {
+      void error;
+    }
+  }, []);
+
+  const saveOpsCompany = useCallback(async () => {
+    setOpsBusy("company");
+    try {
+      await api.upsertMerchantOpsCompany(companyForm);
+      setCompanyForm({ name: "", legal_name: "", country: "Kosovo", status: "active", manager_email: "", tax_id: "", wallet_budget: 0, branch_count: 1 });
+      await loadOpsSuite();
+    } catch (error) {
+      void error;
+    } finally {
+      setOpsBusy("");
+    }
+  }, [companyForm, loadOpsSuite]);
+
+  const saveOpsDocument = useCallback(async () => {
+    setOpsBusy("document");
+    try {
+      await api.upsertMerchantOpsDocument(documentForm);
+      setDocumentForm((prev) => ({ ...prev, title: "", expiry_date: "", external_url: "", notes: "" }));
+      await loadOpsSuite();
+    } catch (error) {
+      void error;
+    } finally {
+      setOpsBusy("");
+    }
+  }, [documentForm, loadOpsSuite]);
+
+  const saveOpsMaintenance = useCallback(async () => {
+    setOpsBusy("maintenance");
+    try {
+      await api.upsertMerchantOpsMaintenance(maintenanceForm);
+      setMaintenanceForm((prev) => ({ ...prev, asset_name: "", vendor_name: "", next_check_at: "", notes: "" }));
+      await loadOpsSuite();
+    } catch (error) {
+      void error;
+    } finally {
+      setOpsBusy("");
+    }
+  }, [maintenanceForm, loadOpsSuite]);
+
   const saveAutomationSettings = useCallback(async (updates) => {
     const previous = automationSettings || {};
     const next = { ...previous, ...updates };
@@ -224,6 +292,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     { id: "enterprise-v5", label: "Enterprise V5", icon: Building2 },
     { id: "executive-ai", label: "Executive AI", icon: BrainCircuit },
     { id: "business-automation", label: "Business Automation", icon: Bot },
+    { id: "ops-suite", label: "Ops Suite", icon: Landmark },
     { id: "ecosystem", label: locale === "sq" ? "Ekosistemi" : locale === "en" ? "Ecosystem" : "Ökosystem", icon: Store },
     { id: "growth", label: locale === "sq" ? "Rritja" : locale === "en" ? "Growth" : "Wachstum", icon: LineChart },
     { id: "transactions", label: "Finanzen", icon: DollarSign },
@@ -913,6 +982,88 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
         </div>
       )}
 
+      {tab === "ops-suite" && opsSuite && (
+        <div className="p-4 space-y-4" data-testid="merchant-v5-ops-suite">
+          <div className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,_rgba(168,85,247,0.22),_transparent_32%),linear-gradient(145deg,_rgba(10,15,28,1),_rgba(18,24,38,1))] p-5" data-testid="merchant-v5-ops-suite-hero">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-fuchsia-200/80">Merchant Platform V5</p>
+                <h2 className="mt-2 text-2xl font-black text-white">Multi-Company · Document Center · Maintenance</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-300">Der P2-Leitstand bündelt Gesellschaften, Compliance-Dokumente und Wartungs-Tickets in einer Oberfläche.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <MetricPill label="Companies" value={opsSuite.summary?.companies_total ?? 0} testid="merchant-v5-ops-companies-total" />
+                <MetricPill label="Documents" value={opsSuite.summary?.documents_total ?? 0} testid="merchant-v5-ops-documents-total" />
+                <MetricPill label="Expiring" value={opsSuite.summary?.documents_expiring_soon ?? 0} testid="merchant-v5-ops-documents-expiring" />
+                <MetricPill label="Maintenance" value={opsSuite.summary?.maintenance_open ?? 0} testid="merchant-v5-ops-maintenance-open" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-3">
+            <OpsFormCard title="Neue Company" icon={Building2} testid="merchant-v5-ops-company-form">
+              <OpsInput value={companyForm.name} onChange={(value) => setCompanyForm((prev) => ({ ...prev, name: value }))} placeholder="BidBlitz Retail GmbH" testid="merchant-v5-ops-company-name" />
+              <OpsInput value={companyForm.legal_name} onChange={(value) => setCompanyForm((prev) => ({ ...prev, legal_name: value }))} placeholder="Rechtlicher Name" testid="merchant-v5-ops-company-legal-name" />
+              <OpsInput value={companyForm.manager_email} onChange={(value) => setCompanyForm((prev) => ({ ...prev, manager_email: value }))} placeholder="manager@firma.com" testid="merchant-v5-ops-company-manager-email" />
+              <OpsInput value={companyForm.tax_id} onChange={(value) => setCompanyForm((prev) => ({ ...prev, tax_id: value }))} placeholder="VAT / Tax ID" testid="merchant-v5-ops-company-tax-id" />
+              <div className="grid grid-cols-2 gap-2">
+                <OpsSelect value={companyForm.status} onChange={(value) => setCompanyForm((prev) => ({ ...prev, status: value }))} options={["active", "paused", "onboarding", "archived"]} testid="merchant-v5-ops-company-status" />
+                <OpsInput value={String(companyForm.branch_count)} onChange={(value) => setCompanyForm((prev) => ({ ...prev, branch_count: Number(value) || 1 }))} placeholder="Branches" testid="merchant-v5-ops-company-branches" />
+              </div>
+              <OpsInput value={String(companyForm.wallet_budget)} onChange={(value) => setCompanyForm((prev) => ({ ...prev, wallet_budget: Number(value) || 0 }))} placeholder="Wallet Budget" testid="merchant-v5-ops-company-wallet-budget" />
+              <button onClick={saveOpsCompany} disabled={opsBusy === "company" || !companyForm.name.trim()} className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-fuchsia-400 text-slate-950 text-xs font-black disabled:opacity-50" data-testid="merchant-v5-ops-company-save">{opsBusy === "company" ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Company speichern</button>
+            </OpsFormCard>
+
+            <OpsFormCard title="Document Center" icon={FileText} testid="merchant-v5-ops-document-form">
+              <OpsInput value={documentForm.title} onChange={(value) => setDocumentForm((prev) => ({ ...prev, title: value }))} placeholder="Lieferantenvertrag 2026" testid="merchant-v5-ops-document-title" />
+              <div className="grid grid-cols-2 gap-2">
+                <OpsSelect value={documentForm.category} onChange={(value) => setDocumentForm((prev) => ({ ...prev, category: value }))} options={["compliance", "finance", "operations", "contract", "general"]} testid="merchant-v5-ops-document-category" />
+                <OpsSelect value={documentForm.status} onChange={(value) => setDocumentForm((prev) => ({ ...prev, status: value }))} options={["draft", "active", "expiring", "archived"]} testid="merchant-v5-ops-document-status" />
+              </div>
+              <OpsSelect value={documentForm.linked_company_id} onChange={(value) => setDocumentForm((prev) => ({ ...prev, linked_company_id: value }))} options={(opsSuite.companies || []).map((item) => item.company_id)} labels={Object.fromEntries((opsSuite.companies || []).map((item) => [item.company_id, item.name]))} testid="merchant-v5-ops-document-company" />
+              <OpsInput value={documentForm.expiry_date} onChange={(value) => setDocumentForm((prev) => ({ ...prev, expiry_date: value }))} placeholder="2026-12-31T12:00:00+00:00" testid="merchant-v5-ops-document-expiry" />
+              <OpsInput value={documentForm.external_url} onChange={(value) => setDocumentForm((prev) => ({ ...prev, external_url: value }))} placeholder="https://..." testid="merchant-v5-ops-document-url" />
+              <OpsTextarea value={documentForm.notes} onChange={(value) => setDocumentForm((prev) => ({ ...prev, notes: value }))} placeholder="Notizen, Eigentümer, Audit-Hinweise" testid="merchant-v5-ops-document-notes" />
+              <button onClick={saveOpsDocument} disabled={opsBusy === "document" || !documentForm.title.trim()} className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 text-slate-950 text-xs font-black disabled:opacity-50" data-testid="merchant-v5-ops-document-save">{opsBusy === "document" ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Dokument speichern</button>
+            </OpsFormCard>
+
+            <OpsFormCard title="Maintenance Tracker" icon={Wrench} testid="merchant-v5-ops-maintenance-form">
+              <OpsInput value={maintenanceForm.asset_name} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, asset_name: value }))} placeholder="BIO-D8992DFCA1" testid="merchant-v5-ops-maintenance-asset-name" />
+              <div className="grid grid-cols-2 gap-2">
+                <OpsSelect value={maintenanceForm.asset_type} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, asset_type: value }))} options={["terminal", "printer", "display", "store", "vehicle", "other"]} testid="merchant-v5-ops-maintenance-asset-type" />
+                <OpsSelect value={maintenanceForm.priority} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, priority: value }))} options={["low", "medium", "high"]} testid="merchant-v5-ops-maintenance-priority" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <OpsSelect value={maintenanceForm.status} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, status: value }))} options={["open", "scheduled", "in_progress", "done", "archived"]} testid="merchant-v5-ops-maintenance-status" />
+                <OpsSelect value={maintenanceForm.linked_company_id} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, linked_company_id: value }))} options={(opsSuite.companies || []).map((item) => item.company_id)} labels={Object.fromEntries((opsSuite.companies || []).map((item) => [item.company_id, item.name]))} testid="merchant-v5-ops-maintenance-company" />
+              </div>
+              <OpsInput value={maintenanceForm.vendor_name} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, vendor_name: value }))} placeholder="Vendor / Service Partner" testid="merchant-v5-ops-maintenance-vendor" />
+              <OpsInput value={maintenanceForm.next_check_at} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, next_check_at: value }))} placeholder="2026-08-01T09:00:00+00:00" testid="merchant-v5-ops-maintenance-next-check" />
+              <OpsTextarea value={maintenanceForm.notes} onChange={(value) => setMaintenanceForm((prev) => ({ ...prev, notes: value }))} placeholder="Ersatzteil, SLA, Techniker-Hinweise" testid="merchant-v5-ops-maintenance-notes" />
+              <button onClick={saveOpsMaintenance} disabled={opsBusy === "maintenance" || !maintenanceForm.asset_name.trim()} className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-amber-300 text-slate-950 text-xs font-black disabled:opacity-50" data-testid="merchant-v5-ops-maintenance-save">{opsBusy === "maintenance" ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Ticket speichern</button>
+            </OpsFormCard>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-3">
+            <OpsListCard title="Companies" icon={Building2} testid="merchant-v5-ops-company-list">
+              {(opsSuite.companies || []).map((item, index) => (
+                <OpsListRow key={item.company_id} title={item.name} subtitle={`${item.status} · ${item.branch_count} Branches · ${item.manager_email || 'kein Manager'}`} value={`€${Number(item.wallet_budget || 0).toFixed(0)}`} testid={`merchant-v5-ops-company-item-${index}`} />
+              ))}
+            </OpsListCard>
+            <OpsListCard title="Document Center" icon={FileText} testid="merchant-v5-ops-document-list">
+              {(opsSuite.documents || []).slice(0, 8).map((item, index) => (
+                <OpsListRow key={item.document_id} title={item.title} subtitle={`${item.category} · ${item.linked_company_name} · ${item.days_until_deadline ?? 'n/a'} Tage`} value={item.status} testid={`merchant-v5-ops-document-item-${index}`} />
+              ))}
+            </OpsListCard>
+            <OpsListCard title="Maintenance Tracker" icon={Wrench} testid="merchant-v5-ops-maintenance-list">
+              {(opsSuite.maintenance || []).slice(0, 8).map((item, index) => (
+                <OpsListRow key={item.ticket_id} title={item.asset_name} subtitle={`${item.asset_type} · ${item.vendor_name || 'Vendor offen'} · ${item.linked_company_name}`} value={item.priority} testid={`merchant-v5-ops-maintenance-item-${index}`} />
+              ))}
+            </OpsListCard>
+          </div>
+        </div>
+      )}
+
       {tab === "ecosystem" && (
         <div className="p-4 space-y-4" data-testid="merchant-ecosystem-tab">
           <div className="grid grid-cols-2 gap-2">
@@ -1251,6 +1402,55 @@ function SettingStepper({ label, value, min, max, step, suffix = "", onChange, t
         >
           +
         </button>
+      </div>
+    </div>
+  );
+}
+
+function OpsFormCard({ title, icon: Icon, children, testid }) {
+  return (
+    <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid={testid}>
+      <div className="mb-4 flex items-center gap-2"><Icon size={16} className="text-fuchsia-300" /><h3 className="text-sm font-bold text-white">{title}</h3></div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function OpsInput({ value, onChange, placeholder, testid }) {
+  return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-10 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-xs text-white outline-none placeholder:text-slate-500" data-testid={testid} />;
+}
+
+function OpsTextarea({ value, onChange, placeholder, testid }) {
+  return <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3} className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-slate-500 resize-none" data-testid={testid} />;
+}
+
+function OpsSelect({ value, onChange, options, labels = {}, testid }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="h-10 w-full rounded-2xl border border-white/10 bg-[#131c2a] px-3 text-xs text-white outline-none" data-testid={testid}>
+      <option value="">Bitte wählen</option>
+      {options.map((item) => <option key={item} value={item}>{labels[item] || item}</option>)}
+    </select>
+  );
+}
+
+function OpsListCard({ title, icon: Icon, children, testid }) {
+  return (
+    <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid={testid}>
+      <div className="mb-4 flex items-center gap-2"><Icon size={16} className="text-cyan-300" /><h3 className="text-sm font-bold text-white">{title}</h3></div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function OpsListRow({ title, subtitle, value, testid }) {
+  return (
+    <div className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={testid}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-white">{title}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{subtitle}</p>
+        </div>
+        <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] font-semibold text-white">{value}</span>
       </div>
     </div>
   );

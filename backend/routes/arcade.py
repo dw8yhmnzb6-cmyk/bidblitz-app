@@ -27,6 +27,29 @@ class StartSessionRequest(BaseModel):
     game_id: str
 
 
+def _season_id() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+async def _build_leaderboard(game_id: Optional[str], season_only: bool, limit: int) -> list[dict]:
+    query = {}
+    if game_id:
+        query["game_id"] = game_id
+    if season_only:
+        query["season_id"] = _season_id()
+    cursor = db.arcade_highscores.find(query, {"_id": 0}).sort("score", -1).limit(limit)
+    rows = await cursor.to_list(length=limit)
+    leaderboard = []
+    for index, row in enumerate(rows, start=1):
+        user_doc = await db.users.find_one({"_id": _oid(row["user_id"])}, {"_id": 0, "name": 1, "email": 1})
+        leaderboard.append({
+            **row,
+            "rank": index,
+            "display_name": ((user_doc or {}).get("name") or (user_doc or {}).get("email", "").split("@")[0] or "?")[:18],
+        })
+    return leaderboard
+
+
 @router.post("/start-session")
 async def start_session(req: StartSessionRequest, request: Request):
     """Nutzer zahlt 1 BLZ um ein Game zu starten."""
@@ -84,7 +107,7 @@ async def end_session(req: EndSessionRequest, request: Request):
         await db.users.update_one({"_id": _oid(uid)}, {"$inc": {"balance_blz": reward}})
         await db.arcade_highscores.update_one(
             {"user_id": uid, "game_id": session["game_id"]},
-            {"$set": {"score": req.score, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            {"$set": {"score": req.score, "updated_at": datetime.now(timezone.utc).isoformat(), "season_id": _season_id(), "game_id": session["game_id"], "user_id": uid}},
             upsert=True,
         )
         now = datetime.now(timezone.utc).isoformat()
@@ -120,6 +143,39 @@ async def get_highscores(request: Request, game_id: Optional[str] = None, limit:
         u = await db.users.find_one({"_id": _oid(s["user_id"])}, {"name": 1, "email": 1, "_id": 0})
         s["display_name"] = ((u or {}).get("name") or (u or {}).get("email", "").split("@")[0] or "?")[:18]
     return {"highscores": scores}
+
+
+@router.get("/hub-overview")
+async def get_arcade_hub_overview(request: Request):
+    user = await get_current_user(request)
+    uid = str(user.get("_id") or user.get("id"))
+    balance = float(user.get("balance_blz", 0) or 0)
+    history = await db.arcade_sessions.find({"user_id": uid}, {"_id": 0}).sort("started_at", -1).limit(30).to_list(30)
+    highscores = await db.arcade_highscores.find({"user_id": uid}, {"_id": 0}).sort("updated_at", -1).limit(20).to_list(20)
+    season_leaderboard = await _build_leaderboard(None, True, 10)
+    all_time_leaderboard = await _build_leaderboard(None, False, 10)
+    season_games = await db.arcade_sessions.find({"user_id": uid, "started_at": {"$regex": f"^{datetime.now(timezone.utc).strftime('%Y-%m')}"}}, {"_id": 0, "reward": 1, "score": 1, "game_id": 1}).to_list(100)
+    total_reward = round(sum(float(item.get("reward") or 0) for item in history), 2)
+    games_played = len(history)
+    top_score = max([int(item.get("score") or 0) for item in highscores], default=0)
+    unique_games = len({item.get("game_id") for item in history if item.get("game_id")})
+    return {
+        "balance_blz": round(balance, 2),
+        "season_id": _season_id(),
+        "stats": {
+            "games_played": games_played,
+            "unique_games": unique_games,
+            "top_score": top_score,
+            "total_reward_blz": total_reward,
+            "season_points": sum(max(0, int(item.get("score") or 0)) for item in season_games),
+        },
+        "leaderboards": {
+            "season": season_leaderboard,
+            "all_time": all_time_leaderboard,
+        },
+        "recent_sessions": history[:8],
+        "personal_best": highscores[:8],
+    }
 
 
 @router.get("/config")

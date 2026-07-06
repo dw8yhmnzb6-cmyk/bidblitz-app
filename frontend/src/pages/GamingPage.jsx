@@ -29,6 +29,8 @@ const GamingPage = ({ onNavigate, onBack }) => {
   const [buyAmount, setBuyAmount] = useState("5");
   const [buying, setBuying] = useState(false);
   const [overview, setOverview] = useState(null);
+  const [arcadeOverview, setArcadeOverview] = useState(null);
+  const [leaderboardTab, setLeaderboardTab] = useState("season");
   const [claimingMilestone, setClaimingMilestone] = useState(null);
   const [claimingPerk, setClaimingPerk] = useState(null);
 
@@ -49,6 +51,14 @@ const GamingPage = ({ onNavigate, onBack }) => {
       if (overviewRes.ok) {
         const data = await overviewRes.json();
         setOverview(data);
+      }
+      try {
+        const arcadeRes = await fetch(`${API_URL}/api/arcade/hub-overview`, { credentials: "include" });
+        if (arcadeRes.ok) {
+          setArcadeOverview(await arcadeRes.json());
+        }
+      } catch (arcadeError) {
+        console.error(arcadeError);
       }
     } catch (err) {
       console.error(err);
@@ -350,6 +360,29 @@ const GamingPage = ({ onNavigate, onBack }) => {
               );})}
             </div>
           </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" data-testid="game-center-arcade-games-played-card">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-200/70">Arcade Games</p>
+            <p className="mt-2 text-[22px] font-black text-white">{arcadeOverview?.stats?.games_played || 0}</p>
+            <p className="text-[11px] text-gray-400">Sessions insgesamt</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" data-testid="game-center-arcade-unique-games-card">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/70">Unique Games</p>
+            <p className="mt-2 text-[22px] font-black text-white">{arcadeOverview?.stats?.unique_games || 0}</p>
+            <p className="text-[11px] text-gray-400">Verschiedene Titel</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" data-testid="game-center-arcade-top-score-card">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-yellow-200/70">Top Score</p>
+            <p className="mt-2 text-[22px] font-black text-white">{arcadeOverview?.stats?.top_score || 0}</p>
+            <p className="text-[11px] text-gray-400">Persönlicher Bestwert</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" data-testid="game-center-arcade-reward-card">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-fuchsia-200/70">Arcade Reward</p>
+            <p className="mt-2 text-[22px] font-black text-white">{Number(arcadeOverview?.stats?.total_reward_blz || 0).toFixed(0)} BLZ</p>
+            <p className="text-[11px] text-gray-400">Highscore-Rückflüsse</p>
+          </div>
+        </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -386,25 +419,48 @@ const GamingPage = ({ onNavigate, onBack }) => {
             <Trophy size={16} className="text-yellow-400" />
             {t("gaming.top_players")}
           </h2>
-          <button className="text-[11px] text-cyan-400">{t("gaming.show_all")}</button>
+          <div className="flex gap-2">
+            <button onClick={() => setLeaderboardTab("season")} className={`text-[11px] ${leaderboardTab === "season" ? "text-cyan-300" : "text-white/40"}`} data-testid="game-center-leaderboard-tab-season">Season</button>
+            <button onClick={() => setLeaderboardTab("all_time")} className={`text-[11px] ${leaderboardTab === "all_time" ? "text-cyan-300" : "text-white/40"}`} data-testid="game-center-leaderboard-tab-all-time">All Time</button>
+          </div>
         </div>
         <div className="space-y-2">
-          {[
-            { rank: 1, name: "MaxGamer", points: 15420, emoji: "👑" },
-            { rank: 2, name: "LuckyLisa", points: 12300, emoji: "🥈" },
-            { rank: 3, name: "ProPlayer", points: 9850, emoji: "🥉" },
-          ].map((player) => (
+          {((leaderboardTab === "season" ? arcadeOverview?.leaderboards?.season : arcadeOverview?.leaderboards?.all_time) || []).slice(0, 5).map((player) => (
             <div
-              key={player.rank}
+              key={`${leaderboardTab}-${player.rank}-${player.display_name}`}
               className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5"
+              data-testid={`game-center-leaderboard-item-${leaderboardTab}-${player.rank}`}
             >
-              <span className="text-xl">{player.emoji}</span>
+              <span className="text-xl">{player.rank === 1 ? "👑" : player.rank === 2 ? "🥈" : player.rank === 3 ? "🥉" : "🎮"}</span>
               <div className="flex-1">
-                <p className="text-[13px] font-semibold text-white">{player.name}</p>
+                <p className="text-[13px] font-semibold text-white">{player.display_name || player.name}</p>
+                <p className="text-[10px] text-white/45">Rank #{player.rank}</p>
               </div>
-              <p className="text-yellow-400 font-bold text-[13px]">{player.points.toLocaleString()}</p>
+              <p className="text-yellow-400 font-bold text-[13px]">{Number(player.score ?? player.points ?? 0).toLocaleString()}</p>
             </div>
           ))}
+          {(((leaderboardTab === "season" ? arcadeOverview?.leaderboards?.season : arcadeOverview?.leaderboards?.all_time) || []).length === 0) && (
+            <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4 text-[12px] text-white/50" data-testid="game-center-leaderboard-empty-state">
+              Noch keine Leaderboard-Daten — starte eine Arcade-Session oder sammle XP im Game Center.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="px-4 mt-6">
+        <div className="rounded-2xl border border-fuchsia-500/20 bg-gradient-to-br from-fuchsia-500/10 to-transparent p-4" data-testid="game-center-personal-best-card">
+          <div className="flex items-center gap-2 mb-3 text-fuchsia-300"><Target size={16} /><p className="text-[13px] font-bold">Persönliche Arcade Bestwerte</p></div>
+          <div className="space-y-2">
+            {(arcadeOverview?.personal_best || []).slice(0, 4).map((item, index) => (
+              <div key={`${item.game_id}-${index}`} className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2" data-testid={`game-center-personal-best-${index}`}>
+                <div>
+                  <p className="text-[12px] font-semibold text-white">{item.game_id}</p>
+                  <p className="text-[10px] text-white/45">Aktualisiert {String(item.updated_at || "").slice(0, 10)}</p>
+                </div>
+                <p className="text-[13px] font-bold text-fuchsia-200">{item.score}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
