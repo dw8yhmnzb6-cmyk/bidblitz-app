@@ -160,9 +160,6 @@ async def register_taxi_operator(req: OperatorRegistration, request: Request):
     }
 
 
-@router.get("/operator/status")
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 # FAVORITE LOCATIONS (User saved addresses)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -270,6 +267,8 @@ async def mark_favorite_used(favorite_id: str, request: Request):
     
     return {"ok": True}
 
+
+@router.get("/operator/status")
 async def get_operator_status(request: Request):
     """Get current operator status and earnings."""
     user = await get_current_user(request)

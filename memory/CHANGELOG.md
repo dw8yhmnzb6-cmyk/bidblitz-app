@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 06.07.2026 — Taxi Kosovo Pricing + Uber-like Single-Letter Search
+- `frontend/src/components/taxi/useTaxiGeocoder.js` und Taxi-UI: Autocomplete startet jetzt ab 1 Buchstaben mit kürzerem Debounce; Browser-Smoke auf `/taxi` zeigte 6 Treffer nach Eingabe `P`.
+- `backend/routes/taxi.py`: Kosovo-Tarif auf `2€` Grundpreis + Kilometerpreis ohne Zeitaufschlag umgestellt; Estimates und Bookings speichern Region, Region-Label und Fare-Breakdown.
+- `backend/routes/taxi.py`: `/api/taxi/geocode` akzeptiert Single-Letter-Queries und encodiert Mapbox-Queries sauber; `/api/taxi/operator/status` Decorator-Drift korrigiert.
+- `backend/server.py`: idempotentes `seed_admin()` beim Startup wieder aktiviert und vor `ensure_admin_driver_account()` einsortiert; Admin-Alias-/KYC-Vertrag bleibt stabil.
+- Verifiziert: JS/Python Lint PASS, Self-Tests für Kosovo-Estimate, Single-Letter-Geocode, Admin-Kanonisch/Alias-Login und Operator-Status PASS; Testing-Agent Iteration 183 Backend/Frontend 100% PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
