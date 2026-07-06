@@ -136,7 +136,7 @@ function resolveHomeWork(savedPlaces) {
 
 export default function TaxiPage({ onNavigate }) {
   const { user } = useUser();
-  const { search } = useTaxiGeocoder({ debounceMs: 180 });
+  const { search } = useTaxiGeocoder({ debounceMs: 90 });
 
   const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
   const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
@@ -157,6 +157,7 @@ export default function TaxiPage({ onNavigate }) {
   const [favorites, setFavorites] = useState([]);
   const [recentAddresses, setRecentAddresses] = useState([]);
   const [favoriteRoutes, setFavoriteRoutes] = useState([]);
+  const [tariffMeta, setTariffMeta] = useState(null);
   const [bookingMode, setBookingMode] = useState('now');
   const [scheduledAt, setScheduledAt] = useState('');
   const [forOther, setForOther] = useState(false);
@@ -312,6 +313,7 @@ export default function TaxiPage({ onNavigate }) {
     const result = await api.estimateRide({ pickup, dropoff });
     if (!result.ok) {
       setEstimates([]);
+      setTariffMeta(null);
       setError(result.error || 'Keine Fahrten verfügbar');
       if (bookingMode === 'now') setBookingMode('later');
       setEstimating(false);
@@ -319,6 +321,7 @@ export default function TaxiPage({ onNavigate }) {
     }
     setEstimates(result.estimates || []);
     setSurge(result.surge || null);
+    setTariffMeta({ region: result.region, label: result.region_label, zone: result.tariff_zone, time: result.time_tariff });
     const recommended = (result.estimates || []).find((item) => item.vehicle_type === selectedVehicle) || result.estimates?.[0];
     if (recommended?.vehicle_type) setSelectedVehicle(recommended.vehicle_type);
     setEstimating(false);
@@ -383,6 +386,57 @@ export default function TaxiPage({ onNavigate }) {
     });
     return cards.slice(0, 4);
   }, [favoriteRoutes, recentAddresses, favorites]);
+
+  const personalizedSearchSuggestions = useCallback((type, value) => {
+    const q = String(value || '').trim().toLowerCase();
+    if (!q) return [];
+    const items = [];
+    const pushItem = (item) => {
+      if (!item?.address || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
+      const label = `${item.name || ''} ${item.title || ''} ${item.address || ''} ${item.sourceLabel || ''}`.toLowerCase();
+      if (!label.includes(q)) return;
+      items.push({
+        name: item.name || item.title || item.address.split(',')[0],
+        address: item.address,
+        cityZip: item.sourceLabel || item.subtitle || 'Persönlich',
+        lat: Number(item.lat),
+        lng: Number(item.lng),
+        sourceLabel: item.sourceLabel || 'Persönlich',
+        personal: true,
+      });
+    };
+    if (type === 'dropoff') {
+      if (home) pushItem({ ...home, lat: home.lat || home.latitude, lng: home.lng || home.longitude, name: 'Home', sourceLabel: 'Home' });
+      if (work) pushItem({ ...work, lat: work.lat || work.latitude, lng: work.lng || work.longitude, name: 'Work', sourceLabel: 'Work' });
+      favoriteRoutes.forEach((route) => pushItem({ ...route.dropoff, title: route.dropoff?.address, sourceLabel: 'Häufige Route' }));
+      favorites.forEach((favorite) => pushItem({ ...favorite, lat: favorite.latitude, lng: favorite.longitude, sourceLabel: 'Favorit' }));
+    }
+    recentAddresses.forEach((recent) => pushItem({ ...recent, sourceLabel: `Zuletzt · ${recent.use_count || 1}×` }));
+    const deduped = [];
+    const seen = new Set();
+    items.forEach((item) => {
+      const key = `${item.address}-${item.lat.toFixed(4)}-${item.lng.toFixed(4)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      deduped.push(item);
+    });
+    return deduped.slice(0, 3);
+  }, [favoriteRoutes, favorites, home, recentAddresses, work]);
+
+  const mergedSuggestions = useCallback((type, value, suggestions) => {
+    const personal = personalizedSearchSuggestions(type, value);
+    const live = (suggestions || []).map((item) => ({ ...item, sourceLabel: item.sourceLabel || 'Live Treffer' }));
+    const merged = [];
+    const seen = new Set();
+    [...personal, ...live].forEach((item) => {
+      if (!item?.address || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
+      const key = `${item.address}-${Number(item.lat).toFixed(4)}-${Number(item.lng).toFixed(4)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push(item);
+    });
+    return merged.slice(0, 7);
+  }, [personalizedSearchSuggestions]);
 
   const handleAddressChange = (type, value) => {
     if (type === 'pickup') {
@@ -594,15 +648,16 @@ export default function TaxiPage({ onNavigate }) {
                         data-testid={`taxi-customer-input-${field.id}`}
                       />
                     </div>
-                    {field.show && field.suggestions.length > 0 ? (
+                    {String(field.value || '').trim() && mergedSuggestions(field.id, field.value, field.suggestions).length > 0 ? (
                       <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-[22px] border border-black/10 bg-white shadow-xl" data-testid={`taxi-customer-suggestions-${field.id}`}>
-                        {field.suggestions.slice(0, 6).map((item, index) => (
+                        {mergedSuggestions(field.id, field.value, field.suggestions).map((item, index) => (
                           <div key={`${field.id}-${index}`} className="flex items-start gap-3 border-b border-black/5 px-4 py-3 last:border-b-0 hover:bg-slate-50" data-testid={`taxi-customer-suggestion-${field.id}-${index}`}>
-                            <button onMouseDown={() => handleSuggestionSelect(field.id, item)} className="flex min-w-0 flex-1 items-start gap-3 text-left">
+                            <button onMouseDown={() => handleSuggestionSelect(field.id, item)} className="flex min-w-0 flex-1 items-start gap-3 text-left" data-testid={`taxi-customer-select-suggestion-${field.id}-${index}`}>
                               <div className="mt-0.5 rounded-xl bg-black/5 p-2 text-black/60"><MapPin size={14} /></div>
                               <div className="min-w-0 flex-1">
                                 <div className="truncate text-sm font-semibold text-black">{item.name || item.address}</div>
                                 <div className="truncate text-xs text-black/45">{item.cityZip || item.address}</div>
+                                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black/35" data-testid={`taxi-customer-suggestion-source-${field.id}-${index}`}>{item.sourceLabel || 'Live Treffer'}</div>
                               </div>
                             </button>
                             {field.id === 'dropoff' ? <button onMouseDown={() => handleSaveSuggestionAsFavorite(item)} className="rounded-full border border-black/10 px-2 py-1 text-[10px] font-semibold text-black/65" data-testid={`taxi-customer-save-suggestion-${index}`}>Speichern</button> : null}
@@ -622,7 +677,7 @@ export default function TaxiPage({ onNavigate }) {
                   </div>
                   {estimating ? <Loader2 className="h-5 w-5 animate-spin text-white/60" /> : <Sparkles className="h-5 w-5 text-[#FFD500]" />}
                 </div>
-                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">Die Suche ist jetzt regional: Flughafen und Bahnhof passen sich an deinen Standort an.</p>
+                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">{tariffMeta?.label ? `${tariffMeta.label} · persönliche Orte zuerst.` : 'Die Suche ist jetzt regional: Flughafen, Bahnhof und persönliche Orte passen sich an deinen Standort an.'}</p>
               </div>
             </div>
 

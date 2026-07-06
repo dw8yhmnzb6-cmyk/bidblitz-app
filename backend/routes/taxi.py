@@ -1131,6 +1131,24 @@ REGIONAL_PRICING = {
         "van": {"base": 2.00, "per_km": 0.90, "per_minute": 0.00, "min_fare": 3.00},
         "label": "Kosovo-Tarif: 2€ Start + Kilometer",
     },
+    "kosovo_prishtina": {
+        "standard": {"base": 2.00, "per_km": 0.75, "per_minute": 0.00, "min_fare": 2.00},
+        "premium": {"base": 2.00, "per_km": 1.10, "per_minute": 0.00, "min_fare": 3.00},
+        "van": {"base": 2.00, "per_km": 0.95, "per_minute": 0.00, "min_fare": 3.00},
+        "label": "Prishtina-Tarif: 2€ Start + Stadt-Kilometer",
+    },
+    "kosovo_prizren": {
+        "standard": {"base": 2.00, "per_km": 0.65, "per_minute": 0.00, "min_fare": 2.00},
+        "premium": {"base": 2.00, "per_km": 0.95, "per_minute": 0.00, "min_fare": 3.00},
+        "van": {"base": 2.00, "per_km": 0.85, "per_minute": 0.00, "min_fare": 3.00},
+        "label": "Prizren-Tarif: 2€ Start + Stadt-Kilometer",
+    },
+    "kosovo_peja": {
+        "standard": {"base": 2.00, "per_km": 0.65, "per_minute": 0.00, "min_fare": 2.00},
+        "premium": {"base": 2.00, "per_km": 0.95, "per_minute": 0.00, "min_fare": 3.00},
+        "van": {"base": 2.00, "per_km": 0.85, "per_minute": 0.00, "min_fare": 3.00},
+        "label": "Peja-Tarif: 2€ Start + Stadt-Kilometer",
+    },
     "dubai": {
         "standard": {"base": 3.00, "per_km": 0.90, "per_minute": 0.15, "min_fare": 5.00},
         "premium": {"base": 5.00, "per_km": 1.50, "per_minute": 0.25, "min_fare": 8.00},
@@ -1153,6 +1171,12 @@ def detect_region(lat: float, lng: float) -> str:
     """Detect pricing region from coordinates."""
     if 47 <= lat <= 55.5 and 5 <= lng <= 15.5:
         return "germany"
+    if 42.55 <= lat <= 42.78 and 21.05 <= lng <= 21.28:
+        return "kosovo_prishtina"
+    if 42.12 <= lat <= 42.30 and 20.62 <= lng <= 20.82:
+        return "kosovo_prizren"
+    if 42.58 <= lat <= 42.74 and 20.20 <= lng <= 20.40:
+        return "kosovo_peja"
     if 41.5 <= lat <= 43.5 and 20 <= lng <= 22:
         return "kosovo"
     if 23 <= lat <= 27 and 53 <= lng <= 57:

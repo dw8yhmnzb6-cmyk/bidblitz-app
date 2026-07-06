@@ -235,7 +235,7 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
   if (!res) return { ok: false, error: "Taxi-Server momentan nicht erreichbar" };
   const data = await readJson(res);
   return res.ok
-    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null, tariff_zone: data?.tariff_zone || null, time_tariff: data?.time_tariff || null }
+    ? { ok: true, estimates: data?.estimates || [], surge: data?.surge || { active: false, multiplier: 1.0 }, promo: data?.promo || null, tariff_zone: data?.tariff_zone || null, time_tariff: data?.time_tariff || null, region: data?.region || '', region_label: data?.region_label || '' }
     : { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
 }
 
