@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 06.07.2026 — Move & Earn: AI Coach + reales GPS/Sensor-Scoring ausgebaut
+- `backend/routes/move_earn.py`: Step-Sync akzeptiert jetzt reale Qualitäts-Signale (`gps_points`, `route_variance_score`, `activity_type`, `background_tracking_minutes`) und berechnet daraus `trust_score`, `gps_score`, `sensor_score` und `behavior_score`. Reward-/XP-/Energy-Gains werden über einen Trust-Multiplikator qualitativ gewichtet.
+- `backend/routes/move_earn.py`: neue Endpunkte `GET /api/move/coach-session` und `POST /api/move/coach-session` ergänzt. AI Coach speichert Tages-Coachings in `move_coach_sessions`, nutzt `EMERGENT_LLM_KEY` via `emergentintegrations` auf `openai:gpt-5.2` und fällt robust auf regelbasierte Empfehlungen zurück.
+- `backend/routes/move_earn.py`: Admin-Settings erweitert um `ai_coach_enabled`, `gps_quality_weight`, `sensor_quality_weight`, `behavior_quality_weight`; globales Setting wurde auf aktiven Coach mit Gewichtung 45/35/20 initialisiert.
+- `frontend/src/pages/MoveEarnPage.jsx`: neue Trust-/GPS-/Sensor-/Behavior-Karten, Consent-Toggle für GPS-Scoring, GPS-/Permission-Panel, Coach-Aktionsbuttons (`Tagesplan`, `Score erklären`) und realistischere Sync-Payloads ergänzt.
+- `frontend/src/services/api.js`: neue Helper `getMoveCoachSession` und `refreshMoveCoachSession` ergänzt.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, API-Self-Tests PASS, Browser-Smoke PASS, Frontend-Testing-Agent 100% PASS, Backend-Testagent bestätigt Response-Verträge; 429 bei zusätzlichem drittem Gerät ist erwartete Anti-Fraud-Logik. Keine MOCKS.
+
 ## 06.07.2026 — P2 A→B→C→D abgeschlossen: Arcade Hub, Merchant Ops Suite, BioPay Vendor Diagnostics
 - `backend/routes/arcade.py`: neuer Hub-Endpunkt `GET /api/arcade/hub-overview` ergänzt. Liefert `season_id`, `stats`, `leaderboards` (`season`, `all_time`), `recent_sessions` und `personal_best` für das Game Center.
 - `backend/routes/merchant_portal.py`: Merchant Platform V5 um `GET /api/merchant-portal/v5/ops-suite` sowie Upsert-Endpunkte für `companies`, `documents` und `maintenance` erweitert. Primärgesellschaft wird automatisch aus Enterprise-Daten erzeugt; Deadline-/Wartungs-Metadaten werden serverseitig aggregiert.

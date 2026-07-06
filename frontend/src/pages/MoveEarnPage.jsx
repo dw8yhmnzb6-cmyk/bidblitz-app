@@ -265,6 +265,10 @@ export default function MoveEarnPage({ onBack }) {
         max_sync_increment: Number(adminSettings.max_sync_increment || 8000),
         max_step_speed_kmh: Number(adminSettings.max_step_speed_kmh || 22),
         device_limit_per_day: Number(adminSettings.device_limit_per_day || 2),
+        ai_coach_enabled: Boolean(adminSettings.ai_coach_enabled),
+        gps_quality_weight: Number(adminSettings.gps_quality_weight || 0.45),
+        sensor_quality_weight: Number(adminSettings.sensor_quality_weight || 0.35),
+        behavior_quality_weight: Number(adminSettings.behavior_quality_weight || 0.2),
       });
       toast.success("Move Settings gespeichert");
       await load();
@@ -537,12 +541,19 @@ export default function MoveEarnPage({ onBack }) {
                   ["max_sync_increment", "Max Sync Increment"],
                   ["max_step_speed_kmh", "Max Speed km/h"],
                   ["device_limit_per_day", "Device Limit/Day"],
+                  ["gps_quality_weight", "GPS Weight"],
+                  ["sensor_quality_weight", "Sensor Weight"],
+                  ["behavior_quality_weight", "Behavior Weight"],
                 ].map(([key, label]) => (
                   <label key={key} className="block text-sm text-white/70">
                     <span className="mb-1 block text-xs uppercase tracking-[0.18em] text-white/40">{label}</span>
                     <input type="number" value={adminSettings[key] ?? ""} onChange={(e) => setAdminSettings((prev) => ({ ...prev, [key]: Number(e.target.value || 0) }))} data-testid={`move-admin-input-${key}`} className="w-full rounded-2xl border border-white/10 bg-[#071913] px-3 py-3 text-white outline-none" />
                   </label>
                 ))}
+                <label className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#071913] px-3 py-3 text-sm text-white/80" data-testid="move-admin-ai-coach-enabled-toggle">
+                  <span>AI Coach aktiv</span>
+                  <input type="checkbox" checked={Boolean(adminSettings.ai_coach_enabled)} onChange={(e) => setAdminSettings((prev) => ({ ...prev, ai_coach_enabled: e.target.checked }))} />
+                </label>
               </div>
 
               <div className="space-y-3 rounded-[24px] border border-white/8 bg-white/[0.04] p-4" data-testid="move-admin-stats-card">

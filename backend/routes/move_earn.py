@@ -59,7 +59,7 @@ DEFAULT_MOVE_SETTINGS = {
         {"code": "spin", "label": "Spin Wheel Ticket", "type": "spin_ticket", "value": 1, "weight": 5, "min_unlock_steps": 6000, "cost_estimate_eur": 0.65},
         {"code": "plinko", "label": "Plinko Ticket", "type": "plinko_ticket", "value": 1, "weight": 2, "min_unlock_steps": 10000, "cost_estimate_eur": 0.95},
     ],
-    "ai_coach_enabled": False,
+    "ai_coach_enabled": True,
     "gps_quality_weight": 0.45,
     "sensor_quality_weight": 0.35,
     "behavior_quality_weight": 0.20,
@@ -116,6 +116,10 @@ class MoveSettingsUpdate(BaseModel):
     daily_checkin_xp: Optional[int] = Field(default=None, ge=0, le=200)
     daily_checkin_energy: Optional[int] = Field(default=None, ge=0, le=50)
     daily_checkin_coins: Optional[int] = Field(default=None, ge=0, le=200)
+    ai_coach_enabled: Optional[bool] = None
+    gps_quality_weight: Optional[float] = Field(default=None, ge=0, le=1)
+    sensor_quality_weight: Optional[float] = Field(default=None, ge=0, le=1)
+    behavior_quality_weight: Optional[float] = Field(default=None, ge=0, le=1)
 
 
 class MoveBlockUserRequest(BaseModel):

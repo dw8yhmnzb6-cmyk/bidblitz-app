@@ -26,7 +26,8 @@
 - 🔴 P0 verbleibend: Approval-Ausführung für weitere Sonderfälle vertiefen, falls neue Top-up-/Refund-Typen außerhalb der vorhandenen Execution-Pfade entstehen.
 - ✅ P1: Commerce Center V1 — Marketplace, Live Shopping, Penny Auctions.
 - ✅ P1: Mobility Center V1 — E-Scooter, E-Bike, Carsharing.
-- 🟢 P2: Externe Hardware-/Vendor-Diagnostics und restliches Game Center.
+- ✅ P2: Externe Hardware-/Vendor-Diagnostics und restliches Game Center abgeschlossen.
+- ✅ P2: Move & Earn AI Coach + GPS/Sensor-Scoring ausgebaut und verifiziert.
 
 ## P0
 - Frontend-Routing-Stabilität als Basis für nächste Ausbaustufe verbessert; weiterer Fokus jetzt auf P1-Feature-Ausbau statt monolithischer Routerpflege
@@ -75,7 +76,7 @@
 - ✅ Merchant Platform V5: Multi-Company Management, Document Center und Maintenance Tracker auf Basis der neuen Enterprise-Struktur ergänzt und per Testing-Agent verifiziert.
 - ✅ Game Center: Arcade Hub mit Season-/All-Time-Leaderboards, Personal Best und Reward-/Session-KPIs live und verifiziert.
 - ✅ BioPay Admin: Vendor Diagnostics, Warning Workflows und Terminal Readiness im Audit Center live und verifiziert.
-- Move & Earn: AI Coach später mit echten Empfehlungen, Coaching-Plänen und optionalem GPS-/Sensor-Scoring ausbauen
+- ✅ Move & Earn: AI Coach mit Coaching-Plänen sowie GPS-/Sensor-/Behavior-Scoring live und verifiziert
 - Mobility: echte Live-Positionsupdates/Tracking für Shuttle, VIP und weitere Transportarten vertiefen
 - Mobility: serverseitige Ranking-Heuristik für Autocomplete und Empfehlungslogik weiter schärfen
 - Printer-Diagnose später um echte Live-Socket-Logs/Retry-Historie pro Gerät vertiefen
