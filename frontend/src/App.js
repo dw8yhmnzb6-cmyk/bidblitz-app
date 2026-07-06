@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
 import "@/App.css";
+import { getAdminTabFromPath } from "./app/adminRouteMap";
+import { getAppShellFlags } from "./app/appShellFlags";
+import { getInitialAppPath, isKycRestrictedPath as isKycRestrictedPathUtil, resolveBrowserPath } from "./app/pathUtils";
+import { renderSpecialRoutes } from "./app/renderSpecialRoutes";
 
 import { AppProvider, useUser, useI18n } from "./store";
 import { ThemeProvider } from "./store/ThemeContext";
@@ -309,16 +313,14 @@ function AppContent() {
     initSentryIfConsented();
   }, []);
   
-  // Get initial path from URL
-  const getInitialPath = () => {
+  const [currentPath, setCurrentPath] = useState(() => {
     if (typeof window === "undefined") return "/";
-    if (hasKidsReturn) return "/more";
-    if (hasStripeReturn) return "/wallet";
-    const path = window.location.pathname;
-    return path || "/";
-  };
-
-  const [currentPath, setCurrentPath] = useState(getInitialPath);
+    return getInitialAppPath({
+      hasKidsReturn,
+      hasStripeReturn,
+      pathname: window.location.pathname,
+    });
+  });
   const [showBarcode, setShowBarcode] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [authGateMessage, setAuthGateMessage] = useState("");
@@ -331,37 +333,11 @@ function AppContent() {
   const { setLang } = useI18n();
   const isKycVerified = isKycApprovedOrAdmin(user);
 
-  const isKycRestrictedPath = useCallback((path) => {
-    const basePath = (path || "/").split("?")[0];
-    const restrictedPrefixes = [
-      "/wallet",
-      "/auctions",
-      "/live-auctions",
-      "/marketplace",
-      "/commerce-center",
-      "/merchant-portal",
-      "/merchant-dashboard",
-      "/merchant/staff",
-      "/pay",
-      "/terminal",
-      "/blitzpay",
-      "/p2p",
-      "/card",
-      "/crypto",
-      "/bnpl",
-      "/budget",
-      "/gift-cards",
-      "/bills",
-      "/instant-credit",
-      "/merchant-connect",
-      "/marketplace-dashboard",
-    ];
-    return restrictedPrefixes.some((prefix) => basePath === prefix || basePath.startsWith(`${prefix}/`));
-  }, []);
+  const isKycRestrictedPath = useCallback((path) => isKycRestrictedPathUtil(path), []);
 
   const syncBrowserPath = useCallback((path, mode = "push") => {
     if (typeof window === "undefined" || !path) return;
-    const next = path.startsWith("/") ? path : `/${path}`;
+    const next = resolveBrowserPath(path);
     const current = `${window.location.pathname}${window.location.search}`;
     if (current === next) return;
     if (mode === "replace") {
@@ -584,95 +560,16 @@ function AppContent() {
     if (!isGuest && !isDemoMode && !isKycVerified && isKycRestrictedPath(currentPath)) {
       return <KYCFlow onBack={() => handleNavigate("/")} onComplete={() => handleNavigate("/kyc/status")} />;
     }
-    if (currentPath === "/staff/system-check") {
-      return <StaffSystemCheckPage onBack={() => handleNavigate("/")} />;
-    }
-    if (currentPath === "/staff/mobile") {
-      return <StaffMobilePage onBack={() => handleNavigate("/")} />;
-    }
-    if (currentPath === "/staff/terminal") {
-      return <StaffTerminalPage onBack={() => handleNavigate("/")} />;
-    }
-    if (currentPath === "/staff/invite") {
-      return <StaffInvitePage onSuccess={() => handleNavigate("/staff/mobile")} />;
-    }
-    // ─── Dynamic path handlers (must run before switch since switch uses exact match)
-    if (currentPath.startsWith("/kds/")) {
-      return <KDSPage stationId={currentPath.split("/")[2]} />;
-    }
-    if (currentPath.startsWith("/customer-display/")) {
-      return <CustomerDisplayPage registerId={currentPath.split("/")[2]} />;
-    }
-    if (currentPath.startsWith("/order/qr/")) {
-      if (isGuest) {
-        return <QrOrderPage onAuthRequired={requireAuth} onLogin={() => setShowFullAuth("login")} />;
-      }
-      return <QrOrderPage onNavigate={handleNavigate} />;
-    }
-    if (currentPath.startsWith("/table/")) {
-      return <RestaurantTableGuestPage tableId={currentPath.split("/")[2]} />;
-    }
-    if (currentPath.startsWith("/order/")) {
-      return <PublicTableOrderPage qrToken={currentPath.split("/")[2]} />;
-    }
-    if (currentPath === "/admin/tables") {
-      return <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} />;
-    }
-    if (currentPath === "/staff/dashboard") {
-      return <RestaurantStaffDashboardPage onBack={() => handleNavigate("/")} />;
-    }
-    if (currentPath === "/kitchen") {
-      return <RestaurantKitchenPage onBack={() => handleNavigate("/")} />;
-    }
-    if (currentPath === "/merchant/qr-tables") {
-      return <MerchantQrTablesPage onBack={() => handleNavigate("/merchant-dashboard")} user={user} />;
-    }
-    if (currentPath.startsWith("/invoice/pay/")) {
-      return <InvoicePayPage scanCode={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
-    }
-    if (currentPath.startsWith("/pay/") && !currentPath.startsWith("/pay/checkout/") && !currentPath.startsWith("/pay/merchant/")) {
-      return <PublicInvoicePaymentPage token={currentPath.split("/")[2]} onNavigate={handleNavigate} />;
-    }
-    if (currentPath === "/ev" || currentPath === "/ev/map") {
-      return <EVChargingMapPage onNavigate={handleNavigate} />;
-    }
-    if (currentPath.startsWith("/ev/start/")) {
-      const parts = currentPath.split("/");
-      return <EVStartChargingPage chargePointId={parts[3]} connectorId={parts[4] || "1"} onNavigate={handleNavigate} />;
-    }
-    if (currentPath.startsWith("/ev/session/")) {
-      return <EVLiveSessionPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
-    }
-    if (currentPath === "/ev/history") {
-      return <EVChargingHistoryPage onNavigate={handleNavigate} />;
-    }
-    if (currentPath === "/admin/ev" || currentPath === "/admin/ev/overview") return <AdminEVOverviewPage onNavigate={handleNavigate} />;
-    if (currentPath === "/admin/ev/operators") return <AdminEVOperatorsPage onNavigate={handleNavigate} />;
-    if (currentPath === "/admin/ev/vendors") return <AdminEVHardwareVendorsPage onNavigate={handleNavigate} />;
-    if (currentPath === "/admin/ev/tariffs") return <AdminEVTariffsPage onNavigate={handleNavigate} />;
-    if (currentPath === "/admin/ev/payouts") return <AdminEVPayoutsPage onNavigate={handleNavigate} />;
-    if (currentPath === "/operator/ev" || currentPath === "/operator/ev/dashboard") return <EVOperatorDashboardPage onNavigate={handleNavigate} />;
-    if (currentPath === "/operator/ev/stations") return <EVOperatorStationsPage onNavigate={handleNavigate} />;
-    if (currentPath === "/operator/ev/sessions") return <EVOperatorSessionsPage onNavigate={handleNavigate} />;
-    if (currentPath === "/operator/ev/revenue") return <EVOperatorRevenuePage onNavigate={handleNavigate} />;
-    if (currentPath === "/operator/ev/payouts") return <EVOperatorPayoutsPage onNavigate={handleNavigate} />;
-    if (currentPath.startsWith("/pay/checkout/")) {
-      return <PayCheckoutPage sessionId={currentPath.split("/")[3]} onNavigate={handleNavigate} />;
-    }
-    if (currentPath.startsWith("/pay/merchant/")) {
-      return <PayMerchantDetailPage slug={currentPath.split("/")[3]} onBack={() => handleNavigate("/pay/directory")} onNavigate={handleNavigate} />;
-    }
-    if (currentPath.startsWith("/business/")) {
-      return <PublicMerchantBusinessPage slug={currentPath.split("/")[2]} onBack={() => handleNavigate("/merchant-portal")} onNavigate={handleNavigate} />;
-    }
-    if (currentPath === "/pay/directory") {
-      return <PayDirectoryPage onBack={() => handleNavigate("/merchant-landing")} onNavigate={handleNavigate} />;
-    }
-    if (currentPath === "/pay/docs") {
-      return <PayDeveloperDocsPage />;
-    }
-    if (currentPath === "/pay/for-business") {
-      return <PayForBusinessPage onNavigate={handleNavigate} />;
+    const specialRoute = renderSpecialRoutes({
+      currentPath,
+      handleNavigate,
+      requireAuth,
+      isGuest,
+      user,
+      onLogin: () => setShowFullAuth("login"),
+    });
+    if (specialRoute) {
+      return specialRoute;
     }
     switch (basePath) {
       case "/":
@@ -1199,36 +1096,7 @@ function AppContent() {
         // ── Admin sub-routes catch-all: map /admin/{slug} → AdminPage with tab
         if (currentPath.startsWith("/admin/")) {
           if (user.role !== "admin") return <HomePage {...homeProps} />;
-          const slug = currentPath.replace("/admin/", "");
-          // Map AdminPanelPage paths → AdminPage tab IDs
-          const ADMIN_TAB_MAP = {
-            // Customers & Roles
-            "users": "users", "customers": "users", "enterprise": "users",
-            "kyc": "verification",
-            "managers": "roles", "employees": "roles", "influencer": "roles",
-            "auto-ads": "promos", "partner-credit": "merchant-fees",
-            // Partners
-            "merchants": "merchants", "partner-portal": "merchants", "applications": "merchants",
-            // Auctions
-            "products": "auctions", "standard-auctions": "auctions", "vip-auctions": "auctions",
-            "voucher-auctions": "auctions", "bot-system": "auctions", "winner-control": "auctions",
-            // Analytics
-            "analytics": "analytics", "product-analysis": "analytics",
-            "user-analysis": "analytics", "revenue-analysis": "analytics",
-            "customer-intelligence": "customer-intelligence", "customer-map": "customer-intelligence",
-            // Promos
-            "merchant-coupons": "promos", "bidder-coupons": "promos",
-            "partner-coupons": "promos", "discount-codes": "promos",
-            "marketing": "promos", "email-marketing": "promos",
-            // Finance
-            "finance": "transactions", "transactions": "transactions",
-            "deposits": "transactions", "withdrawals": "transactions",
-            "fees": "merchant-fees",
-            // Other
-            "compliance": "verification", "moderation": "verification",
-            "logs": "logs", "system": "settings", "settings": "settings",
-          };
-          const tab = ADMIN_TAB_MAP[slug] || "overview";
+          const tab = getAdminTabFromPath(currentPath);
           return <AdminPage onNavigate={handleNavigate} defaultTab={tab} />;
         }
         // Handle dynamic routes
@@ -1256,18 +1124,17 @@ function AppContent() {
     }
   };
 
-  const isCheckout = currentPath.startsWith("/pay/checkout/");
-  const isPublicInvoicePayment = currentPath.startsWith("/pay/") && !currentPath.startsWith("/pay/checkout/") && !currentPath.startsWith("/pay/merchant/");
-  const isQrOrder = currentPath.startsWith("/order/qr/");
-  const isRestaurantTableGuest = currentPath.startsWith("/table/");
-  const isInvoicePay = currentPath.startsWith("/invoice/pay/");
-  const isMobilityShell = currentPath === "/scooter" || currentPath === "/ev" || currentPath === "/ev/map" || currentPath === "/ev/history" || currentPath.startsWith("/ev/start/") || currentPath.startsWith("/ev/session/");
-  const isStaffEmployeeShell = currentPath === "/staff/mobile" || currentPath === "/staff/invite" || currentPath === "/staff/terminal" || currentPath === "/staff/portal" || currentPath === "/staff/login";
-  const isFullScreenStaffMgr = currentPath === "/merchant/staff/chat" || currentPath === "/merchant/taxi/promos" || currentPath === "/merchant/staff/live-map" || currentPath === "/taxi/pro";
-  const showBottomNav = !isDesktopViewport && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing" && currentPath !== "/pay/directory" && currentPath !== "/scan";
-
-  const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
-  const showBackToHome = !isHomePath && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isMobilityShell && !isStaffEmployeeShell && !currentPath.startsWith("/pay/merchant/") && currentPath !== "/merchant-landing";
+  const {
+    isCheckout,
+    isPublicInvoicePayment,
+    isQrOrder,
+    isRestaurantTableGuest,
+    isInvoicePay,
+    isStaffEmployeeShell,
+    isFullScreenStaffMgr,
+    showBottomNav,
+    showBackToHome,
+  } = getAppShellFlags(currentPath, isDesktopViewport);
 
   return (
     <div className="app-container" data-testid="app-container">
