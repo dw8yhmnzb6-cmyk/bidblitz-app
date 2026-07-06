@@ -25,6 +25,8 @@ def _auth_email_candidates(raw_email: str) -> list[str]:
     email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.")
     if not email:
         return [""]
+    if email in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
+        return [email]
     candidates = [email]
     if email.endswith("@bidblitz.ae"):
         candidates.append(email[:-2] + "com")

@@ -1,0 +1,54 @@
+{
+  "summary": "Validated admin migration to canonical admin@bidblitz.ae across DB, auth, and UI KYC-gate behavior. Core contracts pass; auth preflight CORS credentials header still failing on preview endpoint.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "OPTIONS /api/auth/login",
+        "issue": "Preflight response does not include access-control-allow-credentials:true on preview URL, violating credentialed CORS auth contract.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "More page",
+        "issues": [
+          "Some secondary/helper texts remain very low contrast on dark background."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter187_admin_ae_migration.py",
+    "/app/test_reports/pytest/iter187_admin_ae_migration.xml"
+  ],
+  "action_items": [
+    "Fix preview preflight handling so OPTIONS /api/auth/login returns access-control-allow-credentials:true with explicit allow-origin.",
+    "Keep current admin canonicalization contract unchanged: admin@bidblitz.ae active admin, admin@bid-blitz.ae alias accepted, admin@bidblitz.com rejected.",
+    "Optional UI pass: improve low-contrast helper text in More page sections."
+  ],
+  "critical_code_review_comments": [
+    "Auth and serialization now align with canonical admin migration: canonical_email/email/login_email resolve to admin@bidblitz.ae for valid admin logins.",
+    "seed_admin startup logic is present and includes idempotent password hash refresh via verify_password/hash_password path.",
+    "CORS config still has a risky combo in env/middleware context (wildcard origin with credentials expectations); preview edge appears to strip/override credential headers on preflight."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter187_admin_ae_migration.py",
+    "/app/test_reports/iteration_187.json"
+  ],
+  "success_rate": {
+    "backend": "89%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Used from /app/memory/test_credentials.md: admin@bidblitz.ae / BidBlitz2026!, admin@bid-blitz.ae / BidBlitz2026!, admin@bidblitz.com / BidBlitz2026! (expected fail), kycgate.1782580398@test.com / TestPass2026!",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend test run: 9 tests executed, 8 passed, 1 failed (CORS preflight credentials header). UI regression passed: admin has no pre-kyc gates on Home/More, sees more-all-services and canonical profile email; unverified non-admin still gated on Home/More and does not see more-all-services.",
+  "rca of the issue": "Repro: send OPTIONS with Origin + Access-Control-Request-* to /api/auth/login on preview URL. Response lacks access-control-allow-credentials=true. App middleware includes credentialed OPTIONS guard, so likely ingress/edge preflight interception or header rewrite before app response reaches client.",
+  "mocked_api": "No MOCKED APIs used."
+}

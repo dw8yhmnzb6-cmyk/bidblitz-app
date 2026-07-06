@@ -171,13 +171,59 @@ async def seed_admin():
 
         admin_email = ADMIN_EMAIL.lower().strip()
         now = datetime.now(timezone.utc).isoformat()
+        legacy_email = "admin@bidblitz.com"
+        admin_aliases = ["admin@bid-blitz.ae"]
         existing = await db.users.find_one({"email": admin_email})
+        legacy = await db.users.find_one({"email": legacy_email}) if admin_email != legacy_email else None
+
+        if existing is None and legacy is not None:
+            await db.users.update_one(
+                {"_id": legacy["_id"]},
+                {
+                    "$set": {
+                        "email": admin_email,
+                        "role": "admin",
+                        "kyc_status": "approved",
+                        "kyc_verified": True,
+                        "email_aliases": admin_aliases,
+                    },
+                    "$unset": {"password": ""},
+                },
+            )
+            existing = await db.users.find_one({"_id": legacy["_id"]})
+            logger.info(f"✓ Legacy admin migrated from {legacy_email} to {admin_email}")
+        elif existing is not None and legacy is not None and str(existing["_id"]) != str(legacy["_id"]):
+            await db.users.update_one(
+                {"_id": existing["_id"]},
+                {
+                    "$set": {
+                        "role": "admin",
+                        "kyc_status": "approved",
+                        "kyc_verified": True,
+                        "email_aliases": admin_aliases,
+                    },
+                    "$unset": {"password": ""},
+                },
+            )
+            await db.users.update_one(
+                {"_id": legacy["_id"]},
+                {
+                    "$set": {
+                        "email": f"disabled-admin-{legacy['_id']}@bidblitz.local",
+                        "role": "disabled",
+                        "disabled_at": now,
+                        "disabled_reason": "admin_migrated_to_bidblitz_ae",
+                        "email_aliases": [],
+                    }
+                },
+            )
+            logger.info(f"✓ Duplicate legacy admin disabled: {legacy_email}")
 
         if existing is None:
             hashed = hash_password(ADMIN_PASSWORD)
             result = await db.users.insert_one({
                 "email": admin_email,
-                "email_aliases": ["admin@bidblitz.ae", "admin@bid-blitz.ae"],
+                "email_aliases": admin_aliases,
                 "password_hash": hashed,
                 "name": "Admin",
                 "role": "admin",
@@ -212,7 +258,8 @@ async def seed_admin():
             "role": "admin",
             "kyc_status": "approved",
             "kyc_verified": True,
-            "email_aliases": list(dict.fromkeys((existing.get("email_aliases") or []) + ["admin@bidblitz.ae", "admin@bid-blitz.ae"])),
+            "email": admin_email,
+            "email_aliases": admin_aliases,
         }
         password_hash = existing.get("password_hash") or existing.get("password") or ""
         password_needs_update = True
