@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 06.07.2026 — Move & Earn Admin Analytics vertieft: ROI, Reward-Kosten, DAU/MAU
+- `backend/routes/move_earn.py`: `GET /api/admin/move/stats` liefert jetzt vertiefte Analytics mit `dau`, `wau`, `mau`, `retention_30_pct`, `repeat_rate_90_pct`, `roi_value_index_30`, `roi_per_eur_30`, `cost_per_mau_30`, `cost_per_dau_30`.
+- `backend/routes/move_earn.py`: neue Analytics-Blöcke `growth`, `roi`, `reward_cost_breakdown` (`by_type`, `by_source`, `by_segment`) und `trend_14d` ergänzt. Reward-Kosten werden über echte `move_rewards` aggregiert; ROI koppelt Kosten an Merchant-/QR-Events sowie Ride-/Eco-Impact.
+- `frontend/src/pages/MoveEarnPage.jsx`: Admin-Bereich um Growth KPI Grid, ROI Panel, Reward-Kosten nach Typ/Quelle und 14-Tage-Trend-Panel erweitert.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, API-Self-Test PASS, Browser-Smoke PASS, Frontend-Testagent 100% PASS, Backend-Testagent 100% PASS. Keine MOCKS.
+
 ## 06.07.2026 — Move & Earn: AI Coach + reales GPS/Sensor-Scoring ausgebaut
 - `backend/routes/move_earn.py`: Step-Sync akzeptiert jetzt reale Qualitäts-Signale (`gps_points`, `route_variance_score`, `activity_type`, `background_tracking_minutes`) und berechnet daraus `trust_score`, `gps_score`, `sensor_score` und `behavior_score`. Reward-/XP-/Energy-Gains werden über einen Trust-Multiplikator qualitativ gewichtet.
 - `backend/routes/move_earn.py`: neue Endpunkte `GET /api/move/coach-session` und `POST /api/move/coach-session` ergänzt. AI Coach speichert Tages-Coachings in `move_coach_sessions`, nutzt `EMERGENT_LLM_KEY` via `emergentintegrations` auf `openai:gpt-5.2` und fällt robust auf regelbasierte Empfehlungen zurück.

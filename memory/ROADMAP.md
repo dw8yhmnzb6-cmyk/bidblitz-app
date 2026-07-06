@@ -28,6 +28,7 @@
 - ✅ P1: Mobility Center V1 — E-Scooter, E-Bike, Carsharing.
 - ✅ P2: Externe Hardware-/Vendor-Diagnostics und restliches Game Center abgeschlossen.
 - ✅ P2: Move & Earn AI Coach + GPS/Sensor-Scoring ausgebaut und verifiziert.
+- ✅ P2: Move & Earn Admin-Analytics um ROI, Reward-Kosten nach Typ/Quelle/Segment und DAU/MAU vertieft.
 
 ## P0
 - Frontend-Routing-Stabilität als Basis für nächste Ausbaustufe verbessert; weiterer Fokus jetzt auf P1-Feature-Ausbau statt monolithischer Routerpflege
