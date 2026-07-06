@@ -1,0 +1,46 @@
+{
+  "test_date": "2026-07-06T17:40:04.594464",
+  "backend_url": "https://kyc-approval-hub.preview.emergentagent.com",
+  "credentials": "admin@bidblitz.ae / BidBlitz2026!",
+  "total_tests": 7,
+  "passed": 6,
+  "failed": 1,
+  "success_rate": "86%",
+  "results": [
+    {
+      "test": "Admin Login",
+      "passed": true,
+      "details": "Login successful with admin@bidblitz.ae, status: 200, cookies set: ['access_token', 'refresh_token', '__cf_bm']"
+    },
+    {
+      "test": "GET /api/move/status - Structure",
+      "passed": true,
+      "details": "Status: 200. daily.scoring present with all keys: trust_score=49, gps_score=40, sensor_score=53, behavior_score=60. ai_coach present with all keys: headline='Heute zuerst saubere Bewegung sichern...', summary length=85, next_hint length=53, action_plan items=3"
+    },
+    {
+      "test": "POST /api/move/sync-steps - Response",
+      "passed": false,
+      "details": "Sync rate limited (429). This is expected behavior if user already synced today. Response: {\"detail\":\"Zu viele Ger\u00e4te f\u00fcr Move & Earn heute\"}"
+    },
+    {
+      "test": "GET /api/move/status AFTER sync - Scoring",
+      "passed": true,
+      "details": "daily.scoring present after sync with all keys: trust_score=49, gps_score=40, sensor_score=53, behavior_score=60"
+    },
+    {
+      "test": "GET /api/move/coach-session - Structure",
+      "passed": true,
+      "details": "Coach session retrieved successfully: headline='Heute zuerst saubere Bewegung sichern...', summary length=85, next_hint length=53, action_plan items=3, trust_score_today=49, coach_source='rules-fallback'"
+    },
+    {
+      "test": "POST /api/move/coach-session - Focus",
+      "passed": true,
+      "details": "Coach session refresh successful: ok=True, coach present with 15 keys, focus='score_explanation'"
+    },
+    {
+      "test": "No 500 Errors",
+      "passed": true,
+      "details": "All endpoints returned proper HTTP status codes (no 500 errors detected)"
+    }
+  ]
+}
