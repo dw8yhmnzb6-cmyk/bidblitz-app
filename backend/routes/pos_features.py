@@ -3,6 +3,9 @@ POS Feature-Flags / Add-Ons
 Merchants können einzelne Pro-Features (Tisch-Reservierung, QR-Bestellung, KDS, ...)
 zubuchen. Admin schaltet sie frei oder sperrt sie.
 """
+import hashlib
+import secrets
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -686,6 +689,17 @@ class BundleApply(BaseModel):
     mode: str = "replace"  # "replace" = deaktiviere alles andere zuerst, "merge" = nur Bundle-Features dazu
 
 
+class AdminProvisionRequest(BaseModel):
+    merchant_id: str
+    bundle_key: str = Field(..., min_length=2, max_length=60)
+    mode: str = "merge"
+    billing_status: str = Field("paid", pattern="^(paid|trial|manual|overdue|blocked)$")
+    note: Optional[str] = Field(None, max_length=500)
+    create_api_key: bool = True
+    api_key_name: str = "Admin Provisioned POS API"
+    scopes: List[str] = Field(default_factory=lambda: ["read", "write"])
+
+
 @router.post("/admin/apply-bundle")
 async def admin_apply_bundle(req: BundleApply, request: Request):
     """
@@ -785,6 +799,113 @@ async def admin_apply_bundle(req: BundleApply, request: Request):
         "skipped": skipped,
         "monthly_total": bundle.get("monthly_total"),
     }
+
+
+@router.post("/admin/provision-merchant")
+async def admin_provision_merchant(req: AdminProvisionRequest, request: Request):
+    """Admin schaltet einen Händler branchenspezifisch frei, setzt Zahlstatus und erstellt optional API-Key."""
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(403, "Nur Admin")
+    merchant = await db.pos_merchants.find_one({"merchant_id": req.merchant_id}, {"_id": 0})
+    if not merchant:
+        raise HTTPException(404, "Merchant nicht gefunden")
+
+    all_bundles = await _load_bundles()
+    bundle = next((b for b in all_bundles if b["key"] == req.bundle_key), None)
+    if not bundle:
+        raise HTTPException(400, f"Unbekanntes Bundle: {req.bundle_key}")
+
+    now = _now()
+    actor_id = str(user["_id"])
+    bundle_keys = {f["key"] for f in bundle["features"]}
+    activated, deactivated, skipped = [], [], []
+
+    if req.mode == "replace":
+        currently_active = await db.pos_merchant_features.find(
+            {"merchant_id": req.merchant_id, "enabled": True}, {"_id": 0, "feature_key": 1}
+        ).to_list(200)
+        for current in currently_active:
+            if current.get("feature_key") in bundle_keys:
+                continue
+            await db.pos_merchant_features.update_one(
+                {"merchant_id": req.merchant_id, "feature_key": current.get("feature_key")},
+                {"$set": {"enabled": False, "deactivated_at": now, "activated_by": actor_id}},
+            )
+            deactivated.append(current.get("feature_key"))
+
+    for feat_def in bundle["features"]:
+        key = feat_def["key"]
+        if key not in FEATURE_KEYS:
+            skipped.append(key)
+            continue
+        catalog_feat = next(f for f in FEATURE_CATALOG if f["key"] == key)
+        custom_price = float(feat_def.get("price")) if feat_def.get("price") is not None else None
+        effective_price = custom_price if custom_price is not None else float(catalog_feat["monthly_price"])
+        await db.pos_merchant_features.update_one(
+            {"merchant_id": req.merchant_id, "feature_key": key},
+            {"$set": {
+                "merchant_id": req.merchant_id,
+                "feature_key": key,
+                "enabled": req.billing_status != "blocked",
+                "trial": req.billing_status == "trial",
+                "valid_until": None,
+                "monthly_price": effective_price,
+                "custom_price": custom_price,
+                "activated_at": now,
+                "activated_by": actor_id,
+                "deactivated_at": None,
+                "applied_bundle": req.bundle_key,
+            }},
+            upsert=True,
+        )
+        activated.append(key)
+
+    blocked = req.billing_status == "blocked"
+    await db.pos_merchants.update_one(
+        {"merchant_id": req.merchant_id},
+        {"$set": {
+            "status": "blocked" if blocked else "approved",
+            "access_blocked": blocked,
+            "billing_status": req.billing_status,
+            "business_type": req.bundle_key,
+            "admin_note": req.note or f"Provisioned bundle {req.bundle_key}",
+            "updated_at": now,
+            "updated_by": actor_id,
+        }},
+    )
+
+    api_key_payload = None
+    if req.create_api_key and not blocked:
+        key_id = "bbpub_" + secrets.token_urlsafe(8)
+        key_secret = "bbsec_" + secrets.token_urlsafe(32)
+        scopes = list(dict.fromkeys([s for s in req.scopes if s in {"read", "write", "admin"}])) or ["read"]
+        await db.pos_api_keys.insert_one({
+            "key_id": key_id,
+            "merchant_id": req.merchant_id,
+            "name": req.api_key_name,
+            "scopes": scopes,
+            "key_secret_hash": hashlib.sha256(key_secret.encode()).hexdigest(),
+            "active": True,
+            "created_at": now,
+            "created_by": actor_id,
+            "source": "admin_provision",
+        })
+        api_key_payload = {
+            "key_id": key_id,
+            "key_secret": key_secret,
+            "scopes": scopes,
+            "warning": "Speichere key_secret JETZT — wird nicht erneut gezeigt.",
+        }
+
+    await db.pos_audit_log.insert_one({
+        "audit_id": f"AUD-{datetime.now(timezone.utc).timestamp()}",
+        "actor_id": actor_id,
+        "action": "feature.admin_provision_merchant",
+        "ref": {"merchant_id": req.merchant_id, "bundle_key": req.bundle_key, "mode": req.mode, "billing_status": req.billing_status, "activated": activated, "deactivated": deactivated},
+        "ts": now,
+    })
+    return {"ok": True, "merchant_id": req.merchant_id, "bundle": bundle["name"], "activated": activated, "deactivated": deactivated, "skipped": skipped, "api_key": api_key_payload}
 
 
 class BulkToggle(BaseModel):

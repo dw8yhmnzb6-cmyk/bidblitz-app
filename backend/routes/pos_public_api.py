@@ -72,6 +72,33 @@ async def public_me(request: Request, x_api_key: Optional[str] = Header(None, al
     }
 
 
+@router.get("/payment-flow")
+async def public_payment_flow():
+    return {
+        "title": "BidBlitz an der Kasse",
+        "steps": [
+            {"step": 1, "role": "cashier", "text": "Kasse wählt 'Mit BidBlitz bezahlen' und sucht Kunde per Kundennummer/QR/Telefon."},
+            {"step": 2, "role": "api", "endpoint": "POST /api/pos/customer/resolve", "text": "Backend gibt nur maskierten Namen + Kundennummer zurück. Kein Kontostand, keine E-Mail."},
+            {"step": 3, "role": "cashier", "endpoint": "POST /api/pos/payment/prepare", "text": "Kasse sendet Betrag/Warenkorb. Zahlung wartet auf Kunden-PIN oder BioPay."},
+            {"step": 4, "role": "customer", "endpoint": "POST /api/pos/payment/confirm-pin", "text": "Kunde bestätigt mit 4-stelligem PIN oder PalmPay. Bei zu wenig Guthaben: nur 'Payment declined'."},
+            {"step": 5, "role": "system", "text": "Wallet wird belastet, Händlerumsatz gebucht, Audit/Fraud-Log geschrieben, Beleg erzeugt."},
+        ],
+        "voucher_sale": [
+            "Kassierer verkauft Gutschein über POST /api/pos/vouchers/sell.",
+            "Kunde bekommt Code/QR BIDBLITZ-VOUCHER:GS-XXXX.",
+            "Einlösung als Wallet-Guthaben: POST /api/pos/vouchers/{code}/redeem.",
+            "Einlösung als Zahlungsmittel im Laden: POST /api/pos/vouchers/redeem-payment.",
+        ],
+        "wallet_topup": [
+            "Kunde nennt Kundennummer oder scannt QR.",
+            "Kasse löst Kunde über POST /api/pos/customer/resolve auf.",
+            "Top-up läuft über POST /api/pos/wallet/top-up oder /api/pos/vouchers/topup.",
+            "Für Aufladung ist kein Kunden-PIN nötig; bei hohen Beträgen greift Manager-Freigabe.",
+        ],
+        "admin_control": "Admin schaltet Module/Preise/API unter /admin/merchant-features oder POST /api/pos/features/admin/provision-merchant frei.",
+    }
+
+
 # ═══════════════════════════════════════════════════════════
 # PRODUKTE (READ)
 # ═══════════════════════════════════════════════════════════

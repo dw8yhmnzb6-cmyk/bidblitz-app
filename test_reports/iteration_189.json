@@ -1,0 +1,45 @@
+{
+  "summary": "Executed backend + frontend validation for merchant provisioning and POS public API contracts on preview URL. All requested flows passed: admin provision kiosk bundle with API key creation, API-key auth to /public/v1/me, payment-flow documentation response, admin merchant feature UI selector visibility, feature toggle + price override regression, and admin login regression (.com rejected, .ae accepted).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Homepage background API requests",
+        "issue": "Console still logs unrelated 401/404 network errors on homepage load; target admin merchant-features flow itself remained functional.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter189_admin_provision_public_api.py",
+    "/app/test_reports/pytest/iter189_admin_provision_public_api.xml"
+  ],
+  "action_items": [
+    "Optional observability cleanup: remove/fix unrelated homepage API calls causing 401/404 console noise.",
+    "Keep current provisioning contract stable: /api/pos/features/admin/provision-merchant should continue returning one-time bbsec_ key_secret when create_api_key=true."
+  ],
+  "critical_code_review_comments": [
+    "Role-check drift risk still exists across POS modules: pos_features._is_admin accepts only admin/superadmin, while other modules historically accepted additional admin-style roles. Align role checks centrally to avoid authorization mismatch.",
+    "AdminProvisionRequest.mode is free-form string; invalid values silently behave like merge. Add explicit enum/pattern validation to prevent accidental wrong-mode provisioning."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter189_admin_provision_public_api.py",
+    "/app/test_reports/iteration_189.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Used from /app/memory/test_credentials.md: admin@bidblitz.ae / BidBlitz2026!, admin@bidblitz.com / BidBlitz2026! (expected fail), merchant target MER-12DA5FAE925F.",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Reusable regression test file added for provisioning/public API. UI smoke validated merchant-provision-select presence and interactivity of loyalty toggle + price fields on /admin/merchant-features.",
+  "rca of the issue": "No blocking defect reproduced in requested scope. Remaining console 401/404 noise appears outside tested merchant-provisioning contracts.",
+  "mocked_api": "No MOCKED APIs used."
+}

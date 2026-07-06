@@ -68,6 +68,7 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
   const [priceDrafts, setPriceDrafts] = useState({}); // {feature_key: "0.00"} — uncommitted user input
   const [editingMerchant, setEditingMerchant] = useState(null);
   const [savingMerchant, setSavingMerchant] = useState(false);
+  const [provisioningMerchant, setProvisioningMerchant] = useState(false);
 
   // Initial load — merchants + catalog + bundles
   useEffect(() => {
@@ -321,6 +322,42 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
       toast.error(err.message || "Status konnte nicht geändert werden");
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  const handleProvisionMerchant = async (bundleKey, mode = "merge") => {
+    if (!activeMerchant) return;
+    setProvisioningMerchant(true);
+    try {
+      const res = await api("/api/pos/features/admin/provision-merchant", {
+        method: "POST",
+        body: JSON.stringify({
+          merchant_id: activeMerchant.merchant_id,
+          bundle_key: bundleKey,
+          mode,
+          billing_status: "paid",
+          create_api_key: true,
+          api_key_name: `${bundleKey} POS API`,
+          scopes: ["read", "write"],
+        }),
+      });
+      toast.success(`${res.bundle}: ${res.activated?.length || 0} Module freigeschaltet${res.api_key ? " + API-Key erstellt" : ""}`);
+      if (res.api_key?.key_secret) {
+        window.prompt("API-Key nur jetzt kopieren", res.api_key.key_secret);
+      }
+      await loadMerchantFeatures(activeMerchant.merchant_id);
+      patchMerchantInList({
+        ...activeMerchant,
+        status: "approved",
+        access_blocked: false,
+        is_blocked: false,
+        billing_status: "paid",
+        business_type: bundleKey,
+      });
+    } catch (err) {
+      toast.error(err.message || "Freischaltung fehlgeschlagen");
+    } finally {
+      setProvisioningMerchant(false);
     }
   };
 
@@ -629,6 +666,16 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
                   })}
 
                   <div className="ml-auto flex items-center gap-2">
+                    <select
+                      onChange={(e) => e.target.value && handleProvisionMerchant(e.target.value, "merge")}
+                      disabled={provisioningMerchant}
+                      defaultValue=""
+                      className="text-xs px-3 py-1.5 rounded-lg bg-[#111827] border border-cyan-500/20 text-cyan-200 disabled:opacity-50"
+                      data-testid="merchant-provision-select"
+                    >
+                      <option value="" disabled>Freischalten + API</option>
+                      {bundles.map((b) => <option key={b.key} value={b.key}>{b.name}</option>)}
+                    </select>
                     <button
                       onClick={() => handleBulk(true)}
                       disabled={savingKey === "__bulk__"}
