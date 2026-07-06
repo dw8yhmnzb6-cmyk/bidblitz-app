@@ -49,6 +49,16 @@ def _auth_email_query(email_candidates: list[str]) -> dict:
 
 
 async def _record_login_success(user_id: str, ip: str, user_agent: str):
+    existing = await db.users.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "email": 1, "role": 1})
+    if existing and existing.get("role") == "admin" and existing.get("email") == "admin@bidblitz.ae":
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {
+                "last_login_ip": ip,
+                "last_login_user_agent": (user_agent or "")[:256],
+            }},
+        )
+        return
     await db.users.update_one(
         {"_id": ObjectId(user_id)},
         {
