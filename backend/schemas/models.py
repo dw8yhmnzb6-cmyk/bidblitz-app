@@ -8,6 +8,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=6)
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    handle: Optional[str] = Field(None, max_length=40)
     invite_code: Optional[str] = None
     requested_role: Optional[str] = None
 

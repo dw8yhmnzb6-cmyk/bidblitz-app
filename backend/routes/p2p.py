@@ -46,11 +46,14 @@ async def my_handle(request: Request):
     """Return current user's handle + stats."""
     user = await get_current_user(request)
     user_id = str(user["_id"])
-    doc = await db.users.find_one({"_id": user["_id"]}, {"handle": 1, "name": 1, "_id": 0})
+    doc = await db.users.find_one({"_id": user["_id"]}, {"handle": 1, "username": 1, "name": 1, "_id": 0})
+    handle = _normalize((doc or {}).get("handle") or (doc or {}).get("username") or "")
+    if handle and (doc or {}).get("handle") != handle:
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"handle": handle}})
     received = await db.transactions.count_documents({"user_id": user_id, "type": "p2p_receive"})
     sent = await db.transactions.count_documents({"user_id": user_id, "type": "p2p_send"})
     return {
-        "handle": (doc or {}).get("handle"),
+        "handle": handle or None,
         "name": (doc or {}).get("name"),
         "received_count": received,
         "sent_count": sent,
@@ -67,10 +70,10 @@ async def claim_handle(req: ClaimHandleRequest, request: Request):
     if not HANDLE_RE.match(h):
         raise HTTPException(400, "Invalid handle: 3-20 chars, lowercase letters/digits/_-. only")
     if h in RESERVED_HANDLES:
-        raise HTTPException(400, "Handle reserved")
+        raise HTTPException(400, "Dieser Handle ist für BidBlitz reserviert. Bitte wähle einen persönlichen Namen.")
 
     # Check collision
-    existing = await db.users.find_one({"handle": h}, {"_id": 1})
+    existing = await db.users.find_one({"$or": [{"handle": h}, {"username": h}]}, {"_id": 1})
     if existing and existing["_id"] != user["_id"]:
         raise HTTPException(409, "Handle already taken")
 

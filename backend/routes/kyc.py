@@ -167,6 +167,8 @@ async def submit_kyc(
     # Run AI verification
     verdict = await verify_id_documents(front_path, back_path, selfie_path)
     decision = auto_decision(verdict)
+    if decision == "rejected":
+        decision = "pending"
 
     update = {
         "kyc_ai_verdict": verdict,
@@ -222,7 +224,7 @@ async def submit_kyc(
         "message": (
             "Verifizierung erfolgreich!" if decision == "approved"
             else "Wir haben deine Dokumente erhalten und prüfen sie." if decision == "pending"
-            else f"Verifizierung abgelehnt: {verdict.get('fraud_signals') or 'Bitte erneut versuchen.'}"
+            else "Wir haben deine Dokumente erhalten. Ein Admin kann dich jetzt manuell freischalten."
         ),
         "capabilities": _capabilities(decision if decision != "pending" else "pending"),
     }

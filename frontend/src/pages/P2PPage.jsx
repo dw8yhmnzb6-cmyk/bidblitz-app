@@ -20,21 +20,25 @@ export default function P2PPage({ onNavigate }) {
 
   const [history, setHistory] = useState([]);
 
-  useEffect(() => { loadMe(); /* eslint-disable-next-line */ }, []);
-  useEffect(() => { if (view === 'history') loadHistory(); /* eslint-disable-next-line */ }, [view]);
+  useEffect(() => { loadMe(); }, []);
+  useEffect(() => { if (view === 'history') loadHistory(); }, [view]);
 
   const loadMe = async () => {
     try {
       const r = await fetch(`${API}/api/p2p/handle/me`, { credentials: 'include' });
       if (r.ok) setMyHandle(await r.json());
-    } catch {}
+    } catch (err) {
+      console.warn('P2P handle load failed', err);
+    }
   };
 
   const loadHistory = async () => {
     try {
       const r = await fetch(`${API}/api/p2p/history`, { credentials: 'include' });
       if (r.ok) setHistory((await r.json()).items || []);
-    } catch {}
+    } catch (err) {
+      console.warn('P2P history load failed', err);
+    }
   };
 
   const claimHandle = async () => {
@@ -47,8 +51,8 @@ export default function P2PPage({ onNavigate }) {
       });
       const d = await r.json();
       if (r.ok) { setMyHandle((p) => ({ ...p, handle: d.handle })); setClaimMsg({ ok: true, text: `@${d.handle} gesichert!` }); }
-      else setClaimMsg({ ok: false, text: d.detail || 'Fehler' });
-    } catch { setClaimMsg({ ok: false, text: 'Netzwerkfehler' }); }
+      else setClaimMsg({ ok: false, text: d.detail || 'Handle konnte nicht gesichert werden' });
+    } catch (err) { setClaimMsg({ ok: false, text: `Netzwerkfehler: ${err.message}` }); }
   };
 
   const doLookup = async (h) => {

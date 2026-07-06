@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, UserX, UserCheck, Shield, Key, Trash2, RefreshCw,
   Users, CreditCard, Package, X, Check, AlertTriangle, Loader2, ChevronRight,
-  Edit3, Plus, Ban, Activity, TrendingUp, Clock, Zap, Wifi
+  Edit3, Plus, Ban, Activity, TrendingUp, Clock, Zap, Wifi, BadgeCheck
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -307,6 +307,8 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
 
   const ban = () => doAction(`/api/admin/customers/${customer.user_id}/ban`, { banned: !customer.banned, reason: "Admin action" }, customer.banned ? "Kunde entsperrt" : "Kunde gesperrt");
   const setRole = (role) => doAction(`/api/admin/customers/${customer.user_id}/role`, { role }, `Rolle: ${role}`);
+  const approveKyc = () => doAction(`/api/admin/customers/${customer.user_id}/kyc`, { decision: "approve", reason: "Manuell durch Admin freigeschaltet" }, "KYC freigeschaltet");
+  const rejectKyc = () => doAction(`/api/admin/customers/${customer.user_id}/kyc`, { decision: "reject", reason: "Manuell durch Admin abgelehnt" }, "KYC abgelehnt");
   const resetPw = () => {
     doAction(`/api/admin/customers/${customer.user_id}/reset-password`, { reason: "Admin security reset" }, "Reset-Link gesendet");
     setShowPwForm(false);
@@ -340,11 +342,31 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           <div className="flex gap-2 mt-1 text-[10px] text-gray-400">
             <span>ID: {customer.user_id.slice(-8)}</span>
             {customer.role && <span>· {customer.role}</span>}
+            <span className={customer.kyc_status === "approved" ? "text-green-600 font-semibold" : "text-amber-600 font-semibold"}>· KYC: {customer.kyc_status || "not_started"}</span>
             {customer.banned && <span className="text-red-500 font-semibold">· GESPERRT</span>}
           </div>
         </div>
 
         <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              data-testid="customer-action-kyc-approve"
+              onClick={approveKyc}
+              disabled={loading || customer.kyc_status === "approved"}
+              className="py-2.5 rounded-xl bg-emerald-500 text-white text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <BadgeCheck size={14} /> KYC freischalten
+            </button>
+            <button
+              data-testid="customer-action-kyc-reject"
+              onClick={rejectKyc}
+              disabled={loading || customer.kyc_status === "rejected"}
+              className="py-2.5 rounded-xl bg-orange-50 text-orange-700 text-[13px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <AlertTriangle size={14} /> KYC ablehnen
+            </button>
+          </div>
+
           <button
             data-testid="customer-action-ban"
             onClick={ban}
@@ -624,7 +646,7 @@ const ModuleCRUD = ({ mod, onBack }) => {
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
       ) : items.length === 0 ? (
-        <p className="text-center text-gray-400 text-sm py-8">Noch keine Einträge. Klick "Neu".</p>
+        <p className="text-center text-gray-400 text-sm py-8">Noch keine Einträge. Klick &quot;Neu&quot;.</p>
       ) : (
         <div className="space-y-2">
           {items.map((item, i) => {
@@ -961,7 +983,9 @@ const ReengageWidget = () => {
     try {
       const res = await fetch(`${API}/api/admin/reengage/preview?inactive_days=${days}`, { credentials: "include" });
       if (res.ok) setPreview(await res.json());
-    } catch {}
+    } catch (err) {
+      console.warn("Reengage preview failed", err);
+    }
   }, [days]);
 
   useEffect(() => { loadPreview(); }, [loadPreview]);

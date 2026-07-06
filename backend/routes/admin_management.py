@@ -131,6 +131,11 @@ class RoleRequest(BaseModel):
     role: str = Field(..., pattern="^(user|customer|merchant|admin|super_admin)$")
 
 
+class KYCDecisionRequest(BaseModel):
+    decision: str = Field(..., pattern="^(approve|reject)$")
+    reason: Optional[str] = "Admin manuelle KYC-Freischaltung"
+
+
 @router.post("/customers/{user_id}/role")
 async def change_role(user_id: str, req: RoleRequest, request: Request):
     """Rolle eines Kunden ändern."""
@@ -142,6 +147,43 @@ async def change_role(user_id: str, req: RoleRequest, request: Request):
     if result.matched_count == 0:
         raise HTTPException(404, "Kunde nicht gefunden")
     return {"ok": True, "role": req.role}
+
+
+@router.post("/customers/{user_id}/kyc")
+async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, request: Request):
+    """KYC für Kunden manuell freischalten oder ablehnen."""
+    admin = await _require_admin(request)
+    now = datetime.now(timezone.utc).isoformat()
+    approved = req.decision == "approve"
+    admin_id = str(admin.get("_id") or admin.get("id"))
+    update = {
+        "kyc_status": "approved" if approved else "rejected",
+        "kyc_verified": approved,
+        "kyc_reviewed_at": now,
+        "kyc_reviewed_by": admin_id,
+        "kyc_admin_reason": req.reason,
+    }
+    if not approved:
+        update["kyc_rejection_reason"] = req.reason or "Von Admin abgelehnt"
+    else:
+        update["kyc_rejection_reason"] = None
+    result = await db.users.update_one({"_id": _oid(user_id)}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Kunde nicht gefunden")
+    await db.kyc_reviews.update_many(
+        {"user_id": user_id},
+        {"$set": {"status": update["kyc_status"], "reviewed_at": now, "reviewed_by": admin_id, "admin_reason": req.reason}},
+    )
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=admin_id,
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={"action": "manual_kyc_decision", "target_user_id": user_id, "decision": req.decision, "reason": req.reason},
+    )
+    return {"ok": True, "user_id": user_id, "kyc_status": update["kyc_status"], "kyc_verified": approved}
 
 
 class ResetPasswordRequest(BaseModel):

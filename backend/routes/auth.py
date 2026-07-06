@@ -16,6 +16,7 @@ import secrets
 import random
 import bcrypt
 import logging
+import re
 
 logger = logging.getLogger("bidblitz.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -222,12 +223,35 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         if not existing:
             user_number = potential_number
             break
+    reserved_handles = {"bidblitz", "admin", "support", "wallet", "auction", "marketplace", "pos", "kyc"}
+    raw_handle = (req.handle or "").strip().lower().lstrip("@")
+    username = None
+    if raw_handle:
+        if raw_handle in reserved_handles:
+            raise HTTPException(status_code=400, detail="Handle reserved")
+        if not re.match(r"^[a-z0-9_\.\-]{3,30}$", raw_handle):
+            raise HTTPException(status_code=400, detail="Handle darf nur Buchstaben, Zahlen, Punkt, Bindestrich oder Unterstrich enthalten")
+        existing_handle = await db.users.find_one({"username": raw_handle}, {"_id": 1})
+        if existing_handle:
+            raise HTTPException(status_code=400, detail="Handle already taken")
+        username = raw_handle
+    else:
+        base = re.sub(r"[^a-z0-9_\.\-]", "", email.split("@")[0].lower())[:18] or "user"
+        if base in reserved_handles or len(base) < 3:
+            base = f"user{random.randint(1000,9999)}"
+        username = base
+        for _ in range(20):
+            if not await db.users.find_one({"username": username}, {"_id": 1}):
+                break
+            username = f"{base}{random.randint(10,9999)}"[:30]
     
     user_doc = {
         "email": email,
         "password_hash": hash_password(req.password),
         "name": display_name,
         "full_name": display_name,
+        "username": username,
+        "handle": username,
         "role": role,
         "user_number": user_number,
         "balance": WELCOME_EUR,
