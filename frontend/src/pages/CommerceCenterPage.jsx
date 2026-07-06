@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock3, Flame, Gavel, PlayCircle, Radio, ShoppingBag, Sparkles, TicketPercent, TrendingUp } from "lucide-react";
+import { ArrowRight, BarChart3, Clock3, Flame, Gavel, PlayCircle, Radio, ShoppingBag, Sparkles, TicketPercent, TrendingUp, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "../services/api";
@@ -71,12 +71,32 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
   const filteredAuctions = useMemo(() => (overview?.penny_auctions || []).filter((item) => matchesCategory(item, activeCategory)), [overview, activeCategory]);
   const filteredMarketplace = useMemo(() => (overview?.marketplace || []).filter((item) => matchesCategory(item, activeCategory)), [overview, activeCategory]);
 
-  const openMarketplaceDetail = (listingId) => onNavigate(`/marketplace?listing_id=${listingId}&source=commerce-center`);
-  const openAuctionDetail = (auctionId) => onNavigate(`/auctions?auction_id=${auctionId}&source=commerce-center`);
-  const openLiveAuctionDetail = (auctionId) => onNavigate(auctionId ? `/live-auctions?auction_id=${auctionId}&source=commerce-center` : "/live-auctions");
+  const trackEvent = useCallback((eventType, targetType, targetId = "", metadata = {}) => {
+    api.trackCommerceCenterEvent({ event_type: eventType, target_type: targetType, target_id: targetId, source: "commerce_center", metadata }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    trackEvent("page_view", "hub", "overview");
+  }, [trackEvent]);
+
+  const openMarketplaceDetail = (listingId) => {
+    trackEvent("cta_click", "marketplace_listing", listingId);
+    onNavigate(`/marketplace?listing_id=${listingId}&source=commerce-center`);
+  };
+  const openAuctionDetail = (auctionId) => {
+    trackEvent("cta_click", "penny_auction", auctionId);
+    onNavigate(`/auctions?auction_id=${auctionId}&source=commerce-center`);
+  };
+  const openLiveAuctionDetail = (auctionId) => {
+    trackEvent("cta_click", "live_auction", auctionId || "overview");
+    onNavigate(auctionId ? `/live-auctions?auction_id=${auctionId}&source=commerce-center` : "/live-auctions");
+  };
   const openSpotlight = () => {
     const route = overview?.spotlight?.route;
-    if (route) onNavigate(route);
+    if (route) {
+      trackEvent("cta_click", overview?.spotlight?.type || "spotlight", overview?.spotlight?.title || "spotlight");
+      onNavigate(route);
+    }
   };
 
   const handleBuyFlashSale = async (saleId) => {
@@ -85,6 +105,7 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
       return;
     }
     setBuyingSaleId(saleId);
+    trackEvent("cta_click", "flash_sale_buy", saleId);
     try {
       const result = await api.buyCommerceFlashSale(saleId, { use_shipping: false });
       toast.success(result.message || "Flash Sale gekauft.");
@@ -200,7 +221,10 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                 return (
                   <button
                     key={tab.key}
-                    onClick={() => setActiveCategory(tab.key)}
+                    onClick={() => {
+                      setActiveCategory(tab.key);
+                      trackEvent("category_filter", "category", tab.key);
+                    }}
                     data-testid={`commerce-center-category-tab-${tab.key}`}
                     className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${active ? "text-black" : "text-white/72"}`}
                     style={{
@@ -248,6 +272,30 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6 xl:col-span-2" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Commerce Analytics</p>
+                <h2 className="mt-2 text-base md:text-lg font-bold">Conversion, Umsatz und Hub-Interaktion auf einen Blick</h2>
+              </div>
+              <div className="rounded-full bg-white/5 px-3 py-2 text-xs text-white/60" data-testid="commerce-center-analytics-badge">24h Fokus</div>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {(overview?.analytics_cards || []).map((item) => (
+                <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid={`commerce-center-analytics-${item.id}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-white/55">{item.label}</p>
+                    <BarChart3 className="h-4 w-4 text-white/45" />
+                  </div>
+                  <p className="mt-3 text-2xl font-black">
+                    {item.value_type === "currency" ? `€${Number(item.value || 0).toFixed(2)}` : formatInsightValue(item)}
+                  </p>
+                  <p className="mt-2 text-xs text-white/45">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
           <motion.div className="rounded-[2rem] border border-[#ff7a18]/20 bg-[linear-gradient(180deg,rgba(255,122,24,0.12),rgba(7,10,22,0.9))] p-5 sm:p-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -345,6 +393,66 @@ export default function CommerceCenterPage({ onBack, onNavigate }) {
                   ))}
                 </div>
               </div>
+            </div>
+          </motion.div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Programmplanung</p>
+                <h2 className="mt-2 text-base md:text-lg font-bold">Streams, Flash Drops und Live-Auktionen im Ablauf</h2>
+              </div>
+              <button onClick={() => { trackEvent("cta_click", "live_hub", "program-board"); onNavigate('/live'); }} data-testid="commerce-program-open-live-button" className="rounded-full border border-white/10 px-3 py-2 text-xs text-white/70">Live Hub öffnen</button>
+            </div>
+
+            <div className="mt-5 space-y-3" data-testid="commerce-program-schedule-list">
+              {(overview?.program_schedule || []).map((item) => (
+                <div key={item.schedule_id} className="rounded-2xl border border-white/10 bg-black/20 p-4" data-testid={`commerce-program-item-${item.schedule_id}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold" style={{ background: `${item.accent}22`, color: item.accent }}>
+                        {item.state === 'live' ? 'LIVE' : item.state === 'scheduled' ? 'Geplant' : 'Aktiv'}
+                      </div>
+                      <h3 className="mt-3 text-sm font-bold">{item.title}</h3>
+                      <p className="mt-1 text-xs text-white/55">{item.subtitle}</p>
+                      <p className="mt-2 text-[11px] text-white/40">{item.scheduled_at ? new Date(item.scheduled_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Jetzt'}</p>
+                    </div>
+                    <button onClick={() => { trackEvent("cta_click", item.type, item.schedule_id); onNavigate(item.route); }} data-testid={`commerce-program-open-${item.schedule_id}`} className="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold text-white">{item.cta_label}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-white/45">Performance Board</p>
+                <h2 className="mt-2 text-base md:text-lg font-bold">Welche Commerce-Formate gerade vorne liegen</h2>
+              </div>
+              <Trophy className="h-5 w-5 text-[#ffd8b5]" />
+            </div>
+
+            <div className="mt-5 space-y-3" data-testid="commerce-performance-list">
+              {(overview?.performance_rankings || []).map((item, index) => (
+                <button key={item.rank_id} onClick={() => { trackEvent("cta_click", "performance_rank", item.rank_id); onNavigate(item.route); }} data-testid={`commerce-performance-item-${item.rank_id}`} className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl font-black" style={{ background: `${item.accent}22`, color: item.accent }}>{index + 1}</div>
+                      <div>
+                        <p className="text-xs text-white/50">{item.label}</p>
+                        <h3 className="mt-1 text-sm font-bold">{item.title}</h3>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-white/50">{item.metric_label}</p>
+                      <p className="mt-1 text-lg font-black" style={{ color: item.accent }}>{item.metric_value}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           </motion.div>
         </section>

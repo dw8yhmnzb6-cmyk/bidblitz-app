@@ -4,7 +4,7 @@ from typing import Any
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.database import db
 from core.payment_engine import TransactionType, credit_wallet, debit_wallet
@@ -34,6 +34,14 @@ class FlashSaleCreateRequest(BaseModel):
     listing_id: str
     sale_price: float
     duration_minutes: int = 180
+
+
+class CommerceEventTrackRequest(BaseModel):
+    event_type: str
+    target_type: str
+    target_id: str = ""
+    source: str = "commerce_center"
+    metadata: dict = Field(default_factory=dict)
 
 
 def _serialize_value(value: Any):
@@ -186,6 +194,179 @@ def _build_live_insights(flash_sales: list[dict], penny_auctions: list[dict], li
     ]
 
 
+def _build_program_schedule(flash_sales: list[dict], live_streams: list[dict], upcoming_streams: list[dict], live_auctions: list[dict]) -> list[dict]:
+    entries: list[dict] = []
+    for stream in (live_streams or [])[:2]:
+        entries.append({
+            "schedule_id": f"live-{stream.get('stream_id')}",
+            "type": "live_stream",
+            "title": stream.get("title") or "Live Shopping",
+            "subtitle": f"{stream.get('viewer_count', 0)} Zuschauer live · @{stream.get('host_handle') or stream.get('host_name') or 'host'}",
+            "state": "live",
+            "scheduled_at": stream.get("started_at") or stream.get("created_at"),
+            "cta_label": "Zum Stream",
+            "route": "/live",
+            "accent": "#ef4444",
+        })
+    for stream in (upcoming_streams or [])[:3]:
+        entries.append({
+            "schedule_id": f"upcoming-{stream.get('stream_id')}",
+            "type": "upcoming_stream",
+            "title": stream.get("title") or "Geplanter Stream",
+            "subtitle": f"Host: {stream.get('host_name') or stream.get('host_handle') or 'Creator'}",
+            "state": "scheduled",
+            "scheduled_at": stream.get("scheduled_start"),
+            "cta_label": "Programm öffnen",
+            "route": "/live",
+            "accent": "#38bdf8",
+        })
+    for auction in (live_auctions or [])[:2]:
+        entries.append({
+            "schedule_id": f"auction-{auction.get('auction_id')}",
+            "type": "live_auction",
+            "title": auction.get("title") or "Live Auktion",
+            "subtitle": f"{auction.get('bid_count', 0)} Gebote · endet in {max(0, auction.get('remaining_seconds', 0))}s",
+            "state": "live",
+            "scheduled_at": auction.get("ends_at"),
+            "cta_label": "Live bieten",
+            "route": f"/live-auctions?auction_id={auction.get('auction_id', '')}&source=commerce-program",
+            "accent": "#8b5cf6",
+        })
+    for sale in (flash_sales or [])[:2]:
+        entries.append({
+            "schedule_id": f"flash-{sale.get('sale_id')}",
+            "type": "flash_sale",
+            "title": sale.get("title") or "Flash Sale",
+            "subtitle": f"-{sale.get('discount_pct', 0)}% · {sale.get('category_label') or sale.get('category') or 'Deal'}",
+            "state": "active",
+            "scheduled_at": sale.get("ends_at"),
+            "cta_label": "Deal öffnen",
+            "route": f"/marketplace?listing_id={sale.get('listing_id', '')}&source=commerce-program",
+            "accent": "#f97316",
+        })
+
+    entries.sort(key=lambda item: str(item.get("scheduled_at") or ""))
+    return entries[:6]
+
+
+def _build_performance_rankings(flash_sales: list[dict], marketplace_items: list[dict], live_streams: list[dict], penny_auctions: list[dict]) -> list[dict]:
+    rankings: list[dict] = []
+    top_flash = max(flash_sales, key=lambda item: item.get("discount_pct", 0), default=None)
+    if top_flash:
+        rankings.append({
+            "rank_id": "top-flash",
+            "label": "Bester Flash Deal",
+            "title": top_flash.get("title") or "Flash Sale",
+            "metric_label": "Discount",
+            "metric_value": f"-{top_flash.get('discount_pct', 0)}%",
+            "route": f"/marketplace?listing_id={top_flash.get('listing_id', '')}&source=commerce-ranking",
+            "accent": "#f97316",
+        })
+    top_listing = max(marketplace_items, key=lambda item: (item.get("favorites", 0), item.get("views", 0)), default=None)
+    if top_listing:
+        rankings.append({
+            "rank_id": "top-listing",
+            "label": "Marketplace Leader",
+            "title": top_listing.get("title") or "Listing",
+            "metric_label": "Views",
+            "metric_value": str(top_listing.get("views", 0)),
+            "route": f"/marketplace?listing_id={top_listing.get('listing_id', '')}&source=commerce-ranking",
+            "accent": "#10b981",
+        })
+    top_stream = max(live_streams, key=lambda item: item.get("viewer_count", 0), default=None)
+    if top_stream:
+        rankings.append({
+            "rank_id": "top-stream",
+            "label": "Live Publikum",
+            "title": top_stream.get("title") or "Live Stream",
+            "metric_label": "Viewer",
+            "metric_value": str(top_stream.get("viewer_count", 0)),
+            "route": "/live",
+            "accent": "#ef4444",
+        })
+    top_auction = max(penny_auctions, key=lambda item: item.get("bid_count", 0), default=None)
+    if top_auction:
+        rankings.append({
+            "rank_id": "top-auction",
+            "label": "Meiste Gebote",
+            "title": top_auction.get("title") or "Penny Auktion",
+            "metric_label": "Gebote",
+            "metric_value": str(top_auction.get("bid_count", 0)),
+            "route": f"/auctions?auction_id={top_auction.get('auction_id', '')}&source=commerce-ranking",
+            "accent": "#8b5cf6",
+        })
+    return rankings
+
+
+async def _build_analytics_cards(flash_sales: list[dict], live_streams: list[dict]) -> list[dict]:
+    since_dt = datetime.now(timezone.utc) - timedelta(hours=24)
+    since_iso = since_dt.isoformat()
+    revenue_pipeline = [
+        {"$match": {"created_at": {"$gte": since_iso}, "status": "completed"}},
+        {"$group": {"_id": None, "revenue": {"$sum": "$total_price"}, "orders": {"$sum": 1}}},
+    ]
+    revenue_rows = await db.commerce_orders.aggregate(revenue_pipeline).to_list(1)
+    revenue_row = revenue_rows[0] if revenue_rows else {"revenue": 0, "orders": 0}
+
+    cta_clicks = await db.commerce_center_events.count_documents({
+        "event_type": "cta_click",
+        "created_at": {"$gte": since_iso},
+    })
+    live_viewers_now = sum(int(item.get("viewer_count") or 0) for item in (live_streams or []))
+    avg_discount = 0
+    if flash_sales:
+        avg_discount = round(sum(float(item.get("discount_pct") or 0) for item in flash_sales) / len(flash_sales), 1)
+    orders_24h = int(revenue_row.get("orders") or 0)
+    conversion_rate = round((orders_24h / cta_clicks) * 100, 1) if cta_clicks else 0
+
+    return [
+        {
+            "id": "revenue_24h",
+            "label": "Flash Revenue 24h",
+            "value": round(float(revenue_row.get("revenue") or 0), 2),
+            "value_type": "currency",
+            "detail": f"{orders_24h} Orders in den letzten 24h",
+        },
+        {
+            "id": "cta_clicks_24h",
+            "label": "CTA Klicks 24h",
+            "value": cta_clicks,
+            "value_type": "count",
+            "detail": "Klicks auf Spotlight, Karten und Commerce-Shortcuts",
+        },
+        {
+            "id": "conversion_rate",
+            "label": "Hub Conversion",
+            "value": conversion_rate,
+            "value_type": "percent",
+            "detail": "Orders relativ zu Commerce-CTA-Klicks",
+        },
+        {
+            "id": "live_viewers_now",
+            "label": "Live Viewer jetzt",
+            "value": live_viewers_now,
+            "value_type": "count",
+            "detail": f"Ø Discount aktuell {avg_discount}%",
+        },
+    ]
+
+
+async def _track_commerce_event(payload: CommerceEventTrackRequest, request: Request):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or request.client.host if request.client else ""
+    await db.commerce_center_events.insert_one({
+        "event_id": f"evt_{secrets.token_hex(6)}",
+        "event_type": payload.event_type,
+        "target_type": payload.target_type,
+        "target_id": payload.target_id,
+        "source": payload.source,
+        "metadata": payload.metadata,
+        "user_agent": request.headers.get("user-agent", ""),
+        "client_ip": client_ip,
+        "created_at": now_iso,
+    })
+
+
 async def _ensure_flash_sales() -> list[dict]:
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
@@ -259,6 +440,92 @@ async def _ensure_flash_sales() -> list[dict]:
         created_sales.append(sale)
 
     return active_sales + created_sales
+
+
+async def _ensure_live_programming():
+    now = datetime.now(timezone.utc)
+    live_count = await db.live_streams.count_documents({"status": "live"})
+    upcoming_count = await db.live_streams.count_documents({"status": "idle"})
+    if live_count == 0:
+        live_doc = {
+            "stream_id": f"seedlive_{secrets.token_hex(5)}",
+            "host_user_id": "seed_bidblitz_live",
+            "host_name": "BidBlitz Live",
+            "host_handle": "bidblitzlive",
+            "title": "Live Deal Radar",
+            "description": "Tägliche Live-Deals und Produkt-Drops.",
+            "category": "marketplace",
+            "product_ids": [],
+            "auction_ids": [],
+            "featured_product_id": None,
+            "cover_image": "",
+            "status": "live",
+            "viewer_count": 42,
+            "peak_viewers": 68,
+            "total_messages": 0,
+            "total_reactions": 0,
+            "room_key": secrets.token_urlsafe(16),
+            "scheduled_start": now - timedelta(minutes=10),
+            "started_at": now - timedelta(minutes=10),
+            "created_at": now,
+        }
+        await db.live_streams.insert_one(live_doc)
+    if upcoming_count < 2:
+        missing = 2 - upcoming_count
+        seeds = [
+            ("Creator Spotlight", "marketplace", 90),
+            ("Late Night Penny Battle", "auction", 180),
+        ]
+        for title, category, offset in seeds[:missing]:
+            doc = {
+                "stream_id": f"seedup_{secrets.token_hex(5)}",
+                "host_user_id": "seed_bidblitz_live",
+                "host_name": "BidBlitz Studio",
+                "host_handle": "bidblitzstudio",
+                "title": title,
+                "description": "Geplanter Commerce Stream.",
+                "category": category,
+                "product_ids": [],
+                "auction_ids": [],
+                "featured_product_id": None,
+                "cover_image": "",
+                "status": "idle",
+                "viewer_count": 0,
+                "peak_viewers": 0,
+                "total_messages": 0,
+                "total_reactions": 0,
+                "room_key": secrets.token_urlsafe(16),
+                "scheduled_start": now + timedelta(minutes=offset),
+                "created_at": now,
+            }
+            await db.live_streams.insert_one(doc)
+
+    active_auction_count = await db.live_auctions.count_documents({"status": "active", "ends_at": {"$gt": now.isoformat()}})
+    if active_auction_count < 2:
+        seeds = [
+            ("Gaming Mystery Drop", "gaming", 9.5, 900),
+            ("Premium Mobility Bundle", "mobility", 14.0, 1200),
+        ]
+        for title, category, start_price, duration_seconds in seeds[: 2 - active_auction_count]:
+            auction = {
+                "auction_id": f"seedla_{secrets.token_hex(5)}",
+                "seller_email": "live@bidblitz.ae",
+                "seller_name": "BidBlitz Live",
+                "title": title,
+                "description": "Seeded live auction for Commerce Center programming.",
+                "start_price": start_price,
+                "current_price": start_price,
+                "category": category,
+                "image_url": "",
+                "bids": [],
+                "bid_count": 0,
+                "highest_bidder": None,
+                "status": "active",
+                "created_at": now.isoformat(),
+                "ends_at": (now + timedelta(seconds=duration_seconds)).isoformat(),
+                "duration_seconds": duration_seconds,
+            }
+            await db.live_auctions.insert_one(auction)
 
 
 @router.get("/merchant-dashboard")
@@ -396,6 +663,7 @@ async def cancel_flash_sale(sale_id: str, request: Request):
 
 @router.get("/overview")
 async def get_commerce_overview():
+    await _ensure_live_programming()
     flash_sales = await _ensure_flash_sales()
 
     marketplace_items = await db.marketplace_listings.find(
@@ -511,6 +779,9 @@ async def get_commerce_overview():
     category_mix = _build_category_mix(marketplace_items[:6], penny_auctions[:4], flash_sales[:4])
     spotlight = _build_spotlight_deal(flash_sales[:4], penny_auctions[:4], live_auctions)
     live_insights = _build_live_insights(flash_sales[:4], penny_auctions[:4], live_streams, category_mix)
+    analytics_cards = await _build_analytics_cards(flash_sales[:4], live_streams)
+    performance_rankings = _build_performance_rankings(flash_sales[:4], marketplace_items[:6], live_streams, penny_auctions[:4])
+    program_schedule = _build_program_schedule(flash_sales[:4], live_streams, upcoming_streams, live_auctions)
 
     return {
         "stats": stats,
@@ -523,7 +794,16 @@ async def get_commerce_overview():
         "spotlight": _serialize_doc(spotlight),
         "category_mix": [_serialize_doc(item) for item in category_mix],
         "live_insights": [_serialize_doc(item) for item in live_insights],
+        "analytics_cards": [_serialize_doc(item) for item in analytics_cards],
+        "performance_rankings": [_serialize_doc(item) for item in performance_rankings],
+        "program_schedule": [_serialize_doc(item) for item in program_schedule],
     }
+
+
+@router.post("/events")
+async def track_commerce_center_event(req: CommerceEventTrackRequest, request: Request):
+    await _track_commerce_event(req, request)
+    return {"ok": True}
 
 
 @router.post("/flash-sales/{sale_id}/buy")

@@ -192,6 +192,7 @@ export const api = {
 
   // Commerce Center
   getCommerceCenterOverview: () => request("/api/commerce-center/overview"),
+  trackCommerceCenterEvent: (body) => request("/api/commerce-center/events", { method: "POST", body: JSON.stringify(body) }),
   getCommerceMerchantDashboard: () => request("/api/commerce-center/merchant-dashboard"),
   createCommerceFlashSale: (body) => request("/api/commerce-center/flash-sales", { method: "POST", body: JSON.stringify(body) }),
   cancelCommerceFlashSale: (saleId) => request(`/api/commerce-center/flash-sales/${saleId}`, { method: "DELETE" }),
