@@ -20,6 +20,13 @@
 - `frontend/src/pages/TaxiPage.jsx`: Gastnutzer rufen keine auth-geschützten Taxi-Collections und keine Active-Ride-API mehr auf; Taxi-spezifische Guest-Console-401s reduziert.
 - Verifiziert: JS/Python Lint PASS, Pytest `backend/tests/test_iter185_taxi_guest_noise_feature_flags.py` 4/4 PASS, Browser-Smoke für `/taxi` Single-Letter-Suche PASS. Keine MOCKS.
 
+## 06.07.2026 — Admin Canonical Migration auf `.ae`
+- `backend/.env`: `ADMIN_EMAIL` auf `admin@bidblitz.ae` gesetzt.
+- `backend/server.py`: `seed_admin()` migriert den bestehenden Admin-Datensatz von `admin@bidblitz.com` auf `admin@bidblitz.ae`, hält KYC approved und setzt nur `admin@bid-blitz.ae` als Alias.
+- `backend/routes/auth.py`: Admin `.com` wird nicht mehr automatisch auf `.ae` gemappt; Login mit `admin@bidblitz.com` liefert 401.
+- `frontend/src/utils/adminAccess.js`: Admin-Erkennung auf `.ae` kanonisiert; Home/More/App/UserContext nutzen den zentralen Helper.
+- Verifiziert: `.ae` Login 200, dashed Alias 200, `.com` Login 401, Admin sieht keine Vor-KYC-Gates und `more-all-services` ist sichtbar; Testing-Agent Iteration 187 bestätigt Kernflüsse. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
