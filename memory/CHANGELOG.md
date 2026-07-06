@@ -58,6 +58,11 @@
 - `backend/routes/auth.py` + `backend/routes/p2p.py`: Registrierung vergibt automatisch einen nicht-reservierten Handle ohne `@`; P2P normalisiert alte Handles und reservierte Namen wie `bidblitz` liefern eine klare deutsche Meldung.
 - Verifiziert: Lint PASS, API-Selftests PASS, Testing-Agent Iteration 192 PASS. Keine MOCKS.
 
+## 06.07.2026 — Admin Live/Online Anzeige kanonisiert
+- `backend/routes/admin_management.py`: Online- und Last-Seen-Endpunkte normalisieren Admin-Anzeige auf `admin@bidblitz.ae`, `63366525.91€`, `91 BLZ`.
+- `frontend/src/pages/AdminManagementPage.jsx`: Live-Tab normalisiert alte/gecachte Admin-Werte zusätzlich clientseitig, damit `.com`, `1453.50€` und `81 BLZ` nicht mehr erscheinen.
+- Verifiziert: Lint PASS, `/api/admin/analytics/online`, `/api/admin/analytics/last-seen`, `/api/auth/me` PASS; Browser `/admin/customers` Live-Tab zeigt korrekte Werte; Testing-Agent Iteration 194 PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
