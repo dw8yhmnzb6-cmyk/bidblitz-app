@@ -187,6 +187,9 @@ def generate_card_expiry():
 async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.lower().strip()
     ip, ua = get_client_info(request)
+    display_name = ((req.name or req.full_name or email.split("@")[0]) or "").strip()
+    if not display_name:
+        raise HTTPException(status_code=422, detail="Name is required")
 
     # TEMPORARY FIX: Registration always open (soft launch disabled)
     invite_used = None
@@ -223,7 +226,8 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     user_doc = {
         "email": email,
         "password_hash": hash_password(req.password),
-        "name": req.name.strip(),
+        "name": display_name,
+        "full_name": display_name,
         "role": role,
         "user_number": user_number,
         "balance": WELCOME_EUR,
@@ -251,7 +255,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     # Create merchant profile
     merchant_doc = {
         "user_id": user_id,
-        "business_name": req.name.strip() if role == "merchant" else f"{req.name.strip()}'s Store",
+        "business_name": display_name if role == "merchant" else f"{display_name}'s Store",
         "total_earnings": 0.0,
         "gross_earnings": 0.0,
         "total_fees": 0.0,
@@ -294,14 +298,14 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     # Send onboarding notifications
     try:
         from routes.notifications import create_onboarding_notifications
-        await create_onboarding_notifications(user_id, req.name.strip())
+        await create_onboarding_notifications(user_id, display_name)
     except Exception:
         pass
     
     # Send welcome email
     try:
         from core.email import send_welcome_email
-        send_welcome_email(email, req.name.strip())
+        send_welcome_email(email, display_name)
     except Exception as e:
         logger.warning(f"Failed to send welcome email: {e}")
 

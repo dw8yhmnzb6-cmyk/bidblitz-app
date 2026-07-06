@@ -116,6 +116,7 @@ export default function KYCFlow({ onBack, onComplete }) {
       if (!r.ok) {
         let errMsg = "Übermittlung fehlgeschlagen";
         if (typeof d.detail === "string") errMsg = d.detail;
+        else if (Array.isArray(d.detail)) errMsg = d.detail.map((item) => item?.msg || item?.message || JSON.stringify(item)).join(" ");
         else if (d.detail && typeof d.detail.message === "string") errMsg = d.detail.message;
         else if (d.detail && typeof d.detail.msg === "string") errMsg = d.detail.msg;
         setError(errMsg);
@@ -288,34 +289,37 @@ function KYCStartPage({ onStart }) {
 // ────────────────────────────────────────────────────────────────────────
 // Stage 2 — Upload Page (form + 3 file uploads)
 // ────────────────────────────────────────────────────────────────────────
-function KYCUploadPage({ form, setForm, files, previews, onFileSelect, error, setError, onContinue }) {
-  const FormField = ({ label, icon: Icon, name, type = "text", placeholder, options }) => (
-    <div className="mb-3">
-      <label className="block text-[10px] uppercase tracking-wider text-white/40 mb-1.5 flex items-center gap-1.5">
-        <Icon size={10} /> {label}
-      </label>
-      {options ? (
-        <select
-          value={form[name]}
-          onChange={(e) => setForm({ ...form, [name]: e.target.value })}
-          data-testid={`kyc-input-${name}`}
-          className="w-full px-3.5 py-3 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-[#00C2FF] outline-none">
-          {options.map((o) => (
-            <option key={o.value} value={o.value} className="bg-[#0a0a0f]">{o.label}</option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          value={form[name]}
-          onChange={(e) => setForm({ ...form, [name]: e.target.value })}
-          placeholder={placeholder}
-          data-testid={`kyc-input-${name}`}
-          className="w-full px-3.5 py-3 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-[#00C2FF] outline-none placeholder:text-white/25"
-        />
-      )}
-    </div>
+function KYCFormField({ form, setForm, label, icon: Icon, name, type = "text", placeholder, options }) {
+  return (
+  <div className="mb-3">
+    <label className="block text-[10px] uppercase tracking-wider text-white/40 mb-1.5 flex items-center gap-1.5">
+      <Icon size={10} /> {label}
+    </label>
+    {options ? (
+      <select
+        value={form[name]}
+        onChange={(e) => setForm({ ...form, [name]: e.target.value })}
+        data-testid={`kyc-input-${name}`}
+        className="w-full px-3.5 py-3 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-[#00C2FF] outline-none">
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-[#0a0a0f]">{o.label}</option>
+        ))}
+      </select>
+    ) : (
+      <input
+        type={type}
+        value={form[name]}
+        onChange={(e) => setForm({ ...form, [name]: e.target.value })}
+        placeholder={placeholder}
+        data-testid={`kyc-input-${name}`}
+        className="w-full px-3.5 py-3 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-[#00C2FF] outline-none placeholder:text-white/25"
+      />
+    )}
+  </div>
   );
+}
+
+function KYCUploadPage({ form, setForm, files, previews, onFileSelect, error, setError, onContinue }) {
 
   return (
     <motion.div data-testid="kyc-upload-page"
@@ -326,21 +330,21 @@ function KYCUploadPage({ form, setForm, files, previews, onFileSelect, error, se
 
       {/* Personal info */}
       <div className="grid grid-cols-2 gap-2.5">
-        <FormField label="Vorname" icon={User} name="first_name" placeholder="Max" />
-        <FormField label="Nachname" icon={User} name="last_name" placeholder="Mustermann" />
+        <KYCFormField form={form} setForm={setForm} label="Vorname" icon={User} name="first_name" placeholder="Max" />
+        <KYCFormField form={form} setForm={setForm} label="Nachname" icon={User} name="last_name" placeholder="Mustermann" />
       </div>
-      <FormField label="Geburtsdatum" icon={Calendar} name="date_of_birth" type="date" />
-      <FormField label="Land" icon={Globe} name="country"
+      <KYCFormField form={form} setForm={setForm} label="Geburtsdatum" icon={Calendar} name="date_of_birth" type="date" />
+      <KYCFormField form={form} setForm={setForm} label="Land" icon={Globe} name="country"
         options={COUNTRIES.map((c) => ({ value: c.code, label: c.label }))} />
 
-      <FormField label="Ausweisart" icon={FileText} name="id_type"
+      <KYCFormField form={form} setForm={setForm} label="Ausweisart" icon={FileText} name="id_type"
         options={[
           { value: "national_id", label: "Personalausweis" },
           { value: "passport", label: "Reisepass" },
           { value: "driver_license", label: "Führerschein" },
         ]} />
-      <FormField label="Ausweis-Nummer" icon={Hash} name="id_number" placeholder="LX12345678" />
-      <FormField label="Adresse (optional)" icon={Globe} name="address" placeholder="Straße, PLZ Ort" />
+      <KYCFormField form={form} setForm={setForm} label="Ausweis-Nummer" icon={Hash} name="id_number" placeholder="LX12345678" />
+      <KYCFormField form={form} setForm={setForm} label="Adresse (optional)" icon={Globe} name="address" placeholder="Straße, PLZ Ort" />
 
       {/* Document Uploads */}
       <h3 className="text-sm font-bold mt-6 mb-3 flex items-center gap-2">
@@ -429,13 +433,16 @@ function FileUpload({ slot, label, Icon, file, preview, onChange }) {
 // ────────────────────────────────────────────────────────────────────────
 // Stage 3 — Review Page
 // ────────────────────────────────────────────────────────────────────────
-function KYCReviewPage({ form, previews, submitting, error, onBack, onSubmit }) {
-  const ReviewRow = ({ label, value }) => (
-    <div className="flex justify-between py-2.5 border-b border-white/5">
-      <span className="text-xs text-white/40">{label}</span>
-      <span className="text-xs text-white/90 font-semibold text-right max-w-[60%] break-words">{value || "—"}</span>
-    </div>
+function KYCReviewRow({ label, value }) {
+  return (
+  <div className="flex justify-between py-2.5 border-b border-white/5">
+    <span className="text-xs text-white/40">{label}</span>
+    <span className="text-xs text-white/90 font-semibold text-right max-w-[60%] break-words">{value || "—"}</span>
+  </div>
   );
+}
+
+function KYCReviewPage({ form, previews, submitting, error, onBack, onSubmit }) {
   const country = COUNTRIES.find((c) => c.code === form.country)?.label || form.country;
   const idType = { national_id: "Personalausweis", passport: "Reisepass", driver_license: "Führerschein" }[form.id_type] || form.id_type;
 
@@ -447,13 +454,13 @@ function KYCReviewPage({ form, previews, submitting, error, onBack, onSubmit }) 
       <p className="text-xs text-white/45 mb-5">Letzter Schritt — alles korrekt?</p>
 
       <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
-        <ReviewRow label="Vorname" value={form.first_name} />
-        <ReviewRow label="Nachname" value={form.last_name} />
-        <ReviewRow label="Geburtsdatum" value={form.date_of_birth} />
-        <ReviewRow label="Land" value={country} />
-        <ReviewRow label="Ausweisart" value={idType} />
-        <ReviewRow label="Ausweis-Nr." value={form.id_number} />
-        {form.address && <ReviewRow label="Adresse" value={form.address} />}
+        <KYCReviewRow label="Vorname" value={form.first_name} />
+        <KYCReviewRow label="Nachname" value={form.last_name} />
+        <KYCReviewRow label="Geburtsdatum" value={form.date_of_birth} />
+        <KYCReviewRow label="Land" value={country} />
+        <KYCReviewRow label="Ausweisart" value={idType} />
+        <KYCReviewRow label="Ausweis-Nr." value={form.id_number} />
+        {form.address && <KYCReviewRow label="Adresse" value={form.address} />}
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">

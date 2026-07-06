@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/kyc", tags=["kyc"])
 
 ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 MAX_BYTES = 10 * 1024 * 1024  # 10MB per file
-ALLOWED_DOC_TYPES = {"national_id", "passport", "drivers_license"}
+ALLOWED_DOC_TYPES = {"national_id", "passport", "driver_license", "drivers_license"}
 
 UPLOAD_BASE = "/app/backend/uploads/kyc"
 os.makedirs(UPLOAD_BASE, exist_ok=True)
@@ -114,6 +114,8 @@ async def submit_kyc(
     user = await get_current_user(request)
     user_id = str(user["_id"])
 
+    if document_type == "driver_license":
+        document_type = "drivers_license"
     if document_type not in ALLOWED_DOC_TYPES:
         raise HTTPException(status_code=400, detail="document_type must be one of: " + ", ".join(ALLOWED_DOC_TYPES))
 

@@ -1,0 +1,40 @@
+{
+  "summary": "Validated customer registration + KYC submit regression on preview URL with backend pytest and browser e2e. Confirmed register supports full_name and name payloads, cookies are set, /api/auth/me works, driver_license KYC submit returns structured result, and admin canonical login behavior remains intact.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter191_registration_kyc_regression.py",
+    "/app/test_reports/pytest/iter191_registration_kyc_regression.xml"
+  ],
+  "action_items": [
+    "No blocker found for reported registration/KYC failure scope; requested flows are passing on preview.",
+    "Optional hardening: remove duplicate route declaration in backend/routes/wallet.py (@router.get('/balance') appears twice).",
+    "Optional hardening: avoid duplicate welcome-email dispatch in backend/routes/auth.py (two send blocks)."
+  ],
+  "critical_code_review_comments": [
+    "Route shadowing risk: /app/backend/routes/wallet.py defines GET /balance twice (line ~39 and ~179), which can cause maintenance confusion and accidental behavior drift.",
+    "Duplicate side effect risk: /app/backend/routes/auth.py sends welcome email in two separate blocks, potentially causing duplicate emails."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter191_registration_kyc_regression.py",
+    "/app/test_reports/iteration_191.json"
+  ],
+  "success_rate": {
+    "backend": "83% (5 passed, 1 skipped)",
+    "frontend": "100% (registration + KYC flow verified)"
+  },
+  "test_credentials": "Used from /app/memory/test_credentials.md: admin@bidblitz.ae / BidBlitz2026!, removed admin check with admin@bidblitz.com / BidBlitz2026!.",
+  "seed_data_creation": "No seeded data created; only unique temporary test users via register endpoint.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "KYC deep UI check captured /api/kyc/submit status=200 with structured rejected payload (not generic submission failure) and rendered status page correctly. Backend regression file for this bug scope is reusable: test_iter191_registration_kyc_regression.py.",
+  "rca of the issue": "Reproduced fixes in black-box behavior: registration now accepts full_name and legacy name; KYC driver_license is normalized and accepted, returning structured JSON response used by UI. Previous user-facing 'Übermittlung fehlgeschlagen' generic failure path is not observed in tested flow.",
+  "mocked_api": "No MOCKED APIs used."
+}

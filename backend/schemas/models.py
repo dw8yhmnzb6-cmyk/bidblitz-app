@@ -6,7 +6,8 @@ from datetime import datetime
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
-    name: str = Field(min_length=1, max_length=100)
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
     invite_code: Optional[str] = None
     requested_role: Optional[str] = None
 

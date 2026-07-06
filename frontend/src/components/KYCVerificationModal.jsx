@@ -21,6 +21,55 @@ const DOC_TYPES = [
   { id: "drivers_license", label: "Führerschein",      icon: Car,        desc: "Vorder- + Rückseite" },
 ];
 
+const KYCStepIndicator = ({ step }) => (
+  <div className="flex items-center gap-1 mb-4">
+    {[1, 2, 3, 4].map((n) => (
+      <div key={n} className={`flex-1 h-1 rounded-full ${step >= n ? 'bg-gradient-to-r from-[#00C2FF] to-[#A855F7]' : 'bg-white/10'}`}/>
+    ))}
+  </div>
+);
+
+const KYCPhotoStep = ({ title, subtitle, file, setFile, inputRef, hint, testId, icon: Icon }) => (
+  <div className="space-y-4" data-testid={`kyc-step-${testId}`}>
+    <div className="text-center">
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00C2FF]/20 to-[#A855F7]/20 flex items-center justify-center mx-auto mb-2">
+        <Icon size={26} className="text-[#00C2FF]" />
+      </div>
+      <h2 className="text-[16px] font-bold text-white">{title}</h2>
+      <p className="text-[11px] text-gray-400 mt-1 px-2">{subtitle}</p>
+    </div>
+
+    {file ? (
+      <div className="relative">
+        <img src={URL.createObjectURL(file)} alt="preview"
+          className="w-full aspect-[3/2] object-cover rounded-2xl border border-white/10"/>
+        <button onClick={() => setFile(null)}
+          data-testid={`kyc-${testId}-remove`}
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 backdrop-blur flex items-center justify-center">
+          <X size={14} className="text-white" />
+        </button>
+      </div>
+    ) : (
+      <div>
+        <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden"
+          data-testid={`kyc-${testId}-input`}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) setFile(f);
+          }}/>
+        <motion.button whileTap={{ scale: 0.97 }} onClick={() => inputRef.current?.click()}
+          data-testid={`kyc-${testId}-camera`}
+          className="w-full aspect-[3/2] rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 bg-white/[0.02]">
+          <Camera size={28} className="text-[#00C2FF]" />
+          <p className="text-[12px] font-bold text-white">Foto aufnehmen</p>
+          <p className="text-[10px] text-gray-500">Tippen zum Öffnen der Kamera</p>
+        </motion.button>
+        {hint && <p className="text-[10px] text-amber-400 text-center mt-2 px-2">💡 {hint}</p>}
+      </div>
+    )}
+  </div>
+);
+
 const KYCVerificationModal = ({ open, onClose, onComplete }) => {
   const [step, setStep] = useState(0); // 0=doc, 1=front, 2=back, 3=selfie, 4=submit, 5=result
   const [docType, setDocType] = useState("national_id");
@@ -60,7 +109,15 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
         body: fd,
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.detail || "Verifizierung fehlgeschlagen");
+      if (!res.ok) {
+        const detail = d.detail;
+        const msg = typeof detail === "string"
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((item) => item?.msg || item?.message || JSON.stringify(item)).join(" ")
+            : detail?.message || detail?.msg || "Verifizierung fehlgeschlagen";
+        throw new Error(msg);
+      }
       setResult(d);
       setStep(5);
       if (d.status === "approved") {
@@ -71,55 +128,6 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
     }
     setSubmitting(false);
   };
-
-  const PhotoStep = ({ title, subtitle, file, setFile, inputRef, hint, testId, icon: Icon }) => (
-    <div className="space-y-4" data-testid={`kyc-step-${testId}`}>
-      <div className="text-center">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00C2FF]/20 to-[#A855F7]/20 flex items-center justify-center mx-auto mb-2">
-          <Icon size={26} className="text-[#00C2FF]" />
-        </div>
-        <h2 className="text-[16px] font-bold text-white">{title}</h2>
-        <p className="text-[11px] text-gray-400 mt-1 px-2">{subtitle}</p>
-      </div>
-
-      {file ? (
-        <div className="relative">
-          <img src={URL.createObjectURL(file)} alt="preview"
-            className="w-full aspect-[3/2] object-cover rounded-2xl border border-white/10"/>
-          <button onClick={() => setFile(null)}
-            data-testid={`kyc-${testId}-remove`}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 backdrop-blur flex items-center justify-center">
-            <X size={14} className="text-white" />
-          </button>
-        </div>
-      ) : (
-        <div>
-          <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden"
-            data-testid={`kyc-${testId}-input`}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) setFile(f);
-            }}/>
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => inputRef.current?.click()}
-            data-testid={`kyc-${testId}-camera`}
-            className="w-full aspect-[3/2] rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 bg-white/[0.02]">
-            <Camera size={28} className="text-[#00C2FF]" />
-            <p className="text-[12px] font-bold text-white">Foto aufnehmen</p>
-            <p className="text-[10px] text-gray-500">Tippen zum Öffnen der Kamera</p>
-          </motion.button>
-          {hint && <p className="text-[10px] text-amber-400 text-center mt-2 px-2">💡 {hint}</p>}
-        </div>
-      )}
-    </div>
-  );
-
-  const StepIndicator = () => (
-    <div className="flex items-center gap-1 mb-4">
-      {[1, 2, 3, 4].map((n) => (
-        <div key={n} className={`flex-1 h-1 rounded-full ${step >= n ? 'bg-gradient-to-r from-[#00C2FF] to-[#A855F7]' : 'bg-white/10'}`}/>
-      ))}
-    </div>
-  );
 
   return (
     <AnimatePresence>
@@ -163,7 +171,7 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
           </div>
 
           <div className="p-4">
-            {step < 4 && <StepIndicator />}
+            {step < 4 && <KYCStepIndicator step={step} />}
 
             {/* Step 0: doc type */}
             {step === 0 && (
@@ -200,7 +208,7 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
 
             {step === 1 && (
               <>
-                <PhotoStep
+                <KYCPhotoStep
                   title="Vorderseite des Ausweises"
                   subtitle="Mache ein scharfes Foto der Vorderseite — alle Ecken sichtbar, kein Blitz-Reflex."
                   file={frontFile} setFile={setFrontFile} inputRef={frontInput}
@@ -216,7 +224,7 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
 
             {step === 2 && (
               <>
-                <PhotoStep
+                <KYCPhotoStep
                   title="Rückseite des Ausweises"
                   subtitle="Foto der Rückseite — auch bei Reisepass: einfach gleiche Seite zweimal hochladen."
                   file={backFile} setFile={setBackFile} inputRef={backInput}
@@ -232,7 +240,7 @@ const KYCVerificationModal = ({ open, onClose, onComplete }) => {
 
             {step === 3 && (
               <>
-                <PhotoStep
+                <KYCPhotoStep
                   title="Selfie mit Ausweis"
                   subtitle="Halte den Ausweis neben dein Gesicht. Beide Gesicht und Ausweis müssen klar zu sehen sein."
                   file={selfieFile} setFile={setSelfieFile} inputRef={selfieInput}
