@@ -51,6 +51,13 @@
 - `frontend/src/pages/KYCFlow.jsx` + `frontend/src/components/KYCVerificationModal.jsx`: FastAPI-Detail-Arrays werden lesbar formatiert; alte React-Nested-Component-Lintfehler bereinigt.
 - Verifiziert: API-Registrierung mit `full_name` PASS, API-Registrierung mit `name` PASS, Browser `/register` PASS, KYC-Submit mit Testbildern erreicht AI/Backend strukturiert, Testing-Agent Iteration 191 PASS. Keine MOCKS.
 
+## 06.07.2026 — KYC manuell freischalten + P2P Handle repariert
+- `backend/routes/kyc.py`: unsichere KI-Ergebnisse werden als `pending` gespeichert statt endgültig `rejected`, damit Admin manuell prüfen/freischalten kann.
+- `backend/routes/admin_management.py`: neuer Endpoint `POST /api/admin/customers/{user_id}/kyc` für manuelle KYC-Entscheidung (`approve`/`reject`).
+- `frontend/src/pages/AdminManagementPage.jsx`: Kunden-Detailmodal zeigt `KYC freischalten` und `KYC ablehnen` Buttons mit stabilen Test-IDs.
+- `backend/routes/auth.py` + `backend/routes/p2p.py`: Registrierung vergibt automatisch einen nicht-reservierten Handle ohne `@`; P2P normalisiert alte Handles und reservierte Namen wie `bidblitz` liefern eine klare deutsche Meldung.
+- Verifiziert: Lint PASS, API-Selftests PASS, Testing-Agent Iteration 192 PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
