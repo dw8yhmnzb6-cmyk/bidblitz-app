@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { api } from '../services/api';
+import { isAdminUser } from '../utils/adminAccess';
 
 const AUTH_ACTIONS = {
   SET_USER: 'SET_USER',
@@ -46,7 +47,7 @@ const guestState = {
 
 function mapUser(u) {
   const role = u.role || 'user';
-  const isAdmin = role === 'admin';
+  const isAdmin = isAdminUser({ ...u, role });
   return {
     id: u.id,
     name: u.name,

@@ -28,6 +28,7 @@ import DemoBanner from "./components/DemoBanner";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import { tracker } from "./services/tracker";
+import { isKycApprovedOrAdmin } from "./utils/adminAccess";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
@@ -328,7 +329,7 @@ function AppContent() {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
-  const isKycVerified = user.role === "admin" || user.kyc_status === "approved" || user.kyc_verified;
+  const isKycVerified = isKycApprovedOrAdmin(user);
 
   const isKycRestrictedPath = useCallback((path) => {
     const basePath = (path || "/").split("?")[0];

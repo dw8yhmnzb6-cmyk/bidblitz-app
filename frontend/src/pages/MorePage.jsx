@@ -21,6 +21,7 @@ import ActivityPage from "./ActivityPage";
 import KidsPaywall from "./KidsPaywall";
 import FeatureGate from "../components/FeatureGate";
 import { PushNotificationToggle } from "../components/PushNotifications";
+import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
@@ -774,8 +775,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const user = useUser();
   const { refreshUser } = user;
   const { t, lang: locale, setLang: setLocale } = useI18n();
-  const isAdmin = user.role === "admin";
-  const isKycVerified = isAdmin || user.kyc_status === "approved" || user.kyc_verified;
+  const isAdmin = isAdminUser(user);
+  const isKycVerified = isKycApprovedOrAdmin(user);
   const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
@@ -1015,7 +1016,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     ...(driverAccess?.is_verified ? [
       { id: "driver-mode", icon: Car, label: "Fahrer-Modus", desc: "Online gehen, Fahrten annehmen & verdienen", color: "#A855F7", action: gatedAction(() => onNavigate("/driver-dashboard")) },
     ] : []),
-    ...(user.role === "merchant" || user.role === "admin" ? [
+    ...(user.role === "merchant" || isAdmin ? [
       { id: "car-rental-vendor", icon: Car, label: t("more.vendor_dashboard"), desc: t("more.vendor_dashboard_desc"), color: "#00D26A", action: gatedAction(() => onNavigate("/car-rental/vendor")) },
     ] : []),
   ];
@@ -1038,7 +1039,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "legal-sicherheit", icon: Shield, label: "Sicherheit", desc: "2FA, Verschlüsselung, Schutz", color: "#FFD700", action: () => onNavigate("/legal/sicherheit") },
   ];
 
-  const adminMenu = user.role === "admin" ? [
+  const adminMenu = isAdmin ? [
     { id: "admin-dashboard", icon: LayoutDashboard, label: t("more.admin_dashboard"), desc: t("more.admin_desc"), color: "#FF6B6B", action: () => onNavigate("/admin") },
     { id: "admin-wallet", icon: Wallet, label: "Wallet-Tool", desc: "Kunden Geld senden / Self-Topup", color: "#00E89D", action: () => onNavigate("/admin/wallet") },
     { id: "admin-taxi", icon: Car, label: "Taxi-Administration", desc: "Fahrer, Fahrten, Preis-Einstellungen", color: "#A855F7", action: () => onNavigate("/admin/taxi") },

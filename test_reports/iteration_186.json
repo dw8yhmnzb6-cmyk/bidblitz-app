@@ -1,0 +1,54 @@
+{
+  "summary": "Completed backend + frontend regression for admin alias/canonical auth and KYC-gate behavior. Admin bypass works on Home/More; non-admin unverified remains gated. One backend auth preflight CORS check still fails.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "OPTIONS /api/auth/login",
+        "issue": "Preflight response missing access-control-allow-credentials:true in live preview, breaking credentialed CORS contract test.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "More page",
+        "issues": [
+          "Multiple secondary labels use very low-contrast gray on dark background."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter186_admin_kyc_gate_regression.py",
+    "/app/test_reports/pytest/iter186_admin_kyc_gate_regression.xml"
+  ],
+  "action_items": [
+    "Fix credentialed CORS preflight contract for /api/auth/login in preview path (must include explicit allow-origin and allow-credentials:true).",
+    "Keep current admin alias/canonical mapping and admin KYC bypass logic unchanged; regression currently passes.",
+    "Optional UX pass: improve low-contrast helper text on dark sections."
+  ],
+  "critical_code_review_comments": [
+    "Central helper usage is wired correctly: isAdminUser/isKycApprovedOrAdmin are used in UserContext, HomePage, MorePage, and App route-level KYC checks.",
+    "Active backend startup file includes seed_admin() with idempotent update + password refresh verification (verify_password + hash refresh), matching playbook expectation.",
+    "CORS code in backend middleware intends credentialed OPTIONS handling, but live preview still returns missing credentials header on tested preflight path."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter186_admin_kyc_gate_regression.py",
+    "/app/test_reports/iteration_186.json"
+  ],
+  "success_rate": {
+    "backend": "90%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Used from /app/memory/test_credentials.md: admin@bidblitz.com, admin@bidblitz.ae, admin@bid-blitz.ae, kycgate.1782580398@test.com.",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "UI checks passed: admin@bid-blitz.ae had pre-kyc-home-gate=0, pre-kyc-more-gate=0, more-all-services=1; unverified user had pre-kyc-home-gate=1, pre-kyc-more-gate=1, more-all-services=0. Backend test file created for this regression with 10 tests; only CORS preflight credential header assertion failed.",
+  "rca of the issue": "Reproduction: send OPTIONS to /api/auth/login with Origin and Access-Control-Request-* headers on preview URL; response lacks access-control-allow-credentials. RCA: backend code has credentialed CORS middleware/OPTIONS guard, so failure is likely at preview edge/ingress preflight handling path or header rewriting before app middleware response. Mitigation: ensure OPTIONS reaches app or configure edge to preserve explicit origin + credentials headers for auth endpoints.",
+  "mocked_api": "No MOCKED APIs used."
+}
