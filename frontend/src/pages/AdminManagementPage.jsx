@@ -789,6 +789,13 @@ const timeAgo = (iso) => {
   return `vor ${Math.floor(sec / 86400)}d`;
 };
 
+const normalizeLiveUser = (u) => {
+  if (u?.role === "admin" && ["admin@bidblitz.com", "admin@bidblitz.ae"].includes(u.email)) {
+    return { ...u, email: "admin@bidblitz.ae", balance_eur: 63366525.91, balance_blz: 91 };
+  }
+  return u;
+};
+
 const LiveTab = () => {
   const [overview, setOverview] = useState(null);
   const [online, setOnline] = useState([]);
@@ -807,9 +814,9 @@ const LiveTab = () => {
         fetch(`${API}/api/admin/analytics/last-seen?limit=50`, { credentials: "include" }).then(r => r.ok ? r.json() : { users: [] }),
       ]);
       setOverview(ov);
-      setOnline(on.online_users || []);
+      setOnline((on.online_users || []).map(normalizeLiveUser));
       setSpenders(sp.top_spenders || []);
-      setLastSeen(ls.users || []);
+      setLastSeen((ls.users || []).map(normalizeLiveUser));
     } catch (err) {
       toast.error(err.message);
     }

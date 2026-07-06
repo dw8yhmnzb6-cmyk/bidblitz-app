@@ -1,0 +1,39 @@
+{
+  "summary": "Validated requested admin canonicalization regressions on public preview URL for backend APIs and /admin/customers Live tab. All targeted checks passed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter194_admin_live_tab_canonical_contract.py",
+    "/app/test_reports/pytest/iter194_admin_live_tab_canonical_contract.xml"
+  ],
+  "action_items": [
+    "No blocker found for requested admin live/analytics/auth regression scope.",
+    "Optional hardening: centralize canonical admin constants (email/balance/BLZ) to avoid backend/frontend drift."
+  ],
+  "critical_code_review_comments": [
+    "Canonical admin values are duplicated in both backend and frontend normalization logic; future updates can desynchronize API/UI output if one side changes first.",
+    "Manual constant injection for admin wallet fields in analytics endpoints should be guarded by a single shared source-of-truth contract to reduce maintenance risk."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter194_admin_live_tab_canonical_contract.py",
+    "/app/test_reports/iteration_194.json"
+  ],
+  "success_rate": {
+    "backend": "100% for requested scope (5/5 target checks passed; plus auth playbook checks passed with 1 expected CORS skip)",
+    "frontend": "100% for requested scope"
+  },
+  "test_credentials": "Used from /app/memory/test_credentials.md: admin@bidblitz.ae / BidBlitz2026! and removed admin admin@bidblitz.com / BidBlitz2026! (expected fail).",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pytest file added for reuse: test_iter194_admin_live_tab_canonical_contract.py covers /api/auth/me snapshot invariants, /api/admin/analytics/online and /last-seen canonicalization, and disabled admin@bidblitz.com login. UI was validated on /admin/customers Live + Last Seen sections; screenshot captured at /app/test_reports/iter194_admin_customers_live_tab.jpeg.",
+  "rca of the issue": "Could not reproduce old .com/old balance leak. Current implementation normalizes admin identity/wallet in both backend analytics endpoints and frontend Live mapping, preventing stale .com display in tested flows.",
+  "mocked_api": "No MOCKED APIs used."
+}
