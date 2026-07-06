@@ -456,6 +456,8 @@ export const api = {
   // Move & Earn
   getMoveStatus: () => request("/api/move/status"),
   syncMoveSteps: (body) => request("/api/move/sync-steps", { method: "POST", body: JSON.stringify(body) }),
+  getMoveCoachSession: () => request("/api/move/coach-session"),
+  refreshMoveCoachSession: (body) => request("/api/move/coach-session", { method: "POST", body: JSON.stringify(body) }),
   claimMoveReward: (body) => request("/api/move/claim-reward", { method: "POST", body: JSON.stringify(body) }),
   getMoveHistory: (limit = 50) => request(`/api/move/history?limit=${limit}`),
   getMoveLeaderboard: (limit = 20) => request(`/api/move/leaderboard?limit=${limit}`),

@@ -1,11 +1,15 @@
 import hashlib
+import json
 import math
+import os
 import random
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from bson import ObjectId
+from dotenv import load_dotenv
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -15,6 +19,7 @@ from core.security import get_current_user
 
 
 router = APIRouter(tags=["move_earn"])
+load_dotenv()
 
 
 DEFAULT_MOVE_SETTINGS = {
@@ -55,7 +60,15 @@ DEFAULT_MOVE_SETTINGS = {
         {"code": "plinko", "label": "Plinko Ticket", "type": "plinko_ticket", "value": 1, "weight": 2, "min_unlock_steps": 10000, "cost_estimate_eur": 0.95},
     ],
     "ai_coach_enabled": False,
+    "gps_quality_weight": 0.45,
+    "sensor_quality_weight": 0.35,
+    "behavior_quality_weight": 0.20,
+    "gps_min_distance_km": 0.15,
+    "coach_model_provider": "openai",
+    "coach_model_name": "gpt-5.2",
 }
+
+MOVE_COACH_COLLECTION = "move_coach_sessions"
 
 LEVELS = [
     {"id": "bronze", "label": "Bronze", "min_xp": 0, "color": "#C48648"},
@@ -73,6 +86,10 @@ class SyncStepsRequest(BaseModel):
     sensor_confidence: Optional[float] = Field(default=None, ge=0, le=1)
     gps_distance_km: Optional[float] = Field(default=None, ge=0, le=300)
     duration_minutes: Optional[int] = Field(default=None, ge=1, le=1440)
+    gps_points: Optional[int] = Field(default=None, ge=0, le=5000)
+    route_variance_score: Optional[float] = Field(default=None, ge=0, le=1)
+    activity_type: Optional[str] = Field(default="walking", max_length=32)
+    background_tracking_minutes: Optional[int] = Field(default=None, ge=0, le=1440)
 
 
 class ClaimRewardRequest(BaseModel):
@@ -104,6 +121,10 @@ class MoveSettingsUpdate(BaseModel):
 class MoveBlockUserRequest(BaseModel):
     blocked: bool
     reason: Optional[str] = Field(default="", max_length=300)
+
+
+class CoachPromptRequest(BaseModel):
+    focus: str = Field(default="daily_plan", max_length=80)
 
 
 def _now() -> datetime:
@@ -500,6 +521,217 @@ async def _family_children_count(uid: str) -> int:
     return await db.kids_children.count_documents({"parent_id": uid})
 
 
+def _clamp_score(value: float) -> int:
+    return max(0, min(100, int(round(value))))
+
+
+def _normalize_gps_quality(req: SyncStepsRequest, settings: dict) -> tuple[int, list[str]]:
+    reasons = []
+    if req.gps_distance_km is None:
+        return 28, ["gps_missing"]
+    distance = float(req.gps_distance_km or 0)
+    points = int(req.gps_points or 0)
+    route_variance = float(req.route_variance_score if req.route_variance_score is not None else 0.45)
+    background_minutes = int(req.background_tracking_minutes or req.duration_minutes or 0)
+    quality = 35 + min(35, distance * 18) + min(15, points / 4) + (route_variance * 15) + min(10, background_minutes / 12)
+    if distance < float(settings.get("gps_min_distance_km", 0.15)):
+        reasons.append("gps_low_distance")
+    if points < 6:
+        reasons.append("gps_sparse_points")
+    if route_variance < 0.2:
+        reasons.append("route_variance_low")
+    return _clamp_score(quality), reasons
+
+
+def _normalize_sensor_quality(req: SyncStepsRequest, settings: dict) -> tuple[int, list[str]]:
+    reasons = []
+    confidence = float(req.sensor_confidence if req.sensor_confidence is not None else settings.get("sensor_confidence_min", 0.2))
+    duration = int(req.duration_minutes or 0)
+    quality = 25 + (confidence * 60) + min(15, duration / 6)
+    if req.sensor_confidence is None:
+        reasons.append("sensor_confidence_missing")
+    elif confidence < float(settings.get("sensor_confidence_min", 0.2)):
+        reasons.append("sensor_confidence_low")
+    if duration < 8:
+        reasons.append("duration_short")
+    return _clamp_score(quality), reasons
+
+
+def _behavior_quality(raw_delta: int, req: SyncStepsRequest, suspicious_reasons: list[str]) -> tuple[int, list[str]]:
+    reasons = []
+    duration = max(1, int(req.duration_minutes or 1))
+    steps_per_minute = raw_delta / duration
+    quality = 88
+    if steps_per_minute > 145:
+        quality -= 28
+        reasons.append("pace_high")
+    if steps_per_minute < 15 and raw_delta > 1200:
+        quality -= 20
+        reasons.append("pace_low_for_delta")
+    if suspicious_reasons:
+        quality -= min(45, 12 * len(suspicious_reasons))
+        reasons.extend([f"suspicious_{reason}" for reason in suspicious_reasons])
+    activity = (req.activity_type or "walking").lower()
+    if activity in {"cycling", "scooter", "car", "vehicle"}:
+        quality -= 15
+        reasons.append("activity_type_non_walk")
+    return _clamp_score(quality), reasons
+
+
+def _compute_scoring(raw_delta: int, req: SyncStepsRequest, settings: dict, suspicious_reasons: list[str]) -> dict:
+    gps_score, gps_reasons = _normalize_gps_quality(req, settings)
+    sensor_score, sensor_reasons = _normalize_sensor_quality(req, settings)
+    behavior_score, behavior_reasons = _behavior_quality(raw_delta, req, suspicious_reasons)
+    weighted = (
+        gps_score * float(settings.get("gps_quality_weight", 0.45))
+        + sensor_score * float(settings.get("sensor_quality_weight", 0.35))
+        + behavior_score * float(settings.get("behavior_quality_weight", 0.20))
+    )
+    return {
+        "trust_score": _clamp_score(weighted),
+        "gps_score": gps_score,
+        "sensor_score": sensor_score,
+        "behavior_score": behavior_score,
+        "flags": gps_reasons + sensor_reasons + behavior_reasons,
+    }
+
+
+def _coach_rule_fallback(context: dict) -> dict:
+    trust = int(context.get("trust_score") or 0)
+    streak = int(context.get("streak_days") or 0)
+    steps = int(context.get("today_steps") or 0)
+    goal = int(context.get("goal") or 0)
+    eco = int(context.get("eco_trips") or 0)
+    gap = max(0, goal - steps)
+    if trust < 55:
+        headline = "Heute zuerst saubere Bewegung sichern"
+        plan = [
+            "Starte eine 12–18 Minuten Gehstrecke mit aktivem GPS.",
+            "Behalte das Telefon konstant bei dir und vermeide kurze Stop-and-Go-Syncs.",
+            f"Hole zuerst {min(gap or 1200, 2200)} glaubwürdige Schritte.",
+        ]
+    elif gap > 2500:
+        headline = "Heute steckt noch viel XP im Tag"
+        plan = [
+            f"Plane zwei Sessions, um noch {gap} Schritte sauber zu sammeln.",
+            "Kombiniere die zweite Session mit QR- oder Merchant-Check-ins.",
+            "Wenn möglich: ergänze einen Eco-Ride für Zusatz-XP.",
+        ]
+    else:
+        headline = "Du bist nah am Daily Goal"
+        plan = [
+            f"Noch {gap} Schritte bis zum Ziel.",
+            "Sichere danach den Reward-Slot und den Daily Check-in.",
+            "Optional: kurzer Bonus-Walk für Streak- und Trust-Stabilität.",
+        ]
+    return {
+        "headline": headline,
+        "summary": f"Trust {trust}/100 · Streak {streak} · Eco {eco}. Fokus: Routine, glaubwürdige Route, saubere Rewards.",
+        "next_hint": plan[0],
+        "action_plan": plan,
+        "coach_source": "rules-fallback",
+    }
+
+
+async def _generate_ai_coach(uid: str, context: dict, settings: dict) -> dict:
+    fallback = _coach_rule_fallback(context)
+    api_key = os.getenv("EMERGENT_LLM_KEY")
+    if not settings.get("ai_coach_enabled") or not api_key:
+        return fallback
+    provider = settings.get("coach_model_provider", "openai")
+    model = settings.get("coach_model_name", "gpt-5.2")
+    prompt = (
+        "Du bist der BidBlitz Move & Earn Coach. Antworte nur als kompaktes JSON mit den Keys "
+        "headline, summary, next_hint, action_plan. action_plan muss exakt 3 kurze Strings enthalten. "
+        "Schreibe auf Deutsch, datenbasiert, ohne Halluzinationen. DATEN: "
+        f"{context}"
+    )
+    try:
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"move-coach-{uid}-{_today()}",
+            system_message="You are a precise movement coach. Output compact valid JSON only.",
+        ).with_model(provider, model)
+        reply = await chat.send_message(UserMessage(text=prompt))
+        text = reply if isinstance(reply, str) else getattr(reply, "text", str(reply))
+        start = text.find("{")
+        end = text.rfind("}")
+        if start == -1 or end == -1:
+            raise ValueError("No JSON returned")
+        parsed = json.loads(text[start:end + 1])
+        action_plan = parsed.get("action_plan") if isinstance(parsed.get("action_plan"), list) else []
+        return {
+            "headline": str(parsed.get("headline") or fallback["headline"]),
+            "summary": str(parsed.get("summary") or fallback["summary"]),
+            "next_hint": str(parsed.get("next_hint") or fallback["next_hint"]),
+            "action_plan": [str(item) for item in action_plan[:3]] or fallback["action_plan"],
+            "coach_source": f"{provider}:{model}",
+        }
+    except Exception:
+        return fallback
+
+
+async def _coach_payload(user: dict, profile: dict, daily: dict, settings: dict, counts: dict) -> dict:
+    uid = str(user["_id"])
+    since = (_now() - timedelta(days=6)).date().isoformat()
+    docs = await db.move_daily_steps.find({"user_id": uid, "date": {"$gte": since}}, {"_id": 0, "accepted_steps": 1, "date": 1, "scoring": 1}).sort("date", 1).to_list(10)
+    values = [int(doc.get("accepted_steps", 0) or 0) for doc in docs]
+    avg = int(sum(values) / len(values)) if values else 0
+    best = max(values) if values else 0
+    suggested = max(int(settings.get("daily_step_goal", 10000)), min(20000, avg + 1500)) if avg else int(settings.get("daily_step_goal", 10000))
+    trust_values = [int((doc.get("scoring") or {}).get("trust_score", 0) or 0) for doc in docs if (doc.get("scoring") or {}).get("trust_score") is not None]
+    trust_avg = int(sum(trust_values) / len(trust_values)) if trust_values else 0
+    scoring = daily.get("scoring") or {}
+    context = {
+        "today_steps": int(daily.get("accepted_steps", 0) or 0),
+        "goal": int(settings.get("daily_step_goal", 10000)),
+        "streak_days": int(profile.get("streak_days", 0) or 0),
+        "trust_score": int(scoring.get("trust_score", 0) or 0),
+        "gps_score": int(scoring.get("gps_score", 0) or 0),
+        "sensor_score": int(scoring.get("sensor_score", 0) or 0),
+        "behavior_score": int(scoring.get("behavior_score", 0) or 0),
+        "quality_flags": scoring.get("flags", []),
+        "eco_trips": counts.get("eco_events", 0),
+        "merchant_events": counts.get("merchant_events", 0),
+        "qr_events": counts.get("qr_events", 0),
+        "average_steps_last_7d": avg,
+        "best_day_steps": best,
+    }
+    generated = await _generate_ai_coach(uid, context, settings)
+    coach_doc = {
+        "user_id": uid,
+        "date": _today(),
+        "context": context,
+        "headline": generated["headline"],
+        "summary": generated["summary"],
+        "next_hint": generated["next_hint"],
+        "action_plan": generated["action_plan"],
+        "coach_source": generated["coach_source"],
+        "updated_at": _iso(),
+    }
+    await db[MOVE_COACH_COLLECTION].update_one(
+        {"user_id": uid, "date": _today()},
+        {"$set": coach_doc, "$setOnInsert": {"created_at": _iso()}},
+        upsert=True,
+    )
+    return {
+        "status": "active" if settings.get("ai_coach_enabled") else "preparing",
+        "average_steps_last_7d": avg,
+        "best_day_steps": best,
+        "suggested_goal": suggested,
+        "trust_score_today": int(scoring.get("trust_score", 0) or 0),
+        "trust_score_avg_7d": trust_avg,
+        "gps_score": int(scoring.get("gps_score", 0) or 0),
+        "sensor_score": int(scoring.get("sensor_score", 0) or 0),
+        "behavior_score": int(scoring.get("behavior_score", 0) or 0),
+        "next_hint": generated["next_hint"],
+        "headline": generated["headline"],
+        "summary": generated["summary"],
+        "action_plan": generated["action_plan"],
+        "coach_source": generated["coach_source"],
+    }
+
+
 async def _daily_external_counts(uid: str) -> dict:
     today = _today()
     merchant_events = await db.transactions.count_documents({"user_id": uid, "merchant_name": {"$exists": True, "$ne": ""}, "created_at": {"$regex": f"^{today}"}})
@@ -625,22 +857,6 @@ async def _build_missions(user: dict, profile: dict, daily: dict, settings: dict
     return out
 
 
-async def _ai_coach_preparation(uid: str, settings: dict) -> dict:
-    since = (_now() - timedelta(days=6)).date().isoformat()
-    docs = await db.move_daily_steps.find({"user_id": uid, "date": {"$gte": since}}, {"_id": 0, "accepted_steps": 1, "date": 1}).sort("date", 1).to_list(10)
-    values = [int(doc.get("accepted_steps", 0) or 0) for doc in docs]
-    avg = int(sum(values) / len(values)) if values else 0
-    best = max(values) if values else 0
-    suggested = max(int(settings.get("daily_step_goal", 10000)), min(20000, avg + 1500)) if avg else int(settings.get("daily_step_goal", 10000))
-    return {
-        "status": "preparing",
-        "average_steps_last_7d": avg,
-        "best_day_steps": best,
-        "suggested_goal": suggested,
-        "next_hint": "AI Coach wird auf Basis von Bewegung, Rides und Streaks vorbereitet.",
-    }
-
-
 async def _status_payload(user: dict) -> dict:
     settings = await _get_settings()
     if not settings.get("enabled", True):
@@ -660,7 +876,7 @@ async def _status_payload(user: dict) -> dict:
     missions = await _build_missions(user, profile, daily, settings)
     level = _level_for_xp(int(profile.get("total_xp", 0) or 0))
     next_level = _next_level(int(profile.get("total_xp", 0) or 0))
-    ai_coach = await _ai_coach_preparation(str(user["_id"]), settings)
+    ai_coach = await _coach_payload(user, profile, daily, settings, counts)
     leaderboard_rows = await db.move_profiles.find(
         {},
         {"_id": 0, "user_name": 1, "total_xp": 1, "total_steps": 1, "level": 1, "ride_stats": 1},
@@ -694,6 +910,7 @@ async def _status_payload(user: dict) -> dict:
             "streak_days": int(profile.get("streak_days", 0) or 0),
             "is_premium": bool(profile.get("is_premium")),
             "is_suspicious": bool(profile.get("is_suspicious")),
+            "coach_opt_in": bool(profile.get("coach_opt_in", True)),
             "inventory": profile.get("inventory", {}),
             "reward_stats": profile.get("reward_stats", {}),
         },
@@ -710,6 +927,7 @@ async def _status_payload(user: dict) -> dict:
             "eco_xp": int(daily.get("eco_xp", 0) or 0),
             "daily_checkin_claimed": bool(daily.get("daily_checkin_claimed")),
             "remaining_steps_capacity": max(0, int(settings.get("max_steps_per_day", 30000)) - int(daily.get("accepted_steps", 0) or 0)),
+            "scoring": daily.get("scoring", {}),
         },
         "claim_cards": claim_cards,
         "daily_checkin": {
@@ -731,6 +949,9 @@ async def _status_payload(user: dict) -> dict:
         "settings": {
             "max_steps_per_day": int(settings.get("max_steps_per_day", 30000)),
             "premium_multiplier": float(settings.get("premium_multiplier", 1.5)),
+            "gps_quality_weight": float(settings.get("gps_quality_weight", 0.45)),
+            "sensor_quality_weight": float(settings.get("sensor_quality_weight", 0.35)),
+            "behavior_quality_weight": float(settings.get("behavior_quality_weight", 0.20)),
         },
     }
 
@@ -803,6 +1024,11 @@ async def sync_move_steps(request: Request, req: SyncStepsRequest):
     coins_gain = int(math.floor((step_delta / 1000) * int(settings.get("coins_per_1000_steps", 12)) * premium_multiplier))
     energy_gain = int(math.floor((step_delta / 1000) * int(settings.get("energy_per_1000_steps", 2)) * premium_multiplier))
     xp_gain = int(math.floor((step_delta / 1000) * int(settings.get("xp_per_1000_steps", 22)) * premium_multiplier))
+    scoring = _compute_scoring(raw_delta, req, settings, suspicious_reasons)
+    trust_multiplier = max(0.4, min(1.0, scoring["trust_score"] / 100))
+    coins_gain = int(math.floor(coins_gain * trust_multiplier))
+    energy_gain = int(math.floor(energy_gain * max(0.5, trust_multiplier)))
+    xp_gain = int(math.floor(xp_gain * trust_multiplier))
     new_total_xp = int(profile.get("total_xp", 0) or 0) + xp_gain
     level = _level_for_xp(new_total_xp)
 
@@ -814,8 +1040,13 @@ async def sync_move_steps(request: Request, req: SyncStepsRequest):
         "device_fingerprint": fingerprint,
         "sensor_confidence": req.sensor_confidence,
         "gps_distance_km": req.gps_distance_km,
+        "gps_points": req.gps_points,
+        "route_variance_score": req.route_variance_score,
+        "activity_type": req.activity_type,
+        "background_tracking_minutes": req.background_tracking_minutes,
         "duration_minutes": req.duration_minutes,
         "suspicious_reasons": suspicious_reasons,
+        "scoring": scoring,
         "created_at": _iso(),
     }
 
@@ -825,7 +1056,7 @@ async def sync_move_steps(request: Request, req: SyncStepsRequest):
         {"user_id": uid, "date": _today()},
         {
             "$inc": {"accepted_steps": step_delta, "energy_earned": energy_gain, "move_coins_earned": coins_gain, "xp_earned": xp_gain},
-            "$set": {"latest_device_total": req_total, "updated_at": _iso(), "device_fingerprints": list(today_devices), "suspicious": bool(suspicious_reasons) or bool(daily.get("suspicious"))},
+            "$set": {"latest_device_total": req_total, "updated_at": _iso(), "device_fingerprints": list(today_devices), "suspicious": bool(suspicious_reasons) or bool(daily.get("suspicious")), "scoring": scoring},
             "$push": {"sync_events": {"$each": [sync_event], "$slice": -50}},
         },
     )
@@ -833,7 +1064,7 @@ async def sync_move_steps(request: Request, req: SyncStepsRequest):
         {"user_id": uid},
         {
             "$inc": {"total_steps": step_delta, "total_move_coins": coins_gain, "energy_balance": energy_gain, "total_xp": xp_gain},
-            "$set": {"level": level["id"], "updated_at": _iso(), "last_synced_at": _iso(), "is_suspicious": bool(profile.get("is_suspicious")) or bool(suspicious_reasons)},
+            "$set": {"level": level["id"], "updated_at": _iso(), "last_synced_at": _iso(), "is_suspicious": bool(profile.get("is_suspicious")) or bool(suspicious_reasons), "last_sync_scoring": scoring, "coach_opt_in": True},
         },
     )
     await _audit("move_steps_synced", uid, {"accepted_delta": step_delta, "source": req.source, "suspicious_reasons": suspicious_reasons})
@@ -846,8 +1077,32 @@ async def sync_move_steps(request: Request, req: SyncStepsRequest):
         "energy_gain": energy_gain,
         "xp_gain": xp_gain,
         "suspicious_reasons": suspicious_reasons,
+        "scoring": scoring,
         "status": await _status_payload(user),
     }
+
+
+@router.get("/api/move/coach-session")
+async def get_move_coach_session(request: Request):
+    user = await get_current_user(request)
+    settings = await _get_settings()
+    profile = await _ensure_profile(user)
+    daily = await _ensure_daily(user)
+    counts = await _daily_external_counts(str(user["_id"]))
+    return {"coach": await _coach_payload(user, profile, daily, settings, counts)}
+
+
+@router.post("/api/move/coach-session")
+@limiter.limit("10/minute")
+async def refresh_move_coach_session(request: Request, req: CoachPromptRequest):
+    user = await get_current_user(request)
+    settings = await _get_settings()
+    profile = await _ensure_profile(user)
+    daily = await _ensure_daily(user)
+    counts = await _daily_external_counts(str(user["_id"]))
+    coach = await _coach_payload(user, profile, daily, settings, counts)
+    coach["focus"] = req.focus
+    return {"ok": True, "coach": coach}
 
 
 @router.post("/api/move/claim-reward")

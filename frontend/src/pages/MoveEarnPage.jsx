@@ -15,6 +15,9 @@ import {
   QrCode,
   Rocket,
   Shield,
+  ShieldCheck,
+  MapPinned,
+  Route,
   Sparkles,
   Star,
   Trophy,
@@ -25,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { api } from "../services/api";
 import { useI18n, useUser } from "../store";
+import { useGeolocation } from "../hooks/useGeolocation";
 
 const panel = "rounded-[28px] border border-white/10 bg-[rgba(8,16,18,0.9)] backdrop-blur-xl";
 
@@ -166,9 +170,13 @@ export default function MoveEarnPage({ onBack }) {
   const [leaderboard, setLeaderboard] = useState(null);
   const [adminSettings, setAdminSettings] = useState(null);
   const [adminStats, setAdminStats] = useState(null);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [trackingConsent, setTrackingConsent] = useState(() => window.localStorage.getItem("move_earn_tracking_opt_in") !== "false");
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [savingAdmin, setSavingAdmin] = useState(false);
+  const [gpsState, setGpsState] = useState({ lat: 0, lng: 0, address: "" });
+  const { currentAddress, permissionState, gpsHelperText, getCurrentLocation } = useGeolocation({ setPickup: setGpsState, mapRef: null, pickupMarkerRef: null });
 
   const load = async () => {
     setLoading(true);
@@ -194,21 +202,30 @@ export default function MoveEarnPage({ onBack }) {
     load();
   }, [user?.role]);
 
+  useEffect(() => {
+    if (trackingConsent) getCurrentLocation({ silent: true });
+  }, [trackingConsent, getCurrentLocation]);
+
   const simulateSteps = async () => {
     const current = Number(status?.daily?.latest_device_total || status?.daily?.accepted_steps || 0);
     const extra = 1200 + Math.round(Math.random() * 2600);
     setSyncing(true);
     try {
+      if (trackingConsent) getCurrentLocation({ silent: true });
       const res = await api.syncMoveSteps({
         total_steps: current + extra,
         source: "mobile_preview",
         device_fingerprint: `preview-${user?.id || user?._id || "user"}`,
-        sensor_confidence: 0.82,
+        sensor_confidence: trackingConsent ? 0.82 : 0.42,
         duration_minutes: 18,
-        gps_distance_km: 1.4,
+        gps_distance_km: trackingConsent ? 1.4 : 0.12,
+        gps_points: trackingConsent ? 26 : 2,
+        route_variance_score: trackingConsent ? 0.74 : 0.14,
+        activity_type: "walking",
+        background_tracking_minutes: trackingConsent ? 16 : 2,
       });
       setStatus(res.status);
-      toast.success(`+${res.accepted_delta} Schritte · +${res.xp_gain} XP`);
+      toast.success(`+${res.accepted_delta} Schritte · +${res.xp_gain} XP · Trust ${res.scoring?.trust_score || 0}`);
       const [historyRes, leaderboardRes] = await Promise.all([api.getMoveHistory(40), api.getMoveLeaderboard(20)]);
       setHistory(historyRes);
       setLeaderboard(leaderboardRes);
@@ -258,6 +275,26 @@ export default function MoveEarnPage({ onBack }) {
     }
   };
 
+  const refreshCoach = async (focus = "daily_plan") => {
+    setCoachLoading(true);
+    try {
+      const res = await api.refreshMoveCoachSession({ focus });
+      setStatus((prev) => ({ ...prev, ai_coach: res.coach }));
+      toast.success("Coach aktualisiert");
+    } catch (error) {
+      toast.error(error.message || "Coach konnte nicht aktualisiert werden");
+    } finally {
+      setCoachLoading(false);
+    }
+  };
+
+  const toggleConsent = () => {
+    const next = !trackingConsent;
+    setTrackingConsent(next);
+    window.localStorage.setItem("move_earn_tracking_opt_in", String(next));
+    toast.success(next ? "GPS-Scoring aktiviert" : "GPS-Scoring pausiert");
+  };
+
   const summary = status?.profile || {};
   const daily = status?.daily || {};
   const missions = status?.missions || [];
@@ -266,6 +303,7 @@ export default function MoveEarnPage({ onBack }) {
   const topBoard = leaderboard?.leaderboard || [];
   const rewardCards = status?.claim_cards || [];
   const dailyCheckin = status?.daily_checkin || {};
+  const scoring = daily?.scoring || {};
 
   const sectionCards = useMemo(() => [
     { icon: Bike, title: ui.rideEarn, value: status?.ride_earn?.today_rides ?? 0, color: "#00E4FF" },
@@ -321,6 +359,13 @@ export default function MoveEarnPage({ onBack }) {
                 <MetricCard icon={Zap} label="Energy" value={summary.energy_balance || 0} color="#FFD766" testId="move-earn-energy-card" />
                 <MetricCard icon={Award} label="XP" value={summary.total_xp || 0} color="#00E4FF" testId="move-earn-xp-card" />
                 <MetricCard icon={Star} label="Streak" value={summary.streak_days || 0} color="#FF87BA" testId="move-earn-streak-card" />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <MetricCard icon={ShieldCheck} label="Trust" value={scoring.trust_score || 0} color="#8BF6FF" testId="move-earn-trust-score-card" />
+                <MetricCard icon={MapPinned} label="GPS" value={scoring.gps_score || 0} color="#37FF8B" testId="move-earn-gps-score-card" />
+                <MetricCard icon={Activity} label="Sensor" value={scoring.sensor_score || 0} color="#FFD766" testId="move-earn-sensor-score-card" />
+                <MetricCard icon={Route} label="Behavior" value={scoring.behavior_score || 0} color="#FF87BA" testId="move-earn-behavior-score-card" />
               </div>
 
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -433,13 +478,44 @@ export default function MoveEarnPage({ onBack }) {
         </div>
 
         <section className={`${panel} p-5`} data-testid="move-earn-ai-coach-section">
-          <div className="mb-3 flex items-center gap-2 text-xl font-black"><Bot size={20} className="text-[#00E4FF]" /> {ui.aiCoach}</div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xl font-black"><Bot size={20} className="text-[#00E4FF]" /> {ui.aiCoach}</div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => refreshCoach("daily_plan")} disabled={coachLoading} className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-black" data-testid="move-ai-refresh-daily-plan-button">Tagesplan</button>
+              <button onClick={() => refreshCoach("score_explanation")} disabled={coachLoading} className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-black" data-testid="move-ai-refresh-score-button">Score erklären</button>
+              <button onClick={toggleConsent} className="rounded-2xl bg-[#37FF8B] px-3 py-2 text-xs font-black text-[#03120D]" data-testid="move-ai-tracking-consent-toggle">{trackingConsent ? "GPS aktiv" : "GPS aus"}</button>
+            </div>
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <MetricCard icon={Activity} label="7d Avg" value={aiCoach.average_steps_last_7d || 0} color="#37FF8B" testId="move-ai-average-card" />
             <MetricCard icon={Rocket} label="Best Day" value={aiCoach.best_day_steps || 0} color="#FFD766" testId="move-ai-best-card" />
             <MetricCard icon={BadgeCheck} label="Goal" value={aiCoach.suggested_goal || 0} color="#00E4FF" testId="move-ai-goal-card" />
           </div>
-          <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-sm text-white/65" data-testid="move-ai-hint-card">{aiCoach.next_hint}</div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4" data-testid="move-ai-hint-card">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#8BF6FF]">{aiCoach.coach_source || "rules-fallback"}</p>
+              <h3 className="mt-2 text-lg font-black text-white">{aiCoach.headline || "Heute Bewegung mit Qualität priorisieren"}</h3>
+              <p className="mt-2 text-sm text-white/65">{aiCoach.summary || aiCoach.next_hint}</p>
+              <div className="mt-3 rounded-2xl bg-black/20 px-3 py-3 text-sm text-white/75" data-testid="move-ai-next-hint-text">{aiCoach.next_hint}</div>
+              <div className="mt-3 space-y-2">
+                {(aiCoach.action_plan || []).map((item, index) => (
+                  <div key={`${item}-${index}`} className="rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-sm text-white/75" data-testid={`move-ai-action-plan-${index}`}>{item}</div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4" data-testid="move-ai-sensor-panel">
+              <div className="flex items-center gap-2 text-sm font-black text-white"><ShieldCheck size={16} className="text-[#37FF8B]" /> Reales Sensor-/GPS-Scoring</div>
+              <div className="mt-3 space-y-2 text-sm text-white/65">
+                <div className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2" data-testid="move-ai-permission-state"><span>GPS Permission</span><span className="font-bold text-white">{permissionState || "prompt"}</span></div>
+                <div className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2" data-testid="move-ai-gps-address"><span>Letzter Ort</span><span className="max-w-[55%] truncate font-bold text-white">{currentAddress || gpsState.address || "noch nicht erfasst"}</span></div>
+                <div className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2" data-testid="move-ai-gps-coordinates"><span>Koordinaten</span><span className="font-bold text-white">{gpsState.lat ? `${gpsState.lat.toFixed(4)}, ${gpsState.lng.toFixed(4)}` : "—"}</span></div>
+              </div>
+              {!!gpsHelperText && <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100" data-testid="move-ai-gps-helper-text">{gpsHelperText}</div>}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(scoring.flags || []).slice(0, 6).map((flag, index) => <span key={`${flag}-${index}`} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-white/65" data-testid={`move-ai-scoring-flag-${index}`}>{flag}</span>)}
+              </div>
+            </div>
+          </div>
         </section>
 
         {user?.role === "admin" && adminSettings && adminStats && (
