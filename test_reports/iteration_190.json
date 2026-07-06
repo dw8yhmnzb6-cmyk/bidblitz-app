@@ -1,0 +1,46 @@
+{
+  "summary": "Completed backend + frontend regression for admin wallet balance consistency. Verified canonical admin auth, /api/auth/me and /api/admin/wallet/users alignment on EUR/BLZ, self-topup BLZ persistence with restore, and Admin Wallet UI search no longer showing stale huge EUR value.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "CORS preflight on preview edge",
+        "issue": "OPTIONS /api/auth/login response at preview edge still returns wildcard access-control-allow-origin: * even though app middleware is credentialed-origin aware. This matches known upstream ingress behavior and was non-blocking for tested flows.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter190_admin_wallet_consistency.py",
+    "/app/test_reports/pytest/iter190_admin_wallet_consistency.xml"
+  ],
+  "action_items": [
+    "No functional fix required for requested wallet inconsistency scope; contracts passed.",
+    "Optional platform follow-up: keep monitoring preview ingress CORS OPTIONS behavior for credentialed auth preflight consistency."
+  ],
+  "critical_code_review_comments": [
+    "File size maintainability risk: /app/frontend/src/App.js is 1300+ lines (>700 guideline). Split route configuration into focused modules to reduce regression risk and improve testability.",
+    "Test side-effect awareness: brute-force lockout verification can temporarily block subsequent UI login tests for canonical admin unless lockout state is cleared first in test setup/teardown."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter190_admin_wallet_consistency.py",
+    "/app/tests/clear_admin_lockout.py",
+    "/app/test_reports/iteration_190.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Used from /app/memory/test_credentials.md: admin@bidblitz.ae / BidBlitz2026!, admin@bidblitz.com / BidBlitz2026! (expected reject).",
+  "seed_data_creation": "No seed data created. Temporary BLZ +1 self-topup test was restored via matching debit -1.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Regression coverage added for admin wallet consistency and auth lockout contract in test_iter190_admin_wallet_consistency.py. UI verified on /admin/wallet shows admin@bidblitz.ae with 7830.97€ and 0 BLZ; stale 2622000000.00€ value not visible.",
+  "rca of the issue": "Original inconsistency came from reading admin-wallet balances from a stale wallets source instead of canonical users.balance/users.balance_blz. Current behavior is consistent across /api/auth/me, /api/admin/wallet/users, self-topup, and UI search.",
+  "mocked_api": "No MOCKED APIs used."
+}

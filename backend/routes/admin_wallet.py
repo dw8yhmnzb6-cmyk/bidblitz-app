@@ -61,22 +61,20 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
         }
     cur = db.users.find(query, {
         "_id": 1, "id": 1, "email": 1, "username": 1, "full_name": 1,
-        "role": 1, "wallet_balance": 1, "created_at": 1, "registered_at": 1,
+        "role": 1, "balance": 1, "balance_blz": 1, "wallet_balance": 1, "created_at": 1, "registered_at": 1,
         "last_login_at": 1, "login_count": 1,
     }).sort("created_at", -1).limit(limit)
 
     users = []
     async for u in cur:
         uid = str(u.get("_id") or u.get("id"))
-        # Look up actual wallet doc for BLZ balance
-        wallet = await db.wallets.find_one({"user_id": uid}, {"_id": 0, "balance": 1, "balance_blz": 1})
         users.append({
             "user_id": uid,
             "email": u.get("email", ""),
             "username": u.get("username") or u.get("full_name", ""),
             "role": u.get("role", "user"),
-            "balance_eur": float((wallet or {}).get("balance", u.get("wallet_balance", 0)) or 0),
-            "balance_blz": float((wallet or {}).get("balance_blz", 0) or 0),
+            "balance_eur": float(u.get("balance", u.get("wallet_balance", 0)) or 0),
+            "balance_blz": float(u.get("balance_blz", 0) or 0),
             "created_at": u.get("created_at"),
             "registered_at": u.get("registered_at") or u.get("created_at"),
             "last_login_at": u.get("last_login_at"),
@@ -133,14 +131,15 @@ class SelfTopupReq(BaseModel):
 
 
 async def _credit_blz(user_id: str, amount: float, admin_id: str, reason: str):
-    """BLZ uses a separate balance_blz field in wallets collection."""
+    """BLZ uses users.balance_blz, same source as mining/rewards UI."""
     if amount <= 0:
         return
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance_blz": amount}, "$setOnInsert": {"user_id": user_id, "balance": 0}},
-        upsert=True,
-    )
+    query = {"id": user_id}
+    try:
+        query = {"$or": [{"id": user_id}, {"_id": ObjectId(user_id)}]}
+    except Exception:
+        pass
+    await db.users.update_one(query, {"$inc": {"balance_blz": amount}})
     await db.transactions.insert_one({
         "user_id": user_id,
         "type": "admin_credit_blz",
@@ -155,12 +154,15 @@ async def _credit_blz(user_id: str, amount: float, admin_id: str, reason: str):
 async def _debit_blz(user_id: str, amount: float, admin_id: str, reason: str):
     if amount <= 0:
         return
-    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "balance_blz": 1})
-    if not wallet or (wallet.get("balance_blz", 0) or 0) < amount:
+    query = {"id": user_id}
+    try:
+        query = {"$or": [{"id": user_id}, {"_id": ObjectId(user_id)}]}
+    except Exception:
+        pass
+    user = await db.users.find_one(query, {"_id": 1, "balance_blz": 1})
+    if not user or (user.get("balance_blz", 0) or 0) < amount:
         raise HTTPException(400, "Nutzer hat nicht genug BLZ.")
-    await db.wallets.update_one(
-        {"user_id": user_id}, {"$inc": {"balance_blz": -amount}}
-    )
+    await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": -amount}})
     await db.transactions.insert_one({
         "user_id": user_id,
         "type": "admin_debit_blz",
@@ -260,12 +262,12 @@ async def self_topup(req: SelfTopupReq, request: Request):
     if req.amount_blz > 0:
         await _credit_blz(admin_id, req.amount_blz, admin_id, req.reason)
 
-    # Return new balance
-    wallet = await db.wallets.find_one({"user_id": admin_id}, {"_id": 0, "balance": 1, "balance_blz": 1}) or {}
+    # Return new balance from canonical user wallet fields
+    fresh_admin = await db.users.find_one({"_id": ObjectId(admin_id)}, {"_id": 0, "balance": 1, "balance_blz": 1}) or {}
     return {
         "ok": True,
-        "balance_eur": float(wallet.get("balance", 0) or 0),
-        "balance_blz": float(wallet.get("balance_blz", 0) or 0),
+        "balance_eur": float(fresh_admin.get("balance", 0) or 0),
+        "balance_blz": float(fresh_admin.get("balance_blz", 0) or 0),
     }
 
 
