@@ -1,5 +1,15 @@
 # BidBlitz — CHANGELOG
 
+## 06.07.2026 — P2 A→B→C→D abgeschlossen: Arcade Hub, Merchant Ops Suite, BioPay Vendor Diagnostics
+- `backend/routes/arcade.py`: neuer Hub-Endpunkt `GET /api/arcade/hub-overview` ergänzt. Liefert `season_id`, `stats`, `leaderboards` (`season`, `all_time`), `recent_sessions` und `personal_best` für das Game Center.
+- `backend/routes/merchant_portal.py`: Merchant Platform V5 um `GET /api/merchant-portal/v5/ops-suite` sowie Upsert-Endpunkte für `companies`, `documents` und `maintenance` erweitert. Primärgesellschaft wird automatisch aus Enterprise-Daten erzeugt; Deadline-/Wartungs-Metadaten werden serverseitig aggregiert.
+- `backend/routes/admin_biopay.py`: neuer Admin-Endpunkt `GET /api/admin/biopay/vendor-diagnostics` ergänzt; bündelt Vendor-Rollups, Warning-Workflows und Terminal-Readiness.
+- `frontend/src/pages/GamingPage.jsx`: Arcade-Hub-Karten, Season/All-Time-Leaderboard-Tabs und Personal-Best-Bereich mit stabilen `data-testid`s ergänzt.
+- `frontend/src/pages/MerchantPortalPage.jsx`: neuer Tab `Ops Suite` mit Multi-Company-Form, Document Center, Maintenance Tracker und Listenansichten ergänzt.
+- `frontend/src/pages/AdminBioPayAuditPage.jsx`: Vendor Diagnostics, Warning Workflows und Terminal Readiness im Admin Audit Center sichtbar erweitert.
+- `frontend/src/services/api.js`: API-Helper für Ops Suite und BioPay Vendor Diagnostics ergänzt.
+- Verifiziert: JS-Lint PASS, Python-Lint PASS, Self-Tests PASS, Browser-Smoke PASS, Testing-Agent Iteration 197 = Backend 22/22 PASS und Frontend 100% PASS. Keine MOCKS.
+
 ## 06.07.2026 — Commerce Center V1 vertieft: Analytics + Programmplanung + Performance Board
 - `backend/routes/commerce_center.py`: Commerce-Overview liefert jetzt `analytics_cards`, `program_schedule` und `performance_rankings`; zusätzlich speichert `/api/commerce-center/events` Hub-Events für `page_view`, `cta_click` und `category_filter`.
 - `backend/routes/commerce_center.py`: Seed-/Overview-Logik ergänzt automatische Live-Programm-Bausteine für Streams und Live-Auktionen, damit der Hub nicht leer wirkt.
