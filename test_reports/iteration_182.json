@@ -1,0 +1,62 @@
+{
+  "summary": "Completed backend + frontend regression focused on admin KYC-gate bypass, alias/canonical admin login behavior, auth context fields, and auth hardening checks. Core fix validated: admin no longer sees pre-KYC gates on Home/More; non-admin unverified still gated.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "OPTIONS /api/auth/login",
+        "issue": "Credentialed CORS contract not preserved at preview edge: response returned access-control-allow-origin: * and no access-control-allow-credentials, causing one auth-hardening preflight test failure.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "startup/admin seeding flow",
+        "issue": "No active seed_admin/update-existing-admin-password flow found in current server.py (only in server.py.backup), so playbook check for idempotent admin password reseed could not be validated in this run.",
+        "priority": "HIGH"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "More page (dark theme)",
+        "issues": [
+          "Secondary gray text remains low-contrast in multiple cards/labels."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter182_admin_kyc_gate_and_auth_contract.py",
+    "/app/backend/tests/test_iter181_admin_alias_login_email.py",
+    "/app/test_reports/pytest/iter182_admin_kyc_gate_and_auth_contract.xml",
+    "/app/test_reports/pytest/iter182_admin_kyc_gate.xml"
+  ],
+  "action_items": [
+    "Preserve credentialed CORS headers on preview OPTIONS path (must return explicit origin + access-control-allow-credentials:true for auth preflight).",
+    "If required by playbook, restore/implement idempotent seed_admin update logic in active startup path (not only backup file).",
+    "Optional UX: improve low-contrast secondary text on dark backgrounds."
+  ],
+  "critical_code_review_comments": [
+    "Frontend UserContext now correctly exposes kyc_status and kyc_verified in provider value; this aligns Home/More gate logic with backend serialize_user contract.",
+    "HomePage and MorePage gate logic correctly excludes admins (!isAdmin check), preventing false pre-KYC restriction for admin aliases/canonical login.",
+    "Auth payloads tested (/api/auth/login, /api/auth/me, /api/auth/refresh) did not leak Mongo ObjectId in JSON responses.",
+    "Backend middleware intends credentialed CORS, but preview ingress/preflight handling currently diverges from expected auth contract on OPTIONS."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter182_admin_kyc_gate_and_auth_contract.py",
+    "/app/test_reports/iteration_182.json"
+  ],
+  "success_rate": {
+    "backend": "90%",
+    "frontend": "100%"
+  },
+  "test_credentials": "Used credentials from /app/memory/test_credentials.md: admin@bidblitz.ae, admin@bidblitz.com, kycgate.1782580398@test.com, haendler@bidblitz.com.",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "UI/browser regression passed for admin alias + canonical: pre-kyc-home-gate=0, pre-kyc-more-gate=0, more-all-services=1, profile card shows alias/canonical email as expected. Non-admin unverified account still shows both KYC gates. Backend regression suite had only one failure on credentialed OPTIONS preflight header at preview edge.",
+  "rca of the issue": "Original gate bug root cause was frontend context omission of kyc_status/kyc_verified from provider value, causing Home/More gate computation to treat admin as unverified despite backend returning approved. Current run confirms that fix works in live preview for both alias and canonical admin logins. Remaining auth-hardening failure is a CORS preflight header mismatch at preview edge, not a reproduced app login logic failure.",
+  "mocked_api": "No MOCKED APIs used."
+}

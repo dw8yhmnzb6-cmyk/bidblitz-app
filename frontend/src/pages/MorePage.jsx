@@ -774,8 +774,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const user = useUser();
   const { refreshUser } = user;
   const { t, lang: locale, setLang: setLocale } = useI18n();
-  const isKycVerified = user.role === "admin" || user.kyc_status === "approved" || user.kyc_verified;
-  const showKycRestrictedExperience = !isGuest && !isDemoMode && !isKycVerified;
+  const isAdmin = user.role === "admin";
+  const isKycVerified = isAdmin || user.kyc_status === "approved" || user.kyc_verified;
+  const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);

@@ -273,8 +273,9 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const { percentageChange } = useWalletStats();
   const { t, lang } = useI18n();
   const gt = useGuestTranslations(lang);
-  const isKycVerified = user.role === "admin" || user.kyc_status === "approved" || user.kyc_verified;
-  const showKycRestrictedExperience = !isGuest && !isDemoMode && !isKycVerified;
+  const isAdmin = user.role === "admin";
+  const isKycVerified = isAdmin || user.kyc_status === "approved" || user.kyc_verified;
+  const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   
   // Use total balance if available, otherwise fall back to EUR balance
   const displayBalance = totalBalanceEur > 0 ? totalBalanceEur : balance;
