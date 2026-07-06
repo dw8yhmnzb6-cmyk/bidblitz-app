@@ -27,6 +27,13 @@
 - `frontend/src/utils/adminAccess.js`: Admin-Erkennung auf `.ae` kanonisiert; Home/More/App/UserContext nutzen den zentralen Helper.
 - Verifiziert: `.ae` Login 200, dashed Alias 200, `.com` Login 401, Admin sieht keine Vor-KYC-Gates und `more-all-services` ist sichtbar; Testing-Agent Iteration 187 bestätigt Kernflüsse. Keine MOCKS.
 
+## 06.07.2026 — Admin Merchant Controls für Freischaltung, Preise und Blockierung
+- `backend/routes/pos_system.py`: Admin-Händlerliste liefert KPI-Felder (`enabled_features_count`, `feature_mrr`, `billing_status`, `is_blocked`).
+- Neue Admin-Endpunkte: `PATCH /api/pos/admin/merchants/{merchant_id}` für Händlerdaten/Branche/Gebühr/Zahlstatus/Admin-Notiz und `POST /api/pos/admin/merchants/{merchant_id}/status` für approved/pending/suspended/blocked.
+- `backend/routes/pos_features.py`: blockierte/gesperrte Händler erhalten auf Feature-Zugriff 403 mit Sperrgrund; Feature-Gating erkennt `access_blocked`, `blocked`, `suspended`.
+- `frontend/src/pages/AdminMerchantFeaturesPage.jsx`: Händlerliste zeigt MRR, Blockstatus und Zahlstatus; aktive Händlerkarte hat Bearbeiten-Modal, Blockieren/Freigeben-Button, Branchen-/Zahlstatus-Badges und bestehende Feature-Preissteuerung.
+- Verifiziert: JS/Python Lint PASS, Backend-Selftests PASS, Browser-Smoke PASS, Testing-Agent Iteration 188 PASS. Keine MOCKS.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.

@@ -5,6 +5,7 @@
 - ✅ 06.07.2026 Taxi P1 vertieft: persönliche Trefferquellen vor Live-Geocode, Quellen-Badges, Kosovo-Stadtprofile Prishtina/Prizren/Peja.
 - ✅ 06.07.2026 Taxi Airport-Festpreis ergänzt: Flughafen Kosovo/PRN ↔ Prishtina mit 15€/20€/24€ und sauberem Festpreis-Breakdown; Gast-Console-Taxi-Noise reduziert und Public Feature Flags restored.
 - ✅ 06.07.2026 Admin-Kanonisierung: `admin@bidblitz.ae` ist einziger echter Admin; `admin@bidblitz.com` ist deaktiviert; `.ae` Admin bleibt vollständig freigeschaltet.
+- ✅ 06.07.2026 Admin Merchant Controls: Händler-Feature-Freischaltung, individuelle Modulpreise, Händlerbearbeitung, Zahlstatus und Blockieren/Freigeben bei Nichtzahlung live.
 - ✅ Admin sieht jetzt Sekunden-/Bid-Credit-Käufe, Käufer, Commerce/POS-Käufe, Standortsignale, Shop-Matches und Jahresanalyse.
 - ✅ Customer Live Radar ergänzt: Radar-Alerts, Segmente, Heatmap-Zellen und Privacy Guard.
 - ✅ Radar Actions ergänzt: Coupon, Push, Manager-Alert und Auto-Aktion direkt aus Admin-Radar-Alerts.
