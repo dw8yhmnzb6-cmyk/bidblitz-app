@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 06.07.2026 — Commerce Center V1 vertieft: Analytics + Programmplanung + Performance Board
+- `backend/routes/commerce_center.py`: Commerce-Overview liefert jetzt `analytics_cards`, `program_schedule` und `performance_rankings`; zusätzlich speichert `/api/commerce-center/events` Hub-Events für `page_view`, `cta_click` und `category_filter`.
+- `backend/routes/commerce_center.py`: Seed-/Overview-Logik ergänzt automatische Live-Programm-Bausteine für Streams und Live-Auktionen, damit der Hub nicht leer wirkt.
+- `frontend/src/pages/CommerceCenterPage.jsx`: neue Bereiche `Commerce Analytics`, `Programmplanung` und `Performance Board` ergänzt; CTAs und Kategorien tracken Interaktionen ohne den bestehenden Flow zu brechen.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, API-Self-Test PASS, Browser-Smoke PASS, Testing-Agent Iteration 196 PASS. Keine MOCKS.
+
 ## 06.07.2026 — P1 Mobility Center V1: E‑Bike + Carsharing live
 - `backend/routes/mobility_platform.py`: Mobility Compare und Nearby liefern jetzt zusätzlich `bike` (E‑Bike) und `car_sharing` (Carsharing) als echte Kernmodi; AI-Prompt, Compare-Summary und Available-Modes wurden entsprechend erweitert.
 - `frontend/src/pages/MobilityCenterPage.jsx`: Hub erweitert um neue Modul-Karten, Schnellzugriffe und 6‑Wege Vergleichstexte für Taxi, E‑Scooter, E‑Bike, EV, Carsharing und Car Rental.

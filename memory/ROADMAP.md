@@ -1,6 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Admin Customer Intelligence — 01.07.2026
+- ✅ 06.07.2026 Commerce Center V1 vertieft: Analytics, Programmplanung und Performance Board live; Event-Tracking und CTA-Flows per Testing-Agent verifiziert.
 - ✅ 06.07.2026 P1 Mobility-Ausbau abgeschlossen: E‑Bike und Carsharing in Mobility Center + Mobility Map integriert, 6‑Wege Vergleich aktiv und per Testing-Agent verifiziert.
 - ✅ 06.07.2026 P0 Stabilitätsschritt abgeschlossen: großer Frontend-Router entschlackt (`App.js` in Hilfsmodule zerlegt) und per Testing-Agent Iteration 195 ohne Regressionen verifiziert.
 - ✅ 06.07.2026 Taxi P0 geschlossen: Uber-like Live-Autocomplete ab 1 Buchstaben, Kosovo-Tarif `2€ Start + Kilometer`, Admin-Seed-Startup wieder idempotent aktiv.
@@ -23,7 +24,7 @@
 - ✅ P0 Staff-BioTime-Frontend: Check-in/Check-out via PalmPay für Mitarbeiter umgesetzt.
 - ✅ P0 Executable Approval-Flows: Manual Wallet Adjustments und Customer Account Changes werden nach Manager-Freigabe direkt ausgeführt; Reject und Repeat-Block sind aktiv.
 - 🔴 P0 verbleibend: Approval-Ausführung für weitere Sonderfälle vertiefen, falls neue Top-up-/Refund-Typen außerhalb der vorhandenen Execution-Pfade entstehen.
-- 🟡 P1: Commerce Center V1 — Marketplace, Live Shopping, Penny Auctions.
+- ✅ P1: Commerce Center V1 — Marketplace, Live Shopping, Penny Auctions.
 - ✅ P1: Mobility Center V1 — E-Scooter, E-Bike, Carsharing.
 - 🟢 P2: Externe Hardware-/Vendor-Diagnostics und restliches Game Center.
 
@@ -54,6 +55,7 @@
 - Merchant Platform V5: Procurement AI auf dem Business-Automation-V1 aufsetzen (Forecast-basierte Mengen, Supplier-Vergleich, Genehmigungslogik, Inventory-Playbooks)
 - Commerce: Live-Auctions-Seed/Programmplanung, Live-Produkt-Pinning und dedizierte Commerce-Analytics für Conversion, Flash-Sale-Umsatz und CTA-Klicks ergänzen
 - Merchant Commerce: Bulk-Flash-Sale-Kampagnen, Scheduler und Performance-Rankings ergänzen
+- Commerce nach V1 jetzt weiter vertiefen: Merchant-seitige Bulk-Flash-Sale-Kampagnen, Scheduler, Live-Produkt-Pinning und noch stärkere Conversion-Drilldowns
 - Mobility: Compare-Flow nach dem neuen 6-Wege-Vergleich um Saved/Frequent Routes, One-Tap-Rebook, Parking und City-/Fleet-Kombinationen erweitern
 - Game Center: Achievements-/Season-Daten stärker mit Rewards, Referral und VIP Drops koppeln
 - Move & Earn: echte native Schrittquellen (HealthKit/Google Fit/Pedometer) sauber anbinden und Preview-Sync von simulierten Device-Werten auf reale Sensor-Provider erweitern
