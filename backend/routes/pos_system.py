@@ -104,10 +104,14 @@ async def _require_merchant(user, merchant_id: str | None = None):
             raise HTTPException(status_code=404, detail="Merchant nicht gefunden")
         if merchant["owner_id"] != user_id and not await _is_admin(user):
             raise HTTPException(status_code=403, detail="Nicht berechtigt")
+        if not await _is_admin(user) and (merchant.get("access_blocked") or merchant.get("status") in {"blocked", "suspended"}):
+            raise HTTPException(status_code=403, detail=merchant.get("status_reason") or "Händlerzugang gesperrt")
         return merchant
     merchant = await db.pos_merchants.find_one({"owner_id": user_id})
     if not merchant:
         raise HTTPException(status_code=404, detail="Kein POS-Merchant-Profil — bitte erst registrieren")
+    if not await _is_admin(user) and (merchant.get("access_blocked") or merchant.get("status") in {"blocked", "suspended"}):
+        raise HTTPException(status_code=403, detail=merchant.get("status_reason") or "Händlerzugang gesperrt")
     return merchant
 
 
@@ -1272,6 +1276,15 @@ async def admin_list_merchants(request: Request, status: Optional[str] = None):
     if status:
         q["status"] = status
     merchants = await db.pos_merchants.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    for merchant in merchants:
+        merchant_id = merchant.get("merchant_id")
+        features = await db.pos_merchant_features.find(
+            {"merchant_id": merchant_id, "enabled": True}, {"_id": 0, "monthly_price": 1, "custom_price": 1}
+        ).to_list(200)
+        merchant["enabled_features_count"] = len(features)
+        merchant["feature_mrr"] = round(sum(float(f.get("custom_price") if f.get("custom_price") is not None else f.get("monthly_price", 0)) for f in features), 2)
+        merchant["billing_status"] = merchant.get("billing_status", "trial" if merchant.get("status") == "pending" else "paid")
+        merchant["is_blocked"] = merchant.get("status") in {"blocked", "suspended"} or bool(merchant.get("access_blocked"))
     return {"merchants": merchants}
 
 
@@ -1303,6 +1316,67 @@ async def admin_suspend_merchant(merchant_id: str, request: Request):
 
 class FeeUpdate(BaseModel):
     fee_rate: float = Field(..., ge=0, le=0.2)
+
+
+class MerchantAdminUpdate(BaseModel):
+    business_name: Optional[str] = Field(None, min_length=2, max_length=160)
+    business_type: Optional[str] = Field(None, max_length=60)
+    contact_email: Optional[str] = Field(None, max_length=160)
+    contact_phone: Optional[str] = Field(None, max_length=60)
+    country: Optional[str] = Field(None, max_length=3)
+    fee_rate: Optional[float] = Field(None, ge=0, le=0.2)
+    billing_status: Optional[str] = Field(None, pattern="^(paid|trial|overdue|manual|blocked)$")
+    admin_note: Optional[str] = Field(None, max_length=500)
+
+
+class MerchantAdminStatusUpdate(BaseModel):
+    status: str = Field(..., pattern="^(approved|pending|suspended|blocked)$")
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+@router.patch("/admin/merchants/{merchant_id}")
+async def admin_update_merchant(merchant_id: str, req: MerchantAdminUpdate, request: Request):
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    updates = req.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="Keine Änderungen")
+    updates["updated_at"] = now_iso()
+    updates["updated_by"] = str(user["_id"])
+    res = await db.pos_merchants.update_one({"merchant_id": merchant_id}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Merchant nicht gefunden")
+    await _audit(str(user["_id"]), "admin.merchant.update", {"merchant_id": merchant_id, "fields": list(updates.keys())})
+    merchant = await db.pos_merchants.find_one({"merchant_id": merchant_id}, {"_id": 0})
+    return {"ok": True, "merchant": merchant}
+
+
+@router.post("/admin/merchants/{merchant_id}/status")
+async def admin_update_merchant_status(merchant_id: str, req: MerchantAdminStatusUpdate, request: Request):
+    user = await get_current_user(request)
+    if not await _is_admin(user):
+        raise HTTPException(status_code=403, detail="Nur Admin")
+    now = now_iso()
+    blocked = req.status in {"blocked", "suspended"}
+    payload = {
+        "status": req.status,
+        "access_blocked": blocked,
+        "billing_status": "blocked" if req.status == "blocked" else ("overdue" if req.status == "suspended" else "paid"),
+        "status_reason": req.reason or ("Admin-Freigabe" if req.status == "approved" else "Admin-Statusänderung"),
+        "status_changed_at": now,
+        "status_changed_by": str(user["_id"]),
+        "blocked_at": now if blocked else None,
+        "blocked_by": str(user["_id"]) if blocked else None,
+    }
+    if req.status == "approved":
+        payload["approved_at"] = now
+    res = await db.pos_merchants.update_one({"merchant_id": merchant_id}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Merchant nicht gefunden")
+    await _audit(str(user["_id"]), "admin.merchant.status", {"merchant_id": merchant_id, "status": req.status, "reason": req.reason})
+    merchant = await db.pos_merchants.find_one({"merchant_id": merchant_id}, {"_id": 0})
+    return {"ok": True, "merchant": merchant}
 
 
 @router.post("/admin/merchants/{merchant_id}/fee")

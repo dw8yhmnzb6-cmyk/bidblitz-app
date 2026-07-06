@@ -1,0 +1,45 @@
+{
+  "summary": "Completed backend + frontend verification for admin merchant controls on /admin/merchant-features. Target contracts passed: admin merchant listing KPIs, merchant patch/update, block/unblock lifecycle, blocked merchant feature access enforcement, editor modal field testids, feature toggle + manual price override, and admin canonical/disabled login regression.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Landing/Home background widgets during auth entry",
+        "issue": "Console still logs unrelated 404 calls for /api/pro/ads/active, /api/ai/recommendations, /api/recommendations/home while tested flows still function.",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter188_admin_merchant_features_controls.py",
+    "/app/test_reports/pytest/iter188_admin_merchant_features_controls.xml"
+  ],
+  "action_items": [
+    "Optional cleanup: fix or remove stale homepage API calls returning 404 to reduce console noise and improve observability.",
+    "Keep current POS admin contracts unchanged: block/unblock + status_reason handling and /api/pos/features/me 403 behavior while blocked."
+  ],
+  "critical_code_review_comments": [
+    "Admin role checks are inconsistent across POS modules: pos_system._is_admin supports role=bidblitz_admin while pos_features._is_admin only supports admin/superadmin. This can create authorization drift for non-canonical admin roles.",
+    "PATCH /api/pos/admin/merchants/{merchant_id} response remained clean (no Mongo ObjectId leakage) in this run."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter188_admin_merchant_features_controls.py",
+    "/app/test_reports/iteration_188.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "95%"
+  },
+  "test_credentials": "Used from /app/memory/test_credentials.md: admin@bidblitz.ae / BidBlitz2026!, admin@bidblitz.com / BidBlitz2026! (expected fail), haendler@bidblitz.com / Haendler2026!",
+  "seed_data_creation": "No seed data created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Target merchant-control flows are passing on preview. Backend pytest file is reusable for regression. Frontend auth entry should open from landing Anmelden button (direct /auth did not surface login fields in this run).",
+  "rca of the issue": "No blocking app-code failure found for requested scope. Observed minor unrelated 404 console noise due frontend requesting endpoints not available in current backend deployment.",
+  "mocked_api": "No MOCKED APIs used."
+}

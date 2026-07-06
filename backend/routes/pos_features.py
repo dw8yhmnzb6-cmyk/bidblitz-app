@@ -134,6 +134,9 @@ async def is_feature_enabled(merchant_id: str, feature_key: str) -> bool:
     """Prüfe ob Feature für diesen Merchant aktiv ist (in anderen Routes nutzbar)."""
     if feature_key not in FEATURE_KEYS:
         return False
+    merchant = await db.pos_merchants.find_one({"merchant_id": merchant_id}, {"_id": 0, "status": 1, "access_blocked": 1})
+    if merchant and (merchant.get("access_blocked") or merchant.get("status") in {"blocked", "suspended"}):
+        return False
     f = await db.pos_merchant_features.find_one({
         "merchant_id": merchant_id, "feature_key": feature_key,
     })
@@ -432,6 +435,8 @@ async def my_features(request: Request):
     merchant = await _get_merchant_for_user(user)
     if not merchant:
         raise HTTPException(404, "Kein Merchant-Profil")
+    if merchant.get("access_blocked") or merchant.get("status") in {"blocked", "suspended"}:
+        raise HTTPException(403, merchant.get("status_reason") or "Händlerzugang gesperrt")
 
     await _ensure_defaults(merchant["merchant_id"])
     activated = await db.pos_merchant_features.find(
@@ -472,6 +477,8 @@ async def start_trial(req: TrialActivate, request: Request):
     merchant = await _get_merchant_for_user(user)
     if not merchant:
         raise HTTPException(404, "Kein Merchant-Profil")
+    if merchant.get("access_blocked") or merchant.get("status") in {"blocked", "suspended"}:
+        raise HTTPException(403, merchant.get("status_reason") or "Händlerzugang gesperrt")
     if req.feature_key not in FEATURE_KEYS:
         raise HTTPException(400, "Unbekanntes Feature")
 

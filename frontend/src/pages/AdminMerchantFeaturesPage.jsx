@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import {
   ChevronLeft, Search, Store, ShieldCheck, Loader2, ToggleLeft,
   ToggleRight, CheckCircle2, Tag, Filter, Package, Sparkles,
-  Plus, Edit3, Trash2, X, Save,
+  Plus, Edit3, Trash2, X, Save, Ban, Unlock, Euro, Building2,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -66,6 +66,8 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
   const [savingKey, setSavingKey] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priceDrafts, setPriceDrafts] = useState({}); // {feature_key: "0.00"} — uncommitted user input
+  const [editingMerchant, setEditingMerchant] = useState(null);
+  const [savingMerchant, setSavingMerchant] = useState(false);
 
   // Initial load — merchants + catalog + bundles
   useEffect(() => {
@@ -277,6 +279,51 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
     }
   };
 
+  const patchMerchantInList = useCallback((updated) => {
+    if (!updated?.merchant_id) return;
+    setMerchants((prev) => prev.map((m) => (m.merchant_id === updated.merchant_id ? { ...m, ...updated } : m)));
+    setActiveMerchant((prev) => (prev?.merchant_id === updated.merchant_id ? { ...prev, ...updated } : prev));
+  }, []);
+
+  const handleSaveMerchant = async (draft) => {
+    if (!activeMerchant) return;
+    setSavingMerchant(true);
+    try {
+      const res = await api(`/api/pos/admin/merchants/${activeMerchant.merchant_id}`, {
+        method: "PATCH",
+        body: JSON.stringify(draft),
+      });
+      patchMerchantInList(res.merchant);
+      setEditingMerchant(null);
+      toast.success("Händler gespeichert");
+    } catch (err) {
+      toast.error(err.message || "Händler konnte nicht gespeichert werden");
+    } finally {
+      setSavingMerchant(false);
+    }
+  };
+
+  const handleMerchantStatus = async (status) => {
+    if (!activeMerchant) return;
+    const reason = status === "blocked"
+      ? window.prompt("Warum blockieren? z. B. Rechnung nicht bezahlt", activeMerchant.status_reason || "Rechnung nicht bezahlt")
+      : window.prompt("Notiz zur Freigabe/Statusänderung", status === "approved" ? "Freigegeben durch Admin" : "Status geändert");
+    if (reason === null) return;
+    setSavingKey(`merchant-status-${status}`);
+    try {
+      const res = await api(`/api/pos/admin/merchants/${activeMerchant.merchant_id}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status, reason }),
+      });
+      patchMerchantInList(res.merchant);
+      toast.success(status === "approved" ? "Händler freigeschaltet" : status === "blocked" ? "Händler blockiert" : "Status aktualisiert");
+    } catch (err) {
+      toast.error(err.message || "Status konnte nicht geändert werden");
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
   const filteredMerchants = useMemo(() => {
     if (!search.trim()) return merchants;
     const q = search.toLowerCase();
@@ -375,11 +422,16 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                        m.status === "approved"
+                        m.is_blocked || m.status === "blocked" || m.status === "suspended"
+                          ? "bg-red-500/10 text-red-400"
+                          : m.status === "approved"
                           ? "bg-green-500/10 text-green-400"
                           : "bg-amber-500/10 text-amber-400"
                       }`}>
-                        {m.status || "pending"}
+                        {m.is_blocked ? "blockiert" : (m.status || "pending")}
+                      </span>
+                      <span className="text-[9px] text-green-400" data-testid={`merchant-row-mrr-${m.merchant_id}`}>
+                        {(Number(m.feature_mrr || 0)).toFixed(2)}€/M
                       </span>
                       <span className="text-[9px] text-gray-500 truncate">
                         {m.merchant_id}
@@ -419,8 +471,35 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
                       <p className="text-xs text-gray-400 truncate">
                         {activeMerchant.owner_email || activeMerchant.email}  •  {activeMerchant.merchant_id}
                       </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${activeMerchant.is_blocked || activeMerchant.status === "blocked" || activeMerchant.status === "suspended" ? "bg-red-500/15 text-red-300" : "bg-emerald-500/15 text-emerald-300"}`} data-testid="active-merchant-access-status">
+                          {activeMerchant.is_blocked || activeMerchant.status === "blocked" || activeMerchant.status === "suspended" ? "ZUGANG BLOCKIERT" : "FREIGESCHALTET"}
+                        </span>
+                        <span className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-gray-300" data-testid="active-merchant-business-type">
+                          {activeMerchant.business_type || "keine Branche"}
+                        </span>
+                        <span className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-gray-300" data-testid="active-merchant-billing-status">
+                          Zahlung: {activeMerchant.billing_status || "paid"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-6 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+                      <button
+                        onClick={() => setEditingMerchant(activeMerchant)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold transition"
+                        data-testid="merchant-edit-btn"
+                      >
+                        <Edit3 size={13} /> Bearbeiten
+                      </button>
+                      <button
+                        onClick={() => handleMerchantStatus(activeMerchant.is_blocked || activeMerchant.status === "blocked" || activeMerchant.status === "suspended" ? "approved" : "blocked")}
+                        disabled={String(savingKey || "").startsWith("merchant-status")}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition disabled:opacity-50 ${activeMerchant.is_blocked || activeMerchant.status === "blocked" || activeMerchant.status === "suspended" ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-300" : "bg-red-500/10 border-red-500/25 text-red-300"}`}
+                        data-testid="merchant-block-toggle-btn"
+                      >
+                        {activeMerchant.is_blocked || activeMerchant.status === "blocked" || activeMerchant.status === "suspended" ? <Unlock size={13} /> : <Ban size={13} />}
+                        {activeMerchant.is_blocked || activeMerchant.status === "blocked" || activeMerchant.status === "suspended" ? "Freigeben" : "Blockieren"}
+                      </button>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-cyan-400" data-testid="active-feature-count">
                           {activeCount}<span className="text-sm text-gray-500">/{totalCount}</span>
@@ -691,8 +770,127 @@ export default function AdminMerchantFeaturesPage({ onBack }) {
             onSave={handleSaveBundle}
           />
         )}
+        {editingMerchant !== null && (
+          <MerchantEditor
+            merchant={editingMerchant}
+            saving={savingMerchant}
+            onCancel={() => setEditingMerchant(null)}
+            onSave={handleSaveMerchant}
+          />
+        )}
       </AnimatePresence>
     </div>
+  );
+}
+
+
+function MerchantEditor({ merchant, saving, onCancel, onSave }) {
+  const [businessName, setBusinessName] = useState(merchant.business_name || "");
+  const [businessType, setBusinessType] = useState(merchant.business_type || "kiosk");
+  const [contactEmail, setContactEmail] = useState(merchant.contact_email || merchant.owner_email || "");
+  const [contactPhone, setContactPhone] = useState(merchant.contact_phone || "");
+  const [country, setCountry] = useState(merchant.country || "XK");
+  const [feeRate, setFeeRate] = useState(Number(merchant.fee_rate ?? 0.015));
+  const [billingStatus, setBillingStatus] = useState(merchant.billing_status || "paid");
+  const [adminNote, setAdminNote] = useState(merchant.admin_note || "");
+
+  const submit = () => {
+    if (!businessName.trim()) {
+      toast.error("Firmenname fehlt");
+      return;
+    }
+    onSave({
+      business_name: businessName.trim(),
+      business_type: businessType,
+      contact_email: contactEmail.trim(),
+      contact_phone: contactPhone.trim(),
+      country: country.trim().toUpperCase(),
+      fee_rate: Math.max(0, Math.min(0.2, Number(feeRate) || 0)),
+      billing_status: billingStatus,
+      admin_note: adminNote.trim(),
+    });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onCancel}
+      data-testid="merchant-editor-modal"
+    >
+      <motion.div
+        initial={{ scale: 0.95, y: 10 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.95, y: 10 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#0a0a14] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Building2 size={18} className="text-cyan-400" /> Händler bearbeiten
+          </h2>
+          <button onClick={onCancel} className="p-2 hover:bg-white/5 rounded-lg" data-testid="merchant-editor-close">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-4 grid sm:grid-cols-2 gap-3">
+          <label className="space-y-1 sm:col-span-2">
+            <span className="text-[10px] uppercase text-gray-400">Firmenname</span>
+            <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" data-testid="merchant-editor-business-name" />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] uppercase text-gray-400">Branche</span>
+            <select value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="w-full px-3 py-2 bg-[#111827] border border-white/10 rounded-lg text-sm" data-testid="merchant-editor-business-type">
+              <option value="gastro">Gastronomie</option>
+              <option value="restaurant">Restaurant</option>
+              <option value="kiosk">Kiosk</option>
+              <option value="retail">Einzelhandel</option>
+              <option value="bakery">Bäckerei</option>
+              <option value="service">Service</option>
+              <option value="other">Andere</option>
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] uppercase text-gray-400">Land</span>
+            <input value={country} onChange={(e) => setCountry(e.target.value)} maxLength={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm uppercase" data-testid="merchant-editor-country" />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] uppercase text-gray-400">Kontakt E-Mail</span>
+            <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" data-testid="merchant-editor-contact-email" />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] uppercase text-gray-400">Telefon</span>
+            <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" data-testid="merchant-editor-contact-phone" />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] uppercase text-gray-400 flex items-center gap-1"><Euro size={11} /> Gebühr</span>
+            <input type="number" step="0.001" min="0" max="0.2" value={feeRate} onChange={(e) => setFeeRate(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" data-testid="merchant-editor-fee-rate" />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] uppercase text-gray-400">Zahlstatus</span>
+            <select value={billingStatus} onChange={(e) => setBillingStatus(e.target.value)} className="w-full px-3 py-2 bg-[#111827] border border-white/10 rounded-lg text-sm" data-testid="merchant-editor-billing-status">
+              <option value="paid">bezahlt</option>
+              <option value="trial">Testphase</option>
+              <option value="manual">manuell</option>
+              <option value="overdue">überfällig</option>
+              <option value="blocked">gesperrt</option>
+            </select>
+          </label>
+          <label className="space-y-1 sm:col-span-2">
+            <span className="text-[10px] uppercase text-gray-400">Admin-Notiz</span>
+            <textarea value={adminNote} onChange={(e) => setAdminNote(e.target.value)} rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none" data-testid="merchant-editor-admin-note" />
+          </label>
+        </div>
+        <div className="flex items-center justify-end gap-2 p-4 border-t border-white/10 bg-white/[0.02]">
+          <button onClick={onCancel} className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm" data-testid="merchant-editor-cancel">Abbrechen</button>
+          <button onClick={submit} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-sm disabled:opacity-50" data-testid="merchant-editor-save">
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Speichern
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
