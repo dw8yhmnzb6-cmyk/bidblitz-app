@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 06.07.2026 — P1 Mobility Center V1: E‑Bike + Carsharing live
+- `backend/routes/mobility_platform.py`: Mobility Compare und Nearby liefern jetzt zusätzlich `bike` (E‑Bike) und `car_sharing` (Carsharing) als echte Kernmodi; AI-Prompt, Compare-Summary und Available-Modes wurden entsprechend erweitert.
+- `frontend/src/pages/MobilityCenterPage.jsx`: Hub erweitert um neue Modul-Karten, Schnellzugriffe und 6‑Wege Vergleichstexte für Taxi, E‑Scooter, E‑Bike, EV, Carsharing und Car Rental.
+- `frontend/src/pages/BidBlitzMobilityPlatformPage.jsx`: neue Mode-Banner, Live-Counts und Mode-Pills für E‑Bike und Carsharing; Deep-Link-Fokus über `?mode=bike` und `?mode=car_sharing` aktiv.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, API-Self-Test PASS, Browser-Smoke PASS, Frontend-Testing-Agent PASS. Keine MOCKS.
+
 ## 06.07.2026 — P0 Router Stability Sweep / App.js entlastet
 - `frontend/src/App.js`: Pfad-Hilfslogik, Admin-Tab-Mapping, Shell-Flags und ein großer Teil des Special-Route-Handlings aus dem monolithischen Router herausgezogen.
 - Neue Module live: `frontend/src/app/pathUtils.js`, `frontend/src/app/adminRouteMap.js`, `frontend/src/app/appShellFlags.js`, `frontend/src/app/renderSpecialRoutes.jsx`.

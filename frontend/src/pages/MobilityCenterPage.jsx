@@ -174,8 +174,8 @@ export default function MobilityCenterPage({ onBack, onNavigate }) {
           </div>
           <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight" data-testid="mobility-center-title">Alles für Rides, EV, Scooter und Tracking in einem Hub.</h1>
-              <p className="mt-4 text-sm sm:text-base text-white/70" data-testid="mobility-center-subtitle">Das Mobility Center bündelt Taxi, Scooter, EV und Car Rental — inklusive klarem 4-Wege Preis-/Zeitvergleich, Buchungen und Tracking.</p>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight" data-testid="mobility-center-title">Alles für Rides, EV, E‑Bike, Carsharing und Tracking in einem Hub.</h1>
+              <p className="mt-4 text-sm sm:text-base text-white/70" data-testid="mobility-center-subtitle">Das Mobility Center bündelt Taxi, E‑Scooter, E‑Bike, Carsharing, EV und Car Rental — inklusive klarem 6‑Wege Preis-/Zeitvergleich, Buchungen und Tracking.</p>
             </div>
             <div className="grid w-full max-w-md grid-cols-2 gap-3">
               {[
