@@ -40,6 +40,11 @@
 - `frontend/src/pages/AdminMerchantFeaturesPage.jsx`: Dropdown `Freischalten + API` im Admin-Feature-Panel provisioniert Händler aus der UI und zeigt den API-Key einmalig per Copy-Prompt.
 - Verifiziert: JS/Python Lint PASS, Selftests PASS, Testing-Agent Iteration 189 5/5 PASS, UI-Automation PASS. Keine MOCKS.
 
+## 06.07.2026 — Admin Balance auf User-Wunsch gesetzt
+- `admin@bidblitz.ae` wurde nach expliziter Bestätigung auf `2.622.000.000,00 €` EUR-Wallet gesetzt.
+- AdminWallet-Anzeige bleibt zweigeteilt: EUR aus `users.balance`, BLZ separat aus `users.balance_blz`.
+- Verifiziert: `/api/auth/me` und `/api/admin/wallet/users` liefern `2622000000.0` EUR; Browser-Smoke zeigt `2622000000.00€` und `0 BLZ` getrennt.
+
 ## 03.07.2026 — Admin Login-Alias Anzeige-Fix
 - Bugfix: Wenn Admin sich mit `admin@bidblitz.ae` oder `admin@bid-blitz.ae` anmeldet, bleibt der kanonische Account `admin@bidblitz.com`, aber die UI zeigt jetzt die verwendete Login-E-Mail (`login_email`) statt irreführend die kanonische E-Mail.
 - Backend: Access- und Refresh-Token tragen `login_email`; `/api/auth/login`, `/api/auth/me` und `/api/auth/refresh` behalten Alias stabil.
