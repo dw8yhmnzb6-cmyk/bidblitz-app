@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://biometric-checkout-7.preview.emergentagent.com',
+  url: 'https://kyc-approval-hub.preview.emergentagent.com',
   cleartext: false,
 }
 ```

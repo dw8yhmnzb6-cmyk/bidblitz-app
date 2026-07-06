@@ -1,6 +1,6 @@
 {
   "test_date": "2026-06-11T19:25:47.733716",
-  "base_url": "https://biometric-checkout-7.preview.emergentagent.com",
+  "base_url": "https://kyc-approval-hub.preview.emergentagent.com",
   "tests": [
     {
       "test": "Admin Login",

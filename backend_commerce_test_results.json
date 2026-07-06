@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-06-24T20:22:04.393997",
-  "base_url": "https://biometric-checkout-7.preview.emergentagent.com",
+  "base_url": "https://kyc-approval-hub.preview.emergentagent.com",
   "tests": [
     {
       "test": "Auth-Login",

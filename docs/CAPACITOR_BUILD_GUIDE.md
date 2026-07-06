@@ -166,7 +166,7 @@ In Native Apps keine process.env - nutze:
 ```typescript
 // capacitor.config.ts
 server: {
-  url: 'https://biometric-checkout-7.preview.emergentagent.com',
+  url: 'https://kyc-approval-hub.preview.emergentagent.com',
   cleartext: true
 }
 ```

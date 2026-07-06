@@ -9,7 +9,7 @@ import json
 import sys
 from datetime import datetime
 
-BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
+BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 TEST_USER_EMAIL = "max.weber@bidblitz.com"

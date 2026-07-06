@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 BidBlitz Mobility P0 Backend Flow Testing
-Tests against: https://biometric-checkout-7.preview.emergentagent.com
+Tests against: https://kyc-approval-hub.preview.emergentagent.com
 Admin credentials: admin@bidblitz.com / BidBlitz2026!
 
 Test Coverage:
@@ -16,7 +16,7 @@ import json
 import httpx
 from datetime import datetime
 
-BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
+BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 
@@ -335,7 +335,7 @@ async def test_credit_card_checkout(client, cookies):
         checkout_request = {
             "transport_type": "taxi",
             "payment_method": "credit_card",
-            "origin_url": "https://biometric-checkout-7.preview.emergentagent.com",
+            "origin_url": "https://kyc-approval-hub.preview.emergentagent.com",
             "pickup": {
                 "address": "Alexanderplatz, Berlin, Germany",
                 "lat": 52.5200,

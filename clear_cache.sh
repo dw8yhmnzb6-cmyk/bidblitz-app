@@ -5,11 +5,11 @@
 echo "🧹 Clearing ALL browser caches..."
 
 # 1. Unregister service worker via API
-curl -s "https://biometric-checkout-7.preview.emergentagent.com/" > /dev/null
+curl -s "https://kyc-approval-hub.preview.emergentagent.com/" > /dev/null
 
 # 2. Send cache-clear header
 curl -s -H "Clear-Site-Data: \"cache\", \"storage\"" \
-  "https://biometric-checkout-7.preview.emergentagent.com/api/auctions" > /dev/null
+  "https://kyc-approval-hub.preview.emergentagent.com/api/auctions" > /dev/null
 
 echo "✓ Cache-clear signals sent"
 echo ""

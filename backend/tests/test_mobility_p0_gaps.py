@@ -322,7 +322,7 @@ class TestCreditCardCheckout:
         payload = {
             "transport_type": "taxi",
             "payment_method": "credit_card",
-            "origin_url": "https://biometric-checkout-7.preview.emergentagent.com",
+            "origin_url": "https://kyc-approval-hub.preview.emergentagent.com",
             "pickup": {"address": "TEST_CC Checkout Start", "lat": 42.6629, "lng": 21.1655},
             "dropoff": {"address": "TEST_CC Checkout End", "lat": 42.5728, "lng": 21.0358}
         }
@@ -338,7 +338,7 @@ class TestCreditCardCheckout:
         payload = {
             "transport_type": "vip",
             "payment_method": "credit_card",
-            "origin_url": "https://biometric-checkout-7.preview.emergentagent.com",
+            "origin_url": "https://kyc-approval-hub.preview.emergentagent.com",
             "pickup": {"address": "TEST_CC Stripe URL Start", "lat": 42.6629, "lng": 21.1655},
             "dropoff": {"address": "TEST_CC Stripe URL End", "lat": 42.5728, "lng": 21.0358}
         }

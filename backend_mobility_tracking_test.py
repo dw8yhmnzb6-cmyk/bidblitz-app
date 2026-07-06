@@ -10,7 +10,7 @@ import requests
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
+BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
 CREDENTIALS = {
     "email": "haendler@bidblitz.com",
     "password": "Haendler2026!"

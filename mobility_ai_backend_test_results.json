@@ -1,7 +1,7 @@
 {
   "test_suite": "BidBlitz Mobility AI Integration Backend",
   "timestamp": "2026-06-09T15:08:37.809236",
-  "base_url": "https://biometric-checkout-7.preview.emergentagent.com",
+  "base_url": "https://kyc-approval-hub.preview.emergentagent.com",
   "tests": [
     {
       "test": "AI Recommendation with Realistic Data",

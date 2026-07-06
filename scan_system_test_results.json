@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-05-17T20:33:18.902081",
-  "base_url": "https://biometric-checkout-7.preview.emergentagent.com",
+  "base_url": "https://kyc-approval-hub.preview.emergentagent.com",
   "tests": [
     {
       "name": "Test 1: Scan Resolve TBL",

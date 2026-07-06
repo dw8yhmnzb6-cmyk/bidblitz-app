@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://biometric-checkout-7.preview.emergentagent.com',
+    url: 'https://kyc-approval-hub.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

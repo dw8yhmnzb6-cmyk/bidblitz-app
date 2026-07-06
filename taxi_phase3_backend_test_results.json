@@ -1,6 +1,6 @@
 {
   "test_date": "2026-06-25T15:12:06.761575",
-  "base_url": "https://biometric-checkout-7.preview.emergentagent.com",
+  "base_url": "https://kyc-approval-hub.preview.emergentagent.com",
   "tests": [
     {
       "test_name": "TEST 1: GET /api/taxi/geocode?q=Pris",

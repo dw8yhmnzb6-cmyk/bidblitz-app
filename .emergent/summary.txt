@@ -1,0 +1,139 @@
+<analysis>Here is the handover summary based on the detailed analysis of the LLM message history.
+
+### **original_problem_statement**
+1. **Taxi Booking Update (Uber-like Search & Kosovo Pricing)**: Enhance the mobility module with live autocomplete address search and implement Kosovo-specific pricing logic (€2 base fare + per kilometer rate) with fixed airport fares.
+2. **Admin Canonical Migration**: Establish  as the sole canonical admin, migrating balances, bypassing KYC restrictions, and disabling legacy  logins.
+3. **Merchant Administration & POS API**: Allow the admin to manually approve/block merchants, activate custom software modules (Kiosk, Gastro, Retail), and generate POS API keys for external software integration.
+4. **Registration & KYC Stability**: Fix failing customer registrations ( vs  payload mismatch), prevent AI from hard-rejecting KYC (keep as pending), allow manual Admin KYC approval, and fix unique  generation.
+*PRODUCT REQUIREMENTS:* Ensure enterprise-grade testing and zero UI discrepancies in admin financial displays.
+
+**User's preferred language**: **GERMAN** (The user issues strict, direct commands in German. Next agent MUST respond in GERMAN only and proceed autonomously without asking preference questions).
+
+**what currently exists?** 
+A highly complex, production-grade Super-App (BidBlitz). The system features a robust POS ecosystem (Biometrics, API keys, Merchant Management), a Mobility/Taxi module with regional dynamic pricing and live mapbox autocomplete, and a centralized Admin Intelligence suite. The application now uses strict canonical admin authentication (), highly tolerant KYC flows, and a unified  architecture for wallet consistency.
+
+**Last working item**: 
+    - Last item agent was working: Fixing the Live/Online tab in the Admin Customer Dashboard. The tab was pulling legacy  data and displaying the disabled  with an outdated balance. The agent forced the Live tab to use canonical  data and strictly aligned it with .
+    - Status: COMPLETED
+    - Agent Testing Done: Y
+    - Which testing method agent to use? NA (Testing already done via  Iteration 194).
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:  
+*(No pending app-level issues. The agent successfully resolved all bugs raised by the user.)*
+
+**In progress Task List**: 
+*(None. All immediate tasks finished.)*
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - P1: Commerce Center V1 (Marketplace, Live Shopping, Penny Auctions - *Delayed to prioritize Taxi and Admin stability*).
+    - P1: Mobility Center V1 Expansion (E-Scooter, E-Bike, Carsharing).
+    - P1: Expand Kosovo City Taxi fixed-pricing profiles (e.g., Prishtina ↔ Prizren).
+    Future Tasks:
+    - P2: External Hardware/Vendor-Diagnostics (BioPay SDK integrations).
+    - P2: Game Center (Seasons, Achievements).
+
+**Completed work in this session**
+- **Taxi Mobility**: Implemented Uber-like single-letter autocomplete (). Added Kosovo pricing (2€ base) and Airport fixed pricing ( = 15€/20€/24€). (DONE)
+- **Admin Authentication**: Migrated canonical admin to . Disabled  (Returns 401). Ensured Admins completely bypass KYC gates. (DONE)
+- **Merchant Management**: Built UI/API for Admin to edit, block, and provision specific POS modules (Retail, Gastro, Kiosk) to merchants, including API Key generation. (DONE)
+- **Admin Wallet Consistency**: Unified all Admin Wallet/Balance views to pull strictly from . Set explicit Admin balance to  and  per user command. (DONE)
+- **Customer Registration & Handles**: Fixed  vs  payload crash. Implemented auto-generation of unique handles to prevent @bidblitz reservation errors. (DONE)
+- **KYC Resilience**: Stopped AI from hard-rejecting users. Added manual KYC freischalten (Approve) button in Admin Customer detail view. (DONE)
+- **Admin Live Tab**: Fixed the  online analytics to prevent ghost appearances of legacy admin accounts. (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+*(None. The agent systematically checked off every user complaint and bug).*
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: Edge/Ingress CORS Preflight Interception on .
+  - Recurrence count: >5
+  - Status: BLOCKED (Infrastructure Level)
+  - Note: **CRITICAL FOR NEXT AGENT**: The  frequently reports a CORS Preflight failure. The backend middleware is correct. This is an external Cloudflare/Edge Preview Ingress issue stripping headers. **Do not attempt to fix CORS in the Python/React code.** Acknowledge it as an infrastructure limitation.
+
+**Code Architecture**
+- Frontend: React 19 + Vite/Tailwind + Context API (, )
+- Backend: FastAPI + Uvicorn + MongoDB (Motor)
+- Payments/Wallet: Centralized . Balances strictly live on  and .
+
+**Key Technical Concepts**
+- **Canonical Admin**: Only  (or its alias ) is permitted admin access.
+- **Unified Wallet**: Legacy separate  documents are deprecated for the Admin. Core balances are strictly read/written to the  collection.
+- **POS API Key Provisioning**: Admin provisions features via , which generates a  key for external POS integration.
+
+**key DB schema**
+  - : {email, canonical_email, balance, balance_blz, kyc_status, handle}
+  - : {merchant_id, status, is_suspended, fee_rate}
+  - : {merchant_id, feature_key, custom_price}
+  - : {pickup, dropoff, estimated_price, region, fixed_fare}
+
+**changes in tech stack**
+  - None.
+
+**All files of reference** 
+  -  (Auth, Admin Canonical logic, Handle generation)
+  -  (KYC pending logic)
+  -  (Manual KYC approval, Live/Online Tab)
+  -  (Customer detail modal, Live analytics)
+  -  &  (Merchant provisioning & POS Keys)
+  -  &  (Kosovo Pricing & Search)
+
+**Areas that need refactoring**: 
+-  is growing extremely large with routing logic. Consider splitting the route map into separate modules to reduce regression risks.
+- Removing duplicate wallet balance routes if any still exist outside of .
+
+**key api endpoints**
+- 
+-  (Accepts  or )
+-  (Manual approve)
+- 
+- 
+
+**Critical Info for New Agent** 
+- **Language & Execution**: Respond in **GERMAN**. Do not ask the user how they want things implemented. Execute directly via patches and show results.
+- **Admin Identity**: The only valid admin is . The password is .  is explicitly disabled.
+- **Admin Balance**: The Admin balance is hardcoded to  and . Do not let scripts or tests overwrite this accidentally.
+- **Testing**: Rely on , , and  constantly. React Hook nesting errors must be strictly avoided.
+
+**documents and test reports created in this job** 
+  -  to  (Massive regression suite execution)
+  - , ,  (Updated)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ 1. User: Registrierung funktioniert nicht bei den Kunden (Registration fixes)
+ 2. User: [Uploads KYC info] Fehlgeschlagen es kann man nicht freischalten KYC (KYC AI bypass & manual admin approval)
+ 3. User: DEIN BIDBLITZ HANDLE Noch keinen Handle? Sichere dir einen... (Fix handle generation)
+ 4. User: Admin admin@bidblitz.com ... Er zeigt mir den Anwenden den anderen Admin, dass er online war. Das ist nicht richtig. (Live/Online tab fix request)
+ *(Pending Human Messages: None. The user expects you to move to the next logical step in the roadmap (Commerce Center or Mobility) OR await their next bug report).*
+
+**Project Health Check:**
+- Broken: None. (Ignore Edge CORS OPTIONS preflight warning in logs).
+- Mocked: None.
+
+**3rd Party Integrations** 
+  - Stripe (Payments) — Emergentintegrations
+  - Resend (Emails) — Emergentintegrations
+  - OpenAI / Gemini (KYC Vision) — Emergent LLM Key ()
+  - Mapbox (Taxi Autocomplete) — User API Key
+
+**Testing status**
+  - Testing agent used after significant changes: YES (Iterations 183 through 194 utilized extensively).
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created:  (among others).
+  - Known regressions: Cloudflare Edge CORS Preflight override (Infrastructure).
+
+**Credentials to test flow:**
+- Canonical Admin:  / 
+- Merchant: 
+- Customer:  (or create new via Register).
+
+**What agent forgot to execute**
+Nothing. The agent successfully cleared the entire queue of bugs.
+
+**Debugging checklist for current issue**
+    Task: Move to next Roadmap item (e.g., Commerce Center V1 / Mobility V1) OR await user input.
+    Action: 
+    1. Read .
+    2. Suggest the next feature via text (in German) or execute immediately if instructed.
+    3. Ensure  and  are run after every change.</analysis>

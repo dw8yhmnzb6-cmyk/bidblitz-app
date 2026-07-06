@@ -22,7 +22,7 @@ import json
 from datetime import datetime
 
 # External API URL
-BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
+BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
 
 # Test credentials
 MERCHANT_EMAIL = "haendler@bidblitz.com"

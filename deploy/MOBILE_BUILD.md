@@ -25,7 +25,7 @@ yarn cap open android       # or: yarn cap open ios
 ```
 
 The LIVE-RELOAD config (`capacitor.config.live.ts`) points the WebView
-at `https://biometric-checkout-7.preview.emergentagent.com` so code changes
+at `https://kyc-approval-hub.preview.emergentagent.com` so code changes
 reflect instantly without rebuilding the native bundle.
 
 ## Production Build

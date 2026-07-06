@@ -2,14 +2,14 @@
 """
 BidBlitz Mobility AI Integration Backend Testing
 Tests the new AI recommendation endpoint and regression checks for existing endpoints
-External Preview URL: https://biometric-checkout-7.preview.emergentagent.com
+External Preview URL: https://kyc-approval-hub.preview.emergentagent.com
 """
 
 import json
 import requests
 from datetime import datetime
 
-BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
+BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

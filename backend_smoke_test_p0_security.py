@@ -5,7 +5,7 @@ BidBlitz P0 Security Smoke Test
 Lightweight smoke test after P0 security blocker cleanup.
 Tests: API health, login flow, basic endpoints, security config verification.
 
-Preview URL: https://biometric-checkout-7.preview.emergentagent.com
+Preview URL: https://kyc-approval-hub.preview.emergentagent.com
 Test Account: admin@bidblitz.com / BidBlitz2026!
 """
 
@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://biometric-checkout-7.preview.emergentagent.com"
+BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
 API_URL = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@bidblitz.com"
 TEST_PASSWORD = "BidBlitz2026!"
