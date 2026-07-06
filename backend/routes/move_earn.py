@@ -529,6 +529,16 @@ def _clamp_score(value: float) -> int:
     return max(0, min(100, int(round(value))))
 
 
+def _days_ago(days: int) -> str:
+    return (_now() - timedelta(days=days)).date().isoformat()
+
+
+def _safe_div(numerator: float, denominator: float) -> float:
+    if not denominator:
+        return 0.0
+    return numerator / denominator
+
+
 def _normalize_gps_quality(req: SyncStepsRequest, settings: dict) -> tuple[int, list[str]]:
     reasons = []
     if req.gps_distance_km is None:
@@ -1245,6 +1255,9 @@ async def get_move_stats_admin(request: Request):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Nur Admin")
     today = _today()
+    last_7 = _days_ago(6)
+    last_30 = _days_ago(29)
+    last_90 = _days_ago(89)
     profiles_count = await db.move_profiles.count_documents({})
     active_today = await db.move_daily_steps.count_documents({"date": today, "accepted_steps": {"$gt": 0}})
     suspicious_profiles = await db.move_profiles.count_documents({"is_suspicious": True})
@@ -1255,6 +1268,88 @@ async def get_move_stats_admin(request: Request):
     top_users = await db.move_profiles.find({}, {"_id": 0, "user_id": 1, "user_name": 1, "level": 1, "total_xp": 1, "total_steps": 1, "is_blocked": 1, "is_suspicious": 1}).sort("total_xp", -1).limit(15).to_list(15)
     fraud_logs = await db.move_fraud_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(30).to_list(30)
     daily_rows = await db.move_daily_steps.find({"date": today}, {"_id": 0, "accepted_steps": 1, "move_coins_earned": 1, "energy_earned": 1, "ride_xp": 1, "eco_xp": 1, "merchant_events": 1, "qr_events": 1}).to_list(500)
+    rows_7 = await db.move_daily_steps.find({"date": {"$gte": last_7}}, {"_id": 0, "date": 1, "user_id": 1, "accepted_steps": 1, "move_coins_earned": 1, "energy_earned": 1, "xp_earned": 1, "merchant_events": 1, "qr_events": 1, "ride_xp": 1, "eco_xp": 1}).to_list(10000)
+    rows_30 = await db.move_daily_steps.find({"date": {"$gte": last_30}}, {"_id": 0, "date": 1, "user_id": 1, "accepted_steps": 1, "move_coins_earned": 1, "energy_earned": 1, "xp_earned": 1, "merchant_events": 1, "qr_events": 1, "ride_xp": 1, "eco_xp": 1}).to_list(30000)
+    rows_90 = await db.move_daily_steps.find({"date": {"$gte": last_90}}, {"_id": 0, "date": 1, "user_id": 1, "accepted_steps": 1}).to_list(50000)
+    reward_rows_30 = await db.move_rewards.find({"created_at": {"$gte": last_30}}, {"_id": 0, "reward_type": 1, "label": 1, "cost_estimate_eur": 1, "source_code": 1, "user_id": 1, "created_at": 1}).to_list(10000)
+
+    dau = len({row.get("user_id") for row in rows_30 if row.get("date") == today and int(row.get("accepted_steps", 0) or 0) > 0})
+    wau = len({row.get("user_id") for row in rows_7 if int(row.get("accepted_steps", 0) or 0) > 0})
+    mau = len({row.get("user_id") for row in rows_30 if int(row.get("accepted_steps", 0) or 0) > 0})
+    users_30 = {row.get("user_id") for row in rows_30 if row.get("user_id")}
+    users_prev_30 = {
+        row.get("user_id")
+        for row in await db.move_daily_steps.find({"date": {"$gte": _days_ago(59), "$lt": last_30}}, {"_id": 0, "user_id": 1, "accepted_steps": 1}).to_list(30000)
+        if row.get("user_id") and int(row.get("accepted_steps", 0) or 0) > 0
+    }
+    returning_30 = len(users_30 & users_prev_30)
+    retention_30 = round(_safe_div(returning_30, len(users_prev_30)) * 100, 1)
+
+    reward_cost_by_type = {}
+    reward_cost_by_source = {}
+    reward_cost_by_segment = {"bronze": {"cost": 0.0, "count": 0}, "silver": {"cost": 0.0, "count": 0}, "gold": {"cost": 0.0, "count": 0}, "diamond": {"cost": 0.0, "count": 0}, "vip": {"cost": 0.0, "count": 0}, "unknown": {"cost": 0.0, "count": 0}}
+    profiles_map = {row.get("user_id"): row for row in await db.move_profiles.find({}, {"_id": 0, "user_id": 1, "level": 1}).to_list(5000)}
+    for reward in reward_rows_30:
+        reward_type = reward.get("reward_type") or "unknown"
+        source_code = reward.get("source_code") or "unknown"
+        cost = round(float(reward.get("cost_estimate_eur", 0) or 0), 2)
+        reward_cost_by_type.setdefault(reward_type, {"reward_type": reward_type, "count": 0, "cost_eur": 0.0})
+        reward_cost_by_type[reward_type]["count"] += 1
+        reward_cost_by_type[reward_type]["cost_eur"] = round(reward_cost_by_type[reward_type]["cost_eur"] + cost, 2)
+        reward_cost_by_source.setdefault(source_code, {"source_code": source_code, "count": 0, "cost_eur": 0.0})
+        reward_cost_by_source[source_code]["count"] += 1
+        reward_cost_by_source[source_code]["cost_eur"] = round(reward_cost_by_source[source_code]["cost_eur"] + cost, 2)
+        segment = (profiles_map.get(reward.get("user_id")) or {}).get("level") or "unknown"
+        bucket = reward_cost_by_segment.setdefault(segment, {"cost": 0.0, "count": 0})
+        bucket["cost"] = round(bucket["cost"] + cost, 2)
+        bucket["count"] += 1
+
+    merchant_events_30 = int(sum(int(row.get("merchant_events", 0) or 0) for row in rows_30))
+    qr_events_30 = int(sum(int(row.get("qr_events", 0) or 0) for row in rows_30))
+    ride_xp_30 = int(sum(int(row.get("ride_xp", 0) or 0) for row in rows_30))
+    eco_xp_30 = int(sum(int(row.get("eco_xp", 0) or 0) for row in rows_30))
+    active_days_map = {}
+    for row in rows_90:
+        uid = row.get("user_id")
+        if not uid or int(row.get("accepted_steps", 0) or 0) <= 0:
+            continue
+        active_days_map.setdefault(uid, set()).add(row.get("date"))
+    users_ge_2_days = len([uid for uid, days in active_days_map.items() if len(days) >= 2])
+    repeat_rate_90 = round(_safe_div(users_ge_2_days, len(active_days_map)) * 100, 1)
+
+    total_reward_cost_30 = round(sum(item["cost_eur"] for item in reward_cost_by_type.values()), 2)
+    roi_value_index_30 = round((merchant_events_30 * 1.2) + (qr_events_30 * 0.8) + (eco_xp_30 / 10) + (ride_xp_30 / 12), 2)
+    roi_per_eur_30 = round(_safe_div(roi_value_index_30, total_reward_cost_30), 2)
+    cost_per_mau_30 = round(_safe_div(total_reward_cost_30, mau), 2)
+    cost_per_dau = round(_safe_div(total_reward_cost_30, max(dau, 1)), 2)
+
+    trend_map = {}
+    for row in rows_30:
+        day = row.get("date")
+        bucket = trend_map.setdefault(day, {"date": day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0})
+        if int(row.get("accepted_steps", 0) or 0) > 0 and row.get("user_id"):
+            bucket["active_users"].add(row.get("user_id"))
+        bucket["merchant_events"] += int(row.get("merchant_events", 0) or 0)
+        bucket["qr_events"] += int(row.get("qr_events", 0) or 0)
+        bucket["steps"] += int(row.get("accepted_steps", 0) or 0)
+    for reward in reward_rows_30:
+        day = str(reward.get("created_at", ""))[:10]
+        if not day:
+            continue
+        bucket = trend_map.setdefault(day, {"date": day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0})
+        bucket["reward_cost_eur"] = round(bucket["reward_cost_eur"] + float(reward.get("cost_estimate_eur", 0) or 0), 2)
+    trend_rows = []
+    for day in sorted(trend_map.keys())[-14:]:
+        bucket = trend_map[day]
+        trend_rows.append({
+            "date": day,
+            "active_users": len(bucket["active_users"]),
+            "reward_cost_eur": round(bucket["reward_cost_eur"], 2),
+            "merchant_events": bucket["merchant_events"],
+            "qr_events": bucket["qr_events"],
+            "steps": bucket["steps"],
+        })
+
     return {
         "summary": {
             "profiles_count": profiles_count,
@@ -1266,6 +1361,15 @@ async def get_move_stats_admin(request: Request):
             "total_steps_today": int(sum(int(row.get("accepted_steps", 0) or 0) for row in daily_rows)),
             "total_move_coins_today": int(sum(int(row.get("move_coins_earned", 0) or 0) for row in daily_rows)),
             "total_energy_today": int(sum(int(row.get("energy_earned", 0) or 0) for row in daily_rows)),
+            "dau": dau,
+            "wau": wau,
+            "mau": mau,
+            "retention_30_pct": retention_30,
+            "repeat_rate_90_pct": repeat_rate_90,
+            "roi_value_index_30": roi_value_index_30,
+            "roi_per_eur_30": roi_per_eur_30,
+            "cost_per_mau_30": cost_per_mau_30,
+            "cost_per_dau_30": cost_per_dau,
         },
         "top_users": top_users,
         "fraud_logs": fraud_logs,
@@ -1275,6 +1379,33 @@ async def get_move_stats_admin(request: Request):
             "merchant_events": int(sum(int(row.get("merchant_events", 0) or 0) for row in daily_rows)),
             "qr_events": int(sum(int(row.get("qr_events", 0) or 0) for row in daily_rows)),
         },
+        "growth": {
+            "dau": dau,
+            "wau": wau,
+            "mau": mau,
+            "retention_30_pct": retention_30,
+            "repeat_rate_90_pct": repeat_rate_90,
+            "active_users_7d": wau,
+            "active_users_30d": mau,
+        },
+        "roi": {
+            "window_days": 30,
+            "reward_cost_eur": total_reward_cost_30,
+            "merchant_events": merchant_events_30,
+            "qr_events": qr_events_30,
+            "ride_xp": ride_xp_30,
+            "eco_xp": eco_xp_30,
+            "value_index": roi_value_index_30,
+            "value_per_eur": roi_per_eur_30,
+            "cost_per_mau": cost_per_mau_30,
+            "cost_per_dau": cost_per_dau,
+        },
+        "reward_cost_breakdown": {
+            "by_type": sorted(reward_cost_by_type.values(), key=lambda item: item["cost_eur"], reverse=True),
+            "by_source": sorted(reward_cost_by_source.values(), key=lambda item: item["cost_eur"], reverse=True)[:12],
+            "by_segment": [{"segment": key, "cost_eur": value["cost"], "count": value["count"]} for key, value in reward_cost_by_segment.items()],
+        },
+        "trend_14d": trend_rows,
     }
 
 

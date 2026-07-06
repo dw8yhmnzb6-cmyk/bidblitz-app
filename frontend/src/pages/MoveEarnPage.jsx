@@ -20,6 +20,7 @@ import {
   Route,
   Sparkles,
   Star,
+  TrendingUp,
   Trophy,
   Users,
   Wallet,
@@ -563,6 +564,70 @@ export default function MoveEarnPage({ onBack }) {
                   <MetricCard icon={Trophy} label="Reward Cost" value={`€${Number(adminStats.summary?.total_reward_cost_eur || 0).toFixed(2)}`} color="#FFD766" testId="move-admin-cost-card" />
                   <MetricCard icon={Crown} label={ui.suspicious} value={adminStats.summary?.suspicious_profiles || 0} color="#00E4FF" testId="move-admin-suspicious-card" />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3" data-testid="move-admin-growth-kpis-grid">
+                  <MetricCard icon={Activity} label="DAU" value={adminStats.growth?.dau || 0} color="#37FF8B" testId="move-admin-dau-card" />
+                  <MetricCard icon={Users} label="MAU" value={adminStats.growth?.mau || 0} color="#8BF6FF" testId="move-admin-mau-card" />
+                  <MetricCard icon={TrendingUp} label="30d Retention" value={`${Number(adminStats.growth?.retention_30_pct || 0).toFixed(1)}%`} color="#FFD766" testId="move-admin-retention-card" />
+                  <MetricCard icon={BadgeCheck} label="ROI / €" value={Number(adminStats.roi?.value_per_eur || 0).toFixed(2)} color="#FF87BA" testId="move-admin-roi-per-eur-card" />
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-roi-panel">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white/85"><TrendingUp size={16} className="text-[#37FF8B]" /> ROI · 30 Tage</div>
+                  <div className="grid grid-cols-2 gap-3 text-sm text-white/70">
+                    <AdminStatRow label="Value Index" value={adminStats.roi?.value_index || 0} testId="move-admin-roi-value-index" />
+                    <AdminStatRow label="Reward Cost" value={`€${Number(adminStats.roi?.reward_cost_eur || 0).toFixed(2)}`} testId="move-admin-roi-reward-cost" />
+                    <AdminStatRow label="Cost / MAU" value={`€${Number(adminStats.roi?.cost_per_mau || 0).toFixed(2)}`} testId="move-admin-roi-cost-per-mau" />
+                    <AdminStatRow label="Cost / DAU" value={`€${Number(adminStats.roi?.cost_per_dau || 0).toFixed(2)}`} testId="move-admin-roi-cost-per-dau" />
+                    <AdminStatRow label="Merchant Events" value={adminStats.roi?.merchant_events || 0} testId="move-admin-roi-merchant-events" />
+                    <AdminStatRow label="QR Events" value={adminStats.roi?.qr_events || 0} testId="move-admin-roi-qr-events" />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-reward-cost-breakdown-panel">
+                  <div className="mb-3 text-sm font-bold text-white/85">Reward-Kosten nach Typ</div>
+                  <div className="space-y-2">
+                    {(adminStats.reward_cost_breakdown?.by_type || []).slice(0, 6).map((row, index) => (
+                      <div key={`${row.reward_type}-${index}`} className="flex items-center justify-between rounded-xl border border-white/6 bg-black/20 px-3 py-2" data-testid={`move-admin-reward-type-${index}`}>
+                        <div>
+                          <div className="text-sm font-semibold text-white/85">{row.reward_type}</div>
+                          <div className="text-xs text-white/45">{row.count} Rewards</div>
+                        </div>
+                        <div className="text-sm font-black text-[#FFD766]">€{Number(row.cost_eur || 0).toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-reward-source-breakdown-panel">
+                  <div className="mb-3 text-sm font-bold text-white/85">Reward-Kosten nach Quelle</div>
+                  <div className="space-y-2">
+                    {(adminStats.reward_cost_breakdown?.by_source || []).slice(0, 6).map((row, index) => (
+                      <div key={`${row.source_code}-${index}`} className="flex items-center justify-between rounded-xl border border-white/6 bg-black/20 px-3 py-2" data-testid={`move-admin-reward-source-${index}`}>
+                        <div>
+                          <div className="text-sm font-semibold text-white/85">{row.source_code}</div>
+                          <div className="text-xs text-white/45">{row.count} Rewards</div>
+                        </div>
+                        <div className="text-sm font-black text-[#8BF6FF]">€{Number(row.cost_eur || 0).toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-growth-trend-panel">
+                  <div className="mb-3 text-sm font-bold text-white/85">14-Tage Trend</div>
+                  <div className="space-y-2">
+                    {(adminStats.trend_14d || []).slice(-6).map((row, index) => (
+                      <div key={`${row.date}-${index}`} className="grid grid-cols-[90px_1fr_auto_auto] items-center gap-3 rounded-xl border border-white/6 bg-black/20 px-3 py-2 text-xs" data-testid={`move-admin-trend-row-${index}`}>
+                        <span className="text-white/55">{row.date}</span>
+                        <div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#37FF8B] to-[#00E4FF]" style={{ width: `${Math.min(100, (row.active_users || 0) * 8)}%` }} /></div>
+                        <span className="font-bold text-white">{row.active_users} aktiv</span>
+                        <span className="font-bold text-[#FFD766]">€{Number(row.reward_cost_eur || 0).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-top-users-card">
                   <div className="mb-3 text-sm font-bold text-white/85">{ui.topUsers}</div>
                   <div className="space-y-2">
@@ -584,6 +649,15 @@ export default function MoveEarnPage({ onBack }) {
           </section>
         )}
       </div>
+    </div>
+  );
+}
+
+function AdminStatRow({ label, value, testId }) {
+  return (
+    <div className="rounded-xl border border-white/6 bg-black/20 px-3 py-2" data-testid={testId}>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-white/40">{label}</div>
+      <div className="mt-1 text-sm font-black text-white">{value}</div>
     </div>
   );
 }
