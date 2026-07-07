@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { ArrowLeft, Clock3, MapPin, ShieldCheck, XCircle, Wallet } from "lucide-react";
+import { ArrowLeft, Bus, Clock3, Crown, MapPin, ShieldCheck, XCircle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { cancelMobilityBooking, getMobilityBookingDetail } from "../services/mobilityPlatformApi";
 
@@ -29,6 +29,15 @@ function makeLiveMarkerIcon(color = "#0F766E") {
   });
 }
 
+function makeCheckpointIcon(color = "#F59E0B") {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:26px;height:26px;border-radius:13px;background:${color};display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.95);box-shadow:0 8px 18px rgba(15,23,42,0.18);font-size:12px;">•</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
 export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(null);
@@ -36,6 +45,9 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
   const [liveEta, setLiveEta] = useState(0);
   const mapRef = useRef(null);
   const layerRef = useRef(null);
+  const isPremiumTrackedRide = ["airport_shuttle", "vip"].includes(tracking?.transport_type || booking?.transport_type);
+  const premiumTrackingLabel = tracking?.transport_type === "vip" ? "VIP Live-Tracking" : "Shuttle Live-Tracking";
+  const premiumPhaseLabel = tracking?.vehicle_phase === "approach" ? "Anfahrt zur Abholung" : "Fahrt zum Ziel";
 
   const loadBooking = useCallback(async () => {
     const result = await getMobilityBookingDetail(bookingId);
@@ -89,11 +101,24 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
     const pickupMarker = L.marker([booking.pickup.lat, booking.pickup.lng]).addTo(layer).bindPopup("Start");
     const dropoffMarker = L.marker([booking.dropoff.lat, booking.dropoff.lng]).addTo(layer).bindPopup("Ziel");
     const routePoints = (tracking?.route_points || []).map((point) => [point.lat, point.lng]);
-    const driverLat = tracking?.assigned_resource?.live_position?.lat || tracking?.assigned_resource?.lat;
-    const driverLng = tracking?.assigned_resource?.live_position?.lng || tracking?.assigned_resource?.lng;
+    const phasePosition = isPremiumTrackedRide
+      ? (tracking?.vehicle_phase === "approach" ? tracking?.assigned_resource?.approach_position : tracking?.assigned_resource?.trip_position)
+      : null;
+    const driverLat = phasePosition?.lat || tracking?.assigned_resource?.live_position?.lat || tracking?.assigned_resource?.lat;
+    const driverLng = phasePosition?.lng || tracking?.assigned_resource?.live_position?.lng || tracking?.assigned_resource?.lng;
     if (routePoints.length > 1) {
       L.polyline(routePoints, { color: "#d6cdbf", weight: 5, opacity: 0.8, dashArray: "8 8" }).addTo(layer);
     }
+    (tracking?.checkpoints || []).forEach((checkpoint) => {
+      if (checkpoint?.lat && checkpoint?.lng) {
+        L.marker([checkpoint.lat, checkpoint.lng], { icon: makeCheckpointIcon(checkpoint.passed ? "#0F766E" : "#F59E0B") }).addTo(layer).bindPopup(checkpoint.label || "Checkpoint");
+      }
+    });
+    (tracking?.shuttle_stops || []).forEach((stop) => {
+      if (stop?.lat && stop?.lng) {
+        L.circleMarker([stop.lat, stop.lng], { radius: 7, color: stop.served ? "#0F766E" : "#F97316", weight: 2, fillOpacity: 0.9 }).addTo(layer).bindPopup(stop.label || "Stop");
+      }
+    });
     const progressPoints = [[booking.pickup.lat, booking.pickup.lng]];
     if (driverLat && driverLng) {
       L.marker([driverLat, driverLng], { icon: makeLiveMarkerIcon(tracking?.status === "cancelled" ? "#F97316" : "#0F766E") }).addTo(layer).bindPopup(tracking?.assigned_resource?.label || "Live");
@@ -106,7 +131,7 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
       pickupMarker.remove();
       dropoffMarker.remove();
     };
-  }, [booking, tracking]);
+  }, [booking, tracking, isPremiumTrackedRide]);
 
   const progressPercent = useMemo(() => {
     if (!booking?.duration_min) return 0;
@@ -157,20 +182,39 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <p className="text-[10px] uppercase tracking-[0.18em] text-[#18202a]/40">Live Karte</p>
-              <h3 className="text-base font-bold mt-1">Fortschritt & Route</h3>
+              <h3 className="text-base font-bold mt-1">{isPremiumTrackedRide ? premiumTrackingLabel : "Fortschritt & Route"}</h3>
             </div>
             <div className="text-right text-xs text-[#18202a]/55" data-testid="mobility-booking-live-eta">ETA {liveEta || booking?.duration_min || 0} Min</div>
           </div>
           <div id="mobility-booking-live-map" className="h-64 w-full rounded-2xl overflow-hidden" data-testid="mobility-booking-live-map"></div>
           <div className="mt-4">
             <div className="flex items-center justify-between gap-3 text-[11px] text-[#18202a]/55 mb-2">
-              <span>Fortschrittslinie</span>
+              <span>{isPremiumTrackedRide ? premiumPhaseLabel : "Fortschrittslinie"}</span>
               <span data-testid="mobility-booking-progress-label">{progressPercent}%</span>
             </div>
             <div className="h-3 rounded-full bg-[#f3eadc] overflow-hidden" data-testid="mobility-booking-progress-track">
               <div className="h-full rounded-full bg-[#0F766E] transition-[width] duration-500" style={{ width: `${progressPercent}%` }} data-testid="mobility-booking-progress-bar"></div>
             </div>
           </div>
+          {isPremiumTrackedRide ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-3" data-testid="mobility-booking-premium-tracking-grid">
+              <div className="rounded-2xl bg-[#f8f3e9] px-4 py-3" data-testid="mobility-booking-premium-phase-card">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#18202a]/35">Tracking Phase</div>
+                <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-[#18202a]">
+                  {tracking?.transport_type === "vip" ? <Crown size={15} className="text-[#7C3AED]" /> : <Bus size={15} className="text-[#0F766E]" />}
+                  <span>{premiumPhaseLabel}</span>
+                </div>
+              </div>
+              <div className="rounded-2xl bg-[#f8f3e9] px-4 py-3" data-testid="mobility-booking-checkpoints-card">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#18202a]/35">Checkpoints</div>
+                <div className="mt-2 text-sm font-semibold text-[#18202a]">{(tracking?.checkpoints || []).filter((item) => item.passed).length} / {(tracking?.checkpoints || []).length}</div>
+              </div>
+              <div className="rounded-2xl bg-[#f8f3e9] px-4 py-3" data-testid="mobility-booking-shuttle-stops-card">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#18202a]/35">{tracking?.transport_type === "airport_shuttle" ? "Stops" : "VIP Route"}</div>
+                <div className="mt-2 text-sm font-semibold text-[#18202a]">{tracking?.transport_type === "airport_shuttle" ? `${(tracking?.shuttle_stops || []).filter((item) => item.served).length} / ${(tracking?.shuttle_stops || []).length}` : `${tracking?.trip_progress_percent || 0}% live`}</div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-3xl bg-white border border-[#18202a]/8 p-5" data-testid="mobility-booking-timeline-card">
@@ -229,6 +273,19 @@ export default function MobilityBookingTrackingPage({ bookingId, onBack, onNavig
               <div className="text-[10px] uppercase tracking-[0.14em] text-[#18202a]/35">Ziel</div>
               <div className="text-sm font-semibold mt-1">{booking?.dropoff?.address}</div>
             </div>
+            {isPremiumTrackedRide ? (
+              <div className="rounded-2xl bg-[#f8f3e9] px-4 py-3" data-testid="mobility-booking-checkpoint-list-card">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#18202a]/35">Live Checkpoints</div>
+                <div className="mt-2 space-y-2">
+                  {(tracking?.checkpoints || []).map((checkpoint) => (
+                    <div key={checkpoint.checkpoint_id} className="flex items-center justify-between text-sm">
+                      <span className="text-[#18202a]/75">{checkpoint.label}</span>
+                      <span className={checkpoint.passed ? "font-semibold text-[#0F766E]" : "text-[#18202a]/45"}>{checkpoint.passed ? "passiert" : "offen"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

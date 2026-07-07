@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timezone
 from math import radians, sin, cos, asin, sqrt
-from typing import Optional, List
+from typing import Optional, List, Any
 from urllib.parse import urlencode
 from uuid import uuid4
 
@@ -317,12 +317,18 @@ def _build_tracking_timeline(status: str, live_status: str) -> list[dict]:
 def _build_tracking_payload(booking: dict, route_doc: Optional[dict]) -> dict:
     status = booking.get("tracking_status") or booking.get("status") or "confirmed"
     total_minutes = max(1, int(booking.get("duration_min") or 1))
+    transport_type = booking.get("transport_type") or "taxi"
     created_at = _parse_iso_datetime(booking.get("confirmed_at") or booking.get("created_at"))
     now = datetime.now(timezone.utc)
     elapsed_minutes = 0.0
     if created_at:
         elapsed_minutes = max(0.0, (now - created_at).total_seconds() / 60)
 
+    progress_profile = booking.get("live_progress_profile") or {}
+    vehicle_phase = progress_profile.get("vehicle_phase") or ("approach" if transport_type in {"airport_shuttle", "vip"} else "trip")
+    approach_ratio = float(progress_profile.get("approach_ratio") or (0.32 if transport_type == "airport_shuttle" else 0.24 if transport_type == "vip" else 0.18))
+    stop_count = int(progress_profile.get("stop_count") or (2 if transport_type == "airport_shuttle" else 0))
+    checkpoint_count = int(progress_profile.get("checkpoint_count") or (3 if transport_type == "vip" else 2 if transport_type == "airport_shuttle" else 0))
     if status == "cancelled":
         progress_percent = 0
     elif status == "completed":
@@ -363,15 +369,59 @@ def _build_tracking_payload(booking: dict, route_doc: Optional[dict]) -> dict:
     if live_status in {"resource_assigned", "en_route", "almost_arrived", "completed"}:
         live_position = _interpolate_live_position(route_points, 1 if status == "completed" else min(0.98, max(0.08, progress_percent / 100)))
 
+    route_progress_ratio = min(1, max(0, progress_percent / 100))
+    approach_progress_ratio = min(0.95, route_progress_ratio * max(0.18, approach_ratio))
+    trip_progress_ratio = min(0.99, max(0.02, route_progress_ratio))
+    if transport_type in {"airport_shuttle", "vip"} and live_status in {"resource_assigned", "en_route", "almost_arrived", "completed"}:
+        if live_status == "resource_assigned":
+            vehicle_phase = "approach"
+        elif live_status in {"en_route", "almost_arrived", "completed"}:
+            vehicle_phase = "trip"
+
+    approach_position = _interpolate_live_position(route_points, approach_progress_ratio) if route_points else None
+    trip_position = _interpolate_live_position(route_points, trip_progress_ratio) if route_points else None
+
+    checkpoints = []
+    if route_points and checkpoint_count > 0:
+        for index in range(checkpoint_count):
+            ratio = (index + 1) / (checkpoint_count + 1)
+            point = _interpolate_live_position(route_points, ratio)
+            checkpoints.append({
+                "checkpoint_id": f"cp-{index + 1}",
+                "label": f"Checkpoint {index + 1}",
+                "lat": point.get("lat"),
+                "lng": point.get("lng"),
+                "passed": route_progress_ratio >= ratio,
+            })
+
+    shuttle_stops = []
+    if transport_type == "airport_shuttle" and route_points and stop_count > 0:
+        for index in range(stop_count):
+            ratio = (index + 1) / (stop_count + 2)
+            point = _interpolate_live_position(route_points, ratio)
+            shuttle_stops.append({
+                "stop_id": f"stop-{index + 1}",
+                "label": f"Shuttle Stop {index + 1}",
+                "lat": point.get("lat"),
+                "lng": point.get("lng"),
+                "served": route_progress_ratio >= ratio,
+            })
+
     resource = {**(booking.get("assigned_resource") or {})}
     if live_position:
         resource["live_position"] = live_position
         resource.setdefault("lat", live_position["lat"])
         resource.setdefault("lng", live_position["lng"])
+    if transport_type in {"airport_shuttle", "vip"}:
+        if approach_position:
+            resource["approach_position"] = approach_position
+        if trip_position:
+            resource["trip_position"] = trip_position
 
     return {
         "status": status,
         "live_status": live_status,
+        "transport_type": transport_type,
         "phase_label": phase_label,
         "next_event_label": next_event_label,
         "eta_minutes": eta_minutes,
@@ -379,6 +429,11 @@ def _build_tracking_payload(booking: dict, route_doc: Optional[dict]) -> dict:
         "support_channel": "/support-chat",
         "can_cancel": booking.get("status") in {"confirmed", "payment_pending"},
         "progress_percent": progress_percent,
+        "vehicle_phase": vehicle_phase,
+        "approach_progress_percent": min(100, round(approach_progress_ratio * 100)),
+        "trip_progress_percent": min(100, round(trip_progress_ratio * 100)),
+        "checkpoints": checkpoints,
+        "shuttle_stops": shuttle_stops,
         "timeline": _build_tracking_timeline(status, live_status),
         "route_points": route_points,
     }
@@ -858,6 +913,34 @@ async def _assign_booking_resource(transport_type: str, pickup: dict):
     }
 
 
+def _build_live_progress_profile(transport_type: str, duration_min: Any, distance_km: Any) -> dict:
+    duration_value = max(1, int(duration_min or 1))
+    distance_value = max(0.1, float(distance_km or 0.1))
+    if transport_type == "airport_shuttle":
+        return {
+            "vehicle_phase": "approach",
+            "approach_ratio": 0.38,
+            "stop_count": 2 if distance_value >= 6 else 1,
+            "checkpoint_count": 3,
+            "dispatch_buffer_min": max(3, min(10, round(duration_value * 0.18))),
+        }
+    if transport_type == "vip":
+        return {
+            "vehicle_phase": "approach",
+            "approach_ratio": 0.28,
+            "stop_count": 0,
+            "checkpoint_count": 3,
+            "dispatch_buffer_min": max(2, min(8, round(duration_value * 0.12))),
+        }
+    return {
+        "vehicle_phase": "trip",
+        "approach_ratio": 0.18,
+        "stop_count": 0,
+        "checkpoint_count": 0,
+        "dispatch_buffer_min": max(1, min(5, round(duration_value * 0.08))),
+    }
+
+
 async def _confirm_booking_after_external_payment(booking_id: str, session_id: str):
     booking = await db.mobility_bookings.find_one({"booking_id": booking_id}, {"_id": 0})
     if not booking:
@@ -1097,6 +1180,7 @@ async def create_mobility_booking(req: MobilityBookingRequest, request: Request)
         "tracking_status": "confirmed",
         "route_id": route_doc["route_id"],
         "assigned_resource": assignment,
+        "live_progress_profile": _build_live_progress_profile(option["type"], option["duration_min"], option["distance_km"]),
         "pickup": req.pickup.model_dump(),
         "dropoff": req.dropoff.model_dump(),
         "preferences": req.preferences or {},
@@ -1227,6 +1311,7 @@ async def book_best_route(req: BestRouteBookRequest, request: Request):
         "tracking_status": "confirmed" if req.payment_method == "wallet" else "payment_pending",
         "route_id": route_doc["route_id"],
         "assigned_resource": await _assign_booking_resource(option["type"], source["pickup"]),
+        "live_progress_profile": _build_live_progress_profile(option["type"], option["duration_min"], option["distance_km"]),
         "ai_recommendation": ai_recommendation,
         "created_at": now,
         "updated_at": now,
@@ -1314,6 +1399,7 @@ async def create_mobility_checkout_session(req: MobilityCheckoutSessionRequest, 
         "route_id": route_doc["route_id"],
         "pickup": req.pickup.model_dump(),
         "dropoff": req.dropoff.model_dump(),
+        "live_progress_profile": _build_live_progress_profile(option["type"], option["duration_min"], option["distance_km"]),
         "preferences": req.preferences or {},
         "ai_recommendation": req.ai_recommendation or {},
         "stripe_session_id": session.session_id,
