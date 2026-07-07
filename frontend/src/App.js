@@ -372,9 +372,12 @@ function AppContent() {
   }, [user.isAuthenticated, user.language, setLang]);
 
   const resolvePostAuthPath = useCallback(() => {
+    if (user.isAuthenticated && user.kyc_status === "pending") return "/kyc/status";
+    if (user.isAuthenticated && user.kyc_status === "rejected") return "/kyc";
+    if (user.isAuthenticated && user.kyc_status === "not_started") return "/kyc";
     if (currentPath === "/login" || currentPath === "/register") return "/";
     return currentPath || "/";
-  }, [currentPath]);
+  }, [currentPath, user.isAuthenticated, user.kyc_status]);
 
   const handleAuthSuccess = useCallback(() => {
     setShowFullAuth("");
@@ -394,13 +397,14 @@ function AppContent() {
         setShowFullAuth("");
         setIsDemoMode(false);
         if (currentPath === "/login" || currentPath === "/register") {
-          syncBrowserPath("/", "replace");
-          setCurrentPath("/");
+          const nextPath = user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/kyc/status" : "/kyc";
+          syncBrowserPath(nextPath, "replace");
+          setCurrentPath(nextPath);
         }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentPath, syncBrowserPath, user.isAuthenticated]);
+  }, [currentPath, syncBrowserPath, user.isAuthenticated, user.kyc_status]);
 
   const isGuest = !user.isAuthenticated;
 
