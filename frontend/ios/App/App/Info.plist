@@ -61,6 +61,10 @@
 	<string>BidBlitz Staff erkennt Bluetooth-Beacons am Arbeitsplatz, um deine Schicht automatisch zu starten.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>BidBlitz Staff nutzt Bluetooth, um deine Anwesenheit am Arbeitsplatz zu erkennen.</string>
+		<key>NSHealthShareUsageDescription</key>
+		<string>BidBlitz liest deine Schritt- und Distanzdaten, um Move & Earn mit echten nativen Schrittquellen zu synchronisieren.</string>
+		<key>NSHealthUpdateUsageDescription</key>
+		<string>BidBlitz schreibt nur dann Health-Daten, wenn du in Zukunft ausdrücklich eigene Gesundheitswerte speicherst.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>BidBlitz Staff erkennt das WLAN am Arbeitsplatz, um deine Schicht automatisch zu starten.</string>
         <key>NFCReaderUsageDescription</key>

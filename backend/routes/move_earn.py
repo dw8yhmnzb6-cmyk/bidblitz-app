@@ -90,6 +90,12 @@ class SyncStepsRequest(BaseModel):
     route_variance_score: Optional[float] = Field(default=None, ge=0, le=1)
     activity_type: Optional[str] = Field(default="walking", max_length=32)
     background_tracking_minutes: Optional[int] = Field(default=None, ge=0, le=1440)
+    native_provider: Optional[str] = Field(default=None, max_length=64)
+    native_platform: Optional[str] = Field(default=None, max_length=32)
+    permission_state: Optional[str] = Field(default=None, max_length=64)
+    distance_meters: Optional[float] = Field(default=None, ge=0, le=500000)
+    sample_count: Optional[int] = Field(default=None, ge=0, le=20000)
+    used_fallback: Optional[bool] = Field(default=None)
 
 
 class ClaimRewardRequest(BaseModel):
@@ -1051,6 +1057,12 @@ async def sync_move_steps(request: Request, req: SyncStepsRequest):
         "raw_total_steps": req.total_steps,
         "accepted_delta": step_delta,
         "source": req.source,
+        "native_provider": req.native_provider,
+        "native_platform": req.native_platform,
+        "permission_state": req.permission_state,
+        "distance_meters": req.distance_meters,
+        "sample_count": req.sample_count,
+        "used_fallback": req.used_fallback,
         "device_fingerprint": fingerprint,
         "sensor_confidence": req.sensor_confidence,
         "gps_distance_km": req.gps_distance_km,

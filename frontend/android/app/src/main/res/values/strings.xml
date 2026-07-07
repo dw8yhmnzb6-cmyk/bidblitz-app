@@ -4,4 +4,5 @@
     <string name="title_activity_main">BidBlitz</string>
     <string name="package_name">com.bidblitz.pos</string>
     <string name="custom_url_scheme">com.bidblitz.pos</string>
+    <string name="health_connect_privacy_policy_url">https://bidblitz.ae/privacy</string>
 </resources>

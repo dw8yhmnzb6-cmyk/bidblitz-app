@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { api } from "../services/api";
 import { useI18n, useUser } from "../store";
 import { useGeolocation } from "../hooks/useGeolocation";
+import { useNativeSteps } from "../hooks/useNativeSteps";
 
 const panel = "rounded-[28px] border border-white/10 bg-[rgba(8,16,18,0.9)] backdrop-blur-xl";
 
@@ -178,6 +179,7 @@ export default function MoveEarnPage({ onBack }) {
   const [savingAdmin, setSavingAdmin] = useState(false);
   const [gpsState, setGpsState] = useState({ lat: 0, lng: 0, address: "" });
   const { currentAddress, permissionState, gpsHelperText, getCurrentLocation } = useGeolocation({ setPickup: setGpsState, mapRef: null, pickupMarkerRef: null });
+  const nativeSteps = useNativeSteps({ enabled: true });
 
   const load = async () => {
     setLoading(true);
@@ -207,26 +209,39 @@ export default function MoveEarnPage({ onBack }) {
     if (trackingConsent) getCurrentLocation({ silent: true });
   }, [trackingConsent, getCurrentLocation]);
 
-  const simulateSteps = async () => {
-    const current = Number(status?.daily?.latest_device_total || status?.daily?.accepted_steps || 0);
-    const extra = 1200 + Math.round(Math.random() * 2600);
+  const syncSteps = async () => {
     setSyncing(true);
     try {
       if (trackingConsent) getCurrentLocation({ silent: true });
+      const nativeState = await nativeSteps.readToday();
+      const fallbackCurrent = Number(status?.daily?.latest_device_total || status?.daily?.accepted_steps || 0);
+      const fallbackExtra = 1200 + Math.round(Math.random() * 2600);
+      const usingNativeTotal = nativeState?.authorized && nativeState?.available;
+      const totalSteps = usingNativeTotal ? Number(nativeState.totalSteps || 0) : fallbackCurrent + fallbackExtra;
+      const source = usingNativeTotal ? (nativeState.source || "native_health") : "mobile_preview";
+      const distanceKm = Number(nativeState?.totalDistanceMeters || 0) / 1000;
       const res = await api.syncMoveSteps({
-        total_steps: current + extra,
-        source: "mobile_preview",
-        device_fingerprint: `preview-${user?.id || user?._id || "user"}`,
-        sensor_confidence: trackingConsent ? 0.82 : 0.42,
+        total_steps: Math.round(totalSteps),
+        source,
+        native_provider: nativeState?.source || source,
+        native_platform: nativeState?.platform || "web",
+        permission_state: nativeState?.authorized ? "authorized" : (nativeState?.reason || "preview"),
+        distance_meters: Number(nativeState?.totalDistanceMeters || 0),
+        sample_count: Number(nativeState?.sampleCount || 0),
+        used_fallback: Boolean(nativeState?.usedFallback || !usingNativeTotal),
+        device_fingerprint: `${nativeState?.platform || "preview"}-${user?.id || user?._id || "user"}`,
+        sensor_confidence: usingNativeTotal ? 0.96 : (trackingConsent ? 0.82 : 0.42),
         duration_minutes: 18,
-        gps_distance_km: trackingConsent ? 1.4 : 0.12,
-        gps_points: trackingConsent ? 26 : 2,
-        route_variance_score: trackingConsent ? 0.74 : 0.14,
+        gps_distance_km: trackingConsent ? Math.max(distanceKm, usingNativeTotal ? 0.35 : 1.4) : 0.12,
+        gps_points: trackingConsent ? (usingNativeTotal ? Math.max(8, Math.min(60, Number(nativeState?.sampleCount || 8))) : 26) : 2,
+        route_variance_score: trackingConsent ? (usingNativeTotal ? 0.88 : 0.74) : 0.14,
         activity_type: "walking",
-        background_tracking_minutes: trackingConsent ? 16 : 2,
+        background_tracking_minutes: trackingConsent ? (usingNativeTotal ? 22 : 16) : 2,
       });
       setStatus(res.status);
-      toast.success(`+${res.accepted_delta} Schritte · +${res.xp_gain} XP · Trust ${res.scoring?.trust_score || 0}`);
+      toast.success(usingNativeTotal
+        ? `${nativeState.totalSteps || 0} native Schritte synced · +${res.xp_gain} XP · Trust ${res.scoring?.trust_score || 0}`
+        : `Preview-Sync · +${res.accepted_delta} Schritte · +${res.xp_gain} XP · Trust ${res.scoring?.trust_score || 0}`);
       const [historyRes, leaderboardRes] = await Promise.all([api.getMoveHistory(40), api.getMoveLeaderboard(20)]);
       setHistory(historyRes);
       setLeaderboard(leaderboardRes);
@@ -348,13 +363,89 @@ export default function MoveEarnPage({ onBack }) {
                   <div className="mt-2 text-sm text-white/55">{daily.accepted_steps || 0} / {daily.goal || 0}</div>
                 </div>
               </Ring>
-              <button onClick={simulateSteps} disabled={syncing} data-testid="move-earn-sync-button" className="w-full max-w-[260px] rounded-2xl bg-gradient-to-r from-[#37FF8B] to-[#00E4FF] px-5 py-3 text-sm font-black text-[#03120D] disabled:opacity-60">
+              <button onClick={syncSteps} disabled={syncing || nativeSteps.loading || nativeSteps.syncing} data-testid="move-earn-sync-button" className="w-full max-w-[260px] rounded-2xl bg-gradient-to-r from-[#37FF8B] to-[#00E4FF] px-5 py-3 text-sm font-black text-[#03120D] disabled:opacity-60">
                 {syncing ? ui.syncing : ui.sync}
               </button>
               <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/60">
                 <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1">{summary.energy_balance || 0} Energy</span>
                 <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1">{summary.total_move_coins || 0} Coins</span>
                 <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1">{summary.total_xp || 0} XP</span>
+              </div>
+              <div className="w-full max-w-[320px] rounded-[24px] border border-white/8 bg-white/[0.04] p-4 text-left" data-testid="move-native-source-card">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-white/40">Native Schrittquelle</div>
+                    <div className="mt-1 text-sm font-black text-white">{nativeSteps.isNative ? (nativeSteps.platform === "ios" ? "HealthKit" : "Health Connect") : "Web Preview Fallback"}</div>
+                  </div>
+                  <div className={`rounded-full px-3 py-1 text-[11px] font-black ${nativeSteps.authorized ? "bg-[#37FF8B] text-[#04110C]" : "bg-white/10 text-white/70"}`} data-testid="move-native-source-status">
+                    {nativeSteps.authorized ? "verbunden" : (nativeSteps.isNative ? "Berechtigung offen" : "Preview")}
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-2xl bg-black/20 px-3 py-3" data-testid="move-native-steps-total-card">
+                    <div className="text-[11px] uppercase tracking-[0.14em] text-white/40">Heute nativ</div>
+                    <div className="mt-1 text-lg font-black text-white">{nativeSteps.totalSteps || 0}</div>
+                  </div>
+                  <div className="rounded-2xl bg-black/20 px-3 py-3" data-testid="move-native-distance-card">
+                    <div className="text-[11px] uppercase tracking-[0.14em] text-white/40">Distanz</div>
+                    <div className="mt-1 text-lg font-black text-white">{((nativeSteps.totalDistanceMeters || 0) / 1000).toFixed(2)} km</div>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-white/60" data-testid="move-native-permission-message">{nativeSteps.permissionMessage}</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={async () => {
+                      const result = await nativeSteps.requestPermissions();
+                      if (result.ok) {
+                        toast.success(result.message || "Health-Zugriff freigegeben");
+                      } else {
+                        toast.error(result.message || "Health-Zugriff fehlt");
+                      }
+                    }}
+                    disabled={!nativeSteps.isNative || nativeSteps.authorized || nativeSteps.syncing}
+                    data-testid="move-native-request-access-button"
+                    className="rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-black disabled:opacity-40"
+                  >
+                    Zugriff freigeben
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const opened = await nativeSteps.openSettings();
+                      if (!opened) {
+                        toast.message("Einstellungen nur auf Android-Geräten verfügbar");
+                      }
+                    }}
+                    disabled={!nativeSteps.isNative}
+                    data-testid="move-native-open-settings-button"
+                    className="rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-black disabled:opacity-40"
+                  >
+                    Health öffnen
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const opened = await nativeSteps.openPrivacyPolicy();
+                      if (!opened) {
+                        toast.message("Privacy-Ansicht nur auf Android verfügbar");
+                      }
+                    }}
+                    disabled={!nativeSteps.isNative}
+                    data-testid="move-native-open-privacy-button"
+                    className="rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-black disabled:opacity-40"
+                  >
+                    Privacy
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await nativeSteps.readToday();
+                      toast.success("Native Schritte aktualisiert");
+                    }}
+                    disabled={nativeSteps.loading}
+                    data-testid="move-native-refresh-button"
+                    className="rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-black disabled:opacity-40"
+                  >
+                    Neu laden
+                  </button>
+                </div>
               </div>
             </div>
 

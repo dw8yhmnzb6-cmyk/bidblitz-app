@@ -12,6 +12,7 @@
     "@capacitor/splash-screen": "^7",
     "@capacitor/status-bar": "^7",
     "@capawesome/capacitor-app-update": "^8.0.3",
+    "@capgo/capacitor-health": "^7.0.0",
     "@capgo/capacitor-wifi": "7.0.3",
     "@hookform/resolvers": "^5.0.1",
     "@mapbox/mapbox-gl-geocoder": "^5.1.2",
