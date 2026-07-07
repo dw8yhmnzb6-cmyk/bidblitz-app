@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Auth Bugfix: falscher "Du bist offline"-Blocker beim Kundenlogin behoben
+- `frontend/src/services/api.js`: Der harte Vorab-Block über `navigator.onLine` wurde entfernt. Requests werden nun wirklich ausgeführt; Online-/Offline-Status wird erst anhand realer Request-Ergebnisse per `bidblitz-network-status` gesetzt.
+- `frontend/src/store/NetworkContext.jsx`: Offline-Banner reagiert jetzt auf Browser-Events **und** echte API-Netzwerkereignisse, statt Login vorzeitig falsch zu blockieren.
+- Verifiziert für `agimk@me.com` / `Aldink56600`: Login erfolgreich, `GET /api/auth/me` erfolgreich, kein falscher Offline-Banner mehr. Testing-Agent Iteration 201 PASS. Keine MOCKED APIs.
+
 ## 07.07.2026 — Mobility Premium Live-Tracking für Shuttle/VIP
 - `backend/routes/mobility_platform.py`: Premium-Tracking für `airport_shuttle` und `vip` vertieft. Neues Payload-Modell mit `vehicle_phase`, `approach_progress_percent`, `trip_progress_percent`, `checkpoints`, `shuttle_stops`, `assigned_resource.approach_position` und `assigned_resource.trip_position`.
 - Neue Helper `live_progress_profile` direkt bei Buchung/Rebook/Checkout gespeichert, damit Shuttle/VIP mit realistischerer Anfahrt-/Trip-Progression laufen.
