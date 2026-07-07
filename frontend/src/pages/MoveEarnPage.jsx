@@ -369,6 +369,7 @@ export default function MoveEarnPage({ onBack }) {
                 <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1">{summary.energy_balance || 0} Energy</span>
                 <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1">{summary.total_move_coins || 0} Coins</span>
                 <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1">{summary.total_xp || 0} XP</span>
+                <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1" data-testid="move-premium-live-tracking-chip">{status?.ride_earn?.premium_live_tracking_events || 0} Premium Live</span>
               </div>
               <div className="w-full max-w-[320px] rounded-[24px] border border-white/8 bg-white/[0.04] p-4 text-left" data-testid="move-native-source-card">
                 <div className="flex items-center justify-between gap-2">
@@ -508,6 +509,20 @@ export default function MoveEarnPage({ onBack }) {
 
           <section className={`${panel} p-5`} data-testid="move-earn-missions-section">
             <h2 className="mb-4 text-xl font-black">{ui.missions}</h2>
+            <div className="mb-4 rounded-[24px] border border-white/8 bg-white/[0.04] p-4" data-testid="move-premium-live-tracking-panel">
+              <div className="flex items-center gap-2 text-sm font-bold text-white/85"><Crown size={16} className="text-[#FFD766]" /> Premium Mobility Signal</div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-2xl bg-black/20 px-3 py-3" data-testid="move-premium-live-tracking-count-card">
+                  <div className="text-[11px] uppercase tracking-[0.14em] text-white/40">Shuttle / VIP heute</div>
+                  <div className="mt-1 text-lg font-black text-white">{status?.ride_earn?.premium_live_tracking_events || 0}</div>
+                </div>
+                <div className="rounded-2xl bg-black/20 px-3 py-3" data-testid="move-premium-live-tracking-trust-card">
+                  <div className="text-[11px] uppercase tracking-[0.14em] text-white/40">Trust Signal</div>
+                  <div className="mt-1 text-lg font-black text-white">{daily?.scoring?.trust_score || 0}/100</div>
+                </div>
+              </div>
+              <div className="mt-3 text-xs text-white/60">Premium-Fahrten mit Live-Tracking stärken Ride-&-Earn-Vertrauen und Mobility-Qualität.</div>
+            </div>
             <div className="space-y-3">
               {missions.map((mission) => (
                 <div key={mission.claim_code} className="rounded-[24px] border border-white/8 bg-white/[0.04] p-4" data-testid={`move-earn-mission-${mission.mission_id}`}>

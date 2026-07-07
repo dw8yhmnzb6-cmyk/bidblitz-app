@@ -269,7 +269,7 @@ const DEMO_DATA = {
   auditLogs: [
     { timestamp: new Date(Date.now() - 3600000).toISOString(), user: "demo@bidblitz.com", company: "Nova Trade LLC", action: "invoice_reminder_sent", target: "INV-202605-DEMO", status: "sent" },
     { timestamp: new Date(Date.now() - 86400000).toISOString(), user: "demo@bidblitz.com", company: "Arti Commerce", action: "client_imported", target: "import-csv", status: "completed" },
-    { timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), user: "admin@bidblitz.com", company: "System", action: "document_approved", target: "demo-doc-21", status: "approved" },
+    { timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), user: "admin@bidblitz.ae", company: "System", action: "document_approved", target: "demo-doc-21", status: "approved" },
   ],
 };
 

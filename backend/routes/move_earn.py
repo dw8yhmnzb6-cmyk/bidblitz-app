@@ -827,11 +827,18 @@ async def _daily_external_counts(uid: str) -> dict:
     qr_events = await db.transactions.count_documents({"user_id": uid, "$or": [{"reference": {"$regex": "QR|TABLE|SELF", "$options": "i"}}, {"description": {"$regex": "QR|Tisch|Barcode", "$options": "i"}}], "created_at": {"$regex": f"^{today}"}})
     ride_events = await db.move_external_grants.count_documents({"user_id": uid, "date": today, "grant_type": "ride"})
     eco_events = await db.move_external_grants.count_documents({"user_id": uid, "date": today, "$or": [{"grant_type": "eco"}, {"grant_type": "ride"}]})
+    premium_live_tracking_events = await db.mobility_bookings.count_documents({
+        "user_id": uid,
+        "transport_type": {"$in": ["airport_shuttle", "vip"]},
+        "tracking_status": {"$in": ["confirmed", "completed"]},
+        "created_at": {"$regex": f"^{today}"},
+    })
     return {
         "merchant_events": merchant_events,
         "qr_events": qr_events,
         "ride_events": ride_events,
         "eco_events": eco_events,
+        "premium_live_tracking_events": premium_live_tracking_events,
     }
 
 
@@ -1029,6 +1036,7 @@ async def _status_payload(user: dict) -> dict:
             "eco_trips": counts["eco_events"],
             "merchant_events": counts["merchant_events"],
             "qr_events": counts["qr_events"],
+            "premium_live_tracking_events": counts.get("premium_live_tracking_events", 0),
             "linked_children": await _family_children_count(str(user["_id"])),
         },
         "missions": missions,

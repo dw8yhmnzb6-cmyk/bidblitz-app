@@ -94,6 +94,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
   const { t } = useI18n();
 
   const user = useUser();
+  const pendingKycUser = user?.isAuthenticated && user?.kyc_status && user?.kyc_status !== "approved";
 
   useEffect(() => {
     if (!user.error) return;
@@ -370,6 +371,19 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
               exit={{ opacity: 0, x: 20 }}
               transition={slide}
             >
+              {pendingKycUser ? (
+                <div className="rounded-[18px] border border-[#00C2FF]/20 bg-[#08131A] px-4 py-3" data-testid="auth-pending-kyc-banner">
+                  <div className="flex items-start gap-3">
+                    <Shield size={16} className="mt-0.5 text-[#00C2FF]" />
+                    <div>
+                      <div className="text-[13px] font-bold text-white">Du bist erfolgreich angemeldet</div>
+                      <div className="mt-1 text-[11px] leading-relaxed text-white/60">
+                        Dein Konto ist aktiv. Einige Bereiche bleiben bis zur KYC-Freigabe geschützt.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <Field
                 icon={Mail}
                 type="email"

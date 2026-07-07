@@ -498,7 +498,7 @@ async def _platform_pool_user_id() -> Optional[str]:
     associated with email matching env var PLATFORM_POOL_EMAIL, falling back to
     the first user with role=='admin'."""
     import os
-    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.com")
+    email = os.environ.get("PLATFORM_POOL_EMAIL", "admin@bidblitz.ae")
     pool = await db.users.find_one({"email": email})
     if pool:
         return str(pool["_id"])

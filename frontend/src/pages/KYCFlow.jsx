@@ -553,6 +553,17 @@ function KYCStatusPage({ status, onRetry, onBack }) {
     <motion.div data-testid="kyc-status-page"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="p-5 max-w-md mx-auto pb-24">
+      <div className="mb-4 rounded-[20px] border border-[#00C2FF]/20 bg-[#07131D] px-4 py-3" data-testid="kyc-authenticated-status-banner">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 size={18} className="mt-0.5 text-[#00C2FF]" />
+          <div>
+            <div className="text-sm font-bold text-white">Erfolgreich angemeldet</div>
+            <div className="mt-1 text-xs leading-relaxed text-white/65">
+              Dein Konto ist aktiv. Aktuell ist nur deine Verifizierung noch {s === "pending" ? "in Prüfung" : s === "rejected" ? "zur Korrektur offen" : "freigegeben"}.
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="rounded-3xl p-6 text-center mb-5" style={{ background: config.bg, border: `1px solid ${config.border}` }}>
         <motion.div
           initial={{ scale: 0.6, opacity: 0 }}

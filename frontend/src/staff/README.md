@@ -53,7 +53,7 @@ import tokens, { COLORS, BUTTON_SIZE, STATUS_COLORS, MOBILE_RULES } from "../sta
 
 ## UI-Audit live nutzen
 
-1. Login als Admin/Merchant (`admin@bidblitz.com` / `BidBlitz2026!`)
+1. Login als Admin/Merchant (`admin@bidblitz.ae` / `BidBlitz2026!`)
 2. Browse zur Seite die du checken willst (z.B. `/merchant/staff`)
 3. Öffne in neuem Tab: `/staff/ui-audit`
 4. Klick "Erneut Scannen"

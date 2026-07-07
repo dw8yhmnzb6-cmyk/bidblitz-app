@@ -52,7 +52,7 @@ async def seed_notifications():
     for i, s in enumerate(samples):
         await db.notifications.insert_one({
             "notif_id": secrets.token_hex(8),
-            "user_email": "admin@bidblitz.com",
+            "user_email": "admin@bidblitz.ae",
             "category": s["category"],
             "title": s["title"],
             "body": s["body"],
