@@ -1636,3 +1636,33 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - Testdatei `test_iter212_manual_wallet_repair.py` → 8/8 PASS
 - UI-Smoke-Test PASS: Repair Preview und Confirmation-Bereich sichtbar.
 - Wichtige Regel bleibt unverändert: **automatic balance reset performed = NO**.
+
+
+## Update 2026-07-07 — P0 Einzelentscheidungen für kritische Wallet-Fälle
+- Erste fachliche Einzelentscheidungen im Wallet Reconciliation Center wurden **manuell freigegeben** und **ohne finanzielle Mutation** ausgeführt.
+- Ausgeführt wurden bewusst nur konservative Fälle mit klarer Sachlage:
+  - kanonischer Admin `admin@bidblitz.ae` → `mark_reviewed`
+  - mehrere kritische User-Fälle ohne `wallets`-Dokument und mit sichtbarer kanonischer Wahrheit `users.balance` → `mark_reviewed`
+- Kriterium für Freigabe in diesem Lauf:
+  - kein vorhandenes `wallets`-Dokument **oder** eindeutiger kanonischer Admin-Fall
+  - keine Ledger-Korrektur nötig
+  - keine Balance-Anpassung nötig
+  - keine Dubletten-Merge-Operation nötig
+- In diesem Schritt **nicht** freigegeben:
+  - `create_adjustment_entry` für rote Fälle mit widersprüchlicher Ledger-Lage
+  - `merge_duplicate_wallet` ohne zusätzliche Beweisführung
+  - `sync_displayed_balance_to_canonical_users_balance` für Fälle mit vorhandenem Legacy-Wallet und offenem historischen Konflikt
+- Ergebnis dieses Freigabelaufs:
+  - 10 konservative Repair-Approvals erfolgreich ausgeführt
+  - alle davon mit `automatic_changes_performed = NO`
+  - keine Balance-Resets
+  - keine Transaktionslöschungen
+  - keine Auto-Reparatur über den gesamten Bestand
+- Weiterhin offen und bewusst unangetastet:
+  - `kunde@bidblitz.com` → `Rebuild from ledger`
+  - `haendler@bidblitz.com` → `Manual review`
+  - `fahrer@bidblitz.com` → `Manual review`
+  - `biopay.qa.539992d9@test.com` → `Manual review`
+  - `pos.security.a2c72a73@test.com` → `Manual review`
+  - `admin-legacy-alias@bidblitz.local` → Legacy-/Alias-Prüfung offen
+- Nach diesem Lauf verbleiben kritische Altbestände, die fachlich nicht blind entschieden werden dürfen; Store Launch bleibt daher weiterhin blockiert.

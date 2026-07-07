@@ -643,3 +643,9 @@
 - Schutzregeln aktiv: kein Zero-Reset, kein Hidden Overwrite, keine Reparatur ohne Grund, kein unsicherer Merge.
 - Adjustment-Reparaturen laufen ausschließlich über die Wallet Engine und erzeugen Ledger-Einträge.
 - Tests grün: `test_iter212_manual_wallet_repair.py` 8/8 PASS.
+
+## 07.07.2026 — P0 Manual Decisions Run 1
+- 10 konservative kritische Wallet-Fälle manuell als `mark_reviewed` freigegeben.
+- Nur Fälle ohne `wallets`-Dokument bzw. klarer kanonischer Admin-Fall wurden entschieden.
+- **Keine** Balance-Änderungen, **keine** Transaktionslöschungen, **keine** Auto-Reparatur.
+- Komplexe rote Fälle mit Ledger-/Legacy-Konflikt blieben bewusst offen für weitere Fachentscheidung.

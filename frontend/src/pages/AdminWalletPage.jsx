@@ -748,6 +748,12 @@ const ReconciliationTab = () => {
                 <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-[10px] text-white/65" data-testid={`reconciliation-duplicates-${index}`}>
                   Duplicate flags: {row.duplicate_flags?.length ? row.duplicate_flags.join(", ") : "none"}
                 </div>
+                {row.latest_repair_action ? (
+                  <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/5 px-3 py-2 text-[10px] text-white/70" data-testid={`reconciliation-latest-repair-${index}`}>
+                    Last decision: {row.latest_repair_action} · {row.latest_repair_status || 'pending'}
+                    {row.latest_repair_at ? ` · ${fmtDateTime(row.latest_repair_at)}` : ""}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -763,6 +769,7 @@ const ReconciliationTab = () => {
               <div key={`${item.user_id}-${idx}`} className="rounded-xl border border-white/8 bg-black/20 px-3 py-2" data-testid={`repair-queue-item-${idx}`}>
                 <p className="text-[11px] font-semibold text-white truncate">{item.email}</p>
                 <p className="text-[10px] text-white/45">{item.recommended_action} · {item.risk_band} · Δ €{Number(item.delta || 0).toFixed(2)}</p>
+                {item.latest_repair_action ? <p className="text-[10px] text-cyan-300/70">Last: {item.latest_repair_action} · {item.latest_repair_status}</p> : null}
               </div>
             ))}
             {!dashboard?.queue?.length ? <p className="text-[11px] text-white/35">Keine Queue-Einträge.</p> : null}

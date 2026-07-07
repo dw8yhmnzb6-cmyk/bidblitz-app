@@ -200,6 +200,18 @@ async def _build_reconciliation_rows(query: dict, limit: int):
         if wallet.get("user_id"):
             wallet_count_by_user[wallet["user_id"]] += 1
 
+    user_ids = [str(user["_id"]) for user in users]
+    latest_repairs = {}
+    if user_ids:
+        repair_rows = await db.wallet_repair_actions.find(
+            {"user_id": {"$in": user_ids}},
+            {"_id": 0, "repair_id": 1, "user_id": 1, "action_type": 1, "status": 1, "reason": 1, "approved_by": 1, "approved_at": 1},
+        ).sort("approved_at", -1).to_list(2000)
+        for repair in repair_rows:
+            uid = repair.get("user_id")
+            if uid and uid not in latest_repairs:
+                latest_repairs[uid] = repair
+
     rows = []
     mismatch_count = 0
     healthy_count = 0
@@ -240,6 +252,24 @@ async def _build_reconciliation_rows(query: dict, limit: int):
 
         recommended_action = _recommended_action(users_balance, wallets_balance, tx_sum, wallet_tx_sum, duplicate_flags)
         recommended_repair = _recommended_repair(users_balance, wallets_balance, tx_sum, wallet_tx_sum)
+        latest_repair = latest_repairs.get(uid)
+        latest_repair_action = (latest_repair or {}).get("action_type")
+        latest_repair_status = (latest_repair or {}).get("status")
+        latest_repair_reason = (latest_repair or {}).get("reason")
+        latest_repair_at = (latest_repair or {}).get("approved_at") or None
+
+        base_pending = abs(delta) >= 0.01 or bool(duplicate_flags)
+        if latest_repair_status == "approved" and latest_repair_action in {
+            "mark_reviewed",
+            "ignore_legacy_wallet",
+            "sync_displayed_balance_to_canonical_users_balance",
+            "create_adjustment_entry",
+            "merge_duplicate_wallet",
+            "send_to_investigation",
+        }:
+            pending_reconciliation = False
+        else:
+            pending_reconciliation = base_pending
 
         if abs(delta) >= 0.01:
             mismatch_count += 1
@@ -277,7 +307,11 @@ async def _build_reconciliation_rows(query: dict, limit: int):
             "wallet_exists": bool(wallet_doc),
             "wallet_count": wallet_count_by_user[uid],
             "legacy_wallet": wallets_balance != 0 and displayed_balance != wallets_balance,
-            "pending_reconciliation": abs(delta) >= 0.01 or bool(duplicate_flags),
+            "pending_reconciliation": pending_reconciliation,
+            "latest_repair_action": latest_repair_action,
+            "latest_repair_status": latest_repair_status,
+            "latest_repair_reason": latest_repair_reason,
+            "latest_repair_at": latest_repair_at,
         })
 
     rows.sort(key=lambda row: (row["risk_band"] != "red", -abs(row["delta"]), row["confidence_score"]))
