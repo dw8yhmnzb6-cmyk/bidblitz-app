@@ -44,7 +44,7 @@ class KYCStatusResponse(BaseModel):
 # ─── Helpers ─────────────────────────────────────────────────────
 def _capabilities(kyc_status: str) -> dict:
     """What can a user do based on their KYC status?"""
-    verified = (kyc_status == "approved")
+    verified = kyc_status in {"approved", "verified"}
     return {
         "browse": True,                 # Always allowed
         "wallet_topup": verified,
@@ -87,14 +87,25 @@ def _validate_image(uf: UploadFile, label: str):
     raise HTTPException(status_code=400, detail=f"Ungültiger Dateityp für {label} (JPG/PNG/WebP/HEIC/HEIF)")
 
 
+def _normalize_kyc_status(user: dict) -> tuple[str, bool]:
+    raw_status = str(user.get("kyc_status") or "not_started").strip().lower()
+    if raw_status == "verified":
+        return "approved", True
+    if raw_status in {"failed", "error"}:
+        return "rejected", False
+    if raw_status == "approved":
+        return "approved", True
+    return raw_status, bool(user.get("kyc_verified"))
+
+
 # ─── Endpoints ───────────────────────────────────────────────────
 @router.get("/status", response_model=KYCStatusResponse)
 async def get_kyc_status(request: Request):
     """Get user's KYC verification status + capabilities."""
     user = await get_current_user(request)
-    kyc_status = user.get("kyc_status", "not_started")
+    kyc_status, kyc_verified = _normalize_kyc_status(user)
     return KYCStatusResponse(
-        kyc_verified=kyc_status == "approved",
+        kyc_verified=kyc_verified,
         kyc_status=kyc_status,
         document_type=user.get("kyc_document_type"),
         submitted_at=user.get("kyc_submitted_at"),
@@ -132,9 +143,10 @@ async def submit_kyc(
     if document_type not in ALLOWED_DOC_TYPES:
         raise HTTPException(status_code=400, detail="document_type must be one of: " + ", ".join(ALLOWED_DOC_TYPES))
 
-    if user.get("kyc_status") == "approved":
+    normalized_status, _normalized_verified = _normalize_kyc_status(user)
+    if normalized_status == "approved":
         raise HTTPException(status_code=400, detail="KYC bereits verifiziert")
-    if user.get("kyc_status") == "pending":
+    if normalized_status == "pending":
         raise HTTPException(status_code=400, detail="KYC bereits eingereicht. Warte auf Prüfung.")
 
     # Validate uploads

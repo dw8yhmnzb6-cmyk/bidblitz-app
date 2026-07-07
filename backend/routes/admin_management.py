@@ -53,6 +53,21 @@ def _normalize_admin_user_row(row: dict, canonical_balance: float, canonical_blz
     return row
 
 
+def _normalize_customer_kyc_row(row: dict) -> dict:
+    raw = str(row.get("kyc_status") or "not_started").strip().lower()
+    if raw == "verified":
+        row["kyc_status"] = "approved"
+        row["kyc_verified"] = True
+    elif raw in {"failed", "error"}:
+        row["kyc_status"] = "rejected"
+        row["kyc_verified"] = False
+
+    reason = row.get("kyc_submission_error") or row.get("kyc_error") or row.get("kyc_failure_reason") or row.get("kyc_rejection_reason")
+    if reason and not row.get("kyc_rejection_reason"):
+        row["kyc_rejection_reason"] = reason
+    return row
+
+
 # ═══════════════════════════════════════════════════════════════
 # KUNDEN-VERWALTUNG
 # ═══════════════════════════════════════════════════════════════
@@ -95,6 +110,7 @@ async def list_customers(
     customers = []
     async for u in cursor:
         u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
+        u = _normalize_customer_kyc_row(u)
         # V2 uses ObjectId _id, V1 uses string id field
         uid = u.pop("_id", None)
         if uid is None:
@@ -118,6 +134,7 @@ async def get_customer(user_id: str, request: Request):
     if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
     user = _normalize_admin_user_row(user, canonical_balance, canonical_blz)
+    user = _normalize_customer_kyc_row(user)
     user["user_id"] = str(user.pop("_id"))
 
     # Aggregate stats

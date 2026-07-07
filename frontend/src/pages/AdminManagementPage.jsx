@@ -20,6 +20,23 @@ const TABS = [
   { id: "modules", label: "Service-Module", icon: Package },
 ];
 
+const kycLabel = (customer) => {
+  const status = String(customer?.kyc_status || "not_started").toLowerCase();
+  const reason = customer?.kyc_rejection_reason || customer?.kyc_submission_error || customer?.kyc_error || customer?.kyc_failure_reason;
+  if (status === "approved" || status === "verified" || customer?.kyc_verified) return "KYC freigegeben";
+  if (status === "pending" || status === "submitted") return "Verifizierung läuft";
+  if (status === "rejected" || status === "failed" || status === "error") return reason ? "Übermittlung fehlgeschlagen" : "KYC abgelehnt";
+  return "Nicht gestartet";
+};
+
+const kycTone = (customer) => {
+  const status = String(customer?.kyc_status || "not_started").toLowerCase();
+  if (status === "approved" || status === "verified" || customer?.kyc_verified) return "text-green-600";
+  if (status === "pending" || status === "submitted") return "text-cyan-600";
+  if (status === "rejected" || status === "failed" || status === "error") return "text-red-600";
+  return "text-amber-600";
+};
+
 export const AdminManagementPage = ({ onBack, initialTab = "customers", initialModule = null }) => {
   const [tab, setTab] = useState(initialTab);
 
@@ -260,6 +277,7 @@ const CustomersTab = () => {
                 <p className="text-[11px] text-gray-500 truncate">{c.email}</p>
                 <div className="flex gap-2 mt-0.5">
                   <span className="text-[10px] text-gray-400">{c.role || "user"}</span>
+                  <span className={`text-[10px] font-semibold ${kycTone(c)}`} data-testid={`customer-kyc-badge-${c.user_id}`}>{kycLabel(c)}</span>
                   <span className="text-[10px] text-[#00D26A] font-semibold">
                     €{(c.balance || 0).toFixed(2)} · {(c.balance_blz || 0).toFixed(0)} BLZ
                   </span>
@@ -342,10 +360,17 @@ const CustomerDetailModal = ({ customer, onClose, onChanged }) => {
           <div className="flex gap-2 mt-1 text-[10px] text-gray-400">
             <span>ID: {customer.user_id.slice(-8)}</span>
             {customer.role && <span>· {customer.role}</span>}
-            <span className={customer.kyc_status === "approved" ? "text-green-600 font-semibold" : "text-amber-600 font-semibold"}>· KYC: {customer.kyc_status || "not_started"}</span>
+            <span className={`${kycTone(customer)} font-semibold`} data-testid="customer-detail-kyc-status">· KYC: {kycLabel(customer)}</span>
             {customer.banned && <span className="text-red-500 font-semibold">· GESPERRT</span>}
           </div>
         </div>
+
+        {(customer.kyc_rejection_reason || customer.kyc_submission_error || customer.kyc_error || customer.kyc_failure_reason) && (
+          <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-3 mb-3" data-testid="customer-kyc-error-box">
+            <p className="text-[11px] font-semibold text-red-700">KYC Fehler</p>
+            <p className="mt-1 text-[11px] text-red-600">{customer.kyc_rejection_reason || customer.kyc_submission_error || customer.kyc_error || customer.kyc_failure_reason}</p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
