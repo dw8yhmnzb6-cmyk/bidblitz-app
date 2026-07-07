@@ -55,6 +55,11 @@ const SendTab = ({ onDone }) => {
       setLoginHistory(res.history || []);
       setSelected((prev) => prev ? {
         ...prev,
+        canonical_email: res.user?.canonical_email || prev.canonical_email,
+        email_aliases: res.user?.email_aliases || prev.email_aliases,
+        balance_eur: res.user?.balance_eur ?? prev.balance_eur,
+        balance_blz: res.user?.balance_blz ?? prev.balance_blz,
+        kyc_status: res.user?.kyc_status || prev.kyc_status,
         registered_at: res.user?.registered_at || prev.registered_at,
         last_login_at: res.user?.last_login_at || prev.last_login_at,
         login_count: res.user?.login_count ?? prev.login_count,
@@ -199,6 +204,14 @@ const SendTab = ({ onDone }) => {
               <p className="text-[12px] text-white/70 font-medium">
                 💶 {fmt(selected.balance_eur)}€ · 🪙 {fmt(selected.balance_blz, 0)} BLZ
               </p>
+              <p className="text-[10px] text-white/55 mt-1" data-testid="selected-user-canonical-email">
+                Kanonisch: {selected.canonical_email || selected.email}
+              </p>
+              {!!selected.email_aliases?.length && (
+                <p className="text-[10px] text-white/45 mt-1 break-all" data-testid="selected-user-email-aliases">
+                  Aliase: {selected.email_aliases.join(" • ")}
+                </p>
+              )}
               <p className="text-[10px] text-white/60 mt-1" data-testid="selected-user-register-at">
                 Registriert: {fmtDateTime(selected.registered_at || selected.created_at)}
               </p>

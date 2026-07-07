@@ -1,0 +1,106 @@
+{
+  "summary": "Iteration 209 - Admin Wallet Canonical Email & Alias Tests. All 19 backend tests passed. All UI tests passed. The admin wallet search correctly finds agimk@me.com by exact email and partial search, displays canonical email and email aliases (afrimk@me.com • agimk@me.com) in the detail card, shows login history with balances and kyc_status. Admin identity is correctly canonicalized to admin@bidblitz.ae with canonical balance €2,622,000,000.00 / 0 BLZ.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter209_admin_wallet_canonical.py",
+    "/app/test_reports/pytest/iter209_admin_wallet_canonical.xml",
+    "/app/test_reports/iter209_admin_wallet_page.jpeg",
+    "/app/test_reports/iter209_agimk_search_results.jpeg",
+    "/app/test_reports/iter209_agimk_detail.jpeg",
+    "/app/test_reports/iter209_admin_search_results.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iter209_admin_wallet_canonical.py"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19 tests passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@bidblitz.ae / BidBlitz2026!",
+    "customer": "agimk@me.com / Aldink56600"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 209 verified the admin wallet canonical email and alias display features. Key findings: (1) /api/admin/wallet/users search returns canonical_email and email_aliases fields, (2) /api/admin/wallet/users/{user_id}/login-history returns enriched user object with canonical_email, email_aliases, balance_eur, balance_blz, kyc_status, registered_at, last_login_at, login_count, (3) Admin wallet UI correctly displays canonical email and aliases in selected user detail card, (4) agimk@me.com shows aliases: afrimk@me.com • agimk@me.com, (5) Admin identity canonicalized to admin@bidblitz.ae with balance €2,622,000,000.00 / 0 BLZ, (6) No regression in existing admin customer list canonicalization.",
+  "verified_features": {
+    "admin_wallet_user_search": {
+      "search_by_exact_email": "PASS - agimk@me.com found",
+      "search_by_partial": "PASS - 'agimk' partial search works",
+      "search_returns_canonical_email": "PASS - canonical_email field present",
+      "search_returns_email_aliases": "PASS - email_aliases field present"
+    },
+    "admin_wallet_login_history": {
+      "returns_200": "PASS",
+      "returns_canonical_email": "PASS - canonical_email in user object",
+      "returns_email_aliases": "PASS - email_aliases in user object",
+      "returns_balances": "PASS - balance_eur and balance_blz present",
+      "returns_kyc_status": "PASS - kyc_status present",
+      "returns_history_array": "PASS - history array with login entries"
+    },
+    "admin_identity_canonical": {
+      "admin_email_normalized": "PASS - admin@bidblitz.ae shown (not .com)",
+      "admin_balance_correct": "PASS - €2,622,000,000.00",
+      "admin_blz_correct": "PASS - 0 BLZ",
+      "legacy_admin_not_separate": "PASS - No separate admin@bidblitz.com row"
+    },
+    "agimk_user_record": {
+      "has_own_user_id": "PASS - user_id ends with 25333e1b",
+      "not_inheriting_admin_data": "PASS - role=user, balance=€20.00"
+    },
+    "ui_display": {
+      "canonical_email_displayed": "PASS - 'Kanonisch: agimk@me.com' shown",
+      "email_aliases_displayed": "PASS - 'Aliase: afrimk@me.com • agimk@me.com' shown",
+      "registered_at_displayed": "PASS - 'Registriert: 03.04.26, 14:24' shown",
+      "last_login_displayed": "PASS - 'Letzte Anmeldung: 07.07.26, 10:05 · 79 Logins' shown",
+      "login_history_card": "PASS - Login history card with entries displayed"
+    },
+    "admin_customer_list_regression": {
+      "endpoint_returns_200": "PASS",
+      "canonical_admin_email": "PASS - admin@bidblitz.ae in customer list",
+      "agimk_findable": "PASS - agimk@me.com findable in customer list"
+    }
+  },
+  "backend_test_results": {
+    "TestAdminWalletUserSearch": {
+      "test_search_agimk_by_exact_email": "PASSED",
+      "test_search_agimk_by_partial": "PASSED",
+      "test_search_agimk_by_alias_afrimk": "PASSED",
+      "test_search_returns_canonical_email_field": "PASSED",
+      "test_search_returns_email_aliases_field": "PASSED"
+    },
+    "TestAdminWalletLoginHistory": {
+      "test_login_history_returns_200": "PASSED",
+      "test_login_history_returns_canonical_email": "PASSED",
+      "test_login_history_returns_email_aliases": "PASSED",
+      "test_login_history_returns_balances": "PASSED",
+      "test_login_history_returns_kyc_status": "PASSED",
+      "test_login_history_returns_history_array": "PASSED"
+    },
+    "TestAdminIdentityCanonical": {
+      "test_admin_search_returns_canonical_email": "PASSED",
+      "test_admin_has_canonical_balances": "PASSED",
+      "test_legacy_admin_com_not_separate_row": "PASSED"
+    },
+    "TestAgimkUserRecord": {
+      "test_agimk_has_own_user_id": "PASSED",
+      "test_agimk_not_inheriting_admin_data": "PASSED"
+    },
+    "TestAdminCustomerListRegression": {
+      "test_admin_customers_endpoint_returns_200": "PASSED",
+      "test_admin_customers_canonical_admin_email": "PASSED",
+      "test_agimk_findable_in_customer_list": "PASSED"
+    }
+  }
+}

@@ -29,6 +29,24 @@ async def _require_admin(request: Request):
     return user
 
 
+async def _canonical_admin_balances() -> tuple[float, float]:
+    canonical_admin = await db.users.find_one({"email": "admin@bidblitz.ae"}, {"_id": 0, "balance": 1, "balance_blz": 1})
+    return (
+        float((canonical_admin or {}).get("balance", 0) or 0),
+        float((canonical_admin or {}).get("balance_blz", 0) or 0),
+    )
+
+
+def _normalize_admin_user_row(row: dict, canonical_balance: float, canonical_blz: float) -> dict:
+    email = row.get("email") or ""
+    if row.get("role") == "admin" and email in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
+        row["email"] = "admin@bidblitz.ae"
+        row["canonical_email"] = "admin@bidblitz.ae"
+        row["balance"] = canonical_balance
+        row["balance_blz"] = canonical_blz
+    return row
+
+
 async def _serialize_login_history(user_id: str, limit: int = 20):
     rows = await db.audit_logs.find(
         {"user_id": user_id, "event": {"$in": ["login_success", "register"]}},
@@ -49,14 +67,18 @@ async def _serialize_login_history(user_id: str, limit: int = 20):
 @router.get("/users")
 async def search_users(request: Request, q: str = "", limit: int = 30):
     await _require_admin(request)
+    canonical_balance, canonical_blz = await _canonical_admin_balances()
     query = {}
     q = (q or "").strip().lower()
     if q:
         query = {
             "$or": [
                 {"email": {"$regex": q, "$options": "i"}},
+                {"email_aliases": {"$elemMatch": {"$regex": q, "$options": "i"}}},
+                {"canonical_email": {"$regex": q, "$options": "i"}},
                 {"username": {"$regex": q, "$options": "i"}},
                 {"full_name": {"$regex": q, "$options": "i"}},
+                {"name": {"$regex": q, "$options": "i"}},
             ]
         }
     cur = db.users.find(query, {
@@ -67,10 +89,13 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
 
     users = []
     async for u in cur:
+        u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
         uid = str(u.get("_id") or u.get("id"))
         users.append({
             "user_id": uid,
             "email": u.get("email", ""),
+            "canonical_email": u.get("canonical_email") or u.get("email", ""),
+            "email_aliases": u.get("email_aliases") or [],
             "username": u.get("username") or u.get("full_name", ""),
             "role": u.get("role", "user"),
             "balance_eur": float(u.get("balance", u.get("wallet_balance", 0)) or 0),
@@ -86,22 +111,29 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
 @router.get("/users/{user_id}/login-history")
 async def user_login_history(user_id: str, request: Request, limit: int = 20):
     await _require_admin(request)
+    canonical_balance, canonical_blz = await _canonical_admin_balances()
     try:
         target = await db.users.find_one(
             {"_id": ObjectId(user_id)},
-            {"_id": 1, "email": 1, "name": 1, "username": 1, "role": 1, "created_at": 1, "registered_at": 1, "last_login_at": 1, "login_count": 1},
+            {"_id": 1, "email": 1, "canonical_email": 1, "email_aliases": 1, "name": 1, "username": 1, "role": 1, "created_at": 1, "registered_at": 1, "last_login_at": 1, "login_count": 1, "balance": 1, "balance_blz": 1, "kyc_status": 1},
         )
     except Exception as exc:
         raise HTTPException(404, "User nicht gefunden.") from exc
     if not target:
         raise HTTPException(404, "User nicht gefunden.")
+    target = _normalize_admin_user_row(target, canonical_balance, canonical_blz)
     history = await _serialize_login_history(user_id, min(max(limit, 1), 50))
     return {
         "user": {
             "user_id": str(target["_id"]),
             "email": target.get("email", ""),
+            "canonical_email": target.get("canonical_email") or target.get("email", ""),
+            "email_aliases": target.get("email_aliases") or [],
             "name": target.get("name") or target.get("username", ""),
             "role": target.get("role", "user"),
+            "balance_eur": float(target.get("balance", 0) or 0),
+            "balance_blz": float(target.get("balance_blz", 0) or 0),
+            "kyc_status": target.get("kyc_status") or "not_started",
             "registered_at": target.get("registered_at") or target.get("created_at"),
             "last_login_at": target.get("last_login_at"),
             "login_count": int(target.get("login_count", 0) or 0),
