@@ -10,6 +10,7 @@ import {
   Loader2, AlertCircle, Image as ImageIcon, ChevronRight, RefreshCw,
   CreditCard, FileText, User, Calendar, Globe, Hash,
 } from "lucide-react";
+import { KYC_ACCEPT_ATTR, getKycImageValidationMessage, isAlreadySubmittedKycError, isSupportedKycImage } from "../utils/kycUpload";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -82,8 +83,8 @@ export default function KYCFlow({ onBack, onComplete }) {
       setError("Datei zu groß (max. 10 MB)");
       return;
     }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
-      setError("Ungültiger Dateityp (JPG/PNG/WebP)");
+    if (!isSupportedKycImage(f)) {
+      setError(getKycImageValidationMessage());
       return;
     }
     setError(null);
@@ -119,6 +120,11 @@ export default function KYCFlow({ onBack, onComplete }) {
         else if (Array.isArray(d.detail)) errMsg = d.detail.map((item) => item?.msg || item?.message || JSON.stringify(item)).join(" ");
         else if (d.detail && typeof d.detail.message === "string") errMsg = d.detail.message;
         else if (d.detail && typeof d.detail.msg === "string") errMsg = d.detail.msg;
+        if (isAlreadySubmittedKycError(errMsg)) {
+          await loadStatus();
+          setSubmitting(false);
+          return;
+        }
         setError(errMsg);
         setSubmitting(false);
         return;
@@ -388,7 +394,7 @@ function FileUpload({ slot, label, Icon, file, preview, onChange }) {
   const inputRef = useRef(null);
   return (
     <div className="mb-3">
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp"
+      <input ref={inputRef} type="file" accept={KYC_ACCEPT_ATTR}
         onChange={onChange} className="hidden"
         data-testid={`kyc-file-input-${slot}`} />
       <motion.button

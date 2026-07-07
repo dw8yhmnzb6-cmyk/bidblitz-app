@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
+import { KYC_ACCEPT_ATTR, getKycImageValidationMessage, isAlreadySubmittedKycError, isSupportedKycImage } from "../utils/kycUpload";
 
 const glass = "backdrop-blur-xl";
 const panelBg = "rgba(8,12,20,0.7)";
@@ -72,6 +73,10 @@ const VerificationPage = ({ onBack }) => {
 
   const handleFile = (key, file) => {
     if (!file) return;
+    if (!isSupportedKycImage(file)) {
+      setError(getKycImageValidationMessage());
+      return;
+    }
     setFiles(p => ({ ...p, [key]: file }));
     setPreviews(p => ({ ...p, [key]: URL.createObjectURL(file) }));
   };
@@ -102,6 +107,11 @@ const VerificationPage = ({ onBack }) => {
         setSuccess(false);
       }
     } catch (e) {
+      if (isAlreadySubmittedKycError(e?.message)) {
+        await refreshStatus({ silent: true });
+        setUploading(false);
+        return;
+      }
       setError(e?.message || "KYC Upload fehlgeschlagen");
       setSubmitFeedback({ tone: "error", title: "Upload fehlgeschlagen", message: e?.message || "KYC Upload fehlgeschlagen" });
     }
@@ -300,7 +310,7 @@ const VerificationPage = ({ onBack }) => {
                     </div>
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp"
+                      accept={KYC_ACCEPT_ATTR}
                       className="hidden"
                       onChange={(e) => handleFile(key, e.target.files[0])}
                     />

@@ -20,7 +20,8 @@ from services.kyc_ai_verifier import verify_id_documents, auto_decision
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/kyc", tags=["kyc"])
 
-ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
+ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif", "application/octet-stream", "binary/octet-stream"}
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
 MAX_BYTES = 10 * 1024 * 1024  # 10MB per file
 ALLOWED_DOC_TYPES = {"national_id", "passport", "driver_license", "drivers_license"}
 
@@ -76,8 +77,14 @@ async def _save_upload(uf: UploadFile, dest: str) -> int:
 
 
 def _validate_image(uf: UploadFile, label: str):
-    if uf.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=400, detail=f"Ungültiger Dateityp für {label} (JPG/PNG/WebP)")
+    content_type = (uf.content_type or "").lower()
+    filename = (uf.filename or "").lower()
+    extension = filename.rsplit(".", 1)[-1] if "." in filename else ""
+    if content_type in ALLOWED_TYPES and (content_type not in {"application/octet-stream", "binary/octet-stream"} or extension in ALLOWED_EXTENSIONS):
+        return
+    if extension in ALLOWED_EXTENSIONS and content_type in {"", "application/octet-stream", "binary/octet-stream"}:
+        return
+    raise HTTPException(status_code=400, detail=f"Ungültiger Dateityp für {label} (JPG/PNG/WebP/HEIC/HEIF)")
 
 
 # ─── Endpoints ───────────────────────────────────────────────────
@@ -105,6 +112,12 @@ async def submit_kyc(
     id_back: UploadFile = File(..., description="Rückseite Ausweis"),
     selfie: UploadFile = File(..., description="Selfie mit Ausweis in der Hand"),
     document_type: str = Form("national_id"),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    date_of_birth: Optional[str] = Form(None),
+    country: Optional[str] = Form(None),
+    id_number: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
 ):
     """
     Submit 3-photo KYC: ID front + ID back + selfie holding ID.
@@ -161,6 +174,12 @@ async def submit_kyc(
             "kyc_back_path": back_path,
             "kyc_selfie_path": selfie_path,
             "kyc_submitted_at": now,
+            "kyc_declared_first_name": (first_name or "").strip() or None,
+            "kyc_declared_last_name": (last_name or "").strip() or None,
+            "kyc_declared_date_of_birth": (date_of_birth or "").strip() or None,
+            "kyc_declared_country": (country or "").strip() or None,
+            "kyc_declared_id_number": (id_number or "").strip() or None,
+            "kyc_declared_address": (address or "").strip() or None,
         }},
     )
 
