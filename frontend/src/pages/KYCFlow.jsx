@@ -14,6 +14,24 @@ import { KYC_ACCEPT_ATTR, getKycImageValidationMessage, isAlreadySubmittedKycErr
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+function normalizeSubmitError(detail) {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => {
+      const loc = Array.isArray(item?.loc) ? item.loc.join(".") : "";
+      const msg = item?.msg || item?.message || "Ungültige Eingabe";
+      if (loc.includes("id_front")) return "Bitte lade die Vorderseite deines Ausweises hoch.";
+      if (loc.includes("id_back")) return "Bitte lade die Rückseite deines Ausweises hoch.";
+      if (loc.includes("selfie")) return "Bitte lade dein Selfie mit Ausweis hoch.";
+      if (loc.includes("document_type")) return "Bitte wähle eine gültige Ausweisart.";
+      return msg;
+    }).join(" ");
+  }
+  if (detail && typeof detail.message === "string") return detail.message;
+  if (detail && typeof detail.msg === "string") return detail.msg;
+  return "Übermittlung fehlgeschlagen";
+}
+
 // ── Country list (most common — ISO 2 + label) ──
 const COUNTRIES = [
   { code: "DE", label: "Deutschland" },
@@ -115,11 +133,7 @@ export default function KYCFlow({ onBack, onComplete }) {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
-        let errMsg = "Übermittlung fehlgeschlagen";
-        if (typeof d.detail === "string") errMsg = d.detail;
-        else if (Array.isArray(d.detail)) errMsg = d.detail.map((item) => item?.msg || item?.message || JSON.stringify(item)).join(" ");
-        else if (d.detail && typeof d.detail.message === "string") errMsg = d.detail.message;
-        else if (d.detail && typeof d.detail.msg === "string") errMsg = d.detail.msg;
+        let errMsg = normalizeSubmitError(d.detail);
         if (isAlreadySubmittedKycError(errMsg)) {
           await loadStatus();
           setSubmitting(false);
@@ -128,6 +142,9 @@ export default function KYCFlow({ onBack, onComplete }) {
         setError(errMsg);
         setSubmitting(false);
         return;
+      }
+      if (d?.status === "pending") {
+        setError(null);
       }
       // Refresh status page
       await loadStatus();

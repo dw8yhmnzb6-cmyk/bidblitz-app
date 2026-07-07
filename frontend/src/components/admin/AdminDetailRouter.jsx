@@ -121,10 +121,11 @@ function KycDetail({ data }) {
       {(data.requests || []).length === 0 ? (
         <div className="text-center py-10 text-gray-400 text-sm">Keine offenen KYC-Anträge</div>
       ) : (data.requests || []).map((r, i) => (
-        <div key={i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-gray-800">{r.user_email || r.email || "–"}</p>
-            <p className="text-[9px] text-gray-400">Typ: {r.requested_role || r.type || "KYC"}</p>
+        <div key={r.user_id || i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-gray-800 truncate">{r.user_name || r.name || r.user_email || r.email || "–"}</p>
+            <p className="text-[9px] text-gray-500 truncate">{r.user_email || r.email || "—"}</p>
+            <p className="text-[9px] text-gray-400 mt-1">Typ: {r.document_type || r.type || "KYC"}</p>
           </div>
           <span className={`text-[9px] px-2 py-0.5 rounded font-medium ${r.status === "pending" ? "bg-amber-100 text-amber-700" : r.status === "approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
             {r.status || "pending"}

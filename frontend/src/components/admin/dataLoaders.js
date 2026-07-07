@@ -103,7 +103,7 @@ export async function loadAdminDetail(item, onNavigate) {
       return { type: "users", stats: d, users: users.users || [] };
     }
     case "kyc": {
-      const d = await api("/api/role-requests/admin/list?status=pending");
+      const d = await api("/api/kyc/admin/list?status=pending");
       return { type: "kyc", requests: d.requests || [] };
     }
     case "roles": {
