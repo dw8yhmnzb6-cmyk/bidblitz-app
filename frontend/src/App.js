@@ -1141,6 +1141,19 @@ function AppContent() {
     showBackToHome,
   } = getAppShellFlags(currentPath, isDesktopViewport);
 
+  const showActiveAccountBanner =
+    user.isAuthenticated &&
+    user.role === "admin" &&
+    !isDemoMode &&
+    !isCheckout &&
+    !isPublicInvoicePayment &&
+    !isQrOrder &&
+    !isRestaurantTableGuest &&
+    !isInvoicePay &&
+    !isStaffEmployeeShell &&
+    !isFullScreenStaffMgr &&
+    currentPath.split("?")[0].startsWith("/admin");
+
   return (
     <div className="app-container" data-testid="app-container">
       <Toaster
@@ -1169,7 +1182,7 @@ function AppContent() {
             </div>
           }>
             {showBackToHome && <BackToHomeBar onHome={() => handleNavigate("/")} />}
-            {user.isAuthenticated && !isDemoMode && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && (
+            {showActiveAccountBanner && (
               <ActiveAccountBanner />
             )}
             {renderPage()}
