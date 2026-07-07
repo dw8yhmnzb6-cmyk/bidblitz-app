@@ -1,29 +1,32 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, User, QrCode, Mail, Users, Send, Check, Loader2,
+  X, User, QrCode, Mail, Users, Send, Loader2,
   ChevronRight, Search, ArrowLeft, Sparkles,
-  CheckCircle2, AlertCircle, Clock, Heart, Plus
+  CheckCircle2, AlertCircle, Clock, Plus
 } from "lucide-react";
-import { api } from "../services/api";
 import { useUser } from "../store";
 
 const spring = { type: "spring", damping: 25, stiffness: 300 };
 
+const normalizeAmount = (value) => {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
 const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const user = useUser();
   const [step, setStep] = useState(1); // 1: recipient, 2: amount, 3: success
+  const [activeList, setActiveList] = useState("saved");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
   // Data - Use user balance from store as primary source
-  const [balance, setBalance] = useState(currentBalance ?? user?.balance ?? 0);
+  const [balance, setBalance] = useState(normalizeAmount(currentBalance ?? user?.balance));
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recentContacts, setRecentContacts] = useState([]);
   const [savedRecipients, setSavedRecipients] = useState([]);
-  const [showSaveRecipient, setShowSaveRecipient] = useState(false);
-  const [saveRecipientForm, setSaveRecipientForm] = useState({ nickname: '', icon: 'user' });
   const [recipient, setRecipient] = useState(null);
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
@@ -36,10 +39,15 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     if (isOpen) loadData();
   }, [isOpen]);
 
+  useEffect(() => {
+    setBalance(normalizeAmount(currentBalance ?? user?.balance));
+  }, [currentBalance, user?.balance]);
+
   // Reset state when modal closes so next open starts fresh
   useEffect(() => {
     if (!isOpen) {
       setStep(1);
+      setActiveList("saved");
       setSearchQuery("");
       setSearchResults([]);
       setRecipient(null);
@@ -55,6 +63,12 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
       inputRef.current.focus();
     }
   }, [step]);
+
+  useEffect(() => () => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+  }, []);
 
   const loadData = async () => {
     try {
@@ -73,18 +87,21 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
       
       // Set balance from API response or fallback to user store
       if (balanceRes?.balance !== undefined) {
-        setBalance(balanceRes.balance);
+        setBalance(normalizeAmount(balanceRes.balance));
       } else if (user?.balance !== undefined) {
-        setBalance(user.balance);
+        setBalance(normalizeAmount(user.balance));
       }
       
       setRecentContacts(recentRes?.recipients || []);
       setSavedRecipients(savedRes?.recipients || []);
+      if ((savedRes?.recipients || []).length === 0 && (recentRes?.recipients || []).length > 0) {
+        setActiveList("recent");
+      }
     } catch (err) {
       console.error('LoadData error:', err);
       // Fallback to user store balance
       if (user?.balance !== undefined) {
-        setBalance(user.balance);
+        setBalance(normalizeAmount(user.balance));
       }
     }
   };
@@ -112,6 +129,8 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
           const data = await res.json();
           if (data.recipient) {
             setSearchResults([data.recipient]);
+          } else {
+            setSearchResults([]);
           }
         }
       } catch {
@@ -189,6 +208,8 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   };
 
   const quickAmounts = [5, 10, 20, 50];
+  const visibleSavedRecipients = savedRecipients || [];
+  const visibleRecentContacts = recentContacts || [];
 
   return (
     <AnimatePresence>
@@ -234,6 +255,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   <div className="flex items-center justify-between mb-6">
                     <h1 className="text-[22px] font-bold text-slate-900">Geld senden</h1>
                     <motion.button
+                      data-testid="send-money-close-button"
                       onClick={onClose}
                       className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center"
                       whileTap={{ scale: 0.9 }}
@@ -272,6 +294,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   <div className="relative">
                     <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
+                      data-testid="send-money-search-input"
                       type="text"
                       value={searchQuery}
                       onChange={(e) => handleSearch(e.target.value)}
@@ -291,9 +314,10 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       exit={{ height: 0, opacity: 0 }}
                       className="px-6 pb-4"
                     >
-                      <p className="text-[11px] text-white/40 font-semibold uppercase tracking-wider mb-3">Gefunden</p>
+                      <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mb-3">Gefunden</p>
                       {searchResults.map((r) => (
                         <motion.button
+                          data-testid={`send-money-search-result-${r.user_id}`}
                           key={r.user_id}
                           onClick={() => selectRecipient(r)}
                           className="w-full flex items-center gap-4 p-4 rounded-2xl bg-[#00C2FF]/5 border border-[#00C2FF]/20 mb-2"
@@ -303,12 +327,12 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                             {r.name?.[0]?.toUpperCase() || "?"}
                           </div>
                           <div className="flex-1 text-left">
-                            <p className="text-[16px] font-semibold text-white">{r.name}</p>
+                            <p className="text-[16px] font-semibold text-slate-900">{r.name}</p>
                             <p className="text-[12px] text-[#00C2FF]">
                               {r.username ? `@${r.username}` : r.bidblitz_id}
                             </p>
                           </div>
-                          <ChevronRight size={20} className="text-white/30" />
+                          <ChevronRight size={20} className="text-slate-300" />
                         </motion.button>
                       ))}
                     </motion.div>
@@ -317,16 +341,26 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 
                 {/* Tabs: Gespeicherte | Kürzlich */}
                 <div className="px-6 pb-4">
-                  <div className="flex gap-2 bg-white/[0.04] p-1 rounded-2xl">
+                  <div className="flex gap-2 bg-slate-100 p-1 rounded-2xl">
                     <button
-                      onClick={() => {}}
-                      className="flex-1 py-3 rounded-xl bg-[#00C2FF]/20 text-[#00C2FF] font-semibold text-[13px]"
+                      data-testid="send-money-tab-saved"
+                      onClick={() => setActiveList("saved")}
+                      className={`flex-1 py-3 rounded-xl font-semibold text-[13px] transition-colors ${
+                        activeList === "saved"
+                          ? "bg-[#00C2FF]/20 text-[#00C2FF]"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
                     >
                       ⭐ Gespeicherte
                     </button>
                     <button
-                      onClick={() => {}}
-                      className="flex-1 py-3 rounded-xl text-white/50 font-semibold text-[13px]"
+                      data-testid="send-money-tab-recent"
+                      onClick={() => setActiveList("recent")}
+                      className={`flex-1 py-3 rounded-xl font-semibold text-[13px] transition-colors ${
+                        activeList === "recent"
+                          ? "bg-[#00C2FF]/20 text-[#00C2FF]"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
                     >
                       🕐 Kürzlich
                     </button>
@@ -334,26 +368,28 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 </div>
 
                 {/* Saved Recipients */}
-                {savedRecipients.length > 0 && (
+                {activeList === "saved" && visibleSavedRecipients.length > 0 && (
                   <div className="px-6 pb-6 overflow-y-auto max-h-[40vh]">
                     <div className="grid grid-cols-2 gap-3">
-                      {savedRecipients.map((saved) => {
+                      {visibleSavedRecipients.map((saved) => {
                         const iconMap = { family: '👨‍👩‍👧', friend: '👤', work: '💼', star: '⭐', user: '👤' };
+                        const savedKey = saved.id || saved.recipient_number || saved.recipient_id || saved.nickname;
                         return (
                           <motion.button
-                            key={saved.id}
+                            data-testid={`send-money-saved-recipient-${savedKey}`}
+                            key={savedKey}
                             onClick={() => selectRecipient({ 
                               user_id: saved.recipient_id, 
                               name: saved.recipient_name,
                               email: saved.recipient_id,
                               bidblitz_id: saved.recipient_number 
                             })}
-                            className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+                            className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-[#00C2FF]/30 transition-all"
                             whileTap={{ scale: 0.95 }}
                           >
                             <div className="text-3xl mb-2">{iconMap[saved.icon] || '👤'}</div>
-                            <p className="text-sm font-semibold text-white truncate">{saved.nickname}</p>
-                            <p className="text-xs text-white/40 truncate">{saved.recipient_number}</p>
+                            <p className="text-sm font-semibold text-slate-900 truncate">{saved.nickname}</p>
+                            <p className="text-xs text-slate-500 truncate">{saved.recipient_number}</p>
                             {saved.transfer_count > 0 && (
                               <p className="text-[10px] text-[#00C2FF] mt-1">{saved.transfer_count}x gesendet</p>
                             )}
@@ -365,42 +401,45 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 )}
 
                 {/* Recent Contacts */}
+                {activeList === "recent" && (
                 <div className="px-6 pb-8">
                   <div className="flex items-center gap-2 mb-4">
-                    <Clock size={14} className="text-white/30" />
-                    <p className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Zuletzt gesendet</p>
+                    <Clock size={14} className="text-slate-400" />
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Zuletzt gesendet</p>
                   </div>
                   
-                  {recentContacts.length === 0 ? (
+                  {visibleRecentContacts.length === 0 ? (
                     <div className="text-center py-8">
-                      <Users size={32} className="text-white/10 mx-auto mb-2" />
-                      <p className="text-[13px] text-white/30">Noch keine Kontakte</p>
+                      <Users size={32} className="text-slate-200 mx-auto mb-2" />
+                      <p className="text-[13px] text-slate-500">Noch keine Kontakte</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {recentContacts.slice(0, 5).map((c, i) => (
+                      {visibleRecentContacts.slice(0, 5).map((c, i) => (
                         <motion.button
+                          data-testid={`send-money-recent-contact-${c.user_id || i}`}
                           key={c.user_id || i}
                           onClick={() => selectRecipient(c)}
-                          className="w-full flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
+                          className="w-full flex items-center gap-4 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#00C2FF]/30 transition-colors"
                           whileTap={{ scale: 0.98 }}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05 }}
                         >
-                          <div className="w-11 h-11 rounded-full bg-white/[0.06] flex items-center justify-center text-[14px] font-bold text-white/60">
+                          <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-[14px] font-bold text-slate-600">
                             {c.name?.[0]?.toUpperCase() || "?"}
                           </div>
                           <div className="flex-1 text-left">
-                            <p className="text-[14px] font-medium text-white">{c.name}</p>
-                            <p className="text-[11px] text-white/40">€{c.last_amount?.toFixed(2)}</p>
+                            <p className="text-[14px] font-medium text-slate-900">{c.name}</p>
+                            <p className="text-[11px] text-slate-500">€{normalizeAmount(c.last_amount).toFixed(2)}</p>
                           </div>
-                          <Send size={16} className="text-white/20" />
+                          <Send size={16} className="text-slate-300" />
                         </motion.button>
                       ))}
                     </div>
                   )}
                 </div>
+                )}
               </motion.div>
             )}
 
@@ -420,22 +459,23 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 <div className="px-6 pt-6 pb-4">
                   <div className="flex items-center gap-4 mb-6">
                     <motion.button
+                      data-testid="send-money-back-button"
                       onClick={() => setStep(1)}
-                      className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center"
+                      className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center"
                       whileTap={{ scale: 0.9 }}
                     >
-                      <ArrowLeft size={18} className="text-white/60" />
+                      <ArrowLeft size={18} className="text-slate-600" />
                     </motion.button>
-                    <h1 className="text-[18px] font-bold text-white">Betrag eingeben</h1>
+                    <h1 className="text-[18px] font-bold text-slate-900">Betrag eingeben</h1>
                   </div>
                   
                   {/* Recipient */}
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-200">
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#0066FF] flex items-center justify-center text-[20px] font-bold text-white">
                       {recipient.name?.[0]?.toUpperCase() || "?"}
                     </div>
                     <div>
-                      <p className="text-[16px] font-semibold text-white">{recipient.name}</p>
+                      <p className="text-[16px] font-semibold text-slate-900">{recipient.name}</p>
                       <p className="text-[12px] text-[#00C2FF]">
                         {recipient.username ? `@${recipient.username}` : recipient.bidblitz_id}
                       </p>
@@ -446,18 +486,19 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 {/* Amount Input */}
                 <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
                   <div className="flex items-baseline justify-center gap-1 mb-2">
-                    <span className="text-[48px] font-bold text-white/30">€</span>
+                    <span className="text-[48px] font-bold text-slate-300">€</span>
                     <input
+                      data-testid="send-money-amount-input"
                       ref={inputRef}
                       type="text"
                       inputMode="decimal"
                       value={amount}
                       onChange={(e) => handleAmountChange(e.target.value)}
                       placeholder="0"
-                      className="text-[64px] font-bold text-white bg-transparent outline-none text-center w-48 placeholder-white/20"
+                      className="text-[64px] font-bold text-slate-900 bg-transparent outline-none text-center w-48 placeholder-slate-300"
                     />
                   </div>
-                  <p className="text-[13px] text-white/40">
+                  <p className="text-[13px] text-slate-500">
                     Verfügbar: <span className="text-[#00C2FF] font-semibold">€{balance.toFixed(2)}</span>
                   </p>
                   
@@ -465,15 +506,17 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   <div className="flex items-center gap-2 mt-6">
                     {quickAmounts.map((q) => (
                       <motion.button
+                        data-testid={`send-money-quick-amount-${q}`}
                         key={q}
                         onClick={() => addAmount(q)}
-                        className="px-5 py-2.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[14px] font-semibold text-white/70 hover:bg-white/[0.1] transition-colors"
+                        className="px-5 py-2.5 rounded-full bg-white border border-slate-200 text-[14px] font-semibold text-slate-700 hover:border-[#00C2FF]/30 transition-colors"
                         whileTap={{ scale: 0.95 }}
                       >
                         <Plus size={12} className="inline mr-1" />€{q}
                       </motion.button>
                     ))}
                     <motion.button
+                      data-testid="send-money-quick-amount-max"
                       onClick={setMax}
                       className="px-5 py-2.5 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 text-[14px] font-semibold text-[#00C2FF]"
                       whileTap={{ scale: 0.95 }}
@@ -484,11 +527,12 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   
                   {/* Message */}
                   <input
+                    data-testid="send-money-message-input"
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Nachricht hinzufügen..."
-                    className="w-full mt-6 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-white text-[14px] placeholder-white/30 outline-none text-center"
+                    className="w-full mt-6 px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-[14px] placeholder-slate-400 outline-none text-center"
                   />
                 </div>
                 
@@ -510,6 +554,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 {/* Send Button */}
                 <div className="px-6 pb-8">
                   <motion.button
+                    data-testid="send-money-submit-button"
                     onClick={handleSend}
                     disabled={loading || !amount || parseFloat(amount) <= 0}
                     className="w-full py-5 rounded-2xl bg-gradient-to-r from-[#00C2FF] to-[#0066FF] text-white font-bold text-[17px] flex items-center justify-center gap-3 disabled:opacity-40 shadow-lg shadow-[#00C2FF]/20"
@@ -525,7 +570,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                     )}
                   </motion.button>
                   
-                  <p className="text-center text-[11px] text-white/30 mt-3">
+                  <p className="text-center text-[11px] text-slate-500 mt-3">
                     Kostenlos & sofort • Keine Gebühren
                   </p>
                 </div>
@@ -569,8 +614,8 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   transition={{ delay: 0.2 }}
                   className="text-center"
                 >
-                  <h2 className="text-[28px] font-bold text-white mb-2">Gesendet!</h2>
-                  <p className="text-[15px] text-white/50">Geld erfolgreich überwiesen</p>
+                  <h2 className="text-[28px] font-bold text-slate-900 mb-2">Gesendet!</h2>
+                  <p className="text-[15px] text-slate-500">Geld erfolgreich überwiesen</p>
                 </motion.div>
                 
                 {/* Amount */}
@@ -580,7 +625,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   transition={{ delay: 0.3 }}
                   className="my-8"
                 >
-                  <p className="text-[56px] font-bold text-white tracking-tight">
+                  <p className="text-[56px] font-bold text-slate-900 tracking-tight">
                     €{parseFloat(amount).toFixed(2)}
                   </p>
                 </motion.div>
@@ -590,14 +635,14 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]"
+                  className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white border border-slate-200"
                 >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#0066FF] flex items-center justify-center text-[16px] font-bold text-white">
                     {recipient?.name?.[0]?.toUpperCase() || "?"}
                   </div>
                   <div>
-                    <p className="text-[14px] font-semibold text-white">{recipient?.name}</p>
-                    <p className="text-[11px] text-white/40">Empfänger</p>
+                    <p className="text-[14px] font-semibold text-slate-900">{recipient?.name}</p>
+                    <p className="text-[11px] text-slate-500">Empfänger</p>
                   </div>
                 </motion.div>
                 
@@ -606,7 +651,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.5 }}
-                  className="text-[12px] text-white/30 mt-6 font-mono"
+                  className="text-[12px] text-slate-500 mt-6 font-mono"
                 >
                   Ref: {result.reference}
                 </motion.p>
@@ -618,17 +663,18 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   transition={{ delay: 0.6 }}
                   className="mt-8 text-center"
                 >
-                  <p className="text-[11px] text-white/40 mb-1">Neues Guthaben</p>
-                  <p className="text-[24px] font-bold text-[#00C2FF]">€{result.sender_new_balance?.toFixed(2)}</p>
+                  <p className="text-[11px] text-slate-500 mb-1">Neues Guthaben</p>
+                  <p className="text-[24px] font-bold text-[#00C2FF]">€{normalizeAmount(result.sender_new_balance).toFixed(2)}</p>
                 </motion.div>
                 
                 {/* Done Button */}
                 <motion.button
+                  data-testid="send-money-done-button"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
                   onClick={onClose}
-                  className="mt-8 w-full py-4 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-white font-semibold text-[15px]"
+                  className="mt-8 w-full py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-semibold text-[15px]"
                   whileTap={{ scale: 0.98 }}
                 >
                   Fertig

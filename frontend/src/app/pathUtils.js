@@ -22,10 +22,10 @@ const KYC_RESTRICTED_PREFIXES = [
   "/marketplace-dashboard",
 ];
 
-export function getInitialAppPath({ hasKidsReturn, hasStripeReturn, pathname }) {
+export function getInitialAppPath({ hasKidsReturn, hasStripeReturn, pathname, search }) {
   if (hasKidsReturn) return "/more";
   if (hasStripeReturn) return "/wallet";
-  return pathname || "/";
+  return `${pathname || "/"}${search || ""}`;
 }
 
 export function resolveBrowserPath(path) {

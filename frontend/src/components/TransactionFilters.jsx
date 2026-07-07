@@ -7,17 +7,17 @@ import { motion } from "framer-motion";
 import { PaymentType, PaymentStatus } from "../models";
 
 const typeFilters = [
-  { id: 'all', label: 'All' },
-  { id: 'payment', label: 'Payments' },
-  { id: 'topup', label: 'Top-ups' },
+  { id: 'all', label: 'Alle' },
+  { id: 'payment', label: 'Zahlungen' },
+  { id: 'topup', label: 'Aufladungen' },
   { id: 'transfer', label: 'Transfers' },
 ];
 
 const statusFilters = [
-  { id: 'all', label: 'All' },
-  { id: PaymentStatus.SUCCESS, label: 'Completed' },
-  { id: PaymentStatus.PENDING, label: 'Pending' },
-  { id: PaymentStatus.FAILED, label: 'Failed' },
+  { id: 'all', label: 'Alle' },
+  { id: PaymentStatus.SUCCESS, label: 'Abgeschlossen' },
+  { id: PaymentStatus.PENDING, label: 'Ausstehend' },
+  { id: PaymentStatus.FAILED, label: 'Fehlgeschlagen' },
 ];
 
 export const TransactionFilters = ({ 
@@ -34,11 +34,12 @@ export const TransactionFilters = ({
         {typeFilters.map((filter) => (
           <motion.button
             key={filter.id}
+            data-testid={`wallet-type-filter-${filter.id}`}
             onClick={() => onTypeFilterChange(filter.id)}
             className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
               activeTypeFilter === filter.id
                 ? 'bg-[#00C2FF] text-[#0A0A0A]'
-                : 'bg-[#141414] text-[#888] border border-white/5 hover:border-white/10'
+                : 'bg-white text-slate-600 border border-slate-200 hover:border-[#00C2FF]/30 hover:text-slate-900'
             }`}
             whileTap={{ scale: 0.95 }}
           >
@@ -53,11 +54,12 @@ export const TransactionFilters = ({
           {statusFilters.map((filter) => (
             <motion.button
               key={filter.id}
+              data-testid={`wallet-status-filter-${filter.id}`}
               onClick={() => onStatusFilterChange(filter.id)}
               className={`px-3 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${
                 activeStatusFilter === filter.id
-                  ? 'bg-white/10 text-white'
-                  : 'bg-transparent text-[#666] hover:text-[#888]'
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-transparent text-slate-500 hover:text-slate-800'
               }`}
               whileTap={{ scale: 0.95 }}
             >

@@ -30,9 +30,9 @@ const categoryColor = {
 };
 
 const statusConfig = {
-  success: { label: "Completed", color: "#00D26A", Icon: Check },
-  failed: { label: "Failed", color: "#FF4757", Icon: XIcon },
-  pending: { label: "Pending", color: "#00C2FF", Icon: null },
+  success: { label: "Abgeschlossen", color: "#00D26A", Icon: Check },
+  failed: { label: "Fehlgeschlagen", color: "#FF4757", Icon: XIcon },
+  pending: { label: "Ausstehend", color: "#00C2FF", Icon: null },
 };
 
 export const TransactionItem = ({ transaction, index, isLast, onClick }) => {
@@ -44,7 +44,7 @@ export const TransactionItem = ({ transaction, index, isLast, onClick }) => {
   return (
     <motion.div
       data-testid={`transaction-${transaction.id}`}
-      className={`flex items-center gap-3.5 px-4 py-[14px] cursor-pointer group transition-colors duration-200 hover:bg-white/[0.015] ${!isLast ? "border-b border-white/[0.03]" : ""}`}
+      className={`flex items-center gap-3.5 px-4 py-[14px] cursor-pointer group transition-colors duration-200 hover:bg-slate-50 ${!isLast ? "border-b border-slate-100" : ""}`}
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.03, duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
@@ -63,27 +63,27 @@ export const TransactionItem = ({ transaction, index, isLast, onClick }) => {
           className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] rounded-full flex items-center justify-center"
           style={{
             background: isPositive ? "#00D26A" : "rgba(255,255,255,0.06)",
-            border: isPositive ? "2px solid #030303" : "2px solid #030303",
+            border: "2px solid #ffffff",
           }}
         >
           {isPositive ? (
             <ArrowDownLeft size={7} className="text-white" strokeWidth={3} />
           ) : (
-            <ArrowUpRight size={7} className="text-white/50" strokeWidth={3} />
+            <ArrowUpRight size={7} className="text-slate-500" strokeWidth={3} />
           )}
         </div>
       </div>
 
       {/* Details */}
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-white/90 truncate group-hover:text-white transition-colors">
+        <p className="text-[13px] font-medium text-slate-900 truncate group-hover:text-slate-950 transition-colors">
           {transaction.merchantName}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] text-[#333] font-medium">{formatTime(transaction.date)}</span>
+          <span className="text-[10px] text-slate-500 font-medium">{formatTime(transaction.date)}</span>
           {status && transaction.status !== "success" && (
             <>
-              <span className="text-[#222]">·</span>
+              <span className="text-slate-300">·</span>
               <span
                 className="text-[9px] font-semibold uppercase tracking-[0.06em]"
                 style={{ color: status.color }}
@@ -99,7 +99,7 @@ export const TransactionItem = ({ transaction, index, isLast, onClick }) => {
       <div className="text-right flex-shrink-0">
         <span
           className={`text-[14px] font-bold font-outfit tracking-tight ${
-            isPositive ? "text-[#00D26A]" : "text-white/90"
+            isPositive ? "text-[#00D26A]" : "text-slate-900"
           }`}
         >
           {formatCurrency(transaction.amount)}

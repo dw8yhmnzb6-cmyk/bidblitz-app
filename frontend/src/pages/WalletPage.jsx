@@ -12,7 +12,6 @@ import { useGroupedTransactions, useWalletStats } from "../hooks";
 import { PremiumCard } from "../components/PremiumCard";
 import { TransactionItem } from "../components/TransactionItem";
 import { TopUpModal } from "../components/TopUpModal";
-import CryptoTopUpModal from "../components/CryptoTopUpModal";
 import { TransactionDetailModal } from "../components/TransactionDetailModal";
 import { TransactionFilters, filterTransactions } from "../components/TransactionFilters";
 import ExportSection from "../components/ExportSection";
@@ -27,6 +26,11 @@ import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_C
 import GuestCTABar from "../components/GuestCTABar";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
+
+const toSafeNumber = (value) => {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
 
 // Skeleton shimmer for loading state
 const Skeleton = ({ className }) => (
@@ -110,6 +114,7 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
 );
 
 export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, routeParams = {} }) => {
+  const canAutoOpenWalletActions = !isGuest || isDemoMode;
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
@@ -118,10 +123,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const hasCardSaved = typeof window !== "undefined" && window.location.search.includes("card_saved=success");
 
   const [showBalance, setShowBalance] = useState(true);
-  const [showTopUp, setShowTopUp] = useState(hasStripeParam || routeParams.action === "topup");
-  const [showCryptoTopUp, setShowCryptoTopUp] = useState(false);
+  const [showTopUp, setShowTopUp] = useState(canAutoOpenWalletActions && (hasStripeParam || routeParams.action === "topup"));
   const [showBarcode, setShowBarcode] = useState(false);
-  const [showSendMoney, setShowSendMoney] = useState(routeParams.action === "send");
+  const [showSendMoney, setShowSendMoney] = useState(canAutoOpenWalletActions && routeParams.action === "send");
   const [selectedTx, setSelectedTx] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -151,6 +155,26 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [hasCardSaved, isGuest]);
+
+  useEffect(() => {
+    if (!canAutoOpenWalletActions) {
+      setShowTopUp(false);
+      setShowSendMoney(false);
+      return;
+    }
+    if (routeParams.action === "topup") {
+      setShowTopUp(true);
+    }
+    if (routeParams.action === "send") {
+      setShowSendMoney(true);
+    }
+  }, [canAutoOpenWalletActions, routeParams.action]);
+
+  useEffect(() => {
+    if (canAutoOpenWalletActions && hasStripeParam) {
+      setShowTopUp(true);
+    }
+  }, [canAutoOpenWalletActions, hasStripeParam]);
 
   // Load saved card and saved recipients
   useEffect(() => {
@@ -188,8 +212,25 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     } catch (err) { console.error(err); }
   };
 
+  const closeWalletAction = useCallback((actionName, closeFn) => {
+    closeFn(false);
+    if (routeParams.action === actionName) {
+      onNavigate?.("/wallet");
+    }
+  }, [onNavigate, routeParams.action]);
+
+  const openWalletAction = useCallback((actionName) => {
+    if (actionName === "topup") {
+      setShowTopUp(true);
+    }
+    if (actionName === "send") {
+      setShowSendMoney(true);
+    }
+    onNavigate?.(`/wallet?action=${actionName}`);
+  }, [onNavigate]);
+
   // Demo mode: override data
-  const balance = isDemoMode ? DEMO_BALANCE : wallet.balance;
+  const balance = isDemoMode ? DEMO_BALANCE : toSafeNumber(wallet.balance);
   const currency = isDemoMode ? DEMO_CURRENCY : wallet.currency;
   const cardNumber = isDemoMode ? DEMO_CARD_NUMBER : wallet.cardNumber;
   const cardExpiry = isDemoMode ? DEMO_CARD_EXPIRY : wallet.cardExpiry;
@@ -211,8 +252,14 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     return acc;
   }, {}) : null;
 
-  const groupedTransactions = isDemoMode ? demoGrouped : realGrouped;
-  const stats = isDemoMode ? { totalSpent: 180.39, totalIncome: 700.0, percentageChange: "12.4" } : realStats;
+  const groupedTransactions = isDemoMode ? demoGrouped : (realGrouped && typeof realGrouped === "object" ? realGrouped : {});
+  const stats = isDemoMode
+    ? { totalSpent: 180.39, totalIncome: 700.0, percentageChange: 12.4 }
+    : {
+        totalSpent: toSafeNumber(realStats.totalSpent),
+        totalIncome: toSafeNumber(realStats.totalIncome),
+        percentageChange: toSafeNumber(realStats.percentageChange),
+      };
 
   const userExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => api.exportUserTransactions(f) },
@@ -402,13 +449,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              {parseFloat(stats.percentageChange) >= 0 ? (
+              {stats.percentageChange >= 0 ? (
                 <TrendingUp size={11} className="text-[#00D26A]" />
               ) : (
                 <TrendingDown size={11} className="text-[#FF4757]" />
               )}
-              <span className={`text-[11px] font-medium ${parseFloat(stats.percentageChange) >= 0 ? "text-[#00D26A]" : "text-[#FF4757]"}`}>
-                {parseFloat(stats.percentageChange) >= 0 ? "+" : ""}{stats.percentageChange}% {t("home.month")}
+              <span className={`text-[11px] font-medium ${stats.percentageChange >= 0 ? "text-[#00D26A]" : "text-[#FF4757]"}`}>
+                {stats.percentageChange >= 0 ? "+" : ""}{stats.percentageChange}% {t("home.month")}
               </span>
             </motion.div>
           )}
@@ -424,7 +471,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         {!isLoading && !isGuest && (
           <motion.button
             data-testid="primary-topup-btn"
-            onClick={() => setShowTopUp(true)}
+            onClick={() => openWalletAction("topup")}
             className="w-full py-4 mb-5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2.5"
             style={{
               background: "linear-gradient(135deg, #00C2FF 0%, #0090FF 100%)",
@@ -451,7 +498,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             <StatPill
               label={t("wallet.income") || "Einnahmen"}
               value={`${currency}${stats.totalIncome.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
-              trend={parseFloat(stats.percentageChange)}
+              trend={stats.percentageChange}
               delay={0.16}
             />
           </div>
@@ -518,7 +565,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <h3 className="text-sm font-bold text-slate-900">Schnell senden</h3>
               <button
                 data-testid="quick-send-show-all-btn"
-                onClick={() => setShowSendMoney(true)}
+                onClick={() => openWalletAction("send")}
                 className="text-xs text-[#00C2FF] font-semibold"
               >
                 Alle →
@@ -551,7 +598,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             icon={Plus}
             label={t("wallet.add") || "Aufladen"}
             color="#00C2FF"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Top up your wallet") : isDemoMode ? toast(t("wallet.add") || "Add Money", { description: "Demo: Top-up simulated" }) : setShowTopUp(true)}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Top up your wallet") : isDemoMode ? toast(t("wallet.add") || "Add Money", { description: "Demo: Top-up simulated" }) : openWalletAction("topup")}
             delay={0.22}
           />
           <WalletAction
@@ -567,7 +614,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             icon={ArrowUpRight}
             label={t("wallet.send") || "Senden"}
             color="#A855F7"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : setShowSendMoney(true)}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : openWalletAction("send")}
             delay={0.26}
           />
           <WalletAction
@@ -606,7 +653,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                       <CreditCard size={18} className="text-[#00C2FF]" />
                     </div>
                     <div>
-                      <p className="text-[12px] font-semibold text-white">
+                      <p className="text-[12px] font-semibold text-slate-900">
                         {(savedCard.brand || "").charAt(0).toUpperCase() + (savedCard.brand || "").slice(1)} ****{savedCard.last4}
                       </p>
                       <p className="text-[10px] text-[#444]">{savedCard.exp ? `Gültig bis ${savedCard.exp}` : "Gespeichert"} · 1-Click Zahlung aktiv</p>
@@ -636,7 +683,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                   {cardSaving ? <Loader2 size={18} className="text-[#635BFF] animate-spin" /> : <CreditCard size={18} className="text-[#635BFF]" />}
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-[12px] font-semibold text-white">Karte speichern</p>
+                  <p className="text-[12px] font-semibold text-slate-900">Karte speichern</p>
                   <p className="text-[10px] text-[#444]">Für schnelle 1-Click Zahlungen</p>
                 </div>
                 <ChevronRight size={16} className="text-[#635BFF]" />
@@ -683,12 +730,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           transition={{ delay: 0.36 }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[13px] font-semibold font-outfit text-white">Transactions</h3>
+            <h3 className="text-[13px] font-semibold font-outfit text-slate-900">Transaktionen</h3>
             <motion.span
               className="text-[11px] text-[#00C2FF] font-medium cursor-pointer flex items-center gap-0.5"
               whileHover={{ x: 3 }}
             >
-              See All <ChevronRight size={12} strokeWidth={2} />
+              Alle <ChevronRight size={12} strokeWidth={2} />
             </motion.span>
           </div>
 
@@ -702,15 +749,15 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             /* ── Empty State ── */
             <motion.div
               className="py-12 text-center rounded-2xl"
-              style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}
+              style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(15,23,42,0.06)" }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-white/[0.03] flex items-center justify-center">
-                <Clock size={20} className="text-[#2A2A2A]" />
+              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+                <Clock size={20} className="text-slate-500" />
               </div>
-              <p className="text-[13px] text-[#333] font-medium mb-1">No transactions yet</p>
-              <p className="text-[11px] text-[#222]">Your payment history will appear here</p>
+              <p className="text-[13px] text-slate-800 font-medium mb-1">Noch keine Transaktionen</p>
+              <p className="text-[11px] text-slate-500">Deine Zahlungen erscheinen hier automatisch.</p>
             </motion.div>
           ) : (
             <div className="space-y-5">
@@ -721,12 +768,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.38 + gi * 0.06, ...slide }}
                 >
-                  <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] mb-2.5 font-semibold pl-1">{date}</p>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-[0.14em] mb-2.5 font-semibold pl-1">{date}</p>
                   <div
                     className="rounded-2xl overflow-hidden"
                     style={{
-                      background: "rgba(255,255,255,0.015)",
-                      border: "1px solid rgba(255,255,255,0.035)",
+                      background: "rgba(255,255,255,0.96)",
+                      border: "1px solid rgba(15,23,42,0.06)",
                     }}
                   >
                     {txns.map((txn, i) => (
@@ -747,12 +794,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       </div>
 
       {/* Modals */}
-      <TopUpModal isOpen={showTopUp} onClose={() => setShowTopUp(false)} onSuccess={handleTopUpSuccess} currentBalance={balance} />
+      <TopUpModal isOpen={showTopUp} onClose={() => closeWalletAction("topup", setShowTopUp)} onSuccess={handleTopUpSuccess} currentBalance={balance} />
       <TransactionDetailModal isOpen={!!selectedTx} onClose={() => setSelectedTx(null)} transaction={selectedTx} />
       <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
       <SendMoneyModal 
         isOpen={showSendMoney} 
-        onClose={() => setShowSendMoney(false)} 
+        onClose={() => closeWalletAction("send", setShowSendMoney)} 
         currentBalance={balance}
         onSuccess={(data) => {
           toast.success(`€${data.amount.toFixed(2)} gesendet!`);

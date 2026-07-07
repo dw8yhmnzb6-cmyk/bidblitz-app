@@ -319,6 +319,7 @@ function AppContent() {
       hasKidsReturn,
       hasStripeReturn,
       pathname: window.location.pathname,
+      search: window.location.search,
     });
   });
   const [showBarcode, setShowBarcode] = useState(false);
