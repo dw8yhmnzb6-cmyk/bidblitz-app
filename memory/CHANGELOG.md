@@ -1,5 +1,14 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Move & Earn: Native Schrittquellen via HealthKit / Health Connect
+- `frontend/package.json`: `@capgo/capacitor-health@^7` ergänzt, passend zur bestehenden Capacitor-7-Basis.
+- `frontend/src/services/capacitorBridge.js`: Native-Health-Bridge Loader (`loadNativeHealthBridge`), Plattform-Erkennung und bestehende App-Bridge sauber zusammengeführt.
+- `frontend/src/hooks/useNativeSteps.js`: neue Hook für native Schritt-/Distanz-Lesung, Berechtigungsprüfung, Request-Flow, Health-Settings/Privacy-Aktionen und stabilen Web-Fallback ohne Crash.
+- `frontend/src/pages/MoveEarnPage.jsx`: neue Karte **Native Schrittquelle** mit `data-testid`s für Status, native Schritte, Distanz, Permission-Text und Aktionen; Sync nutzt auf nativen Geräten HealthKit/Health Connect und im Browser einen klar markierten Preview-Fallback.
+- `backend/routes/move_earn.py`: `SyncStepsRequest` und Sync-Events um `native_provider`, `native_platform`, `permission_state`, `distance_meters`, `sample_count`, `used_fallback` erweitert.
+- Native Konfiguration ergänzt: `ios/App/App/Info.plist`, `ios/App/App/App.entitlements`, `ios/App/App.xcodeproj/project.pbxproj`, `android/app/src/main/AndroidManifest.xml`, `android/app/src/main/res/values/strings.xml`, `android/app/src/main/assets/public/privacypolicy.html`.
+- Verifiziert: JS-Lint PASS, Python-Lint PASS, `yarn build` PASS, `npx cap sync` PASS, Browser-Smoke PASS, API-Self-Test PASS, Testing-Agent Iteration 198 PASS. Keine MOCKS; physische Geräteprüfung für echte native Step-Samples bleibt außerhalb der Preview.
+
 ## 06.07.2026 — Move & Earn Admin Analytics vertieft: ROI, Reward-Kosten, DAU/MAU
 - `backend/routes/move_earn.py`: `GET /api/admin/move/stats` liefert jetzt vertiefte Analytics mit `dau`, `wau`, `mau`, `retention_30_pct`, `repeat_rate_90_pct`, `roi_value_index_30`, `roi_per_eur_30`, `cost_per_mau_30`, `cost_per_dau_30`.
 - `backend/routes/move_earn.py`: neue Analytics-Blöcke `growth`, `roi`, `reward_cost_breakdown` (`by_type`, `by_source`, `by_segment`) und `trend_14d` ergänzt. Reward-Kosten werden über echte `move_rewards` aggregiert; ROI koppelt Kosten an Merchant-/QR-Events sowie Ride-/Eco-Impact.

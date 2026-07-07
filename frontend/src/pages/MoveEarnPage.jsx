@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Activity,
@@ -18,12 +17,10 @@ import {
   ShieldCheck,
   MapPinned,
   Route,
-  Sparkles,
   Star,
   TrendingUp,
   Trophy,
   Users,
-  Wallet,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
