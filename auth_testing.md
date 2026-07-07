@@ -55,3 +55,9 @@ curl -b /tmp/staff_cookies.txt -X POST "$REACT_APP_BACKEND_URL/api/biopay/staff/
 - Create/request pending approval.
 - Call `/api/pos/security/approvals/{approval_id}/decision` with `approved`.
 - Confirm approval status is decided and executable types return execution payloads.
+
+## Customer Login Offline-Guard Regression
+- Konto: `agimk@me.com` / `Aldink56600`
+- `POST /api/auth/login` muss erfolgreich sein und darf **nicht** mit einer falschen Offline-Meldung blockiert werden, solange das Backend erreichbar ist.
+- Nach erfolgreichem Login muss `GET /api/auth/me` mit Session-Cookies denselben Kunden zurückgeben.
+- Frontend-Login darf nicht mehr allein wegen `navigator.onLine === false` vorzeitig abbrechen; echte Netzfehler müssen weiterhin sauber als Network-/Server-Fehler erscheinen.

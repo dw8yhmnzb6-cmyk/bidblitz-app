@@ -1,6 +1,17 @@
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 const REQUEST_TIMEOUT = 15000; // 15 seconds
 
+function emitNetworkStatus(online, meta = {}) {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent("bidblitz-network-status", {
+      detail: { online, ...meta, ts: Date.now() },
+    }));
+  } catch (_) {
+    void _;
+  }
+}
+
 // ── Structured Error ──
 class ApiError extends Error {
   constructor(message, { status = 0, code = "unknown", retryable = false } = {}) {
@@ -25,11 +36,6 @@ function formatApiError(detail) {
 }
 
 async function request(path, options = {}) {
-  // Block if offline
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    throw new ApiError("Du bist offline. Bitte Verbindung prüfen.", { code: "offline", retryable: true });
-  }
-
   const url = `${API_URL}${path}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
@@ -88,6 +94,7 @@ async function request(path, options = {}) {
       if (res.status >= 500) throw new ApiError(msg, { status: res.status, code: "server", retryable: true });
       throw new ApiError(msg, { status: res.status, code: res.status === 401 ? "auth" : "api" });
     }
+    emitNetworkStatus(true, { source: path, status: res.status || 200 });
     return data;
   } catch (error) {
     clearTimeout(timeout);
@@ -96,6 +103,7 @@ async function request(path, options = {}) {
       throw new ApiError("Zeitüberschreitung. Bitte erneut versuchen.", { code: "timeout", retryable: true });
     }
     if (error.name === "TypeError" && error.message === "Failed to fetch") {
+      emitNetworkStatus(false, { source: path, reason: "failed_to_fetch" });
       throw new ApiError("Server nicht erreichbar. Bitte Verbindung prüfen.", { code: "network", retryable: true });
     }
     throw new ApiError(error.message || "Anfrage fehlgeschlagen.", { code: "unknown", retryable: true });

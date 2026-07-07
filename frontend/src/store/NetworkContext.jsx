@@ -6,17 +6,24 @@ import { useI18n } from "./I18nContext";
 const NetworkContext = createContext({ online: true });
 
 export function NetworkProvider({ children }) {
-  const [online, setOnline] = useState(navigator.onLine);
+  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine !== false);
   const { t } = useI18n();
 
   useEffect(() => {
     const goOnline = () => setOnline(true);
     const goOffline = () => setOnline(false);
+    const handleApiStatus = (event) => {
+      if (typeof event?.detail?.online === "boolean") {
+        setOnline(event.detail.online);
+      }
+    };
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
+    window.addEventListener("bidblitz-network-status", handleApiStatus);
     return () => {
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
+      window.removeEventListener("bidblitz-network-status", handleApiStatus);
     };
   }, []);
 
