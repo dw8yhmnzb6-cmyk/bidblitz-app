@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — KYC/Auth UX geschärft + Legacy-Admin-Cleanup + Move-&-Earn Premium Signal
+- `frontend/src/pages/KYCFlow.jsx`: Statusseite zeigt jetzt zusätzlich einen klaren Auth-Banner **"Erfolgreich angemeldet"** mit eindeutiger Pending-/Rejected-/Approved-Kommunikation.
+- `frontend/src/pages/AuthPage.jsx`: für eingeloggte, aber noch nicht freigegebene Nutzer gibt es nun einen sichtbaren Pending-KYC-Hinweis, damit der Zustand nicht wie ein fehlgeschlagener Login wirkt.
+- `backend/routes/move_earn.py` + `frontend/src/pages/MoveEarnPage.jsx`: neues Mobility-Signal `premium_live_tracking_events` aus Shuttle/VIP-Buchungen in `ride_earn`, inkl. Chip und Premium-Mobility-Panel in Move & Earn.
+- Legacy-/Demo-Cleanup in berührten Stellen: `frontend/src/pages/InvoicingPage.jsx`, `backend/routes/notifications.py`, `backend/routes/ev_charging.py`, `frontend/src/staff/README.md` auf `admin@bidblitz.ae` umgestellt.
+- Verifiziert durch Testing-Agent **Iteration 205 PASS**: KYC/Auth-Banner klar sichtbar, `agimk@me.com` Login weiterhin funktional, Premium-Live-Tracking-UI aktiv, `premium_live_tracking_events` im Backend vorhanden, Canonical Admin bleibt `.ae`. Keine MOCKED APIs.
+
 ## 07.07.2026 — Canonical Admin Bugfix: `.ae` / `.com` nicht mehr vermischt
 - `backend/server.py`: `seed_admin()` erzwingt jetzt für den einzigen kanonischen Admin `admin@bidblitz.ae` konsistent die Daten aus **einem** User-Record inklusive `balance=2622000000.00` und `balance_blz=0.0`. Legacy-`.com` bleibt deaktiviert.
 - `backend/routes/admin_management.py`: Online-/Last-Seen-Analytics nutzen keine harten Altwerte mehr, sondern lesen den kanonischen Admin-Stand direkt aus der Datenbank.
