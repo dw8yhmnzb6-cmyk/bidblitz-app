@@ -500,6 +500,91 @@ const HistoryTab = () => {
   );
 };
 
+const ReconciliationTab = () => {
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({ count: 0, mismatch_count: 0 });
+
+  const load = useCallback(async (q = "") => {
+    setLoading(true);
+    try {
+      const res = await api(`/api/admin/wallet/reconciliation?q=${encodeURIComponent(q)}&limit=80`);
+      setRows(res.rows || []);
+      setSummary({ count: Number(res.count || 0), mismatch_count: Number(res.mismatch_count || 0) });
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => load(query), 300);
+    return () => clearTimeout(t);
+  }, [query, load]);
+
+  return (
+    <div className="space-y-4" data-testid="wallet-reconciliation-tab">
+      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/80 font-bold">Read-only Reconciliation</p>
+        <div className="mt-3 flex flex-wrap gap-3 text-sm text-white/80">
+          <span data-testid="reconciliation-total-users">User geprüft: {summary.count}</span>
+          <span data-testid="reconciliation-mismatch-users">Abweichungen: {summary.mismatch_count}</span>
+        </div>
+      </div>
+
+      <input
+        data-testid="reconciliation-search-input"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="E-Mail, Nummer oder Name suchen"
+        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[12px] text-white outline-none focus:border-[#00C2FF]"
+      />
+
+      {loading ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-white/40" /></div> : null}
+      {!loading && !rows.length ? <p className="text-center text-white/40 text-[11px] py-10">Keine Reconciliation-Daten gefunden</p> : null}
+
+      <div className="space-y-3">
+        {rows.map((row, index) => (
+          <div key={`${row.user_id}-${index}`} data-testid={`reconciliation-row-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[12px] font-bold text-white truncate">{row.email}</p>
+                <p className="text-[10px] text-white/45 break-all">{row.user_id}</p>
+                <p className="text-[10px] text-white/35">{row.role} {row.user_number ? `· ${row.user_number}` : ""}</p>
+              </div>
+              <span
+                data-testid={`reconciliation-risk-${index}`}
+                className="rounded-full px-2 py-1 text-[10px] font-bold uppercase"
+                style={{
+                  background: row.risk_level === "high" ? "rgba(239,68,68,0.18)" : row.risk_level === "medium" ? "rgba(245,158,11,0.18)" : "rgba(16,185,129,0.18)",
+                  color: row.risk_level === "high" ? "#f87171" : row.risk_level === "medium" ? "#fbbf24" : "#34d399",
+                }}
+              >
+                {row.risk_level}
+              </span>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-5">
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-users-balance-${index}`}><p className="text-white/35">users.balance</p><p className="mt-1 font-bold text-white">€{Number(row.users_balance || 0).toFixed(2)}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-wallets-balance-${index}`}><p className="text-white/35">wallets.balance</p><p className="mt-1 font-bold text-white">€{Number(row.wallets_balance || 0).toFixed(2)}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-transactions-sum-${index}`}><p className="text-white/35">transactions Σ</p><p className="mt-1 font-bold text-white">€{Number(row.transactions_sum || 0).toFixed(2)}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-wallet-transactions-sum-${index}`}><p className="text-white/35">wallet_tx Σ</p><p className="mt-1 font-bold text-white">€{Number(row.wallet_transactions_sum || 0).toFixed(2)}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-delta-${index}`}><p className="text-white/35">Delta</p><p className="mt-1 font-bold text-white">€{Number(row.delta || 0).toFixed(2)}</p></div>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-3" data-testid={`reconciliation-recommendation-${index}`}>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-bold">Empfohlene Reparatur</p>
+              <p className="mt-1 text-[11px] text-white/80">{row.recommended_repair}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ── Main ──
 const AdminWalletPage = ({ onBack }) => {
   const [tab, setTab] = useState("send");
@@ -536,6 +621,7 @@ const AdminWalletPage = ({ onBack }) => {
           { id: "send", label: "Senden / Abziehen", icon: Send },
           { id: "self", label: "Self-Topup", icon: Zap },
           { id: "history", label: "Log", icon: History },
+          { id: "reconciliation", label: "Reconciliation", icon: Shield },
         ].map((t) => (
           <motion.button
             key={t.id}
@@ -569,6 +655,11 @@ const AdminWalletPage = ({ onBack }) => {
           {tab === "history" && (
             <motion.div key={`h-${refresh}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <HistoryTab />
+            </motion.div>
+          )}
+          {tab === "reconciliation" && (
+            <motion.div key="reconciliation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <ReconciliationTab />
             </motion.div>
           )}
         </AnimatePresence>

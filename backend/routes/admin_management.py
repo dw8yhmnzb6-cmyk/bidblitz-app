@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from core.database import db
+from core.payment_engine import credit_wallet, TransactionType
 from core.security import get_current_user
 from core.audit import log_audit, AuditEvent, get_client_info
 from routes.auth import _issue_password_reset
@@ -363,31 +364,25 @@ async def refund_transaction(reference: str, req: RefundRequest, request: Reques
     if amount <= 0:
         raise HTTPException(400, "Ungültiger Betrag")
 
-    # Refund direction: for payments/topup-debits → add back to balance
-    # Flip amount sign based on transaction type
-    refund_field = "balance" if currency == "EUR" else "balance_blz"
-    await db.users.update_one(
-        {"_id": _oid(user_id)},
-        {"$inc": {refund_field: amount}},
-    )
-
-    # Log refund transaction
     refund_ref = f"REF-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-    await db.transactions.insert_one({
-        "user_id": user_id,
-        "type": "refund",
-        "amount": amount,
-        "currency": currency,
-        "status": "completed",
-        "description": f"Refund: {req.reason}",
-        "merchant_name": "BidBlitz Admin",
-        "category": "refund",
-        "reference": refund_ref,
-        "date": datetime.now(timezone.utc).isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "refund_of": tx.get("reference") or tx.get("tx_id"),
-        "admin_id": admin_id,
-    })
+    if currency != "EUR":
+        raise HTTPException(400, "Aktuell werden nur EUR-Refunds zentral unterstützt")
+
+    result = await credit_wallet(
+        user_id=user_id,
+        amount=amount,
+        tx_type=TransactionType.REFUND,
+        description=f"Refund: {req.reason}",
+        reference=refund_ref,
+        source="admin_refund",
+        metadata={
+            "refund_of": tx.get("reference") or tx.get("tx_id"),
+            "admin_id": admin_id,
+            "audit_metadata": {"route": "admin_management.refund_transaction"},
+        },
+    )
+    if not result.success:
+        raise HTTPException(400, result.error or "Refund fehlgeschlagen")
 
     # Mark original as refunded
     await db.transactions.update_one(

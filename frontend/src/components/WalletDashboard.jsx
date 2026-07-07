@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Wallet, CreditCard, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
+import { api } from '../services/api';
 
 export function WalletDashboard() {
   const [balance, setBalance] = useState(0);
@@ -15,13 +15,9 @@ export function WalletDashboard() {
   const fetchWalletData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/api/super-app/wallet/balance`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setBalance(response.data.balance);
-      setTransactions(response.data.recent_transactions || []);
+      const response = await api.getWallet();
+      setBalance(Number(response.balance || 0));
+      setTransactions(response.transactions || response.recent_transactions || []);
     } catch (error) {
       console.error('Error fetching wallet:', error);
     } finally {
@@ -31,12 +27,7 @@ export function WalletDashboard() {
 
   const handleTopup = async (amount, method) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL}/api/super-app/wallet/topup`,
-        { amount, method },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.topUp({ amount, payment_method: method || 'card' });
       setShowTopupModal(false);
       fetchWalletData();
     } catch (error) {
@@ -66,13 +57,14 @@ export function WalletDashboard() {
         </div>
         <div className="flex gap-3">
           <button
+            data-testid="wallet-dashboard-topup-button"
             onClick={() => setShowTopupModal(true)}
             className="flex items-center gap-2 px-6 py-3 bg-white/20 backdrop-blur rounded-lg hover:bg-white/30 transition-all"
           >
             <ArrowDownLeft className="w-5 h-5" />
             Aufladen
           </button>
-          <button className="flex items-center gap-2 px-6 py-3 bg-white/20 backdrop-blur rounded-lg hover:bg-white/30 transition-all">
+          <button data-testid="wallet-dashboard-send-button" className="flex items-center gap-2 px-6 py-3 bg-white/20 backdrop-blur rounded-lg hover:bg-white/30 transition-all">
             <ArrowUpRight className="w-5 h-5" />
             Senden
           </button>
@@ -153,6 +145,7 @@ export function WalletDashboard() {
               {[10, 25, 50, 100].map((amount) => (
                 <button
                   key={amount}
+                  data-testid={`wallet-dashboard-topup-${amount}`}
                   onClick={() => handleTopup(amount, 'card')}
                   className="w-full p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all text-white font-semibold"
                 >
@@ -161,6 +154,7 @@ export function WalletDashboard() {
               ))}
             </div>
             <button
+              data-testid="wallet-dashboard-cancel-topup"
               onClick={() => setShowTopupModal(false)}
               className="w-full px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20"
             >

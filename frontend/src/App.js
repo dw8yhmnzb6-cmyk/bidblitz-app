@@ -262,7 +262,6 @@ const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
 const AdminLandingLeadsPage = lazy(() => import("./pages/AdminLandingLeadsPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
-const WalletDashboard = lazy(() => import("./components/WalletDashboard").then(m => ({ default: m.WalletDashboard })));
 const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
 const CreatorsPage = lazy(() => import("./pages/CreatorsPage"));
 const P2PPage = lazy(() => import("./pages/P2PPage"));
@@ -1022,7 +1021,7 @@ function AppContent() {
       case "/terms":
         return <TermsPage onBack={() => handleNavigate("/")} />;
       case "/wallet-dashboard":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletDashboard />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletPage {...pageProps} />;
       case "/super-marketplace":
         return <SuperAppMarketplace />;
       case "/creators":

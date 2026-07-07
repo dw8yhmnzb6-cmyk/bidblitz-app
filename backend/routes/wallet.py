@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user, serialize_user
 from core.performance import user_cache, invalidate_user_cache
+from core.payment_engine import transfer_between_wallets, TransactionType, credit_wallet
 from schemas.models import TopUpRequest
 import secrets
 
@@ -262,34 +263,27 @@ async def topup(req: TopUpRequest, request: Request):
             "transaction": txn
         }
 
-    # Update balance (only if no approval needed)
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": req.amount}}
+    result = await credit_wallet(
+        user_id=user_id,
+        amount=req.amount,
+        tx_type=TransactionType.TOPUP,
+        description=f"Top-up via {req.payment_method}",
+        source=req.payment_method,
+        metadata={
+            "payment_method": req.payment_method,
+            "route": "wallet.topup",
+            "audit_metadata": {"kind": "wallet_topup"},
+        },
+        idempotency_key=req.idempotency_key,
     )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error or "Top-up fehlgeschlagen")
 
-    # Create transaction
-    txn = {
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "topup",
-        "amount": req.amount,
-        "description": f"Top-up via {req.payment_method}",
-        "merchant_name": "",
-        "status": "completed",
-        "reference": ref,
-        "payment_method": req.payment_method,
-        "category": "topup",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.transactions.insert_one(txn)
-    txn.pop("_id", None)
-
-    updated_user = await db.users.find_one({"_id": user["_id"]})
+    txn = await db.transactions.find_one({"id": result.transaction_id}, {"_id": 0}) or {}
 
     return {
         "success": True,
-        "new_balance": round(updated_user["balance"], 2),
+        "new_balance": round(float(result.new_balance or 0), 2),
         "transaction": txn,
     }
 
@@ -300,7 +294,6 @@ async def topup(req: TopUpRequest, request: Request):
 # ══════════════════════════════════════════════════════════════════════════════
 from pydantic import BaseModel
 from typing import Optional
-from core.payment_engine import transfer_between_wallets, TransactionType
 
 class SendMoneyRequest(BaseModel):
     recipient_email: Optional[str] = None

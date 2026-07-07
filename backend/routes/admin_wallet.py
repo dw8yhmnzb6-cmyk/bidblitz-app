@@ -64,6 +64,27 @@ async def _serialize_login_history(user_id: str, limit: int = 20):
     ]
 
 
+def _risk_level(users_balance: float, wallets_balance: float, tx_sum: float, wallet_tx_sum: float) -> str:
+    delta = round(users_balance - wallets_balance, 2)
+    combined_ledger_gap = round(users_balance - (tx_sum + wallet_tx_sum), 2)
+    magnitude = max(abs(delta), abs(combined_ledger_gap))
+    if magnitude >= 1000:
+        return "high"
+    if magnitude >= 100:
+        return "medium"
+    return "low"
+
+
+def _recommended_repair(users_balance: float, wallets_balance: float, tx_sum: float, wallet_tx_sum: float) -> str:
+    delta = round(users_balance - wallets_balance, 2)
+    combined_ledger = round(tx_sum + wallet_tx_sum, 2)
+    if abs(delta) < 0.01 and abs(users_balance - combined_ledger) < 0.01:
+        return "Kein Eingriff nötig. Anzeige bereits konsistent."
+    if abs(delta) >= 0.01:
+        return "Visible Wallet bei users.balance belassen; Legacy wallets/ledger manuell prüfen und später gezielt reconciliieren."
+    return "Ledger-Differenz prüfen; keine automatische Korrektur ohne manuelle Freigabe."
+
+
 @router.get("/users")
 async def search_users(request: Request, q: str = "", limit: int = 30):
     await _require_admin(request)
@@ -98,7 +119,7 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
             "email_aliases": u.get("email_aliases") or [],
             "username": u.get("username") or u.get("full_name", ""),
             "role": u.get("role", "user"),
-            "balance_eur": float(u.get("balance", u.get("wallet_balance", 0)) or 0),
+            "balance_eur": float(u.get("balance", 0) or 0),
             "balance_blz": float(u.get("balance_blz", 0) or 0),
             "created_at": u.get("created_at"),
             "registered_at": u.get("registered_at") or u.get("created_at"),
@@ -261,9 +282,9 @@ async def debit_user(req: DebitReq, request: Request):
         res = await debit_wallet(
             user_id=req.user_id,
             amount=req.amount_eur,
-            tx_type=TransactionType.ADMIN_CREDIT,
+            tx_type=TransactionType.ADMIN_DEBIT,
             description=f"Abzug: {req.reason}",
-            metadata={"admin_id": admin_id, "direction": "debit"},
+            metadata={"admin_id": admin_id, "audit_metadata": {"route": "admin_wallet.debit"}},
         )
         if not res.success:
             raise HTTPException(400, res.error or "Debit fehlgeschlagen.")
@@ -340,3 +361,67 @@ async def admin_transactions(request: Request, limit: int = 50):
         t["user_email"] = emails.get(t.get("user_id"), "")
 
     return {"transactions": items}
+
+
+@router.get("/reconciliation")
+async def reconciliation_overview(request: Request, q: str = "", limit: int = 50):
+    await _require_admin(request)
+    query = {}
+    q = (q or "").strip().lower()
+    if q:
+        query = {
+            "$or": [
+                {"email": {"$regex": q, "$options": "i"}},
+                {"canonical_email": {"$regex": q, "$options": "i"}},
+                {"email_aliases": {"$elemMatch": {"$regex": q, "$options": "i"}}},
+                {"user_number": {"$regex": q, "$options": "i"}},
+                {"name": {"$regex": q, "$options": "i"}},
+                {"full_name": {"$regex": q, "$options": "i"}},
+            ]
+        }
+
+    cap = min(max(limit, 1), 200)
+    users = await db.users.find(
+        query,
+        {"_id": 1, "email": 1, "canonical_email": 1, "role": 1, "balance": 1, "user_number": 1},
+    ).sort("created_at", -1).limit(cap).to_list(cap)
+
+    rows = []
+    mismatch_count = 0
+    for user in users:
+        uid = str(user["_id"])
+        wallet_doc = await db.wallets.find_one({"user_id": uid}, {"_id": 0, "balance": 1}) or {}
+        tx_rows = await db.transactions.find({"user_id": uid}, {"_id": 0, "amount": 1, "status": 1}).to_list(5000)
+        wallet_tx_rows = await db.wallet_transactions.find({"user_id": uid}, {"_id": 0, "amount": 1}).to_list(5000)
+
+        users_balance = round(float(user.get("balance", 0) or 0), 2)
+        wallets_balance = round(float(wallet_doc.get("balance", 0) or 0), 2)
+        tx_sum = round(sum(float(t.get("amount") or 0) for t in tx_rows if isinstance(t.get("amount"), (int, float)) and t.get("status", "completed") == "completed"), 2)
+        wallet_tx_sum = round(sum(float(t.get("amount") or 0) for t in wallet_tx_rows if isinstance(t.get("amount"), (int, float))), 2)
+        delta = round(users_balance - wallets_balance, 2)
+        if abs(delta) >= 0.01:
+            mismatch_count += 1
+
+        rows.append({
+            "user_id": uid,
+            "email": user.get("email", ""),
+            "canonical_email": user.get("canonical_email") or user.get("email", ""),
+            "role": user.get("role", "user"),
+            "user_number": user.get("user_number", ""),
+            "users_balance": users_balance,
+            "wallets_balance": wallets_balance,
+            "transactions_sum": tx_sum,
+            "wallet_transactions_sum": wallet_tx_sum,
+            "delta": delta,
+            "recommended_repair": _recommended_repair(users_balance, wallets_balance, tx_sum, wallet_tx_sum),
+            "risk_level": _risk_level(users_balance, wallets_balance, tx_sum, wallet_tx_sum),
+        })
+
+    rows.sort(key=lambda row: abs(row["delta"]), reverse=True)
+    return {
+        "rows": rows,
+        "count": len(rows),
+        "mismatch_count": mismatch_count,
+        "canonical_visible_source": "users.balance",
+        "note": "Read-only forensic view. No balances were modified.",
+    }

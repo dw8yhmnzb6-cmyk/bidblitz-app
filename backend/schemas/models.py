@@ -22,18 +22,21 @@ class LoginRequest(BaseModel):
 class TopUpRequest(BaseModel):
     amount: float = Field(gt=0, le=50000)
     payment_method: str = "bank_transfer"
+    idempotency_key: Optional[str] = None
 
 
 class PaymentRequest(BaseModel):
     amount: float = Field(gt=0)
     merchant_id: str
     description: Optional[str] = ""
+    idempotency_key: Optional[str] = None
 
 
 class SendRequest(BaseModel):
     amount: float = Field(gt=0)
     recipient_email: EmailStr
     description: Optional[str] = ""
+    idempotency_key: Optional[str] = None
 
 
 class UserResponse(BaseModel):

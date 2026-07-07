@@ -49,6 +49,7 @@ class TransactionType(str, Enum):
     SUBSCRIPTION = "subscription"
     SUBSCRIPTION_RENEWAL = "subscription_renewal"
     ADMIN_CREDIT = "admin_credit"  # Admin sends money without fees
+    ADMIN_DEBIT = "admin_debit"
     VOUCHER_REDEMPTION = "voucher_redemption"  # POS Gutschein einlösen
     WALLET_TOPUP_POS = "wallet_topup_pos"  # Wallet aufladen am POS
     EV_CHARGING = "ev_charging"  # EV Charging session payment
@@ -135,6 +136,36 @@ class PaymentResult(BaseModel):
     status: TransactionStatus = TransactionStatus.PENDING
 
 
+def build_wallet_ledger_metadata(
+    *,
+    user_id: str,
+    wallet_id: Optional[str],
+    tx_type: TransactionType,
+    amount: float,
+    status: TransactionStatus,
+    source: str,
+    reference_id: str,
+    idempotency_key: str,
+    direction: Literal["credit", "debit"],
+    audit_metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return {
+        "transaction_id": "",
+        "user_id": user_id,
+        "wallet_id": wallet_id or user_id,
+        "type": tx_type.value,
+        "amount": round(float(amount or 0), 2),
+        "currency": "EUR",
+        "direction": direction,
+        "status": status.value,
+        "source": source,
+        "reference_id": reference_id,
+        "idempotency_key": idempotency_key,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "audit_metadata": audit_metadata or {},
+    }
+
+
 async def debit_wallet(
     user_id: str,
     amount: float,
@@ -217,11 +248,29 @@ async def debit_wallet(
         "merchant_id": merchant_id,
         "merchant_name": merchant_name or "",
         "reference": ref,
+        "currency": "EUR",
+        "direction": "debit",
+        "source": "payment_engine",
         "status": TransactionStatus.PENDING.value,
-        "metadata": metadata or {},
+        "metadata": {
+            **build_wallet_ledger_metadata(
+                user_id=user_id,
+                wallet_id=user_id,
+                tx_type=tx_type,
+                amount=amount,
+                status=TransactionStatus.PENDING,
+                source="payment_engine",
+                reference_id=ref,
+                idempotency_key=idempotency_key,
+                direction="debit",
+                audit_metadata=(metadata or {}).get("audit_metadata", {}),
+            ),
+            **(metadata or {}),
+        },
         "created_at": now,
         "updated_at": now,
     }
+    transaction["metadata"]["transaction_id"] = tx_id
     
     await db.transactions.insert_one(transaction)
     
@@ -256,7 +305,12 @@ async def debit_wallet(
     # 7. Mark transaction completed
     await db.transactions.update_one(
         {"id": tx_id},
-        {"$set": {"status": TransactionStatus.COMPLETED.value, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "status": TransactionStatus.COMPLETED.value,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "metadata.status": TransactionStatus.COMPLETED.value,
+            "metadata.transaction_id": tx_id,
+        }}
     )
     
     # 8. Log success
@@ -336,25 +390,35 @@ async def credit_wallet(
         "description": description,
         "source": source or "",
         "reference": ref,
+        "currency": "EUR",
+        "direction": "credit",
         "status": TransactionStatus.PENDING.value,
-        "metadata": metadata or {},
+        "metadata": {
+            **build_wallet_ledger_metadata(
+                user_id=user_id,
+                wallet_id=user_id,
+                tx_type=tx_type,
+                amount=amount,
+                status=TransactionStatus.PENDING,
+                source=source or "payment_engine",
+                reference_id=ref,
+                idempotency_key=idempotency_key,
+                direction="credit",
+                audit_metadata=(metadata or {}).get("audit_metadata", {}),
+            ),
+            **(metadata or {}),
+        },
         "created_at": now,
         "updated_at": now,
     }
+    transaction["metadata"]["transaction_id"] = tx_id
     
     await db.transactions.insert_one(transaction)
     
-    # 5. Atomic balance update (BOTH users AND wallets)
+    # 5. Atomic balance update on canonical visible source only
     result = await db.users.update_one(
         {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
         {"$inc": {"balance": amount}}
-    )
-    
-    # Also update wallets collection (for admin wallet tool)
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance": amount}, "$setOnInsert": {"user_id": user_id, "balance_blz": 0}},
-        upsert=True
     )
     
     if result.modified_count == 0:
@@ -373,7 +437,12 @@ async def credit_wallet(
     # 6. Mark transaction completed
     await db.transactions.update_one(
         {"id": tx_id},
-        {"$set": {"status": TransactionStatus.COMPLETED.value, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "status": TransactionStatus.COMPLETED.value,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "metadata.status": TransactionStatus.COMPLETED.value,
+            "metadata.transaction_id": tx_id,
+        }}
     )
     
     # 7. Log success
@@ -1403,7 +1472,7 @@ async def process_marketplace_payment(
         payment_type=PaymentType.MARKETPLACE,
         reference_id=listing_id,
         recipient_id=seller_id,
-        description=description or f"Marketplace Purchase",
+        description=description or "Marketplace Purchase",
     ))
 
 
@@ -1437,5 +1506,5 @@ async def process_merchant_payment(
         payment_type=PaymentType.MERCHANT,
         reference_id=reference,
         recipient_id=merchant_id,
-        description=description or f"Merchant Payment",
+        description=description or "Merchant Payment",
     ))

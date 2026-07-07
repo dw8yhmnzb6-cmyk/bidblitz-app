@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, TransactionType
 from routes.pos_system import short_id
 
 router = APIRouter(prefix="/api/super-app", tags=["Super App Extensions"])
@@ -85,48 +86,52 @@ async def get_marketplace_categories():
 class WalletTopup(BaseModel):
     amount: float
     method: str  # "card", "bank_transfer", "crypto"
+    idempotency_key: Optional[str] = None
 
 @router.post("/wallet/topup")
 async def wallet_topup(req: WalletTopup, request: Request):
-    """Wallet aufladen."""
+    """Legacy endpoint routed through canonical wallet engine."""
     user = await get_current_user(request)
-    
-    transaction_id = short_id("TXN", 10)
-    
-    # Placeholder: In production würde hier Stripe/Crypto-Payment initiiert
-    
-    await db.wallet_transactions.insert_one({
-        "transaction_id": transaction_id,
-        "user_id": str(user["_id"]),
-        "type": "topup",
-        "amount": req.amount,
-        "method": req.method,
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    log.info(f"Wallet topup initiated: {transaction_id} (€{req.amount})")
-    
-    return {"transaction_id": transaction_id, "status": "pending"}
+
+    result = await credit_wallet(
+        user_id=str(user["_id"]),
+        amount=round(float(req.amount or 0), 2),
+        tx_type=TransactionType.TOPUP,
+        description=f"Legacy Top-up via {req.method}",
+        source="super_app_legacy",
+        metadata={
+            "payment_method": req.method,
+            "route": "super_app.wallet.topup",
+            "audit_metadata": {"legacy": True},
+        },
+        idempotency_key=req.idempotency_key,
+    )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error or "Top-up fehlgeschlagen")
+
+    log.info(f"Legacy wallet topup routed to engine: {result.transaction_id} (€{req.amount})")
+    return {"transaction_id": result.transaction_id, "status": result.status.value, "new_balance": result.new_balance, "deprecated": True}
 
 @router.get("/wallet/balance")
 async def get_wallet_balance(request: Request):
-    """Get user wallet balance (read-only, no side-effects)."""
+    """Legacy read endpoint using canonical users.balance."""
     user = await get_current_user(request)
 
-    wallet = await db.wallets.find_one({"user_id": str(user["_id"])}, {"_id": 0})
-    balance = wallet.get("balance", 0.0) if wallet else 0.0
+    wallet = await db.wallets.find_one({"user_id": str(user["_id"])}, {"_id": 0, "balance": 1})
 
-    transactions = await db.wallet_transactions.find(
+    transactions = await db.transactions.find(
         {"user_id": str(user["_id"])},
-        {"_id": 0}
+        {"_id": 0, "id": 1, "type": 1, "amount": 1, "description": 1, "status": 1, "created_at": 1, "reference": 1}
     ).sort("created_at", -1).limit(10).to_list(10)
 
     return {
-        "balance": balance,
+        "balance": round(float(user.get("balance", 0.0) or 0.0), 2),
         "currency": "EUR",
         "recent_transactions": transactions,
         "wallet_exists": wallet is not None,
+        "legacy_wallet_balance": round(float((wallet or {}).get("balance", 0.0) or 0.0), 2),
+        "canonical_source": "users.balance",
+        "deprecated": True,
     }
 
 

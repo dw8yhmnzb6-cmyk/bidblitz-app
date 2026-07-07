@@ -10,6 +10,7 @@ from core.security import (
 from core.config import MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES
 from core.rate_limit import limiter, RATE_REGISTER
 from core.audit import log_audit, AuditEvent, get_client_info
+from core.payment_engine import credit_wallet, TransactionType
 from core.soft_launch import is_email_whitelisted, is_registration_open, validate_invite_code, redeem_invite_code
 from schemas.models import RegisterRequest, LoginRequest
 import secrets
@@ -264,7 +265,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "handle": username,
         "role": role,
         "user_number": user_number,
-        "balance": WELCOME_EUR,
+        "balance": 0.0,
         "balance_blz": WELCOME_BLZ,
         "currency": "EUR",
         "card_number": generate_card_number(),
@@ -300,21 +301,21 @@ async def register(req: RegisterRequest, request: Request, response: Response):
     }
     await db.merchants.insert_one(merchant_doc)
 
-    # 🎁 Welcome Bonus Transaction für Verlauf
+    # 🎁 Welcome Bonus Transaction für Verlauf / Audit über zentrale Engine
     try:
-        await db.transactions.insert_one({
-            "user_id": user_id,
-            "type": "bonus",
-            "amount": WELCOME_EUR,
-            "currency": "EUR",
-            "status": "completed",
-            "description": "Willkommens-Bonus",
-            "merchant_name": "BidBlitz",
-            "category": "bonus",
-            "reference": f"WELCOME-{secrets.token_hex(4).upper()}",
-            "date": datetime.now(timezone.utc).isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        await credit_wallet(
+            user_id=user_id,
+            amount=WELCOME_EUR,
+            tx_type=TransactionType.REWARD,
+            description="Willkommens-Bonus",
+            reference=f"WELCOME-{secrets.token_hex(4).upper()}",
+            source="auth_register",
+            metadata={
+                "audit_metadata": {"route": "auth.register", "kind": "welcome_bonus"},
+                "welcome_bonus": True,
+            },
+            idempotency_key=f"welcome-bonus:{user_id}",
+        )
     except Exception as e:
         logger.warning(f"Welcome bonus tx failed: {e}")
 
