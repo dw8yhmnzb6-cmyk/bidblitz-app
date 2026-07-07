@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Admin Wallet / Identity-Historie erweitert
+- `backend/routes/admin_wallet.py`: Wallet-User-Suche ist jetzt alias-aware (`email_aliases`, `canonical_email`, `name`) und normalisiert Admin-Datensätze ebenfalls auf den kanonischen `.ae`-Admin. Das Login-History-Endpoint liefert zusätzlich `canonical_email`, `email_aliases`, `balance_eur`, `balance_blz` und `kyc_status`.
+- `frontend/src/pages/AdminWalletPage.jsx`: Im ausgewählten User-Panel werden jetzt **Kanonisch:** und **Aliase:** sichtbar angezeigt, sodass Fälle wie `afrimk@me.com` ↔ `agimk@me.com` direkt im Backoffice nachvollziehbar sind.
+- Verifiziert durch Testing-Agent **Iteration 209 PASS**: Admin Wallet findet `agimk@me.com` korrekt, zeigt Alias-/Canonical-Historie im Detail, und Admin-Wallet-Resultate nutzen weiterhin die kanonische Admin-Identität ohne rohe Legacy-Werte. Keine MOCKED APIs.
+
 ## 07.07.2026 — Admin-Kundenliste serverseitig professionalisiert
 - `backend/routes/admin_management.py`: `/api/admin/customers`, `/api/admin/customers/{user_id}`, `/api/admin/analytics/online` und `/api/admin/analytics/last-seen` normalisieren Admin-Datensätze jetzt serverseitig über zentrale Helper. Dadurch erscheinen keine separaten Legacy-`.com`-Admins oder Alt-Balances mehr in Admin-Listen/Details.
 - Interne Prüfung bestätigt den echten Speicherort von `agimk@me.com`: User-ID `69cfcda5b193d2b925333e1b`, Rolle `user`, Balance `€20.00`, KYC `pending`, `email_aliases` enthält `afrimk@me.com` und `agimk@me.com`.
