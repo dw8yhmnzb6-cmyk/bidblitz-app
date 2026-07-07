@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Move & Earn ROI v2: echte Commerce-/Merchant-Conversions gekoppelt
+- `backend/routes/move_earn.py`: `GET /api/admin/move/stats` aggregiert jetzt echte Umsatz-/Conversion-Signale aus `marketplace_orders`, `commerce_orders` und `pos_sales`.
+- Neue ROI-v2-Kennzahlen: `conversion_orders`, `conversion_gmv_eur`, `conversion_platform_revenue_eur`, `attributed_conversion_orders`, `attributed_conversion_gmv_eur`, `attributed_conversion_revenue_eur`, `attributed_conversion_buyers`, `conversion_rate_mau_pct`, `cost_per_conversion`, `cost_per_attributed_buyer`, `revenue_per_reward_eur`, `gmv_per_reward_eur`, `sponsored_conversion_orders`, `sponsored_reward_impact`.
+- Neue Struktur `commerce_roi`: `summary`, `channels` (marketplace / commerce_center / pos) und `attribution_windows` (same_day / 1_to_2_days / 3_to_7_days).
+- Attribution-Logik verknüpft Käufe mit aktiven Move-Tagen der letzten 7 Tage; Sponsored-Impact erkennt Coupon-/Cashback-nahe Conversions innerhalb des definierten Fensters.
+- `frontend/src/pages/MoveEarnPage.jsx`: neue Admin-Karten für Conversions, Revenue/Reward €, ROI-v2-Panel, Commerce-ROI-Panel, Channel-Breakdown, Attribution-Window und Trend-Erweiterung mit täglichen Conversion-/Revenue-Werten.
+- Verifiziert: JS-Lint PASS, Python-Lint PASS, Build PASS, API-Self-Test PASS, Browser-Smoke PASS, Testing-Agent Iteration 199 PASS. Keine MOCKED APIs.
+
 ## 07.07.2026 — Move & Earn: Native Schrittquellen via HealthKit / Health Connect
 - `frontend/package.json`: `@capgo/capacitor-health@^7` ergänzt, passend zur bestehenden Capacitor-7-Basis.
 - `frontend/src/services/capacitorBridge.js`: Native-Health-Bridge Loader (`loadNativeHealthBridge`), Plattform-Erkennung und bestehende App-Bridge sauber zusammengeführt.

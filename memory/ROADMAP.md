@@ -30,6 +30,7 @@
 - ✅ P2: Move & Earn AI Coach + GPS/Sensor-Scoring ausgebaut und verifiziert.
 - ✅ P2: Move & Earn Admin-Analytics um ROI, Reward-Kosten nach Typ/Quelle/Segment und DAU/MAU vertieft.
 - ✅ 07.07.2026 Move & Earn: native Schrittquellen (HealthKit / Health Connect) sauber über Capacitor angebunden; Web-Preview bleibt mit erklärtem Fallback stabil.
+- ✅ 07.07.2026 Move & Earn ROI v2 mit echten Commerce-/Merchant-/POS-Conversions gekoppelt; Admin sieht jetzt attributed Orders, GMV, Platform Revenue, Conversion Rate, Cost per Conversion sowie Channel-/Attribution-Windows.
 
 ## P0
 - Frontend-Routing-Stabilität als Basis für nächste Ausbaustufe verbessert; weiterer Fokus jetzt auf P1-Feature-Ausbau statt monolithischer Routerpflege
