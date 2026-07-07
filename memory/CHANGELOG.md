@@ -649,3 +649,9 @@
 - Nur Fälle ohne `wallets`-Dokument bzw. klarer kanonischer Admin-Fall wurden entschieden.
 - **Keine** Balance-Änderungen, **keine** Transaktionslöschungen, **keine** Auto-Reparatur.
 - Komplexe rote Fälle mit Ledger-/Legacy-Konflikt blieben bewusst offen für weitere Fachentscheidung.
+
+## 07.07.2026 — Doppelter Admin-Name / aktive Kontoanzeige bereinigt
+- Kanonische Admin-Identität in Auth-Response und Admin-Kundenliste vereinheitlicht.
+- `admin@bidblitz.ae` liefert jetzt konsistent den Namen `BidBlitz Admin` statt gemischter Altwerte wie `Admin Updated` / Merchant-Namen.
+- Aktives-Konto-Banner und Admin-Kundenlisten nutzen damit denselben kanonischen Admin-Namen.
+- Verifiziert per `/api/auth/me`, `/api/admin/customers?role=admin` und Frontend-Smoke-Test.

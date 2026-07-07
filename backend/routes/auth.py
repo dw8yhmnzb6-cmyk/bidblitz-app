@@ -23,6 +23,21 @@ logger = logging.getLogger("bidblitz.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+def _canonical_admin_identity(user: dict) -> dict:
+    email = str(user.get("email") or "").lower().strip().replace("@bid-blitz.", "@bidblitz.")
+    canonical = str(user.get("canonical_email") or email).lower().strip().replace("@bid-blitz.", "@bidblitz.")
+    aliases = [str(a).lower().strip().replace("@bid-blitz.", "@bidblitz.") for a in (user.get("email_aliases") or []) if a]
+    if (user.get("role") == "admin") or email == "admin@bidblitz.ae" or canonical == "admin@bidblitz.ae" or "admin@bidblitz.ae" in aliases:
+        user["email"] = "admin@bidblitz.ae"
+        user["canonical_email"] = "admin@bidblitz.ae"
+        user["name"] = "BidBlitz Admin"
+        user["full_name"] = "BidBlitz Admin"
+        user["display_name"] = "BidBlitz Admin"
+        user["business_name"] = "BidBlitz Admin"
+        user["merchant_business_name"] = "BidBlitz Admin"
+    return user
+
+
 def _auth_email_candidates(raw_email: str) -> list[str]:
     email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.")
     if not email:
@@ -509,13 +524,13 @@ async def login(req: LoginRequest, request: Request, response: Response):
     await log_audit(AuditEvent.LOGIN_SUCCESS, user_id=user_id, email=email,
                     ip=ip, user_agent=ua, details={"role": user.get("role", "user")})
 
-    return serialize_user(user)
+    return serialize_user(_canonical_admin_identity(user))
 
 
 @router.get("/me")
 async def get_me(request: Request):
     user = await get_current_user(request)
-    return serialize_user(user)
+    return serialize_user(_canonical_admin_identity(user))
 
 
 @router.get("/ws-token")
@@ -567,7 +582,7 @@ async def refresh_token(request: Request, response: Response):
         user["login_email"] = payload.get("login_email") or payload.get("email") or user["email"]
         from core.config import COOKIE_SECURE, COOKIE_SAMESITE, ACCESS_TOKEN_EXPIRE_MINUTES
         response.set_cookie(key="access_token", value=new_access, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/")
-        return serialize_user(user)
+        return serialize_user(_canonical_admin_identity(user))
     except pyjwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
     except pyjwt.InvalidTokenError:
@@ -752,4 +767,4 @@ async def verify_2fa_login(request: Request, response: Response):
     
     logger.info(f"2FA login completed for {email}")
     
-    return serialize_user(user)
+    return serialize_user(_canonical_admin_identity(user))

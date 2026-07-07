@@ -44,7 +44,10 @@ def _normalize_admin_user_row(row: dict, canonical_balance: float, canonical_blz
     if row.get("role") == "admin" and email in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
         row["email"] = "admin@bidblitz.ae"
         row["canonical_email"] = "admin@bidblitz.ae"
-        row["name"] = row.get("name") or "BidBlitz Admin"
+        row["name"] = "BidBlitz Admin"
+        row["full_name"] = "BidBlitz Admin"
+        row["business_name"] = "BidBlitz Admin"
+        row["merchant_business_name"] = "BidBlitz Admin"
         row["balance"] = canonical_balance
         row["balance_blz"] = canonical_blz
     return row

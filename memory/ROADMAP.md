@@ -36,6 +36,7 @@
 ## P0
 - 🔴 Wallet P0 bleibt aktiv bis die manuellen Repair-Aktionen für kritische Fälle sauber abgearbeitet sind: Reconciliation Center + Controlled Manual Repair sind live, jetzt fehlen die fachlichen Einzelentscheidungen pro kritischem Wallet.
 - 🔴 Nach Manual Decisions Run 1 bleiben insbesondere diese Risikoklassen offen: Ledger-Rebuild-Fälle, Legacy-Wallets mit widersprüchlicher Historie und negative Delta-Fälle mit vorhandener `wallets.balance`-Abweichung.
+- 🔴 Admin-/Alias-UI bleibt unter Beobachtung: weitere Listen außerhalb von Auth + Admin-Kundenliste bei Bedarf auf dieselbe kanonische Admin-Namenslogik umstellen.
 - 🔴 Offene Wallet-Härtung nach Phase 3: weitere historische EUR-Geldpfade außerhalb des Kern-Wallet-/POS-/Admin-Bereichs schrittweise auf zentrale Engine migrieren (z. B. Invoicing, Tips, Mobility, Stripe-Webhooks, Merchant/Restaurant/Taxi-Altpfade), ohne Bestandswerte blind anzupassen.
 - 🔴 Store Launch bleibt blockiert, bis Reconciliation für Altbestände und restliche historische EUR-Pfade abgeschlossen sind.
 - Frontend-Routing-Stabilität als Basis für nächste Ausbaustufe verbessert; weiterer Fokus jetzt auf P1-Feature-Ausbau statt monolithischer Routerpflege

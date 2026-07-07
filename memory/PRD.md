@@ -1666,3 +1666,15 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - `pos.security.a2c72a73@test.com` → `Manual review`
   - `admin-legacy-alias@bidblitz.local` → Legacy-/Alias-Prüfung offen
 - Nach diesem Lauf verbleiben kritische Altbestände, die fachlich nicht blind entschieden werden dürfen; Store Launch bleibt daher weiterhin blockiert.
+
+
+## Update 2026-07-07 — Kanonischer Admin-Display-Fix
+- Gemeldeter UI-Bug behoben: derselbe kanonische Admin erschien mit unterschiedlichen Namen im aktiven Konto-Banner und/oder in Admin-Listen.
+- Ursache: Alt-Felder (`name`, `business_name`, `merchant_business_name`) des Admin-Users leakten in verschiedene Serialisierungs-/Listenpfade.
+- Fix:
+  - Auth-Serializer normalisiert Admin serverseitig auf `admin@bidblitz.ae` + Name `BidBlitz Admin`
+  - Admin-Kundenliste normalisiert denselben Datensatz ebenfalls konsequent auf `BidBlitz Admin`
+- Ergebnis:
+  - kein widersprüchlicher zweiter Admin-Name mehr für den kanonischen Admin
+  - aktives Konto und Admin-Liste zeigen dieselbe kanonische Identität
+- Teststatus: Backend-Lint PASS, `/api/auth/me` PASS, `/api/admin/customers?role=admin` PASS, Frontend-Smoke PASS.
