@@ -19,6 +19,8 @@ from bson import ObjectId
 from core.database import db
 from core.security import get_current_user
 from core.payment_engine import credit_wallet, debit_wallet, TransactionType
+from core.audit import log_audit, AuditEvent, get_client_info
+from core.security import verify_password
 
 router = APIRouter(prefix="/api/admin/wallet", tags=["admin-wallet"])
 
@@ -28,6 +30,38 @@ async def _require_admin(request: Request):
     if (user.get("role") or "") not in ("admin", "super_admin"):
         raise HTTPException(403, "Admin-Rechte erforderlich.")
     return user
+
+
+async def _verify_admin_step_up(admin: dict, password: str, otp_code: Optional[str] = None):
+    admin_db = await db.users.find_one({"_id": admin["_id"]}, {"password_hash": 1, "password": 1, "two_factor_enabled": 1})
+    password_hash = ((admin_db or {}).get("password_hash") or (admin_db or {}).get("password") or "").strip()
+    if not password or not password_hash or not verify_password(password, password_hash):
+        raise HTTPException(403, "Admin-Passwort ungültig.")
+
+    if (admin_db or {}).get("two_factor_enabled"):
+        if not otp_code:
+            raise HTTPException(403, "2FA-Code erforderlich.")
+        otp_doc = await db.otp_codes.find_one({
+            "user_id": str(admin["_id"]),
+            "purpose": "wallet_repair_stepup",
+            "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+        })
+        if not otp_doc or otp_doc.get("code") != otp_code:
+            raise HTTPException(403, "2FA-Code ungültig.")
+        await db.otp_codes.delete_one({"_id": otp_doc["_id"]})
+
+
+async def _build_repair_context(user_id: str):
+    try:
+        query = {"_id": ObjectId(user_id)}
+    except Exception as exc:
+        raise HTTPException(404, "Wallet nicht gefunden.") from exc
+    rows, _summary = await _build_reconciliation_rows(query, 1)
+    if not rows:
+        raise HTTPException(404, "Wallet nicht gefunden.")
+    row = rows[0]
+    wallet_doc = await db.wallets.find_one({"user_id": user_id}, {"_id": 1, "balance": 1, "currency": 1}) or {}
+    return row, wallet_doc
 
 
 async def _canonical_admin_balances() -> tuple[float, float]:
@@ -674,6 +708,195 @@ async def create_reconciliation_review(req: ReconciliationReviewReq, request: Re
     await db.wallet_reconciliation_reviews.insert_one(doc)
     doc.pop("_id", None)
     return {"ok": True, "review": doc, "automatic_changes_performed": "NO"}
+
+
+class RepairPreviewReq(BaseModel):
+    user_id: str
+    action_type: str = Field(..., min_length=2, max_length=80)
+    reason: str = Field(..., min_length=3, max_length=400)
+    adjustment_amount: float = 0
+    target_wallet_id: Optional[str] = None
+
+
+class RepairApproveReq(BaseModel):
+    repair_id: str
+    reason: str = Field(..., min_length=3, max_length=400)
+    admin_password: str = Field(..., min_length=6, max_length=200)
+    otp_code: Optional[str] = None
+
+
+ALLOWED_REPAIR_ACTIONS = {
+    "mark_reviewed",
+    "ignore_legacy_wallet",
+    "sync_displayed_balance_to_canonical_users_balance",
+    "create_adjustment_entry",
+    "merge_duplicate_wallet",
+    "send_to_investigation",
+}
+
+
+def _validate_safe_repair(req: RepairPreviewReq, row: dict):
+    if req.action_type not in ALLOWED_REPAIR_ACTIONS:
+        raise HTTPException(400, "Action nicht erlaubt.")
+    if req.action_type == "create_adjustment_entry" and req.adjustment_amount == 0:
+        raise HTTPException(400, "Adjustment-Betrag erforderlich.")
+    if req.action_type == "create_adjustment_entry" and abs(req.adjustment_amount) == abs(row.get("users_balance", 0)) and row.get("users_balance", 0) != 0:
+        raise HTTPException(400, "Gefährliche Vollüberschreibung blockiert.")
+    if req.action_type == "merge_duplicate_wallet" and not req.target_wallet_id:
+        raise HTTPException(400, "Ziel-Wallet erforderlich.")
+
+
+@router.post("/reconciliation/repair/preview")
+async def repair_preview(req: RepairPreviewReq, request: Request):
+    admin = await _require_admin(request)
+    row, wallet_doc = await _build_repair_context(req.user_id)
+    _validate_safe_repair(req, row)
+    ip, ua = get_client_info(request)
+
+    pending = {
+        "repair_id": f"WRP-{ObjectId()}"[-12:],
+        "user_id": req.user_id,
+        "wallet_id": str(wallet_doc.get("_id") or req.user_id),
+        "action_type": req.action_type,
+        "before_users_balance": row["users_balance"],
+        "before_wallets_balance": row["wallets_balance"],
+        "after_users_balance": row["users_balance"] if req.action_type != "create_adjustment_entry" else round(row["users_balance"] + float(req.adjustment_amount or 0), 2),
+        "after_wallets_balance": row["wallets_balance"],
+        "delta": row["delta"],
+        "reason": req.reason,
+        "approved_by": admin.get("email", "admin@bidblitz.ae"),
+        "approved_at": None,
+        "status": "pending_approval",
+        "audit_metadata": {
+            "risk_level": row["risk_level"],
+            "risk_band": row["risk_band"],
+            "recommended_action": row["recommended_action"],
+            "duplicate_flags": row["duplicate_flags"],
+            "ip": ip,
+            "user_agent": ua,
+            "target_wallet_id": req.target_wallet_id,
+            "adjustment_amount": float(req.adjustment_amount or 0),
+        },
+    }
+    pending_response = {**pending}
+    await db.wallet_repair_actions.insert_one(pending)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={"action": "wallet_repair_preview", "repair_id": pending["repair_id"], "target_user_id": req.user_id, "action_type": req.action_type},
+        severity="info",
+    )
+    return {"ok": True, "repair": pending_response, "automatic_changes_performed": "NO", "confirmation_required": True}
+
+
+@router.post("/reconciliation/repair/request-2fa")
+async def repair_request_2fa(request: Request):
+    admin = await _require_admin(request)
+    if not admin.get("two_factor_enabled"):
+        return {"ok": True, "two_factor_required": False}
+    from routes.two_factor import generate_otp, send_otp_email, OTP_EXPIRY_MINUTES
+
+    otp = generate_otp()
+    now = datetime.now(timezone.utc)
+    expires = now.isoformat()
+    expires_at = (now.replace() + __import__('datetime').timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
+    await db.otp_codes.delete_many({"user_id": str(admin["_id"]), "purpose": "wallet_repair_stepup"})
+    await db.otp_codes.insert_one({
+        "user_id": str(admin["_id"]),
+        "code": otp,
+        "purpose": "wallet_repair_stepup",
+        "attempts": 0,
+        "created_at": expires,
+        "expires_at": expires_at,
+    })
+    sent = await send_otp_email(admin.get("email", ""), otp, "wallet_repair", admin.get("name", ""))
+    return {"ok": True, "two_factor_required": True, "email_sent": sent, "_test_otp": otp if not sent else None}
+
+
+@router.post("/reconciliation/repair/approve")
+async def approve_repair(req: RepairApproveReq, request: Request):
+    admin = await _require_admin(request)
+    repair = await db.wallet_repair_actions.find_one({"repair_id": req.repair_id})
+    if not repair:
+        raise HTTPException(404, "Repair nicht gefunden.")
+    if repair.get("status") != "pending_approval":
+        raise HTTPException(400, "Repair ist nicht mehr freigabebereit.")
+    if not req.reason.strip():
+        raise HTTPException(400, "Grund erforderlich.")
+
+    await _verify_admin_step_up(admin, req.admin_password, req.otp_code)
+
+    action_type = repair.get("action_type")
+    if action_type == "create_adjustment_entry":
+        amount = float((repair.get("audit_metadata") or {}).get("adjustment_amount") or 0)
+        if amount == 0:
+            raise HTTPException(400, "Adjustment ohne Betrag blockiert.")
+        if repair.get("after_users_balance") == 0 and repair.get("before_users_balance") != 0:
+            raise HTTPException(400, "Setzen auf 0 ist blockiert.")
+        if amount > 0:
+            result = await credit_wallet(
+                user_id=repair["user_id"],
+                amount=amount,
+                tx_type=TransactionType.ADMIN_CREDIT,
+                description=f"Wallet Repair Adjustment: {req.reason}",
+                source="wallet_repair_adjustment",
+                metadata={"repair_id": req.repair_id, "admin_id": str(admin["_id"]), "audit_metadata": {"route": "admin_wallet.repair.approve"}},
+                idempotency_key=f"repair:{req.repair_id}",
+            )
+        else:
+            result = await debit_wallet(
+                user_id=repair["user_id"],
+                amount=abs(amount),
+                tx_type=TransactionType.ADMIN_DEBIT,
+                description=f"Wallet Repair Adjustment: {req.reason}",
+                metadata={"repair_id": req.repair_id, "admin_id": str(admin["_id"]), "audit_metadata": {"route": "admin_wallet.repair.approve"}},
+                idempotency_key=f"repair:{req.repair_id}",
+            )
+        if not result.success:
+            raise HTTPException(400, result.error or "Adjustment fehlgeschlagen.")
+    elif action_type == "ignore_legacy_wallet":
+        await db.wallets.update_many({"user_id": repair["user_id"]}, {"$set": {"legacy_ignored": True, "legacy_ignored_at": datetime.now(timezone.utc).isoformat(), "legacy_ignored_by": admin.get("email", "")}})
+    elif action_type == "sync_displayed_balance_to_canonical_users_balance":
+        await db.wallets.update_many({"user_id": repair["user_id"]}, {"$set": {"display_source": "users.balance", "display_sync_reviewed_at": datetime.now(timezone.utc).isoformat(), "display_sync_reviewed_by": admin.get("email", "")}})
+    elif action_type == "merge_duplicate_wallet":
+        target_wallet_id = (repair.get("audit_metadata") or {}).get("target_wallet_id")
+        if not target_wallet_id:
+            raise HTTPException(400, "Target-Wallet fehlt.")
+        target_wallet = await db.wallets.find_one({"_id": ObjectId(target_wallet_id)})
+        if not target_wallet or str(target_wallet.get("user_id")) != str(repair["user_id"]):
+            raise HTTPException(400, "Merge nur innerhalb derselben kanonischen User-ID erlaubt.")
+        await db.wallets.update_many({"user_id": repair["user_id"]}, {"$set": {"merge_candidate": True, "merge_candidate_target": target_wallet_id, "merge_candidate_reviewed_at": datetime.now(timezone.utc).isoformat()}})
+    elif action_type in {"mark_reviewed", "send_to_investigation"}:
+        pass
+    else:
+        raise HTTPException(400, "Action blockiert.")
+
+    approved_at = datetime.now(timezone.utc).isoformat()
+    await db.wallet_repair_actions.update_one(
+        {"repair_id": req.repair_id},
+        {"$set": {"status": "approved", "approved_at": approved_at, "approved_by": admin.get("email", ""), "reason": req.reason, "audit_metadata.approval_reason": req.reason}}
+    )
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        ip=get_client_info(request)[0],
+        user_agent=get_client_info(request)[1],
+        details={"action": "wallet_repair_approved", "repair_id": req.repair_id, "action_type": action_type, "target_user_id": repair["user_id"]},
+        severity="warn" if action_type in {"create_adjustment_entry", "merge_duplicate_wallet"} else "info",
+    )
+    updated = await db.wallet_repair_actions.find_one({"repair_id": req.repair_id}, {"_id": 0})
+    return {"ok": True, "repair": updated, "automatic_changes_performed": "NO" if action_type != "create_adjustment_entry" else "NO_AUTO_ONLY_MANUAL_APPROVED"}
+
+
+@router.get("/reconciliation/repair-history")
+async def repair_history(request: Request, limit: int = 100):
+    await _require_admin(request)
+    rows = await db.wallet_repair_actions.find({}, {"_id": 0}).sort("approved_at", -1).limit(min(max(limit, 1), 300)).to_list(min(max(limit, 1), 300))
+    return {"repairs": rows, "count": len(rows), "automatic_changes_performed": "NO"}
 
 
 @router.get("/reconciliation/final-report")

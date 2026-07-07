@@ -1571,3 +1571,68 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - Backend-API Smoke PASS
   - Frontend-Reconciliation-Center Smoke PASS
   - Keine Balance-Resets, keine gelöschten Transaktionen, keine Auto-Merges, keine automatische Reconciliation.
+
+
+## Update 2026-07-07 — Phase 5 Controlled Manual Wallet Repair
+- Controlled Manual Wallet Repair Workflow ergänzt — **keine Auto-Reparatur**, jede Aktion erfordert explizite Admin-Freigabe.
+- Neue Collection/Protokollstruktur: `wallet_repair_actions` mit
+  - `repair_id`
+  - `user_id`
+  - `wallet_id`
+  - `action_type`
+  - `before_users_balance`
+  - `before_wallets_balance`
+  - `after_users_balance`
+  - `after_wallets_balance`
+  - `delta`
+  - `reason`
+  - `approved_by`
+  - `approved_at`
+  - `status`
+  - `audit_metadata`
+- Zugelassene manuelle Actions mit Schutzlogik:
+  - `mark_reviewed`
+  - `ignore_legacy_wallet`
+  - `sync_displayed_balance_to_canonical_users_balance`
+  - `create_adjustment_entry`
+  - `merge_duplicate_wallet`
+  - `send_to_investigation`
+- Harte Blockaden eingebaut:
+  - kein Setzen auf 0
+  - kein Löschen von Transaktionen
+  - keine blinde Balance-Überschreibung
+  - kein email-basierter Wallet-Merge
+  - keine Reparatur ohne Grund
+  - keine Approval ohne Auditlog
+- Approval-Flow:
+  1. Repair Preview erstellen
+  2. Confirmation Modal / Preview anzeigen
+  3. Pflichtgrund
+  4. Admin-Passwort-Step-up
+  5. 2FA-Step-up falls für Admin aktiv
+  6. Auditlog + Repair-History schreiben
+- Sichere Ausführung:
+  - `ignore_legacy_wallet` markiert nur Legacy-Wallet-Dokumente, ändert kein echtes Nutzergeld
+  - `sync_displayed_balance_to_canonical_users_balance` markiert nur Display-Quelle reviewt, ändert kein echtes Nutzergeld
+  - `create_adjustment_entry` läuft ausschließlich über die Wallet Engine und erzeugt Ledger Entry
+  - `merge_duplicate_wallet` ist nur innerhalb derselben kanonischen User-ID erlaubt und markiert nur Merge-Candidates; Historie bleibt erhalten
+- Frontend erweitert:
+  - Repair Preview Panel
+  - Approval Panel mit Passwort/2FA
+  - Repair History Page/Card
+  - Wallet Detail Review bleibt vollständig read-only bis auf manuell bestätigte Repair-Flows
+- APIs ergänzt:
+  - `POST /api/admin/wallet/reconciliation/repair/preview`
+  - `POST /api/admin/wallet/reconciliation/repair/request-2fa`
+  - `POST /api/admin/wallet/reconciliation/repair/approve`
+  - `GET /api/admin/wallet/reconciliation/repair-history`
+- Tests:
+  - Repair ohne Grund blockiert
+  - versehentliches Setzen auf 0 blockiert
+  - Preview erzeugt auditierten Pending-Repair-Record
+  - Approval ohne Passwort blockiert
+  - Ignore-Legacy-Wallet bleibt auditierbar und sicher
+  - keine automatische Repair-Ausführung
+  - Testdatei `test_iter212_manual_wallet_repair.py` → 8/8 PASS
+- UI-Smoke-Test PASS: Repair Preview und Confirmation-Bereich sichtbar.
+- Wichtige Regel bleibt unverändert: **automatic balance reset performed = NO**.

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   ChevronLeft, Search, Plus, Minus, Wallet, User as UserIcon,
   Loader2, Check, History, X, Shield, Send, Zap,
-  AlertTriangle, ClipboardList, Eye,
+  AlertTriangle, ClipboardList, Eye, Lock, FileWarning,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -511,6 +511,15 @@ const ReconciliationTab = () => {
   const [reviewReason, setReviewReason] = useState("");
   const [reviewResult, setReviewResult] = useState("Manual review");
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [repairPreview, setRepairPreview] = useState(null);
+  const [repairAction, setRepairAction] = useState("mark_reviewed");
+  const [repairReason, setRepairReason] = useState("");
+  const [repairAmount, setRepairAmount] = useState("");
+  const [repairTargetWalletId, setRepairTargetWalletId] = useState("");
+  const [approvalPassword, setApprovalPassword] = useState("");
+  const [approvalOtp, setApprovalOtp] = useState("");
+  const [repairHistory, setRepairHistory] = useState([]);
+  const [repairBusy, setRepairBusy] = useState(false);
 
   const load = useCallback(async (q = "") => {
     setLoading(true);
@@ -522,6 +531,8 @@ const ReconciliationTab = () => {
       setRows(res.rows || []);
       setSummary(res.summary || {});
       setDashboard(dash || null);
+      const history = await api(`/api/admin/wallet/reconciliation/repair-history?limit=40`);
+      setRepairHistory(history.repairs || []);
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -563,6 +574,75 @@ const ReconciliationTab = () => {
       toast.error(error.message);
     } finally {
       setReviewBusy(false);
+    }
+  };
+
+  const createRepairPreview = async () => {
+    if (!selectedHistory?.user?.user_id) return toast.error("Kein Wallet ausgewählt");
+    if (!repairReason.trim()) return toast.error("Bitte Grund eingeben");
+    setRepairBusy(true);
+    try {
+      const payload = {
+        user_id: selectedHistory.user.user_id,
+        action_type: repairAction,
+        reason: repairReason,
+        adjustment_amount: Number(repairAmount || 0),
+        target_wallet_id: repairTargetWalletId || null,
+      };
+      const res = await api(`/api/admin/wallet/reconciliation/repair/preview`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setRepairPreview(res.repair);
+      toast.success("Repair-Vorschau erstellt. Bestätigung erforderlich.");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setRepairBusy(false);
+    }
+  };
+
+  const requestRepairOtp = async () => {
+    try {
+      const res = await api(`/api/admin/wallet/reconciliation/repair/request-2fa`, { method: "POST" });
+      if (res.two_factor_required) {
+        toast.success(res.email_sent ? "2FA-Code gesendet." : `2FA-Testcode: ${res._test_otp}`);
+      } else {
+        toast.success("Für diesen Admin ist kein 2FA-Schritt erforderlich.");
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const approveRepair = async () => {
+    if (!repairPreview?.repair_id) return toast.error("Keine Repair-Vorschau vorhanden");
+    if (!approvalPassword.trim()) return toast.error("Admin-Passwort erforderlich");
+    setRepairBusy(true);
+    try {
+      const res = await api(`/api/admin/wallet/reconciliation/repair/approve`, {
+        method: "POST",
+        body: JSON.stringify({
+          repair_id: repairPreview.repair_id,
+          reason: repairReason,
+          admin_password: approvalPassword,
+          otp_code: approvalOtp || null,
+        }),
+      });
+      toast.success(res.automatic_changes_performed === "NO" ? "Repair auditierbar freigegeben." : "Manueller Repair ausgeführt und protokolliert.");
+      setRepairPreview(null);
+      setApprovalPassword("");
+      setApprovalOtp("");
+      setRepairReason("");
+      setRepairAmount("");
+      setRepairTargetWalletId("");
+      await load(query);
+      const refreshed = await api(`/api/admin/wallet/reconciliation/history/${selectedHistory.user.user_id}`);
+      setSelectedHistory(refreshed);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setRepairBusy(false);
     }
   };
 
@@ -721,8 +801,56 @@ const ReconciliationTab = () => {
                 <button data-testid="reconciliation-save-review" onClick={saveReview} disabled={reviewBusy} className="mt-2 w-full rounded-lg bg-cyan-400 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{reviewBusy ? "Speichert…" : "Review in Queue speichern"}</button>
                 <p className="mt-2 text-[10px] text-white/50">Reviewer, Timestamp, Reason und Result werden auditierbar gespeichert. Keine automatische Finanzkorrektur.</p>
               </div>
+
+              <div className="rounded-xl border border-amber-400/10 bg-amber-400/5 p-3" data-testid="manual-repair-panel">
+                <div className="flex items-center gap-2"><FileWarning size={14} className="text-amber-300" /><p className="text-[10px] uppercase tracking-[0.16em] text-amber-300/70 font-bold">Controlled Manual Repair</p></div>
+                <select data-testid="repair-action-select" value={repairAction} onChange={(e) => setRepairAction(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none">
+                  <option value="mark_reviewed">Mark as reviewed</option>
+                  <option value="ignore_legacy_wallet">Ignore legacy wallet</option>
+                  <option value="sync_displayed_balance_to_canonical_users_balance">Sync displayed balance to canonical users.balance</option>
+                  <option value="create_adjustment_entry">Create adjustment entry</option>
+                  <option value="merge_duplicate_wallet">Merge duplicate wallet</option>
+                  <option value="send_to_investigation">Send to investigation</option>
+                </select>
+                <input data-testid="repair-reason-input" value={repairReason} onChange={(e) => setRepairReason(e.target.value)} placeholder="Pflichtgrund für Repair" className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                {repairAction === "create_adjustment_entry" ? <input data-testid="repair-adjustment-amount" value={repairAmount} onChange={(e) => setRepairAmount(e.target.value)} placeholder="Adjustment Betrag (z.B. 10.50 oder -5.25)" className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" /> : null}
+                {repairAction === "merge_duplicate_wallet" ? <input data-testid="repair-target-wallet-id" value={repairTargetWalletId} onChange={(e) => setRepairTargetWalletId(e.target.value)} placeholder="Ziel Wallet ID (nur gleiche canonical user_id)" className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" /> : null}
+                <button data-testid="repair-preview-button" onClick={createRepairPreview} disabled={repairBusy} className="mt-2 w-full rounded-lg bg-amber-300 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{repairBusy ? "Erstellt…" : "Repair Preview erstellen"}</button>
+
+                {repairPreview ? (
+                  <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3" data-testid="repair-approval-modal">
+                    <p className="text-[11px] font-bold text-white">Confirmation Required</p>
+                    <p className="mt-1 text-[10px] text-white/60">Action: {repairPreview.action_type}</p>
+                    <p className="text-[10px] text-white/60">Before users.balance: €{Number(repairPreview.before_users_balance || 0).toFixed(2)}</p>
+                    <p className="text-[10px] text-white/60">Before wallets.balance: €{Number(repairPreview.before_wallets_balance || 0).toFixed(2)}</p>
+                    <p className="text-[10px] text-white/60">After users.balance: €{Number(repairPreview.after_users_balance || 0).toFixed(2)}</p>
+                    <p className="text-[10px] text-white/60">After wallets.balance: €{Number(repairPreview.after_wallets_balance || 0).toFixed(2)}</p>
+                    <div className="mt-2 flex items-center gap-2"><Lock size={12} className="text-white/50" /><p className="text-[10px] text-white/50">Passwort/2FA erforderlich. Keine blinden Reparaturen.</p></div>
+                    <input data-testid="repair-approval-password" type="password" value={approvalPassword} onChange={(e) => setApprovalPassword(e.target.value)} placeholder="Admin Passwort" className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                    <div className="mt-2 flex gap-2">
+                      <input data-testid="repair-approval-otp" value={approvalOtp} onChange={(e) => setApprovalOtp(e.target.value)} placeholder="2FA Code falls aktiv" className="flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                      <button data-testid="repair-request-otp" onClick={requestRepairOtp} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-white">2FA senden</button>
+                    </div>
+                    <button data-testid="repair-approve-button" onClick={approveRepair} disabled={repairBusy} className="mt-2 w-full rounded-lg bg-cyan-400 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{repairBusy ? "Bestätigt…" : "Repair bestätigen"}</button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
+        </div>
+
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4" data-testid="repair-history-page-card">
+          <div className="flex items-center gap-2"><History size={14} className="text-white/70" /><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">Repair History</p></div>
+          <div className="mt-3 space-y-2 max-h-[240px] overflow-y-auto">
+            {repairHistory.slice(0, 10).map((item, idx) => (
+              <div key={`${item.repair_id}-${idx}`} className="rounded-xl border border-white/8 bg-black/20 px-3 py-2" data-testid={`repair-history-item-${idx}`}>
+                <p className="text-[11px] font-semibold text-white">{item.action_type}</p>
+                <p className="text-[10px] text-white/45">{item.user_id} · {item.status}</p>
+                <p className="text-[10px] text-white/35">approved_by: {item.approved_by || '—'} · {item.approved_at ? fmtDateTime(item.approved_at) : 'pending'}</p>
+              </div>
+            ))}
+            {!repairHistory.length ? <p className="text-[11px] text-white/35">Noch keine Repair-Aktionen protokolliert.</p> : null}
+          </div>
         </div>
       </div>
       </div>

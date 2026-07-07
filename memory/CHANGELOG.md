@@ -636,3 +636,10 @@
 - Neue APIs für Dashboard, History, Review und Final Report ergänzt.
 - Frontend-Smoke-Test PASS, Backend-Smoke-Test PASS.
 - **AUTOMATIC CHANGES PERFORMED: NO**
+
+## 07.07.2026 — Controlled Manual Wallet Repair (Phase 5)
+- Manual-Repair-Workflow mit Repair Preview, Approval-Step-up, Repair History und Audit-Logs ergänzt.
+- `wallet_repair_actions`-Records werden erstellt und erst nach Admin-Freigabe ausgeführt.
+- Schutzregeln aktiv: kein Zero-Reset, kein Hidden Overwrite, keine Reparatur ohne Grund, kein unsicherer Merge.
+- Adjustment-Reparaturen laufen ausschließlich über die Wallet Engine und erzeugen Ledger-Einträge.
+- Tests grün: `test_iter212_manual_wallet_repair.py` 8/8 PASS.
