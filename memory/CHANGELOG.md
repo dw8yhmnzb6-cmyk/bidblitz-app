@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Mobility Premium Live-Tracking für Shuttle/VIP
+- `backend/routes/mobility_platform.py`: Premium-Tracking für `airport_shuttle` und `vip` vertieft. Neues Payload-Modell mit `vehicle_phase`, `approach_progress_percent`, `trip_progress_percent`, `checkpoints`, `shuttle_stops`, `assigned_resource.approach_position` und `assigned_resource.trip_position`.
+- Neue Helper `live_progress_profile` direkt bei Buchung/Rebook/Checkout gespeichert, damit Shuttle/VIP mit realistischerer Anfahrt-/Trip-Progression laufen.
+- `frontend/src/pages/MobilityBookingTrackingPage.jsx`: Premium-spezifische Live-Tracking-Karten, Checkpoint-/Stop-Darstellung, Map-Overlay-Marker und erweiterte Route-/Checkpoint-Liste ergänzt.
+- Verifiziert: JS-Lint PASS, Python-Lint PASS, Build PASS, API-Self-Test PASS, Browser-Smoke PASS, Testing-Agent Iteration 200 PASS. Keine MOCKED APIs.
+
 ## 07.07.2026 — Move & Earn ROI v2: echte Commerce-/Merchant-Conversions gekoppelt
 - `backend/routes/move_earn.py`: `GET /api/admin/move/stats` aggregiert jetzt echte Umsatz-/Conversion-Signale aus `marketplace_orders`, `commerce_orders` und `pos_sales`.
 - Neue ROI-v2-Kennzahlen: `conversion_orders`, `conversion_gmv_eur`, `conversion_platform_revenue_eur`, `attributed_conversion_orders`, `attributed_conversion_gmv_eur`, `attributed_conversion_revenue_eur`, `attributed_conversion_buyers`, `conversion_rate_mau_pct`, `cost_per_conversion`, `cost_per_attributed_buyer`, `revenue_per_reward_eur`, `gmv_per_reward_eur`, `sponsored_conversion_orders`, `sponsored_reward_impact`.
