@@ -26,6 +26,7 @@ import {
   AdminCarRentalPage, AdminDisputesPage,
 } from "./modules/car-rental/pages";
 import BottomNav from "./components/BottomNav";
+import ActiveAccountBanner from "./components/ActiveAccountBanner";
 import BarcodeModal from "./components/BarcodeModal";
 import AuthGateOverlay from "./components/AuthGateOverlay";
 import DemoBanner from "./components/DemoBanner";
@@ -1168,6 +1169,9 @@ function AppContent() {
             </div>
           }>
             {showBackToHome && <BackToHomeBar onHome={() => handleNavigate("/")} />}
+            {user.isAuthenticated && !isDemoMode && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && (
+              <ActiveAccountBanner />
+            )}
             {renderPage()}
           </Suspense>
         </motion.div>
