@@ -8,6 +8,7 @@ Endpoints (admin-only):
 - POST /api/admin/wallet/self-topup      → quick self-topup for admin
 - GET  /api/admin/wallet/transactions    → list admin-initiated transactions
 """
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -83,6 +84,182 @@ def _recommended_repair(users_balance: float, wallets_balance: float, tx_sum: fl
     if abs(delta) >= 0.01:
         return "Visible Wallet bei users.balance belassen; Legacy wallets/ledger manuell prüfen und später gezielt reconciliieren."
     return "Ledger-Differenz prüfen; keine automatische Korrektur ohne manuelle Freigabe."
+
+
+def _risk_band(delta: float, ledger_gap: float) -> str:
+    score = max(abs(delta), abs(ledger_gap))
+    if score < 0.01:
+        return "green"
+    if score < 10:
+        return "yellow"
+    if score < 250:
+        return "orange"
+    return "red"
+
+
+def _confidence_score(users_balance: float, wallets_balance: float, tx_sum: float, wallet_tx_sum: float) -> int:
+    score = 100
+    delta = abs(round(users_balance - wallets_balance, 2))
+    ledger_gap = abs(round(users_balance - (tx_sum + wallet_tx_sum), 2))
+    if delta >= 0.01:
+        score -= min(45, int(delta // 5) + 15)
+    if ledger_gap >= 0.01:
+        score -= min(40, int(ledger_gap // 5) + 10)
+    if wallets_balance == 0 and users_balance > 0:
+        score -= 10
+    return max(5, min(100, score))
+
+
+def _recommended_action(users_balance: float, wallets_balance: float, tx_sum: float, wallet_tx_sum: float, duplicate_flags: list[str]) -> str:
+    delta = round(users_balance - wallets_balance, 2)
+    ledger_gap = round(users_balance - (tx_sum + wallet_tx_sum), 2)
+    if duplicate_flags:
+        if any(flag in {"duplicate_wallet", "duplicate_email", "duplicate_canonical_user"} for flag in duplicate_flags):
+            return "Manual review"
+        if "duplicate_admin_alias" in duplicate_flags:
+            return "Ignore legacy wallet"
+    if abs(delta) < 0.01 and abs(ledger_gap) < 0.01:
+        return "No action"
+    if wallets_balance == 0 and users_balance > 0:
+        return "Ignore legacy wallet"
+    if abs(ledger_gap) > abs(delta) and abs(ledger_gap) >= 25:
+        return "Rebuild from ledger"
+    if abs(delta) >= 250:
+        return "Manual review"
+    if abs(delta) >= 10:
+        return "Investigate"
+    return "Investigate"
+
+
+def _expected_balance(users_balance: float, wallets_balance: float, tx_sum: float, wallet_tx_sum: float) -> float:
+    ledger_total = round(tx_sum + wallet_tx_sum, 2)
+    if abs(users_balance - ledger_total) <= abs(wallets_balance - ledger_total):
+        return ledger_total
+    return users_balance
+
+
+async def _build_reconciliation_rows(query: dict, limit: int):
+    cap = min(max(limit, 1), 500)
+    users = await db.users.find(
+        query,
+        {
+            "_id": 1,
+            "email": 1,
+            "canonical_email": 1,
+            "email_aliases": 1,
+            "role": 1,
+            "balance": 1,
+            "user_number": 1,
+            "created_at": 1,
+        },
+    ).sort("created_at", -1).limit(cap).to_list(cap)
+
+    email_counts = defaultdict(int)
+    canonical_counts = defaultdict(int)
+    for user in users:
+        email_counts[(user.get("email") or "").strip().lower()] += 1
+        canonical_counts[(user.get("canonical_email") or user.get("email") or "").strip().lower()] += 1
+
+    wallet_docs = await db.wallets.find({}, {"_id": 0, "user_id": 1, "balance": 1, "currency": 1}).to_list(5000)
+    wallet_count_by_user = defaultdict(int)
+    for wallet in wallet_docs:
+        if wallet.get("user_id"):
+            wallet_count_by_user[wallet["user_id"]] += 1
+
+    rows = []
+    mismatch_count = 0
+    healthy_count = 0
+    duplicate_wallets = 0
+    duplicate_users = 0
+    critical_cases = 0
+    legacy_wallets = 0
+
+    for user in users:
+        uid = str(user["_id"])
+        wallet_doc = await db.wallets.find_one({"user_id": uid}, {"_id": 0, "balance": 1, "currency": 1}) or {}
+        tx_rows = await db.transactions.find({"user_id": uid}, {"_id": 0, "amount": 1, "status": 1, "type": 1}).to_list(5000)
+        wallet_tx_rows = await db.wallet_transactions.find({"user_id": uid}, {"_id": 0, "amount": 1, "type": 1}).to_list(5000)
+
+        users_balance = round(float(user.get("balance", 0) or 0), 2)
+        wallets_balance = round(float(wallet_doc.get("balance", 0) or 0), 2)
+        tx_sum = round(sum(float(t.get("amount") or 0) for t in tx_rows if isinstance(t.get("amount"), (int, float)) and t.get("status", "completed") == "completed"), 2)
+        wallet_tx_sum = round(sum(float(t.get("amount") or 0) for t in wallet_tx_rows if isinstance(t.get("amount"), (int, float))), 2)
+        expected_balance = round(_expected_balance(users_balance, wallets_balance, tx_sum, wallet_tx_sum), 2)
+        displayed_balance = users_balance
+        delta = round(displayed_balance - wallets_balance, 2)
+        ledger_gap = round(displayed_balance - (tx_sum + wallet_tx_sum), 2)
+        confidence_score = _confidence_score(users_balance, wallets_balance, tx_sum, wallet_tx_sum)
+        risk_level = _risk_level(users_balance, wallets_balance, tx_sum, wallet_tx_sum)
+        risk_band = _risk_band(delta, ledger_gap)
+
+        duplicate_flags = []
+        email_key = (user.get("email") or "").strip().lower()
+        canonical_key = (user.get("canonical_email") or user.get("email") or "").strip().lower()
+        if email_key and email_counts[email_key] > 1:
+            duplicate_flags.append("duplicate_email")
+        if canonical_key and canonical_counts[canonical_key] > 1:
+            duplicate_flags.append("duplicate_canonical_user")
+        if wallet_count_by_user[uid] > 1:
+            duplicate_flags.append("duplicate_wallet")
+        if user.get("role") == "admin" and email_key in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
+            duplicate_flags.append("duplicate_admin_alias")
+
+        recommended_action = _recommended_action(users_balance, wallets_balance, tx_sum, wallet_tx_sum, duplicate_flags)
+        recommended_repair = _recommended_repair(users_balance, wallets_balance, tx_sum, wallet_tx_sum)
+
+        if abs(delta) >= 0.01:
+            mismatch_count += 1
+        else:
+            healthy_count += 1
+        if wallet_count_by_user[uid] > 1:
+            duplicate_wallets += 1
+        if any(flag in {"duplicate_email", "duplicate_canonical_user", "duplicate_admin_alias"} for flag in duplicate_flags):
+            duplicate_users += 1
+        if risk_band == "red":
+            critical_cases += 1
+        if wallets_balance != 0 and displayed_balance != wallets_balance:
+            legacy_wallets += 1
+
+        rows.append({
+            "user_id": uid,
+            "email": user.get("email", ""),
+            "canonical_email": user.get("canonical_email") or user.get("email", ""),
+            "role": user.get("role", "user"),
+            "user_number": user.get("user_number", ""),
+            "users_balance": users_balance,
+            "wallets_balance": wallets_balance,
+            "transactions_sum": tx_sum,
+            "wallet_transactions_sum": wallet_tx_sum,
+            "expected_balance": expected_balance,
+            "displayed_balance": displayed_balance,
+            "delta": delta,
+            "ledger_gap": ledger_gap,
+            "confidence_score": confidence_score,
+            "risk_level": risk_level,
+            "risk_band": risk_band,
+            "recommended_action": recommended_action,
+            "recommended_repair": recommended_repair,
+            "duplicate_flags": duplicate_flags,
+            "wallet_exists": bool(wallet_doc),
+            "wallet_count": wallet_count_by_user[uid],
+            "legacy_wallet": wallets_balance != 0 and displayed_balance != wallets_balance,
+            "pending_reconciliation": abs(delta) >= 0.01 or bool(duplicate_flags),
+        })
+
+    rows.sort(key=lambda row: (row["risk_band"] != "red", -abs(row["delta"]), row["confidence_score"]))
+    summary = {
+        "total_wallets": len(rows),
+        "healthy_wallets": healthy_count,
+        "mismatched_wallets": mismatch_count,
+        "duplicate_wallets": duplicate_wallets,
+        "duplicate_users": duplicate_users,
+        "critical_cases": critical_cases,
+        "legacy_wallets": legacy_wallets,
+        "pending_reconciliation": sum(1 for row in rows if row["pending_reconciliation"]),
+        "last_reconciliation_run": datetime.now(timezone.utc).isoformat(),
+        "automatic_changes_performed": "NO",
+    }
+    return rows, summary
 
 
 @router.get("/users")
@@ -386,48 +563,142 @@ async def reconciliation_overview(request: Request, q: str = "", limit: int = 50
             ]
         }
 
-    cap = min(max(limit, 1), 200)
-    users = await db.users.find(
-        query,
-        {"_id": 1, "email": 1, "canonical_email": 1, "role": 1, "balance": 1, "user_number": 1},
-    ).sort("created_at", -1).limit(cap).to_list(cap)
-
-    rows = []
-    mismatch_count = 0
-    for user in users:
-        uid = str(user["_id"])
-        wallet_doc = await db.wallets.find_one({"user_id": uid}, {"_id": 0, "balance": 1}) or {}
-        tx_rows = await db.transactions.find({"user_id": uid}, {"_id": 0, "amount": 1, "status": 1}).to_list(5000)
-        wallet_tx_rows = await db.wallet_transactions.find({"user_id": uid}, {"_id": 0, "amount": 1}).to_list(5000)
-
-        users_balance = round(float(user.get("balance", 0) or 0), 2)
-        wallets_balance = round(float(wallet_doc.get("balance", 0) or 0), 2)
-        tx_sum = round(sum(float(t.get("amount") or 0) for t in tx_rows if isinstance(t.get("amount"), (int, float)) and t.get("status", "completed") == "completed"), 2)
-        wallet_tx_sum = round(sum(float(t.get("amount") or 0) for t in wallet_tx_rows if isinstance(t.get("amount"), (int, float))), 2)
-        delta = round(users_balance - wallets_balance, 2)
-        if abs(delta) >= 0.01:
-            mismatch_count += 1
-
-        rows.append({
-            "user_id": uid,
-            "email": user.get("email", ""),
-            "canonical_email": user.get("canonical_email") or user.get("email", ""),
-            "role": user.get("role", "user"),
-            "user_number": user.get("user_number", ""),
-            "users_balance": users_balance,
-            "wallets_balance": wallets_balance,
-            "transactions_sum": tx_sum,
-            "wallet_transactions_sum": wallet_tx_sum,
-            "delta": delta,
-            "recommended_repair": _recommended_repair(users_balance, wallets_balance, tx_sum, wallet_tx_sum),
-            "risk_level": _risk_level(users_balance, wallets_balance, tx_sum, wallet_tx_sum),
-        })
-
-    rows.sort(key=lambda row: abs(row["delta"]), reverse=True)
+    rows, summary = await _build_reconciliation_rows(query, limit)
     return {
         "rows": rows,
         "count": len(rows),
-        "mismatch_count": mismatch_count,
+        "mismatch_count": summary["mismatched_wallets"],
         "canonical_visible_source": "users.balance",
         "note": "Read-only forensic view. No balances were modified.",
+        "summary": summary,
+    }
+
+
+@router.get("/reconciliation/dashboard")
+async def reconciliation_dashboard(request: Request):
+    await _require_admin(request)
+    rows, summary = await _build_reconciliation_rows({}, 500)
+
+    queue_items = []
+    for row in rows:
+        if row["pending_reconciliation"]:
+            queue_items.append({
+                "user_id": row["user_id"],
+                "email": row["email"],
+                "risk_band": row["risk_band"],
+                "recommended_action": row["recommended_action"],
+                "delta": row["delta"],
+                "status": "pending_review",
+            })
+
+    duplicate_groups = {
+        "duplicate_email": [row for row in rows if "duplicate_email" in row["duplicate_flags"]],
+        "duplicate_wallet": [row for row in rows if "duplicate_wallet" in row["duplicate_flags"]],
+        "duplicate_canonical_user": [row for row in rows if "duplicate_canonical_user" in row["duplicate_flags"]],
+        "duplicate_admin_alias": [row for row in rows if "duplicate_admin_alias" in row["duplicate_flags"]],
+    }
+
+    return {
+        "summary": summary,
+        "dashboard": {
+            "healthy_wallets": summary["healthy_wallets"],
+            "needs_review": summary["pending_reconciliation"],
+            "critical": summary["critical_cases"],
+            "duplicate_users": summary["duplicate_users"],
+            "legacy_wallets": summary["legacy_wallets"],
+        },
+        "queue": queue_items[:100],
+        "duplicate_groups": {key: [{"user_id": row["user_id"], "email": row["email"], "canonical_email": row["canonical_email"], "wallet_count": row["wallet_count"]} for row in value[:100]] for key, value in duplicate_groups.items()},
+        "automatic_changes_performed": "NO",
+        "ready_for_manual_reconciliation": True,
+        "note": "Read-only dashboard. Manual approvals required for every future repair.",
+    }
+
+
+@router.get("/reconciliation/history/{user_id}")
+async def reconciliation_history(request: Request, user_id: str):
+    await _require_admin(request)
+
+    target = await db.users.find_one({"_id": ObjectId(user_id)}, {"_id": 1, "email": 1, "canonical_email": 1, "balance": 1, "balance_blz": 1, "role": 1})
+    if not target:
+        raise HTTPException(404, "User nicht gefunden.")
+
+    uid = str(target["_id"])
+    ledger = await db.transactions.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+    wallet_history = await db.wallet_transactions.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+    payment_history = [row for row in ledger if row.get("type") in {"payment", "merchant_payment", "merchant_payment_received", "transfer", "topup"}]
+    refund_history = [row for row in ledger if row.get("type") == "refund"]
+    cashback_history = [row for row in ledger if row.get("type") in {"reward", "reward_wallet_credit", "cashback"}]
+    adjustment_history = [row for row in ledger if str(row.get("type", "")).startswith("admin_") or row.get("metadata", {}).get("admin_id")]
+    reviews = await db.wallet_reconciliation_reviews.find({"user_id": uid}, {"_id": 0}).sort("timestamp", -1).limit(200).to_list(200)
+
+    return {
+        "user": {
+            "user_id": uid,
+            "email": target.get("email", ""),
+            "canonical_email": target.get("canonical_email") or target.get("email", ""),
+            "role": target.get("role", "user"),
+            "users_balance": round(float(target.get("balance", 0) or 0), 2),
+            "balance_blz": round(float(target.get("balance_blz", 0) or 0), 2),
+        },
+        "complete_ledger": ledger,
+        "complete_transaction_history": ledger,
+        "wallet_transaction_history": wallet_history,
+        "adjustment_history": adjustment_history,
+        "payment_history": payment_history,
+        "refund_history": refund_history,
+        "cashback_history": cashback_history,
+        "review_history": reviews,
+        "note": "Read-only history viewer. No balances or transactions modified.",
+    }
+
+
+class ReconciliationReviewReq(BaseModel):
+    user_id: str
+    reason: str = Field(..., min_length=3, max_length=400)
+    result: str = Field(..., min_length=2, max_length=120)
+
+
+@router.post("/reconciliation/review")
+async def create_reconciliation_review(req: ReconciliationReviewReq, request: Request):
+    reviewer = await _require_admin(request)
+    doc = {
+        "review_id": f"WRV-{ObjectId()}"[-12:],
+        "user_id": req.user_id,
+        "reviewer": reviewer.get("email", "admin@bidblitz.ae"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "reason": req.reason,
+        "result": req.result,
+        "queue_status": "pending_manual_repair",
+    }
+    await db.wallet_reconciliation_reviews.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "review": doc, "automatic_changes_performed": "NO"}
+
+
+@router.get("/reconciliation/final-report")
+async def reconciliation_final_report(request: Request):
+    await _require_admin(request)
+    rows, summary = await _build_reconciliation_rows({}, 500)
+    return {
+        "wallets_analysed": summary["total_wallets"],
+        "wallets_healthy": summary["healthy_wallets"],
+        "wallets_mismatched": summary["mismatched_wallets"],
+        "duplicate_wallets": summary["duplicate_wallets"],
+        "duplicate_users": summary["duplicate_users"],
+        "critical_cases": summary["critical_cases"],
+        "automatic_changes_performed": "NO",
+        "ready_for_manual_reconciliation": True,
+        "last_reconciliation_run": summary["last_reconciliation_run"],
+        "note": "Read-only banking-style reconciliation prepared. No balances modified automatically.",
+        "top_cases": [
+            {
+                "user_id": row["user_id"],
+                "email": row["email"],
+                "delta": row["delta"],
+                "risk_band": row["risk_band"],
+                "recommended_action": row["recommended_action"],
+            }
+            for row in rows[:25]
+        ],
     }

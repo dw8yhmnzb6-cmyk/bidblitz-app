@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import {
   ChevronLeft, Search, Plus, Minus, Wallet, User as UserIcon,
   Loader2, Check, History, X, Shield, Send, Zap,
+  AlertTriangle, ClipboardList, Eye,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -504,14 +505,23 @@ const ReconciliationTab = () => {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({ count: 0, mismatch_count: 0 });
+  const [summary, setSummary] = useState({ total_wallets: 0, healthy_wallets: 0, mismatched_wallets: 0, duplicate_wallets: 0, pending_reconciliation: 0, last_reconciliation_run: null });
+  const [dashboard, setDashboard] = useState(null);
+  const [selectedHistory, setSelectedHistory] = useState(null);
+  const [reviewReason, setReviewReason] = useState("");
+  const [reviewResult, setReviewResult] = useState("Manual review");
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   const load = useCallback(async (q = "") => {
     setLoading(true);
     try {
-      const res = await api(`/api/admin/wallet/reconciliation?q=${encodeURIComponent(q)}&limit=80`);
+      const [res, dash] = await Promise.all([
+        api(`/api/admin/wallet/reconciliation?q=${encodeURIComponent(q)}&limit=80`),
+        api(`/api/admin/wallet/reconciliation/dashboard`),
+      ]);
       setRows(res.rows || []);
-      setSummary({ count: Number(res.count || 0), mismatch_count: Number(res.mismatch_count || 0) });
+      setSummary(res.summary || {});
+      setDashboard(dash || null);
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -524,15 +534,84 @@ const ReconciliationTab = () => {
     return () => clearTimeout(t);
   }, [query, load]);
 
+  const openHistory = async (userId) => {
+    try {
+      const res = await api(`/api/admin/wallet/reconciliation/history/${userId}`);
+      setSelectedHistory(res);
+      setReviewReason("");
+      setReviewResult("Manual review");
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const saveReview = async () => {
+    if (!selectedHistory?.user?.user_id) return toast.error("Kein Wallet ausgewählt");
+    if (!reviewReason.trim()) return toast.error("Bitte Grund angeben");
+    setReviewBusy(true);
+    try {
+      await api(`/api/admin/wallet/reconciliation/review`, {
+        method: "POST",
+        body: JSON.stringify({ user_id: selectedHistory.user.user_id, reason: reviewReason, result: reviewResult }),
+      });
+      toast.success("Review in Queue gespeichert. Keine automatische Korrektur ausgeführt.");
+      await load(query);
+      const refreshed = await api(`/api/admin/wallet/reconciliation/history/${selectedHistory.user.user_id}`);
+      setSelectedHistory(refreshed);
+      setReviewReason("");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setReviewBusy(false);
+    }
+  };
+
+  const riskStyle = (band) => {
+    if (band === "red") return { bg: "rgba(239,68,68,0.18)", fg: "#f87171", label: "Critical" };
+    if (band === "orange") return { bg: "rgba(249,115,22,0.18)", fg: "#fb923c", label: "Large mismatch" };
+    if (band === "yellow") return { bg: "rgba(245,158,11,0.18)", fg: "#fbbf24", label: "Small mismatch" };
+    return { bg: "rgba(16,185,129,0.18)", fg: "#34d399", label: "No mismatch" };
+  };
+
   return (
     <div className="space-y-4" data-testid="wallet-reconciliation-tab">
-      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/80 font-bold">Read-only Reconciliation</p>
-        <div className="mt-3 flex flex-wrap gap-3 text-sm text-white/80">
-          <span data-testid="reconciliation-total-users">User geprüft: {summary.count}</span>
-          <span data-testid="reconciliation-mismatch-users">Abweichungen: {summary.mismatch_count}</span>
+      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4" data-testid="wallet-reconciliation-center-header">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/80 font-bold">Wallet Reconciliation Center</p>
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+          <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="reconciliation-total-wallets"><p className="text-[10px] text-white/35">Total wallets</p><p className="mt-1 text-lg font-bold text-white">{Number(summary.total_wallets || 0)}</p></div>
+          <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid="reconciliation-healthy-wallets"><p className="text-[10px] text-emerald-200/60">Healthy wallets</p><p className="mt-1 text-lg font-bold text-emerald-300">{Number(summary.healthy_wallets || 0)}</p></div>
+          <div className="rounded-xl border border-amber-400/10 bg-amber-400/5 p-3" data-testid="reconciliation-mismatched-wallets"><p className="text-[10px] text-amber-200/60">Mismatched wallets</p><p className="mt-1 text-lg font-bold text-amber-300">{Number(summary.mismatched_wallets || 0)}</p></div>
+          <div className="rounded-xl border border-red-400/10 bg-red-400/5 p-3" data-testid="reconciliation-critical-cases"><p className="text-[10px] text-red-200/60">Critical</p><p className="mt-1 text-lg font-bold text-red-300">{Number(summary.critical_cases || 0)}</p></div>
+          <div className="rounded-xl border border-fuchsia-400/10 bg-fuchsia-400/5 p-3" data-testid="reconciliation-duplicate-wallets"><p className="text-[10px] text-fuchsia-200/60">Duplicate wallets</p><p className="mt-1 text-lg font-bold text-fuchsia-300">{Number(summary.duplicate_wallets || 0)}</p></div>
+          <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-3" data-testid="reconciliation-pending-queue"><p className="text-[10px] text-cyan-200/60">Pending reconciliation</p><p className="mt-1 text-lg font-bold text-cyan-300">{Number(summary.pending_reconciliation || 0)}</p></div>
         </div>
+        <p className="mt-3 text-[10px] text-white/45" data-testid="reconciliation-last-run">Last reconciliation run: {summary.last_reconciliation_run ? fmtDateTime(summary.last_reconciliation_run) : "—"}</p>
       </div>
+
+      {dashboard ? (
+        <div className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4" data-testid="reconciliation-dashboard-card">
+            <div className="flex items-center gap-2"><ClipboardList size={14} className="text-cyan-300" /><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">Dashboard</p></div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-5">
+              <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">Healthy Wallets</p><p className="mt-1 font-bold text-white">{dashboard.dashboard?.healthy_wallets || 0}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">Needs Review</p><p className="mt-1 font-bold text-white">{dashboard.dashboard?.needs_review || 0}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">Critical</p><p className="mt-1 font-bold text-white">{dashboard.dashboard?.critical || 0}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">Duplicate Users</p><p className="mt-1 font-bold text-white">{dashboard.dashboard?.duplicate_users || 0}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">Legacy Wallets</p><p className="mt-1 font-bold text-white">{dashboard.dashboard?.legacy_wallets || 0}</p></div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4" data-testid="reconciliation-duplicate-card">
+            <div className="flex items-center gap-2"><AlertTriangle size={14} className="text-fuchsia-300" /><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">Duplicate Detection</p></div>
+            <div className="mt-3 space-y-2 text-[11px] text-white/80">
+              <p data-testid="duplicate-email-count">Duplicate email: {dashboard.duplicate_groups?.duplicate_email?.length || 0}</p>
+              <p data-testid="duplicate-wallet-count">Duplicate wallet: {dashboard.duplicate_groups?.duplicate_wallet?.length || 0}</p>
+              <p data-testid="duplicate-canonical-count">Duplicate canonical user: {dashboard.duplicate_groups?.duplicate_canonical_user?.length || 0}</p>
+              <p data-testid="duplicate-admin-alias-count">Duplicate admin aliases: {dashboard.duplicate_groups?.duplicate_admin_alias?.length || 0}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <input
         data-testid="reconciliation-search-input"
@@ -545,6 +624,7 @@ const ReconciliationTab = () => {
       {loading ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-white/40" /></div> : null}
       {!loading && !rows.length ? <p className="text-center text-white/40 text-[11px] py-10">Keine Reconciliation-Daten gefunden</p> : null}
 
+      <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
       <div className="space-y-3">
         {rows.map((row, index) => (
           <div key={`${row.user_id}-${index}`} data-testid={`reconciliation-row-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
@@ -558,28 +638,93 @@ const ReconciliationTab = () => {
                 data-testid={`reconciliation-risk-${index}`}
                 className="rounded-full px-2 py-1 text-[10px] font-bold uppercase"
                 style={{
-                  background: row.risk_level === "high" ? "rgba(239,68,68,0.18)" : row.risk_level === "medium" ? "rgba(245,158,11,0.18)" : "rgba(16,185,129,0.18)",
-                  color: row.risk_level === "high" ? "#f87171" : row.risk_level === "medium" ? "#fbbf24" : "#34d399",
+                  background: riskStyle(row.risk_band).bg,
+                  color: riskStyle(row.risk_band).fg,
                 }}
               >
-                {row.risk_level}
+                {riskStyle(row.risk_band).label}
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-5">
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4 xl:grid-cols-8">
               <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-users-balance-${index}`}><p className="text-white/35">users.balance</p><p className="mt-1 font-bold text-white">€{Number(row.users_balance || 0).toFixed(2)}</p></div>
               <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-wallets-balance-${index}`}><p className="text-white/35">wallets.balance</p><p className="mt-1 font-bold text-white">€{Number(row.wallets_balance || 0).toFixed(2)}</p></div>
               <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-transactions-sum-${index}`}><p className="text-white/35">transactions Σ</p><p className="mt-1 font-bold text-white">€{Number(row.transactions_sum || 0).toFixed(2)}</p></div>
               <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-wallet-transactions-sum-${index}`}><p className="text-white/35">wallet_tx Σ</p><p className="mt-1 font-bold text-white">€{Number(row.wallet_transactions_sum || 0).toFixed(2)}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-expected-balance-${index}`}><p className="text-white/35">expected balance</p><p className="mt-1 font-bold text-white">€{Number(row.expected_balance || 0).toFixed(2)}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-displayed-balance-${index}`}><p className="text-white/35">displayed balance</p><p className="mt-1 font-bold text-white">€{Number(row.displayed_balance || 0).toFixed(2)}</p></div>
               <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-delta-${index}`}><p className="text-white/35">Delta</p><p className="mt-1 font-bold text-white">€{Number(row.delta || 0).toFixed(2)}</p></div>
+              <div className="rounded-xl border border-white/6 bg-black/20 p-2" data-testid={`reconciliation-confidence-${index}`}><p className="text-white/35">confidence score</p><p className="mt-1 font-bold text-white">{Number(row.confidence_score || 0)}%</p></div>
             </div>
 
-            <div className="mt-3 rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-3" data-testid={`reconciliation-recommendation-${index}`}>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-bold">Empfohlene Reparatur</p>
-              <p className="mt-1 text-[11px] text-white/80">{row.recommended_repair}</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+              <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-3" data-testid={`reconciliation-recommendation-${index}`}>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-bold">Recommended Action</p>
+                <p className="mt-1 text-[11px] font-semibold text-white">{row.recommended_action}</p>
+                <p className="mt-1 text-[11px] text-white/70">{row.recommended_repair}</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button data-testid={`reconciliation-open-history-${index}`} onClick={() => openHistory(row.user_id)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-white hover:bg-white/[0.08] flex items-center gap-2"><Eye size={13} /> History Viewer</button>
+                <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-[10px] text-white/65" data-testid={`reconciliation-duplicates-${index}`}>
+                  Duplicate flags: {row.duplicate_flags?.length ? row.duplicate_flags.join(", ") : "none"}
+                </div>
+              </div>
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4" data-testid="reconciliation-repair-queue-card">
+          <div className="flex items-center gap-2"><ClipboardList size={14} className="text-white/70" /><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">Repair Queue</p></div>
+          <p className="mt-2 text-[11px] text-white/55">Jede spätere Reparatur braucht manuelle Freigabe. In dieser Phase werden nur Reviews protokolliert.</p>
+          <div className="mt-3 space-y-2">
+            {(dashboard?.queue || []).slice(0, 8).map((item, idx) => (
+              <div key={`${item.user_id}-${idx}`} className="rounded-xl border border-white/8 bg-black/20 px-3 py-2" data-testid={`repair-queue-item-${idx}`}>
+                <p className="text-[11px] font-semibold text-white truncate">{item.email}</p>
+                <p className="text-[10px] text-white/45">{item.recommended_action} · {item.risk_band} · Δ €{Number(item.delta || 0).toFixed(2)}</p>
+              </div>
+            ))}
+            {!dashboard?.queue?.length ? <p className="text-[11px] text-white/35">Keine Queue-Einträge.</p> : null}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4" data-testid="reconciliation-history-viewer-card">
+          <div className="flex items-center gap-2"><History size={14} className="text-white/70" /><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">History Viewer</p></div>
+          {!selectedHistory ? <p className="mt-3 text-[11px] text-white/40">Wähle links ein Wallet, um komplettes Ledger, Payment-, Refund-, Cashback- und Adjustment-Historie read-only zu prüfen.</p> : (
+            <div className="mt-3 space-y-3">
+              <div className="rounded-xl border border-white/8 bg-black/20 p-3">
+                <p className="text-[12px] font-bold text-white">{selectedHistory.user?.email}</p>
+                <p className="text-[10px] text-white/45 break-all">{selectedHistory.user?.user_id}</p>
+                <p className="mt-1 text-[10px] text-white/65">users.balance: €{Number(selectedHistory.user?.users_balance || 0).toFixed(2)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">Complete ledger</p><p className="mt-1 font-bold text-white">{selectedHistory.complete_ledger?.length || 0}</p></div>
+                <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">wallet tx</p><p className="mt-1 font-bold text-white">{selectedHistory.wallet_transaction_history?.length || 0}</p></div>
+                <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">payment history</p><p className="mt-1 font-bold text-white">{selectedHistory.payment_history?.length || 0}</p></div>
+                <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">refund history</p><p className="mt-1 font-bold text-white">{selectedHistory.refund_history?.length || 0}</p></div>
+                <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">cashback history</p><p className="mt-1 font-bold text-white">{selectedHistory.cashback_history?.length || 0}</p></div>
+                <div className="rounded-xl border border-white/6 bg-black/20 p-3"><p className="text-white/35">adjustment history</p><p className="mt-1 font-bold text-white">{selectedHistory.adjustment_history?.length || 0}</p></div>
+              </div>
+
+              <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300/70 font-bold">Audit Review</p>
+                <input data-testid="reconciliation-review-reason" value={reviewReason} onChange={(e) => setReviewReason(e.target.value)} placeholder="Grund für Review / Queue-Eintrag" className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                <select data-testid="reconciliation-review-result" value={reviewResult} onChange={(e) => setReviewResult(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none">
+                  <option>Manual review</option>
+                  <option>Investigate</option>
+                  <option>Merge</option>
+                  <option>Rebuild from ledger</option>
+                  <option>Ignore legacy wallet</option>
+                  <option>No action</option>
+                </select>
+                <button data-testid="reconciliation-save-review" onClick={saveReview} disabled={reviewBusy} className="mt-2 w-full rounded-lg bg-cyan-400 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{reviewBusy ? "Speichert…" : "Review in Queue speichern"}</button>
+                <p className="mt-2 text-[10px] text-white/50">Reviewer, Timestamp, Reason und Result werden auditierbar gespeichert. Keine automatische Finanzkorrektur.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       </div>
     </div>
   );
@@ -611,7 +756,7 @@ const AdminWalletPage = ({ onBack }) => {
         </motion.button>
         <div className="flex-1">
           <p className="text-[11px] text-white/50 uppercase tracking-[0.2em] font-bold">Admin</p>
-          <p className="text-[16px] font-bold flex items-center gap-2"><Wallet size={16} className="text-[#00C2FF]" /> Wallet-Tool</p>
+          <p className="text-[16px] font-bold flex items-center gap-2"><Wallet size={16} className="text-[#00C2FF]" /> Wallet Reconciliation Center</p>
         </div>
         <Shield size={16} className="text-[#FFD700]" />
       </div>

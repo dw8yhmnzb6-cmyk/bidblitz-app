@@ -629,3 +629,10 @@
 - Zentrale Wallet-Engine für Top-up, Payment, Send, Admin Refund, Reward EUR, Merchant Payment und POS Security Flows erweitert.
 - Ledger-Metadaten + Idempotenz in Engine und Requests ergänzt; doppelte Requests buchen EUR nur einmal.
 - Tests grün: lokale Wallet-Regression 19/19 PASS, `testing_agent` Iteration 211 PASS, Frontend 100%.
+
+## 07.07.2026 — Wallet Reconciliation Center (Phase 4, read-only)
+- Neues Wallet Reconciliation Center im Admin-Wallet-Bereich gebaut.
+- Dashboard, Duplicate Detection, Repair Queue, History Viewer und Audit Review live — alles read-only bzw. review-only.
+- Neue APIs für Dashboard, History, Review und Final Report ergänzt.
+- Frontend-Smoke-Test PASS, Backend-Smoke-Test PASS.
+- **AUTOMATIC CHANGES PERFORMED: NO**

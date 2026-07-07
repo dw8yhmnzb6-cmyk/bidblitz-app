@@ -1505,3 +1505,69 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - Testing-Agent Iteration 211 PASS (Backend 100%, Frontend 100%)
   - Keine MOCKS im Wallet-Härtungsflow
 - Wichtiger Betriebsvermerk: Während lokaler/vernetzter Tests wurden auditable Testbuchungen erzeugt und anschließend gezielt kompensiert. Kanonischer Admin-Endstand wiederhergestellt auf `2622000000.00 EUR / 0 BLZ`.
+
+
+## Update 2026-07-07 — Phase 4 Safe Wallet Reconciliation (Read-only)
+- Neues **Wallet Reconciliation Center** im Admin-Wallet-Bereich aufgebaut — read-only, keine automatische Finanzkorrektur.
+- Banking-ähnliche Dashboard-Metriken live:
+  - Total wallets
+  - Healthy wallets
+  - Mismatched wallets
+  - Duplicate wallets
+  - Pending reconciliation
+  - Last reconciliation run
+- Pro Wallet werden jetzt berechnet und angezeigt:
+  - `users.balance`
+  - `wallets.balance`
+  - `transactions total`
+  - `wallet_transactions total`
+  - `expected balance`
+  - `displayed balance`
+  - `delta`
+  - `confidence score`
+- Risikoklassen umgesetzt:
+  - `green` = no mismatch
+  - `yellow` = small mismatch
+  - `orange` = large mismatch
+  - `red` = critical mismatch
+- Empfehlungssystem nur read-only:
+  - `No action`
+  - `Investigate`
+  - `Merge`
+  - `Manual review`
+  - `Rebuild from ledger`
+  - `Ignore legacy wallet`
+  - Es wird **nichts automatisch ausgeführt**.
+- Duplicate Detection ergänzt und nur berichtend umgesetzt:
+  - duplicate email
+  - duplicate wallet
+  - duplicate canonical user
+  - duplicate admin aliases
+- Neuer History Viewer read-only pro Wallet/User:
+  - complete ledger
+  - complete transaction history
+  - wallet transaction history
+  - adjustment history
+  - payment history
+  - refund history
+  - cashback history
+  - review history
+- Repair Queue read-only vorbereitet:
+  - zukünftige Reparaturen bleiben manuell genehmigungspflichtig
+  - In Phase 4 werden nur Queue-/Review-Einträge gespeichert, keine Finanzänderungen durchgeführt
+- Audit-Review-Protokoll ergänzt:
+  - reviewer
+  - timestamp
+  - reason
+  - result
+  - queue_status
+- Neue APIs:
+  - `GET /api/admin/wallet/reconciliation/dashboard`
+  - `GET /api/admin/wallet/reconciliation/history/{user_id}`
+  - `POST /api/admin/wallet/reconciliation/review`
+  - `GET /api/admin/wallet/reconciliation/final-report`
+- Sichtbarer Final-Report jetzt maschinenlesbar verfügbar; automatische Änderungen bleiben explizit `NO`.
+- Verifikation:
+  - Backend-API Smoke PASS
+  - Frontend-Reconciliation-Center Smoke PASS
+  - Keine Balance-Resets, keine gelöschten Transaktionen, keine Auto-Merges, keine automatische Reconciliation.

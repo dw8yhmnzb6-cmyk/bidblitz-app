@@ -34,7 +34,7 @@
 - ✅ 07.07.2026 Mobility: Premium Live-Tracking für Shuttle/VIP mit Approach-/Trip-Phase, Checkpoints, Shuttle-Stops und Map-Overlays erweitert.
 
 ## P0
-- 🔴 Wallet P0 bleibt aktiv bis Reconciliation-Phase abgeschlossen ist: Bestandsabweichungen zwischen `users.balance`, `wallets.balance`, `transactions` und `wallet_transactions` pro betroffenem User manuell entscheiden und auditierbar korrigieren.
+- 🔴 Wallet P0 bleibt aktiv bis manuelle Reconciliation ausgeführt ist: Bestandsabweichungen zwischen `users.balance`, `wallets.balance`, `transactions` und `wallet_transactions` pro betroffenem User im neuen Reconciliation Center prüfen, reviewen und erst danach gezielt korrigieren.
 - 🔴 Offene Wallet-Härtung nach Phase 3: weitere historische EUR-Geldpfade außerhalb des Kern-Wallet-/POS-/Admin-Bereichs schrittweise auf zentrale Engine migrieren (z. B. Invoicing, Tips, Mobility, Stripe-Webhooks, Merchant/Restaurant/Taxi-Altpfade), ohne Bestandswerte blind anzupassen.
 - 🔴 Store Launch bleibt blockiert, bis Reconciliation für Altbestände und restliche historische EUR-Pfade abgeschlossen sind.
 - Frontend-Routing-Stabilität als Basis für nächste Ausbaustufe verbessert; weiterer Fokus jetzt auf P1-Feature-Ausbau statt monolithischer Routerpflege
