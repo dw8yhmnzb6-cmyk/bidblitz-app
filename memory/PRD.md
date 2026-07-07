@@ -1678,3 +1678,20 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - kein widersprüchlicher zweiter Admin-Name mehr für den kanonischen Admin
   - aktives Konto und Admin-Liste zeigen dieselbe kanonische Identität
 - Teststatus: Backend-Lint PASS, `/api/auth/me` PASS, `/api/admin/customers?role=admin` PASS, Frontend-Smoke PASS.
+
+
+## Update 2026-07-07 — Kunden KYC "Übermittlung fehlgeschlagen" / Altstatus-Fix
+- Gemeldeter Fehler geprüft: In der Admin-Kundenliste erschienen KYC-Zustände irreführend bzw. alte Statuswerte (`verified`, `failed`, `error`) führten zu falscher Darstellung wie „Übermittlung fehlgeschlagen“.
+- Backend-Fix:
+  - `routes/kyc.py` normalisiert KYC-Status zentral (`verified` → `approved`, `failed|error` → `rejected`)
+  - `routes/admin_management.py` normalisiert dieselben Altwerte zusätzlich für `GET /api/admin/customers` und `GET /api/admin/customers/{user_id}`
+  - vorhandene Fehlergründe werden in `kyc_rejection_reason` gespiegelt, falls sie nur in Alt-Feldern lagen
+- Frontend-Fix:
+  - Admin-Kundenliste zeigt jetzt verständliche KYC-Badges statt roher Statuswerte
+  - Customer Detail Modal zeigt zusätzlich eine KYC-Fehlerbox mit Grundtext, wenn vorhanden
+- Wichtiger Datenbefund:
+  - `egzons.sejdiu@gmail.com` existiert aktuell nicht in der DB
+  - geprüft wurde daher gegen reale abgelehnte Testkunden (`iter191.*`) sowie gegen die gesamte Kundenliste
+- Teststatus:
+  - interne Backend-Prüfung: keine rohen `verified|failed|error` Statuswerte mehr in `/api/admin/customers`
+  - Testing-Agent Iteration 212 PASS: Backend 9/9, Frontend 100%

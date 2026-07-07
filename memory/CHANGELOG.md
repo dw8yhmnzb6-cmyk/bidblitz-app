@@ -655,3 +655,16 @@
 - `admin@bidblitz.ae` liefert jetzt konsistent den Namen `BidBlitz Admin` statt gemischter Altwerte wie `Admin Updated` / Merchant-Namen.
 - Aktives-Konto-Banner und Admin-Kundenlisten nutzen damit denselben kanonischen Admin-Namen.
 - Verifiziert per `/api/auth/me`, `/api/admin/customers?role=admin` und Frontend-Smoke-Test.
+
+## 07.07.2026 — Kunden-KYC-Status normalisiert
+- Kundenliste und Kundendetail normalisieren jetzt alte KYC-Statuswerte serverseitig:
+  - `verified` → `approved`
+  - `failed` / `error` → `rejected`
+- Admin-Kundenansicht zeigt lesbare KYC-Labels statt roher Altwerte:
+  - `KYC freigegeben`
+  - `Verifizierung läuft`
+  - `Übermittlung fehlgeschlagen`
+  - `KYC abgelehnt`
+  - `Nicht gestartet`
+- Kundendetail zeigt KYC-Fehlerbox mit Ablehnungs-/Fehlergrund, wenn vorhanden.
+- Testing-Agent Iteration 212 PASS: Backend 9/9, Frontend 100%.
