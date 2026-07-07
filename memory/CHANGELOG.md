@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Sichtbare "Aktives Konto"-Leiste ergänzt
+- `frontend/src/components/ActiveAccountBanner.jsx`: neue sichtbare Identitätsleiste für eingeloggte Nutzer mit aktiver E-Mail, kanonischer E-Mail, Rolle, KYC-Status und Erfolgsstatus **"Erfolgreich angemeldet"**.
+- `frontend/src/App.js`: Banner direkt in den authentifizierten App-Shell-Flow integriert, damit er auf echten Zielseiten sichtbar ist statt nur bei Bottom-Nav-Konstellationen.
+- Verifiziert durch Testing-Agent **Iteration 207 PASS**: Nach Login mit `agimk@me.com` erscheint die Leiste sichtbar mit `agimk@me.com`, `Kanonisch: agimk@me.com` und eindeutigem Auth-/KYC-Status. Keine MOCKED APIs.
+
 ## 07.07.2026 — agimk@me.com Login-Identität intern abgesichert
 - `frontend/src/store/UserContext.jsx`: Login räumt jetzt vorab alte Sessions/Cookies per `logout()` weg und prüft danach strikt, dass `email`, `login_email` und `canonical_email` zur angeforderten Adresse passen. Wird ein anderes Konto zurückgegeben, bricht der Login mit klarer Fehlermeldung ab.
 - `frontend/src/pages/AuthPage.jsx`: alte Auth-Fehler werden vor neuem Login aktiv gelöscht, damit keine veralteten Fehlzustände weiterleben.
