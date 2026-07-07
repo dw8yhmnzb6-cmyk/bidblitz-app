@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Admin-Kundenliste serverseitig professionalisiert
+- `backend/routes/admin_management.py`: `/api/admin/customers`, `/api/admin/customers/{user_id}`, `/api/admin/analytics/online` und `/api/admin/analytics/last-seen` normalisieren Admin-Datensätze jetzt serverseitig über zentrale Helper. Dadurch erscheinen keine separaten Legacy-`.com`-Admins oder Alt-Balances mehr in Admin-Listen/Details.
+- Interne Prüfung bestätigt den echten Speicherort von `agimk@me.com`: User-ID `69cfcda5b193d2b925333e1b`, Rolle `user`, Balance `€20.00`, KYC `pending`, `email_aliases` enthält `afrimk@me.com` und `agimk@me.com`.
+- Verifiziert durch Testing-Agent **Iteration 208 PASS**: Canonical Admin erscheint nur noch als `admin@bidblitz.ae` mit `€2,622,000,000.00 / 0 BLZ`, `admin@bidblitz.com` erscheint nicht separat, `agimk@me.com` ist per Suche auffindbar und öffnet seinen eigenen Record, nicht den eines anderen Kontos. Keine MOCKED APIs.
+
 ## 07.07.2026 — Sichtbare "Aktives Konto"-Leiste ergänzt
 - `frontend/src/components/ActiveAccountBanner.jsx`: neue sichtbare Identitätsleiste für eingeloggte Nutzer mit aktiver E-Mail, kanonischer E-Mail, Rolle, KYC-Status und Erfolgsstatus **"Erfolgreich angemeldet"**.
 - `frontend/src/App.js`: Banner direkt in den authentifizierten App-Shell-Flow integriert, damit er auf echten Zielseiten sichtbar ist statt nur bei Bottom-Nav-Konstellationen.
