@@ -83,31 +83,41 @@ async def list_customers(
 ):
     """Alle Kunden mit Filter und Suche."""
     await _require_admin(request)
-    query = {}
-    if q:
-        query["$or"] = [
-            {"email": {"$regex": q, "$options": "i"}},
-            {"name": {"$regex": q, "$options": "i"}},
-            {"username": {"$regex": q, "$options": "i"}},
+    query = {
+        "$and": [
+            {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
+            {"$or": [{"login_disabled": {"$ne": True}}, {"login_disabled": {"$exists": False}}]},
         ]
+    }
+    if q:
+        query["$and"].append({
+            "$or": [
+                {"email": {"$regex": q, "$options": "i"}},
+                {"canonical_email": {"$regex": q, "$options": "i"}},
+                {"name": {"$regex": q, "$options": "i"}},
+                {"full_name": {"$regex": q, "$options": "i"}},
+                {"username": {"$regex": q, "$options": "i"}},
+            ]
+        })
     if role:
-        query["role"] = role
+        query["$and"].append({"role": role})
     if status == "banned":
-        query["banned"] = True
+        query["$and"].append({"banned": True})
     elif status == "active":
-        query["banned"] = {"$ne": True}
+        query["$and"].append({"banned": {"$ne": True}})
 
     canonical_balance, canonical_blz = await _canonical_admin_balances()
     if role == "admin":
         query = {
             "$and": [
-                query,
                 {"email": "admin@bidblitz.ae"},
                 {"role": "admin"},
                 {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
                 {"$or": [{"login_disabled": {"$ne": True}}, {"login_disabled": {"$exists": False}}]},
             ]
         }
+    elif not query["$and"]:
+        query = {}
 
     total = await db.users.count_documents(query)
     cursor = db.users.find(

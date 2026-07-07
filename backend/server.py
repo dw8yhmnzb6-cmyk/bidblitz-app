@@ -283,7 +283,21 @@ async def seed_admin():
 
         await db.users.update_one(
             {"_id": existing["_id"]},
-            {"$set": updates, "$unset": {"password": ""}},
+            {
+                "$set": {
+                    **updates,
+                    "name": "BidBlitz Admin",
+                    "full_name": "BidBlitz Admin",
+                    "display_name": "BidBlitz Admin",
+                    "business_name": "BidBlitz Admin",
+                    "merchant_business_name": "BidBlitz Admin",
+                },
+                "$unset": {
+                    "password": "",
+                    "admin_balance_note": "",
+                    "admin_balance_set_at": "",
+                },
+            },
         )
         logger.info(f"✓ Admin seed verified: {admin_email}")
     except Exception as e:

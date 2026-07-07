@@ -13,6 +13,7 @@ from core.config import FEES
 from core.rate_limit import limiter, RATE_ADMIN_ACTION
 from core.audit import log_audit, AuditEvent, get_client_info
 from typing import Optional
+from routes.admin_management import _canonical_admin_balances, _normalize_admin_user_row
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -142,12 +143,26 @@ async def overview(request: Request):
 async def list_users(request: Request, search: str = "", limit: int = 50, skip: int = 0):
     await require_admin(request)
 
-    query = {}
+    query = {
+        "$or": [
+            {"is_disabled": {"$ne": True}},
+            {"is_disabled": {"$exists": False}},
+        ]
+    }
     if search:
-        query = {"$or": [
-            {"name": {"$regex": search, "$options": "i"}},
-            {"email": {"$regex": search, "$options": "i"}},
-        ]}
+        query = {
+            "$and": [
+                query,
+                {"$or": [
+                    {"name": {"$regex": search, "$options": "i"}},
+                    {"full_name": {"$regex": search, "$options": "i"}},
+                    {"email": {"$regex": search, "$options": "i"}},
+                    {"canonical_email": {"$regex": search, "$options": "i"}},
+                ]}
+            ]
+        }
+
+    canonical_balance, canonical_blz = await _canonical_admin_balances()
 
     users = await db.users.find(query, {"password_hash": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     total = await db.users.count_documents(query)
@@ -161,10 +176,11 @@ async def list_users(request: Request, search: str = "", limit: int = 50, skip: 
 
     result = []
     for u in users:
+        u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
         uid = u.get("id") or str(u["_id"])
         result.append({
             "id": uid,
-            "name": u.get("name", ""),
+            "name": u.get("name") or u.get("full_name", ""),
             "email": u.get("email", ""),
             "role": u.get("role", "user"),
             "balance": u.get("balance", u.get("bids_balance", 0)),
