@@ -30,6 +30,25 @@ def _oid(s):
         return s
 
 
+async def _canonical_admin_balances() -> tuple[float, float]:
+    canonical_admin = await db.users.find_one({"email": "admin@bidblitz.ae"}, {"_id": 0, "balance": 1, "balance_blz": 1})
+    return (
+        float((canonical_admin or {}).get("balance", 0) or 0),
+        float((canonical_admin or {}).get("balance_blz", 0) or 0),
+    )
+
+
+def _normalize_admin_user_row(row: dict, canonical_balance: float, canonical_blz: float) -> dict:
+    email = row.get("email") or ""
+    if row.get("role") == "admin" and email in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
+        row["email"] = "admin@bidblitz.ae"
+        row["canonical_email"] = "admin@bidblitz.ae"
+        row["name"] = row.get("name") or "BidBlitz Admin"
+        row["balance"] = canonical_balance
+        row["balance_blz"] = canonical_blz
+    return row
+
+
 # ═══════════════════════════════════════════════════════════════
 # KUNDEN-VERWALTUNG
 # ═══════════════════════════════════════════════════════════════
@@ -59,6 +78,7 @@ async def list_customers(
     elif status == "active":
         query["banned"] = {"$ne": True}
 
+    canonical_balance, canonical_blz = await _canonical_admin_balances()
     total = await db.users.count_documents(query)
     cursor = db.users.find(
         query,
@@ -70,6 +90,7 @@ async def list_customers(
 
     customers = []
     async for u in cursor:
+        u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
         # V2 uses ObjectId _id, V1 uses string id field
         uid = u.pop("_id", None)
         if uid is None:
@@ -85,12 +106,14 @@ async def list_customers(
 async def get_customer(user_id: str, request: Request):
     """Einzelner Kunde mit vollständigen Details."""
     await _require_admin(request)
+    canonical_balance, canonical_blz = await _canonical_admin_balances()
     user = await db.users.find_one(
         {"_id": _oid(user_id)},
         {"password_hash": 0, "password": 0, "otp_hash": 0, "biometric_credentials": 0, "recovery_codes": 0}
     )
     if not user:
         raise HTTPException(404, "Kunde nicht gefunden")
+    user = _normalize_admin_user_row(user, canonical_balance, canonical_blz)
     user["user_id"] = str(user.pop("_id"))
 
     # Aggregate stats
@@ -472,19 +495,14 @@ async def online_users(request: Request, minutes: int = 5):
     await _require_admin(request)
     from datetime import datetime, timezone, timedelta
     threshold = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
-    canonical_admin = await db.users.find_one({"email": "admin@bidblitz.ae"}, {"_id": 0, "balance": 1, "balance_blz": 1})
-    canonical_balance = float((canonical_admin or {}).get("balance", 0) or 0)
-    canonical_blz = float((canonical_admin or {}).get("balance_blz", 0) or 0)
+    canonical_balance, canonical_blz = await _canonical_admin_balances()
     cursor = db.users.find(
         {"last_seen": {"$gte": threshold}},
         {"_id": 1, "email": 1, "name": 1, "role": 1, "last_seen": 1, "balance": 1, "balance_blz": 1},
     ).sort("last_seen", -1).limit(100)
     users = []
     async for u in cursor:
-        if u.get("role") == "admin" and u.get("email") in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
-            u["email"] = "admin@bidblitz.ae"
-            u["balance"] = canonical_balance
-            u["balance_blz"] = canonical_blz
+        u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
         users.append({
             "user_id": str(u.pop("_id")),
             "email": u.get("email", ""),
@@ -540,6 +558,7 @@ async def top_spenders(request: Request, days: int = 30, limit: int = 20):
 async def all_last_seen(request: Request, limit: int = 50, include_never: bool = False):
     """Alle User mit last_seen, sortiert von aktuell nach alt."""
     await _require_admin(request)
+    canonical_balance, canonical_blz = await _canonical_admin_balances()
     query = {} if include_never else {"last_seen": {"$exists": True}}
     cursor = db.users.find(
         query,
@@ -547,8 +566,7 @@ async def all_last_seen(request: Request, limit: int = 50, include_never: bool =
     ).sort("last_seen", -1).limit(limit)
     users = []
     async for u in cursor:
-        if u.get("role") == "admin" and u.get("email") in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
-            u["email"] = "admin@bidblitz.ae"
+        u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
         users.append({
             "user_id": str(u.pop("_id")),
             "email": u.get("email", ""),
