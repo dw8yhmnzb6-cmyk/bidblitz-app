@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — KYC Bugfix: "Übermittlung fehlgeschlagen" bei Kunden behoben
+- `frontend/src/utils/kycUpload.js`: zentrale KYC-Upload-Helfer ergänzt, inklusive Support für `jpg/png/webp/heic/heif` sowie Erkennung von "bereits eingereicht"-/"warte auf Prüfung"-Antworten.
+- `frontend/src/pages/KYCFlow.jsx`: Upload-Validierung auf reale Mobile-Dateitypen erweitert; bei bereits eingereichter KYC wird jetzt der Status geladen statt eine generische Fehlerseite zu zeigen.
+- `frontend/src/pages/VerificationPage.jsx`: gleicher Fix für den alternativen KYC-Upload-Flow; unterstützt robustere Fehlermeldungen und Pending-Redirect.
+- `backend/routes/kyc.py`: Backend akzeptiert jetzt zusätzlich HEIC/HEIF auch dann, wenn Mobilgeräte sie als `application/octet-stream` hochladen; deklarierte KYC-Formfelder werden sauber gespeichert.
+- Verifiziert durch Testing-Agent **Iteration 202 PASS**: frischer Nutzer kann KYC erfolgreich einreichen, Pending-Nutzer sieht Statusseite statt generischem Fehler, HEIC/HEIF-Fälle funktionieren, Login/Session für `agimk@me.com` ohne Regression. Keine MOCKED APIs.
+
 ## 07.07.2026 — Auth Bugfix: falscher "Du bist offline"-Blocker beim Kundenlogin behoben
 - `frontend/src/services/api.js`: Der harte Vorab-Block über `navigator.onLine` wurde entfernt. Requests werden nun wirklich ausgeführt; Online-/Offline-Status wird erst anhand realer Request-Ergebnisse per `bidblitz-network-status` gesetzt.
 - `frontend/src/store/NetworkContext.jsx`: Offline-Banner reagiert jetzt auf Browser-Events **und** echte API-Netzwerkereignisse, statt Login vorzeitig falsch zu blockieren.
