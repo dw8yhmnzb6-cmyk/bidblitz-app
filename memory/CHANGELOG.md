@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Canonical Admin Bugfix: `.ae` / `.com` nicht mehr vermischt
+- `backend/server.py`: `seed_admin()` erzwingt jetzt für den einzigen kanonischen Admin `admin@bidblitz.ae` konsistent die Daten aus **einem** User-Record inklusive `balance=2622000000.00` und `balance_blz=0.0`. Legacy-`.com` bleibt deaktiviert.
+- `backend/routes/admin_management.py`: Online-/Last-Seen-Analytics nutzen keine harten Altwerte mehr, sondern lesen den kanonischen Admin-Stand direkt aus der Datenbank.
+- `frontend/src/pages/AdminManagementPage.jsx`: harter Legacy-Override (`63,366,525.91 / 91.0`) entfernt. Die UI zeigt jetzt nur noch die vom Backend gelieferten Canonical-Werte.
+- Verifiziert durch Testing-Agent **Iteration 204 PASS**: Login als `admin@bidblitz.ae` zeigt korrekt **€2.622.000.000,00 / 0 BLZ**, `admin@bidblitz.com` ist nicht mehr als aktiver Admin nutzbar, alte Hardcodes erscheinen nirgends mehr. Keine MOCKED APIs.
+
 ## 07.07.2026 — Auth UX Klarstellung für `agimk@me.com`
 - `frontend/src/App.js`: Post-Auth-Routing für nicht freigegebene KYC-Nutzer präzisiert. Nutzer mit `kyc_status=pending` landen nach erfolgreichem Login deterministisch in der authentifizierten Pending-KYC-Erfahrung statt in einer missverständlichen Login-/Home-Mehrdeutigkeit.
 - Verifiziert durch Testing-Agent **Iteration 203 PASS**: `agimk@me.com` meldet sich erfolgreich an, sieht seine authentifizierte Seite mit sichtbarer E-Mail und Banner **"Verifizierung läuft"**, keine Fehlermeldung, kein Rücksprung zur Login-Seite. Admin-Login ebenfalls PASS. Keine MOCKED APIs.
