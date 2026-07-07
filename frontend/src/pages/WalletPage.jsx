@@ -292,11 +292,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   // Auto-refresh on page visit (covers admin-credit & async transactions)
   useEffect(() => {
+    if (isGuest && !isDemoMode) return;
     refreshWallet?.();
-  }, [refreshWallet]);
+  }, [isDemoMode, isGuest, refreshWallet]);
 
   // Silent poll every 20s while page visible
   useEffect(() => {
+    if (isGuest && !isDemoMode) return;
     if (!refreshWallet) return;
     const interval = setInterval(() => {
       if (!document.hidden) refreshWallet();
@@ -307,7 +309,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [refreshWallet]);
+  }, [isDemoMode, isGuest, refreshWallet]);
 
   const handleTopUpSuccess = async () => {
     // Stripe already credited via backend — just refresh wallet data

@@ -191,7 +191,7 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
                   <span className="text-sm text-slate-500">{detail.label}</span>
                   <span 
                     className="text-sm font-medium text-right max-w-[60%] truncate"
-                    style={{ color: detail.color || '#fff' }}
+                style={{ color: detail.color || '#0f172a' }}
                   >
                     {detail.value}
                   </span>
@@ -208,7 +208,7 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
                 whileTap={{ scale: 0.98 }}
               >
                 {copied ? <Check size={14} className="text-[#00D26A]" /> : <Copy size={14} className="text-[#888]" />}
-                <span className={copied ? "text-[#00D26A]" : "text-slate-900"}>{copied ? "Copied" : "Copy"}</span>
+                <span className={copied ? "text-[#00D26A]" : "text-slate-900"}>{copied ? "Kopiert" : "Kopieren"}</span>
               </motion.button>
 
               <motion.button
@@ -229,7 +229,7 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
                 whileTap={{ scale: 0.98 }}
               >
                 <Printer size={14} className="text-[#FFB800]" />
-                <span className="text-slate-900">Print</span>
+                <span className="text-slate-900">Drucken</span>
               </motion.button>
             </div>
 
@@ -240,22 +240,23 @@ export const TransactionDetailModal = ({ isOpen, onClose, transaction }) => {
                   className="flex-1 py-3 bg-[#FF4757] text-white font-semibold rounded-full text-sm"
                   whileTap={{ scale: 0.98 }}
                 >
-                  Retry Payment
+                  Zahlung wiederholen
                 </motion.button>
               )}
               
               <motion.button
+                data-testid="transaction-detail-close-btn"
                 onClick={onClose}
                 className="flex-1 py-3 bg-[#00C2FF] text-[#0A0A0A] font-semibold rounded-full text-sm"
                 whileTap={{ scale: 0.98 }}
               >
-                Close
+                Schließen
               </motion.button>
             </div>
 
             {/* Help Link */}
-            <button className="w-full mt-3 py-2 text-sm text-[#00C2FF] flex items-center justify-center gap-1">
-              Need help?
+            <button data-testid="transaction-detail-help-btn" className="w-full mt-3 py-2 text-sm text-[#00C2FF] flex items-center justify-center gap-1">
+              Hilfe benötigt?
               <ExternalLink size={14} />
             </button>
           </div>

@@ -15,6 +15,11 @@ import AppleGooglePayButton from "./AppleGooglePayButton";
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
+const safeAmount = (value) => {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
 const PRESETS = [
   { id: "10", amount: 10 },
   { id: "25", amount: 25 },
@@ -283,7 +288,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   exit={{ opacity: 0, x: -20 }}
                 >
                   <p className="text-sm text-slate-500 mb-4">
-                    {t("topup.current") || "Current balance"}: {formatCurrency(currentBalance, "EUR", false)}
+                    {t("topup.current") || "Current balance"}: {formatCurrency(safeAmount(currentBalance), "EUR", false)}
                   </p>
 
                   {/* Package grid */}
@@ -325,8 +330,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                         <span className="text-slate-900 font-bold">&euro;{selectedPreset.amount.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 pt-1">
-                        <CreditCard size={12} className="text-[#444]" />
-                        <span className="text-[10px] text-[#444]">Powered by Stripe</span>
+                        <CreditCard size={12} className="text-slate-500" />
+                        <span className="text-[10px] text-slate-500">Sicher mit Stripe</span>
                       </div>
                     </motion.div>
                   )}
@@ -354,10 +359,10 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                           <CreditCard size={18} className="text-[#00C2FF]" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[12px] font-semibold text-white">
+                          <p className="text-[12px] font-semibold text-slate-900">
                             {savedMethod.card_brand.charAt(0).toUpperCase() + savedMethod.card_brand.slice(1)} ****{savedMethod.card_last4}
                           </p>
-                          <p className="text-[10px] text-[#444]">
+                          <p className="text-[10px] text-slate-500">
                             {t("topup.expires") || "Expires"} {savedMethod.card_exp_month}/{savedMethod.card_exp_year}
                           </p>
                         </div>
@@ -391,7 +396,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       <motion.button
                         data-testid="use-new-method-btn"
                         onClick={() => setUseNewMethod(true)}
-                        className="w-full mt-2 py-2 text-[11px] text-[#444] font-medium"
+                        className="w-full mt-2 py-2 text-[11px] text-slate-500 font-medium"
                         whileTap={{ scale: 0.98 }}
                       >
                         {t("topup.new_method") || "Choose new payment method"}
@@ -457,7 +462,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
 
                   <div className="flex items-center justify-center gap-1.5 mt-3">
                     <Shield size={10} className="text-[#00D26A]/50" />
-                    <span className="text-[10px] text-[#222]">Secured by Stripe</span>
+                    <span className="text-[10px] text-slate-500">Gesichert durch Stripe</span>
                   </div>
                 </motion.div>
               )}
@@ -477,8 +482,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <Loader2 size={28} className="text-[#00C2FF]" />
                   </motion.div>
-                  <p className="text-white font-medium">{t("topup.redirecting") || "Redirecting to Stripe..."}</p>
-                  <p className="text-sm text-[#666] mt-1">{t("topup.redirect_msg") || "You'll be redirected to secure payment"}</p>
+                  <p className="text-slate-900 font-medium">{t("topup.redirecting") || "Weiterleitung zu Stripe..."}</p>
+                  <p className="text-sm text-slate-500 mt-1">{t("topup.redirect_msg") || "Du wirst zur sicheren Zahlung weitergeleitet"}</p>
                 </motion.div>
               )}
 
@@ -497,8 +502,8 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <Loader2 size={28} className="text-[#00C2FF]" />
                   </motion.div>
-                  <p className="text-white font-medium">{t("topup.verifying") || "Verifying payment..."}</p>
-                  <p className="text-sm text-[#666] mt-1">{t("topup.verifying_msg") || "Confirming with Stripe"}</p>
+                  <p className="text-slate-900 font-medium">{t("topup.verifying") || "Zahlung wird geprüft..."}</p>
+                  <p className="text-sm text-slate-500 mt-1">{t("topup.verifying_msg") || "Bestätigung mit Stripe läuft"}</p>
                 </motion.div>
               )}
 
@@ -518,9 +523,9 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <Check size={28} className="text-[#00D26A]" />
                   </motion.div>
-                  <p className="text-white font-semibold text-lg mb-1">{t("topup.success_msg") || "Top-up Successful!"}</p>
+                  <p className="text-slate-900 font-semibold text-lg mb-1">{t("topup.success_msg") || "Aufladung erfolgreich!"}</p>
                   <p className="text-3xl font-bold font-outfit text-[#00D26A] mb-2">
-                    +&euro;{(creditedAmount || pollResult.amount || 0).toFixed(2)}
+                    +&euro;{safeAmount(creditedAmount || pollResult.amount || 0).toFixed(2)}
                   </p>
                   {pollResult?.promotion && (
                     <motion.div
@@ -537,7 +542,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       <span className="text-[9px] text-[#FFB800]/60">({pollResult.promotion.name})</span>
                     </motion.div>
                   )}
-                  <p className="text-sm text-[#666] mb-6">{t("topup.added") || "Added to your wallet via Stripe"}</p>
+                  <p className="text-sm text-slate-500 mb-6">{t("topup.added") || "Dein Guthaben wurde via Stripe aufgeladen"}</p>
                   <motion.button
                     data-testid="topup-done-btn"
                     onClick={handleClose}
@@ -565,22 +570,22 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   >
                     <AlertCircle size={28} className="text-[#FF4757]" />
                   </motion.div>
-                  <p className="text-white font-semibold text-lg mb-1">{t("topup.failed_title") || "Payment Failed"}</p>
-                  <p className="text-sm text-[#666] mb-6">{error || t("topup.failed_msg") || "Payment could not be verified"}</p>
+                  <p className="text-slate-900 font-semibold text-lg mb-1">{t("topup.failed_title") || "Zahlung fehlgeschlagen"}</p>
+                  <p className="text-sm text-slate-500 mb-6">{error || t("topup.failed_msg") || "Die Zahlung konnte nicht bestätigt werden"}</p>
                   <div className="flex gap-3">
                     <motion.button
                       onClick={handleClose}
-                      className="flex-1 py-3.5 bg-[#141414] text-white font-semibold rounded-full border border-white/10"
+                      className="flex-1 py-3.5 bg-white text-slate-900 font-semibold rounded-full border border-slate-200"
                       whileTap={{ scale: 0.98 }}
                     >
-                      {t("topup.cancel") || "Cancel"}
+                      {t("topup.cancel") || "Abbrechen"}
                     </motion.button>
                     <motion.button
                       onClick={() => { setStep("amount"); setError(null); }}
                       className="flex-1 py-3.5 bg-[#FF4757] text-white font-semibold rounded-full"
                       whileTap={{ scale: 0.98 }}
                     >
-                      {t("topup.try_again") || "Try Again"}
+                      {t("topup.try_again") || "Erneut versuchen"}
                     </motion.button>
                   </div>
                 </motion.div>
