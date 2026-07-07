@@ -171,9 +171,9 @@ const SendTab = ({ onDone }) => {
                 <UserIcon size={14} className="text-white/60" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-white truncate">{u.email}</p>
+                <p className="text-[12px] font-semibold text-white truncate">{u.name || u.username || u.email}</p>
                 <p className="text-[10px] text-white/40 truncate">
-                  {u.username} · {u.role}
+                  {u.email} · {u.role}
                 </p>
                 <p className="text-[9px] text-white/28 truncate" data-testid={`user-row-register-${u.user_id}`}>
                   Registriert: {fmtDateTime(u.registered_at || u.created_at)}
@@ -201,7 +201,8 @@ const SendTab = ({ onDone }) => {
               <UserIcon size={14} className="text-[#00C2FF]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-bold text-white truncate">{selected.email}</p>
+              <p className="text-[13px] font-bold text-white truncate">{selected.name || selected.username || selected.email}</p>
+              <p className="text-[11px] text-white/70 truncate">{selected.email}</p>
               <p className="text-[12px] text-white/70 font-medium">
                 💶 {fmt(selected.balance_eur)}€ · 🪙 {fmt(selected.balance_blz, 0)} BLZ
               </p>

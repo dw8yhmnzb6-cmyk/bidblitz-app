@@ -73,10 +73,22 @@ async def _canonical_admin_balances() -> tuple[float, float]:
 
 
 def _normalize_admin_user_row(row: dict, canonical_balance: float, canonical_blz: float) -> dict:
-    email = row.get("email") or ""
-    if row.get("role") == "admin" and email in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
+    email = (row.get("email") or "").strip().lower()
+    canonical_email = (row.get("canonical_email") or "").strip().lower()
+    aliases = {(alias or "").strip().lower() for alias in (row.get("email_aliases") or [])}
+    is_canonical_admin = row.get("role") == "admin" and (
+        email == "admin@bidblitz.ae"
+        or canonical_email == "admin@bidblitz.ae"
+        or "admin@bidblitz.ae" in aliases
+        or "admin@bid-blitz.ae" in aliases
+    )
+    if is_canonical_admin:
         row["email"] = "admin@bidblitz.ae"
         row["canonical_email"] = "admin@bidblitz.ae"
+        row["name"] = "BidBlitz Admin"
+        row["full_name"] = "BidBlitz Admin"
+        row["business_name"] = "BidBlitz Admin"
+        row["merchant_business_name"] = "BidBlitz Admin"
         row["balance"] = canonical_balance
         row["balance_blz"] = canonical_blz
     return row
@@ -349,9 +361,9 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
         }
     cur = db.users.find(query, {
         "_id": 1, "id": 1, "email": 1, "username": 1, "full_name": 1,
-        "role": 1, "balance": 1, "balance_blz": 1, "wallet_balance": 1, "created_at": 1, "registered_at": 1,
+        "name": 1, "role": 1, "balance": 1, "balance_blz": 1, "wallet_balance": 1, "created_at": 1, "registered_at": 1,
         "last_login_at": 1, "login_count": 1,
-        "is_disabled": 1, "login_disabled": 1,
+        "is_disabled": 1, "login_disabled": 1, "canonical_email": 1, "email_aliases": 1,
     }).sort("created_at", -1).limit(limit)
 
     users = []
@@ -367,7 +379,8 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
             "email": u.get("email", ""),
             "canonical_email": u.get("canonical_email") or u.get("email", ""),
             "email_aliases": u.get("email_aliases") or [],
-            "username": u.get("username") or u.get("full_name", ""),
+            "username": u.get("username") or u.get("full_name") or u.get("name", ""),
+            "name": u.get("name") or u.get("full_name") or u.get("username", ""),
             "role": u.get("role", "user"),
             "balance_eur": float(u.get("balance", 0) or 0),
             "balance_blz": float(u.get("balance_blz", 0) or 0),
