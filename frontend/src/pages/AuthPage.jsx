@@ -117,6 +117,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
     const livePassword = String(formData.get("login-password") || loginSnapshotRef.current.password || passwordRef.current?.value || password || "");
     if (liveEmail !== email) setEmail(liveEmail);
     if (livePassword !== password) setPassword(livePassword);
+    if (typeof user.clearError === "function") user.clearError();
     const result = await user.login(liveEmail, livePassword, rememberMe);
     if (result === true && typeof onAuthSuccess === "function") {
       onAuthSuccess();

@@ -157,6 +157,12 @@ export function UserProvider({ children }) {
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
+      try {
+        await api.logout();
+      } catch (logoutError) {
+        void logoutError;
+      }
+      dispatch({ type: AUTH_ACTIONS.LOGOUT });
       const response = await api.login({ email, password, remember_me: rememberMe });
       
       // Check if 2FA is required
@@ -168,6 +174,12 @@ export function UserProvider({ children }) {
       // CRITICAL FIX v2: Deep clone via JSON to ensure plain object (removes all non-serializable data)
       const rawData = response.user || response;
       const userData = JSON.parse(JSON.stringify(rawData));
+      const requestedEmail = String(email || '').trim().toLowerCase();
+      const actualLoginEmail = String(userData.login_email || userData.email || '').trim().toLowerCase();
+      const actualCanonicalEmail = String(userData.canonical_email || userData.email || '').trim().toLowerCase();
+      if (requestedEmail && actualLoginEmail && requestedEmail !== actualLoginEmail && requestedEmail !== actualCanonicalEmail) {
+        throw new Error(`Falsches Konto geladen: erwartet ${requestedEmail}, erhalten ${actualLoginEmail || actualCanonicalEmail}`);
+      }
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: userData });
       return true;
     } catch (err) {
