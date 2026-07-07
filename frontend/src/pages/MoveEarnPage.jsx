@@ -17,10 +17,12 @@ import {
   ShieldCheck,
   MapPinned,
   Route,
+  ShoppingBag,
   Star,
   TrendingUp,
   Trophy,
   Users,
+  WalletCards,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -658,6 +660,8 @@ export default function MoveEarnPage({ onBack }) {
                   <MetricCard icon={Users} label="MAU" value={adminStats.growth?.mau || 0} color="#8BF6FF" testId="move-admin-mau-card" />
                   <MetricCard icon={TrendingUp} label="30d Retention" value={`${Number(adminStats.growth?.retention_30_pct || 0).toFixed(1)}%`} color="#FFD766" testId="move-admin-retention-card" />
                   <MetricCard icon={BadgeCheck} label="ROI / €" value={Number(adminStats.roi?.value_per_eur || 0).toFixed(2)} color="#FF87BA" testId="move-admin-roi-per-eur-card" />
+                  <MetricCard icon={ShoppingBag} label="Conversions" value={adminStats.roi?.attributed_conversion_orders || 0} color="#F9A826" testId="move-admin-attributed-conversions-card" />
+                  <MetricCard icon={WalletCards} label="Revenue / Reward €" value={Number(adminStats.roi?.revenue_per_reward_eur || 0).toFixed(2)} color="#9BF6B5" testId="move-admin-revenue-per-reward-card" />
                 </div>
 
                 <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-roi-panel">
@@ -669,6 +673,59 @@ export default function MoveEarnPage({ onBack }) {
                     <AdminStatRow label="Cost / DAU" value={`€${Number(adminStats.roi?.cost_per_dau || 0).toFixed(2)}`} testId="move-admin-roi-cost-per-dau" />
                     <AdminStatRow label="Merchant Events" value={adminStats.roi?.merchant_events || 0} testId="move-admin-roi-merchant-events" />
                     <AdminStatRow label="QR Events" value={adminStats.roi?.qr_events || 0} testId="move-admin-roi-qr-events" />
+                    <AdminStatRow label="Attributed Orders" value={adminStats.roi?.attributed_conversion_orders || 0} testId="move-admin-roi-attributed-orders" />
+                    <AdminStatRow label="Attributed GMV" value={`€${Number(adminStats.roi?.attributed_conversion_gmv_eur || 0).toFixed(2)}`} testId="move-admin-roi-attributed-gmv" />
+                    <AdminStatRow label="Attributed Revenue" value={`€${Number(adminStats.roi?.attributed_conversion_revenue_eur || 0).toFixed(2)}`} testId="move-admin-roi-attributed-revenue" />
+                    <AdminStatRow label="Conv. Rate / MAU" value={`${Number(adminStats.roi?.conversion_rate_mau_pct || 0).toFixed(1)}%`} testId="move-admin-roi-conversion-rate" />
+                    <AdminStatRow label="Cost / Conversion" value={`€${Number(adminStats.roi?.cost_per_conversion || 0).toFixed(2)}`} testId="move-admin-roi-cost-per-conversion" />
+                    <AdminStatRow label="GMV / Reward €" value={Number(adminStats.roi?.gmv_per_reward_eur || 0).toFixed(2)} testId="move-admin-roi-gmv-per-reward" />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-commerce-roi-panel">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white/85"><ShoppingBag size={16} className="text-[#FFD766]" /> Commerce ROI v2</div>
+                  <div className="grid grid-cols-2 gap-3 text-sm text-white/70">
+                    <AdminStatRow label="All Orders" value={adminStats.commerce_roi?.summary?.conversion_orders || 0} testId="move-admin-commerce-orders" />
+                    <AdminStatRow label="All GMV" value={`€${Number(adminStats.commerce_roi?.summary?.conversion_gmv_eur || 0).toFixed(2)}`} testId="move-admin-commerce-gmv" />
+                    <AdminStatRow label="Platform Revenue" value={`€${Number(adminStats.commerce_roi?.summary?.conversion_platform_revenue_eur || 0).toFixed(2)}`} testId="move-admin-commerce-platform-revenue" />
+                    <AdminStatRow label="Attributed Buyers" value={adminStats.commerce_roi?.summary?.attributed_conversion_buyers || 0} testId="move-admin-commerce-attributed-buyers" />
+                    <AdminStatRow label="Sponsored Orders" value={adminStats.commerce_roi?.summary?.sponsored_conversion_orders || 0} testId="move-admin-commerce-sponsored-orders" />
+                    <AdminStatRow label="Sponsored Impact" value={Number(adminStats.commerce_roi?.summary?.sponsored_reward_impact || 0).toFixed(2)} testId="move-admin-commerce-sponsored-impact" />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-commerce-channel-breakdown-panel">
+                  <div className="mb-3 text-sm font-bold text-white/85">Channel Breakdown</div>
+                  <div className="space-y-2">
+                    {(adminStats.commerce_roi?.channels || []).slice(0, 6).map((row, index) => (
+                      <div key={`${row.channel}-${index}`} className="grid grid-cols-[120px_1fr_auto_auto] items-center gap-3 rounded-xl border border-white/6 bg-black/20 px-3 py-2" data-testid={`move-admin-commerce-channel-${index}`}>
+                        <div>
+                          <div className="text-sm font-semibold text-white/85">{row.channel}</div>
+                          <div className="text-xs text-white/45">{row.orders} Orders · {row.buyers} Buyer</div>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-[#FFD766] to-[#37FF8B]" style={{ width: `${Math.min(100, Number(row.attributed_share_pct || 0))}%` }} /></div>
+                        <div className="text-right text-xs font-bold text-white">€{Number(row.attributed_gmv_eur || 0).toFixed(2)}</div>
+                        <div className="text-right text-xs font-bold text-[#37FF8B]">€{Number(row.attributed_platform_revenue_eur || 0).toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/8 bg-[#071913] p-4" data-testid="move-admin-commerce-attribution-window-panel">
+                  <div className="mb-3 text-sm font-bold text-white/85">Attribution Window</div>
+                  <div className="space-y-2">
+                    {(adminStats.commerce_roi?.attribution_windows || []).slice(0, 6).map((row, index) => (
+                      <div key={`${row.channel}-${index}`} className="flex items-center justify-between rounded-xl border border-white/6 bg-black/20 px-3 py-2" data-testid={`move-admin-commerce-window-${index}`}>
+                        <div>
+                          <div className="text-sm font-semibold text-white/85">{row.channel}</div>
+                          <div className="text-xs text-white/45">{row.orders} Orders · {row.buyers} Buyer</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-bold text-white">€{Number(row.gmv_eur || 0).toFixed(2)} GMV</div>
+                          <div className="text-xs font-bold text-[#8BF6FF]">€{Number(row.platform_revenue_eur || 0).toFixed(2)} Revenue</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -711,6 +768,7 @@ export default function MoveEarnPage({ onBack }) {
                         <div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#37FF8B] to-[#00E4FF]" style={{ width: `${Math.min(100, (row.active_users || 0) * 8)}%` }} /></div>
                         <span className="font-bold text-white">{row.active_users} aktiv</span>
                         <span className="font-bold text-[#FFD766]">€{Number(row.reward_cost_eur || 0).toFixed(2)}</span>
+                        <span className="font-bold text-[#37FF8B]">{row.attributed_conversion_orders || 0} conv · €{Number(row.attributed_revenue_eur || 0).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>

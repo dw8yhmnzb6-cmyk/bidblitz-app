@@ -545,6 +545,75 @@ def _safe_div(numerator: float, denominator: float) -> float:
     return numerator / denominator
 
 
+def _float_amount(value: Any) -> float:
+    try:
+        return round(float(value or 0), 2)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _is_within_attribution_window(created_at: Any, active_days: set[str], lookback_days: int = 7) -> tuple[bool, Optional[str], Optional[int]]:
+    created_dt = created_at if isinstance(created_at, datetime) else _to_dt(created_at)
+    if not created_dt:
+        return False, None, None
+    created_dt = created_dt if created_dt.tzinfo else created_dt.replace(tzinfo=timezone.utc)
+    for delta in range(0, max(1, lookback_days) + 1):
+        probe_day = (created_dt - timedelta(days=delta)).date().isoformat()
+        if probe_day in active_days:
+            return True, probe_day, delta
+    return False, None, None
+
+
+def _conversion_source_stage(days_since_activity: Optional[int]) -> str:
+    if days_since_activity is None:
+        return "unattributed"
+    if days_since_activity == 0:
+        return "same_day"
+    if days_since_activity <= 2:
+        return "1_to_2_days"
+    if days_since_activity <= 7:
+        return "3_to_7_days"
+    return "older"
+
+
+def _new_conversion_bucket() -> dict:
+    return {
+        "orders": 0,
+        "gmv_eur": 0.0,
+        "platform_revenue_eur": 0.0,
+        "buyers": set(),
+        "attributed_orders": 0,
+        "attributed_gmv_eur": 0.0,
+        "attributed_platform_revenue_eur": 0.0,
+        "attributed_buyers": set(),
+        "sponsored_orders": 0,
+        "sponsored_gmv_eur": 0.0,
+        "sponsored_platform_revenue_eur": 0.0,
+    }
+
+
+def _public_conversion_bucket(channel: str, bucket: dict) -> dict:
+    orders = int(bucket.get("orders", 0) or 0)
+    attributed_orders = int(bucket.get("attributed_orders", 0) or 0)
+    sponsored_orders = int(bucket.get("sponsored_orders", 0) or 0)
+    return {
+        "channel": channel,
+        "orders": orders,
+        "gmv_eur": round(float(bucket.get("gmv_eur", 0) or 0), 2),
+        "platform_revenue_eur": round(float(bucket.get("platform_revenue_eur", 0) or 0), 2),
+        "buyers": len(bucket.get("buyers", set())),
+        "attributed_orders": attributed_orders,
+        "attributed_gmv_eur": round(float(bucket.get("attributed_gmv_eur", 0) or 0), 2),
+        "attributed_platform_revenue_eur": round(float(bucket.get("attributed_platform_revenue_eur", 0) or 0), 2),
+        "attributed_buyers": len(bucket.get("attributed_buyers", set())),
+        "attributed_share_pct": round(_safe_div(attributed_orders, max(orders, 1)) * 100, 1),
+        "sponsored_orders": sponsored_orders,
+        "sponsored_gmv_eur": round(float(bucket.get("sponsored_gmv_eur", 0) or 0), 2),
+        "sponsored_platform_revenue_eur": round(float(bucket.get("sponsored_platform_revenue_eur", 0) or 0), 2),
+        "sponsored_share_pct": round(_safe_div(sponsored_orders, max(attributed_orders, 1)) * 100, 1),
+    }
+
+
 def _normalize_gps_quality(req: SyncStepsRequest, settings: dict) -> tuple[int, list[str]]:
     reasons = []
     if req.gps_distance_km is None:
@@ -1284,6 +1353,9 @@ async def get_move_stats_admin(request: Request):
     rows_30 = await db.move_daily_steps.find({"date": {"$gte": last_30}}, {"_id": 0, "date": 1, "user_id": 1, "accepted_steps": 1, "move_coins_earned": 1, "energy_earned": 1, "xp_earned": 1, "merchant_events": 1, "qr_events": 1, "ride_xp": 1, "eco_xp": 1}).to_list(30000)
     rows_90 = await db.move_daily_steps.find({"date": {"$gte": last_90}}, {"_id": 0, "date": 1, "user_id": 1, "accepted_steps": 1}).to_list(50000)
     reward_rows_30 = await db.move_rewards.find({"created_at": {"$gte": last_30}}, {"_id": 0, "reward_type": 1, "label": 1, "cost_estimate_eur": 1, "source_code": 1, "user_id": 1, "created_at": 1}).to_list(10000)
+    marketplace_orders_30 = await db.marketplace_orders.find({"created_at": {"$gte": last_30}, "status": "completed"}, {"_id": 0, "order_id": 1, "buyer_id": 1, "seller_id": 1, "total_price": 1, "commission": 1, "created_at": 1}).to_list(10000)
+    commerce_orders_30 = await db.commerce_orders.find({"created_at": {"$gte": last_30}, "status": "completed"}, {"_id": 0, "order_id": 1, "buyer_id": 1, "seller_id": 1, "total_price": 1, "commission": 1, "created_at": 1}).to_list(10000)
+    pos_sales_30 = await db.pos_sales.find({"created_at": {"$gte": _to_dt(last_30)} if False else {"$exists": True}, "status": "completed"}, {"_id": 0, "sale_id": 1, "customer_id": 1, "customer_user_id": 1, "merchant_id": 1, "total": 1, "fee": 1, "fee_amount": 1, "created_at": 1, "method": 1, "type": 1}).to_list(20000)
 
     dau = len({row.get("user_id") for row in rows_30 if row.get("date") == today and int(row.get("accepted_steps", 0) or 0) > 0})
     wau = len({row.get("user_id") for row in rows_7 if int(row.get("accepted_steps", 0) or 0) > 0})
@@ -1301,6 +1373,11 @@ async def get_move_stats_admin(request: Request):
     reward_cost_by_source = {}
     reward_cost_by_segment = {"bronze": {"cost": 0.0, "count": 0}, "silver": {"cost": 0.0, "count": 0}, "gold": {"cost": 0.0, "count": 0}, "diamond": {"cost": 0.0, "count": 0}, "vip": {"cost": 0.0, "count": 0}, "unknown": {"cost": 0.0, "count": 0}}
     profiles_map = {row.get("user_id"): row for row in await db.move_profiles.find({}, {"_id": 0, "user_id": 1, "level": 1}).to_list(5000)}
+    active_days_by_user: dict[str, set[str]] = {}
+    for row in rows_30:
+        uid = row.get("user_id")
+        if uid and int(row.get("accepted_steps", 0) or 0) > 0:
+            active_days_by_user.setdefault(uid, set()).add(row.get("date"))
     for reward in reward_rows_30:
         reward_type = reward.get("reward_type") or "unknown"
         source_code = reward.get("source_code") or "unknown"
@@ -1316,6 +1393,111 @@ async def get_move_stats_admin(request: Request):
         bucket["cost"] = round(bucket["cost"] + cost, 2)
         bucket["count"] += 1
 
+    sponsored_rewards_by_user: dict[str, list[dict]] = {}
+    for reward in reward_rows_30:
+        uid = reward.get("user_id")
+        if not uid:
+            continue
+        reward_type = str(reward.get("reward_type") or "").lower()
+        source_code = str(reward.get("source_code") or "").lower()
+        is_sponsored = reward_type in {"coupon", "cashback"} or "merchant" in source_code or "coupon" in source_code
+        if not is_sponsored:
+            continue
+        sponsored_rewards_by_user.setdefault(uid, []).append({
+            "created_at": reward.get("created_at"),
+            "source_code": source_code or "reward",
+            "reward_type": reward_type or "reward",
+            "cost_estimate_eur": _float_amount(reward.get("cost_estimate_eur")),
+        })
+
+    conversion_channels: dict[str, dict] = {
+        "marketplace": _new_conversion_bucket(),
+        "commerce_center": _new_conversion_bucket(),
+        "pos": _new_conversion_bucket(),
+    }
+    attribution_window_map = {
+        "same_day": _new_conversion_bucket(),
+        "1_to_2_days": _new_conversion_bucket(),
+        "3_to_7_days": _new_conversion_bucket(),
+    }
+
+    def record_conversion(channel: str, buyer_id: Optional[str], created_at: Any, gmv_eur: float, platform_revenue_eur: float):
+        if channel not in conversion_channels:
+            conversion_channels[channel] = _new_conversion_bucket()
+        bucket = conversion_channels[channel]
+        bucket["orders"] += 1
+        bucket["gmv_eur"] = round(bucket["gmv_eur"] + gmv_eur, 2)
+        bucket["platform_revenue_eur"] = round(bucket["platform_revenue_eur"] + platform_revenue_eur, 2)
+        if buyer_id:
+            bucket["buyers"].add(buyer_id)
+
+        if not buyer_id:
+            return
+
+        active_days = active_days_by_user.get(buyer_id) or set()
+        attributed, attributed_day, days_since_activity = _is_within_attribution_window(created_at, active_days, 7)
+        if attributed:
+            bucket["attributed_orders"] += 1
+            bucket["attributed_gmv_eur"] = round(bucket["attributed_gmv_eur"] + gmv_eur, 2)
+            bucket["attributed_platform_revenue_eur"] = round(bucket["attributed_platform_revenue_eur"] + platform_revenue_eur, 2)
+            bucket["attributed_buyers"].add(buyer_id)
+
+            stage = _conversion_source_stage(days_since_activity)
+            if stage in attribution_window_map:
+                stage_bucket = attribution_window_map[stage]
+                stage_bucket["orders"] += 1
+                stage_bucket["gmv_eur"] = round(stage_bucket["gmv_eur"] + gmv_eur, 2)
+                stage_bucket["platform_revenue_eur"] = round(stage_bucket["platform_revenue_eur"] + platform_revenue_eur, 2)
+                stage_bucket["buyers"].add(buyer_id)
+
+            reward_candidates = sponsored_rewards_by_user.get(buyer_id) or []
+            created_dt = created_at if isinstance(created_at, datetime) else _to_dt(created_at)
+            reward_match = None
+            if created_dt:
+                created_dt = created_dt if created_dt.tzinfo else created_dt.replace(tzinfo=timezone.utc)
+                for reward in reward_candidates:
+                    reward_dt = _to_dt(reward.get("created_at"))
+                    if not reward_dt:
+                        continue
+                    reward_dt = reward_dt if reward_dt.tzinfo else reward_dt.replace(tzinfo=timezone.utc)
+                    if reward_dt <= created_dt and (created_dt - reward_dt).days <= 14:
+                        reward_match = reward
+                        break
+            if reward_match:
+                bucket["sponsored_orders"] += 1
+                bucket["sponsored_gmv_eur"] = round(bucket["sponsored_gmv_eur"] + gmv_eur, 2)
+                bucket["sponsored_platform_revenue_eur"] = round(bucket["sponsored_platform_revenue_eur"] + platform_revenue_eur, 2)
+
+    for order in marketplace_orders_30:
+        record_conversion(
+            "marketplace",
+            order.get("buyer_id"),
+            order.get("created_at"),
+            _float_amount(order.get("total_price")),
+            _float_amount(order.get("commission")),
+        )
+    for order in commerce_orders_30:
+        record_conversion(
+            "commerce_center",
+            order.get("buyer_id"),
+            order.get("created_at"),
+            _float_amount(order.get("total_price")),
+            _float_amount(order.get("commission")),
+        )
+    for sale in pos_sales_30:
+        created_at = sale.get("created_at")
+        created_dt = created_at if isinstance(created_at, datetime) else _to_dt(created_at)
+        if created_dt and created_dt.date().isoformat() < last_30:
+            continue
+        buyer_id = sale.get("customer_id") or sale.get("customer_user_id")
+        record_conversion(
+            "pos",
+            buyer_id,
+            created_at,
+            _float_amount(sale.get("total")),
+            max(_float_amount(sale.get("fee")), _float_amount(sale.get("fee_amount"))),
+        )
+
     merchant_events_30 = int(sum(int(row.get("merchant_events", 0) or 0) for row in rows_30))
     qr_events_30 = int(sum(int(row.get("qr_events", 0) or 0) for row in rows_30))
     ride_xp_30 = int(sum(int(row.get("ride_xp", 0) or 0) for row in rows_30))
@@ -1330,7 +1512,23 @@ async def get_move_stats_admin(request: Request):
     repeat_rate_90 = round(_safe_div(users_ge_2_days, len(active_days_map)) * 100, 1)
 
     total_reward_cost_30 = round(sum(item["cost_eur"] for item in reward_cost_by_type.values()), 2)
-    roi_value_index_30 = round((merchant_events_30 * 1.2) + (qr_events_30 * 0.8) + (eco_xp_30 / 10) + (ride_xp_30 / 12), 2)
+    total_conversion_orders_30 = sum(bucket["orders"] for bucket in conversion_channels.values())
+    total_conversion_gmv_30 = round(sum(bucket["gmv_eur"] for bucket in conversion_channels.values()), 2)
+    total_conversion_revenue_30 = round(sum(bucket["platform_revenue_eur"] for bucket in conversion_channels.values()), 2)
+    attributed_conversion_orders_30 = sum(bucket["attributed_orders"] for bucket in conversion_channels.values())
+    attributed_conversion_gmv_30 = round(sum(bucket["attributed_gmv_eur"] for bucket in conversion_channels.values()), 2)
+    attributed_conversion_revenue_30 = round(sum(bucket["attributed_platform_revenue_eur"] for bucket in conversion_channels.values()), 2)
+    attributed_conversion_buyers_30 = len(set().union(*[bucket["attributed_buyers"] for bucket in conversion_channels.values()])) if conversion_channels else 0
+    sponsored_conversion_orders_30 = sum(bucket["sponsored_orders"] for bucket in conversion_channels.values())
+    sponsored_conversion_gmv_30 = round(sum(bucket["sponsored_gmv_eur"] for bucket in conversion_channels.values()), 2)
+    sponsored_conversion_revenue_30 = round(sum(bucket["sponsored_platform_revenue_eur"] for bucket in conversion_channels.values()), 2)
+    conversion_rate_mau_30 = round(_safe_div(attributed_conversion_buyers_30, max(mau, 1)) * 100, 1)
+    revenue_per_reward_eur_30 = round(_safe_div(attributed_conversion_revenue_30, max(total_reward_cost_30, 1)), 2)
+    gmv_per_reward_eur_30 = round(_safe_div(attributed_conversion_gmv_30, max(total_reward_cost_30, 1)), 2)
+    cost_per_conversion_30 = round(_safe_div(total_reward_cost_30, max(attributed_conversion_orders_30, 1)), 2)
+    cost_per_attributed_buyer_30 = round(_safe_div(total_reward_cost_30, max(attributed_conversion_buyers_30, 1)), 2)
+    sponsored_reward_impact_30 = round(_safe_div(sponsored_conversion_revenue_30, max(total_reward_cost_30, 1)), 2)
+    roi_value_index_30 = round((merchant_events_30 * 1.2) + (qr_events_30 * 0.8) + (eco_xp_30 / 10) + (ride_xp_30 / 12) + attributed_conversion_revenue_30 + (attributed_conversion_orders_30 * 2.5), 2)
     roi_per_eur_30 = round(_safe_div(roi_value_index_30, total_reward_cost_30), 2)
     cost_per_mau_30 = round(_safe_div(total_reward_cost_30, mau), 2)
     cost_per_dau = round(_safe_div(total_reward_cost_30, max(dau, 1)), 2)
@@ -1338,7 +1536,7 @@ async def get_move_stats_admin(request: Request):
     trend_map = {}
     for row in rows_30:
         day = row.get("date")
-        bucket = trend_map.setdefault(day, {"date": day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0})
+        bucket = trend_map.setdefault(day, {"date": day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0, "attributed_conversion_orders": 0, "attributed_revenue_eur": 0.0})
         if int(row.get("accepted_steps", 0) or 0) > 0 and row.get("user_id"):
             bucket["active_users"].add(row.get("user_id"))
         bucket["merchant_events"] += int(row.get("merchant_events", 0) or 0)
@@ -1348,8 +1546,39 @@ async def get_move_stats_admin(request: Request):
         day = str(reward.get("created_at", ""))[:10]
         if not day:
             continue
-        bucket = trend_map.setdefault(day, {"date": day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0})
+        bucket = trend_map.setdefault(day, {"date": day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0, "attributed_conversion_orders": 0, "attributed_revenue_eur": 0.0})
         bucket["reward_cost_eur"] = round(bucket["reward_cost_eur"] + float(reward.get("cost_estimate_eur", 0) or 0), 2)
+    for channel_name, bucket in conversion_channels.items():
+        del channel_name
+        del bucket
+    for order in marketplace_orders_30:
+        buyer_id = order.get("buyer_id")
+        active_days = active_days_by_user.get(buyer_id) or set()
+        attributed, attributed_day, _days = _is_within_attribution_window(order.get("created_at"), active_days, 7)
+        if attributed and attributed_day:
+            bucket = trend_map.setdefault(attributed_day, {"date": attributed_day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0, "attributed_conversion_orders": 0, "attributed_revenue_eur": 0.0})
+            bucket["attributed_conversion_orders"] += 1
+            bucket["attributed_revenue_eur"] = round(bucket["attributed_revenue_eur"] + _float_amount(order.get("commission")), 2)
+    for order in commerce_orders_30:
+        buyer_id = order.get("buyer_id")
+        active_days = active_days_by_user.get(buyer_id) or set()
+        attributed, attributed_day, _days = _is_within_attribution_window(order.get("created_at"), active_days, 7)
+        if attributed and attributed_day:
+            bucket = trend_map.setdefault(attributed_day, {"date": attributed_day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0, "attributed_conversion_orders": 0, "attributed_revenue_eur": 0.0})
+            bucket["attributed_conversion_orders"] += 1
+            bucket["attributed_revenue_eur"] = round(bucket["attributed_revenue_eur"] + _float_amount(order.get("commission")), 2)
+    for sale in pos_sales_30:
+        created_at = sale.get("created_at")
+        created_dt = created_at if isinstance(created_at, datetime) else _to_dt(created_at)
+        if created_dt and created_dt.date().isoformat() < last_30:
+            continue
+        buyer_id = sale.get("customer_id") or sale.get("customer_user_id")
+        active_days = active_days_by_user.get(buyer_id) or set()
+        attributed, attributed_day, _days = _is_within_attribution_window(created_at, active_days, 7)
+        if attributed and attributed_day:
+            bucket = trend_map.setdefault(attributed_day, {"date": attributed_day, "active_users": set(), "reward_cost_eur": 0.0, "merchant_events": 0, "qr_events": 0, "steps": 0, "attributed_conversion_orders": 0, "attributed_revenue_eur": 0.0})
+            bucket["attributed_conversion_orders"] += 1
+            bucket["attributed_revenue_eur"] = round(bucket["attributed_revenue_eur"] + max(_float_amount(sale.get("fee")), _float_amount(sale.get("fee_amount"))), 2)
     trend_rows = []
     for day in sorted(trend_map.keys())[-14:]:
         bucket = trend_map[day]
@@ -1360,6 +1589,8 @@ async def get_move_stats_admin(request: Request):
             "merchant_events": bucket["merchant_events"],
             "qr_events": bucket["qr_events"],
             "steps": bucket["steps"],
+            "attributed_conversion_orders": int(bucket.get("attributed_conversion_orders", 0) or 0),
+            "attributed_revenue_eur": round(float(bucket.get("attributed_revenue_eur", 0) or 0), 2),
         })
 
     return {
@@ -1382,6 +1613,13 @@ async def get_move_stats_admin(request: Request):
             "roi_per_eur_30": roi_per_eur_30,
             "cost_per_mau_30": cost_per_mau_30,
             "cost_per_dau_30": cost_per_dau,
+            "attributed_conversion_orders_30": attributed_conversion_orders_30,
+            "attributed_conversion_gmv_30": attributed_conversion_gmv_30,
+            "attributed_conversion_revenue_30": attributed_conversion_revenue_30,
+            "attributed_conversion_buyers_30": attributed_conversion_buyers_30,
+            "conversion_rate_mau_30": conversion_rate_mau_30,
+            "cost_per_conversion_30": cost_per_conversion_30,
+            "revenue_per_reward_eur_30": revenue_per_reward_eur_30,
         },
         "top_users": top_users,
         "fraud_logs": fraud_logs,
@@ -1411,11 +1649,50 @@ async def get_move_stats_admin(request: Request):
             "value_per_eur": roi_per_eur_30,
             "cost_per_mau": cost_per_mau_30,
             "cost_per_dau": cost_per_dau,
+            "conversion_orders": total_conversion_orders_30,
+            "conversion_gmv_eur": total_conversion_gmv_30,
+            "conversion_platform_revenue_eur": total_conversion_revenue_30,
+            "attributed_conversion_orders": attributed_conversion_orders_30,
+            "attributed_conversion_gmv_eur": attributed_conversion_gmv_30,
+            "attributed_conversion_revenue_eur": attributed_conversion_revenue_30,
+            "attributed_conversion_buyers": attributed_conversion_buyers_30,
+            "conversion_rate_mau_pct": conversion_rate_mau_30,
+            "cost_per_conversion": cost_per_conversion_30,
+            "cost_per_attributed_buyer": cost_per_attributed_buyer_30,
+            "revenue_per_reward_eur": revenue_per_reward_eur_30,
+            "gmv_per_reward_eur": gmv_per_reward_eur_30,
+            "sponsored_conversion_orders": sponsored_conversion_orders_30,
+            "sponsored_conversion_gmv_eur": sponsored_conversion_gmv_30,
+            "sponsored_conversion_revenue_eur": sponsored_conversion_revenue_30,
+            "sponsored_reward_impact": sponsored_reward_impact_30,
         },
         "reward_cost_breakdown": {
             "by_type": sorted(reward_cost_by_type.values(), key=lambda item: item["cost_eur"], reverse=True),
             "by_source": sorted(reward_cost_by_source.values(), key=lambda item: item["cost_eur"], reverse=True)[:12],
             "by_segment": [{"segment": key, "cost_eur": value["cost"], "count": value["count"]} for key, value in reward_cost_by_segment.items()],
+        },
+        "commerce_roi": {
+            "channels": sorted([_public_conversion_bucket(channel, bucket) for channel, bucket in conversion_channels.items()], key=lambda item: item["attributed_platform_revenue_eur"], reverse=True),
+            "attribution_windows": sorted([_public_conversion_bucket(channel, bucket) for channel, bucket in attribution_window_map.items()], key=lambda item: item["platform_revenue_eur"], reverse=True),
+            "summary": {
+                "window_days": 30,
+                "conversion_orders": total_conversion_orders_30,
+                "conversion_gmv_eur": total_conversion_gmv_30,
+                "conversion_platform_revenue_eur": total_conversion_revenue_30,
+                "attributed_conversion_orders": attributed_conversion_orders_30,
+                "attributed_conversion_gmv_eur": attributed_conversion_gmv_30,
+                "attributed_conversion_revenue_eur": attributed_conversion_revenue_30,
+                "attributed_conversion_buyers": attributed_conversion_buyers_30,
+                "conversion_rate_mau_pct": conversion_rate_mau_30,
+                "cost_per_conversion_eur": cost_per_conversion_30,
+                "cost_per_attributed_buyer_eur": cost_per_attributed_buyer_30,
+                "revenue_per_reward_eur": revenue_per_reward_eur_30,
+                "gmv_per_reward_eur": gmv_per_reward_eur_30,
+                "sponsored_conversion_orders": sponsored_conversion_orders_30,
+                "sponsored_conversion_gmv_eur": sponsored_conversion_gmv_30,
+                "sponsored_conversion_revenue_eur": sponsored_conversion_revenue_30,
+                "sponsored_reward_impact": sponsored_reward_impact_30,
+            },
         },
         "trend_14d": trend_rows,
     }

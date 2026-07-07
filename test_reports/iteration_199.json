@@ -1,0 +1,134 @@
+{
+  "summary": "Validated Move & Earn ROI v2 - Commerce/Merchant Conversions Integration. Backend GET /api/admin/move/stats returns all new ROI v2 fields including commerce_roi object with summary, channels, and attribution_windows. Frontend Admin UI shows all new panels without crashes or layout errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter199_move_roi_v2.py",
+    "/app/test_reports/pytest/iter199_move_roi_v2.xml",
+    "/app/test_reports/iter199_move_admin_roi_v2.jpeg",
+    "/app/test_reports/iter199_move_commerce_roi_panels.jpeg",
+    "/app/test_reports/iter199_move_channel_attribution.jpeg",
+    "/app/test_reports/iter199_move_trend_panel.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend correctly aggregates real commerce data from marketplace_orders, commerce_orders, and pos_sales collections",
+    "Attribution window logic correctly identifies same_day, 1_to_2_days, and 3_to_7_days conversions",
+    "Sponsored reward impact calculation correctly links coupon/cashback rewards to subsequent conversions",
+    "API remains stable when attributed conversions are 0 - all numeric fields return valid values",
+    "Frontend correctly displays all new ROI v2 panels with proper data-testid attributes"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter199_move_roi_v2.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)",
+    "frontend": "100% (all UI elements verified)"
+  },
+  "test_credentials": "admin@bidblitz.ae / BidBlitz2026!",
+  "seed_data_creation": "None - used existing data",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Move & Earn ROI v2 integration validated. New UI elements: move-admin-attributed-conversions-card, move-admin-revenue-per-reward-card, move-admin-commerce-roi-panel, move-admin-commerce-channel-breakdown-panel, move-admin-commerce-attribution-window-panel. Backend returns commerce_roi object with summary, channels, and attribution_windows arrays. Trend panel includes attributed_conversion_orders and attributed_revenue_eur fields.",
+  "rca_of_the_issue": "N/A - No issues found. All features working as designed.",
+  "mocked_api": "No MOCKED APIs used",
+  "tests_performed": [
+    {
+      "test": "GET /api/admin/move/stats returns 200",
+      "result": "PASS",
+      "details": "Admin endpoint accessible"
+    },
+    {
+      "test": "roi object contains ROI v2 fields",
+      "result": "PASS",
+      "details": "conversion_orders, conversion_gmv_eur, attributed_conversion_orders, attributed_conversion_gmv_eur, attributed_conversion_revenue_eur, attributed_conversion_buyers, conversion_rate_mau_pct, cost_per_conversion, revenue_per_reward_eur, gmv_per_reward_eur, sponsored_conversion_orders, sponsored_reward_impact"
+    },
+    {
+      "test": "commerce_roi object structure",
+      "result": "PASS",
+      "details": "Contains summary, channels, attribution_windows"
+    },
+    {
+      "test": "commerce_roi.summary fields",
+      "result": "PASS",
+      "details": "All required fields present"
+    },
+    {
+      "test": "commerce_roi.channels structure",
+      "result": "PASS",
+      "details": "marketplace, commerce_center, pos channels with correct fields"
+    },
+    {
+      "test": "commerce_roi.attribution_windows structure",
+      "result": "PASS",
+      "details": "same_day, 1_to_2_days, 3_to_7_days windows with correct fields"
+    },
+    {
+      "test": "trend_14d has attributed conversion fields",
+      "result": "PASS",
+      "details": "attributed_conversion_orders and attributed_revenue_eur present"
+    },
+    {
+      "test": "API stable with zero conversions",
+      "result": "PASS",
+      "details": "All numeric fields return valid values"
+    },
+    {
+      "test": "summary has ROI v2 aggregated fields",
+      "result": "PASS",
+      "details": "attributed_conversion_orders_30, attributed_conversion_gmv_30, etc."
+    },
+    {
+      "test": "GET /api/move/status (regression)",
+      "result": "PASS",
+      "details": "No regression in existing endpoint"
+    },
+    {
+      "test": "GET /api/admin/move/settings (regression)",
+      "result": "PASS",
+      "details": "No regression in settings endpoint"
+    },
+    {
+      "test": "UI: Admin section visible",
+      "result": "PASS",
+      "details": "move-earn-admin-section visible for admin user"
+    },
+    {
+      "test": "UI: Commerce ROI v2 panel",
+      "result": "PASS",
+      "details": "Shows All Orders (15), All GMV (€1546.45), Platform Revenue (€98.45)"
+    },
+    {
+      "test": "UI: Channel Breakdown panel",
+      "result": "PASS",
+      "details": "Shows marketplace, commerce_center, pos channels"
+    },
+    {
+      "test": "UI: Attribution Window panel",
+      "result": "PASS",
+      "details": "Shows same_day, 1_to_2_days, 3_to_7_days windows"
+    },
+    {
+      "test": "UI: Trend panel with attributed conversions",
+      "result": "PASS",
+      "details": "Shows conv and revenue per day"
+    },
+    {
+      "test": "UI: Native Steps panel (regression)",
+      "result": "PASS",
+      "details": "No regression in existing Native Schrittquelle card"
+    },
+    {
+      "test": "UI: Sync button (regression)",
+      "result": "PASS",
+      "details": "No regression in sync functionality"
+    }
+  ]
+}
