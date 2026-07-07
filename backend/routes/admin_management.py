@@ -472,6 +472,9 @@ async def online_users(request: Request, minutes: int = 5):
     await _require_admin(request)
     from datetime import datetime, timezone, timedelta
     threshold = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+    canonical_admin = await db.users.find_one({"email": "admin@bidblitz.ae"}, {"_id": 0, "balance": 1, "balance_blz": 1})
+    canonical_balance = float((canonical_admin or {}).get("balance", 0) or 0)
+    canonical_blz = float((canonical_admin or {}).get("balance_blz", 0) or 0)
     cursor = db.users.find(
         {"last_seen": {"$gte": threshold}},
         {"_id": 1, "email": 1, "name": 1, "role": 1, "last_seen": 1, "balance": 1, "balance_blz": 1},
@@ -480,8 +483,8 @@ async def online_users(request: Request, minutes: int = 5):
     async for u in cursor:
         if u.get("role") == "admin" and u.get("email") in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
             u["email"] = "admin@bidblitz.ae"
-            u["balance"] = 63366525.91
-            u["balance_blz"] = 91.0
+            u["balance"] = canonical_balance
+            u["balance_blz"] = canonical_blz
         users.append({
             "user_id": str(u.pop("_id")),
             "email": u.get("email", ""),

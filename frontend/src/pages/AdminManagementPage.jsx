@@ -791,7 +791,7 @@ const timeAgo = (iso) => {
 
 const normalizeLiveUser = (u) => {
   if (u?.role === "admin" && ["admin@bidblitz.com", "admin@bidblitz.ae"].includes(u.email)) {
-    return { ...u, email: "admin@bidblitz.ae", balance_eur: 63366525.91, balance_blz: 91 };
+    return { ...u, email: "admin@bidblitz.ae" };
   }
   return u;
 };

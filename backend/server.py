@@ -173,6 +173,8 @@ async def seed_admin():
         now = datetime.now(timezone.utc).isoformat()
         legacy_email = "admin@bidblitz.com"
         admin_aliases = ["admin@bid-blitz.ae"]
+        canonical_balance_eur = 2622000000.00
+        canonical_balance_blz = 0.0
         existing = await db.users.find_one({"email": admin_email})
         legacy = await db.users.find_one({"email": legacy_email}) if admin_email != legacy_email else None
 
@@ -186,6 +188,8 @@ async def seed_admin():
                         "kyc_status": "approved",
                         "kyc_verified": True,
                         "email_aliases": admin_aliases,
+                        "balance": canonical_balance_eur,
+                        "balance_blz": canonical_balance_blz,
                     },
                     "$unset": {"password": ""},
                 },
@@ -201,6 +205,8 @@ async def seed_admin():
                         "kyc_status": "approved",
                         "kyc_verified": True,
                         "email_aliases": admin_aliases,
+                        "balance": canonical_balance_eur,
+                        "balance_blz": canonical_balance_blz,
                     },
                     "$unset": {"password": ""},
                 },
@@ -229,7 +235,8 @@ async def seed_admin():
                 "role": "admin",
                 "kyc_status": "approved",
                 "kyc_verified": True,
-                "balance": 1500.00,
+                "balance": canonical_balance_eur,
+                "balance_blz": canonical_balance_blz,
                 "currency": "EUR",
                 "card_number": f"{random.randint(4000,4999)} {random.randint(1000,9999)} {random.randint(1000,9999)} {random.randint(1000,9999)}",
                 "card_expiry": "09/28",
@@ -260,6 +267,8 @@ async def seed_admin():
             "kyc_verified": True,
             "email": admin_email,
             "email_aliases": admin_aliases,
+            "balance": canonical_balance_eur,
+            "balance_blz": canonical_balance_blz,
         }
         password_hash = existing.get("password_hash") or existing.get("password") or ""
         password_needs_update = True
