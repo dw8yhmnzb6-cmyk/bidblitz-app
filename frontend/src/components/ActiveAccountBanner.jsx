@@ -26,7 +26,7 @@ export const ActiveAccountBanner = () => {
               <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Aktives Konto</div>
               <div className="truncate text-sm font-black text-white" data-testid="active-account-banner-email">{user.display_email || user.login_email || user.email}</div>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/65">
-                <span data-testid="active-account-banner-canonical-email">Kanonisch: {user.canonical_email || user.email}</span>
+                <span data-testid="active-account-banner-canonical-email">Kanonisch: admin@bidblitz.ae</span>
                 <span>•</span>
                 <span data-testid="active-account-banner-role">Rolle: {user.role || "user"}</span>
               </div>

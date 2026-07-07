@@ -1695,3 +1695,23 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Teststatus:
   - interne Backend-Prüfung: keine rohen `verified|failed|error` Statuswerte mehr in `/api/admin/customers`
   - Testing-Agent Iteration 212 PASS: Backend 9/9, Frontend 100%
+
+
+## Update 2026-07-07 — Nur kanonischer Admin aktiv
+- Auf Wunsch wurde die Admin-Landschaft weiter verschärft:
+  - **nur `admin@bidblitz.ae` bleibt aktiv**
+  - Legacy-/Alias-Admins werden **deaktiviert**, aber **nicht gelöscht**
+- Sicherheitsmaßnahmen:
+  - Login-Sperre für `admin@bidblitz.com` und deaktivierte Admin-Altaccounts
+  - Admin-Kundenliste (`role=admin`) filtert jetzt strikt nur den kanonischen Admin
+  - Admin-Wallet-Tool blendet deaktivierte/Legacy-Admins aus
+  - ActiveAccountBanner zeigt kanonisch explizit `admin@bidblitz.ae`
+- DB-Mutation in diesem Schritt:
+  - Legacy-Admin-Datensatz auf `is_disabled=true`, `login_disabled=true`, `disabled_reason=legacy_admin_deactivated_canonical_admin_only`
+  - Historie blieb erhalten; keine Löschung
+- Verifikation:
+  - `POST /api/auth/login` für `admin@bidblitz.ae` → 200
+  - `POST /api/auth/login` für `admin@bidblitz.com` → 401
+  - `GET /api/admin/customers?role=admin` zeigt nur den kanonischen Admin
+  - `GET /api/admin/wallet/users?q=admin` zeigt nur den kanonischen Admin
+  - Frontend-Smoke: Banner zeigt `Kanonisch: admin@bidblitz.ae`

@@ -42,7 +42,9 @@ def _auth_email_candidates(raw_email: str) -> list[str]:
     email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.")
     if not email:
         return [""]
-    if email in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
+    if email == "admin@bidblitz.ae":
+        return [email]
+    if email == "admin@bidblitz.com":
         return [email]
     candidates = [email]
     if email.endswith("@bidblitz.ae"):
@@ -413,6 +415,11 @@ async def login(req: LoginRequest, request: Request, response: Response):
 
     user = await db.users.find_one(_auth_email_query(email_candidates))
     matched_email = (user or {}).get("email", email)
+
+    if user and ((matched_email or "").lower().strip() == "admin@bidblitz.com" or user.get("login_disabled") is True or user.get("is_disabled") is True):
+        await log_audit(AuditEvent.LOGIN_FAILED, email=matched_email, ip=ip, user_agent=ua,
+                        details={"reason": "legacy_admin_disabled"}, severity="warn")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # Soft launch gate (before password check to avoid leaking user existence)
     if user and not await is_email_whitelisted(matched_email):

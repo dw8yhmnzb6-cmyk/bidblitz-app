@@ -351,10 +351,15 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
         "_id": 1, "id": 1, "email": 1, "username": 1, "full_name": 1,
         "role": 1, "balance": 1, "balance_blz": 1, "wallet_balance": 1, "created_at": 1, "registered_at": 1,
         "last_login_at": 1, "login_count": 1,
+        "is_disabled": 1, "login_disabled": 1,
     }).sort("created_at", -1).limit(limit)
 
     users = []
     async for u in cur:
+        if (u.get("email") == "admin@bidblitz.com") or u.get("login_disabled") is True or u.get("is_disabled") is True:
+            continue
+        if u.get("role") == "admin_alias_merged":
+            continue
         u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
         uid = str(u.get("_id") or u.get("id"))
         users.append({

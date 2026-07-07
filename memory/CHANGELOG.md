@@ -668,3 +668,11 @@
   - `Nicht gestartet`
 - Kundendetail zeigt KYC-Fehlerbox mit Ablehnungs-/Fehlergrund, wenn vorhanden.
 - Testing-Agent Iteration 212 PASS: Backend 9/9, Frontend 100%.
+
+## 07.07.2026 — Legacy-Admins deaktiviert, nur `admin@bidblitz.ae` aktiv
+- `admin@bidblitz.ae` ist jetzt der **einzige aktive Admin**.
+- Legacy-/Alias-Admin-Datensätze wurden **deaktiviert, nicht gelöscht** (`is_disabled=true`, `login_disabled=true`, Rolle auf `admin_legacy_disabled` für den Legacy-Fall gesetzt).
+- Login für Legacy-Admin-Aliase ist jetzt gesperrt; `admin@bidblitz.com` liefert `401`.
+- Admin-Kundenliste mit `role=admin` zeigt nur noch `admin@bidblitz.ae`.
+- Admin-Wallet-User-Suche blendet deaktivierte/Legacy-Admins ebenfalls aus.
+- Aktives Konto-Banner zeigt kanonisch jetzt `admin@bidblitz.ae` statt `.com` als "Kanonisch".

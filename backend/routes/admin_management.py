@@ -98,6 +98,17 @@ async def list_customers(
         query["banned"] = {"$ne": True}
 
     canonical_balance, canonical_blz = await _canonical_admin_balances()
+    if role == "admin":
+        query = {
+            "$and": [
+                query,
+                {"email": "admin@bidblitz.ae"},
+                {"role": "admin"},
+                {"$or": [{"is_disabled": {"$ne": True}}, {"is_disabled": {"$exists": False}}]},
+                {"$or": [{"login_disabled": {"$ne": True}}, {"login_disabled": {"$exists": False}}]},
+            ]
+        }
+
     total = await db.users.count_documents(query)
     cursor = db.users.find(
         query,
