@@ -1,5 +1,9 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — Auth UX Klarstellung für `agimk@me.com`
+- `frontend/src/App.js`: Post-Auth-Routing für nicht freigegebene KYC-Nutzer präzisiert. Nutzer mit `kyc_status=pending` landen nach erfolgreichem Login deterministisch in der authentifizierten Pending-KYC-Erfahrung statt in einer missverständlichen Login-/Home-Mehrdeutigkeit.
+- Verifiziert durch Testing-Agent **Iteration 203 PASS**: `agimk@me.com` meldet sich erfolgreich an, sieht seine authentifizierte Seite mit sichtbarer E-Mail und Banner **"Verifizierung läuft"**, keine Fehlermeldung, kein Rücksprung zur Login-Seite. Admin-Login ebenfalls PASS. Keine MOCKED APIs.
+
 ## 07.07.2026 — KYC Bugfix: "Übermittlung fehlgeschlagen" bei Kunden behoben
 - `frontend/src/utils/kycUpload.js`: zentrale KYC-Upload-Helfer ergänzt, inklusive Support für `jpg/png/webp/heic/heif` sowie Erkennung von "bereits eingereicht"-/"warte auf Prüfung"-Antworten.
 - `frontend/src/pages/KYCFlow.jsx`: Upload-Validierung auf reale Mobile-Dateitypen erweitert; bei bereits eingereichter KYC wird jetzt der Status geladen statt eine generische Fehlerseite zu zeigen.
