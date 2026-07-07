@@ -1474,3 +1474,34 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Spezialfall für Mapbox-/postMessage-Fehler abgefangen, damit sofort auf sicheren Fallback gewechselt wird.
 - Tests: Mobile-Browser-Smoke mit blockierter Mapbox, Frontend-Testagent PASS für Kartenstabilität/GPS-denied/kein Reload-Bug.
 - Offene Kleinigkeit: optional z-index des BackToHomeBar-Overlays über Locate/GPS-Buttons feintunen.
+
+
+## Update 2026-07-07 — P0 Wallet Forensik, Anzeige-Konsolidierung und Engine-Härtung
+- P0-Wallet-Forensik abgeschlossen: Root Cause bestätigt als Mehrfach-Wahrheitsquellen (`users.balance`, `wallets.balance`, `transactions`, `wallet_transactions`) statt eines einzelnen Ledger-Backbones. Keine Blind-Reparatur, kein Reset, keine Löschungen durchgeführt.
+- Sichtbare EUR-Wallet-Anzeigen auf kanonische Quelle vereinheitlicht: `users.balance` ist jetzt die sichtbare EUR-Wahrheit. Legacy-Endpunkt `GET /api/super-app/wallet/balance` liest nun ebenfalls `users.balance`, liefert `canonical_source=users.balance` und ist als `deprecated` markiert.
+- Frontend-Konsolidierung umgesetzt: `/wallet-dashboard` rendert jetzt die kanonische WalletPage statt eines separaten Legacy-Wallet-Saldos. `WalletDashboard.jsx` liest `api.getWallet()` / `api.topUp()` statt Super-App-Legacy-Endpunkten.
+- Admin Wallet Tool gehärtet: Suchergebnisse lesen `users.balance`; neuer read-only Reconciliation-Tab zeigt pro User `user_id`, `email`, `users.balance`, `wallets.balance`, `transactions_sum`, `wallet_transactions_sum`, `delta`, `recommended_repair`, `risk_level`.
+- Zentrale Wallet-/Payment-Engine erweitert: `credit_wallet` / `debit_wallet` schreiben jetzt verpflichtende Ledger-Metadaten (`transaction_id`, `user_id`, `wallet_id`, `type`, `amount`, `currency`, `direction`, `status`, `source`, `reference_id`, `idempotency_key`, `created_at`, `audit_metadata`).
+- Neue EUR-Mutationen laufen jetzt zentral über die Engine für diese Flows:
+  - `POST /api/wallet/topup`
+  - `POST /api/super-app/wallet/topup`
+  - `POST /api/payment/pay`
+  - `POST /api/payment/send`
+  - Merchant Scan Payment in `payment.py`
+  - Admin Refund in `admin_management.py`
+  - Reward EUR Credit in `rewards.py`
+  - Merchant-to-Merchant Payment in `merchant_payments.py`
+  - POS Secure Top-up / POS Secure Payment / POS Refund Merchant Reversal in `services/pos_security.py`
+- Direkte sichtbare EUR-Parallel-Writes in `wallets.balance` für neue Credits entfernt: `credit_wallet` erhöht nicht mehr zusätzlich `wallets.balance`; sichtbare Wahrheit bleibt `users.balance`.
+- Idempotenz ergänzt: `TopUpRequest`, `PaymentRequest`, `SendRequest`, Admin-Adjustment-Requests und Legacy-Super-App-Top-up unterstützen `idempotency_key`; Duplicate-Requests erzeugen keine Doppelbuchung.
+- Admin-Adjustments gehärtet: EUR-Credit/Debit/Self-Top-up verlangen jetzt Pflicht-Begründung; Audit-/Ledger-Metadaten sind verpflichtend. `ADMIN_DEBIT` als eigener TransactionType ergänzt.
+- Auth-Flow gehärtet: Welcome-Bonus läuft nun über die zentrale Engine statt separater Transaktion; User-Seed startet mit `balance=0.0`, der Bonus wird auditierbar als Engine-Credit verbucht.
+- Sicherheit/Positivgrenze: POS Top-up zeigt weiterhin kein Kundenguthaben; POS Payment bleibt PIN-geschützt und antwortet bei zu wenig Guthaben weiterhin nur mit `Payment declined`.
+- Read-only Reconciliation vorbereitet, aber keine automatische Korrektur ausgeführt. Reconciliation der Bestandsabweichungen bleibt bewusst ein separater, manueller P0-Folgeschritt.
+- Verifikation:
+  - Python-Lint PASS
+  - Frontend-Lint PASS
+  - Lokale Backend-Regressionen PASS (`test_iter210_wallet_engine_hardening.py`, `test_iter211_wallet_consistency.py`) → 19/19 PASS
+  - Testing-Agent Iteration 211 PASS (Backend 100%, Frontend 100%)
+  - Keine MOCKS im Wallet-Härtungsflow
+- Wichtiger Betriebsvermerk: Während lokaler/vernetzter Tests wurden auditable Testbuchungen erzeugt und anschließend gezielt kompensiert. Kanonischer Admin-Endstand wiederhergestellt auf `2622000000.00 EUR / 0 BLZ`.

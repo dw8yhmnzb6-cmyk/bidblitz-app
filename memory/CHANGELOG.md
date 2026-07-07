@@ -620,3 +620,12 @@
 - Speichern ist im Wizard erst nach erfolgreichem Testbon freigegeben
 - Testing: `iteration_133.json` PASS (Backend 15/15, Frontend 100%)
 - **OFFEN/WAITING:** USB-Auto-Suche noch nicht integriert; echte Kunden-LAN-Drucker im Preview nicht sichtbar
+
+## 07.07.2026 — Wallet P0 Hardening
+- Forensik für Wallet-Inkonsistenz abgeschlossen; Hauptursache sind mehrere parallele Wahrheitsquellen statt Cents-/Demo-Fehler.
+- Sichtbare EUR-Salden auf `users.balance` konsolidiert; `/api/super-app/wallet/balance` auf kanonische Quelle umgebogen und als deprecated markiert.
+- `/wallet-dashboard` rendert jetzt WalletPage; `WalletDashboard.jsx` liest kanonische Wallet-API.
+- Neuer Admin-Reconciliation-Tab + `GET /api/admin/wallet/reconciliation` (read-only, keine Korrekturen) live.
+- Zentrale Wallet-Engine für Top-up, Payment, Send, Admin Refund, Reward EUR, Merchant Payment und POS Security Flows erweitert.
+- Ledger-Metadaten + Idempotenz in Engine und Requests ergänzt; doppelte Requests buchen EUR nur einmal.
+- Tests grün: lokale Wallet-Regression 19/19 PASS, `testing_agent` Iteration 211 PASS, Frontend 100%.

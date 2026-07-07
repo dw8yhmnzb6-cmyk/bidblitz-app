@@ -24,6 +24,7 @@ class MerchantPaymentRequest(BaseModel):
     description: str = Field(..., max_length=200, description="Zahlungsgrund")
     reference: Optional[str] = Field(None, max_length=50, description="Referenznummer (optional)")
     invoice_number: Optional[str] = Field(None, max_length=50, description="Rechnungsnummer (optional)")
+    idempotency_key: Optional[str] = Field(None, max_length=120, description="Idempotency Key")
 
 
 class MerchantSearchRequest(BaseModel):
@@ -165,7 +166,7 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
         debit_result = await debit_wallet(
             user_id=user_id,
             amount=req.amount,
-            transaction_type=TransactionType.MERCHANT_PAYMENT,
+            tx_type=TransactionType.MERCHANT_PAYMENT,
             description=f"Zahlung an {recipient.get('business_name') or recipient.get('name')}: {req.description}",
             reference=tx_reference,
             metadata={
@@ -173,35 +174,41 @@ async def pay_merchant(req: MerchantPaymentRequest, request: Request):
                 "recipient_name": recipient.get("name"),
                 "recipient_email": recipient.get("email"),
                 "invoice_number": req.invoice_number,
-            }
+                "audit_metadata": {"route": "merchant_payments.pay", "kind": "sender"},
+            },
+            idempotency_key=req.idempotency_key,
         )
         
-        if not debit_result["success"]:
-            raise HTTPException(status_code=400, detail=debit_result["error"])
+        if not debit_result.success:
+            raise HTTPException(status_code=400, detail=debit_result.error or "Zahlung fehlgeschlagen")
         
         # 2. Credit Recipient
         credit_result = await credit_wallet(
             user_id=req.recipient_merchant_id,
             amount=req.amount,
-            transaction_type=TransactionType.MERCHANT_PAYMENT_RECEIVED,
+            tx_type=TransactionType.MERCHANT_PAYMENT_RECEIVED,
             description=f"Zahlung von {user.get('business_name') or user.get('name')}: {req.description}",
             reference=tx_reference,
+            source=user_id,
             metadata={
                 "sender_id": user_id,
                 "sender_name": user.get("name"),
                 "sender_email": user.get("email"),
                 "invoice_number": req.invoice_number,
-            }
+                "audit_metadata": {"route": "merchant_payments.pay", "kind": "recipient"},
+            },
+            idempotency_key=f"recv:{req.idempotency_key}" if req.idempotency_key else None,
         )
         
-        if not credit_result["success"]:
+        if not credit_result.success:
             # Rollback: Credit sender back
             await credit_wallet(
                 user_id=user_id,
                 amount=req.amount,
-                transaction_type=TransactionType.REFUND,
+                tx_type=TransactionType.REFUND,
                 description=f"Rückerstattung: M2M Zahlung fehlgeschlagen",
                 reference=f"ROLLBACK-{tx_reference}",
+                source="merchant_payments.rollback",
             )
             raise HTTPException(status_code=500, detail="Zahlung fehlgeschlagen - wurde rückgängig gemacht")
         

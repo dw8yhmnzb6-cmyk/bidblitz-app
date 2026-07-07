@@ -1,6 +1,7 @@
 import os
 import requests
 from dotenv import dotenv_values
+import uuid
 
 
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or dotenv_values("/app/frontend/.env").get("REACT_APP_BACKEND_URL") or "").rstrip("/")
@@ -45,7 +46,7 @@ def test_legacy_super_app_wallet_reads_canonical_users_balance():
 def test_duplicate_topup_idempotency_is_single_booked():
     session = _admin_session()
     before = session.get(f"{BASE_URL}/api/wallet").json()
-    key = "iter210-topup-admin-1"
+    key = f"iter210-topup-admin-{uuid.uuid4().hex[:10]}"
 
     resp1 = session.post(f"{BASE_URL}/api/wallet/topup", json={"amount": 1.23, "payment_method": "bank_transfer", "idempotency_key": key})
     assert resp1.status_code == 200, resp1.text
@@ -63,7 +64,7 @@ def test_duplicate_topup_idempotency_is_single_booked():
 
 def test_duplicate_send_idempotency_is_single_booked_or_rejected_consistently():
     session = _admin_session()
-    key = "iter210-send-admin-1"
+    key = f"iter210-send-admin-{uuid.uuid4().hex[:10]}"
 
     resp1 = session.post(f"{BASE_URL}/api/payment/send", json={"amount": 0.5, "recipient_email": CUSTOMER_EMAIL, "description": "iter210", "idempotency_key": key})
     assert resp1.status_code == 200, resp1.text

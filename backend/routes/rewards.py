@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from core.database import db
+from core.payment_engine import credit_wallet, TransactionType
 import csv
 import io
 from bson import ObjectId
@@ -383,8 +384,15 @@ async def _apply_reward_payload(user: dict, reward: dict, source: str, source_id
         result["transaction_effect"] = {"bid_credits": int(value)}
     elif reward_type == "cash_eur":
         eur_value = round(float(value or 0), 2)
-        await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance": eur_value}})
-        await _record_transaction(user_id, "reward_wallet_credit", eur_value, f"{label} ({source})", source, source_id)
+        await credit_wallet(
+            user_id=user_id,
+            amount=eur_value,
+            tx_type=TransactionType.REWARD,
+            description=f"{label} ({source})",
+            reference=source_id,
+            source=source,
+            metadata={"reward_type": reward_type, "source_id": source_id, "audit_metadata": {"route": "rewards.apply_reward_payload"}},
+        )
         await _record_wallet_transaction(user_id, source, eur_value, label, {"source_id": source_id})
         result["transaction_effect"] = {"wallet_eur": eur_value}
     elif reward_type == "cashback":

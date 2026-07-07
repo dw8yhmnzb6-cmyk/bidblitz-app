@@ -784,9 +784,18 @@ async def execute_refund_action(refund_payload: dict, actor: dict, request: Requ
     if method in {"wallet_qr", "barcode", "secure_wallet"} and payment.get("customer_id"):
         merchant = await db.pos_merchants.find_one({"merchant_id": payment["merchant_id"]})
         if merchant:
-            await db.users.update_one({"_id": ObjectId(merchant["owner_id"])}, {"$inc": {"balance": -refund_amount}})
+            owner_id = str(merchant["owner_id"])
+            await debit_wallet(
+                user_id=owner_id,
+                amount=refund_amount,
+                tx_type=TransactionType.REFUND,
+                description=f"POS Refund {payment['payment_id']} Merchant Reversal",
+                reference=f"MRFD-{payment['payment_id']}",
+                merchant_name=merchant.get("business_name", ""),
+                metadata={"approval_id": approval_id or None, "payment_id": payment["payment_id"], "audit_metadata": {"route": "pos_security.execute_refund_action", "kind": "merchant_reversal"}},
+            )
             await db.pos_merchants.update_one({"merchant_id": payment["merchant_id"]}, {"$inc": {"settlement_balance": -refund_amount}})
-        await credit_wallet(user_id=payment["customer_id"], amount=refund_amount, tx_type=TransactionType.REFUND, description=f"POS Refund {payment['payment_id']}", reference=f"RFD-{payment['payment_id']}", metadata={"approval_id": approval_id or None})
+        await credit_wallet(user_id=payment["customer_id"], amount=refund_amount, tx_type=TransactionType.REFUND, description=f"POS Refund {payment['payment_id']}", reference=f"RFD-{payment['payment_id']}", metadata={"approval_id": approval_id or None, "audit_metadata": {"route": "pos_security.execute_refund_action", "kind": "customer_refund"}})
     refund_doc = {"refund_id": f"RFD-{secrets.token_hex(5).upper()}", "payment_id": payment["payment_id"], "store_id": payment["store_id"], "merchant_id": payment["merchant_id"], "amount": refund_amount, "method": method, "reason": refund_payload.get("reason", ""), "issued_by": actor["user_id"], "issued_at": now_iso(), "approval_id": approval_id or None}
     await db.pos_refunds.insert_one(refund_doc)
     await db.pos_payments.update_one({"payment_id": payment["payment_id"]}, {"$set": {"status": "refunded" if refund_amount >= float(payment.get("amount", 0)) else "partial_refund"}, "$inc": {"refunded_total": refund_amount}})

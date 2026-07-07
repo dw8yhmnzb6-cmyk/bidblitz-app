@@ -167,20 +167,23 @@ class CreditReq(BaseModel):
     user_id: str = Field(..., description="Target user _id (string)")
     amount_eur: float = 0
     amount_blz: float = 0
-    reason: Optional[str] = "Admin-Zuschreibung"
+    reason: str = Field(..., min_length=3, max_length=240)
+    idempotency_key: Optional[str] = None
 
 
 class DebitReq(BaseModel):
     user_id: str
     amount_eur: float = 0
     amount_blz: float = 0
-    reason: Optional[str] = "Admin-Abzug"
+    reason: str = Field(..., min_length=3, max_length=240)
+    idempotency_key: Optional[str] = None
 
 
 class SelfTopupReq(BaseModel):
     amount_eur: float = 0
     amount_blz: float = 0
-    reason: Optional[str] = "Admin Self-Topup"
+    reason: str = Field(..., min_length=3, max_length=240)
+    idempotency_key: Optional[str] = None
 
 
 async def _credit_blz(user_id: str, amount: float, admin_id: str, reason: str):
@@ -253,7 +256,8 @@ async def credit_user(req: CreditReq, request: Request):
             amount=req.amount_eur,
             tx_type=TransactionType.ADMIN_CREDIT,
             description=req.reason,
-            metadata={"admin_id": admin_id},
+            metadata={"admin_id": admin_id, "audit_metadata": {"route": "admin_wallet.credit"}},
+            idempotency_key=req.idempotency_key,
         )
         if not eur_result.success:
             raise HTTPException(400, eur_result.error or "Credit fehlgeschlagen.")
@@ -285,6 +289,7 @@ async def debit_user(req: DebitReq, request: Request):
             tx_type=TransactionType.ADMIN_DEBIT,
             description=f"Abzug: {req.reason}",
             metadata={"admin_id": admin_id, "audit_metadata": {"route": "admin_wallet.debit"}},
+            idempotency_key=req.idempotency_key,
         )
         if not res.success:
             raise HTTPException(400, res.error or "Debit fehlgeschlagen.")
@@ -309,7 +314,8 @@ async def self_topup(req: SelfTopupReq, request: Request):
             amount=req.amount_eur,
             tx_type=TransactionType.ADMIN_CREDIT,
             description=req.reason,
-            metadata={"self_topup": True},
+            metadata={"self_topup": True, "audit_metadata": {"route": "admin_wallet.self_topup"}},
+            idempotency_key=req.idempotency_key,
         )
 
     if req.amount_blz > 0:
