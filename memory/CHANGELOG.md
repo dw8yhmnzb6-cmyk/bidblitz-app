@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 07.07.2026 — agimk@me.com Login-Identität intern abgesichert
+- `frontend/src/store/UserContext.jsx`: Login räumt jetzt vorab alte Sessions/Cookies per `logout()` weg und prüft danach strikt, dass `email`, `login_email` und `canonical_email` zur angeforderten Adresse passen. Wird ein anderes Konto zurückgegeben, bricht der Login mit klarer Fehlermeldung ab.
+- `frontend/src/pages/AuthPage.jsx`: alte Auth-Fehler werden vor neuem Login aktiv gelöscht, damit keine veralteten Fehlzustände weiterleben.
+- Verifiziert durch Testing-Agent **Iteration 206 PASS**: `agimk@me.com` meldet sich korrekt an, `/api/auth/me` bleibt konsistent auf derselben User-ID `69cfcda5b193d2b925333e1b`, UI zeigt `agimk@me.com`, kein Account-Switching, Session-Wechsel Admin → Kunde funktioniert sauber. Keine MOCKED APIs.
+
 ## 07.07.2026 — KYC/Auth UX geschärft + Legacy-Admin-Cleanup + Move-&-Earn Premium Signal
 - `frontend/src/pages/KYCFlow.jsx`: Statusseite zeigt jetzt zusätzlich einen klaren Auth-Banner **"Erfolgreich angemeldet"** mit eindeutiger Pending-/Rejected-/Approved-Kommunikation.
 - `frontend/src/pages/AuthPage.jsx`: für eingeloggte, aber noch nicht freigegebene Nutzer gibt es nun einen sichtbaren Pending-KYC-Hinweis, damit der Zustand nicht wie ein fehlgeschlagener Login wirkt.
