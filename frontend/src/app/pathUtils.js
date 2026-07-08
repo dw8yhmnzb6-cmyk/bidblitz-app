@@ -1,5 +1,4 @@
 const KYC_RESTRICTED_PREFIXES = [
-  "/wallet",
   "/auctions",
   "/live-auctions",
   "/marketplace",
