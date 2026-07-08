@@ -9,11 +9,11 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
       initial={{ opacity: 0, y: 30, rotateX: -10 }}
       animate={{ opacity: 1, y: 0, rotateX: 0 }}
       transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-      whileHover={{ scale: 1.02, rotateX: 2 }}
+      whileHover={{ scale: 1.01, rotateX: 1 }}
     >
       {/* Animated gradient overlay */}
       <motion.div 
-        className="absolute inset-0 opacity-35"
+        className="absolute inset-0 opacity-25"
         style={{
           background: "linear-gradient(135deg, rgba(0, 194, 255, 0.06) 0%, transparent 40%, rgba(139, 92, 246, 0.04) 100%)"
         }}
@@ -114,7 +114,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
 
       {/* Card number */}
       <motion.div 
-        className="relative z-10 flex items-center gap-2 sm:gap-4 mb-2 sm:mb-4"
+        className="relative z-10 flex items-center gap-2 sm:gap-4 mb-1.5 sm:mb-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
