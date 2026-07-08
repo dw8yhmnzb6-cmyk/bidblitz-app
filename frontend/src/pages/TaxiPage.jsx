@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { TaxiMapbox } from '../components/RealMap';
 import { VehicleIcon } from '../components/taxi/TaxiVehicleIcon';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
+import { dedupeTaxiPlaces, getTaxiPresetPlaceHints } from '../components/taxi/taxiSearchPresets';
 import { useUser } from '../store/UserContext';
 import * as api from '../services/taxiApi';
 
@@ -323,7 +324,14 @@ export default function TaxiPage({ onNavigate }) {
 
   const runSearch = useCallback((value) => {
     setSearchValue(value);
-    search('taxi-simple-dropoff', value, setSearchResults, () => {}, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
+    const presetHits = getTaxiPresetPlaceHints(value, 6);
+    search(
+      'taxi-simple-dropoff',
+      value,
+      (results) => setSearchResults(dedupeTaxiPlaces([...presetHits, ...(results || [])])),
+      () => {},
+      pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null,
+    );
   }, [pickup?.lat, pickup?.lng, search]);
 
   useEffect(() => {
@@ -333,8 +341,9 @@ export default function TaxiPage({ onNavigate }) {
     }
     let cancelled = false;
     const loadHints = async () => {
+      const presetHints = getTaxiPresetPlaceHints(searchValue, 4);
       const hints = await api.fetchRegionalPlaceHints(searchValue, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng, limit: 4 } : { limit: 4 });
-      if (!cancelled) setRegionalHints(hints || []);
+      if (!cancelled) setRegionalHints(dedupeTaxiPlaces([...(presetHints || []), ...(hints || [])]));
     };
     loadHints();
     return () => {
