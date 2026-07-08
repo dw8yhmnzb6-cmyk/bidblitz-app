@@ -60,6 +60,8 @@ export default function CookieBanner({ onNavigate }) {
 
   if (!show) return null;
 
+  const isCompactMobile = !showDetails;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -68,19 +70,47 @@ export default function CookieBanner({ onNavigate }) {
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
         className="fixed inset-x-0 bottom-0 z-[10000] p-3 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[420px] sm:p-0"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        style={{ paddingBottom: 'calc(var(--bottom-nav-offset, 4.75rem) + 0.35rem)' }}
         data-testid="cookie-banner"
       >
-        <div className={`max-w-3xl mx-auto bg-[#0A0A0F]/86 backdrop-blur-md border border-white/10 rounded-2xl p-2.5 sm:p-5 shadow-2xl sm:max-w-none overflow-y-auto sm:max-h-none ${showDetails ? 'max-h-[42vh]' : 'max-h-[10vh] sm:max-h-none'}`}>
-          {!showDetails && (
-            <div className="sm:hidden flex items-center gap-2 mb-2 px-0.5" data-testid="cookie-banner-mobile-mini">
-              <Cookie size={14} className="text-amber-400 shrink-0" />
-              <p className="text-[10px] text-white/75 leading-tight truncate">
-                {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}
-              </p>
+        <div className={`max-w-3xl mx-auto bg-[#0A0A0F]/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 sm:p-5 shadow-2xl sm:max-w-none overflow-y-auto sm:max-h-none ${showDetails ? 'max-h-[42vh]' : 'max-h-[6.25rem] sm:max-h-none overflow-hidden'}`}>
+          {isCompactMobile && (
+            <div className="sm:hidden" data-testid="cookie-banner-mobile-mini">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                  <Cookie size={13} className="text-amber-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold text-white truncate">
+                    {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}
+                  </p>
+                  <p className="text-[9px] text-white/55 truncate">
+                    {t('cookie.necessary_desc') || 'Login-Session, CSRF-Schutz'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[0.82fr_1.18fr] gap-1.5 mt-2">
+                <button
+                  onClick={() => setShowDetails(true)}
+                  data-testid="cookie-banner-customize"
+                  className="h-8 px-2 py-1 text-[9px] font-semibold bg-white/6 hover:bg-white/10 text-gray-200 rounded-lg flex items-center justify-center gap-1"
+                >
+                  <Settings size={10} />
+                  {t('common.customize') || 'Anpassen'}
+                </button>
+                <button
+                  onClick={() => accept('all')}
+                  data-testid="cookie-banner-accept-all"
+                  className="h-8 px-2 py-1 text-[9px] font-bold bg-amber-500 hover:bg-amber-600 text-black rounded-lg"
+                >
+                  {t('cookie.accept_all') || 'Alle akzeptieren'}
+                </button>
+              </div>
             </div>
           )}
-          <div className="flex items-start gap-2.5 mb-2">
+
+          <div className={`${isCompactMobile ? 'hidden sm:flex' : 'flex'} items-start gap-2.5 mb-2`}>
             <Cookie size={16} className={`text-amber-400 flex-shrink-0 mt-0.5 sm:w-5 sm:h-5 ${showDetails ? 'block' : 'hidden sm:block'}`} />
             <div className="flex-1">
               <h3 className={`text-[12px] sm:text-[13px] font-bold text-white mb-0.5 line-clamp-1 ${showDetails ? 'block' : 'hidden sm:block'}`}>🍪 {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}</h3>
@@ -146,7 +176,7 @@ export default function CookieBanner({ onNavigate }) {
             </div>
           )}
 
-          <div className="grid grid-cols-[0.9fr_0.95fr_1.15fr] gap-1.5 sm:flex sm:flex-wrap">
+          <div className={`${isCompactMobile ? 'hidden sm:flex' : 'grid grid-cols-[0.9fr_0.95fr_1.15fr] sm:flex'} gap-1.5 sm:flex-wrap`}>
             <button
               onClick={() => accept('necessary')}
               data-testid="cookie-banner-reject"

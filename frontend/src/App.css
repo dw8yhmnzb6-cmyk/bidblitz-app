@@ -489,6 +489,7 @@ body {
   align-items: center;
   z-index: 9999;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  --bottom-nav-offset: calc(4.9rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Taxi fullscreen booking mode (taxi.eu/Uber parity) ─────────────────────
@@ -514,6 +515,7 @@ body.taxi-fullscreen-mode .chatbot-window {
     max-width: 100%;
     padding: 0.5rem 0.75rem 0.875rem;
     padding-bottom: max(1.125rem, calc(0.875rem + env(safe-area-inset-bottom, 0px)));
+    --bottom-nav-offset: calc(4.55rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
