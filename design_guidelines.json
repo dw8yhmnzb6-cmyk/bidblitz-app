@@ -1,68 +1,133 @@
 {
-  "theme": "Light",
-  "archetype": "4 (Swiss & High-Contrast)",
-  "emotional_tone": "Fast, Reliable, Frictionless, Location-Aware",
-  "colors": {
-    "background": "#F9FAFB",
-    "surface": "#FFFFFF",
-    "primary": "#000000",
-    "primary_foreground": "#FFFFFF",
-    "accent": "#FFD500",
-    "accent_foreground": "#000000",
-    "muted": "#F3F4F6",
-    "muted_foreground": "#6B7280",
-    "border": "#E5E7EB"
+  "project_context": {
+    "domain": "Taxi & Mobility Booking",
+    "app_type": "mobile_web_app",
+    "design_goal": "A completely simplified, frictionless booking flow replacing complex legacy systems. Focus on minimal taps and maximum visual clarity."
   },
-  "typography": {
-    "heading_font": "Outfit",
-    "body_font": "Manrope",
-    "h1": "text-4xl sm:text-5xl font-black tracking-tight leading-none text-black",
-    "h2": "text-2xl sm:text-3xl font-bold tracking-tight text-black",
-    "h3": "text-xl sm:text-2xl font-bold tracking-tight text-black",
-    "body": "text-base font-medium text-gray-800 leading-relaxed",
-    "small": "text-sm font-semibold tracking-wide text-gray-500 uppercase"
+  "theme_and_archetype": {
+    "theme": "LIGHT",
+    "archetype": "4 (Swiss & High-Contrast)",
+    "rationale": "For a mobile mobility app, clarity and speed are paramount. We avoid muddy gradients and rely on stark contrast (Pitch Black on Pure White) with a high-visibility accent (Cyber Yellow) to drive action instantly."
   },
-  "layout_and_spacing": {
-    "spacing_scale": "Generous. Use p-4, p-6 for mobile containers",
-    "border_radius": "rounded-3xl for main panels/bottom sheet, rounded-xl for inputs and buttons",
-    "container_style": "Flat, high contrast, 1px border (border-gray-200) instead of blurry shadows.",
-    "bottom_sheet": "Fixed to bottom, rounded-t-[32px], bg-white, subtle top shadow shadow-[0_-8px_30px_rgba(0,0,0,0.08)] and z-50"
-  },
-  "components": {
-    "buttons": "h-14 px-8 rounded-xl font-bold text-lg transition-transform active:scale-95 flex items-center justify-center gap-2",
-    "primary_button": "bg-black text-white hover:bg-gray-900",
-    "accent_button": "bg-[#FFD500] text-black hover:bg-[#FFC107]",
-    "inputs": "h-16 px-6 rounded-xl bg-gray-50 border border-gray-200 text-lg font-medium focus:ring-2 focus:ring-black focus:border-black outline-none w-full",
-    "quick_destination_card": "flex items-center gap-4 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-300 transition-colors cursor-pointer w-full"
-  },
-  "motion_and_interactions": {
-    "hover": "Subtle border color change, zero layout shift",
-    "active": "transform active:scale-[0.98] duration-100",
-    "transitions": "transition-all duration-200 ease-out"
-  },
-  "icons": {
-    "library": "@phosphor-icons/react",
-    "style": "weight='fill' for active/primary icons (like Home/Work), weight='bold' for standard UI outlines"
-  },
-  "specific_design_rules": [
-    "COMPLETELY REMOVE the floating plus button at the bottom right. It causes clutter.",
-    "Start screen must follow the '3-Tap Booking Rule'. Large 'Where to?' (Wohin?) input takes absolute priority on the bottom sheet.",
-    "Visual Anchoring: Use clear, bold icons in circular colored chips for quick destinations (Home, Work, Airport).",
-    "Dynamic Location Logic (CRITICAL): Do NOT hardcode 'Berlin' or 'BER' for the airport/train targets. Implement a mocked state (e.g. currentRegion) that dynamically renders the correct target. (Example: If region === 'Kosovo' show 'Kosovo Airport'. If region === 'Berlin' show 'BER').",
-    "Map Area: The upper 50% of the screen should be reserved for the map background. If a real map isn't available, use a solid #F3F4F6 background with a grid pattern and a central 'current location' marker.",
-    "All interactive and key informational elements MUST include a data-testid attribute (e.g. data-testid='where-to-input', data-testid='quick-dest-airport')."
-  ],
-  "image_urls": {
-    "map_placeholder": {
-      "url": "https://images.pexels.com/photos/5825560/pexels-photo-5825560.jpeg",
-      "description": "Stylized map texture, can be heavily blurred and overlaid to simulate a map background if required.",
-      "category": "background"
+  "global_styles": {
+    "typography": {
+      "strategy": "The Anti-Default. No Inter. We use a wide, bold geometric sans for headings to create an authoritative, modern feel, paired with a highly legible technical sans for body.",
+      "heading_font": "Outfit, sans-serif",
+      "body_font": "IBM Plex Sans, sans-serif",
+      "scales": {
+        "h1": "text-4xl font-black tracking-tight leading-none",
+        "h2": "text-2xl font-bold tracking-tight",
+        "body_large": "text-lg font-medium leading-relaxed",
+        "body_standard": "text-base leading-relaxed",
+        "label_micro": "text-xs font-bold uppercase tracking-[0.2em]"
+      }
     },
-    "taxi_marker": {
-      "url": "https://images.pexels.com/photos/3617388/pexels-photo-3617388.jpeg",
-      "description": "Taxi context image, can be used for ride type selection thumbnails if applicable.",
-      "category": "thumbnail"
+    "colors": {
+      "base": {
+        "background_map": "#E5E5E5",
+        "surface": "#FFFFFF",
+        "surface_elevated": "#F4F4F5"
+      },
+      "text": {
+        "primary": "#0A0A0A",
+        "secondary": "#52525B",
+        "placeholder": "#A1A1AA"
+      },
+      "brand": {
+        "accent": "#FFD600",
+        "accent_hover": "#FACC15",
+        "success": "#000000",
+        "border": "#E4E4E7"
+      }
+    },
+    "spacing": {
+      "philosophy": "Generous touch targets (min 48px) and optical alignment. Dense grouping for related data, massive gaps between distinct sections.",
+      "padding": {
+        "screen": "p-4 sm:p-6",
+        "card_internal": "p-4",
+        "button": "py-4 px-6"
+      },
+      "radius": {
+        "sheet": "rounded-t-[32px]",
+        "card": "rounded-2xl",
+        "button": "rounded-full",
+        "input": "rounded-xl"
+      }
     }
   },
-  "instructions_to_main_agent": "Implement a completely redesigned mobile-first Taxi App start screen in Javascript (.js). Delete the existing messy layout and the floating plus button. Build a 100vh layout: Upper half is a map area (mocked with background and center pin), lower half is an overlapping bottom sheet (rounded-t-[32px]). Inside the bottom sheet, place a prominent 'Where to?' input field. Below that, map a list of Quick Destinations (Schnellziele). Ensure the logic for Airport/Station is dynamic based on a mocked 'userRegion' variable—do not hardcode 'Berlin'. Use Archetype 4 styling: high contrast, no muddy shadows, stark black and white with Taxi Yellow (#FFD500) accents. Ensure strict adherence to the data-testid rules for all interactive elements."
+  "layout_strategy": {
+    "architecture": "Mobile-First 'Viewport + Drawer' pattern.",
+    "layers": [
+      "Layer 1: Edge-to-edge Map view (Canvas).",
+      "Layer 2: Draggable Bottom Sheet (Drawer) containing the UI flow.",
+      "Layer 3: Sticky bottom safe-area container for the main CTA."
+    ],
+    "grid_system": "Bento-style for vehicle selection. grid-cols-2 with the primary vehicle taking full width, alternatives below."
+  },
+  "component_guidelines": {
+    "Map_View": {
+      "description": "Full viewport height (h-dvh) background map.",
+      "styling": "absolute inset-0 z-0 bg-zinc-200. Use a minimalist map style to avoid visual noise."
+    },
+    "Bottom_Sheet_Drawer": {
+      "description": "The command center. Houses all inputs and selections.",
+      "styling": "absolute bottom-0 w-full bg-white rounded-t-[32px] shadow-[0_-8px_40px_rgba(0,0,0,0.08)] z-10 transition-all duration-300",
+      "data_testid": "bottom-sheet-container"
+    },
+    "Location_Timeline_Input": {
+      "description": "Replaces standard box inputs with a vertical 'timeline' layout to save vertical space.",
+      "styling": "Flex column with a left-side visual connector (black dot -> grey line -> black square). Two rows of text: 'Current Location' and a subtle 'Where to?' trigger.",
+      "interaction": "Tapping 'Where to?' expands the sheet and focuses a real input field.",
+      "data_testid": "location-timeline-trigger"
+    },
+    "Quick_Destinations_Row": {
+      "description": "Horizontal scrolling row (Schnellziele) right below the location input.",
+      "styling": "flex gap-3 overflow-x-auto no-scrollbar py-2",
+      "item_styling": "flex items-center gap-2 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-full whitespace-nowrap text-sm font-semibold transition-colors",
+      "data_testid": "quick-destinations-scroll"
+    },
+    "Address_Search_Expanded": {
+      "description": "The view when searching for an address.",
+      "styling": "Large, bold text input without visible borders (border-b-2 focus:border-black). List of autocomplete results below with 'MapPin' icons.",
+      "data_testid": "address-search-input"
+    },
+    "Vehicle_Selection_List": {
+      "description": "Horizontal swiper or Bento grid for cars.",
+      "styling": "flex gap-4 overflow-x-auto pb-4",
+      "card_active": "border-2 border-black bg-white shadow-md p-4 rounded-2xl w-[140px] flex-shrink-0 relative",
+      "card_inactive": "border border-zinc-200 bg-zinc-50 p-4 rounded-2xl w-[140px] flex-shrink-0 opacity-70 transition-opacity hover:opacity-100",
+      "data_testid": "vehicle-selector-list"
+    },
+    "Booking_CTA": {
+      "description": "The primary action. Massive and undeniable.",
+      "styling": "w-full bg-[#FFD600] text-black font-black text-lg h-14 rounded-full flex items-center justify-center shadow-lg shadow-[#FFD600]/20 mt-4 mb-safe",
+      "data_testid": "book-ride-button"
+    },
+    "Booking_Status_View": {
+      "description": "Post-booking confirmation replacing the booking form.",
+      "styling": "Flex col, centered. Huge ETA (e.g., '3 min'). Driver avatar, Vehicle license plate in a stark black badge. Ghost button for 'Cancel'.",
+      "data_testid": "booking-status-view"
+    }
+  },
+  "motion_and_interaction": {
+    "sheet_snap": "Use Framer Motion spring physics (stiffness 300, damping 30) for drawer snapping.",
+    "button_press": "Scale down to 0.97 on tap (`active:scale-[0.97]`).",
+    "skeleton_loading": "Use pulse animation (bg-zinc-200) for ETA and price before fully loaded."
+  },
+  "icons_and_media": {
+    "library": "@phosphor-icons/react",
+    "style": "Weight: Bold or Duotone for contrast.",
+    "urls": {
+      "map_placeholder_bg": "https://images.unsplash.com/photo-1754299375507-72f63a9a065e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MDV8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwY2l0eSUyMHN0cmVldCUyMG1hcCUyMHBhdHRlcm58ZW58MHx8fHwxNzgzNTAyMDQ2fDA&ixlib=rb-4.1.0&q=85",
+      "vehicle_premium": "https://images.unsplash.com/photo-1699159906437-56451f9bb99d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHxibGFjayUyMGx1eHVyeSUyMHN1diUyMGNhciUyMGlzb2xhdGVkfGVufDB8fHx8MTc4MzUwMjA0Nnww&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly use React (.js) and Tailwind CSS.",
+    "Do NOT use HTML `<input>` directly for the main interaction; trigger a Shadcn UI Drawer that opens to 90% height for address entry.",
+    "Apply 'pb-safe' or equivalent margin to account for mobile safe areas on the Booking CTA.",
+    "The vehicle cards must visually swap styles dynamically based on the selected state (black borders vs grey borders).",
+    "Ensure all components map to the exact `data-testid` specified above.",
+    "Map background should be absolute, with the Drawer overlaid on top using z-index."
+  ]
 }
