@@ -473,11 +473,11 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 {hasCrypto && !balanceHidden && (
                   <motion.div className="flex flex-col gap-1 mb-2 pb-2 border-b border-white/[0.08]" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ delay: 0.3 }}>
                     <div className="flex items-center justify-between text-[9px]">
-                      <span className="text-white/55">EUR Wallet</span>
+                      <span className="text-white/55">{t("home.eur_wallet") || "EUR Wallet"}</span>
                       <span className="text-white/75 font-mono">€{balance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex items-center justify-between text-[9px]">
-                      <span className="text-white/55">Crypto ({cryptoBreakdown.length} Coins)</span>
+                      <span className="text-white/55">{t("home.crypto_wallet_summary", { count: cryptoBreakdown.length }) || `Crypto (${cryptoBreakdown.length} Coins)`}</span>
                       <span className="text-[#00C2FF] font-mono">€{cryptoBalanceEur.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</span>
                     </div>
                   </motion.div>
@@ -847,16 +847,16 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 <Shield size={18} className="text-amber-300" />
               </div>
               <div className="flex-1">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200/75">Vor Verifizierung</p>
-                <h3 className="mt-2 text-xl font-black text-white">Zugriff bewusst reduziert</h3>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200/75">{t("home.pre_kyc_badge") || "Vor Verifizierung"}</p>
+                <h3 className="mt-2 text-xl font-black text-white">{t("home.pre_kyc_title") || "Zugriff bewusst reduziert"}</h3>
                 <p className="mt-2 max-w-xl text-sm text-slate-300">
-                  Vor der Identitätsprüfung zeigen wir nur die sicheren Grundbereiche. Wallet, Auktionen, Marketplace und weitere Finanzfunktionen werden erst nach KYC freigeschaltet.
+                  {t("home.pre_kyc_desc") || "Vor der Identitätsprüfung zeigen wir nur die sicheren Grundbereiche. Wallet, Auktionen, Marketplace und weitere Finanzfunktionen werden erst nach KYC freigeschaltet."}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-300">
-                  <span className="rounded-full bg-white/5 px-3 py-1">Profil</span>
-                  <span className="rounded-full bg-white/5 px-3 py-1">KYC Starten</span>
-                  <span className="rounded-full bg-white/5 px-3 py-1">Support</span>
-                  <span className="rounded-full bg-white/5 px-3 py-1">Status prüfen</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1">{t("more.profile") || "Profil"}</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1">{t("home.pre_kyc_chip_start") || "KYC Starten"}</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1">{t("more.support") || "Support"}</span>
+                  <span className="rounded-full bg-white/5 px-3 py-1">{t("home.pre_kyc_chip_status") || "Status prüfen"}</span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
@@ -864,14 +864,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                     className="rounded-2xl bg-amber-300 px-4 py-2 text-sm font-black text-slate-950"
                     data-testid="pre-kyc-home-start-button"
                   >
-                    Identität verifizieren
+                    {t("home.pre_kyc_primary_cta") || "Identität verifizieren"}
                   </button>
                   <button
                     onClick={() => onNavigate("/more")}
                     className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-white"
                     data-testid="pre-kyc-home-open-more-button"
                   >
-                    Erlaubte Bereiche öffnen
+                    {t("home.pre_kyc_secondary_cta") || "Erlaubte Bereiche öffnen"}
                   </button>
                 </div>
               </div>

@@ -70,7 +70,7 @@ const ScannerPage = ({ onNavigate }) => {
   const [scanCodeInput, setScanCodeInput] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
   const [scanError, setScanError] = useState("");
-  const [scanHint, setScanHint] = useState("Scanne Tisch-, Rechnungs- oder Checkout-Codes.");
+  const [scanHint, setScanHint] = useState(t("scan.hub_default_hint") || "Scanne Tisch-, Rechnungs- oder Checkout-Codes.");
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [cameraEngine, setCameraEngine] = useState(null);
@@ -154,20 +154,20 @@ const ScannerPage = ({ onNavigate }) => {
 
       if (res.type === "wallet_barcode") {
         if (!canCashier) {
-          setScanError(res.message || "Dieser Code gehört in den Kassieren-Modus.");
+          setScanError(res.message || t("scan.cashier_only_code") || "Dieser Code gehört in den Kassieren-Modus.");
           return;
         }
         setTool(Tool.CASHIER);
         setBarcodeInput(code.toUpperCase());
         setStep(Step.AMOUNT);
-        setScanHint("Kunden-Code erkannt. Betrag eingeben und kassieren.");
+        setScanHint(t("scan.customer_code_detected_hint") || "Kunden-Code erkannt. Betrag eingeben und kassieren.");
         return;
       }
 
       stopCamera();
       onNavigate?.(res.route);
     } catch (e) {
-      setScanError(e?.message || "Code konnte nicht aufgelöst werden.");
+      setScanError(e?.message || t("scan.resolve_failed") || "Code konnte nicht aufgelöst werden.");
     } finally {
       setScanBusy(false);
     }
@@ -197,14 +197,14 @@ const ScannerPage = ({ onNavigate }) => {
 
       const decodedText = await scanner.scanFile(file, true);
       setScanCodeInput(decodedText);
-      setScanHint("Code aus Bild erkannt. Ziel wird geöffnet …");
+      setScanHint(t("scan.image_code_detected") || "Code aus Bild erkannt. Ziel wird geöffnet …");
       await handleResolveCode(decodedText);
       swallowMaybePromise(scanner.clear?.());
       html5ScannerRef.current = null;
       setCameraEngine(null);
     } catch (e) {
-      setCameraError(e?.message || "Code konnte aus Foto nicht erkannt werden.");
-      setScanHint("Auf iPhone wird die Kamera über Foto-/Kamera-Auswahl geöffnet.");
+      setCameraError(e?.message || t("scan.image_code_failed") || "Code konnte aus Foto nicht erkannt werden.");
+      setScanHint(t("scan.iphone_photo_hint") || "Auf iPhone wird die Kamera über Foto-/Kamera-Auswahl geöffnet.");
     } finally {
       setCameraPreparing(false);
     }
@@ -215,13 +215,13 @@ const ScannerPage = ({ onNavigate }) => {
     setScanError("");
 
     if (prefersImageCapture) {
-      setScanHint("iPhone öffnet Kamera oder Fotoauswahl zum Scannen.");
+      setScanHint(t("scan.iphone_open_hint") || "iPhone öffnet Kamera oder Fotoauswahl zum Scannen.");
       openNativeImageCapture();
       return;
     }
 
     if (!navigator?.mediaDevices?.getUserMedia) {
-      setCameraError("Kamera nicht verfügbar.");
+      setCameraError(t("scan.camera_unavailable") || "Kamera nicht verfügbar.");
       return;
     }
     try {
@@ -269,7 +269,7 @@ const ScannerPage = ({ onNavigate }) => {
 
         setCameraActive(true);
         setCameraPreparing(false);
-        setScanHint("Safari/iPhone-Kamera aktiv. Richte den Code mittig aus.");
+        setScanHint(t("scan.safari_camera_hint") || "Safari/iPhone-Kamera aktiv. Richte den Code mittig aus.");
         setTimeout(() => {
           try {
             swallowMaybePromise(scanner.applyVideoConstraints?.({ advanced: [{ focusMode: "continuous" }, { zoom: 2 }] }));
@@ -299,10 +299,10 @@ const ScannerPage = ({ onNavigate }) => {
 
       setCameraActive(true);
       setCameraEngine("native");
-      setScanHint("Kamera scannt QR- und Barcodes live.");
+      setScanHint(t("scan.camera_live_hint") || "Kamera scannt QR- und Barcodes live.");
     } catch (e) {
       stopCamera();
-      setCameraError(e?.message || "Kamera konnte nicht gestartet werden.");
+      setCameraError(e?.message || t("scan.camera_start_failed") || "Kamera konnte nicht gestartet werden.");
     }
   }, [handleResolveCode, stopCamera, prefersImageCapture, openNativeImageCapture]);
 
@@ -362,7 +362,7 @@ const ScannerPage = ({ onNavigate }) => {
       setResolutionId(res.resolution_id || "");
       setCashierFlowType("lookup");
     } catch (resolveError) {
-      setError(resolveError?.message || "Kunde konnte nicht gefunden werden.");
+      setError(resolveError?.message || t("scan.customer_not_found") || "Kunde konnte nicht gefunden werden.");
       setResolvedCustomer(null);
       setResolutionId("");
     } finally {
@@ -390,7 +390,7 @@ const ScannerPage = ({ onNavigate }) => {
           amount: numAmount,
           fee: 0,
           net_to_merchant: numAmount,
-          customer_name: resolvedCustomer?.masked_name || "Kunde",
+          customer_name: resolvedCustomer?.masked_name || (t("role.customer") || "Kunde"),
           reference: topupRes?.sale?.sale_id || topupRes?.sale?.payment_reference || "TOPUP",
           flow_type: "topup",
         });
@@ -407,12 +407,12 @@ const ScannerPage = ({ onNavigate }) => {
         });
         setPreparedPayment(prepared.payment);
         const confirmed = await api.posConfirmPaymentPin({ payment_id: prepared.payment.payment_id, pin: customerPin.trim() });
-        if (!confirmed.ok) throw new Error(confirmed.message || "PIN ungültig");
+        if (!confirmed.ok) throw new Error(confirmed.message || t("scan.invalid_pin") || "PIN ungültig");
         setResult({
           amount: numAmount,
           fee: 0,
           net_to_merchant: numAmount,
-          customer_name: resolvedCustomer?.masked_name || "Kunde",
+          customer_name: resolvedCustomer?.masked_name || (t("role.customer") || "Kunde"),
           reference: prepared.payment.payment_id,
           flow_type: "payment",
         });
@@ -420,7 +420,7 @@ const ScannerPage = ({ onNavigate }) => {
       }
       setCustomerPin("");
     } catch (cashierError) {
-      setError(cashierError?.message || "Kassen-Aktion fehlgeschlagen.");
+      setError(cashierError?.message || t("scan.cashier_action_failed") || "Kassen-Aktion fehlgeschlagen.");
       setStep(Step.ERROR);
     } finally {
       setProcessing(false);
@@ -529,7 +529,7 @@ const ScannerPage = ({ onNavigate }) => {
           <ArrowLeft size={16} className="text-white/70" />
         </motion.button>
         <h1 className="text-base font-semibold">
-          {tool === Tool.CASHIER ? (t("scan.title") || "Barcode-Zahlung") : "Scan Hub"}
+          {tool === Tool.CASHIER ? (t("scan.title") || "Barcode-Zahlung") : (t("scan.hub_title") || "Scan Hub")}
         </h1>
         <div className="w-9" />
       </div>
@@ -551,27 +551,27 @@ const ScannerPage = ({ onNavigate }) => {
             className={`py-2.5 rounded-xl text-xs font-semibold border ${tool === Tool.RESOLVE ? "bg-[#00C2FF]/15 text-[#00C2FF] border-[#00C2FF]/30" : "bg-white/[0.03] text-[#888] border-white/[0.05]"}`}
             data-testid="scanner-tool-resolve"
           >
-            Scannen
+            {t("nav.scan") || "Scannen"}
           </button>
           {canCashier ? <button
             onClick={() => switchTool(Tool.CASHIER)}
             className={`py-2.5 rounded-xl text-xs font-semibold border ${tool === Tool.CASHIER ? "bg-[#00D26A]/15 text-[#00D26A] border-[#00D26A]/30" : "bg-white/[0.03] text-[#888] border-white/[0.05]"}`}
             data-testid="scanner-tool-cashier"
           >
-            Kassieren
+            {t("scan.cashier_tab") || "Kassieren"}
           </button> : <button
             onClick={() => onNavigate?.('/receive-money')}
             className="py-2.5 rounded-xl text-xs font-semibold border bg-[#00C2FF]/12 text-[#00C2FF] border-[#00C2FF]/25"
             data-testid="scanner-tool-my-code"
           >
-            Mein Code
+            {t("scan.my_code") || "Mein Code"}
           </button>}
           <button
             onClick={() => onNavigate?.('/receive-money')}
             className="py-2.5 rounded-xl text-xs font-semibold border bg-white/[0.03] text-white border-white/[0.05]"
             data-testid="scanner-show-my-code"
           >
-            Mein QR
+            {t("wallet.my_qr") || "Mein QR"}
           </button>
         </div>
 
@@ -582,15 +582,15 @@ const ScannerPage = ({ onNavigate }) => {
                 <div className="w-10 h-10 rounded-2xl bg-[#00C2FF]/12 text-[#00C2FF] flex items-center justify-center mb-3">
                   <UtensilsCrossed size={18} />
                 </div>
-                <p className="text-sm font-semibold">Tisch scannen</p>
-                <p className="text-[11px] text-[#666] mt-1 leading-relaxed">QR oder Barcode öffnen direkt die Karte und Bestellung.</p>
+                <p className="text-sm font-semibold">{t("scan.table_scan_title") || "Tisch scannen"}</p>
+                <p className="text-[11px] text-[#666] mt-1 leading-relaxed">{t("scan.table_scan_desc") || "QR oder Barcode öffnen direkt die Karte und Bestellung."}</p>
               </div>
               <div className="rounded-2xl border border-white/[0.05] bg-white/[0.03] p-4" data-testid="scan-hub-invoice-card">
                 <div className="w-10 h-10 rounded-2xl bg-[#FF6B6B]/12 text-[#FF6B6B] flex items-center justify-center mb-3">
                   <FileText size={18} />
                 </div>
-                <p className="text-sm font-semibold">Rechnung scannen</p>
-                <p className="text-[11px] text-[#666] mt-1 leading-relaxed">Invoice-Code führt direkt auf die Zahlungsseite.</p>
+                <p className="text-sm font-semibold">{t("scan.invoice_scan_title") || "Rechnung scannen"}</p>
+                <p className="text-[11px] text-[#666] mt-1 leading-relaxed">{t("scan.invoice_scan_desc") || "Invoice-Code führt direkt auf die Zahlungsseite."}</p>
               </div>
             </div>
 
@@ -620,8 +620,8 @@ const ScannerPage = ({ onNavigate }) => {
                     <div className="w-20 h-20 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 flex items-center justify-center mx-auto mb-4 shadow-[0_0_40px_rgba(0,194,255,0.08)]">
                       <ScanLine size={30} className="text-[#00C2FF]" />
                     </div>
-                    <p className="text-sm font-semibold">{prefersImageCapture ? "Kamera oder Foto öffnen" : "Zum Scannen tippen"}</p>
-                    <p className="text-[11px] text-[#666] mt-1">QR + klassische Barcodes. Unterstützt Tisch-Codes, Rechnungen und Checkout-Links.</p>
+                    <p className="text-sm font-semibold">{prefersImageCapture ? (t("scan.open_camera_or_photo") || "Kamera oder Foto öffnen") : (t("scan.tap_to_scan") || "Zum Scannen tippen")}</p>
+                    <p className="text-[11px] text-[#666] mt-1">{t("scan.camera_placeholder_desc") || "QR + klassische Barcodes. Unterstützt Tisch-Codes, Rechnungen und Checkout-Links."}</p>
                   </button>
                 )}
                 {cameraPreparing && (
@@ -629,8 +629,8 @@ const ScannerPage = ({ onNavigate }) => {
                     <div className="w-16 h-16 rounded-full border border-[#00C2FF]/25 bg-[#00C2FF]/10 flex items-center justify-center mb-4">
                       <Loader2 size={26} className="text-[#00C2FF] animate-spin" />
                     </div>
-                    <p className="text-sm font-semibold">Kamera wird gestartet</p>
-                    <p className="text-[11px] text-[#666] mt-1">Bitte kurz warten und die Berechtigung erlauben.</p>
+                    <p className="text-sm font-semibold">{t("scan.camera_starting") || "Kamera wird gestartet"}</p>
+                    <p className="text-[11px] text-[#666] mt-1">{t("scan.camera_permission_hint") || "Bitte kurz warten und die Berechtigung erlauben."}</p>
                   </div>
                 )}
                 <div className="absolute inset-x-5 top-5 h-12 border border-[#00C2FF]/35 rounded-2xl pointer-events-none" />
@@ -644,14 +644,14 @@ const ScannerPage = ({ onNavigate }) => {
                     data-testid="scan-camera-toggle"
                   >
                     {cameraActive ? <CameraOff size={16} /> : <Camera size={16} />}
-                    {cameraActive ? "Kamera stoppen" : (prefersImageCapture ? "Kamera/Foto öffnen" : "Kamera starten")}
+                    {cameraActive ? (t("scan.stop_camera") || "Kamera stoppen") : (prefersImageCapture ? (t("scan.open_camera_photo") || "Kamera/Foto öffnen") : (t("scan.start_camera") || "Kamera starten"))}
                   </button>
                   <button
                     onClick={() => onNavigate?.('/receive-money')}
                     className="px-4 py-3 rounded-2xl text-sm font-semibold bg-white/[0.04] border border-white/[0.06] text-white flex items-center justify-center gap-2"
                     data-testid="scan-hub-my-code-button"
                   >
-                    <WalletCards size={16} /> Mein Code
+                    <WalletCards size={16} /> {t("scan.my_code") || "Mein Code"}
                   </button>
                 </div>
 
@@ -662,7 +662,7 @@ const ScannerPage = ({ onNavigate }) => {
                     value={scanCodeInput}
                     onChange={(e) => setScanCodeInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleResolveCode(scanCodeInput); }}
-                    placeholder="TBL-..., BBINV-..., cs_... oder URL"
+                    placeholder={t("scan.code_input_placeholder") || "TBL-..., BBINV-..., cs_... oder URL"}
                     className="w-full py-3.5 pl-11 pr-4 bg-white/[0.03] border border-white/[0.06] rounded-xl text-white text-sm font-mono placeholder:text-[#333] outline-none focus:border-[#00C2FF]/30"
                     data-testid="scan-code-input"
                   />
@@ -675,7 +675,7 @@ const ScannerPage = ({ onNavigate }) => {
                   data-testid="scan-code-submit"
                 >
                   {scanBusy ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                  Code öffnen
+                  {t("scan.open_code") || "Code öffnen"}
                 </button>
 
                 {scanError ? (
@@ -701,9 +701,9 @@ const ScannerPage = ({ onNavigate }) => {
               >
                 <div className="grid grid-cols-3 gap-2" data-testid="cashier-flow-steps">
                   {[
-                    { id: 'lookup', label: '1. Kunde finden' },
-                    { id: 'amount', label: '2. Betrag' },
-                    { id: 'pin', label: '3. PIN & Bestätigung' },
+                    { id: 'lookup', label: t("scan.step_lookup") || '1. Kunde finden' },
+                    { id: 'amount', label: t("scan.step_amount") || '2. Betrag' },
+                    { id: 'pin', label: t("scan.step_pin_confirm") || '3. PIN & Bestätigung' },
                   ].map((item) => {
                     const active = item.id === 'lookup' || (item.id === 'amount' && customerResolved) || (item.id === 'pin' && customerResolved && isValidAmount);
                     return (
@@ -718,17 +718,17 @@ const ScannerPage = ({ onNavigate }) => {
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-[#00C2FF]/10 border border-[#00C2FF]/20 flex items-center justify-center"><UserRound size={18} className="text-[#00C2FF]" /></div>
                     <div>
-                      <p className="text-sm font-semibold text-white">Ohne Handy an der Kasse</p>
-                      <p className="text-[11px] text-[#666] leading-relaxed mt-1">Kunde finden über Karte, Kundennummer oder Telefonnummer. Danach Bezahlen oder Aufladen mit PIN bestätigen.</p>
+                      <p className="text-sm font-semibold text-white">{t("scan.no_phone_title") || "Ohne Handy an der Kasse"}</p>
+                      <p className="text-[11px] text-[#666] leading-relaxed mt-1">{t("scan.no_phone_desc") || "Kunde finden über Karte, Kundennummer oder Telefonnummer. Danach Bezahlen oder Aufladen mit PIN bestätigen."}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { id: 'barcode', label: 'QR / Code', icon: QrCode },
-                      { id: 'card_token', label: 'Karte', icon: CreditCard },
-                      { id: 'user_number', label: 'Kundennummer', icon: Hash },
-                      { id: 'phone', label: 'Telefon', icon: Phone },
+                      { id: 'barcode', label: t("scan.lookup_barcode") || 'QR / Code', icon: QrCode },
+                      { id: 'card_token', label: t("scan.lookup_card") || 'Karte', icon: CreditCard },
+                      { id: 'user_number', label: t("scan.lookup_user_number") || 'Kundennummer', icon: Hash },
+                      { id: 'phone', label: t("scan.lookup_phone") || 'Telefon', icon: Phone },
                     ].map((mode) => (
                       <button
                         key={mode.id}
@@ -748,11 +748,11 @@ const ScannerPage = ({ onNavigate }) => {
                       data-testid="cashier-customer-lookup-input"
                       value={customerLookupValue}
                       onChange={(e) => setCustomerLookupValue(e.target.value)}
-                      placeholder={customerLookupMode === 'phone' ? 'Telefonnummer' : customerLookupMode === 'user_number' ? 'BidBlitz ID / Kundennummer' : customerLookupMode === 'card_token' ? 'Kartennummer / Token' : 'BLZ-Code'}
+                      placeholder={customerLookupMode === 'phone' ? (t("scan.lookup_placeholder_phone") || 'Telefonnummer') : customerLookupMode === 'user_number' ? (t("scan.lookup_placeholder_user_number") || 'BidBlitz ID / Kundennummer') : customerLookupMode === 'card_token' ? (t("scan.lookup_placeholder_card") || 'Kartennummer / Token') : (t("scan.lookup_placeholder_barcode") || 'BLZ-Code')}
                       className="flex-1 py-3 px-4 bg-white/[0.03] border border-white/[0.06] rounded-xl text-white text-sm placeholder:text-[#444] outline-none focus:border-[#00C2FF]/30"
                     />
                     <button data-testid="cashier-customer-lookup-submit" type="button" onClick={handleResolveCustomer} disabled={lookupBusy || !customerLookupValue.trim()} className="px-4 rounded-xl bg-[#00C2FF]/15 border border-[#00C2FF]/25 text-[#00C2FF] text-sm font-semibold disabled:opacity-50">
-                      {lookupBusy ? <Loader2 size={16} className="animate-spin" /> : 'Suchen'}
+                      {lookupBusy ? <Loader2 size={16} className="animate-spin" /> : (t("common.search") || 'Suchen')}
                     </button>
                   </div>
 
@@ -761,18 +761,18 @@ const ScannerPage = ({ onNavigate }) => {
                       <p className="text-[12px] font-semibold text-white">{resolvedCustomer.masked_name}</p>
                       <p className="text-[11px] text-[#8CE7B3] mt-1">{resolvedCustomer.customer_number} • {resolvedCustomer.verification_status}</p>
                       <div className="mt-2 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-[0.1em] text-[#9ad7ff] font-semibold">Nächster Schritt</p>
-                        <p className="text-[11px] text-white mt-1">Jetzt zuerst Betrag festlegen. Danach gibt der Kunde seine 4-stellige PIN ein.</p>
+                        <p className="text-[10px] uppercase tracking-[0.1em] text-[#9ad7ff] font-semibold">{t("scan.next_step") || "Nächster Schritt"}</p>
+                        <p className="text-[11px] text-white mt-1">{t("scan.next_step_desc") || "Jetzt zuerst Betrag festlegen. Danach gibt der Kunde seine 4-stellige PIN ein."}</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 mt-3">
                         <button type="button" data-testid="cashier-action-payment" onClick={() => setCashierAction('payment')} className={`min-h-[44px] rounded-xl border px-3 py-2 text-left ${cashierAction === 'payment' ? 'bg-[#00C2FF]/16 border-[#00C2FF]/25 text-[#00C2FF]' : 'bg-white/[0.02] border-white/[0.05] text-[#aaa]'}`}>
-                          <span className="block text-[11px] font-semibold">Bezahlen</span>
-                          <span className="block text-[10px] mt-0.5">Wallet belasten</span>
+                          <span className="block text-[11px] font-semibold">{t("wallet.pay") || "Bezahlen"}</span>
+                          <span className="block text-[10px] mt-0.5">{t("scan.charge_wallet_desc") || "Wallet belasten"}</span>
                         </button>
                         <button type="button" data-testid="cashier-action-topup" onClick={() => setCashierAction('topup')} className={`min-h-[44px] rounded-xl border px-3 py-2 text-left ${cashierAction === 'topup' ? 'bg-[#00D26A]/16 border-[#00D26A]/25 text-[#00D26A]' : 'bg-white/[0.02] border-white/[0.05] text-[#aaa]'}`}>
-                          <span className="block text-[11px] font-semibold">Aufladen</span>
-                          <span className="block text-[10px] mt-0.5">Wallet gutschreiben</span>
+                          <span className="block text-[11px] font-semibold">{t("wallet.add") || "Aufladen"}</span>
+                          <span className="block text-[10px] mt-0.5">{t("scan.topup_wallet_desc") || "Wallet gutschreiben"}</span>
                         </button>
                       </div>
 
@@ -785,7 +785,7 @@ const ScannerPage = ({ onNavigate }) => {
                           maxLength={4}
                           value={customerPin}
                           onChange={(e) => setCustomerPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                          placeholder="Kunden-PIN"
+                          placeholder={t("scan.customer_pin_placeholder") || "Kunden-PIN"}
                           disabled={!isValidAmount}
                           className="flex-1 bg-transparent text-white text-sm tracking-[0.28em] placeholder:text-[#555] outline-none"
                         />
@@ -798,14 +798,14 @@ const ScannerPage = ({ onNavigate }) => {
                         disabled={!customerResolved || !customerPin || !isValidAmount || processing}
                         className={`w-full mt-3 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${!customerResolved || !customerPin || !isValidAmount || processing ? 'bg-white/[0.04] text-[#444] cursor-not-allowed' : cashierAction === 'topup' ? 'bg-[#00D26A] text-white' : 'bg-[#00C2FF] text-white'}`}
                       >
-                        {processing ? <Loader2 size={16} className="animate-spin" /> : <>{cashierAction === 'topup' ? 'Wallet aufladen' : 'Zahlung bestätigen'}</>}
+                        {processing ? <Loader2 size={16} className="animate-spin" /> : <>{cashierAction === 'topup' ? (t("scan.topup_wallet_action") || 'Wallet aufladen') : (t("scan.confirm_payment_action") || 'Zahlung bestätigen')}</>}
                       </button>
                     </div>
                   )}
                 </div>
 
                 <div className={`text-center pt-2 pb-2 transition-all ${customerResolved ? 'opacity-100' : 'opacity-45'}`}>
-                  <p className="text-xs text-[#555] uppercase tracking-widest mb-3">{customerResolved ? '2. Betrag festlegen' : '2. Erst Kunde finden'}</p>
+                  <p className="text-xs text-[#555] uppercase tracking-widest mb-3">{customerResolved ? (t("scan.amount_step_ready") || '2. Betrag festlegen') : (t("scan.amount_step_locked") || '2. Erst Kunde finden')}</p>
                   <div className="flex items-center justify-center gap-1.5">
                     <span className="text-3xl text-[#555] font-light">&euro;</span>
                     <input
@@ -820,7 +820,7 @@ const ScannerPage = ({ onNavigate }) => {
                       autoFocus={customerResolved}
                     />
                   </div>
-                  {!customerResolved && <p className="text-[11px] text-[#666] mt-2">Kunden zuerst identifizieren</p>}
+                  {!customerResolved && <p className="text-[11px] text-[#666] mt-2">{t("scan.identify_customer_first") || 'Kunden zuerst identifizieren'}</p>}
                   {customerResolved && amount && !isValidAmount && (
                     <p className="text-[11px] text-red-400 mt-2">{t("scan.amount_range") || "EUR 0.50 – 2,500.00"}</p>
                   )}
@@ -856,13 +856,13 @@ const ScannerPage = ({ onNavigate }) => {
                   whileTap={customerResolved && isValidAmount ? { scale: 0.98 } : {}}
                 >
                   <ScanBarcode size={18} />
-                  {customerResolved ? (t("scan.activate_scanner") || "Activate Scanner") : 'Erst Kunde finden'}
+                  {customerResolved ? (t("scan.activate_scanner") || "Activate Scanner") : (t("scan.find_customer_first") || 'Erst Kunde finden')}
                 </motion.button>
 
                 <div className="flex items-start gap-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                   <Smartphone size={16} className="text-[#00C2FF]/60 mt-0.5 flex-shrink-0" />
                   <p className="text-[11px] text-[#555] leading-relaxed">
-                    {resolvedCustomer ? (isValidAmount ? 'Kunde gefunden. Jetzt PIN bestätigen und die Aktion direkt abschließen.' : 'Kunde gefunden. Jetzt Betrag festlegen, dann PIN eingeben.') : 'Zuerst Kunde identifizieren. Danach Betrag und Bestätigung folgen Schritt für Schritt.'}
+                    {resolvedCustomer ? (isValidAmount ? (t("scan.customer_found_ready_hint") || 'Kunde gefunden. Jetzt PIN bestätigen und die Aktion direkt abschließen.') : (t("scan.customer_found_amount_hint") || 'Kunde gefunden. Jetzt Betrag festlegen, dann PIN eingeben.')) : (t("scan.customer_identify_hint") || 'Zuerst Kunde identifizieren. Danach Betrag und Bestätigung folgen Schritt für Schritt.')}
                   </p>
                 </div>
               </motion.div>
@@ -976,7 +976,7 @@ const ScannerPage = ({ onNavigate }) => {
                 </motion.div>
 
                 <motion.p className="text-lg font-semibold text-white mb-1" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  {result.flow_type === 'topup' ? 'Wallet erfolgreich aufgeladen' : (t("scan.payment_success") || "Payment Successful")}
+                  {result.flow_type === 'topup' ? (t("scan.wallet_topup_success") || 'Wallet erfolgreich aufgeladen') : (t("scan.payment_success") || "Payment Successful")}
                 </motion.p>
 
                 <motion.p className="text-4xl font-bold text-[#00D26A] mb-1.5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -984,7 +984,7 @@ const ScannerPage = ({ onNavigate }) => {
                 </motion.p>
 
                 <motion.p className="text-xs text-[#555] mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-                  {result.flow_type === 'topup' ? `Aufgeladen für ${result.customer_name}` : `${t("scan.charged_from") || "Charged from"} ${result.customer_name}`}
+                  {result.flow_type === 'topup' ? `${t("scan.topped_up_for") || 'Aufgeladen für'} ${result.customer_name}` : `${t("scan.charged_from") || "Charged from"} ${result.customer_name}`}
                 </motion.p>
 
                 <motion.div
@@ -998,7 +998,7 @@ const ScannerPage = ({ onNavigate }) => {
                     <Receipt size={14} className="text-[#00C2FF]/60" />
                     <span className="text-xs text-[#555] uppercase tracking-wider">{t("scan.receipt") || "Receipt"}</span>
                   </div>
-                  <div className="flex justify-between text-sm"><span className="text-[#555]">{result.flow_type === 'topup' ? 'Aufladung' : (t("scan.amount_label") || "Amount")}</span><span className="text-white font-medium">&euro;{result.amount.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#555]">{result.flow_type === 'topup' ? (t("scan.topup_label") || 'Aufladung') : (t("scan.amount_label") || "Amount")}</span><span className="text-white font-medium">&euro;{result.amount.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-[#555]">{t("scan.fee_label") || "Fee"}</span><span className="text-[#FFB800]">&euro;{result.fee.toFixed(2)}</span></div>
                   <div className="border-t border-white/[0.05] pt-2 flex justify-between text-sm"><span className="text-[#555]">{t("scan.net_received") || "Net Received"}</span><span className="text-[#00D26A] font-semibold">&euro;{result.net_to_merchant.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-[#555]">{t("scan.reference") || "Reference"}</span><span className="text-white/50 font-mono text-xs">{result.reference}</span></div>
@@ -1015,7 +1015,7 @@ const ScannerPage = ({ onNavigate }) => {
                     {t("scan.done") || "Done"}
                   </motion.button>
                   <motion.button data-testid="scan-tip-btn" onClick={() => setShowTip(true)} className="py-3.5 px-4 bg-[#F59E0B]/15 border border-[#F59E0B]/25 rounded-xl text-[#F59E0B] font-medium text-sm flex items-center gap-1.5" whileTap={{ scale: 0.97 }}>
-                    <Heart size={14} /> Trinkgeld
+                    <Heart size={14} /> {t("scan.tip") || "Trinkgeld"}
                   </motion.button>
                   <motion.button data-testid="scan-new-payment-btn" onClick={handleNewPayment} className="flex-1 py-3.5 bg-[#00C2FF]/15 border border-[#00C2FF]/25 rounded-xl text-[#00C2FF] font-medium text-sm" whileTap={{ scale: 0.97 }}>
                     {t("scan.new_payment") || "New Payment"}
