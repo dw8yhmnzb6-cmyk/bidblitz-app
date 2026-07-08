@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Briefcase, Clock3, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
+import { ArrowLeft, Briefcase, Clock3, Heart, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { TaxiMap } from '../components/RealMap';
 import ActiveRideTracker from '../components/taxi/ActiveRideTracker';
@@ -87,6 +87,10 @@ function SearchResultRow({ item, index, onSelect }) {
   );
 }
 
+function SuggestionSectionTitle({ children }) {
+  return <div className="px-1 pb-2 pt-4 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">{children}</div>;
+}
+
 function QuickDestinationChip({ icon, label, onClick, testId }) {
   return (
     <button
@@ -123,6 +127,9 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
   const eta = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 3);
   const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || '—';
   const driver = ride?.driver?.name || ride?.driver_name || 'Fahrer';
+  const price = Number(ride?.estimated_price || ride?.fare_estimate || ride?.final_fare || 0);
+  const pickupAddress = ride?.pickup?.address || ride?.pickup_address || 'Dein Standort';
+  const dropoffAddress = ride?.dropoff?.address || ride?.dropoff_address || 'Ziel';
 
   return (
     <div className="space-y-4" data-testid="booking-status-view">
@@ -135,6 +142,33 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
           <div className="text-left">
             <div className="text-base font-bold text-[#0A0A0A]">{driver}</div>
             <div className="mt-1 inline-flex rounded-full bg-black px-3 py-1 text-xs font-black text-white">{plate}</div>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-zinc-50 p-3 text-left">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Preis</div>
+            <div className="mt-1 text-lg font-black text-[#0A0A0A]">{price ? `€${price.toFixed(2)}` : 'Laufend'}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Status</div>
+            <div className="mt-1 text-lg font-black text-[#0A0A0A]">Live</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="mt-1 h-3 w-3 rounded-full bg-black" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Abholung</div>
+            <div className="mt-1 text-sm font-bold text-[#0A0A0A]">{pickupAddress}</div>
+          </div>
+        </div>
+        <div className="ml-[5px] mt-2 h-6 w-px bg-zinc-200" />
+        <div className="flex items-start gap-3">
+          <div className="mt-1 h-3 w-3 rounded-sm bg-black" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Ziel</div>
+            <div className="mt-1 text-sm font-bold text-[#0A0A0A]">{dropoffAddress}</div>
           </div>
         </div>
       </div>
@@ -165,6 +199,7 @@ export default function TaxiPage({ onNavigate }) {
   const [error, setError] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('standard');
   const [estimates, setEstimates] = useState([]);
+  const [regionalHints, setRegionalHints] = useState([]);
   const [nearbyDrivers, setNearbyDrivers] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
 
@@ -221,6 +256,22 @@ export default function TaxiPage({ onNavigate }) {
     search('taxi-simple-dropoff', value, setSearchResults, () => {}, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
   }, [pickup?.lat, pickup?.lng, search]);
 
+  useEffect(() => {
+    if (!searchValue || searchValue.trim().length < 2) {
+      setRegionalHints([]);
+      return;
+    }
+    let cancelled = false;
+    const loadHints = async () => {
+      const hints = await api.fetchRegionalPlaceHints(searchValue, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng, limit: 4 } : { limit: 4 });
+      if (!cancelled) setRegionalHints(hints || []);
+    };
+    loadHints();
+    return () => {
+      cancelled = true;
+    };
+  }, [pickup?.lat, pickup?.lng, searchValue]);
+
   const estimateRide = useCallback(async (nextDropoff) => {
     if (!pickup?.lat || !nextDropoff?.lat) return;
     setEstimating(true);
@@ -256,6 +307,12 @@ export default function TaxiPage({ onNavigate }) {
     const recents = recentAddresses.slice(0, 4).map((item, index) => ({ ...item, key: `recent-${index}` }));
     return { home, work, recents };
   }, [recentAddresses, savedPlaces]);
+
+  const quickVehicleFacts = useMemo(() => ({
+    standard: '2 Min · ideal für Alltag',
+    premium: '4 Min · ruhige Fahrt',
+    van: '6 Min · mehr Platz',
+  }), []);
 
   const selectedEstimate = useMemo(
     () => estimates.find((item) => item.vehicle_type === selectedVehicle) || estimates[0] || null,
@@ -471,13 +528,27 @@ export default function TaxiPage({ onNavigate }) {
                   />
                 </div>
                 <div className="mt-4 max-h-[52vh] overflow-y-auto pr-1">
-                  {searchResults.length === 0 ? (
+                  {searchResults.length === 0 && regionalHints.length === 0 ? (
                     <div className="rounded-2xl bg-zinc-50 px-4 py-5 text-sm text-zinc-500" data-testid="taxi-search-empty-state">
                       Tippe mindestens einen Ort ein. Letzte Ziele und Live-Treffer erscheinen hier.
                     </div>
-                  ) : searchResults.map((item, index) => (
-                    <SearchResultRow key={`${item.address}-${index}`} item={item} index={index} onSelect={handleSelectDestination} />
-                  ))}
+                  ) : null}
+                  {regionalHints.length > 0 ? (
+                    <div data-testid="regional-hints-section">
+                      <SuggestionSectionTitle>Nahe Treffer</SuggestionSectionTitle>
+                      {regionalHints.map((item, index) => (
+                        <SearchResultRow key={`hint-${item.address}-${index}`} item={item} index={index} onSelect={handleSelectDestination} />
+                      ))}
+                    </div>
+                  ) : null}
+                  {searchResults.length > 0 ? (
+                    <div data-testid="search-results-section">
+                      <SuggestionSectionTitle>Alle Treffer</SuggestionSectionTitle>
+                      {searchResults.map((item, index) => (
+                        <SearchResultRow key={`${item.address}-${index}`} item={item} index={index} onSelect={handleSelectDestination} />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </motion.div>
             ) : null}
@@ -508,6 +579,19 @@ export default function TaxiPage({ onNavigate }) {
                       onClick={() => setSelectedVehicle(vehicle.id)}
                     />
                   ))}
+                </div>
+                <div className="mt-4 rounded-2xl bg-zinc-50 p-4" data-testid="vehicle-selection-summary">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Gewählt</div>
+                      <div className="mt-1 text-lg font-black text-[#0A0A0A]">{VEHICLES.find((item) => item.id === selectedVehicle)?.label || 'Fahrt'}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Ankunft</div>
+                      <div className="mt-1 text-lg font-black text-[#0A0A0A]">{formatEta(selectedEstimate)}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm text-zinc-500">{quickVehicleFacts[selectedVehicle]}</div>
                 </div>
                 {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
               </motion.div>
