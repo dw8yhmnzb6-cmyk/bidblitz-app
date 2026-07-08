@@ -304,6 +304,94 @@ async def seed_admin():
         logger.warning(f"Admin seed failed: {e}")
 
 
+async def cleanup_legacy_admin_artifacts():
+    try:
+        admin = await db.users.find_one({"email": ADMIN_EMAIL.lower().strip()}, {"_id": 1})
+        if not admin:
+            logger.warning("Legacy admin cleanup skipped: canonical admin not found")
+            return
+
+        uid = str(admin["_id"])
+        canonical_email = ADMIN_EMAIL.lower().strip()
+        canonical_name = "BidBlitz Admin"
+        legacy_emails = ["admin@bidblitz.com", "admin-legacy-alias@bidblitz.local"]
+        legacy_names = ["Admin Updated", "Admin BidBlitz", "Pizzeria Admin"]
+
+        update_specs = [
+            ("notifications", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("affiliate_codes", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("bookings", {"$or": [{"user_email": {"$in": legacy_emails}}, {"contact_email": {"$in": legacy_emails}}]}, {"$set": {"user_email": canonical_email, "contact_email": canonical_email}}),
+            ("cashback_claims", {"user_id": uid}, {"$set": {"user_email": canonical_email}}),
+            ("insurance_policies", {"user_id": uid}, {"$set": {"user_email": canonical_email, "user_name": canonical_name}}),
+            ("invoices", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("trading_bots", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("move_profiles", {"user_id": uid}, {"$set": {"user_email": canonical_email, "user_name": canonical_name}}),
+            ("ad_campaigns", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("cashouts", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("smm_orders", {"user_id": uid}, {"$set": {"user_email": canonical_email}}),
+            ("levelup_subscriptions", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("tax_reports", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("food_orders", {"user_id": uid}, {"$set": {"user_email": canonical_email, "user_name": canonical_name}}),
+            ("pay_sessions", {"merchant_email": {"$in": legacy_emails}}, {"$set": {"merchant_email": canonical_email, "merchant_name": canonical_name}}),
+            ("ev_sessions", {"$or": [{"user_email": {"$in": legacy_emails}}, {"user_name": {"$in": legacy_names}}]}, {"$set": {"user_email": canonical_email, "user_name": canonical_name}}),
+            ("taxi_saved_places", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("stock_holdings", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("crypto_baskets_purchases", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("premium_subs", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("support_tickets", {"user_id": uid}, {"$set": {"user_email": canonical_email, "user_name": canonical_name}}),
+            ("appointment_bookings", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("food_stamps", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("flash_deals", {"merchant_email": {"$in": legacy_emails}}, {"$set": {"merchant_email": canonical_email, "merchant_name": canonical_name}}),
+            ("ev_charging_sessions", {"user_id": uid}, {"$set": {"user_email": canonical_email}}),
+            ("payment_transactions", {"user_id": uid}, {"$set": {"user_email": canonical_email}}),
+            ("stock_trades", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("booking_providers", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("pay_merchant_keys", {"merchant_email": {"$in": legacy_emails}}, {"$set": {"merchant_email": canonical_email, "merchant_name": canonical_name}}),
+            ("taxi_rides", {"user_id": uid}, {"$set": {"user_email": canonical_email, "user_name": canonical_name}}),
+            ("prediction_bets", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("user_cvs", {"$or": [{"user_id": uid}, {"email": {"$in": legacy_emails}}]}, {"$set": {"email": canonical_email}}),
+            ("vouchers", {"merchant_id": uid}, {"$set": {"merchant_name": canonical_name}}),
+            ("drivers", {"user_id": uid}, {"$set": {"name": canonical_name, "user_email": canonical_email, "user_name": canonical_name}}),
+            ("scooter_rides", {"user_id": uid}, {"$set": {"user_name": canonical_name}}),
+            ("transactions", {"user_email": {"$in": legacy_emails}}, {"$set": {"user_email": canonical_email}}),
+            ("transactions", {"merchant_name": {"$in": legacy_names}}, {"$set": {"merchant_name": canonical_name}}),
+        ]
+
+        for coll_name, selector, update in update_specs:
+            try:
+                await db[coll_name].update_many(selector, update)
+            except Exception as inner_exc:
+                logger.warning(f"Legacy admin cleanup skipped for {coll_name}: {inner_exc}")
+
+        try:
+            await db.audit_logs.update_many(
+                {"$or": [{"email": {"$in": legacy_emails}}, {"user_email": {"$in": legacy_emails}}]},
+                {"$set": {"email": canonical_email, "user_email": canonical_email}},
+            )
+        except Exception as inner_exc:
+            logger.warning(f"Legacy admin cleanup skipped for audit_logs: {inner_exc}")
+
+        try:
+            await db.audit_log.update_many(
+                {"$or": [{"email": {"$in": legacy_emails}}, {"user_email": {"$in": legacy_emails}}]},
+                {"$set": {"email": canonical_email, "user_email": canonical_email}},
+            )
+        except Exception as inner_exc:
+            logger.warning(f"Legacy admin cleanup skipped for audit_log: {inner_exc}")
+
+        try:
+            await db.users.update_many(
+                {"email": {"$regex": r"^disabled-admin-", "$options": "i"}},
+                {"$set": {"role": "admin_legacy_disabled", "merged_into_email": canonical_email}},
+            )
+        except Exception as inner_exc:
+            logger.warning(f"Legacy admin disabled-user cleanup skipped: {inner_exc}")
+
+        logger.info("✓ Legacy admin artifacts cleanup completed")
+    except Exception as e:
+        logger.warning(f"Legacy admin cleanup failed: {e}")
+
+
 @app.get("/pay.js", include_in_schema=False)
 @app.get("/api/pay.js", include_in_schema=False)
 async def serve_bidblitz_pay_sdk():
@@ -320,6 +408,7 @@ async def startup_event():
     await create_indexes()
     logger.info("✓ Database indexes created")
     await seed_admin()
+    await cleanup_legacy_admin_artifacts()
     await ensure_admin_driver_account()
 
     # Seed demo auctions and start background bot+maintenance loops
