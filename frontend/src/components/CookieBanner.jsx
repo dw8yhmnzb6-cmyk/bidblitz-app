@@ -70,7 +70,7 @@ export default function CookieBanner({ onNavigate }) {
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
         className="fixed inset-x-0 bottom-0 z-[10000] p-3 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[420px] sm:p-0"
-        style={{ paddingBottom: 'calc(var(--bottom-nav-offset, 4.75rem) + 0.35rem)' }}
+        style={{ paddingBottom: 'var(--app-cookie-banner-offset, calc(5rem + env(safe-area-inset-bottom, 0px)))' }}
         data-testid="cookie-banner"
       >
         <div className={`max-w-3xl mx-auto bg-[#0A0A0F]/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 sm:p-5 shadow-2xl sm:max-w-none overflow-y-auto sm:max-h-none ${showDetails ? 'max-h-[42vh]' : 'max-h-[6.25rem] sm:max-h-none overflow-hidden'}`}>

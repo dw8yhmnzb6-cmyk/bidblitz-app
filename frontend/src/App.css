@@ -292,6 +292,9 @@ body {
 
 /* App container - mobile-first premium design */
 .app-container {
+  --app-bottom-nav-offset: calc(4.9rem + env(safe-area-inset-bottom, 0px));
+  --app-cookie-banner-offset: calc(var(--app-bottom-nav-offset) + 0.5rem);
+  --app-mobile-content-offset: calc(var(--app-bottom-nav-offset) + 1rem);
   max-width: 28rem;
   margin: 0 auto;
   width: 100%;
@@ -302,7 +305,7 @@ body {
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(--app-mobile-content-offset);
   box-shadow: 
     0 0 100px rgba(0, 0, 0, 0.8),
     inset 0 0 100px rgba(0, 194, 255, 0.02);
@@ -325,10 +328,13 @@ body {
 
 @media (max-width: 480px) {
   .app-container {
+    --app-bottom-nav-offset: calc(4.55rem + env(safe-area-inset-bottom, 0px));
+    --app-cookie-banner-offset: calc(var(--app-bottom-nav-offset) + 0.4rem);
+    --app-mobile-content-offset: calc(var(--app-bottom-nav-offset) + 1.15rem);
     max-width: 100%;
     border-left: none;
     border-right: none;
-    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--app-mobile-content-offset);
   }
 }
 
@@ -489,7 +495,6 @@ body {
   align-items: center;
   z-index: 9999;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
-  --bottom-nav-offset: calc(4.9rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Taxi fullscreen booking mode (taxi.eu/Uber parity) ─────────────────────
@@ -515,7 +520,6 @@ body.taxi-fullscreen-mode .chatbot-window {
     max-width: 100%;
     padding: 0.5rem 0.75rem 0.875rem;
     padding-bottom: max(1.125rem, calc(0.875rem + env(safe-area-inset-bottom, 0px)));
-    --bottom-nav-offset: calc(4.55rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
