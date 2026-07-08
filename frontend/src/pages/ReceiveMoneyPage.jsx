@@ -58,9 +58,9 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
 
       <div className="px-4 pt-4 pb-6">
         <div className="rounded-[30px] border border-[#00C2FF]/18 bg-gradient-to-br from-white to-[#eef8ff] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] mb-5">
-          <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-2">Einfach Geld empfangen</p>
+          <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-2">Nur privat empfangen</p>
           <h2 className="text-[24px] font-bold text-slate-950 leading-tight">Lass den anderen einfach diesen QR-Code scannen</h2>
-          <p className="mt-2 text-[12px] leading-relaxed text-slate-600">Perfekt für private Zahlungen zwischen Kunden. Öffnen, zeigen, scannen, fertig.</p>
+          <p className="mt-2 text-[12px] leading-relaxed text-slate-600">Perfekt für private Zahlungen zwischen Kunden. Nicht für Händler-Kasse — dafür bitte &quot;Bezahlen&quot; öffnen.</p>
         </div>
 
         {loading ? (
@@ -92,6 +92,17 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
               </motion.button>
             </div>
 
+            <div className="grid grid-cols-2 gap-2.5 mb-5">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <p className="text-[12px] font-semibold text-[#10B981]">Privat</p>
+                <p className="mt-1 text-[11px] text-slate-600">Anderer Kunde scannt diesen QR</p>
+              </div>
+              <motion.button data-testid="receive-money-open-pay" onClick={() => onNavigate?.('/pay')} whileTap={{ scale: 0.98 }} className="rounded-2xl border border-[#00C2FF]/16 bg-[#00C2FF]/8 px-4 py-3 text-left">
+                <span className="block text-[12px] font-semibold text-[#00A6E6]">Für Kasse?</span>
+                <span className="mt-1 block text-[11px] text-slate-600">Dann &quot;Bezahlen&quot; öffnen</span>
+              </motion.button>
+            </div>
+
             <div className="rounded-[28px] bg-white border border-slate-200 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)] mb-5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-11 h-11 rounded-2xl bg-[#00C2FF]/10 border border-[#00C2FF]/15 flex items-center justify-center"><Smartphone size={18} className="text-[#00A6E6]" /></div>
@@ -102,7 +113,7 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
               </div>
               <div className="space-y-3">
                 {[
-                  { icon: QrCode, title: "1. Diesen QR zeigen", desc: "Der andere Kunde öffnet 'Geld senden' und scannt deinen Code." },
+                  { icon: QrCode, title: "1. Diesen QR zeigen", desc: "Der andere Kunde öffnet &quot;Geld senden&quot; und scannt deinen Code." },
                   { icon: Wallet, title: "2. Betrag bestätigen", desc: "Der Sender wählt Betrag und bestätigt die private Wallet-Zahlung." },
                   { icon: CheckCircle2, title: "3. Sofort empfangen", desc: "Das Geld landet direkt in deiner Wallet." },
                 ].map((item) => (

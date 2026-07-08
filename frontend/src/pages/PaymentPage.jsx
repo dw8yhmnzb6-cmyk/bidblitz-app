@@ -105,19 +105,19 @@ const PaymentPage = ({ onBack, onNavigate }) => {
               <QrCode size={18} className="text-[#00E0FF]" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00E0FF]">Einfach bezahlen</p>
-              <h2 className="mt-1 text-[20px] leading-tight font-bold text-white">Zeige diesen Code einfach an der Kasse</h2>
-              <p className="mt-2 text-[12px] leading-relaxed text-white/60">Der Händler gibt den Betrag ein, scannt deinen Code und die Wallet-Zahlung wird direkt bestätigt.</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00E0FF]">Nur für Händler & Kasse</p>
+              <h2 className="mt-1 text-[20px] leading-tight font-bold text-white">Diesen Code nur an der Kasse zeigen</h2>
+              <p className="mt-2 text-[12px] leading-relaxed text-white/60">Der Händler scannt deinen Code, gibt den Betrag ein und belastet deine Wallet direkt.</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             <motion.button data-testid="payment-send-action" onClick={() => onNavigate?.('/wallet?action=send')} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl px-4 py-3 text-left" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <span className="block text-[13px] font-bold text-white">Geld senden</span>
-              <span className="mt-1 block text-[10px] text-white/55">Privat an Kontakt</span>
+              <span className="mt-1 block text-[10px] text-white/55">Nicht für Kasse</span>
             </motion.button>
             <motion.button data-testid="payment-topup-action" onClick={() => onNavigate?.('/wallet?action=topup')} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl px-4 py-3 text-left" style={{ background: "rgba(0,224,255,0.08)", border: "1px solid rgba(0,224,255,0.14)" }}>
               <span className="block text-[13px] font-bold text-[#00E0FF]">Wallet aufladen</span>
-              <span className="mt-1 block text-[10px] text-[#00E0FF]/65">Für nächste Zahlung</span>
+              <span className="mt-1 block text-[10px] text-[#00E0FF]/65">Online oder an Kasse</span>
             </motion.button>
           </div>
         </motion.div>
@@ -189,12 +189,12 @@ const PaymentPage = ({ onBack, onNavigate }) => {
 
         {/* Payment Flow Info */}
         <motion.div className="rounded-2xl p-4 backdrop-blur-xl" style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">So funktioniert Bezahlen</p>
+          <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">Kassen-Flow</p>
           <div className="space-y-2">
             {[
               { icon: Zap, label: "1. Bezahlen öffnen", fee: "Wallet", color: "#00E89D", desc: "Du öffnest diesen Screen direkt aus dem Wallet." },
               { icon: QrCode, label: "2. Code zeigen", fee: "QR / Barcode", color: "#00E0FF", desc: "Der Händler scannt deinen Code an der Kasse." },
-              { icon: ArrowUpRight, label: "3. Fertig", fee: "Direkt", color: "#FFB800", desc: "Die Bestätigung erscheint sofort in deinem Wallet." },
+              { icon: ArrowUpRight, label: "3. Fertig", fee: "Direkt", color: "#FFB800", desc: "Die Bestätigung erscheint sofort. Für private Transfers bitte 'Geld senden' nutzen." },
             ].map((m, i) => (
               <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${m.color}08` }}>

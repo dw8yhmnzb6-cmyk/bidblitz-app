@@ -519,16 +519,16 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           >
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-1">Einfach bezahlen</p>
-                <h3 className="text-[20px] leading-tight font-bold text-slate-950">Im Laden zahlen oder direkt Geld senden</h3>
-                <p className="mt-2 text-[12px] leading-relaxed text-slate-600">Wie beim Händler-Terminal: öffnen, Code zeigen oder Empfänger wählen — ohne Umwege.</p>
+                <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-1">Klar getrennt</p>
+                <h3 className="text-[20px] leading-tight font-bold text-slate-950">Bezahlen, Empfangen oder privat senden</h3>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-600">Jeder Flow hat jetzt einen eigenen Einstieg — damit Kunden und Kasse nichts verwechseln.</p>
               </div>
               <div className="w-11 h-11 rounded-2xl bg-[#00C2FF]/12 border border-[#00C2FF]/15 flex items-center justify-center shrink-0">
                 <Zap size={18} className="text-[#00A6E6]" />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <motion.button
                 data-testid="wallet-start-pay-btn"
                 type="button"
@@ -537,18 +537,41 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 className="min-h-[52px] rounded-2xl bg-[#00C2FF] px-4 py-3 text-left shadow-[0_12px_28px_rgba(0,194,255,0.22)]"
               >
                 <span className="block text-[14px] font-bold text-slate-950">Bezahlen</span>
-                <span className="mt-0.5 block text-[11px] text-slate-900/70">QR / Barcode zeigen</span>
+                <span className="mt-0.5 block text-[11px] text-slate-900/70">Für Händler / Kasse</span>
+              </motion.button>
+              <motion.button
+                data-testid="wallet-start-receive-btn"
+                type="button"
+                onClick={() => onNavigate?.('/receive-money')}
+                whileTap={{ scale: 0.98 }}
+                className="min-h-[52px] rounded-2xl border border-[#00C2FF]/16 bg-[#00C2FF]/8 px-4 py-3 text-left"
+              >
+                <span className="block text-[14px] font-bold text-slate-950">Empfangen</span>
+                <span className="mt-0.5 block text-[11px] text-slate-600">Eigenen QR zeigen</span>
               </motion.button>
               <motion.button
                 data-testid="wallet-start-send-btn"
                 type="button"
-            onClick={() => onNavigate?.('/send-money')}
+                onClick={() => onNavigate?.('/send-money')}
                 whileTap={{ scale: 0.98 }}
                 className="min-h-[52px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left"
               >
                 <span className="block text-[14px] font-bold text-slate-950">Geld senden</span>
-                <span className="mt-0.5 block text-[11px] text-slate-600">Kontakt, Nummer oder E-Mail</span>
+                <span className="mt-0.5 block text-[11px] text-slate-600">Privat an Kontakt</span>
               </motion.button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+              {[
+                { title: 'Kasse / Händler', desc: 'Händler scannt deinen Code', color: '#00A6E6' },
+                { title: 'Privat empfangen', desc: 'Anderer Kunde scannt deinen QR', color: '#10B981' },
+                { title: 'Privat senden', desc: 'Du scannst oder wählst Empfänger', color: '#8B5CF6' },
+              ].map((item) => (
+                <div key={item.title} className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-3">
+                  <p className="text-[12px] font-semibold" style={{ color: item.color }}>{item.title}</p>
+                  <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </motion.div>
         )}

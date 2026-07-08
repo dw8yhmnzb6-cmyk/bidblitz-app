@@ -422,7 +422,18 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
               <div className="p-5 rounded-[28px] bg-gradient-to-br from-[#00C2FF]/12 to-[#8B5CF6]/10 border border-[#00C2FF]/18 mb-5 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
                 <p className="text-[12px] text-[#00A6E6] font-medium mb-1">Verfügbar</p>
                 <p className="text-[36px] font-bold text-slate-900 tracking-tight">€{balance.toFixed(2)}</p>
-                <p className="text-[11px] text-slate-600 mt-1">Wähle einfach Kontakt, Username, E-Mail oder BidBlitz ID.</p>
+                <p className="text-[11px] text-slate-600 mt-1">Nur für private Transfers: Kontakt, Username, E-Mail, BidBlitz ID oder privater QR.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                <div className="rounded-2xl border border-slate-200 bg-white/75 px-4 py-3">
+                  <p className="text-[12px] font-semibold text-[#8B5CF6]">Privat senden</p>
+                  <p className="mt-1 text-[11px] text-slate-600">An Kunden, Freunde, Familie oder Kontakte.</p>
+                </div>
+                <motion.button data-testid="send-money-go-pay" onClick={() => onNavigate?.('/pay')} whileTap={{ scale: 0.98 }} className="rounded-2xl border border-[#00C2FF]/18 bg-[#00C2FF]/8 px-4 py-3 text-left">
+                  <span className="block text-[12px] font-semibold text-[#00A6E6]">Für Händler-Kasse?</span>
+                  <span className="mt-1 block text-[11px] text-slate-600">Dann &quot;Bezahlen&quot; statt &quot;Geld senden&quot;</span>
+                </motion.button>
               </div>
 
               <div className="grid grid-cols-4 gap-3 mb-5">
