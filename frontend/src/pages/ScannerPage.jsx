@@ -64,6 +64,7 @@ const ScannerPage = ({ onNavigate }) => {
   const [cashierAction, setCashierAction] = useState("payment");
   const [customerPin, setCustomerPin] = useState("");
   const [preparedPayment, setPreparedPayment] = useState(null);
+  const [cashierFlowType, setCashierFlowType] = useState(null);
 
   const [scanCodeInput, setScanCodeInput] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
@@ -358,6 +359,7 @@ const ScannerPage = ({ onNavigate }) => {
       });
       setResolvedCustomer(res.customer || null);
       setResolutionId(res.resolution_id || "");
+      setCashierFlowType("lookup");
     } catch (resolveError) {
       setError(resolveError?.message || "Kunde konnte nicht gefunden werden.");
       setResolvedCustomer(null);
@@ -389,6 +391,7 @@ const ScannerPage = ({ onNavigate }) => {
           net_to_merchant: numAmount,
           customer_name: resolvedCustomer?.masked_name || "Kunde",
           reference: topupRes?.sale?.sale_id || topupRes?.sale?.payment_reference || "TOPUP",
+          flow_type: "topup",
         });
         setStep(Step.SUCCESS);
       } else {
@@ -410,6 +413,7 @@ const ScannerPage = ({ onNavigate }) => {
           net_to_merchant: numAmount,
           customer_name: resolvedCustomer?.masked_name || "Kunde",
           reference: prepared.payment.payment_id,
+          flow_type: "payment",
         });
         setStep(Step.SUCCESS);
       }
@@ -447,6 +451,7 @@ const ScannerPage = ({ onNavigate }) => {
 
       if (res.success) {
         setResult(res);
+        setCashierFlowType("scan");
         setStep(Step.SUCCESS);
         wallet.refreshWallet();
       } else {
@@ -485,6 +490,12 @@ const ScannerPage = ({ onNavigate }) => {
     setResult(null);
     setError("");
     setIdempotencyKey(null);
+    setResolvedCustomer(null);
+    setResolutionId("");
+    setCustomerLookupValue("");
+    setCustomerPin("");
+    setPreparedPayment(null);
+    setCashierFlowType(null);
   };
 
   const handleNewPayment = () => {
@@ -493,6 +504,12 @@ const ScannerPage = ({ onNavigate }) => {
     setResult(null);
     setError("");
     setIdempotencyKey(null);
+    setResolvedCustomer(null);
+    setResolutionId("");
+    setCustomerLookupValue("");
+    setCustomerPin("");
+    setPreparedPayment(null);
+    setCashierFlowType(null);
   };
 
   return (
@@ -681,6 +698,21 @@ const ScannerPage = ({ onNavigate }) => {
                 exit={{ opacity: 0, y: -16 }}
                 className="space-y-5"
               >
+                <div className="grid grid-cols-3 gap-2" data-testid="cashier-flow-steps">
+                  {[
+                    { id: 'lookup', label: '1. Kunde finden' },
+                    { id: 'amount', label: '2. Betrag' },
+                    { id: 'pin', label: '3. PIN & Bestätigung' },
+                  ].map((item) => {
+                    const active = item.id === 'lookup' || (item.id === 'amount' && isValidAmount) || (item.id === 'pin' && resolvedCustomer);
+                    return (
+                      <div key={item.id} className={`rounded-2xl border px-3 py-2 text-center ${active ? 'bg-[#00C2FF]/12 border-[#00C2FF]/20 text-[#00C2FF]' : 'bg-white/[0.02] border-white/[0.05] text-[#666]'}`}>
+                        <p className="text-[10px] font-semibold">{item.label}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
                 <div className="rounded-2xl border border-white/[0.05] bg-white/[0.03] p-4 space-y-3" data-testid="cashier-no-phone-card">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-[#00C2FF]/10 border border-[#00C2FF]/20 flex items-center justify-center"><UserRound size={18} className="text-[#00C2FF]" /></div>
@@ -727,6 +759,10 @@ const ScannerPage = ({ onNavigate }) => {
                     <div className="rounded-2xl border border-[#00D26A]/20 bg-[#00D26A]/10 p-3" data-testid="cashier-resolved-customer-card">
                       <p className="text-[12px] font-semibold text-white">{resolvedCustomer.masked_name}</p>
                       <p className="text-[11px] text-[#8CE7B3] mt-1">{resolvedCustomer.customer_number} • {resolvedCustomer.verification_status}</p>
+                      <div className="mt-2 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-[0.1em] text-[#9ad7ff] font-semibold">Nächster Schritt</p>
+                        <p className="text-[11px] text-white mt-1">Jetzt Aktion wählen und den Kunden seine 4-stellige PIN eingeben lassen.</p>
+                      </div>
 
                       <div className="grid grid-cols-2 gap-2 mt-3">
                         <button type="button" data-testid="cashier-action-payment" onClick={() => setCashierAction('payment')} className={`min-h-[44px] rounded-xl border px-3 py-2 text-left ${cashierAction === 'payment' ? 'bg-[#00C2FF]/16 border-[#00C2FF]/25 text-[#00C2FF]' : 'bg-white/[0.02] border-white/[0.05] text-[#aaa]'}`}>
@@ -767,7 +803,7 @@ const ScannerPage = ({ onNavigate }) => {
                 </div>
 
                 <div className="text-center pt-2 pb-2">
-                  <p className="text-xs text-[#555] uppercase tracking-widest mb-3">{t("scan.enter_amount") || "Payment Amount"}</p>
+                  <p className="text-xs text-[#555] uppercase tracking-widest mb-3">{cashierFlowType === 'lookup' ? '2. Betrag festlegen' : (t("scan.enter_amount") || "Payment Amount")}</p>
                   <div className="flex items-center justify-center gap-1.5">
                     <span className="text-3xl text-[#555] font-light">&euro;</span>
                     <input
@@ -822,7 +858,7 @@ const ScannerPage = ({ onNavigate }) => {
                 <div className="flex items-start gap-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                   <Smartphone size={16} className="text-[#00C2FF]/60 mt-0.5 flex-shrink-0" />
                   <p className="text-[11px] text-[#555] leading-relaxed">
-                    {t("scan.hint") || "Enter the amount and scan the customer's barcode from their BidBlitz Wallet to process payment instantly."}
+                    {resolvedCustomer ? 'Kunde gefunden. Jetzt PIN bestätigen und die Aktion direkt abschließen.' : (t("scan.hint") || "Enter the amount and scan the customer's barcode from their BidBlitz Wallet to process payment instantly.")}
                   </p>
                 </div>
               </motion.div>
@@ -936,7 +972,7 @@ const ScannerPage = ({ onNavigate }) => {
                 </motion.div>
 
                 <motion.p className="text-lg font-semibold text-white mb-1" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  {t("scan.payment_success") || "Payment Successful"}
+                  {result.flow_type === 'topup' ? 'Wallet erfolgreich aufgeladen' : (t("scan.payment_success") || "Payment Successful")}
                 </motion.p>
 
                 <motion.p className="text-4xl font-bold text-[#00D26A] mb-1.5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -944,7 +980,7 @@ const ScannerPage = ({ onNavigate }) => {
                 </motion.p>
 
                 <motion.p className="text-xs text-[#555] mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-                  {t("scan.charged_from") || "Charged from"} {result.customer_name}
+                  {result.flow_type === 'topup' ? `Aufgeladen für ${result.customer_name}` : `${t("scan.charged_from") || "Charged from"} ${result.customer_name}`}
                 </motion.p>
 
                 <motion.div
@@ -958,7 +994,7 @@ const ScannerPage = ({ onNavigate }) => {
                     <Receipt size={14} className="text-[#00C2FF]/60" />
                     <span className="text-xs text-[#555] uppercase tracking-wider">{t("scan.receipt") || "Receipt"}</span>
                   </div>
-                  <div className="flex justify-between text-sm"><span className="text-[#555]">{t("scan.amount_label") || "Amount"}</span><span className="text-white font-medium">&euro;{result.amount.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-[#555]">{result.flow_type === 'topup' ? 'Aufladung' : (t("scan.amount_label") || "Amount")}</span><span className="text-white font-medium">&euro;{result.amount.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-[#555]">{t("scan.fee_label") || "Fee"}</span><span className="text-[#FFB800]">&euro;{result.fee.toFixed(2)}</span></div>
                   <div className="border-t border-white/[0.05] pt-2 flex justify-between text-sm"><span className="text-[#555]">{t("scan.net_received") || "Net Received"}</span><span className="text-[#00D26A] font-semibold">&euro;{result.net_to_merchant.toFixed(2)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-[#555]">{t("scan.reference") || "Reference"}</span><span className="text-white/50 font-mono text-xs">{result.reference}</span></div>
