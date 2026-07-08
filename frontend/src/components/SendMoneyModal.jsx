@@ -215,6 +215,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          data-testid="send-money-modal"
           className="fixed inset-0 z-[10000]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -230,7 +231,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
       
       {/* Modal */}
       <motion.div
-        className="absolute inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:max-w-[420px]"
+        className="absolute inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full sm:max-w-[420px] z-[10001] pointer-events-auto"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
@@ -340,27 +341,31 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                 </AnimatePresence>
                 
                 {/* Tabs: Gespeicherte | Kürzlich */}
-                <div className="px-6 pb-4">
-                  <div className="flex gap-2 bg-slate-100 p-1 rounded-2xl">
+                <div className="px-6 pb-4 relative z-20">
+                  <div className="flex gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
                     <button
+                      type="button"
                       data-testid="send-money-tab-saved"
                       onClick={() => setActiveList("saved")}
-                      className={`flex-1 py-3 rounded-xl font-semibold text-[13px] transition-colors ${
+                      className={`flex-1 min-h-[48px] py-3 rounded-xl font-semibold text-[13px] transition-colors touch-manipulation ${
                         activeList === "saved"
-                          ? "bg-[#00C2FF]/20 text-[#00C2FF]"
-                          : "text-slate-500 hover:text-slate-800"
+                          ? "bg-[#00C2FF] text-slate-950 shadow-[0_6px_16px_rgba(0,194,255,0.22)]"
+                          : "text-slate-600 hover:text-slate-900 bg-transparent"
                       }`}
+                      style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       ⭐ Gespeicherte
                     </button>
                     <button
+                      type="button"
                       data-testid="send-money-tab-recent"
                       onClick={() => setActiveList("recent")}
-                      className={`flex-1 py-3 rounded-xl font-semibold text-[13px] transition-colors ${
+                      className={`flex-1 min-h-[48px] py-3 rounded-xl font-semibold text-[13px] transition-colors touch-manipulation ${
                         activeList === "recent"
-                          ? "bg-[#00C2FF]/20 text-[#00C2FF]"
-                          : "text-slate-500 hover:text-slate-800"
+                          ? "bg-[#00C2FF] text-slate-950 shadow-[0_6px_16px_rgba(0,194,255,0.22)]"
+                          : "text-slate-600 hover:text-slate-900 bg-transparent"
                       }`}
+                      style={{ WebkitTapHighlightColor: "transparent" }}
                     >
                       🕐 Kürzlich
                     </button>

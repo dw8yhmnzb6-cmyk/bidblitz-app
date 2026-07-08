@@ -49,6 +49,20 @@ export default function CookieBanner({ onNavigate }) {
     if (!stored) setShow(true);
   }, []);
 
+  useEffect(() => {
+    const syncOverlayVisibility = () => {
+      const blockingModal = document.querySelector('[data-testid="send-money-modal"]');
+      if (blockingModal) {
+        setShow(false);
+      }
+    };
+
+    syncOverlayVisibility();
+    const observer = new MutationObserver(syncOverlayVisibility);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   const accept = (which) => {
     let payload;
     if (which === 'all') payload = { necessary: true, analytics: true, crash: true, marketing: true };
