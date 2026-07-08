@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Briefcase, Clock3, Heart, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
+import { ArrowLeft, Briefcase, CalendarClock, Check, Clock3, Heart, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { TaxiMapbox } from '../components/RealMap';
 import { VehicleIcon } from '../components/taxi/TaxiVehicleIcon';
@@ -69,12 +69,12 @@ function useTaxiSimpleData(user) {
   return { savedPlaces, recentAddresses, setSavedPlaces };
 }
 
-function SearchResultRow({ item, index, onSelect }) {
+function SearchResultRow({ item, index, onSelect, section = 'default' }) {
   return (
     <button
       onClick={() => onSelect(item)}
       className="flex w-full items-start gap-3 border-b border-zinc-100 px-1 py-4 text-left last:border-b-0"
-      data-testid={`taxi-search-result-${index}`}
+      data-testid={`taxi-search-result-${section}-${index}`}
     >
       <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
         <MapPin size={16} />
@@ -273,6 +273,9 @@ export default function TaxiPage({ onNavigate }) {
   const [nearbyDrivers, setNearbyDrivers] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
   const [savingFavorite, setSavingFavorite] = useState(false);
+  const [pickupMoveMode, setPickupMoveMode] = useState(false);
+  const [bookingMode, setBookingMode] = useState('now');
+  const [scheduledAt, setScheduledAt] = useState('');
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
@@ -370,6 +373,20 @@ export default function TaxiPage({ onNavigate }) {
     setEstimating(false);
   }, [pickup, selectedVehicle]);
 
+  const handlePickupMapChange = useCallback(async ({ lat, lng }) => {
+    const address = await api.reverseGeocode(lat, lng);
+    setPickup((prev) => ({
+      ...prev,
+      lat,
+      lng,
+      address: address || prev.address || 'Gewählter Abholpunkt',
+    }));
+    setPickupMoveMode(false);
+    if (dropoff?.lat) {
+      estimateRide({ ...dropoff });
+    }
+  }, [dropoff, estimateRide]);
+
   const handleSelectDestination = useCallback((item) => {
     const next = {
       address: item.address || item.name,
@@ -444,13 +461,18 @@ export default function TaxiPage({ onNavigate }) {
 
   const handleBookRide = useCallback(async () => {
     if (!selectedEstimate) return;
+    const normalizedScheduledAt = bookingMode === 'later' && scheduledAt ? new Date(scheduledAt).toISOString() : null;
+    if (bookingMode === 'later' && !normalizedScheduledAt) {
+      toast.error('Bitte Zeit für spätere Buchung auswählen.');
+      return;
+    }
     setBooking(true);
     const result = await api.bookRideApi({
       pickup,
       dropoff,
       vehicleType: selectedEstimate.vehicle_type,
       paymentMethod: 'wallet',
-      options: { bookingMode: 'now' },
+      options: { bookingMode, scheduledAt: normalizedScheduledAt },
     });
     setBooking(false);
     if (!result.ok) {
@@ -459,7 +481,7 @@ export default function TaxiPage({ onNavigate }) {
     }
     setActiveRide(result.ride);
     setSheetMode('status');
-  }, [dropoff, pickup, selectedEstimate]);
+  }, [bookingMode, dropoff, pickup, scheduledAt, selectedEstimate]);
 
   const handleCancelRide = useCallback(async () => {
     if (!activeRide?.ride_id) return;
@@ -513,6 +535,8 @@ export default function TaxiPage({ onNavigate }) {
             driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
             nearbyDrivers={mapDrivers}
             height="100%"
+            pickupMoveMode={pickupMoveMode}
+            onPickupChange={handlePickupMapChange}
           />
         </div>
 
@@ -572,6 +596,18 @@ export default function TaxiPage({ onNavigate }) {
                   </div>
                 </button>
               </div>
+
+              <button
+                onClick={() => setPickupMoveMode((prev) => !prev)}
+                className={`mt-3 flex min-h-[52px] w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${pickupMoveMode ? 'border-[#2563EB] bg-blue-50 text-[#2563EB]' : 'border-zinc-200 bg-white text-zinc-800'}`}
+                data-testid="taxi-move-pickup-button"
+              >
+                <div>
+                  <div className="text-sm font-black">Abholpunkt verschieben</div>
+                  <div className="mt-1 text-sm text-zinc-500">Tippe auf die Karte, wenn du nicht an deinem aktuellen Standort einsteigen willst.</div>
+                </div>
+                {pickupMoveMode ? <Check size={18} /> : <MapPin size={18} />}
+              </button>
 
               <div className="mt-4 flex gap-3 overflow-x-auto pb-2" data-testid="quick-destinations-scroll">
                 <QuickDestinationChip
@@ -648,7 +684,7 @@ export default function TaxiPage({ onNavigate }) {
                     <div data-testid="regional-hints-section">
                       <SuggestionSectionTitle>Nahe Treffer</SuggestionSectionTitle>
                       {regionalHints.map((item, index) => (
-                        <SearchResultRow key={`hint-${item.address}-${index}`} item={item} index={index} onSelect={handleSelectDestination} />
+                        <SearchResultRow key={`hint-${item.address}-${index}`} item={item} index={index} section="regional" onSelect={handleSelectDestination} />
                       ))}
                     </div>
                   ) : null}
@@ -659,7 +695,7 @@ export default function TaxiPage({ onNavigate }) {
                     <div data-testid="search-results-section">
                       <SuggestionSectionTitle>Alle Treffer</SuggestionSectionTitle>
                       {searchResults.map((item, index) => (
-                        <SearchResultRow key={`${item.address}-${index}`} item={item} index={index} onSelect={handleSelectDestination} />
+                        <SearchResultRow key={`${item.address}-${index}`} item={item} index={index} section="all" onSelect={handleSelectDestination} />
                       ))}
                     </div>
                   ) : null}
@@ -715,6 +751,40 @@ export default function TaxiPage({ onNavigate }) {
                       <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Verfügbarkeit</div>
                       <div className="mt-1 text-sm font-black text-[#0A0A0A]">{Math.max(mapDrivers.length, 1)} Fahrer nahebei</div>
                     </div>
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-white p-3" data-testid="booking-mode-card">
+                    <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Bestellung</div>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setBookingMode('now')}
+                        className={`min-h-[48px] rounded-2xl px-4 py-3 text-sm font-black ${bookingMode === 'now' ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-800'}`}
+                        data-testid="booking-mode-now"
+                      >
+                        Jetzt
+                      </button>
+                      <button
+                        onClick={() => setBookingMode('later')}
+                        className={`min-h-[48px] rounded-2xl px-4 py-3 text-sm font-black ${bookingMode === 'later' ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-800'}`}
+                        data-testid="booking-mode-later"
+                      >
+                        Später
+                      </button>
+                    </div>
+                    {bookingMode === 'later' ? (
+                      <div className="mt-3">
+                        <label className="mb-2 flex items-center gap-2 text-sm font-bold text-zinc-700">
+                          <CalendarClock size={16} /> Abholzeit wählen
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={scheduledAt}
+                          onChange={(e) => setScheduledAt(e.target.value)}
+                          min={new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 16)}
+                          className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-800 outline-none"
+                          data-testid="booking-mode-later-input"
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}

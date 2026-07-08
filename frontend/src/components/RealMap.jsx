@@ -125,6 +125,8 @@ export const TaxiMapbox = ({
   nearbyDrivers = [],
   driverLocation = null,
   height = '100%',
+  onPickupChange = null,
+  pickupMoveMode = false,
 }) => {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -143,6 +145,12 @@ export const TaxiMapbox = ({
       dragRotate: false,
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+    if (onPickupChange) {
+      map.on('click', async (event) => {
+        if (!pickupMoveMode) return;
+        onPickupChange({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+      });
+    }
     mapRef.current = map;
     return () => {
       markersRef.current.forEach((marker) => marker.remove());
@@ -150,7 +158,7 @@ export const TaxiMapbox = ({
       map.remove();
       mapRef.current = null;
     };
-  }, [pickup?.lat, pickup?.lng]);
+  }, [onPickupChange, pickup?.lat, pickup?.lng, pickupMoveMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -195,6 +203,14 @@ export const TaxiMapbox = ({
     <div className="relative h-full w-full overflow-hidden" style={{ height }} data-testid="taxi-mapbox-view">
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_45%)]" />
+      {pickupMoveMode ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-11 w-11 rounded-full border-4 border-white bg-[#2563EB] shadow-[0_10px_30px_rgba(37,99,235,0.28)]" />
+            <div className="rounded-full bg-black/80 px-3 py-1 text-xs font-bold text-white">Abholpunkt setzen</div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
