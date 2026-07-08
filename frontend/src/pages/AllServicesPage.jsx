@@ -141,16 +141,16 @@ export default function AllServicesPage({ onBack, onNavigate }) {
   const totalServices = allItems.length;
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: "var(--bg-primary, #030303)" }}>
+    <div className="min-h-screen pb-[calc(var(--app-mobile-content-offset,6rem)+2rem)] sm:pb-24" style={{ background: "var(--bg-primary, #030303)" }}>
       {/* Header */}
-      <div className="sticky top-0 z-30 px-4 pt-4 pb-3" style={{ background: "var(--bg-primary, #030303)" }}>
+      <div className="sticky top-0 z-30 px-4 pt-4 pb-3 backdrop-blur-md" style={{ background: "rgba(3,3,3,0.94)" }}>
         <div className="flex items-center gap-3 mb-4">
           <button onClick={onBack} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "var(--bg-card, #111)" }} data-testid="services-back">
             <ArrowLeft size={20} style={{ color: "var(--text-primary, #fff)" }} />
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold" style={{ color: "var(--text-primary, #fff)" }}>Alle Services</h1>
-            <p className="text-[10px]" style={{ color: "var(--text-secondary, #888)" }}>{totalServices} Features in einer App</p>
+            <p className="text-[10px]" style={{ color: "var(--text-secondary, #A3A3A3)" }}>{totalServices} Features in einer App</p>
           </div>
           <div className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{ background: "rgba(0,194,255,0.1)" }}>
             <LayoutGrid size={14} style={{ color: "#00C2FF" }} />
@@ -166,7 +166,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
             onChange={e => setSearch(e.target.value)}
             placeholder="Service suchen..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
-            style={{ background: "var(--bg-card, #111)", color: "var(--text-primary, #fff)", border: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-primary, #fff)", border: "1px solid rgba(255,255,255,0.08)" }}
             data-testid="services-search"
           />
         </div>
@@ -176,11 +176,11 @@ export default function AllServicesPage({ onBack, onNavigate }) {
         {/* Suchergebnisse */}
         {search ? (
           <div className="space-y-2">
-            <p className="text-xs mb-3" style={{ color: "var(--text-secondary, #888)" }}>{filteredItems.length} Ergebnis{filteredItems.length !== 1 ? "se" : ""}</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary, #A3A3A3)" }}>{filteredItems.length} Ergebnis{filteredItems.length !== 1 ? "se" : ""}</p>
             {filteredItems.length === 0 ? (
               <div className="text-center py-16">
                 <Search size={40} className="mx-auto mb-3" style={{ color: "var(--text-secondary, #444)" }} />
-                <p className="text-sm" style={{ color: "var(--text-secondary, #888)" }}>Kein Service gefunden</p>
+                <p className="text-sm" style={{ color: "var(--text-secondary, #A3A3A3)" }}>Kein Service gefunden</p>
               </div>
             ) : filteredItems.map((item, i) => {
               const Icon = item.icon;
@@ -195,12 +195,12 @@ export default function AllServicesPage({ onBack, onNavigate }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold" style={{ color: "var(--text-primary, #fff)" }}>{item.label}</div>
-                    <div className="text-[10px]" style={{ color: "var(--text-secondary, #888)" }}>{item.desc}</div>
+                    <div className="text-[10px]" style={{ color: "var(--text-secondary, #B4B4B4)" }}>{item.desc}</div>
                   </div>
-                  <div className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)", color: "var(--text-secondary, #666)" }}>
+                  <div className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-secondary, #B4B4B4)" }}>
                     {item.category}
                   </div>
-                  <ChevronRight size={16} style={{ color: "var(--text-secondary, #444)" }} />
+                  <ChevronRight size={16} style={{ color: "var(--text-secondary, #9CA3AF)" }} />
                 </motion.button>
               );
             })}
@@ -209,7 +209,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
           /* Kategorien */
           <div className="space-y-3">
             {/* Stats Banner */}
-            <div className="rounded-2xl p-4 mb-4" style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.08), rgba(16,185,129,0.08))", border: "1px solid rgba(0,194,255,0.1)" }}>
+            <div className="rounded-2xl p-4 mb-4" style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.1), rgba(16,185,129,0.1))", border: "1px solid rgba(0,194,255,0.14)" }}>
               <div className="grid grid-cols-4 gap-3 text-center">
                 {[
                   { value: totalServices, label: "Services", color: "#00C2FF" },
@@ -219,7 +219,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
                 ].map((s, i) => (
                   <div key={i}>
                     <div className="text-lg font-bold" style={{ color: s.color }}>{s.value}</div>
-                    <div className="text-[9px]" style={{ color: "var(--text-secondary, #888)" }}>{s.label}</div>
+                    <div className="text-[9px]" style={{ color: "var(--text-secondary, #D4D4D4)" }}>{s.label}</div>
                   </div>
                 ))}
               </div>
@@ -242,13 +242,13 @@ export default function AllServicesPage({ onBack, onNavigate }) {
                     </div>
                     <div className="flex-1 text-left">
                       <div className="text-sm font-semibold" style={{ color: "var(--text-primary, #fff)" }}>{cat.title}</div>
-                      <div className="text-[10px]" style={{ color: "var(--text-secondary, #888)" }}>{cat.desc}</div>
+                      <div className="text-[10px]" style={{ color: "var(--text-secondary, #B4B4B4)" }}>{cat.desc}</div>
                     </div>
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${cat.color}15`, color: cat.color }}>
                       {cat.items.length}
                     </span>
                     <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                      <ChevronRight size={16} style={{ color: "var(--text-secondary, #666)" }} />
+                      <ChevronRight size={16} style={{ color: "var(--text-secondary, #A3A3A3)" }} />
                     </motion.div>
                   </button>
 
@@ -262,7 +262,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
                         transition={{ duration: 0.25 }}
                         className="overflow-hidden"
                       >
-                        <div className="grid grid-cols-3 gap-2 pb-2 pt-1">
+                        <div className="grid grid-cols-3 gap-2 pb-3 pt-1">
                           {cat.items.map((item, ii) => {
                             const Icon = item.icon;
                             return (
@@ -272,7 +272,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: ii * 0.04 }}
                                 onClick={() => onNavigate?.(item.route)}
-                                className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all active:scale-95"
+                                className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all active:scale-95 min-h-[92px]"
                                 style={{ background: "var(--bg-card, #111)", border: "1px solid rgba(255,255,255,0.04)" }}
                                 data-testid={`svc-${item.label}`}
                               >
@@ -292,7 +292,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
             })}
 
             {/* Footer */}
-            <div className="text-center py-6">
+            <div className="text-center pt-4 pb-6">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: "rgba(0,194,255,0.06)", border: "1px solid rgba(0,194,255,0.1)" }}>
                 <Layers size={14} style={{ color: "#00C2FF" }} />
                 <span className="text-xs" style={{ color: "#00C2FF" }}>BidBlitz Super App — {totalServices} Services in einer App</span>
