@@ -16,7 +16,6 @@ import { TransactionDetailModal } from "../components/TransactionDetailModal";
 import { TransactionFilters, filterTransactions } from "../components/TransactionFilters";
 import ExportSection from "../components/ExportSection";
 import ErrorState from "../components/ErrorState";
-import SendMoneyModal from "../components/SendMoneyModal";
 import QuickSendButton from "../components/QuickSendButton";
 import { api } from "../services/api";
 import { WalletBioPayCard, WalletPaymentPinCard } from "../components/wallet/WalletSecurityCards";
@@ -126,7 +125,6 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(canAutoOpenWalletActions && (hasStripeParam || routeParams.action === "topup"));
-  const [showSendMoney, setShowSendMoney] = useState(canAutoOpenWalletActions && routeParams.action === "send");
   const [selectedTx, setSelectedTx] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -159,19 +157,14 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   useEffect(() => {
     if (!canAutoOpenWalletActions) {
       setShowTopUp(false);
-      setShowSendMoney(false);
       return;
     }
     if (isPendingKyc) {
       setShowTopUp(false);
-      setShowSendMoney(false);
       return;
     }
     if (routeParams.action === "topup") {
       setShowTopUp(true);
-    }
-    if (routeParams.action === "send") {
-      setShowSendMoney(true);
     }
   }, [canAutoOpenWalletActions, isPendingKyc, routeParams.action]);
 
@@ -236,9 +229,6 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     }
     if (actionName === "topup") {
       setShowTopUp(true);
-    }
-    if (actionName === "send") {
-      setShowSendMoney(true);
     }
     onNavigate?.(`/wallet?action=${actionName}`);
   }, [isPendingKyc, onNavigate]);
@@ -552,7 +542,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <motion.button
                 data-testid="wallet-start-send-btn"
                 type="button"
-                onClick={() => openWalletAction("send")}
+            onClick={() => onNavigate?.('/send-money')}
                 whileTap={{ scale: 0.98 }}
                 className="min-h-[52px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left"
               >
@@ -641,7 +631,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <h3 className="text-sm font-bold text-slate-900">Schnell senden</h3>
               <button
                 data-testid="quick-send-show-all-btn"
-                onClick={() => openWalletAction("send")}
+                onClick={() => onNavigate?.('/send-money')}
                 className="text-xs text-[#00C2FF] font-semibold"
               >
                 Alle →
@@ -692,7 +682,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             icon={ArrowUpRight}
             label={t("wallet.send") || "Senden"}
             color="#A855F7"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : openWalletAction("send")}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : onNavigate?.('/send-money')}
             delay={0.26}
           />
           <WalletAction
@@ -874,15 +864,6 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       {/* Modals */}
       <TopUpModal isOpen={showTopUp} onClose={() => closeWalletAction("topup", setShowTopUp)} onSuccess={handleTopUpSuccess} currentBalance={balance} />
       <TransactionDetailModal isOpen={!!selectedTx} onClose={() => setSelectedTx(null)} transaction={selectedTx} />
-      <SendMoneyModal 
-        isOpen={showSendMoney} 
-        onClose={() => closeWalletAction("send", setShowSendMoney)} 
-        currentBalance={balance}
-        onSuccess={(data) => {
-          toast.success(`€${data.amount.toFixed(2)} gesendet!`);
-          refreshWallet();
-        }}
-      />
     </motion.div>
   );
 };

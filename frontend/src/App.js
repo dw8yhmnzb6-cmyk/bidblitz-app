@@ -52,6 +52,7 @@ const RewardsPage = lazy(() => import("./pages/RewardsPage"));
 const VerificationPage = lazy(() => import("./pages/VerificationPage"));
 const MerchantDashboardPage = lazy(() => import("./pages/MerchantDashboardPage"));
 const PaymentPage = lazy(() => import("./pages/PaymentPage"));
+const SendMoneyPage = lazy(() => import("./pages/SendMoneyPage"));
 const MerchantTerminalPage = lazy(() => import("./pages/MerchantTerminalPage"));
 const MerchantOnboardingPage = lazy(() => import("./pages/MerchantOnboardingPage"));
 const MerchantPricingPage = lazy(() => import("./pages/MerchantPricingPage"));
@@ -615,6 +616,8 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketplaceDashboardPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/pay":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PaymentPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
+      case "/send-money":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SendMoneyPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
       case "/terminal":
         return <MerchantTerminalPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-onboarding":
