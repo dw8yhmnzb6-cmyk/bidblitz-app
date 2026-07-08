@@ -6,7 +6,7 @@ import {
   Clock, TrendingUp, TrendingDown, ChevronRight, QrCode,
   CreditCard, Loader2, X
 } from "lucide-react";
-import { useWallet } from "../store";
+import { useUser, useWallet } from "../store";
 import KYCBanner from "../components/KYCBanner";
 import { useGroupedTransactions, useWalletStats } from "../hooks";
 import { PremiumCard } from "../components/PremiumCard";
@@ -114,7 +114,10 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
 );
 
 export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, routeParams = {} }) => {
+  const wallet = useWallet();
+  const user = useUser();
   const canAutoOpenWalletActions = !isGuest || isDemoMode;
+  const isPendingKyc = !isGuest && !isDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
@@ -134,7 +137,6 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const [cardSaving, setCardSaving] = useState(false);
   const [savedRecipients, setSavedRecipients] = useState([]);
 
-  const wallet = useWallet();
   const realGrouped = useGroupedTransactions();
   const realStats = useWalletStats();
   const { t } = useI18n();
@@ -220,6 +222,15 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   }, [onNavigate, routeParams.action]);
 
   const openWalletAction = useCallback((actionName) => {
+    if (isPendingKyc) {
+      toast.info("Verifizierung läuft", {
+        description: actionName === "topup"
+          ? "Aufladen wird nach Abschluss der KYC-Prüfung freigeschaltet."
+          : "Senden wird nach Abschluss der KYC-Prüfung freigeschaltet.",
+      });
+      onNavigate?.("/kyc/status");
+      return;
+    }
     if (actionName === "topup") {
       setShowTopUp(true);
     }
@@ -227,7 +238,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       setShowSendMoney(true);
     }
     onNavigate?.(`/wallet?action=${actionName}`);
-  }, [onNavigate]);
+  }, [isPendingKyc, onNavigate]);
 
   // Demo mode: override data
   const balance = isDemoMode ? DEMO_BALANCE : toSafeNumber(wallet.balance);

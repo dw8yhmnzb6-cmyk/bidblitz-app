@@ -373,7 +373,7 @@ function AppContent() {
   }, [user.isAuthenticated, user.language, setLang]);
 
   const resolvePostAuthPath = useCallback(() => {
-    if (user.isAuthenticated && user.kyc_status === "pending") return "/kyc/status";
+    if (user.isAuthenticated && user.kyc_status === "pending") return "/";
     if (user.isAuthenticated && user.kyc_status === "rejected") return "/kyc";
     if (user.isAuthenticated && user.kyc_status === "not_started") return "/kyc";
     if (currentPath === "/login" || currentPath === "/register") return "/";
@@ -398,7 +398,7 @@ function AppContent() {
         setShowFullAuth("");
         setIsDemoMode(false);
         if (currentPath === "/login" || currentPath === "/register") {
-          const nextPath = user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/kyc/status" : "/kyc";
+          const nextPath = user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
           syncBrowserPath(nextPath, "replace");
           setCurrentPath(nextPath);
         }
