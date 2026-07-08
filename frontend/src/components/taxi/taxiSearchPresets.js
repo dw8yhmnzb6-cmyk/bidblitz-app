@@ -68,11 +68,24 @@ function scorePreset(place, query) {
   const hay = `${place.name} ${place.address} ${(place.aliases || []).join(' ')}`;
   const hayNorm = normalize(hay);
   let score = 0;
-  if ((place.aliases || []).some((alias) => normalize(alias) === q)) score += 300;
-  if ((place.aliases || []).some((alias) => normalize(alias).startsWith(q))) score += 220;
-  if (normalize(place.name).startsWith(q)) score += 180;
+  const exactAlias = (place.aliases || []).some((alias) => normalize(alias) === q);
+  const startsAlias = (place.aliases || []).some((alias) => normalize(alias).startsWith(q));
+  const nameStarts = normalize(place.name).startsWith(q);
+
+  if (q === 'pri' && place.name === 'Prishtina') score += 220;
+  if (q === 'pri' && place.name === 'Flughafen Prishtina') score += 170;
+  if (q === 'pri' && place.name === 'Prizren') score += 120;
+
+  if (q === 'pris' && place.name === 'Prishtina') score += 240;
+  if (q === 'prish' && place.name === 'Prishtina') score += 260;
+  if (q.startsWith('prisht') && place.name === 'Prishtina') score += 320;
+
+  if (exactAlias) score += 300;
+  if (startsAlias) score += 220;
+  if (nameStarts) score += 180;
   if (hayNorm.includes(q)) score += 90;
-  if (place.type === 'airport') score += 12;
+  if (place.type === 'airport') score += q.includes('flug') || q.includes('air') || q.includes('prn') ? 45 : 12;
+  if (place.address.toLowerCase().includes('kosovo')) score += 40;
   return score;
 }
 
