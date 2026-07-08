@@ -614,7 +614,7 @@ function AppContent() {
       case "/marketplace-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketplaceDashboardPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/pay":
-        return <PaymentPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PaymentPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
       case "/terminal":
         return <MerchantTerminalPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-onboarding":

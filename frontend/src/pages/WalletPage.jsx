@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Eye, EyeOff, Shield, Plus, ArrowUpRight,
   Clock, TrendingUp, TrendingDown, ChevronRight, QrCode,
-  CreditCard, Loader2, X
+  CreditCard, Loader2, X, Zap
 } from "lucide-react";
 import { useUser, useWallet } from "../store";
 import KYCBanner from "../components/KYCBanner";
@@ -16,7 +16,6 @@ import { TransactionDetailModal } from "../components/TransactionDetailModal";
 import { TransactionFilters, filterTransactions } from "../components/TransactionFilters";
 import ExportSection from "../components/ExportSection";
 import ErrorState from "../components/ErrorState";
-import BarcodeModal from "../components/BarcodeModal";
 import SendMoneyModal from "../components/SendMoneyModal";
 import QuickSendButton from "../components/QuickSendButton";
 import { api } from "../services/api";
@@ -127,7 +126,6 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(canAutoOpenWalletActions && (hasStripeParam || routeParams.action === "topup"));
-  const [showBarcode, setShowBarcode] = useState(false);
   const [showSendMoney, setShowSendMoney] = useState(canAutoOpenWalletActions && routeParams.action === "send");
   const [selectedTx, setSelectedTx] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
@@ -516,6 +514,55 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           </motion.button>
         )}
 
+        {!isLoading && !isGuest && (
+          <motion.div
+            className="mb-5 rounded-[28px] border p-4"
+            style={{
+              background: "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,248,255,0.96) 100%)",
+              borderColor: "rgba(0,194,255,0.12)",
+              boxShadow: "0 18px 45px rgba(15,23,42,0.08)",
+            }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14, ...slide }}
+            data-testid="wallet-pay-entry-card"
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-1">Einfach bezahlen</p>
+                <h3 className="text-[20px] leading-tight font-bold text-slate-950">Im Laden zahlen oder direkt Geld senden</h3>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-600">Wie beim Händler-Terminal: öffnen, Code zeigen oder Empfänger wählen — ohne Umwege.</p>
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-[#00C2FF]/12 border border-[#00C2FF]/15 flex items-center justify-center shrink-0">
+                <Zap size={18} className="text-[#00A6E6]" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <motion.button
+                data-testid="wallet-start-pay-btn"
+                type="button"
+                onClick={() => onNavigate?.("/pay")}
+                whileTap={{ scale: 0.98 }}
+                className="min-h-[52px] rounded-2xl bg-[#00C2FF] px-4 py-3 text-left shadow-[0_12px_28px_rgba(0,194,255,0.22)]"
+              >
+                <span className="block text-[14px] font-bold text-slate-950">Bezahlen</span>
+                <span className="mt-0.5 block text-[11px] text-slate-900/70">QR / Barcode zeigen</span>
+              </motion.button>
+              <motion.button
+                data-testid="wallet-start-send-btn"
+                type="button"
+                onClick={() => openWalletAction("send")}
+                whileTap={{ scale: 0.98 }}
+                className="min-h-[52px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left"
+              >
+                <span className="block text-[14px] font-bold text-slate-950">Geld senden</span>
+                <span className="mt-0.5 block text-[11px] text-slate-600">Kontakt, Nummer oder E-Mail</span>
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── Quick Stats ── */}
         {showBalance && !isLoading && (
           <div className="grid grid-cols-2 gap-2.5 mb-5">
@@ -635,9 +682,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           <WalletAction
             testId="quick-action-barcode"
             icon={QrCode}
-            label={t("wallet.my_qr") || "Mein QR"}
+            label={t("nav.pay") || "Bezahlen"}
             color="#FFB800"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("View your barcode") : isDemoMode ? toast(t("wallet.my_barcode") || "Barcode", { description: "Demo: Barcode simulated" }) : setShowBarcode(true)}
+            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Open pay screen") : isDemoMode ? toast(t("nav.pay") || "Bezahlen", { description: "Demo: Pay flow simulated" }) : onNavigate?.("/pay")}
             delay={0.24}
           />
           <WalletAction
@@ -827,7 +874,6 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       {/* Modals */}
       <TopUpModal isOpen={showTopUp} onClose={() => closeWalletAction("topup", setShowTopUp)} onSuccess={handleTopUpSuccess} currentBalance={balance} />
       <TransactionDetailModal isOpen={!!selectedTx} onClose={() => setSelectedTx(null)} transaction={selectedTx} />
-      <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
       <SendMoneyModal 
         isOpen={showSendMoney} 
         onClose={() => closeWalletAction("send", setShowSendMoney)} 

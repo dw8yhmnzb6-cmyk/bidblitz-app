@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, RefreshCw, Loader2, Wallet, Shield, Clock, Zap,
-  CreditCard, Smartphone, ChevronRight
+  CreditCard, Smartphone, ArrowUpRight, QrCode
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
@@ -11,7 +11,7 @@ const panelBg = "rgba(8,12,20,0.7)";
 const panelBorder = "1px solid rgba(255,255,255,0.04)";
 const API = process.env.REACT_APP_BACKEND_URL;
 
-const PaymentPage = ({ onBack }) => {
+const PaymentPage = ({ onBack, onNavigate }) => {
   const { t } = useI18n();
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,9 @@ const PaymentPage = ({ onBack }) => {
       const res = await api.getMyBarcode();
       setBarcode(res);
       setSecondsLeft(res.seconds_remaining || 0);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setLoading(false);
   }, []);
 
@@ -51,7 +53,9 @@ const PaymentPage = ({ onBack }) => {
       const res = await api.refreshBarcode();
       setBarcode(p => ({ ...p, ...res }));
       setSecondsLeft(res.seconds_remaining || 0);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setRefreshing(false);
   };
 
@@ -68,7 +72,9 @@ const PaymentPage = ({ onBack }) => {
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
       }
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}><Loader2 size={24} className="text-white/20 animate-spin" /></div>;
@@ -85,13 +91,36 @@ const PaymentPage = ({ onBack }) => {
           </motion.button>
           <div className="flex-1">
             <h1 className="text-[15px] font-bold text-white/90 font-outfit">{t("pay.title") || "Pay"}</h1>
-            <p className="text-[9px] text-white/25">{t("pay.subtitle") || "Show barcode to pay"}</p>
+            <p className="text-[9px] text-white/35">{t("pay.subtitle") || "Show barcode to pay"}</p>
           </div>
           <Wallet size={18} className="text-[#00E0FF]/30" />
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+
+        <motion.div className="rounded-2xl p-4 backdrop-blur-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(0,224,255,0.08)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: "rgba(0,224,255,0.08)", border: "1px solid rgba(0,224,255,0.12)" }}>
+              <QrCode size={18} className="text-[#00E0FF]" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00E0FF]">Einfach bezahlen</p>
+              <h2 className="mt-1 text-[20px] leading-tight font-bold text-white">Zeige diesen Code einfach an der Kasse</h2>
+              <p className="mt-2 text-[12px] leading-relaxed text-white/60">Der Händler gibt den Betrag ein, scannt deinen Code und die Wallet-Zahlung wird direkt bestätigt.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <motion.button data-testid="payment-send-action" onClick={() => onNavigate?.('/wallet?action=send')} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl px-4 py-3 text-left" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <span className="block text-[13px] font-bold text-white">Geld senden</span>
+              <span className="mt-1 block text-[10px] text-white/55">Privat an Kontakt</span>
+            </motion.button>
+            <motion.button data-testid="payment-topup-action" onClick={() => onNavigate?.('/wallet?action=topup')} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl px-4 py-3 text-left" style={{ background: "rgba(0,224,255,0.08)", border: "1px solid rgba(0,224,255,0.14)" }}>
+              <span className="block text-[13px] font-bold text-[#00E0FF]">Wallet aufladen</span>
+              <span className="mt-1 block text-[10px] text-[#00E0FF]/65">Für nächste Zahlung</span>
+            </motion.button>
+          </div>
+        </motion.div>
 
         {/* Balance */}
         <motion.div className="rounded-2xl p-4 backdrop-blur-xl text-center" style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -158,14 +187,14 @@ const PaymentPage = ({ onBack }) => {
           </div>
         </motion.div>
 
-        {/* Payment Methods Info */}
+        {/* Payment Flow Info */}
         <motion.div className="rounded-2xl p-4 backdrop-blur-xl" style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">{t("pay.methods") || "Payment Methods"}</p>
+          <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">So funktioniert Bezahlen</p>
           <div className="space-y-2">
             {[
-              { icon: Smartphone, label: "NFC Wallet", fee: "0.3%", color: "#00E89D", desc: t("pay.nfc_wallet_desc") || "Tap & pay with wallet — lowest fees" },
-              { icon: Zap, label: "QR / Barcode", fee: "0.5%", color: "#00E0FF", desc: t("pay.barcode_desc") || "Show code to merchant" },
-              { icon: CreditCard, label: "NFC Card", fee: "2.5%", color: "#FFB800", desc: t("pay.nfc_card_desc") || "Tap card at terminal" },
+              { icon: Zap, label: "1. Bezahlen öffnen", fee: "Wallet", color: "#00E89D", desc: "Du öffnest diesen Screen direkt aus dem Wallet." },
+              { icon: QrCode, label: "2. Code zeigen", fee: "QR / Barcode", color: "#00E0FF", desc: "Der Händler scannt deinen Code an der Kasse." },
+              { icon: ArrowUpRight, label: "3. Fertig", fee: "Direkt", color: "#FFB800", desc: "Die Bestätigung erscheint sofort in deinem Wallet." },
             ].map((m, i) => (
               <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${m.color}08` }}>
@@ -173,7 +202,7 @@ const PaymentPage = ({ onBack }) => {
                 </div>
                 <div className="flex-1">
                   <p className="text-[10px] font-bold text-white/70">{m.label}</p>
-                  <p className="text-[8px] text-white/20">{m.desc}</p>
+                  <p className="text-[8px] text-white/30">{m.desc}</p>
                 </div>
                 <span className="text-[10px] font-bold font-mono" style={{ color: m.color }}>{m.fee}</span>
               </div>
