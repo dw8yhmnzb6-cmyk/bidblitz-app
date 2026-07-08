@@ -87,7 +87,7 @@ const createMovingDriverIcon = (rotation = 0) => L.divIcon({
   popupAnchor: [0, -20],
 });
 
-const createMapboxPin = ({ background = '#111111', border = '#ffffff', size = 20, innerHtml = '' }) => {
+const createMapboxPin = ({ background = '#111111', border = '#ffffff', size = 20, innerHtml = '', ring = false, ringColor = 'rgba(37,99,235,0.18)' }) => {
   const el = document.createElement('div');
   el.style.cssText = `
     width:${size}px;
@@ -102,8 +102,20 @@ const createMapboxPin = ({ background = '#111111', border = '#ffffff', size = 20
     color:#fff;
     font-weight:800;
     font-size:11px;
+    position:relative;
   `;
   el.innerHTML = innerHtml;
+  if (ring) {
+    const halo = document.createElement('div');
+    halo.style.cssText = `
+      position:absolute;
+      inset:-8px;
+      border-radius:999px;
+      background:${ringColor};
+      z-index:-1;
+    `;
+    el.appendChild(halo);
+  }
   return el;
 };
 
@@ -125,7 +137,7 @@ export const TaxiMapbox = ({
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/light-v11',
       center,
-      zoom: pickup?.lng && pickup?.lat ? 15 : 13,
+      zoom: pickup?.lng && pickup?.lat ? 16 : 13.5,
       attributionControl: false,
       pitchWithRotate: false,
       dragRotate: false,
@@ -158,24 +170,24 @@ export const TaxiMapbox = ({
       hasBounds = true;
     };
 
-    nearbyDrivers.slice(0, 8).forEach((driver) => {
-      addMarker(driver.lng, driver.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 18 }));
+    nearbyDrivers.slice(0, 6).forEach((driver) => {
+      addMarker(driver.lng, driver.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 16 }));
     });
 
     if (pickup?.lat && pickup?.lng) {
-      addMarker(pickup.lng, pickup.lat, createMapboxPin({ background: '#2563EB', border: '#ffffff', size: 22 }));
+      addMarker(pickup.lng, pickup.lat, createMapboxPin({ background: '#2563EB', border: '#ffffff', size: 20, ring: true }));
     }
 
     if (dropoff?.lat && dropoff?.lng) {
-      addMarker(dropoff.lng, dropoff.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 22, innerHtml: '<span style="font-size:12px">■</span>' }));
+      addMarker(dropoff.lng, dropoff.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 20, innerHtml: '<span style="font-size:11px">■</span>' }));
     }
 
     if (driverLocation?.lat && driverLocation?.lng) {
-      addMarker(driverLocation.lng, driverLocation.lat, createMapboxPin({ background: '#16A34A', border: '#ffffff', size: 20 }));
+      addMarker(driverLocation.lng, driverLocation.lat, createMapboxPin({ background: '#16A34A', border: '#ffffff', size: 18 }));
     }
 
     if (hasBounds) {
-      map.fitBounds(bounds, { padding: 64, duration: 900, maxZoom: 16 });
+      map.fitBounds(bounds, { padding: { top: 90, right: 32, bottom: 320, left: 32 }, duration: 900, maxZoom: 16.4 });
     }
   }, [driverLocation?.lat, driverLocation?.lng, dropoff?.lat, dropoff?.lng, nearbyDrivers, pickup?.lat, pickup?.lng]);
 
