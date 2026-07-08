@@ -8,6 +8,10 @@ import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
 // Fix Leaflet default marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -82,6 +86,106 @@ const createMovingDriverIcon = (rotation = 0) => L.divIcon({
   iconAnchor: [22, 22],
   popupAnchor: [0, -20],
 });
+
+const createMapboxPin = ({ background = '#111111', border = '#ffffff', size = 20, innerHtml = '' }) => {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    width:${size}px;
+    height:${size}px;
+    border-radius:999px;
+    background:${background};
+    border:3px solid ${border};
+    box-shadow:0 6px 18px rgba(0,0,0,0.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-weight:800;
+    font-size:11px;
+  `;
+  el.innerHTML = innerHtml;
+  return el;
+};
+
+export const TaxiMapbox = ({
+  pickup,
+  dropoff,
+  nearbyDrivers = [],
+  driverLocation = null,
+  height = '100%',
+}) => {
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current || !mapboxgl.accessToken) return undefined;
+    const center = pickup?.lng && pickup?.lat ? [pickup.lng, pickup.lat] : [13.405, 52.52];
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center,
+      zoom: pickup?.lng && pickup?.lat ? 15 : 13,
+      attributionControl: false,
+      pitchWithRotate: false,
+      dragRotate: false,
+    });
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+    mapRef.current = map;
+    return () => {
+      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current = [];
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [pickup?.lat, pickup?.lng]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasBounds = false;
+
+    const addMarker = (lng, lat, el) => {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map);
+      markersRef.current.push(marker);
+      bounds.extend([lng, lat]);
+      hasBounds = true;
+    };
+
+    nearbyDrivers.slice(0, 8).forEach((driver) => {
+      addMarker(driver.lng, driver.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 18 }));
+    });
+
+    if (pickup?.lat && pickup?.lng) {
+      addMarker(pickup.lng, pickup.lat, createMapboxPin({ background: '#2563EB', border: '#ffffff', size: 22 }));
+    }
+
+    if (dropoff?.lat && dropoff?.lng) {
+      addMarker(dropoff.lng, dropoff.lat, createMapboxPin({ background: '#111111', border: '#ffffff', size: 22, innerHtml: '<span style="font-size:12px">■</span>' }));
+    }
+
+    if (driverLocation?.lat && driverLocation?.lng) {
+      addMarker(driverLocation.lng, driverLocation.lat, createMapboxPin({ background: '#16A34A', border: '#ffffff', size: 20 }));
+    }
+
+    if (hasBounds) {
+      map.fitBounds(bounds, { padding: 64, duration: 900, maxZoom: 16 });
+    }
+  }, [driverLocation?.lat, driverLocation?.lng, dropoff?.lat, dropoff?.lng, nearbyDrivers, pickup?.lat, pickup?.lng]);
+
+  return (
+    <div className="relative h-full w-full overflow-hidden" style={{ height }} data-testid="taxi-mapbox-view">
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_45%)]" />
+    </div>
+  );
+};
 
 const AnimatedMarker = ({ position, popup, rotation = 0 }) => {
   const [displayPosition, setDisplayPosition] = useState(position);

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Briefcase, Clock3, Heart, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { TaxiMap } from '../components/RealMap';
+import { TaxiMapbox } from '../components/RealMap';
 import { VehicleIcon } from '../components/taxi/TaxiVehicleIcon';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 import { useUser } from '../store/UserContext';
@@ -87,7 +87,7 @@ function SearchResultRow({ item, index, onSelect }) {
 }
 
 function SuggestionSectionTitle({ children }) {
-  return <div className="px-1 pb-2 pt-4 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">{children}</div>;
+  return <div className="px-1 pb-2 pt-4 text-xs font-black uppercase tracking-[0.16em] text-zinc-400">{children}</div>;
 }
 
 function FavoriteSaveRow({ item, saving, onSave }) {
@@ -103,7 +103,7 @@ function FavoriteSaveRow({ item, saving, onSave }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-bold text-[#0A0A0A]">Ort speichern</div>
-        <div className="mt-1 truncate text-xs text-zinc-500">Für Home, Work oder schnellen Wiederaufruf</div>
+        <div className="mt-1 truncate text-sm text-zinc-500">Für Home, Work oder schnellen Wiederaufruf</div>
       </div>
     </button>
   );
@@ -132,11 +132,11 @@ function VehicleCard({ vehicle, selected, estimate, onClick }) {
       <VehicleIcon type={vehicle.id} active={selected} className="h-12 w-full" />
       <div className="mt-3 flex items-center gap-2">
         <div className="text-sm font-bold text-[#0A0A0A]">{vehicle.label}</div>
-        {vehicle.badge ? <span className="rounded-full bg-[#FFD600] px-2 py-0.5 text-[10px] font-black text-black">{vehicle.badge}</span> : null}
+        {vehicle.badge ? <span className="rounded-full bg-[#FFD600] px-2.5 py-1 text-xs font-black text-black">{vehicle.badge}</span> : null}
       </div>
-      <div className="mt-1 text-xs text-zinc-500">{vehicle.subtitle}</div>
+      <div className="mt-1 text-sm text-zinc-500">{vehicle.subtitle}</div>
       <div className="mt-3 text-base font-black text-[#0A0A0A]">{formatPrice(estimate)}</div>
-      <div className="text-xs text-zinc-500">{formatEta(estimate)}</div>
+      <div className="text-sm text-zinc-500">{formatEta(estimate)}</div>
     </button>
   );
 }
@@ -163,23 +163,23 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
   return (
     <div className="space-y-4" data-testid="booking-status-view">
       <div className="rounded-3xl border border-zinc-200 bg-white p-5 text-center shadow-sm">
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Fahrer unterwegs</div>
+        <div className="text-sm font-bold uppercase tracking-[0.18em] text-zinc-400">Fahrer unterwegs</div>
         <div className="mt-3 text-5xl font-black tracking-tight text-[#0A0A0A]">{eta} min</div>
         <div className="mt-2 text-sm text-zinc-500">{driver} ist auf dem Weg zu dir.</div>
         <div className="mt-5 flex items-center justify-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black text-xl font-black text-white">{driver.charAt(0)}</div>
           <div className="text-left">
             <div className="text-base font-bold text-[#0A0A0A]">{driver}</div>
-            <div className="mt-1 inline-flex rounded-full bg-black px-3 py-1 text-xs font-black text-white">{plate}</div>
+            <div className="mt-1 inline-flex rounded-full bg-black px-3.5 py-1.5 text-sm font-black text-white">{plate}</div>
           </div>
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-zinc-50 p-3 text-left">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Preis</div>
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Preis</div>
             <div className="mt-1 text-lg font-black text-[#0A0A0A]">{price ? `€${price.toFixed(2)}` : 'Laufend'}</div>
           </div>
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Status</div>
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Status</div>
             <div className="mt-1 text-lg font-black text-[#0A0A0A]">Live</div>
           </div>
         </div>
@@ -193,7 +193,7 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
         <div className="flex items-start gap-3">
           <div className="mt-1 h-3 w-3 rounded-full bg-black" />
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Abholung</div>
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Abholung</div>
             <div className="mt-1 text-sm font-bold text-[#0A0A0A]">{pickupAddress}</div>
           </div>
         </div>
@@ -201,7 +201,7 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
         <div className="flex items-start gap-3">
           <div className="mt-1 h-3 w-3 rounded-sm bg-black" />
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Ziel</div>
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Ziel</div>
             <div className="mt-1 text-sm font-bold text-[#0A0A0A]">{dropoffAddress}</div>
           </div>
         </div>
@@ -209,31 +209,31 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
       <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Status</div>
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Status</div>
             <div className="mt-1 text-lg font-black text-[#0A0A0A]">{statusLabel}</div>
           </div>
-          <div className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700" data-testid="booking-status-pill">
+          <div className="rounded-full bg-zinc-100 px-3.5 py-1.5 text-sm font-black text-zinc-700" data-testid="booking-status-pill">
             {status.toUpperCase()}
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">
           <button
             onClick={onOpenLiveChat}
-            className="rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
+            className="min-h-[48px] rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
             data-testid="booking-chat-button"
           >
             Chat
           </button>
           <button
             onClick={onCallDriver}
-            className="rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
+            className="min-h-[48px] rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
             data-testid="booking-call-button"
           >
             Anrufen
           </button>
           <button
             onClick={onShareTrip}
-            className="rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
+            className="min-h-[48px] rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
             data-testid="booking-share-button"
           >
             Teilen
@@ -496,7 +496,7 @@ export default function TaxiPage({ onNavigate }) {
     <div className="h-dvh overflow-hidden bg-white text-[#0A0A0A]" data-testid="taxi-simple-page">
       <div className="relative h-dvh w-full overflow-hidden bg-zinc-200">
         <div className="absolute inset-0 z-0" data-testid="taxi-simple-map-view">
-          <TaxiMap
+          <TaxiMapbox
             pickup={pickup?.lat ? pickup : null}
             dropoff={dropoff?.lat ? dropoff : null}
             driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
@@ -514,7 +514,7 @@ export default function TaxiPage({ onNavigate }) {
             >
               <ArrowLeft size={18} />
             </button>
-            <div className="rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500 shadow-sm" data-testid="taxi-region-pill">
+            <div className="rounded-full bg-white px-4 py-3 text-sm font-bold uppercase tracking-[0.16em] text-zinc-500 shadow-sm" data-testid="taxi-region-pill">
               {regionLabel}
             </div>
           </div>
@@ -532,10 +532,10 @@ export default function TaxiPage({ onNavigate }) {
             <>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Taxi buchen</div>
+                  <div className="text-sm font-bold uppercase tracking-[0.16em] text-zinc-400">Taxi buchen</div>
                   <h1 className="mt-2 text-3xl font-black tracking-tight">Wohin soll&apos;s gehen?</h1>
                 </div>
-                <div className="rounded-full bg-zinc-100 px-3 py-2 text-xs font-bold text-zinc-700" data-testid="taxi-driver-count-pill">
+                <div className="rounded-full bg-zinc-100 px-3.5 py-2.5 text-sm font-bold text-zinc-700" data-testid="taxi-driver-count-pill">
                   {mapDrivers.length} Fahrer
                 </div>
               </div>
@@ -551,9 +551,9 @@ export default function TaxiPage({ onNavigate }) {
                     <div className="h-3 w-3 rounded-sm bg-black" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Aktueller Standort</div>
+                    <div className="text-sm font-bold uppercase tracking-[0.16em] text-zinc-400">Aktueller Standort</div>
                     <div className="mt-1 truncate text-sm font-bold text-[#0A0A0A]">{pickup.address || 'Dein Standort'}</div>
-                    <div className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Ziel</div>
+                    <div className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-zinc-400">Ziel</div>
                     <div className="mt-1 flex items-center gap-2 text-lg font-black text-[#0A0A0A]">
                       <Search size={18} />
                       <span className="truncate">{dropoff.address || 'Wohin?'}</span>
@@ -606,12 +606,12 @@ export default function TaxiPage({ onNavigate }) {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Ziel suchen</div>
+                    <div className="text-sm font-bold uppercase tracking-[0.16em] text-zinc-400">Ziel suchen</div>
                     <div className="mt-1 text-2xl font-black">Adresse auswählen</div>
                   </div>
                   <button
                     onClick={() => setSheetMode(dropoff.address ? 'ride-options' : 'summary')}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100"
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100"
                     data-testid="taxi-close-search-button"
                   >
                     <X size={18} />
@@ -668,7 +668,7 @@ export default function TaxiPage({ onNavigate }) {
                 className="mt-5"
               >
                 <div className="rounded-2xl bg-zinc-50 p-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Route</div>
+                  <div className="text-sm font-bold uppercase tracking-[0.16em] text-zinc-400">Route</div>
                   <div className="mt-2 text-sm font-bold text-[#0A0A0A]">{pickup.address || 'Dein Standort'} → {dropoff.address}</div>
                   <div className="mt-2 text-sm text-zinc-500">Wähle ein Fahrzeug und bestelle direkt.</div>
                 </div>
@@ -686,22 +686,22 @@ export default function TaxiPage({ onNavigate }) {
                 <div className="mt-4 rounded-2xl bg-zinc-50 p-4" data-testid="vehicle-selection-summary">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Gewählt</div>
+                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Gewählt</div>
                       <div className="mt-1 text-lg font-black text-[#0A0A0A]">{VEHICLES.find((item) => item.id === selectedVehicle)?.label || 'Fahrt'}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Ankunft</div>
+                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Ankunft</div>
                       <div className="mt-1 text-lg font-black text-[#0A0A0A]">{formatEta(selectedEstimate)}</div>
                     </div>
                   </div>
                   <div className="mt-3 text-sm text-zinc-500">{quickVehicleFacts[selectedVehicle]}</div>
                   <div className="mt-4 flex items-center justify-between rounded-2xl bg-white px-4 py-3">
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Preis</div>
+                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Preis</div>
                       <div className="mt-1 text-lg font-black text-[#0A0A0A]">{formatPrice(selectedEstimate)}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Verfügbarkeit</div>
+                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Verfügbarkeit</div>
                       <div className="mt-1 text-sm font-black text-[#0A0A0A]">{Math.max(mapDrivers.length, 1)} Fahrer nahebei</div>
                     </div>
                   </div>
