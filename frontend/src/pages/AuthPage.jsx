@@ -31,11 +31,11 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
       <div
         className={`flex items-center gap-3 px-4 py-[14px] rounded-[14px] transition-all duration-200 overflow-hidden ${
           focused
-            ? "bg-white/[0.04] border border-[#00C2FF]/25"
-            : "bg-white/[0.02] border border-white/[0.08]"
+            ? "bg-white/[0.06] border border-[#00C2FF]/35 shadow-[0_0_0_1px_rgba(0,194,255,0.08)]"
+            : "bg-white/[0.035] border border-white/[0.1]"
         }`}
       >
-        <Icon size={16} strokeWidth={1.5} className={`flex-shrink-0 ${focused ? "text-[#00C2FF]" : "text-white/50"}`} />
+        <Icon size={16} strokeWidth={1.5} className={`flex-shrink-0 ${focused ? "text-[#00C2FF]" : "text-white/70"}`} />
         <input
           ref={inputRef}
           name={name}
@@ -49,7 +49,7 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
           onFocus={() => setFocused(true)}
           onBlur={handleBlur}
           inputMode={type === "email" ? "email" : undefined}
-          className="flex-1 min-w-0 w-full bg-transparent text-[13px] text-white placeholder:text-white/35 outline-none font-medium"
+          className="flex-1 min-w-0 w-full bg-transparent text-[13px] text-white placeholder:text-white/60 outline-none font-medium"
           style={{ WebkitTextFillColor: "#fff" }}
           autoComplete={isPw ? (placeholder && placeholder.toLowerCase().includes("confirm") || placeholder && placeholder.toLowerCase().includes("bestätigen") ? "new-password" : "current-password") : "email"}
           autoCapitalize="none"
@@ -60,7 +60,7 @@ const Field = ({ icon: Icon, type, value, onChange, placeholder, testId, autoFoc
         {isPw && value && (
           <motion.button
             type="button"
-            className="text-[#333] hover:text-[#555] transition-colors"
+            className="text-white/55 hover:text-white/80 transition-colors"
             whileTap={{ scale: 0.85 }}
             onClick={() => setShowPw(!showPw)}
             tabIndex={-1}
@@ -238,7 +238,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
         {onBack && (
           <motion.button
             data-testid="auth-back-btn"
-            className="absolute top-[max(env(safe-area-inset-top,0px),16px)] left-4 z-20 flex items-center gap-1.5 text-[12px] text-[#555] font-medium"
+            className="absolute top-[max(env(safe-area-inset-top,0px),16px)] left-4 z-20 flex items-center gap-1.5 text-[12px] text-white/60 font-medium"
             whileTap={{ scale: 0.92 }}
             onClick={onBack}
             initial={{ opacity: 0 }}
@@ -277,7 +277,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
             BidBlitz
           </motion.h1>
           <motion.p
-            className="text-[13px] text-white/55 font-medium"
+            className="text-[13px] text-white/70 font-medium"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.22 }}
@@ -430,7 +430,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                       transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     />
                   </div>
-                  <span className={`text-[11px] font-medium ${rememberMe ? "text-white/70" : "text-white/40"}`}>
+                  <span className={`text-[11px] font-medium ${rememberMe ? "text-white/80" : "text-white/55"}`}>
                     {t("auth.remember_me") || "Angemeldet bleiben"}
                   </span>
                 </motion.button>
@@ -490,7 +490,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
 
               {/* Switch to register */}
               <motion.p
-                className="text-center text-[12px] text-[#444] mt-4 pt-2"
+                className="text-center text-[12px] text-white/50 mt-4 pt-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -553,7 +553,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
               {/* Role Selector */}
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={slide}>
                 <div className="flex items-center gap-3 px-4 py-[14px] rounded-[14px] bg-white/[0.02] border border-white/[0.05]">
-                  <Shield size={16} strokeWidth={1.5} className="text-[#333]" />
+                  <Shield size={16} strokeWidth={1.5} className="text-white/70" />
                   <select
                     data-testid="register-role-select"
                     value={requestedRole}
@@ -614,7 +614,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
 
               {/* Switch to login */}
               <motion.p
-                className="text-center text-[12px] text-[#444] mt-4 pt-2"
+                className="text-center text-[12px] text-white/50 mt-4 pt-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -641,7 +641,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
           transition={{ delay: 0.5 }}
         >
           <Shield size={10} className="text-[#00D26A]/50" />
-          <span className="text-[10px] text-[#222] font-medium">Secured with end-to-end encryption</span>
+          <span className="text-[10px] text-white/40 font-medium">Secured with end-to-end encryption</span>
         </motion.div>
       </div>
 
