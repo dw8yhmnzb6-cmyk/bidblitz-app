@@ -142,6 +142,51 @@ function VehicleCard({ vehicle, selected, estimate, onClick }) {
   );
 }
 
+function PricingOverviewCard({ selectedEstimate, bookingMode }) {
+  if (!selectedEstimate) return null;
+  const regionLabel = selectedEstimate.region_label || selectedEstimate.region || 'Standard-Tarif';
+  const tariffZone = selectedEstimate.tariff_zone;
+  const timeTariff = selectedEstimate.time_tariff;
+  const fixedFare = selectedEstimate.fixed_fare || selectedEstimate.fixed_fares?.[selectedEstimate.vehicle_type];
+  return (
+    <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4" data-testid="pricing-overview-card">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Preislogik</div>
+          <div className="mt-1 text-base font-black text-[#0A0A0A]">{regionLabel}</div>
+        </div>
+        <div className="rounded-full bg-zinc-100 px-3 py-2 text-sm font-bold text-zinc-700">
+          {bookingMode === 'later' ? 'Später' : 'Jetzt'}
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+        <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+          <div className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Grundpreis</div>
+          <div className="mt-1 font-black text-[#0A0A0A]">€{Number(selectedEstimate.base_fare || 0).toFixed(2)}</div>
+        </div>
+        <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+          <div className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Region</div>
+          <div className="mt-1 font-black text-[#0A0A0A]">{selectedEstimate.region || 'default'}</div>
+        </div>
+        <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+          <div className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Zone</div>
+          <div className="mt-1 font-black text-[#0A0A0A]">{tariffZone?.label || 'Standard'}</div>
+        </div>
+      </div>
+      {fixedFare ? (
+        <div className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+          Festpreis aktiv: €{Number(fixedFare).toFixed(2)}
+        </div>
+      ) : null}
+      {timeTariff?.label ? (
+        <div className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+          Zeitprofil aktiv: {timeTariff.label}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onShareTrip, liveMovementLabel }) {
   const eta = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 3);
   const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || '—';
@@ -276,6 +321,7 @@ export default function TaxiPage({ onNavigate }) {
   const [pickupMoveMode, setPickupMoveMode] = useState(false);
   const [bookingMode, setBookingMode] = useState('now');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [pricingConfig, setPricingConfig] = useState(null);
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
@@ -311,6 +357,28 @@ export default function TaxiPage({ onNavigate }) {
   useEffect(() => {
     loadActiveRide();
   }, [loadActiveRide]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPricing = async () => {
+      const pricing = await api.fetchPricing();
+      if (!cancelled) setPricingConfig(pricing);
+    };
+    loadPricing();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeRide?.ride_id) return undefined;
+    const interval = setInterval(async () => {
+      const data = await api.fetchRide(activeRide.ride_id);
+      const nextRide = data?.ride || data;
+      if (nextRide?.ride_id) setActiveRide(nextRide);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [activeRide?.ride_id]);
 
   useEffect(() => {
     if (!pickup?.lat || activeRide) return;
@@ -441,6 +509,11 @@ export default function TaxiPage({ onNavigate }) {
     if (activeRide?.status === 'started') return 'Fahrt läuft';
     return '';
   }, [activeRide]);
+
+  const driverGpsLabel = useMemo(() => {
+    if (!activeRide?.driver_lat || !activeRide?.driver_lng) return 'GPS wird synchronisiert';
+    return `Live bei ${Number(activeRide.driver_lat).toFixed(4)}, ${Number(activeRide.driver_lng).toFixed(4)}`;
+  }, [activeRide?.driver_lat, activeRide?.driver_lng]);
 
   const selectedEstimate = useMemo(
     () => estimates.find((item) => item.vehicle_type === selectedVehicle) || estimates[0] || null,
@@ -752,6 +825,7 @@ export default function TaxiPage({ onNavigate }) {
                       <div className="mt-1 text-sm font-black text-[#0A0A0A]">{Math.max(mapDrivers.length, 1)} Fahrer nahebei</div>
                     </div>
                   </div>
+                  <PricingOverviewCard selectedEstimate={selectedEstimate} bookingMode={bookingMode} />
                   <div className="mt-4 rounded-2xl bg-white p-3" data-testid="booking-mode-card">
                     <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Bestellung</div>
                     <div className="mt-3 grid grid-cols-2 gap-3">
@@ -802,6 +876,25 @@ export default function TaxiPage({ onNavigate }) {
                 onShareTrip={handleShareRide}
                 liveMovementLabel={liveMovementLabel}
               />
+              <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4" data-testid="live-gps-card">
+                <div className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Live GPS</div>
+                <div className="mt-2 text-sm font-semibold text-zinc-700">
+                  Fahrerposition wird live aus dem Fahrer-Standort aktualisiert.
+                </div>
+                <div className="mt-3 rounded-2xl bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700" data-testid="live-gps-banner">
+                  {driverGpsLabel}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Driver Lat</div>
+                    <div className="mt-1 font-black text-[#0A0A0A]">{Number(activeRide?.driver_lat || 0).toFixed(4)}</div>
+                  </div>
+                  <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-400">Driver Lng</div>
+                    <div className="mt-1 font-black text-[#0A0A0A]">{Number(activeRide?.driver_lng || 0).toFixed(4)}</div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null}
 

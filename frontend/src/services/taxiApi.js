@@ -241,6 +241,13 @@ export async function estimateRide({ pickup, dropoff, promoCode }) {
     : { ok: false, error: data?.detail || "Fehler beim Laden der Preise" };
 }
 
+export async function fetchPricing() {
+  const res = await safeFetch(`${API}/api/taxi/pricing`);
+  if (!res) return null;
+  if (!res.ok) return null;
+  return await readJson(res);
+}
+
 export async function validatePromoCode(code) {
   const res = await safeFetch(`${API}/api/taxi/promo/validate?code=${encodeURIComponent(code)}`, credJson);
   if (!res) return null;
