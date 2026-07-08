@@ -38,7 +38,7 @@ const swallowMaybePromise = (result) => {
   }
 };
 
-const ScannerPage = ({ onNavigate, onShowBarcode }) => {
+const ScannerPage = ({ onNavigate }) => {
   const user = useUser();
   const wallet = useWallet();
   const { t } = useI18n();
@@ -535,15 +535,21 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
           >
             Scannen
           </button>
-          <button
-            onClick={() => canCashier ? switchTool(Tool.CASHIER) : onShowBarcode?.()}
+          {canCashier ? <button
+            onClick={() => switchTool(Tool.CASHIER)}
             className={`py-2.5 rounded-xl text-xs font-semibold border ${tool === Tool.CASHIER ? "bg-[#00D26A]/15 text-[#00D26A] border-[#00D26A]/30" : "bg-white/[0.03] text-[#888] border-white/[0.05]"}`}
             data-testid="scanner-tool-cashier"
           >
-            {canCashier ? "Kassieren" : "Mein Code"}
-          </button>
+            Kassieren
+          </button> : <button
+            onClick={() => onNavigate?.('/receive-money')}
+            className="py-2.5 rounded-xl text-xs font-semibold border bg-[#00C2FF]/12 text-[#00C2FF] border-[#00C2FF]/25"
+            data-testid="scanner-tool-my-code"
+          >
+            Mein Code
+          </button>}
           <button
-            onClick={() => onShowBarcode?.()}
+            onClick={() => onNavigate?.('/receive-money')}
             className="py-2.5 rounded-xl text-xs font-semibold border bg-white/[0.03] text-white border-white/[0.05]"
             data-testid="scanner-show-my-code"
           >
@@ -623,7 +629,7 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
                     {cameraActive ? "Kamera stoppen" : (prefersImageCapture ? "Kamera/Foto öffnen" : "Kamera starten")}
                   </button>
                   <button
-                    onClick={() => onShowBarcode?.()}
+                    onClick={() => onNavigate?.('/receive-money')}
                     className="px-4 py-3 rounded-2xl text-sm font-semibold bg-white/[0.04] border border-white/[0.06] text-white flex items-center justify-center gap-2"
                     data-testid="scan-hub-my-code-button"
                   >
