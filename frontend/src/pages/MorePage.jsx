@@ -24,6 +24,7 @@ import { PushNotificationToggle } from "../components/PushNotifications";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
+const isRtlLanguage = (lang) => lang === "ar" || lang === "ar-AE";
 
 // ── Menu Row ──
 const MenuRow = ({ icon: Icon, label, desc, color, onClick, isLast, testId, right }) => (
@@ -99,9 +100,13 @@ const Toggle = ({ on, onToggle }) => (
 );
 
 // ── Sub-page shell ──
-const SubPage = ({ title, onBack, children }) => (
+const SubPage = ({ title, onBack, children }) => {
+  const { lang } = useI18n();
+
+  return (
   <motion.div
     className="min-h-screen relative"
+    dir={isRtlLanguage(lang) ? "rtl" : "ltr"}
     style={{ background: "#030303" }}
     initial={{ opacity: 0, x: 30 }}
     animate={{ opacity: 1, x: 0 }}
@@ -120,7 +125,8 @@ const SubPage = ({ title, onBack, children }) => (
     </div>
     <div className="px-5 pb-8 relative z-10">{children}</div>
   </motion.div>
-);
+  );
+};
 
 // ── Profile Sub-page ──
 const ProfileView = ({ userId, userName, userEmail, userRole, userBalance, userCurrency, userAvatar, userIsPremium, userCreatedAt, onBack, t, initialOpenPw }) => {
@@ -821,7 +827,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "blitz-mine", icon: Zap, label: "BlitzMine", desc: "Tippe täglich & mine BLZ – Pi Network-Style", color: "#FFD700", action: gatedAction(() => onNavigate("/blitz-mine")), roles: ["all"] },
     { id: "challenges", icon: Zap, label: "Tägliche Challenges", desc: "Verdiene BLZ mit täglichen Aufgaben", color: "#00E0FF", action: gatedAction(() => onNavigate("/challenges")), roles: ["all"] },
     { id: "achievements", icon: Sparkles, label: "Achievements", desc: "Schalte Badges frei & sammle Belohnungen", color: "#FFD166", action: gatedAction(() => onNavigate("/achievements")), roles: ["all"] },
-    { id: "friends", icon: Users, label: "Freunde", desc: "Freunde hinzufügen & verwalten", color: "#10B981", action: gatedAction(() => onNavigate("/friends")), roles: ["all"] },
+    { id: "friends", icon: Users, label: t("more.friends") || "Freunde", desc: t("more.friends_desc") || "Freunde hinzufügen & verwalten", color: "#10B981", action: gatedAction(() => onNavigate("/friends")), roles: ["all"] },
     { id: "arcade", icon: Gamepad2, label: "Arcade", desc: "100+ Games · Casino · Snake — zahl mit BLZ", color: "#A855F7", action: gatedAction(() => onNavigate("/arcade")), roles: ["all"] },
     { id: "affiliate", icon: Share2, label: "Partner-Programm", desc: "5€ pro Anmeldung + 10% Provision — werde reich mit Empfehlungen 🚀", color: "#FF6B9D", action: gatedAction(() => onNavigate("/affiliate")), roles: ["all"] },
     // Merchant-only items
@@ -839,7 +845,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const mobilityMenu = [
     { id: "mobility-map", icon: MapPin, label: t("more.live_map") || "Live Map", desc: t("more.car_rental_desc"), color: "#3B82F6", action: gatedAction(() => onNavigate("/mobility-map")) },
-    { id: "friends-map", icon: Users, label: "Freunde Karte", desc: "Sieh Freunde in deiner Nähe", color: "#A855F7", action: gatedAction(() => onNavigate("/friends-map")) },
+    { id: "friends-map", icon: Users, label: t("more.friends_map") || "Freunde Karte", desc: t("more.friends_map_desc") || "Sieh Freunde in deiner Nähe", color: "#A855F7", action: gatedAction(() => onNavigate("/friends-map")) },
     { id: "car-rental", icon: Car, label: t("more.car_rental"), desc: t("more.car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental") },
     { id: "car-rental-bookings", icon: Calendar, label: t("more.my_car_bookings"), desc: t("more.my_car_bookings_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
     ...(driverAccess?.is_verified ? [
@@ -1049,6 +1055,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     <motion.div
       data-testid="more-page"
       className="min-h-screen relative overflow-hidden"
+      dir={isRtlLanguage(locale) ? "rtl" : "ltr"}
       style={{ background: "#030303" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

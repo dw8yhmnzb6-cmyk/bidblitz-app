@@ -1,9 +1,13 @@
 import { motion } from "framer-motion";
 import { LogIn, UserPlus } from "lucide-react";
+import { useI18n } from "../store";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 
-export const GuestCTABar = ({ onLogin, onRegister }) => (
+export const GuestCTABar = ({ onLogin, onRegister }) => {
+  const { t } = useI18n();
+
+  return (
   <motion.div
     data-testid="guest-cta-bar"
     className="flex items-center gap-2 px-5 py-3 mb-1"
@@ -19,7 +23,7 @@ export const GuestCTABar = ({ onLogin, onRegister }) => (
       onClick={onRegister}
     >
       <UserPlus size={13} strokeWidth={2} />
-      Register
+      {t("auth.register") || "Register"}
     </motion.button>
     <motion.button
       data-testid="page-login-btn"
@@ -29,9 +33,10 @@ export const GuestCTABar = ({ onLogin, onRegister }) => (
       onClick={onLogin}
     >
       <LogIn size={13} strokeWidth={2} />
-      Login
+      {t("auth.signin") || "Login"}
     </motion.button>
   </motion.div>
-);
+  );
+};
 
 export default GuestCTABar;
