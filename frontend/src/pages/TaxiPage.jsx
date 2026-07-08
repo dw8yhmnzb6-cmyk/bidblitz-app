@@ -91,6 +91,25 @@ function SuggestionSectionTitle({ children }) {
   return <div className="px-1 pb-2 pt-4 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">{children}</div>;
 }
 
+function FavoriteSaveRow({ item, saving, onSave }) {
+  return (
+    <button
+      onClick={() => onSave(item)}
+      disabled={saving}
+      className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left disabled:opacity-60"
+      data-testid="taxi-save-favorite-row"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-rose-500">
+        {saving ? <Loader2 size={16} className="animate-spin" /> : <Heart size={16} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-bold text-[#0A0A0A]">Ort speichern</div>
+        <div className="mt-1 truncate text-xs text-zinc-500">Für Home, Work oder schnellen Wiederaufruf</div>
+      </div>
+    </button>
+  );
+}
+
 function QuickDestinationChip({ icon, label, onClick, testId }) {
   return (
     <button
@@ -123,7 +142,7 @@ function VehicleCard({ vehicle, selected, estimate, onClick }) {
   );
 }
 
-function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onShareTrip }) {
+function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onShareTrip, liveMovementLabel }) {
   const eta = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 3);
   const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || '—';
   const driver = ride?.driver?.name || ride?.driver_name || 'Fahrer';
@@ -154,6 +173,11 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
             <div className="mt-1 text-lg font-black text-[#0A0A0A]">Live</div>
           </div>
         </div>
+        {liveMovementLabel ? (
+          <div className="mt-4 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700" data-testid="booking-live-movement-banner">
+            {liveMovementLabel}
+          </div>
+        ) : null}
       </div>
       <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="flex items-start gap-3">
@@ -202,6 +226,7 @@ export default function TaxiPage({ onNavigate }) {
   const [regionalHints, setRegionalHints] = useState([]);
   const [nearbyDrivers, setNearbyDrivers] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
+  const [savingFavorite, setSavingFavorite] = useState(false);
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
@@ -301,6 +326,27 @@ export default function TaxiPage({ onNavigate }) {
     estimateRide(next);
   }, [estimateRide]);
 
+  const handleSaveFavorite = useCallback(async (item) => {
+    if (!user?.isAuthenticated) {
+      toast.info('Bitte zuerst anmelden, um Orte zu speichern.');
+      return;
+    }
+    setSavingFavorite(true);
+    const result = await api.saveFavoriteFromSearch({
+      name: item.name || item.address?.split(',')?.[0] || 'Gespeicherter Ort',
+      address: item.address,
+      lat: item.lat,
+      lng: item.lng,
+      icon: 'star',
+    });
+    setSavingFavorite(false);
+    if (!result?.ok) {
+      toast.error(result?.error || 'Ort konnte nicht gespeichert werden');
+      return;
+    }
+    toast.success('Ort gespeichert');
+  }, [user?.isAuthenticated]);
+
   const quickDestinations = useMemo(() => {
     const home = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'home' || (place.name || '').toLowerCase() === 'home');
     const work = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'work' || (place.name || '').toLowerCase() === 'work');
@@ -313,6 +359,15 @@ export default function TaxiPage({ onNavigate }) {
     premium: '4 Min · ruhige Fahrt',
     van: '6 Min · mehr Platz',
   }), []);
+
+  const liveMovementLabel = useMemo(() => {
+    if (!activeRide) return '';
+    const minutes = Number(activeRide?.driver?.eta_minutes || activeRide?.eta_minutes || 0);
+    if (minutes > 0) return `${minutes} Min bis zur Abholung`;
+    if (activeRide?.status === 'arriving') return 'Dein Fahrer ist gleich da';
+    if (activeRide?.status === 'started') return 'Fahrt läuft';
+    return '';
+  }, [activeRide]);
 
   const selectedEstimate = useMemo(
     () => estimates.find((item) => item.vehicle_type === selectedVehicle) || estimates[0] || null,
@@ -541,6 +596,9 @@ export default function TaxiPage({ onNavigate }) {
                       ))}
                     </div>
                   ) : null}
+                  {(searchResults[0] || regionalHints[0]) ? (
+                    <FavoriteSaveRow item={searchResults[0] || regionalHints[0]} saving={savingFavorite} onSave={handleSaveFavorite} />
+                  ) : null}
                   {searchResults.length > 0 ? (
                     <div data-testid="search-results-section">
                       <SuggestionSectionTitle>Alle Treffer</SuggestionSectionTitle>
@@ -592,6 +650,16 @@ export default function TaxiPage({ onNavigate }) {
                     </div>
                   </div>
                   <div className="mt-3 text-sm text-zinc-500">{quickVehicleFacts[selectedVehicle]}</div>
+                  <div className="mt-4 flex items-center justify-between rounded-2xl bg-white px-4 py-3">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Preis</div>
+                      <div className="mt-1 text-lg font-black text-[#0A0A0A]">{formatPrice(selectedEstimate)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Verfügbarkeit</div>
+                      <div className="mt-1 text-sm font-black text-[#0A0A0A]">{Math.max(mapDrivers.length, 1)} Fahrer nahebei</div>
+                    </div>
+                  </div>
                 </div>
                 {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
               </motion.div>
@@ -606,6 +674,7 @@ export default function TaxiPage({ onNavigate }) {
                 onOpenLiveChat={handleOpenChat}
                 onCallDriver={handleCallDriver}
                 onShareTrip={handleShareRide}
+                liveMovementLabel={liveMovementLabel}
               />
             </div>
           ) : null}
