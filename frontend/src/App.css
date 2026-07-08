@@ -376,6 +376,18 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
+@media (max-width: 480px) {
+  .premium-card {
+    min-height: 184px;
+    padding: 0.875rem 1rem;
+    border-radius: 1rem;
+  }
+
+  .premium-card:hover {
+    transform: translateY(-1px) rotateX(0.5deg);
+  }
+}
+
 /* Feature bento grid - Premium spacing */
 .bento-grid {
   display: grid;
