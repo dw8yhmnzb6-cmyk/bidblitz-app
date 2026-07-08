@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TaxiTariffZonesAdmin } from "../components/taxi/TaxiTariffZonesAdmin";
+import { TaxiCityPricingAdmin } from "../components/taxi/TaxiCityPricingAdmin";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const panelBg = "rgba(12, 14, 26, 0.95)";
@@ -845,7 +846,12 @@ export default function AdminTaxiPage({ onNavigate }) {
             {tab === "zones" && <TaxiTariffZonesAdmin api={api} panelBg={panelBg} panelBorder={panelBorder} />}
             {tab === "drivers" && <DriversTab/>}
             {tab === "rides" && <RidesTab/>}
-            {tab === "settings" && <FareSettingsTab/>}
+            {tab === "settings" && (
+              <div className="space-y-4">
+                <FareSettingsTab/>
+                <TaxiCityPricingAdmin api={api} panelBg={panelBg} panelBorder={panelBorder} />
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
