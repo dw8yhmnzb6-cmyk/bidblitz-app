@@ -124,6 +124,25 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
     setCameraError("");
 
     try {
+      if (code.startsWith("{") || code.startsWith("http") || code.length > 30) {
+        const qrRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/qr/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ qr_data: code }),
+        });
+        if (qrRes.ok) {
+          const qrData = await qrRes.json();
+          if (qrData?.recipient) {
+            selectRecipient({ ...qrData.recipient, transfer_method: "qr", preset_amount: qrData.preset_amount || null });
+            if (qrData.preset_amount) setAmount(String(qrData.preset_amount));
+            setShowScanner(false);
+            stopCamera();
+            return;
+          }
+        }
+      }
+
       const res = await api.resolveScanCode({ code });
       if (res.type === "wallet_barcode") {
         const lookup = await api.barcodeLookup(code.toUpperCase());
@@ -142,6 +161,27 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
       }
       setError(res.message || "Dieser Code ist nicht für privates Senden gedacht.");
     } catch (scanError) {
+      if (code.startsWith("BLZ-") && code.includes("-")) {
+        try {
+          const lookupRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/lookup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ query: code, type: "bidblitz_id" }),
+          });
+          if (lookupRes.ok) {
+            const lookupData = await lookupRes.json();
+            if (lookupData?.recipient) {
+              selectRecipient({ ...lookupData.recipient, transfer_method: "bidblitz_id" });
+              setShowScanner(false);
+              stopCamera();
+              return;
+            }
+          }
+        } catch (lookupError) {
+          void lookupError;
+        }
+      }
       setError(scanError?.message || "Code konnte nicht gelesen werden.");
     } finally {
       setScanBusy(false);
