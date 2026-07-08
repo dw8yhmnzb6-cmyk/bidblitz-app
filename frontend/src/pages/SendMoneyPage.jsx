@@ -1,9 +1,22 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, User, QrCode, Mail, Users, Send, Loader2, ChevronRight, Search, Sparkles, CheckCircle2, AlertCircle, Clock, Plus } from "lucide-react";
 import { useUser } from "../store";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { api } from "../services/api";
 
 const spring = { type: "spring", damping: 25, stiffness: 300 };
+const HTML5_SUPPORTED_FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_93,
+  Html5QrcodeSupportedFormats.CODABAR,
+];
 
 const normalizeAmount = (value) => {
   const numeric = Number(value ?? 0);
@@ -25,8 +38,23 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [result, setResult] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanCodeInput, setScanCodeInput] = useState("");
+  const [scanBusy, setScanBusy] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [cameraPreparing, setCameraPreparing] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraEngine, setCameraEngine] = useState(null);
   const searchTimeout = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const html5ScannerRef = useRef(null);
+  const videoRef = useRef(null);
+  const detectorRef = useRef(null);
+  const streamRef = useRef(null);
+  const scanLockRef = useRef(false);
+
+  const prefersImageCapture = typeof navigator !== "undefined" && /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
   useEffect(() => {
     const loadData = async () => {
@@ -60,6 +88,187 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   useEffect(() => () => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
   }, []);
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks?.().forEach((track) => track.stop());
+    streamRef.current = null;
+    detectorRef.current = null;
+    if (html5ScannerRef.current) {
+      const scanner = html5ScannerRef.current;
+      try {
+        const state = typeof scanner.getState === "function" ? scanner.getState() : null;
+        const canStop = state === 2 || state === 3 || state === "SCANNING" || state === "PAUSED";
+        if (canStop && typeof scanner.stop === "function") {
+          scanner.stop().catch(() => {}).finally(() => scanner.clear?.().catch?.(() => {}));
+        } else {
+          scanner.clear?.().catch?.(() => {});
+        }
+      } catch (scannerStopError) {
+        void scannerStopError;
+      }
+      html5ScannerRef.current = null;
+    }
+    if (videoRef.current) videoRef.current.srcObject = null;
+    scanLockRef.current = false;
+    setCameraPreparing(false);
+    setCameraActive(false);
+    setCameraEngine(null);
+  }, []);
+
+  useEffect(() => () => stopCamera(), [stopCamera]);
+
+  const handleScanResolvedCode = useCallback(async (value) => {
+    const code = (value || "").trim();
+    if (!code) return;
+    setScanBusy(true);
+    setCameraError("");
+
+    try {
+      const res = await api.resolveScanCode({ code });
+      if (res.type === "wallet_barcode") {
+        const lookup = await api.barcodeLookup(code.toUpperCase());
+        const name = lookup.customer_name || "Kunde";
+        const derived = name.trim();
+        selectRecipient({
+          user_id: code.toUpperCase(),
+          name: derived,
+          bidblitz_id: code.toUpperCase(),
+          username: null,
+          transfer_method: "merchant_barcode_preview",
+        });
+        setShowScanner(false);
+        stopCamera();
+        return;
+      }
+      setError(res.message || "Dieser Code ist nicht für privates Senden gedacht.");
+    } catch (scanError) {
+      setError(scanError?.message || "Code konnte nicht gelesen werden.");
+    } finally {
+      setScanBusy(false);
+    }
+  }, [stopCamera]);
+
+  const openNativeImageCapture = useCallback(() => {
+    setCameraError("");
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleImageFileSelected = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setCameraPreparing(true);
+    try {
+      stopCamera();
+      const scanner = new Html5Qrcode("send-money-scan-reader", {
+        experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+        useBarCodeDetectorIfSupported: false,
+        verbose: false,
+      });
+      html5ScannerRef.current = scanner;
+      const decodedText = await scanner.scanFile(file, true);
+      setScanCodeInput(decodedText);
+      await handleScanResolvedCode(decodedText);
+    } catch (scanFileError) {
+      setCameraError(scanFileError?.message || "Code konnte aus Foto nicht erkannt werden.");
+    } finally {
+      setCameraPreparing(false);
+      stopCamera();
+    }
+  }, [handleScanResolvedCode, stopCamera]);
+
+  const startScanner = useCallback(async () => {
+    setCameraError("");
+    if (prefersImageCapture) {
+      openNativeImageCapture();
+      return;
+    }
+
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setCameraError("Kamera nicht verfügbar.");
+      return;
+    }
+
+    try {
+      setCameraPreparing(true);
+      const preferHtml5Fallback = /iPad|iPhone|iPod/i.test(navigator.userAgent) || typeof window === "undefined" || !("BarcodeDetector" in window);
+      if (preferHtml5Fallback) {
+        const scanner = new Html5Qrcode("send-money-scan-reader", {
+          experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+          useBarCodeDetectorIfSupported: false,
+          verbose: false,
+        });
+        html5ScannerRef.current = scanner;
+
+        const onScanSuccess = async (decodedText) => {
+          if (scanLockRef.current) return;
+          scanLockRef.current = true;
+          setScanCodeInput(decodedText);
+          await handleScanResolvedCode(decodedText);
+          setTimeout(() => { scanLockRef.current = false; }, 1500);
+        };
+
+        await scanner.start({ facingMode: "environment" }, {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          rememberLastUsedCamera: true,
+          formatsToSupport: HTML5_SUPPORTED_FORMATS,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+          videoConstraints: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        }, onScanSuccess, () => {});
+        setCameraEngine("html5");
+        setCameraActive(true);
+        setCameraPreparing(false);
+        return;
+      }
+
+      const supported = typeof window.BarcodeDetector.getSupportedFormats === "function"
+        ? await window.BarcodeDetector.getSupportedFormats()
+        : ["qr_code"];
+      detectorRef.current = new window.BarcodeDetector({ formats: supported.includes("qr_code") ? ["qr_code"] : supported });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setCameraActive(true);
+      setCameraEngine("native");
+      setCameraPreparing(false);
+    } catch (scannerError) {
+      stopCamera();
+      setCameraError(scannerError?.message || "Kamera konnte nicht gestartet werden.");
+    }
+  }, [handleScanResolvedCode, openNativeImageCapture, prefersImageCapture, stopCamera]);
+
+  useEffect(() => {
+    if (!cameraActive || cameraEngine !== "native" || !detectorRef.current || !videoRef.current) return undefined;
+    let cancelled = false;
+
+    const scanLoop = async () => {
+      if (cancelled) return;
+      try {
+        if (videoRef.current?.readyState >= 2 && !scanLockRef.current) {
+          const codes = await detectorRef.current.detect(videoRef.current);
+          const rawValue = codes?.[0]?.rawValue || codes?.[0]?.raw_value;
+          if (rawValue) {
+            scanLockRef.current = true;
+            setScanCodeInput(rawValue);
+            await handleScanResolvedCode(rawValue);
+            setTimeout(() => { scanLockRef.current = false; }, 1500);
+          }
+        }
+      } catch (nativeScanError) {
+        void nativeScanError;
+      }
+
+      if (!cancelled) requestAnimationFrame(scanLoop);
+    };
+
+    requestAnimationFrame(scanLoop);
+    return () => { cancelled = true; };
+  }, [cameraActive, cameraEngine, handleScanResolvedCode]);
 
   const handleSearch = async (query) => {
     setSearchQuery(query);
@@ -120,6 +329,9 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
     setLoading(true);
     setError(null);
     try {
+      if (recipient.transfer_method === "merchant_barcode_preview") {
+        throw new Error("Dieser Barcode gehört zum Händler-Kassieren. Bitte nutze 'Bezahlen' im Wallet für Händler-Zahlungen.");
+      }
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/transfer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -180,7 +392,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                   { icon: Users, label: "Kontakte", color: "#10B981" },
                   { icon: Mail, label: "E-Mail", color: "#F59E0B" },
                 ].map((item, i) => (
-                  <motion.button key={i} type="button" className="flex flex-col items-center gap-2 py-4 rounded-2xl" style={{ background: `${item.color}10` }} whileTap={{ scale: 0.95 }}>
+                  <motion.button key={i} type="button" data-testid={item.label === 'Scannen' ? 'send-money-open-scan' : undefined} onClick={item.label === 'Scannen' ? () => setShowScanner(true) : undefined} className="flex flex-col items-center gap-2 py-4 rounded-2xl" style={{ background: `${item.color}10` }} whileTap={{ scale: 0.95 }}>
                     <item.icon size={22} style={{ color: item.color }} />
                     <span className="text-[10px] font-semibold text-slate-700">{item.label}</span>
                   </motion.button>
@@ -336,6 +548,57 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
               <p className="text-[24px] font-bold text-[#00C2FF]">€{normalizeAmount(result.sender_new_balance).toFixed(2)}</p>
             </div>
             <motion.button data-testid="send-money-done-button" onClick={() => onNavigate?.('/wallet')} className="mt-8 w-full py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-semibold text-[15px]" whileTap={{ scale: 0.98 }}>Fertig</motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showScanner && (
+          <motion.div className="fixed inset-0 z-[10000]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => { setShowScanner(false); stopCamera(); }} />
+            <motion.div className="absolute inset-x-0 bottom-0 w-full" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }}>
+              <div className="bg-[#f8fafc] rounded-t-[32px] min-h-[72vh] border border-slate-200 shadow-[0_24px_64px_rgba(15,23,42,0.16)] p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6]">Scannen</p>
+                    <h3 className="text-[20px] font-bold text-slate-950">Empfänger-Code scannen</h3>
+                  </div>
+                  <motion.button data-testid="send-money-scan-close" onClick={() => { setShowScanner(false); stopCamera(); }} whileTap={{ scale: 0.9 }} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center">
+                    <ArrowLeft size={18} className="text-slate-600" />
+                  </motion.button>
+                </div>
+
+                <div className="rounded-[28px] border border-slate-200 bg-white p-4 mb-4">
+                  <div id="send-money-scan-reader" className="overflow-hidden rounded-2xl bg-slate-100 min-h-[260px] flex items-center justify-center">
+                    {cameraEngine === "native" ? (
+                      <video ref={videoRef} className="w-full h-[260px] object-cover rounded-2xl" playsInline muted autoPlay />
+                    ) : (
+                      <div className="text-center px-4">
+                        {cameraPreparing ? <Loader2 size={28} className="animate-spin text-[#00C2FF] mx-auto" /> : <QrCode size={32} className="text-slate-300 mx-auto" />}
+                        <p className="mt-3 text-[12px] text-slate-500">Richte QR- oder BLZ-Code mittig aus</p>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-500">Für private Sendungen nur passende Empfänger-Codes verwenden. Händler-Kassencodes gehören in den Bezahlen-Flow.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <motion.button data-testid="send-money-start-camera" onClick={startScanner} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl bg-[#00C2FF] text-slate-950 font-bold">Kamera starten</motion.button>
+                  <motion.button data-testid="send-money-open-photo-scan" onClick={openNativeImageCapture} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl border border-slate-200 bg-white text-slate-800 font-semibold">Foto wählen</motion.button>
+                </div>
+
+                <div className="relative mb-3">
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input data-testid="send-money-scan-code-input" value={scanCodeInput} onChange={(e) => setScanCodeInput(e.target.value)} placeholder="BLZ- Code manuell eingeben" className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 text-[15px] placeholder-slate-400 outline-none focus:border-[#00C2FF]/40" />
+                </div>
+                <motion.button data-testid="send-money-scan-submit" onClick={() => handleScanResolvedCode(scanCodeInput)} whileTap={{ scale: 0.98 }} disabled={scanBusy || !scanCodeInput.trim()} className="w-full min-h-[48px] rounded-2xl border border-slate-200 bg-slate-100 text-slate-900 font-semibold disabled:opacity-50">
+                  {scanBusy ? <Loader2 size={18} className="animate-spin mx-auto" /> : 'Code prüfen'}
+                </motion.button>
+
+                {cameraError ? <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[12px] text-red-500">{cameraError}</div> : null}
+                <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageFileSelected} />
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
