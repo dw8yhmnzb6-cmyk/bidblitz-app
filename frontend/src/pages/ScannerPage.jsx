@@ -65,6 +65,7 @@ const ScannerPage = ({ onNavigate }) => {
   const [customerPin, setCustomerPin] = useState("");
   const [preparedPayment, setPreparedPayment] = useState(null);
   const [cashierFlowType, setCashierFlowType] = useState(null);
+  const customerResolved = !!resolvedCustomer && !!resolutionId;
 
   const [scanCodeInput, setScanCodeInput] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
@@ -704,7 +705,7 @@ const ScannerPage = ({ onNavigate }) => {
                     { id: 'amount', label: '2. Betrag' },
                     { id: 'pin', label: '3. PIN & Bestätigung' },
                   ].map((item) => {
-                    const active = item.id === 'lookup' || (item.id === 'amount' && isValidAmount) || (item.id === 'pin' && resolvedCustomer);
+                    const active = item.id === 'lookup' || (item.id === 'amount' && customerResolved) || (item.id === 'pin' && customerResolved && isValidAmount);
                     return (
                       <div key={item.id} className={`rounded-2xl border px-3 py-2 text-center ${active ? 'bg-[#00C2FF]/12 border-[#00C2FF]/20 text-[#00C2FF]' : 'bg-white/[0.02] border-white/[0.05] text-[#666]'}`}>
                         <p className="text-[10px] font-semibold">{item.label}</p>
@@ -761,7 +762,7 @@ const ScannerPage = ({ onNavigate }) => {
                       <p className="text-[11px] text-[#8CE7B3] mt-1">{resolvedCustomer.customer_number} • {resolvedCustomer.verification_status}</p>
                       <div className="mt-2 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
                         <p className="text-[10px] uppercase tracking-[0.1em] text-[#9ad7ff] font-semibold">Nächster Schritt</p>
-                        <p className="text-[11px] text-white mt-1">Jetzt Aktion wählen und den Kunden seine 4-stellige PIN eingeben lassen.</p>
+                        <p className="text-[11px] text-white mt-1">Jetzt zuerst Betrag festlegen. Danach gibt der Kunde seine 4-stellige PIN ein.</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 mt-3">
@@ -775,7 +776,7 @@ const ScannerPage = ({ onNavigate }) => {
                         </button>
                       </div>
 
-                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-black/20 px-3 py-2.5">
+                      <div className={`mt-3 flex items-center gap-2 rounded-2xl border px-3 py-2.5 ${isValidAmount ? 'border-white/[0.06] bg-black/20' : 'border-white/[0.04] bg-black/10 opacity-50'}`}>
                         <Lock size={14} className="text-[#FFB800]" />
                         <input
                           data-testid="cashier-customer-pin-input"
@@ -785,6 +786,7 @@ const ScannerPage = ({ onNavigate }) => {
                           value={customerPin}
                           onChange={(e) => setCustomerPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                           placeholder="Kunden-PIN"
+                          disabled={!isValidAmount}
                           className="flex-1 bg-transparent text-white text-sm tracking-[0.28em] placeholder:text-[#555] outline-none"
                         />
                       </div>
@@ -793,8 +795,8 @@ const ScannerPage = ({ onNavigate }) => {
                         type="button"
                         data-testid="cashier-confirm-no-phone-flow"
                         onClick={handleCashierFallbackAction}
-                        disabled={!resolutionId || !customerPin || !isValidAmount || processing}
-                        className={`w-full mt-3 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${!resolutionId || !customerPin || !isValidAmount || processing ? 'bg-white/[0.04] text-[#444] cursor-not-allowed' : cashierAction === 'topup' ? 'bg-[#00D26A] text-white' : 'bg-[#00C2FF] text-white'}`}
+                        disabled={!customerResolved || !customerPin || !isValidAmount || processing}
+                        className={`w-full mt-3 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${!customerResolved || !customerPin || !isValidAmount || processing ? 'bg-white/[0.04] text-[#444] cursor-not-allowed' : cashierAction === 'topup' ? 'bg-[#00D26A] text-white' : 'bg-[#00C2FF] text-white'}`}
                       >
                         {processing ? <Loader2 size={16} className="animate-spin" /> : <>{cashierAction === 'topup' ? 'Wallet aufladen' : 'Zahlung bestätigen'}</>}
                       </button>
@@ -802,8 +804,8 @@ const ScannerPage = ({ onNavigate }) => {
                   )}
                 </div>
 
-                <div className="text-center pt-2 pb-2">
-                  <p className="text-xs text-[#555] uppercase tracking-widest mb-3">{cashierFlowType === 'lookup' ? '2. Betrag festlegen' : (t("scan.enter_amount") || "Payment Amount")}</p>
+                <div className={`text-center pt-2 pb-2 transition-all ${customerResolved ? 'opacity-100' : 'opacity-45'}`}>
+                  <p className="text-xs text-[#555] uppercase tracking-widest mb-3">{customerResolved ? '2. Betrag festlegen' : '2. Erst Kunde finden'}</p>
                   <div className="flex items-center justify-center gap-1.5">
                     <span className="text-3xl text-[#555] font-light">&euro;</span>
                     <input
@@ -813,16 +815,18 @@ const ScannerPage = ({ onNavigate }) => {
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="0.00"
+                      disabled={!customerResolved}
                       className="bg-transparent text-5xl font-bold text-white text-center outline-none w-48 placeholder:text-[#222] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      autoFocus
+                      autoFocus={customerResolved}
                     />
                   </div>
-                  {amount && !isValidAmount && (
+                  {!customerResolved && <p className="text-[11px] text-[#666] mt-2">Kunden zuerst identifizieren</p>}
+                  {customerResolved && amount && !isValidAmount && (
                     <p className="text-[11px] text-red-400 mt-2">{t("scan.amount_range") || "EUR 0.50 – 2,500.00"}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className={`grid grid-cols-3 gap-2 transition-all ${customerResolved ? 'opacity-100' : 'opacity-45 pointer-events-none'}`}>
                   {QUICK_AMOUNTS.map((qa) => (
                     <motion.button
                       key={qa}
@@ -843,22 +847,22 @@ const ScannerPage = ({ onNavigate }) => {
                 <motion.button
                   data-testid="start-scan-btn"
                   onClick={handleStartScan}
-                  disabled={!isValidAmount}
+                  disabled={!customerResolved || !isValidAmount}
                   className={`w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2.5 transition-all ${
-                    isValidAmount
+                    customerResolved && isValidAmount
                       ? "bg-gradient-to-r from-[#00C2FF] to-[#0090FF] text-white shadow-lg shadow-[#00C2FF]/20"
                       : "bg-white/[0.04] text-[#444] cursor-not-allowed"
                   }`}
-                  whileTap={isValidAmount ? { scale: 0.98 } : {}}
+                  whileTap={customerResolved && isValidAmount ? { scale: 0.98 } : {}}
                 >
                   <ScanBarcode size={18} />
-                  {t("scan.activate_scanner") || "Activate Scanner"}
+                  {customerResolved ? (t("scan.activate_scanner") || "Activate Scanner") : 'Erst Kunde finden'}
                 </motion.button>
 
                 <div className="flex items-start gap-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                   <Smartphone size={16} className="text-[#00C2FF]/60 mt-0.5 flex-shrink-0" />
                   <p className="text-[11px] text-[#555] leading-relaxed">
-                    {resolvedCustomer ? 'Kunde gefunden. Jetzt PIN bestätigen und die Aktion direkt abschließen.' : (t("scan.hint") || "Enter the amount and scan the customer's barcode from their BidBlitz Wallet to process payment instantly.")}
+                    {resolvedCustomer ? (isValidAmount ? 'Kunde gefunden. Jetzt PIN bestätigen und die Aktion direkt abschließen.' : 'Kunde gefunden. Jetzt Betrag festlegen, dann PIN eingeben.') : 'Zuerst Kunde identifizieren. Danach Betrag und Bestätigung folgen Schritt für Schritt.'}
                   </p>
                 </div>
               </motion.div>
