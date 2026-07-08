@@ -164,19 +164,24 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       setShowSendMoney(false);
       return;
     }
+    if (isPendingKyc) {
+      setShowTopUp(false);
+      setShowSendMoney(false);
+      return;
+    }
     if (routeParams.action === "topup") {
       setShowTopUp(true);
     }
     if (routeParams.action === "send") {
       setShowSendMoney(true);
     }
-  }, [canAutoOpenWalletActions, routeParams.action]);
+  }, [canAutoOpenWalletActions, isPendingKyc, routeParams.action]);
 
   useEffect(() => {
-    if (canAutoOpenWalletActions && hasStripeParam) {
+    if (!isPendingKyc && canAutoOpenWalletActions && hasStripeParam) {
       setShowTopUp(true);
     }
-  }, [canAutoOpenWalletActions, hasStripeParam]);
+  }, [canAutoOpenWalletActions, hasStripeParam, isPendingKyc]);
 
   // Load saved card and saved recipients
   useEffect(() => {
@@ -239,6 +244,15 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     }
     onNavigate?.(`/wallet?action=${actionName}`);
   }, [isPendingKyc, onNavigate]);
+
+  const handlePendingKycBlockedAction = useCallback((actionName = "send") => {
+    toast.info("Verifizierung läuft", {
+      description: actionName === "topup"
+        ? "Aufladen wird nach Abschluss der KYC-Prüfung freigeschaltet."
+        : "Senden wird nach Abschluss der KYC-Prüfung freigeschaltet.",
+    });
+    onNavigate?.("/kyc/status");
+  }, [onNavigate]);
 
   // Demo mode: override data
   const balance = isDemoMode ? DEMO_BALANCE : toSafeNumber(wallet.balance);
@@ -589,6 +603,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 <QuickSendButton
                   key={saved.id || saved.user_number || saved.email}
                   savedRecipient={saved}
+                  disabled={isPendingKyc}
+                  onDisabledAttempt={() => handlePendingKycBlockedAction("send")}
                   onSendComplete={() => {
                     refreshWallet();
                     toast.success("Erfolgreich gesendet");
