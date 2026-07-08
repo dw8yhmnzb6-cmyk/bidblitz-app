@@ -23,6 +23,22 @@ const defaultForm = {
   airport_fixed_van: "24.00",
 };
 
+function buildCityForm(preset, cityDefault = null) {
+  const pricing = cityDefault?.options?.pricing || {};
+  const airport = cityDefault?.options?.airport_fixed_fares || {};
+  return {
+    city: preset.city,
+    region: cityDefault?.options?.region_label || preset.region,
+    base_fare: String(pricing.base_fare ?? defaultForm.base_fare),
+    per_km: String(pricing.per_km ?? defaultForm.per_km),
+    per_minute: String(pricing.per_minute ?? defaultForm.per_minute),
+    min_fare: String(pricing.min_fare ?? defaultForm.min_fare),
+    airport_fixed_standard: String(airport.standard ?? defaultForm.airport_fixed_standard),
+    airport_fixed_premium: String(airport.premium ?? defaultForm.airport_fixed_premium),
+    airport_fixed_van: String(airport.van ?? defaultForm.airport_fixed_van),
+  };
+}
+
 export const TaxiCityPricingAdmin = ({ api, panelBg, panelBorder }) => {
   const [savedCities, setSavedCities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +74,31 @@ export const TaxiCityPricingAdmin = ({ api, panelBg, panelBorder }) => {
     () => CITY_PRESETS.find((item) => item.city === form.city) || CITY_PRESETS[0],
     [form.city]
   );
+
+  const activeSavedCity = useMemo(
+    () => savedCities.find((item) => item.key === activePreset.key)?.default || null,
+    [activePreset.key, savedCities]
+  );
+
+  const sampleFare = useMemo(() => {
+    const total = Math.max(
+      Number(form.base_fare || 0) + (5 * Number(form.per_km || 0)) + (12 * Number(form.per_minute || 0)),
+      Number(form.min_fare || 0)
+    );
+    return total.toFixed(2);
+  }, [form.base_fare, form.min_fare, form.per_km, form.per_minute]);
+
+  useEffect(() => {
+    if (!savedCities.length) return;
+    const preset = CITY_PRESETS.find((item) => item.city === form.city) || CITY_PRESETS[0];
+    const matched = savedCities.find((item) => item.key === preset.key)?.default || null;
+    setForm(buildCityForm(preset, matched));
+  }, [savedCities]);
+
+  const selectCityForEdit = (preset) => {
+    const matched = savedCities.find((item) => item.key === preset.key)?.default || null;
+    setForm(buildCityForm(preset, matched));
+  };
 
   const saveCityPricing = async () => {
     setSaving(true);
@@ -117,7 +158,7 @@ export const TaxiCityPricingAdmin = ({ api, panelBg, panelBorder }) => {
             value={form.city}
             onChange={(e) => {
               const preset = CITY_PRESETS.find((item) => item.city === e.target.value);
-              setForm((prev) => ({ ...prev, city: e.target.value, region: preset?.region || prev.region }));
+              if (preset) selectCityForEdit(preset);
             }}
             data-testid="taxi-city-select"
             className="px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-sm text-white"
@@ -161,6 +202,12 @@ export const TaxiCityPricingAdmin = ({ api, panelBg, panelBorder }) => {
         >
           {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Stadt-Preis speichern
         </button>
+
+        <div className="rounded-2xl bg-black/20 px-4 py-3" data-testid="taxi-city-pricing-preview">
+          <p className="text-[10px] font-bold text-white/45 uppercase tracking-wider">Vorschau</p>
+          <p className="mt-1 text-[12px] font-semibold text-white/80">Beispiel für 5 km / 12 Minuten in {form.city}</p>
+          <p className="mt-2 text-[18px] font-black text-[#FFD600]">€{sampleFare}</p>
+        </div>
       </div>
 
       {loading ? (
@@ -177,6 +224,7 @@ export const TaxiCityPricingAdmin = ({ api, panelBg, panelBorder }) => {
                     <div className="flex items-center gap-2 mb-1">
                       <MapPin size={13} className="text-[#FFD600] shrink-0" />
                       <p className="text-[14px] font-bold text-white truncate">{item.city}</p>
+                      {item.key === activePreset.key ? <span className="px-2 py-0.5 rounded-full bg-[#FFD600]/15 text-[#FFD600] text-[10px] font-bold">aktiv</span> : null}
                     </div>
                     <p className="text-[11px] text-white/50">{item.region}</p>
                     {pricing ? (
@@ -190,9 +238,14 @@ export const TaxiCityPricingAdmin = ({ api, panelBg, panelBorder }) => {
                     )}
                   </div>
                   {item.default ? (
-                    <button onClick={() => clearCityPricing(item.key)} data-testid={`taxi-city-delete-${item.key}`} className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 inline-flex items-center justify-center shrink-0">
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button onClick={() => selectCityForEdit(item)} data-testid={`taxi-city-edit-${item.key}`} className="px-3 h-9 rounded-xl bg-white/10 border border-white/10 text-white/80 text-[11px] font-bold">
+                        Bearbeiten
+                      </button>
+                      <button onClick={() => clearCityPricing(item.key)} data-testid={`taxi-city-delete-${item.key}`} className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 inline-flex items-center justify-center self-end">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   ) : null}
                 </div>
               </div>
