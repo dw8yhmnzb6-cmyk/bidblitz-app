@@ -77,6 +77,12 @@ export function WalletPaymentPinCard() {
       style={{ background: "#ffffff", borderColor: "rgba(15,23,42,0.12)" }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      onViewportEnter={() => {
+        document.body.setAttribute('data-cookie-banner-block', 'true');
+      }}
+      onViewportLeave={() => {
+        document.body.removeAttribute('data-cookie-banner-block');
+      }}
       data-testid="wallet-payment-pin-card"
     >
       <div className="flex items-center gap-3 mb-3">
@@ -177,7 +183,11 @@ export function WalletBioPayCard() {
   };
 
   return (
-    <motion.div className="rounded-[26px] border p-4 sm:p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]" style={{ background: "#ffffff", borderColor: "rgba(15,23,42,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} data-testid="wallet-biopay-card">
+    <motion.div className="rounded-[26px] border p-4 sm:p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]" style={{ background: "#ffffff", borderColor: "rgba(15,23,42,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onViewportEnter={() => {
+      document.body.setAttribute('data-cookie-banner-block', 'true');
+    }} onViewportLeave={() => {
+      document.body.removeAttribute('data-cookie-banner-block');
+    }} data-testid="wallet-biopay-card">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-11 h-11 rounded-2xl bg-[#7df4d2]/10 border border-[#7df4d2]/15 flex items-center justify-center shrink-0"><Hand size={18} className="text-[#0f9f74]" /></div>
         <div>

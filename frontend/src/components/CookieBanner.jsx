@@ -52,14 +52,15 @@ export default function CookieBanner({ onNavigate }) {
   useEffect(() => {
     const syncOverlayVisibility = () => {
       const blockingModal = document.querySelector('[data-testid="send-money-modal"]');
-      if (blockingModal) {
+      const walletSecurityFocused = document.querySelector('[data-cookie-banner-block="true"]');
+      if (blockingModal || walletSecurityFocused) {
         setShow(false);
       }
     };
 
     syncOverlayVisibility();
     const observer = new MutationObserver(syncOverlayVisibility);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-cookie-banner-block'] });
     return () => observer.disconnect();
   }, []);
 
