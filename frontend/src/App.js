@@ -27,7 +27,6 @@ import {
 } from "./modules/car-rental/pages";
 import BottomNav from "./components/BottomNav";
 import ActiveAccountBanner from "./components/ActiveAccountBanner";
-import BarcodeModal from "./components/BarcodeModal";
 import AuthGateOverlay from "./components/AuthGateOverlay";
 import DemoBanner from "./components/DemoBanner";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
@@ -53,6 +52,7 @@ const VerificationPage = lazy(() => import("./pages/VerificationPage"));
 const MerchantDashboardPage = lazy(() => import("./pages/MerchantDashboardPage"));
 const PaymentPage = lazy(() => import("./pages/PaymentPage"));
 const SendMoneyPage = lazy(() => import("./pages/SendMoneyPage"));
+const ReceiveMoneyPage = lazy(() => import("./pages/ReceiveMoneyPage"));
 const MerchantTerminalPage = lazy(() => import("./pages/MerchantTerminalPage"));
 const MerchantOnboardingPage = lazy(() => import("./pages/MerchantOnboardingPage"));
 const MerchantPricingPage = lazy(() => import("./pages/MerchantPricingPage"));
@@ -323,7 +323,6 @@ function AppContent() {
       search: window.location.search,
     });
   });
-  const [showBarcode, setShowBarcode] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [authGateMessage, setAuthGateMessage] = useState("");
   const [showFullAuth, setShowFullAuth] = useState("");
@@ -587,7 +586,7 @@ function AppContent() {
       case "/scan":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
-          : <ScannerPage onNavigate={handleNavigate} onShowBarcode={() => setShowBarcode(true)} />;
+          : <ScannerPage onNavigate={handleNavigate} />;
       case "/merchant":
         return <MerchantPage {...pageProps} />;
       case "/merchant-connect":
@@ -618,6 +617,9 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PaymentPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
       case "/send-money":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SendMoneyPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
+      case "/receive-money":
+      case "/my-barcode":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ReceiveMoneyPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
       case "/terminal":
         return <MerchantTerminalPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-onboarding":
@@ -1196,10 +1198,8 @@ function AppContent() {
         <BottomNav 
           currentPath={currentPath} 
           onNavigate={handleNavigate} 
-          onShowBarcode={() => setShowBarcode(true)}
         />
       )}
-      <BarcodeModal isOpen={showBarcode} onClose={() => setShowBarcode(false)} />
       <AuthGateOverlay
         isOpen={showAuthGate}
         onClose={() => setShowAuthGate(false)}

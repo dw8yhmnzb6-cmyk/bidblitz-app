@@ -6,7 +6,7 @@ import { useI18n, useUser } from "../store";
 const customerNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
-  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true },
+  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/receive-money", center: true },
   { id: "discover", label: "ENTDECKEN", icon: Compass, path: "/all-services" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
@@ -15,7 +15,7 @@ const customerNavItems = [
 const kidsNavItems = [
   { id: "home", label: "KIDS", icon: Baby, path: "/kids" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
-  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true },
+  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/receive-money", center: true },
   { id: "discover", label: "ENTDECKEN", icon: Compass, path: "/all-services" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
@@ -42,7 +42,7 @@ const merchantNavItems = [
 const driverNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
-  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/my-barcode", center: true },
+  { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/receive-money", center: true },
   { id: "rides", label: "FAHRTEN", icon: Car, path: "/taxi" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
@@ -85,10 +85,8 @@ export const BottomNav = ({ currentPath, onNavigate, onShowBarcode }) => {
       // Merchant/Admin: Open scanner to scan customer barcodes
       onNavigate("/scan");
     } else {
-      // Customer: Show their own barcode for merchants to scan
-      if (onShowBarcode) {
-        onShowBarcode();
-      }
+      // Customer: Open receive-money page
+      onNavigate("/receive-money");
     }
   };
 
