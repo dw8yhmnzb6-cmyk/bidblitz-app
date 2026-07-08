@@ -53,7 +53,8 @@ export default function CookieBanner({ onNavigate }) {
     const syncOverlayVisibility = () => {
       const blockingModal = document.querySelector('[data-testid="send-money-modal"]');
       const walletSecurityFocused = document.querySelector('[data-cookie-banner-block="true"]');
-      if (blockingModal || walletSecurityFocused) {
+      const sendScannerOpen = document.querySelector('[data-testid="send-money-scan-sheet"]');
+      if (blockingModal || walletSecurityFocused || sendScannerOpen) {
         setShow(false);
       }
     };

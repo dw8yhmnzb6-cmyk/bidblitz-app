@@ -554,7 +554,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
 
       <AnimatePresence>
         {showScanner && (
-          <motion.div className="fixed inset-0 z-[10000]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div data-testid="send-money-scan-sheet" className="fixed inset-0 z-[10000]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => { setShowScanner(false); stopCamera(); }} />
             <motion.div className="absolute inset-x-0 bottom-0 w-full" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 320 }}>
               <div className="bg-[#f8fafc] rounded-t-[32px] min-h-[72vh] border border-slate-200 shadow-[0_24px_64px_rgba(15,23,42,0.16)] p-5">
