@@ -590,7 +590,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.48, ...slide }}
             >
-              <p className="text-[9px] text-[#333] uppercase tracking-[0.14em] font-semibold mb-1 pl-0.5">{gt("gp.benefits_title")}</p>
+              <p className="text-[9px] text-white/65 uppercase tracking-[0.14em] font-semibold mb-1 pl-0.5">{gt("gp.benefits_title")}</p>
               <BenefitPill icon={Zap} title={gt("gp.benefit_instant")} desc={gt("gp.benefit_instant_d")} color="#00C2FF" delay={0.52} />
               <div className="h-px bg-white/[0.03]" />
               <BenefitPill icon={BarChart3} title={gt("gp.benefit_fees")} desc={gt("gp.benefit_fees_d")} color="#00D26A" delay={0.56} />
@@ -632,7 +632,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-[13px] lg:text-[14px] font-semibold text-white font-outfit mb-0.5">{t("home.wallet_banner") || "Everything runs through BidBlitz Wallet"}</h4>
-                  <p className="text-[11px] text-[#444] font-medium">{t("home.wallet_sub") || "One wallet for all your payments"}</p>
+                  <p className="text-[11px] text-white/65 font-medium">{t("home.wallet_sub") || "One wallet for all your payments"}</p>
                 </div>
                 <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="flex-shrink-0">
                   <ChevronRight size={16} className="text-[#00C2FF]/60" />

@@ -67,7 +67,7 @@ const GridTile = ({ item, color }) => (
       <item.icon size={15} strokeWidth={1.6} style={{ color: item.color || color }} />
     </div>
     <p className="text-[12px] font-semibold text-white leading-tight truncate">{item.label}</p>
-    <p className="text-[9px] text-white/40 leading-tight truncate mt-0.5">{item.desc}</p>
+    <p className="text-[9px] text-white/60 leading-tight truncate mt-0.5">{item.desc}</p>
     {item.badge && (
       <span
         className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[8px] font-bold"
@@ -1018,9 +1018,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
               <p className="text-[12px] font-bold uppercase tracking-wide text-white/80 flex-1 text-left">
                 {g.title}
               </p>
-              <span className="text-[10px] text-white/40">{g.items.length}</span>
+              <span className="text-[10px] text-white/65">{g.items.length}</span>
               <motion.div animate={{ rotate: isOpen ? 90 : 0 }}>
-                <ChevronRight size={14} className="text-white/40" />
+                <ChevronRight size={14} className="text-white/65" />
               </motion.div>
             </button>
             <AnimatePresence initial={false}>
@@ -1044,7 +1044,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
         );
       })}
       {filteredGroups.length === 0 && (
-        <div className="text-center py-10 text-[12px] text-white/40">
+        <div className="text-center py-10 text-[12px] text-white/65">
           {(t("common.no_results_for") || "Keine Treffer für")} „{search}“
         </div>
       )}
@@ -1131,9 +1131,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           </div>
           <div className="flex-1 min-w-0 relative z-10">
             <p className="text-[14px] font-semibold font-outfit text-white truncate">{displayName}</p>
-            <p className="text-[11px] text-[#444] font-medium truncate">{displayEmail}</p>
+            <p className="text-[11px] text-white/60 font-medium truncate">{displayEmail}</p>
           </div>
-          <ChevronRight size={14} className="text-[#222] flex-shrink-0" />
+          <ChevronRight size={14} className="text-white/55 flex-shrink-0" />
         </motion.div>
 
         {/* ── Alle Services ── */}
@@ -1150,9 +1150,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           </div>
           <div className="flex-1 text-left">
             <span className="text-[13px] font-semibold text-white">{t("home.all_services") || "Alle Services"}</span>
-            <p className="text-[10px] text-[#555]">{t("home.all_services_desc") || "60+ Features entdecken"}</p>
+            <p className="text-[10px] text-white/60">{t("home.all_services_desc") || "60+ Features entdecken"}</p>
           </div>
-          <ChevronRight size={14} className="text-[#333]" />
+          <ChevronRight size={14} className="text-white/60" />
         </motion.button>}
 
         {showKycRestrictedExperience && (
@@ -1186,20 +1186,20 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.11 }}
           className="relative mb-3"
         >
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
           <input
             data-testid="more-search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("more.search_placeholder") || "Suche nach Service, z.B. Wallet, Scooter, AGB..."}
-            className="w-full bg-white/[0.03] border border-white/[0.05] rounded-xl pl-9 pr-9 py-2.5 text-[12px] text-white placeholder-white/30 outline-none focus:border-[#00C2FF]/40"
+            className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-9 pr-9 py-2.5 text-[12px] text-white placeholder-white/45 outline-none focus:border-[#00C2FF]/50"
           />
           {search && (
             <button
               data-testid="more-search-clear"
               onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white"
             >
               <X size={14} />
             </button>
