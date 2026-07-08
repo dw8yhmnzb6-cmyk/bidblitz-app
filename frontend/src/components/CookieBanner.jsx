@@ -71,11 +71,19 @@ export default function CookieBanner({ onNavigate }) {
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
         data-testid="cookie-banner"
       >
-        <div className={`max-w-3xl mx-auto bg-[#0A0A0F]/88 backdrop-blur-lg border border-white/10 rounded-2xl p-2.5 sm:p-5 shadow-2xl sm:max-w-none overflow-y-auto sm:max-h-none ${showDetails ? 'max-h-[42vh]' : 'max-h-[12vh] sm:max-h-none'}`}>
+        <div className={`max-w-3xl mx-auto bg-[#0A0A0F]/86 backdrop-blur-md border border-white/10 rounded-2xl p-2.5 sm:p-5 shadow-2xl sm:max-w-none overflow-y-auto sm:max-h-none ${showDetails ? 'max-h-[42vh]' : 'max-h-[10vh] sm:max-h-none'}`}>
+          {!showDetails && (
+            <div className="sm:hidden flex items-center gap-2 mb-2 px-0.5" data-testid="cookie-banner-mobile-mini">
+              <Cookie size={14} className="text-amber-400 shrink-0" />
+              <p className="text-[10px] text-white/75 leading-tight truncate">
+                {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}
+              </p>
+            </div>
+          )}
           <div className="flex items-start gap-2.5 mb-2">
-            <Cookie size={16} className="text-amber-400 flex-shrink-0 mt-0.5 sm:w-5 sm:h-5" />
+            <Cookie size={16} className={`text-amber-400 flex-shrink-0 mt-0.5 sm:w-5 sm:h-5 ${showDetails ? 'block' : 'hidden sm:block'}`} />
             <div className="flex-1">
-              <h3 className="text-[12px] sm:text-[13px] font-bold text-white mb-0.5 line-clamp-1">🍪 {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}</h3>
+              <h3 className={`text-[12px] sm:text-[13px] font-bold text-white mb-0.5 line-clamp-1 ${showDetails ? 'block' : 'hidden sm:block'}`}>🍪 {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}</h3>
               <p className={`text-[11px] text-gray-300 leading-snug ${showDetails ? 'block' : 'hidden sm:block'}`}>
                 {t('cookie.desc') || 'BidBlitz nutzt nur technisch notwendige Cookies (Session). Mit deiner Einwilligung helfen Analytics-Cookies uns die App zu verbessern.'}{' '}
                 {onNavigate && (
@@ -138,11 +146,11 @@ export default function CookieBanner({ onNavigate }) {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap">
+          <div className="grid grid-cols-[0.9fr_0.95fr_1.15fr] gap-1.5 sm:flex sm:flex-wrap">
             <button
               onClick={() => accept('necessary')}
               data-testid="cookie-banner-reject"
-              className="min-h-[36px] px-2 py-1.5 text-[10px] sm:text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg leading-tight"
+              className="min-h-[34px] px-2 py-1 text-[9px] sm:text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg leading-tight"
             >
               <span className="sm:hidden">Nur nötig</span>
               <span className="hidden sm:inline">{t('cookie.necessary_only') || 'Nur notwendige'}</span>
@@ -150,16 +158,16 @@ export default function CookieBanner({ onNavigate }) {
             <button
               onClick={() => setShowDetails(!showDetails)}
               data-testid="cookie-banner-customize"
-              className="min-h-[36px] px-2 py-1.5 text-[10px] sm:text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg flex items-center justify-center gap-1 leading-tight"
+              className="min-h-[34px] px-2 py-1 text-[9px] sm:text-[11px] font-semibold bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg flex items-center justify-center gap-1 leading-tight"
             >
-              <Settings size={12} />
+              <Settings size={11} />
               {showDetails ? (t('common.close') || 'Schließen') : (t('common.customize') || 'Anpassen')}
             </button>
             {showDetails && (
               <button
                 onClick={() => accept('selected')}
                 data-testid="cookie-banner-save"
-                className="min-h-[36px] px-2 py-1.5 text-[10px] sm:text-[11px] font-semibold bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg"
+                className="min-h-[34px] px-2 py-1 text-[9px] sm:text-[11px] font-semibold bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg"
               >
                 {t('common.save_selection') || 'Auswahl speichern'}
               </button>
@@ -167,7 +175,7 @@ export default function CookieBanner({ onNavigate }) {
             <button
               onClick={() => accept('all')}
               data-testid="cookie-banner-accept-all"
-              className="min-h-[36px] px-2 py-1.5 text-[10px] sm:text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-black rounded-lg leading-tight"
+              className="min-h-[34px] px-2 py-1 text-[9px] sm:text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-black rounded-lg leading-tight"
             >
               <span className="sm:hidden">Akzeptieren</span>
               <span className="hidden sm:inline">{t('cookie.accept_all') || 'Alle akzeptieren'}</span>
