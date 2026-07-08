@@ -1261,6 +1261,100 @@ def calculate_fare(distance_km: float, duration_minutes: float, car_type: str, r
     }
 
 
+def _normalize_city_key(address: str) -> str:
+    hay = str(address or "").lower()
+    if "prisht" in hay or "pristina" in hay:
+        return "prishtina"
+    if "prizren" in hay:
+        return "prizren"
+    if "peja" in hay or "pec" in hay:
+        return "peja"
+    if "hamburg" in hay:
+        return "hamburg"
+    if "berlin" in hay:
+        return "berlin"
+    if "dubai" in hay:
+        return "dubai"
+    return ""
+
+
+async def _find_matching_tariff_zone(lat: float, lng: float):
+    zones = await db.taxi_tariff_zones.find({"active": {"$ne": False}}, {"_id": 0}).to_list(200)
+    best = None
+    best_distance = None
+    for zone in zones:
+        try:
+            center_lat = float(zone.get("center_lat"))
+            center_lng = float(zone.get("center_lng"))
+            radius_km = float(zone.get("radius_km") or 0)
+        except Exception:
+            continue
+        distance = haversine_distance(lat, lng, center_lat, center_lng)
+        if distance <= radius_km and (best is None or distance < best_distance):
+            best = zone
+            best_distance = distance
+    return best
+
+
+async def calculate_fare_with_overrides(
+    *,
+    pickup_address: str,
+    pickup_lat: float,
+    pickup_lng: float,
+    distance_km: float,
+    duration_minutes: float,
+    car_type: str,
+    region: str,
+) -> dict:
+    zone = await _find_matching_tariff_zone(pickup_lat, pickup_lng)
+    city_key = _normalize_city_key(pickup_address)
+    city_doc = None
+    if city_key:
+        city_doc = await db.taxi_city_defaults.find_one({"city": city_key}, {"_id": 0})
+
+    if zone:
+        base_fare = float(zone.get("base_fare") or 0)
+        per_km = float(zone.get("per_km") or 0)
+        per_min = float(zone.get("per_min") or 0)
+        total = max(base_fare + distance_km * per_km + duration_minutes * per_min, base_fare)
+        return {
+            "base_fare": round(base_fare, 2),
+            "distance_cost": round(distance_km * per_km, 2),
+            "time_cost": round(duration_minutes * per_min, 2),
+            "total": round(total, 2),
+            "driver_earnings": round(total * DRIVER_COMMISSION, 2),
+            "platform_fee": round(total * PLATFORM_COMMISSION, 2),
+            "region": region,
+            "region_label": zone.get("name") or region,
+            "tariff_zone": {"id": zone.get("id"), "label": zone.get("name") or "Zone"},
+            "pricing_source": "zone",
+        }
+
+    if city_doc and isinstance(city_doc.get("options"), dict) and isinstance(city_doc["options"].get("pricing"), dict):
+        pricing = city_doc["options"]["pricing"]
+        base_fare = float(pricing.get("base_fare") or 0)
+        per_km = float(pricing.get("per_km") or 0)
+        per_min = float(pricing.get("per_minute") or pricing.get("per_min") or 0)
+        min_fare = float(pricing.get("min_fare") or base_fare or 0)
+        total = max(base_fare + distance_km * per_km + duration_minutes * per_min, min_fare)
+        return {
+            "base_fare": round(base_fare, 2),
+            "distance_cost": round(distance_km * per_km, 2),
+            "time_cost": round(duration_minutes * per_min, 2),
+            "total": round(total, 2),
+            "driver_earnings": round(total * DRIVER_COMMISSION, 2),
+            "platform_fee": round(total * PLATFORM_COMMISSION, 2),
+            "region": region,
+            "region_label": city_doc.get("options", {}).get("region_label") or city_doc.get("city_label") or city_key,
+            "city_default": {"city": city_key, "label": city_doc.get("city_label") or city_key.title()},
+            "fixed_fares": city_doc.get("options", {}).get("airport_fixed_fares") or {},
+            "pricing_source": "city",
+        }
+
+    fallback = calculate_fare(distance_km, duration_minutes, car_type, region)
+    return {**fallback, "pricing_source": "region"}
+
+
 def _looks_like_kosovo_airport(address: str, lat: float, lng: float) -> bool:
     hay = str(address or "").lower()
     airport_tokens = ["pristina international airport", "prishtina international airport", "flughafen kosovo", "airport adem jashari", "adem jashari", "prn"]
@@ -1640,7 +1734,15 @@ async def get_ride_estimate(req: EstimateRequest, request: Request = None):
     estimates = []
     fixed_fares = {}
     for vtype in ["standard", "premium", "van"]:
-        fare = calculate_fare(distance_km, duration_minutes, vtype, region)
+        fare = await calculate_fare_with_overrides(
+            pickup_address=p_addr,
+            pickup_lat=p_lat,
+            pickup_lng=p_lng,
+            distance_km=distance_km,
+            duration_minutes=duration_minutes,
+            car_type=vtype,
+            region=region,
+        )
         fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, vtype)
         if fixed:
             fare = {
@@ -1792,7 +1894,15 @@ async def book_ride(req: FlexBookRequest, request: Request):
         )
     duration_minutes = max(5, (distance_km / 30) * 60)
     region = detect_region(p_lat, p_lng)
-    fare_estimate = calculate_fare(distance_km, duration_minutes, car_type, region)
+    fare_estimate = await calculate_fare_with_overrides(
+        pickup_address=p_addr,
+        pickup_lat=p_lat,
+        pickup_lng=p_lng,
+        distance_km=distance_km,
+        duration_minutes=duration_minutes,
+        car_type=car_type,
+        region=region,
+    )
     fixed = get_kosovo_airport_fixed_fare(p_addr, d_addr, p_lat, p_lng, d_lat, d_lng, car_type)
     if fixed:
         fare_estimate = {
