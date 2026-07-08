@@ -5,6 +5,7 @@ import {
   ArrowLeft, ScanBarcode, CheckCircle2, XCircle, Loader2,
   Euro, Smartphone, QrCode, Zap, ShieldCheck, Receipt, Heart,
   Camera, UtensilsCrossed, FileText, WalletCards, ScanLine, CameraOff,
+  CreditCard, Phone, Hash, UserRound, Lock,
 } from "lucide-react";
 import { useUser, useI18n, useWallet } from "../store";
 import { useNetwork } from "../store/NetworkContext";
@@ -55,6 +56,14 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
   const [idempotencyKey, setIdempotencyKey] = useState(null);
   const barcodeRef = useRef(null);
   const [showTip, setShowTip] = useState(false);
+  const [customerLookupMode, setCustomerLookupMode] = useState("barcode");
+  const [customerLookupValue, setCustomerLookupValue] = useState("");
+  const [resolvedCustomer, setResolvedCustomer] = useState(null);
+  const [resolutionId, setResolutionId] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [cashierAction, setCashierAction] = useState("payment");
+  const [customerPin, setCustomerPin] = useState("");
+  const [preparedPayment, setPreparedPayment] = useState(null);
 
   const [scanCodeInput, setScanCodeInput] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
@@ -334,6 +343,85 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
     setStep(Step.SCANNING);
   };
 
+  const handleResolveCustomer = useCallback(async () => {
+    if (!customerLookupValue.trim() || lookupBusy) return;
+    setLookupBusy(true);
+    setError("");
+    try {
+      const storeId = user?.store_id || user?.currentStoreId || user?.merchant_store_id || "main-store";
+      const registerId = user?.register_id || user?.currentRegisterId || "front-register";
+      const res = await api.posResolveCustomer({
+        store_id: storeId,
+        register_id: registerId,
+        lookup_type: customerLookupMode,
+        value: customerLookupValue.trim(),
+      });
+      setResolvedCustomer(res.customer || null);
+      setResolutionId(res.resolution_id || "");
+    } catch (resolveError) {
+      setError(resolveError?.message || "Kunde konnte nicht gefunden werden.");
+      setResolvedCustomer(null);
+      setResolutionId("");
+    } finally {
+      setLookupBusy(false);
+    }
+  }, [customerLookupMode, customerLookupValue, lookupBusy, user]);
+
+  const handleCashierFallbackAction = useCallback(async () => {
+    if (!resolutionId || !isValidAmount || !customerPin.trim()) return;
+    const storeId = user?.store_id || user?.currentStoreId || user?.merchant_store_id || "main-store";
+    const registerId = user?.register_id || user?.currentRegisterId || "front-register";
+
+    setProcessing(true);
+    setError("");
+    try {
+      if (cashierAction === "topup") {
+        const topupRes = await api.posWalletTopUpSecure({
+          store_id: storeId,
+          register_id: registerId,
+          resolution_id: resolutionId,
+          amount: numAmount,
+          payment_method: customerLookupMode === "card_token" ? "card" : "cash",
+        });
+        setResult({
+          amount: numAmount,
+          fee: 0,
+          net_to_merchant: numAmount,
+          customer_name: resolvedCustomer?.masked_name || "Kunde",
+          reference: topupRes?.sale?.sale_id || topupRes?.sale?.payment_reference || "TOPUP",
+        });
+        setStep(Step.SUCCESS);
+      } else {
+        const prepared = await api.posPreparePaymentSecure({
+          store_id: storeId,
+          register_id: registerId,
+          resolution_id: resolutionId,
+          amount: numAmount,
+          description: `POS Zahlung EUR ${numAmount.toFixed(2)}`,
+          payment_method: customerLookupMode === "card_token" ? "card" : "wallet",
+          lookup_type: customerLookupMode,
+        });
+        setPreparedPayment(prepared.payment);
+        const confirmed = await api.posConfirmPaymentPin({ payment_id: prepared.payment.payment_id, pin: customerPin.trim() });
+        if (!confirmed.ok) throw new Error(confirmed.message || "PIN ungültig");
+        setResult({
+          amount: numAmount,
+          fee: 0,
+          net_to_merchant: numAmount,
+          customer_name: resolvedCustomer?.masked_name || "Kunde",
+          reference: prepared.payment.payment_id,
+        });
+        setStep(Step.SUCCESS);
+      }
+      setCustomerPin("");
+    } catch (cashierError) {
+      setError(cashierError?.message || "Kassen-Aktion fehlgeschlagen.");
+      setStep(Step.ERROR);
+    } finally {
+      setProcessing(false);
+    }
+  }, [cashierAction, customerLookupMode, customerPin, isValidAmount, numAmount, resolutionId, resolvedCustomer, user]);
+
   const handleBarcodeSubmit = useCallback(async () => {
     if (processing) return;
     const code = barcodeInput.trim().toUpperCase();
@@ -587,6 +675,91 @@ const ScannerPage = ({ onNavigate, onShowBarcode }) => {
                 exit={{ opacity: 0, y: -16 }}
                 className="space-y-5"
               >
+                <div className="rounded-2xl border border-white/[0.05] bg-white/[0.03] p-4 space-y-3" data-testid="cashier-no-phone-card">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#00C2FF]/10 border border-[#00C2FF]/20 flex items-center justify-center"><UserRound size={18} className="text-[#00C2FF]" /></div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Ohne Handy an der Kasse</p>
+                      <p className="text-[11px] text-[#666] leading-relaxed mt-1">Kunde finden über Karte, Kundennummer oder Telefonnummer. Danach Bezahlen oder Aufladen mit PIN bestätigen.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'barcode', label: 'QR / Code', icon: QrCode },
+                      { id: 'card_token', label: 'Karte', icon: CreditCard },
+                      { id: 'user_number', label: 'Kundennummer', icon: Hash },
+                      { id: 'phone', label: 'Telefon', icon: Phone },
+                    ].map((mode) => (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        data-testid={`cashier-lookup-mode-${mode.id}`}
+                        onClick={() => setCustomerLookupMode(mode.id)}
+                        className={`min-h-[44px] rounded-2xl border px-3 py-2 text-left flex items-center gap-2 ${customerLookupMode === mode.id ? 'bg-[#00C2FF]/14 border-[#00C2FF]/28 text-[#00C2FF]' : 'bg-white/[0.02] border-white/[0.05] text-[#aaa]'}`}
+                      >
+                        <mode.icon size={15} />
+                        <span className="text-[11px] font-semibold">{mode.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      data-testid="cashier-customer-lookup-input"
+                      value={customerLookupValue}
+                      onChange={(e) => setCustomerLookupValue(e.target.value)}
+                      placeholder={customerLookupMode === 'phone' ? 'Telefonnummer' : customerLookupMode === 'user_number' ? 'BidBlitz ID / Kundennummer' : customerLookupMode === 'card_token' ? 'Kartennummer / Token' : 'BLZ-Code'}
+                      className="flex-1 py-3 px-4 bg-white/[0.03] border border-white/[0.06] rounded-xl text-white text-sm placeholder:text-[#444] outline-none focus:border-[#00C2FF]/30"
+                    />
+                    <button data-testid="cashier-customer-lookup-submit" type="button" onClick={handleResolveCustomer} disabled={lookupBusy || !customerLookupValue.trim()} className="px-4 rounded-xl bg-[#00C2FF]/15 border border-[#00C2FF]/25 text-[#00C2FF] text-sm font-semibold disabled:opacity-50">
+                      {lookupBusy ? <Loader2 size={16} className="animate-spin" /> : 'Suchen'}
+                    </button>
+                  </div>
+
+                  {resolvedCustomer && (
+                    <div className="rounded-2xl border border-[#00D26A]/20 bg-[#00D26A]/10 p-3" data-testid="cashier-resolved-customer-card">
+                      <p className="text-[12px] font-semibold text-white">{resolvedCustomer.masked_name}</p>
+                      <p className="text-[11px] text-[#8CE7B3] mt-1">{resolvedCustomer.customer_number} • {resolvedCustomer.verification_status}</p>
+
+                      <div className="grid grid-cols-2 gap-2 mt-3">
+                        <button type="button" data-testid="cashier-action-payment" onClick={() => setCashierAction('payment')} className={`min-h-[44px] rounded-xl border px-3 py-2 text-left ${cashierAction === 'payment' ? 'bg-[#00C2FF]/16 border-[#00C2FF]/25 text-[#00C2FF]' : 'bg-white/[0.02] border-white/[0.05] text-[#aaa]'}`}>
+                          <span className="block text-[11px] font-semibold">Bezahlen</span>
+                          <span className="block text-[10px] mt-0.5">Wallet belasten</span>
+                        </button>
+                        <button type="button" data-testid="cashier-action-topup" onClick={() => setCashierAction('topup')} className={`min-h-[44px] rounded-xl border px-3 py-2 text-left ${cashierAction === 'topup' ? 'bg-[#00D26A]/16 border-[#00D26A]/25 text-[#00D26A]' : 'bg-white/[0.02] border-white/[0.05] text-[#aaa]'}`}>
+                          <span className="block text-[11px] font-semibold">Aufladen</span>
+                          <span className="block text-[10px] mt-0.5">Wallet gutschreiben</span>
+                        </button>
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-black/20 px-3 py-2.5">
+                        <Lock size={14} className="text-[#FFB800]" />
+                        <input
+                          data-testid="cashier-customer-pin-input"
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={customerPin}
+                          onChange={(e) => setCustomerPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          placeholder="Kunden-PIN"
+                          className="flex-1 bg-transparent text-white text-sm tracking-[0.28em] placeholder:text-[#555] outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        data-testid="cashier-confirm-no-phone-flow"
+                        onClick={handleCashierFallbackAction}
+                        disabled={!resolutionId || !customerPin || !isValidAmount || processing}
+                        className={`w-full mt-3 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${!resolutionId || !customerPin || !isValidAmount || processing ? 'bg-white/[0.04] text-[#444] cursor-not-allowed' : cashierAction === 'topup' ? 'bg-[#00D26A] text-white' : 'bg-[#00C2FF] text-white'}`}
+                      >
+                        {processing ? <Loader2 size={16} className="animate-spin" /> : <>{cashierAction === 'topup' ? 'Wallet aufladen' : 'Zahlung bestätigen'}</>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="text-center pt-2 pb-2">
                   <p className="text-xs text-[#555] uppercase tracking-widest mb-3">{t("scan.enter_amount") || "Payment Amount"}</p>
                   <div className="flex items-center justify-center gap-1.5">
