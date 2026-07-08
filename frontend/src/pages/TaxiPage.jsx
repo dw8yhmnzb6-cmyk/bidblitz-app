@@ -1,173 +1,172 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Car, Clock3, Loader2, MapPin, Navigation, Search, Star, Plane, Train, Home, Briefcase, Sparkles, LocateFixed } from 'lucide-react';
+import { ArrowLeft, Briefcase, Clock3, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useUser } from '../store/UserContext';
 import { TaxiMap } from '../components/RealMap';
 import ActiveRideTracker from '../components/taxi/ActiveRideTracker';
+import { VehicleIcon } from '../components/taxi/TaxiVehicleIcon';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
+import { useUser } from '../store/UserContext';
 import * as api from '../services/taxiApi';
 
 const VEHICLES = [
-  { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig' },
+  { id: 'standard', label: 'UberX', subtitle: 'Schnell & günstig', badge: 'Empfohlen' },
   { id: 'premium', label: 'Comfort', subtitle: 'Mehr Komfort & Ruhe' },
   { id: 'van', label: 'XL', subtitle: 'Für Gruppen & Gepäck' },
 ];
 
-const REGION_PRESETS = [
-  {
-    key: 'kosovo',
-    matches: ['kosovo', 'prishtin', 'pristina', ', xk', ' republic of kosovo'],
-    airportQuery: 'Pristina International Airport',
-    stationQuery: 'Prishtina Bus Station',
-    airportLabel: 'Flughafen Kosovo',
-    stationLabel: 'Busbahnhof Prishtina',
-    regionLabel: 'Kosovo',
-  },
-  {
-    key: 'berlin',
-    matches: ['berlin', ', de'],
-    airportQuery: 'Flughafen Berlin Brandenburg BER',
-    stationQuery: 'Berlin Hauptbahnhof',
-    airportLabel: 'BER Flughafen',
-    stationLabel: 'Berlin Hbf',
-    regionLabel: 'Berlin',
-  },
-  {
-    key: 'vienna',
-    matches: ['wien', 'vienna', ', at'],
-    airportQuery: 'Vienna International Airport',
-    stationQuery: 'Wien Hauptbahnhof',
-    airportLabel: 'Flughafen Wien',
-    stationLabel: 'Wien Hbf',
-    regionLabel: 'Wien',
-  },
-  {
-    key: 'zurich',
-    matches: ['zürich', 'zurich', ', ch'],
-    airportQuery: 'Zurich Airport',
-    stationQuery: 'Zürich Hauptbahnhof',
-    airportLabel: 'Flughafen Zürich',
-    stationLabel: 'Zürich HB',
-    regionLabel: 'Zürich',
-  },
-];
+const SPRING = { type: 'spring', stiffness: 300, damping: 30 };
 
-const DEFAULT_REGION = {
-  key: 'default',
-  airportQuery: 'Airport',
-  stationQuery: 'Central Station',
-  airportLabel: 'Nächster Flughafen',
-  stationLabel: 'Nächster Bahnhof',
-  regionLabel: 'Deine Region',
-};
+function detectRegion(address = '') {
+  const hay = String(address || '').toLowerCase();
+  if (hay.includes('prisht') || hay.includes('kosovo') || hay.includes(', xk')) return 'Kosovo';
+  if (hay.includes('berlin')) return 'Berlin';
+  if (hay.includes('wien') || hay.includes('vienna')) return 'Wien';
+  if (hay.includes('zürich') || hay.includes('zurich')) return 'Zürich';
+  return 'Deine Region';
+}
 
-function formatSeconds(value) {
-  const total = Math.max(0, Number(value || 0));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
+function formatEta(item) {
+  if (!item) return 'Berechne…';
+  const minutes = Number(item.eta_minutes || item.duration_minutes || 0);
+  if (!minutes) return 'Berechne…';
   return `${minutes} Min`;
 }
 
-function RideStatusBadge({ ride }) {
-  const statusMap = {
-    requested: { label: 'Fahrer wird gesucht', tone: 'bg-amber-500/15 text-amber-300' },
-    accepted: { label: 'Fahrer bestätigt', tone: 'bg-cyan-500/15 text-cyan-300' },
-    arriving: { label: 'Fahrer kommt', tone: 'bg-cyan-500/15 text-cyan-300' },
-    started: { label: 'Fahrt läuft', tone: 'bg-emerald-500/15 text-emerald-300' },
-    completed: { label: 'Abgeschlossen', tone: 'bg-emerald-500/15 text-emerald-300' },
-    cancelled: { label: 'Storniert', tone: 'bg-red-500/15 text-red-300' },
-  };
-  const item = statusMap[ride?.status] || statusMap.requested;
-  return <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${item.tone}`} data-testid="taxi-customer-ride-status-badge">{item.label}</span>;
+function formatPrice(item) {
+  const price = Number(item?.total || item?.fare || 0);
+  if (!price) return '—';
+  return `€${price.toFixed(2)}`;
 }
 
-function RideChatPanel({ messages, loading, draft, onDraftChange, onSend }) {
+function useTaxiSimpleData(user) {
+  const [savedPlaces, setSavedPlaces] = useState([]);
+  const [recentAddresses, setRecentAddresses] = useState([]);
+
+  useEffect(() => {
+    if (!user?.isAuthenticated) {
+      setSavedPlaces([]);
+      setRecentAddresses([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const [places, recents] = await Promise.all([
+        api.fetchSavedPlaces(),
+        api.fetchRecentAddresses(6),
+      ]);
+      if (!cancelled) {
+        setSavedPlaces(places || []);
+        setRecentAddresses(recents || []);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.isAuthenticated]);
+
+  return { savedPlaces, recentAddresses, setSavedPlaces };
+}
+
+function SearchResultRow({ item, index, onSelect }) {
   return (
-    <div className="mt-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm" data-testid="taxi-customer-chat-panel">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Chat</p>
-          <h3 className="mt-1 text-lg font-black">Nachricht an Fahrer senden</h3>
+    <button
+      onClick={() => onSelect(item)}
+      className="flex w-full items-start gap-3 border-b border-zinc-100 px-1 py-4 text-left last:border-b-0"
+      data-testid={`taxi-search-result-${index}`}
+    >
+      <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
+        <MapPin size={16} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-bold text-[#0A0A0A]">{item.name || item.address}</div>
+        <div className="mt-1 truncate text-sm text-zinc-500">{item.address}</div>
+      </div>
+    </button>
+  );
+}
+
+function QuickDestinationChip({ icon, label, onClick, testId }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-200"
+      data-testid={testId}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function VehicleCard({ vehicle, selected, estimate, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative w-[148px] flex-shrink-0 rounded-2xl p-4 text-left transition-all ${selected ? 'border-2 border-black bg-white shadow-md' : 'border border-zinc-200 bg-zinc-50 opacity-80 hover:opacity-100'}`}
+      data-testid={`taxi-vehicle-card-${vehicle.id}`}
+    >
+      <VehicleIcon type={vehicle.id} active={selected} className="h-12 w-full" />
+      <div className="mt-3 flex items-center gap-2">
+        <div className="text-sm font-bold text-[#0A0A0A]">{vehicle.label}</div>
+        {vehicle.badge ? <span className="rounded-full bg-[#FFD600] px-2 py-0.5 text-[10px] font-black text-black">{vehicle.badge}</span> : null}
+      </div>
+      <div className="mt-1 text-xs text-zinc-500">{vehicle.subtitle}</div>
+      <div className="mt-3 text-base font-black text-[#0A0A0A]">{formatPrice(estimate)}</div>
+      <div className="text-xs text-zinc-500">{formatEta(estimate)}</div>
+    </button>
+  );
+}
+
+function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onShareTrip }) {
+  const eta = Number(ride?.driver?.eta_minutes || ride?.eta_minutes || 3);
+  const plate = ride?.driver?.vehicle?.plate || ride?.vehicle_plate || '—';
+  const driver = ride?.driver?.name || ride?.driver_name || 'Fahrer';
+
+  return (
+    <div className="space-y-4" data-testid="booking-status-view">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-5 text-center shadow-sm">
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Fahrer unterwegs</div>
+        <div className="mt-3 text-5xl font-black tracking-tight text-[#0A0A0A]">{eta} min</div>
+        <div className="mt-2 text-sm text-zinc-500">{driver} ist auf dem Weg zu dir.</div>
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black text-xl font-black text-white">{driver.charAt(0)}</div>
+          <div className="text-left">
+            <div className="text-base font-bold text-[#0A0A0A]">{driver}</div>
+            <div className="mt-1 inline-flex rounded-full bg-black px-3 py-1 text-xs font-black text-white">{plate}</div>
+          </div>
         </div>
-        <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600" data-testid="taxi-customer-chat-count">{messages.length} Nachrichten</div>
       </div>
-      <div className="mt-4 space-y-2" data-testid="taxi-customer-chat-message-list">
-        {loading ? <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">Lade Chat…</div> : null}
-        {!loading && messages.length === 0 ? <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">Noch keine Nachrichten. Schreib dem Fahrer kurz, wo du genau stehst.</div> : null}
-        {messages.map((message) => {
-          const ownMessage = message.sender_role === 'customer' || message.sender_role === 'admin';
-          return (
-            <div key={message.message_id} className={`rounded-2xl px-4 py-3 ${ownMessage ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'}`} data-testid={`taxi-customer-chat-message-${message.message_id}`}>
-              <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.14em]">
-                <span>{ownMessage ? 'Du' : message.sender_name || 'Fahrer'}</span>
-                <span className={ownMessage ? 'text-white/60' : 'text-slate-500'}>{message.sent_at ? new Date(message.sent_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-              </div>
-              <p className={`mt-2 text-sm ${ownMessage ? 'text-white' : 'text-slate-700'}`}>{message.text}</p>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-4 flex gap-2">
-        <input
-          value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
-          placeholder="z. B. Ich stehe am Haupteingang"
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none placeholder:text-slate-400"
-          data-testid="taxi-customer-chat-input"
-        />
-        <button onClick={onSend} className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white" data-testid="taxi-customer-chat-send-button">Senden</button>
-      </div>
+      <ActiveRideTracker
+        ride={ride}
+        onCancel={onCancel}
+        onOpenLiveChat={onOpenLiveChat}
+        onCallDriver={onCallDriver}
+        onShareTrip={onShareTrip}
+        canCall={Boolean(ride?.driver?.phone || ride?.driver_phone)}
+      />
     </div>
   );
 }
 
-function detectRegion(address = '') {
-  const hay = String(address || '').toLowerCase();
-  return REGION_PRESETS.find((region) => region.matches.some((token) => hay.includes(token))) || DEFAULT_REGION;
-}
-
-function resolveHomeWork(savedPlaces) {
-  const home = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'home' || (place.name || '').toLowerCase() === 'home');
-  const work = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'work' || (place.name || '').toLowerCase() === 'work');
-  return { home, work };
-}
-
 export default function TaxiPage({ onNavigate }) {
-  const { user } = useUser();
-  const { search } = useTaxiGeocoder({ debounceMs: 90 });
+  const user = useUser();
+  const { search } = useTaxiGeocoder({ debounceMs: 100 });
+  const { savedPlaces, recentAddresses } = useTaxiSimpleData(user);
 
   const [pickup, setPickup] = useState({ lat: 52.52, lng: 13.405, address: '' });
   const [dropoff, setDropoff] = useState({ lat: 0, lng: 0, address: '' });
-  const [pickupSuggestions, setPickupSuggestions] = useState([]);
-  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
-  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
-  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+  const [sheetMode, setSheetMode] = useState('summary');
+  const [searchValue, setSearchValue] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [estimating, setEstimating] = useState(false);
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('standard');
   const [estimates, setEstimates] = useState([]);
-  const [surge, setSurge] = useState(null);
   const [nearbyDrivers, setNearbyDrivers] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
-  const [searchMode, setSearchMode] = useState('dropoff');
-  const [savedPlaces, setSavedPlaces] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [recentAddresses, setRecentAddresses] = useState([]);
-  const [favoriteRoutes, setFavoriteRoutes] = useState([]);
-  const [tariffMeta, setTariffMeta] = useState(null);
-  const [bookingMode, setBookingMode] = useState('now');
-  const [scheduledAt, setScheduledAt] = useState('');
-  const [forOther, setForOther] = useState(false);
-  const [recipientName, setRecipientName] = useState('');
-  const [recipientPhone, setRecipientPhone] = useState('');
-  const [rideMessages, setRideMessages] = useState([]);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [messageDraft, setMessageDraft] = useState('');
-  const [regionalQuickPlaces, setRegionalQuickPlaces] = useState([]);
 
   useEffect(() => {
     document.body.classList.add('taxi-fullscreen-mode');
@@ -176,7 +175,7 @@ export default function TaxiPage({ onNavigate }) {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setPickup((prev) => ({ ...prev, address: 'Berlin Mitte' }));
+      setPickup((prev) => ({ ...prev, address: 'Dein Standort' }));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -186,7 +185,7 @@ export default function TaxiPage({ onNavigate }) {
         const address = await api.reverseGeocode(next.lat, next.lng);
         if (address) setPickup((prev) => ({ ...prev, address }));
       },
-      () => setPickup((prev) => ({ ...prev, address: 'Berlin Mitte' })),
+      () => setPickup((prev) => ({ ...prev, address: 'Dein Standort' })),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }, []);
@@ -197,152 +196,66 @@ export default function TaxiPage({ onNavigate }) {
       return;
     }
     const data = await api.fetchActiveRide();
-    const ride = data?.rides?.[0] || null;
-    setActiveRide(ride);
+    setActiveRide(data?.rides?.[0] || null);
   }, [user?.isAuthenticated]);
 
-  const loadRideMessages = useCallback(async (rideId) => {
-    if (!rideId) return;
-    setChatLoading(true);
-    const result = await api.fetchRideMessages(rideId);
-    if (!result.ok) {
-      setChatLoading(false);
-      toast.error(result.error || 'Chat konnte nicht geladen werden');
-      return;
-    }
-    setRideMessages(result.messages || []);
-    setChatLoading(false);
-  }, []);
-
   useEffect(() => {
-    if (!user?.isAuthenticated) return;
     loadActiveRide();
-  }, [loadActiveRide, user?.isAuthenticated]);
+  }, [loadActiveRide]);
 
   useEffect(() => {
-    if (!user?.isAuthenticated) {
-      setSavedPlaces([]);
-      setFavorites([]);
-      setRecentAddresses([]);
-      setFavoriteRoutes([]);
-      return undefined;
-    }
+    if (!pickup?.lat || activeRide) return;
     let cancelled = false;
-    const loadSaved = async () => {
-      const [places, favs, recents, routes] = await Promise.all([
-        api.fetchSavedPlaces(),
-        api.fetchFavorites(),
-        api.fetchRecentAddresses(6),
-        api.fetchFavoriteRoutes(4),
-      ]);
-      if (!cancelled) {
-        setSavedPlaces(places || []);
-        setFavorites(favs || []);
-        setRecentAddresses(recents || []);
-        setFavoriteRoutes(routes || []);
-      }
+    const loadDrivers = async () => {
+      const result = await api.fetchNearbyDriversCount({ lat: pickup.lat, lng: pickup.lng, carType: selectedVehicle });
+      if (!cancelled) setNearbyDrivers(result.drivers || []);
     };
-    loadSaved();
+    loadDrivers();
     return () => {
       cancelled = true;
     };
-  }, [user?.isAuthenticated]);
+  }, [pickup?.lat, pickup?.lng, selectedVehicle, activeRide]);
 
-  const refreshTaxiCollections = useCallback(async () => {
-    if (!user?.isAuthenticated) return;
-    const [places, favs, recents, routes] = await Promise.all([
-      api.fetchSavedPlaces(),
-      api.fetchFavorites(),
-      api.fetchRecentAddresses(6),
-      api.fetchFavoriteRoutes(4),
-    ]);
-    setSavedPlaces(places || []);
-    setFavorites(favs || []);
-    setRecentAddresses(recents || []);
-    setFavoriteRoutes(routes || []);
-  }, [user?.isAuthenticated]);
+  const runSearch = useCallback((value) => {
+    setSearchValue(value);
+    search('taxi-simple-dropoff', value, setSearchResults, () => {}, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
+  }, [pickup?.lat, pickup?.lng, search]);
 
-  useEffect(() => {
-    if (!activeRide) return undefined;
-    if (!['requested', 'accepted', 'arriving', 'started'].includes(activeRide.status)) return undefined;
-    const timer = window.setInterval(loadActiveRide, 4000);
-    return () => window.clearInterval(timer);
-  }, [activeRide, loadActiveRide]);
-
-  useEffect(() => {
-    if (!chatOpen || !activeRide?.ride_id) return undefined;
-    loadRideMessages(activeRide.ride_id);
-    const timer = window.setInterval(() => loadRideMessages(activeRide.ride_id), 5000);
-    return () => window.clearInterval(timer);
-  }, [chatOpen, activeRide?.ride_id, loadRideMessages]);
-
-  useEffect(() => {
-    if (!activeRide?.ride_id) {
-      setChatOpen(false);
-      setRideMessages([]);
-      setMessageDraft('');
-    }
-  }, [activeRide?.ride_id]);
-
-  useEffect(() => {
-    if (!pickup?.lat || !pickup?.lng) return undefined;
-    let cancelled = false;
-    const region = detectRegion(pickup.address);
-    const loadRegional = async () => {
-      const [airport, station] = await Promise.all([
-        api.fetchRegionalPlaceHints(region.airportQuery, { lat: pickup.lat, lng: pickup.lng, limit: 1 }),
-        api.fetchRegionalPlaceHints(region.stationQuery, { lat: pickup.lat, lng: pickup.lng, limit: 1 }),
-      ]);
-      if (!cancelled) {
-        setRegionalQuickPlaces([
-          airport[0] ? { ...airport[0], id: 'airport', icon: Plane, label: region.airportLabel, caption: region.regionLabel } : null,
-          station[0] ? { ...station[0], id: 'station', icon: Train, label: region.stationLabel, caption: region.regionLabel } : null,
-        ].filter(Boolean));
-      }
-    };
-    loadRegional();
-    return () => {
-      cancelled = true;
-    };
-  }, [pickup?.lat, pickup?.lng, pickup?.address]);
-
-  useEffect(() => {
-    if (!pickup?.lat) return;
-    let cancelled = false;
-    const loadNearby = async () => {
-      const data = await api.fetchNearbyDriversCount({ lat: pickup.lat, lng: pickup.lng, carType: selectedVehicle });
-      if (!cancelled) setNearbyDrivers(data.drivers || []);
-    };
-    loadNearby();
-    return () => {
-      cancelled = true;
-    };
-  }, [pickup?.lat, pickup?.lng, selectedVehicle]);
-
-  const estimateRide = useCallback(async () => {
-    if (!pickup?.lat || !dropoff?.lat) return;
+  const estimateRide = useCallback(async (nextDropoff) => {
+    if (!pickup?.lat || !nextDropoff?.lat) return;
     setEstimating(true);
     setError('');
-    const result = await api.estimateRide({ pickup, dropoff });
+    const result = await api.estimateRide({ pickup, dropoff: nextDropoff });
     if (!result.ok) {
-      setEstimates([]);
-      setTariffMeta(null);
-      setError(result.error || 'Keine Fahrten verfügbar');
-      if (bookingMode === 'now') setBookingMode('later');
       setEstimating(false);
+      setEstimates([]);
+      setError(result.error || 'Keine Fahrten verfügbar');
       return;
     }
     setEstimates(result.estimates || []);
-    setSurge(result.surge || null);
-    setTariffMeta({ region: result.region, label: result.region_label, zone: result.tariff_zone, time: result.time_tariff, fixedFares: result.fixed_fares || {} });
     const recommended = (result.estimates || []).find((item) => item.vehicle_type === selectedVehicle) || result.estimates?.[0];
     if (recommended?.vehicle_type) setSelectedVehicle(recommended.vehicle_type);
     setEstimating(false);
-  }, [bookingMode, pickup, dropoff, selectedVehicle]);
+  }, [pickup, selectedVehicle]);
 
-  useEffect(() => {
-    if (dropoff?.lat) estimateRide();
-  }, [dropoff?.lat, dropoff?.lng, estimateRide]);
+  const handleSelectDestination = useCallback((item) => {
+    const next = {
+      address: item.address || item.name,
+      lat: Number(item.lat),
+      lng: Number(item.lng),
+    };
+    setDropoff(next);
+    setSearchValue(item.address || item.name || '');
+    setSheetMode('ride-options');
+    estimateRide(next);
+  }, [estimateRide]);
+
+  const quickDestinations = useMemo(() => {
+    const home = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'home' || (place.name || '').toLowerCase() === 'home');
+    const work = savedPlaces.find((place) => (place.icon || '').toLowerCase() === 'work' || (place.name || '').toLowerCase() === 'work');
+    const recents = recentAddresses.slice(0, 4).map((item, index) => ({ ...item, key: `recent-${index}` }));
+    return { home, work, recents };
+  }, [recentAddresses, savedPlaces]);
 
   const selectedEstimate = useMemo(
     () => estimates.find((item) => item.vehicle_type === selectedVehicle) || estimates[0] || null,
@@ -350,7 +263,7 @@ export default function TaxiPage({ onNavigate }) {
   );
 
   const mapDrivers = useMemo(
-    () => nearbyDrivers.slice(0, 10).map((driver) => ({
+    () => nearbyDrivers.slice(0, 8).map((driver) => ({
       id: driver.driver_id,
       lat: driver.location?.lat || driver.lat,
       lng: driver.location?.lng || driver.lng,
@@ -359,549 +272,274 @@ export default function TaxiPage({ onNavigate }) {
     [nearbyDrivers],
   );
 
-  const { home, work } = useMemo(() => resolveHomeWork(savedPlaces), [savedPlaces]);
-  const region = useMemo(() => detectRegion(pickup.address), [pickup.address]);
+  const regionLabel = useMemo(() => detectRegion(pickup.address), [pickup.address]);
 
-  const activeRideTrackerData = useMemo(() => {
-    if (!activeRide) return null;
-    return {
-      ...activeRide,
-      driver_name: activeRide.driver?.name || activeRide.driver_name || 'Fahrer wird gesucht',
-      driver_phone: activeRide.driver?.phone || activeRide.driver_phone || '',
-      driver_rating: activeRide.driver?.rating || activeRide.driver_rating || 5,
-      vehicle_model: activeRide.driver?.vehicle?.model || activeRide.vehicle_model || activeRide.driver_car?.model || 'Taxi',
-      vehicle_plate: activeRide.driver?.vehicle?.plate || activeRide.vehicle_plate || activeRide.driver_car?.license_plate || '—',
-      pickup_address: activeRide.pickup?.address || activeRide.pickup_address || 'Aktueller Standort',
-      dropoff_address: activeRide.dropoff?.address || activeRide.dropoff_address || '—',
-      estimated_price: Number(activeRide.final_fare || activeRide.fare_estimate || activeRide.estimated_fare || 0),
-      eta_minutes: activeRide.driver?.eta_minutes || activeRide.eta_minutes || 0,
-    };
-  }, [activeRide]);
-
-  const liveMovementLabel = useMemo(() => {
-    if (!activeRide) return '';
-    if (activeRide.status === 'arriving') return 'Dein Fahrer bewegt sich live auf der Karte zu deiner Abholung.';
-    if (activeRide.status === 'started') return 'Dein Fahrzeug bewegt sich live auf der Karte Richtung Ziel.';
-    if (activeRide.status === 'accepted') return 'Fahrer bestätigt — Live-Position aktualisiert sich automatisch.';
-    return '';
-  }, [activeRide]);
-
-  const suggestionCards = useMemo(() => {
-    const cards = [];
-    favoriteRoutes.slice(0, 2).forEach((route, index) => {
-      if (route?.dropoff?.address) cards.push({ id: `route-${index}`, kind: 'route', title: route.dropoff.address, subtitle: route.pickup?.address || 'Häufig gefahren', lat: route.dropoff.lat, lng: route.dropoff.lng });
-    });
-    recentAddresses.slice(0, 2).forEach((address, index) => {
-      if (address?.address) cards.push({ id: `recent-${index}`, kind: 'recent', title: address.address, subtitle: `Zuletzt genutzt · ${address.use_count || 1}×`, lat: address.lat, lng: address.lng });
-    });
-    favorites.slice(0, 2).forEach((favorite, index) => {
-      if (favorite?.address) cards.push({ id: `favorite-${index}`, kind: 'favorite', title: favorite.name, subtitle: favorite.address, lat: favorite.latitude, lng: favorite.longitude, favoriteId: favorite.id });
-    });
-    return cards.slice(0, 4);
-  }, [favoriteRoutes, recentAddresses, favorites]);
-
-  const personalizedSearchSuggestions = useCallback((type, value) => {
-    const q = String(value || '').trim().toLowerCase();
-    if (!q) return [];
-    const items = [];
-    const pushItem = (item) => {
-      if (!item?.address || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
-      const label = `${item.name || ''} ${item.title || ''} ${item.address || ''} ${item.sourceLabel || ''}`.toLowerCase();
-      if (!label.includes(q)) return;
-      items.push({
-        name: item.name || item.title || item.address.split(',')[0],
-        address: item.address,
-        cityZip: item.sourceLabel || item.subtitle || 'Persönlich',
-        lat: Number(item.lat),
-        lng: Number(item.lng),
-        sourceLabel: item.sourceLabel || 'Persönlich',
-        personal: true,
-      });
-    };
-    if (type === 'dropoff') {
-      if (home) pushItem({ ...home, lat: home.lat || home.latitude, lng: home.lng || home.longitude, name: 'Home', sourceLabel: 'Home' });
-      if (work) pushItem({ ...work, lat: work.lat || work.latitude, lng: work.lng || work.longitude, name: 'Work', sourceLabel: 'Work' });
-      favoriteRoutes.forEach((route) => pushItem({ ...route.dropoff, title: route.dropoff?.address, sourceLabel: 'Häufige Route' }));
-      favorites.forEach((favorite) => pushItem({ ...favorite, lat: favorite.latitude, lng: favorite.longitude, sourceLabel: 'Favorit' }));
-    }
-    recentAddresses.forEach((recent) => pushItem({ ...recent, sourceLabel: `Zuletzt · ${recent.use_count || 1}×` }));
-    const deduped = [];
-    const seen = new Set();
-    items.forEach((item) => {
-      const key = `${item.address}-${item.lat.toFixed(4)}-${item.lng.toFixed(4)}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      deduped.push(item);
-    });
-    return deduped.slice(0, 3);
-  }, [favoriteRoutes, favorites, home, recentAddresses, work]);
-
-  const mergedSuggestions = useCallback((type, value, suggestions) => {
-    const personal = personalizedSearchSuggestions(type, value);
-    const live = (suggestions || []).map((item) => ({ ...item, sourceLabel: item.sourceLabel || 'Live Treffer' }));
-    const merged = [];
-    const seen = new Set();
-    [...personal, ...live].forEach((item) => {
-      if (!item?.address || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return;
-      const key = `${item.address}-${Number(item.lat).toFixed(4)}-${Number(item.lng).toFixed(4)}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      merged.push(item);
-    });
-    return merged.slice(0, 7);
-  }, [personalizedSearchSuggestions]);
-
-  const handleAddressChange = (type, value) => {
-    if (type === 'pickup') {
-      setPickup((prev) => ({ ...prev, address: value }));
-      search('pickup-customer', value, setPickupSuggestions, setShowPickupSuggestions, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
-    } else {
-      setDropoff((prev) => ({ ...prev, address: value }));
-      search('dropoff-customer', value, setDropoffSuggestions, setShowDropoffSuggestions, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null);
-    }
-  };
-
-  const handleSuggestionSelect = (type, item) => {
-    const payload = { address: item.address || item.name, lat: item.lat, lng: item.lng };
-    if (type === 'pickup') {
-      setPickup(payload);
-      setShowPickupSuggestions(false);
-      setSearchMode('dropoff');
-    } else {
-      setDropoff(payload);
-      setShowDropoffSuggestions(false);
-    }
-    setError('');
-  };
-
-  const handleSaveSuggestionAsFavorite = async (item) => {
-    const labelBase = item.name || item.address || 'Favorit';
-    const result = await api.saveFavoriteFromSearch({ name: labelBase, address: item.address || item.name, lat: item.lat, lng: item.lng, icon: 'star' });
-    if (!result.ok) {
-      setError(result.error || 'Favorit konnte nicht gespeichert werden');
-      return;
-    }
-    setFavorites(await api.fetchFavorites());
-    toast.success('Favorit gespeichert');
-  };
-
-  const handleSaveHomeWork = async (kind) => {
-    const source = dropoff?.lat ? dropoff : pickup;
-    if (!source?.lat || !source?.address) {
-      setError('Bitte zuerst einen Ort auswählen.');
-      return;
-    }
-    const ok = await api.savePlaceApi({ name: kind === 'home' ? 'Home' : 'Work', icon: kind, address: source.address, lat: source.lat, lng: source.lng });
-    if (!ok) {
-      setError(`${kind === 'home' ? 'Home' : 'Work'} konnte nicht gespeichert werden.`);
-      return;
-    }
-    setError('');
-    await refreshTaxiCollections();
-  };
-
-  const handleQuickDestination = (item) => {
-    if (!item?.lat || !item?.lng) return;
-    setDropoff({ address: item.address || item.title || item.label, lat: item.lat, lng: item.lng });
-    setSearchMode('dropoff');
-    setError('');
-  };
-
-  const handleBookRide = async () => {
+  const handleBookRide = useCallback(async () => {
     if (!selectedEstimate) return;
     setBooking(true);
-    setError('');
-    const bookOptions = {
-      bookingMode,
-      scheduledAt: bookingMode === 'later' ? scheduledAt : null,
-      recipientName: forOther ? recipientName : null,
-      recipientPhone: forOther ? recipientPhone : null,
-    };
-    const result = await api.bookRideApi({ pickup, dropoff, vehicleType: selectedEstimate.vehicle_type, paymentMethod: 'wallet', options: bookOptions });
+    const result = await api.bookRideApi({
+      pickup,
+      dropoff,
+      vehicleType: selectedEstimate.vehicle_type,
+      paymentMethod: 'wallet',
+      options: { bookingMode: 'now' },
+    });
     setBooking(false);
     if (!result.ok) {
       setError(result.error || 'Buchung fehlgeschlagen');
       return;
     }
     setActiveRide(result.ride);
-  };
+    setSheetMode('status');
+  }, [dropoff, pickup, selectedEstimate]);
 
-  const handleCancelRide = async () => {
+  const handleCancelRide = useCallback(async () => {
     if (!activeRide?.ride_id) return;
     const result = await api.cancelRideApi(activeRide.ride_id);
     if (!result.ok) {
-      setError(result.error || 'Stornierung fehlgeschlagen');
+      toast.error(result.error || 'Stornierung fehlgeschlagen');
       return;
     }
     setActiveRide(null);
+    setSheetMode('summary');
     await loadActiveRide();
-  };
+  }, [activeRide?.ride_id, loadActiveRide]);
 
-  const handleOpenRideChat = async () => {
-    if (!activeRide?.ride_id) return;
-    const nextOpen = !chatOpen;
-    setChatOpen(nextOpen);
-    if (nextOpen) await loadRideMessages(activeRide.ride_id);
-  };
+  const handleOpenChat = useCallback(() => {
+    toast.info('Live-Chat öffnet im nächsten Schritt.');
+  }, []);
 
-  const handleSendRideMessage = async () => {
-    if (!activeRide?.ride_id) return;
-    const text = messageDraft.trim();
-    if (!text) return;
-    const result = await api.sendRideMessage(activeRide.ride_id, text);
-    if (!result.ok) {
-      toast.error(result.error || 'Nachricht konnte nicht gesendet werden');
-      return;
-    }
-    setMessageDraft('');
-    setRideMessages((prev) => [...prev, result.message].slice(-50));
-  };
-
-  const handleCallDriver = () => {
+  const handleCallDriver = useCallback(() => {
     const phone = activeRide?.driver?.phone || activeRide?.driver_phone;
     if (!phone) {
-      toast.error('Telefonnummer ist noch nicht verfügbar');
+      toast.error('Telefonnummer noch nicht verfügbar');
       return;
     }
     window.location.href = `tel:${phone}`;
-  };
+  }, [activeRide?.driver?.phone, activeRide?.driver_phone]);
 
-  const handleShareTrip = async () => {
+  const handleShareRide = useCallback(async () => {
     if (!activeRide) return;
-    const shareText = `Meine BidBlitz Fahrt: ${activeRide.pickup?.address || 'Abholung'} → ${activeRide.dropoff?.address || 'Ziel'} · ${activeRide.driver?.name || 'Fahrer'} · ETA ${activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min`;
+    const shareText = `Meine Fahrt: ${activeRide.pickup?.address || pickup.address} → ${activeRide.dropoff?.address || dropoff.address}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: 'BidBlitz Taxi', text: shareText, url: window.location.href });
         return;
       }
       await navigator.clipboard.writeText(`${shareText} · ${window.location.href}`);
-      toast.success('Fahrt-Link in die Zwischenablage kopiert');
-    } catch (error) {
-      void error;
+      toast.success('Fahrt-Link kopiert');
+    } catch {
       toast.error('Teilen war gerade nicht möglich');
     }
-  };
+  }, [activeRide, dropoff.address, pickup.address]);
+
+  const sheetHeightClass = sheetMode === 'search' ? 'min-h-[88vh]' : 'min-h-[58vh]';
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] text-black" data-testid="taxi-customer-page">
-      <div className="relative min-h-screen overflow-hidden">
-        <section className="relative h-[46vh] min-h-[340px] w-full bg-[#eef2f7]" data-testid="taxi-customer-map-zone">
+    <div className="h-dvh overflow-hidden bg-white text-[#0A0A0A]" data-testid="taxi-simple-page">
+      <div className="relative h-dvh w-full overflow-hidden bg-zinc-200">
+        <div className="absolute inset-0 z-0" data-testid="taxi-simple-map-view">
           <TaxiMap
             pickup={pickup?.lat ? pickup : null}
             dropoff={dropoff?.lat ? dropoff : null}
             driverLocation={activeRide?.driver_lat && activeRide?.driver_lng ? { lat: activeRide.driver_lat, lng: activeRide.driver_lng } : null}
-            driverBearing={activeRide?.driver_bearing || 0}
-            driverTarget={activeRide?.status === 'started' ? activeRide?.dropoff : activeRide?.pickup}
-            driverPath={(activeRide?.driver_path || []).map((point) => [point.lat, point.lng]).filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]))}
-            height="100%"
             nearbyDrivers={mapDrivers}
+            height="100%"
           />
+        </div>
 
-          <div className="absolute inset-x-0 top-0 z-[500] bg-gradient-to-b from-white via-white/90 to-transparent px-4 pb-10 pt-4">
-            <div className="mx-auto flex max-w-3xl items-start justify-between gap-3" data-testid="taxi-customer-topbar">
-              <div className="flex items-center gap-3">
-                <button onClick={() => onNavigate?.('/')} className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-black" data-testid="taxi-customer-back-button">
-                  <ArrowLeft size={18} />
-                </button>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-black/45">Taxi</p>
-                  <h1 className="text-2xl font-black" data-testid="taxi-customer-hero-title">Wohin willst du fahren?</h1>
-                </div>
-              </div>
-              <div className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black/70" data-testid="taxi-customer-region-pill">
-                {region.regionLabel}
-              </div>
+        <div className="absolute inset-x-0 top-0 z-10 px-4 pb-10 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              onClick={() => onNavigate?.('/')}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm"
+              data-testid="taxi-back-button"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500 shadow-sm" data-testid="taxi-region-pill">
+              {regionLabel}
             </div>
           </div>
+        </div>
 
-          <div className="pointer-events-none absolute bottom-5 left-4 right-4 z-[500]">
-            <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between gap-3 rounded-[22px] border border-white/80 bg-white/92 px-4 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.08)]" data-testid="taxi-customer-map-summary-card">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-black/35">Live Karte</p>
-                <p className="mt-1 text-sm font-semibold text-black">{pickup.address || 'Abholung'} → {dropoff.address || 'Ziel auswählen'}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <div className="rounded-full bg-black px-3 py-2 text-xs font-bold text-white" data-testid="taxi-customer-map-driver-count">{mapDrivers.length} Fahrer</div>
-                {selectedEstimate ? <div className="rounded-full bg-[#FFD500] px-3 py-2 text-xs font-bold text-black" data-testid="taxi-customer-map-price">€{Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}</div> : null}
-              </div>
-            </div>
-          </div>
-        </section>
+        <motion.div
+          layout
+          transition={SPRING}
+          className={`absolute bottom-0 z-10 w-full rounded-t-[32px] bg-white px-4 pb-6 pt-4 shadow-[0_-8px_40px_rgba(0,0,0,0.08)] ${sheetHeightClass}`}
+          data-testid="bottom-sheet-container"
+        >
+          <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-zinc-200" />
 
-        <section className="relative z-[600] -mt-8 rounded-t-[34px] border-t border-black/8 bg-white px-4 pb-10 pt-5 shadow-[0_-12px_40px_rgba(0,0,0,0.08)]" data-testid="taxi-customer-bottom-sheet">
-          <div className="mx-auto max-w-3xl">
-            <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-black/10" />
-
-            <div className="rounded-[28px] border border-black/8 bg-[#f8fafc] p-4 sm:p-5" data-testid="taxi-customer-search-card">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+          {!activeRide && (
+            <>
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">3 Tap Booking</p>
-                  <h2 className="mt-1 text-xl font-black text-black">Suchen, wählen, bestellen</h2>
+                  <div className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Taxi buchen</div>
+                  <h1 className="mt-2 text-3xl font-black tracking-tight">Wohin soll&apos;s gehen?</h1>
                 </div>
-                <div className="rounded-full bg-black px-3 py-2 text-[11px] font-semibold text-white" data-testid="taxi-customer-live-driver-badge">
-                  {mapDrivers.length} Fahrer in der Nähe
+                <div className="rounded-full bg-zinc-100 px-3 py-2 text-xs font-bold text-zinc-700" data-testid="taxi-driver-count-pill">
+                  {mapDrivers.length} Fahrer
                 </div>
               </div>
 
-              <div className="mt-4 space-y-3">
-                {[
-                  { id: 'pickup', label: 'Abholung', value: pickup.address, placeholder: 'Dein Standort', active: searchMode === 'pickup', suggestions: pickupSuggestions, show: showPickupSuggestions },
-                  { id: 'dropoff', label: 'Wohin?', value: dropoff.address, placeholder: 'Adresse, Hotel, Flughafen oder Ort', active: searchMode === 'dropoff', suggestions: dropoffSuggestions, show: showDropoffSuggestions },
-                ].map((field) => (
-                  <div key={field.id} className="relative" data-testid={`taxi-customer-field-${field.id}`}>
-                    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">{field.label}</label>
-                    <div className={`flex items-center gap-3 rounded-[22px] border bg-white px-4 py-4 transition ${field.active ? 'border-black shadow-[0_0_0_4px_rgba(0,0,0,0.06)]' : 'border-black/10'}`}>
-                      {field.id === 'pickup' ? <LocateFixed className="h-5 w-5 text-[#0F766E]" /> : <Search className="h-5 w-5 text-black/45" />}
-                      <input
-                        value={field.value}
-                        onFocus={() => setSearchMode(field.id)}
-                        onChange={(e) => handleAddressChange(field.id, e.target.value)}
-                        placeholder={field.placeholder}
-                        className="w-full bg-transparent text-[15px] font-semibold outline-none placeholder:text-black/35"
-                        data-testid={`taxi-customer-input-${field.id}`}
-                      />
-                    </div>
-                    {String(field.value || '').trim() && mergedSuggestions(field.id, field.value, field.suggestions).length > 0 ? (
-                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-[22px] border border-black/10 bg-white shadow-xl" data-testid={`taxi-customer-suggestions-${field.id}`}>
-                        {mergedSuggestions(field.id, field.value, field.suggestions).map((item, index) => (
-                          <div key={`${field.id}-${index}`} className="flex items-start gap-3 border-b border-black/5 px-4 py-3 last:border-b-0 hover:bg-slate-50" data-testid={`taxi-customer-suggestion-${field.id}-${index}`}>
-                            <button onMouseDown={() => handleSuggestionSelect(field.id, item)} className="flex min-w-0 flex-1 items-start gap-3 text-left" data-testid={`taxi-customer-select-suggestion-${field.id}-${index}`}>
-                              <div className="mt-0.5 rounded-xl bg-black/5 p-2 text-black/60"><MapPin size={14} /></div>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-semibold text-black">{item.name || item.address}</div>
-                                <div className="truncate text-xs text-black/45">{item.cityZip || item.address}</div>
-                                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black/35" data-testid={`taxi-customer-suggestion-source-${field.id}-${index}`}>{item.sourceLabel || 'Live Treffer'}</div>
-                              </div>
-                            </button>
-                            {field.id === 'dropoff' ? <button onMouseDown={() => handleSaveSuggestionAsFavorite(item)} className="rounded-full border border-black/10 px-2 py-1 text-[10px] font-semibold text-black/65" data-testid={`taxi-customer-save-suggestion-${index}`}>Speichern</button> : null}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+              <div className="mt-5 rounded-2xl bg-zinc-50 p-4" data-testid="location-timeline-trigger">
+                <button
+                  onClick={() => setSheetMode('search')}
+                  className="flex w-full items-start gap-4 text-left"
+                >
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="h-3 w-3 rounded-full bg-black" />
+                    <div className="my-1 h-10 w-px bg-zinc-300" />
+                    <div className="h-3 w-3 rounded-sm bg-black" />
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Aktueller Standort</div>
+                    <div className="mt-1 truncate text-sm font-bold text-[#0A0A0A]">{pickup.address || 'Dein Standort'}</div>
+                    <div className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Ziel</div>
+                    <div className="mt-1 flex items-center gap-2 text-lg font-black text-[#0A0A0A]">
+                      <Search size={18} />
+                      <span className="truncate">{dropoff.address || 'Wohin?'}</span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-2" data-testid="quick-destinations-scroll">
+                <QuickDestinationChip
+                  icon={<Navigation size={16} />}
+                  label="Aktuell"
+                  onClick={() => setSheetMode('search')}
+                  testId="taxi-quick-current-location"
+                />
+                <QuickDestinationChip
+                  icon={<Home size={16} />}
+                  label={quickDestinations.home?.address ? 'Home' : 'Home speichern'}
+                  onClick={() => quickDestinations.home ? handleSelectDestination({ ...quickDestinations.home, lat: quickDestinations.home.lat || quickDestinations.home.latitude, lng: quickDestinations.home.lng || quickDestinations.home.longitude }) : toast.info('Bitte zuerst einmal Home speichern.')}
+                  testId="taxi-quick-home"
+                />
+                <QuickDestinationChip
+                  icon={<Briefcase size={16} />}
+                  label={quickDestinations.work?.address ? 'Work' : 'Work speichern'}
+                  onClick={() => quickDestinations.work ? handleSelectDestination({ ...quickDestinations.work, lat: quickDestinations.work.lat || quickDestinations.work.latitude, lng: quickDestinations.work.lng || quickDestinations.work.longitude }) : toast.info('Bitte zuerst einmal Work speichern.')}
+                  testId="taxi-quick-work"
+                />
+                {quickDestinations.recents.map((item, index) => (
+                  <QuickDestinationChip
+                    key={item.key}
+                    icon={<Star size={16} />}
+                    label={item.address?.split(',')?.[0] || `Zuletzt ${index + 1}`}
+                    onClick={() => handleSelectDestination(item)}
+                    testId={`taxi-quick-recent-${index}`}
+                  />
                 ))}
               </div>
+            </>
+          )}
 
-              <div className="mt-4 rounded-[24px] bg-black px-4 py-4 text-white" data-testid="taxi-customer-route-preview-card">
+          <AnimatePresence initial={false}>
+            {sheetMode === 'search' && !activeRide ? (
+              <motion.div
+                key="search"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={SPRING}
+                className="mt-5"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Route</p>
-                    <p className="mt-1 text-sm font-semibold">{pickup.address || 'Abholung wählen'} → {dropoff.address || 'Ziel wählen'}</p>
+                    <div className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Ziel suchen</div>
+                    <div className="mt-1 text-2xl font-black">Adresse auswählen</div>
                   </div>
-                  {estimating ? <Loader2 className="h-5 w-5 animate-spin text-white/60" /> : <Sparkles className="h-5 w-5 text-[#FFD500]" />}
-                </div>
-                <p className="mt-2 text-xs text-white/65" data-testid="taxi-customer-search-helper">{tariffMeta?.fixedFares?.standard?.active ? `${tariffMeta.fixedFares.standard.label} · persönliche Orte zuerst.` : tariffMeta?.label ? `${tariffMeta.label} · persönliche Orte zuerst.` : 'Die Suche ist jetzt regional: Flughafen, Bahnhof und persönliche Orte passen sich an deinen Standort an.'}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
-              <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-quick-destinations-card">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Schnellziele</p>
-                    <h3 className="mt-1 text-lg font-black">Passend zu deinem Standort</h3>
-                  </div>
-                  <div className="rounded-full bg-[#FFD500] px-3 py-2 text-[11px] font-bold text-black" data-testid="taxi-customer-region-summary-pill">{region.regionLabel}</div>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <button onClick={() => (home ? handleQuickDestination({ ...home, lat: home.lat || home.latitude, lng: home.lng || home.longitude, address: home.address }) : handleSaveHomeWork('home'))} className="rounded-[22px] border border-black/8 bg-[#f8fafc] p-4 text-left" data-testid="taxi-customer-quick-place-home">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"><Home size={18} /></div>
-                      <div>
-                        <div className="text-sm font-bold text-black">Home</div>
-                        <div className="mt-1 text-[11px] text-black/45">{home?.address || 'Zuhause speichern'}</div>
-                      </div>
-                    </div>
+                  <button
+                    onClick={() => setSheetMode(dropoff.address ? 'ride-options' : 'summary')}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100"
+                    data-testid="taxi-close-search-button"
+                  >
+                    <X size={18} />
                   </button>
-
-                  <button onClick={() => (work ? handleQuickDestination({ ...work, lat: work.lat || work.latitude, lng: work.lng || work.longitude, address: work.address }) : handleSaveHomeWork('work'))} className="rounded-[22px] border border-black/8 bg-[#f8fafc] p-4 text-left" data-testid="taxi-customer-quick-place-work">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFD500] text-black"><Briefcase size={18} /></div>
-                      <div>
-                        <div className="text-sm font-bold text-black">Work</div>
-                        <div className="mt-1 text-[11px] text-black/45">{work?.address || 'Arbeitsort speichern'}</div>
-                      </div>
-                    </div>
-                  </button>
-
-                  {regionalQuickPlaces.map((place) => {
-                    const Icon = place.icon;
-                    return (
-                      <button key={place.id} onClick={() => handleQuickDestination(place)} className="rounded-[22px] border border-black/8 bg-[#f8fafc] p-4 text-left" data-testid={`taxi-customer-quick-place-${place.id}`}>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black border border-black/10"><Icon size={18} /></div>
-                          <div>
-                            <div className="text-sm font-bold text-black">{place.label}</div>
-                            <div className="mt-1 text-[11px] text-black/45">{place.address}</div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
                 </div>
-              </div>
-
-              <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-booking-modes-card">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Buchung</p>
-                <h3 className="mt-1 text-lg font-black">Flexibel buchen</h3>
-
-                <div className="mt-4 grid gap-2" data-testid="taxi-customer-booking-mode-tabs">
-                  {[
-                    { id: 'now', label: 'Jetzt bestellen' },
-                    { id: 'later', label: 'Später bestellen' },
-                    { id: 'other', label: 'Für jemand anderen' },
-                  ].map((mode) => (
-                    <button
-                      key={mode.id}
-                      onClick={() => { setBookingMode(mode.id === 'other' ? 'now' : mode.id); setForOther(mode.id === 'other'); }}
-                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-semibold ${((mode.id === 'other' && forOther) || (mode.id !== 'other' && bookingMode === mode.id && !forOther)) ? 'border-black bg-black text-white' : 'border-black/10 bg-[#f8fafc] text-black/70'}`}
-                      data-testid={`taxi-customer-booking-mode-${mode.id}`}
-                    >
-                      {mode.label}
-                    </button>
+                <div className="mt-5 border-b-2 border-zinc-200 pb-3">
+                  <input
+                    value={searchValue}
+                    onChange={(e) => runSearch(e.target.value)}
+                    placeholder="Adresse, Hotel, Flughafen oder Ort"
+                    className="w-full bg-transparent text-2xl font-black outline-none placeholder:text-zinc-400"
+                    data-testid="address-search-input"
+                    autoFocus
+                  />
+                </div>
+                <div className="mt-4 max-h-[52vh] overflow-y-auto pr-1">
+                  {searchResults.length === 0 ? (
+                    <div className="rounded-2xl bg-zinc-50 px-4 py-5 text-sm text-zinc-500" data-testid="taxi-search-empty-state">
+                      Tippe mindestens einen Ort ein. Letzte Ziele und Live-Treffer erscheinen hier.
+                    </div>
+                  ) : searchResults.map((item, index) => (
+                    <SearchResultRow key={`${item.address}-${index}`} item={item} index={index} onSelect={handleSelectDestination} />
                   ))}
                 </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
-                {bookingMode === 'later' ? (
-                  <div className="mt-3 rounded-[18px] border border-black/10 bg-[#f8fafc] p-3" data-testid="taxi-customer-schedule-box">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Abholzeit</label>
-                    <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="mt-2 w-full rounded-xl border border-black/10 px-3 py-3 text-sm" data-testid="taxi-customer-scheduled-at-input" />
-                  </div>
-                ) : null}
+          <AnimatePresence initial={false}>
+            {sheetMode === 'ride-options' && !activeRide ? (
+              <motion.div
+                key="options"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={SPRING}
+                className="mt-5"
+              >
+                <div className="rounded-2xl bg-zinc-50 p-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-400">Route</div>
+                  <div className="mt-2 text-sm font-bold text-[#0A0A0A]">{pickup.address || 'Dein Standort'} → {dropoff.address}</div>
+                  <div className="mt-2 text-sm text-zinc-500">Wähle ein Fahrzeug und bestelle direkt.</div>
+                </div>
+                <div className="mt-5 flex gap-4 overflow-x-auto pb-2" data-testid="vehicle-selector-list">
+                  {VEHICLES.map((vehicle) => (
+                    <VehicleCard
+                      key={vehicle.id}
+                      vehicle={vehicle}
+                      selected={selectedVehicle === vehicle.id}
+                      estimate={estimates.find((item) => item.vehicle_type === vehicle.id)}
+                      onClick={() => setSelectedVehicle(vehicle.id)}
+                    />
+                  ))}
+                </div>
+                {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
-                {forOther ? (
-                  <div className="mt-3 rounded-[18px] border border-black/10 bg-[#f8fafc] p-3" data-testid="taxi-customer-recipient-box">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Name der Person</label>
-                    <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="mt-2 w-full rounded-xl border border-black/10 px-3 py-3 text-sm" placeholder="Max Mustermann" data-testid="taxi-customer-recipient-name-input" />
-                    <label className="mt-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Telefon</label>
-                    <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} className="mt-2 w-full rounded-xl border border-black/10 px-3 py-3 text-sm" placeholder="+49 …" data-testid="taxi-customer-recipient-phone-input" />
-                  </div>
-                ) : null}
-              </div>
+          {activeRide ? (
+            <div className="mt-5">
+              <BookingStatusSimple
+                ride={activeRide}
+                onCancel={handleCancelRide}
+                onOpenLiveChat={handleOpenChat}
+                onCallDriver={handleCallDriver}
+                onShareTrip={handleShareRide}
+              />
             </div>
+          ) : null}
 
-            <AnimatePresence>
-              {error ? (
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" data-testid="taxi-customer-error-card">
-                  {error}
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-
-            {!activeRide ? (
-              <div className="mt-4 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-suggestions-card">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Für dich</p>
-                      <h3 className="mt-1 text-lg font-black">Persönliche Schnellwahl</h3>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid gap-2">
-                    {suggestionCards.map((place) => (
-                      <button key={place.id} onClick={() => handleQuickDestination(place)} className="rounded-[20px] border border-black/8 bg-[#f8fafc] px-4 py-4 text-left" data-testid={`taxi-customer-suggested-place-${place.id}`}>
-                        <div className="text-sm font-semibold text-black">{place.title}</div>
-                        <div className="mt-1 text-[11px] text-black/45">{place.subtitle}</div>
-                      </button>
-                    ))}
-                    {suggestionCards.length === 0 ? <div className="rounded-[20px] border border-dashed border-black/10 bg-[#f8fafc] px-4 py-4 text-sm text-black/45" data-testid="taxi-customer-suggested-empty">Deine letzten Ziele und Favoriten erscheinen hier automatisch.</div> : null}
-                  </div>
-                </div>
-
-                <div className="rounded-[28px] border border-black/8 bg-white p-4" data-testid="taxi-customer-vehicles-card">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Fahrten</p>
-                      <h3 className="mt-1 text-lg font-black">Wähle dein Fahrzeug</h3>
-                    </div>
-                    {surge?.active ? <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700" data-testid="taxi-customer-surge-badge">Surge x{Number(surge.multiplier || 1).toFixed(1)}</span> : null}
-                  </div>
-
-                  <div className="mt-4 space-y-3">
-                    {VEHICLES.map((vehicle) => {
-                      const estimate = estimates.find((item) => item.vehicle_type === vehicle.id);
-                      const selected = selectedVehicle === vehicle.id;
-                      return (
-                        <button
-                          key={vehicle.id}
-                          onClick={() => setSelectedVehicle(vehicle.id)}
-                          className={`w-full rounded-[22px] border px-4 py-4 text-left transition ${selected ? 'border-black bg-black text-white' : 'border-black/8 bg-[#f8fafc] text-black'}`}
-                          data-testid={`taxi-customer-vehicle-${vehicle.id}`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className={`rounded-2xl p-3 ${selected ? 'bg-white/10' : 'bg-white border border-black/8'}`}><Car size={18} /></div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold">{vehicle.label}</span>
-                                  {vehicle.id === 'standard' ? <span className="rounded-full bg-[#FFD500] px-2 py-0.5 text-[10px] font-bold text-black">Empfohlen</span> : null}
-                                </div>
-                                <p className={`mt-1 text-xs ${selected ? 'text-white/60' : 'text-black/45'}`}>{vehicle.subtitle}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-base font-black">{estimate ? `€${Number(estimate.total || estimate.fare || 0).toFixed(2)}` : '—'}</p>
-                              <p className={`text-xs ${selected ? 'text-white/60' : 'text-black/45'}`}>{estimate ? `${estimate.eta_minutes || estimate.duration_minutes || 5} Min` : 'Berechne…'}</p>
-                              {estimate?.fare_breakdown?.fixed_fare ? <p className={`mt-1 text-[10px] font-bold ${selected ? 'text-[#FFD500]' : 'text-emerald-700'}`} data-testid={`taxi-customer-fixed-fare-${vehicle.id}`}>Festpreis</p> : null}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    onClick={handleBookRide}
-                    disabled={!selectedEstimate || booking || !dropoff?.lat}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-[22px] bg-black px-4 py-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                    data-testid="taxi-customer-book-button"
-                  >
-                    {booking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
-                    {booking ? 'Bucht…' : selectedEstimate ? `Bestellen · €${Number(selectedEstimate.total || selectedEstimate.fare || 0).toFixed(2)}` : 'Ziel eingeben'}
-                  </button>
-                  <p className="mt-3 text-center text-xs text-black/45" data-testid="taxi-customer-wallet-hint">Wallet-Guthaben: €{Number(user?.balance || 0).toFixed(2)}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-4 rounded-[28px] border border-black/8 bg-white p-4 shadow-sm" data-testid="taxi-customer-active-ride-card">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Aktive Fahrt</p>
-                    <h3 className="mt-1 text-lg font-black">{activeRide.driver?.name || 'Fahrer wird gesucht'}</h3>
-                  </div>
-                  <RideStatusBadge ride={activeRide} />
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-[#f8fafc] p-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Abholung</p>
-                    <p className="mt-1 text-sm font-semibold">{activeRide.pickup?.address}</p>
-                  </div>
-                  <div className="rounded-2xl bg-[#f8fafc] p-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-black/40">Ziel</p>
-                    <p className="mt-1 text-sm font-semibold">{activeRide.dropoff?.address}</p>
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <div className="rounded-full bg-[#f3f4f6] px-3 py-2 text-xs font-semibold text-black/70" data-testid="taxi-customer-active-ride-price">€{Number(activeRide.final_fare || activeRide.estimated_fare || 0).toFixed(2)}</div>
-                  <div className="rounded-full bg-[#f3f4f6] px-3 py-2 text-xs font-semibold text-black/70" data-testid="taxi-customer-active-ride-eta">{activeRide.driver?.eta_minutes || activeRide.eta_minutes || 4} Min</div>
-                </div>
-                <ActiveRideTracker
-                  ride={activeRideTrackerData}
-                  onCancel={handleCancelRide}
-                  onOpenLiveChat={handleOpenRideChat}
-                  onCallDriver={handleCallDriver}
-                  onShareTrip={handleShareTrip}
-                  canCall={Boolean(activeRide.driver?.phone || activeRide.driver_phone)}
-                  liveMovementLabel={liveMovementLabel}
-                />
-                {chatOpen ? (
-                  <RideChatPanel messages={rideMessages} loading={chatLoading} draft={messageDraft} onDraftChange={setMessageDraft} onSend={handleSendRideMessage} />
-                ) : null}
-              </div>
-            )}
-          </div>
-        </section>
+          {!activeRide && sheetMode !== 'search' ? (
+            <div className="sticky bottom-0 mt-5 bg-white pb-safe" data-testid="taxi-booking-cta-wrap">
+              <button
+                onClick={dropoff.address ? handleBookRide : () => setSheetMode('search')}
+                disabled={booking || estimating}
+                className="mb-safe mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#FFD600] text-lg font-black text-black shadow-lg shadow-[#FFD600]/20 disabled:opacity-50"
+                data-testid="book-ride-button"
+              >
+                {booking || estimating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Clock3 className="h-5 w-5" />}
+                {dropoff.address ? (selectedEstimate ? `Jetzt bestellen · ${formatPrice(selectedEstimate)}` : 'Preise laden…') : 'Ziel eingeben'}
+              </button>
+            </div>
+          ) : null}
+        </motion.div>
       </div>
     </div>
   );
