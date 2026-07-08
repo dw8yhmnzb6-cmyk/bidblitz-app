@@ -418,8 +418,8 @@ const ProfileView = ({ userId, userName, userEmail, userRole, userBalance, userC
 
 // ── Language Names Map ──
 const LANG_NAMES = {
-  en: "English", de: "Deutsch", sq: "Shqip", tr: "Türkçe", fr: "Français",
-  es: "Español", it: "Italiano", pt: "Português", nl: "Nederlands", pl: "Polski", ru: "Русский", ar: "العربية",
+  en: "English", "en-US": "English (US)", de: "Deutsch", sq: "Shqip", "sq-XK": "Kosovë", tr: "Türkçe", fr: "Français",
+  es: "Español", it: "Italiano", pt: "Português", nl: "Nederlands", pl: "Polski", ru: "Русский", ar: "العربية", "ar-AE": "الإمارات",
 };
 
 // ── Settings Sub-page ──
@@ -570,7 +570,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
               </motion.div>
             )}
           </AnimatePresence>
-          <MenuRow icon={Moon} label={t("settings.appearance")} desc={darkMode ? t("settings.dark_mode") : "Light"} color="#6366F1" isLast right={<Toggle on={darkMode} onToggle={toggleDark} />} />
+          <MenuRow icon={Moon} label={t("settings.appearance") || t("settings.appearance_label")} desc={darkMode ? t("settings.dark_mode") : (t("common.light") || "Light")} color="#6366F1" isLast right={<Toggle on={darkMode} onToggle={toggleDark} />} />
         </div>
       </motion.div>
 
@@ -593,7 +593,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
           <MenuRow icon={Smartphone} label={t("settings.active_sessions")} desc={t("settings.devices")} color="#A855F7" isLast onClick={() => setSettingsSub("sessions")} />
         </div>
       </motion.div>
-      {saving && <p className="text-center text-[10px] text-[#00C2FF]/50 animate-pulse mt-1">Saving...</p>}
+      {saving && <p className="text-center text-[10px] text-[#00C2FF]/50 animate-pulse mt-1">{t("common.saving") || "Saving..."}</p>}
     </SubPage>
   );
 };
@@ -720,7 +720,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   const accountMenu = [
     { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("profile")) },
-    { id: "notifications-settings", icon: Bell, label: "Push-Benachrichtigungen", desc: "Echtzeit-Updates für SOS & mehr", color: "#FFB800", action: gatedAction(() => setSubPage("push-settings")) },
+    { id: "notifications-settings", icon: Bell, label: t("more.push_notifications") || "Push-Benachrichtigungen", desc: t("more.push_notifications_desc") || "Echtzeit-Updates für SOS & mehr", color: "#FFB800", action: gatedAction(() => setSubPage("push-settings")) },
     { id: "cards", icon: CreditCard, label: t("more.payment_methods"), desc: t("more.cards_desc"), color: "#A855F7", action: gatedAction(() => {}) },
     { id: "security", icon: Shield, label: t("more.security"), desc: t("more.security_desc"), color: "#00D26A", action: gatedAction(() => setSubPage("kyc")) },
   ];
@@ -728,26 +728,26 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   // Premium Finance Features
   const financeMenu = [
     { id: "split-bill", icon: Users, label: t("split.title") || "Rechnung teilen", desc: t("split.menu_desc") || "Split bills with friends", color: "#FF8C42", action: gatedAction(() => onNavigate("/split-bill")) },
-    { id: "p2p-handle", icon: AtSign, label: "Senden & Empfangen", desc: "Per @handle wie Venmo/Revolut", color: "#00E0FF", action: gatedAction(() => onNavigate("/p2p")) },
-    { id: "card", icon: CreditCard, label: "BidBlitz Card", desc: "Virtuelle & physische Debit-Card", color: "#FFD166", action: gatedAction(() => onNavigate("/card")) },
-    { id: "commerce-center", icon: Sparkles, label: "Commerce Center", desc: "Marketplace, Flash Sales, Penny Auctions, Live Shopping", color: "#FF7A18", action: gatedAction(() => onNavigate("/commerce-center")) },
-    { id: "mobility-center", icon: Car, label: "Mobility Center", desc: "Taxi, Scooter, EV Charging und Tracking zentral", color: "#00C2FF", action: gatedAction(() => onNavigate("/mobility-center")) },
-    { id: "live", icon: Radio, label: "Live Shopping", desc: "Streams, Auktionen & Deals live", color: "#FF4060", action: () => onNavigate("/live") },
-    { id: "groupchat", icon: MessageSquare, label: "Gruppenchat", desc: "WeChat-style mit @handle-Invites", color: "#00E89D", action: gatedAction(() => onNavigate("/groupchat")) },
-    { id: "roundup", icon: PiggyBank, label: "Round-up Sparen", desc: "Auto-runden & beiseite legen", color: "#FF6B9D", action: gatedAction(() => onNavigate("/roundup")) },
-    { id: "apartments", icon: Home, label: "Apartments", desc: "Airbnb-Style Übernachtungen", color: "#F4A261", action: () => onNavigate("/apartments") },
+    { id: "p2p-handle", icon: AtSign, label: t("more.send_receive") || "Senden & Empfangen", desc: t("more.send_receive_desc") || "Per @handle wie Venmo/Revolut", color: "#00E0FF", action: gatedAction(() => onNavigate("/p2p")) },
+    { id: "card", icon: CreditCard, label: t("more.bidblitz_card") || "BidBlitz Card", desc: t("more.bidblitz_card_desc") || "Virtuelle & physische Debit-Card", color: "#FFD166", action: gatedAction(() => onNavigate("/card")) },
+    { id: "commerce-center", icon: Sparkles, label: t("more.commerce_center") || "Commerce Center", desc: t("more.commerce_center_desc") || "Marketplace, Flash Sales, Penny Auctions, Live Shopping", color: "#FF7A18", action: gatedAction(() => onNavigate("/commerce-center")) },
+    { id: "mobility-center", icon: Car, label: t("more.mobility_center") || "Mobility Center", desc: t("more.mobility_center_desc") || "Taxi, Scooter, EV Charging und Tracking zentral", color: "#00C2FF", action: gatedAction(() => onNavigate("/mobility-center")) },
+    { id: "live", icon: Radio, label: t("more.live_shopping") || "Live Shopping", desc: t("more.live_shopping_desc") || "Streams, Auktionen & Deals live", color: "#FF4060", action: () => onNavigate("/live") },
+    { id: "groupchat", icon: MessageSquare, label: t("more.groupchat") || "Gruppenchat", desc: t("more.groupchat_desc") || "WeChat-style mit @handle-Invites", color: "#00E89D", action: gatedAction(() => onNavigate("/groupchat")) },
+    { id: "roundup", icon: PiggyBank, label: t("more.roundup") || "Round-up Sparen", desc: t("more.roundup_desc") || "Auto-runden & beiseite legen", color: "#FF6B9D", action: gatedAction(() => onNavigate("/roundup")) },
+    { id: "apartments", icon: Home, label: t("more.apartments") || "Apartments", desc: t("more.apartments_desc") || "Airbnb-Style Übernachtungen", color: "#F4A261", action: () => onNavigate("/apartments") },
     { id: "virtual-cards", icon: CreditCard, label: t("cards.title") || "Virtuelle Karten", desc: t("cards.menu_desc") || "Einmal-Karten für Online-Shopping", color: "#B068FF", action: gatedAction(() => onNavigate("/virtual-cards")) },
     { id: "savings", icon: PiggyBank, label: t("savings.title") || "Sparziele", desc: t("savings.menu_desc") || "Automatisch sparen", color: "#00E89D", action: gatedAction(() => onNavigate("/savings")) },
     { id: "bnpl", icon: BadgePercent, label: t("bnpl.title") || "Später zahlen", desc: t("bnpl.menu_desc") || "Buy now, pay later", color: "#00D4FF", action: gatedAction(() => onNavigate("/bnpl")) },
     { id: "gift-cards", icon: Gift, label: t("giftcards.title") || "Geschenkkarten", desc: t("giftcards.menu_desc") || "Gift cards kaufen & verschenken", color: "#FFD166", action: gatedAction(() => onNavigate("/gift-cards")) },
     { id: "bills", icon: Banknote, label: t("bills.title") || "Rechnungen & eSIM", desc: t("bills.menu_desc") || "Strom, Gas, eSIM bezahlen", color: "#00C2FF", action: gatedAction(() => onNavigate("/bills")) },
     { id: "credit-score", icon: Shield, label: t("more.credit_score"), desc: t("more.credit_score_desc"), color: "#10B981", action: gatedAction(() => onNavigate("/credit-score")) },
-    { id: "ai-assistant", icon: Sparkles, label: "BlitzBot", desc: "KI-Finanzassistent", color: "#A855F7", action: gatedAction(() => onNavigate("/ai-assistant")) },
-    { id: "crypto", icon: TrendingUp, label: "Krypto Wallet", desc: "BTC, ETH, SOL kaufen & verkaufen", color: "#F7931A", action: gatedAction(() => onNavigate("/crypto")) },
-    { id: "pos", icon: Store, label: "POS / Kasse", desc: "Warenwirtschaft, Kasse & Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pos")) },
-    { id: "qr-tables", icon: Store, label: "QR-Tisch-Bestellung", desc: "Tisch-QR-Codes · Auto-Bestellung · Wallet-Zahlung", color: "#00C2FF", action: gatedAction(() => onNavigate("/merchant/qr-tables")) },
-    { id: "staff", icon: Users, label: "Mitarbeiter & Zeiterfassung", desc: "Check-in/out · Schichten · Urlaub · Reports", color: "#A855F7", action: gatedAction(() => onNavigate("/merchant/staff")) },
-    { id: "budget", icon: BarChart3, label: "Budgetplaner", desc: "Ausgaben & Limits", color: "#3B82F6", action: gatedAction(() => onNavigate("/budget")) },
+    { id: "ai-assistant", icon: Sparkles, label: t("more.ai_assistant") || "BlitzBot", desc: t("more.ai_assistant_desc") || "KI-Finanzassistent", color: "#A855F7", action: gatedAction(() => onNavigate("/ai-assistant")) },
+    { id: "crypto", icon: TrendingUp, label: t("more.crypto_wallet") || "Krypto Wallet", desc: t("more.crypto_wallet_desc") || "BTC, ETH, SOL kaufen & verkaufen", color: "#F7931A", action: gatedAction(() => onNavigate("/crypto")) },
+    { id: "pos", icon: Store, label: t("more.pos") || "POS / Kasse", desc: t("more.pos_desc") || "Warenwirtschaft, Kasse & Zahlungen", color: "#00E89D", action: gatedAction(() => onNavigate("/pos")) },
+    { id: "qr-tables", icon: Store, label: t("more.qr_tables") || "QR-Tisch-Bestellung", desc: t("more.qr_tables_desc") || "Tisch-QR-Codes · Auto-Bestellung · Wallet-Zahlung", color: "#00C2FF", action: gatedAction(() => onNavigate("/merchant/qr-tables")) },
+    { id: "staff", icon: Users, label: t("more.staff_time") || "Mitarbeiter & Zeiterfassung", desc: t("more.staff_time_desc") || "Check-in/out · Schichten · Urlaub · Reports", color: "#A855F7", action: gatedAction(() => onNavigate("/merchant/staff")) },
+    { id: "budget", icon: BarChart3, label: t("more.budget") || "Budgetplaner", desc: t("more.budget_desc") || "Ausgaben & Limits", color: "#3B82F6", action: gatedAction(() => onNavigate("/budget")) },
   ];
 
   const growthMenu = [
@@ -838,7 +838,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   });
 
   const mobilityMenu = [
-    { id: "mobility-map", icon: MapPin, label: "Live Map", desc: t("more.car_rental_desc"), color: "#3B82F6", action: gatedAction(() => onNavigate("/mobility-map")) },
+    { id: "mobility-map", icon: MapPin, label: t("more.live_map") || "Live Map", desc: t("more.car_rental_desc"), color: "#3B82F6", action: gatedAction(() => onNavigate("/mobility-map")) },
     { id: "friends-map", icon: Users, label: "Freunde Karte", desc: "Sieh Freunde in deiner Nähe", color: "#A855F7", action: gatedAction(() => onNavigate("/friends-map")) },
     { id: "car-rental", icon: Car, label: t("more.car_rental"), desc: t("more.car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental") },
     { id: "car-rental-bookings", icon: Calendar, label: t("more.my_car_bookings"), desc: t("more.my_car_bookings_desc"), color: "#00C2FF", action: gatedAction(() => onNavigate("/car-rental/my-bookings")) },
@@ -928,7 +928,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
 
   // ── NEW: Compact search + accordion + 2-col grid renderer ──
   const GRID_GROUPS = [
-    { id: "quick", title: "🚀 Quick Access", color: "#F59E0B", items: quickAccessMenu },
+    { id: "quick", title: `🚀 ${t("more.quick_access") || "Quick Access"}`, color: "#F59E0B", items: quickAccessMenu },
     { id: "mobility", title: t("more.mobility") || "Mobilität", color: "#00C2FF", items: mobilityMenu },
     { id: "finance",  title: t("more.finance") || "Premium Finance", color: "#10B981", items: financeMenu },
     { id: "account",  title: t("more.account"), color: "#A855F7", items: accountMenu },
@@ -1039,7 +1039,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       })}
       {filteredGroups.length === 0 && (
         <div className="text-center py-10 text-[12px] text-white/40">
-          Keine Treffer für „{search}“
+          {(t("common.no_results_for") || "Keine Treffer für")} „{search}“
         </div>
       )}
     </div>
@@ -1142,8 +1142,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
             <LayoutDashboard size={18} style={{ color: "#00C2FF" }} />
           </div>
           <div className="flex-1 text-left">
-            <span className="text-[13px] font-semibold text-white">Alle Services</span>
-            <p className="text-[10px] text-[#555]">60+ Features entdecken</p>
+            <span className="text-[13px] font-semibold text-white">{t("home.all_services") || "Alle Services"}</span>
+            <p className="text-[10px] text-[#555]">{t("home.all_services_desc") || "60+ Features entdecken"}</p>
           </div>
           <ChevronRight size={14} className="text-[#333]" />
         </motion.button>}
@@ -1160,14 +1160,14 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
                 <ShieldCheck size={16} className="text-amber-300" />
               </div>
               <div className="flex-1">
-                <p className="text-[12px] font-bold text-white">Vor KYC nur Basisbereiche sichtbar</p>
-                <p className="mt-1 text-[11px] text-slate-300">Erst nach Identitätsprüfung werden Wallet, Marketplace, Auktionen und weitere Commerce-/Finance-Module freigeschaltet.</p>
+                <p className="text-[12px] font-bold text-white">{t("kyc.pre_gate_title") || "Vor KYC nur Basisbereiche sichtbar"}</p>
+                <p className="mt-1 text-[11px] text-slate-300">{t("kyc.pre_gate_desc") || "Erst nach Identitätsprüfung werden Wallet, Marketplace, Auktionen und weitere Commerce-/Finance-Module freigeschaltet."}</p>
                 <button
                   onClick={() => onNavigate("/kyc")}
                   className="mt-3 rounded-xl bg-amber-300 px-3.5 py-2 text-[11px] font-black text-slate-950"
                   data-testid="pre-kyc-more-start-button"
                 >
-                  KYC jetzt starten
+                  {t("kyc.start_now") || "KYC jetzt starten"}
                 </button>
               </div>
             </div>
@@ -1185,7 +1185,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Suche nach Service, z.B. Wallet, Scooter, AGB..."
+            placeholder={t("more.search_placeholder") || "Suche nach Service, z.B. Wallet, Scooter, AGB..."}
             className="w-full bg-white/[0.03] border border-white/[0.05] rounded-xl pl-9 pr-9 py-2.5 text-[12px] text-white placeholder-white/30 outline-none focus:border-[#00C2FF]/40"
           />
           {search && (

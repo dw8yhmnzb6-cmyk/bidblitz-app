@@ -44,7 +44,7 @@ export function I18nProvider({ children }) {
 
   const setLang = useCallback((code) => {
     setLangState(code);
-    try { localStorage.setItem(STORAGE_KEY, code); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, code); } catch (error) { void error; }
     // Set RTL on body
     const info = LANGUAGES.find(l => l.code === code);
     document.documentElement.dir = info?.rtl ? "rtl" : "ltr";
@@ -3675,6 +3675,81 @@ const _base = {
 const translations = {};
 for (const lang of Object.keys(_base)) {
   translations[lang] = { ..._base[lang], ...(extraTranslations[lang] || {}) };
+}
+
+const sharedFallbackKeys = {
+  "common.light": { en: "Light", de: "Hell" },
+  "common.saving": { en: "Saving...", de: "Speichert..." },
+  "common.active": { en: "ACTIVE", de: "AKTIV" },
+  "home.view_balance": { en: "View Balance", de: "Balance ansehen" },
+  "home.commerce_center": { en: "Commerce Center", de: "Commerce Center" },
+  "home.commerce_center_desc": { en: "Flash Sales, Live Shopping, Marketplace", de: "Flash Sales, Live Shopping, Marktplatz" },
+  "home.all_services": { en: "All Services", de: "Alle Services" },
+  "home.mobility_center": { en: "Mobility Center", de: "Mobility Center" },
+  "home.mobility_center_desc": { en: "Taxi, Scooter, EV and tracking", de: "Taxi, Scooter, EV und Tracking" },
+  "home.all_services_discover": { en: "Discover all services", de: "Alle Services entdecken" },
+  "home.all_services_desc": { en: "60+ features in one app", de: "60+ Features in einer App" },
+  "more.push_notifications": { en: "Push Notifications", de: "Push-Benachrichtigungen" },
+  "more.push_notifications_desc": { en: "Real-time updates for SOS and more", de: "Echtzeit-Updates für SOS & mehr" },
+  "more.quick_access": { en: "Quick Access", de: "Quick Access" },
+  "more.live_map": { en: "Live Map", de: "Live-Karte" },
+  "more.search_placeholder": { en: "Search for a service, e.g. wallet, scooter, terms...", de: "Suche nach Service, z.B. Wallet, Scooter, AGB..." },
+  "more.send_receive": { en: "Send & Receive", de: "Senden & Empfangen" },
+  "more.send_receive_desc": { en: "By @handle like Venmo/Revolut", de: "Per @handle wie Venmo/Revolut" },
+  "more.bidblitz_card": { en: "BidBlitz Card", de: "BidBlitz Card" },
+  "more.bidblitz_card_desc": { en: "Virtual & physical debit card", de: "Virtuelle & physische Debit-Card" },
+  "more.commerce_center": { en: "Commerce Center", de: "Commerce Center" },
+  "more.commerce_center_desc": { en: "Marketplace, flash sales, penny auctions, live shopping", de: "Marketplace, Flash Sales, Penny Auctions, Live Shopping" },
+  "more.mobility_center": { en: "Mobility Center", de: "Mobility Center" },
+  "more.mobility_center_desc": { en: "Taxi, scooter, EV charging and tracking", de: "Taxi, Scooter, EV Charging und Tracking zentral" },
+  "more.live_shopping": { en: "Live Shopping", de: "Live Shopping" },
+  "more.live_shopping_desc": { en: "Streams, auctions and deals live", de: "Streams, Auktionen & Deals live" },
+  "more.groupchat": { en: "Group Chat", de: "Gruppenchat" },
+  "more.groupchat_desc": { en: "WeChat-style with @handle invites", de: "WeChat-style mit @handle-Invites" },
+  "more.roundup": { en: "Round-up Savings", de: "Round-up Sparen" },
+  "more.roundup_desc": { en: "Auto-round and set aside spare change", de: "Auto-runden & beiseite legen" },
+  "more.apartments": { en: "Apartments", de: "Apartments" },
+  "more.apartments_desc": { en: "Airbnb-style stays", de: "Airbnb-Style Übernachtungen" },
+  "more.ai_assistant": { en: "BlitzBot", de: "BlitzBot" },
+  "more.ai_assistant_desc": { en: "AI finance assistant", de: "KI-Finanzassistent" },
+  "more.crypto_wallet": { en: "Crypto Wallet", de: "Krypto Wallet" },
+  "more.crypto_wallet_desc": { en: "Buy & sell BTC, ETH, SOL", de: "BTC, ETH, SOL kaufen & verkaufen" },
+  "more.pos": { en: "POS / Register", de: "POS / Kasse" },
+  "more.pos_desc": { en: "Inventory, register and payments", de: "Warenwirtschaft, Kasse & Zahlungen" },
+  "more.qr_tables": { en: "QR Table Ordering", de: "QR-Tisch-Bestellung" },
+  "more.qr_tables_desc": { en: "Table QR codes · auto ordering · wallet payment", de: "Tisch-QR-Codes · Auto-Bestellung · Wallet-Zahlung" },
+  "more.staff_time": { en: "Staff & Time Tracking", de: "Mitarbeiter & Zeiterfassung" },
+  "more.staff_time_desc": { en: "Check-in/out · shifts · leave · reports", de: "Check-in/out · Schichten · Urlaub · Reports" },
+  "more.budget": { en: "Budget Planner", de: "Budgetplaner" },
+  "more.budget_desc": { en: "Expenses & limits", de: "Ausgaben & Limits" },
+  "common.no_results_for": { en: "No results for", de: "Keine Treffer für" },
+  "common.close": { en: "Close", de: "Schließen" },
+  "common.customize": { en: "Customize", de: "Anpassen" },
+  "common.save_selection": { en: "Save selection", de: "Auswahl speichern" },
+  "kyc.pre_gate_title": { en: "Only basic areas visible before KYC", de: "Vor KYC nur Basisbereiche sichtbar" },
+  "kyc.pre_gate_desc": { en: "Wallet, marketplace, auctions and more commerce/finance modules are unlocked after identity verification.", de: "Erst nach Identitätsprüfung werden Wallet, Marketplace, Auktionen und weitere Commerce-/Finance-Module freigeschaltet." },
+  "kyc.start_now": { en: "Start KYC now", de: "KYC jetzt starten" },
+  "cookie.title": { en: "We respect your privacy", de: "Wir respektieren deine Privatsphäre" },
+  "cookie.desc": { en: "BidBlitz only uses technically necessary cookies (session). With your consent, analytics cookies help us improve the app.", de: "BidBlitz nutzt nur technisch notwendige Cookies (Session). Mit deiner Einwilligung helfen Analytics-Cookies uns die App zu verbessern." },
+  "cookie.privacy_link": { en: "Privacy policy", de: "Datenschutzerklärung" },
+  "cookie.necessary": { en: "Necessary", de: "Notwendig" },
+  "cookie.necessary_desc": { en: "Login session, CSRF protection", de: "Login-Session, CSRF-Schutz" },
+  "cookie.analytics": { en: "Analytics", de: "Analytics" },
+  "cookie.analytics_desc": { en: "Anonymous usage statistics", de: "Anonyme Nutzungsstatistik" },
+  "cookie.crash": { en: "Crash Monitoring", de: "Crash-Monitoring" },
+  "cookie.crash_desc": { en: "Sentry bug reports", de: "Sentry Bug-Reports" },
+  "cookie.marketing": { en: "Marketing", de: "Marketing" },
+  "cookie.marketing_desc": { en: "Personalized recommendations", de: "Personalisierte Empfehlungen" },
+  "cookie.necessary_only": { en: "Necessary only", de: "Nur notwendige" },
+  "cookie.accept_all": { en: "Accept all", de: "Alle akzeptieren" },
+};
+
+for (const [key, values] of Object.entries(sharedFallbackKeys)) {
+  for (const lang of Object.keys(translations)) {
+    if (!translations[lang][key]) {
+      translations[lang][key] = values[lang] ?? values[resolveCode(lang)] ?? values.en ?? key;
+    }
+  }
 }
 
 export default translations;

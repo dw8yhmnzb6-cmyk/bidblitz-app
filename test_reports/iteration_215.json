@@ -1,0 +1,91 @@
+{
+  "summary": "I18n/Translation bug testing for BidBlitz app. Tested guest home and More page language switching for German, English (en-US), Arabic (ar-AE), and Albanian (sq-XK). Main translation fixes are WORKING correctly - Home page, More page main content, and Cookie banner all translate properly when language is switched. However, found several remaining hardcoded texts and RTL issues on More page.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "BackToHomeBar.jsx",
+        "issue": "Hardcoded German text 'Zur {label} zurück' - needs translation using t() function",
+        "selector": "[data-testid='back-to-home']",
+        "priority": "MEDIUM",
+        "file": "/app/frontend/src/components/BackToHomeBar.jsx",
+        "line": "13"
+      },
+      {
+        "component": "GuestCTABar.jsx",
+        "issue": "Hardcoded English 'Register' and 'Login' button labels - needs translation",
+        "selector": "[data-testid='page-register-btn'], [data-testid='page-login-btn']",
+        "priority": "MEDIUM",
+        "file": "/app/frontend/src/components/GuestCTABar.jsx",
+        "lines": "22, 31"
+      },
+      {
+        "component": "MorePage.jsx",
+        "issue": "Hardcoded German 'Freunde Karte' and 'Sieh Freunde in deiner Nähe' for friends-map menu item",
+        "selector": "friends-map menu item",
+        "priority": "MEDIUM",
+        "file": "/app/frontend/src/pages/MorePage.jsx",
+        "line": "842"
+      },
+      {
+        "component": "MorePage.jsx",
+        "issue": "Hardcoded German 'Freunde' and 'Freunde hinzufügen & verwalten' for friends menu item",
+        "selector": "friends menu item",
+        "priority": "MEDIUM",
+        "file": "/app/frontend/src/pages/MorePage.jsx",
+        "line": "824"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "RTL direction on More page",
+        "issue": "RTL direction not applied when switching to Arabic on the More page - shows 'ltr' instead of 'rtl'. Works correctly on Home page.",
+        "affected_selectors": ["[data-testid='more-page']"],
+        "priority": "MEDIUM"
+      },
+      {
+        "flow": "Albanian (sq-XK) on More page",
+        "issue": "When switching to Albanian (sq-XK) on More page, content falls back to English instead of Albanian translations. Home page Albanian works correctly.",
+        "affected_selectors": ["[data-testid='more-page']"],
+        "priority": "LOW"
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Add translation support to BackToHomeBar.jsx - replace hardcoded 'Zur {label} zurück' with t('nav.back_to_home') or similar",
+    "Add translation support to GuestCTABar.jsx - replace hardcoded 'Register' and 'Login' with t('auth.register') and t('auth.login')",
+    "Add translation keys for friends-map menu item in MorePage.jsx line 842 - use t('more.friends_map') and t('more.friends_map_desc')",
+    "Add translation keys for friends menu item in MorePage.jsx line 824 - use t('more.friends') and t('more.friends_desc')",
+    "Investigate RTL direction not being applied on More page when Arabic is selected",
+    "Add Albanian translations to sharedFallbackKeys in I18nContext.jsx for More page keys"
+  ],
+  "critical_code_review_comments": [
+    "BackToHomeBar.jsx has hardcoded German text that doesn't use the i18n system",
+    "GuestCTABar.jsx has hardcoded English text that doesn't use the i18n system",
+    "MorePage.jsx lines 824 and 842 have hardcoded German menu items without t() wrapper",
+    "sharedFallbackKeys in I18nContext.jsx only has 'en' and 'de' translations - missing sq, ar, tr for More page keys"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "85%"
+  },
+  "test_credentials": "N/A - guest mode testing",
+  "seed_data_creation": "N/A",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Main i18n translation fixes are working correctly. Guest Home page language switching works perfectly for all tested languages (de, en-US, ar-AE, sq-XK). Cookie banner translates correctly. More page main content translates correctly. Remaining issues are: (1) BackToHomeBar.jsx hardcoded German, (2) GuestCTABar.jsx hardcoded English, (3) MorePage.jsx lines 824 and 842 hardcoded German menu items, (4) RTL not applied on More page for Arabic, (5) Albanian translations missing for some More page keys.",
+  "working_features": [
+    "Guest Home page language switching (de, en-US, ar-AE, sq-XK)",
+    "Cookie banner translation",
+    "More page main content translation (All Services, MOBILITY, PREMIUM FINANCE, Split Bill, Send & Receive)",
+    "RTL direction on Home page for Arabic",
+    "Regional language aliases (en-US -> en, ar-AE -> ar, sq-XK -> sq)"
+  ],
+  "test_date": "2026-07-08T15:37:00Z"
+}

@@ -43,6 +43,7 @@ const ServiceCard = ({ feature, index, onClick }) => {
   const Icon = iconMap[feature.icon] || Wallet;
   const hasImage = feature.image;
   const isLarge = feature.large;
+  const { t } = useI18n();
 
   return (
     <motion.div
@@ -80,7 +81,7 @@ const ServiceCard = ({ feature, index, onClick }) => {
         <p className="text-[11px] text-[#444] font-medium">{feature.description}</p>
         {isLarge && (
           <motion.div className="mt-auto pt-3 flex items-center gap-1.5">
-            <span className="text-[11px] text-[#00C2FF] font-medium">{feature.linkText || "View Balance"}</span>
+            <span className="text-[11px] text-[#00C2FF] font-medium">{feature.linkText || t("home.view_balance") || "View Balance"}</span>
             <motion.div animate={{ x: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}>
               <ArrowUpRight size={12} className="text-[#00C2FF]" />
             </motion.div>
@@ -334,8 +335,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     { id: "nfc", icon: Smartphone, title: t("home.f_nfc") || "NFC Pay", desc: t("home.f_nfc_d") || "Tap to pay contactless", color: "#00C2FF", route: "/nfc" },
     { id: "vip", icon: Star, title: t("home.f_vip") || "VIP", desc: t("home.f_vip_d") || "Premium subscriptions", color: "#FFD700", route: "/vip" },
     { id: "referral", icon: Gift, title: t("home.f_referral") || "Referrals", desc: t("home.f_referral_d") || "Invite friends, earn rewards", color: "#00E89D", route: "/referral" },
-    { id: "commerce", icon: Sparkles, title: "Commerce Center", desc: "Flash Sales, Live Shopping, Marketplace", color: "#FF7A18", route: "/commerce-center" },
-    { id: "mobilityCenter", icon: Car, title: "Mobility Center", desc: "Taxi, Scooter, EV und Tracking", color: "#00C2FF", route: "/mobility-center" },
+    { id: "commerce", icon: Sparkles, title: t("home.commerce_center") || "Commerce Center", desc: t("home.commerce_center_desc") || "Flash Sales, Live Shopping, Marketplace", color: "#FF7A18", route: "/commerce-center" },
+    { id: "mobilityCenter", icon: Car, title: t("home.mobility_center") || "Mobility Center", desc: t("home.mobility_center_desc") || "Taxi, Scooter, EV und Tracking", color: "#00C2FF", route: "/mobility-center" },
     { id: "marketplace", icon: ShoppingBag, title: t("home.f_marketplace") || "Marketplace", desc: t("home.f_marketplace_d") || "Buy & sell items", color: "#FF6B6B", route: "/marketplace" },
     { id: "rewards", icon: Sparkles, title: t("home.f_rewards_more") || "Rewards", desc: t("home.f_rewards_more_d") || "Daily rewards & streaks", color: "#A855F7", route: "/rewards" },
   ];
@@ -498,10 +499,10 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               transition={{ delay: 0.18, ...slide }}
             >
               {[
-                { id: "topup", icon: Plus, label: "Aufladen", color: "#00C2FF", onClick: () => onNavigate("/wallet?action=topup") },
-                { id: "send", icon: Send, label: "Senden", color: "#00D26A", onClick: () => onNavigate("/wallet?action=send") },
-                { id: "scan", icon: QrCode, label: "Scannen", color: "#A855F7", onClick: () => onNavigate("/scan") },
-                { id: "cards", icon: CreditCard, label: "Karten", color: "#FFB800", onClick: () => onNavigate("/card") },
+                { id: "topup", icon: Plus, label: t("wallet.add") || "Aufladen", color: "#00C2FF", onClick: () => onNavigate("/wallet?action=topup") },
+                { id: "send", icon: Send, label: t("wallet.send") || "Senden", color: "#00D26A", onClick: () => onNavigate("/wallet?action=send") },
+                { id: "scan", icon: QrCode, label: t("nav.scan") || "Scannen", color: "#A855F7", onClick: () => onNavigate("/scan") },
+                { id: "cards", icon: CreditCard, label: t("cards.title") || "Karten", color: "#FFB800", onClick: () => onNavigate("/card") },
               ].map((a, i) => (
                 <motion.button
                   key={a.id}
@@ -672,8 +673,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00C2FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
               </div>
               <div className="flex-1">
-                <div className="text-[13px] font-semibold text-white">Alle Services entdecken</div>
-                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.72)" }}>60+ Features in einer App</div>
+                <div className="text-[13px] font-semibold text-white">{t("home.all_services_discover") || "Alle Services entdecken"}</div>
+                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.72)" }}>{t("home.all_services_desc") || "60+ Features in einer App"}</div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.56)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
             </motion.button>
@@ -722,7 +723,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                       <p className="text-[11px] text-white/64 font-medium">{f.desc}</p>
                       {f.large && (
                         <motion.div className="mt-auto pt-3 flex items-center gap-1.5">
-                          <span className="text-[11px] font-medium" style={{ color: f.color }}>View Balance</span>
+                          <span className="text-[11px] font-medium" style={{ color: f.color }}>{t("home.view_balance") || "View Balance"}</span>
                           <motion.div animate={{ x: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}>
                             <ArrowUpRight size={12} style={{ color: f.color }} />
                           </motion.div>
@@ -749,7 +750,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
                   style={{ background: "rgba(0,226,157,0.08)", color: "#00E89D", border: "1px solid rgba(0,226,157,0.2)" }}>
-                  <Sparkles size={10} /> AKTIV
+                  <Sparkles size={10} /> {t("common.active") || "AKTIV"}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2.5">

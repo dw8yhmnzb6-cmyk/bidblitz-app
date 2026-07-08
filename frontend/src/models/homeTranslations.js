@@ -305,7 +305,15 @@ const homeGuest = {
   },
 };
 
+function resolveGuestLang(lang) {
+  if (lang === "sq-XK") return "sq";
+  if (lang === "en-US") return "en";
+  if (lang === "ar-AE") return "ar";
+  return lang;
+}
+
 export function useGuestTranslations(lang) {
-  const dict = homeGuest[lang] || homeGuest.en;
+  const resolved = resolveGuestLang(lang);
+  const dict = homeGuest[resolved] || homeGuest.en;
   return (key) => dict[key] || homeGuest.en[key] || key;
 }

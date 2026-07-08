@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie, X, Check, Settings } from 'lucide-react';
+import { useI18n } from '../store';
 
 const STORAGE_KEY = 'bidblitz_cookie_consent_v1';
 
@@ -38,6 +39,7 @@ export function setCookieConsent(consent) {
 }
 
 export default function CookieBanner({ onNavigate }) {
+  const { t } = useI18n();
   const [show, setShow] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [opts, setOpts] = useState({ analytics: false, crash: false, marketing: false });
@@ -73,17 +75,16 @@ export default function CookieBanner({ onNavigate }) {
           <div className="flex items-start gap-3 mb-3">
             <Cookie size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="text-sm font-bold text-white mb-1">🍪 Wir respektieren deine Privatsphäre</h3>
+              <h3 className="text-sm font-bold text-white mb-1">🍪 {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}</h3>
               <p className="text-xs text-gray-300 leading-relaxed">
-                BidBlitz nutzt nur technisch notwendige Cookies (Session). Mit deiner Einwilligung helfen
-                Analytics-Cookies uns die App zu verbessern.{' '}
+                {t('cookie.desc') || 'BidBlitz nutzt nur technisch notwendige Cookies (Session). Mit deiner Einwilligung helfen Analytics-Cookies uns die App zu verbessern.'}{' '}
                 {onNavigate && (
                   <button
                     onClick={() => onNavigate('/datenschutz')}
                     className="text-blue-400 underline"
                     data-testid="cookie-banner-privacy-link"
                   >
-                    Datenschutzerklärung
+                    {t('cookie.privacy_link') || 'Datenschutzerklärung'}
                   </button>
                 )}
               </p>
@@ -94,15 +95,15 @@ export default function CookieBanner({ onNavigate }) {
             <div className="space-y-2 mb-3 pl-7" data-testid="cookie-banner-details">
               <label className="flex items-center justify-between gap-2 text-xs">
                 <span className="text-gray-300">
-                  <strong className="text-white">Notwendig</strong> — Login-Session, CSRF-Schutz
+                  <strong className="text-white">{t('cookie.necessary') || 'Notwendig'}</strong> — {t('cookie.necessary_desc') || 'Login-Session, CSRF-Schutz'}
                 </span>
                 <span className="text-emerald-400 text-[10px] font-bold flex items-center gap-1">
-                  <Check size={12} /> AKTIV
+                  <Check size={12} /> {t('common.active') || 'AKTIV'}
                 </span>
               </label>
               <label className="flex items-center justify-between gap-2 text-xs cursor-pointer">
                 <span className="text-gray-300">
-                  <strong className="text-white">Analytics</strong> — Anonyme Nutzungsstatistik
+                  <strong className="text-white">{t('cookie.analytics') || 'Analytics'}</strong> — {t('cookie.analytics_desc') || 'Anonyme Nutzungsstatistik'}
                 </span>
                 <input
                   type="checkbox"
@@ -113,7 +114,7 @@ export default function CookieBanner({ onNavigate }) {
               </label>
               <label className="flex items-center justify-between gap-2 text-xs cursor-pointer">
                 <span className="text-gray-300">
-                  <strong className="text-white">Crash-Monitoring</strong> — Sentry Bug-Reports
+                  <strong className="text-white">{t('cookie.crash') || 'Crash-Monitoring'}</strong> — {t('cookie.crash_desc') || 'Sentry Bug-Reports'}
                 </span>
                 <input
                   type="checkbox"
@@ -124,7 +125,7 @@ export default function CookieBanner({ onNavigate }) {
               </label>
               <label className="flex items-center justify-between gap-2 text-xs cursor-pointer">
                 <span className="text-gray-300">
-                  <strong className="text-white">Marketing</strong> — Personalisierte Empfehlungen
+                  <strong className="text-white">{t('cookie.marketing') || 'Marketing'}</strong> — {t('cookie.marketing_desc') || 'Personalisierte Empfehlungen'}
                 </span>
                 <input
                   type="checkbox"
@@ -142,7 +143,7 @@ export default function CookieBanner({ onNavigate }) {
               data-testid="cookie-banner-reject"
               className="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg"
             >
-              Nur notwendige
+              {t('cookie.necessary_only') || 'Nur notwendige'}
             </button>
             <button
               onClick={() => setShowDetails(!showDetails)}
@@ -150,7 +151,7 @@ export default function CookieBanner({ onNavigate }) {
               className="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 rounded-lg flex items-center justify-center gap-1"
             >
               <Settings size={12} />
-              {showDetails ? 'Schließen' : 'Anpassen'}
+              {showDetails ? (t('common.close') || 'Schließen') : (t('common.customize') || 'Anpassen')}
             </button>
             {showDetails && (
               <button
@@ -158,7 +159,7 @@ export default function CookieBanner({ onNavigate }) {
                 data-testid="cookie-banner-save"
                 className="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg"
               >
-                Auswahl speichern
+                {t('common.save_selection') || 'Auswahl speichern'}
               </button>
             )}
             <button
@@ -166,7 +167,7 @@ export default function CookieBanner({ onNavigate }) {
               data-testid="cookie-banner-accept-all"
               className="flex-1 sm:flex-initial px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black rounded-lg"
             >
-              Alle akzeptieren
+              {t('cookie.accept_all') || 'Alle akzeptieren'}
             </button>
           </div>
         </div>
