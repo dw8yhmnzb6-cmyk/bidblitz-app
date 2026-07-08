@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Briefcase, Clock3, Heart, Home, Loader2, MapPin, Navigation, Search, Star, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { TaxiMap } from '../components/RealMap';
-import ActiveRideTracker from '../components/taxi/ActiveRideTracker';
 import { VehicleIcon } from '../components/taxi/TaxiVehicleIcon';
 import { useTaxiGeocoder } from '../components/taxi/useTaxiGeocoder';
 import { useUser } from '../store/UserContext';
@@ -149,6 +148,17 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
   const price = Number(ride?.estimated_price || ride?.fare_estimate || ride?.final_fare || 0);
   const pickupAddress = ride?.pickup?.address || ride?.pickup_address || 'Dein Standort';
   const dropoffAddress = ride?.dropoff?.address || ride?.dropoff_address || 'Ziel';
+  const status = ride?.status || 'requested';
+  const statusLabel = status === 'accepted'
+    ? 'Fahrer gefunden'
+    : status === 'arriving'
+      ? 'Fahrer kommt'
+      : status === 'started'
+        ? 'Fahrt läuft'
+        : status === 'completed'
+          ? 'Abgeschlossen'
+          : 'Suche Fahrer…';
+  const canCancel = ['requested', 'accepted', 'arriving'].includes(status);
 
   return (
     <div className="space-y-4" data-testid="booking-status-view">
@@ -196,14 +206,49 @@ function BookingStatusSimple({ ride, onCancel, onOpenLiveChat, onCallDriver, onS
           </div>
         </div>
       </div>
-      <ActiveRideTracker
-        ride={ride}
-        onCancel={onCancel}
-        onOpenLiveChat={onOpenLiveChat}
-        onCallDriver={onCallDriver}
-        onShareTrip={onShareTrip}
-        canCall={Boolean(ride?.driver?.phone || ride?.driver_phone)}
-      />
+      <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Status</div>
+            <div className="mt-1 text-lg font-black text-[#0A0A0A]">{statusLabel}</div>
+          </div>
+          <div className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700" data-testid="booking-status-pill">
+            {status.toUpperCase()}
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <button
+            onClick={onOpenLiveChat}
+            className="rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
+            data-testid="booking-chat-button"
+          >
+            Chat
+          </button>
+          <button
+            onClick={onCallDriver}
+            className="rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
+            data-testid="booking-call-button"
+          >
+            Anrufen
+          </button>
+          <button
+            onClick={onShareTrip}
+            className="rounded-2xl bg-zinc-100 px-3 py-3 text-sm font-bold text-zinc-800"
+            data-testid="booking-share-button"
+          >
+            Teilen
+          </button>
+        </div>
+        {canCancel ? (
+          <button
+            onClick={onCancel}
+            className="mt-4 w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-600"
+            data-testid="booking-cancel-button"
+          >
+            Fahrt stornieren
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
