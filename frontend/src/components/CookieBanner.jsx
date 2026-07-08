@@ -54,14 +54,15 @@ export default function CookieBanner({ onNavigate }) {
       const blockingModal = document.querySelector('[data-testid="send-money-modal"]');
       const walletSecurityFocused = document.querySelector('[data-cookie-banner-block="true"]');
       const sendScannerOpen = document.querySelector('[data-testid="send-money-scan-sheet"]');
-      if (blockingModal || walletSecurityFocused || sendScannerOpen) {
+      const cashierOrScannerPage = document.querySelector('[data-cookie-banner-suppress="true"]');
+      if (blockingModal || walletSecurityFocused || sendScannerOpen || cashierOrScannerPage) {
         setShow(false);
       }
     };
 
     syncOverlayVisibility();
     const observer = new MutationObserver(syncOverlayVisibility);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-cookie-banner-block'] });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-cookie-banner-block', 'data-cookie-banner-suppress'] });
     return () => observer.disconnect();
   }, []);
 
