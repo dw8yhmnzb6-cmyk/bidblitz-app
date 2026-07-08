@@ -324,7 +324,8 @@ export default function TaxiPage({ onNavigate }) {
 
   const runSearch = useCallback((value) => {
     setSearchValue(value);
-    const presetHits = getTaxiPresetPlaceHints(value, 6);
+    const proximity = pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null;
+    const presetHits = getTaxiPresetPlaceHints(value, proximity, 6);
     search(
       'taxi-simple-dropoff',
       value,
@@ -341,7 +342,8 @@ export default function TaxiPage({ onNavigate }) {
     }
     let cancelled = false;
     const loadHints = async () => {
-      const presetHints = getTaxiPresetPlaceHints(searchValue, 4);
+      const proximity = pickup?.lat ? { lat: pickup.lat, lng: pickup.lng } : null;
+      const presetHints = getTaxiPresetPlaceHints(searchValue, proximity, 4);
       const hints = await api.fetchRegionalPlaceHints(searchValue, pickup?.lat ? { lat: pickup.lat, lng: pickup.lng, limit: 4 } : { limit: 4 });
       if (!cancelled) setRegionalHints(dedupeTaxiPlaces([...(presetHints || []), ...(hints || [])]));
     };
