@@ -77,7 +77,7 @@ const WalletAction = ({ icon: Icon, label, color, onClick, delay = 0, testId }) 
         style={{ background: color, filter: "blur(20px)", opacity: 0 }}
       />
     </div>
-    <span className="text-[11px] text-[#475569] group-hover:text-[#0f172a] transition-colors duration-300 font-medium">
+    <span className="text-[11px] text-[#334155] group-hover:text-[#0f172a] transition-colors duration-300 font-semibold text-center leading-tight">
       {label}
     </span>
   </motion.button>
@@ -411,10 +411,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
         {/* ── Balance Hero ── */}
         <motion.div
-          className="text-center pt-4 pb-4 relative"
+          className="text-center pt-4 pb-4 px-3 sm:px-0 relative rounded-[28px] border border-white/80 shadow-[0_18px_50px_rgba(15,23,42,0.06)]"
+          style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,252,0.94) 100%)" }}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.06, ...slide }}
+          data-testid="wallet-balance-hero"
         >
           <div className="flex items-center justify-center gap-1.5 mb-2">
             <Shield size={11} className="text-[#00C2FF]/60" />
@@ -431,8 +433,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-baseline justify-center gap-1.5"
               >
-                <span className="text-[24px] text-slate-500 font-outfit font-light">{currency || "EUR"}</span>
-                <span className="text-[48px] font-bold font-outfit text-slate-300 tracking-[-0.03em] leading-none">
+                <span className="text-[24px] text-slate-700 font-outfit font-light">{currency || "EUR"}</span>
+                <span className="text-[48px] font-bold font-outfit text-slate-700 tracking-[-0.03em] leading-none">
                   &#8226;&#8226;&#8226;,&#8226;&#8226;
                 </span>
               </motion.div>
@@ -481,7 +483,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               ) : (
                 <TrendingDown size={11} className="text-[#FF4757]" />
               )}
-              <span className={`text-[11px] font-medium ${stats.percentageChange >= 0 ? "text-[#00D26A]" : "text-[#FF4757]"}`}>
+              <span className={`text-[11px] font-semibold ${stats.percentageChange >= 0 ? "text-[#047857]" : "text-[#DC2626]"}`}>
                 {stats.percentageChange >= 0 ? "+" : ""}{stats.percentageChange}% {t("home.month")}
               </span>
             </motion.div>
@@ -516,7 +518,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
         {/* ── Quick Stats ── */}
         {showBalance && !isLoading && (
-          <div className="flex gap-2.5 mb-5">
+          <div className="grid grid-cols-2 gap-2.5 mb-5">
             <StatPill
               label={t("wallet.spent") || "Ausgaben"}
               value={`${currency}${stats.totalSpent.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
@@ -617,7 +619,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
         {/* ── Quick Actions ── */}
         <motion.div
-          className="grid grid-cols-4 gap-3 mb-5"
+          className="grid grid-cols-4 gap-2.5 sm:gap-3 mb-5"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, ...slide }}

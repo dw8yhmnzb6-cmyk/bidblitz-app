@@ -13,22 +13,22 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
     >
       {/* Animated gradient overlay */}
       <motion.div 
-        className="absolute inset-0 opacity-60"
+        className="absolute inset-0 opacity-35"
         style={{
-          background: "linear-gradient(135deg, rgba(0, 194, 255, 0.12) 0%, transparent 40%, rgba(139, 92, 246, 0.08) 100%)"
+          background: "linear-gradient(135deg, rgba(0, 194, 255, 0.06) 0%, transparent 40%, rgba(139, 92, 246, 0.04) 100%)"
         }}
         animate={{
           background: [
-            "linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)",
-            "linear-gradient(225deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)",
-            "linear-gradient(135deg, rgba(0, 194, 255, 0.15) 0%, transparent 40%, rgba(0, 194, 255, 0.1) 100%)"
+            "linear-gradient(135deg, rgba(0, 194, 255, 0.08) 0%, transparent 40%, rgba(0, 194, 255, 0.05) 100%)",
+            "linear-gradient(225deg, rgba(0, 194, 255, 0.08) 0%, transparent 40%, rgba(0, 194, 255, 0.05) 100%)",
+            "linear-gradient(135deg, rgba(0, 194, 255, 0.08) 0%, transparent 40%, rgba(0, 194, 255, 0.05) 100%)"
           ]
         }}
         transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
       />
       
       {/* Light reflection */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/20 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/8 to-transparent pointer-events-none" />
       
       {/* Noise texture */}
       <div 
@@ -41,7 +41,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
       {/* Card glow edges */}
       <div className="absolute inset-0 rounded-[1.25rem] pointer-events-none"
         style={{
-          boxShadow: "inset 0 0 30px rgba(0, 194, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.7)"
+          boxShadow: "inset 0 0 22px rgba(0, 194, 255, 0.04), inset 0 1px 0 rgba(255,255,255,0.55)"
         }}
       />
 
@@ -58,7 +58,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
               <span className="text-[10px] font-bold text-white">BB</span>
             </div>
             <div>
-              <span className="text-[9px] uppercase tracking-[0.25em] text-slate-500 font-semibold block">
+              <span className="text-[9px] uppercase tracking-[0.25em] text-slate-600 font-semibold block">
                 BidBlitz
               </span>
               <span className="text-sm font-semibold text-slate-900 font-outfit">
@@ -73,13 +73,13 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <Nfc size={20} className="text-[#00C2FF]/60" strokeWidth={1.5} />
+            <Nfc size={20} className="text-[#008fc7]" strokeWidth={1.5} />
           </motion.div>
           <motion.div
             animate={{ rotate: [0, 10, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           >
-            <Wifi size={22} className="text-slate-600 rotate-90" strokeWidth={1.5} />
+            <Wifi size={22} className="text-slate-700 rotate-90" strokeWidth={1.5} />
           </motion.div>
         </div>
       </div>
@@ -124,7 +124,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
             {[1, 2, 3, 4].map((dot) => (
               <div
                 key={dot}
-                className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-400/40"
+                className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-slate-500/55"
               />
             ))}
           </div>
@@ -142,7 +142,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
         transition={{ delay: 0.6 }}
       >
         <div className="min-w-0 flex-1 mr-2">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 block mb-1 font-semibold">
+          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-600 block mb-1 font-semibold">
             Card Holder
           </span>
           <span className="text-slate-900 font-medium text-xs sm:text-sm tracking-wide font-outfit truncate block">
@@ -150,7 +150,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
           </span>
         </div>
         <div className="text-right mr-2">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 block mb-1 font-semibold">
+          <span className="text-[9px] uppercase tracking-[0.2em] text-slate-600 block mb-1 font-semibold">
             Valid Thru
           </span>
           <span className="text-slate-900 font-medium text-xs sm:text-sm tracking-wide font-outfit whitespace-nowrap">
