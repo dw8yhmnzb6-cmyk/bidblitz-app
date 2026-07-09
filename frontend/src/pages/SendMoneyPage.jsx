@@ -140,6 +140,11 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
           credentials: "include",
           body: JSON.stringify({ qr_data: code }),
         });
+        if (!qrRes.ok) {
+          const qrErr = await qrRes.json().catch(() => ({}));
+          setCameraError(qrErr.detail || "QR-Code konnte nicht gelesen werden.");
+          return;
+        }
         if (qrRes.ok) {
           const qrData = await qrRes.json();
           if (qrData?.recipient) {
@@ -168,7 +173,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
         stopCamera();
         return;
       }
-      setError(res.message || "Dieser Code ist nicht für privates Senden gedacht.");
+      setCameraError(res.message || "Dieser Code ist nicht für privates Senden gedacht.");
     } catch (scanError) {
       if (code.startsWith("BLZ-") && code.includes("-")) {
         try {
@@ -191,7 +196,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
           void lookupError;
         }
       }
-      setError(scanError?.message || "Code konnte nicht gelesen werden.");
+      setCameraError(scanError?.message || "Code konnte nicht gelesen werden.");
     } finally {
       setScanBusy(false);
     }

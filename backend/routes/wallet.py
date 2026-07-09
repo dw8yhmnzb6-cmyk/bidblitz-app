@@ -483,19 +483,28 @@ async def add_saved_recipient(request: Request):
     body = await request.json()
     
     recipient_number = body.get("recipient_number")
+    recipient_id = body.get("recipient_id")
     nickname = body.get("nickname", "")
     icon = body.get("icon", "user")
-    
-    if not recipient_number:
+
+    recipient_user = None
+    if recipient_number:
+        recipient_user = await db.users.find_one({"user_number": recipient_number}, {"_id": 0})
+    elif recipient_id:
+        if ObjectId.is_valid(recipient_id):
+            recipient_user = await db.users.find_one({"_id": ObjectId(recipient_id)}, {"_id": 0})
+        if not recipient_user:
+            recipient_user = await db.users.find_one({"email": recipient_id}, {"_id": 0})
+        if recipient_user:
+            recipient_number = recipient_user.get("user_number")
+    else:
         raise HTTPException(status_code=400, detail="Empfänger-Nummer fehlt")
-    
-    # Find recipient by number
-    recipient_user = await db.users.find_one(
-        {"user_number": recipient_number}, {"_id": 0}
-    )
     
     if not recipient_user:
         raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
+
+    if not recipient_number:
+        raise HTTPException(status_code=400, detail="Empfänger-Nummer fehlt")
     
     if recipient_user.get("email") == user_id:
         raise HTTPException(status_code=400, detail="Du kannst dich nicht selbst speichern")
@@ -527,6 +536,7 @@ async def add_saved_recipient(request: Request):
     }
     
     await db.saved_recipients.insert_one(saved_recipient)
+    saved_recipient.pop("_id", None)
     
     return {"ok": True, "recipient": saved_recipient}
 
