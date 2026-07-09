@@ -17,7 +17,7 @@ Prepared for **Internal Testing only**. **Do not publish publicly yet.**
 - AAB path: `/app/frontend/android/app/build/outputs/bundle/release/app-release.aab`
 - Package name / applicationId: `com.bidblitz.app`
 - versionName: `1.0.0`
-- versionCode: `2`
+- versionCode: `3`
 - Signed AAB: Yes (`META-INF/BIDBLITZ.SF`, `META-INF/BIDBLITZ.RSA` present)
 - Release signing configured: Yes
 - Debug build: No
@@ -34,11 +34,11 @@ Prepared for **Internal Testing only**. **Do not publish publicly yet.**
   - `REACT_APP_MOCK_PAYMENTS=false`
 - `frontend/android/app/build.gradle`
   - `applicationId "com.bidblitz.app"`
-  - `versionCode 2`
+  - `versionCode 3`
   - `versionName "1.0.0"`
 
 ### Notes
-- AAB contains production bundle metadata and manifest entries for `com.bidblitz.app`, `versionCode=2`, `versionName=1.0.0`, `compileSdkVersion=35`.
+- AAB contains production bundle metadata and manifest entries for `com.bidblitz.app`, `versionCode=3`, `versionName=1.0.0`, `compileSdkVersion=35`.
 - Reviewer account was normalized to zero balances for internal testing readiness.
 
 ---

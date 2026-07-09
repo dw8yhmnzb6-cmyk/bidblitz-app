@@ -46,29 +46,31 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>BidBlitz benötigt die Kamera, um QR-Codes am POS zu scannen, Ausweis-Bilder für die KYC-Verifikation aufzunehmen und Profilbilder zu ändern.</string>
+		<string>BidBlitz uses the camera to scan QR codes for payments and to let users upload verification documents when needed.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>BidBlitz speichert Belege und Auktionsbilder und lädt optional Fotos für Marketplace-Inserate hoch.</string>
+		<string>BidBlitz accesses selected photos only when you choose to upload documents or images.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>BidBlitz speichert digitale Belege in deiner Fotomediathek.</string>
+		<string>BidBlitz saves documents or images to your photo library only when you choose to export or store them.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>BidBlitz nutzt deinen Standort für Taxi-Bestellungen, Händler in der Nähe, Stadt-Autocomplete und Lieferverfolgung.</string>
+		<string>BidBlitz uses your location only for mobility, taxi and nearby service features when you choose to use them.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>BidBlitz nutzt deinen Standort im Hintergrund, damit Kids-GPS-Tracking und Live-Lieferungen funktionieren.</string>
+		<string>BidBlitz uses your location only for mobility, taxi and nearby service features when you choose to use them.</string>
+		<key>NSUserNotificationsUsageDescription</key>
+		<string>BidBlitz sends notifications for payment confirmations, invoices, account security and important service updates.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>BidBlitz verwendet Face ID zur Absicherung deines Logins und Zahlungsbestätigungen.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>BidBlitz Staff erkennt Bluetooth-Beacons am Arbeitsplatz, um deine Schicht automatisch zu starten.</string>
+		<string>BidBlitz uses Bluetooth only for supported nearby device connections and secure in-store hardware interactions when you choose to use them.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>BidBlitz Staff nutzt Bluetooth, um deine Anwesenheit am Arbeitsplatz zu erkennen.</string>
+		<string>BidBlitz uses Bluetooth only for supported nearby device connections and secure in-store hardware interactions when you choose to use them.</string>
 		<key>NSHealthShareUsageDescription</key>
-		<string>BidBlitz liest deine Schritt- und Distanzdaten, um Move & Earn mit echten nativen Schrittquellen zu synchronisieren.</string>
+				<string>BidBlitz reads step and distance data only when you choose to connect a supported health source.</string>
 		<key>NSHealthUpdateUsageDescription</key>
-		<string>BidBlitz schreibt nur dann Health-Daten, wenn du in Zukunft ausdrücklich eigene Gesundheitswerte speicherst.</string>
+				<string>BidBlitz writes health data only when you choose to sync supported activity data.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>BidBlitz Staff erkennt das WLAN am Arbeitsplatz, um deine Schicht automatisch zu starten.</string>
+		<string>BidBlitz uses local network access only for supported nearby device discovery and secure in-store connections.</string>
         <key>NFCReaderUsageDescription</key>
-        <string>BidBlitz nutzt NFC zum Lesen und Schreiben von Tags für Check-in, Tische und weitere native Funktionen.</string>
+		<string>BidBlitz uses NFC for supported contactless wallet identification and secure payment-related interactions.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

@@ -16,7 +16,7 @@ Prepared for **TestFlight internal testing only**. **Do not submit publicly yet.
 - Bundle ID: `com.bidblitz.app`
 - App name: `BidBlitz`
 - Version: `1.0.0`
-- Build number: `2`
+- Build number: `3`
 - Production API: `https://bidblitz.ae`
 - HTTPS only: Yes
 - ATS secure configuration: Yes (`NSAllowsArbitraryLoads=false`)
@@ -36,7 +36,7 @@ Prepared for **TestFlight internal testing only**. **Do not submit publicly yet.
 - `frontend/ios/App/App.xcodeproj/project.pbxproj`
   - `PRODUCT_BUNDLE_IDENTIFIER = com.bidblitz.app`
   - `MARKETING_VERSION = 1.0.0`
-  - `CURRENT_PROJECT_VERSION = 2`
+  - `CURRENT_PROJECT_VERSION = 3`
 
 ### Build status in this environment
 - iOS archive created: **No**
@@ -226,7 +226,7 @@ Auctions and game-like modules are disabled in this mobile store build.
 2. Select Apple Developer Team
 3. Confirm Bundle ID `com.bidblitz.app` in Signing & Capabilities
 4. Ensure App Store Connect app exists for BidBlitz
-5. Confirm Release configuration with Version `1.0.0` and Build `2`
+5. Confirm Release configuration with Version `1.0.0` and Build `3`
 6. Align `Info.plist` permission text to the clean store wording from section 5 if desired before archive
 7. Build **Archive** in Release mode
 8. Validate archive in Organizer

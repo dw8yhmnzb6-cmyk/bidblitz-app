@@ -1169,7 +1169,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
               </div>
               <div className="flex-1">
                 <p className="text-[12px] font-bold text-white">{t("kyc.pre_gate_title") || "Vor KYC nur Basisbereiche sichtbar"}</p>
-                <p className="mt-1 text-[11px] text-slate-300">{t("kyc.pre_gate_desc") || "Erst nach Identitätsprüfung werden Wallet, Marketplace, Auktionen und weitere Commerce-/Finance-Module freigeschaltet."}</p>
+                <p className="mt-1 text-[11px] text-slate-300">{t("kyc.pre_gate_desc") || "Erst nach Identitätsprüfung werden Wallet, Marketplace und weitere Commerce-/Finance-Module freigeschaltet."}</p>
                 <button
                   onClick={() => onNavigate("/kyc")}
                   className="mt-3 rounded-xl bg-amber-300 px-3.5 py-2 text-[11px] font-black text-slate-950"
