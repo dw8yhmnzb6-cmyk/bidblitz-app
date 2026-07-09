@@ -272,6 +272,10 @@ class ReportReq(BaseModel):
     reason: str = Field(min_length=3, max_length=300)
 
 
+class VerifyReq(BaseModel):
+    selfie_url: str = Field(min_length=8, max_length=500)
+
+
 def calc_profile_completion(profile: dict) -> int:
     checks = [
         bool(profile.get("name")),
@@ -353,6 +357,17 @@ async def premium_demo_upgrade(request: Request):
     return {"ok": True, "premium": True}
 
 
+@router.post("/verify/demo")
+async def verify_demo(payload: VerifyReq, request: Request):
+    user = await get_me(request)
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"kyc_verified": True, "verified": True}})
+    await db.dating_profiles.update_one(
+        {"user_id": str(user["_id"])},
+        {"$set": {"verified": True, "verification_selfie_url": payload.selfie_url, "verified_at": now_iso()}},
+    )
+    return {"ok": True, "verified": True}
+
+
 @router.get("/swipes-left")
 async def swipes_left(request: Request):
     user = await get_me(request)
@@ -367,6 +382,7 @@ async def swipes_left(request: Request):
 async def discover(request: Request):
     user = await get_me(request)
     my_profile = await get_or_create_my_profile(user)
+    await db.dating_profiles.update_one({"user_id": my_profile["user_id"]}, {"$set": {"last_active_at": now_iso()}})
     await maybe_seed_demo_like(my_profile)
     my_user_id = my_profile["user_id"]
     my_filters = user.get("dating_filters") or {}
@@ -409,6 +425,7 @@ async def discover(request: Request):
     for profile in profiles:
         profile["compatibility_score"] = calc_compatibility_score(my_profile, profile, my_filters)
         profile["profile_completion"] = calc_profile_completion(profile)
+        profile["is_recently_active"] = True
     profiles.sort(key=lambda item: (item.get("compatibility_score", 0), item.get("verified", False), item.get("last_active_at", "")), reverse=True)
     return {"profiles": profiles}
 
@@ -578,7 +595,7 @@ async def get_match_messages(match_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Match nicht gefunden")
     messages = await db.dating_messages.find({"match_id": match_id}, {"_id": 0}).sort("created_at", 1).to_list(500)
     await db.dating_matches.update_one({"match_id": match_id}, {"$set": {f"unread.{my_user_id}": 0}})
-    return {"messages": messages, "match": match}
+    return {"messages": messages, "match": match, "read_at": now_iso()}
 
 
 @router.post("/matches/{match_id}/messages")
@@ -602,7 +619,7 @@ async def send_message(match_id: str, payload: ChatMessageReq, request: Request)
     await db.dating_matches.update_one(
         {"match_id": match_id},
         {
-            "$set": {"last_message": message["text"], "last_message_at": message["created_at"]},
+            "$set": {"last_message": message["text"], "last_message_at": message["created_at"], "last_message_sender_user_id": my_user_id},
             "$inc": {f"unread.{other_user_id}": 1},
         },
     )

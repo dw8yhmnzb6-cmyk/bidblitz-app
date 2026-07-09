@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Edit2, SlidersHorizontal, Shield, Ban } from "lucide-react";
+import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Edit2, SlidersHorizontal, Shield, Ban, BadgeCheck, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 
@@ -55,6 +55,7 @@ export default function DatingPage({ onBack }) {
   const [profileForm, setProfileForm] = useState(emptyProfile);
   const [filters, setFilters] = useState({ age_min: 18, age_max: 99, city: "", seeking: [], relationship_intent: "" });
   const [likesYou, setLikesYou] = useState({ locked: true, profiles: [], count: 0 });
+  const [chatReadAt, setChatReadAt] = useState(null);
 
   const current = profiles[idx];
   const currentPhotos = current?.photos?.length ? current.photos : current?.avatar ? [current.avatar] : [];
@@ -96,6 +97,7 @@ export default function DatingPage({ onBack }) {
     try {
       const data = await api(`/api/dating/matches/${match.match_id}/messages`);
       setMessages(data.messages || []);
+      setChatReadAt(data.read_at || null);
       setActiveMatch(match);
       setTab("chat");
       setMatches((prev) => prev.map((item) => item.match_id === match.match_id ? { ...item, unread_count: 0 } : item));
@@ -179,6 +181,16 @@ export default function DatingPage({ onBack }) {
     }
   };
 
+  const runDemoVerify = async () => {
+    try {
+      await api("/api/dating/verify/demo", { method: "POST", body: JSON.stringify({ selfie_url: profileForm.photos?.[0] || userProfile?.avatar || "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&q=80" }) });
+      toast.success("Dating-Profil verifiziert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const sendChat = async () => {
     if (!activeMatch || !chatText.trim()) return;
     try {
@@ -246,6 +258,7 @@ export default function DatingPage({ onBack }) {
               <p className="text-sm font-semibold text-white">{userProfile.profile_completion || 0}% bereit für bessere Matches</p>
               <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-500 to-orange-400" style={{ width: `${userProfile.profile_completion || 0}%` }} /></div>
             </div>
+            {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
             <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
           </div>
         </div>
@@ -262,13 +275,13 @@ export default function DatingPage({ onBack }) {
                   <img src={currentPhotos[0]} alt={current.name} className="w-full h-80 object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
-                    <div className="flex items-center gap-2"><h2 className="text-xl font-bold text-white">{current.name}{current.age ? `, ${current.age}` : ""}</h2>{current.verified && <Check size={16} className="text-blue-400" />}</div>
+                    <div className="flex items-center gap-2"><h2 className="text-xl font-bold text-white">{current.name}{current.age ? `, ${current.age}` : ""}</h2>{current.verified && <Check size={16} className="text-blue-400" />}{current.premium && <Crown size={15} className="text-yellow-300" />}</div>
                     <div className="flex items-center gap-1 text-white/70 text-sm mt-1"><MapPin size={14} />{current.city || "Unbekannt"}</div>
                   </div>
                 </div>
                 <div className="p-4">
                   <p className="text-sm mb-2 text-white/80">{current.bio || "Noch keine Bio"}</p>
-                  {(current.occupation || current.profile_prompt || current.compatibility_score) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match</p> : null}</div>}
+                  {(current.occupation || current.profile_prompt || current.compatibility_score) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match</p> : null}{current.is_recently_active && <p className="text-[11px] text-emerald-300">Jetzt aktiv</p>}</div>}
                   <div className="flex flex-wrap gap-2">{(current.interests || []).map((interest) => <span key={interest} className="px-3 py-1 rounded-full text-xs bg-pink-500/15 text-pink-300">{interest}</span>)}</div>
                 </div>
               </motion.div>
@@ -278,7 +291,7 @@ export default function DatingPage({ onBack }) {
             <div className="flex items-center gap-6 mt-6">
               <button onClick={handleRewind} className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-white/5 border border-white/15" data-testid="dating-rewind-button"><ArrowLeft size={20} className="text-white/80" /></button>
               <button onClick={() => handleAction("pass")} className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-red-400" data-testid="dating-pass-button"><X size={28} className="text-red-400" /></button>
-              <button onClick={() => handleAction("superlike")} className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-blue-400" data-testid="dating-superlike-button"><Star size={22} className="text-blue-400" /></button>
+              <button onClick={() => handleAction("superlike")} className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-blue-400 relative" data-testid="dating-superlike-button"><Star size={22} className="text-blue-400" /><span className="absolute -bottom-6 text-[10px] text-blue-300 whitespace-nowrap">Super Like</span></button>
               <button onClick={() => handleAction("like")} className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-green-400" data-testid="dating-like-button"><Heart size={28} className="text-green-400" /></button>
             </div>
           )}
@@ -294,7 +307,7 @@ export default function DatingPage({ onBack }) {
           ) : likesYou.profiles.map((profile) => (
             <motion.div key={profile.profile_id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-4 flex items-center gap-3 bg-white/5 border border-blue-500/20" data-testid={`dating-like-you-${profile.profile_id}`}>
               <img src={profile.avatar} alt={profile.name} className="w-14 h-14 rounded-full object-cover" />
-              <div className="flex-1"><h3 className="text-sm font-semibold text-white">{profile.name}{profile.age ? `, ${profile.age}` : ''}</h3><p className="text-xs text-white/60 truncate">{profile.city} · {profile.incoming_type === 'superlike' ? 'Super Like' : 'Like'}</p></div>
+              <div className="flex-1"><h3 className="text-sm font-semibold text-white flex items-center gap-1">{profile.name}{profile.age ? `, ${profile.age}` : ''}{profile.verified && <BadgeCheck size={13} className="text-blue-300" />}</h3><p className="text-xs text-white/60 truncate">{profile.city} · {profile.incoming_type === 'superlike' ? 'Super Like' : 'Like'}</p></div>
               <button onClick={() => { setTab('discover'); setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]); setIdx(0); }} className="px-3 py-2 rounded-xl bg-blue-500/15 text-blue-300 text-xs font-semibold" data-testid={`dating-open-like-${profile.profile_id}`}>Ansehen</button>
             </motion.div>
           ))}
@@ -309,6 +322,7 @@ export default function DatingPage({ onBack }) {
               <button className="flex-1 text-left" onClick={() => loadMessages(match)} data-testid={`dating-open-chat-${match.match_id}`}>
                 <h3 className="text-sm font-semibold text-white">{match.name}</h3>
                 <p className="text-xs text-white/60 truncate">{match.last_message || match.city}</p>
+                <p className="text-[10px] text-white/35 mt-1">{match.last_message_at ? 'Aktiv im Chat' : 'Neu gematcht'}</p>
               </button>
               {match.unread_count > 0 && <span className="min-w-6 h-6 px-2 rounded-full bg-pink-500 text-white text-xs font-bold flex items-center justify-center" data-testid={`dating-unread-${match.match_id}`}>{match.unread_count}</span>}
               <button onClick={() => loadMessages(match)} className="w-10 h-10 rounded-full flex items-center justify-center bg-pink-500/15" data-testid={`dating-message-button-${match.match_id}`}><MessageCircle size={18} className="text-pink-300" /></button>
@@ -323,7 +337,7 @@ export default function DatingPage({ onBack }) {
           <div className="flex items-center gap-3 mb-4">
             <button onClick={() => setTab("matches")} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center" data-testid="dating-chat-back"><ArrowLeft size={18} /></button>
             <img src={activeMatch.avatar} alt={activeMatch.name} className="w-11 h-11 rounded-full object-cover" />
-            <div className="flex-1"><h3 className="font-semibold text-white">{activeMatch.name}</h3><p className="text-xs text-white/55">{activeMatch.city}</p></div>
+            <div className="flex-1"><h3 className="font-semibold text-white">{activeMatch.name}</h3><p className="text-xs text-white/55">{activeMatch.city} · {activeMatch.verified ? 'Verifiziert' : 'Nicht verifiziert'}</p></div>
             <button onClick={() => setShowSafetySheet({ profile_id: activeMatch.profile_id, match_id: activeMatch.match_id, name: activeMatch.name })} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center" data-testid="dating-chat-safety"><Ban size={16} className="text-white/75" /></button>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/5 p-3 space-y-3 min-h-[52vh] max-h-[52vh] overflow-y-auto" data-testid="dating-chat-messages">
@@ -333,6 +347,7 @@ export default function DatingPage({ onBack }) {
               </div>
             ))}
           </div>
+          {chatReadAt && <p className="mt-2 text-[11px] text-white/35 text-right" data-testid="dating-chat-read-state">Gelesen / geöffnet</p>}
           <div className="mt-3 flex gap-2">
             <input value={chatText} onChange={(event) => setChatText(event.target.value)} placeholder="Nachricht schreiben..." className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none" data-testid="dating-chat-input" />
             <button onClick={sendChat} className="px-4 py-3 rounded-2xl bg-pink-500 text-white font-semibold" data-testid="dating-chat-send">Senden</button>
