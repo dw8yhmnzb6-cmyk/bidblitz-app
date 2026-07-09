@@ -28,7 +28,9 @@ const KYCBanner = ({ onVerified, onNavigate }) => {
       }
       const res = await fetch(`${API}/api/kyc/status`, { credentials: "include" });
       if (res.ok) setStatus(await res.json());
-    } catch {}
+    } catch (error) {
+      setStatus(null);
+    }
     setLoading(false);
   };
 
@@ -42,7 +44,7 @@ const KYCBanner = ({ onVerified, onNavigate }) => {
     not_started: {
       bg: "from-[#FFB800] to-[#FF8800]",
       title: "Identität verifizieren",
-      desc: "Lade deinen Ausweis hoch um Wallet & Auktionen zu nutzen.",
+      desc: "Lade deinen Ausweis hoch um Wallet & Marketplace zu nutzen.",
       cta: "Jetzt starten",
     },
     pending: {

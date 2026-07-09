@@ -1,0 +1,124 @@
+{
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "success_rate": "100.0%"
+  },
+  "tests": [
+    {
+      "test_name": "Reviewer Login",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "message": "Login successful",
+        "cookies_set": true
+      },
+      "expected": "200 OK with session cookies",
+      "actual": "200 OK, cookies: True",
+      "notes": "Reviewer account reviewer@bidblitz.ae login successful",
+      "timestamp": "2026-07-09T10:32:47.593905"
+    },
+    {
+      "test_name": "Reviewer Profile",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "email": "reviewer@bidblitz.ae",
+        "review_account": false,
+        "role": "user"
+      },
+      "expected": "200 OK with reviewer profile",
+      "actual": "200 OK, email: reviewer@bidblitz.ae, review_account: False",
+      "notes": "Reviewer profile retrieved successfully",
+      "timestamp": "2026-07-09T10:32:47.695610"
+    },
+    {
+      "test_name": "Reviewer Balance",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "balance": 0.0,
+        "currency": "EUR",
+        "realistic": true
+      },
+      "expected": "200 OK with realistic balance",
+      "actual": "200 OK, Balance: 0.0 EUR, realistic: True",
+      "notes": "Balance check: REALISTIC (neutral/small)",
+      "timestamp": "2026-07-09T10:32:47.796218"
+    },
+    {
+      "test_name": "Legal/Support Endpoints",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "Privacy Policy": {
+          "status": 200,
+          "is_html": true,
+          "size": 9694,
+          "passed": true
+        },
+        "Terms of Service": {
+          "status": 200,
+          "is_html": true,
+          "size": 9694,
+          "passed": true
+        },
+        "Support": {
+          "status": 200,
+          "is_html": true,
+          "size": 9694,
+          "passed": true
+        },
+        "Contact": {
+          "status": 200,
+          "is_html": true,
+          "size": 9694,
+          "passed": true
+        },
+        "Delete Account": {
+          "status": 200,
+          "is_html": true,
+          "size": 9694,
+          "passed": true
+        }
+      },
+      "expected": "All 5 pages accessible (200 OK with HTML content)",
+      "actual": "5/5 pages accessible",
+      "notes": "Legal and support pages must be accessible for store review",
+      "timestamp": "2026-07-09T10:32:48.341615"
+    },
+    {
+      "test_name": "No Payment Mutation",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "balance": 0.0,
+        "currency": "EUR",
+        "note": "Read-only check - no mutations performed"
+      },
+      "expected": "No payment mutations triggered",
+      "actual": "Read-only wallet check successful",
+      "notes": "STORE_SAFE_MODE=true - No real payments triggered during testing",
+      "timestamp": "2026-07-09T10:32:48.443961"
+    },
+    {
+      "test_name": "Store Blocker Check",
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "wallet_working": true,
+        "has_balance": true,
+        "has_currency": true,
+        "balance": 0.0,
+        "currency": "EUR"
+      },
+      "expected": "Wallet P0 working correctly",
+      "actual": "Wallet working: True",
+      "notes": "\u2705 Wallet P0 verified working - balance endpoint returns correct structure",
+      "timestamp": "2026-07-09T10:32:48.542660"
+    }
+  ],
+  "blockers": [],
+  "timestamp": "2026-07-09T10:32:48.543715"
+}
