@@ -28,6 +28,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [recentContacts, setRecentContacts] = useState([]);
   const [savedRecipients, setSavedRecipients] = useState([]);
+  const [quickActionMode, setQuickActionMode] = useState("all");
   const [recipient, setRecipient] = useState(null);
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
@@ -124,7 +125,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ query, type: "auto" }),
+          body: JSON.stringify({ query, type: quickActionMode === "username" ? "username" : quickActionMode === "email" ? "email" : quickActionMode === "contacts" ? (query.includes("@") ? "email" : "username") : "auto" }),
         });
         if (res.ok) {
           const data = await res.json();
@@ -144,6 +145,22 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
     setRecipient(r);
     setStep(2);
     setError(null);
+  };
+
+  const handleQuickAction = (mode) => {
+    setQuickActionMode(mode);
+    setError(null);
+    if (mode === "contacts") {
+      setActiveList("recent");
+    }
+  };
+
+  const quickActionPlaceholder = {
+    all: "Username, E-Mail oder BidBlitz ID...",
+    username: "Username...",
+    contacts: "Kontakte...",
+    email: "E-Mail...",
+    scan: "Username, E-Mail oder BidBlitz ID...",
   };
 
   const handleAmountChange = (val) => {
@@ -277,14 +294,17 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   {/* Quick Actions */}
                   <div className="grid grid-cols-4 gap-3 mb-6">
                     {[
-                      { icon: User, label: "Username", color: "#8B5CF6" },
-                      { icon: QrCode, label: "Scannen", color: "#00C2FF" },
-                      { icon: Users, label: "Kontakte", color: "#10B981" },
-                      { icon: Mail, label: "E-Mail", color: "#F59E0B" },
+                      { icon: User, label: "Username", color: "#8B5CF6", mode: "username" },
+                      { icon: QrCode, label: "Scannen", color: "#00C2FF", mode: "scan" },
+                      { icon: Users, label: "Kontakte", color: "#10B981", mode: "contacts" },
+                      { icon: Mail, label: "E-Mail", color: "#F59E0B", mode: "email" },
                     ].map((item, i) => (
                       <motion.button
                         key={i}
-                        className="flex flex-col items-center gap-2 py-4 rounded-2xl"
+                        type="button"
+                        aria-pressed={quickActionMode === item.mode}
+                        onClick={() => handleQuickAction(item.mode)}
+                        className={`flex flex-col items-center gap-2 py-4 rounded-2xl border transition-all ${quickActionMode === item.mode ? "border-slate-300 shadow-[0_10px_24px_rgba(15,23,42,0.08)]" : "border-transparent"}`}
                         style={{ background: `${item.color}10` }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -302,7 +322,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => handleSearch(e.target.value)}
-                      placeholder="Username, E-Mail oder BidBlitz ID..."
+                      placeholder={quickActionPlaceholder[quickActionMode] || "Username, E-Mail oder BidBlitz ID..."}
                       className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 text-[15px] placeholder-slate-400 outline-none focus:border-[#00C2FF]/40 transition-colors"
                       autoFocus
                     />

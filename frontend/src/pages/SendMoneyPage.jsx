@@ -53,6 +53,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   const [cameraPreparing, setCameraPreparing] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraEngine, setCameraEngine] = useState(null);
+  const [quickActionMode, setQuickActionMode] = useState("all");
   const searchTimeout = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -334,7 +335,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ query, type: "auto" }),
+          body: JSON.stringify({ query, type: quickActionMode === "username" ? "username" : quickActionMode === "email" ? "email" : quickActionMode === "contacts" ? (query.includes("@") ? "email" : "username") : "auto" }),
         });
         if (res.ok) {
           const data = await res.json();
@@ -351,6 +352,26 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
     setRecipient(r);
     setStep(2);
     setError(null);
+  };
+
+  const handleQuickAction = useCallback((mode) => {
+    setQuickActionMode(mode);
+    setError(null);
+    if (mode === "scan") {
+      setShowScanner(true);
+      return;
+    }
+    if (mode === "contacts") {
+      setActiveList("recent");
+    }
+  }, []);
+
+  const quickActionPlaceholder = {
+    all: L.searchPlaceholder,
+    username: `${L.username}...`,
+    contacts: `${L.contacts}...`,
+    email: `${L.email}...`,
+    scan: L.searchPlaceholder,
   };
 
   const handleAmountChange = (val) => {
@@ -448,12 +469,12 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
 
               <div className="grid grid-cols-4 gap-3 mb-5">
                 {[
-                  { icon: User, label: L.username, color: "#8B5CF6" },
-                  { icon: QrCode, label: L.scan, color: "#00C2FF" },
-                  { icon: Users, label: L.contacts, color: "#10B981" },
-                  { icon: Mail, label: L.email, color: "#F59E0B" },
+                  { icon: User, label: L.username, color: "#8B5CF6", mode: "username", testId: "send-money-open-username" },
+                  { icon: QrCode, label: L.scan, color: "#00C2FF", mode: "scan", testId: "send-money-open-scan" },
+                  { icon: Users, label: L.contacts, color: "#10B981", mode: "contacts", testId: "send-money-open-contacts" },
+                  { icon: Mail, label: L.email, color: "#F59E0B", mode: "email", testId: "send-money-open-email" },
                 ].map((item, i) => (
-                  <motion.button key={i} type="button" data-testid={item.label === 'Scannen' ? 'send-money-open-scan' : undefined} onClick={item.label === 'Scannen' ? () => setShowScanner(true) : undefined} className="flex flex-col items-center gap-2 py-4 rounded-2xl" style={{ background: `${item.color}10` }} whileTap={{ scale: 0.95 }}>
+                  <motion.button key={i} type="button" data-testid={item.testId} aria-pressed={quickActionMode === item.mode} onClick={() => handleQuickAction(item.mode)} className={`flex flex-col items-center gap-2 py-4 rounded-2xl border transition-all ${quickActionMode === item.mode ? "border-slate-300 shadow-[0_10px_24px_rgba(15,23,42,0.08)]" : "border-transparent"}`} style={{ background: `${item.color}10` }} whileTap={{ scale: 0.95 }}>
                     <item.icon size={22} style={{ color: item.color }} />
                     <span className="text-[10px] font-semibold text-slate-700">{item.label}</span>
                   </motion.button>
@@ -467,7 +488,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  placeholder={L.searchPlaceholder}
+                  placeholder={quickActionPlaceholder[quickActionMode] || L.searchPlaceholder}
                   className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 text-[15px] placeholder-slate-400 outline-none focus:border-[#00C2FF]/40"
                   autoFocus
                 />
