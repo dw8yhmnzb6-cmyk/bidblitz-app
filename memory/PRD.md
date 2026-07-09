@@ -1745,3 +1745,8 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Google Play Internal Testing Paket erstellt: AAB verifiziert, Play-Listing-Texte, Data-Safety-Entwurf, Permissions, Content-Rating und Upload-Checkliste dokumentiert.
 - Reviewer-Konto für Internal Testing verifiziert und auf 0.0 EUR / 0.0 BLZ normalisiert.
 - Wallet P0 bleibt explizit Launch-Blocker vor Public Release.
+
+## Update 2026-07-09 08:40 UTC
+- Apple TestFlight Paket erstellt: Bundle/Version/Build/ATS/Store-Safe geprüft, TestFlight-Metadaten und App-Privacy-Draft dokumentiert.
+- iOS-Archiv/IPA im Linux-Container nicht erzeugbar; Upload-Schritte für macOS/Xcode vorbereitet.
+- Wallet P0 bleibt explizit Launch-Blocker vor öffentlicher Freigabe.
