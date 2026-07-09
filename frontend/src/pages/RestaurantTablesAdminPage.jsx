@@ -4,21 +4,22 @@ import { toast } from "sonner";
 import { ArrowLeft, Copy, Loader2, Pencil, Plus, Printer, QrCode, RefreshCw, Search, Trash2, Wifi } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { writeNFC, isNFCAvailable } from "../utils/nfcService";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const FLOORPLAN_BOUNDS = { width: 1200, height: 560 };
 const TABLE_COLORS = ["#22c55e", "#06b6d4", "#f97316", "#a855f7", "#eab308", "#ef4444"];
 const PRINTER_ROLE_FLOW = [
-  { id: "kitchen", label: "Kitchen", hint: "Küchenbons / Produktionsdruck" },
-  { id: "service", label: "Service", hint: "Service- und Runner-Bons" },
-  { id: "bill", label: "Bill", hint: "Rechnung / Kasse" },
+  { id: "kitchen", labelKey: "restaurant.hardware.role_kitchen", hintKey: "restaurant.hardware.role_kitchen_hint" },
+  { id: "service", labelKey: "restaurant.hardware.role_service", hintKey: "restaurant.hardware.role_service_hint" },
+  { id: "bill", labelKey: "restaurant.hardware.role_bill", hintKey: "restaurant.hardware.role_bill_hint" },
 ];
 const SIZE_PRESETS = {
-  sm: { label: "2 Plätze", width: 72, height: 72, seats: 2 },
-  md: { label: "4 Plätze", width: 92, height: 72, seats: 4 },
-  lg: { label: "6 Plätze", width: 116, height: 92, seats: 6 },
-  xl: { label: "8 Plätze", width: 144, height: 96, seats: 8 },
+  sm: { labelKey: "restaurant.tables.size_sm", width: 72, height: 72, seats: 2 },
+  md: { labelKey: "restaurant.tables.size_md", width: 92, height: 72, seats: 4 },
+  lg: { labelKey: "restaurant.tables.size_lg", width: 116, height: 92, seats: 6 },
+  xl: { labelKey: "restaurant.tables.size_xl", width: 144, height: 96, seats: 8 },
 };
 const emptyForm = { table_number: "", table_name: "", area: "Gastraum", button_id: "", shape: "square", size_key: "md", color: "#22c55e" };
 const statusStyle = {
@@ -57,7 +58,7 @@ async function api(path, { method = "GET", body } = {}) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.detail || data.message || "Fehler");
+    const error = new Error(data.detail || data.message || "Request failed");
     error.status = response.status;
     throw error;
   }
@@ -65,6 +66,7 @@ async function api(path, { method = "GET", body } = {}) {
 }
 
 export default function RestaurantTablesAdminPage({ onBack }) {
+  const { t } = useI18n();
   const printRefs = useRef({});
   const floorplanRef = useRef(null);
   const [tables, setTables] = useState([]);
@@ -95,6 +97,32 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   const [diagnosticResult, setDiagnosticResult] = useState(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
 
+  const getErrorMessage = (error) => error?.message || t("common.request_failed");
+  const localizedPrinterRoles = useMemo(() => PRINTER_ROLE_FLOW.map((role) => ({
+    ...role,
+    label: t(role.labelKey),
+    hint: t(role.hintKey),
+  })), [t]);
+  const localizedSizePresets = useMemo(() => Object.fromEntries(
+    Object.entries(SIZE_PRESETS).map(([key, preset]) => [key, { ...preset, label: t(preset.labelKey) }]),
+  ), [t]);
+  const tableStatusLabels = useMemo(() => ({
+    free: t("restaurant.tables.status_free"),
+    occupied: t("restaurant.tables.status_occupied"),
+    order_open: t("restaurant.tables.status_order_open"),
+    service_call: t("restaurant.tables.status_service_call"),
+    bill_requested: t("restaurant.tables.status_bill_requested"),
+  }), [t]);
+  const hardwareStatusLabels = useMemo(() => ({
+    ok: t("restaurant.hardware.status_ok"),
+    error: t("restaurant.hardware.status_error"),
+    missing: t("restaurant.hardware.status_missing"),
+    invalid: t("restaurant.hardware.status_invalid"),
+    pending: t("restaurant.hardware.pending"),
+    verified: t("restaurant.hardware.verified"),
+    idle: t("restaurant.hardware.idle"),
+  }), [t]);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -104,7 +132,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       setHardware(hardwareRes || { printers: [], button_webhook_url: "", nfc_base_url: "" });
       setDiagnosticLogs(diagnosticsRes.logs || []);
     } catch (error) {
-      if (error.status !== 401) toast.error(error.message);
+      if (error.status !== 401) toast.error(getErrorMessage(error));
     }
     setLoading(false);
   };
@@ -129,17 +157,17 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     return acc;
   }, {}), [diagnosticLogs]);
 
-  const printerRoleStatus = useMemo(() => PRINTER_ROLE_FLOW.map((role) => {
+  const printerRoleStatus = useMemo(() => localizedPrinterRoles.map((role) => {
     const saved = (hardware.printers || []).find((printer) => printer.role === role.id);
     return {
       ...role,
       saved: Boolean(saved),
-      value: saved?.ip || saved?.device || saved?.type || "Noch nicht verbunden",
+      value: saved?.ip || saved?.device || saved?.type || t("restaurant.hardware.not_connected"),
       printer: saved || null,
     };
-  }), [hardware.printers]);
+  }), [hardware.printers, localizedPrinterRoles, t]);
 
-  const activePrinterRoleIndex = useMemo(() => Math.max(0, PRINTER_ROLE_FLOW.findIndex((item) => item.id === printerForm.role)), [printerForm.role]);
+  const activePrinterRoleIndex = useMemo(() => Math.max(0, localizedPrinterRoles.findIndex((item) => item.id === printerForm.role)), [localizedPrinterRoles, printerForm.role]);
   const completedPrinterRoles = printerRoleStatus.filter((item) => item.saved).length;
 
   useEffect(() => {
@@ -158,7 +186,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
 
   const saveTable = async () => {
     if (!form.table_number.trim() || !form.table_name.trim()) {
-      toast.error("Tischnummer und Tischname sind Pflicht");
+      toast.error(t("restaurant.tables.validation_required"));
       return;
     }
     setSaving(true);
@@ -167,16 +195,16 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     try {
       if (editingId) {
         await api(`/api/tables/${editingId}`, { method: "PUT", body: payload });
-        toast.success("Tisch aktualisiert");
+        toast.success(t("restaurant.tables.updated"));
       } else {
         await api("/api/tables", { method: "POST", body: payload });
-        toast.success("Tisch angelegt");
+        toast.success(t("restaurant.tables.created"));
       }
       setForm(emptyForm);
       setEditingId("");
       await load();
     } catch (error) {
-      toast.error(error.message);
+      toast.error(getErrorMessage(error));
     }
     setSaving(false);
   };
@@ -222,7 +250,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       try {
         await api(`/api/tables/${target.table_id}`, { method: "PUT", body: { x: target.x, y: target.y } });
       } catch (error) {
-        toast.error(error.message || "Position konnte nicht gespeichert werden");
+        toast.error(error.message || t("restaurant.tables.position_failed"));
       }
     };
     window.addEventListener("pointermove", move);
@@ -234,32 +262,32 @@ export default function RestaurantTablesAdminPage({ onBack }) {
   }, [dragging, snapToGrid, tables, zoom]);
 
   const deleteTable = async (tableId) => {
-    if (!window.confirm("Tisch wirklich löschen?")) return;
+    if (!window.confirm(t("restaurant.tables.confirm_delete"))) return;
     try {
       await api(`/api/tables/${tableId}`, { method: "DELETE" });
-      toast.success("Tisch gelöscht");
+      toast.success(t("restaurant.tables.deleted"));
       await load();
     } catch (error) {
-      toast.error(error.message);
+      toast.error(getErrorMessage(error));
     }
   };
 
   const regenerateQr = async (tableId) => {
     try {
       await api(`/api/tables/${tableId}/generate-qr`, { method: "POST" });
-      toast.success("QR-Link aktualisiert");
+      toast.success(t("restaurant.tables.qr_updated"));
       await load();
     } catch (error) {
-      toast.error(error.message);
+      toast.error(getErrorMessage(error));
     }
   };
 
   const copyLink = async (table) => {
     try {
       await navigator.clipboard.writeText(table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`);
-      toast.success("QR-Link kopiert");
+      toast.success(t("restaurant.tables.qr_copied"));
     } catch {
-      toast.error("Link konnte nicht kopiert werden");
+      toast.error(t("restaurant.tables.copy_failed"));
     }
   };
 
@@ -273,7 +301,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     popup.document.write(`
       <html><body style="font-family:Outfit,Arial;padding:32px;text-align:center;color:#111">
       <h1>${table.table_name}</h1>
-      <p>Tischnummer ${table.table_number} · ${table.area}</p>
+      <p>${t("restaurant.tables.table_number_label")} ${table.table_number} · ${table.area}</p>
       <div style="display:inline-block;padding:18px;border:2px solid #111;border-radius:20px">${xml}</div>
       <p style="margin-top:14px;font-size:12px">${table.qr_code_absolute_url}</p>
       <script>setTimeout(()=>window.print(),150)</script>
@@ -284,50 +312,50 @@ export default function RestaurantTablesAdminPage({ onBack }) {
 
   const savePrinter = async () => {
     if (!printerVerified) {
-      toast.error("Bitte erst erfolgreichen Testbon drucken");
+      toast.error(t("restaurant.hardware.print_test_first"));
       return;
     }
     if (printerForm.type === "network" && !printerForm.ip.trim()) {
-      toast.error("Bitte IP-Adresse eingeben oder Drucker suchen");
+      toast.error(t("restaurant.hardware.enter_ip"));
       return;
     }
     if (printerForm.type === "usb" && !printerForm.device.trim()) {
-      toast.error("Bitte USB-Gerät oder Pfad eintragen");
+      toast.error(t("restaurant.hardware.enter_usb_path"));
       return;
     }
     try {
       await api("/api/table-hardware/printers", { method: "POST", body: { ...printerForm, store_id: storeId || undefined } });
-      toast.success("Printer-Mapping gespeichert");
+      toast.success(t("restaurant.hardware.mapping_saved"));
       await load();
       const currentIndex = PRINTER_ROLE_FLOW.findIndex((item) => item.id === printerForm.role);
       const nextRole = PRINTER_ROLE_FLOW[currentIndex + 1]?.id;
       if (nextRole) {
         loadPrinterRole(nextRole);
-        toast.success(`Weiter mit ${nextRole}`);
+        toast.success(`${t("restaurant.hardware.continue_with")} ${localizedPrinterRoles.find((role) => role.id === nextRole)?.label || nextRole}`);
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(getErrorMessage(error));
     }
   };
 
   const testPrinter = async () => {
     if (printerForm.type === "network" && !printerForm.ip.trim()) {
-      toast.error("Bitte IP-Adresse eingeben oder Drucker suchen");
+      toast.error(t("restaurant.hardware.enter_ip"));
       return;
     }
     if (printerForm.type === "usb" && !printerForm.device.trim()) {
-      toast.error("Bitte USB-Gerät oder Pfad eintragen");
+      toast.error(t("restaurant.hardware.enter_usb_path"));
       return;
     }
     try {
       const result = await api("/api/table-hardware/printers/test", { method: "POST", body: { ...printerForm, role: printerForm.role, store_id: storeId || undefined } });
       setPrinterVerified(true);
-      setLastPrinterTest({ status: "ok", message: `Testbon gesendet (${result.result?.printer || printerForm.type})` });
-      toast.success(`Testbon gesendet (${result.result?.printer || printerForm.type})`);
+      setLastPrinterTest({ status: "ok", message: `${t("restaurant.hardware.test_print_sent")} (${result.result?.printer || printerForm.type})` });
+      toast.success(`${t("restaurant.hardware.test_print_sent")} (${result.result?.printer || printerForm.type})`);
     } catch (error) {
       setPrinterVerified(false);
-      setLastPrinterTest({ status: "error", message: error.message || "Test fehlgeschlagen" });
-      toast.error(error.message || "Testbon fehlgeschlagen");
+      setLastPrinterTest({ status: "error", message: error.message || t("restaurant.hardware.test_failed") });
+      toast.error(error.message || t("restaurant.hardware.test_print_failed"));
     }
   };
 
@@ -346,9 +374,9 @@ export default function RestaurantTablesAdminPage({ onBack }) {
         },
       });
       setDiscoveryResults(result.results || []);
-      toast.success(result.count ? `${result.count} Drucker gefunden` : "Keine Drucker gefunden");
+      toast.success(result.count ? `${result.count} ${t("restaurant.hardware.printers_found")}` : t("restaurant.hardware.no_printers_found"));
     } catch (error) {
-      toast.error(error.message || "Suche fehlgeschlagen");
+      toast.error(error.message || t("restaurant.hardware.search_failed"));
     }
     setDiscoveryLoading(false);
   };
@@ -360,9 +388,9 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       setDiagnosticResult(result.result || null);
       const history = await api("/api/table-hardware/diagnostics");
       setDiagnosticLogs(history.logs || []);
-      toast.success(`Diagnose ${role} abgeschlossen`);
+      toast.success(`${t("restaurant.hardware.diagnostics_completed_for")} ${role}`);
     } catch (error) {
-      toast.error(error.message || "Diagnose fehlgeschlagen");
+      toast.error(error.message || t("restaurant.hardware.diagnostics_failed"));
     }
     setDiagnosticLoading(false);
   };
@@ -397,7 +425,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       device: "",
     });
     setPrinterWizardMode("manual");
-    toast.success(`Drucker ${printer.ip}:${printer.port} übernommen`);
+    toast.success(`${t("restaurant.hardware.printer_applied")} ${printer.ip}:${printer.port}`);
   };
 
   const discoverUsbDevices = async () => {
@@ -407,13 +435,13 @@ export default function RestaurantTablesAdminPage({ onBack }) {
     try {
       const result = await api(`/api/table-hardware/usb-discover${storeId ? `?store_id=${encodeURIComponent(storeId)}` : ""}`);
       setUsbDiscoveryResults(result.devices || []);
-      setUsbDiscoveryMessage(result.message || "USB-Geräte geladen");
+      setUsbDiscoveryMessage(result.message || t("restaurant.hardware.usb_devices_loaded"));
       setUsbDiscoveryMocked(Boolean(result.mocked));
-      toast.success(result.message || `${result.count || 0} USB-Geräte gefunden`);
+      toast.success(result.message || `${result.count || 0} ${t("restaurant.hardware.usb_devices_found")}`);
     } catch (error) {
-      setUsbDiscoveryMessage(error.message || "USB-Suche fehlgeschlagen");
+      setUsbDiscoveryMessage(error.message || t("restaurant.hardware.usb_search_failed"));
       setUsbDiscoveryMocked(false);
-      toast.error(error.message || "USB-Suche fehlgeschlagen");
+      toast.error(error.message || t("restaurant.hardware.usb_search_failed"));
     }
     setUsbDiscoveryLoading(false);
   };
@@ -425,22 +453,22 @@ export default function RestaurantTablesAdminPage({ onBack }) {
       device: device.path || "",
       ip: "",
     });
-    toast.success(`${device.path} übernommen`);
+    toast.success(`${device.path} ${t("restaurant.hardware.applied")}`);
   };
 
   const writeNfcTag = async (table) => {
     const nfc = await isNFCAvailable();
     if (!nfc.available && nfc.mode !== "web") {
-      toast.error(nfc.reason || "NFC wird auf diesem Gerät nicht unterstützt");
+      toast.error(nfc.reason || t("restaurant.hardware.nfc_not_supported"));
       return;
     }
     const url = table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`;
     const result = await writeNFC([{ recordType: "url", data: url }]);
     if (!result.ok) {
-      toast.error(result.error || "NFC-Tag konnte nicht geschrieben werden");
+      toast.error(result.error || t("restaurant.hardware.nfc_write_failed"));
       return;
     }
-    toast.success(result.pending ? `Halte jetzt den NFC-Tag für ${table.table_name} an das Gerät` : `NFC-Tag für ${table.table_name} geschrieben`);
+    toast.success(result.pending ? `${t("restaurant.hardware.hold_nfc_tag_for")} ${table.table_name} ${t("restaurant.hardware.to_device")}` : `${t("restaurant.hardware.nfc_tag_written_for")} ${table.table_name}`);
   };
 
   return (
@@ -451,18 +479,23 @@ export default function RestaurantTablesAdminPage({ onBack }) {
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-black">Restaurant Tischsystem</h1>
-            <p className="text-sm text-white/45">QR, Button-ID, Status und Druck vorbereitet</p>
+            <h1 className="text-xl font-black">{t("restaurant.tables.title")}</h1>
+            <p className="text-sm text-white/45">{t("restaurant.tables.subtitle")}</p>
           </div>
           <button onClick={load} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/75" data-testid="restaurant-tables-admin-refresh-button">
-            <RefreshCw size={14} className="mr-2 inline-block" /> Aktualisieren
+            <RefreshCw size={14} className="mr-2 inline-block" /> {t("common.refresh")}
           </button>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-3 md:grid-cols-4">
-          {[{ label: "Tische", value: summary.total }, { label: "Offene Orders", value: summary.orders }, { label: "Service", value: summary.service }, { label: "Rechnung", value: summary.bills }].map((item) => (
+          {[
+            { label: t("restaurant.tables.metric_tables"), value: summary.total },
+            { label: t("restaurant.tables.metric_open_orders"), value: summary.orders },
+            { label: t("restaurant.tables.metric_service"), value: summary.service },
+            { label: t("restaurant.tables.metric_bill"), value: summary.bills },
+          ].map((item) => (
             <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4" data-testid={`restaurant-admin-metric-${item.label.toLowerCase()}`}>
               <p className="text-xs uppercase tracking-[0.18em] text-white/35">{item.label}</p>
               <p className="mt-3 text-3xl font-black">{item.value}</p>
@@ -472,32 +505,32 @@ export default function RestaurantTablesAdminPage({ onBack }) {
 
         <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-admin-table-form-section">
           <div className="grid gap-3 md:grid-cols-4">
-            <input value={form.table_number} onChange={(event) => setForm((prev) => ({ ...prev, table_number: event.target.value }))} placeholder="Tischnummer" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-number-input" />
-            <input value={form.table_name} onChange={(event) => setForm((prev) => ({ ...prev, table_name: event.target.value }))} placeholder="Tischname" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-name-input" />
-            <input value={form.area} onChange={(event) => setForm((prev) => ({ ...prev, area: event.target.value }))} placeholder="Bereich / Raum" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-area-input" />
-            <input value={form.button_id} onChange={(event) => setForm((prev) => ({ ...prev, button_id: event.target.value }))} placeholder="Button-ID" className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-button-id-input" />
+            <input value={form.table_number} onChange={(event) => setForm((prev) => ({ ...prev, table_number: event.target.value }))} placeholder={t("restaurant.tables.placeholder_number")} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-number-input" />
+            <input value={form.table_name} onChange={(event) => setForm((prev) => ({ ...prev, table_name: event.target.value }))} placeholder={t("restaurant.tables.placeholder_name")} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-name-input" />
+            <input value={form.area} onChange={(event) => setForm((prev) => ({ ...prev, area: event.target.value }))} placeholder={t("restaurant.tables.placeholder_area")} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-area-input" />
+            <input value={form.button_id} onChange={(event) => setForm((prev) => ({ ...prev, button_id: event.target.value }))} placeholder={t("restaurant.tables.placeholder_button_id")} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-button-id-input" />
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_120px_minmax(0,1fr)]">
             <select value={form.shape} onChange={(event) => setForm((prev) => ({ ...prev, shape: event.target.value }))} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-shape-select">
-              <option value="square">Rechteck</option>
-              <option value="round">Rund</option>
-              <option value="bar">Bar / Lang</option>
+              <option value="square">{t("restaurant.tables.shape_square")}</option>
+              <option value="round">{t("restaurant.tables.shape_round")}</option>
+              <option value="bar">{t("restaurant.tables.shape_bar")}</option>
             </select>
             <select value={form.size_key} onChange={(event) => setForm((prev) => ({ ...prev, size_key: event.target.value }))} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-table-size-select">
-              {Object.entries(SIZE_PRESETS).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}
+              {Object.entries(localizedSizePresets).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}
             </select>
             <input type="color" value={form.color} onChange={(event) => setForm((prev) => ({ ...prev, color: event.target.value }))} className="h-[52px] w-full rounded-2xl border border-white/10 bg-black/20 px-2" data-testid="restaurant-admin-table-color-input" />
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/65" data-testid="restaurant-admin-table-preview-chip">
-              <span>Vorschau</span>
-              <span className="rounded-full border px-3 py-1 text-xs font-bold" style={{ borderColor: form.color, backgroundColor: hexToRgba(form.color, 0.18), color: form.color }}>{SIZE_PRESETS[form.size_key]?.label || "4 Plätze"}</span>
+              <span>{t("restaurant.tables.preview")}</span>
+              <span className="rounded-full border px-3 py-1 text-xs font-bold" style={{ borderColor: form.color, backgroundColor: hexToRgba(form.color, 0.18), color: form.color }}>{localizedSizePresets[form.size_key]?.label || t("restaurant.tables.size_md")}</span>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button onClick={saveTable} disabled={saving} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B] disabled:opacity-50" data-testid="restaurant-admin-save-table-button">
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={14} className="mr-2 inline-block" />{editingId ? "Tisch speichern" : "Tisch anlegen"}</>}
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={14} className="mr-2 inline-block" />{editingId ? t("restaurant.tables.save_table") : t("restaurant.tables.create_table")}</>}
             </button>
             <button onClick={() => { setEditingId(""); setForm(emptyForm); }} className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/70" data-testid="restaurant-admin-reset-table-button">
-              Reset
+              {t("common.reset")}
             </button>
           </div>
         </section>
@@ -505,20 +538,20 @@ export default function RestaurantTablesAdminPage({ onBack }) {
         <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-admin-hardware-section">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
             <div>
-              <h2 className="text-lg font-black">Hardware-Mapping</h2>
-              <p className="mt-1 text-sm text-white/45">Thermodrucker rollenbasiert mappen, Button-Webhook fixieren, NFC-URL auf Tags schreiben.</p>
-              <p className="mt-2 text-xs text-cyan-200/80" data-testid="restaurant-admin-native-nfc-hint">Native Android NFC-Bridge aktiv. iPhone bleibt sauber deaktiviert bis Apple-Entitlement da ist.</p>
+              <h2 className="text-lg font-black">{t("restaurant.hardware.title")}</h2>
+              <p className="mt-1 text-sm text-white/45">{t("restaurant.hardware.subtitle")}</p>
+              <p className="mt-2 text-xs text-cyan-200/80" data-testid="restaurant-admin-native-nfc-hint">{t("restaurant.hardware.native_nfc_hint")}</p>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 {(hardware.printers || []).map((printer) => (
                   <button key={printer.printer_id || printer.role} onClick={() => loadPrinterRole(printer.role)} className="rounded-[24px] border border-white/10 bg-black/20 p-4 text-left" data-testid={`restaurant-admin-printer-card-${printer.role}`}>
-                    <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">{printer.role}</p>
-                    <p className="mt-2 text-base font-semibold">{printer.name || "Nicht gesetzt"}</p>
-                    <p className="mt-1 text-xs text-white/45">{printer.type} {printer.ip || printer.device || "file fallback"}</p>
+                    <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">{localizedPrinterRoles.find((role) => role.id === printer.role)?.label || printer.role}</p>
+                    <p className="mt-2 text-base font-semibold">{printer.name || t("restaurant.hardware.not_set")}</p>
+                    <p className="mt-1 text-xs text-white/45">{printer.type} {printer.ip || printer.device || t("restaurant.hardware.file_fallback")}</p>
                   </button>
                 ))}
               </div>
               <div className="mt-4 rounded-[24px] border border-white/10 bg-black/20 p-4 text-sm text-white/70">
-                <p className="font-semibold text-white">Webhook + NFC</p>
+                <p className="font-semibold text-white">{t("restaurant.hardware.webhook_nfc")}</p>
                 <p className="mt-2 font-mono text-xs break-all">Button Webhook: {hardware.button_webhook_url || `${window.location.origin}/api/button-webhook`}</p>
                 <p className="mt-2 font-mono text-xs break-all">NFC Base URL: {hardware.nfc_base_url || `${window.location.origin}/table/`}</p>
               </div>
@@ -528,24 +561,24 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                   const status = result?.status || "missing";
                   return (
                     <button key={role} onClick={() => runDiagnostics(role)} className={`rounded-[24px] border p-4 text-left ${diagStatusStyle[status] || diagStatusStyle.missing}`} data-testid={`restaurant-admin-diagnostics-card-${role}`}>
-                      <p className="text-xs font-black uppercase tracking-[0.18em] opacity-80">{role}</p>
-                      <p className="mt-2 text-sm font-semibold">{result?.message || "Noch kein Diagnose-Lauf"}</p>
-                      <p className="mt-1 text-xs opacity-70">{result?.ip || result?.device || result?.type || "Ping / Socket / USB Check"}</p>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] opacity-80">{localizedPrinterRoles.find((item) => item.id === role)?.label || role}</p>
+                      <p className="mt-2 text-sm font-semibold">{result?.message || t("restaurant.hardware.no_diagnostics_run")}</p>
+                      <p className="mt-1 text-xs opacity-70">{result?.ip || result?.device || result?.type || t("restaurant.hardware.ping_socket_usb_check")}</p>
                     </button>
                   );
                 })}
               </div>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">Printer Setup Wizard</p>
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-white/35">{t("restaurant.hardware.setup_wizard")}</p>
               <div className="mt-4 grid gap-3">
                 <div className="rounded-[24px] border border-cyan-400/15 bg-cyan-400/8 p-4" data-testid="restaurant-admin-printer-onboarding-card">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-white">Geführtes Onboarding</p>
-                      <p className="mt-1 text-xs text-white/55">Verbinde nacheinander Kitchen → Service → Bill. Nach dem Speichern springt der Wizard automatisch weiter.</p>
+                      <p className="text-sm font-semibold text-white">{t("restaurant.hardware.guided_onboarding")}</p>
+                      <p className="mt-1 text-xs text-white/55">{t("restaurant.hardware.guided_onboarding_hint")}</p>
                     </div>
-                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-100" data-testid="restaurant-admin-printer-onboarding-progress">{completedPrinterRoles}/3 fertig</span>
+                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-100" data-testid="restaurant-admin-printer-onboarding-progress">{completedPrinterRoles}/3 {t("restaurant.hardware.done")}</span>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
                     {printerRoleStatus.map((role, index) => (
@@ -557,7 +590,7 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">{index + 1}. {role.label}</p>
-                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${role.saved ? diagStatusStyle.ok : diagStatusStyle.missing}`}>{role.saved ? "fertig" : "offen"}</span>
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${role.saved ? diagStatusStyle.ok : diagStatusStyle.missing}`}>{role.saved ? t("restaurant.hardware.done") : t("restaurant.hardware.open")}</span>
                         </div>
                         <p className="mt-2 text-sm font-semibold text-white">{role.hint}</p>
                         <p className="mt-1 text-[11px] text-white/45 break-all">{role.value}</p>
@@ -567,9 +600,9 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {[
-                    { id: "auto", label: "Auto suchen", icon: Search },
-                    { id: "manual", label: "IP manuell", icon: Wifi },
-                    { id: "usb", label: "USB / Pfad", icon: Printer },
+                    { id: "auto", label: t("restaurant.hardware.auto_search"), icon: Search },
+                    { id: "manual", label: t("restaurant.hardware.ip_manual"), icon: Wifi },
+                    { id: "usb", label: t("restaurant.hardware.usb_path"), icon: Printer },
                   ].map((mode) => {
                     const Icon = mode.icon;
                     return (
@@ -581,34 +614,34 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {[
-                    { step: "1", label: printerWizardMode === "auto" ? "Drucker suchen" : printerWizardMode === "manual" ? "IP eingeben" : "USB wählen" },
-                    { step: "2", label: "Testbon drucken" },
-                    { step: "3", label: "Verbinden & speichern" },
+                    { step: "1", label: printerWizardMode === "auto" ? t("restaurant.hardware.search_printer") : printerWizardMode === "manual" ? t("restaurant.hardware.enter_ip_step") : t("restaurant.hardware.choose_usb") },
+                    { step: "2", label: t("restaurant.hardware.print_test_receipt") },
+                    { step: "3", label: t("restaurant.hardware.connect_and_save") },
                   ].map((item, index) => <div key={item.step} className={`rounded-2xl border px-4 py-3 text-sm ${activePrinterRoleIndex >= 0 && index <= 2 ? "border-white/10 bg-[#0A0A0F] text-white/70" : "border-white/5 bg-[#0A0A0F] text-white/40"}`} data-testid={`restaurant-admin-printer-step-${item.step}`}><span className="mr-2 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">{item.step}</span>{item.label}</div>)}
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3" data-testid="restaurant-admin-printer-current-role-banner">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">Aktuelle Rolle</p>
-                  <p className="mt-1 text-sm font-semibold text-white">{PRINTER_ROLE_FLOW[activePrinterRoleIndex]?.label || "Kitchen"}</p>
-                  <p className="mt-1 text-xs text-white/45">{PRINTER_ROLE_FLOW[activePrinterRoleIndex]?.hint || "Küchenbons / Produktionsdruck"}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">{t("restaurant.hardware.current_role")}</p>
+                  <p className="mt-1 text-sm font-semibold text-white">{localizedPrinterRoles[activePrinterRoleIndex]?.label || t("restaurant.hardware.role_kitchen")}</p>
+                  <p className="mt-1 text-xs text-white/45">{localizedPrinterRoles[activePrinterRoleIndex]?.hint || t("restaurant.hardware.role_kitchen_hint")}</p>
                 </div>
                 <select value={printerForm.role} onChange={(event) => loadPrinterRole(event.target.value)} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-role-select">
-                  <option value="kitchen">Kitchen</option>
-                  <option value="service">Service</option>
-                  <option value="bill">Bill</option>
+                  <option value="kitchen">{t("restaurant.hardware.role_kitchen")}</option>
+                  <option value="service">{t("restaurant.hardware.role_service")}</option>
+                  <option value="bill">{t("restaurant.hardware.role_bill")}</option>
                 </select>
-                <input value={printerForm.name} onChange={(event) => updatePrinterForm({ name: event.target.value })} placeholder="Printer Name" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-name-input" />
+                <input value={printerForm.name} onChange={(event) => updatePrinterForm({ name: event.target.value })} placeholder={t("restaurant.hardware.printer_name")} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-name-input" />
                 <select value={printerForm.type} onChange={(event) => updatePrinterForm({ type: event.target.value })} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-type-select">
-                  <option value="network">Network ESC/POS</option>
+                  <option value="network">{t("restaurant.hardware.network_escpos")}</option>
                   <option value="usb">USB</option>
-                  <option value="file">File Fallback</option>
+                  <option value="file">{t("restaurant.hardware.file_fallback")}</option>
                 </select>
                 {printerWizardMode === "auto" && (
                   <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/10 p-4" data-testid="restaurant-admin-printer-discovery-panel">
                     <div className="grid gap-2 sm:grid-cols-[1.2fr_90px_90px_auto]">
-                      <input value={discoverySubnet} onChange={(event) => setDiscoverySubnet(event.target.value)} placeholder="Subnetz z. B. 192.168.1" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-subnet-input" />
-                      <input value={discoveryStartHost} onChange={(event) => setDiscoveryStartHost(event.target.value)} placeholder="Von" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-start-input" />
-                      <input value={discoveryEndHost} onChange={(event) => setDiscoveryEndHost(event.target.value)} placeholder="Bis" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-end-input" />
-                      <button onClick={discoverPrinters} disabled={discoveryLoading} className="rounded-2xl border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50" data-testid="restaurant-admin-printer-discovery-button">{discoveryLoading ? "Suche..." : "Suchen"}</button>
+                      <input value={discoverySubnet} onChange={(event) => setDiscoverySubnet(event.target.value)} placeholder={t("restaurant.hardware.subnet_placeholder")} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-subnet-input" />
+                      <input value={discoveryStartHost} onChange={(event) => setDiscoveryStartHost(event.target.value)} placeholder={t("common.from")} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-start-input" />
+                      <input value={discoveryEndHost} onChange={(event) => setDiscoveryEndHost(event.target.value)} placeholder={t("common.to")} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-discovery-end-input" />
+                      <button onClick={discoverPrinters} disabled={discoveryLoading} className="rounded-2xl border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50" data-testid="restaurant-admin-printer-discovery-button">{discoveryLoading ? t("restaurant.hardware.searching") : t("common.search")}</button>
                     </div>
                     <div className="mt-3 space-y-2">
                       {discoveryResults.map((printer) => (
@@ -617,24 +650,24 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                             <p className="text-sm font-semibold text-white">{printer.name}</p>
                             <p className="text-xs text-white/45">{printer.ip}:{printer.port}</p>
                           </div>
-                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-3 py-1 text-[11px] font-bold text-cyan-100">Übernehmen</span>
+                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-3 py-1 text-[11px] font-bold text-cyan-100">{t("restaurant.hardware.apply")}</span>
                         </button>
                       ))}
-                      {!discoveryLoading && discoveryResults.length === 0 && <p className="text-sm text-white/55" data-testid="restaurant-admin-printer-discovery-empty">Noch keine Treffer. Alternativ IP manuell eingeben.</p>}
+                      {!discoveryLoading && discoveryResults.length === 0 && <p className="text-sm text-white/55" data-testid="restaurant-admin-printer-discovery-empty">{t("restaurant.hardware.no_discovery_results")}</p>}
                     </div>
                   </div>
                 )}
                 {printerWizardMode !== "usb" && (
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <input value={printerForm.ip} onChange={(event) => updatePrinterForm({ ip: event.target.value })} placeholder="IP Adresse" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-ip-input" />
-                    <input value={printerForm.port} onChange={(event) => updatePrinterForm({ port: event.target.value })} placeholder="Port" className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-port-input" />
+                    <input value={printerForm.ip} onChange={(event) => updatePrinterForm({ ip: event.target.value })} placeholder={t("restaurant.hardware.ip_address")} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-ip-input" />
+                    <input value={printerForm.port} onChange={(event) => updatePrinterForm({ port: event.target.value })} placeholder={t("common.port")} className="rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-port-input" />
                   </div>
                 )}
                 {printerWizardMode === "usb" && (
                   <div className="rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-4" data-testid="restaurant-admin-printer-usb-panel">
-                    <p className="text-sm font-semibold text-amber-100">USB / lokaler Drucker</p>
-                    <p className="mt-1 text-xs text-amber-50/70">Pfad oder Gerätebezeichnung eintragen und danach Testbon drucken. Native Auto-Suche folgt separat.</p>
-                    <button onClick={discoverUsbDevices} disabled={usbDiscoveryLoading} className="mt-3 rounded-2xl border border-amber-300/25 bg-black/20 px-4 py-3 text-sm font-bold text-amber-100 disabled:opacity-50" data-testid="restaurant-admin-printer-usb-discovery-button">{usbDiscoveryLoading ? "USB Suche..." : "USB automatisch suchen"}</button>
+                    <p className="text-sm font-semibold text-amber-100">{t("restaurant.hardware.usb_local_printer")}</p>
+                    <p className="mt-1 text-xs text-amber-50/70">{t("restaurant.hardware.usb_local_printer_hint")}</p>
+                    <button onClick={discoverUsbDevices} disabled={usbDiscoveryLoading} className="mt-3 rounded-2xl border border-amber-300/25 bg-black/20 px-4 py-3 text-sm font-bold text-amber-100 disabled:opacity-50" data-testid="restaurant-admin-printer-usb-discovery-button">{usbDiscoveryLoading ? t("restaurant.hardware.usb_searching") : t("restaurant.hardware.usb_auto_search")}</button>
                     {(usbDiscoveryMessage || usbDiscoveryResults.length > 0) && (
                       <div className="mt-3 space-y-2" data-testid="restaurant-admin-printer-usb-discovery-results">
                         {usbDiscoveryMessage && <p className="text-xs text-amber-50/75" data-testid="restaurant-admin-printer-usb-discovery-message">{usbDiscoveryMessage}</p>}
@@ -645,54 +678,54 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                               <p className="text-sm font-semibold text-white">{device.name}</p>
                               <p className="text-xs text-white/45 break-all">{device.path}</p>
                             </div>
-                            <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-bold text-amber-100">Übernehmen</span>
+                            <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-bold text-amber-100">{t("restaurant.hardware.apply")}</span>
                           </button>
                         ))}
                       </div>
                     )}
-                    <input value={printerForm.device} onChange={(event) => updatePrinterForm({ device: event.target.value })} placeholder="USB Device z. B. /dev/usb/lp0" className="mt-3 w-full rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
+                    <input value={printerForm.device} onChange={(event) => updatePrinterForm({ device: event.target.value })} placeholder={t("restaurant.hardware.usb_device_placeholder")} className="mt-3 w-full rounded-2xl border border-white/10 bg-[#0A0A0F] px-4 py-3 text-sm outline-none" data-testid="restaurant-admin-printer-device-input" />
                   </div>
                 )}
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <button onClick={savePrinter} disabled={!printerVerified} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B] disabled:opacity-50" data-testid="restaurant-admin-printer-save-button">Verbinden & speichern</button>
-                  <button onClick={testPrinter} className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/75" data-testid="restaurant-admin-printer-test-button">Testbon</button>
-                  <button onClick={() => runDiagnostics(printerForm.role)} disabled={diagnosticLoading} className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50" data-testid="restaurant-admin-printer-diagnostics-button">Diagnose</button>
+                  <button onClick={savePrinter} disabled={!printerVerified} className="rounded-full bg-gradient-to-r from-[#00C2FF] to-[#FFA24C] px-4 py-3 text-sm font-black text-[#05070B] disabled:opacity-50" data-testid="restaurant-admin-printer-save-button">{t("restaurant.hardware.connect_and_save")}</button>
+                  <button onClick={testPrinter} className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white/75" data-testid="restaurant-admin-printer-test-button">{t("restaurant.hardware.test_receipt")}</button>
+                  <button onClick={() => runDiagnostics(printerForm.role)} disabled={diagnosticLoading} className="rounded-full border border-cyan-400/20 bg-cyan-400/15 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50" data-testid="restaurant-admin-printer-diagnostics-button">{t("restaurant.hardware.diagnostics")}</button>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-[#0A0A0F] p-4" data-testid="restaurant-admin-printer-wizard-status">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-white">Verbindungsstatus</p>
-                      <p className="mt-1 text-xs text-white/45">Speichern erst nach erfolgreichem Test</p>
+                      <p className="text-sm font-semibold text-white">{t("restaurant.hardware.connection_status")}</p>
+                      <p className="mt-1 text-xs text-white/45">{t("restaurant.hardware.save_after_test")}</p>
                     </div>
-                    <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${printerVerified ? diagStatusStyle.ok : diagStatusStyle.missing}`}>{printerVerified ? "verified" : "pending"}</span>
+                    <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${printerVerified ? diagStatusStyle.ok : diagStatusStyle.missing}`}>{printerVerified ? hardwareStatusLabels.verified : hardwareStatusLabels.pending}</span>
                   </div>
-                  <p className="mt-3 text-sm text-white/75">{lastPrinterTest?.message || (printerVerified ? "Testbon erfolgreich gesendet." : "Noch kein erfolgreicher Testbon in diesem Setup." )}</p>
+                  <p className="mt-3 text-sm text-white/75">{lastPrinterTest?.message || (printerVerified ? t("restaurant.hardware.test_receipt_sent_success") : t("restaurant.hardware.no_successful_test_receipt") )}</p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-[#0A0A0F] p-4" data-testid="restaurant-admin-printer-diagnostics-result">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-white">Aktuelle Diagnose</p>
-                      <p className="mt-1 text-xs text-white/45">Rolle {printerForm.role}</p>
+                      <p className="text-sm font-semibold text-white">{t("restaurant.hardware.current_diagnostics")}</p>
+                      <p className="mt-1 text-xs text-white/45">{t("restaurant.hardware.role")} {localizedPrinterRoles.find((role) => role.id === printerForm.role)?.label || printerForm.role}</p>
                     </div>
-                    <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${diagStatusStyle[diagnosticResult?.status] || diagStatusStyle.missing}`}>{diagnosticResult?.status || "idle"}</span>
+                    <span className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${diagStatusStyle[diagnosticResult?.status] || diagStatusStyle.missing}`}>{hardwareStatusLabels[diagnosticResult?.status] || hardwareStatusLabels.idle}</span>
                   </div>
-                  <p className="mt-3 text-sm text-white/80">{diagnosticResult?.message || "Noch keine Diagnose ausgeführt."}</p>
+                  <p className="mt-3 text-sm text-white/80">{diagnosticResult?.message || t("restaurant.hardware.no_diagnostics_executed")}</p>
                   {(diagnosticResult?.ip || diagnosticResult?.device || diagnosticResult?.port) && <p className="mt-2 font-mono text-xs text-white/45">{diagnosticResult?.ip || diagnosticResult?.device}{diagnosticResult?.port ? `:${diagnosticResult.port}` : ""}</p>}
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-[#0A0A0F] p-4" data-testid="restaurant-admin-printer-diagnostics-logs">
-                  <p className="text-sm font-semibold text-white">Diagnose-Logs</p>
+                  <p className="text-sm font-semibold text-white">{t("restaurant.hardware.diagnostics_logs")}</p>
                   <div className="mt-3 space-y-2">
                     {diagnosticLogs.slice(0, 6).map((log) => (
                       <div key={log.id} className="rounded-2xl border border-white/10 bg-black/20 p-3" data-testid={`restaurant-admin-printer-log-${log.id}`}>
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/40">{log.role}</p>
-                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${diagStatusStyle[log.result?.status] || diagStatusStyle.missing}`}>{log.result?.status || "missing"}</span>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/40">{localizedPrinterRoles.find((role) => role.id === log.role)?.label || log.role}</p>
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${diagStatusStyle[log.result?.status] || diagStatusStyle.missing}`}>{hardwareStatusLabels[log.result?.status] || t("restaurant.hardware.missing")}</span>
                         </div>
-                        <p className="mt-2 text-sm text-white/75">{log.result?.message || "Keine Meldung"}</p>
+                        <p className="mt-2 text-sm text-white/75">{log.result?.message || t("restaurant.hardware.no_message")}</p>
                         <p className="mt-1 text-[11px] text-white/35">{new Date(log.created_at).toLocaleString("de-DE")}</p>
                       </div>
                     ))}
-                    {diagnosticLogs.length === 0 && <p className="text-sm text-white/45">Noch keine Diagnose-Logs vorhanden.</p>}
+                    {diagnosticLogs.length === 0 && <p className="text-sm text-white/45">{t("restaurant.hardware.no_diagnostics_logs")}</p>}
                   </div>
                 </div>
               </div>
@@ -703,21 +736,21 @@ export default function RestaurantTablesAdminPage({ onBack }) {
         <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 sm:p-5" data-testid="restaurant-admin-floorplan-section">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black">Floorplan / Raumplan</h2>
-              <p className="mt-1 text-sm text-white/45">Bereiche, Größen, Formen, Zoom und Snapping direkt im Raumplan.</p>
+              <h2 className="text-lg font-black">{t("restaurant.floorplan.title")}</h2>
+              <p className="mt-1 text-sm text-white/45">{t("restaurant.floorplan.subtitle")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-bold text-white/70" data-testid="restaurant-admin-floorplan-zoom-control">
-                Zoom {zoom.toFixed(2)}×
+                {t("restaurant.floorplan.zoom")} {zoom.toFixed(2)}×
                 <input type="range" min="0.8" max="1.6" step="0.1" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} className="ml-3 align-middle" />
               </label>
               <button onClick={() => setSnapToGrid((prev) => !prev)} className={`rounded-full border px-4 py-2 text-xs font-bold ${snapToGrid ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-100" : "border-white/10 bg-white/5 text-white/70"}`} data-testid="restaurant-admin-floorplan-snap-toggle">
-                Snap {snapToGrid ? "an" : "aus"}
+                {t("restaurant.floorplan.snap")} {snapToGrid ? t("common.on") : t("common.off")}
               </button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={() => setSelectedArea("all")} className={`rounded-full border px-4 py-2 text-xs font-bold ${selectedArea === "all" ? "border-white/30 bg-white/10 text-white" : "border-white/10 bg-black/20 text-white/70"}`} data-testid="restaurant-admin-floorplan-area-all">Alle Räume</button>
+            <button onClick={() => setSelectedArea("all")} className={`rounded-full border px-4 py-2 text-xs font-bold ${selectedArea === "all" ? "border-white/30 bg-white/10 text-white" : "border-white/10 bg-black/20 text-white/70"}`} data-testid="restaurant-admin-floorplan-area-all">{t("restaurant.floorplan.all_rooms")}</button>
             {areas.map((area, index) => {
               const color = TABLE_COLORS[index % TABLE_COLORS.length];
               return (
@@ -763,40 +796,40 @@ export default function RestaurantTablesAdminPage({ onBack }) {
                     <p className="text-lg font-black">{table.table_name}</p>
                     <p className="text-sm text-white/45">#{table.table_number} · {table.area}</p>
                   </div>
-                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusStyle[table.status] || statusStyle.free}`} data-testid={`restaurant-admin-table-status-${table.table_id}`}>{table.status}</span>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusStyle[table.status] || statusStyle.free}`} data-testid={`restaurant-admin-table-status-${table.table_id}`}>{tableStatusLabels[table.status] || table.status}</span>
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-[120px_minmax(0,1fr)]">
                   <div ref={(node) => { printRefs.current[table.table_id] = node; }} className="rounded-2xl bg-white p-3">
                     <QRCodeSVG value={table.qr_code_absolute_url || `${window.location.origin}${table.qr_code_url}`} size={96} includeMargin />
                   </div>
                   <div className="space-y-2 text-sm text-white/70">
-                    <p data-testid={`restaurant-admin-table-button-value-${table.table_id}`}>Button: {table.button_id || "—"}</p>
-                    <p>NFC Entry: {table.qr_code_absolute_url}</p>
-                    <p>Open Orders: {table.open_order_count}</p>
-                    <p>Service Calls: {table.open_service_call_count}</p>
-                    <p>Form: {table.shape} · {SIZE_PRESETS[table.size_key]?.label || "Custom"}</p>
+                    <p data-testid={`restaurant-admin-table-button-value-${table.table_id}`}>{t("restaurant.tables.button")}: {table.button_id || "—"}</p>
+                    <p>{t("restaurant.tables.nfc_entry")}: {table.qr_code_absolute_url}</p>
+                    <p>{t("restaurant.tables.open_orders")}: {table.open_order_count}</p>
+                    <p>{t("restaurant.tables.service_calls")}: {table.open_service_call_count}</p>
+                    <p>{t("restaurant.tables.form")}: {table.shape} · {localizedSizePresets[table.size_key]?.label || t("restaurant.tables.custom")}</p>
                     <p className="font-mono text-xs text-white/45">{table.qr_code_absolute_url}</p>
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button onClick={() => regenerateQr(table.table_id)} className="rounded-2xl border border-cyan-400/20 bg-cyan-400/15 px-3 py-3 text-xs font-bold text-cyan-100" data-testid={`restaurant-admin-generate-qr-${table.table_id}`}>
-                    <QrCode size={14} className="mr-2 inline-block" /> QR neu
+                    <QrCode size={14} className="mr-2 inline-block" /> {t("restaurant.tables.qr_new")}
                   </button>
                   <button onClick={() => printQr(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-print-qr-${table.table_id}`}>
-                    <Printer size={14} className="mr-2 inline-block" /> Drucken
+                    <Printer size={14} className="mr-2 inline-block" /> {t("common.print")}
                   </button>
                   <button onClick={() => writeNfcTag(table)} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/15 px-3 py-3 text-xs font-bold text-emerald-100" data-testid={`restaurant-admin-write-nfc-${table.table_id}`}>
-                    NFC schreiben
+                    {t("restaurant.tables.write_nfc")}
                   </button>
                   <button onClick={() => copyLink(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-copy-link-${table.table_id}`}>
-                    <Copy size={14} className="mr-2 inline-block" /> Link
+                    <Copy size={14} className="mr-2 inline-block" /> {t("common.link")}
                   </button>
                   <button onClick={() => editTable(table)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-bold text-white/75" data-testid={`restaurant-admin-edit-table-${table.table_id}`}>
-                    <Pencil size={14} className="mr-2 inline-block" /> Bearbeiten
+                    <Pencil size={14} className="mr-2 inline-block" /> {t("common.edit")}
                   </button>
                 </div>
                 <button onClick={() => deleteTable(table.table_id)} className="mt-2 w-full rounded-2xl border border-rose-400/20 bg-rose-500/10 px-3 py-3 text-xs font-bold text-rose-100" data-testid={`restaurant-admin-delete-table-${table.table_id}`}>
-                  <Trash2 size={14} className="mr-2 inline-block" /> Löschen
+                  <Trash2 size={14} className="mr-2 inline-block" /> {t("common.delete")}
                 </button>
               </motion.div>
             ))}

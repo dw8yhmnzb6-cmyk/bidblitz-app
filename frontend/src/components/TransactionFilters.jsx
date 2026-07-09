@@ -5,20 +5,7 @@
 
 import { motion } from "framer-motion";
 import { PaymentType, PaymentStatus } from "../models";
-
-const typeFilters = [
-  { id: 'all', label: 'Alle' },
-  { id: 'payment', label: 'Zahlungen' },
-  { id: 'topup', label: 'Aufladungen' },
-  { id: 'transfer', label: 'Transfers' },
-];
-
-const statusFilters = [
-  { id: 'all', label: 'Alle' },
-  { id: PaymentStatus.SUCCESS, label: 'Abgeschlossen' },
-  { id: PaymentStatus.PENDING, label: 'Ausstehend' },
-  { id: PaymentStatus.FAILED, label: 'Fehlgeschlagen' },
-];
+import { useI18n } from "../store/I18nContext";
 
 export const TransactionFilters = ({ 
   activeTypeFilter, 
@@ -27,6 +14,21 @@ export const TransactionFilters = ({
   onStatusFilterChange,
   showStatusFilter = false,
 }) => {
+  const { t } = useI18n();
+  const typeFilters = [
+    { id: 'all', label: t('txn.filters.all') },
+    { id: 'payment', label: t('txn.filters.payments') },
+    { id: 'topup', label: t('txn.filters.topups') },
+    { id: 'transfer', label: t('txn.filters.transfers') },
+  ];
+
+  const statusFilters = [
+    { id: 'all', label: t('txn.filters.all') },
+    { id: PaymentStatus.SUCCESS, label: t('txn.status.completed') },
+    { id: PaymentStatus.PENDING, label: t('txn.status.pending') },
+    { id: PaymentStatus.FAILED, label: t('txn.status.failed') },
+  ];
+
   return (
     <div className="space-y-3">
       {/* Type Filters */}

@@ -6,10 +6,12 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Shield, ChevronRight, Loader2 } from "lucide-react";
 import KYCVerificationModal from "./KYCVerificationModal";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const KYCBanner = ({ onVerified, onNavigate }) => {
+  const { t } = useI18n();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -43,21 +45,21 @@ const KYCBanner = ({ onVerified, onNavigate }) => {
   const cfg = {
     not_started: {
       bg: "from-[#FFB800] to-[#FF8800]",
-      title: "Identität verifizieren",
-      desc: "Lade deinen Ausweis hoch um Wallet & Marketplace zu nutzen.",
-      cta: "Jetzt starten",
+      title: t("kyc.banner.verify_title"),
+      desc: t("kyc.banner.verify_desc"),
+      cta: t("kyc.banner.start_cta"),
     },
     pending: {
       bg: "from-[#06B6D4] to-[#A855F7]",
-      title: "Verifizierung läuft",
-      desc: "Wir prüfen deinen Ausweis. Du wirst informiert, sobald es durch ist.",
-      cta: "Status prüfen",
+      title: t("kyc.banner.pending_title"),
+      desc: t("kyc.banner.pending_desc"),
+      cta: t("kyc.banner.pending_cta"),
     },
     rejected: {
       bg: "from-red-500 to-pink-600",
-      title: "Verifizierung abgelehnt",
-      desc: status.rejection_reason || "Bitte erneut versuchen mit schärferen Fotos.",
-      cta: "Erneut versuchen",
+      title: t("kyc.banner.rejected_title"),
+      desc: status.rejection_reason || t("kyc.banner.rejected_desc"),
+      cta: t("kyc.banner.retry_cta"),
     },
   };
   const c = cfg[status.kyc_status] || cfg.not_started;
