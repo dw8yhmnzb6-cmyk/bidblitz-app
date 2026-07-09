@@ -5,7 +5,7 @@ Profiles, reciprocal matching, chat, filters, safety, premium basics
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from bson import ObjectId
 import secrets
 
@@ -100,6 +100,8 @@ SEED_PROFILES = [
 ]
 
 DAILY_FREE_SWIPES = 20
+BOOST_DURATION_MINUTES = 30
+BOOST_COOLDOWN_HOURS = 12
 
 
 def years_old(date_str: Optional[str]) -> Optional[int]:
@@ -129,6 +131,38 @@ def swipe_reset_key() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def get_boost_state(profile: dict) -> dict:
+    now = datetime.now(timezone.utc)
+    active_until_dt = parse_iso_datetime(profile.get("boost_active_until"))
+    last_activated_dt = parse_iso_datetime(profile.get("boost_activated_at"))
+    is_active = bool(active_until_dt and active_until_dt > now)
+    cooldown_until_dt = last_activated_dt + timedelta(hours=BOOST_COOLDOWN_HOURS) if last_activated_dt else None
+    cooldown_remaining_seconds = 0
+    if cooldown_until_dt and cooldown_until_dt > now and not is_active:
+        cooldown_remaining_seconds = int((cooldown_until_dt - now).total_seconds())
+    return {
+        "is_active": is_active,
+        "active_until": active_until_dt.isoformat() if active_until_dt else None,
+        "seconds_left": max(0, int((active_until_dt - now).total_seconds())) if is_active else 0,
+        "cooldown_until": cooldown_until_dt.isoformat() if cooldown_until_dt else None,
+        "cooldown_remaining_seconds": cooldown_remaining_seconds,
+        "duration_minutes": BOOST_DURATION_MINUTES,
+        "cooldown_hours": BOOST_COOLDOWN_HOURS,
+    }
+
+
 async def ensure_indexes():
     await db.dating_profiles.create_index("profile_id", unique=True)
     await db.dating_profiles.create_index(
@@ -137,6 +171,7 @@ async def ensure_indexes():
         partialFilterExpression={"user_id": {"$type": "string"}},
     )
     await db.dating_profiles.create_index([("active", 1), ("gender", 1), ("city", 1)])
+    await db.dating_profiles.create_index([("boost_active_until", -1), ("last_active_at", -1)])
     await db.dating_swipes.create_index([("from_user_id", 1), ("to_profile_id", 1)], unique=True)
     await db.dating_swipes.create_index([("from_user_id", 1), ("created_at", -1)])
     await db.dating_matches.create_index("match_id", unique=True)
@@ -289,6 +324,20 @@ def calc_profile_completion(profile: dict) -> int:
         bool(profile.get("seeking")),
     ]
     return round((sum(1 for item in checks if item) / len(checks)) * 100)
+
+
+def calc_discover_rank(profile: dict) -> int:
+    boost = get_boost_state(profile)
+    rank = profile.get("compatibility_score", 0)
+    if boost["is_active"]:
+        rank += 40
+    if profile.get("verified"):
+        rank += 8
+    if profile.get("premium"):
+        rank += 4
+    if profile.get("is_recently_active"):
+        rank += 3
+    return rank
 
 
 def calc_compatibility_score(me: dict, other: dict, filters: dict) -> int:
