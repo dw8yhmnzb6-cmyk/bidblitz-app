@@ -1728,3 +1728,9 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - `GET /api/admin/customers?role=admin` zeigt nur den kanonischen Admin
   - `GET /api/admin/wallet/users?q=admin` zeigt nur den kanonischen Admin
   - Frontend-Smoke: Banner zeigt `Kanonisch: admin@bidblitz.ae`
+
+## Update 2026-07-09 04:18 UTC
+- Mobile Release vorbereitet: Production API auf https://bidblitz.ae, STORE_SAFE_MODE=true, DEMO/MOCK disabled.
+- Android Release-Artefakte erfolgreich erstellt: signiertes AAB und signiertes APK.
+- iOS Release-Konfiguration aktualisiert (Bundle ID com.bidblitz.app, Version 1.0.0, Build 2), aber kein Archive/IPA im Linux-Container möglich.
+- Wallet P0 Financial Bug bleibt explizit Launch-Blocker bis zur vollständigen Behebung.

@@ -235,7 +235,7 @@ export default function LandingPage({ onGetStarted }) {
           <div className="flex items-center justify-center gap-6 mt-4">
             <a href="/datenschutz" className="hover:text-white/80 transition-colors" data-testid="footer-privacy-link">Datenschutz</a>
             <a href="/agb" className="hover:text-white/80 transition-colors" data-testid="footer-terms-link">AGB</a>
-            <a href="#" className="hover:text-white/80 transition-colors">Impressum</a>
+            <a href="/contact" className="hover:text-white/80 transition-colors" data-testid="footer-contact-link">Kontakt</a>
           </div>
         </div>
       </footer>

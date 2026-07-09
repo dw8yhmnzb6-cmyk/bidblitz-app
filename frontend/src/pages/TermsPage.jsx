@@ -23,19 +23,13 @@ export default function TermsPage({ onBack }) {
         <p className="text-sm">Mit der Registrierung kommt ein Nutzungsvertrag zustande. Du bestätigst, dass deine Angaben wahrheitsgemäß sind und du volljährig bist.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">§3 KYC-Verifizierung</h2>
-        <p className="text-sm">Für transaktionsbasierte Features (Auktionen, Wallet-Topup, Geld-Transfer, Taxi) ist eine Identitätsprüfung erforderlich (UAE Anti-Money-Laundering). Wir nutzen AI-gestützte Verifikation (Gemini) + manuelle Review.</p>
+        <p className="text-sm">Für transaktionsbasierte Features wie Wallet-Aufladung, Geldtransfer, Merchant-Payouts und Taxi/Mobility kann eine Identitätsprüfung erforderlich sein. Wir nutzen AI-gestützte Verifikation plus manuelle Prüfung.</p>
 
-        <h2 className="text-lg font-bold mt-6 mb-2">§4 Penny-Auktionen</h2>
-        <ul className="list-disc list-inside space-y-1 text-sm">
-          <li>Jedes Gebot kostet einen Bid-Credit (auch wenn du nicht gewinnst)</li>
-          <li>Auktion endet nach Ablauf des Timers ohne weitere Gebote</li>
-          <li>Gewinner zahlt nur den End-Auktionspreis (oft &lt;10% UVP)</li>
-          <li>Versand binnen 14 Tage in UAE, GCC, EU</li>
-          <li>Manipulation (Bots, Mehrfach-Accounts) führt zu sofortiger Sperrung + Credit-Verfall</li>
-        </ul>
+        <h2 className="text-lg font-bold mt-6 mb-2">§4 Wallet, Zahlungen und Merchant-Tools</h2>
+        <p className="text-sm">BidBlitz stellt Wallet-Zahlungen, QR Pay, Rechnungen, Merchant- und POS-Funktionen, Staff-Tools sowie Mobility-Dienste bereit. Zahlungen dürfen nur für legitime Transaktionen verwendet werden. Missbrauch, Fraud, Umgehung von Limits oder Identitätsfälschung führen zur Sperrung.</p>
 
-        <h2 className="text-lg font-bold mt-6 mb-2">§5 Bid-Credits</h2>
-        <p className="text-sm">Credits werden via Stripe gekauft (sofort bei Zahlungseingang gutgeschrieben). Verfall: 24 Monate Inaktivität. Keine Auszahlung möglich (= Vorauszahlung für Auktions-Teilnahme).</p>
+        <h2 className="text-lg font-bold mt-6 mb-2">§5 Rechnungen, QR Pay und kontaktlose Funktionen</h2>
+        <p className="text-sm">Rechnungen, Payment Links, QR Pay und NFC/RFID-Funktionen sind ausschließlich für echte Geschäfts- oder Privattransaktionen vorgesehen. Der Nutzer ist für die Richtigkeit der Zahlungsdaten verantwortlich.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">§6 Wallet & Transfer</h2>
         <p className="text-sm">Wallet-Guthaben ist an deinen Account gebunden, nicht übertragbar. Geld-Transfer zwischen verifizierten Usern: max. 5.000 EUR/Tag. Negative Saldi nicht möglich.</p>
@@ -44,23 +38,22 @@ export default function TermsPage({ onBack }) {
         <p className="text-sm">Live-Streams werden ggf. aufgezeichnet (Hinweis im Stream). Aufzeichnungen können 30 Tage gespeichert werden. Beleidigender Content führt zu Ban.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">§8 Widerruf (EU/UAE-Verbraucher)</h2>
-        <p className="text-sm">14-tägiges Widerrufsrecht für physische Auktions-Gewinne (ungenutzt, OVP). Bid-Credits sind digitale Inhalte und vom Widerruf ausgeschlossen, sobald sie eingesetzt wurden.</p>
+        <p className="text-sm">Für gesetzlich widerrufsfähige Käufe gelten die jeweils anwendbaren Verbraucherschutzrechte. Bereits ausgeführte digitale Zahlungs- und Wallet-Services können nach den gesetzlichen Vorgaben vom Widerruf ausgeschlossen sein.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">§9 Haftung</h2>
         <p className="text-sm">Wir haften für Vorsatz + grobe Fahrlässigkeit unbegrenzt, für leichte Fahrlässigkeit auf vorhersehbaren Schaden. Keine Haftung für: Drittanbieter-Ausfälle (Stripe, LiveKit), höhere Gewalt, Hacker-Angriffe trotz angemessener Sicherheit.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">§10 Account-Kündigung</h2>
-        <p className="text-sm">Du kannst jederzeit kündigen via Profil → "Account löschen". Wir kündigen bei Verstoß mit 14 Tagen Frist. Credits-Verfall siehe §5.</p>
+        <p className="text-sm">Du kannst jederzeit kündigen via Profil → &quot;Account löschen&quot;. Wir kündigen bei Verstoß mit 14 Tagen Frist. Credits-Verfall siehe §5.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">§11 Rechtswahl</h2>
         <p className="text-sm">UAE-Recht. Gerichtsstand Dubai. Verbraucher in der EU haben gesetzlichen Schutz nach dem Recht ihres Wohnsitzes.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">§12 Änderungen</h2>
-        <p className="text-sm">Änderungen werden 30 Tage vorher via Email + In-App angekündigt. Widerspruch gilt als Kündigung.</p>
+        <p className="text-sm">Änderungen werden 30 Tage vorher via E-Mail oder In-App angekündigt. Widerspruch gilt als Kündigung.</p>
 
-        <p className="text-xs text-gray-500 mt-8 italic">
-          ⚠️ Hinweis: Diese AGB sind ein Template — bitte vor Production durch deinen Anwalt prüfen lassen.
-        </p>
+        <h2 className="text-lg font-bold mt-6 mb-2">§13 Mobile Store Safe Mode</h2>
+        <p className="text-sm">In mobilen Store-Builds werden Auktions-, Glücksspiel- und sonstige zufallsbasierte Module nicht bereitgestellt. BidBlitz Rewards in der Mobile-App basieren auf klaren, nicht-zufallsbasierten Nutzeraktionen.</p>
       </div>
     </div>
   );

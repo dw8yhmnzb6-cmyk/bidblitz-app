@@ -22,6 +22,7 @@ import KidsPaywall from "./KidsPaywall";
 import FeatureGate from "../components/FeatureGate";
 import { PushNotificationToggle } from "../components/PushNotifications";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
+import { filterStoreSafeItems } from "../config/release";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 const isRtlLanguage = (lang) => lang === "ar" || lang === "ar-AE";
@@ -442,7 +443,7 @@ const PrivacyToggleRow = ({ label, desc, defaultOn }) => {
   );
 };
 
-const PrivacyView = ({ onBack, t }) => (
+const PrivacyView = ({ onBack, t, onNavigate }) => (
   <SubPage title={t("settings.privacy")} onBack={onBack}>
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
@@ -456,7 +457,7 @@ const PrivacyView = ({ onBack, t }) => (
       <div className="rounded-2xl p-4" style={{ background: "rgba(255,71,87,0.02)", border: "1px solid rgba(255,71,87,0.08)" }}>
         <p className="text-[11px] text-[#FF6B6B] font-semibold mb-1">{t("settings.privacy_delete_title")}</p>
         <p className="text-[10px] text-[#444] mb-3">{t("settings.privacy_delete_desc")}</p>
-        <motion.button className="px-4 py-2 rounded-xl text-[11px] font-medium text-[#FF6B6B] border border-[#FF6B6B]/15 bg-[#FF6B6B]/5" whileTap={{ scale: 0.97 }} data-testid="delete-account-btn">
+        <motion.button className="px-4 py-2 rounded-xl text-[11px] font-medium text-[#FF6B6B] border border-[#FF6B6B]/15 bg-[#FF6B6B]/5" whileTap={{ scale: 0.97 }} data-testid="delete-account-btn" onClick={() => onNavigate?.('/delete-account')}>
           {t("settings.privacy_delete_btn")}
         </motion.button>
       </div>
@@ -508,7 +509,7 @@ const ActiveSessionsView = ({ onBack, t }) => {
   );
 };
 
-const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) => {
+const SettingsView = ({ onBack, onNavigate, t, locale, setLocale, onOpenPasswordChange }) => {
   const userCtx = useUser();
   const { isDark, toggle: toggleTheme } = useTheme();
   const [notifs, setNotifs] = useState(userCtx?.notifications_enabled !== false);
@@ -536,7 +537,7 @@ const SettingsView = ({ onBack, t, locale, setLocale, onOpenPasswordChange }) =>
   const toggleBio = () => { const v = !biometric; setBiometric(v); persistSetting("biometric_enabled", v); };
   const toggleDark = () => { const v = !darkMode; setDarkMode(v); toggleTheme(); persistSetting("dark_mode", v); };
 
-  if (settingsSub === "privacy") return <PrivacyView onBack={() => setSettingsSub(null)} t={t} />;
+  if (settingsSub === "privacy") return <PrivacyView onBack={() => setSettingsSub(null)} t={t} onNavigate={onNavigate} />;
   if (settingsSub === "sessions") return <ActiveSessionsView onBack={() => setSettingsSub(null)} t={t} />;
 
   return (
@@ -686,7 +687,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       />;
     }
     if (subPage === "settings") {
-      return <SettingsView onBack={() => setSubPage(null)} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
+      return <SettingsView onBack={() => setSubPage(null)} onNavigate={onNavigate} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
     }
     if (subPage === "kyc") {
       onNavigate("/kyc");
@@ -756,7 +757,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "budget", icon: BarChart3, label: t("more.budget") || "Budgetplaner", desc: t("more.budget_desc") || "Ausgaben & Limits", color: "#3B82F6", action: gatedAction(() => onNavigate("/budget")) },
   ];
 
-  const growthMenu = [
+  const growthMenu = filterStoreSafeItems([
     { id: "gaming", icon: Gamepad2, label: t("more.gaming"), desc: t("more.gaming_desc"), color: "#F59E0B", action: gatedAction(() => onNavigate("/gaming")), roles: ["all"] },
     { id: "loyalty", icon: Coins, label: t("loyalty.title") || "Coins & Cashback", desc: t("loyalty.menu_desc") || "Verdiene mit jeder Transaktion", color: "#FFD700", action: gatedAction(() => onNavigate("/loyalty")), roles: ["all"] },
     { id: "rewards", icon: Trophy, label: t("rewards.title") || "Rewards", desc: t("rewards.menu_desc") || "Daily rewards & milestones", color: "#00E89D", action: gatedAction(() => onNavigate("/rewards")), roles: ["all"] },
@@ -836,7 +837,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "merchant-dashboard", icon: Store, label: t("merch.title") || "Händler Dashboard", desc: t("merch.menu_desc") || "Filialen & Kassen", color: "#FF8C42", action: gatedAction(() => onNavigate("/merchant-dashboard")), roles: ["merchant", "admin"] },
     { id: "merchant-onboarding", icon: TrendingUp, label: t("onboarding.title") || "Händler werden", desc: t("onboarding.menu_desc") || "Kostenlose Testphase", color: "#00C2FF", action: () => onNavigate("/merchant-landing"), roles: ["merchant", "admin"] },
     { id: "merchant-pricing", icon: CreditCard, label: t("pricing.title") || "Händler-Tarife & Preise", desc: t("pricing.menu_desc") || "Tarife, Gebühren & Terminals", color: "#FFD166", action: () => onNavigate("/merchant-pricing"), roles: ["merchant", "admin"] },
-  ].filter(item => {
+  ]).filter(item => {
     if (!item.roles) return true;
     if (item.roles.includes("all")) return true;
     const userRole = user.role || "user";

@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, RefreshCw, ChevronRight, Loader2 } from "lucide-react";
+import { STORE_SAFE_MODE } from "../config/release";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -38,6 +39,8 @@ const CATEGORY_NAV = {
   ad_campaign: "/ads",
 };
 
+const STORE_SAFE_BLOCKED_CATEGORIES = new Set(["lottery", "auction"]);
+
 export default function SmartRecommendations({ onNavigate }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,9 +53,11 @@ export default function SmartRecommendations({ onNavigate }) {
       const r = await fetch(`${API}/api/ai/recommendations?limit=4`, { credentials: "include" });
       const j = await r.json();
       if (r.ok && Array.isArray(j.items)) {
-        setItems(j.items);
+        setItems(STORE_SAFE_MODE ? j.items.filter((item) => !STORE_SAFE_BLOCKED_CATEGORIES.has(item.category)) : j.items);
       }
-    } catch {}
+    } catch (error) {
+      setItems([]);
+    }
     setLoading(false);
     setRefreshing(false);
   }, []);

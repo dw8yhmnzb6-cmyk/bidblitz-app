@@ -13,11 +13,12 @@ import {
   Stethoscope, CarFront, Sparkles, Truck, Dog, Dumbbell, Palmtree,
   BatteryCharging, TrendingUp
 } from "lucide-react";
+import { filterStoreSafeItems } from "../config/release";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 // All available shortcuts
-const ALL_SHORTCUTS = [
+const ALL_SHORTCUTS = filterStoreSafeItems([
   { id: "taxi", icon: Car, label: "Taxi", route: "/taxi", color: "#F59E0B" },
   { id: "scooter", icon: Zap, label: "Scooter", route: "/scooter", color: "#10B981" },
   { id: "hotels", icon: Hotel, label: "Hotels", route: "/hotels", color: "#3B82F6" },
@@ -68,7 +69,7 @@ const ALL_SHORTCUTS = [
   { id: "blitz-boost", icon: TrendingUp, label: "BlitzBoost", route: "/blitz-boost", color: "#E1306C" },
   { id: "blitz-transfer", icon: Package, label: "BlitzTransfer", route: "/blitz-transfer", color: "#00B2FF" },
   { id: "blitz-mine", icon: Zap, label: "BlitzMine", route: "/blitz-mine", color: "#FFD700" },
-];
+]);
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];
 

@@ -16,6 +16,7 @@ import ErrorState from "../components/ErrorState";
 import { api as apiService } from "../services/api";
 import { useI18n } from "../store";
 import { DEMO_MERCHANT } from "../models/demoData";
+import { STORE_SAFE_MODE } from "../config/release";
 import GuestCTABar from "../components/GuestCTABar";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -200,6 +201,7 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
 
 // ── Main MerchantPage ──
 export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
+  const effectiveDemoMode = STORE_SAFE_MODE ? false : isDemoMode;
   const merchant = useMerchant();
   const realStats = useMerchantStats();
   const { t } = useI18n();
@@ -210,15 +212,15 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
   const [payouts, setPayouts] = useState([]);
 
   // Demo overrides
-  const stats = isDemoMode ? DEMO_MERCHANT : realStats;
-  const displayBalance = isDemoMode ? DEMO_MERCHANT.balance : balance;
-  const displayBusinessName = isDemoMode ? DEMO_MERCHANT.businessName : merchant.businessName;
-  const displayTotalTransactions = isDemoMode ? DEMO_MERCHANT.totalTransactions : merchant.totalTransactions;
-  const recentPayments = isDemoMode
+  const stats = effectiveDemoMode ? DEMO_MERCHANT : realStats;
+  const displayBalance = effectiveDemoMode ? DEMO_MERCHANT.balance : balance;
+  const displayBusinessName = effectiveDemoMode ? DEMO_MERCHANT.businessName : merchant.businessName;
+  const displayTotalTransactions = effectiveDemoMode ? DEMO_MERCHANT.totalTransactions : merchant.totalTransactions;
+  const recentPayments = effectiveDemoMode
     ? DEMO_MERCHANT.recentPayments
     : merchant.payments.slice(0, 6).map((p) => ({ ...p, time: formatRelativeTime(p.date) }));
-  const displayWeeklyData = isDemoMode ? DEMO_MERCHANT.weeklyData : stats.weeklyData;
-  const displayPayments = isDemoMode ? DEMO_MERCHANT.recentPayments : merchant.payments;
+  const displayWeeklyData = effectiveDemoMode ? DEMO_MERCHANT.weeklyData : stats.weeklyData;
+  const displayPayments = effectiveDemoMode ? DEMO_MERCHANT.recentPayments : merchant.payments;
 
   const merchantExports = [
     { key: "payments", label: t("export.payments"), action: (f) => apiService.exportMerchantPayments(f) },
@@ -394,14 +396,14 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
             className="flex-1 py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2"
             style={{ boxShadow: "0 4px 24px rgba(0,194,255,0.25)" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32, ...slide }}
-            whileTap={{ scale: 0.96 }} onClick={() => isDemoMode ? toast("Create Payment", { description: "Demo: Payment simulated" }) : onNavigate("/scan")}>
+            whileTap={{ scale: 0.96 }} onClick={() => effectiveDemoMode ? toast("Create Payment", { description: "Demo: Payment simulated" }) : onNavigate("/scan")}>
             <Plus size={15} strokeWidth={2.5} />Create Payment
           </motion.button>
           <motion.button data-testid="request-payout-btn"
             className="flex-1 py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2"
             style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.15)", color: "#00D26A" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34, ...slide }}
-            whileTap={{ scale: 0.96 }} onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Request a payout") : isDemoMode ? toast("Payout", { description: "Demo: Payout simulated" }) : setShowPayout(true)}>
+            whileTap={{ scale: 0.96 }} onClick={() => (isGuest && !effectiveDemoMode) ? onAuthRequired("Request a payout") : effectiveDemoMode ? toast("Payout", { description: "Demo: Payout simulated" }) : setShowPayout(true)}>
             <ArrowDownToLine size={15} strokeWidth={2} />Payout
           </motion.button>
         </div>

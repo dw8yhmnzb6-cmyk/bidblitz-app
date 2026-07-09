@@ -27,6 +27,7 @@ import QuestsWidget from "../components/QuestsWidget";
 import SponsoredAdSlot from "../components/SponsoredAdSlot";
 import KYCBanner from "../components/KYCBanner";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
+import { STORE_SAFE_MODE, filterStoreSafeItems } from "../config/release";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -316,22 +317,22 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     tracker.featureClick(featureId);
     if (isGuest) { onRegister(); return; }
     const routeMap = {
-      wallet: "/wallet", auctions: "/auctions", mining: "/mining",
+      wallet: "/wallet", mining: "/mining",
       merchant: "/merchant-landing", nfc: "/nfc", vip: "/vip",
       referral: "/referral", marketplace: "/marketplace", rewards: "/rewards", commerce: "/commerce-center", mobilityCenter: "/mobility-center",
     };
     if (routeMap[featureId]) { onNavigate(routeMap[featureId]); }
   };
 
-  const availableFeatures = [
+  const availableFeatures = filterStoreSafeItems([
     { id: "wallet", icon: Wallet, title: t("home.f_wallet") || "Wallet", desc: t("home.f_wallet_d") || "Manage your money", color: "#00C2FF", route: "/wallet", large: true },
     { id: "auctions", icon: Gavel, title: t("home.f_auctions") || "Auctions", desc: t("home.f_auctions_d") || "Bid & win deals", color: "#A855F7", route: "/auctions" },
     { id: "mining", icon: Cpu, title: t("home.f_mining") || "Mining", desc: t("home.f_mining_d") || "Mine BLZ tokens", color: "#00E89D", route: "/mining" },
     { id: "merchant", icon: Store, title: t("home.f_merchant") || "Merchant", desc: t("home.f_merchant_d") || "POS & payments", color: "#FFB800", route: "/merchant-landing" },
-  ];
+  ]);
 
   // ALL ACTIVE - No more "Coming Soon"
-  const extraFeatures = [
+  const extraFeatures = filterStoreSafeItems([
     { id: "nfc", icon: Smartphone, title: t("home.f_nfc") || "NFC Pay", desc: t("home.f_nfc_d") || "Tap to pay contactless", color: "#00C2FF", route: "/nfc" },
     { id: "vip", icon: Star, title: t("home.f_vip") || "VIP", desc: t("home.f_vip_d") || "Premium subscriptions", color: "#FFD700", route: "/vip" },
     { id: "referral", icon: Gift, title: t("home.f_referral") || "Referrals", desc: t("home.f_referral_d") || "Invite friends, earn rewards", color: "#00E89D", route: "/referral" },
@@ -339,7 +340,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     { id: "mobilityCenter", icon: Car, title: t("home.mobility_center") || "Mobility Center", desc: t("home.mobility_center_desc") || "Taxi, Scooter, EV und Tracking", color: "#00C2FF", route: "/mobility-center" },
     { id: "marketplace", icon: ShoppingBag, title: t("home.f_marketplace") || "Marketplace", desc: t("home.f_marketplace_d") || "Buy & sell items", color: "#FF6B6B", route: "/marketplace" },
     { id: "rewards", icon: Sparkles, title: t("home.f_rewards_more") || "Rewards", desc: t("home.f_rewards_more_d") || "Daily rewards & streaks", color: "#A855F7", route: "/rewards" },
-  ];
+  ]);
 
   return (
     <motion.div
@@ -808,30 +809,32 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             </motion.div>
 
             {/* Auctions Banner */}
-            <motion.div
-              data-testid="auctions-banner"
-              className="mt-3 rounded-2xl p-4 relative overflow-hidden cursor-pointer group"
-              style={{ background: "rgba(168,85,247,0.03)", border: "1px solid rgba(168,85,247,0.08)" }}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.85, ...slide }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onNavigate("/auctions")}
-            >
-              <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none" style={{ background: "rgba(168,85,247,0.12)", filter: "blur(30px)" }} />
-              <div className="flex items-center gap-3.5 relative z-10">
-                <div className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.12)", boxShadow: "0 0 16px rgba(168,85,247,0.08)" }}>
-                  <Gavel size={18} strokeWidth={1.5} className="text-[#A855F7]" />
+            {!STORE_SAFE_MODE && (
+              <motion.div
+                data-testid="auctions-banner"
+                className="mt-3 rounded-2xl p-4 relative overflow-hidden cursor-pointer group"
+                style={{ background: "rgba(168,85,247,0.03)", border: "1px solid rgba(168,85,247,0.08)" }}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.85, ...slide }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onNavigate("/auctions")}
+              >
+                <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none" style={{ background: "rgba(168,85,247,0.12)", filter: "blur(30px)" }} />
+                <div className="flex items-center gap-3.5 relative z-10">
+                  <div className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.12)", boxShadow: "0 0 16px rgba(168,85,247,0.08)" }}>
+                    <Gavel size={18} strokeWidth={1.5} className="text-[#A855F7]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-[13px] font-semibold text-white font-outfit mb-0.5">{t("auction.title")}</h4>
+                    <p className="text-[11px] text-[#444] font-medium">{t("auction.subtitle")}</p>
+                  </div>
+                  <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="flex-shrink-0">
+                    <ChevronRight size={16} className="text-[#A855F7]/60" />
+                  </motion.div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-[13px] font-semibold text-white font-outfit mb-0.5">{t("auction.title")}</h4>
-                  <p className="text-[11px] text-[#444] font-medium">{t("auction.subtitle")}</p>
-                </div>
-                <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="flex-shrink-0">
-                  <ChevronRight size={16} className="text-[#A855F7]/60" />
-                </motion.div>
-              </div>
-            </motion.div>
+              </motion.div>
+            )}
           </>
         )}
 

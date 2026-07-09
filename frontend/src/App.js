@@ -18,6 +18,8 @@ import KYCFlow from "./pages/KYCFlow";
 import { LandingChatbot } from "./components/LandingChatbot";
 import CookieBanner from "./components/CookieBanner";
 import { initSentryIfConsented } from "./utils/sentry";
+import { STORE_SAFE_MODE, DEMO_MODE, isStoreBlockedPath } from "./config/release";
+import StoreSafeUnavailablePage from "./components/StoreSafeUnavailablePage";
 import {
   CarListPage, CarDetailPage, MyCarBookingsPage, MyBookingDetailPage,
   VendorCarRentalDashboardPage, VendorCarsPage, VendorBookingsPage,
@@ -263,6 +265,9 @@ const LiveKitStreamPage = lazy(() => import("./pages/LiveKitStreamPage"));
 const AdminLandingLeadsPage = lazy(() => import("./pages/AdminLandingLeadsPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
+const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
+const StoreSupportPage = lazy(() => import("./pages/StoreSupportPage"));
 const SuperAppMarketplace = lazy(() => import("./components/SuperAppMarketplace").then(m => ({ default: m.SuperAppMarketplace })));
 const CreatorsPage = lazy(() => import("./pages/CreatorsPage"));
 const P2PPage = lazy(() => import("./pages/P2PPage"));
@@ -326,7 +331,7 @@ function AppContent() {
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [authGateMessage, setAuthGateMessage] = useState("");
   const [showFullAuth, setShowFullAuth] = useState("");
-  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(DEMO_MODE);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("bidblitz_onboarded"));
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
@@ -533,6 +538,7 @@ function AppContent() {
       onLogin: () => { tracker.ctaClick("login", "home"); setShowFullAuth("login"); },
       onRegister: () => { tracker.guestRegisterClick("home"); setShowFullAuth("register"); },
       onStartDemo: () => {
+        if (STORE_SAFE_MODE) return;
         tracker.demoStart();
         setIsDemoMode(true);
         setCurrentPath("/");
@@ -551,6 +557,7 @@ function AppContent() {
       onRegister: () => { tracker.guestRegisterClick(currentPath); setShowFullAuth("register"); },
       routeParams,
       onStartDemo: () => {
+        if (STORE_SAFE_MODE) return;
         tracker.demoStart();
         setIsDemoMode(true);
         setCurrentPath("/");
@@ -562,6 +569,9 @@ function AppContent() {
         });
       },
     };
+    if (isStoreBlockedPath(currentPath)) {
+      return <StoreSafeUnavailablePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
+    }
     if (!isGuest && !isDemoMode && !isKycVerified && isKycRestrictedPath(currentPath)) {
       return <KYCFlow onBack={() => handleNavigate("/")} onComplete={() => handleNavigate("/kyc/status")} />;
     }
@@ -1026,6 +1036,12 @@ function AppContent() {
       case "/agb":
       case "/terms":
         return <TermsPage onBack={() => handleNavigate("/")} />;
+      case "/contact":
+        return <ContactPage onBack={() => handleNavigate("/")} />;
+      case "/delete-account":
+        return <DeleteAccountPage onBack={() => handleNavigate("/")} />;
+      case "/support":
+        return <StoreSupportPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/wallet-dashboard":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <WalletPage {...pageProps} />;
       case "/super-marketplace":

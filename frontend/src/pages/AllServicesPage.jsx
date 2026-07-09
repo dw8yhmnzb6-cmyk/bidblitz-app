@@ -14,6 +14,7 @@ import {
   Phone, Globe, Crown, Gift, Gavel, Send, Eye, ChevronRight,
   Layers, LayoutGrid, Tag, Percent
 } from "lucide-react";
+import { filterStoreSafeItems } from "../config/release";
 
 const CATEGORIES = [
   {
@@ -126,7 +127,10 @@ const CATEGORIES = [
       { icon: Zap, label: "BlitzMine", desc: "Tippe täglich & mine BLZ (Pi-Style)", route: "/blitz-mine", color: "#FFD700" },
     ],
   },
-];
+].map((category) => ({
+  ...category,
+  items: filterStoreSafeItems(category.items),
+}));
 
 export default function AllServicesPage({ onBack, onNavigate }) {
   const [search, setSearch] = useState("");

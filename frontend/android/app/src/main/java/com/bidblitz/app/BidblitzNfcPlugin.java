@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.nfc.FormatException;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -320,10 +321,10 @@ public class BidblitzNfcPlugin extends Plugin {
         return out;
     }
 
-    private void writeRecordsToTag(Tag tag, JSArray records) throws IOException, JSONException {
+    private void writeRecordsToTag(Tag tag, JSArray records) throws IOException, JSONException, FormatException {
         NdefRecord[] androidRecords = new NdefRecord[records.length()];
         for (int i = 0; i < records.length(); i++) {
-            JSObject record = records.getJSONObject(i);
+            JSObject record = JSObject.fromJSONObject(records.getJSONObject(i));
             String type = record.optString("recordType", "text");
             String data = record.optString("data", "");
             if ("url".equals(type)) {

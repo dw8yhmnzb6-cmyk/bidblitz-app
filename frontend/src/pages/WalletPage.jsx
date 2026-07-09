@@ -21,6 +21,7 @@ import { api } from "../services/api";
 import { WalletBioPayCard, WalletPaymentPinCard } from "../components/wallet/WalletSecurityCards";
 import { useI18n } from "../store";
 import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
+import { STORE_SAFE_MODE } from "../config/release";
 import GuestCTABar from "../components/GuestCTABar";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
@@ -114,8 +115,9 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
 export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, routeParams = {} }) => {
   const wallet = useWallet();
   const user = useUser();
-  const canAutoOpenWalletActions = !isGuest || isDemoMode;
-  const isPendingKyc = !isGuest && !isDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
+  const effectiveDemoMode = STORE_SAFE_MODE ? false : isDemoMode;
+  const canAutoOpenWalletActions = !isGuest || effectiveDemoMode;
+  const isPendingKyc = !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = typeof window !== "undefined" &&
     (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
@@ -243,16 +245,16 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   }, [onNavigate]);
 
   // Demo mode: override data
-  const balance = isDemoMode ? DEMO_BALANCE : toSafeNumber(wallet.balance);
-  const currency = isDemoMode ? DEMO_CURRENCY : wallet.currency;
-  const cardNumber = isDemoMode ? DEMO_CARD_NUMBER : wallet.cardNumber;
-  const cardExpiry = isDemoMode ? DEMO_CARD_EXPIRY : wallet.cardExpiry;
-  const cardHolder = isDemoMode ? DEMO_CARD_HOLDER : wallet.cardHolder;
-  const walletError = isDemoMode ? null : wallet.error;
+  const balance = effectiveDemoMode ? DEMO_BALANCE : toSafeNumber(wallet.balance);
+  const currency = effectiveDemoMode ? DEMO_CURRENCY : wallet.currency;
+  const cardNumber = effectiveDemoMode ? DEMO_CARD_NUMBER : wallet.cardNumber;
+  const cardExpiry = effectiveDemoMode ? DEMO_CARD_EXPIRY : wallet.cardExpiry;
+  const cardHolder = effectiveDemoMode ? DEMO_CARD_HOLDER : wallet.cardHolder;
+  const walletError = effectiveDemoMode ? null : wallet.error;
   const refreshWallet = wallet.refreshWallet;
 
   // Group demo transactions by date
-  const demoGrouped = isDemoMode ? DEMO_TRANSACTIONS.reduce((acc, txn) => {
+  const demoGrouped = effectiveDemoMode ? DEMO_TRANSACTIONS.reduce((acc, txn) => {
     const d = new Date(txn.date);
     const today = new Date();
     const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
@@ -265,8 +267,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
     return acc;
   }, {}) : null;
 
-  const groupedTransactions = isDemoMode ? demoGrouped : (realGrouped && typeof realGrouped === "object" ? realGrouped : {});
-  const stats = isDemoMode
+  const groupedTransactions = effectiveDemoMode ? demoGrouped : (realGrouped && typeof realGrouped === "object" ? realGrouped : {});
+  const stats = effectiveDemoMode
     ? { totalSpent: 180.39, totalIncome: 700.0, percentageChange: 12.4 }
     : {
         totalSpent: toSafeNumber(realStats.totalSpent),
@@ -689,7 +691,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             icon={Plus}
             label={t("wallet.add") || "Aufladen"}
             color="#00C2FF"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Top up your wallet") : isDemoMode ? toast(t("wallet.add") || "Add Money", { description: "Demo: Top-up simulated" }) : openWalletAction("topup")}
+            onClick={() => (isGuest && !effectiveDemoMode) ? onAuthRequired("Top up your wallet") : effectiveDemoMode ? toast(t("wallet.add") || "Add Money", { description: "Demo: Top-up simulated" }) : openWalletAction("topup")}
             delay={0.22}
           />
           <WalletAction
@@ -697,7 +699,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             icon={QrCode}
             label={t("nav.pay") || "Bezahlen"}
             color="#FFB800"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Open pay screen") : isDemoMode ? toast(t("nav.pay") || "Bezahlen", { description: "Demo: Pay flow simulated" }) : onNavigate?.("/pay")}
+            onClick={() => (isGuest && !effectiveDemoMode) ? onAuthRequired("Open pay screen") : effectiveDemoMode ? toast(t("nav.pay") || "Bezahlen", { description: "Demo: Pay flow simulated" }) : onNavigate?.("/pay")}
             delay={0.24}
           />
           <WalletAction
@@ -705,7 +707,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             icon={ArrowUpRight}
             label={t("wallet.send") || "Senden"}
             color="#A855F7"
-            onClick={() => (isGuest && !isDemoMode) ? onAuthRequired("Send money") : isDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : onNavigate?.('/send-money')}
+            onClick={() => (isGuest && !effectiveDemoMode) ? onAuthRequired("Send money") : effectiveDemoMode ? toast(t("wallet.send") || "Send", { description: "Demo: Send simulated" }) : onNavigate?.('/send-money')}
             delay={0.26}
           />
           <WalletAction
