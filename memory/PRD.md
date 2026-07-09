@@ -1734,3 +1734,9 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Android Release-Artefakte erfolgreich erstellt: signiertes AAB und signiertes APK.
 - iOS Release-Konfiguration aktualisiert (Bundle ID com.bidblitz.app, Version 1.0.0, Build 2), aber kein Archive/IPA im Linux-Container möglich.
 - Wallet P0 Financial Bug bleibt explizit Launch-Blocker bis zur vollständigen Behebung.
+
+## Update 2026-07-09 04:48 UTC
+- Store Submission Package vorbereitet: öffentliche Seiten /privacy, /terms, /support, /contact, /delete-account live und getestet.
+- Store-Dokumente erstellt: STORE_SUBMISSION_PACKAGE.md, STORE_PRIVACY_ANSWERS.md, STORE_SCREENSHOT_PLAN.md.
+- Reviewer-Testkonto erstellt: reviewer@bidblitz.ae / BidBlitzReview2026!
+- Wallet P0 bleibt explizit Launch-Blocker bis zur bestätigten Fehlerbehebung.
