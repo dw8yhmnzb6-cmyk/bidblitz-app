@@ -686,3 +686,9 @@
 - Admin-Kundenliste mit `role=admin` zeigt nur noch `admin@bidblitz.ae`.
 - Admin-Wallet-User-Suche blendet deaktivierte/Legacy-Admins ebenfalls aus.
 - Aktives Konto-Banner zeigt kanonisch jetzt `admin@bidblitz.ae` statt `.com` als "Kanonisch".
+
+## 09.07.2026 — Frontend i18n Final Cleanup
+- Offene harte UI-Texte in `TransactionFilters.jsx`, `KYCBanner.jsx`, `UserStatsPage.jsx`, `MonitoringDashboard.jsx`, `ExtraFeatures.jsx` und `RestaurantTablesAdminPage.jsx` auf `t()`/`useI18n()` umgestellt.
+- Neue Shared-Fallback-Keys für Albanisch, Arabisch, Englisch und Deutsch ergänzt: Stats, Monitoring, Leaderboard, Onboarding, Restaurant Tables/Hardware sowie Common-Actions.
+- Lint PASS auf allen bearbeiteten Dateien; Albanisch-Smoke-Test via Preview erfolgreich.
+- `auto_frontend_testing_agent` bestätigt: keine harten deutschen Resttexte in den geprüften Bereichen, keine UI-Brüche, keine MOCKS.

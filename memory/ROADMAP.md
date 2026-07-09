@@ -1,5 +1,11 @@
 # BidBlitz — ROADMAP
 
+## Status nach Frontend-i18n Final Cleanup — 09.07.2026
+- ✅ Offene harte Texte in Wallet-Filtern, KYC-Banner, User Stats, Monitoring, Leaderboard/ExtraFeatures und Restaurant Tables Admin bereinigt.
+- ✅ Gemeinsame i18n-Keys für **DE / EN / SQ / AR** ergänzt; Albanisch-Modus per Smoke-Test und Frontend-Testagent geprüft.
+- 🟡 Nächster sinnvoller Schritt: projektweiter Rest-Audit auf tiefer liegende Seiten/Legacy-Flows außerhalb der zuletzt bearbeiteten Kernbereiche.
+- 🔴 Android-AAB-Build bleibt im aktuellen ARM64-Container durch AAPT2-Inkompatibilität blockiert; kein finales `.aab` aus diesem Container.
+
 ## Status nach Mobile Store Prep + Production Audit — 09.07.2026
 - ✅ Huawei AppGallery / Samsung Galaxy Store / Apple App Store Connect Copy-Paste-Pakete vorbereitet.
 - ✅ iOS Permission-Texte review-sicher aktualisiert; Android Package-/Version-Metadaten auf `com.bidblitz.app` / Version `1.0.0` / Build `3` ausgerichtet.
