@@ -1750,3 +1750,8 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Apple TestFlight Paket erstellt: Bundle/Version/Build/ATS/Store-Safe geprüft, TestFlight-Metadaten und App-Privacy-Draft dokumentiert.
 - iOS-Archiv/IPA im Linux-Container nicht erzeugbar; Upload-Schritte für macOS/Xcode vorbereitet.
 - Wallet P0 bleibt explizit Launch-Blocker vor öffentlicher Freigabe.
+
+## Update 2026-07-09 09:08 UTC
+- Final Store Readiness Gate abgeschlossen. Ergebnis: Store-Safe-/Legal-/Build-Artefakte weitgehend bereit, aber Wallet P0 **nicht behoben**.
+- Testing-Agent Iteration 217 bestätigt: öffentl. Store-Seiten und Store-Safe-Blocking PASS, aber Wallet-Reconciliation-Fehler bleibt kritisch (Welcome Bonus in Historie, Balance 0.00).
+- iOS bleibt ohne macOS/Xcode/Apple-Signing **nicht uploadbereit**; Android AAB ist vorhanden, aber Gesamt-Go bleibt NO-GO bis Wallet P0 und Wallet-Engine-Integrität bereinigt sind.
