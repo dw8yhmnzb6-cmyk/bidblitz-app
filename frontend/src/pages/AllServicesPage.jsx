@@ -15,6 +15,7 @@ import {
   Layers, LayoutGrid, Tag, Percent
 } from "lucide-react";
 import { filterStoreSafeItems } from "../config/release";
+import { useI18n } from "../store";
 
 const CATEGORIES = [
   {
@@ -133,8 +134,56 @@ const CATEGORIES = [
 }));
 
 export default function AllServicesPage({ onBack, onNavigate }) {
+  const { lang, t } = useI18n();
   const [search, setSearch] = useState("");
   const [expandedCat, setExpandedCat] = useState(null);
+
+  const L = {
+    de: {
+      headerTitle: "Alle Services",
+      featuresInOneApp: `${totalServices} Features in einer App`,
+      searchPlaceholder: "Service suchen...",
+      results: (count) => `${count} Ergebnis${count !== 1 ? "se" : ""}`,
+      noService: "Kein Service gefunden",
+      footer: `BidBlitz Super App — ${totalServices} Services in einer App`,
+      stats: ["Services", "Kategorien", "Sprachen", "Cashback"],
+    },
+    en: {
+      headerTitle: "All Services",
+      featuresInOneApp: `${totalServices} features in one app`,
+      searchPlaceholder: "Search service...",
+      results: (count) => `${count} result${count !== 1 ? "s" : ""}`,
+      noService: "No service found",
+      footer: `BidBlitz Super App — ${totalServices} services in one app`,
+      stats: ["Services", "Categories", "Languages", "Cashback"],
+    },
+    sq: {
+      headerTitle: "Të gjitha shërbimet",
+      featuresInOneApp: `${totalServices} funksione në një aplikacion`,
+      searchPlaceholder: "Kërko shërbim...",
+      results: (count) => `${count} rezultat${count !== 1 ? "e" : ""}`,
+      noService: "Nuk u gjet asnjë shërbim",
+      footer: `BidBlitz Super App — ${totalServices} shërbime në një aplikacion`,
+      stats: ["Shërbime", "Kategori", "Gjuhë", "Cashback"],
+    },
+    ar: {
+      headerTitle: "كل الخدمات",
+      featuresInOneApp: `${totalServices} ميزة في تطبيق واحد`,
+      searchPlaceholder: "ابحث عن خدمة...",
+      results: (count) => `${count} نتيجة`,
+      noService: "لم يتم العثور على خدمة",
+      footer: `BidBlitz Super App — ${totalServices} خدمة في تطبيق واحد`,
+      stats: ["الخدمات", "الفئات", "اللغات", "الاسترداد النقدي"],
+    },
+  }[lang] || {
+    headerTitle: t("home.all_services_discover") || "All Services",
+    featuresInOneApp: `${totalServices} features`,
+    searchPlaceholder: "Search service...",
+    results: (count) => `${count}`,
+    noService: "No service found",
+    footer: `BidBlitz Super App — ${totalServices}`,
+    stats: ["Services", "Categories", "Languages", "Cashback"],
+  };
 
   const allItems = CATEGORIES.flatMap(c => c.items.map(i => ({ ...i, category: c.title })));
   const filteredItems = search ? allItems.filter(i =>
@@ -153,8 +202,8 @@ export default function AllServicesPage({ onBack, onNavigate }) {
             <ArrowLeft size={20} style={{ color: "var(--text-primary, #fff)" }} />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-bold" style={{ color: "var(--text-primary, #fff)" }}>Alle Services</h1>
-            <p className="text-[10px]" style={{ color: "var(--text-secondary, #A3A3A3)" }}>{totalServices} Features in einer App</p>
+            <h1 className="text-lg font-bold" style={{ color: "var(--text-primary, #fff)" }}>{L.headerTitle}</h1>
+            <p className="text-[10px]" style={{ color: "var(--text-secondary, #A3A3A3)" }}>{L.featuresInOneApp}</p>
           </div>
           <div className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{ background: "rgba(0,194,255,0.1)" }}>
             <LayoutGrid size={14} style={{ color: "#00C2FF" }} />
@@ -168,7 +217,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Service suchen..."
+            placeholder={L.searchPlaceholder}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
             style={{ background: "rgba(255,255,255,0.04)", color: "var(--text-primary, #fff)", border: "1px solid rgba(255,255,255,0.08)" }}
             data-testid="services-search"
@@ -180,11 +229,11 @@ export default function AllServicesPage({ onBack, onNavigate }) {
         {/* Suchergebnisse */}
         {search ? (
           <div className="space-y-2">
-            <p className="text-xs mb-3" style={{ color: "var(--text-secondary, #A3A3A3)" }}>{filteredItems.length} Ergebnis{filteredItems.length !== 1 ? "se" : ""}</p>
+            <p className="text-xs mb-3" style={{ color: "var(--text-secondary, #A3A3A3)" }}>{L.results(filteredItems.length)}</p>
             {filteredItems.length === 0 ? (
               <div className="text-center py-16">
                 <Search size={40} className="mx-auto mb-3" style={{ color: "var(--text-secondary, #444)" }} />
-                <p className="text-sm" style={{ color: "var(--text-secondary, #A3A3A3)" }}>Kein Service gefunden</p>
+                <p className="text-sm" style={{ color: "var(--text-secondary, #A3A3A3)" }}>{L.noService}</p>
               </div>
             ) : filteredItems.map((item, i) => {
               const Icon = item.icon;
@@ -216,10 +265,10 @@ export default function AllServicesPage({ onBack, onNavigate }) {
             <div className="rounded-2xl p-4 mb-4" style={{ background: "linear-gradient(135deg, rgba(0,194,255,0.1), rgba(16,185,129,0.1))", border: "1px solid rgba(0,194,255,0.14)" }}>
               <div className="grid grid-cols-4 gap-3 text-center">
                 {[
-                  { value: totalServices, label: "Services", color: "#00C2FF" },
-                  { value: CATEGORIES.length, label: "Kategorien", color: "#10B981" },
-                  { value: "15+", label: "Sprachen", color: "#A855F7" },
-                  { value: "3%", label: "Cashback", color: "#F59E0B" },
+                  { value: totalServices, label: L.stats[0], color: "#00C2FF" },
+                  { value: CATEGORIES.length, label: L.stats[1], color: "#10B981" },
+                  { value: "15+", label: L.stats[2], color: "#A855F7" },
+                  { value: "3%", label: L.stats[3], color: "#F59E0B" },
                 ].map((s, i) => (
                   <div key={i}>
                     <div className="text-lg font-bold" style={{ color: s.color }}>{s.value}</div>
@@ -299,7 +348,7 @@ export default function AllServicesPage({ onBack, onNavigate }) {
             <div className="text-center pt-4 pb-6">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: "rgba(0,194,255,0.06)", border: "1px solid rgba(0,194,255,0.1)" }}>
                 <Layers size={14} style={{ color: "#00C2FF" }} />
-                <span className="text-xs" style={{ color: "#00C2FF" }}>BidBlitz Super App — {totalServices} Services in einer App</span>
+                <span className="text-xs" style={{ color: "#00C2FF" }}>{L.footer}</span>
               </div>
             </div>
           </div>

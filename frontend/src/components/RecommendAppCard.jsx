@@ -7,10 +7,12 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Share2, Copy, Check, Gift, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "../store";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function RecommendAppCard({ isGuest, onNavigate }) {
+  const { t } = useI18n();
   const [code, setCode] = useState(null);
   const [link, setLink] = useState("https://bidblitz.ae/");
   const [copied, setCopied] = useState(false);
@@ -28,14 +30,14 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
       .catch(() => {});
   }, [isGuest]);
 
-  const shareText = `Hey! Komm zu BidBlitz — Bezahlen, Verdienen, Fahren, Einkaufen in einer App. 5€ Willkommens-Bonus: ${link}`;
+  const shareText = `${t("recommend.share_text")}: ${link}`;
 
   const doShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "BidBlitz — Die Super-App",
-          text: "Komm zu BidBlitz und hol dir 5€ Willkommens-Bonus!",
+          title: "BidBlitz",
+          text: t("recommend.share_native_text"),
           url: link,
         });
       } catch (_err) { return; }
@@ -49,9 +51,9 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
-      toast.success("Link kopiert!");
+      toast.success(t("scan.copied"));
       setTimeout(() => setCopied(false), 2000);
-    } catch { toast.error("Kopieren fehlgeschlagen"); }
+    } catch { toast.error(t("common.copy_failed")); }
   };
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
@@ -80,9 +82,9 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
           <Gift size={18} className="text-white" strokeWidth={2.5} />
         </motion.div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-black text-white leading-tight">BidBlitz empfehlen</p>
+          <p className="text-[13px] font-black text-white leading-tight">{t("recommend.title")}</p>
           <p className="text-[11px] text-white/84 leading-tight mt-0.5">
-            5€ pro Anmeldung + 10% Provision — teile mit Freunden
+            {t("recommend.subtitle")}
           </p>
         </div>
       </div>
@@ -104,7 +106,7 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
           className="py-2.5 rounded-lg text-[11px] font-bold text-white flex items-center justify-center gap-1"
           style={{ background: "linear-gradient(135deg,#FF6B9D,#A855F7)" }}
         >
-          <Share2 size={12} /> Teilen
+          <Share2 size={12} /> {t("share.native")}
         </motion.button>
         <motion.a
           data-testid="recommend-whatsapp"
@@ -132,13 +134,13 @@ export default function RecommendAppCard({ isGuest, onNavigate }) {
           whileTap={{ scale: 0.95 }}
           className="py-2.5 rounded-lg text-[11px] font-bold text-white border border-white/14 bg-white/10"
         >
-          Details
+          {t("common.details")}
         </motion.button>
       </div>
 
       {code && (
         <p className="text-[9px] text-white/55 uppercase tracking-wider mt-2 text-center">
-          Dein Code: <span className="font-mono text-white/82">{code}</span>
+          {t("recommend.your_code")} <span className="font-mono text-white/82">{code}</span>
         </p>
       )}
     </motion.div>

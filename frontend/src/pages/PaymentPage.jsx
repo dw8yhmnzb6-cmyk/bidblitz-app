@@ -12,7 +12,14 @@ const panelBorder = "1px solid rgba(255,255,255,0.04)";
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const PaymentPage = ({ onBack, onNavigate }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const L = {
+    de: { checkoutOnly: "Nur für Händler & Kasse", showOnlyAtCheckout: "Diesen Code nur an der Kasse zeigen", merchantScans: "Der Händler scannt deinen Code, gibt den Betrag ein und belastet deine Wallet direkt.", sendMoney: "Geld senden", notForCheckout: "Nicht für Kasse", topupWallet: "Wallet aufladen", onlineOrCheckout: "Online oder an Kasse", checkoutFlow: "Kassen-Flow", openPay: "1. Bezahlen öffnen", showCode: "2. Code zeigen", done: "3. Fertig", openPayDesc: "Du öffnest diesen Screen direkt aus dem Wallet.", showCodeDesc: "Der Händler scannt deinen Code an der Kasse.", doneDesc: "Die Bestätigung erscheint sofort. Für private Transfers bitte 'Geld senden' nutzen." },
+    en: { checkoutOnly: "For merchant checkout only", showOnlyAtCheckout: "Show this code only at checkout", merchantScans: "The merchant scans your code, enters the amount and charges your wallet directly.", sendMoney: "Send money", notForCheckout: "Not for checkout", topupWallet: "Top up wallet", onlineOrCheckout: "Online or at checkout", checkoutFlow: "Checkout flow", openPay: "1. Open Pay", showCode: "2. Show code", done: "3. Done", openPayDesc: "Open this screen directly from the wallet.", showCodeDesc: "The merchant scans your code at checkout.", doneDesc: "Confirmation appears instantly. For private transfers, please use 'Send money'." },
+    sq: { checkoutOnly: "Vetëm për tregtarin dhe arkën", showOnlyAtCheckout: "Shfaq këtë kod vetëm në arkë", merchantScans: "Tregtari skanon kodin tënd, vendos shumën dhe e ngarkon direkt nga wallet-i yt.", sendMoney: "Dërgo para", notForCheckout: "Jo për arkë", topupWallet: "Mbush wallet-in", onlineOrCheckout: "Online ose në arkë", checkoutFlow: "Rrjedha e arkës", openPay: "1. Hap Paguaj", showCode: "2. Shfaq kodin", done: "3. U krye", openPayDesc: "E hap këtë ekran direkt nga wallet-i.", showCodeDesc: "Tregtari skanon kodin tënd në arkë.", doneDesc: "Konfirmimi shfaqet menjëherë. Për transfere private, përdor 'Dërgo para'." },
+    ar: { checkoutOnly: "للتاجر ونقطة الدفع فقط", showOnlyAtCheckout: "اعرض هذا الرمز عند نقطة الدفع فقط", merchantScans: "يقوم التاجر بمسح رمزك وإدخال المبلغ وخصمه مباشرة من محفظتك.", sendMoney: "إرسال المال", notForCheckout: "ليس لنقطة الدفع", topupWallet: "شحن المحفظة", onlineOrCheckout: "عبر الإنترنت أو عند نقطة الدفع", checkoutFlow: "مسار نقطة الدفع", openPay: "1. افتح الدفع", showCode: "2. اعرض الرمز", done: "3. تم", openPayDesc: "تفتح هذه الشاشة مباشرة من المحفظة.", showCodeDesc: "يقوم التاجر بمسح رمزك عند نقطة الدفع.", doneDesc: "يظهر التأكيد فورًا. للتحويلات الخاصة استخدم 'إرسال المال'." },
+  }[locale];
   const [barcode, setBarcode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,19 +112,19 @@ const PaymentPage = ({ onBack, onNavigate }) => {
               <QrCode size={18} className="text-[#00E0FF]" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00E0FF]">Nur für Händler & Kasse</p>
-              <h2 className="mt-1 text-[20px] leading-tight font-bold text-white">Diesen Code nur an der Kasse zeigen</h2>
-              <p className="mt-2 text-[12px] leading-relaxed text-white/60">Der Händler scannt deinen Code, gibt den Betrag ein und belastet deine Wallet direkt.</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00E0FF]">{L.checkoutOnly}</p>
+              <h2 className="mt-1 text-[20px] leading-tight font-bold text-white">{L.showOnlyAtCheckout}</h2>
+              <p className="mt-2 text-[12px] leading-relaxed text-white/60">{L.merchantScans}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             <motion.button data-testid="payment-send-action" onClick={() => onNavigate?.('/wallet?action=send')} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl px-4 py-3 text-left" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <span className="block text-[13px] font-bold text-white">Geld senden</span>
-              <span className="mt-1 block text-[10px] text-white/55">Nicht für Kasse</span>
+              <span className="block text-[13px] font-bold text-white">{L.sendMoney}</span>
+              <span className="mt-1 block text-[10px] text-white/55">{L.notForCheckout}</span>
             </motion.button>
             <motion.button data-testid="payment-topup-action" onClick={() => onNavigate?.('/wallet?action=topup')} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl px-4 py-3 text-left" style={{ background: "rgba(0,224,255,0.08)", border: "1px solid rgba(0,224,255,0.14)" }}>
-              <span className="block text-[13px] font-bold text-[#00E0FF]">Wallet aufladen</span>
-              <span className="mt-1 block text-[10px] text-[#00E0FF]/65">Online oder an Kasse</span>
+              <span className="block text-[13px] font-bold text-[#00E0FF]">{L.topupWallet}</span>
+              <span className="mt-1 block text-[10px] text-[#00E0FF]/65">{L.onlineOrCheckout}</span>
             </motion.button>
           </div>
         </motion.div>
@@ -189,12 +196,12 @@ const PaymentPage = ({ onBack, onNavigate }) => {
 
         {/* Payment Flow Info */}
         <motion.div className="rounded-2xl p-4 backdrop-blur-xl" style={{ background: panelBg, border: panelBorder }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-          <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">Kassen-Flow</p>
+          <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-3">{L.checkoutFlow}</p>
           <div className="space-y-2">
             {[
-              { icon: Zap, label: "1. Bezahlen öffnen", fee: "Wallet", color: "#00E89D", desc: "Du öffnest diesen Screen direkt aus dem Wallet." },
-              { icon: QrCode, label: "2. Code zeigen", fee: "QR / Barcode", color: "#00E0FF", desc: "Der Händler scannt deinen Code an der Kasse." },
-              { icon: ArrowUpRight, label: "3. Fertig", fee: "Direkt", color: "#FFB800", desc: "Die Bestätigung erscheint sofort. Für private Transfers bitte 'Geld senden' nutzen." },
+              { icon: Zap, label: L.openPay, fee: "Wallet", color: "#00E89D", desc: L.openPayDesc },
+              { icon: QrCode, label: L.showCode, fee: "QR / Barcode", color: "#00E0FF", desc: L.showCodeDesc },
+              { icon: ArrowUpRight, label: L.done, fee: "Direkt", color: "#FFB800", desc: L.doneDesc },
             ].map((m, i) => (
               <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${m.color}08` }}>

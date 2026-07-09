@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, User, QrCode, Mail, Users, Send, Loader2, ChevronRight, Search, Sparkles, CheckCircle2, AlertCircle, Clock, Plus } from "lucide-react";
-import { useUser } from "../store";
+import { useI18n, useUser } from "../store";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { api } from "../services/api";
 
@@ -24,7 +24,15 @@ const normalizeAmount = (value) => {
 };
 
 export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }) {
+  const { lang } = useI18n();
   const user = useUser();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const L = {
+    de: { badge: "Privat bezahlen", title: "Geld senden", available: "Verfügbar", privateOnly: "Nur für private Transfers: Kontakt, Username, E-Mail, BidBlitz ID oder privater QR.", privateSend: "Privat senden", privateSendDesc: "An Kunden, Freunde, Familie oder Kontakte.", merchantQuestion: "Für Händler-Kasse?", merchantHint: 'Dann "Bezahlen" statt "Geld senden"', username: "Username", scan: "Scannen", contacts: "Kontakte", email: "E-Mail", searchPlaceholder: "Username, E-Mail oder BidBlitz ID...", found: "Gefunden" },
+    en: { badge: "Private payment", title: "Send money", available: "Available", privateOnly: "For private transfers only: contact, username, email, BidBlitz ID or private QR.", privateSend: "Send privately", privateSendDesc: "To customers, friends, family or contacts.", merchantQuestion: "For merchant checkout?", merchantHint: 'Then open "Pay" instead of "Send money"', username: "Username", scan: "Scan", contacts: "Contacts", email: "Email", searchPlaceholder: "Username, email or BidBlitz ID...", found: "Found" },
+    sq: { badge: "Pagesë private", title: "Dërgo para", available: "Në dispozicion", privateOnly: "Vetëm për transfere private: kontakt, username, email, BidBlitz ID ose QR privat.", privateSend: "Dërgo privatisht", privateSendDesc: "Te klientët, miqtë, familja ose kontaktet.", merchantQuestion: "Për arkën e tregtarit?", merchantHint: 'Atëherë hap "Paguaj" në vend të "Dërgo para"', username: "Username", scan: "Skano", contacts: "Kontaktet", email: "Email", searchPlaceholder: "Username, email ose BidBlitz ID...", found: "U gjet" },
+    ar: { badge: "دفع خاص", title: "إرسال المال", available: "المتاح", privateOnly: "للتحويلات الخاصة فقط: جهة اتصال أو اسم مستخدم أو بريد إلكتروني أو BidBlitz ID أو QR خاص.", privateSend: "إرسال خاص", privateSendDesc: "إلى العملاء أو الأصدقاء أو العائلة أو جهات الاتصال.", merchantQuestion: "لصندوق التاجر؟", merchantHint: 'افتح "الدفع" بدلًا من "إرسال المال"', username: "اسم المستخدم", scan: "مسح", contacts: "جهات الاتصال", email: "البريد الإلكتروني", searchPlaceholder: "اسم المستخدم أو البريد الإلكتروني أو BidBlitz ID...", found: "تم العثور" },
+  }[locale];
   const [step, setStep] = useState(1);
   const [activeList, setActiveList] = useState("saved");
   const [loading, setLoading] = useState(false);
@@ -409,8 +417,8 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
             <ArrowLeft size={18} className="text-slate-600" />
           </motion.button>
           <div>
-            <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6]">Privat bezahlen</p>
-            <h1 className="text-[20px] font-bold text-slate-950">Geld senden</h1>
+            <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6]">{L.badge}</p>
+            <h1 className="text-[20px] font-bold text-slate-950">{L.title}</h1>
           </div>
         </div>
       </div>
@@ -420,28 +428,28 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
           <motion.div key="list" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.22 }}>
             <div className="px-4 pt-4 pb-6">
               <div className="p-5 rounded-[28px] bg-gradient-to-br from-[#00C2FF]/12 to-[#8B5CF6]/10 border border-[#00C2FF]/18 mb-5 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-                <p className="text-[12px] text-[#00A6E6] font-medium mb-1">Verfügbar</p>
+                <p className="text-[12px] text-[#00A6E6] font-medium mb-1">{L.available}</p>
                 <p className="text-[36px] font-bold text-slate-900 tracking-tight">€{balance.toFixed(2)}</p>
-                <p className="text-[11px] text-slate-600 mt-1">Nur für private Transfers: Kontakt, Username, E-Mail, BidBlitz ID oder privater QR.</p>
+                <p className="text-[11px] text-slate-600 mt-1">{L.privateOnly}</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                 <div className="rounded-2xl border border-slate-200 bg-white/75 px-4 py-3">
-                  <p className="text-[12px] font-semibold text-[#8B5CF6]">Privat senden</p>
-                  <p className="mt-1 text-[11px] text-slate-600">An Kunden, Freunde, Familie oder Kontakte.</p>
+                  <p className="text-[12px] font-semibold text-[#8B5CF6]">{L.privateSend}</p>
+                  <p className="mt-1 text-[11px] text-slate-600">{L.privateSendDesc}</p>
                 </div>
                 <motion.button data-testid="send-money-go-pay" onClick={() => onNavigate?.('/pay')} whileTap={{ scale: 0.98 }} className="rounded-2xl border border-[#00C2FF]/18 bg-[#00C2FF]/8 px-4 py-3 text-left">
-                  <span className="block text-[12px] font-semibold text-[#00A6E6]">Für Händler-Kasse?</span>
-                  <span className="mt-1 block text-[11px] text-slate-600">Dann &quot;Bezahlen&quot; statt &quot;Geld senden&quot;</span>
+                  <span className="block text-[12px] font-semibold text-[#00A6E6]">{L.merchantQuestion}</span>
+                  <span className="mt-1 block text-[11px] text-slate-600">{L.merchantHint}</span>
                 </motion.button>
               </div>
 
               <div className="grid grid-cols-4 gap-3 mb-5">
                 {[
-                  { icon: User, label: "Username", color: "#8B5CF6" },
-                  { icon: QrCode, label: "Scannen", color: "#00C2FF" },
-                  { icon: Users, label: "Kontakte", color: "#10B981" },
-                  { icon: Mail, label: "E-Mail", color: "#F59E0B" },
+                  { icon: User, label: L.username, color: "#8B5CF6" },
+                  { icon: QrCode, label: L.scan, color: "#00C2FF" },
+                  { icon: Users, label: L.contacts, color: "#10B981" },
+                  { icon: Mail, label: L.email, color: "#F59E0B" },
                 ].map((item, i) => (
                   <motion.button key={i} type="button" data-testid={item.label === 'Scannen' ? 'send-money-open-scan' : undefined} onClick={item.label === 'Scannen' ? () => setShowScanner(true) : undefined} className="flex flex-col items-center gap-2 py-4 rounded-2xl" style={{ background: `${item.color}10` }} whileTap={{ scale: 0.95 }}>
                     <item.icon size={22} style={{ color: item.color }} />
@@ -457,7 +465,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Username, E-Mail oder BidBlitz ID..."
+                  placeholder={L.searchPlaceholder}
                   className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 text-[15px] placeholder-slate-400 outline-none focus:border-[#00C2FF]/40"
                   autoFocus
                 />
@@ -466,7 +474,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
               <AnimatePresence>
                 {searchResults.length > 0 && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-5">
-                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mb-3">Gefunden</p>
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mb-3">{L.found}</p>
                     {searchResults.map((r) => (
                       <motion.button data-testid={`send-money-search-result-${r.user_id}`} key={r.user_id} onClick={() => selectRecipient(r)} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-[#00C2FF]/5 border border-[#00C2FF]/20 mb-2" whileTap={{ scale: 0.98 }}>
                         <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#0066FF] flex items-center justify-center text-[20px] font-bold text-white">{r.name?.[0]?.toUpperCase() || "?"}</div>

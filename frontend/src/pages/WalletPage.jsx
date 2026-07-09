@@ -204,7 +204,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   };
 
   const handleRemoveCard = async () => {
-    if (!window.confirm("Gespeicherte Karte wirklich entfernen?")) return;
+    if (!window.confirm(t("wallet.confirm_remove_saved_card"))) return;
     try {
       const API = process.env.REACT_APP_BACKEND_URL;
       await fetch(`${API}/api/stripe/saved-method`, { method: "DELETE", credentials: "include" });
@@ -221,10 +221,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   const openWalletAction = useCallback((actionName) => {
     if (isPendingKyc) {
-      toast.info("Verifizierung läuft", {
+      toast.info(t("wallet.verification_running"), {
         description: actionName === "topup"
-          ? "Aufladen wird nach Abschluss der KYC-Prüfung freigeschaltet."
-          : "Senden wird nach Abschluss der KYC-Prüfung freigeschaltet.",
+          ? t("wallet.topup_after_kyc")
+          : t("wallet.send_after_kyc"),
       });
       onNavigate?.("/kyc/status");
       return;
@@ -236,10 +236,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   }, [isPendingKyc, onNavigate]);
 
   const handlePendingKycBlockedAction = useCallback((actionName = "send") => {
-    toast.info("Verifizierung läuft", {
+    toast.info(t("wallet.verification_running"), {
       description: actionName === "topup"
-        ? "Aufladen wird nach Abschluss der KYC-Prüfung freigeschaltet."
-        : "Senden wird nach Abschluss der KYC-Prüfung freigeschaltet.",
+        ? t("wallet.topup_after_kyc")
+        : t("wallet.send_after_kyc"),
     });
     onNavigate?.("/kyc/status");
   }, [onNavigate]);
@@ -521,9 +521,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           >
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-1">Klar getrennt</p>
-                <h3 className="text-[20px] leading-tight font-bold text-slate-950">Bezahlen, Empfangen oder privat senden</h3>
-                <p className="mt-2 text-[12px] leading-relaxed text-slate-600">Jeder Flow hat jetzt einen eigenen Einstieg — damit Kunden und Kasse nichts verwechseln.</p>
+                <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-1">{t("wallet.flow_separated")}</p>
+                <h3 className="text-[20px] leading-tight font-bold text-slate-950">{t("wallet.pay_receive_send_title")}</h3>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-600">{t("wallet.pay_receive_send_desc")}</p>
               </div>
               <div className="w-11 h-11 rounded-2xl bg-[#00C2FF]/12 border border-[#00C2FF]/15 flex items-center justify-center shrink-0">
                 <Zap size={18} className="text-[#00A6E6]" />
@@ -538,8 +538,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 whileTap={{ scale: 0.98 }}
                 className="min-h-[52px] rounded-2xl bg-[#00C2FF] px-4 py-3 text-left shadow-[0_12px_28px_rgba(0,194,255,0.22)]"
               >
-                <span className="block text-[14px] font-bold text-slate-950">Bezahlen</span>
-                <span className="mt-0.5 block text-[11px] text-slate-900/70">Für Händler / Kasse</span>
+                <span className="block text-[14px] font-bold text-slate-950">{t("wallet.pay")}</span>
+                <span className="mt-0.5 block text-[11px] text-slate-900/70">{t("wallet.pay_merchant_desc")}</span>
               </motion.button>
               <motion.button
                 data-testid="wallet-start-receive-btn"
@@ -548,8 +548,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 whileTap={{ scale: 0.98 }}
                 className="min-h-[52px] rounded-2xl border border-[#00C2FF]/16 bg-[#00C2FF]/8 px-4 py-3 text-left"
               >
-                <span className="block text-[14px] font-bold text-slate-950">Empfangen</span>
-                <span className="mt-0.5 block text-[11px] text-slate-600">Eigenen QR zeigen</span>
+                <span className="block text-[14px] font-bold text-slate-950">{t("wallet.receive")}</span>
+                <span className="mt-0.5 block text-[11px] text-slate-600">{t("wallet.show_own_qr")}</span>
               </motion.button>
               <motion.button
                 data-testid="wallet-start-send-btn"
@@ -558,16 +558,16 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 whileTap={{ scale: 0.98 }}
                 className="min-h-[52px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left"
               >
-                <span className="block text-[14px] font-bold text-slate-950">Geld senden</span>
-                <span className="mt-0.5 block text-[11px] text-slate-600">Privat an Kontakt</span>
+                <span className="block text-[14px] font-bold text-slate-950">{t("wallet.send_money")}</span>
+                <span className="mt-0.5 block text-[11px] text-slate-600">{t("wallet.send_private_contact")}</span>
               </motion.button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
               {[
-                { title: 'Kasse / Händler', desc: 'Händler scannt deinen Code', color: '#00A6E6' },
-                { title: 'Privat empfangen', desc: 'Anderer Kunde scannt deinen QR', color: '#10B981' },
-                { title: 'Privat senden', desc: 'Du scannst oder wählst Empfänger', color: '#8B5CF6' },
+                { title: t('wallet.cashier_merchant'), desc: t('wallet.cashier_merchant_desc'), color: '#00A6E6' },
+                { title: t('wallet.private_receive'), desc: t('wallet.private_receive_desc'), color: '#10B981' },
+                { title: t('wallet.private_send'), desc: t('wallet.private_send_desc'), color: '#8B5CF6' },
               ].map((item) => (
                 <div key={item.title} className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-3">
                   <p className="text-[12px] font-semibold" style={{ color: item.color }}>{item.title}</p>
@@ -620,9 +620,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Deine Nummer</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{t("wallet.your_number")}</p>
                 <p className="text-xl font-bold text-slate-900" data-testid="user-number-value">
-                  {wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number || "Laden..."}
+                  {wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number || t("common.loading")}
                 </p>
               </div>
               <button
@@ -631,15 +631,15 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                   const num = wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number;
                   if (num) {
                     navigator.clipboard.writeText(num);
-                    toast.success("Nummer kopiert");
+                    toast.success(t("wallet.number_copied"));
                   }
                 }}
                 className="px-4 py-2.5 rounded-xl bg-[#00C2FF]/20 text-[#00C2FF] text-sm font-semibold hover:bg-[#00C2FF]/30 active:scale-95 transition-all"
               >
-                Kopieren
+                {t("scan.copy")}
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Teile diese Nummer, um Geld zu empfangen</p>
+            <p className="text-xs text-slate-500 mt-2">{t("wallet.share_number_receive")}</p>
           </motion.div>
         )}
 
@@ -653,13 +653,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
             data-testid="quick-send-section"
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-slate-900">Schnell senden</h3>
+              <h3 className="text-sm font-bold text-slate-900">{t("wallet.quick_send")}</h3>
               <button
                 data-testid="quick-send-show-all-btn"
                 onClick={() => onNavigate?.('/send-money')}
                 className="text-xs text-[#00C2FF] font-semibold"
               >
-                Alle →
+                {t("common.all")} →
               </button>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -671,7 +671,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                   onDisabledAttempt={() => handlePendingKycBlockedAction("send")}
                   onSendComplete={() => {
                     refreshWallet();
-                    toast.success("Erfolgreich gesendet");
+                    toast.success(t("wallet.sent_success"));
                   }}
                 />
               ))}
@@ -749,13 +749,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                       <p className="text-[12px] font-semibold text-slate-900">
                         {(savedCard.brand || "").charAt(0).toUpperCase() + (savedCard.brand || "").slice(1)} ****{savedCard.last4}
                       </p>
-                      <p className="text-[10px] text-[#444]">{savedCard.exp ? `Gültig bis ${savedCard.exp}` : "Gespeichert"} · 1-Click Zahlung aktiv</p>
+                      <p className="text-[10px] text-[#444]">{savedCard.exp ? t("wallet.valid_until", { date: savedCard.exp }) : t("wallet.saved")} · {t("wallet.one_click_payment_active")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
                       style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.12)", color: "#00D26A" }}>
-                      Aktiv
+                      {t("common.active")}
                     </span>
                     <motion.button whileTap={{ scale: 0.9 }} onClick={handleRemoveCard}
                       className="p-1.5 rounded-lg" style={{ background: "rgba(255,71,87,0.08)" }}
@@ -776,8 +776,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                   {cardSaving ? <Loader2 size={18} className="text-[#635BFF] animate-spin" /> : <CreditCard size={18} className="text-[#635BFF]" />}
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-[12px] font-semibold text-slate-900">Karte speichern</p>
-                  <p className="text-[10px] text-[#444]">Für schnelle 1-Click Zahlungen</p>
+                  <p className="text-[12px] font-semibold text-slate-900">{t("wallet.save_card")}</p>
+                  <p className="text-[10px] text-[#444]">{t("wallet.save_card_desc")}</p>
                 </div>
                 <ChevronRight size={16} className="text-[#635BFF]" />
               </motion.button>
@@ -823,12 +823,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           transition={{ delay: 0.36 }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[13px] font-semibold font-outfit text-slate-900">Transaktionen</h3>
+            <h3 className="text-[13px] font-semibold font-outfit text-slate-900">{t("wallet.transactions")}</h3>
             <motion.span
               className="text-[11px] text-[#00C2FF] font-medium cursor-pointer flex items-center gap-0.5"
               whileHover={{ x: 3 }}
             >
-              Alle <ChevronRight size={12} strokeWidth={2} />
+              {t("wallet.see_all")} <ChevronRight size={12} strokeWidth={2} />
             </motion.span>
           </div>
 
@@ -849,8 +849,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
                 <Clock size={20} className="text-slate-500" />
               </div>
-              <p className="text-[13px] text-slate-800 font-medium mb-1">Noch keine Transaktionen</p>
-              <p className="text-[11px] text-slate-500">Deine Zahlungen erscheinen hier automatisch.</p>
+              <p className="text-[13px] text-slate-800 font-medium mb-1">{t("wallet.no_txns")}</p>
+              <p className="text-[11px] text-slate-500">{t("wallet.txn_hint")}</p>
             </motion.div>
           ) : (
             <div className="space-y-5">

@@ -8,6 +8,7 @@ import {
   ArrowLeft, Bell, Check, CheckCheck, Trash2, Loader2,
   CreditCard, Gift, AlertTriangle, TrendingUp, Wallet, Star, Shield
 } from "lucide-react";
+import { useI18n } from "../store";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -26,6 +27,14 @@ const TYPE_CONFIG = {
 };
 
 const NotificationCenterPage = ({ onBack }) => {
+  const { lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const L = {
+    de: { title: "Benachrichtigungen", unread: "ungelesen", markAll: "Alle gelesen", all: "Alle", unreadTab: "Ungelesen", empty: "Keine Benachrichtigungen", info: "Info" },
+    en: { title: "Notifications", unread: "unread", markAll: "Mark all read", all: "All", unreadTab: "Unread", empty: "No notifications", info: "Info" },
+    sq: { title: "Njoftime", unread: "të palexuara", markAll: "Shënoji të gjitha si të lexuara", all: "Të gjitha", unreadTab: "Të palexuara", empty: "Nuk ka njoftime", info: "Info" },
+    ar: { title: "الإشعارات", unread: "غير مقروءة", markAll: "تحديد الكل كمقروء", all: "الكل", unreadTab: "غير المقروءة", empty: "لا توجد إشعارات", info: "معلومة" },
+  }[locale] || { title: "Notifications", unread: "unread", markAll: "Mark all read", all: "All", unreadTab: "Unread", empty: "No notifications", info: "Info" };
   const [notifs, setNotifs] = useState([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -39,7 +48,9 @@ const NotificationCenterPage = ({ onBack }) => {
         setNotifs(d.notifications || []);
         setUnread(d.unread_count || 0);
       }
-    } catch {}
+      } catch (error) {
+        return null;
+      }
     setLoading(false);
   }, []);
 
@@ -68,19 +79,19 @@ const NotificationCenterPage = ({ onBack }) => {
           <div className="flex items-center gap-3">
             <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} className="p-2 rounded-xl bg-white/5 border border-white/10"><ArrowLeft size={18} /></motion.button>
             <div>
-              <h1 className="text-[15px] font-bold">Benachrichtigungen</h1>
-              <p className="text-[10px] text-gray-500">{unread} ungelesen</p>
+              <h1 className="text-[15px] font-bold">{L.title}</h1>
+              <p className="text-[10px] text-gray-500">{unread} {L.unread}</p>
             </div>
           </div>
           {unread > 0 && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={markAllRead}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#00C2FF]/10 text-[10px] text-[#00C2FF] font-semibold" data-testid="mark-all-read">
-              <CheckCheck size={12} /> Alle gelesen
+              <CheckCheck size={12} /> {L.markAll}
             </motion.button>
           )}
         </div>
         <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-          {[{ id: "all", label: "Alle" }, { id: "unread", label: "Ungelesen" }, { id: "credit", label: "Kredit" }, { id: "coupon", label: "Gutschein" }, { id: "grant", label: "Gutschrift" }].map(f => (
+          {[{ id: "all", label: L.all }, { id: "unread", label: L.unreadTab }, { id: "credit", label: TYPE_CONFIG.credit.label }, { id: "coupon", label: TYPE_CONFIG.coupon_redeemed.label }, { id: "grant", label: TYPE_CONFIG.admin_grant.label }].map(f => (
             <motion.button key={f.id} whileTap={{ scale: 0.95 }} onClick={() => setFilter(f.id)}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap ${filter === f.id ? "bg-[#00C2FF] text-black" : "bg-white/5 text-[#666]"}`}>
               {f.label}
@@ -90,9 +101,9 @@ const NotificationCenterPage = ({ onBack }) => {
       </div>
       <div className="p-4 space-y-2">
         {filtered.length === 0 ? (
-          <div className="text-center py-16"><Bell size={40} className="mx-auto text-[#333] mb-3" /><p className="text-sm text-gray-500">Keine Benachrichtigungen</p></div>
+          <div className="text-center py-16"><Bell size={40} className="mx-auto text-[#333] mb-3" /><p className="text-sm text-gray-500">{L.empty}</p></div>
         ) : filtered.map((n, i) => {
-          const cfg = TYPE_CONFIG[n.type] || { icon: Bell, color: "#666", label: "Info" };
+          const cfg = TYPE_CONFIG[n.type] || { icon: Bell, color: "#666", label: L.info };
           const Icon = cfg.icon;
           return (
             <motion.div key={n.id || i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}

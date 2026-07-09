@@ -5,10 +5,12 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Target, ChevronRight, Trophy } from "lucide-react";
+import { useI18n } from "../store";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 export default function QuestsWidget({ isGuest, onNavigate }) {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -64,15 +66,15 @@ export default function QuestsWidget({ isGuest, onNavigate }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-[12px] font-black text-white">Tägliche Quests</p>
+            <p className="text-[12px] font-black text-white">{t("quests.daily_title")}</p>
             {unclaimedRewards > 0 && (
               <span className="px-1.5 py-0.5 rounded-md bg-[#FFB800] text-black text-[9px] font-black">
-                +{unclaimedRewards} BLZ wartet!
+                {t("quests.reward_waiting", { amount: unclaimedRewards })}
               </span>
             )}
           </div>
           <p className="text-[11px] text-white/78 mt-0.5">
-            {allDone ? "Alle erledigt! Komm morgen wieder." : `${done} von ${total} erledigt · ${data.total_reward_blz} BLZ möglich`}
+            {allDone ? t("quests.all_done") : t("quests.progress_summary", { done, total, amount: data.total_reward_blz })}
           </p>
           <div className="flex gap-1 mt-1.5">
             {data.quests.map((q, i) => (

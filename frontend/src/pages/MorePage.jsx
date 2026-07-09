@@ -26,6 +26,46 @@ import { filterStoreSafeItems } from "../config/release";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 const isRtlLanguage = (lang) => lang === "ar" || lang === "ar-AE";
+const normalizeLocale = (lang) => (lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang);
+const literalTranslations = {
+  "Benachrichtigungen": { en: "Notifications", sq: "Njoftime", ar: "الإشعارات" },
+  "Push-Benachrichtigungen verwalten": { en: "Manage push notifications", sq: "Menaxho njoftimet push", ar: "إدارة الإشعارات" },
+  "Tägliche Quests": { en: "Daily Quests", sq: "Detyrat ditore", ar: "المهام اليومية" },
+  "3 Aufgaben täglich · Bis zu 70+ BLZ gewinnen": { en: "3 tasks daily · Earn up to 70+ BLZ", sq: "3 detyra çdo ditë · Fito deri në 70+ BLZ", ar: "3 مهام يوميًا · اربح حتى 70+ BLZ" },
+  "Lokales Verzeichnis": { en: "Local Directory", sq: "Direktori lokale", ar: "الدليل المحلي" },
+  "Ärzte, Handwerker, Dienstleister in der Nähe": { en: "Doctors, tradespeople and services nearby", sq: "Mjekë, zejtarë dhe shërbime afër", ar: "أطباء وحرفيون وخدمات قريبة" },
+  "Sofort-Kredit": { en: "Instant Credit", sq: "Kredi e menjëhershme", ar: "ائتمان فوري" },
+  "Bis 100€ in 3 Minuten · 0% Zinsen · 30 Tage Rückzahlung": { en: "Up to €100 in 3 minutes · 0% interest · 30-day repayment", sq: "Deri në 100€ në 3 minuta · 0% interes · kthim për 30 ditë", ar: "حتى 100€ خلال 3 دقائق · فائدة 0% · سداد خلال 30 يومًا" },
+  "Buchen & Reservieren": { en: "Bookings & Reservations", sq: "Rezervime", ar: "الحجوزات" },
+  "Hotels, Restaurants, Ärzte, Handwerker buchen": { en: "Book hotels, restaurants, doctors and tradespeople", sq: "Rezervo hotele, restorante, mjekë dhe zejtarë", ar: "احجز فنادق ومطاعم وأطباء وحرفيين" },
+  "Freunde": { en: "Friends", sq: "Miqtë", ar: "الأصدقاء" },
+  "Freunde hinzufügen & verwalten": { en: "Add and manage friends", sq: "Shto dhe menaxho miqtë", ar: "إضافة الأصدقاء وإدارتهم" },
+  "Fahrer-Modus": { en: "Driver Mode", sq: "Modaliteti i shoferit", ar: "وضع السائق" },
+  "Online gehen, Fahrten annehmen & verdienen": { en: "Go online, accept rides and earn", sq: "Dil online, prano udhëtime dhe fito", ar: "اتصل بالإنترنت واقبل الرحلات واربح" },
+  "Rechtliches": { en: "Legal", sq: "Ligjore", ar: "قانوني" },
+  "AGB": { en: "Terms", sq: "Kushtet", ar: "الشروط" },
+  "Allgemeine Geschäftsbedingungen": { en: "General terms and conditions", sq: "Kushtet e përgjithshme", ar: "الشروط والأحكام العامة" },
+  "Datenschutz": { en: "Privacy", sq: "Privatësia", ar: "الخصوصية" },
+  "DSGVO, Cookies, Ihre Rechte": { en: "GDPR, cookies and your rights", sq: "GDPR, cookies dhe të drejtat tuaja", ar: "اللائحة العامة والكوكيز وحقوقك" },
+  "Impressum": { en: "Imprint", sq: "Imprint", ar: "بيانات الناشر" },
+  "Angaben zum Anbieter": { en: "Provider information", sq: "Informacioni i ofruesit", ar: "معلومات المزوّد" },
+  "Sicherheit": { en: "Security", sq: "Siguria", ar: "الأمان" },
+  "2FA, Verschlüsselung, Schutz": { en: "2FA, encryption and protection", sq: "2FA, enkriptim dhe mbrojtje", ar: "المصادقة الثنائية والتشفير والحماية" },
+  "Wallet Reconciliation Center": { en: "Wallet Reconciliation Center", sq: "Qendra e pajtimit të wallet-it", ar: "مركز مطابقة المحفظة" },
+  "Analyse, Duplikate, Queue, Read-only History": { en: "Analysis, duplicates, queue and read-only history", sq: "Analizë, dublikate, radhë dhe histori vetëm për lexim", ar: "تحليل ونسخ مكررة وقائمة انتظار وسجل للقراءة فقط" },
+  "Taxi-Administration": { en: "Taxi Administration", sq: "Administrimi i taksive", ar: "إدارة التاكسي" },
+  "Fahrer, Fahrten, Preis-Einstellungen": { en: "Drivers, rides and pricing settings", sq: "Shoferë, udhëtime dhe rregullime çmimesh", ar: "السائقون والرحلات وإعدادات الأسعار" },
+  "Umsatz-Dashboard": { en: "Revenue Dashboard", sq: "Dashboard i të ardhurave", ar: "لوحة الإيرادات" },
+  "Live-Einnahmen · MRR · Händler-Akquise": { en: "Live revenue · MRR · merchant acquisition", sq: "Të ardhura live · MRR · përvetësim merchantësh", ar: "إيرادات مباشرة · MRR · اكتساب التجار" },
+  "Express Checkout": { en: "Express Checkout", sq: "Checkout i shpejtë", ar: "الدفع السريع" },
+  "1-Klick Zahlung mit gespeicherten Daten": { en: "1-click payment with saved data", sq: "Pagesë me 1 klik me të dhëna të ruajtura", ar: "دفع بنقرة واحدة بالبيانات المحفوظة" },
+  "Sabre Hotels": { en: "Sabre Hotels", sq: "Hotele Sabre", ar: "فنادق Sabre" },
+  "Kettenhotels weltweit buchen": { en: "Book chain hotels worldwide", sq: "Rezervo hotele zinxhir në mbarë botën", ar: "احجز فنادق السلاسل عالميًا" },
+  "POS Extended": { en: "POS Extended", sq: "POS i zgjeruar", ar: "نقطة البيع الموسعة" },
+  "Kassensturz, Offline-Mode, Bondrucker": { en: "Cash-up, offline mode and receipt printer", sq: "Mbyllje arke, modalitet offline dhe printer fature", ar: "إغلاق الصندوق ووضع عدم الاتصال وطابعة الإيصالات" },
+  "Mobilität": { en: "Mobility", sq: "Mobiliteti", ar: "التنقل" },
+  "Premium Finance": { en: "Premium Finance", sq: "Financa Premium", ar: "التمويل المميز" },
+};
 
 // ── Menu Row ──
 const MenuRow = ({ icon: Icon, label, desc, color, onClick, isLast, testId, right }) => (
@@ -610,6 +650,13 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const user = useUser();
   const { refreshUser } = user;
   const { t, lang: locale, setLang: setLocale } = useI18n();
+  const effectiveLocale = normalizeLocale(locale);
+  const localizeText = (value) => {
+    if (!value) return value;
+    if (typeof value === "object") return value[effectiveLocale] ?? value.de ?? value.en ?? Object.values(value)[0];
+    const mapped = literalTranslations[value];
+    return mapped ? (mapped[effectiveLocale] ?? mapped.de ?? mapped.en ?? value) : value;
+  };
   const isAdmin = isAdminUser(user);
   const isKycVerified = isKycApprovedOrAdmin(user);
   const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
@@ -988,8 +1035,8 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     ? visibleGroups.map((g) => ({
         ...g,
         items: g.items.filter((it) =>
-          (it.label || "").toLowerCase().includes(searchNorm) ||
-          (it.desc || "").toLowerCase().includes(searchNorm)
+          (localizeText(it.label) || "").toLowerCase().includes(searchNorm) ||
+          (localizeText(it.desc) || "").toLowerCase().includes(searchNorm)
         ),
       })).filter((g) => g.items.length > 0)
     : visibleGroups;
@@ -1017,7 +1064,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
                 style={{ background: g.color }}
               />
               <p className="text-[12px] font-bold uppercase tracking-wide text-white/80 flex-1 text-left">
-                {g.title}
+                {localizeText(g.title)}
               </p>
               <span className="text-[10px] text-white/65">{g.items.length}</span>
               <motion.div animate={{ rotate: isOpen ? 90 : 0 }}>
@@ -1035,7 +1082,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
                 >
                   <div className="grid grid-cols-2 gap-2 px-3 pb-3">
                     {g.items.map((item) => (
-                      <GridTile key={item.id} item={item} color={g.color} />
+                      <GridTile key={item.id} item={{ ...item, label: localizeText(item.label), desc: localizeText(item.desc) }} color={g.color} />
                     ))}
                   </div>
                 </motion.div>

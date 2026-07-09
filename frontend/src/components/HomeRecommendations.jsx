@@ -8,6 +8,7 @@ import {
   Hotel, Ticket, UtensilsCrossed, Briefcase, Plane, Shield,
   MapPin, Star, Clock, ChevronRight, Crown, Users
 } from "lucide-react";
+import { useI18n } from "../store";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -21,6 +22,7 @@ const SECTION_CONFIG = {
 };
 
 const HomeRecommendations = ({ onNavigate }) => {
+  const { t } = useI18n();
   const [sections, setSections] = useState([]);
 
   useEffect(() => {
@@ -54,7 +56,7 @@ const HomeRecommendations = ({ onNavigate }) => {
               </div>
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => onNavigate(cfg.route)}
                 className="flex items-center gap-0.5 text-[9px] font-medium" style={{ color: cfg.color }}>
-                Alle <ChevronRight size={12} />
+                {t("common.all")} <ChevronRight size={12} />
               </motion.button>
             </div>
 
@@ -90,7 +92,7 @@ const HomeRecommendations = ({ onNavigate }) => {
                           <MapPin size={8} className="text-gray-500" />
                           <span className="text-[8px] text-gray-500">{item.city}</span>
                         </div>
-                        <p className="text-[10px] font-bold mt-1" style={{ color: cfg.color }}>€{item.price_per_night}/N</p>
+                        <p className="text-[10px] font-bold mt-1" style={{ color: cfg.color }}>€{item.price_per_night}/{t("common.per_night_short")}</p>
                       </>
                     )}
 
@@ -98,7 +100,7 @@ const HomeRecommendations = ({ onNavigate }) => {
                       <>
                         <p className="text-[10px] font-bold truncate">{item.title}</p>
                         <p className="text-[8px] text-gray-500">{item.date}</p>
-                        <p className="text-[10px] font-bold mt-0.5" style={{ color: cfg.color }}>ab €{item.ticket_price}</p>
+                        <p className="text-[10px] font-bold mt-0.5" style={{ color: cfg.color }}>{t("common.from_price", { price: `€${item.ticket_price}` })}</p>
                       </>
                     )}
 
@@ -132,7 +134,7 @@ const HomeRecommendations = ({ onNavigate }) => {
                       <>
                         <p className="text-[10px] font-bold">{item.origin_code} → {item.destination_code}</p>
                         <p className="text-[8px] text-gray-500">{item.airline}</p>
-                        <p className="text-[10px] font-bold mt-0.5" style={{ color: cfg.color }}>ab €{item.price_economy}</p>
+                        <p className="text-[10px] font-bold mt-0.5" style={{ color: cfg.color }}>{t("common.from_price", { price: `€${item.price_economy}` })}</p>
                       </>
                     )}
                   </div>

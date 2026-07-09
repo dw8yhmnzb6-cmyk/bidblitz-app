@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
 import { Wifi, Nfc } from "lucide-react";
+import { useI18n } from "../store";
 
 export const PremiumCard = ({ cardNumber, expiry, holder }) => {
+  const { t } = useI18n();
   return (
     <motion.div
       data-testid="premium-card"
@@ -62,7 +64,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
                 BidBlitz
               </span>
               <span className="text-sm font-semibold text-slate-900 font-outfit">
-                Premium
+                {t("premium.card_label")}
               </span>
             </div>
           </motion.div>
@@ -143,7 +145,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
       >
         <div className="min-w-0 flex-1 mr-2">
           <span className="text-[9px] uppercase tracking-[0.2em] text-slate-600 block mb-1 font-semibold">
-            Card Holder
+            {t("wallet.card_holder")}
           </span>
           <span className="text-slate-900 font-medium text-xs sm:text-sm tracking-wide font-outfit truncate block">
             {holder}
@@ -151,7 +153,7 @@ export const PremiumCard = ({ cardNumber, expiry, holder }) => {
         </div>
         <div className="text-right mr-2">
           <span className="text-[9px] uppercase tracking-[0.2em] text-slate-600 block mb-1 font-semibold">
-            Valid Thru
+            {t("wallet.valid_thru")}
           </span>
           <span className="text-slate-900 font-medium text-xs sm:text-sm tracking-wide font-outfit whitespace-nowrap">
             {expiry}

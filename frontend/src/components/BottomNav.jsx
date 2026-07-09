@@ -7,16 +7,16 @@ const customerNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
   { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/receive-money", center: true },
-  { id: "discover", label: "ENTDECKEN", icon: Compass, path: "/all-services" },
+  { id: "discover", tKey: "nav.discover", icon: Compass, path: "/all-services" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
 // Kids mode navigation (parent view)
 const kidsNavItems = [
-  { id: "home", label: "KIDS", icon: Baby, path: "/kids" },
+  { id: "home", tKey: "nav.kids", icon: Baby, path: "/kids" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
   { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/receive-money", center: true },
-  { id: "discover", label: "ENTDECKEN", icon: Compass, path: "/all-services" },
+  { id: "discover", tKey: "nav.discover", icon: Compass, path: "/all-services" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
@@ -25,7 +25,7 @@ const merchantModeNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
   { id: "scan", tKey: "nav.scan", icon: QrCode, path: "/scan", center: true },
-  { id: "merchant", label: "PORTAL", icon: Store, path: "/merchant-portal" },
+  { id: "merchant", tKey: "nav.portal", icon: Store, path: "/merchant-portal" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 
@@ -43,7 +43,7 @@ const driverNavItems = [
   { id: "home", tKey: "nav.home", icon: Home, path: "/" },
   { id: "wallet", tKey: "nav.wallet", icon: Wallet, path: "/wallet" },
   { id: "pay", tKey: "nav.pay", icon: QrCode, path: "/receive-money", center: true },
-  { id: "rides", label: "FAHRTEN", icon: Car, path: "/taxi" },
+  { id: "rides", tKey: "nav.rides", icon: Car, path: "/taxi" },
   { id: "more", tKey: "nav.more", icon: MoreHorizontal, path: "/more" },
 ];
 

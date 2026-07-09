@@ -3,8 +3,17 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Copy, Download, QrCode, Send, Smartphone, Wallet, CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
+import { useI18n } from "../store";
 
 export default function ReceiveMoneyPage({ onBack, onNavigate }) {
+  const { lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const L = {
+    de: { merchant: "Für Kasse?", openPay: 'Dann "Bezahlen" öffnen', how: "So funktioniert es", customerOnly: "Wie im Händlerflow — nur für Kunden", alt: "Alternativen", copyId: "BidBlitz ID kopieren" },
+    en: { merchant: "For checkout?", openPay: 'Then open "Pay"', how: "How it works", customerOnly: "Like the merchant flow — only for customers", alt: "Alternatives", copyId: "Copy BidBlitz ID" },
+    sq: { merchant: "Për arkë?", openPay: 'Atëherë hap "Paguaj"', how: "Si funksionon", customerOnly: "Si rrjedha e tregtarit — vetëm për klientë", alt: "Alternativa", copyId: "Kopjo BidBlitz ID" },
+    ar: { merchant: "للصندوق؟", openPay: 'افتح "الدفع"', how: "كيف يعمل", customerOnly: "مثل مسار التاجر — ولكن للعملاء فقط", alt: "بدائل", copyId: "نسخ BidBlitz ID" },
+  }[locale];
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -98,8 +107,8 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
                 <p className="mt-1 text-[11px] text-slate-600">Anderer Kunde scannt diesen QR</p>
               </div>
               <motion.button data-testid="receive-money-open-pay" onClick={() => onNavigate?.('/pay')} whileTap={{ scale: 0.98 }} className="rounded-2xl border border-[#00C2FF]/16 bg-[#00C2FF]/8 px-4 py-3 text-left">
-                <span className="block text-[12px] font-semibold text-[#00A6E6]">Für Kasse?</span>
-                <span className="mt-1 block text-[11px] text-slate-600">Dann &quot;Bezahlen&quot; öffnen</span>
+                <span className="block text-[12px] font-semibold text-[#00A6E6]">{L.merchant}</span>
+                <span className="mt-1 block text-[11px] text-slate-600">{L.openPay}</span>
               </motion.button>
             </div>
 
@@ -107,8 +116,8 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-11 h-11 rounded-2xl bg-[#00C2FF]/10 border border-[#00C2FF]/15 flex items-center justify-center"><Smartphone size={18} className="text-[#00A6E6]" /></div>
                 <div>
-                  <p className="text-[15px] font-bold text-slate-950">So funktioniert es</p>
-                  <p className="text-[12px] text-slate-500">Wie im Händlerflow — nur für Kunden</p>
+                  <p className="text-[15px] font-bold text-slate-950">{L.how}</p>
+                  <p className="text-[12px] text-slate-500">{L.customerOnly}</p>
                 </div>
               </div>
               <div className="space-y-3">
@@ -129,10 +138,10 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
             </div>
 
             <div className="rounded-[24px] bg-slate-950 text-white p-5">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-white/55 font-semibold mb-2">Alternativen</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/55 font-semibold mb-2">{L.alt}</p>
               <div className="grid grid-cols-1 gap-2.5">
                 <motion.button data-testid="receive-money-copy-id" onClick={() => copyText(profile?.bidblitz_id, "BidBlitz ID")} whileTap={{ scale: 0.98 }} className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left">
-                  <span className="block text-[13px] font-semibold">BidBlitz ID kopieren</span>
+                  <span className="block text-[13px] font-semibold">{L.copyId}</span>
                   <span className="block text-[11px] text-white/55 mt-1">{profile?.bidblitz_id}</span>
                 </motion.button>
               </div>

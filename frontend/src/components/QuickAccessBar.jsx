@@ -14,66 +14,68 @@ import {
   BatteryCharging, TrendingUp
 } from "lucide-react";
 import { filterStoreSafeItems } from "../config/release";
+import { useI18n } from "../store";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 // All available shortcuts
 const ALL_SHORTCUTS = filterStoreSafeItems([
-  { id: "taxi", icon: Car, label: "Taxi", route: "/taxi", color: "#F59E0B" },
-  { id: "scooter", icon: Zap, label: "Scooter", route: "/scooter", color: "#10B981" },
-  { id: "hotels", icon: Hotel, label: "Hotels", route: "/hotels", color: "#3B82F6" },
-  { id: "restaurants", icon: UtensilsCrossed, label: "Restaurant", route: "/restaurants", color: "#EF4444" },
-  { id: "events", icon: Ticket, label: "Events", route: "/events", color: "#A855F7" },
-  { id: "food", icon: UtensilsCrossed, label: "Essen", route: "/food", color: "#F97316" },
-  { id: "map", icon: MapPin, label: "Karte", route: "/mobility-map", color: "#06B6D4" },
-  { id: "wallet", icon: Wallet, label: "Wallet", route: "/wallet", color: "#00C2FF" },
-  { id: "gaming", icon: Gamepad2, label: "Gaming", route: "/gaming", color: "#EC4899" },
-  { id: "marketplace", icon: ShoppingBag, label: "Marktplatz", route: "/marketplace", color: "#8B5CF6" },
-  { id: "car-rental", icon: Car, label: "Mietwagen", route: "/car-rental", color: "#14B8A6" },
-  { id: "crypto", icon: Bitcoin, label: "Crypto", route: "/crypto", color: "#F59E0B" },
-  { id: "budget", icon: PiggyBank, label: "Budget", route: "/budget", color: "#10B981" },
-  { id: "ai", icon: Bot, label: "KI-Berater", route: "/ai-assistant", color: "#6366F1" },
-  { id: "kids", icon: Baby, label: "Kids", route: "/kids", color: "#F472B6" },
-  { id: "loyalty", icon: Star, label: "Loyalty", route: "/loyalty", color: "#FBBF24" },
-  { id: "contacts", icon: Phone, label: "Kontakte", route: "/contacts", color: "#22D3EE" },
-  { id: "currency", icon: Globe, label: "Währung", route: "/currency", color: "#34D399" },
-  { id: "credit", icon: CreditCard, label: "Kredit", route: "/credit-score", color: "#F87171" },
-  { id: "tips", icon: Heart, label: "Trinkgeld", route: "/more", color: "#FB923C" },
-  { id: "insurance", icon: Shield, label: "Versicherung", route: "/insurance", color: "#EF4444" },
-  { id: "appointments", icon: Calendar, label: "Termine", route: "/appointments", color: "#3B82F6" },
-  { id: "social", icon: MessageCircle, label: "Community", route: "/social", color: "#EC4899" },
-  { id: "jobs", icon: Briefcase, label: "Jobs", route: "/jobs", color: "#6366F1" },
-  { id: "flights", icon: Plane, label: "Flüge", route: "/flights", color: "#06B6D4" },
-  { id: "parcels", icon: Package, label: "Pakete", route: "/parcels", color: "#F97316" },
-  { id: "nearby", icon: MapPin, label: "In der Nähe", route: "/nearby", color: "#10B981" },
-  { id: "real-estate", icon: Building2, label: "Immobilien", route: "/real-estate", color: "#059669" },
-  { id: "freelancer", icon: Users, label: "Freelancer", route: "/freelancer", color: "#7C3AED" },
-  { id: "elearning", icon: GraduationCap, label: "E-Learning", route: "/elearning", color: "#2563EB" },
-  { id: "handwerker", icon: Wrench, label: "Handwerker", route: "/handwerker", color: "#D97706" },
-  { id: "streaming", icon: Film, label: "Streaming", route: "/streaming", color: "#DC2626" },
-  { id: "telemedizin", icon: Stethoscope, label: "Arzt", route: "/telemedizin", color: "#059669" },
-  { id: "dating", icon: Heart, label: "Dating", route: "/dating", color: "#EC4899" },
-  { id: "gebrauchtwagen", icon: CarFront, label: "Gebrauchtwagen", route: "/gebrauchtwagen", color: "#0891B2" },
-  { id: "reinigung", icon: Sparkles, label: "Reinigung", route: "/reinigung", color: "#8B5CF6" },
-  { id: "umzug", icon: Truck, label: "Umzug", route: "/umzug", color: "#EA580C" },
-  { id: "tierbetreuung", icon: Dog, label: "Haustiere", route: "/tierbetreuung", color: "#F59E0B" },
-  { id: "fitness", icon: Dumbbell, label: "Fitness", route: "/fitness", color: "#EF4444" },
-  { id: "reiseplaner", icon: Palmtree, label: "Reisen", route: "/reiseplaner", color: "#0D9488" },
-  { id: "ladesaeulen", icon: BatteryCharging, label: "Ladesäulen", route: "/ladesaeulen", color: "#10B981" },
-  { id: "stocks", icon: TrendingUp, label: "Aktien", route: "/stocks", color: "#10B981" },
-  { id: "reselling", icon: ShoppingBag, label: "Reselling", route: "/reselling", color: "#F43F5E" },
-  { id: "blitzjobs", icon: Briefcase, label: "BlitzJobs", route: "/blitzjobs", color: "#22C55E" },
-  { id: "cashback", icon: Star, label: "Cashback", route: "/cashback", color: "#F59E0B" },
-  { id: "live-auctions", icon: Zap, label: "Live-Auktion", route: "/live-auctions", color: "#EF4444" },
-  { id: "stories", icon: MessageCircle, label: "Feed", route: "/stories", color: "#6366F1" },
-  { id: "blitz-boost", icon: TrendingUp, label: "BlitzBoost", route: "/blitz-boost", color: "#E1306C" },
-  { id: "blitz-transfer", icon: Package, label: "BlitzTransfer", route: "/blitz-transfer", color: "#00B2FF" },
-  { id: "blitz-mine", icon: Zap, label: "BlitzMine", route: "/blitz-mine", color: "#FFD700" },
+  { id: "taxi", icon: Car, labelKey: "shortcut.taxi", route: "/taxi", color: "#F59E0B" },
+  { id: "scooter", icon: Zap, labelKey: "shortcut.scooter", route: "/scooter", color: "#10B981" },
+  { id: "hotels", icon: Hotel, labelKey: "shortcut.hotels", route: "/hotels", color: "#3B82F6" },
+  { id: "restaurants", icon: UtensilsCrossed, labelKey: "shortcut.restaurants", route: "/restaurants", color: "#EF4444" },
+  { id: "events", icon: Ticket, labelKey: "shortcut.events", route: "/events", color: "#A855F7" },
+  { id: "food", icon: UtensilsCrossed, labelKey: "shortcut.food", route: "/food", color: "#F97316" },
+  { id: "map", icon: MapPin, labelKey: "shortcut.map", route: "/mobility-map", color: "#06B6D4" },
+  { id: "wallet", icon: Wallet, labelKey: "shortcut.wallet", route: "/wallet", color: "#00C2FF" },
+  { id: "gaming", icon: Gamepad2, labelKey: "shortcut.gaming", route: "/gaming", color: "#EC4899" },
+  { id: "marketplace", icon: ShoppingBag, labelKey: "shortcut.marketplace", route: "/marketplace", color: "#8B5CF6" },
+  { id: "car-rental", icon: Car, labelKey: "shortcut.car_rental", route: "/car-rental", color: "#14B8A6" },
+  { id: "crypto", icon: Bitcoin, labelKey: "shortcut.crypto", route: "/crypto", color: "#F59E0B" },
+  { id: "budget", icon: PiggyBank, labelKey: "shortcut.budget", route: "/budget", color: "#10B981" },
+  { id: "ai", icon: Bot, labelKey: "shortcut.ai", route: "/ai-assistant", color: "#6366F1" },
+  { id: "kids", icon: Baby, labelKey: "shortcut.kids", route: "/kids", color: "#F472B6" },
+  { id: "loyalty", icon: Star, labelKey: "shortcut.loyalty", route: "/loyalty", color: "#FBBF24" },
+  { id: "contacts", icon: Phone, labelKey: "shortcut.contacts", route: "/contacts", color: "#22D3EE" },
+  { id: "currency", icon: Globe, labelKey: "shortcut.currency", route: "/currency", color: "#34D399" },
+  { id: "credit", icon: CreditCard, labelKey: "shortcut.credit", route: "/credit-score", color: "#F87171" },
+  { id: "tips", icon: Heart, labelKey: "shortcut.tips", route: "/more", color: "#FB923C" },
+  { id: "insurance", icon: Shield, labelKey: "shortcut.insurance", route: "/insurance", color: "#EF4444" },
+  { id: "appointments", icon: Calendar, labelKey: "shortcut.appointments", route: "/appointments", color: "#3B82F6" },
+  { id: "social", icon: MessageCircle, labelKey: "shortcut.social", route: "/social", color: "#EC4899" },
+  { id: "jobs", icon: Briefcase, labelKey: "shortcut.jobs", route: "/jobs", color: "#6366F1" },
+  { id: "flights", icon: Plane, labelKey: "shortcut.flights", route: "/flights", color: "#06B6D4" },
+  { id: "parcels", icon: Package, labelKey: "shortcut.parcels", route: "/parcels", color: "#F97316" },
+  { id: "nearby", icon: MapPin, labelKey: "shortcut.nearby", route: "/nearby", color: "#10B981" },
+  { id: "real-estate", icon: Building2, labelKey: "shortcut.real_estate", route: "/real-estate", color: "#059669" },
+  { id: "freelancer", icon: Users, labelKey: "shortcut.freelancer", route: "/freelancer", color: "#7C3AED" },
+  { id: "elearning", icon: GraduationCap, labelKey: "shortcut.elearning", route: "/elearning", color: "#2563EB" },
+  { id: "handwerker", icon: Wrench, labelKey: "shortcut.handwerker", route: "/handwerker", color: "#D97706" },
+  { id: "streaming", icon: Film, labelKey: "shortcut.streaming", route: "/streaming", color: "#DC2626" },
+  { id: "telemedizin", icon: Stethoscope, labelKey: "shortcut.telemedizin", route: "/telemedizin", color: "#059669" },
+  { id: "dating", icon: Heart, labelKey: "shortcut.dating", route: "/dating", color: "#EC4899" },
+  { id: "gebrauchtwagen", icon: CarFront, labelKey: "shortcut.used_cars", route: "/gebrauchtwagen", color: "#0891B2" },
+  { id: "reinigung", icon: Sparkles, labelKey: "shortcut.cleaning", route: "/reinigung", color: "#8B5CF6" },
+  { id: "umzug", icon: Truck, labelKey: "shortcut.moving", route: "/umzug", color: "#EA580C" },
+  { id: "tierbetreuung", icon: Dog, labelKey: "shortcut.pets", route: "/tierbetreuung", color: "#F59E0B" },
+  { id: "fitness", icon: Dumbbell, labelKey: "shortcut.fitness", route: "/fitness", color: "#EF4444" },
+  { id: "reiseplaner", icon: Palmtree, labelKey: "shortcut.travel", route: "/reiseplaner", color: "#0D9488" },
+  { id: "ladesaeulen", icon: BatteryCharging, labelKey: "shortcut.charging", route: "/ladesaeulen", color: "#10B981" },
+  { id: "stocks", icon: TrendingUp, labelKey: "shortcut.stocks", route: "/stocks", color: "#10B981" },
+  { id: "reselling", icon: ShoppingBag, labelKey: "shortcut.reselling", route: "/reselling", color: "#F43F5E" },
+  { id: "blitzjobs", icon: Briefcase, labelKey: "shortcut.blitzjobs", route: "/blitzjobs", color: "#22C55E" },
+  { id: "cashback", icon: Star, labelKey: "shortcut.cashback", route: "/cashback", color: "#F59E0B" },
+  { id: "live-auctions", icon: Zap, labelKey: "shortcut.live_auctions", route: "/live-auctions", color: "#EF4444" },
+  { id: "stories", icon: MessageCircle, labelKey: "shortcut.feed", route: "/stories", color: "#6366F1" },
+  { id: "blitz-boost", icon: TrendingUp, labelKey: "shortcut.blitzboost", route: "/blitz-boost", color: "#E1306C" },
+  { id: "blitz-transfer", icon: Package, labelKey: "shortcut.blitztransfer", route: "/blitz-transfer", color: "#00B2FF" },
+  { id: "blitz-mine", icon: Zap, labelKey: "shortcut.blitzmine", route: "/blitz-mine", color: "#FFD700" },
 ]);
 
 const DEFAULT_SHORTCUTS = ["taxi", "scooter", "hotels", "restaurants"];
 
 const QuickAccessBar = ({ onNavigate }) => {
+  const { t } = useI18n();
   const [shortcuts, setShortcuts] = useState([]);
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -150,7 +152,7 @@ const QuickAccessBar = ({ onNavigate }) => {
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-4 rounded-full bg-[#F59E0B]" />
-            <h3 className="text-[13px] font-semibold font-outfit text-white">Schnellzugriff</h3>
+            <h3 className="text-[13px] font-semibold font-outfit text-white">{t("more.quick_access")}</h3>
           </div>
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -158,7 +160,7 @@ const QuickAccessBar = ({ onNavigate }) => {
             className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-medium text-[#F59E0B] bg-[#F59E0B]/10 border border-[#F59E0B]/18"
             data-testid="quick-access-edit"
           >
-            <Pencil size={10} /> Bearbeiten
+            <Pencil size={10} /> {t("common.edit")}
           </motion.button>
         </div>
 
@@ -182,7 +184,7 @@ const QuickAccessBar = ({ onNavigate }) => {
                 <div className="absolute inset-0 rounded-2xl opacity-20 pointer-events-none" style={{ background: s.color, filter: "blur(12px)" }} />
               </div>
               <span className="text-[9px] text-white/72 font-medium text-center leading-tight truncate w-full">
-                {s.label}
+                {t(s.labelKey)}
               </span>
             </motion.button>
           ))}
@@ -200,7 +202,7 @@ const QuickAccessBar = ({ onNavigate }) => {
             <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-white/[0.06] border border-dashed border-white/16">
               <Plus size={16} className="text-white/60" />
             </div>
-            <span className="text-[9px] text-white/60 font-medium">Mehr</span>
+            <span className="text-[9px] text-white/60 font-medium">{t("nav.more")}</span>
           </motion.button>
         </div>
       </motion.div>
@@ -227,8 +229,8 @@ const QuickAccessBar = ({ onNavigate }) => {
               {/* Header */}
               <div className="p-4 pb-3 flex items-center justify-between border-b border-white/8 flex-shrink-0">
                 <div>
-                  <h3 className="text-[14px] font-bold text-white">Schnellzugriff bearbeiten</h3>
-                  <p className="text-[10px] text-white/55">{selected.length}/8 ausgewählt</p>
+                  <h3 className="text-[14px] font-bold text-white">{t("quick_access.edit_title")}</h3>
+                  <p className="text-[10px] text-white/55">{t("quick_access.selected_count", { count: selected.length })}</p>
                 </div>
                 <div className="flex gap-2">
                   <motion.button whileTap={{ scale: 0.9 }} onClick={() => setEditing(false)}
@@ -238,7 +240,7 @@ const QuickAccessBar = ({ onNavigate }) => {
                   <motion.button whileTap={{ scale: 0.9 }} onClick={confirmEdit}
                     className="flex items-center gap-1 px-4 py-2 rounded-xl bg-[#F59E0B] text-black text-xs font-bold"
                     data-testid="quick-access-save">
-                    <Check size={14} /> Speichern
+                    <Check size={14} /> {t("common.save")}
                   </motion.button>
                 </div>
               </div>
@@ -273,7 +275,7 @@ const QuickAccessBar = ({ onNavigate }) => {
                           <s.icon size={14} style={{ color: s.color }} />
                         </div>
                         <span className={`text-[8px] font-medium text-center leading-tight ${isActive ? "text-white" : "text-[#666]"}`}>
-                          {s.label}
+                          {t(s.labelKey)}
                         </span>
                       </motion.button>
                     );
