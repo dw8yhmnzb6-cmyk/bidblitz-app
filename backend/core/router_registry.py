@@ -156,6 +156,7 @@ def register_all_routers(app):
         
         # Communication
         ("routes.chat", "router"),
+        ("routes.dating", "router"),
         ("routes.applications", "router"),
         
         # Systems
