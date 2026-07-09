@@ -628,11 +628,16 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               </div>
               <button
                 data-testid="copy-user-number-btn"
-                onClick={() => {
+                onClick={async () => {
                   const num = resolvedUserNumber;
                   if (num) {
-                    navigator.clipboard.writeText(num);
-                    toast.success(t("wallet.number_copied"));
+                    try {
+                      await navigator.clipboard.writeText(num);
+                      toast.success(t("wallet.number_copied"));
+                    } catch (copyError) {
+                      void copyError;
+                      toast.error(t("common.copy_failed") || "Konnte nicht kopiert werden");
+                    }
                   }
                 }}
                 className="px-4 py-2.5 rounded-xl bg-[#00C2FF]/20 text-[#00C2FF] text-sm font-semibold hover:bg-[#00C2FF]/30 active:scale-95 transition-all"

@@ -698,3 +698,9 @@
 - Wallet-Nummernkarte in `WalletPage.jsx` repariert: zeigt nicht mehr dauerhaft `Laden...`, sondern nutzt robuste Fallbacks auf `user_number` / `bidblitz_id`.
 - Backend nachgezogen: `serialize_user()` liefert `user_number` und `bidblitz_id`; P2P-QR-Flow erzeugt fehlende `bidblitz_id` automatisch für Bestandskonten.
 - Browser-Smoke-Test PASS: `BE92683` sichtbar, beide Tabs schalten korrekt.
+
+## 09.07.2026 — Mobile Wallet/Receive Hardening
+- Cookie-Banner auf `SendMoneyPage` und `ReceiveMoneyPage` unterdrückt, damit mobile Bottom-Actions (`Senden`, `Bezahlen`) nicht überdeckt werden.
+- `ReceiveMoneyPage` Mobil-Flow verifiziert: QR sichtbar, `Senden öffnen` und `Für Kasse?` tappbar; KYC-Weiterleitung greift korrekt statt Tap-Blockade.
+- Wallet-Copy-Button gehärtet: Clipboard-Fehler werfen keinen Runtime-Overlay-Crash mehr, stattdessen sauberer Toast `Kopieren fehlgeschlagen`.
+- Saved-Recipients-API akzeptiert jetzt auch `recipient_id`, Response ist `_id`-frei; Self-QR-Scan zeigt sichtbare Fehlermeldung im Scanner-Sheet.
