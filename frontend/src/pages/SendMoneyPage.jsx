@@ -433,7 +433,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   const hasRecentContacts = visibleRecentContacts.length > 0;
 
   return (
-    <motion.div data-testid="send-money-page" className="min-h-screen bg-[#f8fafc] pb-[calc(var(--app-mobile-content-offset,6rem)+1rem)]" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <motion.div data-testid="send-money-page" data-cookie-banner-suppress="true" className="min-h-screen bg-[#f8fafc] pb-[calc(var(--app-mobile-content-offset,6rem)+1rem)]" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="sticky top-0 z-30 bg-[#f8fafc]/95 backdrop-blur-xl border-b border-slate-200">
         <div className="px-4 py-3 flex items-center gap-3">
           <motion.button data-testid="send-money-page-back" onClick={onBack} whileTap={{ scale: 0.9 }} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center">
