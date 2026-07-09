@@ -16,7 +16,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.bidblitz.pos',
+  appId: 'com.bidblitz.app',
   appName: 'BidBlitz',
   webDir: 'build',
   server: {

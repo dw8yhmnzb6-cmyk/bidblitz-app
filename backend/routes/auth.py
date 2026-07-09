@@ -288,7 +288,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         "card_number": generate_card_number(),
         "card_expiry": generate_card_expiry(),
         "payment_barcode": f"BLZ-{secrets.token_hex(6).upper()}",
-        "welcome_bonus_received": True,
+        "welcome_bonus_received": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "registered_at": datetime.now(timezone.utc).isoformat(),
         "last_login_at": None,
@@ -320,7 +320,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 
     # 🎁 Welcome Bonus Transaction für Verlauf / Audit über zentrale Engine
     try:
-        await credit_wallet(
+        bonus_result = await credit_wallet(
             user_id=user_id,
             amount=WELCOME_EUR,
             tx_type=TransactionType.REWARD,
@@ -333,6 +333,8 @@ async def register(req: RegisterRequest, request: Request, response: Response):
             },
             idempotency_key=f"welcome-bonus:{user_id}",
         )
+        if bonus_result.success:
+            await db.users.update_one({"_id": result.inserted_id}, {"$set": {"welcome_bonus_received": True}})
     except Exception as e:
         logger.warning(f"Welcome bonus tx failed: {e}")
 

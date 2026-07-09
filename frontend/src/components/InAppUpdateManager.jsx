@@ -13,13 +13,14 @@ export default function InAppUpdateManager() {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const updatesEnabled = process.env.REACT_APP_ENABLE_IN_APP_UPDATES === 'true';
 
   useEffect(() => {
     // Nur auf Native Plattformen
-    if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform() || !updatesEnabled) return;
 
     checkForUpdate();
-  }, []);
+  }, [updatesEnabled]);
 
   const checkForUpdate = async () => {
     try {
@@ -72,7 +73,7 @@ export default function InAppUpdateManager() {
     }
   };
 
-  if (!updateAvailable || dismissed) return null;
+  if (!updatesEnabled || !updateAvailable || dismissed) return null;
 
   return (
     <AnimatePresence>

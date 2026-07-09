@@ -8,6 +8,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from core.database import db
 from core.security import get_current_user
+from core.payment_engine import credit_wallet, debit_wallet, TransactionType
 import secrets
 
 router = APIRouter(prefix="/api/resell", tags=["reselling"])
@@ -92,6 +93,7 @@ async def create_listing(req: ListingCreate, request: Request):
 async def buy_listing(req: BuyRequest, request: Request):
     user = await get_current_user(request)
     buyer_email = user.get("email", "")
+    buyer_id = str(user.get("_id"))
 
     listing = await db.resell_listings.find_one({"listing_id": req.listing_id, "status": "active"})
     if not listing:
@@ -107,10 +109,65 @@ async def buy_listing(req: BuyRequest, request: Request):
     if not buyer or buyer.get("balance", 0) < price:
         raise HTTPException(400, f"Nicht genug Guthaben. Benötigt: €{price:.2f}")
 
-    # Deduct from buyer
-    await db.users.update_one({"email": buyer_email}, {"$inc": {"balance": -price}})
-    # Pay seller
-    await db.users.update_one({"email": listing["seller_email"]}, {"$inc": {"balance": seller_payout}})
+    seller = await db.users.find_one({"email": listing["seller_email"]})
+    if not seller:
+        raise HTTPException(404, "Verkäufer nicht gefunden")
+
+    reference = f"RESALE-{req.listing_id[-8:].upper()}"
+
+    debit_result = await debit_wallet(
+        user_id=buyer_id,
+        amount=price,
+        tx_type=TransactionType.RESALE_PURCHASE,
+        description=f"Resell purchase: {listing['title']}",
+        reference=reference,
+        merchant_name=listing.get("seller_name") or listing["seller_email"],
+        metadata={
+            "listing_id": req.listing_id,
+            "seller_email": listing["seller_email"],
+            "gross_amount": price,
+            "fee_amount": fee,
+            "net_amount": seller_payout,
+            "audit_metadata": {"route": "reselling.buy", "kind": "buyer_debit"},
+        },
+        idempotency_key=f"resell:buy:{req.listing_id}:debit",
+    )
+    if not debit_result.success:
+        raise HTTPException(400, debit_result.error or "Kauf fehlgeschlagen")
+
+    credit_result = await credit_wallet(
+        user_id=str(seller["_id"]),
+        amount=seller_payout,
+        tx_type=TransactionType.RESALE_SALE,
+        description=f"Resell sale: {listing['title']}",
+        reference=reference,
+        source=buyer_id,
+        metadata={
+            "listing_id": req.listing_id,
+            "buyer_email": buyer_email,
+            "gross_amount": price,
+            "fee_amount": fee,
+            "net_amount": seller_payout,
+            "audit_metadata": {"route": "reselling.buy", "kind": "seller_credit"},
+        },
+        idempotency_key=f"resell:buy:{req.listing_id}:credit",
+    )
+    if not credit_result.success:
+        await credit_wallet(
+            user_id=buyer_id,
+            amount=price,
+            tx_type=TransactionType.REFUND,
+            description=f"Refund: resell purchase failed for {listing['title']}",
+            reference=f"REF-{reference}",
+            source="reselling.buy.rollback",
+            metadata={
+                "listing_id": req.listing_id,
+                "reason": credit_result.error or "seller_credit_failed",
+                "audit_metadata": {"route": "reselling.buy.rollback"},
+            },
+            idempotency_key=f"resell:buy:{req.listing_id}:refund",
+        )
+        raise HTTPException(400, credit_result.error or "Verkäufer-Gutschrift fehlgeschlagen")
 
     # Mark sold
     await db.resell_listings.update_one(

@@ -1,6 +1,6 @@
 {
-  "appId": "com.bidblitz.staff",
-  "appName": "BidBlitz Staff",
+  "appId": "com.bidblitz.app",
+  "appName": "BidBlitz",
   "webDir": "frontend/build",
   "bundledWebRuntime": false,
   "plugins": {

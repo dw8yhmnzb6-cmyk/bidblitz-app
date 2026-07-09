@@ -18,7 +18,7 @@ from bson import ObjectId
 
 from core.database import db
 from core.security import get_current_user
-from core.payment_engine import credit_wallet, debit_wallet, TransactionType
+from core.payment_engine import credit_wallet, debit_wallet, sync_wallet_balance, TransactionType
 from core.audit import log_audit, AuditEvent, get_client_info
 from core.security import verify_password
 
@@ -127,6 +127,8 @@ def _recommended_repair(users_balance: float, wallets_balance: float, tx_sum: fl
     combined_ledger = round(tx_sum + wallet_tx_sum, 2)
     if abs(delta) < 0.01 and abs(users_balance - combined_ledger) < 0.01:
         return "Kein Eingriff nötig. Anzeige bereits konsistent."
+    if abs(users_balance - combined_ledger) >= 0.01 and abs(delta) < 0.01:
+        return "Ledger-Abweichung erkannt. Prüfe eine Adjustment-Buchung über create_adjustment_entry."
     if abs(delta) >= 0.01:
         return "Visible Wallet bei users.balance belassen; Legacy wallets/ledger manuell prüfen und später gezielt reconciliieren."
     return "Ledger-Differenz prüfen; keine automatische Korrektur ohne manuelle Freigabe."
@@ -166,6 +168,8 @@ def _recommended_action(users_balance: float, wallets_balance: float, tx_sum: fl
             return "Ignore legacy wallet"
     if abs(delta) < 0.01 and abs(ledger_gap) < 0.01:
         return "No action"
+    if abs(ledger_gap) >= 0.01 and abs(delta) < 0.01:
+        return "sync_displayed_balance_to_canonical_users_balance"
     if wallets_balance == 0 and users_balance > 0:
         return "Ignore legacy wallet"
     if abs(ledger_gap) > abs(delta) and abs(ledger_gap) >= 25:
@@ -175,6 +179,10 @@ def _recommended_action(users_balance: float, wallets_balance: float, tx_sum: fl
     if abs(delta) >= 10:
         return "Investigate"
     return "Investigate"
+
+
+def _has_reconciliation_issue(delta: float, ledger_gap: float, duplicate_flags: list[str]) -> bool:
+    return abs(delta) >= 0.01 or abs(ledger_gap) >= 0.01 or bool(duplicate_flags)
 
 
 def _expected_balance(users_balance: float, wallets_balance: float, tx_sum: float, wallet_tx_sum: float) -> float:
@@ -235,6 +243,7 @@ async def _build_reconciliation_rows(query: dict, limit: int):
     for user in users:
         uid = str(user["_id"])
         wallet_doc = await db.wallets.find_one({"user_id": uid}, {"_id": 0, "balance": 1, "currency": 1}) or {}
+        wallet_exists = bool(wallet_doc)
         tx_rows = await db.transactions.find({"user_id": uid}, {"_id": 0, "amount": 1, "status": 1, "type": 1}).to_list(5000)
         wallet_tx_rows = await db.wallet_transactions.find({"user_id": uid}, {"_id": 0, "amount": 1, "type": 1}).to_list(5000)
 
@@ -244,7 +253,7 @@ async def _build_reconciliation_rows(query: dict, limit: int):
         wallet_tx_sum = round(sum(float(t.get("amount") or 0) for t in wallet_tx_rows if isinstance(t.get("amount"), (int, float))), 2)
         expected_balance = round(_expected_balance(users_balance, wallets_balance, tx_sum, wallet_tx_sum), 2)
         displayed_balance = users_balance
-        delta = round(displayed_balance - wallets_balance, 2)
+        delta = round(displayed_balance - wallets_balance, 2) if wallet_exists else 0.0
         ledger_gap = round(displayed_balance - (tx_sum + wallet_tx_sum), 2)
         confidence_score = _confidence_score(users_balance, wallets_balance, tx_sum, wallet_tx_sum)
         risk_level = _risk_level(users_balance, wallets_balance, tx_sum, wallet_tx_sum)
@@ -262,6 +271,8 @@ async def _build_reconciliation_rows(query: dict, limit: int):
         if user.get("role") == "admin" and email_key in {"admin@bidblitz.ae", "admin@bidblitz.com"}:
             duplicate_flags.append("duplicate_admin_alias")
 
+        has_issue = _has_reconciliation_issue(delta, ledger_gap, duplicate_flags)
+
         recommended_action = _recommended_action(users_balance, wallets_balance, tx_sum, wallet_tx_sum, duplicate_flags)
         recommended_repair = _recommended_repair(users_balance, wallets_balance, tx_sum, wallet_tx_sum)
         latest_repair = latest_repairs.get(uid)
@@ -270,7 +281,7 @@ async def _build_reconciliation_rows(query: dict, limit: int):
         latest_repair_reason = (latest_repair or {}).get("reason")
         latest_repair_at = (latest_repair or {}).get("approved_at") or None
 
-        base_pending = abs(delta) >= 0.01 or bool(duplicate_flags)
+        base_pending = has_issue
         if latest_repair_status == "approved" and latest_repair_action in {
             "mark_reviewed",
             "ignore_legacy_wallet",
@@ -283,7 +294,7 @@ async def _build_reconciliation_rows(query: dict, limit: int):
         else:
             pending_reconciliation = base_pending
 
-        if abs(delta) >= 0.01:
+        if has_issue:
             mismatch_count += 1
         else:
             healthy_count += 1
@@ -293,7 +304,7 @@ async def _build_reconciliation_rows(query: dict, limit: int):
             duplicate_users += 1
         if risk_band == "red":
             critical_cases += 1
-        if wallets_balance != 0 and displayed_balance != wallets_balance:
+        if wallet_exists and wallets_balance != 0 and displayed_balance != wallets_balance:
             legacy_wallets += 1
 
         rows.append({
@@ -310,15 +321,17 @@ async def _build_reconciliation_rows(query: dict, limit: int):
             "displayed_balance": displayed_balance,
             "delta": delta,
             "ledger_gap": ledger_gap,
+            "ledger_mismatch": abs(ledger_gap) >= 0.01,
+            "suggested_adjustment_amount": round(-ledger_gap, 2),
             "confidence_score": confidence_score,
             "risk_level": risk_level,
             "risk_band": risk_band,
             "recommended_action": recommended_action,
             "recommended_repair": recommended_repair,
             "duplicate_flags": duplicate_flags,
-            "wallet_exists": bool(wallet_doc),
+            "wallet_exists": wallet_exists,
             "wallet_count": wallet_count_by_user[uid],
-            "legacy_wallet": wallets_balance != 0 and displayed_balance != wallets_balance,
+            "legacy_wallet": wallet_exists and wallets_balance != 0 and displayed_balance != wallets_balance,
             "pending_reconciliation": pending_reconciliation,
             "latest_repair_action": latest_repair_action,
             "latest_repair_status": latest_repair_status,
@@ -812,7 +825,12 @@ async def repair_preview(req: RepairPreviewReq, request: Request):
         "action_type": req.action_type,
         "before_users_balance": row["users_balance"],
         "before_wallets_balance": row["wallets_balance"],
-        "after_users_balance": row["users_balance"] if req.action_type != "create_adjustment_entry" else round(row["users_balance"] + float(req.adjustment_amount or 0), 2),
+        "after_users_balance": (
+            round(row["transactions_sum"] + row["wallet_transactions_sum"], 2)
+            if req.action_type == "sync_displayed_balance_to_canonical_users_balance"
+            else row["users_balance"] if req.action_type != "create_adjustment_entry"
+            else round(row["users_balance"] + float(req.adjustment_amount or 0), 2)
+        ),
         "after_wallets_balance": row["wallets_balance"],
         "delta": row["delta"],
         "reason": req.reason,
@@ -828,6 +846,7 @@ async def repair_preview(req: RepairPreviewReq, request: Request):
             "user_agent": ua,
             "target_wallet_id": req.target_wallet_id,
             "adjustment_amount": float(req.adjustment_amount or 0),
+            "target_balance": round(row["transactions_sum"] + row["wallet_transactions_sum"], 2),
         },
     }
     pending_response = {**pending}
@@ -912,6 +931,17 @@ async def approve_repair(req: RepairApproveReq, request: Request):
     elif action_type == "ignore_legacy_wallet":
         await db.wallets.update_many({"user_id": repair["user_id"]}, {"$set": {"legacy_ignored": True, "legacy_ignored_at": datetime.now(timezone.utc).isoformat(), "legacy_ignored_by": admin.get("email", "")}})
     elif action_type == "sync_displayed_balance_to_canonical_users_balance":
+        target_balance = float((repair.get("audit_metadata") or {}).get("target_balance") or repair.get("after_users_balance") or repair.get("before_users_balance") or 0)
+        sync_result = await sync_wallet_balance(
+            user_id=repair["user_id"],
+            target_balance=target_balance,
+            description=f"Wallet Reconciliation Sync: {req.reason}",
+            reference=f"SYNC-{req.repair_id}",
+            metadata={"repair_id": req.repair_id, "admin_id": str(admin["_id"]), "audit_metadata": {"route": "admin_wallet.repair.sync"}},
+            idempotency_key=f"repair-sync:{req.repair_id}",
+        )
+        if not sync_result.success:
+            raise HTTPException(400, sync_result.error or "Sync fehlgeschlagen.")
         await db.wallets.update_many({"user_id": repair["user_id"]}, {"$set": {"display_source": "users.balance", "display_sync_reviewed_at": datetime.now(timezone.utc).isoformat(), "display_sync_reviewed_by": admin.get("email", "")}})
     elif action_type == "merge_duplicate_wallet":
         target_wallet_id = (repair.get("audit_metadata") or {}).get("target_wallet_id")
@@ -971,6 +1001,8 @@ async def reconciliation_final_report(request: Request):
                 "user_id": row["user_id"],
                 "email": row["email"],
                 "delta": row["delta"],
+                "ledger_gap": row["ledger_gap"],
+                "suggested_adjustment_amount": row["suggested_adjustment_amount"],
                 "risk_band": row["risk_band"],
                 "recommended_action": row["recommended_action"],
             }

@@ -568,9 +568,7 @@ async def transfer_by_number(request: Request):
         raise HTTPException(status_code=400, detail="Unzureichendes Guthaben")
     
     # Find recipient
-    recipient = await db.users.find_one(
-        {"user_number": recipient_number}, {"_id": 0}
-    )
+    recipient = await db.users.find_one({"user_number": recipient_number})
     
     if not recipient:
         raise HTTPException(status_code=404, detail="Empfänger nicht gefunden")
@@ -581,34 +579,25 @@ async def transfer_by_number(request: Request):
     if sender_email == recipient_email:
         raise HTTPException(status_code=400, detail="Selbstüberweisung nicht möglich")
     
-    # Execute transfer
-    await db.users.update_one(
-        {"email": sender_email},
-        {"$inc": {"balance": -amount}}
-    )
-    
-    await db.users.update_one(
-        {"email": recipient_email},
-        {"$inc": {"balance": amount}}
-    )
-    
-    # Create transaction record
     now = datetime.now(timezone.utc)
-    transaction_id = secrets.token_hex(8)
-    
-    transaction = {
-        "transaction_id": transaction_id,
-        "type": "transfer",
-        "from": sender_email,
-        "to": recipient_email,
-        "amount": amount,
-        "currency": "EUR",
-        "status": "completed",
-        "created_at": now.isoformat(),
-        "method": "user_number"
-    }
-    
-    await db.transactions.insert_one(transaction)
+    reference = generate_reference()
+    transfer_result = await transfer_between_wallets(
+        from_user_id=str(user["_id"]),
+        to_user_id=str(recipient["_id"]),
+        amount=amount,
+        tx_type=TransactionType.TRANSFER,
+        description=f"Transfer to {recipient.get('name') or recipient_email}",
+        reference=reference,
+        metadata={
+            "method": "user_number",
+            "recipient_number": recipient_number,
+            "sender_email": sender_email,
+            "recipient_email": recipient_email,
+            "audit_metadata": {"route": "wallet.transfer_by_number"},
+        },
+    )
+    if not transfer_result.success:
+        raise HTTPException(status_code=400, detail=transfer_result.error or "Überweisung fehlgeschlagen")
     
     # Update saved recipient stats if exists
     await db.saved_recipients.update_one(
@@ -625,7 +614,7 @@ async def transfer_by_number(request: Request):
     
     return {
         "ok": True,
-        "transaction_id": transaction_id,
-        "new_balance": round(user.get("balance", 0) - amount, 2),
+        "transaction_id": transfer_result.transaction_id,
+        "new_balance": round(float(transfer_result.new_balance or 0), 2),
         "recipient_name": recipient.get("name") or recipient_email
     }

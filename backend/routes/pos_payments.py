@@ -22,6 +22,7 @@ from typing import Optional
 from bson import ObjectId
 from fpdf import FPDF
 from core.database import db
+from core.payment_engine import credit_wallet, debit_wallet, TransactionType
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 logger = logging.getLogger("bidblitz.payments")
@@ -232,20 +233,32 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     pt = await detect_payment_type(req.payment_method or "barcode")
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
+    reference = f"BRC-{secrets.token_hex(4).upper()}"
 
-    result = await db.users.update_one(
-        {"_id": ObjectId(customer_uid), "balance": {"$gte": req.amount}},
-        {"$inc": {"balance": -req.amount}},
+    customer_debit = await debit_wallet(
+        user_id=customer_uid,
+        amount=req.amount,
+        tx_type=TransactionType.PAYMENT,
+        description=req.description or "Payment",
+        reference=reference,
+        merchant_id=str(mp["_id"]) if mp else None,
+        merchant_name=mp.get("business_name", "") if mp else "",
+        metadata={
+            "gross_amount": req.amount,
+            "fee_amount": fee,
+            "net_amount": net,
+            "payment_method": pt["category"],
+            "audit_metadata": {"route": "pos_payments.barcode_pay"},
+        },
+        idempotency_key=f"pos-barcode:{merchant_uid}:{req.barcode}:{req.amount:.2f}",
     )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=400, detail="Payment failed — balance changed")
+    if not customer_debit.success:
+        raise HTTPException(status_code=400, detail=customer_debit.error or "Payment failed — balance changed")
 
     mid = str(mp["_id"]) if mp else ""
     merchant_name = mp.get("business_name", "") if mp else ""
     merchant_owner_id = mp.get("user_id", "") if mp else ""
 
-    # Generate transaction ID early
-    txn_id = secrets.token_hex(8)
     now_iso = now.isoformat()
 
     if mp:
@@ -265,34 +278,35 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
                 upsert=True,
             )
         
-        # WALLET-ONLY ECOSYSTEM: Credit merchant wallet directly
-        if merchant_owner_id:
-            await db.users.update_one(
-                {"_id": ObjectId(merchant_owner_id)},
-                {"$inc": {"balance": net}}
+        merchant_credit_result = await _credit_merchant_wallet(
+            merchant_owner_id,
+            net,
+            reference=reference,
+            source_user_id=customer_uid,
+            description=f"POS Zahlung: {req.description or 'Payment'}",
+            merchant_name=merchant_name,
+            merchant_id=mid,
+            gross_amount=req.amount,
+            fee_amount=fee,
+            payment_method=pt["category"],
+            route_name="pos_payments.barcode_pay",
+            customer_name=customer.get("name", ""),
+            customer_email=customer.get("email", ""),
+        )
+        if merchant_owner_id and (not merchant_credit_result or not merchant_credit_result.success):
+            await credit_wallet(
+                user_id=customer_uid,
+                amount=req.amount,
+                tx_type=TransactionType.REFUND,
+                description=f"Refund: POS payment failed ({req.description or 'Payment'})",
+                reference=f"REF-{reference}",
+                source="pos_payments.barcode_pay.rollback",
+                metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.barcode_pay.rollback"}},
+                idempotency_key=f"refund:{customer_debit.transaction_id}",
             )
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8),
-                "user_id": merchant_owner_id,
-                "type": "merchant_earning",
-                "amount": net,
-                "description": f"POS Zahlung: {req.description or 'Payment'}",
-                "status": "completed",
-                "reference": f"MERCH-{txn_id[:8].upper()}",
-                "category": "merchant_earning",
-                "fee_deducted": fee,
-                "gross_amount": req.amount,
-                "created_at": now_iso,
-            })
+            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed"))
 
     await db.payment_barcodes.update_one({"_id": bc["_id"]}, {"$set": {"active": False}})
-
-    await db.transactions.insert_one({
-        "id": txn_id, "user_id": customer_uid, "type": "payment",
-        "amount": -req.amount, "description": req.description,
-        "status": "completed", "reference": f"BRC-{secrets.token_hex(4).upper()}",
-        "category": pt["category"], "merchant_id": mid, "created_at": now_iso,
-    })
 
     if mid:
         await db.merchant_transactions.insert_one({
@@ -310,7 +324,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
     updated_customer = await db.users.find_one({"_id": ObjectId(customer_uid)})
 
     receipt = generate_receipt(
-        txn_id, req.amount, fee, net, pt,
+        customer_debit.transaction_id or secrets.token_hex(8), req.amount, fee, net, pt,
         customer.get("name", ""), merchant_name, req.description or "Payment",
     )
 
@@ -319,7 +333,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         from core.email import send_receipt_email
         send_receipt_email(
             to=customer.get("email", ""),
-            transaction_id=txn_id,
+            transaction_id=customer_debit.transaction_id or reference,
             amount=req.amount,
             fee=fee,
             net_amount=net,
@@ -331,7 +345,7 @@ async def process_barcode_payment(req: BarcodePaymentRequest, request: Request):
         pass  # Non-critical
 
     return {
-        "ok": True, "transaction_id": txn_id,
+        "ok": True, "transaction_id": customer_debit.transaction_id,
         "amount": req.amount, "fee": fee, "net": net,
         "customer_id": customer_uid,
         "customer_name": customer.get("name", ""),
@@ -355,6 +369,46 @@ class NfcPaymentRequest(BaseModel):
     device_id: Optional[str] = ""
 
 
+async def _credit_merchant_wallet(
+    merchant_owner_id: str,
+    amount: float,
+    *,
+    reference: str,
+    source_user_id: str,
+    description: str,
+    merchant_name: str,
+    merchant_id: str,
+    gross_amount: float,
+    fee_amount: float,
+    payment_method: str,
+    route_name: str,
+    customer_name: str = "",
+    customer_email: str = "",
+):
+    if not merchant_owner_id:
+        return None
+    return await credit_wallet(
+        user_id=merchant_owner_id,
+        amount=amount,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=description,
+        reference=reference,
+        source=source_user_id,
+        metadata={
+            "gross_amount": gross_amount,
+            "fee_amount": fee_amount,
+            "net_amount": amount,
+            "merchant_name": merchant_name,
+            "merchant_id": merchant_id,
+            "customer_name": customer_name,
+            "customer_email": customer_email,
+            "payment_method": payment_method,
+            "audit_metadata": {"route": route_name, "kind": "merchant_credit"},
+        },
+        idempotency_key=f"merchant-credit:{reference}:{merchant_owner_id}",
+    )
+
+
 @router.post("/nfc-pay")
 async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     merchant_user = await get_current_user(request)
@@ -375,34 +429,41 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
     pt = await detect_payment_type(req.payment_method)
     fee = round(req.amount * pt["fee_rate"], 2)
     net = round(req.amount - fee, 2)
+    reference = f"NFC-{secrets.token_hex(4).upper()}"
     customer_name = ""
+    customer_doc = None
 
     if req.payment_method in ("nfc_wallet", "wallet"):
         if not req.customer_id:
             raise HTTPException(status_code=400, detail="Customer ID required for wallet payment")
-        customer = await db.users.find_one({"_id": ObjectId(req.customer_id)})
-        if not customer:
+        customer_doc = await db.users.find_one({"_id": ObjectId(req.customer_id)})
+        if not customer_doc:
             raise HTTPException(status_code=404, detail="Customer not found")
-        if customer.get("balance", 0) < req.amount:
+        if customer_doc.get("balance", 0) < req.amount:
             raise HTTPException(status_code=400, detail="Insufficient balance")
 
-        result = await db.users.update_one(
-            {"_id": ObjectId(req.customer_id), "balance": {"$gte": req.amount}},
-            {"$inc": {"balance": -req.amount}},
+        customer_debit = await debit_wallet(
+            user_id=req.customer_id,
+            amount=req.amount,
+            tx_type=TransactionType.PAYMENT,
+            description=req.description or "NFC Payment",
+            reference=reference,
+            merchant_id=mid or None,
+            merchant_name=merchant_name,
+            metadata={
+                "gross_amount": req.amount,
+                "fee_amount": fee,
+                "net_amount": net,
+                "payment_method": pt["category"],
+                "audit_metadata": {"route": "pos_payments.nfc_pay"},
+            },
+            idempotency_key=f"pos-nfc:{merchant_uid}:{req.customer_id}:{req.amount:.2f}:{req.device_id or 'default'}:{pt['category']}",
         )
-        if result.modified_count == 0:
-            raise HTTPException(status_code=400, detail="Payment failed")
+        if not customer_debit.success:
+            raise HTTPException(status_code=400, detail=customer_debit.error or "Payment failed")
 
-        customer_name = customer.get("name", "")
-        await db.transactions.insert_one({
-            "id": secrets.token_hex(8), "user_id": req.customer_id,
-            "type": "payment", "amount": -req.amount,
-            "description": req.description, "status": "completed",
-            "reference": f"NFC-{secrets.token_hex(4).upper()}",
-            "category": pt["category"], "merchant_id": mid, "created_at": now_iso,
-        })
+        customer_name = customer_doc.get("name", "")
 
-    txn_id = secrets.token_hex(8)
     merchant_owner_id = mp.get("user_id", "") if mp else ""
 
     if mid:
@@ -433,28 +494,37 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
             "status": "completed", "created_at": now_iso,
         })
         
-        # WALLET-ONLY ECOSYSTEM: Credit merchant wallet directly
-        if merchant_owner_id:
-            await db.users.update_one(
-                {"_id": ObjectId(merchant_owner_id)},
-                {"$inc": {"balance": net}}
-            )
-            await db.transactions.insert_one({
-                "id": secrets.token_hex(8),
-                "user_id": merchant_owner_id,
-                "type": "merchant_earning",
-                "amount": net,
-                "description": f"NFC Zahlung: {req.description or 'Payment'}",
-                "status": "completed",
-                "reference": f"MERCH-{txn_id[:8].upper()}",
-                "category": "merchant_earning",
-                "fee_deducted": fee,
-                "gross_amount": req.amount,
-                "created_at": now_iso,
-            })
+        merchant_credit_result = await _credit_merchant_wallet(
+            merchant_owner_id,
+            net,
+            reference=reference,
+            source_user_id=req.customer_id or "card",
+            description=f"NFC Zahlung: {req.description or 'Payment'}",
+            merchant_name=merchant_name,
+            merchant_id=mid,
+            gross_amount=req.amount,
+            fee_amount=fee,
+            payment_method=pt["category"],
+            route_name="pos_payments.nfc_pay",
+            customer_name=customer_name,
+            customer_email=(customer_doc or {}).get("email", ""),
+        )
+        if merchant_owner_id and (not merchant_credit_result or not merchant_credit_result.success):
+            if req.customer_id:
+                await credit_wallet(
+                    user_id=req.customer_id,
+                    amount=req.amount,
+                    tx_type=TransactionType.REFUND,
+                    description=f"Refund: NFC payment failed ({req.description or 'Payment'})",
+                    reference=f"REF-{reference}",
+                    source="pos_payments.nfc_pay.rollback",
+                    metadata={"original_reference": reference, "audit_metadata": {"route": "pos_payments.nfc_pay.rollback"}},
+                    idempotency_key=f"refund:{reference}:{req.customer_id}",
+                )
+            raise HTTPException(status_code=400, detail=(merchant_credit_result.error if merchant_credit_result else "Merchant settlement failed"))
 
     receipt = generate_receipt(
-        txn_id, req.amount, fee, net, pt,
+        (customer_debit.transaction_id if req.customer_id and req.payment_method in ("nfc_wallet", "wallet") else secrets.token_hex(8)), req.amount, fee, net, pt,
         customer_name, merchant_name, req.description or "NFC Payment",
     )
 
@@ -466,7 +536,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
             if customer_doc:
                 send_receipt_email(
                     to=customer_doc.get("email", ""),
-                    transaction_id=txn_id,
+                    transaction_id=(customer_debit.transaction_id if req.customer_id and req.payment_method in ("nfc_wallet", "wallet") else reference),
                     amount=req.amount,
                     fee=fee,
                     net_amount=net,
@@ -478,7 +548,7 @@ async def process_nfc_payment(req: NfcPaymentRequest, request: Request):
             pass  # Non-critical
 
     return {
-        "ok": True, "transaction_id": txn_id,
+        "ok": True, "transaction_id": (customer_debit.transaction_id if req.customer_id and req.payment_method in ("nfc_wallet", "wallet") else reference),
         "amount": req.amount, "fee": fee, "net": net,
         "fee_rate": round(pt["fee_rate"] * 100, 2),
         "payment_method": pt["category"],
@@ -961,24 +1031,17 @@ async def create_voucher(req: CreateVoucherRequest, request: Request):
     # Generate unique voucher code
     voucher_code = f"BLZ-{secrets.token_hex(4).upper()}-{secrets.token_hex(2).upper()}"
     
-    # Deduct from merchant wallet
-    await db.users.update_one(
-        {"_id": merchant_user["_id"]},
-        {"$inc": {"balance": -req.amount}}
+    debit_result = await debit_wallet(
+        user_id=merchant_uid,
+        amount=req.amount,
+        tx_type=TransactionType.VOUCHER_CREATION,
+        description=f"Gutschein erstellt: {voucher_code}",
+        reference=voucher_code,
+        metadata={"voucher_code": voucher_code, "audit_metadata": {"route": "pos_payments.voucher.create"}},
+        idempotency_key=f"voucher-create:{merchant_uid}:{voucher_code}",
     )
-    
-    # Record transaction
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": merchant_uid,
-        "type": "voucher_created",
-        "amount": -req.amount,
-        "description": f"Gutschein erstellt: {voucher_code}",
-        "status": "completed",
-        "reference": voucher_code,
-        "category": "voucher",
-        "created_at": now.isoformat(),
-    })
+    if not debit_result.success:
+        raise HTTPException(status_code=400, detail=debit_result.error or "Gutschein konnte nicht erstellt werden")
     
     # Create voucher record
     voucher = {
@@ -1085,25 +1148,22 @@ async def redeem_voucher(req: RedeemVoucherRequest, request: Request):
     
     amount = voucher["amount"]
     
-    # Credit to customer wallet
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$inc": {"balance": amount}}
+    credit_result = await credit_wallet(
+        user_id=user_id,
+        amount=amount,
+        tx_type=TransactionType.VOUCHER_REDEMPTION,
+        description=f"Gutschein eingelöst: {req.voucher_code.upper()}",
+        reference=req.voucher_code.upper(),
+        source=voucher.get("merchant_id", "voucher"),
+        metadata={
+            "voucher_code": req.voucher_code.upper(),
+            "merchant_name": voucher.get("merchant_name", ""),
+            "audit_metadata": {"route": "pos_payments.voucher.redeem"},
+        },
+        idempotency_key=f"voucher-redeem:{user_id}:{req.voucher_code.upper()}",
     )
-    
-    # Record transaction
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": user_id,
-        "type": "voucher_redeemed",
-        "amount": amount,
-        "description": f"Gutschein eingelöst: {req.voucher_code.upper()}",
-        "status": "completed",
-        "reference": req.voucher_code.upper(),
-        "category": "voucher",
-        "merchant_name": voucher.get("merchant_name", ""),
-        "created_at": now.isoformat(),
-    })
+    if not credit_result.success:
+        raise HTTPException(status_code=400, detail=credit_result.error or "Gutschein konnte nicht eingelöst werden")
     
     # Update voucher status
     await db.vouchers.update_one(
@@ -1116,12 +1176,10 @@ async def redeem_voucher(req: RedeemVoucherRequest, request: Request):
         }}
     )
     
-    updated_user = await db.users.find_one({"_id": user["_id"]})
-    
     return {
         "ok": True,
         "amount": amount,
-        "new_balance": round(updated_user.get("balance", 0), 2),
+        "new_balance": round(float(credit_result.new_balance or 0), 2),
         "message": f"€{amount:.2f} auf dein Wallet gutgeschrieben!",
     }
 
@@ -1149,24 +1207,18 @@ async def cancel_voucher(voucher_code: str, request: Request):
     now = datetime.now(timezone.utc)
     amount = voucher["amount"]
     
-    # Refund to merchant wallet
-    await db.users.update_one(
-        {"_id": merchant_user["_id"]},
-        {"$inc": {"balance": amount}}
+    refund_result = await credit_wallet(
+        user_id=merchant_uid,
+        amount=amount,
+        tx_type=TransactionType.REFUND,
+        description=f"Gutschein storniert: {voucher_code.upper()}",
+        reference=voucher_code.upper(),
+        source="voucher_cancel",
+        metadata={"voucher_code": voucher_code.upper(), "audit_metadata": {"route": "pos_payments.voucher.cancel"}},
+        idempotency_key=f"voucher-cancel:{merchant_uid}:{voucher_code.upper()}",
     )
-    
-    # Record refund transaction
-    await db.transactions.insert_one({
-        "id": secrets.token_hex(8),
-        "user_id": merchant_uid,
-        "type": "voucher_cancelled",
-        "amount": amount,
-        "description": f"Gutschein storniert: {voucher_code.upper()}",
-        "status": "completed",
-        "reference": voucher_code.upper(),
-        "category": "voucher",
-        "created_at": now.isoformat(),
-    })
+    if not refund_result.success:
+        raise HTTPException(status_code=400, detail=refund_result.error or "Gutschein konnte nicht storniert werden")
     
     # Update voucher status
     await db.vouchers.update_one(
@@ -1177,6 +1229,7 @@ async def cancel_voucher(voucher_code: str, request: Request):
     return {
         "ok": True,
         "refunded": amount,
+        "new_balance": round(float(refund_result.new_balance or 0), 2),
         "message": f"Gutschein storniert. €{amount:.2f} zurück auf dein Wallet.",
     }
 

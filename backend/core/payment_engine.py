@@ -30,6 +30,8 @@ class TransactionType(str, Enum):
     PAYMENT = "payment"
     TRANSFER = "transfer"
     REFUND = "refund"
+    RESALE_PURCHASE = "resale_purchase"
+    RESALE_SALE = "resale_sale"
     REWARD = "reward"  # Gaming rewards
     AUCTION_BID = "auction_bid"
     AUCTION_WIN = "auction_win"
@@ -51,10 +53,12 @@ class TransactionType(str, Enum):
     ADMIN_CREDIT = "admin_credit"  # Admin sends money without fees
     ADMIN_DEBIT = "admin_debit"
     VOUCHER_REDEMPTION = "voucher_redemption"  # POS Gutschein einlösen
+    VOUCHER_CREATION = "voucher_creation"  # Gutschein aus Händler-Wallet erzeugen
     WALLET_TOPUP_POS = "wallet_topup_pos"  # Wallet aufladen am POS
     EV_CHARGING = "ev_charging"  # EV Charging session payment
     EV_CHARGING_REVENUE = "ev_charging_revenue"  # Operator/Merchant revenue from EV charging
     DRIVER_EARNINGS = "driver_earnings"  # Taxi/Food driver payout per ride
+    RECONCILIATION_SYNC = "reconciliation_sync"  # Audit-only sync of users.balance to approved target
 
 
 # Idempotency cache (in-memory for this session, should be Redis in production)
@@ -563,6 +567,115 @@ async def transfer_between_wallets(
         reference=ref,
         new_balance=debit_result.new_balance,
         status=TransactionStatus.COMPLETED
+    )
+
+
+async def sync_wallet_balance(
+    user_id: str,
+    target_balance: float,
+    description: str,
+    reference: Optional[str] = None,
+    metadata: Optional[Dict] = None,
+    idempotency_key: Optional[str] = None,
+) -> PaymentResult:
+    """
+    Repair helper for reconciliation-approved balance projection syncs.
+    Does not represent a new money movement, so ledger amount stays 0.
+    """
+
+    target_balance = round(float(target_balance or 0), 2)
+    ref = reference or generate_reference("SYNC")
+    if not idempotency_key:
+        idempotency_key = compute_idempotency_key(user_id, TransactionType.RECONCILIATION_SYNC.value, target_balance, ref)
+
+    existing = await check_idempotency(idempotency_key)
+    if existing:
+        return PaymentResult(
+            success=existing.get("status") == "completed",
+            transaction_id=existing.get("id"),
+            reference=existing.get("reference"),
+            new_balance=await get_user_balance(user_id),
+            error="Duplicate reconciliation sync" if existing.get("status") != "completed" else None,
+            status=TransactionStatus(existing.get("status", "completed")),
+        )
+
+    current_balance = await get_user_balance(user_id)
+    tx_id = generate_transaction_id()
+    now = datetime.now(timezone.utc).isoformat()
+    delta = round(target_balance - current_balance, 2)
+
+    transaction = {
+        "id": tx_id,
+        "idempotency_key": idempotency_key,
+        "user_id": user_id,
+        "type": TransactionType.RECONCILIATION_SYNC.value,
+        "amount": 0.0,
+        "description": description,
+        "reference": ref,
+        "currency": "EUR",
+        "direction": "sync",
+        "source": "payment_engine_reconciliation",
+        "status": TransactionStatus.PENDING.value,
+        "metadata": {
+            "transaction_id": tx_id,
+            "user_id": user_id,
+            "wallet_id": user_id,
+            "type": TransactionType.RECONCILIATION_SYNC.value,
+            "amount": 0.0,
+            "currency": "EUR",
+            "direction": "sync",
+            "status": TransactionStatus.PENDING.value,
+            "source": "payment_engine_reconciliation",
+            "reference_id": ref,
+            "idempotency_key": idempotency_key,
+            "created_at": now,
+            "before_balance": current_balance,
+            "target_balance": target_balance,
+            "projection_delta": delta,
+            **(metadata or {}),
+        },
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.transactions.insert_one(transaction)
+
+    result = await db.users.update_one(
+        {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+        {"$set": {"balance": target_balance}},
+    )
+    if result.modified_count == 0:
+        await db.transactions.update_one(
+            {"id": tx_id},
+            {"$set": {"status": TransactionStatus.FAILED.value, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        return PaymentResult(
+            success=False,
+            transaction_id=tx_id,
+            error="User not found",
+            status=TransactionStatus.FAILED,
+        )
+
+    await db.transactions.update_one(
+        {"id": tx_id},
+        {"$set": {
+            "status": TransactionStatus.COMPLETED.value,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "metadata.status": TransactionStatus.COMPLETED.value,
+            "metadata.transaction_id": tx_id,
+        }},
+    )
+    await log_audit(
+        action="sync_reconciliation_balance",
+        user_id=user_id,
+        details={"tx_id": tx_id, "before_balance": current_balance, "target_balance": target_balance, "delta": delta},
+        status="success",
+    )
+    return PaymentResult(
+        success=True,
+        transaction_id=tx_id,
+        reference=ref,
+        new_balance=target_balance,
+        status=TransactionStatus.COMPLETED,
     )
 
 
