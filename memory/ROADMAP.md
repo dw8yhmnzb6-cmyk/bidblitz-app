@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Mobile Store Prep + Production Audit — 09.07.2026
+- ✅ Huawei AppGallery / Samsung Galaxy Store / Apple App Store Connect Copy-Paste-Pakete vorbereitet.
+- ✅ iOS Permission-Texte review-sicher aktualisiert; Android Package-/Version-Metadaten auf `com.bidblitz.app` / Version `1.0.0` / Build `3` ausgerichtet.
+- ✅ Reviewer-Flow, Legal-Seiten und Store-safe UI erneut geprüft; reviewer-sichtbare Auktions-Texte aus More/KYC-Hinweisen entfernt.
+- 🔴 Public/Store Launch weiter blockiert durch Wallet P0, fehlenden produktionsreifen Health-Endpoint und ungeklärte Produktions-DB-Konfiguration (`DB_NAME="test_database"`).
+- 🔴 Android-Alt-Store-Export im Container weiter blockiert durch fehlenden Android-SDK-Pfad und fehlenden Release-Keystore.
+
 ## Status nach Admin Customer Intelligence — 01.07.2026
 - ✅ 06.07.2026 Commerce Center V1 vertieft: Analytics, Programmplanung und Performance Board live; Event-Tracking und CTA-Flows per Testing-Agent verifiziert.
 - ✅ 06.07.2026 P1 Mobility-Ausbau abgeschlossen: E‑Bike und Carsharing in Mobility Center + Mobility Map integriert, 6‑Wege Vergleich aktiv und per Testing-Agent verifiziert.
@@ -34,6 +41,11 @@
 - ✅ 07.07.2026 Mobility: Premium Live-Tracking für Shuttle/VIP mit Approach-/Trip-Phase, Checkpoints, Shuttle-Stops und Map-Overlays erweitert.
 
 ## P0
+- 🔴 Produktionsfreigabe-Audit offen: `/api/health` auf Produktion fehlt (404) und muss für Monitoring/Store-Verifikation sauber bereitgestellt werden.
+- 🔴 Produktionsdatenbank-Kontrakt offen: `DB_NAME="test_database"` ist für Public-Launch/TestFlight/Internal-Testing nicht freigabefähig, solange nicht bestätigt ist, dass dies die echte produktive DB sein soll.
+- 🔴 Wallet P0 bleibt aktiv bis die manuellen Repair-Aktionen für kritische Fälle sauber abgearbeitet sind: Reconciliation Center + Controlled Manual Repair sind live, jetzt fehlen die fachlichen Einzelentscheidungen pro kritischem Wallet.
+- 🔴 Alt-Store-Mobile-Release bleibt blockiert, bis ein echter Android-SDK-Pfad und ein dauerhafter Release-Keystore im Build-Kontext vorhanden sind.
+- 🔴 Finaler Google-Play-AAB-Build bleibt in diesem Container zusätzlich durch ARM64/AAPT2-Binary-Inkompatibilität blockiert; für den tatsächlichen Upload ist ein kompatibler x86_64-Build-Host oder ein funktionierender ARM64-AAPT2-Workaround nötig.
 - 🔴 Wallet P0 bleibt aktiv bis die manuellen Repair-Aktionen für kritische Fälle sauber abgearbeitet sind: Reconciliation Center + Controlled Manual Repair sind live, jetzt fehlen die fachlichen Einzelentscheidungen pro kritischem Wallet.
 - 🔴 Nach Manual Decisions Run 1 bleiben insbesondere diese Risikoklassen offen: Ledger-Rebuild-Fälle, Legacy-Wallets mit widersprüchlicher Historie und negative Delta-Fälle mit vorhandener `wallets.balance`-Abweichung.
 - 🔴 Admin-/Alias-UI bleibt unter Beobachtung: weitere Listen außerhalb von Auth + Admin-Kundenliste bei Bedarf auf dieselbe kanonische Admin-Namenslogik umstellen.

@@ -1,5 +1,15 @@
 # BidBlitz — CHANGELOG
 
+## 09.07.2026 — Mobile Store Prep + Production Readiness Audit
+- Finaler Google-Play-Internal-Testing-AAB-Versuch im Container erneut durchgeführt: Java 17, Android commandline tools sowie Android SDK Platform 35 / Build Tools 35 installiert; Build bleibt aber durch **ARM64/AAPT2-Inkompatibilität** im Container blockiert (`aapt2-8.7.2-12006047-linux` / Google build-tools liefern x86_64 Binaries). Ergebnis: **kein finales `app-release.aab` in diesem Fork**. Temporär erzeugte Test-Signing-Dateien wurden wieder entfernt.
+- `frontend/ios/App/App/Info.plist`: Apple-review-sichere Permission-Texte für Kamera, Standort, Fotos, Notifications und NFC ergänzt; keine Auktions-/Glücksspiel-Begriffe mehr in den iOS-Berechtigungstexten.
+- `frontend/ios/App/App.xcodeproj/project.pbxproj`, `frontend/android/app/build.gradle`, `frontend/android/app/src/main/res/values/strings.xml`, `capacitor.config.json`, `frontend/capacitor.config.live.ts`: Bundle-/Package-Identifier auf `com.bidblitz.app` vereinheitlicht, iOS-Buildnummer auf `3`, Android `versionCode` auf `3` und Android String-Metadaten ausgerichtet.
+- `frontend/src/components/InAppUpdateManager.jsx` + `frontend/.env.production`: Play-Core-In-App-Updates für Store-Builds standardmäßig deaktiviert (`REACT_APP_ENABLE_IN_APP_UPDATES=false`), damit Huawei-/Samsung-Store-Builds keine Google-Play-only Update-Aufforderung zeigen.
+- Neue Store-Dokumente erstellt: `/app/memory/HUAWEI_SAMSUNG_STORE_PACKAGE.md`, `/app/memory/APP_STORE_CONNECT_FIELDS.md`, `/app/memory/GOOGLE_PLAY_CONSOLE_FIELDS.md`.
+- Reviewer-sichtbare Store-unsafe Texte bereinigt: `frontend/src/pages/MorePage.jsx`, `frontend/src/components/KYCBanner.jsx`, `frontend/src/store/I18nContext.jsx`.
+- Verifiziert: Frontend-Smoke PASS, Reviewer-Login PASS, Legal-Seiten (`/privacy`, `/terms`, `/support`, `/contact`, `/delete-account`) 200 OK, iOS-Metadaten-Checks PASS, Testing-Agent Iteration 218 Frontend-Bug identifiziert und gefixt, Backend-Readiness-Check PASS.
+- Offene Blocker aus Audit: Wallet P0 weiterhin nicht final freigegeben, `/api/health` fehlt auf Produktion (404), `DB_NAME="test_database"` ist für Produktions-Freigabe ungeeignet, Android-Release-Build im Container blockiert durch fehlenden Android-SDK-Pfad + keinen Release-Keystore.
+
 ## 07.07.2026 — Admin Wallet / Identity-Historie erweitert
 - `backend/routes/admin_wallet.py`: Wallet-User-Suche ist jetzt alias-aware (`email_aliases`, `canonical_email`, `name`) und normalisiert Admin-Datensätze ebenfalls auf den kanonischen `.ae`-Admin. Das Login-History-Endpoint liefert zusätzlich `canonical_email`, `email_aliases`, `balance_eur`, `balance_blz` und `kyc_status`.
 - `frontend/src/pages/AdminWalletPage.jsx`: Im ausgewählten User-Panel werden jetzt **Kanonisch:** und **Aliase:** sichtbar angezeigt, sodass Fälle wie `afrimk@me.com` ↔ `agimk@me.com` direkt im Backoffice nachvollziehbar sind.
