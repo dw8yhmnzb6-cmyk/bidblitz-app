@@ -138,6 +138,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const realGrouped = useGroupedTransactions();
   const realStats = useWalletStats();
   const { t } = useI18n();
+  const resolvedUserNumber = wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number || user?.user_number || user?.bidblitz_id || "";
 
   // Confirm card save after Stripe redirect
   useEffect(() => {
@@ -622,13 +623,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <div>
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{t("wallet.your_number")}</p>
                 <p className="text-xl font-bold text-slate-900" data-testid="user-number-value">
-                  {wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number || t("common.loading")}
+                  {resolvedUserNumber || t("common.loading")}
                 </p>
               </div>
               <button
                 data-testid="copy-user-number-btn"
                 onClick={() => {
-                  const num = wallet?.userNumber || wallet?.user_number || wallet?.user?.user_number;
+                  const num = resolvedUserNumber;
                   if (num) {
                     navigator.clipboard.writeText(num);
                     toast.success(t("wallet.number_copied"));
@@ -639,7 +640,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 {t("scan.copy")}
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-2">{t("wallet.share_number_receive")}</p>
+            <p className="text-xs text-slate-500 mt-2">{t("wallet.share_number_receive_in_store") || t("wallet.share_number_receive")}</p>
           </motion.div>
         )}
 

@@ -41,6 +41,18 @@ def generate_qr_token():
     return secrets.token_urlsafe(32)
 
 
+async def ensure_bidblitz_id(user: dict) -> str:
+    bidblitz_id = user.get("bidblitz_id")
+    if bidblitz_id:
+        return bidblitz_id
+    bidblitz_id = generate_bidblitz_id()
+    while await db.users.find_one({"bidblitz_id": bidblitz_id}):
+        bidblitz_id = generate_bidblitz_id()
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"bidblitz_id": bidblitz_id}})
+    user["bidblitz_id"] = bidblitz_id
+    return bidblitz_id
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # USER PROFILE / BIDBLITZ ID
 # ══════════════════════════════════════════════════════════════════════════════
@@ -52,16 +64,7 @@ async def get_transfer_profile(request: Request):
     user_id = str(user["_id"])
     
     # Ensure user has a BidBlitz ID
-    bidblitz_id = user.get("bidblitz_id")
-    if not bidblitz_id:
-        bidblitz_id = generate_bidblitz_id()
-        # Ensure uniqueness
-        while await db.users.find_one({"bidblitz_id": bidblitz_id}):
-            bidblitz_id = generate_bidblitz_id()
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"bidblitz_id": bidblitz_id}}
-        )
+    bidblitz_id = await ensure_bidblitz_id(user)
     
     # Generate or get QR token
     qr_token = user.get("qr_token")
@@ -227,7 +230,7 @@ async def instant_transfer(req: TransferRequest, request: Request):
     # Find recipient
     try:
         recipient = await db.users.find_one({"_id": ObjectId(req.recipient_id)})
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Ungültige Empfänger-ID")
     
     if not recipient:
@@ -259,8 +262,6 @@ async def instant_transfer(req: TransferRequest, request: Request):
     
     # Get new balances
     updated_sender = await db.users.find_one({"_id": user["_id"]})
-    updated_recipient = await db.users.find_one({"_id": recipient["_id"]})
-    
     # ═══ CREATE TRANSACTION RECORDS ═══
     
     # Sender transaction (p2p_send)
@@ -320,6 +321,7 @@ async def instant_transfer(req: TransferRequest, request: Request):
 async def generate_receive_qr(request: Request, amount: Optional[float] = None):
     """Generate QR code data for receiving money"""
     user = await get_current_user(request)
+    bidblitz_id = await ensure_bidblitz_id(user)
     
     qr_token = user.get("qr_token")
     if not qr_token:
@@ -333,7 +335,7 @@ async def generate_receive_qr(request: Request, amount: Optional[float] = None):
         "type": "bidblitz_p2p",
         "token": qr_token,
         "name": user.get("name", "BidBlitz User"),
-        "bidblitz_id": user.get("bidblitz_id"),
+        "bidblitz_id": bidblitz_id,
     }
     
     if amount and amount > 0:
@@ -342,7 +344,7 @@ async def generate_receive_qr(request: Request, amount: Optional[float] = None):
     return {
         "qr_data": json.dumps(qr_data),
         "qr_token": qr_token,
-        "bidblitz_id": user.get("bidblitz_id"),
+        "bidblitz_id": bidblitz_id,
         "name": user.get("name"),
     }
 
@@ -364,7 +366,7 @@ async def scan_qr_code(request: Request):
             # Assume it's just the token
             token = qr_data
             preset_amount = None
-    except:
+    except Exception:
         raise HTTPException(status_code=400, detail="Ungültiger QR-Code")
     
     if not token:

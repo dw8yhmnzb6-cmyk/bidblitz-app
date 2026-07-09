@@ -5,7 +5,7 @@ import {
   ChevronRight, Search, ArrowLeft, Sparkles,
   CheckCircle2, AlertCircle, Clock, Plus
 } from "lucide-react";
-import { useUser } from "../store";
+import { useUser, useI18n } from "../store";
 
 const spring = { type: "spring", damping: 25, stiffness: 300 };
 
@@ -16,6 +16,7 @@ const normalizeAmount = (value) => {
 
 const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const user = useUser();
+  const { t } = useI18n();
   const [step, setStep] = useState(1); // 1: recipient, 2: amount, 3: success
   const [activeList, setActiveList] = useState("saved");
   const [loading, setLoading] = useState(false);
@@ -210,6 +211,8 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   const quickAmounts = [5, 10, 20, 50];
   const visibleSavedRecipients = savedRecipients || [];
   const visibleRecentContacts = recentContacts || [];
+  const hasSavedRecipients = visibleSavedRecipients.length > 0;
+  const hasRecentContacts = visibleRecentContacts.length > 0;
 
   return (
     <AnimatePresence>
@@ -354,7 +357,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       }`}
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
-                      ⭐ Gespeicherte
+                      ⭐ {t("wallet.saved")}
                     </button>
                     <button
                       type="button"
@@ -367,13 +370,13 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       }`}
                       style={{ WebkitTapHighlightColor: "transparent" }}
                     >
-                      🕐 Kürzlich
+                      🕐 {t("wallet.recent")}
                     </button>
                   </div>
                 </div>
 
                 {/* Saved Recipients */}
-                {activeList === "saved" && visibleSavedRecipients.length > 0 && (
+                {activeList === "saved" && hasSavedRecipients && (
                   <div className="px-6 pb-6 overflow-y-auto max-h-[40vh]">
                     <div className="grid grid-cols-2 gap-3">
                       {visibleSavedRecipients.map((saved) => {
@@ -405,18 +408,25 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                   </div>
                 )}
 
+                {activeList === "saved" && !hasSavedRecipients && (
+                  <div className="px-6 pb-8 text-center" data-testid="send-money-modal-empty-saved-state">
+                    <Users size={32} className="text-slate-200 mx-auto mb-2" />
+                    <p className="text-[13px] text-slate-500">{t("wallet.no_saved_recipients")}</p>
+                  </div>
+                )}
+
                 {/* Recent Contacts */}
                 {activeList === "recent" && (
                 <div className="px-6 pb-8">
                   <div className="flex items-center gap-2 mb-4">
                     <Clock size={14} className="text-slate-400" />
-                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Zuletzt gesendet</p>
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">{t("wallet.recently_sent")}</p>
                   </div>
                   
-                  {visibleRecentContacts.length === 0 ? (
+                  {!hasRecentContacts ? (
                     <div className="text-center py-8">
                       <Users size={32} className="text-slate-200 mx-auto mb-2" />
-                      <p className="text-[13px] text-slate-500">Noch keine Kontakte</p>
+                      <p className="text-[13px] text-slate-500">{t("wallet.no_recent_contacts")}</p>
                     </div>
                   ) : (
                     <div className="space-y-2">

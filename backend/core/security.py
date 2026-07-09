@@ -72,6 +72,8 @@ def serialize_user(user: dict) -> dict:
         "login_email": user.get("login_email") or user.get("email"),
         "canonical_email": user.get("email"),
         "name": user.get("name", ""),
+        "user_number": user.get("user_number", ""),
+        "bidblitz_id": user.get("bidblitz_id", ""),
         "role": role,
         "kyc_status": kyc_status,
         "kyc_verified": kyc_verified,

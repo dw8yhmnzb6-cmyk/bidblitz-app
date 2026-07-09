@@ -692,3 +692,9 @@
 - Neue Shared-Fallback-Keys für Albanisch, Arabisch, Englisch und Deutsch ergänzt: Stats, Monitoring, Leaderboard, Onboarding, Restaurant Tables/Hardware sowie Common-Actions.
 - Lint PASS auf allen bearbeiteten Dateien; Albanisch-Smoke-Test via Preview erfolgreich.
 - `auto_frontend_testing_agent` bestätigt: keine harten deutschen Resttexte in den geprüften Bereichen, keine UI-Brüche, keine MOCKS.
+
+## 09.07.2026 — Wallet UI Bugfix: Tabs + „Deine Nummer“
+- Privat-Senden-Tabs (`Gespeichert` / `Kürzlich`) in `SendMoneyPage.jsx` und `SendMoneyModal.jsx` repariert: sauberer State-Wechsel, Mobile-Tap-Verhalten stabil, Empty-States ergänzt.
+- Wallet-Nummernkarte in `WalletPage.jsx` repariert: zeigt nicht mehr dauerhaft `Laden...`, sondern nutzt robuste Fallbacks auf `user_number` / `bidblitz_id`.
+- Backend nachgezogen: `serialize_user()` liefert `user_number` und `bidblitz_id`; P2P-QR-Flow erzeugt fehlende `bidblitz_id` automatisch für Bestandskonten.
+- Browser-Smoke-Test PASS: `BE92683` sichtbar, beide Tabs schalten korrekt.
