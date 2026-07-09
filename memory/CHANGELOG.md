@@ -728,3 +728,9 @@
 - Demo-Like/Reciprocal-Flow ergänzt, damit echte P0-Matches und Chats direkt testbar sind.
 - Backend-Matchfehler in `/api/dating/matches` behoben; Profil-Save lädt Discover/Matches sofort nach ohne Modal-Blockade.
 - End-to-End mobile getestet: Profil speichern → Discover-Karte sichtbar → Like erzeugt Match-Popup → Match-Liste sichtbar → Chat sendet Nachricht erfolgreich.
+
+## 09.07.2026 — Dating P1 gestartet
+- `Likes You` eingebaut: Lock-Zustand mit Count für Free, freischaltbar via Premium-Demo; nach Upgrade echte Like-Liste sichtbar.
+- `Rewind` eingebaut: letzter Swipe kann zurückgeholt werden, inkl. Rückbau eines erzeugten Demo-Matches.
+- Discovery verbessert: Kompatibilitätsscore, Sortierung nach Score/Verified/Aktivität, Profil-Vervollständigung (%) sichtbar.
+- Profil-Upgrade P1: zusätzliche Felder `occupation` und `profile_prompt` eingebaut.

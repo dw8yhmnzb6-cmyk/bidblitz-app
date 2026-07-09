@@ -183,6 +183,8 @@ async def get_or_create_my_profile(user: dict) -> dict:
         "birth_date": user.get("birth_date"),
         "city": user.get("city") or "",
         "bio": user.get("bio") or "",
+        "occupation": user.get("occupation") or "",
+        "profile_prompt": user.get("profile_prompt") or "",
         "interests": user.get("interests") or [],
         "photos": [avatar],
         "avatar": avatar,
@@ -239,6 +241,8 @@ class DatingProfileUpdate(BaseModel):
     age: Optional[int] = Field(default=None, ge=18, le=99)
     city: str = Field(default="", max_length=80)
     bio: str = Field(default="", max_length=400)
+    occupation: str = Field(default="", max_length=80)
+    profile_prompt: str = Field(default="", max_length=220)
     interests: List[str] = Field(default_factory=list, max_length=12)
     gender: Literal["man", "woman", "nonbinary", "unspecified"] = "unspecified"
     seeking: List[Literal["men", "women", "nonbinary"]] = Field(default_factory=list)
@@ -268,6 +272,36 @@ class ReportReq(BaseModel):
     reason: str = Field(min_length=3, max_length=300)
 
 
+def calc_profile_completion(profile: dict) -> int:
+    checks = [
+        bool(profile.get("name")),
+        bool(profile.get("age")),
+        bool(profile.get("city")),
+        bool(profile.get("bio")),
+        bool(profile.get("occupation")),
+        bool(profile.get("profile_prompt")),
+        bool(profile.get("photos")),
+        len(profile.get("interests") or []) >= 2,
+        bool(profile.get("seeking")),
+    ]
+    return round((sum(1 for item in checks if item) / len(checks)) * 100)
+
+
+def calc_compatibility_score(me: dict, other: dict, filters: dict) -> int:
+    score = 55
+    shared = len(set(me.get("interests") or []).intersection(set(other.get("interests") or [])))
+    score += min(shared * 8, 24)
+    if me.get("city") and other.get("city") and me.get("city") == other.get("city"):
+        score += 8
+    if filters.get("relationship_intent") and other.get("relationship_intent") == filters.get("relationship_intent"):
+        score += 6
+    if other.get("verified"):
+        score += 4
+    if other.get("premium"):
+        score += 2
+    return min(score, 99)
+
+
 @router.get("/profile/me")
 async def my_profile(request: Request):
     user = await get_me(request)
@@ -280,6 +314,7 @@ async def my_profile(request: Request):
         "seeking": [],
         "relationship_intent": None,
     }
+    profile["profile_completion"] = calc_profile_completion(profile)
     return {"profile": profile, "filters": filters}
 
 
@@ -294,6 +329,8 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
         "age": payload.age,
         "city": payload.city,
         "bio": payload.bio,
+        "occupation": payload.occupation,
+        "profile_prompt": payload.profile_prompt,
         "interests": payload.interests[:12],
         "gender": payload.gender,
         "seeking": payload.seeking,
@@ -304,7 +341,16 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
     }
     await db.dating_profiles.update_one({"user_id": str(user["_id"])}, {"$set": update})
     fresh = await db.dating_profiles.find_one({"user_id": str(user["_id"])}, {"_id": 0})
+    fresh["profile_completion"] = calc_profile_completion(fresh)
     return {"ok": True, "profile": fresh}
+
+
+@router.post("/premium/demo-upgrade")
+async def premium_demo_upgrade(request: Request):
+    user = await get_me(request)
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"dating_premium": True}})
+    await db.dating_profiles.update_one({"user_id": str(user["_id"])}, {"$set": {"premium": True}})
+    return {"ok": True, "premium": True}
 
 
 @router.get("/swipes-left")
@@ -360,6 +406,10 @@ async def discover(request: Request):
         if my_filters.get("seeking"):
             fallback_query["gender"] = {"$in": my_filters["seeking"]}
         profiles = await db.dating_profiles.find(fallback_query, {"_id": 0}).sort("last_active_at", -1).to_list(40)
+    for profile in profiles:
+        profile["compatibility_score"] = calc_compatibility_score(my_profile, profile, my_filters)
+        profile["profile_completion"] = calc_profile_completion(profile)
+    profiles.sort(key=lambda item: (item.get("compatibility_score", 0), item.get("verified", False), item.get("last_active_at", "")), reverse=True)
     return {"profiles": profiles}
 
 
@@ -470,6 +520,31 @@ async def pass_profile(req: SwipeReq, request: Request):
         "swipe_reset_key": swipe_reset_key(),
     })
     return {"ok": True}
+
+
+@router.post("/rewind")
+async def rewind_last_swipe(request: Request):
+    user = await get_me(request)
+    my_profile = await get_or_create_my_profile(user)
+    my_user_id = my_profile["user_id"]
+    last_swipe = await db.dating_swipes.find({"from_user_id": my_user_id}, {"_id": 0}).sort("created_at", -1).limit(1).to_list(1)
+    if not last_swipe:
+        raise HTTPException(status_code=404, detail="Kein Swipe zum Zurücknehmen")
+    swipe = last_swipe[0]
+    target = await db.dating_profiles.find_one({"profile_id": swipe["to_profile_id"]}, {"_id": 0})
+    await db.dating_swipes.delete_one({"from_user_id": my_user_id, "to_profile_id": swipe["to_profile_id"]})
+    if target:
+        key = pair_key(my_user_id, target["user_id"])
+        match = await db.dating_matches.find_one({"pair_key": key}, {"_id": 0})
+        if match:
+            await db.dating_matches.delete_one({"pair_key": key})
+            await db.dating_messages.delete_many({"match_id": match["match_id"]})
+        if target.get("is_seed"):
+            await db.dating_swipes.delete_many({"from_user_id": target["user_id"], "to_user_id": my_user_id, "is_seed": True})
+        target["compatibility_score"] = calc_compatibility_score(my_profile, target, user.get("dating_filters") or {})
+        target["profile_completion"] = calc_profile_completion(target)
+        return {"ok": True, "profile": target}
+    raise HTTPException(status_code=404, detail="Profil nicht gefunden")
 
 
 @router.get("/matches")
@@ -586,9 +661,17 @@ async def report_profile(payload: ReportReq, request: Request):
 async def likes_you(request: Request):
     user = await get_me(request)
     me = await get_or_create_my_profile(user)
+    inbound = await db.dating_swipes.find({"to_user_id": me["user_id"], "type": {"$in": ["like", "superlike"]}}, {"_id": 0, "from_profile_id": 1, "type": 1, "created_at": 1}).sort("created_at", -1).to_list(100)
+    count = len(inbound)
     if not me.get("premium"):
-        return {"locked": True, "profiles": []}
-    inbound = await db.dating_swipes.find({"to_user_id": me["user_id"], "type": {"$in": ["like", "superlike"]}}, {"_id": 0, "from_profile_id": 1}).sort("created_at", -1).to_list(100)
+        return {"locked": True, "profiles": [], "count": count}
     profile_ids = [item["from_profile_id"] for item in inbound]
     profiles = await db.dating_profiles.find({"profile_id": {"$in": profile_ids}}, {"_id": 0}).to_list(100)
-    return {"locked": False, "profiles": profiles}
+    meta_by_id = {item["from_profile_id"]: item for item in inbound}
+    for profile in profiles:
+        meta = meta_by_id.get(profile["profile_id"], {})
+        profile["incoming_type"] = meta.get("type", "like")
+        profile["incoming_at"] = meta.get("created_at")
+        profile["profile_completion"] = calc_profile_completion(profile)
+    profiles.sort(key=lambda item: item.get("incoming_at", ""), reverse=True)
+    return {"locked": False, "profiles": profiles, "count": count}

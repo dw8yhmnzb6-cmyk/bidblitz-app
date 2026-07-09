@@ -10,6 +10,8 @@ const emptyProfile = {
   age: 18,
   city: "",
   bio: "",
+  occupation: "",
+  profile_prompt: "",
   interests: [],
   gender: "unspecified",
   seeking: [],
@@ -52,6 +54,7 @@ export default function DatingPage({ onBack }) {
   const [matchPopup, setMatchPopup] = useState(false);
   const [profileForm, setProfileForm] = useState(emptyProfile);
   const [filters, setFilters] = useState({ age_min: 18, age_max: 99, city: "", seeking: [], relationship_intent: "" });
+  const [likesYou, setLikesYou] = useState({ locked: true, profiles: [], count: 0 });
 
   const current = profiles[idx];
   const currentPhotos = current?.photos?.length ? current.photos : current?.avatar ? [current.avatar] : [];
@@ -59,11 +62,12 @@ export default function DatingPage({ onBack }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [profileRes, discoverRes, matchesRes, swipeRes] = await Promise.all([
+      const [profileRes, discoverRes, matchesRes, swipeRes, likesRes] = await Promise.all([
         api("/api/dating/profile/me"),
         api("/api/dating/discover"),
         api("/api/dating/matches"),
         api("/api/dating/swipes-left"),
+        api("/api/dating/likes-you"),
       ]);
       setUserProfile(profileRes.profile);
       setProfileForm({
@@ -76,6 +80,7 @@ export default function DatingPage({ onBack }) {
       setSwipesLeft(swipeRes.swipes_left || 0);
       setProfiles(discoverRes.profiles || []);
       setMatches(matchesRes.matches || []);
+      setLikesYou(likesRes || { locked: true, profiles: [], count: 0 });
       setIdx(0);
       if (!profileRes.profile?.bio || !profileRes.profile?.photos?.[0]) setShowProfileSetup(true);
     } catch (error) {
@@ -128,6 +133,17 @@ export default function DatingPage({ onBack }) {
     }, 280);
   };
 
+  const handleRewind = async () => {
+    try {
+      const data = await api("/api/dating/rewind", { method: "POST" });
+      setProfiles((prev) => [data.profile, ...prev]);
+      setIdx(0);
+      toast.success("Letzten Swipe zurückgeholt");
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const saveProfile = async () => {
     try {
       const payload = { ...profileForm, interests: profileForm.interests.filter(Boolean), photos: profileForm.photos.filter(Boolean) };
@@ -136,13 +152,15 @@ export default function DatingPage({ onBack }) {
       setProfileForm({ ...emptyProfile, ...data.profile, photos: data.profile?.photos?.length ? data.profile.photos : [data.profile?.avatar || ""] });
       setShowProfileSetup(false);
       toast.success("Dating-Profil gespeichert");
-      const [discoverRes, matchesRes, swipeRes] = await Promise.all([
+      const [discoverRes, matchesRes, swipeRes, likesRes] = await Promise.all([
         api("/api/dating/discover"),
         api("/api/dating/matches"),
         api("/api/dating/swipes-left"),
+        api("/api/dating/likes-you"),
       ]);
       setProfiles(discoverRes.profiles || []);
       setMatches(matchesRes.matches || []);
+      setLikesYou(likesRes || { locked: true, profiles: [], count: 0 });
       setSwipesLeft(swipeRes.swipes_left || 0);
       setIdx(0);
     } catch (error) {
@@ -211,6 +229,7 @@ export default function DatingPage({ onBack }) {
           {[
             { id: "discover", label: "Entdecken" },
             { id: "matches", label: "Matches" },
+            { id: "likes", label: `Likes You${likesYou.count ? ` (${likesYou.count})` : ""}` },
           ].map((item) => (
             <button key={item.id} onClick={() => setTab(item.id)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === item.id ? "bg-pink-500 text-white" : "text-white/60"}`} data-testid={`dating-tab-${item.id}`}>{item.label}</button>
           ))}
@@ -219,9 +238,22 @@ export default function DatingPage({ onBack }) {
         <button onClick={() => setShowProfileSetup(true)} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5" data-testid="dating-open-profile-edit"><Edit2 size={16} /></button>
       </div>
 
+      {userProfile && (
+        <div className="px-4 mb-4" data-testid="dating-profile-completion-card">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-1">Profil-Vervollständigung</p>
+              <p className="text-sm font-semibold text-white">{userProfile.profile_completion || 0}% bereit für bessere Matches</p>
+              <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-500 to-orange-400" style={{ width: `${userProfile.profile_completion || 0}%` }} /></div>
+            </div>
+            <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
+          </div>
+        </div>
+      )}
+
       {tab === "discover" && (
         <div className="px-4 flex flex-col items-center">
-          {loading ? <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" /></div> : !current ? (
+      {loading ? <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" /></div> : !current ? (
             <div className="text-center py-20"><Heart size={48} className="mx-auto mb-3 text-white/20" /><p className="text-sm text-white/60">Keine Profile mehr. Filter ändern oder später wiederkommen.</p></div>
           ) : (
             <AnimatePresence mode="wait">
@@ -235,7 +267,8 @@ export default function DatingPage({ onBack }) {
                   </div>
                 </div>
                 <div className="p-4">
-                  <p className="text-sm mb-3 text-white/80">{current.bio || "Noch keine Bio"}</p>
+                  <p className="text-sm mb-2 text-white/80">{current.bio || "Noch keine Bio"}</p>
+                  {(current.occupation || current.profile_prompt || current.compatibility_score) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match</p> : null}</div>}
                   <div className="flex flex-wrap gap-2">{(current.interests || []).map((interest) => <span key={interest} className="px-3 py-1 rounded-full text-xs bg-pink-500/15 text-pink-300">{interest}</span>)}</div>
                 </div>
               </motion.div>
@@ -243,11 +276,28 @@ export default function DatingPage({ onBack }) {
           )}
           {current && (
             <div className="flex items-center gap-6 mt-6">
+              <button onClick={handleRewind} className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-white/5 border border-white/15" data-testid="dating-rewind-button"><ArrowLeft size={20} className="text-white/80" /></button>
               <button onClick={() => handleAction("pass")} className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-red-400" data-testid="dating-pass-button"><X size={28} className="text-red-400" /></button>
               <button onClick={() => handleAction("superlike")} className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-blue-400" data-testid="dating-superlike-button"><Star size={22} className="text-blue-400" /></button>
               <button onClick={() => handleAction("like")} className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-green-400" data-testid="dating-like-button"><Heart size={28} className="text-green-400" /></button>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === "likes" && (
+        <div className="px-4 space-y-3" data-testid="dating-likes-you-list">
+          {likesYou.locked ? (
+            <div className="rounded-3xl border border-yellow-400/20 bg-yellow-500/10 p-6 text-center"><Crown size={36} className="mx-auto mb-3 text-yellow-300" /><h3 className="text-lg font-bold text-white">Likes You ist Premium</h3><p className="text-sm text-white/65 mt-2">{likesYou.count} Personen haben dich geliked.</p><button onClick={async () => { try { await api('/api/dating/premium/demo-upgrade', { method: 'POST' }); setIsPremium(true); setShowPaywall(false); toast.success('Premium aktiviert'); await load(); } catch (error) { toast.error(error.message); } }} className="mt-4 px-5 py-3 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-likes-upgrade-button">Premium freischalten</button></div>
+          ) : likesYou.profiles.length === 0 ? (
+            <div className="text-center py-20"><Heart size={48} className="mx-auto mb-3 text-white/20" /><p className="text-sm text-white/60">Noch keine Likes</p></div>
+          ) : likesYou.profiles.map((profile) => (
+            <motion.div key={profile.profile_id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-4 flex items-center gap-3 bg-white/5 border border-blue-500/20" data-testid={`dating-like-you-${profile.profile_id}`}>
+              <img src={profile.avatar} alt={profile.name} className="w-14 h-14 rounded-full object-cover" />
+              <div className="flex-1"><h3 className="text-sm font-semibold text-white">{profile.name}{profile.age ? `, ${profile.age}` : ''}</h3><p className="text-xs text-white/60 truncate">{profile.city} · {profile.incoming_type === 'superlike' ? 'Super Like' : 'Like'}</p></div>
+              <button onClick={() => { setTab('discover'); setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]); setIdx(0); }} className="px-3 py-2 rounded-xl bg-blue-500/15 text-blue-300 text-xs font-semibold" data-testid={`dating-open-like-${profile.profile_id}`}>Ansehen</button>
+            </motion.div>
+          ))}
         </div>
       )}
 
@@ -295,11 +345,11 @@ export default function DatingPage({ onBack }) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showPaywall && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-md rounded-3xl p-8 text-center bg-[#0F1016] border border-pink-500/30"><div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center bg-gradient-to-r from-yellow-300 to-orange-400"><Crown size={40} className="text-black" /></div><h2 className="text-2xl font-bold text-white mb-3">Gratis-Swipes aufgebraucht</h2><p className="text-gray-400 text-sm mb-6">Upgrade zu Premium für unbegrenzte Swipes, Likes You und Super Likes.</p><button onClick={() => { setIsPremium(true); setShowPaywall(false); setSwipesLeft(999999); toast.success("Premium-Demo aktiviert"); }} className="w-full py-4 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-upgrade-premium">Premium aktivieren</button><button onClick={() => setShowPaywall(false)} className="w-full py-3 rounded-xl font-medium text-white mt-3 bg-white/5">Abbrechen</button></motion.div></motion.div>}
+        {showPaywall && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-md rounded-3xl p-8 text-center bg-[#0F1016] border border-pink-500/30"><div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center bg-gradient-to-r from-yellow-300 to-orange-400"><Crown size={40} className="text-black" /></div><h2 className="text-2xl font-bold text-white mb-3">Gratis-Swipes aufgebraucht</h2><p className="text-gray-400 text-sm mb-6">Upgrade zu Premium für unbegrenzte Swipes, Likes You und Super Likes.</p><button onClick={async () => { try { await api('/api/dating/premium/demo-upgrade', { method: 'POST' }); setIsPremium(true); setShowPaywall(false); setSwipesLeft(999999); toast.success('Premium-Demo aktiviert'); await load(); } catch (error) { toast.error(error.message); } }} className="w-full py-4 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-upgrade-premium">Premium aktivieren</button><button onClick={() => setShowPaywall(false)} className="w-full py-3 rounded-xl font-medium text-white mt-3 bg-white/5">Abbrechen</button></motion.div></motion.div>}
       </AnimatePresence>
 
       <AnimatePresence>
-        {showProfileSetup && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm overflow-y-auto"><div className="min-h-screen flex items-start justify-center px-4 py-6"><div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#0C0E14] p-5" data-testid="dating-profile-editor"><div className="flex items-center justify-between mb-4"><h2 className="text-xl font-bold text-white">Dating-Profil</h2><button onClick={() => setShowProfileSetup(false)} className="text-white/60">{t("common.close")}</button></div><div className="space-y-4"><input value={profileForm.name} onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))} placeholder="Name" className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-name-input" /><div className="grid grid-cols-2 gap-3"><input type="number" min="18" max="99" value={profileForm.age ?? ""} onChange={(e) => setProfileForm((p) => ({ ...p, age: Number(e.target.value || 18) }))} placeholder="Alter" className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-age-input" /><input value={profileForm.city} onChange={(e) => setProfileForm((p) => ({ ...p, city: e.target.value }))} placeholder="Stadt" className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-city-input" /></div><textarea value={profileForm.bio} onChange={(e) => setProfileForm((p) => ({ ...p, bio: e.target.value }))} placeholder="Beschreibe dich" rows={4} className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-bio-input" /><div><p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-2">Fotos</p><div className="grid grid-cols-1 gap-2">{photoSlots.map((photo, index) => <input key={index} value={photo} onChange={(e) => setProfileForm((p) => { const next = [...photoSlots]; next[index] = e.target.value; return { ...p, photos: next }; })} placeholder={`Foto URL ${index + 1}`} className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid={`dating-profile-photo-${index}`} />)}</div></div><div><p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-2">Interessen</p><div className="flex flex-wrap gap-2">{chipOptions.map((chip) => { const active = profileForm.interests.includes(chip); return <button key={chip} type="button" onClick={() => setProfileForm((p) => ({ ...p, interests: active ? p.interests.filter((item) => item !== chip) : [...p.interests, chip] }))} className={`px-3 py-2 rounded-full text-xs border ${active ? "border-pink-400 bg-pink-500/20 text-pink-300" : "border-white/10 bg-white/5 text-white/70"}`} data-testid={`dating-interest-${chip}`}>{chip}</button>; })}</div></div><div className="grid grid-cols-2 gap-3"><select value={profileForm.gender} onChange={(e) => setProfileForm((p) => ({ ...p, gender: e.target.value }))} className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-gender-select"><option value="unspecified">Geschlecht</option><option value="man">Mann</option><option value="woman">Frau</option><option value="nonbinary">Non-binary</option></select><select value={profileForm.relationship_intent} onChange={(e) => setProfileForm((p) => ({ ...p, relationship_intent: e.target.value }))} className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-intent-select"><option value="serious">Beziehung</option><option value="casual">Locker</option><option value="friends">Freunde</option><option value="open">Offen</option></select></div><div><p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-2">Suche</p><div className="flex flex-wrap gap-2">{[{ key: "women", label: "Frauen" }, { key: "men", label: "Männer" }, { key: "nonbinary", label: "Non-binary" }].map((item) => { const active = profileForm.seeking.includes(item.key); return <button key={item.key} type="button" onClick={() => setProfileForm((p) => ({ ...p, seeking: active ? p.seeking.filter((entry) => entry !== item.key) : [...p.seeking, item.key] }))} className={`px-3 py-2 rounded-full text-xs border ${active ? "border-blue-400 bg-blue-500/20 text-blue-300" : "border-white/10 bg-white/5 text-white/70"}`} data-testid={`dating-seeking-${item.key}`}>{item.label}</button>; })}</div></div><button onClick={saveProfile} className="w-full py-4 rounded-2xl font-bold bg-pink-500 text-white" data-testid="dating-profile-save-button">{t("common.save")}</button></div></div></div></motion.div>}
+        {showProfileSetup && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm overflow-y-auto"><div className="min-h-screen flex items-start justify-center px-4 py-6"><div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#0C0E14] p-5" data-testid="dating-profile-editor"><div className="flex items-center justify-between mb-4"><h2 className="text-xl font-bold text-white">Dating-Profil</h2><button onClick={() => setShowProfileSetup(false)} className="text-white/60">{t("common.close")}</button></div><div className="space-y-4"><input value={profileForm.name} onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))} placeholder="Name" className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-name-input" /><div className="grid grid-cols-2 gap-3"><input type="number" min="18" max="99" value={profileForm.age ?? ""} onChange={(e) => setProfileForm((p) => ({ ...p, age: Number(e.target.value || 18) }))} placeholder="Alter" className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-age-input" /><input value={profileForm.city} onChange={(e) => setProfileForm((p) => ({ ...p, city: e.target.value }))} placeholder="Stadt" className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-city-input" /></div><input value={profileForm.occupation || ''} onChange={(e) => setProfileForm((p) => ({ ...p, occupation: e.target.value }))} placeholder="Beruf / Rolle" className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-occupation-input" /><textarea value={profileForm.bio} onChange={(e) => setProfileForm((p) => ({ ...p, bio: e.target.value }))} placeholder="Beschreibe dich" rows={4} className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-bio-input" /><textarea value={profileForm.profile_prompt || ''} onChange={(e) => setProfileForm((p) => ({ ...p, profile_prompt: e.target.value }))} placeholder="Profil-Prompt: z. B. Mein perfekter Sonntag ist..." rows={3} className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-prompt-input" /><div><p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-2">Fotos</p><div className="grid grid-cols-1 gap-2">{photoSlots.map((photo, index) => <input key={index} value={photo} onChange={(e) => setProfileForm((p) => { const next = [...photoSlots]; next[index] = e.target.value; return { ...p, photos: next }; })} placeholder={`Foto URL ${index + 1}`} className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid={`dating-profile-photo-${index}`} />)}</div></div><div><p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-2">Interessen</p><div className="flex flex-wrap gap-2">{chipOptions.map((chip) => { const active = profileForm.interests.includes(chip); return <button key={chip} type="button" onClick={() => setProfileForm((p) => ({ ...p, interests: active ? p.interests.filter((item) => item !== chip) : [...p.interests, chip] }))} className={`px-3 py-2 rounded-full text-xs border ${active ? "border-pink-400 bg-pink-500/20 text-pink-300" : "border-white/10 bg-white/5 text-white/70"}`} data-testid={`dating-interest-${chip}`}>{chip}</button>; })}</div></div><div className="grid grid-cols-2 gap-3"><select value={profileForm.gender} onChange={(e) => setProfileForm((p) => ({ ...p, gender: e.target.value }))} className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-gender-select"><option value="unspecified">Geschlecht</option><option value="man">Mann</option><option value="woman">Frau</option><option value="nonbinary">Non-binary</option></select><select value={profileForm.relationship_intent} onChange={(e) => setProfileForm((p) => ({ ...p, relationship_intent: e.target.value }))} className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm" data-testid="dating-profile-intent-select"><option value="serious">Beziehung</option><option value="casual">Locker</option><option value="friends">Freunde</option><option value="open">Offen</option></select></div><div><p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-2">Suche</p><div className="flex flex-wrap gap-2">{[{ key: "women", label: "Frauen" }, { key: "men", label: "Männer" }, { key: "nonbinary", label: "Non-binary" }].map((item) => { const active = profileForm.seeking.includes(item.key); return <button key={item.key} type="button" onClick={() => setProfileForm((p) => ({ ...p, seeking: active ? p.seeking.filter((entry) => entry !== item.key) : [...p.seeking, item.key] }))} className={`px-3 py-2 rounded-full text-xs border ${active ? "border-blue-400 bg-blue-500/20 text-blue-300" : "border-white/10 bg-white/5 text-white/70"}`} data-testid={`dating-seeking-${item.key}`}>{item.label}</button>; })}</div></div><button onClick={saveProfile} className="w-full py-4 rounded-2xl font-bold bg-pink-500 text-white" data-testid="dating-profile-save-button">{t("common.save")}</button></div></div></div></motion.div>}
       </AnimatePresence>
 
       <AnimatePresence>
