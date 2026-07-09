@@ -109,25 +109,10 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
   const scanRef = useRef(null);
   const pollRef = useRef(null);
 
-  // Online/offline detection + auto-sync
-  useEffect(() => {
-    const onOn = () => { setOnline(true); syncOfflineQueue(); };
-    const onOff = () => { setOnline(false); toast.warning("Offline-Modus aktiv — Verkäufe werden zwischengespeichert"); };
-    window.addEventListener("online", onOn);
-    window.addEventListener("offline", onOff);
-    return () => { window.removeEventListener("online", onOn); window.removeEventListener("offline", onOff); };
-  }, [syncOfflineQueue]);
-
-  const persistQueue = (next) => {
+  const persistQueue = useCallback((next) => {
     setQueuedSales(next);
     localStorage.setItem("pos_offline_queue", JSON.stringify(next));
-  };
-
-  const queueOfflineSale = (saleSnapshot) => {
-    const next = [...queuedSales, { ...saleSnapshot, queued_at: new Date().toISOString() }];
-    persistQueue(next);
-    toast.success(`Verkauf offline gespeichert (${next.length} in Warteschlange)`);
-  };
+  }, []);
 
   const syncOfflineQueue = useCallback(async () => {
     let queue;
@@ -152,7 +137,22 @@ export default function POSCheckoutTab({ storeId, registerId, shift, onShiftChan
     }
     persistQueue(remaining);
     if (synced > 0) toast.success(`${synced} Offline-Verkäufe synchronisiert`);
-  }, []);
+  }, [persistQueue]);
+
+  // Online/offline detection + auto-sync
+  useEffect(() => {
+    const onOn = () => { setOnline(true); syncOfflineQueue(); };
+    const onOff = () => { setOnline(false); toast.warning("Offline-Modus aktiv — Verkäufe werden zwischengespeichert"); };
+    window.addEventListener("online", onOn);
+    window.addEventListener("offline", onOff);
+    return () => { window.removeEventListener("online", onOn); window.removeEventListener("offline", onOff); };
+  }, [syncOfflineQueue]);
+
+  const queueOfflineSale = (saleSnapshot) => {
+    const next = [...queuedSales, { ...saleSnapshot, queued_at: new Date().toISOString() }];
+    persistQueue(next);
+    toast.success(`Verkauf offline gespeichert (${next.length} in Warteschlange)`);
+  };
 
   const totals = useMemo(() => {
     const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);

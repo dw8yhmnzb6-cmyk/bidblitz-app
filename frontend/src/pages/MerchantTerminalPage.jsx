@@ -168,7 +168,7 @@ const MerchantTerminalPage = ({ onBack }) => {
   ];
 
   return (
-    <motion.div data-testid="merchant-terminal-page" className="min-h-screen flex flex-col" style={{ background: "#020408" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <motion.div data-testid="merchant-terminal-page" data-cookie-banner-suppress="true" className="min-h-screen flex flex-col" style={{ background: "#020408" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
 
       {/* ── Top Bar ── */}
       <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "rgba(2,4,8,0.95)", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>

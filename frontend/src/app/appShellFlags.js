@@ -42,6 +42,12 @@ function isFullScreenStaffManagerPath(path) {
     || path === "/taxi/pro";
 }
 
+function isFullscreenCommercePath(path) {
+  return path === "/terminal"
+    || path === "/pos"
+    || path === "/nfc";
+}
+
 export function getAppShellFlags(currentPath, isDesktopViewport) {
   const isCheckout = isCheckoutPath(currentPath);
   const isPublicInvoicePayment = isPublicInvoicePaymentPath(currentPath);
@@ -51,6 +57,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
   const isMobilityShell = isMobilityShellPath(currentPath);
   const isStaffEmployeeShell = isStaffEmployeeShellPath(currentPath);
   const isFullScreenStaffMgr = isFullScreenStaffManagerPath(currentPath);
+  const isFullscreenCommerce = isFullscreenCommercePath(currentPath);
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
 
   return {
@@ -62,6 +69,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
     isMobilityShell,
     isStaffEmployeeShell,
     isFullScreenStaffMgr,
+    isFullscreenCommerce,
     showBottomNav: !isDesktopViewport
       && !isCheckout
       && !isPublicInvoicePayment
@@ -70,6 +78,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isInvoicePay
       && !isStaffEmployeeShell
       && !isFullScreenStaffMgr
+      && !isFullscreenCommerce
       && !currentPath.startsWith("/pay/merchant/")
       && currentPath !== "/merchant-landing"
       && currentPath !== "/pay/directory"
@@ -82,6 +91,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isInvoicePay
       && !isMobilityShell
       && !isStaffEmployeeShell
+      && !isFullscreenCommerce
       && !currentPath.startsWith("/pay/merchant/")
       && currentPath !== "/merchant-landing",
   };

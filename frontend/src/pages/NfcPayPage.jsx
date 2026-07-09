@@ -86,6 +86,7 @@ export default function NfcPayPage({ onBack }) {
   return (
     <motion.div
       data-testid="nfc-pay-page"
+      data-cookie-banner-suppress="true"
       className="min-h-screen bg-[#040507] text-white pb-16"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

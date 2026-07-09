@@ -151,7 +151,7 @@ export default function POSPage({ onBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#060810] text-white" data-testid="pos-page">
+    <div className="min-h-screen bg-[#060810] text-white" data-testid="pos-page" data-cookie-banner-suppress="true">
       {/* Header */}
       <div className="sticky top-0 z-30 backdrop-blur-xl bg-[#060810]/90 border-b border-white/[0.06]">
         <div className="flex items-center gap-3 px-4 py-3 pt-[max(env(safe-area-inset-top,0px),14px)]">

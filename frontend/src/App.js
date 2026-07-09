@@ -1237,9 +1237,9 @@ function AppContent() {
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && <AIChatWidget />}
+      {user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
-      {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && (
+      {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && (
         <SuperAppOverlay
           currentPath={currentPath}
           onNavigate={handleNavigate}

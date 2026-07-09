@@ -704,3 +704,9 @@
 - `ReceiveMoneyPage` Mobil-Flow verifiziert: QR sichtbar, `Senden öffnen` und `Für Kasse?` tappbar; KYC-Weiterleitung greift korrekt statt Tap-Blockade.
 - Wallet-Copy-Button gehärtet: Clipboard-Fehler werfen keinen Runtime-Overlay-Crash mehr, stattdessen sauberer Toast `Kopieren fehlgeschlagen`.
 - Saved-Recipients-API akzeptiert jetzt auch `recipient_id`, Response ist `_id`-frei; Self-QR-Scan zeigt sichtbare Fehlermeldung im Scanner-Sheet.
+
+## 09.07.2026 — Händler/Bezahlen Mobile Hardening
+- `MerchantTerminalPage`, `NfcPayPage` und `POSPage` aus mobilen Shell-Overlays gelöst: Cookie-Banner, BottomNav, AI-Chat und SuperApp-Overlay blockieren diese Händler-Kassenflächen nicht mehr.
+- Händler-Terminal mobil verifiziert: QR-Flow öffnet Scan-Step, NFC-Flow zeigt Wallet-/Card-Optionen, NFC-Lab zeigt Read/Write-Aktionen.
+- POS-Crash behoben: `ReferenceError: Cannot access 'syncOfflineQueue' before initialization` in `POSCheckoutTab.jsx` durch korrekt vorgezogene `useCallback`-/Persist-Reihenfolge beseitigt.
+- POS-PalmPay/BioPay Panel mobil verifiziert: Scan-/NFC-/Nummer-Toggles reagieren, Panel ist ohne Überlagerung bedienbar.
