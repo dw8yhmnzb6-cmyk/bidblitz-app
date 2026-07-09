@@ -710,3 +710,9 @@
 - Händler-Terminal mobil verifiziert: QR-Flow öffnet Scan-Step, NFC-Flow zeigt Wallet-/Card-Optionen, NFC-Lab zeigt Read/Write-Aktionen.
 - POS-Crash behoben: `ReferenceError: Cannot access 'syncOfflineQueue' before initialization` in `POSCheckoutTab.jsx` durch korrekt vorgezogene `useCallback`-/Persist-Reihenfolge beseitigt.
 - POS-PalmPay/BioPay Panel mobil verifiziert: Scan-/NFC-/Nummer-Toggles reagieren, Panel ist ohne Überlagerung bedienbar.
+
+## 09.07.2026 — Händlerzahlungen geprüft (ohne echte Belastung)
+- QR-Kassenzahlung im Händler-POS bis Pending-Zahlung getestet: `wallet_qr` erstellt erfolgreich `BIDBLITZ-PAY:*` inkl. Pending-Status und Abbrechen-Action.
+- NFC-Händlerflow bis Pending-Session getestet: `BIDBLITZ-NFC:*` wird erzeugt; im Browser erscheint korrekt der Hinweis, dass ohne echtes NFC QR-Fallback genutzt werden soll.
+- PalmPay/BioPay ohne echten Token getestet: Kundensuche per Nummer (`BE92683`) funktioniert, Formular mit Betrag + Tokenfeld + Submit ist mobil bedienbar.
+- WICHTIG: **KEINE echte Zahlung ausgelöst**, **KEIN echter PalmPay-Token verwendet**, **KEIN physisches NFC-Gerät gekoppelt**.
