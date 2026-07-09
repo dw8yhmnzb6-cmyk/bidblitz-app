@@ -52,7 +52,7 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-[calc(var(--app-mobile-content-offset,6rem)+1rem)]" data-testid="receive-money-page">
+    <div className="min-h-screen bg-[#f8fafc] pb-[calc(var(--app-mobile-content-offset,6rem)+1rem)]" data-testid="receive-money-page" data-cookie-banner-suppress="true">
       <div className="sticky top-0 z-30 bg-[#f8fafc]/95 backdrop-blur-xl border-b border-slate-200">
         <div className="px-4 py-3 flex items-center gap-3">
           <motion.button data-testid="receive-money-back" onClick={onBack} whileTap={{ scale: 0.9 }} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center">
