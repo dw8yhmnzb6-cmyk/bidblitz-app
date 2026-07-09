@@ -716,3 +716,9 @@
 - NFC-Händlerflow bis Pending-Session getestet: `BIDBLITZ-NFC:*` wird erzeugt; im Browser erscheint korrekt der Hinweis, dass ohne echtes NFC QR-Fallback genutzt werden soll.
 - PalmPay/BioPay ohne echten Token getestet: Kundensuche per Nummer (`BE92683`) funktioniert, Formular mit Betrag + Tokenfeld + Submit ist mobil bedienbar.
 - WICHTIG: **KEINE echte Zahlung ausgelöst**, **KEIN echter PalmPay-Token verwendet**, **KEIN physisches NFC-Gerät gekoppelt**.
+
+## 09.07.2026 — Dating P0 gestartet
+- Neues Dating-P0-Backend unter `/api/dating/*` aufgebaut: echtes Profil-Setup, gegenseitige Like-/Match-Logik, Swipe-Limit/Premium-Basis, Filter, Matches, Chat, Report/Block/Unmatch, Likes-You-Lock.
+- Neues Dating-P0-Frontend in `DatingPage.jsx`: Profil-Editor, Filter-Sheet, Discover/Matches-Tabs, Chat-Panel, Safety-Sheet, Premium-Paywall.
+- Router-Registry um Dating ergänzt; Startproblem durch alten doppelten `user_id=null`-Index mit partiellem Unique-Index behoben.
+- Mobile Frontend-Test PASS: Dating-Seite lädt, Profil-Editor und Filter funktionieren, Discover-/Matches-Tabs funktionieren, keine P0-UI-Blocker. Aktueller Testzustand zeigt korrekte Empty-States mangels weiterer Dating-Profile.
