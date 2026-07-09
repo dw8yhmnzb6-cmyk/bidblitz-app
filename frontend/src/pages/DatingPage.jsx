@@ -136,7 +136,15 @@ export default function DatingPage({ onBack }) {
       setProfileForm({ ...emptyProfile, ...data.profile, photos: data.profile?.photos?.length ? data.profile.photos : [data.profile?.avatar || ""] });
       setShowProfileSetup(false);
       toast.success("Dating-Profil gespeichert");
-      await load();
+      const [discoverRes, matchesRes, swipeRes] = await Promise.all([
+        api("/api/dating/discover"),
+        api("/api/dating/matches"),
+        api("/api/dating/swipes-left"),
+      ]);
+      setProfiles(discoverRes.profiles || []);
+      setMatches(matchesRes.matches || []);
+      setSwipesLeft(swipeRes.swipes_left || 0);
+      setIdx(0);
     } catch (error) {
       toast.error(error.message);
     }
@@ -193,7 +201,7 @@ export default function DatingPage({ onBack }) {
   }, [profileForm.photos]);
 
   return (
-    <div className="min-h-screen pb-24 bg-[#05060A] text-white" data-testid="dating-page">
+    <div className="min-h-screen pb-24 bg-[#05060A] text-white" data-testid="dating-page" data-cookie-banner-suppress="true">
       <div className="px-4 pt-4 pb-3 flex items-center gap-3">
         <button onClick={onBack} className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5" data-testid="dating-back-button"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-bold">Dating</h1>

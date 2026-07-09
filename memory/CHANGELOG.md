@@ -722,3 +722,9 @@
 - Neues Dating-P0-Frontend in `DatingPage.jsx`: Profil-Editor, Filter-Sheet, Discover/Matches-Tabs, Chat-Panel, Safety-Sheet, Premium-Paywall.
 - Router-Registry um Dating ergänzt; Startproblem durch alten doppelten `user_id=null`-Index mit partiellem Unique-Index behoben.
 - Mobile Frontend-Test PASS: Dating-Seite lädt, Profil-Editor und Filter funktionieren, Discover-/Matches-Tabs funktionieren, keine P0-UI-Blocker. Aktueller Testzustand zeigt korrekte Empty-States mangels weiterer Dating-Profile.
+
+## 09.07.2026 — Dating P0 Seed-/Match-/Chat-Flow aktiviert
+- Seed-Profile (`Lina`, `Maya`, `Nora`) ergänzt, damit Discover sofort Content liefert.
+- Demo-Like/Reciprocal-Flow ergänzt, damit echte P0-Matches und Chats direkt testbar sind.
+- Backend-Matchfehler in `/api/dating/matches` behoben; Profil-Save lädt Discover/Matches sofort nach ohne Modal-Blockade.
+- End-to-End mobile getestet: Profil speichern → Discover-Karte sichtbar → Like erzeugt Match-Popup → Match-Liste sichtbar → Chat sendet Nachricht erfolgreich.

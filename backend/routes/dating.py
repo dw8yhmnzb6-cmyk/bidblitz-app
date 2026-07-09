@@ -23,11 +23,83 @@ DEFAULT_AVATARS = [
     "https://images.unsplash.com/photo-1504593811423-6dd665756598?w=800&q=80",
 ]
 
-DAILY_FREE_SWIPES = 20
-
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+SEED_PROFILES = [
+    {
+        "profile_id": "DAT-SEED-LINA",
+        "user_id": "seed-lina",
+        "email": "lina.seed@dating.local",
+        "name": "Lina",
+        "age": 27,
+        "birth_date": None,
+        "city": "Berlin",
+        "bio": "Ich liebe Reisen, guten Kaffee und ehrliche Gespräche.",
+        "interests": ["Reisen", "Kaffee", "Musik"],
+        "photos": ["https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=80"],
+        "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=80",
+        "verified": True,
+        "gender": "woman",
+        "seeking": ["men"],
+        "relationship_intent": "serious",
+        "premium": False,
+        "active": True,
+        "last_active_at": now_iso(),
+        "created_at": now_iso(),
+        "likes_count": 0,
+        "is_seed": True,
+    },
+    {
+        "profile_id": "DAT-SEED-MAYA",
+        "user_id": "seed-maya",
+        "email": "maya.seed@dating.local",
+        "name": "Maya",
+        "age": 30,
+        "birth_date": None,
+        "city": "Hamburg",
+        "bio": "Foodie, kreative Seele und Fan von spontanen Wochenendtrips.",
+        "interests": ["Kochen", "Kunst", "Reisen"],
+        "photos": ["https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=80"],
+        "avatar": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&q=80",
+        "verified": False,
+        "gender": "woman",
+        "seeking": ["men", "women"],
+        "relationship_intent": "serious",
+        "premium": True,
+        "active": True,
+        "last_active_at": now_iso(),
+        "created_at": now_iso(),
+        "likes_count": 0,
+        "is_seed": True,
+    },
+    {
+        "profile_id": "DAT-SEED-NORA",
+        "user_id": "seed-nora",
+        "email": "nora.seed@dating.local",
+        "name": "Nora",
+        "age": 25,
+        "birth_date": None,
+        "city": "München",
+        "bio": "Fitness, Bücher und tiefe Gespräche statt Smalltalk.",
+        "interests": ["Fitness", "Bücher", "Tech"],
+        "photos": ["https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=800&q=80"],
+        "avatar": "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=800&q=80",
+        "verified": True,
+        "gender": "woman",
+        "seeking": ["men"],
+        "relationship_intent": "casual",
+        "premium": False,
+        "active": True,
+        "last_active_at": now_iso(),
+        "created_at": now_iso(),
+        "likes_count": 0,
+        "is_seed": True,
+    },
+]
+
+DAILY_FREE_SWIPES = 20
 
 
 def years_old(date_str: Optional[str]) -> Optional[int]:
@@ -75,9 +147,17 @@ async def ensure_indexes():
     await db.dating_blocks.create_index([("blocker_user_id", 1), ("blocked_user_id", 1)], unique=True)
 
 
+async def ensure_seed_profiles():
+    for seed in SEED_PROFILES:
+        existing = await db.dating_profiles.find_one({"profile_id": seed["profile_id"]}, {"_id": 1})
+        if not existing:
+            await db.dating_profiles.insert_one(dict(seed))
+
+
 @router.on_event("startup")
 async def dating_startup():
     await ensure_indexes()
+    await ensure_seed_profiles()
 
 
 async def get_me(request: Request) -> dict:
@@ -118,6 +198,21 @@ async def get_or_create_my_profile(user: dict) -> dict:
     }
     await db.dating_profiles.insert_one(profile_doc)
     return sanitize_doc(profile_doc)
+
+
+async def maybe_seed_demo_like(my_profile: dict):
+    if await db.dating_swipes.find_one({"to_user_id": my_profile["user_id"], "from_user_id": "seed-lina"}):
+        return
+    await db.dating_swipes.insert_one({
+        "from_user_id": "seed-lina",
+        "to_user_id": my_profile["user_id"],
+        "from_profile_id": "DAT-SEED-LINA",
+        "to_profile_id": my_profile["profile_id"],
+        "type": "like",
+        "created_at": now_iso(),
+        "swipe_reset_key": swipe_reset_key(),
+        "is_seed": True,
+    })
 
 
 async def get_profile_or_404(profile_id: str) -> dict:
@@ -177,6 +272,7 @@ class ReportReq(BaseModel):
 async def my_profile(request: Request):
     user = await get_me(request)
     profile = await get_or_create_my_profile(user)
+    await maybe_seed_demo_like(profile)
     filters = user.get("dating_filters") or {
         "age_min": 18,
         "age_max": 99,
@@ -225,6 +321,7 @@ async def swipes_left(request: Request):
 async def discover(request: Request):
     user = await get_me(request)
     my_profile = await get_or_create_my_profile(user)
+    await maybe_seed_demo_like(my_profile)
     my_user_id = my_profile["user_id"]
     my_filters = user.get("dating_filters") or {}
 
@@ -254,6 +351,15 @@ async def discover(request: Request):
     }
 
     profiles = await db.dating_profiles.find(query, {"_id": 0}).sort("last_active_at", -1).to_list(40)
+    if not profiles:
+        fallback_query = {
+            "active": True,
+            "profile_id": {"$nin": seen_ids},
+            "user_id": {"$ne": my_user_id, "$nin": blocked_ids + blocker_ids},
+        }
+        if my_filters.get("seeking"):
+            fallback_query["gender"] = {"$in": my_filters["seeking"]}
+        profiles = await db.dating_profiles.find(fallback_query, {"_id": 0}).sort("last_active_at", -1).to_list(40)
     return {"profiles": profiles}
 
 
@@ -302,6 +408,23 @@ async def like_profile(req: SwipeReq, request: Request):
     }
     await db.dating_swipes.insert_one(swipe_doc)
     await db.dating_profiles.update_one({"profile_id": req.profile_id}, {"$inc": {"likes_count": 1}})
+
+    if target.get("is_seed"):
+        reciprocal = {
+            "from_user_id": target["user_id"],
+            "to_user_id": my_user_id,
+            "from_profile_id": target["profile_id"],
+            "to_profile_id": my_profile["profile_id"],
+            "type": "like",
+            "created_at": now_iso(),
+            "swipe_reset_key": swipe_reset_key(),
+            "is_seed": True,
+        }
+        await db.dating_swipes.update_one(
+            {"from_user_id": target["user_id"], "to_user_id": my_user_id},
+            {"$setOnInsert": reciprocal},
+            upsert=True,
+        )
 
     reciprocal = await db.dating_swipes.find_one({
         "from_user_id": target["user_id"],
@@ -352,11 +475,12 @@ async def pass_profile(req: SwipeReq, request: Request):
 @router.get("/matches")
 async def get_matches(request: Request):
     user = await get_me(request)
+    my_profile = await get_or_create_my_profile(user)
     my_user_id = str(user["_id"])
     matches = await db.dating_matches.find({"participant_ids": my_user_id, "blocked": {"$ne": True}}, {"_id": 0}).sort("matched_at", -1).to_list(100)
     result = []
     for match in matches:
-        other_profile_id = next((pid for pid in match.get("participant_profiles", []) if pid != (await get_or_create_my_profile(user))["profile_id"]), None)
+        other_profile_id = next((pid for pid in match.get("participant_profiles", []) if pid != my_profile["profile_id"]), None)
         if not other_profile_id:
             continue
         profile = await db.dating_profiles.find_one({"profile_id": other_profile_id}, {"_id": 0})
