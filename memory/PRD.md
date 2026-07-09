@@ -1740,3 +1740,8 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Store-Dokumente erstellt: STORE_SUBMISSION_PACKAGE.md, STORE_PRIVACY_ANSWERS.md, STORE_SCREENSHOT_PLAN.md.
 - Reviewer-Testkonto erstellt: reviewer@bidblitz.ae / BidBlitzReview2026!
 - Wallet P0 bleibt explizit Launch-Blocker bis zur bestätigten Fehlerbehebung.
+
+## Update 2026-07-09 04:57 UTC
+- Google Play Internal Testing Paket erstellt: AAB verifiziert, Play-Listing-Texte, Data-Safety-Entwurf, Permissions, Content-Rating und Upload-Checkliste dokumentiert.
+- Reviewer-Konto für Internal Testing verifiziert und auf 0.0 EUR / 0.0 BLZ normalisiert.
+- Wallet P0 bleibt explizit Launch-Blocker vor Public Release.
