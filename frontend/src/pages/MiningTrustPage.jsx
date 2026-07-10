@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Server, Cpu, MapPin, Clock3, Bitcoin, ChevronRight, PlayCircle, Activity, Gauge, Building2, BarChart3, Waves, Phone, MessageCircle, Send } from "lucide-react";
+import { ArrowLeft, Shield, Server, Cpu, MapPin, Clock3, Bitcoin, ChevronRight, PlayCircle, Activity, Gauge, Building2, BarChart3, Waves, Phone, MessageCircle, Send, Briefcase, Handshake, UserCheck } from "lucide-react";
 import { useI18n } from "../store";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
@@ -39,6 +39,25 @@ const copy = {
     quickContactTitle: "Sofort-Kontakt",
     quickContactText: "Kunden sollen nicht viel tippen müssen — hier sind direkte Wege zu euch.",
     callBack: "Rückruf anfordern",
+    advisorTitle: "Dein Mining Ansprechpartner",
+    advisorName: "Mining Advisory Desk",
+    advisorRole: "Investor & Infrastruktur Beratung",
+    advisorText: "Für Investoren, Partner und Hosting-Kunden: schneller Erstkontakt, klare Antworten und direkte Einordnung des passenden Angebots.",
+    advisorResponse: "Antwort meist in unter 30 Minuten",
+    advisorPrimary: "Mit Berater sprechen",
+    audienceTitle: "Für wen ist unser Mining gedacht?",
+    audiences: [
+      { title: "Für Investoren", text: "Für Kunden, die seriöse Infrastruktur, Standort-Proof und einen direkten Einstieg in Mining-Modelle suchen." },
+      { title: "Für Partner", text: "Für strategische Partner, Vermittler oder Business-Netzwerke, die auf echte Infrastruktur setzen wollen." },
+      { title: "Für Hosting-Kunden", text: "Für Kunden mit Fokus auf laufenden Betrieb, Monitoring, Standort-Vertrauen und Mining-Service." },
+    ],
+    offersTitle: "Klare Angebotskarten",
+    offersSubtitle: "Nicht nur Vertrauen zeigen — sondern direkt in ein passendes Angebot führen.",
+    offers: [
+      { title: "Investor Call", subtitle: "Für größere Interessenten", detail: "Schnelles Erstgespräch zu Infrastruktur, Standort, Proof und Investment-Interesse.", cta: "Investorengespräch starten" },
+      { title: "Partner Setup", subtitle: "Für B2B & Kooperationen", detail: "Ideal für Partner, Vermittler und größere Netzwerk-Deals rund um Mining und Infrastruktur.", cta: "Partnerschaft anfragen" },
+      { title: "Hosting Anfrage", subtitle: "Für operative Kunden", detail: "Für Kunden, die Hosting, laufende Betreuung oder Mining-Infrastruktur als Service suchen.", cta: "Hosting anfragen" },
+    ],
     faqTitle: "Häufige Fragen",
     faqs: [
       { q: "Wo stehen die Server?", a: "Aktuell zeigen wir Dubai und Abu Dhabi als sichtbare Infrastruktur-Standorte auf der Mining-Trust-Seite." },
@@ -117,6 +136,25 @@ const copy = {
     quickContactTitle: "Instant Contact",
     quickContactText: "Customers should not need to type much — here are direct ways to reach you.",
     callBack: "Request Callback",
+    advisorTitle: "Your Mining Contact",
+    advisorName: "Mining Advisory Desk",
+    advisorRole: "Investor & Infrastructure Advisory",
+    advisorText: "For investors, partners, and hosting clients: fast first contact, clear answers, and direct qualification into the right offer.",
+    advisorResponse: "Usually replies within 30 minutes",
+    advisorPrimary: "Talk to Advisor",
+    audienceTitle: "Who is our mining for?",
+    audiences: [
+      { title: "For Investors", text: "For clients seeking serious infrastructure, location proof, and a direct entry into mining models." },
+      { title: "For Partners", text: "For strategic partners, intermediaries, or business networks that want to build on real infrastructure." },
+      { title: "For Hosting Clients", text: "For clients focused on ongoing operations, monitoring, location trust, and mining as a service." },
+    ],
+    offersTitle: "Clear Offer Cards",
+    offersSubtitle: "Do not just show trust — route visitors directly into the right offer.",
+    offers: [
+      { title: "Investor Call", subtitle: "For larger prospects", detail: "Fast first conversation about infrastructure, location, proof, and investment interest.", cta: "Start Investor Call" },
+      { title: "Partner Setup", subtitle: "For B2B & cooperation", detail: "Ideal for partners, intermediaries, and larger network deals around mining and infrastructure.", cta: "Request Partnership" },
+      { title: "Hosting Inquiry", subtitle: "For operational clients", detail: "For clients looking for hosting, ongoing support, or mining infrastructure as a service.", cta: "Request Hosting" },
+    ],
     faqTitle: "Frequently Asked Questions",
     faqs: [
       { q: "Where are the servers located?", a: "We currently show Dubai and Abu Dhabi as visible infrastructure locations on the mining trust page." },
@@ -224,6 +262,22 @@ function LiveMetricCard({ icon: Icon, label, value, note, testId }) {
   );
 }
 
+function OfferCard({ icon: Icon, title, subtitle, detail, cta, onClick, testId }) {
+  return (
+    <div className="rounded-[28px] border border-white/10 bg-white/5 p-5" data-testid={testId}>
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-300">
+        <Icon size={20} />
+      </div>
+      <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-white/45">{subtitle}</p>
+      <h3 className="mt-2 text-lg font-bold text-white">{title}</h3>
+      <p className="mt-2 text-sm text-white/60">{detail}</p>
+      <button onClick={onClick} className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-bold text-black" data-testid={`${testId}-cta`}>
+        {cta} <ChevronRight size={15} />
+      </button>
+    </div>
+  );
+}
+
 export default function MiningTrustPage({ onBack, onNavigate }) {
   const { lang } = useI18n();
   const c = resolveCopy(lang);
@@ -265,6 +319,16 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
     } finally {
       setSending(false);
     }
+  };
+
+  const chooseOffer = (topic, message) => {
+    setLeadForm((p) => ({
+      ...p,
+      topic,
+      message: message || p.message || `${topic} – bitte mehr Informationen senden.`,
+    }));
+    const leadSection = document.querySelector('[data-testid="mining-trust-lead-section"]');
+    if (leadSection) leadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
@@ -331,6 +395,80 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             <MediaCard image={trustMedia.dubai} title={c.sections.dubai} text={c.sections.dubaiText} location="Dubai" testId="mining-trust-dubai-card" />
             <MediaCard image={trustMedia.abuDhabi} title={c.sections.abuDhabi} text={c.sections.abuDhabiText} location="Abu Dhabi" testId="mining-trust-abudhabi-card" />
             <MediaCard image={trustMedia.asic} title={c.sections.asic} text={c.sections.asicText} location="Bitcoin ASIC" testId="mining-trust-asic-card" />
+          </div>
+        </section>
+
+        <section className="mt-12 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]" data-testid="mining-trust-advisor-section">
+          <div className="rounded-[32px] border border-emerald-400/20 bg-gradient-to-br from-emerald-500/10 to-white/5 p-6">
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/70">{c.advisorTitle}</p>
+            <div className="mt-5 flex items-start gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white"><UserCheck size={30} /></div>
+              <div>
+                <h2 className="text-2xl font-bold text-white" data-testid="mining-trust-advisor-name">{c.advisorName}</h2>
+                <p className="mt-1 text-sm text-emerald-100/75" data-testid="mining-trust-advisor-role">{c.advisorRole}</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-white/65" data-testid="mining-trust-advisor-text">{c.advisorText}</p>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-semibold text-white/75" data-testid="mining-trust-advisor-response">
+              <Clock3 size={13} /> {c.advisorResponse}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-3 text-sm font-bold text-black" data-testid="mining-trust-advisor-whatsapp">
+                <MessageCircle size={16} /> {c.advisorPrimary}
+              </a>
+              <a href={PHONE_URL} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white" data-testid="mining-trust-advisor-call">
+                <Phone size={16} /> {c.callBack}
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-white/40">{c.audienceTitle}</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-3" data-testid="mining-trust-audience-grid">
+              {c.audiences.map((item, index) => (
+                <div key={`${item.title}-${index}`} className="rounded-[28px] border border-white/10 bg-white/5 p-5" data-testid={`mining-trust-audience-${index}`}>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-white/80">
+                    {index === 0 ? <BarChart3 size={18} /> : index === 1 ? <Handshake size={18} /> : <Server size={18} />}
+                  </div>
+                  <h3 className="mt-4 text-sm font-semibold text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm text-white/60">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-12" data-testid="mining-trust-offers-section">
+          <p className="text-xs uppercase tracking-[0.2em] text-white/40">{c.offersTitle}</p>
+          <h2 className="mt-3 text-2xl font-bold text-white">{c.offersSubtitle}</h2>
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            <OfferCard
+              icon={Briefcase}
+              title={c.offers[0].title}
+              subtitle={c.offers[0].subtitle}
+              detail={c.offers[0].detail}
+              cta={c.offers[0].cta}
+              onClick={() => chooseOffer(c.leadTopics[0], `${c.offers[0].title} – bitte weitere Informationen senden.`)}
+              testId="mining-trust-offer-investor"
+            />
+            <OfferCard
+              icon={Handshake}
+              title={c.offers[1].title}
+              subtitle={c.offers[1].subtitle}
+              detail={c.offers[1].detail}
+              cta={c.offers[1].cta}
+              onClick={() => chooseOffer(c.leadTopics[1], `${c.offers[1].title} – bitte weitere Informationen senden.`)}
+              testId="mining-trust-offer-partner"
+            />
+            <OfferCard
+              icon={Server}
+              title={c.offers[2].title}
+              subtitle={c.offers[2].subtitle}
+              detail={c.offers[2].detail}
+              cta={c.offers[2].cta}
+              onClick={() => chooseOffer(c.leadTopics[2], `${c.offers[2].title} – bitte weitere Informationen senden.`)}
+              testId="mining-trust-offer-hosting"
+            />
           </div>
         </section>
 
