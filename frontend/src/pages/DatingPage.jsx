@@ -91,6 +91,8 @@ export default function DatingPage({ onBack }) {
   const [aiLoading, setAiLoading] = useState("");
   const [nearbyProfiles, setNearbyProfiles] = useState([]);
   const [crossedProfiles, setCrossedProfiles] = useState([]);
+  const [topPicks, setTopPicks] = useState([]);
+  const [standouts, setStandouts] = useState([]);
   const [locationState, setLocationState] = useState({ enabled: false, loading: false });
   const [voiceIntroState, setVoiceIntroState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
   const [videoProfileState, setVideoProfileState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
@@ -102,6 +104,7 @@ export default function DatingPage({ onBack }) {
   const [safetyRefreshing, setSafetyRefreshing] = useState(false);
   const [chatSafetySummary, setChatSafetySummary] = useState(null);
   const [chatSafetyChecking, setChatSafetyChecking] = useState(false);
+  const [openerText, setOpenerText] = useState("");
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recordStartedAtRef = useRef(0);
@@ -126,7 +129,7 @@ export default function DatingPage({ onBack }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [profileRes, discoverRes, matchesRes, swipeRes, likesRes, nearbyRes, crossedRes, plansRes, monetizationRes] = await Promise.all([
+      const [profileRes, discoverRes, matchesRes, swipeRes, likesRes, nearbyRes, crossedRes, plansRes, monetizationRes, topPicksRes, standoutsRes] = await Promise.all([
         api("/api/dating/profile/me"),
         api("/api/dating/discover"),
         api("/api/dating/matches"),
@@ -136,6 +139,8 @@ export default function DatingPage({ onBack }) {
         api("/api/dating/crossed-paths").catch(() => ({ profiles: [] })),
         api("/api/dating/premium/plans").catch(() => ({ plans: defaultPremiumPlans })),
         api("/api/dating/monetization").catch(() => ({ consumables: defaultConsumables, entitlements: {}, starter_offer: null, likes_you_count: 0, profile_completion: 0 })),
+        api("/api/dating/top-picks").catch(() => ({ profiles: [] })),
+        api("/api/dating/standouts").catch(() => ({ profiles: [] })),
       ]);
       setUserProfile(profileRes.profile);
       setProfileForm({
@@ -154,6 +159,8 @@ export default function DatingPage({ onBack }) {
       setPremiumPlans(plansRes.plans?.length ? plansRes.plans : defaultPremiumPlans);
       setConsumables(monetizationRes.consumables?.length ? monetizationRes.consumables : defaultConsumables);
       setMonetization(monetizationRes);
+      setTopPicks(topPicksRes.profiles || []);
+      setStandouts(standoutsRes.profiles || []);
       setLocationState((prev) => ({ ...prev, enabled: Boolean(nearbyRes.nearby_enabled) }));
       setIdx(0);
       if ((!profileRes.profile?.bio || !profileRes.profile?.photos?.[0]) && !window.sessionStorage.getItem("dating-profile-setup-dismissed")) setShowProfileSetup(true);
@@ -211,8 +218,9 @@ export default function DatingPage({ onBack }) {
       if (type === "pass") {
         await api("/api/dating/pass", { method: "POST", body: JSON.stringify({ profile_id: p.profile_id }) });
       } else {
-        const res = await api("/api/dating/like", { method: "POST", body: JSON.stringify({ profile_id: p.profile_id, super_like: type === "superlike" }) });
+        const res = await api("/api/dating/like", { method: "POST", body: JSON.stringify({ profile_id: p.profile_id, super_like: type === "superlike", opener_text: openerText.trim() || undefined }) });
         if (!isPremium) setSwipesLeft((value) => Math.max(0, value - 1));
+        setOpenerText("");
         if (res.match) {
           setMatchPopup(true);
           await load();
@@ -970,6 +978,32 @@ export default function DatingPage({ onBack }) {
 
       {tab === "discover" && (
         <div className="px-4 flex flex-col items-center">
+      <div className="w-full max-w-5xl mb-4 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-2xl border border-fuchsia-500/20 bg-white/5 p-4" data-testid="dating-top-picks-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Top Picks</p>
+              <h3 className="text-sm font-semibold text-white">Täglich kuratierte Profile</h3>
+            </div>
+            <Gem size={16} className="text-fuchsia-300" />
+          </div>
+          <div className="mt-3 space-y-2">
+            {topPicks.length === 0 ? <p className="text-xs text-white/55">Wird aus Profilqualität, Match-Fit und Aktivität kuratiert.</p> : topPicks.slice(0, 3).map((profile, index) => <button key={profile.profile_id} onClick={() => profile.locked ? startPremiumCheckout('gold_30d') : (setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]), setIdx(0))} className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left" data-testid={`dating-top-pick-${profile.profile_id}`}><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-white">{profile.name}{profile.age ? `, ${profile.age}` : ''}</p><p className="text-[11px] text-white/55">{profile.headline} · {profile.compatibility_score}% Match</p></div>{profile.locked ? <span className="rounded-full bg-yellow-500/15 px-2 py-1 text-[10px] font-semibold text-yellow-200" data-testid={`dating-top-pick-lock-${index}`}>Gold</span> : <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-200">Gratis</span>}</div></button>)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-blue-500/20 bg-white/5 p-4" data-testid="dating-standouts-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Standouts</p>
+              <h3 className="text-sm font-semibold text-white">High-Intent Profile für Super Likes</h3>
+            </div>
+            <Star size={16} className="text-blue-300" />
+          </div>
+          <div className="mt-3 space-y-2">
+            {standouts.length === 0 ? <p className="text-xs text-white/55">Wird automatisch aus den stärksten Profilen erzeugt.</p> : standouts.slice(0, 3).map((profile, index) => <button key={profile.profile_id} onClick={() => profile.locked ? startPremiumCheckout('gold_30d') : (setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]), setIdx(0))} className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left" data-testid={`dating-standout-${profile.profile_id}`}><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-white">{profile.name}{profile.age ? `, ${profile.age}` : ''}</p><p className="text-[11px] text-white/55">{profile.headline} · ideal für Super Like</p></div>{profile.locked ? <span className="rounded-full bg-yellow-500/15 px-2 py-1 text-[10px] font-semibold text-yellow-200" data-testid={`dating-standout-lock-${index}`}>Gold</span> : <span className="rounded-full bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-200">Super Like</span>}</div></button>)}
+          </div>
+        </div>
+      </div>
       {loading ? <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" /></div> : !current ? (
             <div className="text-center py-20"><Heart size={48} className="mx-auto mb-3 text-white/20" /><p className="text-sm text-white/60">Keine Profile mehr. Filter ändern oder später wiederkommen.</p></div>
           ) : (
@@ -994,6 +1028,7 @@ export default function DatingPage({ onBack }) {
                 </div>
                 <div className="p-4">
                   <p className="text-sm mb-2 text-white/80">{current.bio || "Noch keine Bio"}</p>
+                  {(monetization?.entitlements?.is_platinum || userProfile?.premium_plan === 'platinum_30d') && <div className="mb-3 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-3" data-testid="dating-message-before-match-card"><p className="text-[11px] uppercase tracking-[0.16em] text-fuchsia-200/70">Platinum</p><p className="mt-1 text-xs text-white/75">Sende vor dem Match direkt eine starke erste Nachricht.</p><textarea value={openerText} onChange={(event) => setOpenerText(event.target.value)} rows={2} maxLength={180} className="mt-2 w-full rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs text-white outline-none resize-none" placeholder="Schreib eine erste Nachricht vor dem Match..." data-testid="dating-opener-input" /></div>}
                   {(current.occupation || current.profile_prompt || current.compatibility_score || current.distance_km !== undefined || current.voice_intro?.media_id || current.video_profile?.media_id || current?.safety_summary) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match · Rank {current.discover_rank || 0}</p> : null}{current.distance_km !== undefined && current.distance_km !== null ? <p className="text-[11px] text-emerald-200">{current.distance_km} km entfernt</p> : null}{current.is_recently_active && <p className="text-[11px] text-emerald-300">Jetzt aktiv</p>}{current?.safety_summary ? <div className="flex flex-wrap gap-2" data-testid={`dating-safety-summary-${current.profile_id}`}><span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold border ${safetyTone(current.safety_summary.scam_level)}`}>Scam {current.safety_summary.scam_score}/100</span><span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold border ${safetyTone(current.safety_summary.nudity_level)}`}>Foto {current.safety_summary.nudity_score}/100</span></div> : null}{current.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(current.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-semibold text-violet-200" data-testid={`dating-card-voice-play-${current.profile_id}`}><Play size={11} />Voice Intro · {current.voice_intro.duration_seconds}s</button> : null}{current.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(current.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-3 py-1 text-[11px] font-semibold text-sky-200" data-testid={`dating-card-video-play-${current.profile_id}`}><Video size={11} />Video · {current.video_profile.duration_seconds}s</button> : null}{current.voice_intro?.media_id ? <audio id={`dating-voice-audio-${current.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${current.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{current.video_profile?.media_id ? <video id={`dating-video-player-${current.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${current.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>}
                   {current?.match_reasons?.length ? <div className="mb-3 flex flex-wrap gap-2" data-testid={`dating-match-reasons-${current.profile_id}`}>{current.match_reasons.map((reason, index) => <span key={`${reason}-${index}`} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold text-white/80" data-testid={`dating-match-reason-${current.profile_id}-${index}`}>{reason}</span>)}</div> : null}
                   <div className="flex flex-wrap gap-2">{(current.interests || []).map((interest) => <span key={interest} className="px-3 py-1 rounded-full text-xs bg-pink-500/15 text-pink-300">{interest}</span>)}</div>

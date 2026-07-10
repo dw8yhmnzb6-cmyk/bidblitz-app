@@ -587,6 +587,7 @@ class DatingProfileUpdate(BaseModel):
 class SwipeReq(BaseModel):
     profile_id: str
     super_like: bool = False
+    opener_text: Optional[str] = Field(default=None, max_length=180)
 
 
 class ChatMessageReq(BaseModel):
@@ -1316,6 +1317,57 @@ def build_match_reasons(me: dict, other: dict, filters: dict) -> list[str]:
     return reasons[:4]
 
 
+def _curation_score(me: dict, other: dict, filters: dict) -> int:
+    score = calc_compatibility_score(me, other, filters)
+    score += min(int(calc_profile_completion(other) / 10), 10)
+    if other.get("verified"):
+        score += 8
+    if other.get("voice_intro"):
+        score += 4
+    if other.get("video_profile"):
+        score += 5
+    if other.get("premium"):
+        score += 3
+    safety = _readable_safety_summary(other.get("safety_scan"))
+    score -= min(int(safety.get("total_score") or 0) // 4, 20)
+    return score
+
+
+def _standout_score(me: dict, other: dict, filters: dict) -> int:
+    score = _curation_score(me, other, filters)
+    if other.get("profile_prompt"):
+        score += 4
+    if len(other.get("interests") or []) >= 3:
+        score += 3
+    return score
+
+
+async def _build_curated_pool(me: dict, filters: dict) -> list[dict]:
+    blocked_by_me = await db.dating_blocks.find({"blocker_user_id": me["user_id"]}, {"_id": 0, "blocked_user_id": 1}).to_list(500)
+    blockers = await db.dating_blocks.find({"blocked_user_id": me["user_id"]}, {"_id": 0, "blocker_user_id": 1}).to_list(500)
+    blocked_ids = [item["blocked_user_id"] for item in blocked_by_me]
+    blocker_ids = [item["blocker_user_id"] for item in blockers]
+    query = {
+        "active": True,
+        "user_id": {"$ne": me["user_id"], "$nin": blocked_ids + blocker_ids},
+    }
+    if filters.get("seeking"):
+        query["gender"] = {"$in": filters["seeking"]}
+    profiles = await db.dating_profiles.find(query, {"_id": 0}).to_list(60)
+    enriched = []
+    for profile in profiles:
+        profile["distance_km"] = extract_distance_km(me, profile)
+        profile["compatibility_score"] = calc_compatibility_score(me, profile, filters)
+        profile["profile_completion"] = calc_profile_completion(profile)
+        profile["boost"] = get_boost_state(profile)
+        profile["spotlight"] = bool(profile["boost"]["is_active"])
+        await maybe_attach_safety(profile)
+        profile["match_reasons"] = build_match_reasons(me, profile, filters)
+        profile["discover_rank"] = calc_discover_rank(profile)
+        enriched.append(profile)
+    return enriched
+
+
 async def sync_profile_from_registration(user: dict, profile: dict) -> dict:
     if not profile:
         return profile
@@ -1632,6 +1684,41 @@ async def dating_monetization(request: Request):
         "likes_you_count": await db.dating_swipes.count_documents({"to_user_id": profile["user_id"], "type": {"$in": ["like", "superlike"]}}),
         "profile_completion": calc_profile_completion(profile),
     }
+
+
+@router.get("/top-picks")
+async def dating_top_picks(request: Request):
+    user = await get_me(request)
+    me = await get_or_create_my_profile(user)
+    filters = user.get("dating_filters") or {}
+    pool = await _build_curated_pool(me, filters)
+    pool.sort(key=lambda item: (_curation_score(me, item, filters), item.get("discover_rank", 0)), reverse=True)
+    entitlements = _get_dating_entitlements(me)
+    items = []
+    for index, profile in enumerate(pool[:8]):
+        profile["pick_type"] = "top_pick"
+        profile["headline"] = "Top Pick des Tages"
+        profile["locked"] = index >= 1 and not (entitlements["is_gold"] or entitlements["is_platinum"] or me.get("premium"))
+        items.append(profile)
+    return {"profiles": items, "free_visible": 1, "locked_count": max(0, len(items) - 1)}
+
+
+@router.get("/standouts")
+async def dating_standouts(request: Request):
+    user = await get_me(request)
+    me = await get_or_create_my_profile(user)
+    filters = user.get("dating_filters") or {}
+    pool = await _build_curated_pool(me, filters)
+    pool.sort(key=lambda item: (_standout_score(me, item, filters), item.get("compatibility_score", 0)), reverse=True)
+    entitlements = _get_dating_entitlements(me)
+    items = []
+    for index, profile in enumerate(pool[:6]):
+        profile["pick_type"] = "standout"
+        profile["headline"] = "Standout"
+        profile["locked"] = index >= 1 and not (entitlements["is_gold"] or entitlements["is_platinum"] or me.get("premium"))
+        profile["requires_superlike"] = True
+        items.append(profile)
+    return {"profiles": items, "free_visible": 1, "locked_count": max(0, len(items) - 1)}
 
 
 @router.post("/safety/scan")
@@ -2143,6 +2230,10 @@ async def like_profile(req: SwipeReq, request: Request):
         "created_at": now_iso(),
         "swipe_reset_key": swipe_reset_key(),
     }
+    if req.opener_text and req.opener_text.strip():
+        if not entitlements["is_platinum"]:
+            raise HTTPException(status_code=403, detail="Message-before-match ist nur für Platinum verfügbar")
+        swipe_doc["opener_text"] = req.opener_text.strip()
     await db.dating_swipes.insert_one(swipe_doc)
     if req.super_like and not my_profile.get("premium") and entitlements["superlike_credits"] > 0:
         await db.dating_profiles.update_one({"user_id": my_user_id}, {"$inc": {"credits.superlikes": -1}})
@@ -2186,8 +2277,28 @@ async def like_profile(req: SwipeReq, request: Request):
                 "unread": {my_user_id: 0, target["user_id"]: 0},
                 "blocked": False,
                 "priority_match": bool(entitlements["priority_likes"] or req.super_like),
+                "opener_text": swipe_doc.get("opener_text", ""),
             }
             await db.dating_matches.insert_one(match_doc)
+            if swipe_doc.get("opener_text"):
+                opener_message = {
+                    "message_id": build_message_id(),
+                    "match_id": match_doc["match_id"],
+                    "sender_user_id": my_user_id,
+                    "sender_profile_id": my_profile["profile_id"],
+                    "text": swipe_doc["opener_text"],
+                    "created_at": now_iso(),
+                    "auto_seeded_opener": True,
+                    "safety": _analyze_chat_text_safety(swipe_doc["opener_text"]),
+                }
+                await db.dating_messages.insert_one(opener_message)
+                match_doc["last_message"] = opener_message["text"]
+                match_doc["last_message_at"] = opener_message["created_at"]
+                match_doc["unread"] = {my_user_id: 0, target["user_id"]: 1}
+                await db.dating_matches.update_one(
+                    {"match_id": match_doc["match_id"]},
+                    {"$set": {"last_message": opener_message["text"], "last_message_at": opener_message["created_at"], f"unread.{target['user_id']}": 1}},
+                )
             existing_match = sanitize_doc(match_doc)
         return {"ok": True, "match": True, "match_data": existing_match}
 
