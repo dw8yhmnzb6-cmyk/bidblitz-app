@@ -1,6 +1,9 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
+- ✅ Dating Monetization V1 live: Plus / Gold / Platinum, sichtbare Conversion-Flächen, Einzelkäufe für Boosts / Super Likes / Rewinds, Starter-Offer-Logik und echte Stripe-Checkout-Flows.
+- ✅ Umsatz-Trigger eingebaut: Likes-You-Lock, stärkerer Paywall, Entitlements, Plan-Karten und Einzelkauf-Grid.
+- 🟡 Nächster sinnvoller Dating-Schritt: noch stärkere Monetarisierung wie Message-before-match / Standouts / Top Picks oder dynamische Preis-/Abo-Experimente für Segmente.
 - ✅ Dating P2 Safety Pro live: Scam-Signal-Erkennung im Profiltext, Nudity-Warnung/Fallback-Scan für Bilder, `safety_summary` auf Profil, Discover, Likes und Matches.
 - ✅ Dating Discovery / Ranking Intelligence verbessert: `discover_rank` berücksichtigt jetzt Safety, Profil-Vervollständigung und Medienqualität (Voice/Video) zusätzlich zu Boost/Verifizierung.
 - ✅ Dating Premium Hauptflow ist jetzt real: `GET /api/dating/premium/plans`, `POST /api/dating/premium/checkout`, `GET /api/dating/premium/status/{session_id}` arbeiten mit echtem Stripe Checkout und `payment_transactions`.

@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating Monetization V1 (Tiers + Packs + Conversion)
+- `backend/routes/dating.py`: Dating-Monetarisierung auf Konkurrenzniveau ergänzt mit 3 Tiers (`plus_30d`, `gold_30d`, `platinum_30d`), 5 Einzelkäufen (`boost_pack_1`, `boost_pack_3`, `superlike_pack_5`, `superlike_pack_15`, `rewind_pack_10`), serverseitigen Entitlements, Starter-Offer-Logik und neuem Katalog-Endpoint `GET /api/dating/monetization`.
+- `backend/routes/dating.py`: echter Stripe-Checkout für Einzelkäufe über `POST /api/dating/consumables/checkout`; `POST /api/dating/premium/checkout` unterstützt jetzt alle Tier-Pläne inkl. Starter-Preis für berechtigte Nutzer.
+- `backend/routes/dating.py`: Likes-You-/Boost-/Super-Like-/Rewind-Logik auf Tier- und Credit-Basis erweitert; Gold/Platinum schalten Likes You frei, Platinum priorisiert Likes, Packs füllen Credits auf.
+- `frontend/src/pages/DatingPage.jsx`: neue Monetization-Hero-Karte, Plan-Karten, Einzelkauf-Grid, Conversion-Strip und stärkere Paywall mit Tier-/Pack-Auswahl eingebaut.
+- Tests: `backend/tests/test_dating_monetization.py` ergänzt; Pytest PASS, API-Self-Tests PASS, `testing_agent` **Iteration 225 PASS**.
+- **MOCKED:** `POST /api/dating/premium/demo-upgrade` bleibt nur als Legacy-/Backward-Compatibility-Route bestehen.
+
 ## 10.07.2026 — Dating P2 Safety Pro + Discovery Intelligence + Real Premium Checkout
 - `backend/routes/dating.py`: Safety Pro ergänzt mit `safety_scan`/`safety_summary`, Scam-Signal-Heuristiken für Profiltexte, Nudity-Warnung/Fallback für Profilbilder, neuem Endpoint `POST /api/dating/safety/scan` und Propagation der Safety-Daten in Profil-, Discover-, Likes- und Matches-Responses.
 - `backend/routes/dating.py`: Discovery-/Ranking-Intelligence erweitert. `discover_rank` berücksichtigt jetzt zusätzlich Safety-Risiko, Profil-Vervollständigung, Voice Intro und Video-Profil statt nur Boost/Verifizierung/Aktivität.
