@@ -1,6 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
+- ✅ Mining Trust Page live: separate Proof-Seite für Bitcoin-Mining-Infrastruktur mit Dubai-/Abu-Dhabi-Fokus, ASIC-Fotos und Video-Platzhaltern.
+- 🟡 Nächster sinnvoller Mining-Schritt: echte Nutzer-Fotos/Videos ersetzen die AI-Platzhalter und optional Live-Metriken (Hashrate/Uptime/Standortstatus) ergänzen.
 - ✅ Segment-/Preisexperimente live: Starter-Deals, Bundle-Angebote und Paywall-Kombinationen variieren jetzt deterministisch pro Nutzersegment.
 - ✅ Dynamische Monetarisierung live: Hero, Plan-Highlight und limitierte Bundles passen sich an Experimente an.
 - 🟡 Nächster sinnvoller Dating-Schritt: echte Conversion-Messung/Auswertung (Impressions → Checkout → Paid) je Experiment-Variante, damit wir Gewinner automatisch hochziehen können.

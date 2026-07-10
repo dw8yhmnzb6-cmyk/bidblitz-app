@@ -1,5 +1,14 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Trust Page / Infrastruktur-Proof
+- `frontend/src/pages/MiningTrustPage.jsx`: neue eigenständige Mining-Trust-Seite unter `/mining-trust` ergänzt. Inhalte: Hero, Trust-Stats, 3 Infrastrukturkarten (Dubai, Abu Dhabi, ASIC), Video-Platzhalter, Vertrauensmetriken und Footer-CTA.
+- `frontend/src/App.js`: Route `/mining-trust` registriert.
+- `frontend/src/pages/MiningPage.jsx`: neuer `mining-trust-banner` im Mining-Dashboard ergänzt.
+- `frontend/src/pages/MorePage.jsx`, `AllServicesPage.jsx`, `HomePage.jsx`: Navigationseinträge zur neuen Mining-Trust-Seite ergänzt.
+- `frontend/src/store/translations_extra.js`: Multi-Language-Menütexte für Mining-Trust ergänzt.
+- Bilder: professionelle Mining-/ASIC-Infrastruktur-Visuals per Bildgenerierung eingebunden. **AI-GENERIERT / Platzhalter**, bis echte Nutzer-Medien hochgeladen werden.
+- Verifiziert: JS-Lint PASS, Smoke-Tests PASS, `testing_agent` **Iteration 229 PASS**.
+
 ## 10.07.2026 — Dating Segment-/Preisexperimente + Bundle-/Paywall-Varianten
 - `backend/routes/dating.py`: deterministische Experiment-Engine ergänzt (`DATING_EXPERIMENTS`, `_experiment_bucket`, `_active_experiments_for_profile`) für Starter-Offer-Varianten, Paywall-Layouts und limitierte Rose-Bundle-Varianten.
 - `backend/routes/dating.py`: `GET /api/dating/monetization` und `GET /api/dating/premium/plans` liefern jetzt zusätzlich `experiments`, `starter_offer` und `limited_bundle_offer`.
