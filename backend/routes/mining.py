@@ -64,6 +64,7 @@ PUBLIC_MINING_PROOF_METRICS = {
 class MiningTrustLeadRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=120)
     email: str = Field(..., min_length=5, max_length=180)
+    topic: Optional[str] = Field(default="", max_length=80)
     company: Optional[str] = Field(default="", max_length=160)
     message: Optional[str] = Field(default="", max_length=1000)
 
@@ -131,6 +132,7 @@ async def mining_trust_lead(payload: MiningTrustLeadRequest):
         "lead_id": f"mlead_{secrets.token_hex(6)}",
         "name": payload.name.strip(),
         "email": payload.email.strip().lower(),
+        "topic": (payload.topic or "").strip(),
         "company": (payload.company or "").strip(),
         "message": (payload.message or "").strip(),
         "source": "mining_trust_page",

@@ -21,13 +21,17 @@ const copy = {
     ctaSecondary: "Kontakt anfragen",
     leadTitle: "Investor / Kunde anfragen",
     leadText: "Wenn du Mining-Infrastruktur, Partnerschaft oder Standort-Proof besprechen willst, hinterlasse deine Anfrage direkt hier.",
+    leadFastTitle: "Schnell auswählen",
+    leadFastSubtitle: "Ein Klick genügt — wir tragen das Thema direkt für den Kunden ein.",
     leadName: "Name",
     leadEmail: "E-Mail",
-    leadCompany: "Firma",
+    leadCompany: "Firma (optional)",
     leadMessage: "Nachricht",
     leadSubmit: "Anfrage senden",
     leadSuccess: "Anfrage wurde gesendet",
     adminCta: "Lead & Video CRM",
+    leadShortHint: "Nur Name, E-Mail und kurze Nachricht reichen aus.",
+    leadTopics: ["Investment", "Partnerschaft", "Mining Infos", "Standortbesuch"],
     investorBadge: "Investor & Kunden Proof",
     mapTitle: "Standort-Übersicht",
     mapText: "Dubai und Abu Dhabi bilden die sichtbaren Ankerpunkte für Vertrauen, Infrastruktur und operative Stabilität.",
@@ -85,13 +89,17 @@ const copy = {
     ctaSecondary: "Request Contact",
     leadTitle: "Investor / Client Inquiry",
     leadText: "If you want to discuss mining infrastructure, partnership, or location proof, leave your inquiry directly here.",
+    leadFastTitle: "Quick selection",
+    leadFastSubtitle: "One click is enough — we prefill the topic for the customer.",
     leadName: "Name",
     leadEmail: "Email",
-    leadCompany: "Company",
+    leadCompany: "Company (optional)",
     leadMessage: "Message",
     leadSubmit: "Send Inquiry",
     leadSuccess: "Inquiry sent successfully",
     adminCta: "Lead & Video CRM",
+    leadShortHint: "Only name, email, and a short message are required.",
+    leadTopics: ["Investment", "Partnership", "Mining Info", "Site Visit"],
     investorBadge: "Investor & Client Proof",
     mapTitle: "Location Overview",
     mapText: "Dubai and Abu Dhabi act as visible anchor points for trust, infrastructure, and operational stability.",
@@ -196,7 +204,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
   const { lang } = useI18n();
   const c = resolveCopy(lang);
   const [proofData, setProofData] = useState(null);
-  const [leadForm, setLeadForm] = useState({ name: "", email: "", company: "", message: "" });
+  const [leadForm, setLeadForm] = useState({ name: "", email: "", topic: "", company: "", message: "" });
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -226,7 +234,7 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
         body: JSON.stringify(leadForm),
       });
       if (!response.ok) throw new Error("lead submit failed");
-      setLeadForm({ name: "", email: "", company: "", message: "" });
+      setLeadForm({ name: "", email: "", topic: "", company: "", message: "" });
       toast.success(c.leadSuccess);
     } catch (error) {
       toast.error("Anfrage konnte nicht gesendet werden");
@@ -347,12 +355,33 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
               <p className="text-xs uppercase tracking-[0.2em] text-white/40">Lead Capture</p>
               <h2 className="mt-3 text-2xl font-bold text-white">{c.leadTitle}</h2>
               <p className="mt-2 text-sm text-white/60">{c.leadText}</p>
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="mining-trust-lead-fast-box">
+                <p className="text-xs uppercase tracking-[0.18em] text-white/45">{c.leadFastTitle}</p>
+                <p className="mt-2 text-xs text-white/60">{c.leadFastSubtitle}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {c.leadTopics.map((topic, index) => {
+                    const active = leadForm.topic === topic;
+                    return (
+                      <button
+                        key={`${topic}-${index}`}
+                        type="button"
+                        onClick={() => setLeadForm((p) => ({ ...p, topic, message: p.message || `${topic} – bitte mehr Informationen senden.` }))}
+                        className={`rounded-full border px-3 py-2 text-xs font-semibold ${active ? 'border-amber-400/30 bg-amber-500/12 text-amber-100' : 'border-white/10 bg-white/5 text-white/70'}`}
+                        data-testid={`mining-trust-topic-${index}`}
+                      >
+                        {topic}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <input value={leadForm.name} onChange={(e) => setLeadForm((p) => ({ ...p, name: e.target.value }))} placeholder={c.leadName} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" data-testid="mining-trust-lead-name" />
               <input value={leadForm.email} onChange={(e) => setLeadForm((p) => ({ ...p, email: e.target.value }))} placeholder={c.leadEmail} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" data-testid="mining-trust-lead-email" />
               <input value={leadForm.company} onChange={(e) => setLeadForm((p) => ({ ...p, company: e.target.value }))} placeholder={c.leadCompany} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none sm:col-span-2" data-testid="mining-trust-lead-company" />
               <textarea value={leadForm.message} onChange={(e) => setLeadForm((p) => ({ ...p, message: e.target.value }))} placeholder={c.leadMessage} rows={4} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none resize-none sm:col-span-2" data-testid="mining-trust-lead-message" />
+              <p className="text-xs text-white/45 sm:col-span-2" data-testid="mining-trust-lead-short-hint">{c.leadShortHint}</p>
               <button onClick={submitLead} className="rounded-full bg-amber-400 px-5 py-3 text-sm font-bold text-black sm:col-span-2" data-testid="mining-trust-lead-submit">{sending ? "..." : c.leadSubmit}</button>
             </div>
           </div>
