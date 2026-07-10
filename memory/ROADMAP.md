@@ -1,6 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
+- ✅ Mining Trust Lead Form vereinfacht: Schnell-Auswahl, optionale Firma und minimaler Submit mit Name + E-Mail funktionieren.
+- 🟡 Nächster sinnvoller Mining-Schritt: noch mehr Conversion mit WhatsApp-/Telegram-Schnellanfrage oder 1-Klick-Kontaktmodulen für Kunden.
 - ✅ Mining Trust Admin CRM + Video Slots live: Leads können verwaltet und Dubai-/Abu-Dhabi-Videos direkt gepflegt werden.
 - 🟡 Nächster sinnvoller Mining-Schritt: echte Rollen-/Dashboard-Auswertung für Mining-Leads (Neu/Kontaktiert/Qualified), plus Medien-Uploads statt nur URL-basierter Verwaltung.
 - ✅ Mining Trust Public API + Lead Capture live: `/mining-trust` liefert jetzt öffentliche Proof-Daten und nimmt Leads direkt an.

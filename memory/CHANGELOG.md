@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Trust Kundenformular vereinfacht
+- `backend/routes/mining.py`: `MiningTrustLeadRequest` um optionales `topic` erweitert; Leads speichern jetzt das ausgewählte Thema.
+- `frontend/src/pages/MiningTrustPage.jsx`: Schnell-Auswahl-Buttons für häufige Kundenanliegen ergänzt, Firmenfeld als optional markiert und Formularführung auf minimale Reibung reduziert.
+- Verifiziert: `testing_agent` **Iteration 234 PASS** (100% Backend, 100% Frontend laut Report).
+
 ## 10.07.2026 — Mining Trust Admin CRM + Video Slots
 - `backend/routes/mining.py`: admin-only CRM-/Video-Endpunkte ergänzt: `GET /api/mining/trust/leads`, `POST /api/mining/trust/leads/{lead_id}/status`, `GET /api/mining/trust/videos`, `POST /api/mining/trust/videos`.
 - `frontend/src/pages/MiningTrustAdminPage.jsx`: neue Admin-Seite `/mining-trust-admin` für Lead-Management und Dubai-/Abu-Dhabi-Videoverwaltung.
