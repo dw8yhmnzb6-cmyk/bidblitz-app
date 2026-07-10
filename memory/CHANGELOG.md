@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Bugfix `/all-services` Runtime-Crash
+- `frontend/src/pages/AllServicesPage.jsx`: TDZ-/Initialisierungsfehler behoben. `allItems`, `totalServices` und `filteredItems` werden jetzt vor dem lokalisierten `L`-Objekt erzeugt, damit `totalServices` nicht vor Deklaration verwendet wird.
+- `frontend/src/pages/AllServicesPage.jsx`: `data-testid="all-services-page"` am Root ergänzt für stabile Verifikation.
+- Verifiziert: `testing_agent` **Iteration 230 PASS**. Preview `/all-services` lädt wieder korrekt ohne generische Fehlerseite.
+
 ## 10.07.2026 — Mining Trust öffentlich auf Startseite sichtbar
 - `frontend/src/pages/HomePage.jsx`: öffentlicher Mining-Trust-Hero ergänzt, damit normale Besucher die Infrastruktur-Seite direkt sehen und öffnen können, ohne etwas einzugeben.
 - Verifiziert: Screenshot-Smoke-Test PASS und `auto_frontend_testing_agent` PASS (Homepage öffentlich, Hero sichtbar, `/mining-trust` ohne Login erreichbar, keine Layoutprobleme).
