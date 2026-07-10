@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Trust Public API + Lead Capture
+- `backend/routes/mining.py`: neue öffentliche Endpunkte `GET /api/mining/trust/public` und `POST /api/mining/trust/lead` ergänzt. Proof-Metriken werden öffentlich ausgeliefert; Leads werden validiert und gespeichert.
+- `frontend/src/pages/MiningTrustPage.jsx`: Mining-Trust-Seite nutzt jetzt API-getriebene Stats/Live-Metriken und enthält ein öffentliches Lead-Formular für Investoren/Kunden.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, API-Self-Tests PASS, `testing_agent` **Iteration 232 PASS**.
+
 ## 10.07.2026 — Mining Trust Investor-Version erweitert
 - `frontend/src/pages/MiningTrustPage.jsx`: Investor-/Kunden-Proof erweitert um neuen Investor-Badge, Live-Mining-Kennzahlen, visuelle Standort-Übersicht für Dubai/Abu Dhabi und Proof-of-Infrastructure-Timeline.
 - Verifiziert: `testing_agent` **Iteration 231 PASS**; Seite bleibt öffentlich und ohne Layoutprobleme.

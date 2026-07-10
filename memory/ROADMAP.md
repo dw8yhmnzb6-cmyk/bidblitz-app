@@ -1,6 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
+- ✅ Mining Trust Public API + Lead Capture live: `/mining-trust` liefert jetzt öffentliche Proof-Daten und nimmt Leads direkt an.
+- 🟡 Nächster sinnvoller Mining-Schritt: echte Video-Uploads/Einbindung für Dubai & Abu Dhabi sowie Admin-/CRM-Ansicht für eingehende Mining-Leads.
 - ✅ Mining Trust Investor-Version live: Live-Kennzahlen, Standortkarte und Proof-of-Infrastructure-Timeline sind ergänzt.
 - 🟡 Nächster sinnvoller Mining-Schritt: echte Nutzer-Videos/Fotos und echte Live-Daten statt Platzhalterwerte einbinden.
 - ✅ Mining Trust Page live: separate Proof-Seite für Bitcoin-Mining-Infrastruktur mit Dubai-/Abu-Dhabi-Fokus, ASIC-Fotos und Video-Platzhaltern.
