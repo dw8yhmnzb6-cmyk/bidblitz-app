@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating P2 Nearby / Crossed Paths + Setup-UX
+- `backend/routes/dating.py`: neue Standort-Features ergänzt — `POST /api/dating/location`, `GET /api/dating/nearby`, `GET /api/dating/crossed-paths`.
+- `backend/routes/dating.py`: Haversine-basierte Distanzberechnung, Freshness-Check (`LOCATION_FRESH_HOURS`), `distance_km`-Metadaten und `dating_crossed_paths`-Persistenz mit `cross_count` / `last_crossed_at` umgesetzt.
+- `backend/routes/dating.py`: Seed-Profile erhalten stabile Standortdaten; `ensure_seed_profiles()` auf idempotentes Upsert umgestellt, damit Re-Starts sauber bleiben.
+- `frontend/src/pages/DatingPage.jsx`: Nearby-Karte, Crossed-Paths-Karte, Standort-Aktivierung via `navigator.geolocation`, Anzeige von Distanzinfos in Discover und neuer **„Später“**-Button im Profil-Setup ergänzt.
+- Verifiziert: Python-Lint PASS, API-Self-Tests PASS, Browser-Smoke PASS, `testing_agent` **Iteration 220 PASS**. **MOCKED:** `POST /api/dating/premium/demo-upgrade` bleibt weiterhin Demo-/Mock-Flow.
+
 ## 10.07.2026 — Dating P1 Boost/Spotlight + Dating P2 AI Helpers
 - `backend/routes/dating.py`: echter Premium-Boost ergänzt mit `boost_activated_at`, `boost_active_until`, Cooldown-Berechnung, `/api/dating/boost/activate` und serverseitiger Discover-Priorisierung über `discover_rank`, `boost` und `spotlight`.
 - `backend/routes/dating.py`: zwei echte Dating-Race-Conditions beseitigt. `get_or_create_my_profile()` und `maybe_seed_demo_like()` nutzen jetzt `update_one(..., $setOnInsert, upsert=True)` statt blindem Insert; dadurch verschwinden die vorher sichtbaren `E11000 duplicate key`-Fehler im Dating-Einstieg.

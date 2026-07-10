@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Dating Nearby / Crossed Paths — 10.07.2026
+- ✅ Dating P2 Nearby live: Nutzer können Standort freigeben; Nearby-Profile werden mit `distance_km` ausgeliefert.
+- ✅ Dating P2 Crossed Paths live: räumliche Begegnungen werden gespeichert und im Dating-UI angezeigt.
+- ✅ Dating Setup-UX verbessert: Profil-Modal blockiert nicht mehr hart und kann per **„Später“** geschlossen werden.
+- 🟡 Nächster sinnvoller Dating-Schritt: Voice Intro / Video-Profil oder Safety Pro (Scam Detection / Nudity Warning) als nächster Differenzierer.
+- ⚠️ Dating Premium Aktivierung bleibt weiterhin **MOCKED** über `/api/dating/premium/demo-upgrade`; echte Subscription-/Payment-Verknüpfung ist weiterhin offen.
+
 ## Status nach Dating Boost + AI Helpers — 10.07.2026
 - ✅ Dating P1 Boost/Spotlight live: Premium-Nutzer können Boost aktivieren; Discover priorisiert geboostete Profile serverseitig und liefert `boost`-/`spotlight`-Metadaten aus.
 - ✅ Dating P2 Start live: AI Bio, AI Profil-Coach und AI Icebreakers funktionieren über echte Backend-Endpunkte mit `emergentintegrations`.
