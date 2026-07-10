@@ -139,6 +139,13 @@ export default function AllServicesPage({ onBack, onNavigate }) {
   const [search, setSearch] = useState("");
   const [expandedCat, setExpandedCat] = useState(null);
 
+  const allItems = CATEGORIES.flatMap(c => c.items.map(i => ({ ...i, category: c.title })));
+  const totalServices = allItems.length;
+  const filteredItems = search ? allItems.filter(i =>
+    i.label.toLowerCase().includes(search.toLowerCase()) ||
+    i.desc.toLowerCase().includes(search.toLowerCase())
+  ) : [];
+
   const L = {
     de: {
       headerTitle: "Alle Services",
@@ -186,16 +193,8 @@ export default function AllServicesPage({ onBack, onNavigate }) {
     stats: ["Services", "Categories", "Languages", "Cashback"],
   };
 
-  const allItems = CATEGORIES.flatMap(c => c.items.map(i => ({ ...i, category: c.title })));
-  const filteredItems = search ? allItems.filter(i =>
-    i.label.toLowerCase().includes(search.toLowerCase()) ||
-    i.desc.toLowerCase().includes(search.toLowerCase())
-  ) : [];
-
-  const totalServices = allItems.length;
-
   return (
-    <div className="min-h-screen pb-[calc(var(--app-mobile-content-offset,6rem)+2rem)] sm:pb-24" style={{ background: "var(--bg-primary, #030303)" }}>
+    <div className="min-h-screen pb-[calc(var(--app-mobile-content-offset,6rem)+2rem)] sm:pb-24" style={{ background: "var(--bg-primary, #030303)" }} data-testid="all-services-page">
       {/* Header */}
       <div className="sticky top-0 z-30 px-4 pt-4 pb-3 backdrop-blur-md" style={{ background: "rgba(3,3,3,0.94)" }}>
         <div className="flex items-center gap-3 mb-4">
