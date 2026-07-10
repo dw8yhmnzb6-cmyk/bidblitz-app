@@ -423,6 +423,44 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           )}
         </AnimatePresence>
 
+        <motion.section
+          className="rounded-[28px] p-5 mb-5 relative overflow-hidden cursor-pointer"
+          style={{
+            background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(59,130,246,0.08) 55%, rgba(255,255,255,0.02))",
+            border: "1px solid rgba(245,158,11,0.18)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+          }}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08, ...slide }}
+          whileTap={{ scale: 0.985 }}
+          onClick={() => onNavigate("/mining-trust")}
+          data-testid="home-mining-trust-hero"
+        >
+          <div className="absolute -top-10 -right-10 h-36 w-36 rounded-full bg-amber-400/12 blur-3xl pointer-events-none" />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200" data-testid="home-mining-trust-badge">
+                <Shield size={12} /> Bitcoin Mining Proof
+              </div>
+              <h2 className="mt-3 text-[24px] sm:text-[30px] font-bold text-white tracking-tight" data-testid="home-mining-trust-title">
+                Unsere Server in Dubai & Abu Dhabi direkt ansehen
+              </h2>
+              <p className="mt-2 max-w-xl text-[13px] sm:text-[14px] text-white/68" data-testid="home-mining-trust-subtitle">
+                Kunden müssen nichts eingeben — sie können die Infrastruktur direkt sehen: Server, ASIC-Hardware, Video-Bereiche und Vertrauensmetriken.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button className="rounded-full bg-white px-5 py-3 text-[12px] font-bold text-black" data-testid="home-mining-trust-open-button">
+                Seite ansehen
+              </button>
+              <button className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-[12px] font-semibold text-white" data-testid="home-mining-trust-open-mining-button" onClick={(e) => { e.stopPropagation(); onNavigate('/mining'); }}>
+                Mining öffnen
+              </button>
+            </div>
+          </div>
+        </motion.section>
+
         {/* ── Tagline (nur für Gäste — angemeldete User sehen sofort den Wallet) ── */}
         {isGuest && (
           <motion.div className="mb-6 lg:mb-8 lg:max-w-3xl" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
