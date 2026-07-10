@@ -56,6 +56,17 @@ export default function DatingPage({ onBack }) {
   const [filters, setFilters] = useState({ age_min: 18, age_max: 99, city: "", seeking: [], relationship_intent: "" });
   const [likesYou, setLikesYou] = useState({ locked: true, profiles: [], count: 0 });
   const [chatReadAt, setChatReadAt] = useState(null);
+  const [aiBioSuggestions, setAiBioSuggestions] = useState([]);
+  const [aiCoachTips, setAiCoachTips] = useState([]);
+  const [aiIcebreakers, setAiIcebreakers] = useState([]);
+  const [aiLoading, setAiLoading] = useState("");
+
+  const boostState = userProfile?.boost || { is_active: false, seconds_left: 0, cooldown_remaining_seconds: 0, duration_minutes: 30 };
+  const boostLabel = boostState.is_active
+    ? `Boost aktiv · ${Math.max(1, Math.ceil((boostState.seconds_left || 0) / 60))} Min`
+    : boostState.cooldown_remaining_seconds > 0
+      ? `Boost Cooldown · ${Math.max(1, Math.ceil((boostState.cooldown_remaining_seconds || 0) / 3600))}h`
+      : `Boost · ${boostState.duration_minutes || 30} Min`;
 
   const current = profiles[idx];
   const currentPhotos = current?.photos?.length ? current.photos : current?.avatar ? [current.avatar] : [];
@@ -191,6 +202,60 @@ export default function DatingPage({ onBack }) {
     }
   };
 
+  const activateBoost = async () => {
+    if (!isPremium) {
+      setShowPaywall(true);
+      return;
+    }
+    try {
+      const data = await api("/api/dating/boost/activate", { method: "POST" });
+      setUserProfile((prev) => prev ? { ...prev, boost: data.boost } : prev);
+      toast.success(data.message || "Boost aktiviert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const runAiBio = async () => {
+    try {
+      setAiLoading("bio");
+      const data = await api("/api/dating/ai/bio", { method: "POST", body: JSON.stringify({ prompt: userProfile?.profile_prompt || "" }) });
+      setAiBioSuggestions(data.suggestions || []);
+      toast.success("AI-Bio erstellt");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setAiLoading("");
+    }
+  };
+
+  const runAiCoach = async () => {
+    try {
+      setAiLoading("coach");
+      const data = await api("/api/dating/ai/profile-coach", { method: "POST", body: JSON.stringify({ prompt: "Optimiere für hochwertige Matches" }) });
+      setAiCoachTips(data.tips || []);
+      toast.success("Profil-Coach fertig");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setAiLoading("");
+    }
+  };
+
+  const runAiIcebreakers = async (matchId) => {
+    try {
+      setAiLoading(`ice-${matchId}`);
+      const data = await api("/api/dating/ai/icebreakers", { method: "POST", body: JSON.stringify({ match_id: matchId }) });
+      setAiIcebreakers(data.icebreakers || []);
+      toast.success("Icebreaker geladen");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setAiLoading("");
+    }
+  };
+
   const sendChat = async () => {
     if (!activeMatch || !chatText.trim()) return;
     try {
@@ -251,15 +316,54 @@ export default function DatingPage({ onBack }) {
       </div>
 
       {userProfile && (
-        <div className="px-4 mb-4" data-testid="dating-profile-completion-card">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-4">
-            <div className="flex-1">
+        <div className="px-4 mb-4 space-y-4" data-testid="dating-profile-completion-card">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex-1 min-w-0">
               <p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-1">Profil-Vervollständigung</p>
               <p className="text-sm font-semibold text-white">{userProfile.profile_completion || 0}% bereit für bessere Matches</p>
               <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-500 to-orange-400" style={{ width: `${userProfile.profile_completion || 0}%` }} /></div>
             </div>
-            {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
-            <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
+            <div className="flex flex-wrap gap-2" data-testid="dating-profile-action-row">
+              <button
+                onClick={activateBoost}
+                disabled={Boolean(boostState.is_active || boostState.cooldown_remaining_seconds > 0)}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${boostState.is_active ? "bg-yellow-400 text-black" : boostState.cooldown_remaining_seconds > 0 ? "bg-white/10 text-white/45" : "bg-yellow-500/15 text-yellow-200"}`}
+                data-testid="dating-boost-button"
+              >
+                <Zap size={14} className="inline mr-1" />
+                {boostLabel}
+              </button>
+              {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
+              <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2" data-testid="dating-ai-tools-grid">
+            <div className="rounded-2xl border border-fuchsia-500/20 bg-white/5 p-4" data-testid="dating-ai-bio-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">AI Bio</p>
+                  <h3 className="text-sm font-semibold text-white">3 bessere Bio-Vorschläge</h3>
+                </div>
+                <button onClick={runAiBio} className="px-3 py-2 rounded-xl bg-fuchsia-500/15 text-fuchsia-200 text-xs font-semibold" data-testid="dating-ai-bio-button">{aiLoading === "bio" ? "Lädt..." : "Erstellen"}</button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {aiBioSuggestions.length === 0 ? <p className="text-xs text-white/55">Kurz, modern und besser für Matches.</p> : aiBioSuggestions.map((item, index) => <button key={`${item}-${index}`} onClick={() => setProfileForm((prev) => ({ ...prev, bio: item }))} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10 transition-colors" data-testid={`dating-ai-bio-suggestion-${index}`}>{item}</button>)}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-cyan-500/20 bg-white/5 p-4" data-testid="dating-ai-coach-card">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">AI Profil-Coach</p>
+                  <h3 className="text-sm font-semibold text-white">Konkrete Verbesserungen</h3>
+                </div>
+                <button onClick={runAiCoach} className="px-3 py-2 rounded-xl bg-cyan-500/15 text-cyan-200 text-xs font-semibold" data-testid="dating-ai-coach-button">{aiLoading === "coach" ? "Lädt..." : "Analysieren"}</button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {aiCoachTips.length === 0 ? <p className="text-xs text-white/55">Bekomme direkte Tipps für Bio, Fotos und Profilwirkung.</p> : aiCoachTips.map((item, index) => <div key={`${item}-${index}`} className="rounded-xl bg-white/5 px-3 py-2 text-xs text-white/85" data-testid={`dating-ai-coach-tip-${index}`}>{item}</div>)}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -274,6 +378,7 @@ export default function DatingPage({ onBack }) {
                 <div className="relative">
                   <img src={currentPhotos[0]} alt={current.name} className="w-full h-80 object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+                  {current.spotlight && <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-yellow-300 px-3 py-1 text-[11px] font-bold text-black" data-testid={`dating-spotlight-badge-${current.profile_id}`}><Zap size={12} />Spotlight</div>}
                   <div className="absolute bottom-4 left-4 right-4">
                     <div className="flex items-center gap-2"><h2 className="text-xl font-bold text-white">{current.name}{current.age ? `, ${current.age}` : ""}</h2>{current.verified && <Check size={16} className="text-blue-400" />}{current.premium && <Crown size={15} className="text-yellow-300" />}</div>
                     <div className="flex items-center gap-1 text-white/70 text-sm mt-1"><MapPin size={14} />{current.city || "Unbekannt"}</div>
@@ -324,6 +429,7 @@ export default function DatingPage({ onBack }) {
                 <p className="text-xs text-white/60 truncate">{match.last_message || match.city}</p>
                 <p className="text-[10px] text-white/35 mt-1">{match.last_message_at ? 'Aktiv im Chat' : 'Neu gematcht'}</p>
               </button>
+              <button onClick={() => runAiIcebreakers(match.match_id)} className="px-3 py-2 rounded-xl bg-cyan-500/15 text-cyan-200 text-[11px] font-semibold" data-testid={`dating-ai-icebreaker-button-${match.match_id}`}>{aiLoading === `ice-${match.match_id}` ? '...' : 'AI Icebreaker'}</button>
               {match.unread_count > 0 && <span className="min-w-6 h-6 px-2 rounded-full bg-pink-500 text-white text-xs font-bold flex items-center justify-center" data-testid={`dating-unread-${match.match_id}`}>{match.unread_count}</span>}
               <button onClick={() => loadMessages(match)} className="w-10 h-10 rounded-full flex items-center justify-center bg-pink-500/15" data-testid={`dating-message-button-${match.match_id}`}><MessageCircle size={18} className="text-pink-300" /></button>
               <button onClick={() => setShowSafetySheet({ profile_id: match.profile_id, match_id: match.match_id, name: match.name })} className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5" data-testid={`dating-safety-button-${match.match_id}`}><Shield size={16} className="text-white/70" /></button>
@@ -347,6 +453,7 @@ export default function DatingPage({ onBack }) {
               </div>
             ))}
           </div>
+          {aiIcebreakers.length > 0 && <div className="mt-3 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-3" data-testid="dating-ai-icebreakers-panel"><p className="text-[11px] uppercase tracking-[0.18em] text-cyan-200/70 mb-2">AI Icebreaker</p><div className="space-y-2">{aiIcebreakers.map((item, index) => <button key={`${item}-${index}`} onClick={() => setChatText(item)} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white hover:bg-white/10 transition-colors" data-testid={`dating-ai-icebreaker-${index}`}>{item}</button>)}</div></div>}
           {chatReadAt && <p className="mt-2 text-[11px] text-white/35 text-right" data-testid="dating-chat-read-state">Gelesen / geöffnet</p>}
           <div className="mt-3 flex gap-2">
             <input value={chatText} onChange={(event) => setChatText(event.target.value)} placeholder="Nachricht schreiben..." className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none" data-testid="dating-chat-input" />

@@ -48,6 +48,10 @@ function isFullscreenCommercePath(path) {
     || path === "/nfc";
 }
 
+function isDatingPath(path) {
+  return path === "/dating";
+}
+
 export function getAppShellFlags(currentPath, isDesktopViewport) {
   const isCheckout = isCheckoutPath(currentPath);
   const isPublicInvoicePayment = isPublicInvoicePaymentPath(currentPath);
@@ -58,6 +62,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
   const isStaffEmployeeShell = isStaffEmployeeShellPath(currentPath);
   const isFullScreenStaffMgr = isFullScreenStaffManagerPath(currentPath);
   const isFullscreenCommerce = isFullscreenCommercePath(currentPath);
+  const isDating = isDatingPath(currentPath);
   const isHomePath = currentPath === "/" || currentPath === "/home" || currentPath === "/landing";
 
   return {
@@ -78,6 +83,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isInvoicePay
       && !isStaffEmployeeShell
       && !isFullScreenStaffMgr
+      && !isDating
       && !isFullscreenCommerce
       && !currentPath.startsWith("/pay/merchant/")
       && currentPath !== "/merchant-landing"
@@ -91,8 +97,10 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !isInvoicePay
       && !isMobilityShell
       && !isStaffEmployeeShell
+      && !isDating
       && !isFullscreenCommerce
       && !currentPath.startsWith("/pay/merchant/")
       && currentPath !== "/merchant-landing",
+    isDating,
   };
 }

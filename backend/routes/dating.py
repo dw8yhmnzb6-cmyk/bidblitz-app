@@ -3,14 +3,22 @@ BidBlitz Dating P0
 Profiles, reciprocal matching, chat, filters, safety, premium basics
 """
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime, timezone, date, timedelta
 from bson import ObjectId
 import secrets
+import os
+import json
+
+from dotenv import load_dotenv
+from emergentintegrations.llm.chat import LlmChat, StreamDone, TextDelta, UserMessage
 
 from core.database import db, sanitize_doc
 from core.security import get_current_user
+
+load_dotenv()
 
 router = APIRouter(prefix="/api/dating", tags=["dating"])
 
@@ -102,6 +110,8 @@ SEED_PROFILES = [
 DAILY_FREE_SWIPES = 20
 BOOST_DURATION_MINUTES = 30
 BOOST_COOLDOWN_HOURS = 12
+AI_PROVIDER = "openai"
+AI_MODEL = "gpt-5.2"
 
 
 def years_old(date_str: Optional[str]) -> Optional[int]:
@@ -233,23 +243,34 @@ async def get_or_create_my_profile(user: dict) -> dict:
         "created_at": now_iso(),
         "likes_count": 0,
     }
-    await db.dating_profiles.insert_one(profile_doc)
-    return sanitize_doc(profile_doc)
+    await db.dating_profiles.update_one(
+        {"user_id": str(user["_id"])},
+        {"$setOnInsert": profile_doc},
+        upsert=True,
+    )
+    fresh = await db.dating_profiles.find_one({"user_id": str(user["_id"])}, {"_id": 0})
+    return fresh
 
 
 async def maybe_seed_demo_like(my_profile: dict):
     if await db.dating_swipes.find_one({"to_user_id": my_profile["user_id"], "from_user_id": "seed-lina"}):
         return
-    await db.dating_swipes.insert_one({
-        "from_user_id": "seed-lina",
-        "to_user_id": my_profile["user_id"],
-        "from_profile_id": "DAT-SEED-LINA",
-        "to_profile_id": my_profile["profile_id"],
-        "type": "like",
-        "created_at": now_iso(),
-        "swipe_reset_key": swipe_reset_key(),
-        "is_seed": True,
-    })
+    await db.dating_swipes.update_one(
+        {"from_user_id": "seed-lina", "to_profile_id": my_profile["profile_id"]},
+        {
+            "$setOnInsert": {
+                "from_user_id": "seed-lina",
+                "to_user_id": my_profile["user_id"],
+                "from_profile_id": "DAT-SEED-LINA",
+                "to_profile_id": my_profile["profile_id"],
+                "type": "like",
+                "created_at": now_iso(),
+                "swipe_reset_key": swipe_reset_key(),
+                "is_seed": True,
+            }
+        },
+        upsert=True,
+    )
 
 
 async def get_profile_or_404(profile_id: str) -> dict:
@@ -311,6 +332,50 @@ class VerifyReq(BaseModel):
     selfie_url: str = Field(min_length=8, max_length=500)
 
 
+class DatingAiPromptReq(BaseModel):
+    prompt: Optional[str] = Field(default="", max_length=300)
+    match_id: Optional[str] = Field(default=None, max_length=80)
+
+
+def _build_profile_context(profile: dict) -> str:
+    interests = ", ".join(profile.get("interests") or []) or "keine besonderen Interessen angegeben"
+    return (
+        f"Name: {profile.get('name') or 'Unbekannt'}\n"
+        f"Alter: {profile.get('age') or 'unbekannt'}\n"
+        f"Stadt: {profile.get('city') or 'unbekannt'}\n"
+        f"Bio: {profile.get('bio') or 'leer'}\n"
+        f"Beruf: {profile.get('occupation') or 'leer'}\n"
+        f"Profil-Prompt: {profile.get('profile_prompt') or 'leer'}\n"
+        f"Interessen: {interests}\n"
+        f"Absicht: {profile.get('relationship_intent') or 'unbekannt'}"
+    )
+
+
+async def _run_dating_ai(user_id: str, task: str, prompt: str) -> str:
+    api_key = os.getenv("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI service nicht konfiguriert")
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=f"dating-ai-{task}-{user_id}",
+        system_message=(
+            "Du bist BidBlitz Dating AI. Antworte auf Deutsch, konkret, charmant und sicher. "
+            "Keine langen Einleitungen, keine Emojis-Spam, keine leeren Floskeln. "
+            "Liefere nur den angeforderten Inhalt."
+        ),
+    ).with_model(AI_PROVIDER, AI_MODEL)
+    chunks = []
+    async for event in chat.stream_message(UserMessage(text=prompt)):
+        if isinstance(event, TextDelta):
+            chunks.append(event.content)
+        elif isinstance(event, StreamDone):
+            break
+    result = "".join(chunks).strip()
+    if not result:
+        raise HTTPException(status_code=502, detail="AI hat keinen Inhalt zurückgegeben")
+    return result
+
+
 def calc_profile_completion(profile: dict) -> int:
     checks = [
         bool(profile.get("name")),
@@ -368,6 +433,7 @@ async def my_profile(request: Request):
         "relationship_intent": None,
     }
     profile["profile_completion"] = calc_profile_completion(profile)
+    profile["boost"] = get_boost_state(profile)
     return {"profile": profile, "filters": filters}
 
 
@@ -395,6 +461,7 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
     await db.dating_profiles.update_one({"user_id": str(user["_id"])}, {"$set": update})
     fresh = await db.dating_profiles.find_one({"user_id": str(user["_id"])}, {"_id": 0})
     fresh["profile_completion"] = calc_profile_completion(fresh)
+    fresh["boost"] = get_boost_state(fresh)
     return {"ok": True, "profile": fresh}
 
 
@@ -402,7 +469,10 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
 async def premium_demo_upgrade(request: Request):
     user = await get_me(request)
     await db.users.update_one({"_id": user["_id"]}, {"$set": {"dating_premium": True}})
-    await db.dating_profiles.update_one({"user_id": str(user["_id"])}, {"$set": {"premium": True}})
+    await db.dating_profiles.update_one(
+        {"user_id": str(user["_id"])},
+        {"$set": {"premium": True}},
+    )
     return {"ok": True, "premium": True}
 
 
@@ -425,6 +495,98 @@ async def swipes_left(request: Request):
         return {"swipes_left": 999999, "premium": True}
     used = await get_swipes_used_today(str(user["_id"]))
     return {"swipes_left": max(0, DAILY_FREE_SWIPES - used), "premium": False}
+
+
+@router.post("/boost/activate")
+async def activate_boost(request: Request):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    if not profile.get("premium"):
+        raise HTTPException(status_code=403, detail="Boost ist nur für Premium verfügbar")
+
+    boost_state = get_boost_state(profile)
+    if boost_state["is_active"]:
+        return {"ok": True, "boost": boost_state, "already_active": True}
+    if boost_state["cooldown_remaining_seconds"] > 0:
+        raise HTTPException(status_code=400, detail="Boost ist gerade im Cooldown")
+
+    now = datetime.now(timezone.utc)
+    active_until = now + timedelta(minutes=BOOST_DURATION_MINUTES)
+    await db.dating_profiles.update_one(
+        {"user_id": str(user["_id"])},
+        {
+            "$set": {
+                "boost_activated_at": now.isoformat(),
+                "boost_last_used_at": now.isoformat(),
+                "boost_active_until": active_until.isoformat(),
+            }
+        },
+    )
+    fresh = await db.dating_profiles.find_one({"user_id": str(user["_id"])}, {"_id": 0})
+    return {
+        "ok": True,
+        "boost": get_boost_state(fresh),
+        "message": f"Boost für {BOOST_DURATION_MINUTES} Minuten aktiviert",
+    }
+
+
+@router.post("/ai/bio")
+async def generate_ai_bio(payload: DatingAiPromptReq, request: Request):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    context = _build_profile_context(profile)
+    extra = payload.prompt.strip() if payload.prompt else ""
+    prompt = (
+        "Erstelle 3 kurze, starke Dating-Bios auf Deutsch. Jede Variante maximal 220 Zeichen. "
+        "Klar, sympathisch, marktstark, natürlich. Keine Nummerierung mit langen Sätzen.\n\n"
+        f"Profilkontext:\n{context}\n\n"
+        f"Zusatzwunsch: {extra or 'Kein Zusatzwunsch.'}"
+    )
+    result = await _run_dating_ai(str(user["_id"]), "bio", prompt)
+    suggestions = [line.strip("-• ").strip() for line in result.splitlines() if line.strip()]
+    return {"ok": True, "suggestions": suggestions[:3], "text": result}
+
+
+@router.post("/ai/profile-coach")
+async def generate_profile_coach(payload: DatingAiPromptReq, request: Request):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    context = _build_profile_context(profile)
+    extra = payload.prompt.strip() if payload.prompt else ""
+    prompt = (
+        "Analysiere dieses Dating-Profil wie ein Top-Profile-Coach. "
+        "Liefere genau 5 konkrete Verbesserungen auf Deutsch. Jede Empfehlung kurz, direkt und umsetzbar.\n\n"
+        f"Profilkontext:\n{context}\n\n"
+        f"Zusatzfokus: {extra or 'Mehr Matches und bessere Qualität.'}"
+    )
+    result = await _run_dating_ai(str(user["_id"]), "coach", prompt)
+    tips = [line.strip("-• ").strip() for line in result.splitlines() if line.strip()]
+    return {"ok": True, "tips": tips[:5], "text": result}
+
+
+@router.post("/ai/icebreakers")
+async def generate_icebreakers(payload: DatingAiPromptReq, request: Request):
+    user = await get_me(request)
+    my_profile = await get_or_create_my_profile(user)
+    if not payload.match_id:
+        raise HTTPException(status_code=400, detail="match_id fehlt")
+    match = await db.dating_matches.find_one({"match_id": payload.match_id, "participant_ids": str(user["_id"])}, {"_id": 0})
+    if not match:
+        raise HTTPException(status_code=404, detail="Match nicht gefunden")
+    other_profile_id = next((pid for pid in match.get("participant_profiles", []) if pid != my_profile["profile_id"]), None)
+    other_profile = await db.dating_profiles.find_one({"profile_id": other_profile_id}, {"_id": 0}) if other_profile_id else None
+    if not other_profile:
+        raise HTTPException(status_code=404, detail="Gegenprofil nicht gefunden")
+    prompt = (
+        "Erstelle 5 starke erste Nachrichten auf Deutsch für ein Dating-Match. "
+        "Nicht cringe, nicht generisch, locker und respektvoll. Jede Nachricht nur 1 Satz.\n\n"
+        f"Mein Profil:\n{_build_profile_context(my_profile)}\n\n"
+        f"Match-Profil:\n{_build_profile_context(other_profile)}\n\n"
+        f"Zusatzwunsch: {payload.prompt.strip() if payload.prompt else 'Natürlich und charmant.'}"
+    )
+    result = await _run_dating_ai(str(user["_id"]), "icebreakers", prompt)
+    icebreakers = [line.strip("-• ").strip() for line in result.splitlines() if line.strip()]
+    return {"ok": True, "icebreakers": icebreakers[:5], "text": result}
 
 
 @router.get("/discover")
@@ -475,7 +637,18 @@ async def discover(request: Request):
         profile["compatibility_score"] = calc_compatibility_score(my_profile, profile, my_filters)
         profile["profile_completion"] = calc_profile_completion(profile)
         profile["is_recently_active"] = True
-    profiles.sort(key=lambda item: (item.get("compatibility_score", 0), item.get("verified", False), item.get("last_active_at", "")), reverse=True)
+        profile["boost"] = get_boost_state(profile)
+        profile["spotlight"] = bool(profile["boost"]["is_active"])
+        profile["discover_rank"] = calc_discover_rank(profile)
+    profiles.sort(
+        key=lambda item: (
+            item.get("discover_rank", 0),
+            item.get("compatibility_score", 0),
+            item.get("verified", False),
+            item.get("last_active_at", ""),
+        ),
+        reverse=True,
+    )
     return {"profiles": profiles}
 
 
@@ -609,6 +782,8 @@ async def rewind_last_swipe(request: Request):
             await db.dating_swipes.delete_many({"from_user_id": target["user_id"], "to_user_id": my_user_id, "is_seed": True})
         target["compatibility_score"] = calc_compatibility_score(my_profile, target, user.get("dating_filters") or {})
         target["profile_completion"] = calc_profile_completion(target)
+        target["boost"] = get_boost_state(target)
+        target["spotlight"] = bool(target["boost"]["is_active"])
         return {"ok": True, "profile": target}
     raise HTTPException(status_code=404, detail="Profil nicht gefunden")
 
@@ -631,6 +806,8 @@ async def get_matches(request: Request):
         profile["last_message"] = match.get("last_message", "")
         profile["last_message_at"] = match.get("last_message_at")
         profile["unread_count"] = (match.get("unread") or {}).get(my_user_id, 0)
+        profile["boost"] = get_boost_state(profile)
+        profile["spotlight"] = bool(profile["boost"]["is_active"])
         result.append(profile)
     return {"matches": result}
 
@@ -739,5 +916,7 @@ async def likes_you(request: Request):
         profile["incoming_type"] = meta.get("type", "like")
         profile["incoming_at"] = meta.get("created_at")
         profile["profile_completion"] = calc_profile_completion(profile)
+        profile["boost"] = get_boost_state(profile)
+        profile["spotlight"] = bool(profile["boost"]["is_active"])
     profiles.sort(key=lambda item: item.get("incoming_at", ""), reverse=True)
     return {"locked": False, "profiles": profiles, "count": count}
