@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating Top Picks / Standouts + Message-before-match
+- `backend/routes/dating.py`: neue kuratierte Discovery-Endpunkte `GET /api/dating/top-picks` und `GET /api/dating/standouts` ergänzt; sie sortieren Profile über eigenes Curation-/Standout-Scoring und liefern `pick_type`, `headline`, `locked` und bei Standouts `requires_superlike`.
+- `backend/routes/dating.py`: `POST /api/dating/like` erweitert um `opener_text` als Platinum-Feature. Wenn ein Like mit `opener_text` zu einem Match führt, wird die Nachricht automatisch als erste Chat-Nachricht gespeichert und in `last_message`/`last_message_at` übernommen.
+- `frontend/src/pages/DatingPage.jsx`: neue Discover-Karten für Top Picks und Standouts sowie Platinum-Message-before-match-Eingabe im Profil-Card-Flow ergänzt.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Smoke-Test PASS, `testing_agent` **Iteration 226 PASS**.
+
 ## 10.07.2026 — Dating Monetization V1 (Tiers + Packs + Conversion)
 - `backend/routes/dating.py`: Dating-Monetarisierung auf Konkurrenzniveau ergänzt mit 3 Tiers (`plus_30d`, `gold_30d`, `platinum_30d`), 5 Einzelkäufen (`boost_pack_1`, `boost_pack_3`, `superlike_pack_5`, `superlike_pack_15`, `rewind_pack_10`), serverseitigen Entitlements, Starter-Offer-Logik und neuem Katalog-Endpoint `GET /api/dating/monetization`.
 - `backend/routes/dating.py`: echter Stripe-Checkout für Einzelkäufe über `POST /api/dating/consumables/checkout`; `POST /api/dating/premium/checkout` unterstützt jetzt alle Tier-Pläne inkl. Starter-Preis für berechtigte Nutzer.
