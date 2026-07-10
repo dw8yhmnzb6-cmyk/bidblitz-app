@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Dating Video-Profil — 10.07.2026
+- ✅ Dating P2 Video-Profil live: Aufnahme, Upload, Playback und Löschen funktionieren; Video-Metadaten erscheinen in Profil, Discover, Likes und Matches.
+- ✅ Dating P2 Voice Intro live.
+- ✅ Dating P2 Nearby / Crossed Paths live.
+- 🟡 Nächster sinnvoller Dating-Schritt: **Safety Pro** (Scam Detection / Nudity Warning) oder **Discovery / Ranking Intelligence** als nächster Qualitätshebel.
+- ⚠️ Dating Premium Aktivierung bleibt weiterhin **MOCKED** über `/api/dating/premium/demo-upgrade`; echte Subscription-/Payment-Verknüpfung ist weiterhin offen.
+
 ## Status nach Dating Voice Intro — 10.07.2026
 - ✅ Dating P2 Voice Intro live: Aufnahme, Upload, Playback und Löschen funktionieren; Voice-Metadaten erscheinen in Discover, Likes und Matches.
 - ✅ Dating P2 Nearby / Crossed Paths bereits live und stabil.

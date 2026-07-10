@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating P2 Video-Profil
+- `backend/routes/dating.py`: echte Video-Profil-Funktion ergänzt mit Upload (`POST /api/dating/video-profile`), Stream (`GET /api/dating/video-profile/{media_id}`) und Delete (`DELETE /api/dating/video-profile`).
+- `backend/routes/dating.py`: Video-Validierung ergänzt (`webm`, `mp4`, `mov`, max. 45 Sekunden, max. 20 MB) und Speicherung über die reale Object-Storage-Integration umgesetzt.
+- `backend/routes/dating.py`: `video_profile`-Metadaten an Profil-, Discover-, Matches- und Likes-Responses propagiert, inklusive `stream_url`.
+- `frontend/src/pages/DatingPage.jsx`: Video-Profil-Karte mit Aufnahme via `MediaRecorder`, Stop/Play/Delete-Steuerung und Video-Aktionen auf Discover-/Likes-/Match-Karten ergänzt.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Curl-/API-Self-Tests PASS, Browser-Smoke PASS, `testing_agent` **Iteration 222 PASS**. **MOCKED:** `POST /api/dating/premium/demo-upgrade` bleibt weiterhin Demo-/Mock-Flow.
+
 ## 10.07.2026 — Dating P2 Voice Intro
 - `backend/routes/dating.py`: echte Voice-Intro-Funktion ergänzt mit Upload (`POST /api/dating/voice-intro`), Stream (`GET /api/dating/voice-intro/{media_id}`) und Delete (`DELETE /api/dating/voice-intro`).
 - `backend/routes/dating.py`: Object-Storage-Integration nach Playbook eingebunden (`EMERGENT_LLM_KEY`, Storage init, put/get object) und `dating_media` als DB-Referenzquelle für Audio-Dateien verwendet.
