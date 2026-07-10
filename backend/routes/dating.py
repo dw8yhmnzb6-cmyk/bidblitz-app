@@ -199,6 +199,15 @@ NUDITY_URL_PATTERNS = [
     re.compile(r"\b(nsfw|nude|nudity|explicit|xxx|onlyfans|adult)\b", re.IGNORECASE),
 ]
 
+CHAT_SCAM_SIGNAL_PATTERNS = [
+    (re.compile(r"\b(telegram|whatsapp|snapchat|signal|kik|line)\b", re.IGNORECASE), 18, "Kontaktwechsel auf externe App"),
+    (re.compile(r"\b(crypto|bitcoin|forex|investment|trading)\b", re.IGNORECASE), 28, "Investment-/Krypto-Thema"),
+    (re.compile(r"\b(send me money|schick mir geld|überweis mir|paypal friends|western union|gift card|gutschein)\b", re.IGNORECASE), 40, "Direkte Geldforderung"),
+    (re.compile(r"\b(iban|bank account|kontonummer|wallet address|btc address)\b", re.IGNORECASE), 26, "Zahlungsdaten angefragt"),
+    (re.compile(r"\b(code|otp|verifizierungscode|verification code|sms code)\b", re.IGNORECASE), 26, "Code-/OTP-Anfrage"),
+    (re.compile(r"\b(dringen[dt]|urgent|sofort|asap)\b", re.IGNORECASE), 12, "Druck-/Dringlichkeitsmuster"),
+]
+
 
 def years_old(date_str: Optional[str]) -> Optional[int]:
     if not date_str:
@@ -531,6 +540,11 @@ class DatingPremiumStatusReq(BaseModel):
     session_id: str = Field(min_length=8, max_length=200)
 
 
+class DatingChatSafetyReq(BaseModel):
+    match_id: str = Field(min_length=4, max_length=80)
+    force: bool = False
+
+
 def _build_profile_context(profile: dict) -> str:
     interests = ", ".join(profile.get("interests") or []) or "keine besonderen Interessen angegeben"
     return (
@@ -718,6 +732,103 @@ def _build_lightweight_safety_scan(profile: dict) -> dict:
         "scam": {"score": scam_score, "level": _scam_level(scam_score), "flags": scam_flags},
         "nudity": {"score": nudity_score, "level": _nudity_level(nudity_score), "flags": nudity_flags, "reason": "Heuristische Schnellprüfung"},
     }
+
+
+def _analyze_chat_text_safety(text: str) -> dict:
+    message = (text or "").strip()
+    if not message:
+        return {
+            "score": 0,
+            "level": "low",
+            "flags": [],
+            "safe_to_send": True,
+            "warning": "",
+        }
+
+    score = 0
+    flags = []
+    for pattern, weight, label in CHAT_SCAM_SIGNAL_PATTERNS:
+        if pattern.search(message):
+            score += weight
+            flags.append(label)
+    if len(re.findall(r"https?://", message, re.IGNORECASE)) >= 1:
+        score += 18
+        flags.append("Externer Link im Chat")
+    if len(re.findall(r"\+\d{6,}", message)) >= 1:
+        score += 18
+        flags.append("Telefonnummer im Chat")
+    if re.search(r"@\w+", message):
+        score += 10
+        flags.append("Handle im Chat")
+
+    score = min(score, 100)
+    level = _scam_level(score)
+    warning = ""
+    safe_to_send = True
+    if level == "high":
+        safe_to_send = False
+        warning = "Diese Nachricht wirkt riskant. Bitte teile keine Geld-, Code- oder Zahlungsdaten im Chat."
+    elif level == "medium":
+        warning = "Vorsicht: Diese Nachricht enthält Muster, die häufig in Dating-Scams vorkommen."
+
+    return {
+        "score": score,
+        "level": level,
+        "flags": flags[:5],
+        "safe_to_send": safe_to_send,
+        "warning": warning,
+    }
+
+
+async def _build_chat_safety_summary(match_id: str) -> dict:
+    messages = await db.dating_messages.find({"match_id": match_id}, {"_id": 0, "text": 1, "sender_user_id": 1, "created_at": 1}).sort("created_at", -1).to_list(40)
+    highest = {"score": 0, "level": "low", "flags": [], "warning": "", "message_preview": "", "sender_user_id": ""}
+    flagged_messages = []
+    for row in messages:
+        analysis = _analyze_chat_text_safety(row.get("text") or "")
+        if analysis["score"] <= 0:
+            continue
+        entry = {
+            "score": analysis["score"],
+            "level": analysis["level"],
+            "flags": analysis["flags"],
+            "warning": analysis["warning"],
+            "message_preview": (row.get("text") or "")[:120],
+            "sender_user_id": row.get("sender_user_id"),
+            "created_at": row.get("created_at"),
+        }
+        flagged_messages.append(entry)
+        if analysis["score"] > highest["score"]:
+            highest = entry
+
+    if highest["score"] == 0:
+        return {
+            "score": 0,
+            "level": "low",
+            "flags": [],
+            "warning": "",
+            "status": "clear",
+            "flagged_count": 0,
+            "latest_flagged_message": None,
+            "updated_at": now_iso(),
+        }
+
+    return {
+        "score": highest["score"],
+        "level": highest["level"],
+        "flags": highest["flags"],
+        "warning": highest["warning"],
+        "status": "warning" if highest["level"] == "high" else "review",
+        "flagged_count": len(flagged_messages),
+        "latest_flagged_message": flagged_messages[0],
+        "updated_at": now_iso(),
+    }
+
+
+async def refresh_match_chat_safety(match_id: str) -> dict:
+    summary = await _build_chat_safety_summary(match_id)
+    await db.dating_matches.update_one({"match_id": match_id}, {"$set": {"chat_safety_summary": summary}})
+    return summary
 
 
 def _get_primary_photo_url(profile: dict) -> Optional[str]:
@@ -1052,10 +1163,66 @@ def calc_compatibility_score(me: dict, other: dict, filters: dict) -> int:
     return min(score, 99)
 
 
+def build_match_reasons(me: dict, other: dict, filters: dict) -> list[str]:
+    reasons = []
+    shared_interests = sorted(set(me.get("interests") or []).intersection(set(other.get("interests") or [])))
+    if shared_interests:
+        preview = ", ".join(shared_interests[:2])
+        reasons.append(f"Gemeinsame Interessen: {preview}")
+    if me.get("city") and other.get("city") and me.get("city") == other.get("city"):
+        reasons.append(f"Gleiche Stadt: {other.get('city')}")
+    if filters.get("relationship_intent") and other.get("relationship_intent") == filters.get("relationship_intent"):
+        reasons.append("Gleiche Beziehungsabsicht")
+    if other.get("verified"):
+        reasons.append("Verifiziertes Profil")
+    if other.get("voice_intro"):
+        reasons.append("Hat Voice Intro")
+    if other.get("video_profile"):
+        reasons.append("Hat Video-Profil")
+    if other.get("distance_km") is not None and other.get("distance_km") <= 5:
+        reasons.append("In deiner Nähe")
+    if other.get("profile_completion") and other.get("profile_completion") >= 70:
+        reasons.append("Vollständiges Profil")
+    return reasons[:4]
+
+
+async def sync_profile_from_registration(user: dict, profile: dict) -> dict:
+    if not profile:
+        return profile
+    user_name = user.get("name") or user.get("full_name") or user.get("email", "User").split("@")[0]
+    user_birth_date = user.get("birth_date")
+    user_age = years_old(user_birth_date)
+    user_city = user.get("city") or ""
+    user_avatar = user.get("profile_image") or user.get("avatar") or DEFAULT_AVATARS[0]
+
+    updates = {}
+    if not profile.get("name") and user_name:
+        updates["name"] = user_name
+    if not profile.get("birth_date") and user_birth_date:
+        updates["birth_date"] = user_birth_date
+    if not profile.get("age") and user_age:
+        updates["age"] = user_age
+    if not profile.get("city") and user_city:
+        updates["city"] = user_city
+    if not profile.get("avatar") and user_avatar:
+        updates["avatar"] = user_avatar
+    photos = profile.get("photos") or []
+    if (not photos or not photos[0]) and user_avatar:
+        updates["photos"] = [user_avatar]
+    if user.get("interests") and not profile.get("interests"):
+        updates["interests"] = (user.get("interests") or [])[:12]
+
+    if updates:
+        await db.dating_profiles.update_one({"profile_id": profile["profile_id"]}, {"$set": updates})
+        profile = {**profile, **updates}
+    return profile
+
+
 @router.get("/profile/me")
 async def my_profile(request: Request):
     user = await get_me(request)
     profile = await get_or_create_my_profile(user)
+    profile = await sync_profile_from_registration(user, profile)
     await maybe_seed_demo_like(profile)
     profile = await ensure_profile_safety(profile)
     filters = user.get("dating_filters") or {
@@ -1078,6 +1245,7 @@ async def my_profile(request: Request):
 async def update_my_profile(payload: DatingProfileUpdate, request: Request):
     user = await get_me(request)
     existing = await get_or_create_my_profile(user)
+    existing = await sync_profile_from_registration(user, existing)
     photos = payload.photos[:6] if payload.photos else existing.get("photos") or [existing.get("avatar") or DEFAULT_AVATARS[0]]
     avatar = photos[0]
     update = {
@@ -1543,6 +1711,7 @@ async def get_nearby_profiles(request: Request, radius_km: float = NEARBY_DEFAUL
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         await maybe_attach_safety(profile)
+        profile["match_reasons"] = build_match_reasons(my_profile, profile, user.get("dating_filters") or {})
         profile["discover_rank"] = calc_discover_rank(profile)
         results.append(profile)
     results.sort(key=lambda item: (item.get("distance_km", 999), -item.get("compatibility_score", 0)))
@@ -1568,6 +1737,7 @@ async def get_crossed_paths(request: Request):
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         await maybe_attach_safety(profile)
+        profile["match_reasons"] = build_match_reasons(my_profile, profile, user.get("dating_filters") or {})
         items.append(profile)
     return {"profiles": items}
 
@@ -1624,6 +1794,7 @@ async def discover(request: Request):
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         await maybe_attach_safety(profile)
+        profile["match_reasons"] = build_match_reasons(my_profile, profile, my_filters)
         profile["discover_rank"] = calc_discover_rank(profile)
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
@@ -1795,9 +1966,19 @@ async def get_matches(request: Request):
         profile["last_message"] = match.get("last_message", "")
         profile["last_message_at"] = match.get("last_message_at")
         profile["unread_count"] = (match.get("unread") or {}).get(my_user_id, 0)
+        profile["chat_safety_summary"] = match.get("chat_safety_summary") or {
+            "score": 0,
+            "level": "low",
+            "flags": [],
+            "warning": "",
+            "status": "clear",
+            "flagged_count": 0,
+            "latest_flagged_message": None,
+        }
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         await maybe_attach_safety(profile)
+        profile["match_reasons"] = build_match_reasons(my_profile, profile, user.get("dating_filters") or {})
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
         if profile.get("video_profile"):
@@ -1815,7 +1996,8 @@ async def get_match_messages(match_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Match nicht gefunden")
     messages = await db.dating_messages.find({"match_id": match_id}, {"_id": 0}).sort("created_at", 1).to_list(500)
     await db.dating_matches.update_one({"match_id": match_id}, {"$set": {f"unread.{my_user_id}": 0}})
-    return {"messages": messages, "match": match, "read_at": now_iso()}
+    summary = match.get("chat_safety_summary") or await refresh_match_chat_safety(match_id)
+    return {"messages": messages, "match": match, "read_at": now_iso(), "chat_safety_summary": summary}
 
 
 @router.post("/matches/{match_id}/messages")
@@ -1827,6 +2009,9 @@ async def send_message(match_id: str, payload: ChatMessageReq, request: Request)
     if not match:
         raise HTTPException(status_code=404, detail="Match nicht gefunden")
     other_user_id = next(uid for uid in match["participant_ids"] if uid != my_user_id)
+    preflight = _analyze_chat_text_safety(payload.text)
+    if not preflight["safe_to_send"]:
+        raise HTTPException(status_code=400, detail=preflight["warning"] or "Nachricht blockiert")
     message = {
         "message_id": build_message_id(),
         "match_id": match_id,
@@ -1834,16 +2019,31 @@ async def send_message(match_id: str, payload: ChatMessageReq, request: Request)
         "sender_profile_id": my_profile["profile_id"],
         "text": payload.text.strip(),
         "created_at": now_iso(),
+        "safety": {k: v for k, v in preflight.items() if k != "safe_to_send"},
     }
     await db.dating_messages.insert_one(message)
+    post_summary = await refresh_match_chat_safety(match_id)
     await db.dating_matches.update_one(
         {"match_id": match_id},
         {
-            "$set": {"last_message": message["text"], "last_message_at": message["created_at"], "last_message_sender_user_id": my_user_id},
+            "$set": {"last_message": message["text"], "last_message_at": message["created_at"], "last_message_sender_user_id": my_user_id, "chat_safety_summary": post_summary},
             "$inc": {f"unread.{other_user_id}": 1},
         },
     )
-    return {"ok": True, "message": sanitize_doc(message)}
+    return {"ok": True, "message": sanitize_doc(message), "chat_safety_preflight": preflight, "chat_safety_summary": post_summary}
+
+
+@router.post("/matches/{match_id}/chat-safety")
+async def get_chat_safety(match_id: str, payload: DatingChatSafetyReq, request: Request):
+    user = await get_me(request)
+    my_user_id = str(user["_id"])
+    if payload.match_id != match_id:
+        raise HTTPException(status_code=400, detail="match_id passt nicht")
+    match = await db.dating_matches.find_one({"match_id": match_id, "participant_ids": my_user_id}, {"_id": 0})
+    if not match:
+        raise HTTPException(status_code=404, detail="Match nicht gefunden")
+    summary = await refresh_match_chat_safety(match_id) if payload.force or not match.get("chat_safety_summary") else match.get("chat_safety_summary")
+    return {"ok": True, "match_id": match_id, "chat_safety_summary": summary}
 
 
 @router.post("/unmatch/{match_id}")
@@ -1913,6 +2113,7 @@ async def likes_you(request: Request):
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         await maybe_attach_safety(profile)
+        profile["match_reasons"] = build_match_reasons(me, profile, user.get("dating_filters") or {})
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
         if profile.get("video_profile"):
