@@ -1,6 +1,9 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
+- ✅ Roses / Priority Inbox live: Standouts haben jetzt direkte Rose-Kaufhebel und Priority Inbox-Metadaten.
+- ✅ Top Picks tägliche Rotation live: tägliche, stabile Rotation pro Nutzer/Tag ist vorbereitet und im UI sichtbar.
+- 🟡 Nächster sinnvoller Dating-Schritt: echte Segment-/Preisexperimente, z. B. Starter-Offer-Varianten, unterschiedliche Paywall-Kombinationen oder zeitlich limitierte Rose-Bundles.
 - ✅ Top Picks / Standouts live: kuratierte Discovery-Flächen für Gold/Platinum-Upsell sind eingebaut.
 - ✅ Platinum Message-before-match live: erste Nachricht kann schon beim Like gesendet werden.
 - 🟡 Nächster sinnvoller Dating-Schritt: echte **Top Picks Rotation** mit täglichen Refreshes, Standouts mit stärkerem Super-Like-Kaufdruck und eventuell **Roses / Priority Inbox** als nächster Umsatzhebel.

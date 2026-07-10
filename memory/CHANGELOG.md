@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating Roses + Priority Inbox + Daily Rotation
+- `backend/routes/dating.py`: Rose-Monetarisierung ergänzt mit `rose_pack_3` und `rose_pack_10`, `rose_credits` in Entitlements sowie `use_rose` im Like-Flow; Rose-Likes werden als `priority_inbox` markiert.
+- `backend/routes/dating.py`: `GET /api/dating/likes-you` priorisiert jetzt Priority-Inbox-Requests; `GET /api/dating/top-picks` und `GET /api/dating/standouts` liefern `rotation_key` für tägliche Rotation pro Nutzer/Tag.
+- `frontend/src/pages/DatingPage.jsx`: Rose-Packs im Consumables-Grid, direkter Rose-CTA in Standouts und tägliche Rotations-Kommunikation in Top Picks ergänzt.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Smoke-Test PASS, `testing_agent` **Iteration 227 PASS**.
+
 ## 10.07.2026 — Dating Top Picks / Standouts + Message-before-match
 - `backend/routes/dating.py`: neue kuratierte Discovery-Endpunkte `GET /api/dating/top-picks` und `GET /api/dating/standouts` ergänzt; sie sortieren Profile über eigenes Curation-/Standout-Scoring und liefern `pick_type`, `headline`, `locked` und bei Standouts `requires_superlike`.
 - `backend/routes/dating.py`: `POST /api/dating/like` erweitert um `opener_text` als Platinum-Feature. Wenn ein Like mit `opener_text` zu einem Match führt, wird die Nachricht automatisch als erste Chat-Nachricht gespeichert und in `last_message`/`last_message_at` übernommen.
