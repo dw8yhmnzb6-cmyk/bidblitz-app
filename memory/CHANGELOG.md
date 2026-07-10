@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Trust Admin CRM + Video Slots
+- `backend/routes/mining.py`: admin-only CRM-/Video-Endpunkte ergänzt: `GET /api/mining/trust/leads`, `POST /api/mining/trust/leads/{lead_id}/status`, `GET /api/mining/trust/videos`, `POST /api/mining/trust/videos`.
+- `frontend/src/pages/MiningTrustAdminPage.jsx`: neue Admin-Seite `/mining-trust-admin` für Lead-Management und Dubai-/Abu-Dhabi-Videoverwaltung.
+- `frontend/src/pages/MiningTrustPage.jsx`: öffentliche Video-Sektion rendert jetzt echte Videos aus der Admin-Verwaltung; Footer enthält Admin-CTA.
+- `frontend/src/App.js`: Route `/mining-trust-admin` ergänzt.
+- Verifiziert: `testing_agent` **Iteration 233 PASS** (100% Backend, 100% Frontend laut Report).
+
 ## 10.07.2026 — Mining Trust Public API + Lead Capture
 - `backend/routes/mining.py`: neue öffentliche Endpunkte `GET /api/mining/trust/public` und `POST /api/mining/trust/lead` ergänzt. Proof-Metriken werden öffentlich ausgeliefert; Leads werden validiert und gespeichert.
 - `frontend/src/pages/MiningTrustPage.jsx`: Mining-Trust-Seite nutzt jetzt API-getriebene Stats/Live-Metriken und enthält ein öffentliches Lead-Formular für Investoren/Kunden.
