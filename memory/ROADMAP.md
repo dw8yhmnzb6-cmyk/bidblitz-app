@@ -1,11 +1,18 @@
 # BidBlitz — ROADMAP
 
+## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
+- ✅ Dating P2 Safety Pro live: Scam-Signal-Erkennung im Profiltext, Nudity-Warnung/Fallback-Scan für Bilder, `safety_summary` auf Profil, Discover, Likes und Matches.
+- ✅ Dating Discovery / Ranking Intelligence verbessert: `discover_rank` berücksichtigt jetzt Safety, Profil-Vervollständigung und Medienqualität (Voice/Video) zusätzlich zu Boost/Verifizierung.
+- ✅ Dating Premium Hauptflow ist jetzt real: `GET /api/dating/premium/plans`, `POST /api/dating/premium/checkout`, `GET /api/dating/premium/status/{session_id}` arbeiten mit echtem Stripe Checkout und `payment_transactions`.
+- ⚠️ `POST /api/dating/premium/demo-upgrade` bleibt weiterhin **MOCKED** nur für Backward Compatibility; Haupt-UI-Flow nutzt bereits den realen Checkout.
+- 🟡 Nächster sinnvoller Dating-Schritt: Safety Pro weiter vertiefen (z. B. Chat-Scam-Signale / Inbox-Warnungen) oder Live-Dating / Events als nächster P2-Differenzierer.
+
 ## Status nach Dating Video-Profil — 10.07.2026
 - ✅ Dating P2 Video-Profil live: Aufnahme, Upload, Playback und Löschen funktionieren; Video-Metadaten erscheinen in Profil, Discover, Likes und Matches.
 - ✅ Dating P2 Voice Intro live.
 - ✅ Dating P2 Nearby / Crossed Paths live.
-- 🟡 Nächster sinnvoller Dating-Schritt: **Safety Pro** (Scam Detection / Nudity Warning) oder **Discovery / Ranking Intelligence** als nächster Qualitätshebel.
-- ⚠️ Dating Premium Aktivierung bleibt weiterhin **MOCKED** über `/api/dating/premium/demo-upgrade`; echte Subscription-/Payment-Verknüpfung ist weiterhin offen.
+- ✅ Safety Pro, Discovery / Ranking Intelligence und realer Premium-Checkout sind inzwischen umgesetzt.
+- ⚠️ Dating Premium Demo-Endpoint bleibt zusätzlich **MOCKED** für Backward Compatibility.
 
 ## Status nach Dating Voice Intro — 10.07.2026
 - ✅ Dating P2 Voice Intro live: Aufnahme, Upload, Playback und Löschen funktionieren; Voice-Metadaten erscheinen in Discover, Likes und Matches.

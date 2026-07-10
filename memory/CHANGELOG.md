@@ -1,5 +1,14 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating P2 Safety Pro + Discovery Intelligence + Real Premium Checkout
+- `backend/routes/dating.py`: Safety Pro ergänzt mit `safety_scan`/`safety_summary`, Scam-Signal-Heuristiken für Profiltexte, Nudity-Warnung/Fallback für Profilbilder, neuem Endpoint `POST /api/dating/safety/scan` und Propagation der Safety-Daten in Profil-, Discover-, Likes- und Matches-Responses.
+- `backend/routes/dating.py`: Discovery-/Ranking-Intelligence erweitert. `discover_rank` berücksichtigt jetzt zusätzlich Safety-Risiko, Profil-Vervollständigung, Voice Intro und Video-Profil statt nur Boost/Verifizierung/Aktivität.
+- `backend/routes/dating.py`: echter Dating-Premium-Zahlflow ergänzt mit `GET /api/dating/premium/plans`, `POST /api/dating/premium/checkout`, `GET /api/dating/premium/status/{session_id}` auf Basis von Stripe Checkout + `payment_transactions`.
+- `backend/routes/stripe.py`, `backend/routes/invoicing.py`: zentrale `/api/webhook/stripe`-Verarbeitung erweitert, damit bezahlte Dating-Premium-Sessions idempotent auf `dating_premium=true` / `premium=true` aktiviert werden.
+- `frontend/src/pages/DatingPage.jsx`: neue Safety-Pro-Karte mit Scam-/Bild-Risiko-Tiles, Refresh-Action, Safety-Badges in Discover, Safety-Chips in Likes/Matches sowie echter Premium-Checkout-CTA inkl. Status-Polling nach Redirect ergänzt.
+- `backend/tests/test_dating_safety_premium.py`: neue Backend-Tests für Safety Summary, Ranking, Premium-Pläne und echten Checkout-Session-Start ergänzt.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Pytest PASS (`test_dating_safety_premium.py`), API-Self-Tests PASS, `testing_agent` **Iteration 223 PASS**. **MOCKED:** `POST /api/dating/premium/demo-upgrade` bleibt nur noch für Backward Compatibility bestehen; Haupt-UI-Flow ist real.
+
 ## 10.07.2026 — Dating P2 Video-Profil
 - `backend/routes/dating.py`: echte Video-Profil-Funktion ergänzt mit Upload (`POST /api/dating/video-profile`), Stream (`GET /api/dating/video-profile/{media_id}`) und Delete (`DELETE /api/dating/video-profile`).
 - `backend/routes/dating.py`: Video-Validierung ergänzt (`webm`, `mp4`, `mov`, max. 45 Sekunden, max. 20 MB) und Speicherung über die reale Object-Storage-Integration umgesetzt.
