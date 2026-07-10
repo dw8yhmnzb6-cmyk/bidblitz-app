@@ -457,6 +457,30 @@ export default function MiningPage({ onBack, onNavigate }) {
                 <ChevronRight size={16} className="text-white/40" />
               </motion.button>
 
+              <motion.button
+                data-testid="mining-trust-banner"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onNavigate?.("/mining-trust")}
+                className="w-full rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(59,130,246,0.06))",
+                  border: "1px solid rgba(245,158,11,0.28)",
+                  boxShadow: "0 4px 20px rgba(245,158,11,0.08)",
+                }}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: "radial-gradient(circle, rgba(245,158,11,0.22), transparent)", border: "1px solid rgba(245,158,11,0.85)" }}>
+                  <Shield size={20} className="text-[#F59E0B]" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-[13px] font-bold text-white">Mining Server & Vertrauen <span className="text-[9px] text-[#F59E0B] font-semibold">NEU</span></p>
+                  <p className="text-[10px] text-white/60">Dubai · Abu Dhabi · ASIC-Fotos · Infrastruktur transparent zeigen</p>
+                </div>
+                <ChevronRight size={16} className="text-white/40" />
+              </motion.button>
+
               {/* Balance Card — Premium Glassmorphism */}
               <motion.div className="rounded-3xl p-5 relative overflow-hidden"
                 style={{ 

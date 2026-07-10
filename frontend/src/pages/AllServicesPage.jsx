@@ -99,6 +99,7 @@ const CATEGORIES = [
       { icon: Gamepad2, label: "Gaming", desc: "11 Spiele, Coins gewinnen", route: "/gaming", color: "#EC4899" },
       { icon: Star, label: "BlitzPoints", desc: "Punkte sammeln, Prämien", route: "/loyalty", color: "#FBBF24" },
       { icon: TrendingUp, label: "Mining", desc: "BLZ Tokens verdienen", route: "/mining", color: "#10B981" },
+      { icon: Shield, label: "Mining Server", desc: "Dubai & Abu Dhabi Infrastruktur", route: "/mining-trust", color: "#F59E0B" },
       { icon: Users, label: "Freunde einladen", desc: "€10 pro Einladung", route: "/referral", color: "#22D3EE" },
       { icon: FileText, label: "CV-Builder", desc: "Lebenslauf erstellen, PDF", route: "/cv-builder", color: "#6366F1" },
     ],

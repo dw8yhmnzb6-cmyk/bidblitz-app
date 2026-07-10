@@ -317,7 +317,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     tracker.featureClick(featureId);
     if (isGuest) { onRegister(); return; }
     const routeMap = {
-      wallet: "/wallet", mining: "/mining",
+      wallet: "/wallet", mining: "/mining", miningTrust: "/mining-trust",
       merchant: "/merchant-landing", nfc: "/nfc", vip: "/vip",
       referral: "/referral", marketplace: "/marketplace", rewards: "/rewards", commerce: "/commerce-center", mobilityCenter: "/mobility-center",
     };
@@ -328,6 +328,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
     { id: "wallet", icon: Wallet, title: t("home.f_wallet") || "Wallet", desc: t("home.f_wallet_d") || "Manage your money", color: "#00C2FF", route: "/wallet", large: true },
     { id: "auctions", icon: Gavel, title: t("home.f_auctions") || "Auctions", desc: t("home.f_auctions_d") || "Bid & win deals", color: "#A855F7", route: "/auctions" },
     { id: "mining", icon: Cpu, title: t("home.f_mining") || "Mining", desc: t("home.f_mining_d") || "Mine BLZ tokens", color: "#00E89D", route: "/mining" },
+    { id: "miningTrust", icon: Shield, title: t("mining.trust_title") || "Mining Server", desc: t("mining.trust_menu_desc") || "Dubai & Abu Dhabi Infrastruktur", color: "#F59E0B", route: "/mining-trust" },
     { id: "merchant", icon: Store, title: t("home.f_merchant") || "Merchant", desc: t("home.f_merchant_d") || "POS & payments", color: "#FFB800", route: "/merchant-landing" },
   ]);
 

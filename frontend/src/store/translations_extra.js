@@ -6,6 +6,8 @@
 
 const extra = {
   en: {
+    "mining.trust_title": "Mining Servers",
+    "mining.trust_menu_desc": "Show Dubai & Abu Dhabi infrastructure transparently",
     "rewards.hub": "Reward Hub",
     "rewards.mystery_boxes": "Mystery Boxes",
     "rewards.spin_wheel": "Spin Wheel",
@@ -212,6 +214,8 @@ const extra = {
   },
 
   de: {
+    "mining.trust_title": "Mining Server",
+    "mining.trust_menu_desc": "Dubai & Abu Dhabi Infrastruktur transparent zeigen",
     "rewards.hub": "Reward Hub",
     "rewards.mystery_boxes": "Mystery Boxen",
     "rewards.spin_wheel": "Glücksrad",
