@@ -1,0 +1,139 @@
+{
+  "summary": "Dating Monetization Experiments Testing Complete. All 24 backend tests passed. Frontend UI verified - experiments object, starter_offer, limited_bundle_offer, dynamic paywall headline, and highlighted plan all working correctly for fresh test user.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dating_monetization_experiments.py",
+    "/app/test_reports/pytest/iter228_dating_monetization_experiments.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "dating.py: DATING_EXPERIMENTS correctly defines 3 experiment types: starter_offer_variant, paywall_layout, rose_bundle_offer",
+    "dating.py: _experiment_bucket uses deterministic SHA256 hash of user_id::experiment_key for consistent segment assignment",
+    "dating.py: _active_experiments_for_profile correctly returns all 3 experiment variants with variant_key and config",
+    "dating.py: _starter_offer_for_profile correctly gates on profile age (< 7 days), premium status, and claimed status",
+    "dating.py: _limited_bundle_offer correctly calculates expires_at based on profile creation + expires_hours",
+    "dating.py: _pricing_payload_for_profile correctly includes plans, consumables, starter_offer, limited_bundle_offer, and experiments",
+    "dating.py: GET /api/dating/monetization correctly returns full pricing payload with experiments",
+    "DatingPage.jsx: monetization hero card correctly displays dynamic headline from experiments.paywall_layout.headline",
+    "DatingPage.jsx: dating-starter-offer-chip correctly renders starter offer with price and days_left",
+    "DatingPage.jsx: dating-limited-bundle-chip correctly renders limited bundle with price and badge",
+    "DatingPage.jsx: dating-limited-bundle-card correctly renders with buy CTA (dating-limited-bundle-buy)",
+    "DatingPage.jsx: Plan cards correctly apply ring-2 highlight based on experiments.paywall_layout.highlight_plan"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_dating_monetization_experiments.py"
+  ],
+  "success_rate": {
+    "backend": "100% (24/24 passed)",
+    "frontend": "100% (all UI elements verified)"
+  },
+  "test_credentials": "Fresh test user: dating.exp.66788803@example.com / DatingTest2026!, Reviewer: reviewer@bidblitz.ae / BidBlitzReview2026!",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Dating monetization experiments fully tested. Fresh test user receives platinum_trial starter variant (12.99€), power_bundle limited bundle (10 Roses, 17.99€), and value_stack paywall layout (highlights plus_30d). Reviewer account (older) gets no starter_offer but still gets experiments and limited_bundle_offer. All 3 experiment types (starter_offer_variant, paywall_layout, rose_bundle_offer) use deterministic segment assignment based on user_id hash.",
+  "working_features": [
+    "GET /api/dating/monetization - Returns experiments object with all 3 experiment types",
+    "GET /api/dating/monetization - Returns starter_offer for eligible users (< 7 days, non-premium)",
+    "GET /api/dating/monetization - Returns limited_bundle_offer with expires_at and badge",
+    "GET /api/dating/premium/plans - Returns same experiments payload",
+    "Deterministic segment assignment - Same user gets same variants on multiple calls",
+    "Starter offer variants: gold_starter, plus_entry, platinum_trial",
+    "Paywall layout variants: gold_focus, rose_focus, value_stack",
+    "Rose bundle variants: mini_bundle (3 Roses, 24h), power_bundle (10 Roses, 12h)",
+    "UI: dating-monetization-hero-card displays dynamic headline from experiment",
+    "UI: dating-starter-offer-chip shows starter deal with price and days_left",
+    "UI: dating-limited-bundle-chip shows limited bundle with price and badge",
+    "UI: dating-limited-bundle-card with dating-limited-bundle-buy CTA",
+    "UI: Plan cards highlight based on experiments.paywall_layout.highlight_plan",
+    "UI: 7 consumable cards including rose_pack_3 and rose_pack_10",
+    "UI: All 3 dating tabs (Entdecken, Matches, Likes You) working",
+    "Regression: All existing dating endpoints working (discover, matches, profile/me, swipes-left, likes-you, top-picks, standouts)"
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "POST /api/dating/premium/demo-upgrade - MOCKED demo premium upgrade (backward compatibility only)"
+    ]
+  },
+  "backend_test_results": {
+    "TestMonetizationExperimentsPayload": {
+      "test_monetization_returns_experiments_object": "PASS",
+      "test_starter_offer_variant_structure": "PASS",
+      "test_paywall_layout_variant_structure": "PASS",
+      "test_rose_bundle_offer_variant_structure": "PASS"
+    },
+    "TestStarterOfferForFreshUser": {
+      "test_fresh_user_receives_starter_offer": "PASS",
+      "test_starter_offer_price_is_discounted": "PASS",
+      "test_starter_offer_days_left_valid": "PASS"
+    },
+    "TestLimitedBundleOffer": {
+      "test_limited_bundle_offer_present": "PASS",
+      "test_limited_bundle_offer_structure": "PASS",
+      "test_limited_bundle_item_is_rose_pack": "PASS",
+      "test_limited_bundle_expires_at_is_future": "PASS"
+    },
+    "TestDeterministicSegmentAssignment": {
+      "test_same_user_gets_same_experiments": "PASS"
+    },
+    "TestPremiumPlansWithExperiments": {
+      "test_premium_plans_endpoint_returns_experiments": "PASS",
+      "test_plans_include_starter_offer_when_eligible": "PASS"
+    },
+    "TestReviewerAccountExperiments": {
+      "test_reviewer_gets_experiments_object": "PASS",
+      "test_reviewer_gets_limited_bundle_offer": "PASS"
+    },
+    "TestRegressionExistingEndpoints": {
+      "test_discover_endpoint_still_works": "PASS",
+      "test_matches_endpoint_still_works": "PASS",
+      "test_profile_me_endpoint_still_works": "PASS",
+      "test_swipes_left_endpoint_still_works": "PASS",
+      "test_likes_you_endpoint_still_works": "PASS",
+      "test_top_picks_endpoint_still_works": "PASS",
+      "test_standouts_endpoint_still_works": "PASS",
+      "test_consumables_in_monetization": "PASS"
+    }
+  },
+  "frontend_test_results": {
+    "dating-page": "PASS",
+    "dating-monetization-hero-card": "PASS",
+    "dynamic_headline": "PASS (Starte günstig und erweitere später)",
+    "dating-starter-offer-chip": "PASS (Starter Deal · 12.99 € statt 29.99 € · 7 Tage)",
+    "dating-limited-bundle-chip": "PASS (10 Roses · 17.99 € · Bester Deal)",
+    "dating-limited-bundle-card": "PASS",
+    "dating-limited-bundle-buy": "PASS (Jetzt sichern · 17.99 €)",
+    "dating-plan-card-plus_30d": "PASS (highlighted)",
+    "dating-plan-card-gold_30d": "PASS",
+    "dating-plan-card-platinum_30d": "PASS (starter price 12.99€)",
+    "dating-consumables-grid": "PASS (7 cards)",
+    "dating-tab-discover": "PASS",
+    "dating-tab-matches": "PASS",
+    "dating-tab-likes": "PASS",
+    "console_errors": "NONE"
+  },
+  "api_response_shapes": {
+    "GET /api/dating/monetization": {
+      "plans": "array with starter_offer field when eligible",
+      "consumables": "array including rose_pack_3 and rose_pack_10",
+      "starter_offer": "object with offer_id, title, subtitle, plan_id, offer_price_eur, regular_price_eur, days_left, features, variant_key (null for ineligible users)",
+      "limited_bundle_offer": "object with offer_id, title, subtitle, item_id, price_eur, badge, expires_at, expires_hours",
+      "experiments": {
+        "starter_offer_variant": "object with variant_key, title, plan_id, offer_price_eur, subtitle",
+        "paywall_layout": "object with variant_key, highlight_plan, headline",
+        "rose_bundle_offer": "object with variant_key, item_id, badge, expires_hours"
+      }
+    }
+  },
+  "test_date": "2026-07-10T13:40:00Z",
+  "test_scope": "Dating monetization experiments: segment/price experiments, starter deals, limited-time rose bundles, paywall variants, regression"
+}

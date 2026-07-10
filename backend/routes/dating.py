@@ -303,6 +303,44 @@ DATING_CONSUMABLES = {
     },
 }
 
+DATING_EXPERIMENTS = {
+    "starter_offer_variant": {
+        "variants": {
+            "gold_starter": {
+                "title": "Starter Gold",
+                "plan_id": "gold_30d",
+                "offer_price_eur": 9.99,
+                "subtitle": "Erste Woche Gold günstiger freischalten",
+            },
+            "plus_entry": {
+                "title": "Easy Einstieg",
+                "plan_id": "plus_30d",
+                "offer_price_eur": 3.99,
+                "subtitle": "Günstiger Einstieg für erste Premium-Vorteile",
+            },
+            "platinum_trial": {
+                "title": "Platinum Trial",
+                "plan_id": "platinum_30d",
+                "offer_price_eur": 12.99,
+                "subtitle": "Kurzfristig mehr Priorität und Opener testen",
+            },
+        }
+    },
+    "paywall_layout": {
+        "variants": {
+            "gold_focus": {"highlight_plan": "gold_30d", "headline": "Gold holt Likes You frei"},
+            "rose_focus": {"highlight_plan": "platinum_30d", "headline": "Mehr Antworten mit Roses & Priority Inbox"},
+            "value_stack": {"highlight_plan": "plus_30d", "headline": "Starte günstig und erweitere später"},
+        }
+    },
+    "rose_bundle_offer": {
+        "variants": {
+            "mini_bundle": {"item_id": "rose_pack_3", "badge": "Beliebt", "expires_hours": 24},
+            "power_bundle": {"item_id": "rose_pack_10", "badge": "Bester Deal", "expires_hours": 12},
+        }
+    },
+}
+
 SCAM_SIGNAL_PATTERNS = [
     (re.compile(r"\b(telegram|whatsapp|snapchat|signal|kik)\b", re.IGNORECASE), 20, "Off-Platform Kontaktwechsel"),
     (re.compile(r"\b(crypto|bitcoin|investment|forex|trading)\b", re.IGNORECASE), 28, "Investment-/Krypto-Bezug"),
@@ -1458,21 +1496,69 @@ def _starter_offer_for_profile(profile: dict) -> Optional[dict]:
     age_days = (datetime.now(timezone.utc) - created_at).days
     if age_days > 7 or profile.get("premium") or profile.get("starter_offer_claimed"):
         return None
-    base_plan = DATING_PREMIUM_PLANS["gold_30d"]
+    experiments = _active_experiments_for_profile(profile)
+    starter_variant = experiments["starter_offer_variant"]
+    base_plan = DATING_PREMIUM_PLANS[starter_variant["plan_id"]]
     return {
-        "offer_id": "starter_gold_7d",
-        "title": "Starter Deal",
-        "subtitle": "Erste Woche mit Gold-Vorteilen günstiger freischalten",
-        "plan_id": "gold_30d",
-        "offer_price_eur": base_plan.get("starter_price_eur", 9.99),
+        "offer_id": f"starter_{starter_variant['variant_key']}",
+        "title": starter_variant["title"],
+        "subtitle": starter_variant["subtitle"],
+        "plan_id": starter_variant["plan_id"],
+        "offer_price_eur": starter_variant["offer_price_eur"],
         "regular_price_eur": base_plan["price_eur"],
         "days_left": max(0, 7 - age_days),
         "features": base_plan["features"],
+        "variant_key": starter_variant["variant_key"],
+    }
+
+
+def _experiment_bucket(profile: dict, experiment_key: str) -> str:
+    variants = list(DATING_EXPERIMENTS[experiment_key]["variants"].keys())
+    seed = hashlib.sha256(f"{profile.get('user_id','anon')}::{experiment_key}".encode("utf-8")).hexdigest()
+    return variants[int(seed[:8], 16) % len(variants)]
+
+
+def _active_experiments_for_profile(profile: dict) -> dict:
+    starter_variant_key = _experiment_bucket(profile, "starter_offer_variant")
+    paywall_variant_key = _experiment_bucket(profile, "paywall_layout")
+    rose_variant_key = _experiment_bucket(profile, "rose_bundle_offer")
+    return {
+        "starter_offer_variant": {
+            "variant_key": starter_variant_key,
+            **DATING_EXPERIMENTS["starter_offer_variant"]["variants"][starter_variant_key],
+        },
+        "paywall_layout": {
+            "variant_key": paywall_variant_key,
+            **DATING_EXPERIMENTS["paywall_layout"]["variants"][paywall_variant_key],
+        },
+        "rose_bundle_offer": {
+            "variant_key": rose_variant_key,
+            **DATING_EXPERIMENTS["rose_bundle_offer"]["variants"][rose_variant_key],
+        },
+    }
+
+
+def _limited_bundle_offer(profile: dict) -> dict:
+    experiments = _active_experiments_for_profile(profile)
+    variant = experiments["rose_bundle_offer"]
+    item = DATING_CONSUMABLES.get(variant["item_id"])
+    created_at = parse_iso_datetime(profile.get("created_at")) or datetime.now(timezone.utc)
+    expires_at = created_at + timedelta(hours=int(variant.get("expires_hours", 24)))
+    return {
+        "offer_id": f"bundle_{variant['variant_key']}",
+        "title": item["label"],
+        "subtitle": f"Zeitlich limitiertes Bundle · {variant['badge']}",
+        "item_id": item["item_id"],
+        "price_eur": item["price_eur"],
+        "badge": variant["badge"],
+        "expires_at": expires_at.isoformat(),
+        "expires_hours": variant["expires_hours"],
     }
 
 
 def _pricing_payload_for_profile(profile: dict) -> dict:
     starter = _starter_offer_for_profile(profile)
+    experiments = _active_experiments_for_profile(profile)
     plans = []
     for key in ["plus_30d", "gold_30d", "platinum_30d"]:
         item = dict(DATING_PREMIUM_PLANS[key])
@@ -1487,6 +1573,8 @@ def _pricing_payload_for_profile(profile: dict) -> dict:
         "plans": plans,
         "consumables": list(DATING_CONSUMABLES.values()),
         "starter_offer": starter,
+        "limited_bundle_offer": _limited_bundle_offer(profile),
+        "experiments": experiments,
     }
 
 
