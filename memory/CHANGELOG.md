@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating P2 Voice Intro
+- `backend/routes/dating.py`: echte Voice-Intro-Funktion ergänzt mit Upload (`POST /api/dating/voice-intro`), Stream (`GET /api/dating/voice-intro/{media_id}`) und Delete (`DELETE /api/dating/voice-intro`).
+- `backend/routes/dating.py`: Object-Storage-Integration nach Playbook eingebunden (`EMERGENT_LLM_KEY`, Storage init, put/get object) und `dating_media` als DB-Referenzquelle für Audio-Dateien verwendet.
+- `backend/routes/dating.py`: Voice-Intro-Metadaten an Profil-, Discover-, Matches- und Likes-Responses propagiert, inklusive `stream_url`.
+- `frontend/src/pages/DatingPage.jsx`: Voice-Intro-Karte mit Aufnahme via `MediaRecorder`, Stop/Play/Delete-Steuerung und Voice-Chips auf Discover-/Likes-/Match-Karten ergänzt.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Curl-/API-Self-Tests PASS, Browser-Smoke PASS, `testing_agent` **Iteration 221 PASS**. **MOCKED:** `POST /api/dating/premium/demo-upgrade` bleibt weiterhin Demo-/Mock-Flow.
+
 ## 10.07.2026 — Dating P2 Nearby / Crossed Paths + Setup-UX
 - `backend/routes/dating.py`: neue Standort-Features ergänzt — `POST /api/dating/location`, `GET /api/dating/nearby`, `GET /api/dating/crossed-paths`.
 - `backend/routes/dating.py`: Haversine-basierte Distanzberechnung, Freshness-Check (`LOCATION_FRESH_HOURS`), `distance_km`-Metadaten und `dating_crossed_paths`-Persistenz mit `cross_count` / `last_crossed_at` umgesetzt.

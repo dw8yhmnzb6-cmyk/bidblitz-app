@@ -1,5 +1,11 @@
 # BidBlitz — ROADMAP
 
+## Status nach Dating Voice Intro — 10.07.2026
+- ✅ Dating P2 Voice Intro live: Aufnahme, Upload, Playback und Löschen funktionieren; Voice-Metadaten erscheinen in Discover, Likes und Matches.
+- ✅ Dating P2 Nearby / Crossed Paths bereits live und stabil.
+- 🟡 Nächster sinnvoller Dating-Schritt: **Video-Profil** als nächster Medienbaustein oder **Safety Pro** (Scam Detection / Nudity Warning).
+- ⚠️ Dating Premium Aktivierung bleibt weiterhin **MOCKED** über `/api/dating/premium/demo-upgrade`; echte Subscription-/Payment-Verknüpfung ist weiterhin offen.
+
 ## Status nach Dating Nearby / Crossed Paths — 10.07.2026
 - ✅ Dating P2 Nearby live: Nutzer können Standort freigeben; Nearby-Profile werden mit `distance_km` ausgeliefert.
 - ✅ Dating P2 Crossed Paths live: räumliche Begegnungen werden gespeichert und im Dating-UI angezeigt.
