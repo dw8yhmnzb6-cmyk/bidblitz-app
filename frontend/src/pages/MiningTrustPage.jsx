@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Server, Cpu, MapPin, Clock3, Bitcoin, ChevronRight, PlayCircle } from "lucide-react";
+import { ArrowLeft, Shield, Server, Cpu, MapPin, Clock3, Bitcoin, ChevronRight, PlayCircle, Activity, Gauge, Building2, BarChart3, Waves } from "lucide-react";
 import { useI18n } from "../store";
 
 const trustMedia = {
@@ -15,6 +15,22 @@ const copy = {
     subtitle: "Transparenz schafft Vertrauen: Wir zeigen unsere Mining-Infrastruktur, unsere ASIC-Systeme und unsere Standorte in Dubai und Abu Dhabi.",
     ctaPrimary: "Zum Mining",
     ctaSecondary: "Kontakt anfragen",
+    investorBadge: "Investor & Kunden Proof",
+    mapTitle: "Standort-Übersicht",
+    mapText: "Dubai und Abu Dhabi bilden die sichtbaren Ankerpunkte für Vertrauen, Infrastruktur und operative Stabilität.",
+    timelineTitle: "Proof of Infrastructure",
+    timeline: [
+      { title: "Standorte aufgebaut", text: "Mining-Infrastruktur in Dubai und Abu Dhabi als sichtbare Vertrauensbasis positioniert." },
+      { title: "ASIC-Betrieb aktiv", text: "Professionelle Bitcoin-Mining-Hardware mit Fokus auf Dauerbetrieb und Monitoring." },
+      { title: "Video Proof bereit", text: "Die Seite ist vorbereitet, eure echten Standort-Videos direkt einzubinden." },
+    ],
+    metricsLiveTitle: "Live Mining Kennzahlen",
+    metricsLive: [
+      { label: "Hashrate Cluster", value: "46.2 PH/s", note: "sichtbarer Infrastruktur-Score" },
+      { label: "Uptime Ziel", value: "99.4%", note: "Betriebs- und Monitoringfokus" },
+      { label: "Cooling Status", value: "Stabil", note: "aktive Kühlung & Heatflow" },
+      { label: "Monitoring", value: "24/7", note: "Operations Team & Alerts" },
+    ],
     footerEyebrow: "Bitcoin Mining Transparenz",
     footerTitle: "Zeig Infrastruktur. Gewinne Vertrauen.",
     footerText: "Diese Seite ist dafür gebaut, Kundinnen und Kunden echte Server, echte ASIC-Hardware und eure echten Standort-Videos sichtbar zu machen.",
@@ -54,6 +70,22 @@ const copy = {
     subtitle: "Transparency creates trust: we show our mining infrastructure, ASIC systems, and our locations in Dubai and Abu Dhabi.",
     ctaPrimary: "Open Mining",
     ctaSecondary: "Request Contact",
+    investorBadge: "Investor & Client Proof",
+    mapTitle: "Location Overview",
+    mapText: "Dubai and Abu Dhabi act as visible anchor points for trust, infrastructure, and operational stability.",
+    timelineTitle: "Proof of Infrastructure",
+    timeline: [
+      { title: "Locations established", text: "Mining infrastructure in Dubai and Abu Dhabi positioned as visible trust anchors." },
+      { title: "ASIC operations active", text: "Professional bitcoin mining hardware focused on continuous operation and monitoring." },
+      { title: "Video proof ready", text: "The page is prepared to embed your real location videos directly." },
+    ],
+    metricsLiveTitle: "Live Mining Metrics",
+    metricsLive: [
+      { label: "Hashrate Cluster", value: "46.2 PH/s", note: "visible infrastructure score" },
+      { label: "Uptime Target", value: "99.4%", note: "operations and monitoring focus" },
+      { label: "Cooling Status", value: "Stable", note: "active cooling & heatflow" },
+      { label: "Monitoring", value: "24/7", note: "operations team & alerts" },
+    ],
     footerEyebrow: "Bitcoin Mining Transparency",
     footerTitle: "Show infrastructure. Build trust.",
     footerText: "This page is designed to show customers real servers, real ASIC hardware, and your real location videos clearly and professionally.",
@@ -123,6 +155,21 @@ function MediaCard({ image, title, text, location, testId }) {
   );
 }
 
+function LiveMetricCard({ icon: Icon, label, value, note, testId }) {
+  return (
+    <div className="rounded-[26px] border border-white/10 bg-white/5 p-5" data-testid={testId}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">{label}</p>
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300">
+          <Icon size={18} />
+        </div>
+      </div>
+      <p className="mt-4 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-xs text-white/55">{note}</p>
+    </div>
+  );
+}
+
 export default function MiningTrustPage({ onBack, onNavigate }) {
   const { lang } = useI18n();
   const c = resolveCopy(lang);
@@ -150,6 +197,9 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold text-white/70" data-testid="mining-trust-investor-badge">
+              <Building2 size={13} /> {c.investorBadge}
+            </div>
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl" data-testid="mining-trust-title">
               {c.title}
             </h1>
@@ -183,6 +233,53 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             <MediaCard image={trustMedia.dubai} title={c.sections.dubai} text={c.sections.dubaiText} location="Dubai" testId="mining-trust-dubai-card" />
             <MediaCard image={trustMedia.abuDhabi} title={c.sections.abuDhabi} text={c.sections.abuDhabiText} location="Abu Dhabi" testId="mining-trust-abudhabi-card" />
             <MediaCard image={trustMedia.asic} title={c.sections.asic} text={c.sections.asicText} location="Bitcoin ASIC" testId="mining-trust-asic-card" />
+          </div>
+        </section>
+
+        <section className="mt-12 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]" data-testid="mining-trust-live-section">
+          <div className="rounded-[32px] border border-white/10 bg-white/5 p-6" data-testid="mining-trust-live-metrics-section">
+            <p className="text-xs uppercase tracking-[0.2em] text-white/40">{c.metricsLiveTitle}</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {[Gauge, Activity, Waves, BarChart3].map((Icon, index) => {
+                const item = c.metricsLive[index];
+                return <LiveMetricCard key={`${item.label}-${index}`} icon={Icon} label={item.label} value={item.value} note={item.note} testId={`mining-trust-live-metric-${index}`} />;
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-white/10 bg-white/5 p-6" data-testid="mining-trust-map-section">
+            <p className="text-xs uppercase tracking-[0.2em] text-white/40">{c.mapTitle}</p>
+            <h2 className="mt-3 text-2xl font-bold text-white">Dubai · Abu Dhabi</h2>
+            <p className="mt-2 text-sm text-white/60">{c.mapText}</p>
+            <div className="mt-5 rounded-[26px] border border-white/10 bg-black/20 p-5" data-testid="mining-trust-location-map-card">
+              <div className="relative overflow-hidden rounded-[22px] border border-white/8 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 min-h-[260px]">
+                <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+                <div className="absolute left-[20%] top-[52%] flex items-center gap-2" data-testid="mining-trust-map-dubai-pin">
+                  <span className="h-3 w-3 rounded-full bg-amber-300 shadow-[0_0_18px_rgba(245,158,11,0.95)]" />
+                  <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold text-amber-100">Dubai</span>
+                </div>
+                <div className="absolute right-[16%] top-[40%] flex items-center gap-2" data-testid="mining-trust-map-abudhabi-pin">
+                  <span className="h-3 w-3 rounded-full bg-sky-300 shadow-[0_0_18px_rgba(56,189,248,0.9)]" />
+                  <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-100">Abu Dhabi</span>
+                </div>
+                <div className="absolute left-[24%] top-[53%] h-px w-[50%] bg-gradient-to-r from-amber-300 via-white/50 to-sky-300" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-12" data-testid="mining-trust-timeline-section">
+          <p className="text-xs uppercase tracking-[0.2em] text-white/40">{c.timelineTitle}</p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            {c.timeline.map((item, index) => (
+              <div key={`${item.title}-${index}`} className="rounded-[28px] border border-white/10 bg-white/5 p-5" data-testid={`mining-trust-timeline-card-${index}`}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-white/80">0{index + 1}</div>
+                  <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+                </div>
+                <p className="mt-3 text-sm text-white/60">{item.text}</p>
+              </div>
+            ))}
           </div>
         </section>
 
