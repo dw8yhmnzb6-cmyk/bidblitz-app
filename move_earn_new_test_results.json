@@ -1,6 +1,6 @@
 {
   "test_date": "2026-07-06T17:40:04.594464",
-  "backend_url": "https://kyc-approval-hub.preview.emergentagent.com",
+  "backend_url": "https://swipe-match-chat-8.preview.emergentagent.com",
   "credentials": "admin@bidblitz.ae / BidBlitz2026!",
   "total_tests": 7,
   "passed": 6,

@@ -1,6 +1,6 @@
 {
   "test_date": "2026-06-09T18:56:11.757091",
-  "base_url": "https://kyc-approval-hub.preview.emergentagent.com",
+  "base_url": "https://swipe-match-chat-8.preview.emergentagent.com",
   "tests": [
     {
       "test": "GET /api/mobility-platform/preferences",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 BidBlitz Move & Earn Backend Testing - New AI Coach & Scoring Flows
-Testing against external preview API: https://kyc-approval-hub.preview.emergentagent.com
+Testing against external preview API: https://swipe-match-chat-8.preview.emergentagent.com
 
 German Review Request:
 Teste die neuen Move-&-Earn-Backend-Flows der BidBlitz-App gegen die externe Preview-API.

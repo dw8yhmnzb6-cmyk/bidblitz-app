@@ -143,7 +143,7 @@ def test_login_sets_http_only_cookies(api_client, base_url):
 
 # module: CORS credentialed preflight response
 def test_auth_login_options_supports_credentials(base_url):
-    origin = "https://kyc-approval-hub.preview.emergentagent.com"
+    origin = "https://swipe-match-chat-8.preview.emergentagent.com"
     response = requests.options(
         f"{base_url}/api/auth/login",
         headers={

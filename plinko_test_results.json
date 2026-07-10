@@ -1,6 +1,6 @@
 {
   "test_date": "2026-06-15T19:32:21.376401",
-  "base_url": "https://kyc-approval-hub.preview.emergentagent.com",
+  "base_url": "https://swipe-match-chat-8.preview.emergentagent.com",
   "tests": [
     {
       "test": "Admin Login",

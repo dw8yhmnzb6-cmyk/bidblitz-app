@@ -17,7 +17,7 @@ import requests
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
+BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials

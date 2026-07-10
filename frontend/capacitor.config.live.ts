@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
   webDir: 'build',
   server: {
     androidScheme: 'https',
-    url: 'https://kyc-approval-hub.preview.emergentagent.com',
+    url: 'https://swipe-match-chat-8.preview.emergentagent.com',
     cleartext: true,
   },
   plugins: {

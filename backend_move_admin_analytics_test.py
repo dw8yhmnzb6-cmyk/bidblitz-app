@@ -15,7 +15,7 @@ Expected NEW fields/contracts:
 - trend_14d: array
 
 Admin Credentials: admin@bidblitz.ae / BidBlitz2026!
-Backend URL: https://kyc-approval-hub.preview.emergentagent.com
+Backend URL: https://swipe-match-chat-8.preview.emergentagent.com
 """
 
 import requests
@@ -23,7 +23,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
+BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.ae"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

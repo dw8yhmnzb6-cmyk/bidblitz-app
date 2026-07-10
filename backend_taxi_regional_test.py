@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 # External API URL from frontend/.env
-BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
+BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 def print_section(title):
@@ -317,7 +317,7 @@ def main():
     print("\n" + "="*80)
     print("  TAXI REGIONAL LOCATION LOGIC - BACKEND FINAL CHECK")
     print("  Context: testing_agent Iteration 159 follow-up")
-    print("  External API: https://kyc-approval-hub.preview.emergentagent.com")
+    print("  External API: https://swipe-match-chat-8.preview.emergentagent.com")
     print("="*80)
     
     results = {}

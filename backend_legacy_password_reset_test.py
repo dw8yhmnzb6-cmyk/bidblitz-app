@@ -25,7 +25,7 @@ import sys
 from datetime import datetime
 
 # External API URL
-BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
+BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_EMAIL = "admin@bidblitz.com"

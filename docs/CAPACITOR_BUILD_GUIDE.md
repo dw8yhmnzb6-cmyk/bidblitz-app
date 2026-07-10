@@ -166,7 +166,7 @@ In Native Apps keine process.env - nutze:
 ```typescript
 // capacitor.config.ts
 server: {
-  url: 'https://kyc-approval-hub.preview.emergentagent.com',
+  url: 'https://swipe-match-chat-8.preview.emergentagent.com',
   cleartext: true
 }
 ```

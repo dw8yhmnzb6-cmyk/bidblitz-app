@@ -88,7 +88,7 @@ def configure_cors(app):
     """Configure CORS middleware."""
     origins = [
         "http://localhost:3000",
-        "https://kyc-approval-hub.preview.emergentagent.com",
+        "https://swipe-match-chat-8.preview.emergentagent.com",
         os.getenv("REACT_APP_BACKEND_URL", ""),
     ]
     

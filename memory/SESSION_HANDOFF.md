@@ -335,14 +335,14 @@ const WalletPage = lazy(() => import("./pages/WalletPage"));
 ### Backend
 - **Running:** ✅ Yes (supervisor managed)
 - **Port:** 8001 (internal)
-- **URL:** https://kyc-approval-hub.preview.emergentagent.com/api
+- **URL:** https://swipe-match-chat-8.preview.emergentagent.com/api
 - **Routers Loaded:** 102/102
 - **Health:** ✅ Healthy
 
 ### Frontend
 - **Running:** ✅ Yes
 - **Port:** 3000 (internal)
-- **URL:** https://kyc-approval-hub.preview.emergentagent.com
+- **URL:** https://swipe-match-chat-8.preview.emergentagent.com
 - **Build:** Production-ready
 - **Bundle:** Optimized (329 KB)
 
@@ -513,10 +513,10 @@ npx source-map-explorer build/static/js/*.js
 ### Testing
 ```bash
 # Backend API test
-curl https://kyc-approval-hub.preview.emergentagent.com/api/health
+curl https://swipe-match-chat-8.preview.emergentagent.com/api/health
 
 # Frontend test
-curl https://kyc-approval-hub.preview.emergentagent.com/
+curl https://swipe-match-chat-8.preview.emergentagent.com/
 ```
 
 ---

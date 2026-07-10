@@ -9,7 +9,7 @@ import csv
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://kyc-approval-hub.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://swipe-match-chat-8.preview.emergentagent.com").rstrip("/")
 
 MERCHANT_EMAIL = "haendler@bidblitz.com"
 MERCHANT_PASSWORD = "Haendler2026!"

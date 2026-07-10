@@ -2,7 +2,7 @@
 """
 BidBlitz Mobility Booking + AI Preferences Backend Test
 Tests the new booking endpoints and AI preferences integration
-External API: https://kyc-approval-hub.preview.emergentagent.com
+External API: https://swipe-match-chat-8.preview.emergentagent.com
 """
 
 import json
@@ -10,7 +10,7 @@ import httpx
 import asyncio
 from datetime import datetime
 
-BASE_URL = "https://kyc-approval-hub.preview.emergentagent.com"
+BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

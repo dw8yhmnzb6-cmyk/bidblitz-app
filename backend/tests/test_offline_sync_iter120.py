@@ -8,7 +8,7 @@ import pytest
 import requests
 from datetime import datetime, timezone
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://kyc-approval-hub.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://swipe-match-chat-8.preview.emergentagent.com").rstrip("/")
 
 STAFF_EMAIL = "TEST_magic_1778611082@example.com"
 STAFF_PASSWORD = "test123"

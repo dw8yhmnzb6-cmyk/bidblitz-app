@@ -203,7 +203,7 @@ def test_admin_canonical_login_and_removed_admin_rejected(client, base_url):
 
 # module: auth hardening preflight and brute-force lockout
 def test_preflight_explicit_origin_and_lockout_contract(base_url):
-    origin = "https://kyc-approval-hub.preview.emergentagent.com"
+    origin = "https://swipe-match-chat-8.preview.emergentagent.com"
     options = requests.options(
         f"{base_url}/api/auth/login",
         headers={

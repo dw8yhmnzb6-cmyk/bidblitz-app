@@ -69,7 +69,7 @@ nslookup -type=TXT send.bidblitz.ae
 
 ```bash
 # Admin-Token holen
-API_URL=https://kyc-approval-hub.preview.emergentagent.com
+API_URL=https://swipe-match-chat-8.preview.emergentagent.com
 
 TOKEN=$(curl -s -X POST "$API_URL/api/auth/login" \
   -H "Content-Type: application/json" \

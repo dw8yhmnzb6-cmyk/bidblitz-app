@@ -181,4 +181,4 @@ def test_auth_login_preflight_cors_credentials_header(base_url):
     )
     assert response.status_code in [200, 204]
     assert response.headers.get("access-control-allow-credentials", "").lower() == "true"
-    assert response.headers.get("access-control-allow-origin", "") in [origin, "https://kyc-approval-hub.preview.emergentagent.com"]
+    assert response.headers.get("access-control-allow-origin", "") in [origin, "https://swipe-match-chat-8.preview.emergentagent.com"]
