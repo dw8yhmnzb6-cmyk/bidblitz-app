@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Revenue Conversion Block
+- `frontend/src/pages/MiningTrustPage.jsx`: Advisor-/Ansprechpartner-Block ergänzt, inklusive Antwortzeit-Badge sowie WhatsApp-/Call-CTA.
+- `frontend/src/pages/MiningTrustPage.jsx`: Zielgruppen-Segmentierung für Investoren, Partner und Hosting-Kunden ergänzt.
+- `frontend/src/pages/MiningTrustPage.jsx`: Angebotskarten (`Investor Call`, `Partner Setup`, `Hosting Anfrage`) ergänzt; jede CTA scrollt zum Lead-Formular und füllt das Anliegen passend vor.
+- Verifiziert: `testing_agent` **Iteration 236 PASS** (100% Frontend laut Report).
+
 ## 10.07.2026 — Mining Trust Quick Contact + Sticky Bar + FAQ
 - `frontend/src/pages/MiningTrustPage.jsx`: Quick-Contact-Box ergänzt (WhatsApp, Telegram, Callback), mobile Sticky-Kontaktleiste ergänzt und FAQ-Sektion mit Accordion eingebaut.
 - Verifiziert: `testing_agent` **Iteration 235 PASS**; mobile und desktop ohne Layoutprobleme, Sticky-Bar ohne Überlappung.
