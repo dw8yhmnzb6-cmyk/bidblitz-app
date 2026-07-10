@@ -1,6 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
+- ✅ Mining Trust Quick Contact + FAQ live: 1-Klick-Kontakt und häufige Fragen sind jetzt direkt auf der Seite integriert.
+- 🟡 Nächster sinnvoller Mining-Schritt: echte WhatsApp-/Telegram-Ziele, Rückruf-Workflow und noch stärkere Conversion-Bausteine wie feste Ansprechpartner oder Response-SLA.
 - ✅ Mining Trust Lead Form vereinfacht: Schnell-Auswahl, optionale Firma und minimaler Submit mit Name + E-Mail funktionieren.
 - 🟡 Nächster sinnvoller Mining-Schritt: noch mehr Conversion mit WhatsApp-/Telegram-Schnellanfrage oder 1-Klick-Kontaktmodulen für Kunden.
 - ✅ Mining Trust Admin CRM + Video Slots live: Leads können verwaltet und Dubai-/Abu-Dhabi-Videos direkt gepflegt werden.

@@ -1,5 +1,9 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Trust Quick Contact + Sticky Bar + FAQ
+- `frontend/src/pages/MiningTrustPage.jsx`: Quick-Contact-Box ergänzt (WhatsApp, Telegram, Callback), mobile Sticky-Kontaktleiste ergänzt und FAQ-Sektion mit Accordion eingebaut.
+- Verifiziert: `testing_agent` **Iteration 235 PASS**; mobile und desktop ohne Layoutprobleme, Sticky-Bar ohne Überlappung.
+
 ## 10.07.2026 — Mining Trust Kundenformular vereinfacht
 - `backend/routes/mining.py`: `MiningTrustLeadRequest` um optionales `topic` erweitert; Leads speichern jetzt das ausgewählte Thema.
 - `frontend/src/pages/MiningTrustPage.jsx`: Schnell-Auswahl-Buttons für häufige Kundenanliegen ergänzt, Firmenfeld als optional markiert und Formularführung auf minimale Reibung reduziert.
