@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Edit2, SlidersHorizontal, Shield, Ban, BadgeCheck, Zap, Mic, Square, Play, Trash2, Video } from "lucide-react";
+import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Edit2, SlidersHorizontal, Shield, Ban, BadgeCheck, Zap, Mic, Square, Play, Trash2, Video, Gem, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 
@@ -30,6 +30,12 @@ const defaultPremiumPlans = [
     duration_days: 30,
     features: ["Unbegrenzte Likes", "Likes You freischalten", "Boost & Spotlight", "Rewind ohne Limit"],
   },
+];
+
+const defaultConsumables = [
+  { item_id: "boost_pack_1", type: "boost_pack", label: "1 Boost", price_eur: 4.99, quantity: 1, description: "30 Minuten Spotlight" },
+  { item_id: "superlike_pack_5", type: "superlike_pack", label: "5 Super Likes", price_eur: 5.99, quantity: 5, description: "Mehr Aufmerksamkeit" },
+  { item_id: "rewind_pack_10", type: "rewind_pack", label: "10 Rewinds", price_eur: 3.99, quantity: 10, description: "Verpasste Likes zurückholen" },
 ];
 
 function safetyTone(level) {
@@ -89,7 +95,10 @@ export default function DatingPage({ onBack }) {
   const [voiceIntroState, setVoiceIntroState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
   const [videoProfileState, setVideoProfileState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
   const [premiumPlans, setPremiumPlans] = useState(defaultPremiumPlans);
+  const [consumables, setConsumables] = useState(defaultConsumables);
+  const [monetization, setMonetization] = useState({ entitlements: {}, starter_offer: null, likes_you_count: 0, profile_completion: 0 });
   const [premiumCheckoutState, setPremiumCheckoutState] = useState({ loading: false, checking: false, sessionId: "" });
+  const [packCheckoutState, setPackCheckoutState] = useState({ loading: "" });
   const [safetyRefreshing, setSafetyRefreshing] = useState(false);
   const [chatSafetySummary, setChatSafetySummary] = useState(null);
   const [chatSafetyChecking, setChatSafetyChecking] = useState(false);
@@ -117,7 +126,7 @@ export default function DatingPage({ onBack }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [profileRes, discoverRes, matchesRes, swipeRes, likesRes, nearbyRes, crossedRes, plansRes] = await Promise.all([
+      const [profileRes, discoverRes, matchesRes, swipeRes, likesRes, nearbyRes, crossedRes, plansRes, monetizationRes] = await Promise.all([
         api("/api/dating/profile/me"),
         api("/api/dating/discover"),
         api("/api/dating/matches"),
@@ -126,6 +135,7 @@ export default function DatingPage({ onBack }) {
         api("/api/dating/nearby").catch(() => ({ nearby_enabled: false, profiles: [] })),
         api("/api/dating/crossed-paths").catch(() => ({ profiles: [] })),
         api("/api/dating/premium/plans").catch(() => ({ plans: defaultPremiumPlans })),
+        api("/api/dating/monetization").catch(() => ({ consumables: defaultConsumables, entitlements: {}, starter_offer: null, likes_you_count: 0, profile_completion: 0 })),
       ]);
       setUserProfile(profileRes.profile);
       setProfileForm({
@@ -142,6 +152,8 @@ export default function DatingPage({ onBack }) {
       setNearbyProfiles(nearbyRes.profiles || []);
       setCrossedProfiles(crossedRes.profiles || []);
       setPremiumPlans(plansRes.plans?.length ? plansRes.plans : defaultPremiumPlans);
+      setConsumables(monetizationRes.consumables?.length ? monetizationRes.consumables : defaultConsumables);
+      setMonetization(monetizationRes);
       setLocationState((prev) => ({ ...prev, enabled: Boolean(nearbyRes.nearby_enabled) }));
       setIdx(0);
       if ((!profileRes.profile?.bio || !profileRes.profile?.photos?.[0]) && !window.sessionStorage.getItem("dating-profile-setup-dismissed")) setShowProfileSetup(true);
@@ -326,13 +338,13 @@ export default function DatingPage({ onBack }) {
     }
   };
 
-  const startPremiumCheckout = async () => {
+  const startPremiumCheckout = async (planId = null) => {
     try {
       setPremiumCheckoutState({ loading: true, checking: false, sessionId: "" });
-      const planId = premiumPlans?.[0]?.plan_id || "premium_30d";
+      const chosenPlanId = planId || premiumPlans?.[0]?.plan_id || "gold_30d";
       const data = await api("/api/dating/premium/checkout", {
         method: "POST",
-        body: JSON.stringify({ plan_id: planId, origin_url: window.location.origin }),
+        body: JSON.stringify({ plan_id: chosenPlanId, origin_url: window.location.origin }),
       });
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
@@ -342,6 +354,24 @@ export default function DatingPage({ onBack }) {
     } catch (error) {
       toast.error(error.message);
       setPremiumCheckoutState({ loading: false, checking: false, sessionId: "" });
+    }
+  };
+
+  const startConsumableCheckout = async (itemId) => {
+    try {
+      setPackCheckoutState({ loading: itemId });
+      const data = await api("/api/dating/consumables/checkout", {
+        method: "POST",
+        body: JSON.stringify({ item_id: itemId, origin_url: window.location.origin }),
+      });
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+      throw new Error("Keine Checkout-URL erhalten");
+    } catch (error) {
+      toast.error(error.message);
+      setPackCheckoutState({ loading: "" });
     }
   };
 
@@ -709,6 +739,20 @@ export default function DatingPage({ onBack }) {
         <button onClick={() => setShowProfileSetup(true)} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5" data-testid="dating-open-profile-edit"><Edit2 size={16} /></button>
       </div>
 
+      {!isPremium && (
+        <div className="px-4 mb-3" data-testid="dating-conversion-strip">
+          <button onClick={() => setShowPaywall(true)} className="w-full rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-3 text-left">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-yellow-200/70">Upgrade Trigger</p>
+                <p className="text-sm font-semibold text-white">{likesYou.count || monetization.likes_you_count || 0} Likes warten · freischalten für mehr Matches</p>
+              </div>
+              <Crown size={16} className="text-yellow-300" />
+            </div>
+          </button>
+        </div>
+      )}
+
       {premiumCheckoutState.checking && (
         <div className="px-4 mb-3" data-testid="dating-premium-status-banner">
           <div className="rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-100">
@@ -719,6 +763,29 @@ export default function DatingPage({ onBack }) {
 
       {userProfile && (
         <div className="px-4 mb-4 space-y-4" data-testid="dating-profile-completion-card">
+          {!isPremium && (
+            <div className="rounded-[28px] border border-yellow-400/20 bg-gradient-to-br from-yellow-500/12 via-orange-500/10 to-pink-500/10 p-5" data-testid="dating-monetization-hero-card">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-2xl">
+                  <p className="text-xs uppercase tracking-[0.18em] text-yellow-200/70">Monetarisierung · Konkurrenzniveau</p>
+                  <h2 className="mt-2 text-2xl font-bold text-white">Mehr Matches, mehr Sichtbarkeit, mehr Umsatz</h2>
+                  <p className="mt-2 text-sm text-white/65">Wie Tinder Gold / Platinum und HingeX: Likes You, Priorität, Boosts, Super Likes und limitierte Starter-Angebote.</p>
+                  {monetization?.starter_offer && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200" data-testid="dating-starter-offer-chip"><Gem size={13} />Starter Deal · {monetization.starter_offer.offer_price_eur.toFixed(2)} € statt {monetization.starter_offer.regular_price_eur.toFixed(2)} € · {monetization.starter_offer.days_left} Tage</div>}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[430px]">
+                  {premiumPlans.slice(0, 3).map((plan) => (
+                    <button key={plan.plan_id} onClick={() => startPremiumCheckout(plan.plan_id)} className={`rounded-2xl border px-4 py-4 text-left transition-transform hover:-translate-y-0.5 ${plan.tier === 'platinum' ? 'border-fuchsia-400/30 bg-fuchsia-500/10' : plan.tier === 'gold' ? 'border-yellow-400/25 bg-yellow-500/10' : 'border-white/10 bg-white/5'}`} data-testid={`dating-plan-card-${plan.plan_id}`}>
+                      <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold text-white">{plan.label}</span>{plan.tier === 'platinum' ? <Gem size={14} className="text-fuchsia-300" /> : plan.tier === 'gold' ? <Crown size={14} className="text-yellow-300" /> : <Lock size={14} className="text-white/45" />}</div>
+                      <p className="mt-2 text-lg font-bold text-white">{(plan.starter_offer?.offer_price_eur || plan.price_eur).toFixed(2)} €</p>
+                      {plan.starter_offer ? <p className="text-[11px] text-emerald-200">Starterpreis statt {plan.price_eur.toFixed(2)} €</p> : <p className="text-[11px] text-white/45">30 Tage</p>}
+                      <div className="mt-3 space-y-1">{(plan.features || []).slice(0, 3).map((feature, index) => <p key={`${feature}-${index}`} className="text-[11px] text-white/75" data-testid={`dating-plan-feature-${plan.plan_id}-${index}`}>• {feature}</p>)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="flex-1 min-w-0">
               <p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-1">Profil-Vervollständigung</p>
@@ -739,6 +806,23 @@ export default function DatingPage({ onBack }) {
               <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
               {!isPremium && <button onClick={startPremiumCheckout} className="px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-yellow-300 to-orange-400 text-black" data-testid="dating-upgrade-premium-inline">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium holen'}</button>}
             </div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-3" data-testid="dating-consumables-grid">
+            {consumables.map((item) => (
+              <div key={item.item_id} className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid={`dating-consumable-card-${item.item_id}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/45">Einzelkauf</p>
+                    <h3 className="text-sm font-semibold text-white">{item.label}</h3>
+                  </div>
+                  {item.type === 'boost_pack' ? <Zap size={15} className="text-yellow-300" /> : item.type === 'superlike_pack' ? <Star size={15} className="text-blue-300" /> : <ArrowLeft size={15} className="text-white/70" />}
+                </div>
+                <p className="mt-2 text-xl font-bold text-white">{item.price_eur.toFixed(2)} €</p>
+                <p className="mt-1 text-xs text-white/55">{item.description}</p>
+                <button onClick={() => startConsumableCheckout(item.item_id)} className="mt-4 w-full rounded-2xl bg-white/10 px-4 py-3 text-xs font-semibold text-white" data-testid={`dating-consumable-buy-${item.item_id}`}>{packCheckoutState.loading === item.item_id ? 'Weiterleitung...' : 'Jetzt kaufen'}</button>
+              </div>
+            ))}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="dating-safety-pro-card">
@@ -931,7 +1015,7 @@ export default function DatingPage({ onBack }) {
       {tab === "likes" && (
         <div className="px-4 space-y-3" data-testid="dating-likes-you-list">
           {likesYou.locked ? (
-            <div className="rounded-3xl border border-yellow-400/20 bg-yellow-500/10 p-6 text-center"><Crown size={36} className="mx-auto mb-3 text-yellow-300" /><h3 className="text-lg font-bold text-white">Likes You ist Premium</h3><p className="text-sm text-white/65 mt-2">{likesYou.count} Personen haben dich geliked.</p><p className="text-xs text-white/55 mt-2">{premiumPlans?.[0] ? `${premiumPlans[0].price_eur.toFixed(2)} € / ${premiumPlans[0].duration_days} Tage` : 'Premium aktivieren'}</p><button onClick={startPremiumCheckout} className="mt-4 px-5 py-3 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-likes-upgrade-button">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium freischalten'}</button></div>
+            <div className="rounded-3xl border border-yellow-400/20 bg-yellow-500/10 p-6 text-center" data-testid="dating-likes-paywall-card"><Crown size={36} className="mx-auto mb-3 text-yellow-300" /><h3 className="text-lg font-bold text-white">Likes You ist Gold / Platinum</h3><p className="text-sm text-white/65 mt-2">{likesYou.count} Personen haben dich bereits geliked — jetzt sichtbar machen.</p><div className="mt-4 grid grid-cols-3 gap-2 opacity-70 blur-[1px]" data-testid="dating-likes-blur-grid">{Array.from({ length: Math.min(Math.max(likesYou.count, 3), 6) }).map((_, index) => <div key={index} className="rounded-2xl border border-white/10 bg-white/10 p-3"><div className="mx-auto h-12 w-12 rounded-full bg-white/15" /><div className="mt-2 h-2 rounded bg-white/15" /><div className="mt-1 h-2 w-2/3 mx-auto rounded bg-white/10" /></div>)}</div><p className="text-xs text-white/55 mt-4">{premiumPlans.find((plan) => plan.tier === 'gold') ? `${premiumPlans.find((plan) => plan.tier === 'gold').label} · ${(premiumPlans.find((plan) => plan.tier === 'gold').starter_offer?.offer_price_eur || premiumPlans.find((plan) => plan.tier === 'gold').price_eur).toFixed(2)} €` : 'Gold aktivieren'}</p><button onClick={() => startPremiumCheckout('gold_30d')} className="mt-4 px-5 py-3 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-likes-upgrade-button">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Likes freischalten'}</button></div>
           ) : likesYou.profiles.length === 0 ? (
             <div className="text-center py-20"><Heart size={48} className="mx-auto mb-3 text-white/20" /><p className="text-sm text-white/60">Noch keine Likes</p></div>
           ) : likesYou.profiles.map((profile) => (
@@ -1016,7 +1100,7 @@ export default function DatingPage({ onBack }) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showPaywall && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-md rounded-3xl p-8 text-center bg-[#0F1016] border border-pink-500/30"><div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center bg-gradient-to-r from-yellow-300 to-orange-400"><Crown size={40} className="text-black" /></div><h2 className="text-2xl font-bold text-white mb-3">Gratis-Swipes aufgebraucht</h2><p className="text-gray-400 text-sm mb-3">Upgrade zu Premium für unbegrenzte Swipes, Likes You, Rewind und Boost.</p><p className="text-xs text-white/55 mb-6" data-testid="dating-premium-plan-copy">{premiumPlans?.[0] ? `${premiumPlans[0].label} · ${premiumPlans[0].price_eur.toFixed(2)} €` : 'Dating Premium'}</p><button onClick={startPremiumCheckout} className="w-full py-4 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-upgrade-premium">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium aktivieren'}</button><button onClick={() => setShowPaywall(false)} className="w-full py-3 rounded-xl font-medium text-white mt-3 bg-white/5" data-testid="dating-upgrade-cancel">Abbrechen</button></motion.div></motion.div>}
+        {showPaywall && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-2xl rounded-3xl p-8 bg-[#0F1016] border border-pink-500/30" data-testid="dating-paywall-modal"><div className="flex items-start gap-4"><div className="w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-r from-yellow-300 to-orange-400"><Crown size={40} className="text-black" /></div><div><h2 className="text-2xl font-bold text-white mb-2">Mehr Matches freischalten</h2><p className="text-gray-400 text-sm">Wie bei Tinder Gold / Platinum: Unlimited Likes, Likes You, Priorität, Boosts und stärkere Conversion.</p>{monetization?.starter_offer ? <p className="mt-2 text-xs text-emerald-200" data-testid="dating-paywall-starter-offer">Starter Deal aktiv: {monetization.starter_offer.offer_price_eur.toFixed(2)} € statt {monetization.starter_offer.regular_price_eur.toFixed(2)} €</p> : null}</div></div><div className="mt-6 grid gap-3 md:grid-cols-3">{premiumPlans.slice(0, 3).map((plan) => <button key={plan.plan_id} onClick={() => startPremiumCheckout(plan.plan_id)} className={`rounded-3xl border px-4 py-5 text-left ${plan.tier === 'platinum' ? 'border-fuchsia-400/30 bg-fuchsia-500/10' : plan.tier === 'gold' ? 'border-yellow-400/25 bg-yellow-500/10' : 'border-white/10 bg-white/5'}`} data-testid={`dating-paywall-plan-${plan.plan_id}`}><p className="text-sm font-bold text-white">{plan.label}</p><p className="mt-2 text-2xl font-bold text-white">{(plan.starter_offer?.offer_price_eur || plan.price_eur).toFixed(2)} €</p><p className="text-[11px] text-white/45">30 Tage</p><div className="mt-3 space-y-1">{(plan.features || []).slice(0, 4).map((feature, index) => <p key={`${feature}-${index}`} className="text-[11px] text-white/75" data-testid={`dating-paywall-plan-feature-${plan.plan_id}-${index}`}>• {feature}</p>)}</div></button>)}</div><div className="mt-5 grid gap-3 sm:grid-cols-3" data-testid="dating-paywall-consumables-grid">{consumables.slice(0, 3).map((item) => <button key={item.item_id} onClick={() => startConsumableCheckout(item.item_id)} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left" data-testid={`dating-paywall-consumable-${item.item_id}`}><p className="text-xs uppercase tracking-[0.16em] text-white/45">Einzelkauf</p><p className="mt-1 text-sm font-bold text-white">{item.label}</p><p className="mt-1 text-lg font-bold text-white">{item.price_eur.toFixed(2)} €</p></button>)}</div><button onClick={() => setShowPaywall(false)} className="mt-5 w-full py-3 rounded-xl font-medium text-white bg-white/5" data-testid="dating-upgrade-cancel">Abbrechen</button></motion.div></motion.div>}
       </AnimatePresence>
 
       <AnimatePresence>

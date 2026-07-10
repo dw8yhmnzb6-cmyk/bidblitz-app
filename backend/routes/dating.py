@@ -171,12 +171,63 @@ IMAGE_FETCH_TIMEOUT_SECONDS = 15
 IMAGE_FETCH_MAX_BYTES = 4 * 1024 * 1024
 
 DATING_PREMIUM_PLANS = {
+    "plus_30d": {
+        "plan_id": "plus_30d",
+        "tier": "plus",
+        "label": "Dating Plus · 30 Tage",
+        "price_eur": 9.99,
+        "currency": "eur",
+        "duration_days": 30,
+        "starter_price_eur": 4.99,
+        "starter_eligible_days": 7,
+        "features": [
+            "Unbegrenzte Likes",
+            "5 Rewinds pro Tag",
+            "Basis-Filter",
+            "Starter-Preis für neue User",
+        ],
+    },
+    "gold_30d": {
+        "plan_id": "gold_30d",
+        "tier": "gold",
+        "label": "Dating Gold · 30 Tage",
+        "price_eur": 19.99,
+        "currency": "eur",
+        "duration_days": 30,
+        "starter_price_eur": 9.99,
+        "starter_eligible_days": 7,
+        "features": [
+            "Alles aus Plus",
+            "Likes You sehen",
+            "1 Boost pro Woche",
+            "3 Super Likes pro Woche",
+            "Top-Match Highlights",
+        ],
+    },
+    "platinum_30d": {
+        "plan_id": "platinum_30d",
+        "tier": "platinum",
+        "label": "Dating Platinum · 30 Tage",
+        "price_eur": 29.99,
+        "currency": "eur",
+        "duration_days": 30,
+        "starter_price_eur": 14.99,
+        "starter_eligible_days": 7,
+        "features": [
+            "Alles aus Gold",
+            "Priorisierte Likes",
+            "2 Boosts pro Woche",
+            "5 Super Likes pro Woche",
+            "Höchste Discovery-Priorität",
+        ],
+    },
     "premium_30d": {
         "plan_id": "premium_30d",
         "label": "Dating Premium · 30 Tage",
         "price_eur": 14.99,
         "currency": "eur",
         "duration_days": 30,
+        "tier": "gold",
         "features": [
             "Unbegrenzte Likes",
             "Likes You freischalten",
@@ -184,6 +235,54 @@ DATING_PREMIUM_PLANS = {
             "Rewind ohne Limit",
         ],
     }
+}
+
+DATING_CONSUMABLES = {
+    "boost_pack_1": {
+        "item_id": "boost_pack_1",
+        "type": "boost_pack",
+        "label": "1 Boost",
+        "price_eur": 4.99,
+        "currency": "eur",
+        "quantity": 1,
+        "description": "30 Minuten Spotlight für dein Profil",
+    },
+    "boost_pack_3": {
+        "item_id": "boost_pack_3",
+        "type": "boost_pack",
+        "label": "3 Boosts",
+        "price_eur": 11.99,
+        "currency": "eur",
+        "quantity": 3,
+        "description": "Mehr Sichtbarkeit für intensive Match-Phasen",
+    },
+    "superlike_pack_5": {
+        "item_id": "superlike_pack_5",
+        "type": "superlike_pack",
+        "label": "5 Super Likes",
+        "price_eur": 5.99,
+        "currency": "eur",
+        "quantity": 5,
+        "description": "Mehr Aufmerksamkeit bei Top-Profilen",
+    },
+    "superlike_pack_15": {
+        "item_id": "superlike_pack_15",
+        "type": "superlike_pack",
+        "label": "15 Super Likes",
+        "price_eur": 13.99,
+        "currency": "eur",
+        "quantity": 15,
+        "description": "Günstiger Mehrfach-Pack für Power-User",
+    },
+    "rewind_pack_10": {
+        "item_id": "rewind_pack_10",
+        "type": "rewind_pack",
+        "label": "10 Rewinds",
+        "price_eur": 3.99,
+        "currency": "eur",
+        "quantity": 10,
+        "description": "Verpasste Likes schnell zurückholen",
+    },
 }
 
 SCAM_SIGNAL_PATTERNS = [
@@ -543,6 +642,15 @@ class DatingPremiumStatusReq(BaseModel):
 class DatingChatSafetyReq(BaseModel):
     match_id: str = Field(min_length=4, max_length=80)
     force: bool = False
+
+
+class DatingConsumableCheckoutReq(BaseModel):
+    item_id: str = Field(min_length=4, max_length=80)
+    origin_url: str = Field(min_length=8, max_length=500)
+
+
+class DatingOfferClaimReq(BaseModel):
+    offer_id: str = Field(min_length=4, max_length=80)
 
 
 def _build_profile_context(profile: dict) -> str:
@@ -1008,14 +1116,30 @@ def _premium_until(days: int) -> str:
 
 async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
     metadata = txn.get("metadata") or {}
-    if metadata.get("type") != "dating_premium":
+    if metadata.get("type") not in {"dating_premium", "dating_consumable"}:
         return False
     if txn.get("credited"):
         return False
     user_id = metadata.get("user_id") or txn.get("user_id")
+    if not user_id:
+        return False
+
+    if metadata.get("type") == "dating_consumable":
+        item_id = metadata.get("item_id")
+        if not item_id:
+            return False
+        applied = await _apply_dating_consumable(user_id, item_id)
+        if not applied:
+            return False
+        await db.payment_transactions.update_one(
+            {"session_id": txn.get("session_id")},
+            {"$set": {"credited": True, "credited_at": now_iso(), "status": "completed", "payment_status": "paid"}},
+        )
+        return True
+
     plan_id = metadata.get("plan_id")
     plan = DATING_PREMIUM_PLANS.get(plan_id or "")
-    if not user_id or not plan:
+    if not plan:
         return False
 
     valid_until = _premium_until(plan["duration_days"])
@@ -1025,6 +1149,7 @@ async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
             "dating_premium": True,
             "dating_premium_plan": plan_id,
             "dating_premium_valid_until": valid_until,
+            "dating_starter_offer_claimed": True,
         }},
     )
     await db.dating_profiles.update_one(
@@ -1034,8 +1159,13 @@ async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
             "premium_plan": plan_id,
             "premium_valid_until": valid_until,
             "premium_activated_at": now_iso(),
+            "starter_offer_claimed": True,
         }},
     )
+    if plan.get("tier") == "gold":
+        await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {"credits.boosts": 1, "credits.superlikes": 3}})
+    if plan.get("tier") == "platinum":
+        await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {"credits.boosts": 2, "credits.superlikes": 5}})
     await db.payment_transactions.update_one(
         {"session_id": txn.get("session_id")},
         {"$set": {"credited": True, "credited_at": now_iso(), "status": "completed", "payment_status": "paid"}},
@@ -1218,6 +1348,82 @@ async def sync_profile_from_registration(user: dict, profile: dict) -> dict:
     return profile
 
 
+def _get_dating_entitlements(profile: dict) -> dict:
+    credits = profile.get("credits") or {}
+    tier = profile.get("premium_plan") or ("premium_30d" if profile.get("premium") else None)
+    is_plus = tier in {"plus_30d"}
+    is_gold = tier in {"gold_30d", "premium_30d"}
+    is_platinum = tier in {"platinum_30d"}
+    return {
+        "plan_id": tier,
+        "is_plus": is_plus,
+        "is_gold": is_gold,
+        "is_platinum": is_platinum,
+        "can_see_likes_you": bool(is_gold or is_platinum or profile.get("premium")),
+        "priority_likes": bool(is_platinum),
+        "boost_credits": int(credits.get("boosts", 0)),
+        "superlike_credits": int(credits.get("superlikes", 0)),
+        "rewind_credits": int(credits.get("rewinds", 0)),
+        "daily_rewind_limit": None if is_gold or is_platinum or profile.get("premium") else (5 if is_plus else 0),
+        "starter_offer_claimed": bool(profile.get("starter_offer_claimed")),
+    }
+
+
+def _starter_offer_for_profile(profile: dict) -> Optional[dict]:
+    created_at = parse_iso_datetime(profile.get("created_at"))
+    if not created_at:
+        return None
+    age_days = (datetime.now(timezone.utc) - created_at).days
+    if age_days > 7 or profile.get("premium") or profile.get("starter_offer_claimed"):
+        return None
+    base_plan = DATING_PREMIUM_PLANS["gold_30d"]
+    return {
+        "offer_id": "starter_gold_7d",
+        "title": "Starter Deal",
+        "subtitle": "Erste Woche mit Gold-Vorteilen günstiger freischalten",
+        "plan_id": "gold_30d",
+        "offer_price_eur": base_plan.get("starter_price_eur", 9.99),
+        "regular_price_eur": base_plan["price_eur"],
+        "days_left": max(0, 7 - age_days),
+        "features": base_plan["features"],
+    }
+
+
+def _pricing_payload_for_profile(profile: dict) -> dict:
+    starter = _starter_offer_for_profile(profile)
+    plans = []
+    for key in ["plus_30d", "gold_30d", "platinum_30d"]:
+        item = dict(DATING_PREMIUM_PLANS[key])
+        if starter and starter["plan_id"] == item["plan_id"]:
+            item["starter_offer"] = {
+                "offer_id": starter["offer_id"],
+                "offer_price_eur": starter["offer_price_eur"],
+                "days_left": starter["days_left"],
+            }
+        plans.append(item)
+    return {
+        "plans": plans,
+        "consumables": list(DATING_CONSUMABLES.values()),
+        "starter_offer": starter,
+    }
+
+
+async def _apply_dating_consumable(user_id: str, item_id: str) -> bool:
+    item = DATING_CONSUMABLES.get(item_id)
+    if not item:
+        return False
+    if item["type"] == "boost_pack":
+        field = "credits.boosts"
+    elif item["type"] == "superlike_pack":
+        field = "credits.superlikes"
+    elif item["type"] == "rewind_pack":
+        field = "credits.rewinds"
+    else:
+        return False
+    await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {field: int(item["quantity"]), "lifetime_value_cents": int(round(item["price_eur"] * 100))}})
+    return True
+
+
 @router.get("/profile/me")
 async def my_profile(request: Request):
     user = await get_me(request)
@@ -1288,8 +1494,9 @@ async def premium_demo_upgrade(request: Request):
 
 @router.get("/premium/plans")
 async def dating_premium_plans(request: Request):
-    await get_me(request)
-    return {"plans": list(DATING_PREMIUM_PLANS.values())}
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    return _pricing_payload_for_profile(profile)
 
 
 @router.post("/premium/checkout")
@@ -1297,9 +1504,17 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
     user = await get_me(request)
     if not STRIPE_API_KEY:
         raise HTTPException(status_code=503, detail="Stripe nicht konfiguriert")
+    profile = await get_or_create_my_profile(user)
     plan = DATING_PREMIUM_PLANS.get(payload.plan_id)
     if not plan:
         raise HTTPException(status_code=400, detail="Ungültiger Premium-Plan")
+
+    starter = _starter_offer_for_profile(profile)
+    effective_price = float(plan["price_eur"])
+    offer_id = None
+    if starter and starter["plan_id"] == plan["plan_id"]:
+        effective_price = float(starter["offer_price_eur"])
+        offer_id = starter["offer_id"]
 
     origin = payload.origin_url.rstrip("/")
     success_url = f"{origin}/dating?premium_session_id={{CHECKOUT_SESSION_ID}}"
@@ -1309,11 +1524,12 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
         "plan_id": plan["plan_id"],
         "user_id": str(user["_id"]),
         "user_email": user.get("email", ""),
+        "offer_id": offer_id or "",
     }
     host_url = str(request.base_url).rstrip("/")
     stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
     checkout_req = CheckoutSessionRequest(
-        amount=float(plan["price_eur"]),
+        amount=effective_price,
         currency=plan["currency"],
         success_url=success_url,
         cancel_url=cancel_url,
@@ -1325,7 +1541,7 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
         "session_id": session.session_id,
         "user_id": str(user["_id"]),
         "user_email": user.get("email", ""),
-        "amount": float(plan["price_eur"]),
+        "amount": effective_price,
         "currency": plan["currency"].upper(),
         "type": "dating_premium",
         "status": "initiated",
@@ -1343,13 +1559,79 @@ async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Re
             {"session_id": session.session_id},
             {"$set": tx_doc},
         )
-    return {"ok": True, "checkout_url": session.url, "session_id": session.session_id, "plan": plan}
+    return {"ok": True, "checkout_url": session.url, "session_id": session.session_id, "plan": plan, "effective_price_eur": effective_price, "offer_id": offer_id}
 
 
 @router.get("/premium/status/{session_id}")
 async def dating_premium_checkout_status(session_id: str, request: Request):
     user = await get_me(request)
     return await _refresh_dating_premium_status(session_id, str(user["_id"]), request)
+
+
+@router.post("/consumables/checkout")
+async def dating_consumable_checkout(payload: DatingConsumableCheckoutReq, request: Request):
+    user = await get_me(request)
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=503, detail="Stripe nicht konfiguriert")
+    item = DATING_CONSUMABLES.get(payload.item_id)
+    if not item:
+        raise HTTPException(status_code=400, detail="Ungültiges Produkt")
+
+    origin = payload.origin_url.rstrip("/")
+    success_url = f"{origin}/dating?premium_session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/dating?premium_cancelled=true"
+    metadata = {
+        "type": "dating_consumable",
+        "item_id": item["item_id"],
+        "user_id": str(user["_id"]),
+        "user_email": user.get("email", ""),
+    }
+    host_url = str(request.base_url).rstrip("/")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    checkout_req = CheckoutSessionRequest(
+        amount=float(item["price_eur"]),
+        currency=item["currency"],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata=metadata,
+        payment_methods=["card"],
+    )
+    session = await stripe_checkout.create_checkout_session(checkout_req)
+    tx_doc = {
+        "session_id": session.session_id,
+        "user_id": str(user["_id"]),
+        "user_email": user.get("email", ""),
+        "amount": float(item["price_eur"]),
+        "currency": item["currency"].upper(),
+        "type": "dating_consumable",
+        "status": "initiated",
+        "payment_status": "pending",
+        "credited": False,
+        "item_id": item["item_id"],
+        "metadata": metadata,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    try:
+        await db.payment_transactions.insert_one(tx_doc)
+    except DuplicateKeyError:
+        await db.payment_transactions.update_one({"session_id": session.session_id}, {"$set": tx_doc})
+    return {"ok": True, "checkout_url": session.url, "session_id": session.session_id, "item": item}
+
+
+@router.get("/monetization")
+async def dating_monetization(request: Request):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    profile = await sync_profile_from_registration(user, profile)
+    entitlements = _get_dating_entitlements(profile)
+    payload = _pricing_payload_for_profile(profile)
+    return {
+        **payload,
+        "entitlements": entitlements,
+        "likes_you_count": await db.dating_swipes.count_documents({"to_user_id": profile["user_id"], "type": {"$in": ["like", "superlike"]}}),
+        "profile_completion": calc_profile_completion(profile),
+    }
 
 
 @router.post("/safety/scan")
@@ -1384,18 +1666,21 @@ async def verify_demo(payload: VerifyReq, request: Request):
 async def swipes_left(request: Request):
     user = await get_me(request)
     profile = await get_or_create_my_profile(user)
-    if profile.get("premium"):
-        return {"swipes_left": 999999, "premium": True}
+    entitlements = _get_dating_entitlements(profile)
+    if profile.get("premium") or entitlements["is_plus"] or entitlements["is_gold"] or entitlements["is_platinum"]:
+        return {"swipes_left": 999999, "premium": True, "entitlements": entitlements}
     used = await get_swipes_used_today(str(user["_id"]))
-    return {"swipes_left": max(0, DAILY_FREE_SWIPES - used), "premium": False}
+    return {"swipes_left": max(0, DAILY_FREE_SWIPES - used), "premium": False, "entitlements": entitlements}
 
 
 @router.post("/boost/activate")
 async def activate_boost(request: Request):
     user = await get_me(request)
     profile = await get_or_create_my_profile(user)
-    if not profile.get("premium"):
-        raise HTTPException(status_code=403, detail="Boost ist nur für Premium verfügbar")
+    entitlements = _get_dating_entitlements(profile)
+    has_subscription_boost = bool(profile.get("premium") or entitlements["is_gold"] or entitlements["is_platinum"])
+    if not has_subscription_boost and entitlements["boost_credits"] <= 0:
+        raise HTTPException(status_code=403, detail="Boost braucht Gold/Platinum oder einen Boost-Pack")
 
     boost_state = get_boost_state(profile)
     if boost_state["is_active"]:
@@ -1405,21 +1690,21 @@ async def activate_boost(request: Request):
 
     now = datetime.now(timezone.utc)
     active_until = now + timedelta(minutes=BOOST_DURATION_MINUTES)
-    await db.dating_profiles.update_one(
-        {"user_id": str(user["_id"])},
-        {
-            "$set": {
-                "boost_activated_at": now.isoformat(),
-                "boost_last_used_at": now.isoformat(),
-                "boost_active_until": active_until.isoformat(),
-            }
-        },
-    )
+    updates = {
+        "boost_activated_at": now.isoformat(),
+        "boost_last_used_at": now.isoformat(),
+        "boost_active_until": active_until.isoformat(),
+    }
+    if not has_subscription_boost:
+        await db.dating_profiles.update_one({"user_id": str(user["_id"])}, {"$inc": {"credits.boosts": -1}, "$set": updates})
+    else:
+        await db.dating_profiles.update_one({"user_id": str(user["_id"])}, {"$set": updates})
     fresh = await db.dating_profiles.find_one({"user_id": str(user["_id"])}, {"_id": 0})
     return {
         "ok": True,
         "boost": get_boost_state(fresh),
         "message": f"Boost für {BOOST_DURATION_MINUTES} Minuten aktiviert",
+        "credits": (fresh.get("credits") or {}),
     }
 
 
@@ -1837,7 +2122,10 @@ async def like_profile(req: SwipeReq, request: Request):
 
     target = await get_profile_or_404(req.profile_id)
     my_user_id = my_profile["user_id"]
-    if not my_profile.get("premium"):
+    entitlements = _get_dating_entitlements(my_profile)
+    if req.super_like and not my_profile.get("premium") and entitlements["superlike_credits"] <= 0:
+        raise HTTPException(status_code=402, detail="Super Like braucht Gold/Platinum oder ein Super-Like-Pack")
+    if not my_profile.get("premium") and not entitlements["is_plus"] and not entitlements["is_gold"] and not entitlements["is_platinum"]:
         used = await get_swipes_used_today(my_user_id)
         if used >= DAILY_FREE_SWIPES:
             raise HTTPException(status_code=402, detail="Swipe-Limit erreicht")
@@ -1856,6 +2144,8 @@ async def like_profile(req: SwipeReq, request: Request):
         "swipe_reset_key": swipe_reset_key(),
     }
     await db.dating_swipes.insert_one(swipe_doc)
+    if req.super_like and not my_profile.get("premium") and entitlements["superlike_credits"] > 0:
+        await db.dating_profiles.update_one({"user_id": my_user_id}, {"$inc": {"credits.superlikes": -1}})
     await db.dating_profiles.update_one({"profile_id": req.profile_id}, {"$inc": {"likes_count": 1}})
 
     if target.get("is_seed"):
@@ -1895,6 +2185,7 @@ async def like_profile(req: SwipeReq, request: Request):
                 "last_message": "",
                 "unread": {my_user_id: 0, target["user_id"]: 0},
                 "blocked": False,
+                "priority_match": bool(entitlements["priority_likes"] or req.super_like),
             }
             await db.dating_matches.insert_one(match_doc)
             existing_match = sanitize_doc(match_doc)
@@ -1926,12 +2217,17 @@ async def rewind_last_swipe(request: Request):
     user = await get_me(request)
     my_profile = await get_or_create_my_profile(user)
     my_user_id = my_profile["user_id"]
+    entitlements = _get_dating_entitlements(my_profile)
+    if not my_profile.get("premium") and entitlements["daily_rewind_limit"] == 0 and entitlements["rewind_credits"] <= 0:
+        raise HTTPException(status_code=402, detail="Rewind braucht Plus/Gold/Platinum oder ein Rewind-Pack")
     last_swipe = await db.dating_swipes.find({"from_user_id": my_user_id}, {"_id": 0}).sort("created_at", -1).limit(1).to_list(1)
     if not last_swipe:
         raise HTTPException(status_code=404, detail="Kein Swipe zum Zurücknehmen")
     swipe = last_swipe[0]
     target = await db.dating_profiles.find_one({"profile_id": swipe["to_profile_id"]}, {"_id": 0})
     await db.dating_swipes.delete_one({"from_user_id": my_user_id, "to_profile_id": swipe["to_profile_id"]})
+    if not my_profile.get("premium") and entitlements["daily_rewind_limit"] == 0 and entitlements["rewind_credits"] > 0:
+        await db.dating_profiles.update_one({"user_id": my_user_id}, {"$inc": {"credits.rewinds": -1}})
     if target:
         key = pair_key(my_user_id, target["user_id"])
         match = await db.dating_matches.find_one({"pair_key": key}, {"_id": 0})
@@ -2100,7 +2396,8 @@ async def likes_you(request: Request):
     me = await get_or_create_my_profile(user)
     inbound = await db.dating_swipes.find({"to_user_id": me["user_id"], "type": {"$in": ["like", "superlike"]}}, {"_id": 0, "from_profile_id": 1, "type": 1, "created_at": 1}).sort("created_at", -1).to_list(100)
     count = len(inbound)
-    if not me.get("premium"):
+    entitlements = _get_dating_entitlements(me)
+    if not me.get("premium") and not entitlements["can_see_likes_you"]:
         return {"locked": True, "profiles": [], "count": count}
     profile_ids = [item["from_profile_id"] for item in inbound]
     profiles = await db.dating_profiles.find({"profile_id": {"$in": profile_ids}}, {"_id": 0}).to_list(100)
