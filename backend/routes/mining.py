@@ -68,6 +68,18 @@ class MiningTrustLeadRequest(BaseModel):
     message: Optional[str] = Field(default="", max_length=1000)
 
 
+class MiningTrustVideoUpdateRequest(BaseModel):
+    city: str = Field(..., min_length=2, max_length=80)
+    title: str = Field(..., min_length=2, max_length=140)
+    description: Optional[str] = Field(default="", max_length=400)
+    video_url: str = Field(..., min_length=8, max_length=500)
+    thumbnail_url: Optional[str] = Field(default="", max_length=500)
+
+
+class MiningTrustLeadStatusRequest(BaseModel):
+    status: str = Field(..., min_length=2, max_length=40)
+
+
 def get_vip_level(total_hashrate):
     """Determine VIP level based on total hashrate."""
     current = VIP_LEVELS[0]
@@ -99,6 +111,7 @@ async def mining_trust_public():
     except Exception:
         total_hashrate = 0.0
 
+    videos = await db.mining_trust_videos.find({}, {"_id": 0}).sort("city", 1).to_list(20)
     return {
         "proof_metrics": PUBLIC_MINING_PROOF_METRICS,
         "network": {
@@ -107,6 +120,7 @@ async def mining_trust_public():
             "registered_hashrate_ths": round(total_hashrate, 1),
             "registered_hashrate_phs": round(total_hashrate / 1000, 2) if total_hashrate else 0,
         },
+        "videos": videos,
     }
 
 
@@ -126,6 +140,55 @@ async def mining_trust_lead(payload: MiningTrustLeadRequest):
     await db.mining_trust_leads.insert_one(lead)
     lead.pop("_id", None)
     return {"ok": True, "lead": lead}
+
+
+@router.get("/trust/leads")
+async def mining_trust_leads(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    leads = await db.mining_trust_leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return {"leads": leads}
+
+
+@router.post("/trust/leads/{lead_id}/status")
+async def mining_trust_lead_status(lead_id: str, payload: MiningTrustLeadStatusRequest, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    await db.mining_trust_leads.update_one({"lead_id": lead_id}, {"$set": {"status": payload.status, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    lead = await db.mining_trust_leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return {"ok": True, "lead": lead}
+
+
+@router.get("/trust/videos")
+async def mining_trust_videos_admin(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    videos = await db.mining_trust_videos.find({}, {"_id": 0}).sort("city", 1).to_list(20)
+    return {"videos": videos}
+
+
+@router.post("/trust/videos")
+async def mining_trust_video_upsert(payload: MiningTrustVideoUpdateRequest, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "city": payload.city.strip(),
+        "title": payload.title.strip(),
+        "description": (payload.description or "").strip(),
+        "video_url": payload.video_url.strip(),
+        "thumbnail_url": (payload.thumbnail_url or "").strip(),
+        "updated_at": now,
+    }
+    await db.mining_trust_videos.update_one({"city": payload.city.strip()}, {"$set": doc, "$setOnInsert": {"created_at": now}}, upsert=True)
+    saved = await db.mining_trust_videos.find_one({"city": payload.city.strip()}, {"_id": 0})
+    return {"ok": True, "video": saved}
 
 
 async def get_or_create_wallet(user_id):

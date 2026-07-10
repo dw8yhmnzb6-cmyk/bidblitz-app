@@ -68,6 +68,7 @@ const PayDirectoryPage = lazy(() => import("./pages/PayDirectoryPage"));
 const PayForBusinessPage = lazy(() => import("./pages/PayForBusinessPage"));
 const MiningPage = lazy(() => import("./pages/MiningPage"));
 const MiningTrustPage = lazy(() => import("./pages/MiningTrustPage"));
+const MiningTrustAdminPage = lazy(() => import("./pages/MiningTrustAdminPage"));
 const NFTGeneratorPage = lazy(() => import("./pages/NFTGeneratorPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -643,6 +644,8 @@ function AppContent() {
         return <MiningPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/mining-trust":
         return <MiningTrustPage onNavigate={handleNavigate} onBack={() => handleNavigate("/mining")} />;
+      case "/mining-trust-admin":
+        return <MiningTrustAdminPage onBack={() => handleNavigate("/mining-trust")} />;
       case "/nft":
         return <NFTGeneratorPage onNavigate={handleNavigate} />;
       case "/admin":

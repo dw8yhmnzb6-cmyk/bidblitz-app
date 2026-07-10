@@ -27,6 +27,7 @@ const copy = {
     leadMessage: "Nachricht",
     leadSubmit: "Anfrage senden",
     leadSuccess: "Anfrage wurde gesendet",
+    adminCta: "Lead & Video CRM",
     investorBadge: "Investor & Kunden Proof",
     mapTitle: "Standort-Übersicht",
     mapText: "Dubai und Abu Dhabi bilden die sichtbaren Ankerpunkte für Vertrauen, Infrastruktur und operative Stabilität.",
@@ -90,6 +91,7 @@ const copy = {
     leadMessage: "Message",
     leadSubmit: "Send Inquiry",
     leadSuccess: "Inquiry sent successfully",
+    adminCta: "Lead & Video CRM",
     investorBadge: "Investor & Client Proof",
     mapTitle: "Location Overview",
     mapText: "Dubai and Abu Dhabi act as visible anchor points for trust, infrastructure, and operational stability.",
@@ -378,17 +380,23 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             <p className="mt-2 text-sm text-white/60">{c.sections.videoText}</p>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {c.placeholders.map((item, index) => (
-                <div key={`${item.city}-${index}`} className="rounded-[26px] border border-dashed border-white/12 bg-black/20 p-4" data-testid={`mining-trust-video-placeholder-${index}`}>
-                  <div className="aspect-[16/10] rounded-[22px] bg-gradient-to-br from-white/8 to-white/4 flex items-center justify-center">
-                    <PlayCircle size={40} className="text-white/45" />
+              {(proofData?.videos?.length ? proofData.videos : c.placeholders).map((item, index) => (
+                <div key={`${item.city || item.label}-${index}`} className="rounded-[26px] border border-dashed border-white/12 bg-black/20 p-4" data-testid={`mining-trust-video-placeholder-${index}`}>
+                  <div className="aspect-[16/10] rounded-[22px] bg-gradient-to-br from-white/8 to-white/4 overflow-hidden flex items-center justify-center">
+                    {item.video_url ? (
+                      <video controls playsInline poster={item.thumbnail_url || undefined} className="h-full w-full object-cover" data-testid={`mining-trust-video-player-${index}`}>
+                        <source src={item.video_url} />
+                      </video>
+                    ) : (
+                      <PlayCircle size={40} className="text-white/45" />
+                    )}
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-white">{item.city}</p>
-                      <p className="text-xs text-white/50">{item.note}</p>
+                      <p className="text-xs text-white/50">{item.description || item.note}</p>
                     </div>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold text-white/60">{item.label}</span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold text-white/60">{item.title || item.label}</span>
                   </div>
                 </div>
               ))}
@@ -415,6 +423,9 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             <div className="flex flex-wrap gap-3">
               <button onClick={() => onNavigate?.("/mining")} className="rounded-full bg-white px-5 py-3 text-sm font-bold text-black" data-testid="mining-trust-footer-open-mining">
                 {c.ctaPrimary}
+              </button>
+              <button onClick={() => onNavigate?.("/mining-trust-admin")} className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-100" data-testid="mining-trust-footer-admin">
+                {c.adminCta}
               </button>
               <button onClick={() => onNavigate?.("/all-services")} className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white" data-testid="mining-trust-footer-all-services">
                 {c.footerServices}
