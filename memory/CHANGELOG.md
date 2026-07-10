@@ -1,5 +1,9 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Trust Investor-Version erweitert
+- `frontend/src/pages/MiningTrustPage.jsx`: Investor-/Kunden-Proof erweitert um neuen Investor-Badge, Live-Mining-Kennzahlen, visuelle Standort-Übersicht für Dubai/Abu Dhabi und Proof-of-Infrastructure-Timeline.
+- Verifiziert: `testing_agent` **Iteration 231 PASS**; Seite bleibt öffentlich und ohne Layoutprobleme.
+
 ## 10.07.2026 — Bugfix `/all-services` Runtime-Crash
 - `frontend/src/pages/AllServicesPage.jsx`: TDZ-/Initialisierungsfehler behoben. `allItems`, `totalServices` und `filteredItems` werden jetzt vor dem lokalisierten `L`-Objekt erzeugt, damit `totalServices` nicht vor Deklaration verwendet wird.
 - `frontend/src/pages/AllServicesPage.jsx`: `data-testid="all-services-page"` am Root ergänzt für stabile Verifikation.
