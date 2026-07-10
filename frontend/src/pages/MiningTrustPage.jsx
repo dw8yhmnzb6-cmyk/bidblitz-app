@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Server, Cpu, MapPin, Clock3, Bitcoin, ChevronRight, PlayCircle, Activity, Gauge, Building2, BarChart3, Waves } from "lucide-react";
+import { ArrowLeft, Shield, Server, Cpu, MapPin, Clock3, Bitcoin, ChevronRight, PlayCircle, Activity, Gauge, Building2, BarChart3, Waves, Phone, MessageCircle, Send } from "lucide-react";
 import { useI18n } from "../store";
 import { toast } from "sonner";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const WHATSAPP_URL = "https://wa.me/?text=Hallo%20BidBlitz%2C%20ich%20interessiere%20mich%20f%C3%BCr%20eure%20Bitcoin-Mining-Infrastruktur.";
+const TELEGRAM_URL = "https://t.me/share/url?url=https://bidblitz.ae/mining-trust&text=Ich%20interessiere%20mich%20f%C3%BCr%20eure%20Mining-Infrastruktur";
+const PHONE_URL = "tel:+971000000000";
 
 const trustMedia = {
   dubai: "https://static.prod-images.emergentagent.com/jobs/2ac12b59-b16f-458d-9088-1c735ced669e/images/1cf85ab6d62f2971e243a0c551a8310646f1846376968d6a79dabb151cfe5b91.png",
@@ -32,6 +36,16 @@ const copy = {
     adminCta: "Lead & Video CRM",
     leadShortHint: "Nur Name, E-Mail und kurze Nachricht reichen aus.",
     leadTopics: ["Investment", "Partnerschaft", "Mining Infos", "Standortbesuch"],
+    quickContactTitle: "Sofort-Kontakt",
+    quickContactText: "Kunden sollen nicht viel tippen müssen — hier sind direkte Wege zu euch.",
+    callBack: "Rückruf anfordern",
+    faqTitle: "Häufige Fragen",
+    faqs: [
+      { q: "Wo stehen die Server?", a: "Aktuell zeigen wir Dubai und Abu Dhabi als sichtbare Infrastruktur-Standorte auf der Mining-Trust-Seite." },
+      { q: "Kann ich die Infrastruktur sehen?", a: "Ja. Fotos, Videos und Proof-Elemente werden direkt auf der Seite gezeigt, damit Kunden Vertrauen aufbauen können." },
+      { q: "Wie schnell erhalte ich eine Antwort?", a: "Anfragen aus dem Formular oder über die Schnellkontakte können direkt im Lead-CRM bearbeitet werden." },
+      { q: "Kann ich einen Standortbesuch anfragen?", a: "Ja. Nutze einfach die Schnell-Auswahl „Standortbesuch“ oder sende eine kurze Anfrage." },
+    ],
     investorBadge: "Investor & Kunden Proof",
     mapTitle: "Standort-Übersicht",
     mapText: "Dubai und Abu Dhabi bilden die sichtbaren Ankerpunkte für Vertrauen, Infrastruktur und operative Stabilität.",
@@ -100,6 +114,16 @@ const copy = {
     adminCta: "Lead & Video CRM",
     leadShortHint: "Only name, email, and a short message are required.",
     leadTopics: ["Investment", "Partnership", "Mining Info", "Site Visit"],
+    quickContactTitle: "Instant Contact",
+    quickContactText: "Customers should not need to type much — here are direct ways to reach you.",
+    callBack: "Request Callback",
+    faqTitle: "Frequently Asked Questions",
+    faqs: [
+      { q: "Where are the servers located?", a: "We currently show Dubai and Abu Dhabi as visible infrastructure locations on the mining trust page." },
+      { q: "Can I see the infrastructure?", a: "Yes. Photos, videos, and proof elements are shown directly on the page to build trust." },
+      { q: "How fast will I get a response?", a: "Inquiries from the form or quick contact options can be processed directly in the lead CRM." },
+      { q: "Can I request a site visit?", a: "Yes. Simply use the quick option 'Site Visit' or send a short inquiry." },
+    ],
     investorBadge: "Investor & Client Proof",
     mapTitle: "Location Overview",
     mapText: "Dubai and Abu Dhabi act as visible anchor points for trust, infrastructure, and operational stability.",
@@ -355,6 +379,15 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
               <p className="text-xs uppercase tracking-[0.2em] text-white/40">Lead Capture</p>
               <h2 className="mt-3 text-2xl font-bold text-white">{c.leadTitle}</h2>
               <p className="mt-2 text-sm text-white/60">{c.leadText}</p>
+              <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4" data-testid="mining-trust-quick-contact-box">
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-100/70">{c.quickContactTitle}</p>
+                <p className="mt-2 text-xs text-emerald-100/70">{c.quickContactText}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-xs font-bold text-black" data-testid="mining-trust-whatsapp-button"><MessageCircle size={14} /> WhatsApp</a>
+                  <a href={TELEGRAM_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#229ED9] px-4 py-2 text-xs font-bold text-white" data-testid="mining-trust-telegram-button"><Send size={14} /> Telegram</a>
+                  <a href={PHONE_URL} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white" data-testid="mining-trust-callback-button"><Phone size={14} /> {c.callBack}</a>
+                </div>
+              </div>
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4" data-testid="mining-trust-lead-fast-box">
                 <p className="text-xs uppercase tracking-[0.18em] text-white/45">{c.leadFastTitle}</p>
                 <p className="mt-2 text-xs text-white/60">{c.leadFastSubtitle}</p>
@@ -384,6 +417,21 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
               <p className="text-xs text-white/45 sm:col-span-2" data-testid="mining-trust-lead-short-hint">{c.leadShortHint}</p>
               <button onClick={submitLead} className="rounded-full bg-amber-400 px-5 py-3 text-sm font-bold text-black sm:col-span-2" data-testid="mining-trust-lead-submit">{sending ? "..." : c.leadSubmit}</button>
             </div>
+          </div>
+        </section>
+
+        <section className="mt-12 rounded-[32px] border border-white/10 bg-white/5 p-6" data-testid="mining-trust-faq-section">
+          <p className="text-xs uppercase tracking-[0.2em] text-white/40">FAQ</p>
+          <h2 className="mt-3 text-2xl font-bold text-white">{c.faqTitle}</h2>
+          <div className="mt-5 rounded-[24px] border border-white/10 bg-black/20 px-4" data-testid="mining-trust-faq-accordion">
+            <Accordion type="single" collapsible>
+              {c.faqs.map((item, index) => (
+                <AccordionItem key={`${item.q}-${index}`} value={`faq-${index}`} data-testid={`mining-trust-faq-item-${index}`}>
+                  <AccordionTrigger data-testid={`mining-trust-faq-trigger-${index}`}>{item.q}</AccordionTrigger>
+                  <AccordionContent data-testid={`mining-trust-faq-content-${index}`}>{item.a}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </div>
         </section>
 
@@ -462,6 +510,16 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             </div>
           </div>
         </section>
+      </div>
+
+      <div className="fixed bottom-4 left-1/2 z-[60] w-[calc(100%-1.25rem)] max-w-xl -translate-x-1/2" data-testid="mining-trust-sticky-contact-bar">
+        <div className="rounded-full border border-white/10 bg-black/80 backdrop-blur-xl px-3 py-3 shadow-[0_16px_36px_rgba(0,0,0,0.35)]">
+          <div className="grid grid-cols-3 gap-2">
+            <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-3 py-3 text-[11px] font-bold text-black" data-testid="mining-trust-sticky-whatsapp"><MessageCircle size={14} />WhatsApp</a>
+            <a href={TELEGRAM_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#229ED9] px-3 py-3 text-[11px] font-bold text-white" data-testid="mining-trust-sticky-telegram"><Send size={14} />Telegram</a>
+            <a href={PHONE_URL} className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-3 text-[11px] font-semibold text-white" data-testid="mining-trust-sticky-call"><Phone size={14} />Call</a>
+          </div>
+        </div>
       </div>
     </motion.div>
   );
