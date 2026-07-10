@@ -1,5 +1,9 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Mining Trust öffentlich auf Startseite sichtbar
+- `frontend/src/pages/HomePage.jsx`: öffentlicher Mining-Trust-Hero ergänzt, damit normale Besucher die Infrastruktur-Seite direkt sehen und öffnen können, ohne etwas einzugeben.
+- Verifiziert: Screenshot-Smoke-Test PASS und `auto_frontend_testing_agent` PASS (Homepage öffentlich, Hero sichtbar, `/mining-trust` ohne Login erreichbar, keine Layoutprobleme).
+
 ## 10.07.2026 — Mining Trust Page / Infrastruktur-Proof
 - `frontend/src/pages/MiningTrustPage.jsx`: neue eigenständige Mining-Trust-Seite unter `/mining-trust` ergänzt. Inhalte: Hero, Trust-Stats, 3 Infrastrukturkarten (Dubai, Abu Dhabi, ASIC), Video-Platzhalter, Vertrauensmetriken und Footer-CTA.
 - `frontend/src/App.js`: Route `/mining-trust` registriert.
