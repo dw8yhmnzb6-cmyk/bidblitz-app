@@ -283,6 +283,24 @@ DATING_CONSUMABLES = {
         "quantity": 10,
         "description": "Verpasste Likes schnell zurückholen",
     },
+    "rose_pack_3": {
+        "item_id": "rose_pack_3",
+        "type": "rose_pack",
+        "label": "3 Roses",
+        "price_eur": 6.99,
+        "currency": "eur",
+        "quantity": 3,
+        "description": "Premium-Standout-Signal mit Priority Inbox",
+    },
+    "rose_pack_10": {
+        "item_id": "rose_pack_10",
+        "type": "rose_pack",
+        "label": "10 Roses",
+        "price_eur": 17.99,
+        "currency": "eur",
+        "quantity": 10,
+        "description": "Bester Pack für Standouts und Priority Inbox",
+    },
 }
 
 SCAM_SIGNAL_PATTERNS = [
@@ -588,6 +606,7 @@ class SwipeReq(BaseModel):
     profile_id: str
     super_like: bool = False
     opener_text: Optional[str] = Field(default=None, max_length=180)
+    use_rose: bool = False
 
 
 class ChatMessageReq(BaseModel):
@@ -1342,6 +1361,14 @@ def _standout_score(me: dict, other: dict, filters: dict) -> int:
     return score
 
 
+def _rotation_seed_key(me: dict) -> str:
+    return f"{me['user_id']}::{datetime.now(timezone.utc).date().isoformat()}"
+
+
+def _stable_rotation_rank(seed_key: str, profile_id: str) -> int:
+    return int(hashlib.sha256(f"{seed_key}::{profile_id}".encode("utf-8")).hexdigest()[:8], 16)
+
+
 async def _build_curated_pool(me: dict, filters: dict) -> list[dict]:
     blocked_by_me = await db.dating_blocks.find({"blocker_user_id": me["user_id"]}, {"_id": 0, "blocked_user_id": 1}).to_list(500)
     blockers = await db.dating_blocks.find({"blocked_user_id": me["user_id"]}, {"_id": 0, "blocker_user_id": 1}).to_list(500)
@@ -1364,6 +1391,7 @@ async def _build_curated_pool(me: dict, filters: dict) -> list[dict]:
         await maybe_attach_safety(profile)
         profile["match_reasons"] = build_match_reasons(me, profile, filters)
         profile["discover_rank"] = calc_discover_rank(profile)
+        profile["rotation_rank"] = _stable_rotation_rank(_rotation_seed_key(me), profile["profile_id"])
         enriched.append(profile)
     return enriched
 
@@ -1416,8 +1444,10 @@ def _get_dating_entitlements(profile: dict) -> dict:
         "boost_credits": int(credits.get("boosts", 0)),
         "superlike_credits": int(credits.get("superlikes", 0)),
         "rewind_credits": int(credits.get("rewinds", 0)),
+        "rose_credits": int(credits.get("roses", 0)),
         "daily_rewind_limit": None if is_gold or is_platinum or profile.get("premium") else (5 if is_plus else 0),
         "starter_offer_claimed": bool(profile.get("starter_offer_claimed")),
+        "priority_inbox": bool(is_platinum),
     }
 
 
@@ -1470,6 +1500,8 @@ async def _apply_dating_consumable(user_id: str, item_id: str) -> bool:
         field = "credits.superlikes"
     elif item["type"] == "rewind_pack":
         field = "credits.rewinds"
+    elif item["type"] == "rose_pack":
+        field = "credits.roses"
     else:
         return False
     await db.dating_profiles.update_one({"user_id": user_id}, {"$inc": {field: int(item["quantity"]), "lifetime_value_cents": int(round(item["price_eur"] * 100))}})
@@ -1692,13 +1724,14 @@ async def dating_top_picks(request: Request):
     me = await get_or_create_my_profile(user)
     filters = user.get("dating_filters") or {}
     pool = await _build_curated_pool(me, filters)
-    pool.sort(key=lambda item: (_curation_score(me, item, filters), item.get("discover_rank", 0)), reverse=True)
+    pool.sort(key=lambda item: (_curation_score(me, item, filters), -item.get("rotation_rank", 0), item.get("discover_rank", 0)), reverse=True)
     entitlements = _get_dating_entitlements(me)
     items = []
     for index, profile in enumerate(pool[:8]):
         profile["pick_type"] = "top_pick"
         profile["headline"] = "Top Pick des Tages"
         profile["locked"] = index >= 1 and not (entitlements["is_gold"] or entitlements["is_platinum"] or me.get("premium"))
+        profile["rotation_key"] = _rotation_seed_key(me)
         items.append(profile)
     return {"profiles": items, "free_visible": 1, "locked_count": max(0, len(items) - 1)}
 
@@ -1709,7 +1742,7 @@ async def dating_standouts(request: Request):
     me = await get_or_create_my_profile(user)
     filters = user.get("dating_filters") or {}
     pool = await _build_curated_pool(me, filters)
-    pool.sort(key=lambda item: (_standout_score(me, item, filters), item.get("compatibility_score", 0)), reverse=True)
+    pool.sort(key=lambda item: (_standout_score(me, item, filters), -item.get("rotation_rank", 0), item.get("compatibility_score", 0)), reverse=True)
     entitlements = _get_dating_entitlements(me)
     items = []
     for index, profile in enumerate(pool[:6]):
@@ -1717,6 +1750,8 @@ async def dating_standouts(request: Request):
         profile["headline"] = "Standout"
         profile["locked"] = index >= 1 and not (entitlements["is_gold"] or entitlements["is_platinum"] or me.get("premium"))
         profile["requires_superlike"] = True
+        profile["requires_rose"] = True
+        profile["rotation_key"] = _rotation_seed_key(me)
         items.append(profile)
     return {"profiles": items, "free_visible": 1, "locked_count": max(0, len(items) - 1)}
 
@@ -2210,6 +2245,8 @@ async def like_profile(req: SwipeReq, request: Request):
     target = await get_profile_or_404(req.profile_id)
     my_user_id = my_profile["user_id"]
     entitlements = _get_dating_entitlements(my_profile)
+    if req.use_rose and entitlements["rose_credits"] <= 0:
+        raise HTTPException(status_code=402, detail="Rose braucht ein Rose-Pack oder Platinum-Credits")
     if req.super_like and not my_profile.get("premium") and entitlements["superlike_credits"] <= 0:
         raise HTTPException(status_code=402, detail="Super Like braucht Gold/Platinum oder ein Super-Like-Pack")
     if not my_profile.get("premium") and not entitlements["is_plus"] and not entitlements["is_gold"] and not entitlements["is_platinum"]:
@@ -2230,11 +2267,16 @@ async def like_profile(req: SwipeReq, request: Request):
         "created_at": now_iso(),
         "swipe_reset_key": swipe_reset_key(),
     }
+    if req.use_rose:
+        swipe_doc["type"] = "rose"
+        swipe_doc["priority_inbox"] = True
     if req.opener_text and req.opener_text.strip():
         if not entitlements["is_platinum"]:
             raise HTTPException(status_code=403, detail="Message-before-match ist nur für Platinum verfügbar")
         swipe_doc["opener_text"] = req.opener_text.strip()
     await db.dating_swipes.insert_one(swipe_doc)
+    if req.use_rose and entitlements["rose_credits"] > 0:
+        await db.dating_profiles.update_one({"user_id": my_user_id}, {"$inc": {"credits.roses": -1}})
     if req.super_like and not my_profile.get("premium") and entitlements["superlike_credits"] > 0:
         await db.dating_profiles.update_one({"user_id": my_user_id}, {"$inc": {"credits.superlikes": -1}})
     await db.dating_profiles.update_one({"profile_id": req.profile_id}, {"$inc": {"likes_count": 1}})
@@ -2276,8 +2318,9 @@ async def like_profile(req: SwipeReq, request: Request):
                 "last_message": "",
                 "unread": {my_user_id: 0, target["user_id"]: 0},
                 "blocked": False,
-                "priority_match": bool(entitlements["priority_likes"] or req.super_like),
+                "priority_match": bool(entitlements["priority_likes"] or req.super_like or req.use_rose),
                 "opener_text": swipe_doc.get("opener_text", ""),
+                "priority_inbox": bool(req.use_rose),
             }
             await db.dating_matches.insert_one(match_doc)
             if swipe_doc.get("opener_text"):
@@ -2517,6 +2560,7 @@ async def likes_you(request: Request):
         meta = meta_by_id.get(profile["profile_id"], {})
         profile["incoming_type"] = meta.get("type", "like")
         profile["incoming_at"] = meta.get("created_at")
+        profile["priority_inbox"] = bool(meta.get("priority_inbox") or meta.get("type") == "rose")
         profile["profile_completion"] = calc_profile_completion(profile)
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
@@ -2526,5 +2570,5 @@ async def likes_you(request: Request):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
         if profile.get("video_profile"):
             profile["video_profile"]["stream_url"] = f"/api/dating/video-profile/{profile['video_profile']['media_id']}"
-    profiles.sort(key=lambda item: item.get("incoming_at", ""), reverse=True)
+    profiles.sort(key=lambda item: (item.get("priority_inbox", False), item.get("incoming_at", "")), reverse=True)
     return {"locked": False, "profiles": profiles, "count": count}
