@@ -1,0 +1,131 @@
+{
+  "summary": "Dating Safety Pro + Premium Checkout Testing Complete. All 19 backend tests passed (100%). All 14 frontend UI elements verified. Safety Pro card with scam/nudity tiles working. Real Stripe checkout flow creates sessions and returns valid checkout URLs. Premium status polling returns correct unpaid status immediately after session creation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dating Safety Pro card",
+        "issues": ["Nudity tile shows 'Vision-Scan nicht verfügbar' - vision scan fallback not available, but heuristic scan works correctly"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dating_safety_premium_v2.py",
+    "/app/test_reports/pytest/iter223_dating_safety_premium.xml",
+    "/app/test_reports/iter223_dating_full.jpeg",
+    "/app/test_reports/iter223_safety_refreshed.jpeg",
+    "/app/test_reports/iter223_likes_tab.jpeg",
+    "/app/test_reports/iter223_matches_tab.jpeg",
+    "/app/test_reports/iter223_discover_tab.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "dating.py: Safety Pro heuristics correctly detect scam signals (URLs, phone numbers, handles in profile text)",
+    "dating.py: calc_discover_rank correctly penalizes high safety risk profiles (up to -18 for total_score, -10 for high scam, -8 for high nudity)",
+    "dating.py: Real Stripe checkout flow creates payment_transactions with proper metadata (type=dating_premium, plan_id, user_id)",
+    "dating.py: Premium status polling correctly returns unpaid/pending status immediately after session creation",
+    "dating.py: maybe_attach_safety correctly adds safety_summary to discover/matches/likes profiles",
+    "DatingPage.jsx: Safety Pro card has all required data-testids (dating-safety-pro-card, dating-safety-refresh-button, dating-safety-scam-tile, dating-safety-nudity-tile)",
+    "DatingPage.jsx: Match safety chips correctly display with data-testid dating-match-safety-chip-{match_id}",
+    "DatingPage.jsx: Like safety chips correctly display with data-testid dating-like-safety-{profile_id}",
+    "DatingPage.jsx: Premium checkout flow correctly redirects to Stripe checkout URL",
+    "DatingPage.jsx: Premium status polling correctly checks payment status after redirect"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_dating_safety_premium_v2.py"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19 tests passed)",
+    "frontend": "100% (14/14 UI elements verified)"
+  },
+  "test_credentials": "reviewer@bidblitz.ae / BidBlitzReview2026!",
+  "seed_data_creation": "None - used existing seed profile Lina for matches/likes display",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Dating Safety Pro + Premium Checkout features fully tested and working. Backend uses real Stripe checkout via STRIPE_API_KEY. Safety heuristics detect scam signals in profile text. Vision scan fallback shows 'nicht verfügbar' but heuristic scan works. Premium demo upgrade (POST /api/dating/premium/demo-upgrade) still exists for backward compatibility but main UI flow uses real checkout. Reviewer account is already premium so inline premium CTA not visible.",
+  "working_features": [
+    "GET /api/dating/profile/me - Returns safety_summary with scam_level, nudity_level, total_score",
+    "GET /api/dating/discover - Returns profiles with safety_summary and discover_rank",
+    "GET /api/dating/matches - Returns matches with safety_summary",
+    "GET /api/dating/likes-you - Returns likes with safety_summary (premium only)",
+    "POST /api/dating/safety/scan - Refreshes safety scan for profile",
+    "GET /api/dating/premium/plans - Returns real premium plan (premium_30d)",
+    "POST /api/dating/premium/checkout - Creates real Stripe checkout session, returns checkout_url",
+    "GET /api/dating/premium/status/{session_id} - Returns payment status (pending/paid)",
+    "POST /api/dating/premium/demo-upgrade - MOCKED demo upgrade (backward compatibility)",
+    "UI: Safety Pro card visible with scam/nudity tiles",
+    "UI: Safety refresh button works (shows toast 'Safety Pro aktualisiert')",
+    "UI: Match safety chips visible (Safety 0/100)",
+    "UI: Like safety chips visible (Safety 0/100)",
+    "UI: Premium badge visible for premium users",
+    "UI: All tabs (Discover, Matches, Likes You) working",
+    "Regression: Voice Intro card works",
+    "Regression: Video Profile card works",
+    "Regression: Nearby card works",
+    "Regression: Crossed Paths card works",
+    "Regression: AI Bio card works",
+    "Regression: AI Coach card works",
+    "Regression: Boost button shows cooldown state"
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "POST /api/dating/premium/demo-upgrade - MOCKED demo premium upgrade (backward compatibility only, main flow uses real Stripe checkout)"
+    ]
+  },
+  "backend_test_results": {
+    "TestDatingSafetyPro": {
+      "test_profile_me_includes_safety_summary": "PASS",
+      "test_discover_profiles_include_safety_summary_and_rank": "PASS",
+      "test_matches_include_safety_indicators": "PASS",
+      "test_likes_you_include_safety_indicators": "PASS",
+      "test_safety_scan_refresh_action": "PASS",
+      "test_safety_scan_without_force": "PASS"
+    },
+    "TestDatingPremiumCheckout": {
+      "test_premium_plans_returns_real_plan": "PASS",
+      "test_real_premium_checkout_creates_session": "PASS",
+      "test_premium_status_polling_returns_valid_status": "PASS",
+      "test_premium_checkout_invalid_plan": "PASS",
+      "test_demo_upgrade_still_exists_for_backward_compatibility": "PASS"
+    },
+    "TestDatingDiscoverRanking": {
+      "test_discover_profiles_sorted_by_rank": "PASS",
+      "test_discover_rank_considers_safety": "PASS"
+    },
+    "TestDatingRegression": {
+      "test_discover_endpoint_works": "PASS",
+      "test_matches_endpoint_works": "PASS",
+      "test_likes_you_endpoint_works": "PASS",
+      "test_nearby_endpoint_works": "PASS",
+      "test_crossed_paths_endpoint_works": "PASS",
+      "test_swipes_left_endpoint_works": "PASS"
+    }
+  },
+  "frontend_test_results": {
+    "dating-safety-pro-card": "PASS",
+    "dating-safety-refresh-button": "PASS",
+    "dating-safety-scam-tile": "PASS",
+    "dating-safety-nudity-tile": "PASS",
+    "dating-voice-intro-card": "PASS",
+    "dating-video-profile-card": "PASS",
+    "dating-nearby-card": "PASS",
+    "dating-crossed-paths-card": "PASS",
+    "dating-ai-bio-card": "PASS",
+    "dating-ai-coach-card": "PASS",
+    "dating-boost-button": "PASS",
+    "dating-tab-discover": "PASS",
+    "dating-tab-matches": "PASS",
+    "dating-tab-likes": "PASS",
+    "dating-upgrade-premium-inline": "NOT VISIBLE (user is premium)",
+    "match_safety_chips": "1 found",
+    "like_safety_chips": "1 found"
+  },
+  "test_date": "2026-07-10T12:05:00Z",
+  "test_scope": "Dating Safety Pro + Premium Checkout - Safety heuristics, discover ranking, real Stripe checkout, premium status polling, UI verification"
+}

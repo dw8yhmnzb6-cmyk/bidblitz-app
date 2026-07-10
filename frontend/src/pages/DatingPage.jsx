@@ -21,6 +21,29 @@ const emptyProfile = {
 
 const chipOptions = ["Reisen", "Musik", "Kaffee", "Fitness", "Kunst", "Kochen", "Tech", "Bücher"];
 
+const defaultPremiumPlans = [
+  {
+    plan_id: "premium_30d",
+    label: "Dating Premium · 30 Tage",
+    price_eur: 14.99,
+    currency: "eur",
+    duration_days: 30,
+    features: ["Unbegrenzte Likes", "Likes You freischalten", "Boost & Spotlight", "Rewind ohne Limit"],
+  },
+];
+
+function safetyTone(level) {
+  if (level === "high") return "text-red-300 bg-red-500/15 border-red-500/25";
+  if (level === "medium") return "text-amber-200 bg-amber-500/15 border-amber-500/25";
+  return "text-emerald-200 bg-emerald-500/15 border-emerald-500/25";
+}
+
+function safetyLabel(level) {
+  if (level === "high") return "Hoch";
+  if (level === "medium") return "Mittel";
+  return "Niedrig";
+}
+
 async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, {
     credentials: "include",
@@ -65,6 +88,9 @@ export default function DatingPage({ onBack }) {
   const [locationState, setLocationState] = useState({ enabled: false, loading: false });
   const [voiceIntroState, setVoiceIntroState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
   const [videoProfileState, setVideoProfileState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
+  const [premiumPlans, setPremiumPlans] = useState(defaultPremiumPlans);
+  const [premiumCheckoutState, setPremiumCheckoutState] = useState({ loading: false, checking: false, sessionId: "" });
+  const [safetyRefreshing, setSafetyRefreshing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recordStartedAtRef = useRef(0);
@@ -89,7 +115,7 @@ export default function DatingPage({ onBack }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [profileRes, discoverRes, matchesRes, swipeRes, likesRes, nearbyRes, crossedRes] = await Promise.all([
+      const [profileRes, discoverRes, matchesRes, swipeRes, likesRes, nearbyRes, crossedRes, plansRes] = await Promise.all([
         api("/api/dating/profile/me"),
         api("/api/dating/discover"),
         api("/api/dating/matches"),
@@ -97,6 +123,7 @@ export default function DatingPage({ onBack }) {
         api("/api/dating/likes-you"),
         api("/api/dating/nearby").catch(() => ({ nearby_enabled: false, profiles: [] })),
         api("/api/dating/crossed-paths").catch(() => ({ profiles: [] })),
+        api("/api/dating/premium/plans").catch(() => ({ plans: defaultPremiumPlans })),
       ]);
       setUserProfile(profileRes.profile);
       setProfileForm({
@@ -112,6 +139,7 @@ export default function DatingPage({ onBack }) {
       setLikesYou(likesRes || { locked: true, profiles: [], count: 0 });
       setNearbyProfiles(nearbyRes.profiles || []);
       setCrossedProfiles(crossedRes.profiles || []);
+      setPremiumPlans(plansRes.plans?.length ? plansRes.plans : defaultPremiumPlans);
       setLocationState((prev) => ({ ...prev, enabled: Boolean(nearbyRes.nearby_enabled) }));
       setIdx(0);
       if ((!profileRes.profile?.bio || !profileRes.profile?.photos?.[0]) && !window.sessionStorage.getItem("dating-profile-setup-dismissed")) setShowProfileSetup(true);
@@ -123,6 +151,20 @@ export default function DatingPage({ onBack }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const premiumSessionId = params.get("premium_session_id");
+    if (premiumSessionId) {
+      checkPremiumStatus(premiumSessionId, 0);
+    }
+    if (params.get("premium_cancelled") === "true") {
+      toast.error("Premium-Zahlung abgebrochen");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("premium_cancelled");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   useEffect(() => () => {
     stopRecordingCleanup();
@@ -239,6 +281,64 @@ export default function DatingPage({ onBack }) {
       await load();
     } catch (error) {
       toast.error(error.message);
+    }
+  };
+
+  const refreshSafetyScan = async () => {
+    if (!userProfile?.profile_id) return;
+    try {
+      setSafetyRefreshing(true);
+      await api("/api/dating/safety/scan", { method: "POST", body: JSON.stringify({ profile_id: userProfile.profile_id, force: true }) });
+      toast.success("Safety Pro aktualisiert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setSafetyRefreshing(false);
+    }
+  };
+
+  const checkPremiumStatus = async (sessionId, attempt = 0) => {
+    try {
+      setPremiumCheckoutState({ loading: false, checking: true, sessionId });
+      const result = await api(`/api/dating/premium/status/${sessionId}`);
+      if (result.payment_status === "paid" || result.premium_activated) {
+        toast.success("Dating Premium aktiviert");
+        const url = new URL(window.location.href);
+        url.searchParams.delete("premium_session_id");
+        window.history.replaceState({}, "", url.toString());
+        await load();
+      } else if (result.status === "expired") {
+        toast.error("Premium-Session abgelaufen");
+      } else if (attempt < 4) {
+        window.setTimeout(() => {
+          checkPremiumStatus(sessionId, attempt + 1);
+        }, 2000);
+        return;
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setPremiumCheckoutState((prev) => ({ ...prev, checking: false }));
+    }
+  };
+
+  const startPremiumCheckout = async () => {
+    try {
+      setPremiumCheckoutState({ loading: true, checking: false, sessionId: "" });
+      const planId = premiumPlans?.[0]?.plan_id || "premium_30d";
+      const data = await api("/api/dating/premium/checkout", {
+        method: "POST",
+        body: JSON.stringify({ plan_id: planId, origin_url: window.location.origin }),
+      });
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+      throw new Error("Keine Checkout-URL erhalten");
+    } catch (error) {
+      toast.error(error.message);
+      setPremiumCheckoutState({ loading: false, checking: false, sessionId: "" });
     }
   };
 
@@ -588,6 +688,14 @@ export default function DatingPage({ onBack }) {
         <button onClick={() => setShowProfileSetup(true)} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5" data-testid="dating-open-profile-edit"><Edit2 size={16} /></button>
       </div>
 
+      {premiumCheckoutState.checking && (
+        <div className="px-4 mb-3" data-testid="dating-premium-status-banner">
+          <div className="rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-100">
+            Premium-Zahlung wird geprüft...
+          </div>
+        </div>
+      )}
+
       {userProfile && (
         <div className="px-4 mb-4 space-y-4" data-testid="dating-profile-completion-card">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -608,6 +716,42 @@ export default function DatingPage({ onBack }) {
               </button>
               {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
               <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
+              {!isPremium && <button onClick={startPremiumCheckout} className="px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-yellow-300 to-orange-400 text-black" data-testid="dating-upgrade-premium-inline">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium holen'}</button>}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="dating-safety-pro-card">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-white/45">Safety Pro</p>
+                <h3 className="text-sm font-semibold text-white">Scam Detection & Nudity Warning</h3>
+                <p className="mt-1 text-xs text-white/55">Dein Profil wird auf riskante Signale geprüft und die Discovery-Reihenfolge berücksichtigt das Ergebnis.</p>
+              </div>
+              <button onClick={refreshSafetyScan} className="px-3 py-2 rounded-xl bg-white/10 text-white text-xs font-semibold" data-testid="dating-safety-refresh-button">
+                {safetyRefreshing ? "Prüft..." : "Neu prüfen"}
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className={`rounded-2xl border px-3 py-3 ${safetyTone(userProfile?.safety_summary?.scam_level)}`} data-testid="dating-safety-scam-tile">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs uppercase tracking-[0.14em]">Scam-Risiko</span>
+                  <span className="text-xs font-bold">{safetyLabel(userProfile?.safety_summary?.scam_level)}</span>
+                </div>
+                <p className="mt-2 text-lg font-bold">{userProfile?.safety_summary?.scam_score || 0}/100</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(userProfile?.safety_summary?.scam_flags || []).length === 0 ? <span className="text-[11px] opacity-80">Keine kritischen Textsignale</span> : (userProfile?.safety_summary?.scam_flags || []).map((flag, index) => <span key={`${flag}-${index}`} className="rounded-full bg-black/15 px-2 py-1 text-[10px] font-semibold" data-testid={`dating-safety-scam-flag-${index}`}>{flag}</span>)}
+                </div>
+              </div>
+              <div className={`rounded-2xl border px-3 py-3 ${safetyTone(userProfile?.safety_summary?.nudity_level)}`} data-testid="dating-safety-nudity-tile">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs uppercase tracking-[0.14em]">Bild-Warnung</span>
+                  <span className="text-xs font-bold">{safetyLabel(userProfile?.safety_summary?.nudity_level)}</span>
+                </div>
+                <p className="mt-2 text-lg font-bold">{userProfile?.safety_summary?.nudity_score || 0}/100</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(userProfile?.safety_summary?.nudity_flags || []).length === 0 ? <span className="text-[11px] opacity-80">Kein kritischer Bildhinweis</span> : (userProfile?.safety_summary?.nudity_flags || []).map((flag, index) => <span key={`${flag}-${index}`} className="rounded-full bg-black/15 px-2 py-1 text-[10px] font-semibold" data-testid={`dating-safety-nudity-flag-${index}`}>{flag}</span>)}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -730,6 +874,14 @@ export default function DatingPage({ onBack }) {
                   <img src={currentPhotos[0]} alt={current.name} className="w-full h-80 object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
                   {current.spotlight && <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-yellow-300 px-3 py-1 text-[11px] font-bold text-black" data-testid={`dating-spotlight-badge-${current.profile_id}`}><Zap size={12} />Spotlight</div>}
+                  <div className="absolute right-4 top-4 flex flex-col items-end gap-2">
+                    <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold border ${safetyTone(current?.safety_summary?.scam_level)}`} data-testid={`dating-scam-badge-${current.profile_id}`}>
+                      <Shield size={11} />Scam {safetyLabel(current?.safety_summary?.scam_level)}
+                    </div>
+                    <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold border ${safetyTone(current?.safety_summary?.nudity_level)}`} data-testid={`dating-nudity-badge-${current.profile_id}`}>
+                      <Ban size={11} />Foto {safetyLabel(current?.safety_summary?.nudity_level)}
+                    </div>
+                  </div>
                   <div className="absolute bottom-4 left-4 right-4">
                     <div className="flex items-center gap-2"><h2 className="text-xl font-bold text-white">{current.name}{current.age ? `, ${current.age}` : ""}</h2>{current.verified && <Check size={16} className="text-blue-400" />}{current.premium && <Crown size={15} className="text-yellow-300" />}</div>
                     <div className="flex items-center gap-1 text-white/70 text-sm mt-1"><MapPin size={14} />{current.city || "Unbekannt"}</div>
@@ -737,7 +889,7 @@ export default function DatingPage({ onBack }) {
                 </div>
                 <div className="p-4">
                   <p className="text-sm mb-2 text-white/80">{current.bio || "Noch keine Bio"}</p>
-                  {(current.occupation || current.profile_prompt || current.compatibility_score || current.distance_km !== undefined || current.voice_intro?.media_id || current.video_profile?.media_id) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match</p> : null}{current.distance_km !== undefined && current.distance_km !== null ? <p className="text-[11px] text-emerald-200">{current.distance_km} km entfernt</p> : null}{current.is_recently_active && <p className="text-[11px] text-emerald-300">Jetzt aktiv</p>}{current.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(current.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-semibold text-violet-200" data-testid={`dating-card-voice-play-${current.profile_id}`}><Play size={11} />Voice Intro · {current.voice_intro.duration_seconds}s</button> : null}{current.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(current.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-3 py-1 text-[11px] font-semibold text-sky-200" data-testid={`dating-card-video-play-${current.profile_id}`}><Video size={11} />Video · {current.video_profile.duration_seconds}s</button> : null}{current.voice_intro?.media_id ? <audio id={`dating-voice-audio-${current.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${current.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{current.video_profile?.media_id ? <video id={`dating-video-player-${current.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${current.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>}
+                  {(current.occupation || current.profile_prompt || current.compatibility_score || current.distance_km !== undefined || current.voice_intro?.media_id || current.video_profile?.media_id || current?.safety_summary) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match · Rank {current.discover_rank || 0}</p> : null}{current.distance_km !== undefined && current.distance_km !== null ? <p className="text-[11px] text-emerald-200">{current.distance_km} km entfernt</p> : null}{current.is_recently_active && <p className="text-[11px] text-emerald-300">Jetzt aktiv</p>}{current?.safety_summary ? <div className="flex flex-wrap gap-2" data-testid={`dating-safety-summary-${current.profile_id}`}><span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold border ${safetyTone(current.safety_summary.scam_level)}`}>Scam {current.safety_summary.scam_score}/100</span><span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold border ${safetyTone(current.safety_summary.nudity_level)}`}>Foto {current.safety_summary.nudity_score}/100</span></div> : null}{current.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(current.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-semibold text-violet-200" data-testid={`dating-card-voice-play-${current.profile_id}`}><Play size={11} />Voice Intro · {current.voice_intro.duration_seconds}s</button> : null}{current.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(current.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-3 py-1 text-[11px] font-semibold text-sky-200" data-testid={`dating-card-video-play-${current.profile_id}`}><Video size={11} />Video · {current.video_profile.duration_seconds}s</button> : null}{current.voice_intro?.media_id ? <audio id={`dating-voice-audio-${current.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${current.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{current.video_profile?.media_id ? <video id={`dating-video-player-${current.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${current.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>}
                   <div className="flex flex-wrap gap-2">{(current.interests || []).map((interest) => <span key={interest} className="px-3 py-1 rounded-full text-xs bg-pink-500/15 text-pink-300">{interest}</span>)}</div>
                 </div>
               </motion.div>
@@ -757,13 +909,13 @@ export default function DatingPage({ onBack }) {
       {tab === "likes" && (
         <div className="px-4 space-y-3" data-testid="dating-likes-you-list">
           {likesYou.locked ? (
-            <div className="rounded-3xl border border-yellow-400/20 bg-yellow-500/10 p-6 text-center"><Crown size={36} className="mx-auto mb-3 text-yellow-300" /><h3 className="text-lg font-bold text-white">Likes You ist Premium</h3><p className="text-sm text-white/65 mt-2">{likesYou.count} Personen haben dich geliked.</p><button onClick={async () => { try { await api('/api/dating/premium/demo-upgrade', { method: 'POST' }); setIsPremium(true); setShowPaywall(false); toast.success('Premium aktiviert'); await load(); } catch (error) { toast.error(error.message); } }} className="mt-4 px-5 py-3 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-likes-upgrade-button">Premium freischalten</button></div>
+            <div className="rounded-3xl border border-yellow-400/20 bg-yellow-500/10 p-6 text-center"><Crown size={36} className="mx-auto mb-3 text-yellow-300" /><h3 className="text-lg font-bold text-white">Likes You ist Premium</h3><p className="text-sm text-white/65 mt-2">{likesYou.count} Personen haben dich geliked.</p><p className="text-xs text-white/55 mt-2">{premiumPlans?.[0] ? `${premiumPlans[0].price_eur.toFixed(2)} € / ${premiumPlans[0].duration_days} Tage` : 'Premium aktivieren'}</p><button onClick={startPremiumCheckout} className="mt-4 px-5 py-3 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-likes-upgrade-button">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium freischalten'}</button></div>
           ) : likesYou.profiles.length === 0 ? (
             <div className="text-center py-20"><Heart size={48} className="mx-auto mb-3 text-white/20" /><p className="text-sm text-white/60">Noch keine Likes</p></div>
           ) : likesYou.profiles.map((profile) => (
             <motion.div key={profile.profile_id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-4 flex items-center gap-3 bg-white/5 border border-blue-500/20" data-testid={`dating-like-you-${profile.profile_id}`}>
               <img src={profile.avatar} alt={profile.name} className="w-14 h-14 rounded-full object-cover" />
-              <div className="flex-1"><h3 className="text-sm font-semibold text-white flex items-center gap-1">{profile.name}{profile.age ? `, ${profile.age}` : ''}{profile.verified && <BadgeCheck size={13} className="text-blue-300" />}</h3><p className="text-xs text-white/60 truncate">{profile.city} · {profile.incoming_type === 'superlike' ? 'Super Like' : 'Like'}</p><div className="flex flex-wrap gap-2 mt-2">{profile.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(profile.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-like-voice-play-${profile.profile_id}`}><Play size={10} />Voice</button> : null}{profile.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(profile.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-semibold text-sky-200" data-testid={`dating-like-video-play-${profile.profile_id}`}><Video size={10} />Video</button> : null}</div>{profile.voice_intro?.media_id ? <audio id={`dating-voice-audio-${profile.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${profile.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{profile.video_profile?.media_id ? <video id={`dating-video-player-${profile.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${profile.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>
+              <div className="flex-1"><h3 className="text-sm font-semibold text-white flex items-center gap-1">{profile.name}{profile.age ? `, ${profile.age}` : ''}{profile.verified && <BadgeCheck size={13} className="text-blue-300" />}</h3><p className="text-xs text-white/60 truncate">{profile.city} · {profile.incoming_type === 'superlike' ? 'Super Like' : 'Like'}</p><div className="flex flex-wrap gap-2 mt-2">{profile?.safety_summary ? <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold border ${safetyTone(profile.safety_summary.scam_level)}`} data-testid={`dating-like-safety-${profile.profile_id}`}>Safety {profile.safety_summary.total_score}/100</span> : null}{profile.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(profile.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-like-voice-play-${profile.profile_id}`}><Play size={10} />Voice</button> : null}{profile.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(profile.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-semibold text-sky-200" data-testid={`dating-like-video-play-${profile.profile_id}`}><Video size={10} />Video</button> : null}</div>{profile.voice_intro?.media_id ? <audio id={`dating-voice-audio-${profile.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${profile.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{profile.video_profile?.media_id ? <video id={`dating-video-player-${profile.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${profile.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>
               <button onClick={() => { setTab('discover'); setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]); setIdx(0); }} className="px-3 py-2 rounded-xl bg-blue-500/15 text-blue-300 text-xs font-semibold" data-testid={`dating-open-like-${profile.profile_id}`}>Ansehen</button>
             </motion.div>
           ))}
@@ -779,7 +931,7 @@ export default function DatingPage({ onBack }) {
                 <h3 className="text-sm font-semibold text-white">{match.name}</h3>
                 <p className="text-xs text-white/60 truncate">{match.last_message || match.city}</p>
                 <p className="text-[10px] text-white/35 mt-1">{match.last_message_at ? 'Aktiv im Chat' : 'Neu gematcht'}</p>
-                <div className="flex flex-wrap gap-2 mt-2">{match.voice_intro?.media_id ? <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-match-voice-chip-${match.match_id}`}><Mic size={10} />Voice Intro</span> : null}{match.video_profile?.media_id ? <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-semibold text-sky-200" data-testid={`dating-match-video-chip-${match.match_id}`}><Video size={10} />Video-Profil</span> : null}</div>
+                <div className="flex flex-wrap gap-2 mt-2">{match?.safety_summary ? <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold border ${safetyTone(match.safety_summary.scam_level)}`} data-testid={`dating-match-safety-chip-${match.match_id}`}><Shield size={10} />Safety {match.safety_summary.total_score}/100</span> : null}{match.voice_intro?.media_id ? <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-match-voice-chip-${match.match_id}`}><Mic size={10} />Voice Intro</span> : null}{match.video_profile?.media_id ? <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-semibold text-sky-200" data-testid={`dating-match-video-chip-${match.match_id}`}><Video size={10} />Video-Profil</span> : null}</div>
               </button>
               {match.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(match.voice_intro.media_id)} className="px-3 py-2 rounded-xl bg-violet-500/15 text-violet-200 text-[11px] font-semibold" data-testid={`dating-match-voice-play-${match.match_id}`}>{voiceIntroState.playingId === match.voice_intro.media_id ? 'Neu starten' : 'Voice'}</button> : null}
               {match.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(match.video_profile.media_id)} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-[11px] font-semibold" data-testid={`dating-match-video-play-${match.match_id}`}>{videoProfileState.playingId === match.video_profile.media_id ? 'Neu starten' : 'Video'}</button> : null}
@@ -823,7 +975,7 @@ export default function DatingPage({ onBack }) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showPaywall && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-md rounded-3xl p-8 text-center bg-[#0F1016] border border-pink-500/30"><div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center bg-gradient-to-r from-yellow-300 to-orange-400"><Crown size={40} className="text-black" /></div><h2 className="text-2xl font-bold text-white mb-3">Gratis-Swipes aufgebraucht</h2><p className="text-gray-400 text-sm mb-6">Upgrade zu Premium für unbegrenzte Swipes, Likes You und Super Likes.</p><button onClick={async () => { try { await api('/api/dating/premium/demo-upgrade', { method: 'POST' }); setIsPremium(true); setShowPaywall(false); setSwipesLeft(999999); toast.success('Premium-Demo aktiviert'); await load(); } catch (error) { toast.error(error.message); } }} className="w-full py-4 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-upgrade-premium">Premium aktivieren</button><button onClick={() => setShowPaywall(false)} className="w-full py-3 rounded-xl font-medium text-white mt-3 bg-white/5">Abbrechen</button></motion.div></motion.div>}
+        {showPaywall && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-md rounded-3xl p-8 text-center bg-[#0F1016] border border-pink-500/30"><div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center bg-gradient-to-r from-yellow-300 to-orange-400"><Crown size={40} className="text-black" /></div><h2 className="text-2xl font-bold text-white mb-3">Gratis-Swipes aufgebraucht</h2><p className="text-gray-400 text-sm mb-3">Upgrade zu Premium für unbegrenzte Swipes, Likes You, Rewind und Boost.</p><p className="text-xs text-white/55 mb-6" data-testid="dating-premium-plan-copy">{premiumPlans?.[0] ? `${premiumPlans[0].label} · ${premiumPlans[0].price_eur.toFixed(2)} €` : 'Dating Premium'}</p><button onClick={startPremiumCheckout} className="w-full py-4 rounded-2xl font-bold text-black bg-gradient-to-r from-yellow-300 to-orange-400" data-testid="dating-upgrade-premium">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium aktivieren'}</button><button onClick={() => setShowPaywall(false)} className="w-full py-3 rounded-xl font-medium text-white mt-3 bg-white/5" data-testid="dating-upgrade-cancel">Abbrechen</button></motion.div></motion.div>}
       </AnimatePresence>
 
       <AnimatePresence>

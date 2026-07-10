@@ -1737,6 +1737,13 @@ async def invoice_payment_webhook(request: Request):
     except Exception:
         return {"received": True, "processed": False}
 
+    if event.payment_status == "paid" and event.session_id:
+        try:
+            from routes.dating import handle_dating_premium_webhook
+            await handle_dating_premium_webhook(event.session_id)
+        except Exception:
+            pass
+
     metadata = dict(event.metadata or {})
     if metadata.get("type") != "invoice_payment_link":
         return {"received": True, "processed": False}

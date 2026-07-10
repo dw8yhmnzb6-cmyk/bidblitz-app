@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime, timezone, date, timedelta
 from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
 import secrets
 import os
 import json
@@ -15,13 +16,19 @@ import math
 import uuid
 import asyncio
 import logging
+import base64
+import hashlib
+import mimetypes
+import re
 
 from dotenv import load_dotenv
-from emergentintegrations.llm.chat import LlmChat, StreamDone, TextDelta, UserMessage
+from emergentintegrations.llm.chat import LlmChat, StreamDone, TextDelta, UserMessage, ImageContent
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 import requests
 
 from core.database import db, sanitize_doc
 from core.security import get_current_user
+from core.config import STRIPE_API_KEY
 
 load_dotenv()
 
@@ -153,9 +160,44 @@ BOOST_DURATION_MINUTES = 30
 BOOST_COOLDOWN_HOURS = 12
 AI_PROVIDER = "openai"
 AI_MODEL = "gpt-5.2"
+SAFETY_AI_PROVIDER = "openai"
+SAFETY_AI_MODEL = "gpt-5.4"
 LOCATION_FRESH_HOURS = 48
 NEARBY_DEFAULT_RADIUS_KM = 15.0
 CROSSED_PATHS_RADIUS_KM = 0.4
+SAFETY_ANALYSIS_VERSION = "dating-safety-v1"
+SAFETY_SCAN_TTL_HOURS = 72
+IMAGE_FETCH_TIMEOUT_SECONDS = 15
+IMAGE_FETCH_MAX_BYTES = 4 * 1024 * 1024
+
+DATING_PREMIUM_PLANS = {
+    "premium_30d": {
+        "plan_id": "premium_30d",
+        "label": "Dating Premium · 30 Tage",
+        "price_eur": 14.99,
+        "currency": "eur",
+        "duration_days": 30,
+        "features": [
+            "Unbegrenzte Likes",
+            "Likes You freischalten",
+            "Boost & Spotlight",
+            "Rewind ohne Limit",
+        ],
+    }
+}
+
+SCAM_SIGNAL_PATTERNS = [
+    (re.compile(r"\b(telegram|whatsapp|snapchat|signal|kik)\b", re.IGNORECASE), 20, "Off-Platform Kontaktwechsel"),
+    (re.compile(r"\b(crypto|bitcoin|investment|forex|trading)\b", re.IGNORECASE), 28, "Investment-/Krypto-Bezug"),
+    (re.compile(r"\b(gift card|gutschein|apple card|steam card|western union|paypal friends)\b", re.IGNORECASE), 34, "Unübliche Zahlungsaufforderung"),
+    (re.compile(r"\b(sugar daddy|sugarbaby|arrangement)\b", re.IGNORECASE), 22, "Finanzielles Arrangement"),
+    (re.compile(r"\b(schick mir geld|send me money|hilfe mir finanziell|brauch(e)? dringend geld)\b", re.IGNORECASE), 40, "Direkte Geldforderung"),
+    (re.compile(r"\b(nur fans|onlyfans|adult content|escort)\b", re.IGNORECASE), 25, "Kommerzialisierter Profilzweck"),
+]
+
+NUDITY_URL_PATTERNS = [
+    re.compile(r"\b(nsfw|nude|nudity|explicit|xxx|onlyfans|adult)\b", re.IGNORECASE),
+]
 
 
 def years_old(date_str: Optional[str]) -> Optional[int]:
@@ -475,6 +517,20 @@ class VoiceIntroDeleteReq(BaseModel):
     media_id: Optional[str] = None
 
 
+class DatingSafetyScanReq(BaseModel):
+    profile_id: Optional[str] = None
+    force: bool = False
+
+
+class DatingPremiumCheckoutReq(BaseModel):
+    plan_id: str = Field(default="premium_30d")
+    origin_url: str = Field(min_length=8, max_length=500)
+
+
+class DatingPremiumStatusReq(BaseModel):
+    session_id: str = Field(min_length=8, max_length=200)
+
+
 def _build_profile_context(profile: dict) -> str:
     interests = ", ".join(profile.get("interests") or []) or "keine besonderen Interessen angegeben"
     return (
@@ -542,7 +598,391 @@ def calc_discover_rank(profile: dict) -> int:
         rank += 3
     if profile.get("distance_km") is not None and profile.get("distance_km") <= 5:
         rank += 6
+    completion = int(profile.get("profile_completion") or 0)
+    rank += min(completion // 12, 8)
+    if profile.get("voice_intro"):
+        rank += 3
+    if profile.get("video_profile"):
+        rank += 4
+    if completion < 45:
+        rank -= 6
+    safety = profile.get("safety_summary") or {}
+    rank -= min(int(safety.get("total_score") or 0) // 4, 18)
+    if safety.get("scam_level") == "high":
+        rank -= 10
+    if safety.get("nudity_level") == "high":
+        rank -= 8
     return rank
+
+
+def _truncate_text(value: Optional[str], max_len: int) -> str:
+    return (value or "").strip()[:max_len]
+
+
+def _compute_profile_text_fingerprint(profile: dict) -> str:
+    payload = "||".join([
+        _truncate_text(profile.get("name"), 120),
+        _truncate_text(profile.get("bio"), 600),
+        _truncate_text(profile.get("occupation"), 120),
+        _truncate_text(profile.get("profile_prompt"), 400),
+        "|".join((profile.get("interests") or [])[:12]),
+    ])
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _estimate_scam_signals(profile: dict) -> tuple[int, list[str]]:
+    text_blob = "\n".join([
+        _truncate_text(profile.get("bio"), 600),
+        _truncate_text(profile.get("occupation"), 120),
+        _truncate_text(profile.get("profile_prompt"), 400),
+        " ".join(profile.get("interests") or []),
+    ])
+    score = 0
+    flags = []
+    for pattern, weight, label in SCAM_SIGNAL_PATTERNS:
+        if pattern.search(text_blob):
+            score += weight
+            flags.append(label)
+    if len(re.findall(r"https?://", text_blob, re.IGNORECASE)) >= 1:
+        score += 12
+        flags.append("Externer Link im Profiltext")
+    if len(re.findall(r"\+\d{6,}", text_blob)) >= 1:
+        score += 14
+        flags.append("Telefonnummer im Profiltext")
+    if re.search(r"@\w+", text_blob):
+        score += 10
+        flags.append("Handle/Kontakt im Profiltext")
+    return min(score, 100), flags[:6]
+
+
+def _scam_level(score: int) -> str:
+    if score >= 70:
+        return "high"
+    if score >= 35:
+        return "medium"
+    return "low"
+
+
+def _nudity_level(score: int) -> str:
+    if score >= 75:
+        return "high"
+    if score >= 40:
+        return "medium"
+    return "low"
+
+
+def _is_safety_scan_fresh(scan: Optional[dict]) -> bool:
+    if not scan:
+        return False
+    scanned_at = parse_iso_datetime(scan.get("scanned_at"))
+    if not scanned_at:
+        return False
+    return scanned_at >= datetime.now(timezone.utc) - timedelta(hours=SAFETY_SCAN_TTL_HOURS)
+
+
+def _readable_safety_summary(scan: Optional[dict]) -> dict:
+    data = scan or {}
+    scam = data.get("scam") or {}
+    nudity = data.get("nudity") or {}
+    total_score = min(100, int((scam.get("score") or 0) * 0.6 + (nudity.get("score") or 0) * 0.4))
+    return {
+        "scam_level": scam.get("level") or "low",
+        "scam_score": int(scam.get("score") or 0),
+        "scam_flags": (scam.get("flags") or [])[:4],
+        "nudity_level": nudity.get("level") or "low",
+        "nudity_score": int(nudity.get("score") or 0),
+        "nudity_flags": (nudity.get("flags") or [])[:4],
+        "status": data.get("status") or "clear",
+        "total_score": total_score,
+        "scanned_at": data.get("scanned_at"),
+        "version": data.get("version") or SAFETY_ANALYSIS_VERSION,
+    }
+
+
+def _build_lightweight_safety_scan(profile: dict) -> dict:
+    scam_score, scam_flags = _estimate_scam_signals(profile)
+    photo_url = _get_primary_photo_url(profile) or ""
+    nudity_score = 76 if any(pattern.search(photo_url) for pattern in NUDITY_URL_PATTERNS) else 0
+    nudity_flags = ["Verdächtiger Bildpfad"] if nudity_score else []
+    status = "clear"
+    if scam_score >= 70 or nudity_score >= 75:
+        status = "warning"
+    elif scam_score >= 35 or nudity_score >= 40:
+        status = "review"
+    return {
+        "version": f"{SAFETY_ANALYSIS_VERSION}-light",
+        "scanned_at": now_iso(),
+        "status": status,
+        "text_fingerprint": _compute_profile_text_fingerprint(profile),
+        "photo_fingerprint": hashlib.sha256(photo_url.encode("utf-8")).hexdigest() if photo_url else "",
+        "scam": {"score": scam_score, "level": _scam_level(scam_score), "flags": scam_flags},
+        "nudity": {"score": nudity_score, "level": _nudity_level(nudity_score), "flags": nudity_flags, "reason": "Heuristische Schnellprüfung"},
+    }
+
+
+def _get_primary_photo_url(profile: dict) -> Optional[str]:
+    photos = profile.get("photos") or []
+    if photos and photos[0]:
+        return photos[0]
+    avatar = profile.get("avatar")
+    return avatar or None
+
+
+def _guess_mime_from_response(content_type: Optional[str], url: str) -> str:
+    if content_type:
+        clean = content_type.split(";")[0].strip().lower()
+        if clean in {"image/jpeg", "image/png", "image/webp"}:
+            return clean
+    guessed = mimetypes.guess_type(url)[0]
+    if guessed in {"image/jpeg", "image/png", "image/webp"}:
+        return guessed
+    return "image/jpeg"
+
+
+def _fetch_image_as_base64(url: str) -> tuple[str, str]:
+    response = requests.get(url, timeout=IMAGE_FETCH_TIMEOUT_SECONDS, stream=True)
+    response.raise_for_status()
+    chunks = []
+    size = 0
+    for chunk in response.iter_content(chunk_size=65536):
+        if not chunk:
+            continue
+        size += len(chunk)
+        if size > IMAGE_FETCH_MAX_BYTES:
+            raise ValueError("Bild zu groß für Safety-Scan")
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+    if not raw:
+        raise ValueError("Bild leer")
+    content_type = _guess_mime_from_response(response.headers.get("Content-Type"), url)
+    return base64.b64encode(raw).decode("utf-8"), content_type
+
+
+async def _run_safety_vision_check(image_url: str) -> dict:
+    api_key = os.getenv("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise RuntimeError("EMERGENT_LLM_KEY fehlt")
+
+    image_b64, mime = await asyncio.to_thread(_fetch_image_as_base64, image_url)
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=f"dating-safety-vision-{uuid.uuid4().hex[:12]}",
+        system_message=(
+            "Du bist ein strenger Safety-Klassifizierer für eine Dating-App. "
+            "Analysiere nur Sicherheitsrisiken. Gib exakt JSON zurück ohne Markdown."
+        ),
+    ).with_model(SAFETY_AI_PROVIDER, SAFETY_AI_MODEL)
+
+    prompt = (
+        "Analysiere dieses Profilbild nur auf Nacktheit/sexuell explizite Wirkung für eine Dating-App. "
+        "Antwortformat exakt als JSON mit Schlüsseln: "
+        "nudity_score (0-100 Zahl), nudity_level (low|medium|high), flags (Array aus kurzen Strings), reason (kurzer String)."
+    )
+    chunks = []
+    async for event in chat.stream_message(UserMessage(
+        text=prompt,
+        file_contents=[ImageContent(image_base64=f"data:{mime};base64,{image_b64}")],
+    )):
+        if isinstance(event, TextDelta):
+            chunks.append(event.content)
+        elif isinstance(event, StreamDone):
+            break
+    raw = "".join(chunks).strip()
+    if not raw:
+        raise RuntimeError("Safety-Vision lieferte keine Antwort")
+    try:
+        parsed = json.loads(raw)
+    except Exception as exc:
+        raise RuntimeError(f"Safety-Vision JSON ungültig: {exc}")
+    score = max(0, min(100, int(parsed.get("nudity_score") or 0)))
+    level = parsed.get("nudity_level") or _nudity_level(score)
+    flags = [str(item).strip() for item in (parsed.get("flags") or []) if str(item).strip()][:4]
+    reason = str(parsed.get("reason") or "").strip()
+    return {
+        "score": score,
+        "level": level if level in {"low", "medium", "high"} else _nudity_level(score),
+        "flags": flags,
+        "reason": reason,
+    }
+
+
+async def analyze_profile_safety(profile: dict, force: bool = False) -> dict:
+    current_scan = profile.get("safety_scan") or {}
+    text_fingerprint = _compute_profile_text_fingerprint(profile)
+    photo_url = _get_primary_photo_url(profile)
+    photo_fingerprint = hashlib.sha256((photo_url or "").encode("utf-8")).hexdigest() if photo_url else ""
+    if (
+        not force
+        and _is_safety_scan_fresh(current_scan)
+        and current_scan.get("text_fingerprint") == text_fingerprint
+        and current_scan.get("photo_fingerprint") == photo_fingerprint
+    ):
+        return current_scan
+
+    scam_score, scam_flags = _estimate_scam_signals(profile)
+    nudity = {
+        "score": 0,
+        "level": "low",
+        "flags": [],
+        "reason": "Kein Bild-Scan erforderlich",
+    }
+
+    if photo_url:
+        if any(pattern.search(photo_url) for pattern in NUDITY_URL_PATTERNS):
+            nudity = {
+                "score": 76,
+                "level": "high",
+                "flags": ["Verdächtiger Bildpfad"],
+                "reason": "Bild-URL enthält explizite Schlüsselwörter",
+            }
+        else:
+            try:
+                nudity = await _run_safety_vision_check(photo_url)
+            except Exception as exc:
+                logger.warning(f"Dating Safety Vision Fallback aktiv: {exc}")
+                nudity = {
+                    "score": 0,
+                    "level": "low",
+                    "flags": ["Vision-Scan nicht verfügbar"],
+                    "reason": "Bildanalyse konnte nicht abgeschlossen werden",
+                }
+
+    status = "clear"
+    if scam_score >= 70 or nudity.get("score", 0) >= 75:
+        status = "warning"
+    elif scam_score >= 35 or nudity.get("score", 0) >= 40:
+        status = "review"
+
+    scan = {
+        "version": SAFETY_ANALYSIS_VERSION,
+        "scanned_at": now_iso(),
+        "status": status,
+        "text_fingerprint": text_fingerprint,
+        "photo_fingerprint": photo_fingerprint,
+        "scam": {
+            "score": scam_score,
+            "level": _scam_level(scam_score),
+            "flags": scam_flags,
+        },
+        "nudity": nudity,
+    }
+    await db.dating_profiles.update_one(
+        {"profile_id": profile["profile_id"]},
+        {"$set": {"safety_scan": scan}},
+    )
+    return scan
+
+
+async def ensure_profile_safety(profile: dict, force: bool = False) -> dict:
+    scan = await analyze_profile_safety(profile, force=force)
+    profile["safety_scan"] = scan
+    profile["safety_summary"] = _readable_safety_summary(scan)
+    return profile
+
+
+async def maybe_attach_safety(profile: dict, include_scan: bool = False) -> dict:
+    if not profile:
+        return profile
+    scan = profile.get("safety_scan") or _build_lightweight_safety_scan(profile)
+    profile["safety_scan"] = scan
+    profile["safety_summary"] = _readable_safety_summary(scan)
+    if not include_scan:
+        profile.pop("safety_scan", None)
+    return profile
+
+
+def _premium_until(days: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+
+
+async def _activate_dating_premium_from_transaction(txn: dict) -> bool:
+    metadata = txn.get("metadata") or {}
+    if metadata.get("type") != "dating_premium":
+        return False
+    if txn.get("credited"):
+        return False
+    user_id = metadata.get("user_id") or txn.get("user_id")
+    plan_id = metadata.get("plan_id")
+    plan = DATING_PREMIUM_PLANS.get(plan_id or "")
+    if not user_id or not plan:
+        return False
+
+    valid_until = _premium_until(plan["duration_days"])
+    await db.users.update_one(
+        {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
+        {"$set": {
+            "dating_premium": True,
+            "dating_premium_plan": plan_id,
+            "dating_premium_valid_until": valid_until,
+        }},
+    )
+    await db.dating_profiles.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "premium": True,
+            "premium_plan": plan_id,
+            "premium_valid_until": valid_until,
+            "premium_activated_at": now_iso(),
+        }},
+    )
+    await db.payment_transactions.update_one(
+        {"session_id": txn.get("session_id")},
+        {"$set": {"credited": True, "credited_at": now_iso(), "status": "completed", "payment_status": "paid"}},
+    )
+    existing = await db.transactions.find_one({"stripe_session_id": txn.get("session_id"), "category": "dating_premium"}, {"_id": 0})
+    if not existing:
+        await db.transactions.insert_one({
+            "id": secrets.token_hex(8),
+            "user_id": user_id,
+            "type": "subscription",
+            "amount": txn.get("amount", 0),
+            "description": f"Dating Premium aktiviert ({plan['label']})",
+            "merchant_name": "BidBlitz Dating",
+            "status": "completed",
+            "reference": f"DATE-{str(txn.get('session_id', ''))[:12].upper()}",
+            "payment_method": "stripe",
+            "category": "dating_premium",
+            "stripe_session_id": txn.get("session_id"),
+            "created_at": now_iso(),
+        })
+    return True
+
+
+async def _refresh_dating_premium_status(session_id: str, user_id: str, request: Request) -> dict:
+    txn = await db.payment_transactions.find_one({"session_id": session_id, "user_id": user_id}, {"_id": 0})
+    if not txn:
+        raise HTTPException(status_code=404, detail="Payment-Session nicht gefunden")
+    host_url = str(request.base_url).rstrip("/")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    checkout_status = await stripe_checkout.get_checkout_status(session_id)
+    new_status = "completed" if checkout_status.payment_status == "paid" else checkout_status.status
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "status": new_status,
+            "payment_status": checkout_status.payment_status,
+            "updated_at": now_iso(),
+        }},
+    )
+    refreshed = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0}) or txn
+    activated = False
+    if checkout_status.payment_status == "paid":
+        activated = await _activate_dating_premium_from_transaction(refreshed)
+        refreshed = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0}) or refreshed
+    return {
+        "status": refreshed.get("status"),
+        "payment_status": refreshed.get("payment_status"),
+        "premium_activated": activated or bool(refreshed.get("credited")),
+        "session_id": session_id,
+        "plan_id": (refreshed.get("metadata") or {}).get("plan_id"),
+    }
+
+
+async def handle_dating_premium_webhook(session_id: str) -> bool:
+    txn = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+    if not txn:
+        return False
+    return await _activate_dating_premium_from_transaction(txn)
 
 
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -617,6 +1057,7 @@ async def my_profile(request: Request):
     user = await get_me(request)
     profile = await get_or_create_my_profile(user)
     await maybe_seed_demo_like(profile)
+    profile = await ensure_profile_safety(profile)
     filters = user.get("dating_filters") or {
         "age_min": 18,
         "age_max": 99,
@@ -656,6 +1097,7 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
     }
     await db.dating_profiles.update_one({"user_id": str(user["_id"])}, {"$set": update})
     fresh = await db.dating_profiles.find_one({"user_id": str(user["_id"])}, {"_id": 0})
+    fresh = await ensure_profile_safety(fresh, force=True)
     fresh["profile_completion"] = calc_profile_completion(fresh)
     fresh["boost"] = get_boost_state(fresh)
     if fresh.get("voice_intro"):
@@ -674,6 +1116,89 @@ async def premium_demo_upgrade(request: Request):
         {"$set": {"premium": True}},
     )
     return {"ok": True, "premium": True}
+
+
+@router.get("/premium/plans")
+async def dating_premium_plans(request: Request):
+    await get_me(request)
+    return {"plans": list(DATING_PREMIUM_PLANS.values())}
+
+
+@router.post("/premium/checkout")
+async def dating_premium_checkout(payload: DatingPremiumCheckoutReq, request: Request):
+    user = await get_me(request)
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=503, detail="Stripe nicht konfiguriert")
+    plan = DATING_PREMIUM_PLANS.get(payload.plan_id)
+    if not plan:
+        raise HTTPException(status_code=400, detail="Ungültiger Premium-Plan")
+
+    origin = payload.origin_url.rstrip("/")
+    success_url = f"{origin}/dating?premium_session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/dating?premium_cancelled=true"
+    metadata = {
+        "type": "dating_premium",
+        "plan_id": plan["plan_id"],
+        "user_id": str(user["_id"]),
+        "user_email": user.get("email", ""),
+    }
+    host_url = str(request.base_url).rstrip("/")
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}/api/webhook/stripe")
+    checkout_req = CheckoutSessionRequest(
+        amount=float(plan["price_eur"]),
+        currency=plan["currency"],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata=metadata,
+        payment_methods=["card"],
+    )
+    session = await stripe_checkout.create_checkout_session(checkout_req)
+    tx_doc = {
+        "session_id": session.session_id,
+        "user_id": str(user["_id"]),
+        "user_email": user.get("email", ""),
+        "amount": float(plan["price_eur"]),
+        "currency": plan["currency"].upper(),
+        "type": "dating_premium",
+        "status": "initiated",
+        "payment_status": "pending",
+        "credited": False,
+        "plan_id": plan["plan_id"],
+        "metadata": metadata,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    try:
+        await db.payment_transactions.insert_one(tx_doc)
+    except DuplicateKeyError:
+        await db.payment_transactions.update_one(
+            {"session_id": session.session_id},
+            {"$set": tx_doc},
+        )
+    return {"ok": True, "checkout_url": session.url, "session_id": session.session_id, "plan": plan}
+
+
+@router.get("/premium/status/{session_id}")
+async def dating_premium_checkout_status(session_id: str, request: Request):
+    user = await get_me(request)
+    return await _refresh_dating_premium_status(session_id, str(user["_id"]), request)
+
+
+@router.post("/safety/scan")
+async def dating_safety_scan(payload: DatingSafetyScanReq, request: Request):
+    user = await get_me(request)
+    me = await get_or_create_my_profile(user)
+    target_profile = me
+    if payload.profile_id and payload.profile_id != me.get("profile_id"):
+        target_profile = await db.dating_profiles.find_one({"profile_id": payload.profile_id}, {"_id": 0})
+        if not target_profile:
+            raise HTTPException(status_code=404, detail="Profil nicht gefunden")
+    target_profile = await ensure_profile_safety(target_profile, force=payload.force)
+    return {
+        "ok": True,
+        "profile_id": target_profile["profile_id"],
+        "safety": target_profile.get("safety_summary") or _readable_safety_summary(target_profile.get("safety_scan")),
+    }
 
 
 @router.post("/verify/demo")
@@ -1017,6 +1542,7 @@ async def get_nearby_profiles(request: Request, radius_km: float = NEARBY_DEFAUL
         profile["profile_completion"] = calc_profile_completion(profile)
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
+        await maybe_attach_safety(profile)
         profile["discover_rank"] = calc_discover_rank(profile)
         results.append(profile)
     results.sort(key=lambda item: (item.get("distance_km", 999), -item.get("compatibility_score", 0)))
@@ -1041,6 +1567,7 @@ async def get_crossed_paths(request: Request):
         profile["last_distance_km"] = row.get("last_distance_km")
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
+        await maybe_attach_safety(profile)
         items.append(profile)
     return {"profiles": items}
 
@@ -1096,6 +1623,7 @@ async def discover(request: Request):
         profile["is_recently_active"] = True
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
+        await maybe_attach_safety(profile)
         profile["discover_rank"] = calc_discover_rank(profile)
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
@@ -1269,6 +1797,7 @@ async def get_matches(request: Request):
         profile["unread_count"] = (match.get("unread") or {}).get(my_user_id, 0)
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
+        await maybe_attach_safety(profile)
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
         if profile.get("video_profile"):
@@ -1383,6 +1912,7 @@ async def likes_you(request: Request):
         profile["profile_completion"] = calc_profile_completion(profile)
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
+        await maybe_attach_safety(profile)
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
         if profile.get("video_profile"):

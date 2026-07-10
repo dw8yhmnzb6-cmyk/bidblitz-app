@@ -379,6 +379,12 @@ async def stripe_webhook(request: Request):
         event = await stripe_checkout.handle_webhook(body, signature)
 
         if event.payment_status == "paid" and event.session_id:
+            try:
+                from routes.dating import handle_dating_premium_webhook
+                await handle_dating_premium_webhook(event.session_id)
+            except Exception:
+                pass
+
             # 1. Wallet-Topup
             payment = await db.payment_transactions.find_one({"session_id": event.session_id})
             if payment and payment["status"] not in ("completed", "credited"):
