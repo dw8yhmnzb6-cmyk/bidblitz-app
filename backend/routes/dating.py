@@ -2,8 +2,8 @@
 BidBlitz Dating P0
 Profiles, reciprocal matching, chat, filters, safety, premium basics
 """
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime, timezone, date, timedelta
@@ -12,16 +12,37 @@ import secrets
 import os
 import json
 import math
+import uuid
+import asyncio
+import logging
 
 from dotenv import load_dotenv
 from emergentintegrations.llm.chat import LlmChat, StreamDone, TextDelta, UserMessage
+import requests
 
 from core.database import db, sanitize_doc
 from core.security import get_current_user
 
 load_dotenv()
 
+logger = logging.getLogger("bidblitz.dating")
+
 router = APIRouter(prefix="/api/dating", tags=["dating"])
+
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+APP_STORAGE_PREFIX = "bidblitz/dating"
+VOICE_INTRO_MAX_BYTES = 5 * 1024 * 1024
+VOICE_INTRO_MAX_SECONDS = 30
+ALLOWED_AUDIO_TYPES = {
+    "audio/webm": "webm",
+    "audio/ogg": "ogg",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+}
+storage_key = None
 
 DEFAULT_AVATARS = [
     "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=80",
@@ -153,6 +174,10 @@ def build_message_id() -> str:
     return f"DMSG-{secrets.token_hex(6).upper()}"
 
 
+def build_media_id() -> str:
+    return f"DMED-{secrets.token_hex(6).upper()}"
+
+
 def swipe_reset_key() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
@@ -167,6 +192,66 @@ def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         return parsed.astimezone(timezone.utc)
     except Exception:
         return None
+
+
+def _init_storage_sync(force_refresh: bool = False) -> str:
+    global storage_key
+    if storage_key and not force_refresh:
+        return storage_key
+    emergent_key = os.getenv("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise RuntimeError("EMERGENT_LLM_KEY fehlt")
+    response = requests.post(
+        f"{STORAGE_URL}/init",
+        json={"emergent_key": emergent_key},
+        timeout=30,
+    )
+    response.raise_for_status()
+    storage_key = response.json()["storage_key"]
+    return storage_key
+
+
+def _put_object_sync(path: str, data: bytes, content_type: str) -> dict:
+    global storage_key
+    for attempt in range(2):
+        key = _init_storage_sync(force_refresh=attempt == 1)
+        response = requests.put(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key, "Content-Type": content_type},
+            data=data,
+            timeout=120,
+        )
+        if response.status_code == 403 and attempt == 0:
+            storage_key = None
+            continue
+        response.raise_for_status()
+        return response.json()
+    raise RuntimeError("Objekt konnte nicht hochgeladen werden")
+
+
+def _get_object_sync(path: str) -> tuple[bytes, str]:
+    global storage_key
+    for attempt in range(2):
+        key = _init_storage_sync(force_refresh=attempt == 1)
+        response = requests.get(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key},
+            timeout=60,
+        )
+        if response.status_code == 403 and attempt == 0:
+            storage_key = None
+            continue
+        response.raise_for_status()
+        return response.content, response.headers.get("Content-Type", "application/octet-stream")
+    raise RuntimeError("Objekt konnte nicht geladen werden")
+
+
+def resolve_audio_extension(filename: Optional[str], content_type: str) -> str:
+    if content_type in ALLOWED_AUDIO_TYPES:
+        return ALLOWED_AUDIO_TYPES[content_type]
+    if filename and "." in filename:
+        return filename.rsplit(".", 1)[-1].lower()
+    return "webm"
 
 
 def get_boost_state(profile: dict) -> dict:
@@ -227,6 +312,10 @@ async def ensure_seed_profiles():
 async def dating_startup():
     await ensure_indexes()
     await ensure_seed_profiles()
+    try:
+        await asyncio.to_thread(_init_storage_sync)
+    except Exception as exc:
+        logger.warning(f"Dating storage init fehlgeschlagen: {exc}")
 
 
 async def get_me(request: Request) -> dict:
@@ -365,6 +454,10 @@ class DatingLocationUpdateReq(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
     accuracy_m: Optional[float] = Field(default=50, ge=0, le=50000)
+
+
+class VoiceIntroDeleteReq(BaseModel):
+    media_id: Optional[str] = None
 
 
 def _build_profile_context(profile: dict) -> str:
@@ -673,6 +766,88 @@ async def generate_icebreakers(payload: DatingAiPromptReq, request: Request):
     return {"ok": True, "icebreakers": icebreakers[:5], "text": result}
 
 
+@router.post("/voice-intro")
+async def upload_voice_intro(request: Request, file: UploadFile = File(...), duration_seconds: int = Form(...)):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_AUDIO_TYPES:
+        raise HTTPException(status_code=400, detail="Audioformat nicht unterstützt")
+    if duration_seconds < 1 or duration_seconds > VOICE_INTRO_MAX_SECONDS:
+        raise HTTPException(status_code=400, detail=f"Voice Intro muss zwischen 1 und {VOICE_INTRO_MAX_SECONDS} Sekunden liegen")
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Leere Audiodatei")
+    if len(raw) > VOICE_INTRO_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Audiodatei zu groß")
+
+    ext = resolve_audio_extension(file.filename, content_type)
+    media_id = build_media_id()
+    path = f"{APP_STORAGE_PREFIX}/voice-intros/{profile['user_id']}/{uuid.uuid4()}.{ext}"
+    try:
+        result = await asyncio.to_thread(_put_object_sync, path, raw, content_type)
+    except Exception as exc:
+        logger.error(f"Voice intro upload fehlgeschlagen: {exc}")
+        raise HTTPException(status_code=502, detail="Voice Intro Upload fehlgeschlagen")
+
+    voice_intro = {
+        "media_id": media_id,
+        "storage_path": result["path"],
+        "content_type": content_type,
+        "original_filename": file.filename or f"voice-intro.{ext}",
+        "size_bytes": len(raw),
+        "duration_seconds": duration_seconds,
+        "created_at": now_iso(),
+        "is_deleted": False,
+    }
+    await db.dating_media.update_one(
+        {"owner_user_id": profile["user_id"], "kind": "voice_intro", "is_deleted": False},
+        {"$set": {"is_deleted": True, "replaced_at": now_iso()}},
+    )
+    await db.dating_media.insert_one({
+        "media_id": media_id,
+        "owner_user_id": profile["user_id"],
+        "profile_id": profile["profile_id"],
+        "kind": "voice_intro",
+        **voice_intro,
+    })
+    await db.dating_profiles.update_one(
+        {"user_id": profile["user_id"]},
+        {"$set": {"voice_intro": {k: v for k, v in voice_intro.items() if k != "storage_path"}}},
+    )
+    return {"ok": True, "voice_intro": {k: v for k, v in voice_intro.items() if k != "storage_path"}}
+
+
+@router.delete("/voice-intro")
+async def delete_voice_intro(payload: VoiceIntroDeleteReq, request: Request):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    query = {"owner_user_id": profile["user_id"], "kind": "voice_intro", "is_deleted": False}
+    if payload.media_id:
+        query["media_id"] = payload.media_id
+    media = await db.dating_media.find_one(query, {"_id": 0})
+    if not media:
+        raise HTTPException(status_code=404, detail="Voice Intro nicht gefunden")
+    await db.dating_media.update_one({"media_id": media["media_id"]}, {"$set": {"is_deleted": True, "deleted_at": now_iso()}})
+    await db.dating_profiles.update_one({"user_id": profile["user_id"]}, {"$unset": {"voice_intro": ""}})
+    return {"ok": True}
+
+
+@router.get("/voice-intro/{media_id}")
+async def stream_voice_intro(media_id: str, request: Request):
+    await get_me(request)
+    media = await db.dating_media.find_one({"media_id": media_id, "kind": "voice_intro", "is_deleted": False}, {"_id": 0})
+    if not media:
+        raise HTTPException(status_code=404, detail="Voice Intro nicht gefunden")
+    try:
+        blob, content_type = await asyncio.to_thread(_get_object_sync, media["storage_path"])
+    except Exception as exc:
+        logger.error(f"Voice intro download fehlgeschlagen: {exc}")
+        raise HTTPException(status_code=502, detail="Voice Intro konnte nicht geladen werden")
+    return Response(content=blob, media_type=media.get("content_type") or content_type)
+
+
 @router.post("/location")
 async def update_my_location(payload: DatingLocationUpdateReq, request: Request):
     user = await get_me(request)
@@ -817,6 +992,8 @@ async def discover(request: Request):
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         profile["discover_rank"] = calc_discover_rank(profile)
+        if profile.get("voice_intro"):
+            profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
     profiles.sort(
         key=lambda item: (
             item.get("discover_rank", 0),
@@ -985,6 +1162,8 @@ async def get_matches(request: Request):
         profile["unread_count"] = (match.get("unread") or {}).get(my_user_id, 0)
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
+        if profile.get("voice_intro"):
+            profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
         result.append(profile)
     return {"matches": result}
 
@@ -1095,5 +1274,7 @@ async def likes_you(request: Request):
         profile["profile_completion"] = calc_profile_completion(profile)
         profile["boost"] = get_boost_state(profile)
         profile["spotlight"] = bool(profile["boost"]["is_active"])
+        if profile.get("voice_intro"):
+            profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
     profiles.sort(key=lambda item: item.get("incoming_at", ""), reverse=True)
     return {"locked": False, "profiles": profiles, "count": count}
