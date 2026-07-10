@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating Segment-/Preisexperimente + Bundle-/Paywall-Varianten
+- `backend/routes/dating.py`: deterministische Experiment-Engine ergänzt (`DATING_EXPERIMENTS`, `_experiment_bucket`, `_active_experiments_for_profile`) für Starter-Offer-Varianten, Paywall-Layouts und limitierte Rose-Bundle-Varianten.
+- `backend/routes/dating.py`: `GET /api/dating/monetization` und `GET /api/dating/premium/plans` liefern jetzt zusätzlich `experiments`, `starter_offer` und `limited_bundle_offer`.
+- `frontend/src/pages/DatingPage.jsx`: Monetization-Hero und Paywall nutzen jetzt experimentgesteuerte Headline-/Highlight-Logik; limitiertes Bundle-Chip und Bundle-Card mit CTA ergänzt.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, Self-Tests PASS, `testing_agent` **Iteration 228 PASS**.
+
 ## 10.07.2026 — Dating Roses + Priority Inbox + Daily Rotation
 - `backend/routes/dating.py`: Rose-Monetarisierung ergänzt mit `rose_pack_3` und `rose_pack_10`, `rose_credits` in Entitlements sowie `use_rose` im Like-Flow; Rose-Likes werden als `priority_inbox` markiert.
 - `backend/routes/dating.py`: `GET /api/dating/likes-you` priorisiert jetzt Priority-Inbox-Requests; `GET /api/dating/top-picks` und `GET /api/dating/standouts` liefern `rotation_key` für tägliche Rotation pro Nutzer/Tag.
