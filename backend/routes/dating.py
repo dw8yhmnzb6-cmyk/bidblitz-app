@@ -11,6 +11,7 @@ from bson import ObjectId
 import secrets
 import os
 import json
+import math
 
 from dotenv import load_dotenv
 from emergentintegrations.llm.chat import LlmChat, StreamDone, TextDelta, UserMessage
@@ -35,6 +36,15 @@ DEFAULT_AVATARS = [
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+
+def _seed_location(lat: float, lng: float) -> dict:
+    return {
+        "last_location_lat": lat,
+        "last_location_lng": lng,
+        "last_location_accuracy_m": 120,
+        "last_location_at": now_iso(),
+    }
+
 SEED_PROFILES = [
     {
         "profile_id": "DAT-SEED-LINA",
@@ -58,6 +68,7 @@ SEED_PROFILES = [
         "created_at": now_iso(),
         "likes_count": 0,
         "is_seed": True,
+        **_seed_location(52.5200, 13.4050),
     },
     {
         "profile_id": "DAT-SEED-MAYA",
@@ -81,6 +92,7 @@ SEED_PROFILES = [
         "created_at": now_iso(),
         "likes_count": 0,
         "is_seed": True,
+        **_seed_location(53.5511, 9.9937),
     },
     {
         "profile_id": "DAT-SEED-NORA",
@@ -104,6 +116,7 @@ SEED_PROFILES = [
         "created_at": now_iso(),
         "likes_count": 0,
         "is_seed": True,
+        **_seed_location(48.1351, 11.5820),
     },
 ]
 
@@ -112,6 +125,9 @@ BOOST_DURATION_MINUTES = 30
 BOOST_COOLDOWN_HOURS = 12
 AI_PROVIDER = "openai"
 AI_MODEL = "gpt-5.2"
+LOCATION_FRESH_HOURS = 48
+NEARBY_DEFAULT_RADIUS_KM = 15.0
+CROSSED_PATHS_RADIUS_KM = 0.4
 
 
 def years_old(date_str: Optional[str]) -> Optional[int]:
@@ -182,6 +198,7 @@ async def ensure_indexes():
     )
     await db.dating_profiles.create_index([("active", 1), ("gender", 1), ("city", 1)])
     await db.dating_profiles.create_index([("boost_active_until", -1), ("last_active_at", -1)])
+    await db.dating_profiles.create_index([("last_location_at", -1), ("last_location_lat", 1), ("last_location_lng", 1)])
     await db.dating_swipes.create_index([("from_user_id", 1), ("to_profile_id", 1)], unique=True)
     await db.dating_swipes.create_index([("from_user_id", 1), ("created_at", -1)])
     await db.dating_matches.create_index("match_id", unique=True)
@@ -190,13 +207,20 @@ async def ensure_indexes():
     await db.dating_messages.create_index([("match_id", 1), ("created_at", 1)])
     await db.dating_reports.create_index([("reporter_user_id", 1), ("created_at", -1)])
     await db.dating_blocks.create_index([("blocker_user_id", 1), ("blocked_user_id", 1)], unique=True)
+    await db.dating_crossed_paths.create_index("pair_key", unique=True)
+    await db.dating_crossed_paths.create_index([("participant_ids", 1), ("last_crossed_at", -1)])
 
 
 async def ensure_seed_profiles():
     for seed in SEED_PROFILES:
-        existing = await db.dating_profiles.find_one({"profile_id": seed["profile_id"]}, {"_id": 1})
-        if not existing:
-            await db.dating_profiles.insert_one(dict(seed))
+        seed_payload = dict(seed)
+        seed_payload.pop("profile_id", None)
+        seed_payload.pop("user_id", None)
+        await db.dating_profiles.update_one(
+            {"profile_id": seed["profile_id"]},
+            {"$set": seed_payload, "$setOnInsert": {"profile_id": seed["profile_id"], "user_id": seed["user_id"]}},
+            upsert=True,
+        )
 
 
 @router.on_event("startup")
@@ -337,6 +361,12 @@ class DatingAiPromptReq(BaseModel):
     match_id: Optional[str] = Field(default=None, max_length=80)
 
 
+class DatingLocationUpdateReq(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    accuracy_m: Optional[float] = Field(default=50, ge=0, le=50000)
+
+
 def _build_profile_context(profile: dict) -> str:
     interests = ", ".join(profile.get("interests") or []) or "keine besonderen Interessen angegeben"
     return (
@@ -402,7 +432,61 @@ def calc_discover_rank(profile: dict) -> int:
         rank += 4
     if profile.get("is_recently_active"):
         rank += 3
+    if profile.get("distance_km") is not None and profile.get("distance_km") <= 5:
+        rank += 6
     return rank
+
+
+def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    radius = 6371.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lng2 - lng1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return radius * c
+
+
+def is_location_fresh(profile: dict) -> bool:
+    last_location_at = parse_iso_datetime(profile.get("last_location_at"))
+    if not last_location_at:
+        return False
+    return last_location_at >= datetime.now(timezone.utc) - timedelta(hours=LOCATION_FRESH_HOURS)
+
+
+def extract_distance_km(source_profile: dict, target_profile: dict) -> Optional[float]:
+    if source_profile.get("last_location_lat") is None or source_profile.get("last_location_lng") is None:
+        return None
+    if target_profile.get("last_location_lat") is None or target_profile.get("last_location_lng") is None:
+        return None
+    return round(
+        haversine_km(
+            float(source_profile["last_location_lat"]),
+            float(source_profile["last_location_lng"]),
+            float(target_profile["last_location_lat"]),
+            float(target_profile["last_location_lng"]),
+        ),
+        2,
+    )
+
+
+async def upsert_crossed_path(my_profile: dict, other_profile: dict, distance_km: float):
+    key = pair_key(my_profile["user_id"], other_profile["user_id"])
+    await db.dating_crossed_paths.update_one(
+        {"pair_key": key},
+        {
+            "$set": {
+                "participant_ids": [my_profile["user_id"], other_profile["user_id"]],
+                "participant_profiles": [my_profile["profile_id"], other_profile["profile_id"]],
+                "last_crossed_at": now_iso(),
+                "last_distance_km": round(distance_km, 3),
+            },
+            "$inc": {"cross_count": 1},
+            "$setOnInsert": {"created_at": now_iso()},
+        },
+        upsert=True,
+    )
 
 
 def calc_compatibility_score(me: dict, other: dict, filters: dict) -> int:
@@ -589,6 +673,98 @@ async def generate_icebreakers(payload: DatingAiPromptReq, request: Request):
     return {"ok": True, "icebreakers": icebreakers[:5], "text": result}
 
 
+@router.post("/location")
+async def update_my_location(payload: DatingLocationUpdateReq, request: Request):
+    user = await get_me(request)
+    my_profile = await get_or_create_my_profile(user)
+    now = now_iso()
+    await db.dating_profiles.update_one(
+        {"user_id": str(user["_id"])},
+        {
+            "$set": {
+                "last_location_lat": payload.lat,
+                "last_location_lng": payload.lng,
+                "last_location_accuracy_m": payload.accuracy_m,
+                "last_location_at": now,
+                "last_active_at": now,
+            }
+        },
+    )
+    others = await db.dating_profiles.find(
+        {
+            "active": True,
+            "user_id": {"$ne": my_profile["user_id"]},
+            "last_location_at": {"$exists": True},
+        },
+        {"_id": 0},
+    ).to_list(120)
+    crossed_updates = 0
+    for other in others:
+        distance_km = extract_distance_km({**my_profile, "last_location_lat": payload.lat, "last_location_lng": payload.lng}, other)
+        if distance_km is not None and distance_km <= CROSSED_PATHS_RADIUS_KM:
+            await upsert_crossed_path(my_profile, other, distance_km)
+            crossed_updates += 1
+    return {"ok": True, "location_updated": True, "crossed_updates": crossed_updates}
+
+
+@router.get("/nearby")
+async def get_nearby_profiles(request: Request, radius_km: float = NEARBY_DEFAULT_RADIUS_KM):
+    user = await get_me(request)
+    my_profile = await get_or_create_my_profile(user)
+    if not is_location_fresh(my_profile):
+        return {"nearby_enabled": False, "profiles": [], "radius_km": radius_km, "message": "Standort fehlt oder ist veraltet"}
+    blocked_by_me = await db.dating_blocks.find({"blocker_user_id": my_profile["user_id"]}, {"_id": 0, "blocked_user_id": 1}).to_list(500)
+    blockers = await db.dating_blocks.find({"blocked_user_id": my_profile["user_id"]}, {"_id": 0, "blocker_user_id": 1}).to_list(500)
+    blocked_ids = [item["blocked_user_id"] for item in blocked_by_me]
+    blocker_ids = [item["blocker_user_id"] for item in blockers]
+    candidates = await db.dating_profiles.find(
+        {
+            "active": True,
+            "user_id": {"$ne": my_profile["user_id"], "$nin": blocked_ids + blocker_ids},
+            "last_location_at": {"$exists": True},
+        },
+        {"_id": 0},
+    ).to_list(100)
+    results = []
+    for profile in candidates:
+        if not is_location_fresh(profile):
+            continue
+        distance_km = extract_distance_km(my_profile, profile)
+        if distance_km is None or distance_km > radius_km:
+            continue
+        profile["distance_km"] = distance_km
+        profile["compatibility_score"] = calc_compatibility_score(my_profile, profile, user.get("dating_filters") or {})
+        profile["profile_completion"] = calc_profile_completion(profile)
+        profile["boost"] = get_boost_state(profile)
+        profile["spotlight"] = bool(profile["boost"]["is_active"])
+        profile["discover_rank"] = calc_discover_rank(profile)
+        results.append(profile)
+    results.sort(key=lambda item: (item.get("distance_km", 999), -item.get("compatibility_score", 0)))
+    return {"nearby_enabled": True, "profiles": results[:24], "radius_km": radius_km}
+
+
+@router.get("/crossed-paths")
+async def get_crossed_paths(request: Request):
+    user = await get_me(request)
+    my_profile = await get_or_create_my_profile(user)
+    rows = await db.dating_crossed_paths.find({"participant_ids": my_profile["user_id"]}, {"_id": 0}).sort("last_crossed_at", -1).to_list(40)
+    items = []
+    for row in rows:
+        other_profile_id = next((pid for pid in row.get("participant_profiles", []) if pid != my_profile["profile_id"]), None)
+        if not other_profile_id:
+            continue
+        profile = await db.dating_profiles.find_one({"profile_id": other_profile_id}, {"_id": 0})
+        if not profile:
+            continue
+        profile["cross_count"] = row.get("cross_count", 1)
+        profile["last_crossed_at"] = row.get("last_crossed_at")
+        profile["last_distance_km"] = row.get("last_distance_km")
+        profile["boost"] = get_boost_state(profile)
+        profile["spotlight"] = bool(profile["boost"]["is_active"])
+        items.append(profile)
+    return {"profiles": items}
+
+
 @router.get("/discover")
 async def discover(request: Request):
     user = await get_me(request)
@@ -634,6 +810,7 @@ async def discover(request: Request):
             fallback_query["gender"] = {"$in": my_filters["seeking"]}
         profiles = await db.dating_profiles.find(fallback_query, {"_id": 0}).sort("last_active_at", -1).to_list(40)
     for profile in profiles:
+        profile["distance_km"] = extract_distance_km(my_profile, profile)
         profile["compatibility_score"] = calc_compatibility_score(my_profile, profile, my_filters)
         profile["profile_completion"] = calc_profile_completion(profile)
         profile["is_recently_active"] = True
