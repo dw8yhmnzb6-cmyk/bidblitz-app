@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Dating Boost + AI Helpers — 10.07.2026
+- ✅ Dating P1 Boost/Spotlight live: Premium-Nutzer können Boost aktivieren; Discover priorisiert geboostete Profile serverseitig und liefert `boost`-/`spotlight`-Metadaten aus.
+- ✅ Dating P2 Start live: AI Bio, AI Profil-Coach und AI Icebreakers funktionieren über echte Backend-Endpunkte mit `emergentintegrations`.
+- ✅ Dating-Stabilität verbessert: Duplicate-Key-Race-Conditions beim Profil-/Seed-Like-Setup beseitigt; Testing-Agent Iteration 219 vollständig grün.
+- 🟡 Nächster sinnvoller Schritt im Dating-Modul: UX-Feinschliff im Profil-Setup (z. B. `Skip for now` statt hartem Auto-Open) und danach P2-Ausbau Richtung Voice/Video oder Nearby/Crossed Paths.
+- ⚠️ Premium-Aktivierung für Dating bleibt aktuell bewusst **MOCKED** über `/api/dating/premium/demo-upgrade`; echte Payment-/Subscription-Verknüpfung ist der nächste Monetization-Schritt.
+
 ## Status nach Frontend-i18n Final Cleanup — 09.07.2026
 - ✅ Offene harte Texte in Wallet-Filtern, KYC-Banner, User Stats, Monitoring, Leaderboard/ExtraFeatures und Restaurant Tables Admin bereinigt.
 - ✅ Gemeinsame i18n-Keys für **DE / EN / SQ / AR** ergänzt; Albanisch-Modus per Smoke-Test und Frontend-Testagent geprüft.

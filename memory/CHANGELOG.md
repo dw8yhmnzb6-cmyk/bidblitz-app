@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 10.07.2026 — Dating P1 Boost/Spotlight + Dating P2 AI Helpers
+- `backend/routes/dating.py`: echter Premium-Boost ergänzt mit `boost_activated_at`, `boost_active_until`, Cooldown-Berechnung, `/api/dating/boost/activate` und serverseitiger Discover-Priorisierung über `discover_rank`, `boost` und `spotlight`.
+- `backend/routes/dating.py`: zwei echte Dating-Race-Conditions beseitigt. `get_or_create_my_profile()` und `maybe_seed_demo_like()` nutzen jetzt `update_one(..., $setOnInsert, upsert=True)` statt blindem Insert; dadurch verschwinden die vorher sichtbaren `E11000 duplicate key`-Fehler im Dating-Einstieg.
+- `backend/routes/dating.py`: neue AI-Endpunkte live: `POST /api/dating/ai/bio`, `POST /api/dating/ai/profile-coach`, `POST /api/dating/ai/icebreakers`. Implementiert mit `emergentintegrations`, `EMERGENT_LLM_KEY` und `openai:gpt-5.2`.
+- `frontend/src/pages/DatingPage.jsx`: Boost-CTA mit Statusanzeige, AI-Bio-Karte, AI-Profil-Coach-Karte, AI-Icebreaker-Aktionen im Matches-/Chat-Flow und Spotlight-Badge auf geboosteten Profilkarten ergänzt; alle neuen Elemente mit `data-testid` versehen.
+- `frontend/src/app/appShellFlags.js`, `frontend/src/App.js`: `/dating` stärker als Fullscreen-/Focus-Flow behandelt; störende Shell-Elemente blockieren den Dating-Flow nicht mehr.
+- Verifiziert: Python-Lint PASS, JS-Lint PASS, API-Self-Tests PASS, Browser-Smoke PASS, `testing_agent` **Iteration 219 PASS**. **MOCKED:** `POST /api/dating/premium/demo-upgrade` bleibt bewusst Demo-/Mock-Flow.
+
 ## 09.07.2026 — Mobile Store Prep + Production Readiness Audit
 - Finaler Google-Play-Internal-Testing-AAB-Versuch im Container erneut durchgeführt: Java 17, Android commandline tools sowie Android SDK Platform 35 / Build Tools 35 installiert; Build bleibt aber durch **ARM64/AAPT2-Inkompatibilität** im Container blockiert (`aapt2-8.7.2-12006047-linux` / Google build-tools liefern x86_64 Binaries). Ergebnis: **kein finales `app-release.aab` in diesem Fork**. Temporär erzeugte Test-Signing-Dateien wurden wieder entfernt.
 - `frontend/ios/App/App/Info.plist`: Apple-review-sichere Permission-Texte für Kamera, Standort, Fotos, Notifications und NFC ergänzt; keine Auktions-/Glücksspiel-Begriffe mehr in den iOS-Berechtigungstexten.
