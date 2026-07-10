@@ -1,6 +1,10 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Shield, Server, Cpu, MapPin, Clock3, Bitcoin, ChevronRight, PlayCircle, Activity, Gauge, Building2, BarChart3, Waves } from "lucide-react";
 import { useI18n } from "../store";
+import { toast } from "sonner";
+
+const API = process.env.REACT_APP_BACKEND_URL;
 
 const trustMedia = {
   dubai: "https://static.prod-images.emergentagent.com/jobs/2ac12b59-b16f-458d-9088-1c735ced669e/images/1cf85ab6d62f2971e243a0c551a8310646f1846376968d6a79dabb151cfe5b91.png",
@@ -15,6 +19,14 @@ const copy = {
     subtitle: "Transparenz schafft Vertrauen: Wir zeigen unsere Mining-Infrastruktur, unsere ASIC-Systeme und unsere Standorte in Dubai und Abu Dhabi.",
     ctaPrimary: "Zum Mining",
     ctaSecondary: "Kontakt anfragen",
+    leadTitle: "Investor / Kunde anfragen",
+    leadText: "Wenn du Mining-Infrastruktur, Partnerschaft oder Standort-Proof besprechen willst, hinterlasse deine Anfrage direkt hier.",
+    leadName: "Name",
+    leadEmail: "E-Mail",
+    leadCompany: "Firma",
+    leadMessage: "Nachricht",
+    leadSubmit: "Anfrage senden",
+    leadSuccess: "Anfrage wurde gesendet",
     investorBadge: "Investor & Kunden Proof",
     mapTitle: "Standort-Übersicht",
     mapText: "Dubai und Abu Dhabi bilden die sichtbaren Ankerpunkte für Vertrauen, Infrastruktur und operative Stabilität.",
@@ -70,6 +82,14 @@ const copy = {
     subtitle: "Transparency creates trust: we show our mining infrastructure, ASIC systems, and our locations in Dubai and Abu Dhabi.",
     ctaPrimary: "Open Mining",
     ctaSecondary: "Request Contact",
+    leadTitle: "Investor / Client Inquiry",
+    leadText: "If you want to discuss mining infrastructure, partnership, or location proof, leave your inquiry directly here.",
+    leadName: "Name",
+    leadEmail: "Email",
+    leadCompany: "Company",
+    leadMessage: "Message",
+    leadSubmit: "Send Inquiry",
+    leadSuccess: "Inquiry sent successfully",
     investorBadge: "Investor & Client Proof",
     mapTitle: "Location Overview",
     mapText: "Dubai and Abu Dhabi act as visible anchor points for trust, infrastructure, and operational stability.",
@@ -173,6 +193,45 @@ function LiveMetricCard({ icon: Icon, label, value, note, testId }) {
 export default function MiningTrustPage({ onBack, onNavigate }) {
   const { lang } = useI18n();
   const c = resolveCopy(lang);
+  const [proofData, setProofData] = useState(null);
+  const [leadForm, setLeadForm] = useState({ name: "", email: "", company: "", message: "" });
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const response = await fetch(`${API}/api/mining/trust/public`);
+        if (!response.ok) throw new Error("proof load failed");
+        const data = await response.json();
+        setProofData(data);
+      } catch (error) {
+        console.error("Mining trust proof load failed", error);
+      }
+    };
+    load();
+  }, []);
+
+  const submitLead = async () => {
+    if (!leadForm.name.trim() || !leadForm.email.trim()) {
+      toast.error("Bitte Name und E-Mail eingeben");
+      return;
+    }
+    try {
+      setSending(true);
+      const response = await fetch(`${API}/api/mining/trust/lead`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leadForm),
+      });
+      if (!response.ok) throw new Error("lead submit failed");
+      setLeadForm({ name: "", email: "", company: "", message: "" });
+      toast.success(c.leadSuccess);
+    } catch (error) {
+      toast.error("Anfrage konnte nicht gesendet werden");
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <motion.div
@@ -218,7 +277,12 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2" data-testid="mining-trust-stats-grid">
-            {c.stats.map((item, index) => (
+            {(proofData ? [
+              { label: c.stats[0].label, value: proofData.proof_metrics.locations.map((x) => x.city).join(" · ") },
+              { label: c.stats[1].label, value: `${proofData.network.active_miners} aktive Miner` },
+              { label: c.stats[2].label, value: `${proofData.network.registered_hashrate_phs} PH/s registriert` },
+              { label: c.stats[3].label, value: `${proofData.proof_metrics.monitoring}` },
+            ] : c.stats).map((item, index) => (
               <div key={`${item.label}-${index}`} className="rounded-[28px] border border-white/10 bg-white/5 p-5" data-testid={`mining-trust-stat-${index}`}>
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">{item.label}</p>
                 <p className="mt-3 text-base font-semibold text-white">{item.value}</p>
@@ -241,7 +305,14 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
             <p className="text-xs uppercase tracking-[0.2em] text-white/40">{c.metricsLiveTitle}</p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {[Gauge, Activity, Waves, BarChart3].map((Icon, index) => {
-                const item = c.metricsLive[index];
+                const fallback = c.metricsLive[index];
+                const metrics = proofData?.proof_metrics;
+                const item = metrics ? [
+                  { label: c.metricsLive[0].label, value: `${metrics.hashrate_cluster_phs} PH/s`, note: fallback.note },
+                  { label: c.metricsLive[1].label, value: `${metrics.uptime_percent}%`, note: fallback.note },
+                  { label: c.metricsLive[2].label, value: `${metrics.cooling_status}`, note: fallback.note },
+                  { label: c.metricsLive[3].label, value: `${metrics.monitoring}`, note: fallback.note },
+                ][index] : fallback;
                 return <LiveMetricCard key={`${item.label}-${index}`} icon={Icon} label={item.label} value={item.value} note={item.note} testId={`mining-trust-live-metric-${index}`} />;
               })}
             </div>
@@ -264,6 +335,23 @@ export default function MiningTrustPage({ onBack, onNavigate }) {
                 </div>
                 <div className="absolute left-[24%] top-[53%] h-px w-[50%] bg-gradient-to-r from-amber-300 via-white/50 to-sky-300" />
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-12 rounded-[32px] border border-white/10 bg-white/5 p-6" data-testid="mining-trust-lead-section">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40">Lead Capture</p>
+              <h2 className="mt-3 text-2xl font-bold text-white">{c.leadTitle}</h2>
+              <p className="mt-2 text-sm text-white/60">{c.leadText}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input value={leadForm.name} onChange={(e) => setLeadForm((p) => ({ ...p, name: e.target.value }))} placeholder={c.leadName} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" data-testid="mining-trust-lead-name" />
+              <input value={leadForm.email} onChange={(e) => setLeadForm((p) => ({ ...p, email: e.target.value }))} placeholder={c.leadEmail} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none" data-testid="mining-trust-lead-email" />
+              <input value={leadForm.company} onChange={(e) => setLeadForm((p) => ({ ...p, company: e.target.value }))} placeholder={c.leadCompany} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none sm:col-span-2" data-testid="mining-trust-lead-company" />
+              <textarea value={leadForm.message} onChange={(e) => setLeadForm((p) => ({ ...p, message: e.target.value }))} placeholder={c.leadMessage} rows={4} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none resize-none sm:col-span-2" data-testid="mining-trust-lead-message" />
+              <button onClick={submitLead} className="rounded-full bg-amber-400 px-5 py-3 text-sm font-bold text-black sm:col-span-2" data-testid="mining-trust-lead-submit">{sending ? "..." : c.leadSubmit}</button>
             </div>
           </div>
         </section>

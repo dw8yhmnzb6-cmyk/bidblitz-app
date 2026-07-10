@@ -47,6 +47,26 @@ VIP_LEVELS = [
     {"level": 4, "name": "Diamond", "min_hashrate": 10000, "bonus": 0.15, "color": "#B9F2FF"},
 ]
 
+PUBLIC_MINING_PROOF_METRICS = {
+    "hashrate_cluster_phs": 46.2,
+    "uptime_percent": 99.4,
+    "cooling_status": "stable",
+    "monitoring": "24/7",
+    "locations": [
+        {"city": "Dubai", "country": "UAE", "status": "active", "server_halls": 2},
+        {"city": "Abu Dhabi", "country": "UAE", "status": "active", "server_halls": 1},
+    ],
+    "last_maintenance_window": "2026-07-08T01:30:00+00:00",
+    "next_maintenance_window": "2026-07-15T01:30:00+00:00",
+}
+
+
+class MiningTrustLeadRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120)
+    email: str = Field(..., min_length=5, max_length=180)
+    company: Optional[str] = Field(default="", max_length=160)
+    message: Optional[str] = Field(default="", max_length=1000)
+
 
 def get_vip_level(total_hashrate):
     """Determine VIP level based on total hashrate."""
@@ -61,6 +81,51 @@ def calc_daily_earnings(hashrate, efficiency, vip_bonus):
     """Calculate daily BLZ earnings."""
     base = hashrate * DAILY_BASE_RATE * efficiency
     return round(base * (1 + vip_bonus), 8)
+
+
+@router.get("/trust/public")
+async def mining_trust_public():
+    total_miners = await db.mining_miners.count_documents({"status": "active"})
+    total_users = await db.mining_wallets.count_documents({})
+    total_hashrate = 0.0
+    try:
+        pipeline = [
+            {"$match": {"status": "active"}},
+            {"$group": {"_id": None, "hashrate": {"$sum": "$hashrate"}}},
+        ]
+        rows = await db.mining_miners.aggregate(pipeline).to_list(1)
+        if rows:
+            total_hashrate = float(rows[0].get("hashrate") or 0)
+    except Exception:
+        total_hashrate = 0.0
+
+    return {
+        "proof_metrics": PUBLIC_MINING_PROOF_METRICS,
+        "network": {
+            "active_miners": total_miners,
+            "wallets": total_users,
+            "registered_hashrate_ths": round(total_hashrate, 1),
+            "registered_hashrate_phs": round(total_hashrate / 1000, 2) if total_hashrate else 0,
+        },
+    }
+
+
+@router.post("/trust/lead")
+async def mining_trust_lead(payload: MiningTrustLeadRequest):
+    now = datetime.now(timezone.utc).isoformat()
+    lead = {
+        "lead_id": f"mlead_{secrets.token_hex(6)}",
+        "name": payload.name.strip(),
+        "email": payload.email.strip().lower(),
+        "company": (payload.company or "").strip(),
+        "message": (payload.message or "").strip(),
+        "source": "mining_trust_page",
+        "created_at": now,
+        "status": "new",
+    }
+    await db.mining_trust_leads.insert_one(lead)
+    lead.pop("_id", None)
+    return {"ok": True, "lead": lead}
 
 
 async def get_or_create_wallet(user_id):
