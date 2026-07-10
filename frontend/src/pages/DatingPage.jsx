@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Edit2, SlidersHorizontal, Shield, Ban, BadgeCheck, Zap, Mic, Square, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Edit2, SlidersHorizontal, Shield, Ban, BadgeCheck, Zap, Mic, Square, Play, Trash2, Video } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 
@@ -64,11 +64,17 @@ export default function DatingPage({ onBack }) {
   const [crossedProfiles, setCrossedProfiles] = useState([]);
   const [locationState, setLocationState] = useState({ enabled: false, loading: false });
   const [voiceIntroState, setVoiceIntroState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
+  const [videoProfileState, setVideoProfileState] = useState({ recording: false, uploading: false, seconds: 0, playingId: "" });
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recordStartedAtRef = useRef(0);
   const recordTimerRef = useRef(null);
   const streamRef = useRef(null);
+  const videoRecorderRef = useRef(null);
+  const videoChunksRef = useRef([]);
+  const videoStartedAtRef = useRef(0);
+  const videoTimerRef = useRef(null);
+  const videoStreamRef = useRef(null);
 
   const boostState = userProfile?.boost || { is_active: false, seconds_left: 0, cooldown_remaining_seconds: 0, duration_minutes: 30 };
   const boostLabel = boostState.is_active
@@ -118,7 +124,10 @@ export default function DatingPage({ onBack }) {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => () => stopRecordingCleanup(), []);
+  useEffect(() => () => {
+    stopRecordingCleanup();
+    stopVideoRecordingCleanup();
+  }, []);
 
   const loadMessages = useCallback(async (match) => {
     try {
@@ -320,6 +329,20 @@ export default function DatingPage({ onBack }) {
     return data;
   };
 
+  const uploadVideoProfileBlob = async (blob, durationSeconds) => {
+    const form = new FormData();
+    form.append("file", blob, "video-profile.webm");
+    form.append("duration_seconds", String(durationSeconds));
+    const res = await fetch(`${API}/api/dating/video-profile`, {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
+    return data;
+  };
+
   const stopRecordingCleanup = () => {
     if (recordTimerRef.current) {
       window.clearInterval(recordTimerRef.current);
@@ -330,6 +353,18 @@ export default function DatingPage({ onBack }) {
       streamRef.current = null;
     }
     mediaRecorderRef.current = null;
+  };
+
+  const stopVideoRecordingCleanup = () => {
+    if (videoTimerRef.current) {
+      window.clearInterval(videoTimerRef.current);
+      videoTimerRef.current = null;
+    }
+    if (videoStreamRef.current) {
+      videoStreamRef.current.getTracks().forEach((track) => track.stop());
+      videoStreamRef.current = null;
+    }
+    videoRecorderRef.current = null;
   };
 
   const stopVoiceRecording = () => {
@@ -384,10 +419,72 @@ export default function DatingPage({ onBack }) {
     }
   };
 
+  const stopVideoRecording = () => {
+    if (videoRecorderRef.current && videoRecorderRef.current.state !== "inactive") {
+      videoRecorderRef.current.stop();
+    } else {
+      stopVideoRecordingCleanup();
+      setVideoProfileState((prev) => ({ ...prev, recording: false }));
+    }
+  };
+
+  const startVideoRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Videoaufnahme wird auf diesem Gerät nicht unterstützt");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      videoStreamRef.current = stream;
+      videoChunksRef.current = [];
+      const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      videoRecorderRef.current = recorder;
+      videoStartedAtRef.current = Date.now();
+      recorder.ondataavailable = (event) => {
+        if (event.data?.size) videoChunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        const durationSeconds = Math.max(1, Math.min(45, Math.round((Date.now() - videoStartedAtRef.current) / 1000)));
+        stopVideoRecordingCleanup();
+        setVideoProfileState((prev) => ({ ...prev, recording: false, uploading: true, seconds: 0 }));
+        try {
+          const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
+          await uploadVideoProfileBlob(blob, durationSeconds);
+          toast.success("Video-Profil gespeichert");
+          await load();
+        } catch (error) {
+          toast.error(error.message);
+        } finally {
+          setVideoProfileState((prev) => ({ ...prev, uploading: false }));
+        }
+      };
+      recorder.start();
+      setVideoProfileState((prev) => ({ ...prev, recording: true, seconds: 0 }));
+      videoTimerRef.current = window.setInterval(() => {
+        const next = Math.floor((Date.now() - videoStartedAtRef.current) / 1000);
+        setVideoProfileState((prev) => ({ ...prev, seconds: next }));
+        if (next >= 45) stopVideoRecording();
+      }, 250);
+    } catch (error) {
+      toast.error("Kamera-/Mikrofonzugriff fehlgeschlagen");
+      stopVideoRecordingCleanup();
+    }
+  };
+
   const removeVoiceIntro = async () => {
     try {
       await api("/api/dating/voice-intro", { method: "DELETE", body: JSON.stringify({ media_id: userProfile?.voice_intro?.media_id || null }) });
       toast.success("Voice Intro gelöscht");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const removeVideoProfile = async () => {
+    try {
+      await api("/api/dating/video-profile", { method: "DELETE", body: JSON.stringify({ media_id: userProfile?.video_profile?.media_id || null }) });
+      toast.success("Video-Profil gelöscht");
       await load();
     } catch (error) {
       toast.error(error.message);
@@ -411,6 +508,25 @@ export default function DatingPage({ onBack }) {
     });
     audio.play().catch(() => toast.error("Audio konnte nicht abgespielt werden"));
     setVoiceIntroState((prev) => ({ ...prev, playingId: mediaId }));
+  };
+
+  const togglePlayVideoProfile = (mediaId) => {
+    const video = document.getElementById(`dating-video-player-${mediaId}`);
+    if (!video) return;
+    if (videoProfileState.playingId === mediaId) {
+      video.pause();
+      video.currentTime = 0;
+      setVideoProfileState((prev) => ({ ...prev, playingId: "" }));
+      return;
+    }
+    document.querySelectorAll('[data-dating-video-player="true"]').forEach((node) => {
+      if (node !== video) {
+        node.pause();
+        node.currentTime = 0;
+      }
+    });
+    video.play().catch(() => toast.error("Video konnte nicht abgespielt werden"));
+    setVideoProfileState((prev) => ({ ...prev, playingId: mediaId }));
   };
 
   const sendChat = async () => {
@@ -575,6 +691,31 @@ export default function DatingPage({ onBack }) {
               {!userProfile?.voice_intro?.media_id ? <p className="text-xs text-white/55">Füge eine kurze Sprachnachricht hinzu, damit Matches sofort deine Energie hören.</p> : <div className="rounded-xl bg-white/5 px-3 py-3" data-testid="dating-voice-intro-preview"><div className="flex items-center justify-between gap-3 flex-wrap"><div><p className="text-xs text-white font-semibold">{userProfile.voice_intro.duration_seconds}s Voice Intro</p><p className="text-[11px] text-white/45">Maximal 30 Sekunden, direkt im Profil sichtbar</p></div><button onClick={() => togglePlayVoiceIntro(userProfile.voice_intro.media_id)} className="px-3 py-2 rounded-xl bg-violet-500/15 text-violet-200 text-xs font-semibold" data-testid="dating-voice-play-button"><Play size={14} className="inline mr-1" />{voiceIntroState.playingId === userProfile.voice_intro.media_id ? "Neu starten" : "Abspielen"}</button></div><audio id={`dating-voice-audio-${userProfile.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${userProfile.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /></div>}
             </div>
           </div>
+
+          <div className="rounded-2xl border border-sky-500/20 bg-white/5 p-4" data-testid="dating-video-profile-card">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-white/45">Video-Profil</p>
+                <h3 className="text-sm font-semibold text-white">Dein erster Eindruck in Bewegung</h3>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap" data-testid="dating-video-profile-actions">
+                {!videoProfileState.recording ? (
+                  <button onClick={startVideoRecording} disabled={videoProfileState.uploading} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-xs font-semibold" data-testid="dating-video-record-button">
+                    <Video size={14} className="inline mr-1" />
+                    {videoProfileState.uploading ? "Upload..." : "Video aufnehmen"}
+                  </button>
+                ) : (
+                  <button onClick={stopVideoRecording} className="px-3 py-2 rounded-xl bg-red-500/15 text-red-200 text-xs font-semibold" data-testid="dating-video-stop-button">
+                    <Square size={14} className="inline mr-1" />Stop · {videoProfileState.seconds}s
+                  </button>
+                )}
+                {userProfile?.video_profile?.media_id && <button onClick={removeVideoProfile} className="px-3 py-2 rounded-xl bg-white/10 text-white/75 text-xs font-semibold" data-testid="dating-video-delete-button"><Trash2 size={14} className="inline mr-1" />Löschen</button>}
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              {!userProfile?.video_profile?.media_id ? <p className="text-xs text-white/55">Zeig deine Mimik, Energie und Stimme mit einem kurzen Video bis 45 Sekunden.</p> : <div className="rounded-xl bg-white/5 px-3 py-3" data-testid="dating-video-profile-preview"><div className="flex items-center justify-between gap-3 flex-wrap mb-3"><div><p className="text-xs text-white font-semibold">{userProfile.video_profile.duration_seconds}s Video-Profil</p><p className="text-[11px] text-white/45">Sichtbar direkt im Profil und beim Entdecken</p></div><button onClick={() => togglePlayVideoProfile(userProfile.video_profile.media_id)} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-xs font-semibold" data-testid="dating-video-play-button"><Play size={14} className="inline mr-1" />{videoProfileState.playingId === userProfile.video_profile.media_id ? "Neu starten" : "Abspielen"}</button></div><video id={`dating-video-player-${userProfile.video_profile.media_id}`} data-dating-video-player="true" className="w-full rounded-2xl bg-black/40 max-h-72 object-cover" src={`${API}/api/dating/video-profile/${userProfile.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline controls={false} /></div>}
+            </div>
+          </div>
         </div>
       )}
 
@@ -596,7 +737,7 @@ export default function DatingPage({ onBack }) {
                 </div>
                 <div className="p-4">
                   <p className="text-sm mb-2 text-white/80">{current.bio || "Noch keine Bio"}</p>
-                  {(current.occupation || current.profile_prompt || current.compatibility_score || current.distance_km !== undefined || current.voice_intro?.media_id) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match</p> : null}{current.distance_km !== undefined && current.distance_km !== null ? <p className="text-[11px] text-emerald-200">{current.distance_km} km entfernt</p> : null}{current.is_recently_active && <p className="text-[11px] text-emerald-300">Jetzt aktiv</p>}{current.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(current.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-semibold text-violet-200" data-testid={`dating-card-voice-play-${current.profile_id}`}><Play size={11} />Voice Intro · {current.voice_intro.duration_seconds}s</button> : null}{current.voice_intro?.media_id ? <audio id={`dating-voice-audio-${current.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${current.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}</div>}
+                  {(current.occupation || current.profile_prompt || current.compatibility_score || current.distance_km !== undefined || current.voice_intro?.media_id || current.video_profile?.media_id) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match</p> : null}{current.distance_km !== undefined && current.distance_km !== null ? <p className="text-[11px] text-emerald-200">{current.distance_km} km entfernt</p> : null}{current.is_recently_active && <p className="text-[11px] text-emerald-300">Jetzt aktiv</p>}{current.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(current.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-semibold text-violet-200" data-testid={`dating-card-voice-play-${current.profile_id}`}><Play size={11} />Voice Intro · {current.voice_intro.duration_seconds}s</button> : null}{current.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(current.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-3 py-1 text-[11px] font-semibold text-sky-200" data-testid={`dating-card-video-play-${current.profile_id}`}><Video size={11} />Video · {current.video_profile.duration_seconds}s</button> : null}{current.voice_intro?.media_id ? <audio id={`dating-voice-audio-${current.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${current.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{current.video_profile?.media_id ? <video id={`dating-video-player-${current.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${current.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>}
                   <div className="flex flex-wrap gap-2">{(current.interests || []).map((interest) => <span key={interest} className="px-3 py-1 rounded-full text-xs bg-pink-500/15 text-pink-300">{interest}</span>)}</div>
                 </div>
               </motion.div>
@@ -622,7 +763,7 @@ export default function DatingPage({ onBack }) {
           ) : likesYou.profiles.map((profile) => (
             <motion.div key={profile.profile_id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl p-4 flex items-center gap-3 bg-white/5 border border-blue-500/20" data-testid={`dating-like-you-${profile.profile_id}`}>
               <img src={profile.avatar} alt={profile.name} className="w-14 h-14 rounded-full object-cover" />
-              <div className="flex-1"><h3 className="text-sm font-semibold text-white flex items-center gap-1">{profile.name}{profile.age ? `, ${profile.age}` : ''}{profile.verified && <BadgeCheck size={13} className="text-blue-300" />}</h3><p className="text-xs text-white/60 truncate">{profile.city} · {profile.incoming_type === 'superlike' ? 'Super Like' : 'Like'}</p>{profile.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(profile.voice_intro.media_id)} className="mt-2 inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-like-voice-play-${profile.profile_id}`}><Play size={10} />Voice</button> : null}{profile.voice_intro?.media_id ? <audio id={`dating-voice-audio-${profile.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${profile.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}</div>
+              <div className="flex-1"><h3 className="text-sm font-semibold text-white flex items-center gap-1">{profile.name}{profile.age ? `, ${profile.age}` : ''}{profile.verified && <BadgeCheck size={13} className="text-blue-300" />}</h3><p className="text-xs text-white/60 truncate">{profile.city} · {profile.incoming_type === 'superlike' ? 'Super Like' : 'Like'}</p><div className="flex flex-wrap gap-2 mt-2">{profile.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(profile.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-like-voice-play-${profile.profile_id}`}><Play size={10} />Voice</button> : null}{profile.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(profile.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-semibold text-sky-200" data-testid={`dating-like-video-play-${profile.profile_id}`}><Video size={10} />Video</button> : null}</div>{profile.voice_intro?.media_id ? <audio id={`dating-voice-audio-${profile.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${profile.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{profile.video_profile?.media_id ? <video id={`dating-video-player-${profile.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${profile.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>
               <button onClick={() => { setTab('discover'); setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]); setIdx(0); }} className="px-3 py-2 rounded-xl bg-blue-500/15 text-blue-300 text-xs font-semibold" data-testid={`dating-open-like-${profile.profile_id}`}>Ansehen</button>
             </motion.div>
           ))}
@@ -638,10 +779,12 @@ export default function DatingPage({ onBack }) {
                 <h3 className="text-sm font-semibold text-white">{match.name}</h3>
                 <p className="text-xs text-white/60 truncate">{match.last_message || match.city}</p>
                 <p className="text-[10px] text-white/35 mt-1">{match.last_message_at ? 'Aktiv im Chat' : 'Neu gematcht'}</p>
-                {match.voice_intro?.media_id ? <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-match-voice-chip-${match.match_id}`}><Mic size={10} />Voice Intro</span> : null}
+                <div className="flex flex-wrap gap-2 mt-2">{match.voice_intro?.media_id ? <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-semibold text-violet-200" data-testid={`dating-match-voice-chip-${match.match_id}`}><Mic size={10} />Voice Intro</span> : null}{match.video_profile?.media_id ? <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-1 text-[10px] font-semibold text-sky-200" data-testid={`dating-match-video-chip-${match.match_id}`}><Video size={10} />Video-Profil</span> : null}</div>
               </button>
               {match.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(match.voice_intro.media_id)} className="px-3 py-2 rounded-xl bg-violet-500/15 text-violet-200 text-[11px] font-semibold" data-testid={`dating-match-voice-play-${match.match_id}`}>{voiceIntroState.playingId === match.voice_intro.media_id ? 'Neu starten' : 'Voice'}</button> : null}
+              {match.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(match.video_profile.media_id)} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-[11px] font-semibold" data-testid={`dating-match-video-play-${match.match_id}`}>{videoProfileState.playingId === match.video_profile.media_id ? 'Neu starten' : 'Video'}</button> : null}
               {match.voice_intro?.media_id ? <audio id={`dating-voice-audio-${match.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${match.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}
+              {match.video_profile?.media_id ? <video id={`dating-video-player-${match.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${match.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}
               <button onClick={() => runAiIcebreakers(match.match_id)} className="px-3 py-2 rounded-xl bg-cyan-500/15 text-cyan-200 text-[11px] font-semibold" data-testid={`dating-ai-icebreaker-button-${match.match_id}`}>{aiLoading === `ice-${match.match_id}` ? '...' : 'AI Icebreaker'}</button>
               {match.unread_count > 0 && <span className="min-w-6 h-6 px-2 rounded-full bg-pink-500 text-white text-xs font-bold flex items-center justify-center" data-testid={`dating-unread-${match.match_id}`}>{match.unread_count}</span>}
               <button onClick={() => loadMessages(match)} className="w-10 h-10 rounded-full flex items-center justify-center bg-pink-500/15" data-testid={`dating-message-button-${match.match_id}`}><MessageCircle size={18} className="text-pink-300" /></button>

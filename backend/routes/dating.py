@@ -33,6 +33,8 @@ STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 APP_STORAGE_PREFIX = "bidblitz/dating"
 VOICE_INTRO_MAX_BYTES = 5 * 1024 * 1024
 VOICE_INTRO_MAX_SECONDS = 30
+VIDEO_PROFILE_MAX_BYTES = 20 * 1024 * 1024
+VIDEO_PROFILE_MAX_SECONDS = 45
 ALLOWED_AUDIO_TYPES = {
     "audio/webm": "webm",
     "audio/ogg": "ogg",
@@ -41,6 +43,11 @@ ALLOWED_AUDIO_TYPES = {
     "audio/x-m4a": "m4a",
     "audio/wav": "wav",
     "audio/x-wav": "wav",
+}
+ALLOWED_VIDEO_TYPES = {
+    "video/webm": "webm",
+    "video/mp4": "mp4",
+    "video/quicktime": "mov",
 }
 storage_key = None
 
@@ -249,6 +256,14 @@ def _get_object_sync(path: str) -> tuple[bytes, str]:
 def resolve_audio_extension(filename: Optional[str], content_type: str) -> str:
     if content_type in ALLOWED_AUDIO_TYPES:
         return ALLOWED_AUDIO_TYPES[content_type]
+    if filename and "." in filename:
+        return filename.rsplit(".", 1)[-1].lower()
+    return "webm"
+
+
+def resolve_video_extension(filename: Optional[str], content_type: str) -> str:
+    if content_type in ALLOWED_VIDEO_TYPES:
+        return ALLOWED_VIDEO_TYPES[content_type]
     if filename and "." in filename:
         return filename.rsplit(".", 1)[-1].lower()
     return "webm"
@@ -611,6 +626,10 @@ async def my_profile(request: Request):
     }
     profile["profile_completion"] = calc_profile_completion(profile)
     profile["boost"] = get_boost_state(profile)
+    if profile.get("voice_intro"):
+        profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
+    if profile.get("video_profile"):
+        profile["video_profile"]["stream_url"] = f"/api/dating/video-profile/{profile['video_profile']['media_id']}"
     return {"profile": profile, "filters": filters}
 
 
@@ -639,6 +658,10 @@ async def update_my_profile(payload: DatingProfileUpdate, request: Request):
     fresh = await db.dating_profiles.find_one({"user_id": str(user["_id"])}, {"_id": 0})
     fresh["profile_completion"] = calc_profile_completion(fresh)
     fresh["boost"] = get_boost_state(fresh)
+    if fresh.get("voice_intro"):
+        fresh["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{fresh['voice_intro']['media_id']}"
+    if fresh.get("video_profile"):
+        fresh["video_profile"]["stream_url"] = f"/api/dating/video-profile/{fresh['video_profile']['media_id']}"
     return {"ok": True, "profile": fresh}
 
 
@@ -848,6 +871,88 @@ async def stream_voice_intro(media_id: str, request: Request):
     return Response(content=blob, media_type=media.get("content_type") or content_type)
 
 
+@router.post("/video-profile")
+async def upload_video_profile(request: Request, file: UploadFile = File(...), duration_seconds: int = Form(...)):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(status_code=400, detail="Videoformat nicht unterstützt")
+    if duration_seconds < 1 or duration_seconds > VIDEO_PROFILE_MAX_SECONDS:
+        raise HTTPException(status_code=400, detail=f"Video-Profil muss zwischen 1 und {VIDEO_PROFILE_MAX_SECONDS} Sekunden liegen")
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Leere Videodatei")
+    if len(raw) > VIDEO_PROFILE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Videodatei zu groß")
+
+    ext = resolve_video_extension(file.filename, content_type)
+    media_id = build_media_id()
+    path = f"{APP_STORAGE_PREFIX}/video-profiles/{profile['user_id']}/{uuid.uuid4()}.{ext}"
+    try:
+        result = await asyncio.to_thread(_put_object_sync, path, raw, content_type)
+    except Exception as exc:
+        logger.error(f"Video profile upload fehlgeschlagen: {exc}")
+        raise HTTPException(status_code=502, detail="Video-Profil Upload fehlgeschlagen")
+
+    video_profile = {
+        "media_id": media_id,
+        "storage_path": result["path"],
+        "content_type": content_type,
+        "original_filename": file.filename or f"video-profile.{ext}",
+        "size_bytes": len(raw),
+        "duration_seconds": duration_seconds,
+        "created_at": now_iso(),
+        "is_deleted": False,
+    }
+    await db.dating_media.update_one(
+        {"owner_user_id": profile["user_id"], "kind": "video_profile", "is_deleted": False},
+        {"$set": {"is_deleted": True, "replaced_at": now_iso()}},
+    )
+    await db.dating_media.insert_one({
+        "media_id": media_id,
+        "owner_user_id": profile["user_id"],
+        "profile_id": profile["profile_id"],
+        "kind": "video_profile",
+        **video_profile,
+    })
+    await db.dating_profiles.update_one(
+        {"user_id": profile["user_id"]},
+        {"$set": {"video_profile": {k: v for k, v in video_profile.items() if k != "storage_path"}}},
+    )
+    return {"ok": True, "video_profile": {k: v for k, v in video_profile.items() if k != "storage_path"}}
+
+
+@router.delete("/video-profile")
+async def delete_video_profile(payload: VoiceIntroDeleteReq, request: Request):
+    user = await get_me(request)
+    profile = await get_or_create_my_profile(user)
+    query = {"owner_user_id": profile["user_id"], "kind": "video_profile", "is_deleted": False}
+    if payload.media_id:
+        query["media_id"] = payload.media_id
+    media = await db.dating_media.find_one(query, {"_id": 0})
+    if not media:
+        raise HTTPException(status_code=404, detail="Video-Profil nicht gefunden")
+    await db.dating_media.update_one({"media_id": media["media_id"]}, {"$set": {"is_deleted": True, "deleted_at": now_iso()}})
+    await db.dating_profiles.update_one({"user_id": profile["user_id"]}, {"$unset": {"video_profile": ""}})
+    return {"ok": True}
+
+
+@router.get("/video-profile/{media_id}")
+async def stream_video_profile(media_id: str, request: Request):
+    await get_me(request)
+    media = await db.dating_media.find_one({"media_id": media_id, "kind": "video_profile", "is_deleted": False}, {"_id": 0})
+    if not media:
+        raise HTTPException(status_code=404, detail="Video-Profil nicht gefunden")
+    try:
+        blob, content_type = await asyncio.to_thread(_get_object_sync, media["storage_path"])
+    except Exception as exc:
+        logger.error(f"Video profile download fehlgeschlagen: {exc}")
+        raise HTTPException(status_code=502, detail="Video-Profil konnte nicht geladen werden")
+    return Response(content=blob, media_type=media.get("content_type") or content_type)
+
+
 @router.post("/location")
 async def update_my_location(payload: DatingLocationUpdateReq, request: Request):
     user = await get_me(request)
@@ -994,6 +1099,8 @@ async def discover(request: Request):
         profile["discover_rank"] = calc_discover_rank(profile)
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
+        if profile.get("video_profile"):
+            profile["video_profile"]["stream_url"] = f"/api/dating/video-profile/{profile['video_profile']['media_id']}"
     profiles.sort(
         key=lambda item: (
             item.get("discover_rank", 0),
@@ -1164,6 +1271,8 @@ async def get_matches(request: Request):
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
+        if profile.get("video_profile"):
+            profile["video_profile"]["stream_url"] = f"/api/dating/video-profile/{profile['video_profile']['media_id']}"
         result.append(profile)
     return {"matches": result}
 
@@ -1276,5 +1385,7 @@ async def likes_you(request: Request):
         profile["spotlight"] = bool(profile["boost"]["is_active"])
         if profile.get("voice_intro"):
             profile["voice_intro"]["stream_url"] = f"/api/dating/voice-intro/{profile['voice_intro']['media_id']}"
+        if profile.get("video_profile"):
+            profile["video_profile"]["stream_url"] = f"/api/dating/video-profile/{profile['video_profile']['media_id']}"
     profiles.sort(key=lambda item: item.get("incoming_at", ""), reverse=True)
     return {"locked": False, "profiles": profiles, "count": count}
