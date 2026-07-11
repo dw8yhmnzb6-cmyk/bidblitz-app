@@ -7,6 +7,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
+import bcrypt
 
 from core.database import db
 from core.payment_engine import credit_wallet, TransactionType
@@ -268,6 +269,175 @@ def _password_format_info(user: dict):
     if pwd_hash:
         return {"registered_at": registered_at, "password_format": "password_hash_bcrypt" if pwd_hash.startswith("$2") else "password_hash_unknown", "risk_level": "low", "recommended_action": "Keine Aktion erforderlich"}
     return {"registered_at": registered_at, "password_format": "missing_password_fields", "risk_level": "critical", "recommended_action": "Sofort Reset-Link senden und Konto prüfen"}
+
+
+def _is_bcrypt_hash(value: str) -> bool:
+    return bool(value and isinstance(value, str) and value.startswith("$2"))
+
+
+class CleanupLegacyPasswordsRequest(BaseModel):
+    mode: str = Field(default="safe", pattern="^(safe|aggressive)$")
+
+
+class CleanupSingleCustomerRequest(BaseModel):
+    clear_legacy_password_field: bool = True
+
+
+@router.get("/auth-health")
+async def auth_health_report(request: Request):
+    await _require_admin(request)
+
+    users = await db.users.find(
+        {},
+        {"_id": 1, "email": 1, "role": 1, "password_hash": 1, "password": 1, "created_at": 1, "registered_at": 1, "last_login_at": 1, "login_count": 1, "force_password_change": 1, "login_disabled": 1, "is_disabled": 1},
+    ).to_list(length=5000)
+
+    summary = {
+        "total_users": len(users),
+        "healthy": 0,
+        "legacy_only": 0,
+        "conflicting_hashes": 0,
+        "missing_password_fields": 0,
+        "invalid_password_hash": 0,
+        "force_password_change": 0,
+        "disabled": 0,
+    }
+    rows = []
+
+    for user in users:
+        info = _password_format_info(user)
+        pwd_hash = (user.get("password_hash") or "").strip()
+        legacy_pwd = (user.get("password") or "").strip()
+
+        if info["password_format"] == "legacy_password_field_bcrypt":
+            summary["legacy_only"] += 1
+        elif info["password_format"] in {"conflicting_hash_fields", "duplicate_hash_fields"}:
+            summary["conflicting_hashes"] += 1
+        elif info["password_format"] == "missing_password_fields":
+            summary["missing_password_fields"] += 1
+        elif pwd_hash and not _is_bcrypt_hash(pwd_hash):
+            summary["invalid_password_hash"] += 1
+        else:
+            summary["healthy"] += 1
+
+        if user.get("force_password_change"):
+            summary["force_password_change"] += 1
+        if user.get("login_disabled") or user.get("is_disabled"):
+            summary["disabled"] += 1
+
+        rows.append({
+            "user_id": str(user["_id"]),
+            "email": user.get("email", ""),
+            "role": user.get("role", "user"),
+            "password_format": info["password_format"],
+            "risk_level": info["risk_level"],
+            "recommended_action": info["recommended_action"],
+            "registered_at": info["registered_at"],
+            "last_login_at": user.get("last_login_at", ""),
+            "login_count": int(user.get("login_count", 0) or 0),
+            "force_password_change": bool(user.get("force_password_change", False)),
+            "disabled": bool(user.get("login_disabled") or user.get("is_disabled")),
+            "has_password_hash": bool(pwd_hash),
+            "has_legacy_password": bool(legacy_pwd),
+        })
+
+    rows.sort(key=lambda row: (0 if row["risk_level"] == "critical" else 1 if row["risk_level"] == "high" else 2 if row["risk_level"] == "medium" else 3, row["email"]))
+    return {"summary": summary, "items": rows[:500]}
+
+
+@router.post("/auth-health/cleanup")
+async def cleanup_legacy_passwords(req: CleanupLegacyPasswordsRequest, request: Request):
+    admin = await _require_admin(request)
+    cursor = db.users.find({}, {"_id": 1, "email": 1, "password_hash": 1, "password": 1, "role": 1})
+    cleaned_legacy = 0
+    promoted_legacy = 0
+    flagged_reset = 0
+
+    async for user in cursor:
+        pwd_hash = (user.get("password_hash") or "").strip()
+        legacy_pwd = (user.get("password") or "").strip()
+
+        if legacy_pwd and not pwd_hash and _is_bcrypt_hash(legacy_pwd):
+            await db.users.update_one({"_id": user["_id"]}, {"$set": {"password_hash": legacy_pwd}, "$unset": {"password": ""}})
+            promoted_legacy += 1
+            continue
+
+        if legacy_pwd and pwd_hash and legacy_pwd == pwd_hash:
+            await db.users.update_one({"_id": user["_id"]}, {"$unset": {"password": ""}})
+            cleaned_legacy += 1
+            continue
+
+        if req.mode == "aggressive" and legacy_pwd and pwd_hash and legacy_pwd != pwd_hash and _is_bcrypt_hash(pwd_hash):
+            await db.users.update_one({"_id": user["_id"]}, {"$unset": {"password": ""}})
+            cleaned_legacy += 1
+            continue
+
+        if (not pwd_hash and not legacy_pwd) or (pwd_hash and not _is_bcrypt_hash(pwd_hash)):
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {
+                    "force_password_change": True,
+                    "force_password_change_reason": "admin_auth_cleanup",
+                    "force_password_change_requested_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            flagged_reset += 1
+
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin.get("_id") or admin.get("id") or ""),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={"action": "auth_health_cleanup", "mode": req.mode, "promoted_legacy": promoted_legacy, "cleaned_legacy": cleaned_legacy, "flagged_reset": flagged_reset},
+        severity="info",
+    )
+    return {"ok": True, "promoted_legacy": promoted_legacy, "cleaned_legacy": cleaned_legacy, "flagged_reset": flagged_reset}
+
+
+@router.post("/customers/{user_id}/auth-fix")
+async def cleanup_single_customer_auth(user_id: str, req: CleanupSingleCustomerRequest, request: Request):
+    admin = await _require_admin(request)
+    user = await db.users.find_one({"_id": _oid(user_id)}, {"email": 1, "password_hash": 1, "password": 1, "force_password_change": 1})
+    if not user:
+        raise HTTPException(404, "Kunde nicht gefunden")
+
+    pwd_hash = (user.get("password_hash") or "").strip()
+    legacy_pwd = (user.get("password") or "").strip()
+    updates = {}
+    unset_fields = {}
+
+    if legacy_pwd and not pwd_hash and _is_bcrypt_hash(legacy_pwd):
+        updates["password_hash"] = legacy_pwd
+        unset_fields["password"] = ""
+    elif req.clear_legacy_password_field and legacy_pwd and pwd_hash and (_is_bcrypt_hash(pwd_hash) or legacy_pwd == pwd_hash):
+        unset_fields["password"] = ""
+
+    if not pwd_hash and not legacy_pwd:
+        updates["force_password_change"] = True
+        updates["force_password_change_reason"] = "admin_auth_fix_missing_password"
+        updates["force_password_change_requested_at"] = datetime.now(timezone.utc).isoformat()
+
+    update_doc = {}
+    if updates:
+        update_doc["$set"] = updates
+    if unset_fields:
+        update_doc["$unset"] = unset_fields
+    if update_doc:
+        await db.users.update_one({"_id": user["_id"]}, update_doc)
+
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin.get("_id") or admin.get("id") or ""),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={"action": "customer_auth_fix", "target_user_id": user_id, "target_email": user.get("email", ""), "changes": list(updates.keys()) + list(unset_fields.keys())},
+        severity="info",
+    )
+    return {"ok": True, "email": user.get("email", ""), "updated_fields": list(updates.keys()), "cleared_fields": list(unset_fields.keys())}
 
 
 @router.post("/customers/{user_id}/reset-password")

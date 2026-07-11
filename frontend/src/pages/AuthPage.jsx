@@ -232,6 +232,18 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
     setForgotSent(false);
   };
 
+  const authTips = mode === "login"
+    ? [
+        "Nutze dieselbe E-Mail wie bei der Registrierung.",
+        "Wenn du dein Passwort vergessen hast, tippe auf Passwort vergessen.",
+        "Nach falscher Eingabe bleibt die Meldung sichtbar, bis du erneut etwas änderst.",
+      ]
+    : [
+        "Nach der Registrierung bist du sofort angemeldet.",
+        "Verwende eine echte E-Mail, damit Reset-Links später zugestellt werden.",
+        "Das Passwort sollte mindestens 6 Zeichen haben.",
+      ];
+
   return (
     <motion.div
       data-testid="auth-page"
@@ -648,6 +660,24 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
         </AnimatePresence>
 
         {/* Security badge */}
+        <motion.div
+          className="mt-5 rounded-[18px] border border-white/[0.08] bg-white/[0.025] px-4 py-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          data-testid="auth-help-card"
+        >
+          <p className="text-[11px] font-semibold text-white/80 mb-2">Schnellhilfe</p>
+          <div className="space-y-1.5">
+            {authTips.map((tip, idx) => (
+              <div key={idx} className="flex items-start gap-2 text-[10px] text-white/55">
+                <span className="mt-[3px] h-1.5 w-1.5 rounded-full bg-[#00C2FF] shrink-0" />
+                <span>{tip}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
         <motion.div
           className="flex items-center justify-center gap-1.5 mt-8"
           initial={{ opacity: 0 }}

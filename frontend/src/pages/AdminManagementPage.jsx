@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Search, UserX, UserCheck, Shield, Key, Trash2, RefreshCw,
   Users, CreditCard, Package, X, Check, AlertTriangle, Loader2, ChevronRight,
-  Edit3, Plus, Ban, Activity, TrendingUp, Clock, Zap, Wifi, BadgeCheck
+  Edit3, Plus, Ban, Activity, TrendingUp, Clock, Zap, Wifi, BadgeCheck, Database, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,6 +16,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const TABS = [
   { id: "live", label: "Live", icon: Activity },
   { id: "customers", label: "Kunden", icon: Users },
+  { id: "auth", label: "Auth", icon: Shield },
   { id: "transactions", label: "Zahlungen", icon: CreditCard },
   { id: "modules", label: "Service-Module", icon: Package },
 ];
@@ -87,6 +88,7 @@ export const AdminManagementPage = ({ onBack, initialTab = "customers", initialM
       <div className="p-3">
         {tab === "live" && <LiveTab />}
         {tab === "customers" && <CustomersTab />}
+        {tab === "auth" && <AuthHealthTab />}
         {tab === "transactions" && <TransactionsTab />}
         {tab === "modules" && <ModulesTab initialModule={effectiveModule} />}
       </div>
@@ -106,6 +108,7 @@ const CustomersTab = () => {
   const [legacyReport, setLegacyReport] = useState({ items: [], summary: null });
   const [legacyLoading, setLegacyLoading] = useState(true);
   const [sendingResetId, setSendingResetId] = useState(null);
+  const [fixingAuthId, setFixingAuthId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,6 +167,26 @@ const CustomersTab = () => {
     setSendingResetId(null);
   };
 
+  const runCustomerAuthFix = async (customer) => {
+    setFixingAuthId(customer.user_id);
+    try {
+      const res = await fetch(`${API}/api/admin/customers/${customer.user_id}/auth-fix`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clear_legacy_password_field: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Auth-Fix fehlgeschlagen");
+      toast.success(`Auth-Fix für ${data.email} gespeichert`);
+      loadLegacyReport();
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setFixingAuthId(null);
+  };
+
   return (
     <div>
       <div className="bg-white rounded-2xl p-3 mb-3 shadow-sm" data-testid="legacy-password-report-card">
@@ -205,14 +228,24 @@ const CustomersTab = () => {
               </div>
               <p className="mt-2 text-[10px] text-gray-600">Empfohlene Aktion: {item.recommended_action}</p>
               {item.risk_level !== "low" && (
-                <button
-                  onClick={() => sendResetLink(item)}
-                  disabled={sendingResetId === item.user_id}
-                  data-testid={`legacy-password-reset-${item.user_id}`}
-                  className="mt-2 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
-                >
-                  {sendingResetId === item.user_id ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />} Reset-Link senden
-                </button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => runCustomerAuthFix(item)}
+                    disabled={fixingAuthId === item.user_id}
+                    data-testid={`legacy-password-fix-${item.user_id}`}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#00C2FF] px-3 py-2 text-[11px] font-semibold text-black disabled:opacity-50"
+                  >
+                    {fixingAuthId === item.user_id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Schnell-Fix
+                  </button>
+                  <button
+                    onClick={() => sendResetLink(item)}
+                    disabled={sendingResetId === item.user_id}
+                    data-testid={`legacy-password-reset-${item.user_id}`}
+                    className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+                  >
+                    {sendingResetId === item.user_id ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />} Reset-Link senden
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -296,6 +329,107 @@ const CustomersTab = () => {
           onChanged={() => { setSelected(null); load(); }}
         />
       )}
+    </div>
+  );
+};
+
+const AuthHealthTab = () => {
+  const [data, setData] = useState({ summary: null, items: [] });
+  const [loading, setLoading] = useState(true);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/admin/auth-health`, { credentials: "include" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || "Auth-Health konnte nicht geladen werden");
+      setData({ summary: json.summary || null, items: json.items || [] });
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const runCleanup = async (mode = "safe") => {
+    setCleanupLoading(true);
+    try {
+      const res = await fetch(`${API}/api/admin/auth-health/cleanup`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || "Cleanup fehlgeschlagen");
+      toast.success(`Cleanup fertig: ${json.promoted_legacy} migriert, ${json.cleaned_legacy} bereinigt, ${json.flagged_reset} markiert`);
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    }
+    setCleanupLoading(false);
+  };
+
+  return (
+    <div className="space-y-3" data-testid="admin-auth-health-tab">
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-[14px] font-bold text-gray-900">Auth Health</p>
+            <p className="text-[11px] text-gray-500">Legacy-Passwörter prüfen, Kundenkonten bereinigen und Login-Risiken sichtbar machen.</p>
+          </div>
+          <button onClick={load} data-testid="auth-health-refresh" className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+          {[
+            ["Healthy", data.summary?.healthy || 0],
+            ["Legacy", data.summary?.legacy_only || 0],
+            ["Konflikte", data.summary?.conflicting_hashes || 0],
+            ["Kritisch", data.summary?.missing_password_fields || 0],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl bg-gray-50 px-3 py-3" data-testid={`auth-health-summary-${String(label).toLowerCase()}`}>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-gray-400">{label}</p>
+              <p className="text-[18px] font-bold text-gray-900">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button data-testid="auth-health-cleanup-safe" onClick={() => runCleanup("safe")} disabled={cleanupLoading} className="rounded-xl bg-[#00C2FF] px-4 py-2 text-[12px] font-semibold text-black disabled:opacity-50 flex items-center gap-2">
+            {cleanupLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Safe Cleanup
+          </button>
+          <button data-testid="auth-health-cleanup-aggressive" onClick={() => runCleanup("aggressive")} disabled={cleanupLoading} className="rounded-xl bg-gray-900 px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-50 flex items-center gap-2">
+            {cleanupLoading ? <Loader2 size={13} className="animate-spin" /> : <Database size={13} />} Aggressive Cleanup
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-3 shadow-sm">
+        <p className="text-[13px] font-bold text-gray-900 mb-3">Konten mit Handlungsbedarf</p>
+        <div className="space-y-2 max-h-[460px] overflow-y-auto">
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={18} /></div>
+          ) : data.items.filter((item) => item.risk_level !== "low" || item.force_password_change).length === 0 ? (
+            <p className="text-[12px] text-gray-400 text-center py-6">Keine kritischen Auth-Konten gefunden.</p>
+          ) : data.items.filter((item) => item.risk_level !== "low" || item.force_password_change).slice(0, 80).map((item, idx) => (
+            <div key={item.user_id} className="rounded-xl border border-gray-100 p-3" data-testid={`auth-health-row-${idx}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-gray-900 truncate">{item.email}</p>
+                  <p className="text-[10px] text-gray-500">{item.password_format} · Logins: {item.login_count || 0}</p>
+                  <p className="text-[10px] text-gray-500">Aktion: {item.recommended_action}</p>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${item.risk_level === "critical" ? "bg-red-50 text-red-600" : item.risk_level === "high" ? "bg-orange-50 text-orange-600" : "bg-yellow-50 text-yellow-700"}`}>{item.risk_level}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
