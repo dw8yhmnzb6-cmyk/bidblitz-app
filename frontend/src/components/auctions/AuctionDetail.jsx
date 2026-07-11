@@ -85,22 +85,23 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const fallbackImage = getAuctionFallbackImage(auction || {});
   const [detailImage, setDetailImage] = useState("");
   const [hideDetailImage, setHideDetailImage] = useState(false);
+  const galleryImages = (auction?.image_urls?.length ? auction.image_urls : [auction?.image_url]).filter(Boolean);
 
   useEffect(() => {
     setHideDetailImage(false);
-    setDetailImage(auction?.image_url || fallbackImage);
-  }, [auction?.image_url, auction?.title, auction?.category, fallbackImage]);
+    setDetailImage(galleryImages[0] || auction?.image_url || fallbackImage);
+  }, [auction?.image_url, auction?.image_urls, auction?.title, auction?.category, fallbackImage, galleryImages]);
 
   const fetch = useCallback(async () => {
     try {
       const r = await api.getAuction(auctionId);
       setAuction(r.auction); setBids(r.bids || []); setUniqueBidders(r.unique_bidders || 0);
-    } catch {}
+    } catch (error) { void error; }
   }, [auctionId]);
 
   const fetchAutoBid = useCallback(async () => {
     if (isGuest) return;
-    try { const r = await api.getAutoBid(auctionId); setAutoBid(r); } catch {}
+    try { const r = await api.getAutoBid(auctionId); setAutoBid(r); } catch (error) { void error; }
   }, [auctionId, isGuest]);
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   };
 
   const cancelAuto = async () => {
-    try { await api.cancelAutoBid(auctionId); setAutoBid({ active: false }); } catch {}
+    try { await api.cancelAutoBid(auctionId); setAutoBid({ active: false }); } catch (error) { void error; }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}><Loader2 size={20} className="animate-spin text-[#00E0FF]" /></div>;
@@ -167,6 +168,29 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
       </div>
 
       <div className="px-5 -mt-5 pb-40 relative z-10 space-y-3">
+        {galleryImages.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" data-testid="auction-detail-gallery">
+            {galleryImages.map((img, idx) => {
+              const active = img === detailImage;
+              return (
+                <button
+                  key={`${img}-${idx}`}
+                  type="button"
+                  data-testid={`auction-detail-gallery-image-${idx}`}
+                  onClick={() => { setHideDetailImage(false); setDetailImage(img); }}
+                  className="shrink-0 w-20 h-20 rounded-2xl overflow-hidden border transition-all"
+                  style={{
+                    borderColor: active ? "rgba(0,224,255,0.55)" : "rgba(255,255,255,0.08)",
+                    boxShadow: active ? "0 0 0 1px rgba(0,224,255,0.18)" : "none",
+                    background: "rgba(8,12,20,0.9)",
+                  }}
+                >
+                  <img src={img} alt={`${auction.title || "auction"} ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              );
+            })}
+          </div>
+        )}
         <h1 className="text-[17px] font-bold text-white/90 font-outfit leading-tight">{auction.title}</h1>
         <p className="text-[10px] text-white/30 leading-relaxed">{auction.description}</p>
 

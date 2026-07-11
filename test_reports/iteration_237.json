@@ -1,0 +1,103 @@
+{
+  "summary": "2026 Premium Tech Penny Auctions Catalog Testing Complete. All requirements verified: (1) GET /api/auctions/active returns exactly 30 active auctions with new premium tech catalog items. (2) All auctions have retail_price > 1000, duration_seconds = 604800 (7 days), starting_price = 0.01, at least 2 gallery images in image_urls, and valid primary image_url. (3) Bot configuration is active and aggressive on all auctions (bot_enabled=true, bot_aggression=extreme). (4) Frontend /auctions page loads correctly in preview (not blocked by store-safe mode). (5) Auctions grid renders 30 cards, category pills work (Phones filter shows 4 items), and auction detail page shows working gallery with 4 thumbnails. (6) No horizontal overflow or blank state regression on desktop or mobile.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/pytest/iter237_auctions_2026_catalog.xml",
+    "/app/backend/tests/test_auctions_2026_catalog.py",
+    "/app/test_reports/iter237_auctions_grid.jpeg",
+    "/app/test_reports/iter237_auction_detail.jpeg",
+    "/app/test_reports/iter237_phones_filter.jpeg",
+    "/app/test_reports/iter237_mobile_auctions.jpeg",
+    "/app/test_reports/iter237_mobile_auctions_scroll.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ACTIVE_AUCTION_CATALOG contains exactly 30 premium tech items with 2026 models",
+    "All items have retail_price between 1099-1999 EUR (all > 1000 requirement met)",
+    "_build_auction_doc correctly sets starting_price=0.01, duration_seconds=604800, bot_enabled=true, bot_aggression=extreme",
+    "Gallery images (image_urls) properly populated with 4 images per auction from category-specific galleries",
+    "release.js correctly disables store-safe mode for preview runtime (isPreviewRuntime check)",
+    "AuctionDetail.jsx properly renders gallery with data-testid attributes for testing"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auctions_2026_catalog.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100% (all UI tests passed)"
+  },
+  "test_credentials": "No credentials required - auctions are public",
+  "seed_data_creation": "30 premium tech auctions seeded via reset_auctions_2026.py script",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Auctions page now has 30 premium 2026 tech items. Key testids: auction-card-*, filter-phones, filter-all, auction-detail, auction-detail-gallery, auction-detail-gallery-image-*, auction-back-btn. All auctions have: retail_price > 1000, duration 7 days (604800s), starting_price 0.01, 4 gallery images, bot_enabled=true, bot_aggression=extreme. Categories: phones (4), laptops (4), tablets (4), gaming (5), xr (4), tech (4), mobility (5).",
+  "working_features": [
+    "GET /api/auctions/active returns exactly 30 active auctions",
+    "All auctions have retail_price > 1000 EUR",
+    "All auctions have duration_seconds = 604800 (7 days)",
+    "All auctions have starting_price = 0.01 EUR",
+    "All auctions have at least 2 gallery images (actually 4 each)",
+    "All auctions have valid primary image_url",
+    "All auctions have bot_enabled = true",
+    "All auctions have bot_aggression = extreme",
+    "All auctions have bot_target_price > 0",
+    "No old demo auction titles remain",
+    "All auctions are 2026 models",
+    "Categories present: phones, laptops, tablets, gaming, xr, tech, mobility",
+    "Frontend /auctions page loads in preview (not blocked by store-safe mode)",
+    "Auctions grid renders 30 cards correctly",
+    "Category pills work (Phones filter shows 4 items, All shows 30)",
+    "Auction detail page loads with gallery",
+    "Gallery shows 4 thumbnails and clicking changes main image",
+    "Back button works on detail page",
+    "No horizontal overflow on desktop (1920px)",
+    "No horizontal overflow on mobile (390px)",
+    "No blank state regression"
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "backend_test_results": {
+    "test_active_auctions_count_exactly_30": "PASSED",
+    "test_all_retail_prices_over_1000": "PASSED",
+    "test_all_duration_7_days": "PASSED",
+    "test_all_starting_price_001": "PASSED",
+    "test_all_have_gallery_images": "PASSED",
+    "test_all_have_primary_image": "PASSED",
+    "test_bot_enabled_on_all": "PASSED",
+    "test_bot_aggression_extreme": "PASSED",
+    "test_bot_target_price_positive": "PASSED",
+    "test_no_old_demo_titles": "PASSED",
+    "test_all_2026_models": "PASSED",
+    "test_categories_present": "PASSED",
+    "test_get_auction_detail": "PASSED",
+    "test_list_auctions_endpoint": "PASSED",
+    "test_feed_endpoint": "PASSED",
+    "test_list_with_status_filter": "PASSED"
+  },
+  "frontend_test_results": {
+    "auctions_page_loads": "PASSED",
+    "store_safe_mode_disabled_for_preview": "PASSED",
+    "30_auction_cards_displayed": "PASSED",
+    "phones_filter_works": "PASSED (4 items)",
+    "all_filter_works": "PASSED (30 items)",
+    "auction_detail_loads": "PASSED",
+    "gallery_displays_4_thumbnails": "PASSED",
+    "gallery_thumbnail_click_changes_image": "PASSED",
+    "back_button_present": "PASSED",
+    "no_horizontal_overflow_desktop": "PASSED",
+    "no_horizontal_overflow_mobile": "PASSED",
+    "no_blank_state": "PASSED"
+  },
+  "test_date": "2026-07-11T04:38:00Z",
+  "test_scope": "2026 Premium Tech Penny Auctions Catalog: 30 new items, bot configuration, gallery images, frontend display"
+}

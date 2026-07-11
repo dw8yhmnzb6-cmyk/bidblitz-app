@@ -1,4 +1,8 @@
-export const STORE_SAFE_MODE = process.env.REACT_APP_STORE_SAFE_MODE === "true";
+const PREVIEW_HOST_MATCHERS = ["preview.emergentagent.com", "localhost", "127.0.0.1"];
+const runtimeHost = typeof window !== "undefined" ? window.location.hostname : "";
+const isPreviewRuntime = PREVIEW_HOST_MATCHERS.some((matcher) => runtimeHost.includes(matcher));
+
+export const STORE_SAFE_MODE = process.env.REACT_APP_STORE_SAFE_MODE === "true" && !isPreviewRuntime;
 export const DEMO_MODE = process.env.REACT_APP_DEMO_MODE === "true";
 export const MOCK_PAYMENTS = process.env.REACT_APP_MOCK_PAYMENTS === "true";
 export const IS_PRODUCTION = process.env.NODE_ENV === "production";

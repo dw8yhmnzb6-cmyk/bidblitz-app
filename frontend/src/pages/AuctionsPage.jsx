@@ -226,16 +226,12 @@ const CATS = [
   { id: "all", label: "All", color: accentCyan },
   { id: "phones", label: "Phones", color: accentPurple },
   { id: "gaming", label: "Gaming", color: "#FF6B6B" },
-  { id: "audio", label: "Audio", color: accentGreen },
-  { id: "marine", label: "Boote", color: "#34D399" },
-  { id: "wearables", label: "Wearables", color: accentGold },
   { id: "laptops", label: "Laptops", color: accentCyan },
   { id: "tablets", label: "Tablets", color: "#FF8C42" },
   { id: "xr", label: "XR", color: "#E040FB" },
-  { id: "tvs", label: "TVs", color: "#26C6DA" },
   { id: "robots", label: "Robots", color: "#FF6B6B" },
-  { id: "smarthome", label: "Smart Home", color: accentGreen },
-  { id: "home", label: "Home", color: "#FF8C42" },
+  { id: "tech", label: "Tech", color: accentGreen },
+  { id: "mobility", label: "Mobility", color: accentGold },
 ];
 
 /* ════════════════════════════════════════════

@@ -1304,67 +1304,125 @@ with open(_catalog_path, 'r', encoding='utf-8') as f:
 # Enforce €2000 retail-price cap globally — no bot/seed/listing may exceed this.
 PRODUCT_CATALOG = [p for p in PRODUCT_CATALOG if (p.get("retail_price") or 0) <= 2000]
 
-# Curated 2026-only auction lineup (exactly 30 products for active penny auctions)
+# Curated 2026-only premium tech lineup (exactly 30 products for active penny auctions)
+SMARTPHONE_GALLERY = [
+    "https://images.unsplash.com/photo-1517777298614-cb6eefb19fad?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHw0fHxmbGFnc2hpcCUyMHNtYXJ0cGhvbmV8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1544866092-1935c5ef2a8f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwyfHxmbGFnc2hpcCUyMHNtYXJ0cGhvbmV8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1480694313141-fce5e697ee25?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxmbGFnc2hpcCUyMHNtYXJ0cGhvbmV8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1617696992381-16b65f34b3b1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwzfHxmbGFnc2hpcCUyMHNtYXJ0cGhvbmV8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+]
+
+LAPTOP_GALLERY = [
+    "https://images.unsplash.com/photo-1511385348-a52b4a160dc2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHw0fHxwcmVtaXVtJTIwbGFwdG9wfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwzfHxwcmVtaXVtJTIwbGFwdG9wfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwyfHxwcmVtaXVtJTIwbGFwdG9wfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxwcmVtaXVtJTIwbGFwdG9wfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+]
+
+DRONE_GALLERY = [
+    "https://images.unsplash.com/photo-1527977966376-1c8408f9f108?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHw0fHxjYW1lcmElMjBkcm9uZXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1521405924368-64c5b84bec60?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwyfHxjYW1lcmElMjBkcm9uZXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1473968512647-3e447244af8f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxjYW1lcmElMjBkcm9uZXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwzfHxjYW1lcmElMjBkcm9uZXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+]
+
+VR_GALLERY = [
+    "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwxfHx2ciUyMGhlYWRzZXR8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1576633587382-13ddf37b1fc1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwzfHx2ciUyMGhlYWRzZXR8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1653158861306-e5b3804f6115?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHw0fHx2ciUyMGhlYWRzZXR8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwyfHx2ciUyMGhlYWRzZXR8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+]
+
+EBIKE_GALLERY = [
+    "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwxfHxlbGVjdHJpYyUyMGJpa2V8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1621394445346-c7b502f07206?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHw0fHxlbGVjdHJpYyUyMGJpa2V8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1620802051782-725fa33db067?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwyfHxlbGVjdHJpYyUyMGJpa2V8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1624243519828-52a0f2c88af3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwzfHxlbGVjdHJpYyUyMGJpa2V8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+]
+
+MONITOR_GALLERY = [
+    "https://images.unsplash.com/photo-1626218174358-7769486c4b79?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxnYW1pbmclMjBtb25pdG9yfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1593305841991-05c297ba4575?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwyfHxnYW1pbmclMjBtb25pdG9yfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHxnYW1pbmclMjBtb25pdG9yfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1614179924047-e1ab49a0a0cf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHw0fHxnYW1pbmclMjBtb25pdG9yfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+]
+
+ROBOT_GALLERY = [
+    "https://images.unsplash.com/photo-1558317374-067fb5f30001?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxyb2JvdCUyMHZhY3V1bXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1647940990395-967898eb0d65?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHw0fHxyb2JvdCUyMHZhY3V1bXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1600322305530-45714a0bc945?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwyfHxyb2JvdCUyMHZhY3V1bXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1653990480360-31a12ce9723e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwzfHxyb2JvdCUyMHZhY3V1bXxlbnwwfHx8fDE3ODM3NDQxNTN8MA&ixlib=rb-4.1.0&q=85",
+]
+
+TABLET_GALLERY = [
+    "https://images.unsplash.com/photo-1781275371057-d9501eeaff66?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwzfHxwcmVtaXVtJTIwdGFibGV0fGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1760587162690-95608c8ab2da?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHw0fHxwcmVtaXVtJTIwdGFibGV0fGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1766241632552-55675149f22a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwyfHxwcmVtaXVtJTIwdGFibGV0fGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1652862938332-815e45390b3c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxwcmVtaXVtJTIwdGFibGV0fGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85",
+]
+
+ESCOOTER_GALLERY = [
+    "https://images.unsplash.com/photo-1654748646458-056253a82853?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwzfHxlbGVjdHJpYyUyMHNjb290ZXJ8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1565300480288-deb407e6ae15?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxlbGVjdHJpYyUyMHNjb290ZXJ8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1591122519484-70428711810d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHw0fHxlbGVjdHJpYyUyMHNjb290ZXJ8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+    "https://images.unsplash.com/photo-1597260491619-bab87197869f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwyfHxlbGVjdHJpYyUyMHNjb290ZXJ8ZW58MHx8fHwxNzgzNzQ0MTUzfDA&ixlib=rb-4.1.0&q=85",
+]
+
 ACTIVE_AUCTION_CATALOG = [
-    {"title": "iPhone 17 Pro Max 2026", "description": "Apple Flagship 2026 mit Titan-Finish und Pro-Kamera-System.", "retail_price": 1499, "category": "tech"},
-    {"title": "Samsung Galaxy S26 Ultra 2026", "description": "Samsung Ultra-Modell 2026 mit AI Zoom und S-Pen.", "retail_price": 1399, "category": "tech"},
-    {"title": "Google Pixel 10 Pro 2026", "description": "Pixel 10 Pro aus der 2026 Generation mit starker Kamera-AI.", "retail_price": 1099, "category": "tech"},
-    {"title": "MacBook Pro M5 14 2026", "description": "MacBook Pro 14 Zoll mit M5 Performance für 2026.", "retail_price": 1999, "category": "tech"},
-    {"title": "iPad Pro M5 13 2026", "description": "iPad Pro 13 Zoll der 2026 Serie für Work und Studio.", "retail_price": 1299, "category": "tech"},
-    {"title": "Apple Watch Ultra 3 2026", "description": "Robuste Ultra-Smartwatch 2026 für Sport und Alltag.", "retail_price": 899, "category": "tech"},
-    {"title": "AirPods Pro 3 2026", "description": "AirPods Pro Generation 2026 mit verbesserter ANC.", "retail_price": 279, "category": "tech"},
-    {"title": "Sony WH-1000XM6 2026", "description": "Premium Noise-Cancelling Kopfhörer 2026 von Sony.", "retail_price": 449, "category": "tech"},
-    {"title": "Nintendo Switch 2 2026", "description": "Neue Switch 2 Konsole für die Saison 2026.", "retail_price": 399, "category": "gaming"},
-    {"title": "PlayStation 5 Pro 2026", "description": "PS5 Pro Line-up 2026 mit High-FPS Performance.", "retail_price": 799, "category": "gaming"},
-    {"title": "Xbox Series X 2TB 2026", "description": "Xbox Series X 2TB Variante für 2026 Releases.", "retail_price": 649, "category": "gaming"},
-    {"title": "Meta Quest 4 2026", "description": "VR Headset 2026 mit starkem Mixed-Reality Fokus.", "retail_price": 599, "category": "tech"},
-    {"title": "DJI Mavic 4 Pro 2026", "description": "DJI Mavic 4 Pro aus der 2026 Klasse für Creator.", "retail_price": 1899, "category": "tech"},
-    {"title": "GoPro Hero 14 Black 2026", "description": "Action Cam 2026 für Travel, Sport und Creator.", "retail_price": 549, "category": "tech"},
-    {"title": "Dyson V16 Absolute 2026", "description": "Dyson V16 Absolute 2026 für modernes Smart Home.", "retail_price": 799, "category": "lifestyle"},
-    {"title": "Roborock S9 MaxV Ultra 2026", "description": "Roborock Premium Cleaning Robot aus der 2026 Serie.", "retail_price": 1599, "category": "lifestyle"},
-    {"title": "DeLonghi La Specialista 2026", "description": "Siebträger-Upgrade 2026 für Coffee Lovers.", "retail_price": 899, "category": "lifestyle"},
-    {"title": "Breville Barista Touch 2026", "description": "Barista Touch 2026 mit smarter One-Touch Bedienung.", "retail_price": 999, "category": "lifestyle"},
-    {"title": "KitchenAid Artisan Mixer 2026", "description": "KitchenAid Artisan 2026 in Premium-Ausführung.", "retail_price": 649, "category": "lifestyle"},
-    {"title": "Weber Genesis EX-335 2026", "description": "Smart Grill 2026 für Sommer, Garten und Events.", "retail_price": 1299, "category": "lifestyle"},
-    {"title": "Segway Ninebot Max G3 2026", "description": "E-Scooter Modell 2026 mit großer Reichweite.", "retail_price": 999, "category": "mobility"},
-    {"title": "VanMoof S5 2026", "description": "Urban E-Bike 2026 für City und Pendler.", "retail_price": 1999, "category": "mobility"},
-    {"title": "Cowboy 5 2026", "description": "Connected E-Bike 2026 mit starkem Designfokus.", "retail_price": 1990, "category": "mobility"},
-    {"title": "Samsung Odyssey G9 2026", "description": "Ultra-Wide Gaming Monitor 2026 für Setup Upgrades.", "retail_price": 1699, "category": "gaming"},
-    {"title": "LG UltraGear 45 2026", "description": "Curved OLED Gaming Monitor 2026 von LG.", "retail_price": 1499, "category": "gaming"},
-    {"title": "XGIMI Horizon Ultra 2026", "description": "Heimkino-Projektor 2026 mit Premium Bildqualität.", "retail_price": 1799, "category": "tech"},
-    {"title": "Theragun Pro Plus 2026", "description": "Recovery Gadget 2026 für Wellness und Sport.", "retail_price": 649, "category": "lifestyle"},
-    {"title": "Bose QuietComfort Ultra 2026", "description": "Bose Audio-Fokus 2026 mit Premium ANC.", "retail_price": 499, "category": "tech"},
-    {"title": "Kindle Scribe 2 2026", "description": "E-Ink Notebook 2026 für Lesen und Notizen.", "retail_price": 449, "category": "tech"},
-    {"title": "Apple Vision Pro 2026", "description": "Spatial Computing Headset 2026 in Premium Edition.", "retail_price": 1999, "category": "tech"},
+    {"title": "iPhone 17 Ultra 2026", "description": "Apple 2026 Flagship mit Titanium Body, 8K Pro Camera und AI Studio Features.", "retail_price": 1999, "category": "phones", "image_url": SMARTPHONE_GALLERY[0], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["8K Pro-Kamera", "Titan-Gehäuse", "Always-on Studio Display"]},
+    {"title": "Samsung Galaxy S26 Ultra Elite 2026", "description": "Samsung Ultra-Flaggschiff 2026 mit AI Zoom, Stylus und Nightography Pro.", "retail_price": 1899, "category": "phones", "image_url": SMARTPHONE_GALLERY[1], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["200 MP AI Zoom", "S-Pen Elite", "Adaptive Vision Display"]},
+    {"title": "Google Pixel 10 Pro XL 2026", "description": "Pixel-Topmodell 2026 mit Tensor AI, Profi-Kamera und smarter Bildbearbeitung.", "retail_price": 1499, "category": "phones", "image_url": SMARTPHONE_GALLERY[2], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["Tensor AI", "Night Sight Pro", "Instant Studio Edit"]},
+    {"title": "Xiaomi 16 Ultra Max 2026", "description": "Premium Android-Smartphone 2026 mit Leica-Look, großem Sensor und Fast Charge.", "retail_price": 1399, "category": "phones", "image_url": SMARTPHONE_GALLERY[3], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["Leica Kamera-System", "HyperCharge", "WQHD+ AMOLED"]},
+    {"title": "MacBook Pro M6 Max 16 2026", "description": "Apple Creator-Notebook 2026 mit maximaler Performance für Video, AI und Design.", "retail_price": 1999, "category": "laptops", "image_url": LAPTOP_GALLERY[0], "image_urls": LAPTOP_GALLERY[:4], "features": ["M6 Max Chip", "Liquid Retina XDR", "Studio-Class Performance"]},
+    {"title": "Dell XPS 17 OLED 2026", "description": "High-End Ultrabook 2026 mit OLED, Aluminium-Chassis und Creator-Fokus.", "retail_price": 1899, "category": "laptops", "image_url": LAPTOP_GALLERY[1], "image_urls": LAPTOP_GALLERY[:4], "features": ["4K OLED", "Premium Aluminium", "RTX Creator Graphics"]},
+    {"title": "Lenovo Yoga Pro 9i 2026", "description": "Lenovo Premium Laptop 2026 für mobile Pros mit AI-Creation-Engine.", "retail_price": 1699, "category": "laptops", "image_url": LAPTOP_GALLERY[2], "image_urls": LAPTOP_GALLERY[:4], "features": ["Mini-LED Display", "AI Boost Engine", "Pro Audio"]},
+    {"title": "ASUS ROG Zephyrus G16 2026", "description": "Gaming- und Creator-Notebook 2026 mit High-Refresh OLED und RTX Power.", "retail_price": 1799, "category": "laptops", "image_url": LAPTOP_GALLERY[3], "image_urls": LAPTOP_GALLERY[:4], "features": ["240Hz OLED", "RTX Performance", "Advanced Cooling"]},
+    {"title": "iPad Pro M6 13 2026", "description": "Apple Tablet-Flaggschiff 2026 für Design, Productivity und Entertainment.", "retail_price": 1499, "category": "tablets", "image_url": TABLET_GALLERY[0], "image_urls": TABLET_GALLERY[:4], "features": ["M6 Performance", "Ultra Retina XDR", "Apple Pencil Pro Ready"]},
+    {"title": "Samsung Galaxy Tab S11 Ultra 2026", "description": "Samsung Premium-Tablet 2026 mit riesigem AMOLED-Display und Desktop-Modus.", "retail_price": 1299, "category": "tablets", "image_url": TABLET_GALLERY[1], "image_urls": TABLET_GALLERY[:4], "features": ["AMOLED Ultra", "DeX Desktop", "S-Pen Included"]},
+    {"title": "Microsoft Surface Pro 11 Elite 2026", "description": "Surface-Topmodell 2026 für mobile Business- und Kreativ-Workflows.", "retail_price": 1499, "category": "tablets", "image_url": TABLET_GALLERY[2], "image_urls": TABLET_GALLERY[:4], "features": ["Copilot AI", "Kickstand Pro", "Flex Keyboard"]},
+    {"title": "OnePlus Pad 3 Pro 2026", "description": "High-End Android-Tablet 2026 mit schnellem Laden und starkem Media-Erlebnis.", "retail_price": 1099, "category": "tablets", "image_url": TABLET_GALLERY[3], "image_urls": TABLET_GALLERY[:4], "features": ["144Hz Display", "SuperVOOC Charge", "Quad Speakers"]},
+    {"title": "PlayStation 6 Founder Edition 2026", "description": "Next-gen Konsole 2026 mit Raytracing 2.0 und extrem schneller Lade-Performance.", "retail_price": 1199, "category": "gaming", "image_url": "https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "image_urls": ["https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "https://images.unsplash.com/photo-1593305841991-05c297ba4575?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwyfHxnYW1pbmclMjBtb25pdG9yfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85"], "features": ["8K Ready", "Raytracing 2.0", "Ultra Fast SSD"]},
+    {"title": "Xbox Series X Infinite 2026", "description": "Xbox Premium-Edition 2026 mit 4K/120 und großem Speicherpaket.", "retail_price": 1099, "category": "gaming", "image_url": "https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "image_urls": ["https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHxnYW1pbmclMjBtb25pdG9yfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85"], "features": ["4K 120 FPS", "2TB Storage", "Game Pass Ready"]},
+    {"title": "Nintendo Switch 2 OLED Max 2026", "description": "Nintendo Handheld-Flaggschiff 2026 mit OLED, Dock Boost und Multiplayer-Ready.", "retail_price": 1099, "category": "gaming", "image_url": "https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "image_urls": ["https://images.pexels.com/photos/15822009/pexels-photo-15822009.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "https://images.unsplash.com/photo-1614179924047-e1ab49a0a0cf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHw0fHxnYW1pbmclMjBtb25pdG9yfGVufDB8fHx8MTc4Mzc0NDE1M3ww&ixlib=rb-4.1.0&q=85"], "features": ["OLED HDR", "Dock Boost", "Next-gen Joy Controllers"]},
+    {"title": "Meta Quest 4 Pro 2026", "description": "Mixed-Reality Headset 2026 mit schlankerem Design, besserem Tracking und Premium Optics.", "retail_price": 1299, "category": "xr", "image_url": VR_GALLERY[0], "image_urls": VR_GALLERY[:4], "features": ["Mixed Reality", "Pro Controllers", "High-Res Optics"]},
+    {"title": "Apple Vision Air 2026", "description": "Spatial-Computing Headset 2026 für Arbeit, Entertainment und immersive Apps.", "retail_price": 1999, "category": "xr", "image_url": VR_GALLERY[1], "image_urls": VR_GALLERY[:4], "features": ["Spatial UI", "Eye Tracking", "Cinema Mode"]},
+    {"title": "Sony XR Creator Headset 2026", "description": "XR Headset 2026 für Creator, Modellierer und immersive Workflows.", "retail_price": 1699, "category": "xr", "image_url": VR_GALLERY[2], "image_urls": VR_GALLERY[:4], "features": ["Creator Tools", "Precision Tracking", "Dual 4K Panels"]},
+    {"title": "HTC Vive Vision Max 2026", "description": "HTC Premium-VR-System 2026 mit großem Sichtfeld und starker Performance.", "retail_price": 1499, "category": "xr", "image_url": VR_GALLERY[3], "image_urls": VR_GALLERY[:4], "features": ["Wide FOV", "Inside-Out Tracking", "Premium Comfort"]},
+    {"title": "DJI Mavic 4 Pro Cine 2026", "description": "Creator-Drohne 2026 mit 8K Capture, Cine Mode und Premium Stabilisierung.", "retail_price": 1999, "category": "tech", "image_url": DRONE_GALLERY[0], "image_urls": DRONE_GALLERY[:4], "features": ["8K Cine", "Triple Camera", "Pro Stabilization"]},
+    {"title": "Autel EVO Max 4T 2026", "description": "Enterprise-Drohne 2026 mit AI Flight, starker Kamera und Premium Reichweite.", "retail_price": 1899, "category": "tech", "image_url": DRONE_GALLERY[1], "image_urls": DRONE_GALLERY[:4], "features": ["AI Flight Assist", "Long Range", "Pro Thermal Stack"]},
+    {"title": "Skydio X10 Creator 2026", "description": "Autonome Premium-Drohne 2026 für smarte Tracking-Shots und Reisen.", "retail_price": 1799, "category": "tech", "image_url": DRONE_GALLERY[2], "image_urls": DRONE_GALLERY[:4], "features": ["Autonomous Tracking", "Cinematic Paths", "Obstacle AI"]},
+    {"title": "GoPro Karma X Drone 2026", "description": "Kompakte Kamera-Drohne 2026 für Creator mit einfacher Steuerung und Capture-Modes.", "retail_price": 1299, "category": "tech", "image_url": DRONE_GALLERY[3], "image_urls": DRONE_GALLERY[:4], "features": ["Compact Fold Design", "Creator Modes", "Fast Setup"]},
+    {"title": "VanMoof S6 Pro 2026", "description": "Connected City E-Bike 2026 mit Diebstahlschutz, Boost Button und App-Control.", "retail_price": 1999, "category": "mobility", "image_url": EBIKE_GALLERY[0], "image_urls": EBIKE_GALLERY[:4], "features": ["App Unlock", "Boost Button", "Anti-Theft Tracking"]},
+    {"title": "Cowboy Cross 2026", "description": "Urban Premium E-Bike 2026 mit cleanem Design und smarter Navigation.", "retail_price": 1899, "category": "mobility", "image_url": EBIKE_GALLERY[1], "image_urls": EBIKE_GALLERY[:4], "features": ["Smart Navigation", "Adaptive Power", "Minimal Design"]},
+    {"title": "Riese & Muller Nevo GT 2026", "description": "High-End E-Bike 2026 für Pendler mit starker Reichweite und Komfort.", "retail_price": 1999, "category": "mobility", "image_url": EBIKE_GALLERY[2], "image_urls": EBIKE_GALLERY[:4], "features": ["Long Range", "Premium Suspension", "Commuter Setup"]},
+    {"title": "Stromer ST5 ABS 2026", "description": "Schnelles Smart E-Bike 2026 mit Connectivity, Power und Premium Frame.", "retail_price": 1999, "category": "mobility", "image_url": EBIKE_GALLERY[3], "image_urls": EBIKE_GALLERY[:4], "features": ["ABS Safety", "Smart Connect", "High Torque Drive"]},
+    {"title": "Segway GT3 Ultra Scooter 2026", "description": "Leistungsstarker E-Scooter 2026 mit Dual Motor, großer Reichweite und App-Funktionen.", "retail_price": 1499, "category": "mobility", "image_url": ESCOOTER_GALLERY[0], "image_urls": ESCOOTER_GALLERY[:4], "features": ["Dual Motor", "Long Range", "App Lock"]},
+    {"title": "Xiaomi Scooter 6 Pro Max 2026", "description": "Premium-Scooter 2026 für Stadt und Pendelwege mit starkem Akku und Komfort.", "retail_price": 1299, "category": "mobility", "image_url": ESCOOTER_GALLERY[1], "image_urls": ESCOOTER_GALLERY[:4], "features": ["Extended Battery", "Comfort Tires", "Fast Fold"]},
+    {"title": "Samsung Odyssey G10 Neo 2026", "description": "Ultra-Premium Gaming Monitor 2026 mit Curved Mini-LED und immersivem Setup.", "retail_price": 1999, "category": "gaming", "image_url": MONITOR_GALLERY[0], "image_urls": MONITOR_GALLERY[:4], "features": ["Curved Mini-LED", "240Hz", "Ultra Wide Immersion"]},
+    {"title": "LG UltraGear OLED 49 2026", "description": "LG Gaming-Monitor 2026 mit OLED, ultrabreitem Panel und Profi-Gaming-Look.", "retail_price": 1799, "category": "gaming", "image_url": MONITOR_GALLERY[1], "image_urls": MONITOR_GALLERY[:4], "features": ["OLED Panel", "Ultra Wide", "Pro Gaming Color"]},
+    {"title": "Roborock S10 Max Ultra 2026", "description": "Premium Reinigungsroboter 2026 mit AI Mapping, Docking und vollautomatischer Pflege.", "retail_price": 1499, "category": "robots", "image_url": ROBOT_GALLERY[0], "image_urls": ROBOT_GALLERY[:4], "features": ["AI Mapping", "Self-Clean Dock", "Smart Home Ready"]},
+    {"title": "iRobot Roomba X Combo 2026", "description": "High-End Robot Cleaner 2026 mit kombinierter Saugen/Wischen-Intelligenz.", "retail_price": 1299, "category": "robots", "image_url": ROBOT_GALLERY[1], "image_urls": ROBOT_GALLERY[:4], "features": ["Vacuum + Mop", "Smart Navigation", "Auto Empty Base"]},
 ]
 
 TARGET_ACTIVE_AUCTIONS = 30
 
 
 def _schedule_auction_end(now: datetime, slot_index: int = 0) -> tuple[datetime, int]:
-    days_until_end = 3 + (slot_index % 3)  # 3, 4, 5 Tage rotierend
-    end_at = datetime(now.year, now.month, now.day, 18, 0, tzinfo=timezone.utc) + timedelta(days=days_until_end)
-    duration_seconds = max(3600, int((end_at - now).total_seconds()))
+    end_at = now + timedelta(days=7)
+    duration_seconds = 604800
     return end_at, duration_seconds
 
 
 # ── Seed demo auctions ──
 def _bot_target_for(retail_price: float) -> float:
-    """Pick realistic bot target final price based on retail value.
-    
-    NEW (iter102): User wants Phase 3 final prices to land between 150-250€
-    for products under 2000€. This is the price the bots stop pushing TO.
-    Below 300€ retail → lower floor (since item itself is cheap).
-    """
     import random as _r
-    if retail_price < 300:
-        return round(_r.uniform(60, 120), 2)
-    if retail_price < 800:
-        return round(_r.uniform(120, 180), 2)
-    if retail_price < 2000:
-        return round(_r.uniform(150, 250), 2)
-    # Above 2000 shouldn't happen (catalog cap), but safe fallback:
-    return round(_r.uniform(200, 350), 2)
+    if retail_price >= 1800:
+        return round(_r.uniform(320, 520), 2)
+    if retail_price >= 1500:
+        return round(_r.uniform(260, 420), 2)
+    if retail_price >= 1200:
+        return round(_r.uniform(210, 340), 2)
+    return round(_r.uniform(180, 280), 2)
 
 
 def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int = 0) -> dict:
@@ -1378,9 +1436,10 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
         # i18n: pre-translated catalog (DE/EN/SQ/TR) — None if not yet translated
         "translations": d.get("translations") or None,
         "image_url": resolve_product_image(d["title"], d.get("image_url") or PRODUCT_IMAGES.get(d["title"], "")),
+        "image_urls": [resolve_product_image(d["title"], img) for img in (d.get("image_urls") or [])][:4],
         "retail_price": d["retail_price"],
-        "starting_price": 0.00,
-        "current_price": 0.00,
+        "starting_price": 0.01,
+        "current_price": 0.01,
         "price_increment": PRICE_INCREMENT,
         "timer_extension": TIMER_EXTENSION_SECONDS,
         "duration_seconds": duration_seconds,
@@ -1401,11 +1460,12 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
         # ── Auto Bot-Bidding Configuration ──
         "bot_enabled": True,
         "bot_target_price": _bot_target_for(d["retail_price"]),
-        "bot_final_phase_seconds": 300,
-        "bot_probability": 0.35,
-        "bot_strategy": "standard",
-        "bot_aggression": "medium",
-        "bot_min_seconds": 300,
+        "bot_final_phase_seconds": 604800,
+        "bot_probability": 0.72,
+        "bot_strategy": "aggressive",
+        "bot_aggression": "extreme",
+        "bot_min_seconds": 604800,
+        "bot_initial_target": round(max(12.0, min(34.0, d["retail_price"] * 0.02)), 2),
     }
 
 
