@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Penny Auctions Premium-Tech-Reset — 11.07.2026
+- ✅ Penny Auctions komplett erneuert: aktiver Katalog enthält jetzt **exakt 30 neue Premium-Tech-Auktionen** statt alter Demo-Produkte.
+- ✅ Alle 30 Auktionen erfüllen den neuen Produktvertrag: **2026-Modelle**, **UVP > 1000€**, **Startpreis 0,01€**, **7 Tage Laufzeit**, **2–4 Bilder** und aggressive Bot-Konfiguration.
+- ✅ `/auctions` ist in der Preview wieder direkt testbar; Store-Safe-Blocking greift dort nicht mehr, bleibt aber für echte Store-Builds erhalten.
+- ✅ Galerie im Auktionsdetail live: Nutzer sehen Thumbnails und können zwischen Produktbildern wechseln.
+- 🟡 Nächster sinnvoller Auktions-Schritt: echte Merchandising-/Conversion-Layer ergänzen — z. B. "Top Deals", "Fast Ending", Gewinner-Highlights oder sekundäre Premium-Pricing-Experimente für Credits.
+
 ## Status nach Dating Safety Pro + Real Premium Checkout — 10.07.2026
 - ✅ Mining Revenue Conversion Block live: Ansprechpartner, Zielgruppen-Segmentierung und Angebotskarten leiten Nutzer jetzt direkt in passende Mining-Anfragen.
 - 🟡 Nächster sinnvoller Mining-Schritt: echte Kontaktziele (WhatsApp/Telegram/Telefon), feste Ansprechpartnerdaten und Response-SLA mit echtem Team-Branding.
