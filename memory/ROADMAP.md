@@ -3,8 +3,8 @@
 ## Status nach Admin-KI-Assistent — 11.07.2026
 - ✅ Neuer **Admin KI-Assistent** live unter `/admin/ai-assistant`.
 - ✅ Versteht freie deutsche Befehle für Admin-Aufgaben und zeigt **immer zuerst einen Vorschlag**.
-- ✅ Erste Aktionen live: neue Auktionen anlegen, Auktionen ersetzen, Standard-Katalog wiederherstellen, Plattform-Checks anstoßen.
-- 🟡 Nächster sinnvoller Ausbau: mehr Admin-Domänen an den Assistenten hängen — z. B. Mining Leads, Kundenkonten, Monitoring-Alerts, Wallet-/Zahlungsaktionen.
+- ✅ Erste Aktionen live: neue Auktionen anlegen, Auktionen ersetzen, Standard-Katalog wiederherstellen, Plattform-Checks anstoßen, Passwort-Reset, Wallet-Gutschrift/Abzug und Lead-Status-Änderung.
+- 🟡 Nächster sinnvoller Ausbau: mehr Admin-Domänen an den Assistenten hängen — z. B. komplette Mining-CRM-Aktionen, Monitoring-Alerts mit Telegram/E-Mail, Kunden-Listenfilter und Freitext-Reports.
 
 ## Status nach Admin-Fehlerzentrale — 11.07.2026
 - ✅ Admin-Monitoring zeigt jetzt nicht nur Server-Health, sondern auch eine echte **Fehlerzentrale** für kaputte Kernbereiche.
