@@ -9,17 +9,32 @@ import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+const getNotificationPermissionSafe = () => (
+  typeof Notification !== 'undefined' ? Notification.permission : 'default'
+);
+
+const isPushSupportedSafe = () => (
+  typeof window !== 'undefined' &&
+  typeof navigator !== 'undefined' &&
+  typeof Notification !== 'undefined' &&
+  'serviceWorker' in navigator &&
+  'PushManager' in window
+);
+
 export function usePushNotifications() {
-  const [permission, setPermission] = useState(Notification.permission);
+  const [permission, setPermission] = useState(getNotificationPermissionSafe());
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const isSupported = isPushSupportedSafe();
 
   useEffect(() => {
+    setPermission(getNotificationPermissionSafe());
     checkSubscription();
   }, []);
 
   const checkSubscription = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (!isPushSupportedSafe()) {
+      setIsSubscribed(false);
       return;
     }
 
@@ -44,6 +59,11 @@ export function usePushNotifications() {
   };
 
   const subscribe = async () => {
+    if (!isPushSupportedSafe()) {
+      toast.error('Push-Benachrichtigungen werden auf diesem Gerät/Browser nicht unterstützt.');
+      return false;
+    }
+
     if (permission === 'denied') {
       toast.error('Push-Benachrichtigungen wurden blockiert. Bitte in den Browser-Einstellungen aktivieren.');
       return false;
@@ -99,6 +119,11 @@ export function usePushNotifications() {
   };
 
   const unsubscribe = async () => {
+    if (!isPushSupportedSafe()) {
+      setIsSubscribed(false);
+      return false;
+    }
+
     setLoading(true);
 
     try {
@@ -159,7 +184,7 @@ export function usePushNotifications() {
     subscribe,
     unsubscribe,
     sendTestNotification,
-    isSupported: 'serviceWorker' in navigator && 'PushManager' in window
+    isSupported
   };
 }
 

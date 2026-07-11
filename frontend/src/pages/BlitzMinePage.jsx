@@ -23,7 +23,7 @@ async function api(path, opts = {}) {
     ...opts,
   });
   let d = {};
-  try { d = await r.clone().json(); } catch {}
+  try { d = await r.clone().json(); } catch (error) { void error; }
   if (!r.ok) throw new Error(d.detail || d.message || `Error ${r.status}`);
   return d;
 }
