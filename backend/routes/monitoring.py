@@ -40,6 +40,74 @@ class FrontendErrorLogRequest(BaseModel):
     meta: dict = {}
 
 
+async def _maybe_create_daily_report_notification() -> dict:
+    now = datetime.now(timezone.utc)
+    report_key = now.strftime("%Y-%m-%d")
+    existing = await db.monitoring_daily_reports.find_one({"report_key": report_key}, {"_id": 0})
+    if existing:
+        return existing
+
+    since_24h = (now - timedelta(hours=24)).isoformat()
+    frontend_errors = await db.frontend_errors.count_documents({"created_at": {"$gte": since_24h}})
+    incidents = await db.monitoring_incidents.count_documents({"created_at": {"$gte": since_24h}})
+    active_probes = await db.monitoring_probes.find({}, {"_id": 0}).to_list(50)
+    failing_probes = [probe for probe in active_probes if probe.get("status") != "ok"]
+
+    report = {
+        "report_key": report_key,
+        "created_at": now.isoformat(),
+        "summary": {
+            "frontend_errors_24h": frontend_errors,
+            "incidents_24h": incidents,
+            "failing_probes": len(failing_probes),
+        },
+        "status": "critical" if failing_probes else ("warning" if frontend_errors or incidents else "ok"),
+    }
+    await db.monitoring_daily_reports.insert_one(report)
+
+    admins = await db.users.find({"role": "admin"}, {"_id": 1}).to_list(50)
+    if admins:
+        title = "Tagesreport: Systemstatus"
+        message = f"Frontend-Fehler 24h: {frontend_errors} | Incidents 24h: {incidents} | Kritische Checks: {len(failing_probes)}"
+        notifications = [{
+            "user_id": str(admin["_id"]),
+            "type": "monitoring_daily_report",
+            "title": title,
+            "message": message,
+            "read": False,
+            "created_at": now.isoformat(),
+            "meta": report,
+        } for admin in admins]
+        await db.notifications.insert_many(notifications)
+    return report
+
+
+async def _ensure_critical_alert_notifications(alerts: list[dict]):
+    critical_alerts = [alert for alert in alerts if alert.get("severity") == "critical"]
+    if not critical_alerts:
+        return
+    admins = await db.users.find({"role": "admin"}, {"_id": 1}).to_list(50)
+    if not admins:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    for alert in critical_alerts:
+        alert_key = f"{alert.get('key')}::{now[:13]}"
+        exists = await db.monitoring_alert_notifications.find_one({"alert_key": alert_key}, {"_id": 0})
+        if exists:
+            continue
+        await db.monitoring_alert_notifications.insert_one({"alert_key": alert_key, "created_at": now, "alert": alert})
+        notifications = [{
+            "user_id": str(admin["_id"]),
+            "type": "admin_alert",
+            "title": f"Kritischer Fehler: {alert.get('label')}",
+            "message": alert.get("message") or "Kritische Plattformwarnung erkannt.",
+            "read": False,
+            "created_at": now,
+            "meta": {"source": "monitoring_error_center", **alert},
+        } for admin in admins]
+        await db.notifications.insert_many(notifications)
+
+
 async def require_admin(request: Request):
     user = await get_current_user(request)
     if user.get("role") != "admin":
@@ -395,6 +463,9 @@ async def error_center(request: Request):
     if len(frontend_errors) >= 10:
         alerts.append({"type": "frontend", "label": "Viele Frontend-Fehler", "key": "frontend-spike", "severity": _severity_from_count(len(frontend_errors)), "message": f"{len(frontend_errors)} Frontend-Fehler in 24h", "updated_at": now.isoformat()})
 
+    await _ensure_critical_alert_notifications(alerts)
+    daily_report = await _maybe_create_daily_report_notification()
+
     overall_status = "ok"
     if any(a["severity"] == "critical" for a in alerts):
         overall_status = "critical"
@@ -415,6 +486,7 @@ async def error_center(request: Request):
         "top_error_pages": [{"page": page, "count": count} for page, count in top_pages],
         "frontend_errors": frontend_errors,
         "incidents": incidents,
+        "daily_report": daily_report,
         "checked_at": now.isoformat(),
     }
 

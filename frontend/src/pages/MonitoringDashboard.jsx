@@ -4,7 +4,7 @@ import {
   Activity, Server, Database, Clock, AlertTriangle, Users,
   Wifi, WifiOff, RefreshCw,
   TrendingUp, Zap, BarChart3, ChevronLeft, Shield,
-  ArrowUp, ArrowDown, Bug, LogIn, Globe, Siren,
+  ArrowUp, ArrowDown, Bug, LogIn, Globe, Siren, BellRing, CalendarClock,
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 
@@ -305,6 +305,37 @@ const MonitoringDashboard = ({ onBack }) => {
                 </div>
               </div>
             )}
+
+            {errorCenter.daily_report && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-daily-report-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[12px] font-bold text-white flex items-center gap-2"><CalendarClock size={13} className="text-[#00C2FF]" /> Automatischer Tagesreport</p>
+                    <p className="text-[10px] text-white/45 mt-1">Ein täglicher Report wird für Admins gespeichert und als interne Benachrichtigung angelegt.</p>
+                  </div>
+                  <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: errorCenter.daily_report.status === "critical" ? "rgba(239,68,68,0.12)" : errorCenter.daily_report.status === "warning" ? "rgba(245,158,11,0.12)" : "rgba(16,185,129,0.12)", color: errorCenter.daily_report.status === "critical" ? "#EF4444" : errorCenter.daily_report.status === "warning" ? "#F59E0B" : "#10B981" }}>{errorCenter.daily_report.status}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                  <div className="rounded-xl px-3 py-2 border border-white/6">
+                    <p className="text-[10px] text-white/35">Frontend-Fehler 24h</p>
+                    <p className="text-[15px] font-bold text-white">{errorCenter.daily_report.summary?.frontend_errors_24h || 0}</p>
+                  </div>
+                  <div className="rounded-xl px-3 py-2 border border-white/6">
+                    <p className="text-[10px] text-white/35">Incidents 24h</p>
+                    <p className="text-[15px] font-bold text-white">{errorCenter.daily_report.summary?.incidents_24h || 0}</p>
+                  </div>
+                  <div className="rounded-xl px-3 py-2 border border-white/6">
+                    <p className="text-[10px] text-white/35">Fehlende Kern-Checks</p>
+                    <p className="text-[15px] font-bold text-white">{errorCenter.daily_report.summary?.failing_probes || 0}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-alert-hint-card">
+              <p className="text-[12px] font-bold text-white flex items-center gap-2"><BellRing size={13} className="text-amber-400" /> Interne Warnlogik aktiv</p>
+              <p className="text-[10px] text-white/45 mt-1">Wenn etwas kritisch wird, legt das System jetzt automatisch Admin-Benachrichtigungen an. So sieht Armend sofort im System, wenn etwas kaputt ist.</p>
+            </div>
           </motion.div>
         )}
 
