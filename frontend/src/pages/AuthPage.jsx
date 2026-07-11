@@ -91,6 +91,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
   const [rememberMe, setRememberMe] = useState(true); // Default to true for better UX
   const [otpCode, setOtpCode] = useState("");
   const [showKYC, setShowKYC] = useState(false);
+  const previousValuesRef = useRef({ email: "", password: "", otpCode: "", name: "", confirm: "" });
   const { t } = useI18n();
 
   const user = useUser();
@@ -98,10 +99,23 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
 
   useEffect(() => {
     if (!user.error) return;
-    if ((email || password || otpCode || name || confirm) && typeof user.clearError === "function") {
+    const previous = previousValuesRef.current;
+    const hasRealInputChange = (
+      previous.email !== email ||
+      previous.password !== password ||
+      previous.otpCode !== otpCode ||
+      previous.name !== name ||
+      previous.confirm !== confirm
+    );
+    if (hasRealInputChange && typeof user.clearError === "function") {
       user.clearError();
     }
+    previousValuesRef.current = { email, password, otpCode, name, confirm };
   }, [email, password, otpCode, name, confirm, user]);
+
+  useEffect(() => {
+    previousValuesRef.current = { email, password, otpCode, name, confirm };
+  }, [email, password, otpCode, name, confirm]);
 
   const captureLoginSnapshot = () => {
     loginSnapshotRef.current = {
