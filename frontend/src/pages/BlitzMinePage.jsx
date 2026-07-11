@@ -43,6 +43,28 @@ const fmtTime = (sec) => {
   const s = String(Math.floor(sec % 60)).padStart(2, "0");
   return `${h}:${m}:${s}`;
 };
+const fmtDate = (isoString) => {
+  try {
+    if (!isoString) return "Unbekannt";
+    const parsed = new Date(isoString);
+    if (Number.isNaN(parsed.getTime())) return "Unbekannt";
+    return parsed.toLocaleDateString("de-DE");
+  } catch (error) {
+    void error;
+    return "Unbekannt";
+  }
+};
+const getWindowOrigin = () => (typeof window !== "undefined" ? window.location.origin : "");
+const writeClipboardSafe = async (value) => {
+  if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return false;
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch (error) {
+    void error;
+    return false;
+  }
+};
 
 const MissionCard = ({ quest, onAction }) => {
   const progress = Math.min(100, Math.round(((quest?.progress || 0) / Math.max(quest?.target || 1, 1)) * 100));
@@ -530,7 +552,7 @@ const LockupWidget = ({ lockups, constants, balance, onCreate, onRelease }) => {
             <div>
               <p className="text-[11px] text-white font-semibold">{fmt(l.amount, 2)} BLZ</p>
               <p className="text-[9px] text-white/50">
-                +{(l.bonus_rate * 100).toFixed(0)}% · bis {new Date(l.ends_at).toLocaleDateString("de-DE")}
+                +{(l.bonus_rate * 100).toFixed(0)}% · bis {fmtDate(l.ends_at)}
               </p>
             </div>
             <button
@@ -801,8 +823,9 @@ const ReferralWidget = ({ data, referralCode, onShare, onShowQr }) => {
           <button
             data-testid="mine-copy-code"
             onClick={() => {
-              navigator.clipboard.writeText(referralCode);
-              toast.success("Code kopiert!");
+              writeClipboardSafe(referralCode).then((ok) => {
+                toast.success(ok ? "Code kopiert!" : "Code anzeigen und manuell kopieren.");
+              });
             }}
             className="text-white/60 hover:text-white"
           >
@@ -892,8 +915,9 @@ const QrModal = ({ open, onClose, url, code, onShare }) => {
           <button
             data-testid="mine-qr-copy-link"
             onClick={() => {
-              navigator.clipboard.writeText(url);
-              toast.success("Link kopiert!");
+              writeClipboardSafe(url).then((ok) => {
+                toast.success(ok ? "Link kopiert!" : "Link anzeigen und manuell kopieren.");
+              });
             }}
             className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-[12px] font-semibold text-white flex items-center justify-center gap-2"
           >
@@ -1050,7 +1074,7 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const onReleaseLockup = async (id) => {
     if (!id) return;
-    if (!window.confirm("Lockup jetzt auflösen? Es kann eine Strafe anfallen.")) return;
+    if (typeof window !== "undefined" && !window.confirm("Lockup jetzt auflösen? Es kann eine Strafe anfallen.")) return;
     try {
       const res = await api(`/api/blitz-mine/lockup/${id}/release`, { method: "POST" });
       toast.success(`+${fmt(res.refund_blz, 2)} BLZ zurückerstattet (Strafe: ${fmt(res.penalty_blz, 2)}).`);
@@ -1103,19 +1127,21 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
 
   const topQuests = (quests?.quests || []).filter((q) => !q.claimed).slice(0, 2);
 
+  const origin = getWindowOrigin();
   const refLink = referralCode
-    ? `${window.location.origin}?ref=${encodeURIComponent(referralCode)}`
-    : window.location.origin;
+    ? `${origin}?ref=${encodeURIComponent(referralCode)}`
+    : origin;
 
   const onShare = () => {
     const text = referralCode
       ? `Mine kostenlos BLZ auf BidBlitz! Nutze meinen Code: ${referralCode}`
       : "Mine kostenlos BLZ auf BidBlitz!";
-    if (navigator.share) {
-      navigator.share({ title: "BlitzMine", text, url: refLink }).catch(() => {});
+    if (typeof navigator !== "undefined" && navigator.share) {
+      navigator.share({ title: "BlitzMine", text, url: refLink }).catch((error) => { void error; });
     } else {
-      navigator.clipboard.writeText(`${text}\n${refLink}`);
-      toast.success("Link kopiert!");
+      writeClipboardSafe(`${text}\n${refLink}`).then((ok) => {
+        toast.success(ok ? "Link kopiert!" : "Link anzeigen und manuell kopieren.");
+      });
     }
   };
 
@@ -1158,7 +1184,10 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
           onQuickClaim={onQuickClaim}
           onOpenQuests={() => onNavigate?.("/quests")}
           onShare={onShare}
-          onOpenLeaderboard={() => document.querySelector('[data-testid="blitz-leaderboard-widget"]')?.scrollIntoView({ behavior: "smooth", block: "center" })}
+          onOpenLeaderboard={() => {
+            if (typeof document === "undefined") return;
+            document.querySelector('[data-testid="blitz-leaderboard-widget"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
         />
 
         {/* Tap button */}
