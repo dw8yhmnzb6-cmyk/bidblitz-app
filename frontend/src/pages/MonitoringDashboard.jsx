@@ -4,14 +4,14 @@ import {
   Activity, Server, Database, Clock, AlertTriangle, Users,
   Wifi, WifiOff, RefreshCw,
   TrendingUp, Zap, BarChart3, ChevronLeft, Shield,
-  ArrowUp, ArrowDown,
+  ArrowUp, ArrowDown, Bug, LogIn, Globe, Siren,
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-const fetchApi = async (path) => {
-  const res = await fetch(`${API}${path}`, { credentials: "include" });
+const fetchApi = async (path, options = {}) => {
+  const res = await fetch(`${API}${path}`, { credentials: "include", ...options });
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
 };
@@ -91,6 +91,8 @@ const MonitoringDashboard = ({ onBack }) => {
   const [metrics, setMetrics] = useState(null);
   const [dbStats, setDbStats] = useState(null);
   const [userStats, setUserStats] = useState(null);
+  const [errorCenter, setErrorCenter] = useState(null);
+  const [runningChecks, setRunningChecks] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -98,16 +100,18 @@ const MonitoringDashboard = ({ onBack }) => {
 
   const loadData = useCallback(async () => {
     try {
-      const [h, m, d, u] = await Promise.all([
+      const [h, m, d, u, ec] = await Promise.all([
         fetchApi("/api/admin/monitoring/health").catch(() => null),
         fetchApi("/api/admin/monitoring/metrics").catch(() => null),
         fetchApi("/api/admin/monitoring/db-stats").catch(() => null),
         fetchApi("/api/admin/monitoring/users-stats").catch(() => null),
+        fetchApi("/api/admin/monitoring/error-center").catch(() => null),
       ]);
       if (h) setHealth(h);
       if (m) setMetrics(m);
       if (d) setDbStats(d);
       if (u) setUserStats(u);
+      if (ec) setErrorCenter(ec);
       setError(null);
       setLastUpdate(new Date());
     } catch (e) {
@@ -136,6 +140,17 @@ const MonitoringDashboard = ({ onBack }) => {
 
   const sys = health?.system || {};
   const db_info = health?.database || {};
+
+  const runChecks = async () => {
+    setRunningChecks(true);
+    try {
+      await fetchApi("/api/admin/monitoring/run-probes", { method: "POST" });
+      await loadData();
+    } catch (e) {
+      setError("Checks konnten nicht gestartet werden");
+    }
+    setRunningChecks(false);
+  };
 
   return (
     <div className="min-h-screen pb-24" style={{ background: "#030303" }}>
@@ -193,6 +208,103 @@ const MonitoringDashboard = ({ onBack }) => {
               </p>
             </div>
             <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: health.status === "healthy" ? "#10B981" : "#EF4444" }} />
+          </motion.div>
+        )}
+
+        {errorCenter && (
+          <motion.div
+            className="rounded-2xl p-4"
+            style={{
+              background: "#0A0A0A",
+              border: `1px solid ${errorCenter.overall_status === "critical" ? "rgba(239,68,68,0.22)" : errorCenter.overall_status === "warning" ? "rgba(245,158,11,0.22)" : "rgba(16,185,129,0.18)"}`,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            data-testid="monitor-error-center-card"
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[14px] font-bold text-white flex items-center gap-2">
+                  <Siren size={15} className={errorCenter.overall_status === "critical" ? "text-red-400" : errorCenter.overall_status === "warning" ? "text-amber-400" : "text-emerald-400"} />
+                  Fehlerzentrale
+                </p>
+                <p className="text-[10px] text-white/35 mt-1">Zeigt sofort, wenn Webseite, Login, Registrierung oder Kern-APIs Probleme machen.</p>
+              </div>
+              <button
+                onClick={runChecks}
+                data-testid="monitor-run-probes-btn"
+                className="rounded-xl px-3 py-2 text-[11px] font-bold"
+                style={{ background: runningChecks ? "rgba(255,255,255,0.08)" : "#00C2FF", color: runningChecks ? "#fff" : "#041018" }}
+              >
+                {runningChecks ? "Prüft..." : "Jetzt prüfen"}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+              {[
+                ["Warnungen", errorCenter.summary?.open_alerts || 0, "#EF4444"],
+                ["Frontend", errorCenter.summary?.frontend_errors_24h || 0, "#F59E0B"],
+                ["API", errorCenter.summary?.api_errors_1h || 0, "#8B5CF6"],
+                ["Login/Reg", errorCenter.summary?.auth_errors_1h || 0, "#00C2FF"],
+                ["Incidents", errorCenter.summary?.incidents_24h || 0, "#10B981"],
+              ].map(([label, value, color]) => (
+                <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid={`monitor-error-summary-${String(label).toLowerCase()}`}>
+                  <p className="text-[9px] uppercase tracking-[0.16em] text-white/35">{label}</p>
+                  <p className="text-[18px] font-bold mt-1" style={{ color }}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <p className="text-[12px] font-bold text-white mb-2 flex items-center gap-2"><AlertTriangle size={13} className="text-red-400" /> Aktive Warnungen</p>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                  {(errorCenter.alerts || []).length === 0 ? (
+                    <p className="text-[11px] text-emerald-400">Keine aktiven Warnungen.</p>
+                  ) : errorCenter.alerts.map((alert, idx) => (
+                    <div key={`${alert.key}-${idx}`} className="rounded-xl px-3 py-2 border" style={{ borderColor: alert.severity === "critical" ? "rgba(239,68,68,0.2)" : "rgba(245,158,11,0.2)", background: "rgba(255,255,255,0.02)" }} data-testid={`monitor-alert-${idx}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] font-bold text-white">{alert.label}</p>
+                        <span className="text-[9px] font-bold uppercase" style={{ color: alert.severity === "critical" ? "#EF4444" : "#F59E0B" }}>{alert.severity}</span>
+                      </div>
+                      <p className="text-[10px] text-white/45 mt-1">{alert.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <p className="text-[12px] font-bold text-white mb-2 flex items-center gap-2"><Shield size={13} className="text-[#00C2FF]" /> Kern-Checks</p>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                  {(errorCenter.probes || []).map((probe) => (
+                    <div key={probe.key} className="rounded-xl px-3 py-2 flex items-start justify-between gap-3 border border-white/6" data-testid={`monitor-probe-${probe.key}`}>
+                      <div>
+                        <p className="text-[11px] font-bold text-white flex items-center gap-2">
+                          {probe.key.includes('auth') ? <LogIn size={12} className="text-[#00C2FF]" /> : probe.key.includes('site') ? <Globe size={12} className="text-emerald-400" /> : <Bug size={12} className="text-amber-400" />} {probe.label}
+                        </p>
+                        <p className="text-[10px] text-white/35 mt-1">{probe.path} · {probe.latency_ms || 0}ms</p>
+                        {probe.error_message ? <p className="text-[10px] text-red-300 mt-1">{probe.error_message}</p> : null}
+                      </div>
+                      <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: probe.status === 'ok' ? 'rgba(16,185,129,0.12)' : probe.status === 'warning' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)', color: probe.status === 'ok' ? '#10B981' : probe.status === 'warning' ? '#F59E0B' : '#EF4444' }}>{probe.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {(errorCenter.top_error_pages || []).length > 0 && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }}>
+                <p className="text-[12px] font-bold text-white mb-2">Meist betroffene Seiten</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {errorCenter.top_error_pages.map((row, idx) => (
+                    <div key={`${row.page}-${idx}`} className="rounded-xl px-3 py-2 border border-white/6 flex items-center justify-between" data-testid={`monitor-top-page-${idx}`}>
+                      <span className="text-[11px] text-white/70 truncate">{row.page}</span>
+                      <span className="text-[11px] font-bold text-amber-400">{row.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
 

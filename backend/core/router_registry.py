@@ -45,6 +45,7 @@ def register_all_routers(app):
         ("routes.admin_customer_intelligence", "router"),
         ("routes.admin_biopay", "router"),
         ("routes.monitoring", "router"),
+        ("routes.monitoring_public", "router"),
         ("routes.diag", "router"),
         ("routes.merchant_admin", "router"),
         ("routes.merchant_portal", "router"),

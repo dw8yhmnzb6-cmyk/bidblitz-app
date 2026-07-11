@@ -5,9 +5,11 @@ Real-time server health, API metrics, DB status, error tracking.
 import time
 import os
 import platform
+import httpx
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict, deque
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
+from pydantic import BaseModel
 from core.database import db
 from core.security import get_current_user
 
@@ -21,6 +23,22 @@ _metrics = {
     "start_time": time.time(),
 }
 
+MONITORED_FLOWS = [
+    {"key": "site_home", "label": "Webseite", "method": "GET", "path": "/"},
+    {"key": "auth_login", "label": "Login", "method": "POST", "path": "/api/auth/login", "body": {"email": "reviewer@bidblitz.ae", "password": "BidBlitzReview2026!", "remember_me": True}, "expect_statuses": [200]},
+    {"key": "auth_register_contract", "label": "Registrierung", "method": "POST", "path": "/api/auth/register", "body": {"name": "Monitor Contract", "email": "monitor.invalid", "password": "123"}, "expect_statuses": [400, 409, 422]},
+    {"key": "auctions_list", "label": "Auktionen", "method": "GET", "path": "/api/auctions/active", "expect_statuses": [200]},
+]
+
+
+class FrontendErrorLogRequest(BaseModel):
+    message: str = ""
+    page: str = ""
+    stack: str = ""
+    component_stack: str = ""
+    level: str = "error"
+    meta: dict = {}
+
 
 async def require_admin(request: Request):
     user = await get_current_user(request)
@@ -28,6 +46,79 @@ async def require_admin(request: Request):
         from fastapi import HTTPException
         raise HTTPException(status_code=403, detail="Admin only")
     return user
+
+
+def _severity_from_count(count: int) -> str:
+    if count >= 25:
+        return "critical"
+    if count >= 8:
+        return "warning"
+    return "ok"
+
+
+def _normalize_probe_status(status_code: int | None, expected: list[int]) -> str:
+    if status_code in expected:
+        return "ok"
+    if status_code is None:
+        return "critical"
+    if status_code >= 500:
+        return "critical"
+    if status_code >= 400:
+        return "warning"
+    return "ok"
+
+
+async def _run_probe(flow: dict) -> dict:
+    base_url = os.environ.get("APP_BASE_URL") or os.environ.get("BASE_URL")
+    if not base_url:
+        base_url = os.environ.get("APP_BASE_URL") or "http://127.0.0.1:8001"
+    base_url = str(base_url).rstrip("/")
+    url = f"{base_url}{flow['path']}"
+    status_code = None
+    error_message = ""
+    started = time.time()
+    try:
+        async with httpx.AsyncClient(timeout=12, follow_redirects=True) as client:
+            if flow.get("method") == "POST":
+                response = await client.post(url, json=flow.get("body") or {})
+            else:
+                response = await client.get(url)
+            status_code = response.status_code
+    except Exception as exc:
+        error_message = str(exc)
+    latency_ms = round((time.time() - started) * 1000, 1)
+    expected = flow.get("expect_statuses") or [200]
+    return {
+        "key": flow["key"],
+        "label": flow["label"],
+        "path": flow["path"],
+        "status_code": status_code,
+        "latency_ms": latency_ms,
+        "status": _normalize_probe_status(status_code, expected),
+        "error_message": error_message,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _store_probe_results(results: list[dict]):
+    for result in results:
+        await db.monitoring_probes.update_one(
+            {"key": result["key"]},
+            {"$set": result, "$inc": {"run_count": 1}},
+            upsert=True,
+        )
+        if result["status"] != "ok":
+            await db.monitoring_incidents.insert_one({
+                "type": "probe_failure",
+                "key": result["key"],
+                "label": result["label"],
+                "status": result["status"],
+                "status_code": result.get("status_code"),
+                "latency_ms": result.get("latency_ms"),
+                "error_message": result.get("error_message", ""),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "resolved": False,
+            })
 
 
 def get_system_stats():
@@ -248,6 +339,96 @@ async def user_statistics(request: Request):
         "new_this_month": month,
         "active_7d": active,
         "roles": {r["_id"] or "user": r["count"] for r in roles},
+    }
+
+
+@router.post("/log-error")
+async def log_frontend_error(payload: FrontendErrorLogRequest, request: Request):
+    doc = {
+        "message": payload.message[:1000],
+        "page": payload.page or (payload.meta or {}).get("path") or "",
+        "stack": payload.stack[:4000],
+        "component_stack": payload.component_stack[:4000],
+        "level": payload.level or "error",
+        "meta": payload.meta or {},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.frontend_errors.insert_one(doc)
+    _metrics["errors"].append({"path": doc["page"] or "/frontend", "method": "CLIENT", "status": 500, "duration_ms": 0, "ts": time.time()})
+    return {"ok": True}
+
+
+@router.get("/error-center")
+async def error_center(request: Request):
+    await require_admin(request)
+    now = datetime.now(timezone.utc)
+    since_24h = (now - timedelta(hours=24)).isoformat()
+    since_1h_ts = time.time() - 3600
+
+    frontend_errors = await db.frontend_errors.find({"created_at": {"$gte": since_24h}}, {"_id": 0}).sort("created_at", -1).limit(60).to_list(60)
+    probes = await db.monitoring_probes.find({}, {"_id": 0}).to_list(50)
+    incidents = await db.monitoring_incidents.find({"created_at": {"$gte": since_24h}}, {"_id": 0}).sort("created_at", -1).limit(80).to_list(80)
+
+    api_errors_1h = [e for e in _metrics["errors"] if e["ts"] >= since_1h_ts]
+    auth_errors_1h = [e for e in api_errors_1h if "/api/auth/login" in e["path"] or "/api/auth/register" in e["path"]]
+
+    page_counts = defaultdict(int)
+    for item in frontend_errors:
+        page_counts[item.get("page") or "unknown"] += 1
+    top_pages = sorted(page_counts.items(), key=lambda x: -x[1])[:8]
+
+    alerts = []
+    for probe in probes:
+      if probe.get("status") != "ok":
+        alerts.append({
+            "type": "probe",
+            "label": probe.get("label"),
+            "key": probe.get("key"),
+            "severity": "critical" if probe.get("status") == "critical" else "warning",
+            "message": probe.get("error_message") or f"Status {probe.get('status_code')}",
+            "updated_at": probe.get("checked_at"),
+        })
+    if len(auth_errors_1h) >= 8:
+        alerts.append({"type": "auth", "label": "Viele Login-/Registrierungsfehler", "key": "auth-spike", "severity": _severity_from_count(len(auth_errors_1h)), "message": f"{len(auth_errors_1h)} Auth-Fehler in 1h", "updated_at": now.isoformat()})
+    if len(frontend_errors) >= 10:
+        alerts.append({"type": "frontend", "label": "Viele Frontend-Fehler", "key": "frontend-spike", "severity": _severity_from_count(len(frontend_errors)), "message": f"{len(frontend_errors)} Frontend-Fehler in 24h", "updated_at": now.isoformat()})
+
+    overall_status = "ok"
+    if any(a["severity"] == "critical" for a in alerts):
+        overall_status = "critical"
+    elif alerts:
+        overall_status = "warning"
+
+    return {
+        "overall_status": overall_status,
+        "summary": {
+            "open_alerts": len(alerts),
+            "frontend_errors_24h": len(frontend_errors),
+            "api_errors_1h": len(api_errors_1h),
+            "auth_errors_1h": len(auth_errors_1h),
+            "incidents_24h": len(incidents),
+        },
+        "alerts": alerts[:20],
+        "probes": sorted(probes, key=lambda p: p.get("label", "")),
+        "top_error_pages": [{"page": page, "count": count} for page, count in top_pages],
+        "frontend_errors": frontend_errors,
+        "incidents": incidents,
+        "checked_at": now.isoformat(),
+    }
+
+
+@router.post("/run-probes")
+async def run_probes(request: Request):
+    await require_admin(request)
+    results = []
+    for flow in MONITORED_FLOWS:
+        results.append(await _run_probe(flow))
+    await _store_probe_results(results)
+    return {
+        "ok": True,
+        "results": results,
+        "critical": len([r for r in results if r["status"] == "critical"]),
+        "warning": len([r for r in results if r["status"] == "warning"]),
     }
 
 
