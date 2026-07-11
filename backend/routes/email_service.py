@@ -14,7 +14,7 @@ logger = logging.getLogger("bidblitz.email")
 
 RESEND_KEY = os.environ.get("RESEND_API_KEY", "")
 _configured_sender = os.environ.get("SENDER_EMAIL") or os.environ.get("FROM_EMAIL") or "onboarding@resend.dev"
-SENDER = "onboarding@resend.dev" if "bidblitz.ae" in _configured_sender.lower() else _configured_sender
+SENDER = _configured_sender
 DOMAIN = "https://bidblitz.ae"
 
 

@@ -93,6 +93,7 @@ const MonitoringDashboard = ({ onBack }) => {
   const [userStats, setUserStats] = useState(null);
   const [errorCenter, setErrorCenter] = useState(null);
   const [runningChecks, setRunningChecks] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -150,6 +151,21 @@ const MonitoringDashboard = ({ onBack }) => {
       setError("Checks konnten nicht gestartet werden");
     }
     setRunningChecks(false);
+  };
+
+  const sendTestEmail = async (kind = "critical") => {
+    setSendingEmail(true);
+    try {
+      await fetchApi("/api/admin/monitoring/send-test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind }),
+      });
+      await loadData();
+    } catch (e) {
+      setError("Test-Mail konnte nicht gesendet werden");
+    }
+    setSendingEmail(false);
   };
 
   return (
@@ -336,6 +352,33 @@ const MonitoringDashboard = ({ onBack }) => {
               <p className="text-[12px] font-bold text-white flex items-center gap-2"><BellRing size={13} className="text-amber-400" /> Interne Warnlogik aktiv</p>
               <p className="text-[10px] text-white/45 mt-1">Wenn etwas kritisch wird, legt das System jetzt automatisch Admin-Benachrichtigungen an. So sieht Armend sofort im System, wenn etwas kaputt ist.</p>
             </div>
+
+            {errorCenter.email_settings && (
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)" }} data-testid="monitor-email-settings-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[12px] font-bold text-white flex items-center gap-2"><BellRing size={13} className="text-[#00C2FF]" /> E-Mail Alarmierung</p>
+                    <p className="text-[10px] text-white/45 mt-1">Kritische Fehler, Warnungen und Tagesreports gehen jetzt per Resend raus.</p>
+                  </div>
+                  <span className="px-2 py-1 rounded-full text-[9px] font-bold uppercase" style={{ background: errorCenter.email_settings.configured ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)", color: errorCenter.email_settings.configured ? "#10B981" : "#EF4444" }}>{errorCenter.email_settings.configured ? "aktiv" : "nicht aktiv"}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                  <div className="rounded-xl px-3 py-2 border border-white/6">
+                    <p className="text-[10px] text-white/35">Absender</p>
+                    <p className="text-[11px] font-bold text-white break-all">{errorCenter.email_settings.sender || "-"}</p>
+                  </div>
+                  <div className="rounded-xl px-3 py-2 border border-white/6 sm:col-span-2">
+                    <p className="text-[10px] text-white/35">Empfänger</p>
+                    <p className="text-[11px] font-bold text-white break-all">{(errorCenter.email_settings.recipients || []).join(", ") || "-"}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button data-testid="monitor-send-test-email-btn" onClick={() => sendTestEmail("critical")} className="rounded-xl px-3 py-2 bg-[#00C2FF] text-black text-[11px] font-bold disabled:opacity-50" disabled={sendingEmail}>{sendingEmail ? "Sende..." : "Test-Mail kritisch"}</button>
+                  <button data-testid="monitor-send-daily-email-btn" onClick={() => sendTestEmail("daily")} className="rounded-xl px-3 py-2 bg-white/8 text-white text-[11px] font-bold disabled:opacity-50" disabled={sendingEmail}>{sendingEmail ? "Sende..." : "Test-Mail Tagesreport"}</button>
+                </div>
+                <p className="mt-2 text-[10px] text-white/40">Falls Test-Mails nicht ankommen, ist meistens die Resend-Domain oder der Empfänger im Resend-Testmodus noch nicht freigeschaltet.</p>
+              </div>
+            )}
           </motion.div>
         )}
 

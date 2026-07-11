@@ -12,6 +12,7 @@ from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from core.database import db
 from core.security import get_current_user
+from routes.email_service import send_email as send_email_async
 
 router = APIRouter(prefix="/api/admin/monitoring", tags=["monitoring"])
 
@@ -38,6 +39,104 @@ class FrontendErrorLogRequest(BaseModel):
     component_stack: str = ""
     level: str = "error"
     meta: dict = {}
+
+
+def _get_email_settings() -> dict:
+    sender = os.environ.get("SENDER_EMAIL") or os.environ.get("FROM_EMAIL") or ""
+    recipients_raw = os.environ.get("MONITORING_ALERT_EMAILS") or os.environ.get("ALERT_EMAILS") or ""
+    recipients = [item.strip() for item in recipients_raw.split(",") if item.strip()]
+    mode = (os.environ.get("MONITORING_EMAIL_MODE") or "critical_only").strip().lower()
+    return {
+        "sender": sender,
+        "recipients": recipients,
+        "mode": mode,
+        "configured": bool(sender and recipients),
+    }
+
+
+def _alert_should_email(alert: dict, mode: str) -> bool:
+    severity = (alert.get("severity") or "").lower()
+    if mode == "all":
+        return severity in {"critical", "warning"}
+    if mode == "daily_only":
+        return False
+    if mode == "critical_and_daily":
+        return severity == "critical"
+    return severity == "critical"
+
+
+def _monitoring_shell(title: str, intro: str, body_rows: list[tuple[str, str]], accent: str = "#EF4444") -> str:
+    rows_html = "".join(
+        f'<tr><td style="padding:10px 0;color:#6b7280;font-size:13px;">{label}</td><td style="padding:10px 0;color:#fff;font-size:13px;text-align:right;">{value}</td></tr>'
+        for label, value in body_rows
+    )
+    return f"""
+    <!DOCTYPE html>
+    <html>
+      <body style="margin:0;padding:0;background:#05070d;font-family:Arial,sans-serif;color:#d8e1ef;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;background:#05070d;">
+          <tr>
+            <td align="center">
+              <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#0c111d;border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:28px;">
+                <tr><td>
+                  <div style="display:inline-block;padding:8px 14px;border-radius:999px;background:{accent}22;color:{accent};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">BidBlitz Monitoring</div>
+                  <h1 style="font-size:24px;line-height:1.2;color:#fff;margin:18px 0 10px;">{title}</h1>
+                  <p style="font-size:14px;line-height:1.6;color:#94a3b8;margin:0 0 18px;">{intro}</p>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0f19;border-radius:14px;padding:16px 18px;">{rows_html}</table>
+                  <p style="margin:18px 0 0;font-size:12px;line-height:1.6;color:#64748b;">Diese E-Mail wurde automatisch von der BidBlitz Fehlerzentrale versendet.</p>
+                </td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+    """
+
+
+async def _send_monitoring_email(subject: str, html: str, notif_type: str) -> dict:
+    settings = _get_email_settings()
+    if not settings["configured"]:
+        return {"configured": False, "attempted": 0, "sent": 0, "results": []}
+
+    results = []
+    sent_count = 0
+    for recipient in settings["recipients"]:
+        sent = await send_email_async(recipient, subject, html, notif_type)
+        results.append({"recipient": recipient, "sent": bool(sent)})
+        if sent:
+            sent_count += 1
+    return {"configured": True, "attempted": len(settings["recipients"]), "sent": sent_count, "results": results}
+
+
+def _daily_report_email_html(report: dict) -> tuple[str, str]:
+    summary = report.get("summary") or {}
+    title = "BidBlitz Tagesreport"
+    intro = "Hier ist der automatische Tagesüberblick für Webseite, Login, Registrierung und Kernbereiche."
+    rows = [
+        ("Frontend-Fehler 24h", str(summary.get("frontend_errors_24h", 0))),
+        ("Incidents 24h", str(summary.get("incidents_24h", 0))),
+        ("Fehlende Kern-Checks", str(summary.get("failing_probes", 0))),
+        ("Status", str(report.get("status", "ok")).upper()),
+    ]
+    return title, _monitoring_shell(title, intro, rows, accent="#00C2FF")
+
+
+def _alert_email_html(alert: dict) -> tuple[str, str]:
+    severity = (alert.get("severity") or "warning").lower()
+    accent = "#EF4444" if severity == "critical" else "#F59E0B"
+    title = f"BidBlitz Alarm: {alert.get('label') or 'Systemwarnung'}"
+    intro = alert.get("message") or "Die Fehlerzentrale hat eine kritische Änderung erkannt."
+    rows = [
+        ("Typ", str(alert.get("type", "alert"))),
+        ("Schweregrad", severity.upper()),
+        ("Zeit", str(alert.get("updated_at") or datetime.now(timezone.utc).isoformat())),
+    ]
+    return title, _monitoring_shell(title, intro, rows, accent=accent)
+
+
+class MonitoringTestEmailRequest(BaseModel):
+    kind: str = "critical"
 
 
 async def _maybe_create_daily_report_notification() -> dict:
@@ -79,33 +178,44 @@ async def _maybe_create_daily_report_notification() -> dict:
             "meta": report,
         } for admin in admins]
         await db.notifications.insert_many(notifications)
+    settings = _get_email_settings()
+    if settings["configured"] and settings["mode"] in {"all", "daily_only", "critical_and_daily"}:
+        subject, html = _daily_report_email_html(report)
+        email_result = await _send_monitoring_email(subject, html, "monitoring_daily_report")
+        report["email_result"] = email_result
+        await db.monitoring_daily_reports.update_one({"report_key": report_key}, {"$set": {"email_result": email_result}})
     return report
 
 
 async def _ensure_critical_alert_notifications(alerts: list[dict]):
-    critical_alerts = [alert for alert in alerts if alert.get("severity") == "critical"]
-    if not critical_alerts:
+    interesting_alerts = [alert for alert in alerts if alert.get("severity") in {"critical", "warning"}]
+    if not interesting_alerts:
         return
     admins = await db.users.find({"role": "admin"}, {"_id": 1}).to_list(50)
-    if not admins:
-        return
     now = datetime.now(timezone.utc).isoformat()
-    for alert in critical_alerts:
+    settings = _get_email_settings()
+    for alert in interesting_alerts:
         alert_key = f"{alert.get('key')}::{now[:13]}"
         exists = await db.monitoring_alert_notifications.find_one({"alert_key": alert_key}, {"_id": 0})
         if exists:
             continue
-        await db.monitoring_alert_notifications.insert_one({"alert_key": alert_key, "created_at": now, "alert": alert})
-        notifications = [{
-            "user_id": str(admin["_id"]),
-            "type": "admin_alert",
-            "title": f"Kritischer Fehler: {alert.get('label')}",
-            "message": alert.get("message") or "Kritische Plattformwarnung erkannt.",
-            "read": False,
-            "created_at": now,
-            "meta": {"source": "monitoring_error_center", **alert},
-        } for admin in admins]
-        await db.notifications.insert_many(notifications)
+        doc = {"alert_key": alert_key, "created_at": now, "alert": alert}
+        if admins:
+            notifications = [{
+                "user_id": str(admin["_id"]),
+                "type": "admin_alert",
+                "title": f"Kritischer Fehler: {alert.get('label')}",
+                "message": alert.get("message") or "Kritische Plattformwarnung erkannt.",
+                "read": False,
+                "created_at": now,
+                "meta": {"source": "monitoring_error_center", **alert},
+            } for admin in admins if alert.get("severity") == "critical"]
+            if notifications:
+                await db.notifications.insert_many(notifications)
+        if settings["configured"] and _alert_should_email(alert, settings["mode"]):
+            subject, html = _alert_email_html(alert)
+            doc["email_result"] = await _send_monitoring_email(subject, html, "monitoring_alert")
+        await db.monitoring_alert_notifications.insert_one(doc)
 
 
 async def require_admin(request: Request):
@@ -487,6 +597,7 @@ async def error_center(request: Request):
         "frontend_errors": frontend_errors,
         "incidents": incidents,
         "daily_report": daily_report,
+        "email_settings": _get_email_settings(),
         "checked_at": now.isoformat(),
     }
 
@@ -504,6 +615,28 @@ async def run_probes(request: Request):
         "critical": len([r for r in results if r["status"] == "critical"]),
         "warning": len([r for r in results if r["status"] == "warning"]),
     }
+
+
+@router.post("/send-test-email")
+async def send_test_email(req: MonitoringTestEmailRequest, request: Request):
+    await require_admin(request)
+    kind = (req.kind or "critical").strip().lower()
+    if kind == "daily":
+        report = await _maybe_create_daily_report_notification()
+        subject, html = _daily_report_email_html(report)
+        result = await _send_monitoring_email(subject, html, "monitoring_daily_report_test")
+        return {"ok": True, "kind": kind, "result": result}
+
+    alert = {
+        "type": "test_alert",
+        "label": "Test-Alarm",
+        "severity": "warning" if kind == "warning" else "critical",
+        "message": "Dies ist eine Test-Mail aus der BidBlitz Fehlerzentrale.",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    subject, html = _alert_email_html(alert)
+    result = await _send_monitoring_email(subject, html, "monitoring_alert_test")
+    return {"ok": True, "kind": kind, "result": result}
 
 
 def record_request(path, method, status, duration_ms):

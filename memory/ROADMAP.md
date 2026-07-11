@@ -10,7 +10,8 @@
 - ✅ Admin-Monitoring zeigt jetzt nicht nur Server-Health, sondern auch eine echte **Fehlerzentrale** für kaputte Kernbereiche.
 - ✅ Live-Probes für **Webseite**, **Login**, **Registrierung** und **Auktionen** eingebaut.
 - ✅ Frontend-Fehler laufen nicht mehr ins Leere (`/api/monitoring/log-error` war vorher 404), sondern werden jetzt gespeichert und in der Fehlerzentrale sichtbar.
-- 🟡 Nächster sinnvoller Ausbau: echte Alarm-Ausgabe für Armend per **Telegram oder E-Mail**, sobald `critical` erreicht wird.
+- ✅ E-Mail-Alarmierung per Resend technisch angeschlossen.
+- 🟡 Blocker: Resend-Domain `bidblitz.ae` muss im Resend-Account verifiziert werden, sonst werden Live-Mails abgelehnt.
 
 ## Status nach Penny Auctions Premium-Tech-Reset — 11.07.2026
 - ✅ Penny Auctions komplett erneuert: aktiver Katalog enthält jetzt **exakt 30 neue Premium-Tech-Auktionen** statt alter Demo-Produkte.
