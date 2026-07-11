@@ -547,7 +547,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                 value={confirm}
                 onChange={setConfirm}
                 placeholder={t("auth.confirm") || "Passwort bestätigen"}
-                testId="register-confirm-input"
+                testId="register-confirm-password-input"
               />
 
               {/* Role Selector */}

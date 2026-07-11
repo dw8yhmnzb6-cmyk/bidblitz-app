@@ -2,6 +2,19 @@ import React, { createContext, useContext, useReducer, useCallback, useEffect } 
 import { api } from '../services/api';
 import { isAdminUser } from '../utils/adminAccess';
 
+function formatUserFacingAuthError(err) {
+  const message = String(err?.message || err || '').trim();
+  if (!message) return 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.';
+  if (message.includes('Invalid email or password')) return 'E-Mail oder Passwort ist falsch.';
+  if (message.includes('Session abgelaufen')) return 'Sitzung abgelaufen. Bitte erneut anmelden.';
+  if (message.includes('Access restricted during soft launch')) return 'Zugriff aktuell eingeschränkt. Bitte Support kontaktieren.';
+  if (message.includes('Passwort-Reset erforderlich')) return message;
+  if (message.includes('Email already registered')) return 'Diese E-Mail ist bereits registriert.';
+  if (message.includes('Password must be at least 6 characters')) return 'Passwort muss mindestens 6 Zeichen haben.';
+  if (message.includes('Passwords do not match')) return 'Die Passwörter stimmen nicht überein.';
+  return message;
+}
+
 const AUTH_ACTIONS = {
   SET_USER: 'SET_USER',
   LOGOUT: 'LOGOUT',
@@ -183,7 +196,7 @@ export function UserProvider({ children }) {
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: userData });
       return true;
     } catch (err) {
-      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: formatUserFacingAuthError(err) });
       return false;
     }
   }, []);
@@ -199,7 +212,7 @@ export function UserProvider({ children }) {
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
       return true;
     } catch (err) {
-      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: formatUserFacingAuthError(err) });
       return false;
     }
   }, []);
@@ -241,7 +254,7 @@ export function UserProvider({ children }) {
       }
       return true;
     } catch (err) {
-      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: err.message });
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: formatUserFacingAuthError(err) });
       return false;
     }
   }, []);
