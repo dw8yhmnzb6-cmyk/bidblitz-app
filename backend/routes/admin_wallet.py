@@ -72,6 +72,22 @@ async def _canonical_admin_balances() -> tuple[float, float]:
     )
 
 
+async def _canonical_admin_identity() -> dict:
+    canonical_admin = await db.users.find_one(
+        {"email": "admin@bidblitz.ae"},
+        {"_id": 0, "name": 1, "created_at": 1, "registered_at": 1, "last_login_at": 1, "login_count": 1, "canonical_email": 1, "email_aliases": 1},
+    ) or {}
+    return {
+        "name": canonical_admin.get("name") or "BidBlitz Admin",
+        "canonical_email": canonical_admin.get("canonical_email") or "admin@bidblitz.ae",
+        "email_aliases": canonical_admin.get("email_aliases") or ["admin@bid-blitz.ae"],
+        "created_at": canonical_admin.get("created_at"),
+        "registered_at": canonical_admin.get("registered_at") or canonical_admin.get("created_at"),
+        "last_login_at": canonical_admin.get("last_login_at"),
+        "login_count": int(canonical_admin.get("login_count", 0) or 0),
+    }
+
+
 def _normalize_admin_user_row(row: dict, canonical_balance: float, canonical_blz: float) -> dict:
     email = (row.get("email") or "").strip().lower()
     canonical_email = (row.get("canonical_email") or "").strip().lower()
@@ -91,6 +107,29 @@ def _normalize_admin_user_row(row: dict, canonical_balance: float, canonical_blz
         row["merchant_business_name"] = "BidBlitz Admin"
         row["balance"] = canonical_balance
         row["balance_blz"] = canonical_blz
+    return row
+
+
+def _apply_canonical_admin_identity(row: dict, canonical_identity: dict) -> dict:
+    email = (row.get("email") or "").strip().lower()
+    canonical_email = (row.get("canonical_email") or "").strip().lower()
+    aliases = {(alias or "").strip().lower() for alias in (row.get("email_aliases") or [])}
+    is_canonical_admin = row.get("role") == "admin" and (
+        email == "admin@bidblitz.ae"
+        or canonical_email == "admin@bidblitz.ae"
+        or "admin@bidblitz.ae" in aliases
+        or "admin@bid-blitz.ae" in aliases
+    )
+    if is_canonical_admin:
+        row["email"] = "admin@bidblitz.ae"
+        row["canonical_email"] = canonical_identity.get("canonical_email") or "admin@bidblitz.ae"
+        row["email_aliases"] = canonical_identity.get("email_aliases") or row.get("email_aliases") or []
+        row["name"] = canonical_identity.get("name") or row.get("name") or "BidBlitz Admin"
+        row["username"] = canonical_identity.get("name") or row.get("username") or "BidBlitz Admin"
+        row["created_at"] = canonical_identity.get("created_at") or row.get("created_at")
+        row["registered_at"] = canonical_identity.get("registered_at") or row.get("registered_at") or row.get("created_at")
+        row["last_login_at"] = canonical_identity.get("last_login_at") or row.get("last_login_at")
+        row["login_count"] = canonical_identity.get("login_count") if canonical_identity.get("login_count") is not None else row.get("login_count")
     return row
 
 
@@ -359,6 +398,7 @@ async def _build_reconciliation_rows(query: dict, limit: int):
 async def search_users(request: Request, q: str = "", limit: int = 30):
     await _require_admin(request)
     canonical_balance, canonical_blz = await _canonical_admin_balances()
+    canonical_identity = await _canonical_admin_identity()
     query = {}
     q = (q or "").strip().lower()
     if q:
@@ -386,6 +426,7 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
         if u.get("role") == "admin_alias_merged":
             continue
         u = _normalize_admin_user_row(u, canonical_balance, canonical_blz)
+        u = _apply_canonical_admin_identity(u, canonical_identity)
         uid = str(u.get("_id") or u.get("id"))
         users.append({
             "user_id": uid,
@@ -409,6 +450,7 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
 async def user_login_history(user_id: str, request: Request, limit: int = 20):
     await _require_admin(request)
     canonical_balance, canonical_blz = await _canonical_admin_balances()
+    canonical_identity = await _canonical_admin_identity()
     try:
         target = await db.users.find_one(
             {"_id": ObjectId(user_id)},
@@ -419,6 +461,7 @@ async def user_login_history(user_id: str, request: Request, limit: int = 20):
     if not target:
         raise HTTPException(404, "User nicht gefunden.")
     target = _normalize_admin_user_row(target, canonical_balance, canonical_blz)
+    target = _apply_canonical_admin_identity(target, canonical_identity)
     history = await _serialize_login_history(user_id, min(max(limit, 1), 50))
     return {
         "user": {
