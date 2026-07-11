@@ -13,6 +13,8 @@ const QUICK_PROMPTS = [
   "Aktualisiere den Titel der iPhone Auktion und prüfe danach die Plattform.",
   "Sende für agimk@me.com einen Passwort-Reset.",
   "Schreibe reviewer@bidblitz.ae 25 EUR gut.",
+  "Wer konnte sich heute nicht anmelden?",
+  "Welche Fehler sind heute am schlimmsten?",
 ];
 
 const MessageBubble = ({ message, onConfirm, confirming }) => {

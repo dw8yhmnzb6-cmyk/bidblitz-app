@@ -72,6 +72,8 @@ async def _run_probe(flow: dict) -> dict:
     base_url = os.environ.get("APP_BASE_URL") or os.environ.get("BASE_URL")
     if not base_url:
         base_url = os.environ.get("APP_BASE_URL") or "http://127.0.0.1:8001"
+    if base_url and not str(base_url).startswith(("http://", "https://")):
+        base_url = f"https://{str(base_url).lstrip('/')}"
     base_url = str(base_url).rstrip("/")
     url = f"{base_url}{flow['path']}"
     status_code = None

@@ -4,7 +4,7 @@ import json
 import os
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
 from dotenv import load_dotenv
@@ -83,6 +83,8 @@ SUPPORTED_OPERATIONS = {
     "wallet_credit_user",
     "wallet_debit_user",
     "lead_update_status",
+    "report_auth_failures",
+    "report_system_errors",
     "unsupported_request",
 }
 
@@ -324,6 +326,24 @@ def _heuristic_plan(message: str) -> Optional[dict[str, Any]]:
                 "warnings": ["Der Lead-Status wird sofort aktualisiert."],
                 "operations": [{"type": "lead_update_status", "reason": "Lead im Mining CRM aktualisieren", "lead_id": lead_id, "status": status}],
             }
+
+    if any(token in lowered for token in ["wer konnte sich", "anmelden", "login fehler", "anmeldeproblem", "auth fehler", "kunden problem login"]):
+        return {
+            "assistant_title": "Login-/Registrierungsbericht vorbereiten",
+            "assistant_message": "Ich werde die aktuellen Auth-Probleme und betroffenen Kunden zusammenfassen.",
+            "requires_confirmation": True,
+            "warnings": ["Es werden nur Berichte erstellt, nichts verändert."],
+            "operations": [{"type": "report_auth_failures", "reason": "Aktuelle Kundenprobleme bei Login/Registrierung sichtbar machen."}],
+        }
+
+    if any(token in lowered for token in ["welche fehler", "schlimmsten fehler", "systemfehler", "was funktioniert nicht", "fehlerbericht"]):
+        return {
+            "assistant_title": "System-Fehlerbericht vorbereiten",
+            "assistant_message": "Ich werde die wichtigsten Systemfehler und betroffenen Seiten zusammenfassen.",
+            "requires_confirmation": True,
+            "warnings": ["Es werden nur Daten gelesen, nichts verändert."],
+            "operations": [{"type": "report_system_errors", "reason": "Kritische Fehler und betroffene Bereiche im System zusammenfassen."}],
+        }
 
     if any(token in lowered for token in ["prüf", "check", "status", "monitor", "fehler", "webseite", "login", "registrierung"]):
         return {
@@ -594,6 +614,55 @@ async def _execute_operation(op: dict[str, Any], admin_user_id: str) -> dict[str
         if not lead:
             return {"type": op_type, "ok": False, "message": f"Lead {lead_id} nicht gefunden."}
         return {"type": op_type, "ok": True, "lead": lead}
+
+    if op_type == "report_auth_failures":
+        since = datetime.now(timezone.utc) - timedelta(hours=24)
+        since_iso = since.isoformat()
+        failed_logs = await db.audit_logs.find(
+            {"event": {"$in": ["login_failed", "login_locked"]}, "timestamp": {"$gte": since_iso}},
+            {"_id": 0, "event": 1, "email": 1, "details": 1, "timestamp": 1, "severity": 1},
+        ).sort("timestamp", -1).limit(80).to_list(80)
+        failed_registrations = await db.frontend_errors.find(
+            {"created_at": {"$gte": since_iso}, "page": {"$in": ["/register", "/login", "/auth"]}},
+            {"_id": 0, "page": 1, "message": 1, "created_at": 1},
+        ).sort("created_at", -1).limit(40).to_list(40)
+        by_email = {}
+        for row in failed_logs:
+            key = (row.get("email") or "unbekannt").lower()
+            by_email.setdefault(key, 0)
+            by_email[key] += 1
+        top_accounts = sorted(by_email.items(), key=lambda x: -x[1])[:10]
+        return {
+            "type": op_type,
+            "ok": True,
+            "window": "24h",
+            "failed_events": len(failed_logs),
+            "frontend_auth_errors": len(failed_registrations),
+            "top_accounts": [{"email": email, "count": count} for email, count in top_accounts],
+            "sample_events": failed_logs[:8],
+        }
+
+    if op_type == "report_system_errors":
+        since = datetime.now(timezone.utc) - timedelta(hours=24)
+        since_iso = since.isoformat()
+        incidents = await db.monitoring_incidents.find({"created_at": {"$gte": since_iso}}, {"_id": 0}).sort("created_at", -1).limit(60).to_list(60)
+        frontend_errors = await db.frontend_errors.find({"created_at": {"$gte": since_iso}}, {"_id": 0, "page": 1, "message": 1, "created_at": 1}).sort("created_at", -1).limit(60).to_list(60)
+        page_counts = {}
+        for row in frontend_errors:
+            page = row.get("page") or "unbekannt"
+            page_counts[page] = page_counts.get(page, 0) + 1
+        top_pages = sorted(page_counts.items(), key=lambda x: -x[1])[:10]
+        critical = [row for row in incidents if row.get("status") == "critical"]
+        return {
+            "type": op_type,
+            "ok": True,
+            "window": "24h",
+            "critical_incidents": len(critical),
+            "total_incidents": len(incidents),
+            "frontend_errors": len(frontend_errors),
+            "top_pages": [{"page": page, "count": count} for page, count in top_pages],
+            "sample_incidents": incidents[:8],
+        }
 
     if op_type == "auction_reseed_current_catalog":
         await db.auctions.delete_many({})
