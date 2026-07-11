@@ -1,5 +1,10 @@
 # BidBlitz — ROADMAP
 
+## Status nach Admin-Kundendaten-Mix-Fix — 11.07.2026
+- ✅ Admin-Datenmix bei `admin@bidblitz.ae` bereinigt.
+- ✅ Balance blieb korrekt; jetzt sind auch **Registrierungsdatum, letzte Anmeldung und Login-Zähler** überall kanonisch.
+- ✅ Testing Agent Iteration 239 PASS.
+
 ## Status nach Admin-KI-Assistent — 11.07.2026
 - ✅ Neuer **Admin KI-Assistent** live unter `/admin/ai-assistant`.
 - ✅ Versteht freie deutsche Befehle für Admin-Aufgaben und zeigt **immer zuerst einen Vorschlag**.
