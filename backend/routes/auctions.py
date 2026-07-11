@@ -1369,7 +1369,7 @@ ESCOOTER_GALLERY = [
 ]
 
 ACTIVE_AUCTION_CATALOG = [
-    {"title": "iPhone 17 Ultra 2026", "description": "Apple 2026 Flagship mit Titanium Body, 8K Pro Camera und AI Studio Features.", "retail_price": 1999, "category": "phones", "image_url": SMARTPHONE_GALLERY[0], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["8K Pro-Kamera", "Titan-Gehäuse", "Always-on Studio Display"]},
+    {"title": "iPhone 17 Pro Max 2026", "description": "Apple 2026 Flagship mit Titanium Body, 8K Pro Camera und AI Studio Features.", "retail_price": 1999, "category": "phones", "image_url": SMARTPHONE_GALLERY[0], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["8K Pro-Kamera", "Titan-Gehäuse", "Always-on Studio Display"]},
     {"title": "Samsung Galaxy S26 Ultra Elite 2026", "description": "Samsung Ultra-Flaggschiff 2026 mit AI Zoom, Stylus und Nightography Pro.", "retail_price": 1899, "category": "phones", "image_url": SMARTPHONE_GALLERY[1], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["200 MP AI Zoom", "S-Pen Elite", "Adaptive Vision Display"]},
     {"title": "Google Pixel 10 Pro XL 2026", "description": "Pixel-Topmodell 2026 mit Tensor AI, Profi-Kamera und smarter Bildbearbeitung.", "retail_price": 1499, "category": "phones", "image_url": SMARTPHONE_GALLERY[2], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["Tensor AI", "Night Sight Pro", "Instant Studio Edit"]},
     {"title": "Xiaomi 16 Ultra Max 2026", "description": "Premium Android-Smartphone 2026 mit Leica-Look, großem Sensor und Fast Charge.", "retail_price": 1399, "category": "phones", "image_url": SMARTPHONE_GALLERY[3], "image_urls": SMARTPHONE_GALLERY[:4], "features": ["Leica Kamera-System", "HyperCharge", "WQHD+ AMOLED"]},
