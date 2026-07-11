@@ -11,6 +11,8 @@ const QUICK_PROMPTS = [
   "Lösch die alten Auktionen und erstelle 12 neue Premium-Auktionen mit Smartphones, Laptops und VR.",
   "Prüfe bitte die Webseite, Login und Registrierung und zeig mir die Fehlerlage.",
   "Aktualisiere den Titel der iPhone Auktion und prüfe danach die Plattform.",
+  "Sende für agimk@me.com einen Passwort-Reset.",
+  "Schreibe reviewer@bidblitz.ae 25 EUR gut.",
 ];
 
 const MessageBubble = ({ message, onConfirm, confirming }) => {

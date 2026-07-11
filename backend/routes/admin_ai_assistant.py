@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.security import get_current_user
+from bson import ObjectId
 from routes.auctions import (
     ACTIVE_AUCTION_CATALOG,
     TARGET_ACTIVE_AUCTIONS,
@@ -28,6 +29,8 @@ from routes.auctions import (
     VR_GALLERY,
 )
 from routes.monitoring import MONITORED_FLOWS, _run_probe, _store_probe_results
+from routes.admin_management import _issue_password_reset
+from core.payment_engine import credit_wallet, debit_wallet, TransactionType
 
 load_dotenv()
 
@@ -74,6 +77,12 @@ SUPPORTED_OPERATIONS = {
     "auction_delete_by_title",
     "auction_update_by_title",
     "monitoring_run_probes",
+    "customer_reset_password",
+    "customer_ban_toggle",
+    "customer_delete_by_email",
+    "wallet_credit_user",
+    "wallet_debit_user",
+    "lead_update_status",
     "unsupported_request",
 }
 
@@ -135,6 +144,48 @@ def _extract_json(text: str) -> dict[str, Any]:
 def _gallery_for_category(category: str) -> list[str]:
     normalized = _normalize_category(category)
     return CATEGORY_IMAGE_POOLS.get(normalized, DRONE_GALLERY)
+
+
+async def _find_user_by_email(email: str) -> Optional[dict[str, Any]]:
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        return None
+    return await db.users.find_one(
+        {"$or": [{"email": normalized}, {"canonical_email": normalized}]},
+        {"_id": 1, "email": 1, "canonical_email": 1, "role": 1, "banned": 1, "name": 1},
+    )
+
+
+def _extract_email(message: str) -> str:
+    match = re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", message or "", flags=re.I)
+    return match.group(0).strip().lower() if match else ""
+
+
+def _extract_amount(message: str, default: float = 0.0) -> float:
+    match = re.search(r"(\d+(?:[\.,]\d{1,2})?)", message or "")
+    if not match:
+        return default
+    return float(match.group(1).replace(",", "."))
+
+
+def _extract_wallet_currency(message: str) -> str:
+    lowered = (message or "").lower()
+    if "blz" in lowered:
+        return "BLZ"
+    return "EUR"
+
+
+def _extract_lead_status(message: str) -> str:
+    lowered = (message or "").lower()
+    if any(token in lowered for token in ["neu", "new"]):
+        return "new"
+    if any(token in lowered for token in ["kontakt", "contacted", "angerufen"]):
+        return "contacted"
+    if any(token in lowered for token in ["gewonnen", "won", "geschlossen"]):
+        return "won"
+    if any(token in lowered for token in ["verloren", "lost", "abgelehnt"]):
+        return "lost"
+    return "in_progress"
 
 
 def _extract_count(message: str, default: int = 10, cap: int = 30) -> int:
@@ -211,6 +262,68 @@ def _heuristic_plan(message: str) -> Optional[dict[str, Any]]:
 
     categories = _extract_categories(lowered)
     count = _extract_count(lowered, default=10)
+    email = _extract_email(lowered)
+    amount = _extract_amount(lowered, default=0.0)
+    currency = _extract_wallet_currency(lowered)
+
+    if email and any(token in lowered for token in ["passwort", "reset", "zurücksetzen", "login helfen", "anmeldung helfen"]):
+        return {
+            "assistant_title": "Passwort-Reset vorbereiten",
+            "assistant_message": f"Ich sende für {email} einen sicheren Reset-Link.",
+            "requires_confirmation": True,
+            "warnings": ["Der Kunde muss danach sein Passwort neu setzen."],
+            "operations": [{"type": "customer_reset_password", "reason": "Kunden-Login reparieren", "target_email": email}],
+        }
+
+    if email and any(token in lowered for token in ["sperr", "ban", "blockier", "entsperr", "freigeben"]):
+        banned = not any(token in lowered for token in ["entsperr", "freigeben"])
+        return {
+            "assistant_title": "Kundenstatus ändern",
+            "assistant_message": f"Ich werde den Status für {email} {'sperren' if banned else 'entsperren'}.",
+            "requires_confirmation": True,
+            "warnings": ["Diese Aktion beeinflusst den Kundenzugang."],
+            "operations": [{"type": "customer_ban_toggle", "reason": "Kundenstatus ändern", "target_email": email, "banned": banned}],
+        }
+
+    if email and any(token in lowered for token in ["lösch kunde", "kunde löschen", "account löschen", "konto löschen"]):
+        return {
+            "assistant_title": "Kundenkonto löschen",
+            "assistant_message": f"Ich werde das Konto {email} löschen.",
+            "requires_confirmation": True,
+            "warnings": ["Das Löschen ist dauerhaft und gefährlich."],
+            "operations": [{"type": "customer_delete_by_email", "reason": "Konto löschen", "target_email": email}],
+        }
+
+    if email and amount > 0 and any(token in lowered for token in ["gutschrift", "gutschreib", "aufladen", "geb", "add", "topup", "top up", "gib", "schenk", "schreib", "gut"]):
+        return {
+            "assistant_title": "Wallet-Gutschrift vorbereiten",
+            "assistant_message": f"Ich werde {email} {amount:.2f} {currency} gutschreiben.",
+            "requires_confirmation": True,
+            "warnings": ["Wallet-Buchung wird sofort verbucht."],
+            "operations": [{"type": "wallet_credit_user", "reason": "Admin Wallet Gutschrift", "target_email": email, "amount": amount, "currency": currency}],
+        }
+
+    if email and amount > 0 and any(token in lowered for token in ["abziehen", "belasten", "debit", "reduzier", "minus", "zieh", "ziehe"]):
+        return {
+            "assistant_title": "Wallet-Abzug vorbereiten",
+            "assistant_message": f"Ich werde bei {email} {amount:.2f} {currency} abziehen.",
+            "requires_confirmation": True,
+            "warnings": ["Wallet-Abzüge sind sensibel und wirken sofort."],
+            "operations": [{"type": "wallet_debit_user", "reason": "Admin Wallet Abzug", "target_email": email, "amount": amount, "currency": currency}],
+        }
+
+    if any(token in lowered for token in ["lead", "mining lead", "interessent"]) and any(token in lowered for token in ["status", "setze", "änder", "update"]):
+        lead_match = re.search(r"mlead_[a-z0-9]+", lowered)
+        lead_id = lead_match.group(0) if lead_match else ""
+        if lead_id:
+            status = _extract_lead_status(lowered)
+            return {
+                "assistant_title": "Lead-Status vorbereiten",
+                "assistant_message": f"Ich werde den Lead {lead_id} auf {status} setzen.",
+                "requires_confirmation": True,
+                "warnings": ["Der Lead-Status wird sofort aktualisiert."],
+                "operations": [{"type": "lead_update_status", "reason": "Lead im Mining CRM aktualisieren", "lead_id": lead_id, "status": status}],
+            }
 
     if any(token in lowered for token in ["prüf", "check", "status", "monitor", "fehler", "webseite", "login", "registrierung"]):
         return {
@@ -320,6 +433,12 @@ Unterstützte Operationen:
 - auction_delete_by_title
 - auction_update_by_title
 - monitoring_run_probes
+- customer_reset_password
+- customer_ban_toggle
+- customer_delete_by_email
+- wallet_credit_user
+- wallet_debit_user
+- lead_update_status
 - unsupported_request
 
 Regeln:
@@ -411,6 +530,70 @@ async def _execute_operation(op: dict[str, Any], admin_user_id: str) -> dict[str
             results.append(await _run_probe(flow))
         await _store_probe_results(results)
         return {"type": op_type, "ok": True, "checked": len(results), "critical": len([r for r in results if r["status"] == "critical"])}
+
+    if op_type == "customer_reset_password":
+        email = (op.get("target_email") or "").strip().lower()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        issued = await _issue_password_reset(email, request=None, issued_by=admin_user_id, reason="admin_ai_reset", force_password_change=True)
+        return {"type": op_type, "ok": bool(issued), "email": email, "expires_at": (issued or {}).get("expires_at"), "email_sent": bool((issued or {}).get("email_sent"))}
+
+    if op_type == "customer_ban_toggle":
+        email = (op.get("target_email") or "").strip().lower()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        banned = bool(op.get("banned", True))
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"banned": banned, "ban_reason": "admin_ai_assistant", "banned_at": now.isoformat() if banned else None, "banned_by": admin_user_id if banned else None}})
+        return {"type": op_type, "ok": True, "email": email, "banned": banned}
+
+    if op_type == "customer_delete_by_email":
+        email = (op.get("target_email") or "").strip().lower()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        await db.users.delete_one({"_id": user["_id"]})
+        await db.wallets.delete_many({"user_id": str(user["_id"])})
+        await db.transactions.delete_many({"user_id": str(user["_id"])})
+        return {"type": op_type, "ok": True, "email": email, "deleted": True}
+
+    if op_type in {"wallet_credit_user", "wallet_debit_user"}:
+        email = (op.get("target_email") or "").strip().lower()
+        amount = float(op.get("amount") or 0)
+        currency = str(op.get("currency") or "EUR").upper()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        user_id = str(user["_id"])
+        if currency == "BLZ":
+            if op_type == "wallet_credit_user":
+                await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": amount}})
+                await db.transactions.insert_one({"user_id": user_id, "type": "admin_credit_blz", "amount_blz": amount, "amount_eur": 0.0, "description": op.get("reason") or "Admin KI Gutschrift", "admin_id": admin_user_id, "created_at": now.isoformat()})
+            else:
+                await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": -amount}})
+                await db.transactions.insert_one({"user_id": user_id, "type": "admin_debit_blz", "amount_blz": -amount, "amount_eur": 0.0, "description": op.get("reason") or "Admin KI Abzug", "admin_id": admin_user_id, "created_at": now.isoformat()})
+        else:
+            if op_type == "wallet_credit_user":
+                result = await credit_wallet(user_id=user_id, amount=amount, tx_type=TransactionType.ADMIN_CREDIT, description=op.get("reason") or "Admin KI Gutschrift", metadata={"admin_id": admin_user_id, "audit_metadata": {"route": "admin_ai_assistant.credit"}}, idempotency_key=f"admin-ai-{secrets.token_hex(6)}")
+                if not result.success:
+                    return {"type": op_type, "ok": False, "message": result.error or "EUR-Gutschrift fehlgeschlagen"}
+            else:
+                result = await debit_wallet(user_id=user_id, amount=amount, tx_type=TransactionType.ADMIN_DEBIT, description=op.get("reason") or "Admin KI Abzug", metadata={"admin_id": admin_user_id, "audit_metadata": {"route": "admin_ai_assistant.debit"}}, idempotency_key=f"admin-ai-{secrets.token_hex(6)}")
+                if not result.success:
+                    return {"type": op_type, "ok": False, "message": result.error or "EUR-Abzug fehlgeschlagen"}
+        return {"type": op_type, "ok": True, "email": email, "amount": amount, "currency": currency}
+
+    if op_type == "lead_update_status":
+        lead_id = str(op.get("lead_id") or "").strip()
+        status = str(op.get("status") or "in_progress").strip()
+        if not lead_id:
+            return {"type": op_type, "ok": False, "message": "Lead-ID fehlt."}
+        await db.mining_trust_leads.update_one({"lead_id": lead_id}, {"$set": {"status": status, "updated_at": now.isoformat()}})
+        lead = await db.mining_trust_leads.find_one({"lead_id": lead_id}, {"_id": 0, "lead_id": 1, "email": 1, "status": 1})
+        if not lead:
+            return {"type": op_type, "ok": False, "message": f"Lead {lead_id} nicht gefunden."}
+        return {"type": op_type, "ok": True, "lead": lead}
 
     if op_type == "auction_reseed_current_catalog":
         await db.auctions.delete_many({})
