@@ -194,6 +194,7 @@ def register_all_routers(app):
         ("routes.legal", "router"),
         ("routes.legal", "admin_router"),  # Special case: legal has 2 routers
         ("routes.admin_management", "router"),
+        ("routes.admin_ai_assistant", "router"),
         ("routes.revenue", "router"),
         ("routes.revenue2", "router"),
         ("routes.merchant_payments", "router"),

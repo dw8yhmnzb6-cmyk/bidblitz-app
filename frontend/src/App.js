@@ -199,6 +199,7 @@ const MarketingHubPage = lazy(() => import("./pages/MarketingHubPage"));
 const AdminRevenueDashboardPage = lazy(() => import("./pages/AdminRevenueDashboardPage"));
 const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage"));
 const ExecutiveCenterPage = lazy(() => import("./pages/ExecutiveCenterPage"));
+const AdminAIAssistantPage = lazy(() => import("./pages/AdminAIAssistantPage"));
 const KYCTestPage = lazy(() => import("./pages/KYCTestPage"));
 const ContactsPage = lazy(() => import("./pages/ContactsPage"));
 const UserStatsPage = lazy(() => import("./pages/UserStatsPage"));
@@ -655,6 +656,10 @@ function AppContent() {
       case "/admin/monitoring":
         return user.role === "admin"
           ? <MonitoringDashboard onBack={() => handleNavigate("/admin")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/ai-assistant":
+        return user.role === "admin"
+          ? <AdminAIAssistantPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/admin/merchants":
         return user.role === "admin"

@@ -39,6 +39,7 @@ const ADMIN_SECTIONS = [
     items: [
       { id: "dashboard", icon: LayoutGrid, label: "Übersicht", path: "/admin" },
       { id: "analytics", icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
+      { id: "ai-assistant", icon: Bot, label: "KI Assistent", path: "/admin/ai-assistant", highlight: true },
     ]
   },
   {
