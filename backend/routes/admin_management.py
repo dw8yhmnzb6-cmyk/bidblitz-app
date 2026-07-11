@@ -95,9 +95,11 @@ async def list_customers(
             "$or": [
                 {"email": {"$regex": q, "$options": "i"}},
                 {"canonical_email": {"$regex": q, "$options": "i"}},
+                {"email_aliases": {"$elemMatch": {"$regex": q, "$options": "i"}}},
                 {"name": {"$regex": q, "$options": "i"}},
                 {"full_name": {"$regex": q, "$options": "i"}},
                 {"username": {"$regex": q, "$options": "i"}},
+                {"user_number": {"$regex": q, "$options": "i"}},
             ]
         })
     if role:

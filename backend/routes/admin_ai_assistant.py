@@ -557,7 +557,16 @@ async def _execute_operation(op: dict[str, Any], admin_user_id: str) -> dict[str
         if not user:
             return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
         issued = await _issue_password_reset(email, request=None, issued_by=admin_user_id, reason="admin_ai_reset", force_password_change=True)
-        return {"type": op_type, "ok": bool(issued), "email": email, "expires_at": (issued or {}).get("expires_at"), "email_sent": bool((issued or {}).get("email_sent"))}
+        email_sent = bool((issued or {}).get("email_sent"))
+        return {
+            "type": op_type,
+            "ok": bool(issued and email_sent),
+            "email": email,
+            "expires_at": (issued or {}).get("expires_at"),
+            "email_sent": email_sent,
+            "message": "Reset-E-Mail gesendet." if email_sent else "Reset-E-Mail konnte nicht zugestellt werden. Login wurde deshalb NICHT gesperrt.",
+            "enforcement_skipped": bool((issued or {}).get("enforcement_skipped")),
+        }
 
     if op_type == "customer_ban_toggle":
         email = (op.get("target_email") or "").strip().lower()

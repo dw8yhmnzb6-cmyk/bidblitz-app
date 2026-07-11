@@ -155,17 +155,8 @@ async def _issue_password_reset(
         "requested_ip": ip,
         "requested_user_agent": ua,
         "force_password_change": force_password_change,
+        "email_sent": False,
     })
-
-    if force_password_change:
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {
-                "force_password_change": True,
-                "force_password_change_reason": reason,
-                "force_password_change_requested_at": now.isoformat(),
-            }},
-        )
 
     await log_audit(
         "password_reset_requested",
@@ -190,14 +181,88 @@ async def _issue_password_reset(
     except Exception as e:
         logger.error(f"Failed to send password reset email to {email}: {e}")
 
+    await db.password_resets.update_one(
+        {"token_hash": token_hash},
+        {"$set": {
+            "email_sent": email_sent,
+            "email_attempted_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+
+    if force_password_change and email_sent:
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "force_password_change": True,
+                "force_password_change_reason": reason,
+                "force_password_change_requested_at": now.isoformat(),
+            }},
+        )
+
     return {
         "token": raw_token,
         "expires_at": expires.isoformat(),
         "user_id": str(user["_id"]),
         "email": email,
-        "force_password_change": force_password_change,
+        "force_password_change": bool(force_password_change and email_sent),
         "email_sent": email_sent,
+        "enforcement_skipped": bool(force_password_change and not email_sent),
     }
+
+
+async def _maybe_clear_unenforceable_password_reset(user: dict) -> bool:
+    if not user or not user.get("force_password_change"):
+        return False
+    if (user.get("force_password_change_reason") or "") != "admin_ai_reset":
+        return False
+
+    latest_reset = await db.password_resets.find_one(
+        {
+            "user_id": str(user.get("_id")),
+            "reason": "admin_ai_reset",
+            "used_at": None,
+        },
+        sort=[("created_at", -1)],
+    )
+    if not latest_reset:
+        return False
+    if latest_reset.get("email_sent") is True:
+        return False
+
+    cleared_at = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "force_password_change": False,
+            "force_password_change_reason": None,
+            "force_password_change_requested_at": None,
+            "password_reset_recovered_at": cleared_at,
+            "password_reset_recovery_note": "admin_ai_reset_email_not_delivered",
+        }},
+    )
+    await db.password_resets.update_one(
+        {"_id": latest_reset["_id"]},
+        {"$set": {
+            "revoked_at": cleared_at,
+            "revoked_reason": "email_not_delivered_enforcement_skipped",
+        }},
+    )
+    await log_audit(
+        "password_reset_unblocked",
+        user_id=str(user["_id"]),
+        email=user.get("email", ""),
+        ip="",
+        user_agent="",
+        details={
+            "reason": "admin_ai_reset_email_not_delivered",
+            "reset_created_at": str(latest_reset.get("created_at") or ""),
+        },
+        severity="warn",
+    )
+    user["force_password_change"] = False
+    user["force_password_change_reason"] = None
+    user["force_password_change_requested_at"] = None
+    return True
 
 
 def generate_card_number():
@@ -443,6 +508,9 @@ async def login(req: LoginRequest, request: Request, response: Response):
         await log_audit(AuditEvent.LOGIN_FAILED, email=matched_email, ip=ip, user_agent=ua,
                         details={"reason": "invalid_credentials"}, severity="warn")
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if user:
+        await _maybe_clear_unenforceable_password_reset(user)
 
     if user.get("force_password_change"):
         await log_audit(
