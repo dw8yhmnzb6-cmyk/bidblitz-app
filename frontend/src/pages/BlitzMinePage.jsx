@@ -7,10 +7,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { usePushNotifications } from "../components/PushNotifications";
 import {
   ChevronLeft, Zap, Users, Lock, Trophy, TrendingUp, Plus, X,
   Flame, Sparkles, Share2, Shield, Clock, Check, Loader2,
-  ChevronRight, Unlock, Award, Star, UserPlus, Crown, Copy,
+  ChevronRight, Unlock, Award, Star, UserPlus, Crown, Copy, Gift, Bell, Target, TimerReset,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -41,6 +42,202 @@ const fmtTime = (sec) => {
   const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
   const s = String(Math.floor(sec % 60)).padStart(2, "0");
   return `${h}:${m}:${s}`;
+};
+
+const MissionCard = ({ quest, onAction }) => {
+  const progress = Math.min(100, Math.round(((quest?.progress || 0) / Math.max(quest?.target || 1, 1)) * 100));
+  return (
+    <button
+      type="button"
+      onClick={onAction}
+      data-testid={`blitz-mission-${quest.id}`}
+      className="rounded-2xl p-3 text-left"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <p className="text-[12px] font-bold text-white">{quest.title}</p>
+          <p className="text-[10px] text-white/45 mt-0.5">{quest.desc}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[13px] font-black text-[#FFD700]">+{quest.reward_blz}</p>
+          <p className="text-[9px] text-white/35 uppercase">BLZ</p>
+        </div>
+      </div>
+      <div className="h-2 rounded-full bg-white/5 overflow-hidden mb-1.5">
+        <div className="h-full rounded-full" style={{ width: `${progress}%`, background: "linear-gradient(90deg,#00C2FF 0%,#A855F7 100%)" }} />
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-white/50">
+        <span>{quest.progress} / {quest.target}</span>
+        <span>{quest.completed ? "Abholbereit" : "In Arbeit"}</span>
+      </div>
+    </button>
+  );
+};
+
+const RewardCtaCard = ({ data, quickBonus, competition, onQuickClaim, onOpenQuests, onShare, onOpenLeaderboard }) => {
+  const sessionReady = !!data?.session?.ready_to_claim;
+  const quickReady = !!quickBonus?.available;
+  const gap = competition?.gap_to_next_rank_blz || 0;
+  return (
+    <div
+      data-testid="blitz-reward-cta-card"
+      className="rounded-[28px] p-4 sm:p-5"
+      style={{
+        background: "linear-gradient(135deg, rgba(0,194,255,0.18) 0%, rgba(168,85,247,0.18) 55%, rgba(255,215,0,0.12) 100%)",
+        border: "1px solid rgba(255,255,255,0.09)",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.28)",
+      }}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-white/55 font-black">Heute für dich</p>
+          <h2 className="text-[22px] sm:text-[26px] font-black text-white leading-tight mt-1">Mehr öffnen. Mehr tippen. Mehr BLZ.</h2>
+          <p className="text-[12px] text-white/65 mt-2 max-w-[520px]">Sofort sichtbare Belohnungen, kurze Bonus-Zyklen und Wettbewerb sorgen dafür, dass Nutzer öfter zurückkommen.</p>
+        </div>
+        <div className="rounded-2xl px-3 py-2 bg-black/25 border border-white/10" data-testid="blitz-rank-chip">
+          <p className="text-[9px] uppercase tracking-[0.2em] text-white/40">Ranking</p>
+          <p className="text-[18px] font-black text-[#FFD700]">#{competition?.rank || 0}</p>
+          <p className="text-[10px] text-white/55">Top {competition?.percentile || 0}%</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="rounded-2xl p-3 bg-black/25 border border-white/8" data-testid="blitz-cta-session-card">
+          <div className="flex items-center gap-2 mb-1"><Gift size={14} className="text-[#00E89D]" /><p className="text-[11px] font-bold text-white">Claim-Booster</p></div>
+          <p className="text-[10px] text-white/50">Wenn fertig, sofort abholen.</p>
+          <p className="text-[14px] font-black mt-2" style={{ color: sessionReady ? "#00E89D" : "#fff" }}>{sessionReady ? "Jetzt abholbar" : fmtTime(data?.session?.remaining_seconds || 0)}</p>
+        </div>
+        <div className="rounded-2xl p-3 bg-black/25 border border-white/8" data-testid="blitz-cta-quick-bonus-card">
+          <div className="flex items-center gap-2 mb-1"><Sparkles size={14} className="text-[#FFD700]" /><p className="text-[11px] font-bold text-white">Quick Bonus</p></div>
+          <p className="text-[10px] text-white/50">Kurzer Bonus alle paar Stunden.</p>
+          <p className="text-[14px] font-black mt-2" style={{ color: quickReady ? "#FFD700" : "#fff" }}>{quickReady ? "Sofort öffnen" : fmtTime(quickBonus?.remaining_seconds || 0)}</p>
+        </div>
+        <div className="rounded-2xl p-3 bg-black/25 border border-white/8" data-testid="blitz-cta-race-card">
+          <div className="flex items-center gap-2 mb-1"><Trophy size={14} className="text-[#A855F7]" /><p className="text-[11px] font-bold text-white">Wettbewerb</p></div>
+          <p className="text-[10px] text-white/50">Nächsten Platz angreifen.</p>
+          <p className="text-[14px] font-black mt-2 text-white">{gap > 0 ? `${fmt(gap, 2)} BLZ bis höher` : "Du führst mit"}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button data-testid="blitz-open-quests-cta" onClick={onOpenQuests} className="rounded-2xl py-3 px-3 bg-white text-black text-[12px] font-black flex items-center justify-center gap-2"><Target size={14}/> Missionen</button>
+        <button data-testid="blitz-quick-claim-cta" onClick={onQuickClaim} className="rounded-2xl py-3 px-3 bg-[#FFD700] text-black text-[12px] font-black flex items-center justify-center gap-2"><Gift size={14}/> Bonus holen</button>
+        <button data-testid="blitz-share-cta" onClick={onShare} className="rounded-2xl py-3 px-3 bg-[#A855F7] text-white text-[12px] font-black flex items-center justify-center gap-2"><Users size={14}/> Freunde holen</button>
+        <button data-testid="blitz-open-board-cta" onClick={onOpenLeaderboard} className="rounded-2xl py-3 px-3 bg-[#00C2FF] text-black text-[12px] font-black flex items-center justify-center gap-2"><Trophy size={14}/> Ranking</button>
+      </div>
+    </div>
+  );
+};
+
+const TurboTapWidget = ({ boost, onTap, busy }) => {
+  if (!boost?.unlocked) return null;
+  const progress = Math.min(100, Math.round(((boost.current_round_taps || 0) / Math.max(boost.target_taps || 1, 1)) * 100));
+  return (
+    <div data-testid="blitz-turbo-widget" className="rounded-2xl p-4" style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.16)" }}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <div className="flex items-center gap-2"><Zap size={15} className="text-[#FFD700]" /><p className="text-[13px] font-bold text-white">Turbo-Taps</p></div>
+          <p className="text-[10px] text-white/50 mt-1">Mehrere kurze Taps pro Session = Extra-BLZ ohne Warten.</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[9px] uppercase text-white/40">Session Bonus</p>
+          <p className="text-[14px] font-black text-[#FFD700]">+{fmt(boost.session_bonus_blz, 2)} BLZ</p>
+        </div>
+      </div>
+      <div className="h-2 rounded-full bg-white/5 overflow-hidden mb-2">
+        <div className="h-full rounded-full" style={{ width: `${progress}%`, background: "linear-gradient(90deg,#FFD700 0%,#FF8C42 100%)" }} />
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-white/50 mb-3">
+        <span>Runde {Math.min((boost.completed_rounds || 0) + 1, boost.max_rounds || 1)} / {boost.max_rounds}</span>
+        <span>Noch {boost.remaining_taps} Taps</span>
+      </div>
+      <button
+        data-testid="blitz-turbo-tap-btn"
+        onClick={onTap}
+        disabled={busy || !boost.can_tap}
+        className="w-full rounded-2xl py-3 bg-[#FFD700]/12 border border-[#FFD700]/35 text-[#FFD700] text-[13px] font-black disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <><Zap size={14}/> Turbo tippen (+{fmt(boost.reward_per_round_blz, 2)} BLZ pro Runde)</>}
+      </button>
+    </div>
+  );
+};
+
+const QuickBonusWidget = ({ quickBonus, onClaim, busy }) => {
+  if (!quickBonus) return null;
+  const ready = !!quickBonus.available;
+  return (
+    <div data-testid="blitz-quick-bonus-widget" className="rounded-2xl p-4" style={{ background: "rgba(0,232,157,0.04)", border: "1px solid rgba(0,232,157,0.15)" }}>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div>
+          <div className="flex items-center gap-2"><Gift size={15} className="text-[#00E89D]" /><p className="text-[13px] font-bold text-white">Quick Bonus</p></div>
+          <p className="text-[10px] text-white/50 mt-1">Kurzer Rückkehr-Bonus alle {quickBonus.interval_hours} Stunden.</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[9px] uppercase text-white/35">Zuletzt</p>
+          <p className="text-[12px] font-bold text-[#00E89D]">+{fmt(quickBonus.last_reward_blz, 2)} BLZ</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] text-white/45">Mögliche Belohnung</p>
+          <p className="text-[13px] font-black text-white">{fmt(quickBonus.reward_min, 2)} bis {fmt(quickBonus.reward_max, 2)} BLZ</p>
+        </div>
+        <button
+          data-testid="blitz-quick-bonus-claim-btn"
+          onClick={onClaim}
+          disabled={busy || !ready}
+          className="rounded-2xl px-4 py-3 bg-[#00E89D] text-black text-[12px] font-black disabled:opacity-50 min-w-[132px]"
+        >
+          {busy ? "..." : ready ? "Jetzt holen" : fmtTime(quickBonus.remaining_seconds || 0)}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ReminderWidget = ({ reminders, push, busyKey, onSubscribe, onToggle, onTest }) => {
+  if (!reminders) return null;
+  const rows = [
+    { key: "claim_ready_enabled", label: "Claim Reminder", desc: "Push, wenn deine Session fertig ist." },
+    { key: "quick_bonus_enabled", label: "Quick Bonus Reminder", desc: "Push, wenn der Kurzbonus wieder bereit ist." },
+    { key: "leaderboard_enabled", label: "Ranking Reminder", desc: "Push für Wettbewerbs- und Aufhol-Momente." },
+  ];
+  return (
+    <div data-testid="blitz-reminder-widget" className="rounded-2xl p-4" style={{ background: "rgba(168,85,247,0.04)", border: "1px solid rgba(168,85,247,0.18)" }}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <div className="flex items-center gap-2"><Bell size={15} className="text-[#A855F7]" /><p className="text-[13px] font-bold text-white">Rückkehr-Reminder</p></div>
+          <p className="text-[10px] text-white/50 mt-1">Damit Kunden öfter zurückkommen, wenn sich Öffnen wirklich lohnt.</p>
+        </div>
+        <button data-testid="blitz-enable-push-btn" onClick={onSubscribe} className="rounded-xl px-3 py-2 bg-[#A855F7] text-white text-[11px] font-bold disabled:opacity-50" disabled={push.loading || push.isSubscribed}>
+          {push.isSubscribed ? "Push aktiv" : push.loading ? "..." : "Push aktivieren"}
+        </button>
+      </div>
+      <div className="space-y-2 mb-3">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-center justify-between gap-3 rounded-xl bg-black/25 border border-white/6 px-3 py-2.5">
+            <div>
+              <p className="text-[11px] font-bold text-white">{row.label}</p>
+              <p className="text-[9px] text-white/45 mt-0.5">{row.desc}</p>
+            </div>
+            <button
+              data-testid={`blitz-reminder-toggle-${row.key}`}
+              onClick={() => onToggle(row.key, !reminders[row.key])}
+              className="rounded-full px-3 py-1.5 text-[10px] font-bold"
+              style={{ background: reminders[row.key] ? "#00E89D" : "rgba(255,255,255,0.08)", color: reminders[row.key] ? "#041018" : "#fff" }}
+            >
+              {busyKey === row.key ? "..." : reminders[row.key] ? "AN" : "AUS"}
+            </button>
+          </div>
+        ))}
+      </div>
+      <button data-testid="blitz-test-reminder-btn" onClick={() => onTest("claim_ready")} className="w-full rounded-xl py-2.5 bg-white/8 border border-white/10 text-[12px] font-bold text-white">
+        Test-Reminder senden
+      </button>
+    </div>
+  );
 };
 
 // ── Top big tap-button with countdown & orbit particles ──
@@ -752,11 +949,27 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [showQr, setShowQr] = useState(false);
+  const [quests, setQuests] = useState(null);
+  const [reminders, setReminders] = useState(null);
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [boostBusy, setBoostBusy] = useState(false);
+  const [reminderBusyKey, setReminderBusyKey] = useState("");
   const firstLoad = useRef(true);
+  const push = usePushNotifications();
+
+  const questRouteMap = {
+    mine_tap: "/blitz-mine",
+    referral_share: "/blitz-mine",
+    auction_view: "/auctions",
+    marketplace_view: "/marketplace",
+    taxi_estimate: "/taxi",
+    notification_read: "/notifications",
+    profile_update: "/profile",
+  };
 
   const load = useCallback(async () => {
     try {
-      const [s, c, l, r, lb, mc, sk] = await Promise.all([
+      const [s, c, l, r, lb, mc, sk, q, rm] = await Promise.all([
         api("/api/blitz-mine/status"),
         api("/api/blitz-mine/circle"),
         api("/api/blitz-mine/lockup"),
@@ -764,6 +977,8 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
         api("/api/blitz-mine/leaderboard"),
         api("/api/referral/my-code").catch(() => ({})),
         api("/api/blitz-mine/streak"),
+        api("/api/quests/today").catch(() => null),
+        api("/api/blitz-mine/reminders").catch(() => null),
       ]);
       setData(s);
       setCircle(c);
@@ -772,6 +987,8 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
       setBoard(lb.leaderboard || []);
       setReferralCode(mc?.code || mc?.referral_code || "");
       setStreakInfo(sk);
+      setQuests(q);
+      setReminders(rm);
     } catch (e) {
       if (firstLoad.current) toast.error(e.message);
     } finally {
@@ -841,6 +1058,51 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
     } catch (e) { toast.error(e.message); }
   };
 
+  const onBoostTap = async () => {
+    setBoostBusy(true);
+    try {
+      const res = await api("/api/blitz-mine/boost-tap", { method: "POST" });
+      if (res.unlocked_round) toast.success(`Turbo-Runde fertig! +${fmt(res.boost.reward_per_round_blz, 2)} BLZ`);
+      await load();
+    } catch (e) { toast.error(e.message); }
+    finally { setBoostBusy(false); }
+  };
+
+  const onQuickClaim = async () => {
+    setQuickBusy(true);
+    try {
+      const res = await api("/api/blitz-mine/quick-bonus/claim", { method: "POST" });
+      toast.success(`Quick Bonus: +${fmt(res.reward_blz, 2)} BLZ`);
+      await load();
+    } catch (e) { toast.error(e.message); }
+    finally { setQuickBusy(false); }
+  };
+
+  const updateReminder = async (key, value) => {
+    if (!reminders) return;
+    const next = { ...reminders, [key]: value };
+    setReminderBusyKey(key);
+    try {
+      const res = await api("/api/blitz-mine/reminders", { method: "POST", body: JSON.stringify({
+        claim_ready_enabled: !!next.claim_ready_enabled,
+        quick_bonus_enabled: !!next.quick_bonus_enabled,
+        leaderboard_enabled: !!next.leaderboard_enabled,
+      })});
+      setReminders(res);
+      toast.success("Reminder gespeichert");
+    } catch (e) { toast.error(e.message); }
+    finally { setReminderBusyKey(""); }
+  };
+
+  const sendReminderTest = async (kind) => {
+    try {
+      await api("/api/blitz-mine/reminders/test", { method: "POST", body: JSON.stringify({ kind }) });
+      toast.success("Test-Push gesendet");
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const topQuests = (quests?.quests || []).filter((q) => !q.claimed).slice(0, 2);
+
   const refLink = referralCode
     ? `${window.location.origin}?ref=${encodeURIComponent(referralCode)}`
     : window.location.origin;
@@ -889,10 +1151,41 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
       </div>
 
       <div className="px-5 pb-24 space-y-5">
+        <RewardCtaCard
+          data={data}
+          quickBonus={data?.quick_bonus}
+          competition={data?.competition}
+          onQuickClaim={onQuickClaim}
+          onOpenQuests={() => onNavigate?.("/quests")}
+          onShare={onShare}
+          onOpenLeaderboard={() => document.querySelector('[data-testid="blitz-leaderboard-widget"]')?.scrollIntoView({ behavior: "smooth", block: "center" })}
+        />
+
         {/* Tap button */}
         <div className="flex flex-col items-center pt-4 pb-2">
           <TapButton data={data} onTap={onTap} onClaim={onClaim} loading={loading} />
         </div>
+
+        <QuickBonusWidget quickBonus={data?.quick_bonus} onClaim={onQuickClaim} busy={quickBusy} />
+
+        <TurboTapWidget boost={data?.session?.boost} onTap={onBoostTap} busy={boostBusy} />
+
+        {topQuests.length > 0 && (
+          <div data-testid="blitz-missions-widget" className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2"><Target size={15} className="text-[#00C2FF]" /><p className="text-[13px] font-bold text-white">Heute starke Gründe zum Zurückkommen</p></div>
+                <p className="text-[10px] text-white/50 mt-1">Missionen + Bonus + Wettbewerb = mehr Wiederbesuche.</p>
+              </div>
+              <button data-testid="blitz-open-quests-link" onClick={() => onNavigate?.("/quests")} className="text-[11px] font-bold text-[#00C2FF]">Alle Quests</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {topQuests.map((quest) => (
+                <MissionCard key={quest.id} quest={quest} onAction={() => onNavigate?.(questRouteMap[quest.event] || "/quests")} />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Role strip */}
         {data?.profile && (
@@ -941,6 +1234,18 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
         {/* Referral */}
         <ReferralWidget data={refs} referralCode={referralCode} onShare={onShare} onShowQr={() => setShowQr(true)} />
 
+        <ReminderWidget
+          reminders={reminders}
+          push={push}
+          busyKey={reminderBusyKey}
+          onSubscribe={async () => {
+            const ok = await push.subscribe();
+            if (ok) await load();
+          }}
+          onToggle={updateReminder}
+          onTest={sendReminderTest}
+        />
+
         {/* Lockup */}
         <LockupWidget
           lockups={lockups}
@@ -951,7 +1256,9 @@ const BlitzMinePage = ({ onBack, onNavigate }) => {
         />
 
         {/* Leaderboard */}
-        <LeaderboardWidget items={board} />
+        <div data-testid="blitz-leaderboard-widget">
+          <LeaderboardWidget items={board} />
+        </div>
 
         {/* Link to classic mining */}
         <motion.button

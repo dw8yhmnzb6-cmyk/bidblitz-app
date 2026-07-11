@@ -13,6 +13,7 @@ Core mechanics (inspired by minepi.com):
 from datetime import datetime, timezone, timedelta
 from math import log
 from typing import Optional
+import random
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -60,6 +61,18 @@ LOCKUP_DURATIONS = {
 }
 LOCKUP_EARLY_RELEASE_PENALTY = 0.25   # 25% penalty on locked amount
 LOCKUP_BONUS_CAP = 2.00               # total lockup bonus cannot exceed +200%
+
+QUICK_BONUS_INTERVAL_HOURS = 6
+QUICK_BONUS_REWARDS = [0.15, 0.25, 0.4, 0.6, 0.85, 1.25, 2.0]
+BOOST_TAP_TARGET = 12
+BOOST_TAP_MAX_ROUNDS = 3
+BOOST_ROUND_REWARD_BLZ = 0.08
+
+DEFAULT_REMINDER_SETTINGS = {
+    "claim_ready_enabled": True,
+    "quick_bonus_enabled": True,
+    "leaderboard_enabled": False,
+}
 
 # ── Helpers ──
 def _now():
@@ -214,6 +227,98 @@ async def _compute_rate(user_id: str, profile: dict) -> dict:
     }
 
 
+async def _get_quick_bonus_state(user_id: str) -> dict:
+    doc = await db.blitz_mine_quick_bonus.find_one({"user_id": user_id}, {"_id": 0}) or {"user_id": user_id}
+    now = _now()
+    next_claim_at = doc.get("next_claim_at")
+    available = True
+    remaining_seconds = 0
+    if next_claim_at:
+        try:
+            next_dt = datetime.fromisoformat(next_claim_at.replace("Z", "+00:00"))
+            remaining_seconds = max(0, int((next_dt - now).total_seconds()))
+            available = remaining_seconds == 0
+        except Exception:
+            available = True
+            remaining_seconds = 0
+    return {
+        "available": available,
+        "remaining_seconds": remaining_seconds,
+        "interval_hours": QUICK_BONUS_INTERVAL_HOURS,
+        "reward_min": min(QUICK_BONUS_REWARDS),
+        "reward_max": max(QUICK_BONUS_REWARDS),
+        "last_reward_blz": round(float(doc.get("last_reward_blz", 0.0) or 0.0), 4),
+        "total_claims": int(doc.get("total_claims", 0) or 0),
+        "next_claim_at": next_claim_at,
+    }
+
+
+def _build_boost_state(session: Optional[dict]) -> dict:
+    if not session:
+        return {
+            "unlocked": False,
+            "target_taps": BOOST_TAP_TARGET,
+            "max_rounds": BOOST_TAP_MAX_ROUNDS,
+            "reward_per_round_blz": BOOST_ROUND_REWARD_BLZ,
+            "completed_rounds": 0,
+            "current_round_taps": 0,
+            "remaining_taps": BOOST_TAP_TARGET,
+            "session_bonus_blz": 0.0,
+            "can_tap": False,
+        }
+
+    boost_tap_count = int(session.get("boost_tap_count", 0) or 0)
+    completed_rounds = int(session.get("boost_rounds_claimed", 0) or 0)
+    session_bonus_blz = round(float(session.get("boost_bonus_blz", 0.0) or 0.0), 4)
+    current_round_taps = boost_tap_count - (completed_rounds * BOOST_TAP_TARGET)
+    if completed_rounds >= BOOST_TAP_MAX_ROUNDS:
+        current_round_taps = BOOST_TAP_TARGET
+    current_round_taps = max(0, min(current_round_taps, BOOST_TAP_TARGET))
+    remaining_taps = 0 if completed_rounds >= BOOST_TAP_MAX_ROUNDS else max(0, BOOST_TAP_TARGET - current_round_taps)
+    return {
+        "unlocked": True,
+        "target_taps": BOOST_TAP_TARGET,
+        "max_rounds": BOOST_TAP_MAX_ROUNDS,
+        "reward_per_round_blz": BOOST_ROUND_REWARD_BLZ,
+        "completed_rounds": completed_rounds,
+        "current_round_taps": current_round_taps,
+        "remaining_taps": remaining_taps,
+        "session_bonus_blz": session_bonus_blz,
+        "can_tap": completed_rounds < BOOST_TAP_MAX_ROUNDS,
+    }
+
+
+async def _get_competition_snapshot(user_id: str, profile: dict) -> dict:
+    total_mined = float(profile.get("total_mined", 0.0) or 0.0)
+    total_players = await db.blitz_mine_profile.count_documents({})
+    rank = await db.blitz_mine_profile.count_documents({"total_mined": {"$gt": total_mined}}) + 1
+    above = await db.blitz_mine_profile.find_one(
+        {"total_mined": {"$gt": total_mined}},
+        {"_id": 0, "user_id": 1, "total_mined": 1},
+        sort=[("total_mined", 1)],
+    )
+    gap_to_next = 0.0
+    if above:
+        gap_to_next = max(0.0, round(float(above.get("total_mined", 0.0) or 0.0) - total_mined, 4))
+    percentile = 100 if total_players <= 1 else max(1, round(((total_players - rank + 1) / total_players) * 100))
+    return {
+        "rank": rank,
+        "total_players": total_players,
+        "gap_to_next_rank_blz": gap_to_next,
+        "percentile": percentile,
+    }
+
+
+async def _get_reminder_settings(user_id: str) -> dict:
+    doc = await db.blitz_mine_reminder_settings.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    merged = {"user_id": user_id, **DEFAULT_REMINDER_SETTINGS, **doc}
+    return {
+        "claim_ready_enabled": bool(merged.get("claim_ready_enabled", True)),
+        "quick_bonus_enabled": bool(merged.get("quick_bonus_enabled", True)),
+        "leaderboard_enabled": bool(merged.get("leaderboard_enabled", False)),
+    }
+
+
 async def _user_lookup(query: str) -> Optional[dict]:
     """Find a user by username, email or referral code."""
     q = query.strip()
@@ -234,6 +339,16 @@ class LockupReq(BaseModel):
     duration_days: int
 
 
+class ReminderSettingsReq(BaseModel):
+    claim_ready_enabled: bool = True
+    quick_bonus_enabled: bool = True
+    leaderboard_enabled: bool = False
+
+
+class ReminderTestReq(BaseModel):
+    kind: str = Field(default="claim_ready", pattern="^(claim_ready|quick_bonus|leaderboard)$")
+
+
 # ── Endpoints ──
 @router.get("/status")
 async def status(request: Request):
@@ -244,6 +359,9 @@ async def status(request: Request):
     profile = await _promote_role_if_needed(user_id, profile)
     rate = await _compute_rate(user_id, profile)
     session = await _get_active_session(user_id)
+    quick_bonus = await _get_quick_bonus_state(user_id)
+    competition = await _get_competition_snapshot(user_id, profile)
+    reminders = await _get_reminder_settings(user_id)
 
     # Auto-claim if expired and still unclaimed (delayed claim next /status)
     ready = False
@@ -257,6 +375,8 @@ async def status(request: Request):
             "ends_at": session["ends_at"],
             "remaining_seconds": int(remaining),
             "earnings": session.get("estimated_earnings", 0),
+            "boost": _build_boost_state(session),
+            "estimated_total_earnings": round(float(session.get("estimated_earnings", 0.0) or 0.0) + float(session.get("boost_bonus_blz", 0.0) or 0.0), 4),
             "ready_to_claim": ready,
         }
 
@@ -279,6 +399,9 @@ async def status(request: Request):
         },
         "rate": rate,
         "session": session_info,
+        "quick_bonus": quick_bonus,
+        "competition": competition,
+        "reminders": reminders,
         "balance_blz": round(blz_balance, 4),
         "constants": {
             "session_hours": SESSION_HOURS,
@@ -319,6 +442,9 @@ async def tap(request: Request):
         "referral_bonus": rate["referral_bonus"],
         "lockup_bonus": rate["lockup_bonus"],
         "estimated_earnings": rate["estimated_session_earnings"],
+        "boost_tap_count": 0,
+        "boost_rounds_claimed": 0,
+        "boost_bonus_blz": 0.0,
     }
     await db.blitz_mine_sessions.insert_one(dict(session))
     session.pop("_id", None)
@@ -328,6 +454,12 @@ async def tap(request: Request):
             {"user_id": user_id},
             {"$set": {"first_session_at": now.isoformat()}},
         )
+
+    try:
+        from routes.quests import track_event
+        await track_event(user_id, "mine_tap", 1)
+    except Exception:
+        pass
 
     return {
         "success": True,
@@ -356,7 +488,7 @@ async def claim(request: Request):
         remaining = int((ends_at - _now()).total_seconds())
         raise HTTPException(400, f"Session läuft noch {remaining // 3600}h {(remaining % 3600) // 60}m.")
 
-    earnings = float(session.get("estimated_earnings", 0.0))
+    earnings = float(session.get("estimated_earnings", 0.0)) + float(session.get("boost_bonus_blz", 0.0) or 0.0)
 
     # Credit BLZ to wallet
     await db.wallets.update_one(
@@ -449,6 +581,104 @@ async def claim(request: Request):
     }
 
 
+@router.post("/boost-tap")
+async def boost_tap(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    session = await _get_active_session(user_id)
+    if not session:
+        raise HTTPException(404, "Starte zuerst deine Mining-Session.")
+
+    ends_at = datetime.fromisoformat(session["ends_at"].replace("Z", "+00:00"))
+    if ends_at <= _now():
+        raise HTTPException(400, "Session ist fertig. Bitte jetzt claimen.")
+
+    boost_tap_count = int(session.get("boost_tap_count", 0) or 0)
+    completed_rounds = int(session.get("boost_rounds_claimed", 0) or 0)
+    bonus_blz = float(session.get("boost_bonus_blz", 0.0) or 0.0)
+    if completed_rounds >= BOOST_TAP_MAX_ROUNDS:
+        raise HTTPException(400, "Turbo-Maximum für diese Session erreicht.")
+
+    boost_tap_count += 1
+    unlocked_round = False
+    if boost_tap_count >= (completed_rounds + 1) * BOOST_TAP_TARGET:
+        completed_rounds += 1
+        bonus_blz = round(bonus_blz + BOOST_ROUND_REWARD_BLZ, 4)
+        unlocked_round = True
+
+    await db.blitz_mine_sessions.update_one(
+        {"user_id": user_id, "started_at": session["started_at"]},
+        {"$set": {
+            "boost_tap_count": boost_tap_count,
+            "boost_rounds_claimed": completed_rounds,
+            "boost_bonus_blz": bonus_blz,
+        }},
+    )
+
+    try:
+        from routes.quests import track_event
+        await track_event(user_id, "mine_tap", 1)
+    except Exception:
+        pass
+
+    state = _build_boost_state({
+        **session,
+        "boost_tap_count": boost_tap_count,
+        "boost_rounds_claimed": completed_rounds,
+        "boost_bonus_blz": bonus_blz,
+    })
+    return {
+        "success": True,
+        "unlocked_round": unlocked_round,
+        "boost": state,
+        "message": "Turbo gespeichert!" if unlocked_round else "Turbo-Tap gezählt.",
+    }
+
+
+@router.post("/quick-bonus/claim")
+async def claim_quick_bonus(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    state = await _get_quick_bonus_state(user_id)
+    if not state["available"]:
+        raise HTTPException(400, "Quick Bonus ist noch nicht bereit.")
+
+    reward = float(random.choice(QUICK_BONUS_REWARDS))
+    now = _now()
+    next_claim_at = (now + timedelta(hours=QUICK_BONUS_INTERVAL_HOURS)).isoformat()
+
+    await db.wallets.update_one(
+        {"user_id": user_id},
+        {"$inc": {"balance_blz": reward}, "$setOnInsert": {"user_id": user_id, "balance": 0.0}},
+        upsert=True,
+    )
+    await db.blitz_mine_quick_bonus.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": user_id,
+            "last_reward_blz": reward,
+            "last_claimed_at": now.isoformat(),
+            "next_claim_at": next_claim_at,
+        }, "$inc": {"total_claims": 1}},
+        upsert=True,
+    )
+    await db.transactions.insert_one({
+        "user_id": user_id,
+        "type": "blitz_mine_quick_bonus",
+        "amount_blz": reward,
+        "amount_eur": 0.0,
+        "description": "BlitzMine Quick Bonus",
+        "created_at": now.isoformat(),
+    })
+    return {
+        "success": True,
+        "reward_blz": round(reward, 4),
+        "next_claim_at": next_claim_at,
+        "remaining_seconds": QUICK_BONUS_INTERVAL_HOURS * 3600,
+    }
+
+
 # ── Streak info (for UI rendering of progress) ──
 @router.get("/streak")
 async def streak_info(request: Request):
@@ -473,6 +703,47 @@ async def streak_info(request: Request):
         "milestones": milestones,
         "cap": STREAK_MULTIPLIER_CAP,
     }
+
+
+@router.get("/reminders")
+async def get_reminders(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    settings = await _get_reminder_settings(user_id)
+    has_push = await db.push_subscriptions.count_documents({"user_id": user_id, "active": True}) > 0
+    return {**settings, "push_connected": has_push}
+
+
+@router.post("/reminders")
+async def save_reminders(req: ReminderSettingsReq, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    payload = req.model_dump()
+    await db.blitz_mine_reminder_settings.update_one(
+        {"user_id": user_id},
+        {"$set": {"user_id": user_id, **payload, "updated_at": _now().isoformat()}},
+        upsert=True,
+    )
+    return {"success": True, **payload}
+
+
+@router.post("/reminders/test")
+async def test_reminder(req: ReminderTestReq, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    has_push = await db.push_subscriptions.count_documents({"user_id": user_id, "active": True})
+    if not has_push:
+        raise HTTPException(400, "Bitte zuerst Push-Benachrichtigungen aktivieren.")
+
+    messages = {
+        "claim_ready": ("⚡ BlitzMine Claim", "Deine Session ist bereit – hol dir jetzt deine BLZ."),
+        "quick_bonus": ("🎁 Quick Bonus bereit", "Dein BlitzMine Bonus wartet. Jetzt öffnen und abholen."),
+        "leaderboard": ("🏆 Leaderboard Push", "Du kannst heute im BlitzMine-Ranking weiter nach oben klettern."),
+    }
+    title, body = messages[req.kind]
+    from routes.web_push import send_push_to_user
+    await send_push_to_user(user_id, title, body, data={"url": "/blitz-mine", "type": f"blitz_mine_{req.kind}"})
+    return {"success": True, "sent": has_push, "kind": req.kind}
 
 
 # ── Security Circle ──

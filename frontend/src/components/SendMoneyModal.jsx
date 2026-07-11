@@ -36,6 +36,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
   
   const searchTimeout = useRef(null);
   const inputRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) loadData();
@@ -65,6 +66,14 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
       inputRef.current.focus();
     }
   }, [step]);
+
+  const focusPrivateSearch = () => {
+    setQuickActionMode("all");
+    requestAnimationFrame(() => {
+      searchInputRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      searchInputRef.current?.focus?.();
+    });
+  };
 
   useEffect(() => () => {
     if (searchTimeout.current) {
@@ -291,6 +300,24 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                     <p className="text-[36px] font-bold text-slate-900 tracking-tight">€{balance.toFixed(2)}</p>
                   </div>
                   
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <motion.button
+                      type="button"
+                      data-testid="send-money-private-send-card"
+                      onClick={focusPrivateSearch}
+                      whileTap={{ scale: 0.98 }}
+                      className="rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 text-left transition-all hover:border-[#8B5CF6]/35 hover:bg-white"
+                    >
+                      <p className="text-[12px] font-semibold text-[#8B5CF6]">Privat senden</p>
+                      <p className="mt-1 text-[11px] text-slate-600">An Kunden, Freunde, Familie oder Kontakte.</p>
+                      <p className="mt-2 text-[10px] font-semibold text-slate-500">Tippen, um Empfänger zu suchen</p>
+                    </motion.button>
+                    <div className="rounded-2xl border border-[#00C2FF]/18 bg-[#00C2FF]/8 px-4 py-3 text-left">
+                      <span className="block text-[12px] font-semibold text-[#00A6E6]">Für Händler-Kasse?</span>
+                      <span className="mt-1 block text-[11px] text-slate-600">Dann „Bezahlen“ statt „Geld senden“</span>
+                    </div>
+                  </div>
+
                   {/* Quick Actions */}
                   <div className="grid grid-cols-4 gap-3 mb-6">
                     {[
@@ -319,6 +346,7 @@ const SendMoneyModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                     <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       data-testid="send-money-search-input"
+                      ref={searchInputRef}
                       type="text"
                       value={searchQuery}
                       onChange={(e) => handleSearch(e.target.value)}

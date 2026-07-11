@@ -56,6 +56,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   const [quickActionMode, setQuickActionMode] = useState("all");
   const searchTimeout = useRef(null);
   const inputRef = useRef(null);
+  const searchInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const html5ScannerRef = useRef(null);
   const videoRef = useRef(null);
@@ -93,6 +94,14 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   useEffect(() => {
     if (step === 2 && inputRef.current) inputRef.current.focus();
   }, [step]);
+
+  const focusPrivateSearch = useCallback(() => {
+    setQuickActionMode("all");
+    requestAnimationFrame(() => {
+      searchInputRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      searchInputRef.current?.focus?.();
+    });
+  }, []);
 
   useEffect(() => () => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -462,10 +471,17 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                <div className="rounded-2xl border border-slate-200 bg-white/75 px-4 py-3">
+                <motion.button
+                  type="button"
+                  data-testid="send-money-private-send-card"
+                  onClick={focusPrivateSearch}
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-2xl border border-slate-200 bg-white/75 px-4 py-3 text-left transition-all hover:border-[#8B5CF6]/35 hover:bg-white"
+                >
                   <p className="text-[12px] font-semibold text-[#8B5CF6]">{L.privateSend}</p>
                   <p className="mt-1 text-[11px] text-slate-600">{L.privateSendDesc}</p>
-                </div>
+                  <p className="mt-2 text-[10px] font-semibold text-slate-500">Tippen, um Empfänger zu suchen</p>
+                </motion.button>
                 <motion.button data-testid="send-money-go-pay" onClick={() => onNavigate?.('/pay')} whileTap={{ scale: 0.98 }} className="rounded-2xl border border-[#00C2FF]/18 bg-[#00C2FF]/8 px-4 py-3 text-left">
                   <span className="block text-[12px] font-semibold text-[#00A6E6]">{L.merchantQuestion}</span>
                   <span className="mt-1 block text-[11px] text-slate-600">{L.merchantHint}</span>
@@ -490,6 +506,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   data-testid="send-money-search-input"
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
