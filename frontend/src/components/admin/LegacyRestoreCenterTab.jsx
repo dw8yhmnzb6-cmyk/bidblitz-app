@@ -24,6 +24,14 @@ const statusTheme = {
   restored: { label: "Wiederhergestellt", fg: "#34d399", bg: "rgba(52,211,153,0.14)" },
 };
 
+const candidateCategoryTheme = {
+  real_customer: { label: "Echter Kunde", fg: "#22c55e", bg: "rgba(34,197,94,0.14)" },
+  possible_real_customer: { label: "Möglicher Kunde", fg: "#14b8a6", bg: "rgba(20,184,166,0.14)" },
+  review_required: { label: "Review nötig", fg: "#f59e0b", bg: "rgba(245,158,11,0.16)" },
+  synthetic_test: { label: "Test/System", fg: "#94a3b8", bg: "rgba(148,163,184,0.14)" },
+  attack_trace: { label: "Lockout/Attacke", fg: "#ef4444", bg: "rgba(239,68,68,0.15)" },
+};
+
 export const LegacyRestoreCenterTab = () => {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -31,6 +39,7 @@ export const LegacyRestoreCenterTab = () => {
   const [candidates, setCandidates] = useState([]);
   const [history, setHistory] = useState([]);
   const [selectedKey, setSelectedKey] = useState("");
+  const [viewMode, setViewMode] = useState("real_only");
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [form, setForm] = useState({
@@ -52,7 +61,7 @@ export const LegacyRestoreCenterTab = () => {
   const load = useCallback(async (q = "") => {
     setLoading(true);
     try {
-      const response = await api(`/api/admin/legacy-restore/overview?q=${encodeURIComponent(q)}`);
+      const response = await api(`/api/admin/legacy-restore/overview?q=${encodeURIComponent(q)}&view=${encodeURIComponent(viewMode)}`);
       setSummary(response.summary || null);
       setCandidates(response.candidates || []);
       setHistory(response.history || []);
@@ -65,7 +74,7 @@ export const LegacyRestoreCenterTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedKey]);
+  }, [selectedKey, viewMode]);
 
   const loadDetail = useCallback(async (candidateKey) => {
     if (!candidateKey) return;
@@ -96,13 +105,14 @@ export const LegacyRestoreCenterTab = () => {
   useEffect(() => {
     const timer = setTimeout(() => load(query), 250);
     return () => clearTimeout(timer);
-  }, [query, load]);
+  }, [query, load, viewMode]);
 
   useEffect(() => {
     if (selectedKey) loadDetail(selectedKey);
   }, [selectedKey, loadDetail]);
 
   const selectedTheme = statusTheme[detail?.status || "missing"] || statusTheme.missing;
+  const selectedCategoryTheme = candidateCategoryTheme[detail?.candidate_category || "review_required"] || candidateCategoryTheme.review_required;
   const canPreview = useMemo(() => Boolean(selectedKey), [selectedKey]);
   const selectedCount = selectedKeys.length;
 
@@ -226,12 +236,37 @@ export const LegacyRestoreCenterTab = () => {
 
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
           <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-summary-total"><p className="text-[10px] text-white/35">Kandidaten</p><p className="mt-1 text-lg font-bold text-white">{summary?.total_candidates ?? 0}</p></div>
+          <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-3" data-testid="legacy-summary-visible"><p className="text-[10px] text-cyan-200/60">Sichtbar</p><p className="mt-1 text-lg font-bold text-cyan-300">{summary?.visible_candidates ?? 0}</p></div>
           <div className="rounded-xl border border-orange-400/10 bg-orange-400/5 p-3" data-testid="legacy-summary-missing"><p className="text-[10px] text-orange-200/60">Fehlend</p><p className="mt-1 text-lg font-bold text-orange-300">{summary?.missing_candidates ?? 0}</p></div>
           <div className="rounded-xl border border-yellow-400/10 bg-yellow-400/5 p-3" data-testid="legacy-summary-review"><p className="text-[10px] text-yellow-200/60">Review nötig</p><p className="mt-1 text-lg font-bold text-yellow-300">{summary?.needs_review_candidates ?? 0}</p></div>
           <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid="legacy-summary-restored"><p className="text-[10px] text-emerald-200/60">Wiederhergestellt</p><p className="mt-1 text-lg font-bold text-emerald-300">{summary?.restored_candidates ?? 0}</p></div>
-          <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-3" data-testid="legacy-summary-ready"><p className="text-[10px] text-cyan-200/60">Sofort restorebar</p><p className="mt-1 text-lg font-bold text-cyan-300">{summary?.ready_to_restore ?? 0}</p></div>
+          <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid="legacy-summary-real"><p className="text-[10px] text-emerald-200/60">Echte Kunden</p><p className="mt-1 text-lg font-bold text-emerald-300">{summary?.real_customer_candidates ?? 0}</p></div>
           <div className="rounded-xl border border-fuchsia-400/10 bg-fuchsia-400/5 p-3" data-testid="legacy-summary-last-scan"><p className="text-[10px] text-fuchsia-200/60">Letzter Scan</p><p className="mt-1 text-[11px] font-bold text-fuchsia-200">{fmtDate(summary?.last_scan_at)}</p></div>
         </div>
+
+        <div className="mt-4 flex flex-wrap gap-2" data-testid="legacy-view-filter-group">
+          {[
+            { id: "real_only", label: "Nur echte Kunden" },
+            { id: "review", label: "Nur Review-Fälle" },
+            { id: "noise_only", label: "Nur Test/Attacke" },
+            { id: "all", label: "Alle Spuren" },
+          ].map((option) => (
+            <button
+              key={option.id}
+              data-testid={`legacy-view-filter-${option.id}`}
+              onClick={() => setViewMode(option.id)}
+              className="rounded-full px-3 py-2 text-[11px] font-semibold transition"
+              style={{
+                background: viewMode === option.id ? "rgba(34,194,255,0.18)" : "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: viewMode === option.id ? "#7dd3fc" : "rgba(255,255,255,0.78)",
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-white/50" data-testid="legacy-filter-summary">Ansicht: {summary?.view_mode || viewMode} · sichtbar {summary?.visible_candidates ?? 0} von {summary?.total_candidates ?? 0}</p>
 
         {summary?.top_candidates?.length ? (
           <div className="mt-4 rounded-2xl border border-white/8 bg-black/20 p-4" data-testid="legacy-top-candidates-card">
@@ -325,6 +360,7 @@ export const LegacyRestoreCenterTab = () => {
           {!loading && !candidates.length ? <p className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-[11px] text-white/45">Keine Legacy-Kandidaten gefunden.</p> : null}
           {candidates.map((candidate, index) => {
             const theme = statusTheme[candidate.status] || statusTheme.missing;
+            const categoryTheme = candidateCategoryTheme[candidate.candidate_category] || candidateCategoryTheme.review_required;
             const active = candidate.candidate_key === selectedKey;
             return (
               <div
@@ -344,6 +380,7 @@ export const LegacyRestoreCenterTab = () => {
                   </button>
                   <div className="flex flex-col items-end gap-2">
                     <span data-testid={`legacy-candidate-status-${index}`} className="rounded-full px-2 py-1 text-[10px] font-bold uppercase" style={{ color: theme.fg, background: theme.bg }}>{theme.label}</span>
+                    <span data-testid={`legacy-candidate-category-${index}`} className="rounded-full px-2 py-1 text-[10px] font-bold uppercase" style={{ color: categoryTheme.fg, background: categoryTheme.bg }}>{categoryTheme.label}</span>
                     <button data-testid={`legacy-candidate-toggle-${index}`} onClick={() => toggleSelectedKey(candidate.candidate_key)} className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold text-white/80 hover:bg-white/[0.08]">
                       {selectedKeys.includes(candidate.candidate_key) ? "Ausgewählt" : "Markieren"}
                     </button>
@@ -356,7 +393,7 @@ export const LegacyRestoreCenterTab = () => {
                   <div className="rounded-xl border border-white/8 bg-black/20 p-2" data-testid={`legacy-candidate-evidence-${index}`}><p className="text-white/35">Spuren</p><p className="mt-1 font-bold text-white">{(candidate.evidence || []).length}</p></div>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <p className="text-[10px] text-white/55" data-testid={`legacy-candidate-hint-${index}`}>{candidate.restore_hint}</p>
+                  <p className="text-[10px] text-white/55" data-testid={`legacy-candidate-hint-${index}`}>{candidate.restore_hint} · {candidate.category_reason}</p>
                   <span data-testid={`legacy-candidate-priority-${index}`} className="text-[10px] font-bold text-cyan-300">{candidate.priority_rank} · {candidate.priority_score}</span>
                 </div>
               </div>
@@ -376,12 +413,15 @@ export const LegacyRestoreCenterTab = () => {
                     <p className="mt-1 text-lg font-bold text-white" data-testid="legacy-detail-name">{detail.display_name || detail.primary_email || detail.candidate_key}</p>
                     <p className="text-[11px] text-white/50 break-all" data-testid="legacy-detail-email">{detail.primary_email || detail.candidate_key}</p>
                   </div>
-                  <span data-testid="legacy-detail-status" className="rounded-full px-3 py-1 text-[10px] font-bold uppercase" style={{ color: selectedTheme.fg, background: selectedTheme.bg }}>{selectedTheme.label}</span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span data-testid="legacy-detail-status" className="rounded-full px-3 py-1 text-[10px] font-bold uppercase" style={{ color: selectedTheme.fg, background: selectedTheme.bg }}>{selectedTheme.label}</span>
+                    <span data-testid="legacy-detail-category" className="rounded-full px-3 py-1 text-[10px] font-bold uppercase" style={{ color: selectedCategoryTheme.fg, background: selectedCategoryTheme.bg }}>{selectedCategoryTheme.label}</span>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid gap-2 md:grid-cols-2">
                   <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-detail-balance-card"><p className="text-[10px] text-white/35">Snapshot Werte</p><p className="mt-1 text-[12px] font-bold text-white">{fmtMoney(detail.balance_eur)}€ · {fmtMoney(detail.balance_blz)} BLZ</p><p className="mt-1 text-[10px] text-white/45">Registriert: {fmtDate(detail.registered_at)}</p></div>
-                  <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-detail-state-card"><p className="text-[10px] text-white/35">Aktueller Zustand</p><p className="mt-1 text-[12px] font-bold text-white">{detail.existing_user ? `Aktiver User ${detail.existing_user.email}` : "Noch kein aktiver User"}</p><p className="mt-1 text-[10px] text-white/45">{detail.restore_hint}</p></div>
+                  <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-detail-state-card"><p className="text-[10px] text-white/35">Aktueller Zustand</p><p className="mt-1 text-[12px] font-bold text-white">{detail.existing_user ? `Aktiver User ${detail.existing_user.email}` : "Noch kein aktiver User"}</p><p className="mt-1 text-[10px] text-white/45">{detail.restore_hint}</p><p className="mt-1 text-[10px] text-white/45">{detail.category_reason}</p></div>
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-white/8 bg-black/20 p-4" data-testid="legacy-evidence-list">

@@ -15,6 +15,16 @@ router = APIRouter(prefix="/api/admin/legacy-restore", tags=["admin-legacy-resto
 
 BACKUP_EXPORT_DIR = Path(__file__).resolve().parents[2] / "backup" / "db_export"
 LEGACY_RESTORE_TEMP_PASSWORD = "BidBlitzRestore2026!"
+ATTACK_KEYWORDS = {"bruteforce", "lockout", "iter", "invalid", "attack", "flood"}
+TEST_KEYWORDS = {"test", "qa", "dummy", "seed", "sandbox", "demo", "staging", "mock"}
+SYSTEM_KEYWORDS = {"admin", "noreply", "no-reply", "system", "support", "monitoring"}
+SYNTHETIC_DOMAINS = {
+    "example.com",
+    "test.com",
+    "mailinator.com",
+    "tempmail.com",
+    "aion.app",
+}
 KNOWN_RESTORE_SEEDS = [
     {
         "candidate_key": "albinkrasniqi11@icloud.com",
@@ -175,6 +185,19 @@ def _read_backup_json(filename: str) -> list[dict]:
 
 def _normalize_email(value: str | None) -> str:
     return (value or "").strip().lower()
+
+
+def _split_email(email: str) -> tuple[str, str]:
+    normalized = _normalize_email(email)
+    if "@" not in normalized:
+        return normalized, ""
+    local, domain = normalized.split("@", 1)
+    return local, domain
+
+
+def _contains_keyword(text: str, keywords: set[str]) -> bool:
+    lowered = (text or "").lower()
+    return any(keyword in lowered for keyword in keywords)
 
 
 def _deterministic_user_number(email: str) -> str:
@@ -355,6 +378,81 @@ def _priority_rank(score: int) -> str:
     return "P3"
 
 
+def _classify_candidate(row: dict) -> dict:
+    email = _normalize_email(row.get("primary_email"))
+    local, domain = _split_email(email)
+    source_type = row.get("source_type") or ""
+    has_balance_signal = _safe_float(row.get("balance_eur")) > 0 or _safe_float(row.get("balance_blz")) > 0
+    has_name_signal = bool((row.get("display_name") or "").strip())
+
+    if source_type == "known_seed":
+        return {
+            "candidate_category": "real_customer",
+            "candidate_category_label": "Echter Kunde",
+            "category_reason": "Wallet-/Screenshot-Beweis vorhanden.",
+            "real_customer_candidate": True,
+        }
+
+    if source_type == "child_backup_signal":
+        return {
+            "candidate_category": "review_required",
+            "candidate_category_label": "Review nötig",
+            "category_reason": "Nur Child-/Backup-Spur – echte Person möglich, aber Login-Daten fehlen.",
+            "real_customer_candidate": False,
+        }
+
+    combined = " ".join(filter(None, [local, domain, row.get("candidate_key", "")]))
+    if domain in SYNTHETIC_DOMAINS or _contains_keyword(combined, ATTACK_KEYWORDS):
+        return {
+            "candidate_category": "attack_trace",
+            "candidate_category_label": "Angriff/Lockout",
+            "category_reason": "Technische Lockout-/Bruteforce-Spur, kein echter Kunde.",
+            "real_customer_candidate": False,
+        }
+
+    if _contains_keyword(combined, TEST_KEYWORDS) or _contains_keyword(local, SYSTEM_KEYWORDS):
+        return {
+            "candidate_category": "synthetic_test",
+            "candidate_category_label": "Test-/Systemspur",
+            "category_reason": "Spricht eher für Test-, QA- oder Systemdaten.",
+            "real_customer_candidate": False,
+        }
+
+    if email and has_name_signal and has_balance_signal:
+        return {
+            "candidate_category": "possible_real_customer",
+            "candidate_category_label": "Möglicher Kunde",
+            "category_reason": "E-Mail, Name und Guthaben sprechen für einen echten Produktivfall.",
+            "real_customer_candidate": True,
+        }
+
+    if email and not _contains_keyword(combined, TEST_KEYWORDS | ATTACK_KEYWORDS):
+        return {
+            "candidate_category": "review_required",
+            "candidate_category_label": "Review nötig",
+            "category_reason": "Nicht eindeutig synthetisch, aber Beweislage noch zu schwach.",
+            "real_customer_candidate": False,
+        }
+
+    return {
+        "candidate_category": "synthetic_test",
+        "candidate_category_label": "Test-/Systemspur",
+        "category_reason": "Keine belastbare Kundenbeweislage vorhanden.",
+        "real_customer_candidate": False,
+    }
+
+
+def _apply_view_filter(rows: list[dict], view: str) -> list[dict]:
+    mode = (view or "real_only").strip().lower()
+    if mode == "all":
+        return rows
+    if mode == "review":
+        return [row for row in rows if row.get("candidate_category") == "review_required"]
+    if mode == "noise_only":
+        return [row for row in rows if row.get("candidate_category") in {"synthetic_test", "attack_trace"}]
+    return [row for row in rows if row.get("candidate_category") in {"real_customer", "possible_real_customer"}]
+
+
 async def _seed_candidate_with_state(seed: dict) -> dict:
     existing = await _find_existing_user_for_candidate(seed.get("primary_email", ""), seed.get("alias_emails", []))
     status = "restored" if existing else "missing"
@@ -405,7 +503,7 @@ def _merge_candidate_maps(*candidate_groups: list[dict]) -> dict[str, dict]:
     return merged
 
 
-async def _build_candidates(query: str = "") -> tuple[list[dict], dict]:
+async def _build_candidates(query: str = "", view: str = "real_only") -> tuple[list[dict], dict]:
     seeds = [await _seed_candidate_with_state(seed) for seed in KNOWN_RESTORE_SEEDS]
     failed_login_candidates = await _build_failed_login_signals()
     child_only_candidates = _build_child_only_signals()
@@ -416,6 +514,7 @@ async def _build_candidates(query: str = "") -> tuple[list[dict], dict]:
         row["priority_score"] = score
         row["priority_label"] = _priority_label(score)
         row["priority_rank"] = _priority_rank(score)
+        row.update(_classify_candidate(row))
         rows.append(row)
     rows.sort(key=lambda item: ({"missing": 0, "needs_review": 1, "restored": 2}.get(item.get("status", "restored"), 3), -int(item.get("priority_score") or 0), item.get("display_name") or item.get("primary_email") or item.get("candidate_key")))
 
@@ -429,14 +528,24 @@ async def _build_candidates(query: str = "") -> tuple[list[dict], dict]:
             or any(q in alias.lower() for alias in (row.get("alias_emails") or []))
         ]
 
+    full_rows = rows[:]
+    rows = _apply_view_filter(rows, view)
+
     summary = {
-        "total_candidates": len(rows),
+        "total_candidates": len(full_rows),
+        "visible_candidates": len(rows),
+        "hidden_candidates": max(0, len(full_rows) - len(rows)),
         "missing_candidates": sum(1 for row in rows if row.get("status") == "missing"),
         "needs_review_candidates": sum(1 for row in rows if row.get("status") == "needs_review"),
         "restored_candidates": sum(1 for row in rows if row.get("status") == "restored"),
         "ready_to_restore": sum(1 for row in rows if row.get("status") == "missing" and row.get("restore_ready")),
-        "failed_login_signals": sum(1 for row in rows if row.get("source_type") == "failed_login_trace"),
-        "child_only_signals": sum(1 for row in rows if row.get("source_type") == "child_backup_signal"),
+        "failed_login_signals": sum(1 for row in full_rows if row.get("source_type") == "failed_login_trace"),
+        "child_only_signals": sum(1 for row in full_rows if row.get("source_type") == "child_backup_signal"),
+        "real_customer_candidates": sum(1 for row in full_rows if row.get("candidate_category") in {"real_customer", "possible_real_customer"}),
+        "review_candidates": sum(1 for row in full_rows if row.get("candidate_category") == "review_required"),
+        "synthetic_candidates": sum(1 for row in full_rows if row.get("candidate_category") == "synthetic_test"),
+        "attack_candidates": sum(1 for row in full_rows if row.get("candidate_category") == "attack_trace"),
+        "view_mode": (view or "real_only").strip().lower(),
         "top_candidates": [
             {
                 "candidate_key": row.get("candidate_key"),
@@ -447,8 +556,9 @@ async def _build_candidates(query: str = "") -> tuple[list[dict], dict]:
                 "priority_rank": row.get("priority_rank"),
                 "status": row.get("status"),
                 "source_type": row.get("source_type"),
+                "candidate_category": row.get("candidate_category"),
             }
-            for row in rows
+            for row in full_rows
             if row.get("source_type") == "known_seed"
         ][:8],
         "top_missing_candidates": [
@@ -461,6 +571,7 @@ async def _build_candidates(query: str = "") -> tuple[list[dict], dict]:
                 "priority_rank": row.get("priority_rank"),
                 "status": row.get("status"),
                 "source_type": row.get("source_type"),
+                "candidate_category": row.get("candidate_category"),
             }
             for row in rows
             if row.get("status") != "restored"
@@ -586,9 +697,9 @@ async def _create_restored_user(preview: dict):
 
 
 @router.get("/overview")
-async def legacy_restore_overview(request: Request, q: str = ""):
+async def legacy_restore_overview(request: Request, q: str = "", view: str = "real_only"):
     await _require_admin(request)
-    rows, summary = await _build_candidates(q)
+    rows, summary = await _build_candidates(q, view)
     history = await db.legacy_restore_actions.find({}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
     return {"summary": summary, "candidates": rows[:120], "history": history}
 
@@ -596,7 +707,7 @@ async def legacy_restore_overview(request: Request, q: str = ""):
 @router.get("/candidates/{candidate_key:path}")
 async def legacy_restore_candidate_detail(candidate_key: str, request: Request):
     await _require_admin(request)
-    rows, _summary = await _build_candidates("")
+    rows, _summary = await _build_candidates("", "all")
     for row in rows:
         if row.get("candidate_key") == candidate_key:
             actions = await db.legacy_restore_actions.find(

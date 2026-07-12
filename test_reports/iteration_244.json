@@ -1,0 +1,66 @@
+{
+  "summary": "Legacy Restore Center - Real Customer Filter Feature fully verified. All 12 backend tests pass. Frontend UI shows all required elements: filter buttons (real_only, review, noise_only, all), summary cards with correct counts, priority list with 5 known seeds, category badges. Filter switching works correctly - real_only shows 5 real customers, review shows 9 review candidates, noise_only shows 37 attack/synthetic traces, all shows 51 total.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Legacy Restore Center", "issues": ["Cookie banner overlays lower-right area (known infrastructure caveat, does not block functionality)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter244_legacy_restore_filters.py",
+    "/app/test_reports/pytest/iter244_legacy_restore_filters.xml",
+    "/app/test_reports/iter244_legacy_restore_tab.jpeg",
+    "/app/test_reports/iter244_review_filter.jpeg",
+    "/app/test_reports/iter244_noise_filter.jpeg",
+    "/app/test_reports/iter244_all_filter.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "admin_legacy_restore.py: _classify_candidate() correctly classifies candidates into real_customer, review_required, synthetic_test, attack_trace categories",
+    "admin_legacy_restore.py: _apply_view_filter() correctly filters candidates based on view mode",
+    "admin_legacy_restore.py: Summary counters correctly include all required fields (total_candidates, visible_candidates, hidden_candidates, real_customer_candidates, review_candidates, synthetic_candidates, attack_candidates, view_mode)",
+    "LegacyRestoreCenterTab.jsx: All four filter buttons present with correct data-testid attributes",
+    "LegacyRestoreCenterTab.jsx: Filter summary text correctly shows current view mode and visible/total counts",
+    "LegacyRestoreCenterTab.jsx: Category badges correctly display candidate classification"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter244_legacy_restore_filters.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "100% (All filter buttons work, summary cards display correctly, candidate list updates on filter change)"
+  },
+  "test_credentials": {
+    "admin_account": "admin@bidblitz.ae / BidBlitz2026!"
+  },
+  "seed_data_creation": "None - using existing data from previous iterations",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Legacy Restore Center real customer filter feature fully verified. Default view is real_only showing 5 screenshot-derived customers (Afrim Krasniqi, Afrim Test Final, Albin Krasniqi, Aldin Krasniqi, Test GmbH). Filter buttons work correctly: real_only=5, review=9, noise_only=37, all=51. All candidates have correct category badges and reasons. Priority list and bulk restore UI still working.",
+  "verified_features": {
+    "real_only_default_view": "PASS - Default view is real_only, shows 5 visible of 51 total",
+    "real_only_shows_correct_candidates": "PASS - Shows only the 5 screenshot-derived real customers",
+    "noise_only_view": "PASS - Shows 37 attack/synthetic traces, excludes real customers",
+    "review_view": "PASS - Shows 9 review candidates (child backup signals and weak traces)",
+    "all_view": "PASS - Shows all 51 candidates with 0 hidden",
+    "summary_counters": "PASS - All required counters present (total, visible, hidden, real, review, synthetic, attack, view_mode)",
+    "category_badges": "PASS - Candidates display correct category labels (Echter Kunde, Review nötig, Angriff/Lockout, Test/System)",
+    "filter_buttons": "PASS - All 4 filter buttons present and functional",
+    "filter_summary_text": "PASS - Shows current view mode and visible/total counts",
+    "priority_list": "PASS - Still shows top candidates with P0 priority",
+    "bulk_restore_ui": "PASS - Bulk restore workflow section still present",
+    "no_regression_admin_wallet": "PASS - Admin wallet users endpoint works",
+    "no_regression_history": "PASS - History endpoint works"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-12T07:27:00Z",
+  "test_scope": "Legacy Restore Center: real customer filter feature, view modes, summary counters, category badges"
+}
