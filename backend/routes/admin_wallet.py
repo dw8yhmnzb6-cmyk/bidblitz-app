@@ -429,6 +429,7 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
         "name": 1, "role": 1, "balance": 1, "balance_blz": 1, "wallet_balance": 1, "created_at": 1, "registered_at": 1,
         "last_login_at": 1, "login_count": 1,
         "is_disabled": 1, "login_disabled": 1, "canonical_email": 1, "email_aliases": 1,
+        "legacy_restored": 1, "legacy_restore_source": 1,
     }).sort("created_at", -1).limit(limit)
 
     users = []
@@ -450,6 +451,8 @@ async def search_users(request: Request, q: str = "", limit: int = 30):
             "role": u.get("role", "user"),
             "balance_eur": float(u.get("balance", 0) or 0),
             "balance_blz": float(u.get("balance_blz", 0) or 0),
+            "legacy_restored": bool(u.get("legacy_restored", False)),
+            "legacy_restore_source": u.get("legacy_restore_source"),
             "created_at": u.get("created_at"),
             "registered_at": u.get("registered_at") or u.get("created_at"),
             "last_login_at": u.get("last_login_at"),
@@ -485,6 +488,8 @@ async def user_login_history(user_id: str, request: Request, limit: int = 20):
             "role": target.get("role", "user"),
             "balance_eur": float(target.get("balance", 0) or 0),
             "balance_blz": float(target.get("balance_blz", 0) or 0),
+            "legacy_restored": bool(target.get("legacy_restored", False)),
+            "legacy_restore_source": target.get("legacy_restore_source"),
             "kyc_status": target.get("kyc_status") or "not_started",
             "registered_at": target.get("registered_at") or target.get("created_at"),
             "last_login_at": target.get("last_login_at"),
