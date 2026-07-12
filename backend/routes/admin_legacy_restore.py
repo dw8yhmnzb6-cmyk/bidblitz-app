@@ -25,6 +25,15 @@ SYNTHETIC_DOMAINS = {
     "tempmail.com",
     "aion.app",
 }
+
+CHILD_SIGNAL_CONFIG = [
+    ("child_alerts.json", "child_id", "Kinder-Alarm", 14),
+    ("kids_notifications.json", "child_id", "Kinder-Notification", 12),
+    ("kids_tasks.json", "child_id", "Kinder-Aufgabe", 10),
+    ("kids_location_history.json", "child_id", "Kinder-Standort", 12),
+    ("kids_zones.json", "child_id", "Kinder-Zone", 10),
+    ("app_rules.json", "child_id", "App-Regel", 8),
+]
 KNOWN_RESTORE_SEEDS = [
     {
         "candidate_key": "albinkrasniqi11@icloud.com",
@@ -200,6 +209,14 @@ def _contains_keyword(text: str, keywords: set[str]) -> bool:
     return any(keyword in lowered for keyword in keywords)
 
 
+def _safe_excerpt(row: dict) -> str:
+    for field in ["message", "title", "name", "address", "type", "event_type", "zone_type", "app_id"]:
+        value = row.get(field)
+        if isinstance(value, str) and value.strip():
+            return value.strip()[:120]
+    return "Zusätzliche Backup-Spur vorhanden"
+
+
 def _deterministic_user_number(email: str) -> str:
     digest = hashlib.sha1(email.encode("utf-8")).hexdigest()
     return f"BE{int(digest[:8], 16) % 100000:05d}"
@@ -305,12 +322,33 @@ async def _build_failed_login_signals() -> list[dict]:
 
 def _build_child_only_signals() -> list[dict]:
     children = _read_backup_json("kids_children.json")
+    enrichment_map: dict[str, list[dict]] = {}
+    for filename, child_key, label, confidence in CHILD_SIGNAL_CONFIG:
+        for row in _read_backup_json(filename):
+            child_id = (row.get(child_key) or "").strip()
+            if not child_id:
+                continue
+            enrichment_map.setdefault(child_id, []).append({
+                "source": filename.replace(".json", ""),
+                "label": label,
+                "detail": _safe_excerpt(row),
+                "confidence": confidence,
+            })
+
     signals = []
     for child in children[:250]:
         name = (child.get("name") or "").strip()
         child_id = (child.get("child_id") or "").strip()
         if not name or not child_id:
             continue
+        evidences = [{
+            "source": "backup_kids_children",
+            "label": "Backup Child Record",
+            "detail": f"Child-ID {child_id} mit Balance {round(_safe_float(child.get('balance')), 2)} EUR",
+            "confidence": 48,
+        }]
+        evidences.extend(enrichment_map.get(child_id, [])[:6])
+        enrichment_count = len(evidences) - 1
         signals.append({
             "candidate_key": f"child:{child_id}",
             "display_name": name,
@@ -323,16 +361,13 @@ def _build_child_only_signals() -> list[dict]:
             "created_at": child.get("created_at") or child.get("registered_at"),
             "status": "needs_review",
             "restore_ready": False,
-            "restore_hint": "Nur Child-/Backup-Spur vorhanden – E-Mail fehlt.",
-            "evidence": [{
-                "source": "backup_kids_children",
-                "label": "Backup Child Record",
-                "detail": f"Child-ID {child_id} mit Balance {round(_safe_float(child.get('balance')), 2)} EUR",
-                "confidence": 48,
-            }],
+            "restore_hint": "Child-/Backup-Spur angereichert – E-Mail fehlt weiterhin." if enrichment_count else "Nur Child-/Backup-Spur vorhanden – E-Mail fehlt.",
+            "evidence": evidences,
             "failed_login_count": 0,
             "last_seen_at": child.get("updated_at") or child.get("created_at") or child.get("registered_at"),
             "source_type": "child_backup_signal",
+            "child_parent_id": child.get("parent_id") or "",
+            "child_signal_count": enrichment_count,
         })
     return signals
 
@@ -394,6 +429,14 @@ def _classify_candidate(row: dict) -> dict:
         }
 
     if source_type == "child_backup_signal":
+        child_signal_count = int(row.get("child_signal_count") or 0)
+        if child_signal_count >= 2:
+            return {
+                "candidate_category": "possible_real_customer",
+                "candidate_category_label": "Möglicher Kunde",
+                "category_reason": f"Child-Profil mit {child_signal_count} Zusatzspuren – wahrscheinlich echter Produktivfall, aber ohne Login-E-Mail.",
+                "real_customer_candidate": True,
+            }
         return {
             "candidate_category": "review_required",
             "candidate_category_label": "Review nötig",
@@ -545,6 +588,7 @@ async def _build_candidates(query: str = "", view: str = "real_only") -> tuple[l
         "review_candidates": sum(1 for row in full_rows if row.get("candidate_category") == "review_required"),
         "synthetic_candidates": sum(1 for row in full_rows if row.get("candidate_category") == "synthetic_test"),
         "attack_candidates": sum(1 for row in full_rows if row.get("candidate_category") == "attack_trace"),
+        "enriched_review_candidates": sum(1 for row in full_rows if int(row.get("child_signal_count") or 0) > 0),
         "view_mode": (view or "real_only").strip().lower(),
         "top_candidates": [
             {
@@ -852,3 +896,31 @@ async def legacy_restore_history(request: Request, limit: int = 40):
     cap = min(max(limit, 1), 200)
     rows = await db.legacy_restore_actions.find({}, {"_id": 0}).sort("created_at", -1).limit(cap).to_list(cap)
     return {"actions": rows, "count": len(rows)}
+
+
+@router.post("/review-enrichment")
+async def legacy_restore_review_enrichment(request: Request):
+    await _require_admin(request)
+    review_rows, review_summary = await _build_candidates("", "review")
+    all_rows, _all_summary = await _build_candidates("", "all")
+    enriched = [
+        {
+            "candidate_key": row.get("candidate_key"),
+            "display_name": row.get("display_name") or row.get("candidate_key"),
+            "child_signal_count": int(row.get("child_signal_count") or 0),
+            "priority_score": row.get("priority_score"),
+            "candidate_category": row.get("candidate_category"),
+            "category_reason": row.get("category_reason"),
+        }
+        for row in all_rows
+        if int(row.get("child_signal_count") or 0) > 0
+    ]
+    return {
+        "summary": {
+            "review_visible": review_summary.get("visible_candidates", 0),
+            "enriched_review_candidates": review_summary.get("enriched_review_candidates", 0),
+            "upgrade_ready_candidates": sum(1 for row in enriched if row.get("candidate_category") == "possible_real_customer"),
+            "last_scan_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "candidates": enriched,
+    }

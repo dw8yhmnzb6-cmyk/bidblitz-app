@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, DatabaseBackup, History, Loader2, RefreshCcw, Search, ShieldCheck, UserRoundCog } from "lucide-react";
+import { AlertTriangle, DatabaseBackup, History, Loader2, RefreshCcw, Search, ShieldCheck, Sparkles, UserRoundCog } from "lucide-react";
 import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -56,6 +56,7 @@ export const LegacyRestoreCenterTab = () => {
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [bulkPreview, setBulkPreview] = useState(null);
   const [bulkPassword, setBulkPassword] = useState("");
+  const [reviewEnrichment, setReviewEnrichment] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async (q = "") => {
@@ -221,6 +222,19 @@ export const LegacyRestoreCenterTab = () => {
     }
   };
 
+  const enrichReviewCases = async () => {
+    setBusy(true);
+    try {
+      const response = await api("/api/admin/legacy-restore/review-enrichment", { method: "POST" });
+      setReviewEnrichment(response);
+      toast.success(`Review-Fälle angereichert: ${response.summary?.enriched_review_candidates || 0}`);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4" data-testid="legacy-restore-tab">
       <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4" data-testid="legacy-restore-header-card">
@@ -241,6 +255,7 @@ export const LegacyRestoreCenterTab = () => {
           <div className="rounded-xl border border-yellow-400/10 bg-yellow-400/5 p-3" data-testid="legacy-summary-review"><p className="text-[10px] text-yellow-200/60">Review nötig</p><p className="mt-1 text-lg font-bold text-yellow-300">{summary?.needs_review_candidates ?? 0}</p></div>
           <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid="legacy-summary-restored"><p className="text-[10px] text-emerald-200/60">Wiederhergestellt</p><p className="mt-1 text-lg font-bold text-emerald-300">{summary?.restored_candidates ?? 0}</p></div>
           <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid="legacy-summary-real"><p className="text-[10px] text-emerald-200/60">Echte Kunden</p><p className="mt-1 text-lg font-bold text-emerald-300">{summary?.real_customer_candidates ?? 0}</p></div>
+          <div className="rounded-xl border border-sky-400/10 bg-sky-400/5 p-3" data-testid="legacy-summary-enriched"><p className="text-[10px] text-sky-200/60">Angereicherte Review-Fälle</p><p className="mt-1 text-lg font-bold text-sky-300">{summary?.enriched_review_candidates ?? 0}</p></div>
           <div className="rounded-xl border border-fuchsia-400/10 bg-fuchsia-400/5 p-3" data-testid="legacy-summary-last-scan"><p className="text-[10px] text-fuchsia-200/60">Letzter Scan</p><p className="mt-1 text-[11px] font-bold text-fuchsia-200">{fmtDate(summary?.last_scan_at)}</p></div>
         </div>
 
@@ -295,6 +310,44 @@ export const LegacyRestoreCenterTab = () => {
                 </div>
               </div>
             ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-sky-400/15 bg-sky-400/5 p-4" data-testid="legacy-review-enrichment-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-sky-200/75 font-bold">Review-Fälle automatisch anreichern</p>
+            <p className="mt-1 text-sm text-white/80">Prüft Child-/Backup-Spuren gegen zusätzliche Kids-Collections und stuft starke Fälle als „Möglicher Kunde“ hoch.</p>
+          </div>
+          <button data-testid="legacy-review-enrichment-button" onClick={enrichReviewCases} disabled={busy} className="rounded-xl bg-sky-300 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40 flex items-center gap-2">
+            <Sparkles size={13} /> {busy ? "Prüft…" : "Review-Fälle anreichern"}
+          </button>
+        </div>
+        {reviewEnrichment ? (
+          <div className="mt-3 grid gap-3 xl:grid-cols-[0.8fr_1.2fr]" data-testid="legacy-review-enrichment-results">
+            <div className="rounded-xl border border-white/8 bg-black/20 p-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-white/60 font-bold">Anreicherungs-Übersicht</p>
+              <div className="mt-2 space-y-1 text-[11px] text-white/75">
+                <p>Sichtbare Review-Fälle: <span className="font-bold text-white">{reviewEnrichment.summary?.review_visible ?? 0}</span></p>
+                <p>Mit Zusatzspuren: <span className="font-bold text-sky-300">{reviewEnrichment.summary?.enriched_review_candidates ?? 0}</span></p>
+                <p>Als möglicher Kunde hochgestuft: <span className="font-bold text-emerald-300">{reviewEnrichment.summary?.upgrade_ready_candidates ?? 0}</span></p>
+                <p>Letzter Lauf: <span className="font-bold text-white">{fmtDate(reviewEnrichment.summary?.last_scan_at)}</span></p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/8 bg-black/20 p-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-white/60 font-bold">Top angereicherte Review-Fälle</p>
+              <div className="mt-2 space-y-2 max-h-[220px] overflow-y-auto">
+                {(reviewEnrichment.candidates || []).map((candidate, index) => (
+                  <button key={candidate.candidate_key} data-testid={`legacy-review-enriched-${index}`} onClick={() => { setViewMode("review"); setSelectedKey(candidate.candidate_key); }} className="w-full rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-left hover:bg-white/[0.06]">
+                    <div className="flex items-center justify-between gap-2"><p className="text-[11px] font-semibold text-white">{candidate.display_name}</p><span className="text-[10px] font-bold text-sky-300">{candidate.child_signal_count} Spuren</span></div>
+                    <p className="mt-1 text-[10px] text-white/50">{candidate.candidate_category} · Score {candidate.priority_score}</p>
+                    <p className="mt-1 text-[10px] text-white/45">{candidate.category_reason}</p>
+                  </button>
+                ))}
+                {!reviewEnrichment.candidates?.length ? <p className="text-[11px] text-white/35">Noch keine angereicherten Review-Fälle gefunden.</p> : null}
+              </div>
+            </div>
           </div>
         ) : null}
       </div>
@@ -421,7 +474,7 @@ export const LegacyRestoreCenterTab = () => {
 
                 <div className="mt-4 grid gap-2 md:grid-cols-2">
                   <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-detail-balance-card"><p className="text-[10px] text-white/35">Snapshot Werte</p><p className="mt-1 text-[12px] font-bold text-white">{fmtMoney(detail.balance_eur)}€ · {fmtMoney(detail.balance_blz)} BLZ</p><p className="mt-1 text-[10px] text-white/45">Registriert: {fmtDate(detail.registered_at)}</p></div>
-                  <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-detail-state-card"><p className="text-[10px] text-white/35">Aktueller Zustand</p><p className="mt-1 text-[12px] font-bold text-white">{detail.existing_user ? `Aktiver User ${detail.existing_user.email}` : "Noch kein aktiver User"}</p><p className="mt-1 text-[10px] text-white/45">{detail.restore_hint}</p><p className="mt-1 text-[10px] text-white/45">{detail.category_reason}</p></div>
+                  <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-detail-state-card"><p className="text-[10px] text-white/35">Aktueller Zustand</p><p className="mt-1 text-[12px] font-bold text-white">{detail.existing_user ? `Aktiver User ${detail.existing_user.email}` : "Noch kein aktiver User"}</p><p className="mt-1 text-[10px] text-white/45">{detail.restore_hint}</p><p className="mt-1 text-[10px] text-white/45">{detail.category_reason}</p><p className="mt-1 text-[10px] text-sky-200/70">Zusatzspuren: {detail.child_signal_count || 0}</p></div>
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-white/8 bg-black/20 p-4" data-testid="legacy-evidence-list">
