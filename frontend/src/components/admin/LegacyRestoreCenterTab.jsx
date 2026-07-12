@@ -56,7 +56,16 @@ export const LegacyRestoreCenterTab = () => {
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [bulkPreview, setBulkPreview] = useState(null);
   const [bulkPassword, setBulkPassword] = useState("");
+  const [childBulkPreview, setChildBulkPreview] = useState(null);
+  const [childBulkPassword, setChildBulkPassword] = useState("");
+  const [childBulkDomain, setChildBulkDomain] = useState("restore.bidblitz.local");
   const [reviewEnrichment, setReviewEnrichment] = useState(null);
+  const [mergeSummary, setMergeSummary] = useState(null);
+  const [mergeClusters, setMergeClusters] = useState([]);
+  const [mergeLoading, setMergeLoading] = useState(false);
+  const [selectedClusterId, setSelectedClusterId] = useState("");
+  const [mergeDetail, setMergeDetail] = useState(null);
+  const [mergeDetailLoading, setMergeDetailLoading] = useState(false);
   const [childRestoreForm, setChildRestoreForm] = useState({
     primary_email: "",
     display_name: "",
@@ -69,6 +78,35 @@ export const LegacyRestoreCenterTab = () => {
   });
   const [childRestorePreview, setChildRestorePreview] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  const loadMergeOverview = useCallback(async (q = "") => {
+    setMergeLoading(true);
+    try {
+      const response = await api(`/api/admin/legacy-restore/person-merge/overview?q=${encodeURIComponent(q)}`);
+      setMergeSummary(response.summary || null);
+      setMergeClusters(response.clusters || []);
+      if (!selectedClusterId && response.clusters?.length) {
+        setSelectedClusterId(response.clusters[0].cluster_id);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setMergeLoading(false);
+    }
+  }, [selectedClusterId]);
+
+  const loadMergeDetail = useCallback(async (clusterId) => {
+    if (!clusterId) return;
+    setMergeDetailLoading(true);
+    try {
+      const response = await api(`/api/admin/legacy-restore/person-merge/${encodeURIComponent(clusterId)}`);
+      setMergeDetail(response.cluster || null);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setMergeDetailLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async (q = "") => {
     setLoading(true);
@@ -131,8 +169,17 @@ export const LegacyRestoreCenterTab = () => {
   }, [query, load, viewMode]);
 
   useEffect(() => {
+    const timer = setTimeout(() => loadMergeOverview(query), 300);
+    return () => clearTimeout(timer);
+  }, [query, loadMergeOverview]);
+
+  useEffect(() => {
     if (selectedKey) loadDetail(selectedKey);
   }, [selectedKey, loadDetail]);
+
+  useEffect(() => {
+    if (selectedClusterId) loadMergeDetail(selectedClusterId);
+  }, [selectedClusterId, loadMergeDetail]);
 
   const selectedTheme = statusTheme[detail?.status || "missing"] || statusTheme.missing;
   const selectedCategoryTheme = candidateCategoryTheme[detail?.candidate_category || "review_required"] || candidateCategoryTheme.review_required;
@@ -236,6 +283,46 @@ export const LegacyRestoreCenterTab = () => {
       setBulkPreview(null);
       setSelectedKeys([]);
       await load(query);
+      if (selectedKey) await loadDetail(selectedKey);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const previewChildBulkRestore = async () => {
+    if (!selectedKeys.length) return toast.error("Bitte zuerst starke Child-Fälle markieren.");
+    setBusy(true);
+    try {
+      const response = await api("/api/admin/legacy-restore/child-to-user/bulk-preview", {
+        method: "POST",
+        body: JSON.stringify({ candidate_keys: selectedKeys, email_domain: childBulkDomain }),
+      });
+      setChildBulkPreview(response);
+      toast.success(`Bulk Child→User Vorschau: ${response.summary?.restoreable || 0} bereit.`);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmChildBulkRestore = async () => {
+    if (!childBulkPreview?.summary?.restoreable) return toast.error("Keine finalen Child→User-Restores in der Vorschau.");
+    if (!childBulkPassword.trim()) return toast.error("Admin-Passwort für Bulk Child→User erforderlich.");
+    setBusy(true);
+    try {
+      const response = await api("/api/admin/legacy-restore/child-to-user/bulk-confirm", {
+        method: "POST",
+        body: JSON.stringify({ candidate_keys: selectedKeys, email_domain: childBulkDomain, admin_password: childBulkPassword }),
+      });
+      toast.success(`Bulk Child→User abgeschlossen: ${response.summary?.restored || 0} Nutzer erstellt.`);
+      setChildBulkPassword("");
+      setChildBulkPreview(null);
+      setSelectedKeys([]);
+      await load(query);
+      await loadMergeOverview(query);
       if (selectedKey) await loadDetail(selectedKey);
     } catch (error) {
       toast.error(error.message);
@@ -431,6 +518,103 @@ export const LegacyRestoreCenterTab = () => {
             </div>
           </div>
         ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-violet-400/15 bg-violet-400/5 p-4" data-testid="legacy-child-bulk-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-violet-200/75 font-bold">Bulk Child → User</p>
+            <p className="mt-1 text-sm text-white/80">Mehrere starke Child-Fälle markieren, Auto-E-Mails vorschlagen und gesammelt echte Login-User erzeugen.</p>
+          </div>
+          <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-[11px] text-white/75" data-testid="legacy-child-bulk-selected-count">Ausgewählt: <span className="font-bold text-white">{selectedCount}</span></div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <input data-testid="legacy-child-bulk-domain-input" value={childBulkDomain} onChange={(event) => setChildBulkDomain(event.target.value)} placeholder="E-Mail-Domain, z. B. restore.bidblitz.local" className="min-w-[240px] flex-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+          <button data-testid="legacy-child-bulk-preview-button" onClick={previewChildBulkRestore} disabled={!selectedCount || busy} className="rounded-xl bg-violet-300 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{busy ? "Prüft…" : "Bulk Child→User Vorschau"}</button>
+          <input data-testid="legacy-child-bulk-password-input" type="password" value={childBulkPassword} onChange={(event) => setChildBulkPassword(event.target.value)} placeholder="Admin Passwort für Bulk Child→User" className="min-w-[260px] flex-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+          <button data-testid="legacy-child-bulk-confirm-button" onClick={confirmChildBulkRestore} disabled={!childBulkPreview?.summary?.restoreable || busy} className="rounded-xl bg-emerald-400 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{busy ? "Erstellt Nutzer…" : "Bulk Child→User bestätigen"}</button>
+        </div>
+        {childBulkPreview ? (
+          <div className="mt-3 grid gap-3 xl:grid-cols-2" data-testid="legacy-child-bulk-preview-card">
+            <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-200/70 font-bold">Bereit ({childBulkPreview.summary?.restoreable || 0})</p>
+              <div className="mt-2 space-y-2 max-h-[220px] overflow-y-auto">
+                {(childBulkPreview.restoreable || []).map((item, index) => (
+                  <div key={item.candidate_key} className="rounded-lg border border-white/8 bg-black/20 px-3 py-2" data-testid={`legacy-child-bulk-ready-${index}`}>
+                    <p className="text-[11px] font-semibold text-white">{item.display_name}</p>
+                    <p className="text-[10px] text-white/45">{item.primary_email} · {item.child_signal_count} Spuren</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-amber-400/10 bg-amber-400/5 p-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200/70 font-bold">Blockiert ({childBulkPreview.summary?.blocked || 0})</p>
+              <div className="mt-2 space-y-2 max-h-[220px] overflow-y-auto">
+                {(childBulkPreview.blocked || []).map((item, index) => (
+                  <div key={item.candidate_key} className="rounded-lg border border-white/8 bg-black/20 px-3 py-2" data-testid={`legacy-child-bulk-blocked-${index}`}>
+                    <p className="text-[11px] font-semibold text-white">{item.candidate_key}</p>
+                    <p className="text-[10px] text-white/45">{item.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-indigo-400/15 bg-indigo-400/5 p-4" data-testid="legacy-person-merge-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-indigo-200/75 font-bold">Personen-Merge-Ansicht</p>
+            <p className="mt-1 text-sm text-white/80">Bündelt Child-, Wallet-, Alias- und aktive Login-Spuren unter einer Personengruppe.</p>
+          </div>
+          <button data-testid="legacy-person-merge-refresh" onClick={() => loadMergeOverview(query)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-white hover:bg-white/[0.08]">Neu laden</button>
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
+          <div className="rounded-xl border border-white/8 bg-black/20 p-3" data-testid="legacy-merge-summary-total"><p className="text-[10px] text-white/35">Cluster</p><p className="mt-1 text-lg font-bold text-white">{mergeSummary?.total_clusters ?? 0}</p></div>
+          <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/5 p-3" data-testid="legacy-merge-summary-active"><p className="text-[10px] text-emerald-200/60">Mit aktivem User</p><p className="mt-1 text-lg font-bold text-emerald-300">{mergeSummary?.clusters_with_active_users ?? 0}</p></div>
+          <div className="rounded-xl border border-sky-400/10 bg-sky-400/5 p-3" data-testid="legacy-merge-summary-child"><p className="text-[10px] text-sky-200/60">Mit Child-Spuren</p><p className="mt-1 text-lg font-bold text-sky-300">{mergeSummary?.clusters_with_child_candidates ?? 0}</p></div>
+          <div className="rounded-xl border border-violet-400/10 bg-violet-400/5 p-3" data-testid="legacy-merge-summary-possible"><p className="text-[10px] text-violet-200/60">Mit möglichen echten Fällen</p><p className="mt-1 text-lg font-bold text-violet-300">{mergeSummary?.clusters_with_possible_real ?? 0}</p></div>
+        </div>
+        <div className="mt-3 grid gap-3 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="space-y-2" data-testid="legacy-merge-cluster-list">
+            {mergeLoading ? <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-white/40" /></div> : null}
+            {!mergeLoading && !(mergeClusters || []).length ? <p className="rounded-xl border border-white/8 bg-black/20 p-4 text-[11px] text-white/45">Keine Merge-Cluster gefunden.</p> : null}
+            {(mergeClusters || []).map((cluster, index) => (
+              <button key={cluster.cluster_id} data-testid={`legacy-merge-cluster-${index}`} onClick={() => setSelectedClusterId(cluster.cluster_id)} className="w-full rounded-xl border border-white/8 bg-black/20 p-3 text-left hover:bg-white/[0.06]">
+                <div className="flex items-center justify-between gap-2"><p className="text-[11px] font-semibold text-white truncate">{cluster.display_name}</p><span className="text-[10px] font-bold text-indigo-300">{cluster.member_count} Quellen</span></div>
+                <p className="mt-1 text-[10px] text-white/45 break-all">{(cluster.emails || []).slice(0, 2).join(" · ") || "Keine E-Mail-Spur"}</p>
+                <p className="mt-2 text-[10px] text-white/55">Aktive User {cluster.active_users} · Child {cluster.child_candidate_count} · möglich echt {cluster.possible_real_members}</p>
+              </button>
+            ))}
+          </div>
+          <div className="rounded-xl border border-white/8 bg-black/20 p-4" data-testid="legacy-merge-detail-card">
+            {mergeDetailLoading ? <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-white/40" /></div> : null}
+            {!mergeDetailLoading && !mergeDetail ? <p className="text-[11px] text-white/45">Wähle links ein Cluster aus.</p> : null}
+            {!mergeDetailLoading && mergeDetail ? (
+              <>
+                <p className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-bold">Personen-Merge-Detail</p>
+                <p className="mt-1 text-lg font-bold text-white" data-testid="legacy-merge-detail-name">{mergeDetail.display_name}</p>
+                <p className="mt-1 text-[10px] text-white/50">Namen: {(mergeDetail.related_names || []).join(", ") || "—"}</p>
+                <p className="mt-1 text-[10px] text-white/50">E-Mails: {(mergeDetail.emails || []).join(", ") || "—"}</p>
+                <p className="mt-1 text-[10px] text-white/50">Aliase: {(mergeDetail.aliases || []).join(", ") || "—"}</p>
+                <div className="mt-3 grid gap-2 md:grid-cols-2 text-[11px] text-white/75">
+                  <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">Aktive User: <span className="font-bold text-white">{mergeDetail.active_users}</span></div>
+                  <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">Child-Spuren: <span className="font-bold text-white">{mergeDetail.child_candidate_count}</span></div>
+                </div>
+                <div className="mt-3 space-y-2 max-h-[260px] overflow-y-auto">
+                  {(mergeDetail.members || []).map((member, index) => (
+                    <div key={`${member.member_kind}-${member.candidate_key || member.user_id || index}`} className="rounded-lg border border-white/8 bg-white/[0.03] p-3" data-testid={`legacy-merge-member-${index}`}>
+                      <div className="flex items-center justify-between gap-2"><p className="text-[11px] font-semibold text-white">{member.display_name || member.primary_email || member.candidate_key}</p><span className="text-[10px] font-bold text-indigo-300">{member.member_kind}</span></div>
+                      <p className="mt-1 text-[10px] text-white/45 break-all">{member.primary_email || member.candidate_key || member.user_id}</p>
+                      <p className="mt-1 text-[10px] text-white/55">{member.source_type || member.candidate_category || "active_user"} · {member.balance_eur ?? 0}€ · {member.balance_blz ?? 0} BLZ</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/5 p-4" data-testid="legacy-bulk-restore-card">

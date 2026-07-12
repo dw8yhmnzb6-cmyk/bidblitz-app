@@ -1,0 +1,95 @@
+{
+  "summary": "Bulk Child→User and Person-Merge features fully verified. All 24 backend tests pass. Frontend UI shows both new panels with all required elements. Person-merge overview returns 30 clusters with expected summary values. Albin cluster correctly combines child candidate, restored screenshot candidate, and active user (3 members). Bulk child-to-user preview returns 3 restoreable items (Anuar, Emma, Albin) with suggested emails under restore.bidblitz.local. No regression in existing features.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Legacy Restore Center", "issues": ["Cookie banner overlays lower-right area (known infrastructure caveat, does not block functionality)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter247_bulk_child_person_merge.py",
+    "/app/test_reports/pytest/iter247_bulk_child_person_merge.xml",
+    "/app/test_reports/iter247_legacy_restore_overview.jpeg",
+    "/app/test_reports/iter247_person_merge_panel.jpeg",
+    "/app/test_reports/iter247_merge_detail.jpeg",
+    "/app/test_reports/iter247_full_page.jpeg",
+    "/app/test_reports/iter247_merge_albin.jpeg",
+    "/app/test_reports/iter247_candidates_selected.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "admin_legacy_restore.py: _build_child_to_user_bulk_preview() correctly iterates candidate_keys and calls _build_child_to_user_preview() for each",
+    "admin_legacy_restore.py: _suggest_child_restore_email() generates deterministic emails using display_name and candidate_key suffix",
+    "admin_legacy_restore.py: _build_person_merge_clusters() correctly groups candidates and active users by derived person cluster key",
+    "admin_legacy_restore.py: _derive_person_cluster_key() extracts first token from display_name or email local part for clustering",
+    "admin_legacy_restore.py: POST /child-to-user/bulk-preview and /bulk-confirm endpoints correctly handle restoreable vs blocked items",
+    "admin_legacy_restore.py: GET /person-merge/overview returns summary with total_clusters, clusters_with_active_users, clusters_with_child_candidates, clusters_with_possible_real",
+    "admin_legacy_restore.py: GET /person-merge/{cluster_id} returns cluster detail with members array containing both candidates and active_users",
+    "LegacyRestoreCenterTab.jsx: Bulk Child→User panel with data-testid='legacy-child-bulk-card' includes domain input, preview button, password field, confirm button",
+    "LegacyRestoreCenterTab.jsx: Person-Merge panel with data-testid='legacy-person-merge-card' includes summary cards, cluster list, and detail panel",
+    "LegacyRestoreCenterTab.jsx: previewChildBulkRestore() and confirmChildBulkRestore() correctly call API endpoints with selected candidate_keys and email_domain"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter247_bulk_child_person_merge.py"
+  ],
+  "success_rate": {
+    "backend": "100% (24/24 tests passed)",
+    "frontend": "100% (All UI elements present and functional)"
+  },
+  "test_credentials": {
+    "admin_account": "admin@bidblitz.ae / BidBlitz2026!"
+  },
+  "seed_data_creation": "None - using existing backup data from kids_children.json and related collections",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bulk Child→User and Person-Merge features fully verified. The features are accessible via Admin Wallet page > Legacy Restore tab. Bulk Child→User panel allows selecting multiple child candidates, entering email domain, previewing with auto-generated emails, and confirming with admin password. Person-Merge panel shows cluster summary (30 clusters, 6 with active users, 6 with child candidates, 3 with possible real) and allows viewing cluster details with all members. Albin cluster correctly shows 3 members: child candidate (child:child_2a880974de5f), restored candidate (albinkrasniqi11@icloud.com), and active user. All existing features (review enrichment, filters, bulk restore, history, child-to-user single preview) still work.",
+  "verified_features": {
+    "person_merge_overview_api": "PASS - GET /api/admin/legacy-restore/person-merge/overview returns 200 with summary and clusters",
+    "person_merge_overview_summary": "PASS - Summary shows total_clusters=30, clusters_with_active_users=6, clusters_with_child_candidates=6, clusters_with_possible_real=3",
+    "person_merge_albin_cluster": "PASS - GET /api/admin/legacy-restore/person-merge/albin returns cluster with 3 members",
+    "person_merge_albin_members": "PASS - Albin cluster contains child candidate, restored candidate, and active user",
+    "person_merge_albin_emails_aliases": "PASS - Albin cluster has emails (albinkrasniqi11@icloud.com) and aliases (albinkrasniqi612@gmail.com)",
+    "person_merge_query_filter": "PASS - Overview supports query filtering (q=albin)",
+    "person_merge_nonexistent_404": "PASS - Non-existent cluster returns 404",
+    "child_bulk_preview_api": "PASS - POST /api/admin/legacy-restore/child-to-user/bulk-preview returns 200",
+    "child_bulk_preview_anuar": "PASS - Anuar (child_a240c029dd30) is restoreable with suggested email under restore.bidblitz.local",
+    "child_bulk_preview_emma": "PASS - Emma (child_888c787e77d9) is restoreable with suggested email under restore.bidblitz.local",
+    "child_bulk_preview_albin": "PASS - Albin (child_2a880974de5f) is restoreable with suggested email under restore.bidblitz.local",
+    "child_bulk_preview_custom_domain": "PASS - Custom email domain is used in suggested emails",
+    "child_bulk_preview_nonexistent_blocked": "PASS - Non-existent candidate is blocked with reason 'nicht_gefunden'",
+    "child_bulk_preview_empty": "PASS - Empty candidate list returns summary with selected=0",
+    "child_bulk_confirm_requires_password": "PASS - Empty password returns 400/403/422",
+    "child_bulk_confirm_wrong_password": "PASS - Wrong password returns 403",
+    "ui_bulk_child_panel": "PASS - Bulk Child→User panel visible with data-testid='legacy-child-bulk-card'",
+    "ui_bulk_child_domain_input": "PASS - Domain input with data-testid='legacy-child-bulk-domain-input' present",
+    "ui_bulk_child_preview_button": "PASS - Preview button with data-testid='legacy-child-bulk-preview-button' present",
+    "ui_bulk_child_password_input": "PASS - Password input with data-testid='legacy-child-bulk-password-input' present",
+    "ui_bulk_child_confirm_button": "PASS - Confirm button with data-testid='legacy-child-bulk-confirm-button' present",
+    "ui_person_merge_panel": "PASS - Person-Merge panel visible with data-testid='legacy-person-merge-card'",
+    "ui_merge_summary_cards": "PASS - All 4 summary cards present (total, active, child, possible)",
+    "ui_merge_cluster_list": "PASS - Cluster list with data-testid='legacy-merge-cluster-list' present",
+    "ui_merge_detail_panel": "PASS - Detail panel with data-testid='legacy-merge-detail-card' present",
+    "ui_merge_albin_detail": "PASS - Albin cluster detail shows 'Albin Krasniqi' with 3 members",
+    "no_regression_overview": "PASS - GET /api/admin/legacy-restore/overview works",
+    "no_regression_review_enrichment": "PASS - POST /api/admin/legacy-restore/review-enrichment works",
+    "no_regression_bulk_preview": "PASS - POST /api/admin/legacy-restore/bulk-preview works",
+    "no_regression_child_single_preview": "PASS - POST /api/admin/legacy-restore/child-to-user/preview works",
+    "no_regression_history": "PASS - GET /api/admin/legacy-restore/history works",
+    "no_regression_view_filters": "PASS - All 4 view filters (real_only, review, noise_only, all) work",
+    "auth_required_merge_overview": "PASS - Unauthenticated request returns 401/403",
+    "auth_required_merge_detail": "PASS - Unauthenticated request returns 401/403",
+    "auth_required_bulk_preview": "PASS - Unauthenticated request returns 401/403",
+    "auth_required_bulk_confirm": "PASS - Unauthenticated request returns 401/403"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-12T08:10:00Z",
+  "test_scope": "Bulk Child→User (POST /child-to-user/bulk-preview, /bulk-confirm) and Person-Merge (GET /person-merge/overview, /person-merge/{cluster_id}) features with UI verification"
+}

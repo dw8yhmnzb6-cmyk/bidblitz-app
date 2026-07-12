@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -189,6 +190,15 @@ class ChildToUserConfirmRequest(ChildToUserPreviewRequest):
     admin_password: str = Field(..., min_length=1)
 
 
+class ChildToUserBulkPreviewRequest(BaseModel):
+    candidate_keys: list[str] = Field(default_factory=list)
+    email_domain: str | None = None
+
+
+class ChildToUserBulkConfirmRequest(ChildToUserBulkPreviewRequest):
+    admin_password: str = Field(..., min_length=1)
+
+
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
     try:
         return float(value or 0)
@@ -211,6 +221,19 @@ def _normalize_email(value: str | None) -> str:
     return (value or "").strip().lower()
 
 
+def _sanitize_email_domain(value: str | None) -> str:
+    domain = re.sub(r"[^a-z0-9.-]", "", _normalize_email(value or "restore.bidblitz.local"))
+    if not domain or "." not in domain:
+        return "restore.bidblitz.local"
+    return domain.strip(".")
+
+
+def _slugify_email_local(value: str | None) -> str:
+    slug = re.sub(r"[^a-z0-9]+", ".", (value or "").strip().lower()).strip(".")
+    slug = re.sub(r"\.+", ".", slug)
+    return slug or "restored-user"
+
+
 def _split_email(email: str) -> tuple[str, str]:
     normalized = _normalize_email(email)
     if "@" not in normalized:
@@ -230,6 +253,11 @@ def _safe_excerpt(row: dict) -> str:
         if isinstance(value, str) and value.strip():
             return value.strip()[:120]
     return "Zusätzliche Backup-Spur vorhanden"
+
+
+def _extract_person_tokens(value: str | None) -> list[str]:
+    cleaned = re.sub(r"[^a-z0-9]+", " ", (value or "").strip().lower())
+    return [token for token in cleaned.split() if len(token) >= 3]
 
 
 def _deterministic_user_number(email: str) -> str:
@@ -644,6 +672,220 @@ async def _record_restore_action(action: dict):
     await db.legacy_restore_actions.insert_one(action)
 
 
+def _suggest_child_restore_email(candidate: dict, email_domain: str | None = None) -> str:
+    domain = _sanitize_email_domain(email_domain)
+    local_base = _slugify_email_local(candidate.get("display_name") or candidate.get("candidate_key") or "restored-child")
+    candidate_key = (candidate.get("candidate_key") or "").split(":")[-1]
+    suffix = re.sub(r"[^a-z0-9]+", "", candidate_key.lower())[:6] or "child"
+    return f"{local_base}.{suffix}@{domain}"
+
+
+async def _build_child_to_user_bulk_preview(candidate_keys: list[str], email_domain: str | None = None) -> dict:
+    rows, _summary = await _build_candidates("", "all")
+    rows_map = {row.get("candidate_key"): row for row in rows}
+    seen = set()
+    restoreable = []
+    blocked = []
+    for raw_key in candidate_keys:
+        candidate_key = (raw_key or "").strip()
+        if not candidate_key or candidate_key in seen:
+            continue
+        seen.add(candidate_key)
+        candidate = rows_map.get(candidate_key)
+        if not candidate:
+            blocked.append({
+                "candidate_key": candidate_key,
+                "reason": "nicht_gefunden",
+                "existing_user": None,
+                "missing_fields": [],
+            })
+            continue
+        suggested_email = _suggest_child_restore_email(candidate, email_domain)
+        preview = await _build_child_to_user_preview(ChildToUserPreviewRequest(
+            candidate_key=candidate_key,
+            primary_email=suggested_email,
+            display_name=candidate.get("display_name") or "",
+            alias_emails=[],
+            balance_eur=_safe_float(candidate.get("balance_eur")),
+            balance_blz=_safe_float(candidate.get("balance_blz")),
+            registered_at=candidate.get("registered_at"),
+            source_note=f"child_to_user_bulk:{candidate_key}",
+        ))
+        if preview.get("restore_ready"):
+            restoreable.append(preview)
+        else:
+            blocked.append({
+                "candidate_key": candidate_key,
+                "reason": "existiert_bereits" if preview.get("existing_user") else "nicht_restorebar",
+                "existing_user": preview.get("existing_user"),
+                "missing_fields": preview.get("missing_fields") or [],
+                "category_reason": preview.get("category_reason"),
+            })
+    return {
+        "restoreable": restoreable,
+        "blocked": blocked,
+        "summary": {
+            "selected": len(seen),
+            "restoreable": len(restoreable),
+            "blocked": len(blocked),
+            "email_domain": _sanitize_email_domain(email_domain),
+        },
+    }
+
+
+def _derive_person_cluster_key(display_name: str | None, primary_email: str | None, fallback: str | None) -> str:
+    name_tokens = _extract_person_tokens(display_name)
+    if name_tokens:
+        return name_tokens[0]
+    local, _domain = _split_email(primary_email or "")
+    local_tokens = _extract_person_tokens(local)
+    if local_tokens:
+        return local_tokens[0]
+    fallback_tokens = _extract_person_tokens(fallback)
+    return fallback_tokens[0] if fallback_tokens else (fallback or "unknown")
+
+
+async def _build_person_merge_clusters(query: str = "") -> dict:
+    rows, _summary = await _build_candidates(query, "all")
+    user_rows = await db.users.find(
+        {
+            "$or": [
+                {"legacy_restored": True},
+                {"email_aliases": {"$exists": True, "$ne": []}},
+            ]
+        },
+        {
+            "_id": 1,
+            "email": 1,
+            "canonical_email": 1,
+            "email_aliases": 1,
+            "name": 1,
+            "full_name": 1,
+            "display_name": 1,
+            "balance": 1,
+            "balance_blz": 1,
+            "registered_at": 1,
+            "created_at": 1,
+            "last_login_at": 1,
+            "login_count": 1,
+            "legacy_restored": 1,
+            "legacy_restore_source": 1,
+        },
+    ).to_list(400)
+
+    clusters: dict[str, dict] = {}
+
+    def ensure_cluster(key: str, display_name: str):
+        cluster = clusters.setdefault(key, {
+            "cluster_id": key,
+            "display_name": display_name or key,
+            "names": set(),
+            "emails": set(),
+            "aliases": set(),
+            "members": [],
+            "active_users": 0,
+            "candidate_count": 0,
+            "child_candidate_count": 0,
+            "real_customer_members": 0,
+            "possible_real_members": 0,
+            "last_seen_at": None,
+        })
+        if display_name and len(display_name) > len(cluster.get("display_name") or ""):
+            cluster["display_name"] = display_name
+        return cluster
+
+    for row in rows:
+        key = _derive_person_cluster_key(row.get("display_name"), row.get("primary_email"), row.get("candidate_key"))
+        cluster = ensure_cluster(key, row.get("display_name") or row.get("primary_email") or row.get("candidate_key"))
+        if row.get("display_name"):
+            cluster["names"].add(row.get("display_name"))
+        if row.get("primary_email"):
+            cluster["emails"].add(row.get("primary_email"))
+        for alias in row.get("alias_emails") or []:
+            cluster["aliases"].add(alias)
+        cluster["candidate_count"] += 1
+        if row.get("source_type") == "child_backup_signal":
+            cluster["child_candidate_count"] += 1
+        if row.get("candidate_category") == "real_customer":
+            cluster["real_customer_members"] += 1
+        if row.get("candidate_category") == "possible_real_customer":
+            cluster["possible_real_members"] += 1
+        cluster["last_seen_at"] = cluster.get("last_seen_at") or row.get("last_seen_at") or row.get("registered_at")
+        cluster["members"].append({
+            "member_kind": "candidate",
+            "candidate_key": row.get("candidate_key"),
+            "display_name": row.get("display_name"),
+            "primary_email": row.get("primary_email"),
+            "status": row.get("status"),
+            "candidate_category": row.get("candidate_category"),
+            "source_type": row.get("source_type"),
+            "balance_eur": row.get("balance_eur"),
+            "balance_blz": row.get("balance_blz"),
+            "child_signal_count": row.get("child_signal_count", 0),
+        })
+
+    for user in user_rows:
+        display_name = user.get("name") or user.get("full_name") or user.get("display_name") or user.get("email")
+        key = _derive_person_cluster_key(display_name, user.get("email"), user.get("email"))
+        cluster = ensure_cluster(key, display_name)
+        cluster["active_users"] += 1
+        if display_name:
+            cluster["names"].add(display_name)
+        if user.get("email"):
+            cluster["emails"].add(user.get("email"))
+        for alias in user.get("email_aliases") or []:
+            cluster["aliases"].add(alias)
+        cluster["last_seen_at"] = cluster.get("last_seen_at") or user.get("last_login_at") or user.get("registered_at") or user.get("created_at")
+        cluster["members"].append({
+            "member_kind": "active_user",
+            "user_id": str(user.get("_id")),
+            "display_name": display_name,
+            "primary_email": user.get("email", ""),
+            "canonical_email": user.get("canonical_email") or user.get("email", ""),
+            "aliases": user.get("email_aliases") or [],
+            "balance_eur": round(_safe_float(user.get("balance")), 2),
+            "balance_blz": round(_safe_float(user.get("balance_blz")), 2),
+            "registered_at": user.get("registered_at") or user.get("created_at"),
+            "last_login_at": user.get("last_login_at"),
+            "login_count": int(user.get("login_count") or 0),
+            "legacy_restored": bool(user.get("legacy_restored")),
+        })
+
+    cluster_rows = []
+    q = (query or "").strip().lower()
+    for cluster in clusters.values():
+        names = sorted(cluster["names"])
+        emails = sorted(cluster["emails"])
+        aliases = sorted(cluster["aliases"])
+        haystack = " ".join([cluster.get("display_name") or "", *names, *emails, *aliases]).lower()
+        if q and q not in haystack:
+            continue
+        cluster_rows.append({
+            "cluster_id": cluster["cluster_id"],
+            "display_name": cluster["display_name"],
+            "related_names": names,
+            "emails": emails,
+            "aliases": aliases,
+            "member_count": len(cluster["members"]),
+            "active_users": cluster["active_users"],
+            "candidate_count": cluster["candidate_count"],
+            "child_candidate_count": cluster["child_candidate_count"],
+            "real_customer_members": cluster["real_customer_members"],
+            "possible_real_members": cluster["possible_real_members"],
+            "last_seen_at": cluster["last_seen_at"],
+        })
+
+    cluster_rows.sort(key=lambda item: (-int(item.get("member_count") or 0), -int(item.get("possible_real_members") or 0), item.get("display_name") or item.get("cluster_id")))
+    summary = {
+        "total_clusters": len(cluster_rows),
+        "clusters_with_active_users": sum(1 for row in cluster_rows if row.get("active_users")),
+        "clusters_with_child_candidates": sum(1 for row in cluster_rows if row.get("child_candidate_count")),
+        "clusters_with_possible_real": sum(1 for row in cluster_rows if row.get("possible_real_members")),
+        "last_scan_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return {"summary": summary, "clusters": cluster_rows, "raw_clusters": clusters}
+
+
 async def _build_bulk_preview(candidate_keys: list[str]):
     seen = set()
     restoreable = []
@@ -962,6 +1204,39 @@ async def legacy_restore_history(request: Request, limit: int = 40):
     return {"actions": rows, "count": len(rows)}
 
 
+@router.get("/person-merge/overview")
+async def person_merge_overview(request: Request, q: str = ""):
+    await _require_admin(request)
+    payload = await _build_person_merge_clusters(q)
+    return {"summary": payload["summary"], "clusters": payload["clusters"][:80]}
+
+
+@router.get("/person-merge/{cluster_id}")
+async def person_merge_detail(cluster_id: str, request: Request):
+    await _require_admin(request)
+    payload = await _build_person_merge_clusters("")
+    cluster = payload["raw_clusters"].get(cluster_id)
+    if not cluster:
+        raise HTTPException(404, "Personen-Merge-Cluster nicht gefunden.")
+    return {
+        "cluster": {
+            "cluster_id": cluster_id,
+            "display_name": cluster.get("display_name") or cluster_id,
+            "related_names": sorted(cluster.get("names") or []),
+            "emails": sorted(cluster.get("emails") or []),
+            "aliases": sorted(cluster.get("aliases") or []),
+            "member_count": len(cluster.get("members") or []),
+            "active_users": cluster.get("active_users", 0),
+            "candidate_count": cluster.get("candidate_count", 0),
+            "child_candidate_count": cluster.get("child_candidate_count", 0),
+            "real_customer_members": cluster.get("real_customer_members", 0),
+            "possible_real_members": cluster.get("possible_real_members", 0),
+            "last_seen_at": cluster.get("last_seen_at"),
+            "members": cluster.get("members") or [],
+        }
+    }
+
+
 @router.post("/review-enrichment")
 async def legacy_restore_review_enrichment(request: Request):
     await _require_admin(request)
@@ -1054,4 +1329,70 @@ async def child_to_user_confirm(req: ChildToUserConfirmRequest, request: Request
             "legacy_restored": True,
         },
         "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+    }
+
+
+@router.post("/child-to-user/bulk-preview")
+async def child_to_user_bulk_preview(req: ChildToUserBulkPreviewRequest, request: Request):
+    await _require_admin(request)
+    return await _build_child_to_user_bulk_preview(req.candidate_keys, req.email_domain)
+
+
+@router.post("/child-to-user/bulk-confirm")
+async def child_to_user_bulk_confirm(req: ChildToUserBulkConfirmRequest, request: Request):
+    admin = await _require_admin(request)
+    await _verify_admin_password(admin, req.admin_password)
+    preview = await _build_child_to_user_bulk_preview(req.candidate_keys, req.email_domain)
+    restored_users = []
+    for item in preview["restoreable"]:
+        user_id, user_doc = await _create_restored_user(item)
+        action = {
+            "candidate_key": item["candidate_key"],
+            "action_type": "bulk_child_to_user_restore",
+            "status": "completed",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "approved_by": admin.get("email", ""),
+            "restored_user_id": user_id,
+            "restored_email": user_doc["email"],
+            "restored_aliases": user_doc.get("email_aliases") or [],
+            "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+            "source_note": item.get("source_note") or item["candidate_key"],
+            "child_signal_count": item.get("child_signal_count", 0),
+        }
+        await _record_restore_action(action)
+        restored_users.append({
+            "user_id": user_id,
+            "email": user_doc["email"],
+            "name": user_doc["name"],
+            "balance": user_doc["balance"],
+            "balance_blz": user_doc["balance_blz"],
+            "registered_at": user_doc["registered_at"],
+        })
+
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={
+            "action": "child_to_user_bulk_confirmed",
+            "candidate_keys": req.candidate_keys,
+            "restored_count": len(restored_users),
+            "email_domain": _sanitize_email_domain(req.email_domain),
+        },
+        severity="warn",
+    )
+    return {
+        "ok": True,
+        "restored_users": restored_users,
+        "blocked": preview["blocked"],
+        "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+        "summary": {
+            "requested": len(req.candidate_keys),
+            "restored": len(restored_users),
+            "blocked": len(preview["blocked"]),
+            "email_domain": _sanitize_email_domain(req.email_domain),
+        },
     }
