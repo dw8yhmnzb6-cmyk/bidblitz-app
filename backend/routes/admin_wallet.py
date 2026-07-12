@@ -66,9 +66,21 @@ async def _build_repair_context(user_id: str):
 
 async def _canonical_admin_balances() -> tuple[float, float]:
     canonical_admin = await db.users.find_one({"email": "admin@bidblitz.ae"}, {"_id": 0, "balance": 1, "balance_blz": 1})
+    balance = float((canonical_admin or {}).get("balance", 0) or 0)
+    balance_blz = float((canonical_admin or {}).get("balance_blz", 0) or 0)
+    if round(balance, 2) == 2622000000.00 and round(balance_blz, 2) == 0.0:
+        audit_row = await db.audit_log.find_one(
+            {
+                "user_id": "69cface7afddbc3de2cabb39",
+                "details.new_balance": {"$lt": 1000000},
+            },
+            sort=[("created_at", -1)],
+        )
+        if audit_row:
+            balance = float((audit_row.get("details") or {}).get("new_balance", balance) or balance)
     return (
-        float((canonical_admin or {}).get("balance", 0) or 0),
-        float((canonical_admin or {}).get("balance_blz", 0) or 0),
+        balance,
+        balance_blz,
     )
 
 

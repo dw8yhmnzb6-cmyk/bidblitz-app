@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / '.env')
 
 import logging
+import json
+import hashlib
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timezone
 
@@ -35,6 +37,193 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("bidblitz")
+
+LEGACY_ADMIN_SUSPICIOUS_BALANCES = {2622000000.0, 63366525.91}
+LEGACY_ADMIN_SUSPICIOUS_BLZ = {91.0}
+LEGACY_RESTORE_TEMP_PASSWORD = "BidBlitzRestore2026!"
+BACKUP_EXPORT_USERS_PATH = Path(__file__).resolve().parent.parent / "backup" / "db_export" / "users.json"
+LEGACY_WALLET_SNAPSHOT_USERS = [
+    {
+        "email": "albinkrasniqi11@icloud.com",
+        "canonical_email": "albinkrasniqi11@icloud.com",
+        "email_aliases": ["albinkrasniqi612@gmail.com"],
+        "name": "Albin Krasniqi",
+        "balance": 60.0,
+        "balance_blz": 20.0,
+        "created_at": "2026-05-02T14:33:00+00:00",
+        "registered_at": "2026-05-02T14:33:00+00:00",
+        "source": "wallet_screenshot_IMG_2827",
+    },
+    {
+        "email": "lufrollen.notepad_9o@icloud.com",
+        "canonical_email": "lufrollen.notepad_9o@icloud.com",
+        "email_aliases": ["laufrollen.notepad_9o@icloud.com"],
+        "name": "Afrim Krasniqi",
+        "balance": 25.2,
+        "balance_blz": 10.0,
+        "created_at": "2026-05-01T19:58:00+00:00",
+        "registered_at": "2026-05-01T19:58:00+00:00",
+        "source": "wallet_screenshot_IMG_2821",
+    },
+]
+
+
+def _safe_float(value, fallback: float = 0.0) -> float:
+    try:
+        return float(value or 0)
+    except Exception:
+        return fallback
+
+
+def _is_suspicious_admin_balance(balance: float) -> bool:
+    rounded = round(_safe_float(balance), 2)
+    return rounded in LEGACY_ADMIN_SUSPICIOUS_BALANCES
+
+
+def _load_backup_users_snapshot() -> list[dict]:
+    try:
+        if not BACKUP_EXPORT_USERS_PATH.exists():
+            return []
+        return json.loads(BACKUP_EXPORT_USERS_PATH.read_text())
+    except Exception as exc:
+        logger.warning(f"Backup user snapshot could not be loaded: {exc}")
+        return []
+
+
+def _find_admin_backup_snapshot(admin_doc: dict | None) -> dict | None:
+    if not admin_doc:
+        return None
+    admin_id = str(admin_doc.get("_id") or "")
+    current_email = (admin_doc.get("email") or "").strip().lower()
+    aliases = {(alias or "").strip().lower() for alias in (admin_doc.get("email_aliases") or [])}
+    snapshot_candidates = _load_backup_users_snapshot()
+    for row in snapshot_candidates:
+        row_email = (row.get("email") or "").strip().lower()
+        if str(row.get("_id") or "") == admin_id:
+            return row
+        if row_email and (row_email == current_email or row_email in aliases or row_email in {"admin@bidblitz.com", "admin@bidblitz.ae"}):
+            return row
+    return None
+
+
+async def _reconstruct_admin_balance_from_backup(admin_doc: dict | None) -> tuple[float | None, float | None]:
+    snapshot = _find_admin_backup_snapshot(admin_doc)
+    if not snapshot:
+        return None, None
+
+    base_balance = _safe_float(snapshot.get("balance"))
+    base_blz = _safe_float(snapshot.get("balance_blz"))
+    cutoff = snapshot.get("updated_at") or snapshot.get("created_at")
+    query = {"user_id": str(admin_doc.get("_id") or "")}
+    if cutoff:
+        query["created_at"] = {"$gt": cutoff}
+
+    tx_rows = await db.transactions.find(
+        query,
+        {"_id": 0, "amount": 1, "status": 1},
+    ).to_list(5000)
+    delta = 0.0
+    for tx in tx_rows:
+        status = tx.get("status", "completed")
+        if status != "completed":
+            continue
+        amount = tx.get("amount")
+        if isinstance(amount, (int, float)):
+            delta += float(amount)
+
+    return round(base_balance + delta, 2), round(base_blz, 2)
+
+
+def _deterministic_user_number(email: str) -> str:
+    digest = hashlib.sha1(email.encode("utf-8")).hexdigest()
+    return f"BE{int(digest[:8], 16) % 100000:05d}"
+
+
+async def restore_missing_legacy_wallet_users():
+    now = datetime.now(timezone.utc).isoformat()
+    for snapshot in LEGACY_WALLET_SNAPSHOT_USERS:
+        selectors = [{"email": snapshot["email"]}]
+        for alias in snapshot.get("email_aliases") or []:
+            selectors.append({"email": alias})
+            selectors.append({"email_aliases": alias})
+        existing = await db.users.find_one({"$or": selectors}, {"_id": 1})
+        if existing:
+            continue
+
+        restored_email = snapshot["email"]
+        restored_user = {
+            "email": restored_email,
+            "canonical_email": snapshot.get("canonical_email") or restored_email,
+            "email_aliases": snapshot.get("email_aliases") or [],
+            "password_hash": hash_password(LEGACY_RESTORE_TEMP_PASSWORD),
+            "name": snapshot["name"],
+            "full_name": snapshot["name"],
+            "display_name": snapshot["name"],
+            "username": snapshot["name"],
+            "role": "user",
+            "balance": round(_safe_float(snapshot.get("balance")), 2),
+            "balance_blz": round(_safe_float(snapshot.get("balance_blz")), 2),
+            "currency": "EUR",
+            "created_at": snapshot["created_at"],
+            "registered_at": snapshot.get("registered_at") or snapshot["created_at"],
+            "last_login_at": None,
+            "last_login_ip": "",
+            "last_login_user_agent": "",
+            "login_count": 0,
+            "language": "de",
+            "notifications_enabled": True,
+            "email_notifications": True,
+            "biometric_enabled": False,
+            "dark_mode": True,
+            "kyc_status": "not_started",
+            "kyc_verified": False,
+            "user_number": _deterministic_user_number(restored_email),
+            "legacy_restored": True,
+            "legacy_restore_source": snapshot.get("source") or "wallet_screenshot",
+            "legacy_restore_note": "Reconstructed from admin wallet screenshot after missing user forensics.",
+            "legacy_restored_at": now,
+            "temporary_password_assigned_at": now,
+        }
+        await db.users.insert_one(restored_user)
+        logger.info(f"✓ Restored missing legacy wallet user: {restored_email}")
+
+
+async def restore_admin_balance_if_needed():
+    admin = await db.users.find_one(
+        {"email": ADMIN_EMAIL.lower().strip()},
+        {"_id": 1, "email": 1, "email_aliases": 1, "balance": 1, "balance_blz": 1},
+    )
+    if not admin:
+        return
+
+    current_balance = _safe_float(admin.get("balance"))
+    current_blz = _safe_float(admin.get("balance_blz"))
+    if not _is_suspicious_admin_balance(current_balance) and round(current_blz, 2) not in LEGACY_ADMIN_SUSPICIOUS_BLZ:
+        return
+
+    restored_balance, restored_blz = await _reconstruct_admin_balance_from_backup(admin)
+    if restored_balance is None:
+        logger.warning("Admin balance restore skipped: no reliable backup snapshot found")
+        return
+
+    await db.users.update_one(
+        {"_id": admin["_id"]},
+        {
+            "$set": {
+                "balance": restored_balance,
+                "balance_blz": restored_blz,
+                "admin_balance_restored_at": datetime.now(timezone.utc).isoformat(),
+                "admin_balance_restored_source": "backup_export_forensic_rebuild",
+            },
+            "$unset": {
+                "admin_balance_note": "",
+                "admin_balance_set_at": "",
+            },
+        },
+    )
+    logger.info(
+        f"✓ Restored canonical admin balance from suspicious value {current_balance} to {restored_balance} EUR / {restored_blz} BLZ"
+    )
 
 # Error log (rotates at 5MB, keeps 5 files)
 err_handler = RotatingFileHandler(LOG_DIR / "error.log", maxBytes=5_000_000, backupCount=5)
@@ -173,10 +362,11 @@ async def seed_admin():
         now = datetime.now(timezone.utc).isoformat()
         legacy_email = "admin@bidblitz.com"
         admin_aliases = ["admin@bid-blitz.ae"]
-        canonical_balance_eur = 2622000000.00
-        canonical_balance_blz = 0.0
         existing = await db.users.find_one({"email": admin_email})
         legacy = await db.users.find_one({"email": legacy_email}) if admin_email != legacy_email else None
+        restored_balance, restored_blz = await _reconstruct_admin_balance_from_backup(existing or legacy)
+        canonical_balance_eur = restored_balance if restored_balance is not None else _safe_float((existing or legacy or {}).get("balance"), 0.0)
+        canonical_balance_blz = restored_blz if restored_blz is not None else _safe_float((existing or legacy or {}).get("balance_blz"), 0.0)
 
         if existing is None and legacy is not None:
             await db.users.update_one(
@@ -224,6 +414,15 @@ async def seed_admin():
                 },
             )
             logger.info(f"✓ Duplicate legacy admin disabled: {legacy_email}")
+
+        if existing is None:
+            existing = await db.users.find_one({"email": admin_email})
+            if existing:
+                restored_balance, restored_blz = await _reconstruct_admin_balance_from_backup(existing)
+                if restored_balance is not None:
+                    canonical_balance_eur = restored_balance
+                if restored_blz is not None:
+                    canonical_balance_blz = restored_blz
 
         if existing is None:
             hashed = hash_password(ADMIN_PASSWORD)
@@ -408,6 +607,8 @@ async def startup_event():
     await create_indexes()
     logger.info("✓ Database indexes created")
     await seed_admin()
+    await restore_admin_balance_if_needed()
+    await restore_missing_legacy_wallet_users()
     await cleanup_legacy_admin_artifacts()
     await ensure_admin_driver_account()
 

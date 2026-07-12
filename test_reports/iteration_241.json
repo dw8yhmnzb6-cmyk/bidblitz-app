@@ -1,0 +1,74 @@
+{
+  "summary": "Wallet Restore Bug Fix Verified - All 16 backend tests PASS, Frontend verification PASS. Admin balance corrected from suspicious 2622000000 EUR to actual 8259.21 EUR. Restored legacy users Albin Krasniqi (60 EUR, 20 BLZ) and Afrim Krasniqi (25.20 EUR, 10 BLZ) visible in admin wallet/customers with correct metadata. Alias search works. No auth regression for admin or existing alias accounts.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin Wallet", "issues": ["Cookie banner overlays lower-right area (known infrastructure caveat)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter241_wallet_restore_bugfix.py",
+    "/app/test_reports/pytest/iter241_wallet_restore_bugfix.xml",
+    "/app/test_reports/iter241_after_login.jpeg",
+    "/app/test_reports/iter241_admin_wallet_final.jpeg",
+    "/app/test_reports/iter241_albin_search.jpeg",
+    "/app/test_reports/iter241_afrim_search.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: restore_admin_balance_if_needed() correctly detects suspicious admin balances (2622000000, 63366525.91) and reconstructs from backup",
+    "server.py: restore_missing_legacy_wallet_users() correctly restores Albin and Afrim from LEGACY_WALLET_SNAPSHOT_USERS with proper metadata",
+    "server.py: _reconstruct_admin_balance_from_backup() uses backup/db_export/users.json as source of truth for admin balance",
+    "admin_wallet.py: _canonical_admin_balances() correctly fetches canonical admin balance and handles suspicious value detection",
+    "admin_management.py: Customer search correctly includes email_aliases in $or clause for alias-based search"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter241_wallet_restore_bugfix.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100% (Admin wallet displays correct balance, restored users visible with correct data)"
+  },
+  "test_credentials": {
+    "admin_account": "admin@bidblitz.ae / BidBlitz2026!",
+    "live_user": "agimk@me.com / Aldink56600",
+    "alias_login": "afrimk@me.com / Aldink56600"
+  },
+  "seed_data_creation": "Restored legacy users created by server.py startup: Albin Krasniqi (albinkrasniqi11@icloud.com) and Afrim Krasniqi (lufrollen.notepad_9o@icloud.com)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Wallet restore bug fix verified. Admin balance is now 8259.21 EUR (corrected from suspicious 2622000000). Restored legacy users Albin (60 EUR, 20 BLZ, registered 2026-05-02) and Afrim (25.20 EUR, 10 BLZ, registered 2026-05-01) are visible in admin wallet/customers with legacy_restored=true metadata. Alias search works for both users. No auth regression.",
+  "working_features": [
+    "Admin login (admin@bidblitz.ae) works correctly",
+    "Admin balance shows 8259.21 EUR (not suspicious 2622000000)",
+    "/api/auth/me returns correct admin balance",
+    "/api/admin/wallet/users returns correct admin balance",
+    "/api/admin/customers returns correct admin balance",
+    "Restored user Albin Krasniqi (albinkrasniqi11@icloud.com) visible with 60 EUR, 20 BLZ, 0 logins",
+    "Restored user Afrim Krasniqi (lufrollen.notepad_9o@icloud.com) visible with 25.20 EUR, 10 BLZ, 0 logins",
+    "Alias search for albinkrasniqi612@gmail.com finds canonical Albin record",
+    "Alias search for laufrollen.notepad_9o@icloud.com finds canonical Afrim record",
+    "Restored users have legacy_restored=true and legacy_restore_source metadata",
+    "Live user agimk@me.com login still works",
+    "Alias login afrimk@me.com still works and maps to canonical agimk@me.com",
+    "Admin wallet page displays correct balance (8.259,21 EUR)",
+    "Admin wallet search finds restored users with correct data"
+  ],
+  "verified_bug_fix": {
+    "original_issue": "User reported missing wallet customer records and wrong admin sum in wallet/admin views",
+    "root_cause": "1) Admin balance was hardcoded to suspicious value 2622000000 in seed. 2) Legacy wallet users Albin and Afrim were missing from database.",
+    "fix_applied": "1) restore_admin_balance_if_needed() reconstructs admin balance from backup export. 2) restore_missing_legacy_wallet_users() restores Albin and Afrim from screenshot-based snapshot data.",
+    "verification_result": "PASS - Admin balance corrected to 8259.21 EUR, both legacy users restored with correct balances and metadata"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-12T00:20:00Z",
+  "test_scope": "Wallet restore bug fix: admin balance consistency, restored legacy users, alias search, no auth regression"
+}
