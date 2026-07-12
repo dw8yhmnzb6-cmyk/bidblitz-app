@@ -1,0 +1,73 @@
+{
+  "summary": "Admin Legacy Restore Center Feature Verified - All backend APIs working, Frontend UI loads correctly with all features. Search for 'albin' correctly shows restored account and child-only backup signal separately. Preview endpoint correctly reports existing_user and restore_ready=false for already restored candidates. Active accounts (admin@bidblitz.ae, agimk@me.com) are NOT incorrectly listed as missing failed-login candidates. No regression on admin wallet main tabs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin Wallet", "issues": ["Cookie banner overlays lower-right area (known infrastructure caveat)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iter242_after_login.jpeg",
+    "/app/test_reports/iter242_admin_wallet.jpeg",
+    "/app/test_reports/iter242_legacy_restore_tab.jpeg",
+    "/app/test_reports/iter242_albin_search.jpeg",
+    "/app/test_reports/iter242_albin_detail.jpeg",
+    "/app/test_reports/iter242_albin_preview.jpeg",
+    "/app/test_reports/iter242_send_tab.jpeg",
+    "/app/test_reports/iter242_reconciliation_tab.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "admin_legacy_restore.py: KNOWN_RESTORE_SEEDS correctly defines Albin and Afrim with evidence from screenshots, audit logs, and backup",
+    "admin_legacy_restore.py: _build_failed_login_signals() correctly filters out existing active accounts from failed-login candidates",
+    "admin_legacy_restore.py: _seed_candidate_with_state() correctly detects existing_user and sets status='restored' for already restored candidates",
+    "admin_legacy_restore.py: _build_preview_payload() correctly returns restore_ready=false when existing_user is found",
+    "LegacyRestoreCenterTab.jsx: All data-testid attributes present for testing",
+    "AdminWalletPage.jsx: Legacy Restore tab correctly integrated as new tab"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (All 5 endpoints tested: overview, candidates/{key}, preview, history, admin wallet users)",
+    "frontend": "100% (Legacy Restore tab loads, search works, detail panel shows correct data, preview shows correct status)"
+  },
+  "test_credentials": {
+    "admin_account": "admin@bidblitz.ae / BidBlitz2026!"
+  },
+  "seed_data_creation": "None - using existing restored legacy users from previous iteration",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Legacy Restore Center feature verified. Tab accessible at /admin/wallet under 'Legacy Restore'. Search for 'albin' shows 2 candidates: 1) child-only backup signal (status=needs_review) and 2) restored Albin Krasniqi account (status=restored). Preview for already restored candidate correctly shows existing_user and restore_ready=false. Active accounts like admin@bidblitz.ae and agimk@me.com are NOT incorrectly listed as missing candidates.",
+  "working_features": [
+    "Admin login (admin@bidblitz.ae) works correctly",
+    "Admin can navigate to /admin/wallet and see Legacy Restore tab",
+    "Legacy Restore overview loads with summary cards (48 candidates, 39 missing, 7 needs_review, 2 restored)",
+    "Search for 'albin' shows 2 candidates: child-only signal and restored account",
+    "Restored Albin Krasniqi shows status=WIEDERHERGESTELLT with correct balance (60 EUR, 20 BLZ)",
+    "Child-only Albin shows status=REVIEW with 50 EUR balance",
+    "Detail panel shows evidence (Screenshot IMG_2827 98%, Login-Spur 82%, Kinderkonto-Spur 71%)",
+    "Preview for already restored candidate shows existing_user and restore_ready=false",
+    "Active accounts (admin@bidblitz.ae, agimk@me.com) NOT listed as missing candidates",
+    "Admin wallet main tabs (Senden/Abziehen, Reconciliation) still work",
+    "History endpoint returns empty list (no restore actions yet)"
+  ],
+  "verified_features": {
+    "legacy_restore_overview": "PASS - Returns 48 candidates with correct summary",
+    "legacy_restore_search": "PASS - Search for 'albin' returns 2 candidates (child-only + restored)",
+    "legacy_restore_candidate_detail": "PASS - Returns correct evidence and existing_user for restored candidate",
+    "legacy_restore_preview": "PASS - Returns restore_ready=false and existing_user for already restored candidate",
+    "legacy_restore_history": "PASS - Returns empty list (no actions yet)",
+    "active_account_filtering": "PASS - admin@bidblitz.ae and agimk@me.com NOT in candidates",
+    "admin_wallet_tabs_regression": "PASS - All main tabs still work"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-12T00:45:00Z",
+  "test_scope": "Admin Legacy Restore Center: overview, search, candidate detail, preview, history, active account filtering, no regression on main tabs"
+}

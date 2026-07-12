@@ -15,6 +15,7 @@ import {
   Loader2, Check, History, X, Shield, Send, Zap,
   AlertTriangle, ClipboardList, Eye, Lock, FileWarning,
 } from "lucide-react";
+import { LegacyRestoreCenterTab } from "../components/admin/LegacyRestoreCenterTab";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -903,6 +904,7 @@ const AdminWalletPage = ({ onBack }) => {
           { id: "self", label: "Self-Topup", icon: Zap },
           { id: "history", label: "Log", icon: History },
           { id: "reconciliation", label: "Reconciliation", icon: Shield },
+          { id: "legacy-restore", label: "Legacy Restore", icon: AlertTriangle },
         ].map((t) => (
           <motion.button
             key={t.id}
@@ -941,6 +943,11 @@ const AdminWalletPage = ({ onBack }) => {
           {tab === "reconciliation" && (
             <motion.div key="reconciliation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <ReconciliationTab />
+            </motion.div>
+          )}
+          {tab === "legacy-restore" && (
+            <motion.div key="legacy-restore" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <LegacyRestoreCenterTab />
             </motion.div>
           )}
         </AnimatePresence>
