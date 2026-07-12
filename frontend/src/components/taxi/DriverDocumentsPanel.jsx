@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, CalendarClock, ExternalLink, FileText, Loader2, Plus, Save, ShieldAlert, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, ExternalLink, FileImage, FileText, Loader2, Plus, Save, ShieldAlert, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
 const DOC_TYPES = [
@@ -15,6 +15,7 @@ const initialForm = {
   type: "license",
   expires_on: "",
   file_url: "",
+  file_media_id: "",
   note: "",
 };
 
@@ -32,6 +33,7 @@ export const DriverDocumentsPanel = ({ api, panelBg, panelBorder }) => {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(initialForm);
 
@@ -71,6 +73,33 @@ export const DriverDocumentsPanel = ({ api, panelBg, panelBorder }) => {
       toast.error(e.message);
     }
     setSaving(false);
+  };
+
+  const uploadPhoto = async (file) => {
+    if (!file) return;
+    const body = new FormData();
+    body.append("file", file);
+    body.append("type", form.type);
+    setUploading(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/taxi/driver/documents/upload`, {
+        method: "POST",
+        credentials: "include",
+        body,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "Foto-Upload fehlgeschlagen");
+      setForm((current) => ({
+        ...current,
+        file_url: data.file_url,
+        file_media_id: data.media_id,
+      }));
+      toast.success("Foto hochgeladen");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const remove = async (id) => {
@@ -136,9 +165,28 @@ export const DriverDocumentsPanel = ({ api, panelBg, panelBorder }) => {
             {DOC_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
           <input type="date" value={form.expires_on} onChange={(e) => setForm((s) => ({ ...s, expires_on: e.target.value }))} className="w-full px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-sm text-white [color-scheme:dark]" data-testid="driver-documents-expires-on" />
-          <input value={form.file_url} onChange={(e) => setForm((s) => ({ ...s, file_url: e.target.value }))} placeholder="Datei-URL (optional)" className="w-full px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-sm text-white" data-testid="driver-documents-file-url" />
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-3" data-testid="driver-documents-photo-upload-card">
+            <div className="flex flex-wrap items-center gap-2 justify-between">
+              <div>
+                <p className="text-[12px] font-bold text-white">Foto hochladen</p>
+                <p className="text-[11px] text-white/45">Kamera oder Galerie · JPG, PNG, WEBP, HEIC</p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#00C2FF]/15 border border-[#00C2FF]/25 px-3 py-2 text-[12px] font-bold text-[#00C2FF]" data-testid="driver-documents-upload-button">
+                {uploading ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={14} />}
+                Foto auswählen
+                <input type="file" accept="image/*" capture="environment" className="hidden" data-testid="driver-documents-file-input" onChange={(e) => uploadPhoto(e.target.files?.[0])} />
+              </label>
+            </div>
+            <input value={form.file_url} onChange={(e) => setForm((s) => ({ ...s, file_url: e.target.value }))} placeholder="Datei-URL (optional)" className="mt-3 w-full px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-sm text-white" data-testid="driver-documents-file-url" />
+            {form.file_url && (
+              <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3" data-testid="driver-documents-preview-card">
+                <p className="text-[11px] text-white/45 mb-2">Vorschau</p>
+                <img src={`${process.env.REACT_APP_BACKEND_URL}${form.file_url}`} alt="Dokument Vorschau" className="w-full max-h-56 object-contain rounded-xl bg-black/30" data-testid="driver-documents-preview-image" />
+              </div>
+            )}
+          </div>
           <textarea value={form.note} onChange={(e) => setForm((s) => ({ ...s, note: e.target.value }))} placeholder="Notiz" rows={3} className="w-full px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-sm text-white" data-testid="driver-documents-note" />
-          <button onClick={save} disabled={saving} className="w-full py-2.5 rounded-xl bg-[#00D26A] text-black text-[12px] font-black flex items-center justify-center gap-2 disabled:opacity-50" data-testid="driver-documents-save">
+          <button onClick={save} disabled={saving || uploading} className="w-full py-2.5 rounded-xl bg-[#00D26A] text-black text-[12px] font-black flex items-center justify-center gap-2 disabled:opacity-50" data-testid="driver-documents-save">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Speichern
           </button>
         </div>
@@ -157,7 +205,14 @@ export const DriverDocumentsPanel = ({ api, panelBg, panelBorder }) => {
               </div>
               <p className="text-[11px] text-white/55 mt-1">Ablauf: {doc.expires_on} · {doc.days_until_expiry ?? "?"} Tage</p>
               {doc.note && <p className="text-[11px] text-white/40 mt-1">{doc.note}</p>}
-              {doc.file_url && <a href={doc.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 mt-2 text-[11px] text-[#00C2FF]" data-testid={`driver-document-file-${doc.id}`}><ExternalLink size={11} /> Datei öffnen</a>}
+              {doc.file_url ? (
+                <div className="mt-2 space-y-2">
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-2" data-testid={`driver-document-preview-${doc.id}`}>
+                    <img src={`${process.env.REACT_APP_BACKEND_URL}${doc.file_url}`} alt={`${doc.type_label} Vorschau`} className="w-full max-h-40 object-contain rounded-lg bg-black/30" data-testid={`driver-document-preview-image-${doc.id}`} />
+                  </div>
+                  <a href={`${process.env.REACT_APP_BACKEND_URL}${doc.file_url}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-[#00C2FF]" data-testid={`driver-document-file-${doc.id}`}><ExternalLink size={11} /> Datei öffnen</a>
+                </div>
+              ) : <div className="inline-flex items-center gap-1 mt-2 text-[11px] text-white/35" data-testid={`driver-document-no-file-${doc.id}`}><FileImage size={11} /> Kein Foto hinterlegt</div>}
             </div>
             <button onClick={() => remove(doc.id)} className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 inline-flex items-center justify-center" data-testid={`driver-document-delete-${doc.id}`}>
               <Trash2 size={14} />

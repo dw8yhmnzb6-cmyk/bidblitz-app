@@ -17,24 +17,40 @@ Models:
     {grid_key (lat10*100+lng10), lat, lng, count, last_event_at}
 """
 from __future__ import annotations
+import asyncio
 import csv
 import io
 import math
+import os
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from uuid import uuid4
-from fastapi import APIRouter, HTTPException, Request, Response
+import requests
+from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 from core.database import db
 from core.security import get_current_user
 
 router = APIRouter(prefix="/api/taxi/driver", tags=["taxi-driver-pro"])
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+APP_STORAGE_PREFIX = "bidblitz/taxi-driver-documents"
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/heic": "heic",
+    "image/heif": "heif",
+}
+MAX_DOC_IMAGE_BYTES = 8 * 1024 * 1024
+storage_key = None
 
 
 class DocumentCreate(BaseModel):
     type: str = Field(..., pattern=r"^(tuev|license|p_schein|insurance|concession|other)$")
     expires_on: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     file_url: Optional[str] = None
+    file_media_id: Optional[str] = None
     note: Optional[str] = None
 
 
@@ -43,6 +59,72 @@ async def _driver(request: Request) -> dict:
     if user.get("role") not in ("driver", "operator", "admin"):
         raise HTTPException(403, "Nur Fahrer/Operator")
     return user
+
+
+def _init_storage_sync(force_refresh: bool = False) -> str:
+    global storage_key
+    if storage_key and not force_refresh:
+        return storage_key
+    emergent_key = os.getenv("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise RuntimeError("EMERGENT_LLM_KEY fehlt")
+    response = requests.post(
+        f"{STORAGE_URL}/init",
+        json={"emergent_key": emergent_key},
+        timeout=30,
+    )
+    response.raise_for_status()
+    storage_key = response.json()["storage_key"]
+    return storage_key
+
+
+def _put_object_sync(path: str, data: bytes, content_type: str) -> dict:
+    global storage_key
+    for attempt in range(2):
+        key = _init_storage_sync(force_refresh=attempt == 1)
+        response = requests.put(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key, "Content-Type": content_type},
+            data=data,
+            timeout=120,
+        )
+        if response.status_code == 403 and attempt == 0:
+            storage_key = None
+            continue
+        response.raise_for_status()
+        return response.json()
+    raise RuntimeError("Dokument konnte nicht hochgeladen werden")
+
+
+def _get_object_sync(path: str) -> tuple[bytes, str]:
+    global storage_key
+    for attempt in range(2):
+        key = _init_storage_sync(force_refresh=attempt == 1)
+        response = requests.get(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key},
+            timeout=60,
+        )
+        if response.status_code == 403 and attempt == 0:
+            storage_key = None
+            continue
+        response.raise_for_status()
+        return response.content, response.headers.get("Content-Type", "application/octet-stream")
+    raise RuntimeError("Dokument konnte nicht geladen werden")
+
+
+def _resolve_image_extension(filename: Optional[str], content_type: str) -> str:
+    if content_type in ALLOWED_IMAGE_TYPES:
+        return ALLOWED_IMAGE_TYPES[content_type]
+    if filename and "." in filename:
+        return filename.rsplit(".", 1)[-1].lower()
+    return "jpg"
+
+
+def _document_stream_url(media_id: Optional[str]) -> Optional[str]:
+    if not media_id:
+        return None
+    return f"/api/taxi/driver/documents/file/{media_id}"
 
 
 REQUIRED_DRIVER_DOCUMENTS = {
@@ -84,6 +166,8 @@ def _annotate_document(doc: dict) -> dict:
     out["days_until_expiry"] = days_until_expiry
     out["alert_level"] = _document_alert_level(days_until_expiry)
     out["type_label"] = DOCUMENT_LABELS.get(out.get("type"), out.get("type", "Dokument"))
+    if out.get("file_media_id") and not out.get("file_url"):
+        out["file_url"] = _document_stream_url(out.get("file_media_id"))
     if days_until_expiry is not None and days_until_expiry < 0:
         out["status"] = "expired"
     return out
@@ -137,6 +221,7 @@ async def add_document(payload: DocumentCreate, request: Request):
         "type": payload.type,
         "expires_on": payload.expires_on,
         "file_url": payload.file_url,
+        "file_media_id": payload.file_media_id,
         "note": payload.note,
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
         "status": "active",
@@ -144,6 +229,51 @@ async def add_document(payload: DocumentCreate, request: Request):
     await db.taxi_driver_documents.insert_one(doc)
     doc.pop("_id", None)
     return {"success": True, "document": _annotate_document(doc)}
+
+
+@router.post("/documents/upload")
+async def upload_document_file(request: Request, file: UploadFile = File(...), type: str = Form(...)):
+    user = await _driver(request)
+    if type not in DOCUMENT_LABELS:
+        raise HTTPException(400, "Ungültiger Dokumenttyp")
+    content_type = (file.content_type or "").lower()
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(400, "Nur JPG, PNG, WEBP oder HEIC Bilder sind erlaubt")
+    raw = await file.read()
+    if len(raw) < 64:
+        raise HTTPException(400, "Datei leer oder zu klein")
+    if len(raw) > MAX_DOC_IMAGE_BYTES:
+        raise HTTPException(400, "Bild zu groß (max 8MB)")
+
+    driver_id = str(user.get("_id") or user.get("id"))
+    ext = _resolve_image_extension(file.filename, content_type)
+    media_id = f"TDDOC-{uuid4().hex[:16].upper()}"
+    path = f"{APP_STORAGE_PREFIX}/{driver_id}/{media_id}.{ext}"
+    try:
+        result = await asyncio.to_thread(_put_object_sync, path, raw, content_type)
+    except Exception as exc:
+        raise HTTPException(502, f"Dokument-Upload fehlgeschlagen: {str(exc)[:200]}") from exc
+
+    media = {
+        "media_id": media_id,
+        "driver_id": driver_id,
+        "type": type,
+        "storage_path": result["path"],
+        "content_type": content_type,
+        "size": result.get("size", len(raw)),
+        "original_filename": file.filename or f"document.{ext}",
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "deleted": False,
+    }
+    await db.taxi_driver_document_media.insert_one(media)
+    return {
+        "success": True,
+        "media_id": media_id,
+        "file_url": _document_stream_url(media_id),
+        "content_type": content_type,
+        "size": media["size"],
+        "original_filename": media["original_filename"],
+    }
 
 
 @router.get("/documents")
@@ -154,6 +284,23 @@ async def list_documents(request: Request):
     items = [_annotate_document(d) async for d in cursor]
     items.sort(key=lambda x: x.get("days_until_expiry") if x.get("days_until_expiry") is not None else 9999)
     return {"items": items}
+
+
+@router.get("/documents/file/{media_id}")
+async def stream_document_file(media_id: str, request: Request):
+    user = await _driver(request)
+    driver_id = str(user.get("_id") or user.get("id"))
+    media = await db.taxi_driver_document_media.find_one(
+        {"media_id": media_id, "driver_id": driver_id, "deleted": {"$ne": True}},
+        {"_id": 0},
+    )
+    if not media:
+        raise HTTPException(404, "Dokumentdatei nicht gefunden")
+    try:
+        blob, content_type = await asyncio.to_thread(_get_object_sync, media["storage_path"])
+    except Exception as exc:
+        raise HTTPException(502, f"Dokumentdatei konnte nicht geladen werden: {str(exc)[:200]}") from exc
+    return Response(content=blob, media_type=media.get("content_type") or content_type)
 
 
 @router.get("/documents/summary")
@@ -191,7 +338,13 @@ async def documents_summary(request: Request):
 async def delete_document(did: str, request: Request):
     user = await _driver(request)
     driver_id = str(user.get("_id") or user.get("id"))
+    existing = await db.taxi_driver_documents.find_one({"id": did, "driver_id": driver_id}, {"_id": 0, "file_media_id": 1})
     await db.taxi_driver_documents.delete_one({"id": did, "driver_id": driver_id})
+    if existing and existing.get("file_media_id"):
+        await db.taxi_driver_document_media.update_one(
+            {"media_id": existing["file_media_id"], "driver_id": driver_id},
+            {"$set": {"deleted": True, "deleted_at": datetime.now(timezone.utc).isoformat()}},
+        )
     return {"success": True}
 
 
