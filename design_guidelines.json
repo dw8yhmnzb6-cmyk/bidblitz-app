@@ -1,133 +1,117 @@
 {
-  "project_context": {
-    "domain": "Taxi & Mobility Booking",
-    "app_type": "mobile_web_app",
-    "design_goal": "A completely simplified, frictionless booking flow replacing complex legacy systems. Focus on minimal taps and maximum visual clarity."
-  },
-  "theme_and_archetype": {
-    "theme": "LIGHT",
-    "archetype": "4 (Swiss & High-Contrast)",
-    "rationale": "For a mobile mobility app, clarity and speed are paramount. We avoid muddy gradients and rely on stark contrast (Pitch Black on Pure White) with a high-visibility accent (Cyber Yellow) to drive action instantly."
-  },
-  "global_styles": {
-    "typography": {
-      "strategy": "The Anti-Default. No Inter. We use a wide, bold geometric sans for headings to create an authoritative, modern feel, paired with a highly legible technical sans for body.",
-      "heading_font": "Outfit, sans-serif",
-      "body_font": "IBM Plex Sans, sans-serif",
-      "scales": {
-        "h1": "text-4xl font-black tracking-tight leading-none",
-        "h2": "text-2xl font-bold tracking-tight",
-        "body_large": "text-lg font-medium leading-relaxed",
-        "body_standard": "text-base leading-relaxed",
-        "label_micro": "text-xs font-bold uppercase tracking-[0.2em]"
-      }
-    },
-    "colors": {
-      "base": {
-        "background_map": "#E5E5E5",
-        "surface": "#FFFFFF",
-        "surface_elevated": "#F4F4F5"
-      },
-      "text": {
-        "primary": "#0A0A0A",
-        "secondary": "#52525B",
-        "placeholder": "#A1A1AA"
-      },
-      "brand": {
-        "accent": "#FFD600",
-        "accent_hover": "#FACC15",
-        "success": "#000000",
-        "border": "#E4E4E7"
-      }
-    },
-    "spacing": {
-      "philosophy": "Generous touch targets (min 48px) and optical alignment. Dense grouping for related data, massive gaps between distinct sections.",
-      "padding": {
-        "screen": "p-4 sm:p-6",
-        "card_internal": "p-4",
-        "button": "py-4 px-6"
-      },
-      "radius": {
-        "sheet": "rounded-t-[32px]",
-        "card": "rounded-2xl",
-        "button": "rounded-full",
-        "input": "rounded-xl"
-      }
+  "theme": "dark",
+  "language": "German",
+  "typography": {
+    "fonts_to_install": ["@fontsource/cabinet-grotesk", "@fontsource/manrope"],
+    "headings": "Cabinet Grotesk",
+    "body": "Manrope",
+    "hierarchy": {
+      "H1": "text-4xl sm:text-5xl tracking-tighter font-black",
+      "H2": "text-2xl sm:text-3xl tracking-tight font-bold",
+      "body": "text-base leading-relaxed text-gray-200",
+      "labels": "text-xs tracking-[0.2em] uppercase font-bold text-gray-400"
     }
   },
-  "layout_strategy": {
-    "architecture": "Mobile-First 'Viewport + Drawer' pattern.",
-    "layers": [
-      "Layer 1: Edge-to-edge Map view (Canvas).",
-      "Layer 2: Draggable Bottom Sheet (Drawer) containing the UI flow.",
-      "Layer 3: Sticky bottom safe-area container for the main CTA."
+  "colors": {
+    "archetype": "ARCHETYPE 5: LUXURY (Premium, Depth, Mystery)",
+    "background": "Deep Obsidian (#0A0A0A)",
+    "surface": "Midnight Blue / Slate (#12151C)",
+    "primary": "Terracotta (#E07A5F) for primary actions",
+    "secondary": "Soft Sage (#81B29A) for online status and verified badges",
+    "text": "Bone White (#F5F5F0)"
+  },
+  "visual_enhancers": {
+    "surfaces": "Use glassmorphism (backdrop-blur-xl bg-black/60 border-t border-white/10) for bottom navigation and overlays. Never use muddy gray transparency. CRITICAL: DO NOT use complete `transparent` background in header.",
+    "monetization": "Use THE TRACING BEAM effect for Premium/Top Picks entry points. No blocky static banners.",
+    "shadows": "Subtle, diffuse ambient shadows for floating buttons."
+  },
+  "grids_and_layouts": {
+    "dating_page": {
+      "concept": "Fullscreen Immersive Swipe Interface. Solves 'too much at once' by focusing on ONE profile.",
+      "card_container": "h-[80vh] md:h-[85vh] w-full max-w-md mx-auto relative rounded-[32px] overflow-hidden shadow-2xl",
+      "image_treatment": "object-cover full width and height. Overlays MUST be limited to a bottom gradient (bg-gradient-to-t from-black/90 via-black/40 to-transparent) to preserve photo visibility.",
+      "controls": "Floating glassmorphism action bar at bottom with large pill-shaped/circular buttons."
+    }
+  },
+  "motion": {
+    "interactions": "Use framer-motion for smooth swipe gestures (drag='x').",
+    "transitions": "transition-transform duration-300 ease-out, transition-opacity duration-200. NO transition-all."
+  },
+  "accessibility": {
+    "contrast": "Ensure text over images has sufficient contrast via strong bottom gradients and text-shadow.",
+    "testing": "All interactive elements MUST have data-testid attributes.",
+    "motion": "Respect prefers-reduced-motion for swipe animations."
+  },
+  "media_and_images": {
+    "women": [
+      {
+        "url": "https://images.unsplash.com/photo-1762341519283-10d1c899368b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwyfHxhdHRyYWN0aXZlJTIweW91bmclMjB3b21hbiUyMHBvcnRyYWl0JTIwc21pbGluZyUyMG91dGRvb3JzfGVufDB8fHx8MTc4Mzg0NTM1OHww&ixlib=rb-4.1.0&q=85",
+        "description": "Primary profile photo - Woman"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1762341531803-346fe8132e05?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzV8MHwxfHNlYXJjaHwxfHxhdHRyYWN0aXZlJTIweW91bmclMjB3b21hbiUyMHBvcnRyYWl0JTIwc21pbGluZyUyMG91dGRvb3JzfGVufDB8fHx8MTc4Mzg0NTM1OHww&ixlib=rb-4.1.0&q=85",
+        "description": "Secondary profile photo - Woman"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1595380785068-8608441faa8e?crop=entropy&cs=srgb&fm=jpg",
+        "description": "Lifestyle photo - Woman laughing"
+      }
     ],
-    "grid_system": "Bento-style for vehicle selection. grid-cols-2 with the primary vehicle taking full width, alternatives below."
+    "men": [
+      {
+        "url": "https://images.unsplash.com/photo-1450133064473-71024230f91b",
+        "description": "Primary profile photo - Man"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1503443207922-dff7d543fd0e",
+        "description": "Secondary profile photo - Man"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1762191850768-91dee67f6f25?crop=entropy&cs=srgb&fm=jpg",
+        "description": "Lifestyle photo - Man outdoors"
+      }
+    ],
+    "groups": [
+      {
+        "url": "https://images.unsplash.com/photo-1758272134177-b3abae858214?crop=entropy&cs=srgb&fm=jpg",
+        "description": "Group photo for Discovery/Top Picks preview"
+      }
+    ]
   },
-  "component_guidelines": {
-    "Map_View": {
-      "description": "Full viewport height (h-dvh) background map.",
-      "styling": "absolute inset-0 z-0 bg-zinc-200. Use a minimalist map style to avoid visual noise."
+  "libraries": {
+    "3d_libraries": ["framer-motion", "lucide-react", "sonner"]
+  },
+  "component_instructions": {
+    "DatingApp": {
+      "path": "/app/frontend/src/components/dating/DatingApp.js",
+      "instruction": "Root component holding the layout, bottom nav, and conditional rendering for Discover, Matches, etc. Use German UI text (Entdecken, Matches, Nachrichten)."
     },
-    "Bottom_Sheet_Drawer": {
-      "description": "The command center. Houses all inputs and selections.",
-      "styling": "absolute bottom-0 w-full bg-white rounded-t-[32px] shadow-[0_-8px_40px_rgba(0,0,0,0.08)] z-10 transition-all duration-300",
-      "data_testid": "bottom-sheet-container"
+    "SwipeCard": {
+      "path": "/app/frontend/src/components/dating/SwipeCard.js",
+      "instruction": "Massive full-screen card representing a single profile. Addresses the 'no photos' feedback by making the image cover 100% of the card area. Do not use generic Shadcn cards here; use raw divs for maximum visual control."
     },
-    "Location_Timeline_Input": {
-      "description": "Replaces standard box inputs with a vertical 'timeline' layout to save vertical space.",
-      "styling": "Flex column with a left-side visual connector (black dot -> grey line -> black square). Two rows of text: 'Current Location' and a subtle 'Where to?' trigger.",
-      "interaction": "Tapping 'Where to?' expands the sheet and focuses a real input field.",
-      "data_testid": "location-timeline-trigger"
+    "MatchActionButtons": {
+      "path": "/app/frontend/src/components/dating/MatchActionButtons.js",
+      "instruction": "Floating overlay situated directly below or bottom-integrated with the swipe card. Must include distinct buttons for Pass, Super Like, and Like."
     },
-    "Quick_Destinations_Row": {
-      "description": "Horizontal scrolling row (Schnellziele) right below the location input.",
-      "styling": "flex gap-3 overflow-x-auto no-scrollbar py-2",
-      "item_styling": "flex items-center gap-2 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-full whitespace-nowrap text-sm font-semibold transition-colors",
-      "data_testid": "quick-destinations-scroll"
-    },
-    "Address_Search_Expanded": {
-      "description": "The view when searching for an address.",
-      "styling": "Large, bold text input without visible borders (border-b-2 focus:border-black). List of autocomplete results below with 'MapPin' icons.",
-      "data_testid": "address-search-input"
-    },
-    "Vehicle_Selection_List": {
-      "description": "Horizontal swiper or Bento grid for cars.",
-      "styling": "flex gap-4 overflow-x-auto pb-4",
-      "card_active": "border-2 border-black bg-white shadow-md p-4 rounded-2xl w-[140px] flex-shrink-0 relative",
-      "card_inactive": "border border-zinc-200 bg-zinc-50 p-4 rounded-2xl w-[140px] flex-shrink-0 opacity-70 transition-opacity hover:opacity-100",
-      "data_testid": "vehicle-selector-list"
-    },
-    "Booking_CTA": {
-      "description": "The primary action. Massive and undeniable.",
-      "styling": "w-full bg-[#FFD600] text-black font-black text-lg h-14 rounded-full flex items-center justify-center shadow-lg shadow-[#FFD600]/20 mt-4 mb-safe",
-      "data_testid": "book-ride-button"
-    },
-    "Booking_Status_View": {
-      "description": "Post-booking confirmation replacing the booking form.",
-      "styling": "Flex col, centered. Huge ETA (e.g., '3 min'). Driver avatar, Vehicle license plate in a stark black badge. Ghost button for 'Cancel'.",
-      "data_testid": "booking-status-view"
+    "PremiumTeaser": {
+      "path": "/app/frontend/src/components/dating/PremiumTeaser.js",
+      "instruction": "Replaces blocky monetization banners. Implement as a glowing, glassmorphic 'Likes You' bubble at the top of the Discover feed, keeping monetization contextual and elegant."
     }
   },
-  "motion_and_interaction": {
-    "sheet_snap": "Use Framer Motion spring physics (stiffness 300, damping 30) for drawer snapping.",
-    "button_press": "Scale down to 0.97 on tap (`active:scale-[0.97]`).",
-    "skeleton_loading": "Use pulse animation (bg-zinc-200) for ETA and price before fully loaded."
-  },
-  "icons_and_media": {
-    "library": "@phosphor-icons/react",
-    "style": "Weight: Bold or Duotone for contrast.",
-    "urls": {
-      "map_placeholder_bg": "https://images.unsplash.com/photo-1754299375507-72f63a9a065e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MDV8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwY2l0eSUyMHN0cmVldCUyMG1hcCUyMHBhdHRlcm58ZW58MHx8fHwxNzgzNTAyMDQ2fDA&ixlib=rb-4.1.0&q=85",
-      "vehicle_premium": "https://images.unsplash.com/photo-1699159906437-56451f9bb99d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHxibGFjayUyMGx1eHVyeSUyMHN1diUyMGNhciUyMGlzb2xhdGVkfGVufDB8fHx8MTc4MzUwMjA0Nnww&ixlib=rb-4.1.0&q=85"
-    }
-  },
-  "instructions_to_main_agent": [
-    "Strictly use React (.js) and Tailwind CSS.",
-    "Do NOT use HTML `<input>` directly for the main interaction; trigger a Shadcn UI Drawer that opens to 90% height for address entry.",
-    "Apply 'pb-safe' or equivalent margin to account for mobile safe areas on the Booking CTA.",
-    "The vehicle cards must visually swap styles dynamically based on the selected state (black borders vs grey borders).",
-    "Ensure all components map to the exact `data-testid` specified above.",
-    "Map background should be absolute, with the Drawer overlaid on top using z-index."
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Write components in .js files (React + Tailwind). Do NOT use .tsx.",
+    "Do NOT apply global `transition: all`. Use specific transitions.",
+    "Do NOT use center alignment on the app container.",
+    "MUST use `data-testid` on all interactive elements.",
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "Never use AI assistant Emoji characters like robot or brain etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead.",
+    "Ensure UI labels are in German per user request ('da sieht so viel auf einmal...').",
+    "Dating Card images must be massive, taking up max available viewport space to address 'no photos' feedback.",
+    "Hide monetization behind contextual elements like glowing 'Likes You' borders, rather than intrusive static banners.",
+    "CRITICAL: DO NOT use complete `transparent` background in header, overlays, any surface that has content under it. Example: Dropdown with transparent background."
   ]
 }
