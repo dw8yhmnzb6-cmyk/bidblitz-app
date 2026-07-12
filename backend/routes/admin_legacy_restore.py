@@ -174,6 +174,21 @@ class BulkRestoreConfirmRequest(BulkRestorePreviewRequest):
     admin_password: str = Field(..., min_length=1)
 
 
+class ChildToUserPreviewRequest(BaseModel):
+    candidate_key: str = Field(..., min_length=1)
+    primary_email: str = Field(..., min_length=3)
+    display_name: str | None = None
+    alias_emails: list[str] = Field(default_factory=list)
+    balance_eur: float | None = None
+    balance_blz: float | None = None
+    registered_at: str | None = None
+    source_note: str | None = None
+
+
+class ChildToUserConfirmRequest(ChildToUserPreviewRequest):
+    admin_password: str = Field(..., min_length=1)
+
+
 def _safe_float(value: Any, fallback: float = 0.0) -> float:
     try:
         return float(value or 0)
@@ -701,6 +716,55 @@ async def _build_preview_payload(payload: RestorePreviewRequest) -> dict:
     }
 
 
+async def _build_child_to_user_preview(payload: ChildToUserPreviewRequest) -> dict:
+    rows, _summary = await _build_candidates("", "all")
+    candidate = next((row for row in rows if row.get("candidate_key") == payload.candidate_key), None)
+    if not candidate:
+        raise HTTPException(404, "Child-/Review-Kandidat nicht gefunden.")
+
+    primary_email = _normalize_email(payload.primary_email)
+    alias_emails = []
+    for alias in payload.alias_emails or []:
+        normalized = _normalize_email(alias)
+        if normalized and normalized != primary_email and normalized not in alias_emails:
+            alias_emails.append(normalized)
+    display_name = (payload.display_name or candidate.get("display_name") or "").strip()
+    registered_at = payload.registered_at or candidate.get("registered_at") or datetime.now(timezone.utc).isoformat()
+    balance_eur = round(_safe_float(payload.balance_eur if payload.balance_eur is not None else candidate.get("balance_eur")), 2)
+    balance_blz = round(_safe_float(payload.balance_blz if payload.balance_blz is not None else candidate.get("balance_blz")), 2)
+    existing = await _find_existing_user_for_candidate(primary_email, alias_emails)
+    missing_fields = []
+    if not primary_email:
+        missing_fields.append("primary_email")
+    if not display_name:
+        missing_fields.append("display_name")
+
+    can_restore = bool(candidate.get("candidate_category") == "possible_real_customer" and not missing_fields and existing is None)
+    return {
+        "candidate_key": payload.candidate_key,
+        "primary_email": primary_email,
+        "canonical_email": primary_email,
+        "alias_emails": alias_emails,
+        "display_name": display_name,
+        "balance_eur": balance_eur,
+        "balance_blz": balance_blz,
+        "registered_at": registered_at,
+        "existing_user": {
+            "user_id": str(existing.get("_id")),
+            "email": existing.get("email", ""),
+            "name": existing.get("name", ""),
+            "legacy_restored": bool(existing.get("legacy_restored")),
+        } if existing else None,
+        "restore_ready": can_restore,
+        "missing_fields": missing_fields,
+        "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+        "source_note": payload.source_note or f"child_to_user:{payload.candidate_key}",
+        "child_signal_count": int(candidate.get("child_signal_count") or 0),
+        "candidate_category": candidate.get("candidate_category"),
+        "category_reason": candidate.get("category_reason"),
+    }
+
+
 async def _create_restored_user(preview: dict):
     now = datetime.now(timezone.utc).isoformat()
     user_doc = {
@@ -923,4 +987,71 @@ async def legacy_restore_review_enrichment(request: Request):
             "last_scan_at": datetime.now(timezone.utc).isoformat(),
         },
         "candidates": enriched,
+    }
+
+
+@router.post("/child-to-user/preview")
+async def child_to_user_preview(req: ChildToUserPreviewRequest, request: Request):
+    await _require_admin(request)
+    preview = await _build_child_to_user_preview(req)
+    return {
+        "preview": preview,
+        "message": "Child→User Vorschau erstellt." if preview.get("restore_ready") else "Weitere Angaben erforderlich oder Kandidat noch nicht stark genug.",
+    }
+
+
+@router.post("/child-to-user/confirm")
+async def child_to_user_confirm(req: ChildToUserConfirmRequest, request: Request):
+    admin = await _require_admin(request)
+    await _verify_admin_password(admin, req.admin_password)
+    preview = await _build_child_to_user_preview(req)
+    if preview.get("existing_user"):
+        raise HTTPException(409, "Für diese E-Mail existiert bereits ein aktiver User-Datensatz.")
+    if not preview.get("restore_ready"):
+        raise HTTPException(400, f"Child→User Restore noch nicht möglich. Fehlende Felder: {', '.join(preview.get('missing_fields') or [])}")
+
+    user_id, user_doc = await _create_restored_user(preview)
+    created_at = datetime.now(timezone.utc).isoformat()
+    action = {
+        "candidate_key": req.candidate_key,
+        "action_type": "child_to_user_restore",
+        "status": "completed",
+        "created_at": created_at,
+        "approved_by": admin.get("email", ""),
+        "restored_user_id": user_id,
+        "restored_email": user_doc["email"],
+        "restored_aliases": user_doc.get("email_aliases") or [],
+        "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+        "source_note": preview.get("source_note") or req.candidate_key,
+        "child_signal_count": preview.get("child_signal_count", 0),
+    }
+    await _record_restore_action(action)
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={
+            "action": "child_to_user_confirmed",
+            "candidate_key": req.candidate_key,
+            "restored_user_id": user_id,
+            "restored_email": user_doc["email"],
+            "child_signal_count": preview.get("child_signal_count", 0),
+        },
+        severity="warn",
+    )
+    return {
+        "ok": True,
+        "restored_user": {
+            "user_id": user_id,
+            "email": user_doc["email"],
+            "name": user_doc["name"],
+            "balance": user_doc["balance"],
+            "balance_blz": user_doc["balance_blz"],
+            "registered_at": user_doc["registered_at"],
+            "legacy_restored": True,
+        },
+        "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
     }

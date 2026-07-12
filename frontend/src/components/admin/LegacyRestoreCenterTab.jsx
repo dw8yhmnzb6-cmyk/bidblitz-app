@@ -57,6 +57,17 @@ export const LegacyRestoreCenterTab = () => {
   const [bulkPreview, setBulkPreview] = useState(null);
   const [bulkPassword, setBulkPassword] = useState("");
   const [reviewEnrichment, setReviewEnrichment] = useState(null);
+  const [childRestoreForm, setChildRestoreForm] = useState({
+    primary_email: "",
+    display_name: "",
+    alias_emails: "",
+    balance_eur: "0",
+    balance_blz: "0",
+    registered_at: "",
+    source_note: "",
+    admin_password: "",
+  });
+  const [childRestorePreview, setChildRestorePreview] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async (q = "") => {
@@ -96,6 +107,17 @@ export const LegacyRestoreCenterTab = () => {
       });
       setPreview(null);
       setBulkPreview(null);
+      setChildRestorePreview(null);
+      setChildRestoreForm({
+        primary_email: "",
+        display_name: candidate?.display_name || "",
+        alias_emails: "",
+        balance_eur: String(candidate?.balance_eur ?? 0),
+        balance_blz: String(candidate?.balance_blz ?? 0),
+        registered_at: candidate?.registered_at || "",
+        source_note: `child_to_user:${candidate?.candidate_key || ""}`,
+        admin_password: "",
+      });
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -228,6 +250,65 @@ export const LegacyRestoreCenterTab = () => {
       const response = await api("/api/admin/legacy-restore/review-enrichment", { method: "POST" });
       setReviewEnrichment(response);
       toast.success(`Review-Fälle angereichert: ${response.summary?.enriched_review_candidates || 0}`);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateChildRestoreForm = (field, value) => setChildRestoreForm((current) => ({ ...current, [field]: value }));
+
+  const previewChildRestore = async () => {
+    if (!selectedKey) return toast.error("Bitte zuerst einen Review-Kandidaten auswählen.");
+    setBusy(true);
+    try {
+      const response = await api("/api/admin/legacy-restore/child-to-user/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          candidate_key: selectedKey,
+          primary_email: childRestoreForm.primary_email,
+          display_name: childRestoreForm.display_name,
+          alias_emails: childRestoreForm.alias_emails.split(",").map((item) => item.trim()).filter(Boolean),
+          balance_eur: Number(childRestoreForm.balance_eur || 0),
+          balance_blz: Number(childRestoreForm.balance_blz || 0),
+          registered_at: childRestoreForm.registered_at || null,
+          source_note: childRestoreForm.source_note || null,
+        }),
+      });
+      setChildRestorePreview(response.preview || null);
+      toast.success(response.message || "Child→User Vorschau erstellt.");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmChildRestore = async () => {
+    if (!childRestorePreview?.restore_ready) return toast.error("Child→User Restore ist noch nicht freigegeben.");
+    if (!childRestoreForm.admin_password.trim()) return toast.error("Admin-Passwort erforderlich.");
+    setBusy(true);
+    try {
+      const response = await api("/api/admin/legacy-restore/child-to-user/confirm", {
+        method: "POST",
+        body: JSON.stringify({
+          candidate_key: selectedKey,
+          primary_email: childRestoreForm.primary_email,
+          display_name: childRestoreForm.display_name,
+          alias_emails: childRestoreForm.alias_emails.split(",").map((item) => item.trim()).filter(Boolean),
+          balance_eur: Number(childRestoreForm.balance_eur || 0),
+          balance_blz: Number(childRestoreForm.balance_blz || 0),
+          registered_at: childRestoreForm.registered_at || null,
+          source_note: childRestoreForm.source_note || null,
+          admin_password: childRestoreForm.admin_password,
+        }),
+      });
+      toast.success(`Child→User Restore abgeschlossen. Temporäres Passwort: ${response.temporary_password}`);
+      setChildRestoreForm((current) => ({ ...current, admin_password: "" }));
+      setChildRestorePreview(null);
+      await load(query);
+      await loadDetail(selectedKey);
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -520,6 +601,36 @@ export const LegacyRestoreCenterTab = () => {
                     </div>
                   ) : null}
                 </div>
+
+                {detail?.candidate_category === "possible_real_customer" && !detail?.existing_user ? (
+                  <div className="mt-4 rounded-2xl border border-sky-400/15 bg-sky-400/5 p-4" data-testid="legacy-child-to-user-card">
+                    <div className="flex items-center gap-2"><Sparkles size={14} className="text-sky-300" /><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">Child → User Assistent</p></div>
+                    <p className="mt-2 text-[11px] text-white/75">Nutze die starke Child-Spur, ergänze eine Login-E-Mail und lege daraus einen echten Nutzer an.</p>
+                    <div className="mt-3 grid gap-2 md:grid-cols-2">
+                      <input data-testid="legacy-child-email-input" value={childRestoreForm.primary_email} onChange={(event) => updateChildRestoreForm("primary_email", event.target.value)} placeholder="Neue Login-E-Mail" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                      <input data-testid="legacy-child-name-input" value={childRestoreForm.display_name} onChange={(event) => updateChildRestoreForm("display_name", event.target.value)} placeholder="Name" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                      <input data-testid="legacy-child-aliases-input" value={childRestoreForm.alias_emails} onChange={(event) => updateChildRestoreForm("alias_emails", event.target.value)} placeholder="Alias-E-Mails, kommasepariert" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                      <input data-testid="legacy-child-registered-input" value={childRestoreForm.registered_at} onChange={(event) => updateChildRestoreForm("registered_at", event.target.value)} placeholder="Registriert am ISO" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                      <input data-testid="legacy-child-balance-eur-input" value={childRestoreForm.balance_eur} onChange={(event) => updateChildRestoreForm("balance_eur", event.target.value)} placeholder="EUR-Saldo" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                      <input data-testid="legacy-child-balance-blz-input" value={childRestoreForm.balance_blz} onChange={(event) => updateChildRestoreForm("balance_blz", event.target.value)} placeholder="BLZ-Saldo" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                    </div>
+                    <input data-testid="legacy-child-source-note-input" value={childRestoreForm.source_note} onChange={(event) => updateChildRestoreForm("source_note", event.target.value)} placeholder="Restore-Notiz" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button data-testid="legacy-child-preview-button" onClick={previewChildRestore} disabled={busy} className="rounded-xl bg-sky-300 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{busy ? "Prüft…" : "Child→User Vorschau"}</button>
+                    </div>
+                    {childRestorePreview ? (
+                      <div className="mt-3 rounded-2xl border border-sky-400/15 bg-black/20 p-4" data-testid="legacy-child-preview-card">
+                        <p className="text-[11px] text-white/80">{childRestorePreview.restore_ready ? `Restore bereit · ${childRestorePreview.child_signal_count} Zusatzspuren` : `Noch nicht freigegeben · ${childRestorePreview.category_reason}`}</p>
+                        <div className="mt-3 grid gap-2 md:grid-cols-2 text-[11px] text-white/75">
+                          <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3" data-testid="legacy-child-preview-email">E-Mail: <span className="font-semibold text-white">{childRestorePreview.primary_email || "—"}</span></div>
+                          <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3" data-testid="legacy-child-preview-password">Temp Passwort: <span className="font-semibold text-white">{childRestorePreview.temporary_password}</span></div>
+                        </div>
+                        <input data-testid="legacy-child-confirm-password-input" type="password" value={childRestoreForm.admin_password} onChange={(event) => updateChildRestoreForm("admin_password", event.target.value)} placeholder="Admin Passwort zur Freigabe" className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white outline-none" />
+                        <button data-testid="legacy-child-confirm-button" onClick={confirmChildRestore} disabled={!childRestorePreview.restore_ready || busy} className="mt-3 w-full rounded-xl bg-emerald-400 px-3 py-2 text-[11px] font-bold text-black disabled:opacity-40">{busy ? "Legt User an…" : "Child→User bestätigen"}</button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </>
             ) : null}
           </div>

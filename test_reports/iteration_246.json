@@ -1,0 +1,74 @@
+{
+  "summary": "Child→User Preview feature fully verified. All 14 backend tests pass. Frontend UI shows Child→User Assistent panel for possible_real_customer candidates with all required elements: email input, name input, preview button, preview card with restore_ready status, and confirm button. API returns expected values: Anuar and Emma previews return restore_ready=true with new emails; Albin preview with existing alias returns restore_ready=false with existing_user set. No regression in existing features (review enrichment, filters, bulk restore, history).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Legacy Restore Center", "issues": ["Cookie banner overlays lower-right area (known infrastructure caveat, does not block functionality)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter246_child_to_user_preview.py",
+    "/app/test_reports/pytest/iter246_child_to_user_preview.xml",
+    "/app/test_reports/iter246_legacy_restore_ui.jpeg",
+    "/app/test_reports/iter246_child_to_user_visible.jpeg",
+    "/app/test_reports/iter246_child_preview_albin.jpeg",
+    "/app/test_reports/iter246_child_preview_anuar.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "admin_legacy_restore.py: ChildToUserPreviewRequest and ChildToUserConfirmRequest models correctly defined with required primary_email field",
+    "admin_legacy_restore.py: _build_child_to_user_preview() correctly validates candidate_category='possible_real_customer' before allowing restore",
+    "admin_legacy_restore.py: POST /child-to-user/preview correctly checks for existing user collision via _find_existing_user_for_candidate()",
+    "admin_legacy_restore.py: POST /child-to-user/confirm correctly creates restored user with audit logging",
+    "LegacyRestoreCenterTab.jsx: Child→User Assistent panel with data-testid='legacy-child-to-user-card' conditionally rendered for possible_real_customer candidates",
+    "LegacyRestoreCenterTab.jsx: previewChildRestore() and confirmChildRestore() functions correctly call API endpoints",
+    "LegacyRestoreCenterTab.jsx: Preview card shows restore_ready status, child_signal_count, and temporary password"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter246_child_to_user_preview.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% (All UI elements present and functional)"
+  },
+  "test_credentials": {
+    "admin_account": "admin@bidblitz.ae / BidBlitz2026!"
+  },
+  "seed_data_creation": "None - using existing backup data from kids_children.json and related collections",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Child→User Preview feature fully verified. The feature is accessible via Admin Wallet page > Legacy Restore tab > select a possible_real_customer candidate (Albin, Anuar, Emma). The Child→User Assistent panel appears in the detail view with form fields for new login email. Preview API returns restore_ready=true for new emails and restore_ready=false with existing_user for collision cases. All existing features (review enrichment, filters, bulk restore, history) still work.",
+  "verified_features": {
+    "child_to_user_preview_api": "PASS - POST /api/admin/legacy-restore/child-to-user/preview returns 200 with preview data",
+    "anuar_preview_restore_ready": "PASS - Anuar (child_a240c029dd30) with anuar.child.restore@bidblitz.com returns restore_ready=true, 5 signals",
+    "emma_preview_restore_ready": "PASS - Emma (child_888c787e77d9) with emma.child.restore@bidblitz.com returns restore_ready=true, 2 signals",
+    "albin_preview_blocked_existing_alias": "PASS - Albin with albinkrasniqi11@icloud.com returns restore_ready=false, existing_user set",
+    "albin_preview_blocked_secondary_alias": "PASS - Albin with albinkrasniqi612@gmail.com returns restore_ready=false, existing_user set",
+    "preview_without_email_validation": "PASS - Empty email returns validation error or missing_fields",
+    "preview_nonexistent_candidate_404": "PASS - Non-existent candidate returns 404",
+    "preview_requires_admin_auth": "PASS - Unauthenticated request returns 401/403",
+    "review_enrichment_integration": "PASS - Review enrichment returns 3 enriched candidates (Albin, Anuar, Emma)",
+    "overview_possible_real_customer": "PASS - Overview with view=real_only includes possible_real_customer candidates",
+    "ui_child_to_user_panel": "PASS - Child→User Assistent panel visible for possible_real_customer candidates",
+    "ui_child_email_input": "PASS - Email input field with data-testid='legacy-child-email-input' present",
+    "ui_child_preview_button": "PASS - Preview button with data-testid='legacy-child-preview-button' present",
+    "ui_child_preview_card": "PASS - Preview card with data-testid='legacy-child-preview-card' shows restore_ready status",
+    "ui_child_confirm_button": "PASS - Confirm button with data-testid='legacy-child-confirm-button' present",
+    "no_regression_overview": "PASS - GET /api/admin/legacy-restore/overview works",
+    "no_regression_filters": "PASS - All 4 view filters (real_only, review, noise_only, all) work",
+    "no_regression_candidate_detail": "PASS - GET /api/admin/legacy-restore/candidates/{key} works",
+    "no_regression_bulk_preview": "PASS - POST /api/admin/legacy-restore/bulk-preview works",
+    "no_regression_history": "PASS - GET /api/admin/legacy-restore/history works"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-12T07:50:00Z",
+  "test_scope": "Child→User Preview Feature: POST /api/admin/legacy-restore/child-to-user/preview, UI panel, form fields, preview card, confirm button"
+}
