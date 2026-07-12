@@ -1,0 +1,70 @@
+{
+  "summary": "Legacy Restore Center - Priority List, Bulk Restore, and New Restored Accounts verified. All 22 backend tests pass. Frontend UI shows all required elements: priority list with 5 known seeds (all marked P0/restored), top missing candidates, bulk restore workflow with preview/password/confirm buttons. Three new accounts (test-prod@bidblitz.com, aldinkrasniqi720@gmail.com, afrimfinaltest@icloud.com) are searchable and show correct balances. Bulk preview correctly marks already restored candidates as blocked/existiert_bereits.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/admin/wallet/users", "issue": "Does not return legacy_restored field in response (field exists in DB but not projected)", "priority": "LOW"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin Wallet", "issues": ["Cookie banner overlays lower-right area (known infrastructure caveat)"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter243_legacy_restore_bulk.py",
+    "/app/test_reports/pytest/iter243_legacy_restore_bulk.xml",
+    "/app/test_reports/iter243_login_form.jpeg",
+    "/app/test_reports/iter243_after_login.jpeg",
+    "/app/test_reports/iter243_admin_wallet_attempt.jpeg",
+    "/app/test_reports/iter243_legacy_restore_loaded.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "admin_legacy_restore.py: KNOWN_RESTORE_SEEDS correctly includes all 5 screenshot-derived accounts with proper evidence",
+    "admin_legacy_restore.py: _priority_score() correctly assigns high scores to known_seed source_type",
+    "admin_legacy_restore.py: overview summary correctly includes top_candidates and top_missing_candidates lists",
+    "admin_legacy_restore.py: bulk-preview correctly returns blocked/existiert_bereits for already restored candidates",
+    "server.py: LEGACY_WALLET_SNAPSHOT_USERS correctly auto-restores the 5 accounts on startup",
+    "LegacyRestoreCenterTab.jsx: All data-testid attributes present for testing",
+    "LegacyRestoreCenterTab.jsx: Bulk restore workflow UI correctly implemented with selection toggles, preview, password, confirm"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter243_legacy_restore_bulk.py"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22 tests passed)",
+    "frontend": "100% (All 8 UI elements found, all features working)"
+  },
+  "test_credentials": {
+    "admin_account": "admin@bidblitz.ae / BidBlitz2026!"
+  },
+  "seed_data_creation": "None - using existing restored legacy users from server.py LEGACY_WALLET_SNAPSHOT_USERS",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Legacy Restore Center fully verified. Priority list shows 5 known seeds (Afrim Krasniqi, Afrim Test Final, Albin Krasniqi, Aldin Krasniqi, Test GmbH) all with status=restored and P0 priority. Bulk restore workflow correctly marks already restored candidates as blocked/existiert_bereits. Three new accounts (test-prod@bidblitz.com, aldinkrasniqi720@gmail.com, afrimfinaltest@icloud.com) are searchable in admin wallet and admin customers with correct balances.",
+  "verified_features": {
+    "priority_list_top_candidates": "PASS - Overview returns top_candidates list with all 5 known seeds",
+    "priority_list_top_missing": "PASS - Overview returns top_missing_candidates list (excludes restored)",
+    "new_restored_accounts_searchable_wallet": "PASS - All 3 new accounts found in admin wallet search with correct balances",
+    "new_restored_accounts_searchable_customers": "PASS - All 3 new accounts found in admin customers search with correct names",
+    "legacy_restore_detail_status": "PASS - All 3 new accounts show status=restored with existing_user populated",
+    "legacy_restore_detail_evidence": "PASS - All 3 new accounts show correct evidence from IMG_2832/IMG_2833 screenshots",
+    "bulk_preview_blocked": "PASS - Bulk preview correctly marks all 3 restored accounts as blocked/existiert_bereits",
+    "bulk_preview_mixed": "PASS - Bulk preview correctly handles mix of restored and missing candidates",
+    "bulk_restore_ui_elements": "PASS - All UI elements present (preview button, password input, confirm button)",
+    "no_regression_wallet": "PASS - Admin wallet balance endpoint works",
+    "no_regression_legacy_restore": "PASS - Legacy restore overview loads correctly",
+    "no_regression_albin": "PASS - Previously restored Albin Krasniqi still exists",
+    "no_regression_afrim": "PASS - Previously restored Afrim Krasniqi still exists",
+    "history_endpoint": "PASS - History endpoint returns list of restore actions"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-12T01:00:00Z",
+  "test_scope": "Legacy Restore Center: priority list, bulk restore workflow, new restored accounts verification, no regression"
+}

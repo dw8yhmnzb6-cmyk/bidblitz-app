@@ -72,6 +72,63 @@ KNOWN_RESTORE_SEEDS = [
             },
         ],
     },
+    {
+        "candidate_key": "test-prod@bidblitz.com",
+        "display_name": "Test GmbH",
+        "primary_email": "test-prod@bidblitz.com",
+        "canonical_email": "test-prod@bidblitz.com",
+        "alias_emails": [],
+        "balance_eur": 10.0,
+        "balance_blz": 0.0,
+        "registered_at": "2026-05-02T13:14:00+00:00",
+        "created_at": "2026-05-02T13:14:00+00:00",
+        "evidence": [
+            {
+                "source": "wallet_screenshot",
+                "label": "Screenshot IMG_2832",
+                "detail": "Test GmbH · test-prod@bidblitz.com · 10 EUR · 0 BLZ · 0 Logins",
+                "confidence": 97,
+            }
+        ],
+    },
+    {
+        "candidate_key": "aldinkrasniqi720@gmail.com",
+        "display_name": "Aldin Krasniqi",
+        "primary_email": "aldinkrasniqi720@gmail.com",
+        "canonical_email": "aldinkrasniqi720@gmail.com",
+        "alias_emails": [],
+        "balance_eur": 510.0,
+        "balance_blz": 35.0,
+        "registered_at": "2026-04-22T19:13:00+00:00",
+        "created_at": "2026-04-22T19:13:00+00:00",
+        "evidence": [
+            {
+                "source": "wallet_screenshot",
+                "label": "Screenshot IMG_2833",
+                "detail": "Aldin Krasniqi · aldinkrasniqi720@gmail.com · 510 EUR · 35 BLZ · 0 Logins",
+                "confidence": 98,
+            }
+        ],
+    },
+    {
+        "candidate_key": "afrimfinaltest@icloud.com",
+        "display_name": "Afrim Test Final",
+        "primary_email": "afrimfinaltest@icloud.com",
+        "canonical_email": "afrimfinaltest@icloud.com",
+        "alias_emails": [],
+        "balance_eur": 125.0,
+        "balance_blz": 10.0,
+        "registered_at": "2026-04-22T19:09:00+00:00",
+        "created_at": "2026-04-22T19:09:00+00:00",
+        "evidence": [
+            {
+                "source": "wallet_screenshot",
+                "label": "Screenshot IMG_2833",
+                "detail": "Afrim Test Final · afrimfinaltest@icloud.com · 125 EUR · 10 BLZ · 0 Logins",
+                "confidence": 97,
+            }
+        ],
+    },
 ]
 
 
@@ -87,6 +144,14 @@ class RestorePreviewRequest(BaseModel):
 
 
 class RestoreConfirmRequest(RestorePreviewRequest):
+    admin_password: str = Field(..., min_length=1)
+
+
+class BulkRestorePreviewRequest(BaseModel):
+    candidate_keys: list[str] = Field(default_factory=list)
+
+
+class BulkRestoreConfirmRequest(BulkRestorePreviewRequest):
     admin_password: str = Field(..., min_length=1)
 
 
@@ -249,6 +314,47 @@ def _build_child_only_signals() -> list[dict]:
     return signals
 
 
+def _priority_score(row: dict) -> int:
+    score = 0
+    if row.get("source_type") == "known_seed":
+        score += 90
+    if row.get("source_type") == "child_backup_signal":
+        score += 35
+    if row.get("primary_email"):
+        score += 10
+    if row.get("display_name"):
+        score += 8
+    if _safe_float(row.get("balance_eur")) > 0 or _safe_float(row.get("balance_blz")) > 0:
+        score += 10
+    score += min(12, len(row.get("evidence") or []) * 4)
+    score += min(8, int(row.get("failed_login_count") or 0))
+    if row.get("status") == "restored":
+        score -= 15
+    if row.get("status") == "needs_review":
+        score -= 10
+    return max(5, min(99, score))
+
+
+def _priority_label(score: int) -> str:
+    if score >= 88:
+        return "Sehr sicher"
+    if score >= 72:
+        return "Sicher"
+    if score >= 55:
+        return "Prüfbar"
+    return "Unsicher"
+
+
+def _priority_rank(score: int) -> str:
+    if score >= 88:
+        return "P0"
+    if score >= 72:
+        return "P1"
+    if score >= 55:
+        return "P2"
+    return "P3"
+
+
 async def _seed_candidate_with_state(seed: dict) -> dict:
     existing = await _find_existing_user_for_candidate(seed.get("primary_email", ""), seed.get("alias_emails", []))
     status = "restored" if existing else "missing"
@@ -304,8 +410,14 @@ async def _build_candidates(query: str = "") -> tuple[list[dict], dict]:
     failed_login_candidates = await _build_failed_login_signals()
     child_only_candidates = _build_child_only_signals()
     merged = _merge_candidate_maps(seeds, failed_login_candidates, child_only_candidates)
-    rows = list(merged.values())
-    rows.sort(key=lambda item: ({"missing": 0, "needs_review": 1, "restored": 2}.get(item.get("status", "restored"), 3), -len(item.get("evidence") or []), item.get("display_name") or item.get("primary_email") or item.get("candidate_key")))
+    rows = []
+    for row in merged.values():
+        score = _priority_score(row)
+        row["priority_score"] = score
+        row["priority_label"] = _priority_label(score)
+        row["priority_rank"] = _priority_rank(score)
+        rows.append(row)
+    rows.sort(key=lambda item: ({"missing": 0, "needs_review": 1, "restored": 2}.get(item.get("status", "restored"), 3), -int(item.get("priority_score") or 0), item.get("display_name") or item.get("primary_email") or item.get("candidate_key")))
 
     q = (query or "").strip().lower()
     if q:
@@ -325,9 +437,71 @@ async def _build_candidates(query: str = "") -> tuple[list[dict], dict]:
         "ready_to_restore": sum(1 for row in rows if row.get("status") == "missing" and row.get("restore_ready")),
         "failed_login_signals": sum(1 for row in rows if row.get("source_type") == "failed_login_trace"),
         "child_only_signals": sum(1 for row in rows if row.get("source_type") == "child_backup_signal"),
+        "top_candidates": [
+            {
+                "candidate_key": row.get("candidate_key"),
+                "display_name": row.get("display_name") or row.get("primary_email") or row.get("candidate_key"),
+                "primary_email": row.get("primary_email"),
+                "priority_score": row.get("priority_score"),
+                "priority_label": row.get("priority_label"),
+                "priority_rank": row.get("priority_rank"),
+                "status": row.get("status"),
+                "source_type": row.get("source_type"),
+            }
+            for row in rows
+            if row.get("source_type") == "known_seed"
+        ][:8],
+        "top_missing_candidates": [
+            {
+                "candidate_key": row.get("candidate_key"),
+                "display_name": row.get("display_name") or row.get("primary_email") or row.get("candidate_key"),
+                "primary_email": row.get("primary_email"),
+                "priority_score": row.get("priority_score"),
+                "priority_label": row.get("priority_label"),
+                "priority_rank": row.get("priority_rank"),
+                "status": row.get("status"),
+                "source_type": row.get("source_type"),
+            }
+            for row in rows
+            if row.get("status") != "restored"
+        ][:8],
         "last_scan_at": datetime.now(timezone.utc).isoformat(),
     }
     return rows, summary
+
+
+async def _record_restore_action(action: dict):
+    await db.legacy_restore_actions.insert_one(action)
+
+
+async def _build_bulk_preview(candidate_keys: list[str]):
+    seen = set()
+    restoreable = []
+    blocked = []
+    for candidate_key in candidate_keys:
+        key = (candidate_key or "").strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        preview = await _build_preview_payload(RestorePreviewRequest(candidate_key=key))
+        if preview.get("restore_ready"):
+            restoreable.append(preview)
+        else:
+            blocked.append({
+                "candidate_key": key,
+                "reason": "existiert_bereits" if preview.get("existing_user") else "weitere_daten_noetig",
+                "existing_user": preview.get("existing_user"),
+                "missing_fields": preview.get("missing_fields") or [],
+            })
+    return {
+        "restoreable": restoreable,
+        "blocked": blocked,
+        "summary": {
+            "selected": len(seen),
+            "restoreable": len(restoreable),
+            "blocked": len(blocked),
+        },
+    }
 
 
 async def _build_preview_payload(payload: RestorePreviewRequest) -> dict:
@@ -466,7 +640,7 @@ async def legacy_restore_confirm(req: RestoreConfirmRequest, request: Request):
         "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
         "source_note": preview.get("source_note") or req.candidate_key,
     }
-    await db.legacy_restore_actions.insert_one(action)
+    await _record_restore_action(action)
     ip, ua = get_client_info(request)
     await log_audit(
         AuditEvent.ADMIN_ACTION,
@@ -494,6 +668,70 @@ async def legacy_restore_confirm(req: RestoreConfirmRequest, request: Request):
             "legacy_restored": True,
         },
         "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+    }
+
+
+@router.post("/bulk-preview")
+async def legacy_restore_bulk_preview(req: BulkRestorePreviewRequest, request: Request):
+    await _require_admin(request)
+    payload = await _build_bulk_preview(req.candidate_keys)
+    return payload
+
+
+@router.post("/bulk-confirm")
+async def legacy_restore_bulk_confirm(req: BulkRestoreConfirmRequest, request: Request):
+    admin = await _require_admin(request)
+    await _verify_admin_password(admin, req.admin_password)
+    preview = await _build_bulk_preview(req.candidate_keys)
+    restored_users = []
+    for item in preview["restoreable"]:
+        user_id, user_doc = await _create_restored_user(item)
+        action = {
+            "candidate_key": item["candidate_key"],
+            "action_type": "bulk_restore_user",
+            "status": "completed",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "approved_by": admin.get("email", ""),
+            "restored_user_id": user_id,
+            "restored_email": user_doc["email"],
+            "restored_aliases": user_doc.get("email_aliases") or [],
+            "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+            "source_note": item.get("source_note") or item["candidate_key"],
+        }
+        await _record_restore_action(action)
+        restored_users.append({
+            "user_id": user_id,
+            "email": user_doc["email"],
+            "name": user_doc["name"],
+            "balance": user_doc["balance"],
+            "balance_blz": user_doc["balance_blz"],
+            "registered_at": user_doc["registered_at"],
+        })
+
+    ip, ua = get_client_info(request)
+    await log_audit(
+        AuditEvent.ADMIN_ACTION,
+        user_id=str(admin["_id"]),
+        email=admin.get("email", ""),
+        ip=ip,
+        user_agent=ua,
+        details={
+            "action": "legacy_restore_bulk_confirmed",
+            "candidate_keys": req.candidate_keys,
+            "restored_count": len(restored_users),
+        },
+        severity="warn",
+    )
+    return {
+        "ok": True,
+        "restored_users": restored_users,
+        "blocked": preview["blocked"],
+        "temporary_password": LEGACY_RESTORE_TEMP_PASSWORD,
+        "summary": {
+            "requested": len(req.candidate_keys),
+            "restored": len(restored_users),
+            "blocked": len(preview["blocked"]),
+        },
     }
 
 
