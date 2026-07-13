@@ -1,0 +1,80 @@
+{
+  "timestamp": "2026-07-13T11:48:40.177825",
+  "base_url": "https://swipe-match-chat-8.preview.emergentagent.com",
+  "tests": [
+    {
+      "test": "Login with reviewer@bidblitz.ae",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "has_access_token": true,
+        "has_refresh_token": true,
+        "user_id": "6a4f26f81e36bd715f730705",
+        "email": "reviewer@bidblitz.ae",
+        "name": "BidBlitz Reviewer",
+        "cookies": {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YTRmMjZmODFlMzZiZDcxNWY3MzA3MDUiLCJlbWFpbCI6InJldmlld2VyQGJpZGJsaXR6LmFlIiwibG9naW5fZW1haWwiOiJyZXZpZXdlckBiaWRibGl0ei5hZSIsImV4cCI6MTc4Mzk0NjkyMCwidHlwZSI6ImFjY2VzcyJ9.fQkbVwDh5CgdtBhrntftI2wXK1y2gwfmCRbqW7vU_tE",
+          "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YTRmMjZmODFlMzZiZDcxNWY3MzA3MDUiLCJsb2dpbl9lbWFpbCI6InJldmlld2VyQGJpZGJsaXR6LmFlIiwiZXhwIjoxNzg2NTM1MzIwLCJ0eXBlIjoicmVmcmVzaCJ9.XqTntuL-a8mPhmhFXm-YOxuKT1D9Yw0-P4Ps6CMRVmE",
+          "__cf_bm": "EC1R3VtvgZtSrzXIeDm4UwVEeOgEsEqhnZEO5HTJ210-1783943320.3157842-1.0.1.1-EP6bhbwOx3TXxXBOeVaDRd24hdEZ2kqg1mXWoKSozk3db_9o1rmX7ncjfvSCOjA6Agao4XTFFRh_DJky_P_WUntjaW1UT6N_NN75c.k8Ej2kqNrAUWNEO5xjOrIhE_H."
+        }
+      },
+      "timestamp": "2026-07-13T11:48:40.728886"
+    },
+    {
+      "test": "Profile Language Test - SET sq-XK",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "previous_language": "sq-XK",
+        "new_language": "sq-XK",
+        "language_updated": true
+      },
+      "timestamp": "2026-07-13T11:48:40.948555"
+    },
+    {
+      "test": "P2P Lookup Email - admin@bidblitz.ae",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "found": true,
+        "recipient_name": "BidBlitz Admin",
+        "recipient_username": null,
+        "bidblitz_id": "BLZ-5824-A240",
+        "has_bidblitz_id": true
+      },
+      "timestamp": "2026-07-13T11:48:41.085401"
+    },
+    {
+      "test": "P2P Lookup BLZ Code - Format Handling",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "test_code": "BLZ-5824-A240",
+        "found": true,
+        "recipient_name": "BidBlitz Admin",
+        "bidblitz_id": "BLZ-5824-A240",
+        "note": "BLZ code lookup working - recipient found"
+      },
+      "timestamp": "2026-07-13T11:48:41.225614"
+    },
+    {
+      "test": "P2P Lookup Admin BLZ ID - Lookup by BLZ Code",
+      "passed": true,
+      "details": {
+        "status_code": 200,
+        "admin_blz_id": "BLZ-5824-A240",
+        "found": true,
+        "recipient_name": "BidBlitz Admin",
+        "recipient_bidblitz_id": "BLZ-5824-A240",
+        "blz_id_match": true
+      },
+      "timestamp": "2026-07-13T11:48:41.851707"
+    }
+  ],
+  "summary": {
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "success_rate": "100.0%"
+  }
+}
