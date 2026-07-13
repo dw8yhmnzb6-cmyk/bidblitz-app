@@ -98,6 +98,7 @@ const statusColors = { pending: "#FFB800", approved: "#00C2FF", processed: "#00D
 
 // ── Payout Modal ──
 const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess }) => {
+  const { t } = useI18n();
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -132,7 +133,7 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
           initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}>
           <div className="flex items-center justify-between p-4 border-b border-white/5">
             <h2 data-testid="payout-modal-title" className="text-lg font-semibold font-outfit text-white">
-              {step === "form" ? "Request Payout" : step === "success" ? "Payout Requested" : "Failed"}
+              {step === "form" ? t("merchant.request_payout") : step === "success" ? t("merchant.payout_requested") : t("merchant.failed_title")}
             </h2>
             <motion.button data-testid="payout-modal-close-button" onClick={handleClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center" whileTap={{ scale: 0.9 }}>
               <X size={16} className="text-white/60" />
@@ -142,8 +143,8 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
             <AnimatePresence mode="wait">
               {step === "form" && (
                 <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <p className="text-sm text-[#666] mb-1" data-testid="payout-modal-available-balance">Available: <span className="text-white font-semibold">&euro;{available.toFixed(2)}</span></p>
-                  <p className="text-[10px] text-[#444] mb-4">Min. payout: &euro;{minPayout.toFixed(2)} &middot; Fee: &euro;{flatFee.toFixed(2)}</p>
+                  <p className="text-sm text-[#666] mb-1" data-testid="payout-modal-available-balance">{t("merchant.available_balance")}: <span className="text-white font-semibold">&euro;{available.toFixed(2)}</span></p>
+                  <p className="text-[10px] text-[#444] mb-4">{t("merchant.min_payout")}: &euro;{minPayout.toFixed(2)} &middot; {t("merchant.fee_label")}: &euro;{flatFee.toFixed(2)}</p>
                   <div className={`flex items-center gap-3 px-4 py-3 rounded-[14px] mb-4 transition-all border ${num > 0 ? "bg-white/[0.04] border-[#00C2FF]/25" : "bg-white/[0.02] border-white/[0.05]"}`}>
                     <span className="text-white/40 text-lg font-outfit">&euro;</span>
                     <input data-testid="payout-amount-input" type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))}
@@ -151,20 +152,20 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
                   </div>
                   {num > 0 && (
                     <motion.div data-testid="payout-modal-summary" className="bg-[#141414] rounded-2xl p-4 mb-4 border border-white/5 space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      <div className="flex justify-between text-sm"><span className="text-[#666]">Amount</span><span className="text-white">&euro;{num.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-sm"><span className="text-[#666]">Fee</span><span className="text-[#FF6B6B]">-&euro;{fee.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-sm"><span className="text-[#666]">{t("merchant.amount_label")}</span><span className="text-white">&euro;{num.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-sm"><span className="text-[#666]">{t("merchant.fee_label")}</span><span className="text-[#FF6B6B]">-&euro;{fee.toFixed(2)}</span></div>
                       <div className="border-t border-white/5 pt-2 flex justify-between">
-                        <span className="text-white font-medium">You receive</span>
+                        <span className="text-white font-medium">{t("merchant.you_receive")}</span>
                         <span data-testid="payout-modal-net-amount" className="text-[#00D26A] font-bold">&euro;{net.toFixed(2)}</span>
                       </div>
                     </motion.div>
                   )}
-                  {num > available && <p data-testid="payout-modal-error-message" className="text-[11px] text-[#FF4757] mb-3">Amount exceeds available balance</p>}
+                  {num > available && <p data-testid="payout-modal-error-message" className="text-[11px] text-[#FF4757] mb-3">{t("merchant.amount_exceeds_balance")}</p>}
                   <motion.button data-testid="payout-submit-btn" onClick={handleSubmit} disabled={!valid || loading}
                     className="w-full py-3.5 bg-[#00D26A] text-white font-semibold rounded-full disabled:opacity-40 flex items-center justify-center gap-2"
                     whileTap={valid && !loading ? { scale: 0.98 } : {}}>
-                    {loading ? <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}><Loader2 size={15} /></motion.div>Processing...</>
-                      : <><Download size={15} />Request Payout</>}
+                    {loading ? <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}><Loader2 size={15} /></motion.div>{t("merchant.processing")}</>
+                      : <><Download size={15} />{t("merchant.request_payout")}</>}
                   </motion.button>
                 </motion.div>
               )}
@@ -174,20 +175,20 @@ const PayoutModal = ({ isOpen, onClose, available, minPayout, flatFee, onSuccess
                     initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.1 }}>
                     <Check size={28} className="text-[#00D26A]" />
                   </motion.div>
-                  <p className="text-white font-semibold text-lg mb-1">Payout Requested</p>
+                  <p className="text-white font-semibold text-lg mb-1">{t("merchant.payout_requested")}</p>
                   <p data-testid="payout-success-net-amount" className="text-2xl font-bold font-outfit text-[#00D26A] mb-1">&euro;{net.toFixed(2)}</p>
-                  <p className="text-sm text-[#666] mb-6">Your payout will be processed shortly</p>
-                  <motion.button data-testid="payout-success-done-button" onClick={handleClose} className="w-full py-3.5 bg-[#00D26A] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>Done</motion.button>
+                  <p className="text-sm text-[#666] mb-6">{t("merchant.payout_processed_shortly")}</p>
+                  <motion.button data-testid="payout-success-done-button" onClick={handleClose} className="w-full py-3.5 bg-[#00D26A] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>{t("common.done")}</motion.button>
                 </motion.div>
               )}
               {step === "error" && (
                 <motion.div key="error" data-testid="payout-error-state" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-6 text-center">
                   <motion.div className="w-16 h-16 rounded-full bg-[#FF4757]/10 flex items-center justify-center mx-auto mb-4"><AlertCircle size={28} className="text-[#FF4757]" /></motion.div>
-                  <p className="text-white font-semibold text-lg mb-1">Payout Failed</p>
-                  <p data-testid="payout-error-message" className="text-sm text-[#666] mb-6">{error || "Something went wrong"}</p>
+                  <p className="text-white font-semibold text-lg mb-1">{t("merchant.failed_title")}</p>
+                  <p data-testid="payout-error-message" className="text-sm text-[#666] mb-6">{error || t("error.generic")}</p>
                   <div className="flex gap-3">
-                    <motion.button data-testid="payout-error-cancel-button" onClick={handleClose} className="flex-1 py-3.5 bg-[#141414] text-white font-semibold rounded-full border border-white/10" whileTap={{ scale: 0.98 }}>Cancel</motion.button>
-                    <motion.button data-testid="payout-error-retry-button" onClick={() => { setStep("form"); setError(null); }} className="flex-1 py-3.5 bg-[#FF4757] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>Retry</motion.button>
+                    <motion.button data-testid="payout-error-cancel-button" onClick={handleClose} className="flex-1 py-3.5 bg-[#141414] text-white font-semibold rounded-full border border-white/10" whileTap={{ scale: 0.98 }}>{t("common.cancel")}</motion.button>
+                    <motion.button data-testid="payout-error-retry-button" onClick={() => { setStep("form"); setError(null); }} className="flex-1 py-3.5 bg-[#FF4757] text-white font-semibold rounded-full" whileTap={{ scale: 0.98 }}>{t("error.retry")}</motion.button>
                   </div>
                 </motion.div>
               )}
@@ -261,7 +262,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
             <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
           </motion.button>
           <div>
-            <motion.h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>Dashboard</motion.h1>
+            <motion.h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>{t("merchant.dashboard")}</motion.h1>
             <motion.p className="text-[10px] text-[#333] font-medium" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>{displayBusinessName}</motion.p>
           </div>
         </div>
@@ -300,7 +301,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
 
         {/* ── Earnings Hero ── */}
         <motion.div className="text-center pt-4 pb-5 relative" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06, ...slide }}>
-          <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase mb-3">Today&apos;s Earnings</p>
+          <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase mb-3">{t("merchant.today")}</p>
           <AnimatePresence mode="wait">
             {isLoading ? <Skeleton className="h-[48px] w-40 mx-auto" /> : (
               <motion.div initial={{ opacity: 0, y: 8, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 0.25 }}>
@@ -317,7 +318,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
           {!isLoading && (
             <motion.div className="flex items-center justify-center gap-1.5 mt-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
               <TrendingUp size={11} className="text-[#00D26A]" />
-              <span className="text-[11px] font-medium text-[#00D26A]">+{stats.changeFromYesterday}% vs yesterday</span>
+              <span className="text-[11px] font-medium text-[#00D26A]">+{stats.changeFromYesterday}% {t("merchant.vs_yesterday")}</span>
             </motion.div>
           )}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-36 pointer-events-none" style={{ filter: "blur(80px)", background: "radial-gradient(ellipse, rgba(0,210,106,0.06), transparent 70%)" }} />
@@ -327,26 +328,26 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
         <motion.div className="rounded-2xl p-4 mb-5 relative overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
           <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full pointer-events-none" style={{ background: "rgba(0,210,106,0.06)", filter: "blur(30px)" }} />
-          <h3 className="text-[11px] font-semibold font-outfit text-[#444] uppercase tracking-[0.1em] mb-3 relative z-10">Balance Overview</h3>
+          <h3 className="text-[11px] font-semibold font-outfit text-[#444] uppercase tracking-[0.1em] mb-3 relative z-10">{t("merchant.balance_overview")}</h3>
           <div className="grid grid-cols-3 gap-3 relative z-10">
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Wallet size={10} className="text-[#00D26A]" />
-                <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">Available</span>
+                <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">{t("merchant.available")}</span>
               </div>
               <p className="text-[16px] font-bold font-outfit text-[#00D26A]">&euro;{displayBalance.available.toFixed(2)}</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Clock size={10} className="text-[#FFB800]" />
-                <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">Pending</span>
+                <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">{t("merchant.pending")}</span>
               </div>
               <p className="text-[16px] font-bold font-outfit text-[#FFB800]">&euro;{displayBalance.pending_payout.toFixed(2)}</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Check size={10} className="text-[#00C2FF]" />
-                <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">Paid Out</span>
+                <span className="text-[8px] text-[#444] uppercase tracking-[0.1em] font-semibold">{t("merchant.paid_out")}</span>
               </div>
               <p className="text-[16px] font-bold font-outfit text-[#00C2FF]">&euro;{displayBalance.total_paid_out.toFixed(2)}</p>
             </div>
@@ -354,7 +355,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
           {/* Fee info */}
           <div className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-white/[0.03]">
             <Shield size={9} className="text-[#333]" />
-            <span className="text-[9px] text-[#333]">Platform fee: 2.5% &middot; Total fees: &euro;{displayBalance.total_fees.toFixed(2)}</span>
+            <span className="text-[9px] text-[#333]">{t("merchant.platform_fee")}: 2.5% &middot; {t("merchant.total_fees")}: &euro;{displayBalance.total_fees.toFixed(2)}</span>
           </div>
         </motion.div>
 
@@ -363,10 +364,10 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
           <div className="grid grid-cols-2 gap-2.5 mb-5">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[100px]" />)}</div>
         ) : (
           <div className="grid grid-cols-2 gap-2.5 mb-5">
-            <StatCard icon={CircleDollarSign} label="Gross Earnings" value={`\u20AC${(displayBalance.gross_earnings || stats.totalEarnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub="Before fees" color="#00C2FF" delay={0.14} />
-            <StatCard icon={Users} label="Payments" value={stats.todayPaymentCount.toString()} sub="Today" color="#A855F7" delay={0.18} />
-            <StatCard icon={BarChart3} label="Net Earnings" value={`\u20AC${(displayBalance.total_earnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub="After fees" color="#00D26A" delay={0.22} />
-            <StatCard icon={Banknote} label="Total Txns" value={displayTotalTransactions.toString()} sub="All time" color="#FFB800" delay={0.26} />
+            <StatCard icon={CircleDollarSign} label={t("merchant.gross")} value={`\u20AC${(displayBalance.gross_earnings || stats.totalEarnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub={t("merchant.before_fees")} color="#00C2FF" delay={0.14} />
+            <StatCard icon={Users} label={t("merchant.payments_today")} value={stats.todayPaymentCount.toString()} sub={t("common.today")} color="#A855F7" delay={0.18} />
+            <StatCard icon={BarChart3} label={t("merchant.net")} value={`\u20AC${(displayBalance.total_earnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub={t("merchant.after_fees")} color="#00D26A" delay={0.22} />
+            <StatCard icon={Banknote} label={t("merchant.total_txns")} value={displayTotalTransactions.toString()} sub={t("export.all_time")} color="#FFB800" delay={0.26} />
           </div>
         )}
 
@@ -375,8 +376,8 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
           initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, ...slide }}>
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-20 pointer-events-none" style={{ filter: "blur(50px)", background: "rgba(0,194,255,0.04)" }} />
           <div className="flex items-center justify-between mb-4 relative z-10">
-            <h3 className="text-[12px] font-semibold font-outfit text-white/80">Weekly Overview</h3>
-            <span className="text-[10px] text-[#333] font-medium">Last 7 days</span>
+            <h3 className="text-[12px] font-semibold font-outfit text-white/80">{t("merchant.weekly")}</h3>
+            <span className="text-[10px] text-[#333] font-medium">{t("merchant.last_7")}</span>
           </div>
           <div className="h-[120px] relative z-10">
             <ResponsiveContainer width="100%" height="100%">
@@ -396,15 +397,15 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
             className="flex-1 py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2"
             style={{ boxShadow: "0 4px 24px rgba(0,194,255,0.25)" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32, ...slide }}
-            whileTap={{ scale: 0.96 }} onClick={() => effectiveDemoMode ? toast("Create Payment", { description: "Demo: Payment simulated" }) : onNavigate("/scan")}>
-            <Plus size={15} strokeWidth={2.5} />Create Payment
+            whileTap={{ scale: 0.96 }} onClick={() => effectiveDemoMode ? toast(t("merchant.create_payment"), { description: `${t("merchant.demo_prefix")}: ${t("merchant.demo_payment_simulated")}` }) : onNavigate("/scan")}>
+            <Plus size={15} strokeWidth={2.5} />{t("merchant.create_payment")}
           </motion.button>
           <motion.button data-testid="request-payout-btn"
             className="flex-1 py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2"
             style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.15)", color: "#00D26A" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34, ...slide }}
-            whileTap={{ scale: 0.96 }} onClick={() => (isGuest && !effectiveDemoMode) ? onAuthRequired("Request a payout") : effectiveDemoMode ? toast("Payout", { description: "Demo: Payout simulated" }) : setShowPayout(true)}>
-            <ArrowDownToLine size={15} strokeWidth={2} />Payout
+            whileTap={{ scale: 0.96 }} onClick={() => (isGuest && !effectiveDemoMode) ? onAuthRequired(t("merchant.request_payout")) : effectiveDemoMode ? toast(t("merchant.payout"), { description: `${t("merchant.demo_prefix")}: ${t("merchant.demo_payout_simulated")}` }) : setShowPayout(true)}>
+            <ArrowDownToLine size={15} strokeWidth={2} />{t("merchant.payout")}
           </motion.button>
         </div>
 
@@ -412,7 +413,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
         {payouts.length > 0 && (
           <motion.section className="mb-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.38 }}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[13px] font-semibold font-outfit text-white">Payout History</h3>
+              <h3 className="text-[13px] font-semibold font-outfit text-white">{t("merchant.payout_history")}</h3>
             </div>
             <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
               {payouts.map((po, i) => (
@@ -437,20 +438,20 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
         {/* ── Activity ── */}
         <motion.div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, ...slide }}>
-          <h3 className="text-[11px] font-semibold font-outfit text-[#444] uppercase tracking-[0.1em] mb-1">Activity</h3>
+          <h3 className="text-[11px] font-semibold font-outfit text-[#444] uppercase tracking-[0.1em] mb-1">{t("merchant.activity")}</h3>
           <div className="divide-y divide-white/[0.03]">
-            <ActivityRow label="Payments today" count={stats.todayPaymentCount} color="#00C2FF" delay={0.42} />
-            <ActivityRow label="Successful" count={displayPayments.length} color="#00D26A" delay={0.44} />
-            <ActivityRow label="Failed" count={0} color="#FF4757" delay={0.46} />
+            <ActivityRow label={t("merchant.payments_today_label")} count={stats.todayPaymentCount} color="#00C2FF" delay={0.42} />
+            <ActivityRow label={t("merchant.successful")} count={displayPayments.length} color="#00D26A" delay={0.44} />
+            <ActivityRow label={t("merchant.failed")} count={0} color="#FF4757" delay={0.46} />
           </div>
         </motion.div>
 
         {/* ── Recent Payments ── */}
         <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.48 }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[13px] font-semibold font-outfit text-white">Recent Payments</h3>
+            <h3 className="text-[13px] font-semibold font-outfit text-white">{t("merchant.recent")}</h3>
             <motion.span className="text-[11px] text-[#00C2FF] font-medium cursor-pointer flex items-center gap-0.5" whileHover={{ x: 3 }}>
-              View All <ChevronRight size={12} strokeWidth={2} />
+              {t("merchant.view_all")} <ChevronRight size={12} strokeWidth={2} />
             </motion.span>
           </div>
           {isLoading ? (
@@ -459,8 +460,8 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
             <motion.div className="py-12 text-center rounded-2xl" style={{ background: "rgba(255,255,255,0.012)", border: "1px solid rgba(255,255,255,0.03)" }}
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-white/[0.03] flex items-center justify-center"><Banknote size={20} className="text-[#2A2A2A]" /></div>
-              <p className="text-[13px] text-[#333] font-medium mb-1">No payments yet</p>
-              <p className="text-[11px] text-[#222]">Create your first payment to get started</p>
+              <p className="text-[13px] text-[#333] font-medium mb-1">{t("merchant.no_payments")}</p>
+              <p className="text-[11px] text-[#222]">{t("merchant.no_payments_hint")}</p>
             </motion.div>
           ) : (
             <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.035)" }}>
@@ -489,7 +490,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
                       onClick={async (e) => {
                         e.stopPropagation();
                         if (isDemoMode) {
-                          toast("PDF Download", { description: "Demo: Receipt download simulated" });
+                          toast(t("merchant.download_pdf"), { description: `${t("merchant.demo_prefix")}: ${t("merchant.demo_receipt_simulated")}` });
                           return;
                         }
                         try {
@@ -504,12 +505,12 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
                           a.click();
                           document.body.removeChild(a);
                           URL.revokeObjectURL(url);
-                          toast.success("Receipt downloaded");
+                          toast.success(t("merchant.receipt_downloaded"));
                         } catch (err) {
-                          toast.error("Download failed: " + err.message);
+                          toast.error(`${t("merchant.download_failed")}: ${err.message}`);
                         }
                       }}
-                      title="Download PDF Receipt"
+                      title={t("merchant.download_pdf")}
                     >
                       <Download size={14} className="text-[#00C2FF]" />
                     </motion.button>

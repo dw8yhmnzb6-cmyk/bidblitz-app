@@ -17,6 +17,14 @@ const HTML5_SUPPORTED_FORMATS = [
   Html5QrcodeSupportedFormats.CODE_93,
   Html5QrcodeSupportedFormats.CODABAR,
 ];
+const BARCODE_RE = /^(BLZ-[A-F0-9]{12}(-[A-F0-9]{8})?|BLZ-[A-F0-9]{4}-[A-F0-9]{4})$/;
+const SUPPORTED_SCAN_FORMATS = ["qr_code", "code_128", "ean_13", "ean_8", "upc_a", "upc_e", "code_39", "code_93", "codabar"];
+
+const swallowMaybePromise = (result) => {
+  if (result && typeof result.catch === "function") {
+    result.catch(() => {});
+  }
+};
 
 const normalizeAmount = (value) => {
   const numeric = Number(value ?? 0);
@@ -28,10 +36,10 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
   const user = useUser();
   const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
   const L = {
-    de: { badge: "Privat bezahlen", title: "Geld senden", available: "Verfügbar", privateOnly: "Nur für private Transfers: Kontakt, Username, E-Mail, BidBlitz ID oder privater QR.", privateSend: "Privat senden", privateSendDesc: "An Kunden, Freunde, Familie oder Kontakte.", merchantQuestion: "Für Händler-Kasse?", merchantHint: 'Dann "Bezahlen" statt "Geld senden"', username: "Username", scan: "Scannen", contacts: "Kontakte", email: "E-Mail", searchPlaceholder: "Username, E-Mail oder BidBlitz ID...", found: "Gefunden" },
-    en: { badge: "Private payment", title: "Send money", available: "Available", privateOnly: "For private transfers only: contact, username, email, BidBlitz ID or private QR.", privateSend: "Send privately", privateSendDesc: "To customers, friends, family or contacts.", merchantQuestion: "For merchant checkout?", merchantHint: 'Then open "Pay" instead of "Send money"', username: "Username", scan: "Scan", contacts: "Contacts", email: "Email", searchPlaceholder: "Username, email or BidBlitz ID...", found: "Found" },
-    sq: { badge: "Pagesë private", title: "Dërgo para", available: "Në dispozicion", privateOnly: "Vetëm për transfere private: kontakt, username, email, BidBlitz ID ose QR privat.", privateSend: "Dërgo privatisht", privateSendDesc: "Te klientët, miqtë, familja ose kontaktet.", merchantQuestion: "Për arkën e tregtarit?", merchantHint: 'Atëherë hap "Paguaj" në vend të "Dërgo para"', username: "Username", scan: "Skano", contacts: "Kontaktet", email: "Email", searchPlaceholder: "Username, email ose BidBlitz ID...", found: "U gjet" },
-    ar: { badge: "دفع خاص", title: "إرسال المال", available: "المتاح", privateOnly: "للتحويلات الخاصة فقط: جهة اتصال أو اسم مستخدم أو بريد إلكتروني أو BidBlitz ID أو QR خاص.", privateSend: "إرسال خاص", privateSendDesc: "إلى العملاء أو الأصدقاء أو العائلة أو جهات الاتصال.", merchantQuestion: "لصندوق التاجر؟", merchantHint: 'افتح "الدفع" بدلًا من "إرسال المال"', username: "اسم المستخدم", scan: "مسح", contacts: "جهات الاتصال", email: "البريد الإلكتروني", searchPlaceholder: "اسم المستخدم أو البريد الإلكتروني أو BidBlitz ID...", found: "تم العثور" },
+    de: { badge: "Privat bezahlen", title: "Geld senden", available: "Verfügbar", privateOnly: "Nur für private Transfers: Kontakt, Username, E-Mail, BidBlitz ID oder privater QR.", privateSend: "Privat senden", privateSendDesc: "An Kunden, Freunde, Familie oder Kontakte.", privateSendCta: "Tippen, um Empfänger zu suchen", merchantQuestion: "Für Händler-Kasse?", merchantHint: 'Dann "Bezahlen" statt "Geld senden"', username: "Username", scan: "Scannen", contacts: "Kontakte", email: "E-Mail", searchPlaceholder: "Username, E-Mail oder BidBlitz ID...", found: "Gefunden", amountTitle: "Betrag eingeben", availableShort: "Verfügbar", messagePlaceholder: "Nachricht hinzufügen...", sendNow: "senden", freeInstant: "Kostenlos & sofort • Keine Gebühren", sentTitle: "Gesendet!", sentSubtitle: "Geld erfolgreich überwiesen", recipientLabel: "Empfänger", newBalance: "Neues Guthaben", done: "Fertig", scanningBadge: "Scannen", scanTitle: "Empfänger-Code scannen", scanAlignHint: "Richte QR- oder BLZ-Code mittig aus", privateScanHint: "Für private Sendungen nur passende Empfänger-Codes verwenden. Händler-Kassencodes gehören in den Bezahlen-Flow.", startCamera: "Kamera starten", choosePhoto: "Foto wählen", manualCodePlaceholder: "BLZ- Code manuell eingeben", verifyCode: "Code prüfen", merchantCodeError: "Dieser Barcode gehört zur Händler-Kasse. Für private Sendungen bitte einen privaten Empfänger-Code scannen.", codeReadFailed: "Code konnte nicht gelesen werden.", imageReadFailed: "Code konnte aus Foto nicht erkannt werden.", cameraUnavailable: "Kamera nicht verfügbar.", cameraStartFailed: "Kamera konnte nicht gestartet werden.", sentTimesSuffix: "x gesendet" },
+    en: { badge: "Private payment", title: "Send money", available: "Available", privateOnly: "For private transfers only: contact, username, email, BidBlitz ID or private QR.", privateSend: "Send privately", privateSendDesc: "To customers, friends, family or contacts.", privateSendCta: "Tap to search for a recipient", merchantQuestion: "For merchant checkout?", merchantHint: 'Then open "Pay" instead of "Send money"', username: "Username", scan: "Scan", contacts: "Contacts", email: "Email", searchPlaceholder: "Username, email or BidBlitz ID...", found: "Found", amountTitle: "Enter amount", availableShort: "Available", messagePlaceholder: "Add a message...", sendNow: "send", freeInstant: "Free & instant • No fees", sentTitle: "Sent!", sentSubtitle: "Money transferred successfully", recipientLabel: "Recipient", newBalance: "New balance", done: "Done", scanningBadge: "Scan", scanTitle: "Scan recipient code", scanAlignHint: "Align QR or BLZ code in the center", privateScanHint: "Only use matching recipient codes for private transfers. Merchant cashier codes belong in the Pay flow.", startCamera: "Start camera", choosePhoto: "Choose photo", manualCodePlaceholder: "Enter BLZ code manually", verifyCode: "Check code", merchantCodeError: "This barcode belongs to merchant checkout. For private transfers, scan a private recipient code.", codeReadFailed: "Code could not be read.", imageReadFailed: "Could not detect a code from the image.", cameraUnavailable: "Camera unavailable.", cameraStartFailed: "Could not start camera.", sentTimesSuffix: "x sent" },
+    sq: { badge: "Pagesë private", title: "Dërgo para", available: "Në dispozicion", privateOnly: "Vetëm për transfere private: kontakt, username, email, BidBlitz ID ose QR privat.", privateSend: "Dërgo privatisht", privateSendDesc: "Te klientët, miqtë, familja ose kontaktet.", privateSendCta: "Prek për të kërkuar marrësin", merchantQuestion: "Për arkën e tregtarit?", merchantHint: 'Atëherë hap "Paguaj" në vend të "Dërgo para"', username: "Username", scan: "Skano", contacts: "Kontaktet", email: "Email", searchPlaceholder: "Username, email ose BidBlitz ID...", found: "U gjet", amountTitle: "Shkruaj shumën", availableShort: "Në dispozicion", messagePlaceholder: "Shto mesazh...", sendNow: "dërgo", freeInstant: "Pa pagesë & menjëherë • Pa tarifa", sentTitle: "U dërgua!", sentSubtitle: "Paratë u transferuan me sukses", recipientLabel: "Marrësi", newBalance: "Bilanci i ri", done: "Përfundo", scanningBadge: "Skanim", scanTitle: "Skano kodin e marrësit", scanAlignHint: "Vendose kodin QR ose BLZ në qendër", privateScanHint: "Për transfere private përdor vetëm kode të sakta të marrësit. Kodet e arkës së tregtarit i përkasin flow-it Paguaj.", startCamera: "Nis kamerën", choosePhoto: "Zgjidh foto", manualCodePlaceholder: "Shkruaj manualisht kodin BLZ", verifyCode: "Verifiko kodin", merchantCodeError: "Ky barcode i përket arkës së tregtarit. Për dërgesa private skano kod privat të marrësit.", codeReadFailed: "Kodi nuk u lexua dot.", imageReadFailed: "Kodi nuk u dallua nga fotoja.", cameraUnavailable: "Kamera nuk është e disponueshme.", cameraStartFailed: "Kamera nuk u nis dot.", sentTimesSuffix: "herë dërguar" },
+    ar: { badge: "دفع خاص", title: "إرسال المال", available: "المتاح", privateOnly: "للتحويلات الخاصة فقط: جهة اتصال أو اسم مستخدم أو بريد إلكتروني أو BidBlitz ID أو QR خاص.", privateSend: "إرسال خاص", privateSendDesc: "إلى العملاء أو الأصدقاء أو العائلة أو جهات الاتصال.", privateSendCta: "اضغط للبحث عن المستلم", merchantQuestion: "لصندوق التاجر؟", merchantHint: 'افتح "الدفع" بدلًا من "إرسال المال"', username: "اسم المستخدم", scan: "مسح", contacts: "جهات الاتصال", email: "البريد الإلكتروني", searchPlaceholder: "اسم المستخدم أو البريد الإلكتروني أو BidBlitz ID...", found: "تم العثور", amountTitle: "أدخل المبلغ", availableShort: "المتاح", messagePlaceholder: "أضف رسالة...", sendNow: "إرسال", freeInstant: "فوري ومجاني • بدون رسوم", sentTitle: "تم الإرسال!", sentSubtitle: "تم تحويل المال بنجاح", recipientLabel: "المستلم", newBalance: "الرصيد الجديد", done: "تم", scanningBadge: "مسح", scanTitle: "امسح رمز المستلم", scanAlignHint: "ضع رمز QR أو BLZ في المنتصف", privateScanHint: "استخدم فقط رموز المستلم المناسبة للتحويلات الخاصة. أكواد صندوق التاجر تخص مسار الدفع.", startCamera: "تشغيل الكاميرا", choosePhoto: "اختر صورة", manualCodePlaceholder: "أدخل رمز BLZ يدويًا", verifyCode: "تحقق من الرمز", merchantCodeError: "هذا الباركود يخص صندوق التاجر. للتحويلات الخاصة امسح رمز مستلم خاص.", codeReadFailed: "تعذر قراءة الرمز.", imageReadFailed: "تعذر اكتشاف الرمز من الصورة.", cameraUnavailable: "الكاميرا غير متاحة.", cameraStartFailed: "تعذر تشغيل الكاميرا.", sentTimesSuffix: "مرة إرسال" },
   }[locale];
   const [step, setStep] = useState(1);
   const [activeList, setActiveList] = useState("saved");
@@ -135,8 +143,37 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
+  const resolvePrivateRecipientByCode = useCallback(async (rawCode) => {
+    const normalizedCode = (rawCode || "").trim().toUpperCase();
+    if (!normalizedCode) return null;
+
+    const lookupTypes = normalizedCode.startsWith("BLZ-")
+      ? ["bidblitz_id", "auto"]
+      : ["auto"];
+
+    for (const type of lookupTypes) {
+      try {
+        const lookupRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/lookup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ query: normalizedCode, type }),
+        });
+
+        if (!lookupRes.ok) continue;
+        const lookupData = await lookupRes.json();
+        if (lookupData?.recipient) return lookupData.recipient;
+      } catch (lookupError) {
+        void lookupError;
+      }
+    }
+
+    return null;
+  }, []);
+
   const handleScanResolvedCode = useCallback(async (value) => {
     const code = (value || "").trim();
+    const normalizedCode = code.toUpperCase();
     if (!code) return;
     setScanBusy(true);
     setCameraError("");
@@ -166,50 +203,44 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
         }
       }
 
-      const res = await api.resolveScanCode({ code });
+      if (BARCODE_RE.test(normalizedCode)) {
+        const privateRecipient = await resolvePrivateRecipientByCode(normalizedCode);
+        if (privateRecipient) {
+          selectRecipient({ ...privateRecipient, transfer_method: "bidblitz_id" });
+          setShowScanner(false);
+          stopCamera();
+          return;
+        }
+      }
+
+      const res = await api.resolveScanCode({ code: normalizedCode });
       if (res.type === "wallet_barcode") {
-        const lookup = await api.barcodeLookup(code.toUpperCase());
-        const name = lookup.customer_name || "Kunde";
-        const derived = name.trim();
-        selectRecipient({
-          user_id: code.toUpperCase(),
-          name: derived,
-          bidblitz_id: code.toUpperCase(),
-          username: null,
-          transfer_method: "merchant_barcode_preview",
-        });
-        setShowScanner(false);
-        stopCamera();
+        const privateRecipient = await resolvePrivateRecipientByCode(normalizedCode);
+        if (privateRecipient) {
+          selectRecipient({ ...privateRecipient, transfer_method: "bidblitz_id" });
+          setShowScanner(false);
+          stopCamera();
+          return;
+        }
+        setCameraError(res.message || L.merchantCodeError);
         return;
       }
       setCameraError(res.message || "Dieser Code ist nicht für privates Senden gedacht.");
     } catch (scanError) {
-      if (code.startsWith("BLZ-") && code.includes("-")) {
-        try {
-          const lookupRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/lookup`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ query: code, type: "bidblitz_id" }),
-          });
-          if (lookupRes.ok) {
-            const lookupData = await lookupRes.json();
-            if (lookupData?.recipient) {
-              selectRecipient({ ...lookupData.recipient, transfer_method: "bidblitz_id" });
-              setShowScanner(false);
-              stopCamera();
-              return;
-            }
-          }
-        } catch (lookupError) {
-          void lookupError;
+      if (BARCODE_RE.test(normalizedCode)) {
+        const privateRecipient = await resolvePrivateRecipientByCode(normalizedCode);
+        if (privateRecipient) {
+          selectRecipient({ ...privateRecipient, transfer_method: "bidblitz_id" });
+          setShowScanner(false);
+          stopCamera();
+          return;
         }
       }
-      setCameraError(scanError?.message || "Code konnte nicht gelesen werden.");
+      setCameraError(scanError?.message || L.codeReadFailed);
     } finally {
       setScanBusy(false);
     }
-  }, [stopCamera]);
+  }, [L.codeReadFailed, L.merchantCodeError, resolvePrivateRecipientByCode, stopCamera]);
 
   const openNativeImageCapture = useCallback(() => {
     setCameraError("");
@@ -224,6 +255,9 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
     setCameraPreparing(true);
     try {
       stopCamera();
+      setCameraEngine("html5");
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => setTimeout(resolve, 60));
       const scanner = new Html5Qrcode("send-money-scan-reader", {
         experimentalFeatures: { useBarCodeDetectorIfSupported: false },
         useBarCodeDetectorIfSupported: false,
@@ -234,12 +268,12 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
       setScanCodeInput(decodedText);
       await handleScanResolvedCode(decodedText);
     } catch (scanFileError) {
-      setCameraError(scanFileError?.message || "Code konnte aus Foto nicht erkannt werden.");
+      setCameraError(scanFileError?.message || L.imageReadFailed);
     } finally {
       setCameraPreparing(false);
       stopCamera();
     }
-  }, [handleScanResolvedCode, stopCamera]);
+  }, [L.imageReadFailed, handleScanResolvedCode, stopCamera]);
 
   const startScanner = useCallback(async () => {
     setCameraError("");
@@ -249,7 +283,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
     }
 
     if (!navigator?.mediaDevices?.getUserMedia) {
-      setCameraError("Kamera nicht verfügbar.");
+      setCameraError(L.cameraUnavailable);
       return;
     }
 
@@ -257,6 +291,9 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
       setCameraPreparing(true);
       const preferHtml5Fallback = /iPad|iPhone|iPod/i.test(navigator.userAgent) || typeof window === "undefined" || !("BarcodeDetector" in window);
       if (preferHtml5Fallback) {
+        setCameraEngine("html5");
+        await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+        await new Promise((resolve) => setTimeout(resolve, 60));
         const scanner = new Html5Qrcode("send-money-scan-reader", {
           experimentalFeatures: { useBarCodeDetectorIfSupported: false },
           useBarCodeDetectorIfSupported: false,
@@ -272,24 +309,39 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
           setTimeout(() => { scanLockRef.current = false; }, 1500);
         };
 
-        await scanner.start({ facingMode: "environment" }, {
+        const config = {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: { width: 260, height: 260 },
           rememberLastUsedCamera: true,
           formatsToSupport: HTML5_SUPPORTED_FORMATS,
           experimentalFeatures: { useBarCodeDetectorIfSupported: false },
-          videoConstraints: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
-        }, onScanSuccess, () => {});
+          videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+        };
+
+        try {
+          await scanner.start({ facingMode: { exact: "environment" } }, config, onScanSuccess, () => {});
+        } catch {
+          await scanner.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+        }
+
         setCameraEngine("html5");
         setCameraActive(true);
         setCameraPreparing(false);
+        setTimeout(() => {
+          try {
+            swallowMaybePromise(scanner.applyVideoConstraints?.({ advanced: [{ focusMode: "continuous" }, { zoom: 2 }] }));
+          } catch (focusError) {
+            void focusError;
+          }
+        }, 1200);
         return;
       }
 
       const supported = typeof window.BarcodeDetector.getSupportedFormats === "function"
         ? await window.BarcodeDetector.getSupportedFormats()
-        : ["qr_code"];
-      detectorRef.current = new window.BarcodeDetector({ formats: supported.includes("qr_code") ? ["qr_code"] : supported });
+        : SUPPORTED_SCAN_FORMATS;
+      const formats = SUPPORTED_SCAN_FORMATS.filter((format) => supported.includes(format));
+      detectorRef.current = new window.BarcodeDetector({ formats: formats.length ? formats : ["qr_code"] });
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -301,9 +353,9 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
       setCameraPreparing(false);
     } catch (scannerError) {
       stopCamera();
-      setCameraError(scannerError?.message || "Kamera konnte nicht gestartet werden.");
+      setCameraError(scannerError?.message || L.cameraStartFailed);
     }
-  }, [handleScanResolvedCode, openNativeImageCapture, prefersImageCapture, stopCamera]);
+  }, [L.cameraStartFailed, L.cameraUnavailable, handleScanResolvedCode, openNativeImageCapture, prefersImageCapture, stopCamera]);
 
   useEffect(() => {
     if (!cameraActive || cameraEngine !== "native" || !detectorRef.current || !videoRef.current) return undefined;
@@ -326,10 +378,10 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
         void nativeScanError;
       }
 
-      if (!cancelled) requestAnimationFrame(scanLoop);
+      if (!cancelled) setTimeout(scanLoop, 700);
     };
 
-    requestAnimationFrame(scanLoop);
+    scanLoop();
     return () => { cancelled = true; };
   }, [cameraActive, cameraEngine, handleScanResolvedCode]);
 
@@ -480,7 +532,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                 >
                   <p className="text-[12px] font-semibold text-[#8B5CF6]">{L.privateSend}</p>
                   <p className="mt-1 text-[11px] text-slate-600">{L.privateSendDesc}</p>
-                  <p className="mt-2 text-[10px] font-semibold text-slate-500">Tippen, um Empfänger zu suchen</p>
+                  <p className="mt-2 text-[10px] font-semibold text-slate-500">{L.privateSendCta}</p>
                 </motion.button>
                 <motion.button data-testid="send-money-go-pay" onClick={() => onNavigate?.('/pay')} whileTap={{ scale: 0.98 }} className="rounded-2xl border border-[#00C2FF]/18 bg-[#00C2FF]/8 px-4 py-3 text-left">
                   <span className="block text-[12px] font-semibold text-[#00A6E6]">{L.merchantQuestion}</span>
@@ -551,7 +603,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                         <div className="text-3xl mb-2">{iconMap[saved.icon] || "👤"}</div>
                         <p className="text-sm font-semibold text-slate-900 truncate">{saved.nickname}</p>
                         <p className="text-xs text-slate-500 truncate">{saved.recipient_number}</p>
-                        {saved.transfer_count > 0 && <p className="text-[10px] text-[#00C2FF] mt-1">{saved.transfer_count}x gesendet</p>}
+                        {saved.transfer_count > 0 && <p className="mt-1 text-[10px] text-[#00C2FF]">{saved.transfer_count} {L.sentTimesSuffix}</p>}
                       </motion.button>
                     );
                   })}
@@ -591,7 +643,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
           <motion.div key="amount" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.22 }} className="px-4 pt-4 pb-6">
             <div className="flex items-center gap-4 mb-5">
               <motion.button data-testid="send-money-back-button" onClick={() => setStep(1)} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><ArrowLeft size={18} className="text-slate-600" /></motion.button>
-              <h2 className="text-[18px] font-bold text-slate-900">Betrag eingeben</h2>
+              <h2 className="text-[18px] font-bold text-slate-900">{L.amountTitle}</h2>
             </div>
 
             <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-200 mb-5">
@@ -607,7 +659,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                 <span className="text-[48px] font-bold text-slate-300">€</span>
                 <input data-testid="send-money-amount-input" ref={inputRef} type="text" inputMode="decimal" value={amount} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" className="text-[64px] font-bold text-slate-900 bg-transparent outline-none text-center w-48 placeholder-slate-300" />
               </div>
-              <p className="text-[13px] text-slate-500">Verfügbar: <span className="text-[#00C2FF] font-semibold">€{balance.toFixed(2)}</span></p>
+              <p className="text-[13px] text-slate-500">{L.availableShort}: <span className="text-[#00C2FF] font-semibold">€{balance.toFixed(2)}</span></p>
 
               <div className="grid grid-cols-2 sm:flex items-center gap-2 mt-6 justify-center">
                 {quickAmounts.map((q) => (
@@ -616,7 +668,7 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                 <motion.button data-testid="send-money-quick-amount-max" onClick={setMax} className="px-5 py-3 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 text-[14px] font-semibold text-[#00C2FF]" whileTap={{ scale: 0.95 }}>MAX</motion.button>
               </div>
 
-              <input data-testid="send-money-message-input" type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Nachricht hinzufügen..." className="w-full mt-6 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-[14px] placeholder-slate-400 outline-none text-center" />
+              <input data-testid="send-money-message-input" type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder={L.messagePlaceholder} className="w-full mt-6 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-[14px] placeholder-slate-400 outline-none text-center" />
             </div>
 
             <AnimatePresence>
@@ -630,9 +682,9 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
 
             <div className="mt-5">
               <motion.button data-testid="send-money-submit-button" onClick={handleSend} disabled={loading || !amount || parseFloat(amount) <= 0} className="w-full py-5 rounded-2xl bg-gradient-to-r from-[#00C2FF] to-[#0066FF] text-white font-bold text-[17px] flex items-center justify-center gap-3 disabled:opacity-40 shadow-lg shadow-[#00C2FF]/20" whileTap={{ scale: 0.98 }}>
-                {loading ? <Loader2 size={22} className="animate-spin" /> : <><Send size={20} />€{parseFloat(amount || 0).toFixed(2)} senden</>}
+                {loading ? <Loader2 size={22} className="animate-spin" /> : <><Send size={20} />€{parseFloat(amount || 0).toFixed(2)} {L.sendNow}</>}
               </motion.button>
-              <p className="text-center text-[11px] text-slate-500 mt-3">Kostenlos & sofort • Keine Gebühren</p>
+              <p className="mt-3 text-center text-[11px] text-slate-500">{L.freeInstant}</p>
             </div>
           </motion.div>
         )}
@@ -640,22 +692,22 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
         {step === 3 && result && (
           <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", damping: 20 }} className="px-4 pt-10 pb-6 flex flex-col items-center justify-center text-center">
             <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[#00D26A] to-[#00A855] flex items-center justify-center shadow-2xl shadow-[#00D26A]/30 mb-8"><CheckCircle2 size={56} className="text-white" /></div>
-            <h2 className="text-[28px] font-bold text-slate-900 mb-2">Gesendet!</h2>
-            <p className="text-[15px] text-slate-500">Geld erfolgreich überwiesen</p>
+            <h2 className="mb-2 text-[28px] font-bold text-slate-900">{L.sentTitle}</h2>
+            <p className="text-[15px] text-slate-500">{L.sentSubtitle}</p>
             <p className="text-[56px] font-bold text-slate-900 tracking-tight my-8">€{parseFloat(amount).toFixed(2)}</p>
             <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white border border-slate-200">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00C2FF] to-[#0066FF] flex items-center justify-center text-[16px] font-bold text-white">{recipient?.name?.[0]?.toUpperCase() || "?"}</div>
               <div className="text-left">
                 <p className="text-[14px] font-semibold text-slate-900">{recipient?.name}</p>
-                <p className="text-[11px] text-slate-500">Empfänger</p>
+                <p className="text-[11px] text-slate-500">{L.recipientLabel}</p>
               </div>
             </div>
             <p className="text-[12px] text-slate-500 mt-6 font-mono">Ref: {result.reference}</p>
             <div className="mt-8 text-center">
-              <p className="text-[11px] text-slate-500 mb-1">Neues Guthaben</p>
+              <p className="mb-1 text-[11px] text-slate-500">{L.newBalance}</p>
               <p className="text-[24px] font-bold text-[#00C2FF]">€{normalizeAmount(result.sender_new_balance).toFixed(2)}</p>
             </div>
-            <motion.button data-testid="send-money-done-button" onClick={() => onNavigate?.('/wallet')} className="mt-8 w-full py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-semibold text-[15px]" whileTap={{ scale: 0.98 }}>Fertig</motion.button>
+            <motion.button data-testid="send-money-done-button" onClick={() => onNavigate?.('/wallet')} className="mt-8 w-full py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 font-semibold text-[15px]" whileTap={{ scale: 0.98 }}>{L.done}</motion.button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -668,8 +720,8 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
               <div className="bg-[#f8fafc] rounded-t-[32px] min-h-[72vh] border border-slate-200 shadow-[0_24px_64px_rgba(15,23,42,0.16)] p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6]">Scannen</p>
-                    <h3 className="text-[20px] font-bold text-slate-950">Empfänger-Code scannen</h3>
+                    <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6]">{L.scanningBadge}</p>
+                    <h3 className="text-[20px] font-bold text-slate-950">{L.scanTitle}</h3>
                   </div>
                   <motion.button data-testid="send-money-scan-close" onClick={() => { setShowScanner(false); stopCamera(); }} whileTap={{ scale: 0.9 }} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center">
                     <ArrowLeft size={18} className="text-slate-600" />
@@ -683,24 +735,24 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
                     ) : (
                       <div className="text-center px-4">
                         {cameraPreparing ? <Loader2 size={28} className="animate-spin text-[#00C2FF] mx-auto" /> : <QrCode size={32} className="text-slate-300 mx-auto" />}
-                        <p className="mt-3 text-[12px] text-slate-500">Richte QR- oder BLZ-Code mittig aus</p>
+                        <p className="mt-3 text-[12px] text-slate-500">{L.scanAlignHint}</p>
                       </div>
                     )}
                   </div>
-                  <p className="mt-3 text-[11px] text-slate-500">Für private Sendungen nur passende Empfänger-Codes verwenden. Händler-Kassencodes gehören in den Bezahlen-Flow.</p>
+                  <p className="mt-3 text-[11px] text-slate-500">{L.privateScanHint}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                  <motion.button data-testid="send-money-start-camera" onClick={startScanner} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl bg-[#00C2FF] text-slate-950 font-bold">Kamera starten</motion.button>
-                  <motion.button data-testid="send-money-open-photo-scan" onClick={openNativeImageCapture} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl border border-slate-200 bg-white text-slate-800 font-semibold">Foto wählen</motion.button>
+                  <motion.button data-testid="send-money-start-camera" onClick={startScanner} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl bg-[#00C2FF] text-slate-950 font-bold">{L.startCamera}</motion.button>
+                  <motion.button data-testid="send-money-open-photo-scan" onClick={openNativeImageCapture} whileTap={{ scale: 0.98 }} className="min-h-[48px] rounded-2xl border border-slate-200 bg-white text-slate-800 font-semibold">{L.choosePhoto}</motion.button>
                 </div>
 
                 <div className="relative mb-3">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input data-testid="send-money-scan-code-input" value={scanCodeInput} onChange={(e) => setScanCodeInput(e.target.value)} placeholder="BLZ- Code manuell eingeben" className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 text-[15px] placeholder-slate-400 outline-none focus:border-[#00C2FF]/40" />
+                  <input data-testid="send-money-scan-code-input" value={scanCodeInput} onChange={(e) => setScanCodeInput(e.target.value)} placeholder={L.manualCodePlaceholder} className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 text-slate-900 text-[15px] placeholder-slate-400 outline-none focus:border-[#00C2FF]/40" />
                 </div>
                 <motion.button data-testid="send-money-scan-submit" onClick={() => handleScanResolvedCode(scanCodeInput)} whileTap={{ scale: 0.98 }} disabled={scanBusy || !scanCodeInput.trim()} className="w-full min-h-[48px] rounded-2xl border border-slate-200 bg-slate-100 text-slate-900 font-semibold disabled:opacity-50">
-                  {scanBusy ? <Loader2 size={18} className="animate-spin mx-auto" /> : 'Code prüfen'}
+                  {scanBusy ? <Loader2 size={18} className="animate-spin mx-auto" /> : L.verifyCode}
                 </motion.button>
 
                 {cameraError ? <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[12px] text-red-500">{cameraError}</div> : null}

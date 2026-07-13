@@ -34,6 +34,7 @@ import {
 } from "../components/pos/POSRetailEnterpriseComponents";
 import { POSHardwareModal } from "../components/pos/POSHardwareModal";
 import { AgeVerificationModal } from "../components/pos/AgeVerificationModal";
+import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -53,45 +54,47 @@ async function apiCall(path, { method = "GET", body, raw = false } = {}) {
 
 // ───────────────────────── Tab definitions
 const TABS = [
-  { id: "dashboard", label: "Dashboard", icon: Home },
-  { id: "checkout", label: "Kasse", icon: ScanLine },
-  { id: "products", label: "Produkte", icon: Package },
-  { id: "inventory", label: "Bestand", icon: Warehouse },
-  { id: "movements", label: "Bewegungen", icon: RefreshCw },
-  { id: "suppliers", label: "Lieferanten", icon: Truck },
-  { id: "orders", label: "Bestellungen", icon: FileText },
-  { id: "receipts", label: "Belege", icon: FileText },
-  { id: "refunds", label: "Erstattungen", icon: RotateCcw },
-  { id: "approvals", label: "Freigaben", icon: ShieldCheck },
-  { id: "chat", label: "Team-Chat", icon: MessageCircle },
-  { id: "retail", label: "Retail Pro", icon: Store },
-  { id: "restaurant", label: "Restaurant", icon: Users },
-  { id: "supervisor", label: "Supervisor", icon: ShieldCheck },
-  { id: "reports", label: "Berichte", icon: BarChart3 },
-  { id: "advanced", label: "Mega-Tools", icon: Sparkles },
-  { id: "pro", label: "Pro / Compliance", icon: Sparkles },
-  { id: "compliance", label: "Compliance", icon: ShieldCheck },
-  { id: "addons", label: "Add-Ons", icon: Sparkles },
-  { id: "admin", label: "Admin", icon: ShieldCheck },
+  { id: "dashboard", labelKey: "pos.dashboard", icon: Home },
+  { id: "checkout", labelKey: "pos.checkout", icon: ScanLine },
+  { id: "products", labelKey: "pos.products", icon: Package },
+  { id: "inventory", labelKey: "pos.inventory", icon: Warehouse },
+  { id: "movements", labelKey: "pos.movements", icon: RefreshCw },
+  { id: "suppliers", labelKey: "pos.suppliers", icon: Truck },
+  { id: "orders", labelKey: "pos.orders", icon: FileText },
+  { id: "receipts", labelKey: "pos.receipts", icon: FileText },
+  { id: "refunds", labelKey: "pos.refunds", icon: RotateCcw },
+  { id: "approvals", labelKey: "pos.approvals", icon: ShieldCheck },
+  { id: "chat", labelKey: "pos.team_chat", icon: MessageCircle },
+  { id: "retail", labelKey: "pos.retail_pro", icon: Store },
+  { id: "restaurant", labelKey: "pos.restaurant", icon: Users },
+  { id: "supervisor", labelKey: "pos.supervisor", icon: ShieldCheck },
+  { id: "reports", labelKey: "pos.reports", icon: BarChart3 },
+  { id: "advanced", labelKey: "pos.mega_tools", icon: Sparkles },
+  { id: "pro", labelKey: "pos.pro_compliance", icon: Sparkles },
+  { id: "compliance", labelKey: "pos.compliance", icon: ShieldCheck },
+  { id: "addons", labelKey: "pos.addons", icon: Sparkles },
+  { id: "admin", labelKey: "pos.admin", icon: ShieldCheck },
 ];
 
 function ApprovalsTab({ storeId }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="pos-approvals-tab">
-      <h3 className="text-sm font-semibold text-white">Freigaben</h3>
+      <h3 className="text-sm font-semibold text-white">{t("pos.approvals")}</h3>
       <p className="mt-2 text-xs text-white/70">
-        Freigaben für Store {storeId || "—"} laufen aktuell über Supervisor- und Admin-Tools.
+        {t("pos.approvals_desc").replace("this store", storeId || "—")}
       </p>
     </div>
   );
 }
 
 function ChatTab({ storeId }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="pos-chat-tab">
-      <h3 className="text-sm font-semibold text-white">Team-Chat</h3>
+      <h3 className="text-sm font-semibold text-white">{t("pos.team_chat")}</h3>
       <p className="mt-2 text-xs text-white/70">
-        Der Team-Chat für Store {storeId || "—"} ist im aktuellen Build als kompakter Hinweis eingebunden.
+        {t("pos.team_chat_desc").replace("this store", storeId || "—")}
       </p>
     </div>
   );
@@ -99,6 +102,7 @@ function ChatTab({ storeId }) {
 
 // ───────────────────────── Main shell
 export default function POSPage({ onBack }) {
+  const { t } = useI18n();
   const [tab, setTab] = useState("dashboard");
   const [merchant, setMerchant] = useState(null);
   const [stores, setStores] = useState([]);
@@ -161,8 +165,8 @@ export default function POSPage({ onBack }) {
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-bold truncate">{merchant.business_name}</p>
             <p className="text-[10px] text-white/50">
-              {merchant.status === "approved" ? "✓ Aktiviert" : merchant.status === "pending" ? "⏳ Wartet auf Freischaltung" : merchant.status}
-              {" · "}Gebühr {(merchant.fee_rate * 100).toFixed(2)}%
+              {merchant.status === "approved" ? `✓ ${t("pos.status_active")}` : merchant.status === "pending" ? `⏳ ${t("pos.status_pending")}` : merchant.status}
+              {" · "}{t("pos.fee")} {(merchant.fee_rate * 100).toFixed(2)}%
             </p>
           </div>
           {storeId && (
@@ -183,16 +187,16 @@ export default function POSPage({ onBack }) {
 
         {/* Tabs */}
         <div className="flex gap-1 overflow-x-auto px-3 pb-2 hide-scrollbar">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+          {TABS.map((tabItem) => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap"
               style={{
-                background: tab === t.id ? "rgba(0,194,255,0.15)" : "rgba(255,255,255,0.04)",
-                color: tab === t.id ? "#00C2FF" : "rgba(255,255,255,0.6)",
-                border: tab === t.id ? "1px solid rgba(0,194,255,0.3)" : "1px solid transparent",
+                background: tab === tabItem.id ? "rgba(0,194,255,0.15)" : "rgba(255,255,255,0.04)",
+                color: tab === tabItem.id ? "#00C2FF" : "rgba(255,255,255,0.6)",
+                border: tab === tabItem.id ? "1px solid rgba(0,194,255,0.3)" : "1px solid transparent",
               }}
-              data-testid={`pos-tab-${t.id}`}>
-              <t.icon size={12} /> {t.label}
+              data-testid={`pos-tab-${tabItem.id}`}>
+              <tabItem.icon size={12} /> {t(tabItem.labelKey)}
             </button>
           ))}
         </div>
@@ -232,6 +236,7 @@ export default function POSPage({ onBack }) {
 
 // ───────────────────────── Onboarding Wizard (Profil → Filiale → Kasse → Produkt)
 function MerchantOnboarding({ onBack, onDone }) {
+  const { t } = useI18n();
   const [step, setStep] = useState(1);
   const [merchant, setMerchant] = useState(null);
   const [store, setStore] = useState(null);
@@ -248,24 +253,24 @@ function MerchantOnboarding({ onBack, onDone }) {
   const [p, setP] = useState({ name: "", barcode: "", price: 0, tax_rate: 0.19, stock: 0, unit: "Stk" });
 
   const submitMerchant = async () => {
-    if (!m.business_name) return toast.error("Firmenname fehlt");
+    if (!m.business_name) return toast.error(t("pos.enter_business_name_missing"));
     setSaving(true);
     try {
       const res = await apiCall("/api/pos/merchants/register", { method: "POST", body: m });
       setMerchant(res.merchant);
-      toast.success("Profil angelegt");
+      toast.success(t("pos.profile_created"));
       setStep(2);
     } catch (e) { toast.error(e.message); }
     setSaving(false);
   };
 
   const submitStore = async () => {
-    if (!s.name) return toast.error("Filialname fehlt");
+    if (!s.name) return toast.error(t("pos.enter_store_name_missing"));
     setSaving(true);
     try {
       const res = await apiCall("/api/pos/stores/create", { method: "POST", body: { ...s, country: m.country } });
       setStore(res.store);
-      toast.success("Filiale erstellt");
+      toast.success(t("pos.store_created"));
       setStep(3);
     } catch (e) { toast.error(e.message); }
     setSaving(false);
@@ -276,7 +281,7 @@ function MerchantOnboarding({ onBack, onDone }) {
     try {
       const res = await apiCall("/api/pos/registers/create", { method: "POST", body: { store_id: store.store_id, ...r } });
       setRegister(res.register);
-      toast.success("Kasse angelegt");
+      toast.success(t("pos.register_created"));
       setStep(4);
     } catch (e) { toast.error(e.message); }
     setSaving(false);
@@ -287,13 +292,13 @@ function MerchantOnboarding({ onBack, onDone }) {
     setSaving(true);
     try {
       await apiCall("/api/pos/products/create", { method: "POST", body: { store_id: store.store_id, ...p, track_stock: true } });
-      toast.success("Produkt angelegt");
+      toast.success(t("pos.product_created"));
       finish();
     } catch (e) { toast.error(e.message); setSaving(false); }
   };
 
   const finish = () => {
-    toast.success("Setup abgeschlossen!");
+    toast.success(t("pos.setup_done"));
     onDone();
   };
 
@@ -309,105 +314,105 @@ function MerchantOnboarding({ onBack, onDone }) {
   return (
     <div className="min-h-screen bg-[#060810] text-white p-5">
       <button onClick={onBack} className="mb-4 flex items-center gap-2 text-white/70 text-sm" data-testid="pos-onb-back">
-        <ArrowLeft size={16} /> Zurück
+        <ArrowLeft size={16} /> {t("pos.back")}
       </button>
-      <h1 className="text-2xl font-black mb-1">BidBlitz POS Setup</h1>
-      <p className="text-white/60 text-sm mb-5">Schritt {step} von 4</p>
+      <h1 className="text-2xl font-black mb-1">{t("pos.setup_title")}</h1>
+      <p className="text-white/60 text-sm mb-5">{t("pos.step_of", { step })}</p>
       {StepBar}
 
       {step === 1 && (
         <div className="space-y-3 max-w-md">
-          <h2 className="text-lg font-bold">1. Dein Geschäftsprofil</h2>
-          <Field label="Firmenname *">
+          <h2 className="text-lg font-bold">1. {t("pos.create_business_profile")}</h2>
+          <Field label={`${t("pos.business_name")} *`}>
             <input value={m.business_name} onChange={(e) => setM({ ...m, business_name: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-name" />
           </Field>
-          <Field label="Branche">
+          <Field label={t("pos.industry")}>
             <select value={m.business_type} onChange={(e) => setM({ ...m, business_type: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
-              <option value="retail">Einzelhandel</option>
-              <option value="supermarket">Supermarkt</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="kiosk">Kiosk</option>
-              <option value="other">Sonstige</option>
+              <option value="retail">{t("pos.industry_retail")}</option>
+              <option value="supermarket">{t("pos.industry_supermarket")}</option>
+              <option value="restaurant">{t("pos.industry_restaurant")}</option>
+              <option value="kiosk">{t("pos.industry_kiosk")}</option>
+              <option value="other">{t("pos.industry_other")}</option>
             </select>
           </Field>
-          <Field label="Telefon">
+          <Field label={t("pos.phone")}>
             <input value={m.contact_phone} onChange={(e) => setM({ ...m, contact_phone: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
           </Field>
           <button onClick={submitMerchant} disabled={saving}
             className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50 mt-2"
             data-testid="pos-onb-submit-1">
-            {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Weiter →"}
+            {saving ? <Loader2 size={16} className="animate-spin inline" /> : `${t("pos.next")} →`}
           </button>
         </div>
       )}
 
       {step === 2 && (
         <div className="space-y-3 max-w-md">
-          <h2 className="text-lg font-bold">2. Erste Filiale</h2>
-          <Field label="Filialname *">
+          <h2 className="text-lg font-bold">2. {t("pos.first_store")}</h2>
+          <Field label={`${t("pos.store_name")} *`}>
             <input value={s.name} onChange={(e) => setS({ ...s, name: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-store" />
           </Field>
-          <Field label="Stadt">
+          <Field label={t("pos.city")}>
             <input value={s.city} onChange={(e) => setS({ ...s, city: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
           </Field>
-          <Field label="Adresse">
+          <Field label={t("pos.address")}>
             <input value={s.address} onChange={(e) => setS({ ...s, address: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
           </Field>
           <button onClick={submitStore} disabled={saving}
             className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50 mt-2"
             data-testid="pos-onb-submit-2">
-            {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Weiter →"}
+            {saving ? <Loader2 size={16} className="animate-spin inline" /> : `${t("pos.next")} →`}
           </button>
         </div>
       )}
 
       {step === 3 && (
         <div className="space-y-3 max-w-md">
-          <h2 className="text-lg font-bold">3. Erste Kasse</h2>
-          <Field label="Kassenname">
+          <h2 className="text-lg font-bold">3. {t("pos.first_register")}</h2>
+          <Field label={t("pos.register_name")}>
             <input value={r.name} onChange={(e) => setR({ ...r, name: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-register" />
           </Field>
-          <Field label="Standort (optional)">
+          <Field label={t("pos.location_optional")}>
             <input value={r.location} onChange={(e) => setR({ ...r, location: e.target.value })} placeholder="z.B. Eingang links"
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
           </Field>
           <button onClick={submitRegister} disabled={saving}
             className="w-full py-3.5 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50 mt-2"
             data-testid="pos-onb-submit-3">
-            {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Weiter →"}
+            {saving ? <Loader2 size={16} className="animate-spin inline" /> : `${t("pos.next")} →`}
           </button>
         </div>
       )}
 
       {step === 4 && (
         <div className="space-y-3 max-w-md">
-          <h2 className="text-lg font-bold">4. Erstes Produkt (optional)</h2>
-          <p className="text-[11px] text-white/50">Du kannst diesen Schritt überspringen und Produkte später anlegen.</p>
-          <Field label="Produktname">
+          <h2 className="text-lg font-bold">4. {t("pos.first_product_optional")}</h2>
+          <p className="text-[11px] text-white/50">{t("pos.can_skip_step")}</p>
+          <Field label={t("pos.product_name")}>
             <input value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })}
               className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" data-testid="pos-onb-product" />
           </Field>
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Barcode">
+            <Field label={t("pos.barcode")}>
               <input value={p.barcode} onChange={(e) => setP({ ...p, barcode: e.target.value })}
                 className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
             </Field>
-            <Field label="Preis €">
+            <Field label={`${t("pos.price")} €`}>
               <input type="number" step="0.01" value={p.price} onChange={(e) => setP({ ...p, price: parseFloat(e.target.value) || 0 })}
                 className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
             </Field>
-            <Field label="Bestand">
+            <Field label={t("pos.stock")}>
               <input type="number" value={p.stock} onChange={(e) => setP({ ...p, stock: parseFloat(e.target.value) || 0 })}
                 className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
             </Field>
-            <Field label="Einheit">
+            <Field label={t("pos.unit")}>
               <input value={p.unit} onChange={(e) => setP({ ...p, unit: e.target.value })}
                 className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white" />
             </Field>
@@ -415,12 +420,12 @@ function MerchantOnboarding({ onBack, onDone }) {
           <div className="grid grid-cols-2 gap-2 mt-2">
             <button onClick={finish} disabled={saving}
               className="py-3 rounded-xl bg-white/10 text-white font-bold" data-testid="pos-onb-skip">
-              Überspringen
+              {t("pos.skip")}
             </button>
             <button onClick={submitProduct} disabled={saving}
               className="py-3 rounded-xl bg-[#00C2FF] text-black font-black disabled:opacity-50"
               data-testid="pos-onb-submit-4">
-              {saving ? <Loader2 size={16} className="animate-spin inline" /> : "Anlegen ✓"}
+              {saving ? <Loader2 size={16} className="animate-spin inline" /> : `${t("pos.create")} ✓`}
             </button>
           </div>
         </div>
@@ -431,6 +436,7 @@ function MerchantOnboarding({ onBack, onDone }) {
 
 // ───────────────────────── Movements
 function MovementsTab({ storeId }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   useEffect(() => {
     if (!storeId) return;
@@ -447,13 +453,14 @@ function MovementsTab({ storeId }) {
           <span className="text-white/40 text-[9px]">{new Date(m.created_at).toLocaleDateString()}</span>
         </div>
       ))}
-      {items.length === 0 && <p className="text-[11px] text-white/40 text-center py-4">Keine Bewegungen</p>}
+      {items.length === 0 && <p className="text-[11px] text-white/40 text-center py-4">{t("pos.no_movements")}</p>}
     </Card>
   );
 }
 
 // ───────────────────────── Suppliers
 function SuppliersTab() {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [showNew, setShowNew] = useState(false);
   const [f, setF] = useState({ name: "", contact_person: "", email: "", phone: "" });
@@ -463,10 +470,10 @@ function SuppliersTab() {
   };
   useEffect(() => { load(); }, []);
   const create = async () => {
-    if (!f.name) return toast.error("Name fehlt");
+    if (!f.name) return toast.error(t("pos.supplier_name"));
     try {
       await apiCall("/api/pos/suppliers/create", { method: "POST", body: f });
-      toast.success("Lieferant angelegt");
+      toast.success(t("pos.create_supplier"));
       setShowNew(false); setF({ name: "", contact_person: "", email: "", phone: "" });
       load();
     } catch (e) { toast.error(e.message); }
@@ -475,19 +482,19 @@ function SuppliersTab() {
     <div className="space-y-3">
       <button onClick={() => setShowNew(!showNew)} className="px-3 py-2 rounded-xl bg-[#00C2FF] text-black flex items-center gap-1 text-[11px] font-bold"
         data-testid="pos-sup-new">
-        <Plus size={13} /> Neuer Lieferant
+        <Plus size={13} /> {t("pos.create_supplier")}
       </button>
       {showNew && (
-        <Card title="Neuer Lieferant">
-          <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Firmenname *"
+        <Card title={t("pos.create_supplier")}>
+          <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={`${t("pos.supplier_name")} *`}
             className="w-full px-3 py-2 mb-2 bg-white/5 border border-white/10 rounded text-[12px]" data-testid="pos-sup-name" />
-          <input value={f.contact_person} onChange={(e) => setF({ ...f, contact_person: e.target.value })} placeholder="Ansprechpartner"
+          <input value={f.contact_person} onChange={(e) => setF({ ...f, contact_person: e.target.value })} placeholder={t("pos.contact_person")}
             className="w-full px-3 py-2 mb-2 bg-white/5 border border-white/10 rounded text-[12px]" />
           <input value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="Email"
             className="w-full px-3 py-2 mb-2 bg-white/5 border border-white/10 rounded text-[12px]" />
-          <input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="Telefon"
+          <input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder={t("pos.phone")}
             className="w-full px-3 py-2 mb-2 bg-white/5 border border-white/10 rounded text-[12px]" />
-          <button onClick={create} className="px-3 py-2 rounded-lg bg-[#00C2FF] text-black font-bold text-[11px]" data-testid="pos-sup-save">Anlegen</button>
+          <button onClick={create} className="px-3 py-2 rounded-lg bg-[#00C2FF] text-black font-bold text-[11px]" data-testid="pos-sup-save">{t("pos.create")}</button>
         </Card>
       )}
       {items.map((s) => (
@@ -496,7 +503,7 @@ function SuppliersTab() {
           <p className="text-[10px] text-white/50">{s.contact_person} · {s.email} · {s.phone}</p>
         </Card>
       ))}
-      {items.length === 0 && !showNew && <p className="text-[11px] text-white/40 text-center py-4">Keine Lieferanten</p>}
+      {items.length === 0 && !showNew && <p className="text-[11px] text-white/40 text-center py-4">{t("pos.no_suppliers")}</p>}
     </div>
   );
 }
