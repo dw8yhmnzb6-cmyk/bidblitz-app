@@ -144,7 +144,7 @@ export default function POSPage({ onBack }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060810] flex items-center justify-center">
+      <div className="min-h-screen bg-[#060810] flex items-center justify-center" data-testid="pos-page">
         <Loader2 size={28} className="animate-spin text-[#00C2FF]" />
       </div>
     );
@@ -312,7 +312,7 @@ function MerchantOnboarding({ onBack, onDone }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#060810] text-white p-5">
+    <div className="min-h-screen bg-[#060810] text-white p-5" data-testid="pos-page">
       <button onClick={onBack} className="mb-4 flex items-center gap-2 text-white/70 text-sm" data-testid="pos-onb-back">
         <ArrowLeft size={16} /> {t("pos.back")}
       </button>

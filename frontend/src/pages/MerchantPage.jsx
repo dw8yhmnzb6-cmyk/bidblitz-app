@@ -205,7 +205,16 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
   const effectiveDemoMode = STORE_SAFE_MODE ? false : isDemoMode;
   const merchant = useMerchant();
   const realStats = useMerchantStats();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const merchantConnectFallback = {
+    de: { title: "Stripe Connect", desc: "Starte Auszahlungen für deine Verkäufe" },
+    en: { title: "Stripe Connect", desc: "Start payouts for your sales" },
+    sq: { title: "Stripe Connect", desc: "Nis tërheqjet për shitjet e tua" },
+    ar: { title: "Stripe Connect", desc: "ابدأ السحوبات لمبيعاتك" },
+  }[locale] || { title: "Stripe Connect", desc: "Start payouts for your sales" };
+  const merchantConnectTitle = t("merchant.connect_title") === "merchant.connect_title" ? merchantConnectFallback.title : t("merchant.connect_title");
+  const merchantConnectDesc = t("merchant.connect_desc") === "merchant.connect_desc" ? merchantConnectFallback.desc : t("merchant.connect_desc");
   const [isLoading, setIsLoading] = useState(false);
   const [showPayout, setShowPayout] = useState(false);
   const [error, setError] = useState(null);
@@ -288,8 +297,8 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
             <Shield size={13} className="text-[#00E0FF]" />
           </div>
           <div className="flex-1 text-left">
-            <p className="text-[11px] font-semibold text-white/70">{t("merchant.connect_title")}</p>
-            <p className="text-[8px] text-white/20">{t("merchant.connect_desc")}</p>
+            <p className="text-[11px] font-semibold text-white/70">{merchantConnectTitle}</p>
+            <p className="text-[8px] text-white/20">{merchantConnectDesc}</p>
           </div>
           <ChevronRight size={12} className="text-white/15" />
         </motion.button>

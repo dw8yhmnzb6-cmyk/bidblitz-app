@@ -12,7 +12,16 @@ const accentGold = "#FFD166";
 const accentGreen = "#00E89D";
 
 const MerchantConnectPage = ({ onBack }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const merchantConnectFallback = {
+    de: { title: "Stripe Connect", desc: "Starte Auszahlungen für deine Verkäufe" },
+    en: { title: "Stripe Connect", desc: "Start payouts for your sales" },
+    sq: { title: "Stripe Connect", desc: "Nis tërheqjet për shitjet e tua" },
+    ar: { title: "ابدأ السحوبات لمبيعاتك", desc: "ابدأ السحوبات لمبيعاتك" },
+  }[locale] || { title: "Stripe Connect", desc: "Start payouts for your sales" };
+  const merchantConnectTitle = t("merchant.connect_title") === "merchant.connect_title" ? merchantConnectFallback.title : t("merchant.connect_title");
+  const merchantConnectDesc = t("merchant.connect_desc") === "merchant.connect_desc" ? merchantConnectFallback.desc : t("merchant.connect_desc");
   const [status, setStatus] = useState(null);
   const [earnings, setEarnings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +60,8 @@ const MerchantConnectPage = ({ onBack }) => {
             <ArrowLeft size={15} className="text-white/40" />
           </motion.button>
           <div>
-            <h1 className="text-[15px] font-bold text-white/90 font-outfit">{t("merchant.connect_title")}</h1>
-            <p className="text-[10px] text-white/25">{t("merchant.connect_desc")}</p>
+            <h1 className="text-[15px] font-bold text-white/90 font-outfit">{merchantConnectTitle}</h1>
+            <p className="text-[10px] text-white/25">{merchantConnectDesc}</p>
           </div>
         </div>
       </div>

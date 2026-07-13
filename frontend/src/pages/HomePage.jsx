@@ -275,6 +275,43 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const { balance, currency, cryptoBalanceEur, totalBalanceEur, cryptoBreakdown } = useWallet();
   const { percentageChange } = useWalletStats();
   const { t, lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const miningTrustCopy = {
+    de: {
+      badge: "Bitcoin Mining Proof",
+      title: "Unsere Server in Dubai & Abu Dhabi direkt ansehen",
+      subtitle: "Kunden müssen nichts eingeben — sie können die Infrastruktur direkt sehen: Server, ASIC-Hardware, Video-Bereiche und Vertrauensmetriken.",
+      open: "Seite ansehen",
+      openMining: "Mining öffnen",
+    },
+    en: {
+      badge: "Bitcoin Mining Proof",
+      title: "See our servers in Dubai & Abu Dhabi directly",
+      subtitle: "Customers do not need to type anything — they can inspect the infrastructure directly: servers, ASIC hardware, video areas and trust metrics.",
+      open: "View page",
+      openMining: "Open mining",
+    },
+    sq: {
+      badge: "Prova e Mining të Bitcoin",
+      title: "Shiko drejtpërdrejt serverët tanë në Dubai & Abu Dhabi",
+      subtitle: "Klientët nuk kanë nevojë të shkruajnë asgjë — ata mund ta shohin infrastrukturën drejtpërdrejt: serverët, pajisjet ASIC, zonat video dhe metrikat e besimit.",
+      open: "Shiko faqen",
+      openMining: "Hap mining",
+    },
+    ar: {
+      badge: "إثبات تعدين البيتكوين",
+      title: "شاهد خوادمنا في دبي وأبوظبي مباشرة",
+      subtitle: "لا يحتاج العملاء إلى إدخال أي شيء — يمكنهم مشاهدة البنية التحتية مباشرة: الخوادم وأجهزة ASIC ومناطق الفيديو ومقاييس الثقة.",
+      open: "عرض الصفحة",
+      openMining: "افتح التعدين",
+    },
+  }[locale] || {
+    badge: "Bitcoin Mining Proof",
+    title: "See our servers in Dubai & Abu Dhabi directly",
+    subtitle: "Customers do not need to type anything — they can inspect the infrastructure directly: servers, ASIC hardware, video areas and trust metrics.",
+    open: "View page",
+    openMining: "Open mining",
+  };
   const gt = useGuestTranslations(lang);
   const isAdmin = isAdminUser(user);
   const isKycVerified = isKycApprovedOrAdmin(user);
@@ -441,21 +478,21 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200" data-testid="home-mining-trust-badge">
-                <Shield size={12} /> Bitcoin Mining Proof
+                <Shield size={12} /> {miningTrustCopy.badge}
               </div>
               <h2 className="mt-3 text-[24px] sm:text-[30px] font-bold text-white tracking-tight" data-testid="home-mining-trust-title">
-                Unsere Server in Dubai & Abu Dhabi direkt ansehen
+                {miningTrustCopy.title}
               </h2>
               <p className="mt-2 max-w-xl text-[13px] sm:text-[14px] text-white/68" data-testid="home-mining-trust-subtitle">
-                Kunden müssen nichts eingeben — sie können die Infrastruktur direkt sehen: Server, ASIC-Hardware, Video-Bereiche und Vertrauensmetriken.
+                {miningTrustCopy.subtitle}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <button className="rounded-full bg-white px-5 py-3 text-[12px] font-bold text-black" data-testid="home-mining-trust-open-button">
-                Seite ansehen
+                {miningTrustCopy.open}
               </button>
               <button className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-[12px] font-semibold text-white" data-testid="home-mining-trust-open-mining-button" onClick={(e) => { e.stopPropagation(); onNavigate('/mining'); }}>
-                Mining öffnen
+                {miningTrustCopy.openMining}
               </button>
             </div>
           </div>
