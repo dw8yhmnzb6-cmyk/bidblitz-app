@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Heart, X, Star, MapPin, Sparkles, MessageCircle, Check, Crown, Edit2, SlidersHorizontal, Shield, Ban, BadgeCheck, Zap, Mic, Square, Play, Trash2, Video, Gem, Lock, Inbox } from "lucide-react";
+import { ArrowLeft, Heart, Star, Sparkles, MessageCircle, Crown, Edit2, SlidersHorizontal, Shield, Ban, BadgeCheck, Zap, Mic, Square, Play, Trash2, Video, Gem, Lock, Inbox } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
+import { DatingDiscoverSection } from "../components/dating/DatingDiscoverSection";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const emptyProfile = {
@@ -73,6 +74,7 @@ export default function DatingPage({ onBack }) {
   const [swipesLeft, setSwipesLeft] = useState(20);
   const [isPremium, setIsPremium] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showDiscoverHub, setShowDiscoverHub] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -125,6 +127,22 @@ export default function DatingPage({ onBack }) {
 
   const current = profiles[idx];
   const currentPhotos = current?.photos?.length ? current.photos : current?.avatar ? [current.avatar] : [];
+  const profileImageOf = useCallback((profile) => profile?.photos?.find(Boolean) || profile?.avatar || "", []);
+  const heroProfiles = useMemo(() => {
+    const seen = new Set();
+    return [...profiles, ...likesYou.profiles, ...topPicks, ...standouts]
+      .filter((profile) => {
+        const key = profile?.profile_id || profile?.match_id || profile?.name;
+        if (!key || seen.has(key) || !profileImageOf(profile)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 7);
+  }, [profiles, likesYou.profiles, topPicks, standouts, profileImageOf]);
+  const highlightedPlan = useMemo(
+    () => premiumPlans.find((plan) => plan.tier === "gold") || premiumPlans.find((plan) => plan.tier === "premium") || premiumPlans[0],
+    [premiumPlans]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -173,25 +191,6 @@ export default function DatingPage({ onBack }) {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const premiumSessionId = params.get("premium_session_id");
-    if (premiumSessionId) {
-      checkPremiumStatus(premiumSessionId, 0);
-    }
-    if (params.get("premium_cancelled") === "true") {
-      toast.error("Premium-Zahlung abgebrochen");
-      const url = new URL(window.location.href);
-      url.searchParams.delete("premium_cancelled");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, []);
-
-  useEffect(() => () => {
-    stopRecordingCleanup();
-    stopVideoRecordingCleanup();
-  }, []);
-
   const loadMessages = useCallback(async (match) => {
     try {
       const data = await api(`/api/dating/matches/${match.match_id}/messages`);
@@ -235,6 +234,13 @@ export default function DatingPage({ onBack }) {
       setDir(null);
     }, 280);
   };
+
+  const focusProfile = useCallback((profile) => {
+    if (!profile?.profile_id) return;
+    setTab("discover");
+    setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]);
+    setIdx(0);
+  }, []);
 
   const handleRewind = async () => {
     try {
@@ -321,7 +327,7 @@ export default function DatingPage({ onBack }) {
     }
   };
 
-  const checkPremiumStatus = async (sessionId, attempt = 0) => {
+  const checkPremiumStatus = useCallback(async (sessionId, attempt = 0) => {
     try {
       setPremiumCheckoutState({ loading: false, checking: true, sessionId });
       const result = await api(`/api/dating/premium/status/${sessionId}`);
@@ -344,7 +350,26 @@ export default function DatingPage({ onBack }) {
     } finally {
       setPremiumCheckoutState((prev) => ({ ...prev, checking: false }));
     }
-  };
+  }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const premiumSessionId = params.get("premium_session_id");
+    if (premiumSessionId) {
+      checkPremiumStatus(premiumSessionId, 0);
+    }
+    if (params.get("premium_cancelled") === "true") {
+      toast.error("Premium-Zahlung abgebrochen");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("premium_cancelled");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [checkPremiumStatus]);
+
+  useEffect(() => () => {
+    stopRecordingCleanup();
+    stopVideoRecordingCleanup();
+  }, []);
 
   const startPremiumCheckout = async (planId = null) => {
     try {
@@ -721,12 +746,6 @@ export default function DatingPage({ onBack }) {
     }
   };
 
-  const photoSlots = useMemo(() => {
-    const slots = [...(profileForm.photos || [])];
-    while (slots.length < 3) slots.push("");
-    return slots.slice(0, 3);
-  }, [profileForm.photos]);
-
   return (
     <div className="min-h-screen pb-24 bg-[#05060A] text-white" data-testid="dating-page" data-cookie-banner-suppress="true">
       <div className="px-4 pt-4 pb-3 flex items-center gap-3">
@@ -769,297 +788,87 @@ export default function DatingPage({ onBack }) {
         </div>
       )}
 
-      {userProfile && (
-        <div className="px-4 mb-4 space-y-4" data-testid="dating-profile-completion-card">
-          {!isPremium && (
-            <div className="rounded-[28px] border border-yellow-400/20 bg-gradient-to-br from-yellow-500/12 via-orange-500/10 to-pink-500/10 p-5" data-testid="dating-monetization-hero-card">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="max-w-2xl">
-                  <p className="text-xs uppercase tracking-[0.18em] text-yellow-200/70">Monetarisierung · Konkurrenzniveau</p>
-                  <h2 className="mt-2 text-2xl font-bold text-white">{monetization?.experiments?.paywall_layout?.headline || 'Mehr Matches, mehr Sichtbarkeit, mehr Umsatz'}</h2>
-                  <p className="mt-2 text-sm text-white/65">Wie Tinder Gold / Platinum und HingeX: Likes You, Priorität, Boosts, Super Likes, Roses und limitierte Starter-Angebote.</p>
-                  {monetization?.starter_offer && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200" data-testid="dating-starter-offer-chip"><Gem size={13} />Starter Deal · {monetization.starter_offer.offer_price_eur.toFixed(2)} € statt {monetization.starter_offer.regular_price_eur.toFixed(2)} € · {monetization.starter_offer.days_left} Tage</div>}
-                  {monetization?.limited_bundle_offer && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100" data-testid="dating-limited-bundle-chip"><Inbox size={13} />{monetization.limited_bundle_offer.title} · {monetization.limited_bundle_offer.price_eur.toFixed(2)} € · {monetization.limited_bundle_offer.badge}</div>}
+      {userProfile && tab === "discover" && (
+        <div className="px-4 mb-4" data-testid="dating-discover-hero-shell">
+          <div className="mx-auto w-full max-w-md rounded-[32px] border border-white/10 bg-[#12151C]/95 shadow-[0_30px_80px_rgba(0,0,0,0.45)] overflow-hidden" data-testid="dating-discover-hero-card">
+            <div className="relative px-4 pt-4 pb-3 bg-[radial-gradient(circle_at_top_right,rgba(224,122,95,0.18),transparent_38%),radial-gradient(circle_at_top_left,rgba(129,178,154,0.14),transparent_34%)]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#F5F5F0]/45 font-black">Dating Live</p>
+                  <h2 className="mt-1 text-[24px] leading-tight font-black text-[#F5F5F0]">Wen du heute wirklich treffen willst.</h2>
+                  <p className="mt-2 text-[12px] text-[#F5F5F0]/62">Erst Menschen, dann Features. Fotos, Nähe und Match-Gefühl stehen jetzt vorn.</p>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[430px]">
-                  {premiumPlans.slice(0, 3).map((plan) => (
-                    <button key={plan.plan_id} onClick={() => startPremiumCheckout(plan.plan_id)} className={`rounded-2xl border px-4 py-4 text-left transition-transform hover:-translate-y-0.5 ${monetization?.experiments?.paywall_layout?.highlight_plan === plan.plan_id ? 'ring-2 ring-emerald-400/40' : ''} ${plan.tier === 'platinum' ? 'border-fuchsia-400/30 bg-fuchsia-500/10' : plan.tier === 'gold' ? 'border-yellow-400/25 bg-yellow-500/10' : 'border-white/10 bg-white/5'}`} data-testid={`dating-plan-card-${plan.plan_id}`}>
-                      <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold text-white">{plan.label}</span>{plan.tier === 'platinum' ? <Gem size={14} className="text-fuchsia-300" /> : plan.tier === 'gold' ? <Crown size={14} className="text-yellow-300" /> : <Lock size={14} className="text-white/45" />}</div>
-                      <p className="mt-2 text-lg font-bold text-white">{(plan.starter_offer?.offer_price_eur || plan.price_eur).toFixed(2)} €</p>
-                      {plan.starter_offer ? <p className="text-[11px] text-emerald-200">Starterpreis statt {plan.price_eur.toFixed(2)} €</p> : <p className="text-[11px] text-white/45">30 Tage</p>}
-                      <div className="mt-3 space-y-1">{(plan.features || []).slice(0, 3).map((feature, index) => <p key={`${feature}-${index}`} className="text-[11px] text-white/75" data-testid={`dating-plan-feature-${plan.plan_id}-${index}`}>• {feature}</p>)}</div>
-                    </button>
-                  ))}
-                </div>
+                <button onClick={() => setShowDiscoverHub(true)} className="rounded-full border border-white/10 bg-black/25 px-3 py-2 text-[11px] font-semibold text-white/80 backdrop-blur-xl" data-testid="dating-open-discover-hub-button">Hub öffnen</button>
               </div>
-            </div>
-          )}
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-1">Profil-Vervollständigung</p>
-              <p className="text-sm font-semibold text-white">{userProfile.profile_completion || 0}% bereit für bessere Matches</p>
-              <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-500 to-orange-400" style={{ width: `${userProfile.profile_completion || 0}%` }} /></div>
-            </div>
-            <div className="flex flex-wrap gap-2" data-testid="dating-profile-action-row">
-              <button
-                onClick={activateBoost}
-                disabled={Boolean(boostState.is_active || boostState.cooldown_remaining_seconds > 0)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${boostState.is_active ? "bg-yellow-400 text-black" : boostState.cooldown_remaining_seconds > 0 ? "bg-white/10 text-white/45" : "bg-yellow-500/15 text-yellow-200"}`}
-                data-testid="dating-boost-button"
-              >
-                <Zap size={14} className="inline mr-1" />
-                {boostLabel}
-              </button>
-              {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
-              <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
-              {!isPremium && <button onClick={startPremiumCheckout} className="px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-yellow-300 to-orange-400 text-black" data-testid="dating-upgrade-premium-inline">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium holen'}</button>}
-            </div>
-          </div>
+              <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1" data-testid="dating-face-preview-strip">
+                {heroProfiles.length > 0 ? heroProfiles.map((profile, index) => (
+                  <button
+                    key={`${profile.profile_id || profile.name}-${index}`}
+                    onClick={() => focusProfile(profile)}
+                    className="relative h-24 min-w-[88px] overflow-hidden rounded-[24px] border border-white/10 bg-black/20 shadow-[0_16px_30px_rgba(0,0,0,0.25)]"
+                    data-testid={`dating-face-preview-${index}`}
+                  >
+                    <img src={profileImageOf(profile)} alt={profile.name || `Profil ${index + 1}`} className="h-full w-full object-cover" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent px-2 py-2 text-left">
+                      <p className="truncate text-[11px] font-bold text-white">{profile.name}</p>
+                    </div>
+                  </button>
+                )) : (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-[12px] text-white/55" data-testid="dating-face-preview-empty">Sobald neue Profile geladen sind, siehst du hier Gesichter statt Preisboxen.</div>
+                )}
+              </div>
 
-          <div className="grid gap-3 lg:grid-cols-3" data-testid="dating-consumables-grid">
-            {consumables.map((item) => (
-              <div key={item.item_id} className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid={`dating-consumable-card-${item.item_id}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/45">Einzelkauf</p>
-                    <h3 className="text-sm font-semibold text-white">{item.label}</h3>
+              <div className="mt-4 flex flex-wrap gap-2" data-testid="dating-discover-hero-chips">
+                <div className="rounded-full border border-white/10 bg-black/25 px-3 py-2 text-[11px] font-semibold text-white/80">{userProfile.profile_completion || 0}% bereit</div>
+                <div className="rounded-full border border-pink-400/20 bg-pink-500/12 px-3 py-2 text-[11px] font-semibold text-pink-100">{likesYou.count || monetization.likes_you_count || 0} Likes warten</div>
+                <button onClick={activateBoost} disabled={Boolean(boostState.is_active || boostState.cooldown_remaining_seconds > 0)} className={`rounded-full px-3 py-2 text-[11px] font-semibold ${boostState.is_active ? "bg-[#E07A5F] text-black" : boostState.cooldown_remaining_seconds > 0 ? "border border-white/10 bg-black/20 text-white/40" : "border border-[#E07A5F]/25 bg-[#E07A5F]/12 text-[#F5C3B4]"}`} data-testid="dating-boost-pill-button">{boostLabel}</button>
+              </div>
+
+              {!isPremium && highlightedPlan && (
+                <button onClick={() => startPremiumCheckout(highlightedPlan.plan_id)} className="mt-4 w-full rounded-[28px] border border-[#E07A5F]/25 bg-[linear-gradient(135deg,rgba(224,122,95,0.18),rgba(129,178,154,0.08))] px-4 py-4 text-left backdrop-blur-xl shadow-[0_18px_50px_rgba(224,122,95,0.18)]" data-testid="dating-premium-teaser-card">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-[#F5F5F0]/45 font-black">Likes You · dezent statt laut</p>
+                      <p className="mt-1 text-[15px] font-bold text-[#F5F5F0] truncate">{highlightedPlan.label}</p>
+                      <p className="mt-1 text-[12px] text-[#F5F5F0]/62">Mehr Sichtbarkeit, Boosts und direkte Likes — ohne dass der Screen wie ein Shop wirkt.</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[18px] font-black text-[#F5F5F0]">{(highlightedPlan.starter_offer?.offer_price_eur || highlightedPlan.price_eur).toFixed(2)} €</p>
+                      <p className="text-[10px] text-[#F5F5F0]/45">{highlightedPlan.duration_days || 30} Tage</p>
+                    </div>
                   </div>
-                  {item.type === 'boost_pack' ? <Zap size={15} className="text-yellow-300" /> : item.type === 'superlike_pack' ? <Star size={15} className="text-blue-300" /> : item.type === 'rose_pack' ? <Gem size={15} className="text-rose-300" /> : <ArrowLeft size={15} className="text-white/70" />}
-                </div>
-                <p className="mt-2 text-xl font-bold text-white">{item.price_eur.toFixed(2)} €</p>
-                <p className="mt-1 text-xs text-white/55">{item.description}</p>
-                <button onClick={() => startConsumableCheckout(item.item_id)} className="mt-4 w-full rounded-2xl bg-white/10 px-4 py-3 text-xs font-semibold text-white" data-testid={`dating-consumable-buy-${item.item_id}`}>{packCheckoutState.loading === item.item_id ? 'Weiterleitung...' : 'Jetzt kaufen'}</button>
-              </div>
-            ))}
-          </div>
-
-          {monetization?.limited_bundle_offer && (
-            <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4" data-testid="dating-limited-bundle-card">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-rose-100/75">Zeitlich limitiertes Bundle</p>
-                  <h3 className="text-sm font-semibold text-white">{monetization.limited_bundle_offer.title}</h3>
-                  <p className="mt-1 text-xs text-rose-100/70">{monetization.limited_bundle_offer.subtitle} · {monetization.limited_bundle_offer.badge}</p>
-                </div>
-                <button onClick={() => startConsumableCheckout(monetization.limited_bundle_offer.item_id)} className="rounded-2xl bg-black/20 px-4 py-3 text-xs font-semibold text-white" data-testid="dating-limited-bundle-buy">Jetzt sichern · {monetization.limited_bundle_offer.price_eur.toFixed(2)} €</button>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="dating-safety-pro-card">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/45">Safety Pro</p>
-                <h3 className="text-sm font-semibold text-white">Scam Detection & Nudity Warning</h3>
-                <p className="mt-1 text-xs text-white/55">Dein Profil wird auf riskante Signale geprüft und die Discovery-Reihenfolge berücksichtigt das Ergebnis.</p>
-              </div>
-              <button onClick={refreshSafetyScan} className="px-3 py-2 rounded-xl bg-white/10 text-white text-xs font-semibold" data-testid="dating-safety-refresh-button">
-                {safetyRefreshing ? "Prüft..." : "Neu prüfen"}
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className={`rounded-2xl border px-3 py-3 ${safetyTone(userProfile?.safety_summary?.scam_level)}`} data-testid="dating-safety-scam-tile">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs uppercase tracking-[0.14em]">Scam-Risiko</span>
-                  <span className="text-xs font-bold">{safetyLabel(userProfile?.safety_summary?.scam_level)}</span>
-                </div>
-                <p className="mt-2 text-lg font-bold">{userProfile?.safety_summary?.scam_score || 0}/100</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(userProfile?.safety_summary?.scam_flags || []).length === 0 ? <span className="text-[11px] opacity-80">Keine kritischen Textsignale</span> : (userProfile?.safety_summary?.scam_flags || []).map((flag, index) => <span key={`${flag}-${index}`} className="rounded-full bg-black/15 px-2 py-1 text-[10px] font-semibold" data-testid={`dating-safety-scam-flag-${index}`}>{flag}</span>)}
-                </div>
-              </div>
-              <div className={`rounded-2xl border px-3 py-3 ${safetyTone(userProfile?.safety_summary?.nudity_level)}`} data-testid="dating-safety-nudity-tile">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs uppercase tracking-[0.14em]">Bild-Warnung</span>
-                  <span className="text-xs font-bold">{safetyLabel(userProfile?.safety_summary?.nudity_level)}</span>
-                </div>
-                <p className="mt-2 text-lg font-bold">{userProfile?.safety_summary?.nudity_score || 0}/100</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(userProfile?.safety_summary?.nudity_flags || []).length === 0 ? <span className="text-[11px] opacity-80">Kein kritischer Bildhinweis</span> : (userProfile?.safety_summary?.nudity_flags || []).map((flag, index) => <span key={`${flag}-${index}`} className="rounded-full bg-black/15 px-2 py-1 text-[10px] font-semibold" data-testid={`dating-safety-nudity-flag-${index}`}>{flag}</span>)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-2" data-testid="dating-ai-tools-grid">
-            <div className="rounded-2xl border border-fuchsia-500/20 bg-white/5 p-4" data-testid="dating-ai-bio-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">AI Bio</p>
-                  <h3 className="text-sm font-semibold text-white">3 bessere Bio-Vorschläge</h3>
-                </div>
-                <button onClick={runAiBio} className="px-3 py-2 rounded-xl bg-fuchsia-500/15 text-fuchsia-200 text-xs font-semibold" data-testid="dating-ai-bio-button">{aiLoading === "bio" ? "Lädt..." : "Erstellen"}</button>
-              </div>
-              <div className="mt-3 space-y-2">
-                {aiBioSuggestions.length === 0 ? <p className="text-xs text-white/55">Kurz, modern und besser für Matches.</p> : aiBioSuggestions.map((item, index) => <button key={`${item}-${index}`} onClick={() => setProfileForm((prev) => ({ ...prev, bio: item }))} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10 transition-colors" data-testid={`dating-ai-bio-suggestion-${index}`}>{item}</button>)}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-cyan-500/20 bg-white/5 p-4" data-testid="dating-ai-coach-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">AI Profil-Coach</p>
-                  <h3 className="text-sm font-semibold text-white">Konkrete Verbesserungen</h3>
-                </div>
-                <button onClick={runAiCoach} className="px-3 py-2 rounded-xl bg-cyan-500/15 text-cyan-200 text-xs font-semibold" data-testid="dating-ai-coach-button">{aiLoading === "coach" ? "Lädt..." : "Analysieren"}</button>
-              </div>
-              <div className="mt-3 space-y-2">
-                {aiCoachTips.length === 0 ? <p className="text-xs text-white/55">Bekomme direkte Tipps für Bio, Fotos und Profilwirkung.</p> : aiCoachTips.map((item, index) => <div key={`${item}-${index}`} className="rounded-xl bg-white/5 px-3 py-2 text-xs text-white/85" data-testid={`dating-ai-coach-tip-${index}`}>{item}</div>)}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-2" data-testid="dating-location-grid">
-            <div className="rounded-2xl border border-emerald-500/20 bg-white/5 p-4" data-testid="dating-nearby-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">Nearby</p>
-                  <h3 className="text-sm font-semibold text-white">Singles in deiner Nähe</h3>
-                </div>
-                <button onClick={enableNearby} className="px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-200 text-xs font-semibold" data-testid="dating-enable-nearby-button">{locationState.loading ? "Lädt..." : locationState.enabled ? "Aktualisieren" : "Aktivieren"}</button>
-              </div>
-              <div className="mt-3 space-y-2">
-                {nearbyProfiles.length === 0 ? <p className="text-xs text-white/55">Zeige echte Nähe-Matches mit Distanz, sobald Standort aktiv ist.</p> : nearbyProfiles.slice(0, 3).map((profile) => <button key={profile.profile_id} onClick={() => { setTab('discover'); setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]); setIdx(0); }} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10 transition-colors" data-testid={`dating-nearby-profile-${profile.profile_id}`}>{profile.name} · {profile.distance_km} km · {profile.compatibility_score}% Match</button>)}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-orange-500/20 bg-white/5 p-4" data-testid="dating-crossed-paths-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">Crossed Paths</p>
-                  <h3 className="text-sm font-semibold text-white">Wem du begegnet bist</h3>
-                </div>
-                <span className="px-3 py-2 rounded-xl bg-orange-500/15 text-orange-200 text-xs font-semibold" data-testid="dating-crossed-paths-count">{crossedProfiles.length}</span>
-              </div>
-              <div className="mt-3 space-y-2">
-                {crossedProfiles.length === 0 ? <p className="text-xs text-white/55">Wird automatisch gefüllt, wenn sich Wege räumlich kreuzen.</p> : crossedProfiles.slice(0, 3).map((profile) => <button key={profile.profile_id} onClick={() => { setTab('discover'); setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]); setIdx(0); }} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10 transition-colors" data-testid={`dating-crossed-profile-${profile.profile_id}`}>{profile.name} · {profile.cross_count || 1}x gesehen · {profile.last_distance_km || 0} km</button>)}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-violet-500/20 bg-white/5 p-4" data-testid="dating-voice-intro-card">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/45">Voice Intro</p>
-                <h3 className="text-sm font-semibold text-white">Deine Stimme in 30 Sekunden</h3>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap" data-testid="dating-voice-intro-actions">
-                {!voiceIntroState.recording ? (
-                  <button onClick={startVoiceRecording} disabled={voiceIntroState.uploading} className="px-3 py-2 rounded-xl bg-violet-500/15 text-violet-200 text-xs font-semibold" data-testid="dating-voice-record-button">
-                    <Mic size={14} className="inline mr-1" />
-                    {voiceIntroState.uploading ? "Upload..." : "Aufnehmen"}
-                  </button>
-                ) : (
-                  <button onClick={stopVoiceRecording} className="px-3 py-2 rounded-xl bg-red-500/15 text-red-200 text-xs font-semibold" data-testid="dating-voice-stop-button">
-                    <Square size={14} className="inline mr-1" />Stop · {voiceIntroState.seconds}s
-                  </button>
-                )}
-                {userProfile?.voice_intro?.media_id && <button onClick={removeVoiceIntro} className="px-3 py-2 rounded-xl bg-white/10 text-white/75 text-xs font-semibold" data-testid="dating-voice-delete-button"><Trash2 size={14} className="inline mr-1" />Löschen</button>}
-              </div>
-            </div>
-            <div className="mt-3 space-y-2">
-              {!userProfile?.voice_intro?.media_id ? <p className="text-xs text-white/55">Füge eine kurze Sprachnachricht hinzu, damit Matches sofort deine Energie hören.</p> : <div className="rounded-xl bg-white/5 px-3 py-3" data-testid="dating-voice-intro-preview"><div className="flex items-center justify-between gap-3 flex-wrap"><div><p className="text-xs text-white font-semibold">{userProfile.voice_intro.duration_seconds}s Voice Intro</p><p className="text-[11px] text-white/45">Maximal 30 Sekunden, direkt im Profil sichtbar</p></div><button onClick={() => togglePlayVoiceIntro(userProfile.voice_intro.media_id)} className="px-3 py-2 rounded-xl bg-violet-500/15 text-violet-200 text-xs font-semibold" data-testid="dating-voice-play-button"><Play size={14} className="inline mr-1" />{voiceIntroState.playingId === userProfile.voice_intro.media_id ? "Neu starten" : "Abspielen"}</button></div><audio id={`dating-voice-audio-${userProfile.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${userProfile.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /></div>}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-sky-500/20 bg-white/5 p-4" data-testid="dating-video-profile-card">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/45">Video-Profil</p>
-                <h3 className="text-sm font-semibold text-white">Dein erster Eindruck in Bewegung</h3>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap" data-testid="dating-video-profile-actions">
-                {!videoProfileState.recording ? (
-                  <button onClick={startVideoRecording} disabled={videoProfileState.uploading} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-xs font-semibold" data-testid="dating-video-record-button">
-                    <Video size={14} className="inline mr-1" />
-                    {videoProfileState.uploading ? "Upload..." : "Video aufnehmen"}
-                  </button>
-                ) : (
-                  <button onClick={stopVideoRecording} className="px-3 py-2 rounded-xl bg-red-500/15 text-red-200 text-xs font-semibold" data-testid="dating-video-stop-button">
-                    <Square size={14} className="inline mr-1" />Stop · {videoProfileState.seconds}s
-                  </button>
-                )}
-                {userProfile?.video_profile?.media_id && <button onClick={removeVideoProfile} className="px-3 py-2 rounded-xl bg-white/10 text-white/75 text-xs font-semibold" data-testid="dating-video-delete-button"><Trash2 size={14} className="inline mr-1" />Löschen</button>}
-              </div>
-            </div>
-            <div className="mt-3 space-y-2">
-              {!userProfile?.video_profile?.media_id ? <p className="text-xs text-white/55">Zeig deine Mimik, Energie und Stimme mit einem kurzen Video bis 45 Sekunden.</p> : <div className="rounded-xl bg-white/5 px-3 py-3" data-testid="dating-video-profile-preview"><div className="flex items-center justify-between gap-3 flex-wrap mb-3"><div><p className="text-xs text-white font-semibold">{userProfile.video_profile.duration_seconds}s Video-Profil</p><p className="text-[11px] text-white/45">Sichtbar direkt im Profil und beim Entdecken</p></div><button onClick={() => togglePlayVideoProfile(userProfile.video_profile.media_id)} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-xs font-semibold" data-testid="dating-video-play-button"><Play size={14} className="inline mr-1" />{videoProfileState.playingId === userProfile.video_profile.media_id ? "Neu starten" : "Abspielen"}</button></div><video id={`dating-video-player-${userProfile.video_profile.media_id}`} data-dating-video-player="true" className="w-full rounded-2xl bg-black/40 max-h-72 object-cover" src={`${API}/api/dating/video-profile/${userProfile.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline controls={false} /></div>}
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {tab === "discover" && (
-        <div className="px-4 flex flex-col items-center">
-      <div className="w-full max-w-5xl mb-4 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-2xl border border-fuchsia-500/20 bg-white/5 p-4" data-testid="dating-top-picks-card">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Top Picks</p>
-              <h3 className="text-sm font-semibold text-white">Täglich kuratierte Profile</h3>
-            </div>
-            <Gem size={16} className="text-fuchsia-300" />
-          </div>
-          <div className="mt-3 space-y-2">
-            {topPicks.length === 0 ? <p className="text-xs text-white/55">Wird täglich neu aus Profilqualität, Match-Fit und Aktivität rotiert.</p> : topPicks.slice(0, 3).map((profile, index) => <button key={profile.profile_id} onClick={() => profile.locked ? startPremiumCheckout('gold_30d') : (setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]), setIdx(0))} className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left" data-testid={`dating-top-pick-${profile.profile_id}`}><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-white">{profile.name}{profile.age ? `, ${profile.age}` : ''}</p><p className="text-[11px] text-white/55">{profile.headline} · {profile.compatibility_score}% Match</p><p className="mt-1 text-[10px] text-white/40" data-testid={`dating-top-pick-rotation-${index}`}>Tägliche Rotation</p></div>{profile.locked ? <span className="rounded-full bg-yellow-500/15 px-2 py-1 text-[10px] font-semibold text-yellow-200" data-testid={`dating-top-pick-lock-${index}`}>Gold</span> : <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-200">Gratis</span>}</div></button>)}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-blue-500/20 bg-white/5 p-4" data-testid="dating-standouts-card">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Standouts</p>
-              <h3 className="text-sm font-semibold text-white">High-Intent Profile für Super Likes</h3>
-            </div>
-            <Star size={16} className="text-blue-300" />
-          </div>
-          <div className="mt-3 space-y-2">
-            {standouts.length === 0 ? <p className="text-xs text-white/55">Wird automatisch aus den stärksten Profilen erzeugt.</p> : standouts.slice(0, 3).map((profile, index) => <button key={profile.profile_id} onClick={() => profile.locked ? startPremiumCheckout('gold_30d') : (setProfiles((prev) => [profile, ...prev.filter((item) => item.profile_id !== profile.profile_id)]), setIdx(0))} className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left" data-testid={`dating-standout-${profile.profile_id}`}><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-white">{profile.name}{profile.age ? `, ${profile.age}` : ''}</p><p className="text-[11px] text-white/55">{profile.headline} · ideal für Rose / Priority Inbox</p></div>{profile.locked ? <span className="rounded-full bg-yellow-500/15 px-2 py-1 text-[10px] font-semibold text-yellow-200" data-testid={`dating-standout-lock-${index}`}>Gold</span> : <span className="rounded-full bg-rose-500/15 px-2 py-1 text-[10px] font-semibold text-rose-200">Rose</span>}</div></button>)}
-          </div>
-          <button onClick={() => startConsumableCheckout('rose_pack_3')} className="mt-3 w-full rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-100" data-testid="dating-rose-pack-cta">3 Roses kaufen · 6.99 €</button>
-        </div>
-      </div>
-      {loading ? <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" /></div> : !current ? (
-            <div className="text-center py-20"><Heart size={48} className="mx-auto mb-3 text-white/20" /><p className="text-sm text-white/60">Keine Profile mehr. Filter ändern oder später wiederkommen.</p></div>
-          ) : (
-            <AnimatePresence mode="wait">
-              <motion.div key={current.profile_id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1, x: dir === "right" ? 260 : dir === "left" ? -260 : 0, rotate: dir === "right" ? 12 : dir === "left" ? -12 : 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="w-full max-w-sm rounded-3xl overflow-hidden bg-white/5 border border-white/10" data-testid={`dating-profile-${current.profile_id}`}>
-                <div className="relative">
-                  <img src={currentPhotos[0]} alt={current.name} className="w-full h-80 object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-                  {current.spotlight && <div className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-yellow-300 px-3 py-1 text-[11px] font-bold text-black" data-testid={`dating-spotlight-badge-${current.profile_id}`}><Zap size={12} />Spotlight</div>}
-                  <div className="absolute right-4 top-4 flex flex-col items-end gap-2">
-                    <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold border ${safetyTone(current?.safety_summary?.scam_level)}`} data-testid={`dating-scam-badge-${current.profile_id}`}>
-                      <Shield size={11} />Scam {safetyLabel(current?.safety_summary?.scam_level)}
-                    </div>
-                    <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold border ${safetyTone(current?.safety_summary?.nudity_level)}`} data-testid={`dating-nudity-badge-${current.profile_id}`}>
-                      <Ban size={11} />Foto {safetyLabel(current?.safety_summary?.nudity_level)}
-                    </div>
-                  </div>
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="flex items-center gap-2"><h2 className="text-xl font-bold text-white">{current.name}{current.age ? `, ${current.age}` : ""}</h2>{current.verified && <Check size={16} className="text-blue-400" />}{current.premium && <Crown size={15} className="text-yellow-300" />}</div>
-                    <div className="flex items-center gap-1 text-white/70 text-sm mt-1"><MapPin size={14} />{current.city || "Unbekannt"}</div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <p className="text-sm mb-2 text-white/80">{current.bio || "Noch keine Bio"}</p>
-                  {(monetization?.entitlements?.is_platinum || userProfile?.premium_plan === 'platinum_30d') && <div className="mb-3 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-3" data-testid="dating-message-before-match-card"><p className="text-[11px] uppercase tracking-[0.16em] text-fuchsia-200/70">Platinum</p><p className="mt-1 text-xs text-white/75">Sende vor dem Match direkt eine starke erste Nachricht.</p><textarea value={openerText} onChange={(event) => setOpenerText(event.target.value)} rows={2} maxLength={180} className="mt-2 w-full rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs text-white outline-none resize-none" placeholder="Schreib eine erste Nachricht vor dem Match..." data-testid="dating-opener-input" /></div>}
-                  {(current.occupation || current.profile_prompt || current.compatibility_score || current.distance_km !== undefined || current.voice_intro?.media_id || current.video_profile?.media_id || current?.safety_summary) && <div className="space-y-2 mb-3">{current.occupation && <p className="text-xs text-white/55">{current.occupation}</p>}{current.profile_prompt && <p className="text-xs text-blue-200/80">“{current.profile_prompt}”</p>}{current.compatibility_score ? <p className="text-xs font-semibold text-green-300">{current.compatibility_score}% Match · Rank {current.discover_rank || 0}</p> : null}{current.distance_km !== undefined && current.distance_km !== null ? <p className="text-[11px] text-emerald-200">{current.distance_km} km entfernt</p> : null}{current.is_recently_active && <p className="text-[11px] text-emerald-300">Jetzt aktiv</p>}{current?.safety_summary ? <div className="flex flex-wrap gap-2" data-testid={`dating-safety-summary-${current.profile_id}`}><span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold border ${safetyTone(current.safety_summary.scam_level)}`}>Scam {current.safety_summary.scam_score}/100</span><span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-semibold border ${safetyTone(current.safety_summary.nudity_level)}`}>Foto {current.safety_summary.nudity_score}/100</span></div> : null}{current.voice_intro?.media_id ? <button onClick={() => togglePlayVoiceIntro(current.voice_intro.media_id)} className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-semibold text-violet-200" data-testid={`dating-card-voice-play-${current.profile_id}`}><Play size={11} />Voice Intro · {current.voice_intro.duration_seconds}s</button> : null}{current.video_profile?.media_id ? <button onClick={() => togglePlayVideoProfile(current.video_profile.media_id)} className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-3 py-1 text-[11px] font-semibold text-sky-200" data-testid={`dating-card-video-play-${current.profile_id}`}><Video size={11} />Video · {current.video_profile.duration_seconds}s</button> : null}{current.voice_intro?.media_id ? <audio id={`dating-voice-audio-${current.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${current.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /> : null}{current.video_profile?.media_id ? <video id={`dating-video-player-${current.video_profile.media_id}`} data-dating-video-player="true" className="hidden" src={`${API}/api/dating/video-profile/${current.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline /> : null}</div>}
-                  {current?.match_reasons?.length ? <div className="mb-3 flex flex-wrap gap-2" data-testid={`dating-match-reasons-${current.profile_id}`}>{current.match_reasons.map((reason, index) => <span key={`${reason}-${index}`} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold text-white/80" data-testid={`dating-match-reason-${current.profile_id}-${index}`}>{reason}</span>)}</div> : null}
-                  <div className="flex flex-wrap gap-2">{(current.interests || []).map((interest) => <span key={interest} className="px-3 py-1 rounded-full text-xs bg-pink-500/15 text-pink-300">{interest}</span>)}</div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          )}
-          {current && (
-            <div className="flex items-center gap-6 mt-6">
-              <button onClick={handleRewind} className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-white/5 border border-white/15" data-testid="dating-rewind-button"><ArrowLeft size={20} className="text-white/80" /></button>
-              <button onClick={() => handleAction("pass")} className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-red-400" data-testid="dating-pass-button"><X size={28} className="text-red-400" /></button>
-              <button onClick={() => handleAction("superlike")} className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-blue-400 relative" data-testid="dating-superlike-button"><Star size={22} className="text-blue-400" /><span className="absolute -bottom-6 text-[10px] text-blue-300 whitespace-nowrap">Super Like</span></button>
-              <button onClick={() => handleAction("like")} className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-white/5 border-2 border-green-400" data-testid="dating-like-button"><Heart size={28} className="text-green-400" /></button>
-            </div>
-          )}
-        </div>
+        <DatingDiscoverSection
+          loading={loading}
+          current={current}
+          dir={dir}
+          currentPhotos={currentPhotos}
+          openerText={openerText}
+          setOpenerText={setOpenerText}
+          userProfile={userProfile}
+          monetization={monetization}
+          safetyTone={safetyTone}
+          safetyLabel={safetyLabel}
+          togglePlayVoiceIntro={togglePlayVoiceIntro}
+          togglePlayVideoProfile={togglePlayVideoProfile}
+          onVoiceEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))}
+          onVideoEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))}
+          handleRewind={handleRewind}
+          handleAction={handleAction}
+          topPicks={topPicks}
+          standouts={standouts}
+          startPremiumCheckout={startPremiumCheckout}
+          focusProfile={focusProfile}
+          profileImageOf={profileImageOf}
+        />
       )}
 
       {tab === "likes" && (
@@ -1151,6 +960,86 @@ export default function DatingPage({ onBack }) {
 
       <AnimatePresence>
         {showPaywall && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="w-full max-w-2xl rounded-3xl p-8 bg-[#0F1016] border border-pink-500/30" data-testid="dating-paywall-modal"><div className="flex items-start gap-4"><div className="w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-r from-yellow-300 to-orange-400"><Crown size={40} className="text-black" /></div><div><h2 className="text-2xl font-bold text-white mb-2">{monetization?.experiments?.paywall_layout?.headline || 'Mehr Matches freischalten'}</h2><p className="text-gray-400 text-sm">Wie bei Tinder Gold / Platinum: Unlimited Likes, Likes You, Priorität, Boosts, Roses und stärkere Conversion.</p>{monetization?.starter_offer ? <p className="mt-2 text-xs text-emerald-200" data-testid="dating-paywall-starter-offer">{monetization.starter_offer.title}: {monetization.starter_offer.offer_price_eur.toFixed(2)} € statt {monetization.starter_offer.regular_price_eur.toFixed(2)} €</p> : null}{monetization?.limited_bundle_offer ? <p className="mt-2 text-xs text-rose-100" data-testid="dating-paywall-limited-bundle">{monetization.limited_bundle_offer.title} · {monetization.limited_bundle_offer.price_eur.toFixed(2)} € · {monetization.limited_bundle_offer.badge}</p> : null}</div></div><div className="mt-6 grid gap-3 md:grid-cols-3">{premiumPlans.slice(0, 3).map((plan) => <button key={plan.plan_id} onClick={() => startPremiumCheckout(plan.plan_id)} className={`rounded-3xl border px-4 py-5 text-left ${monetization?.experiments?.paywall_layout?.highlight_plan === plan.plan_id ? 'ring-2 ring-emerald-400/40' : ''} ${plan.tier === 'platinum' ? 'border-fuchsia-400/30 bg-fuchsia-500/10' : plan.tier === 'gold' ? 'border-yellow-400/25 bg-yellow-500/10' : 'border-white/10 bg-white/5'}`} data-testid={`dating-paywall-plan-${plan.plan_id}`}><p className="text-sm font-bold text-white">{plan.label}</p><p className="mt-2 text-2xl font-bold text-white">{(plan.starter_offer?.offer_price_eur || plan.price_eur).toFixed(2)} €</p><p className="text-[11px] text-white/45">30 Tage</p><div className="mt-3 space-y-1">{(plan.features || []).slice(0, 4).map((feature, index) => <p key={`${feature}-${index}`} className="text-[11px] text-white/75" data-testid={`dating-paywall-plan-feature-${plan.plan_id}-${index}`}>• {feature}</p>)}</div></button>)}</div><div className="mt-5 grid gap-3 sm:grid-cols-3" data-testid="dating-paywall-consumables-grid">{consumables.slice(0, 4).map((item) => <button key={item.item_id} onClick={() => startConsumableCheckout(item.item_id)} className={`rounded-2xl border px-4 py-4 text-left ${monetization?.limited_bundle_offer?.item_id === item.item_id ? 'border-rose-400/30 bg-rose-500/10' : 'border-white/10 bg-white/5'}`} data-testid={`dating-paywall-consumable-${item.item_id}`}><p className="text-xs uppercase tracking-[0.16em] text-white/45">Einzelkauf</p><p className="mt-1 text-sm font-bold text-white">{item.label}</p><p className="mt-1 text-lg font-bold text-white">{item.price_eur.toFixed(2)} €</p></button>)}</div><button onClick={() => setShowPaywall(false)} className="mt-5 w-full py-3 rounded-xl font-medium text-white bg-white/5" data-testid="dating-upgrade-cancel">Abbrechen</button></motion.div></motion.div>}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDiscoverHub && userProfile && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm overflow-y-auto" data-testid="dating-discover-hub-modal">
+            <div className="min-h-screen flex items-start justify-center px-4 py-6">
+              <motion.div initial={{ scale: 0.96, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 16 }} className="w-full max-w-4xl rounded-[34px] border border-white/10 bg-[#0C0E14] p-5 shadow-[0_40px_120px_rgba(0,0,0,0.5)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/45 font-black">Dating Hub</p>
+                    <h2 className="mt-1 text-2xl font-black text-white">Premium, Safety und Profil-Tools getrennt vom Flirt-Screen.</h2>
+                    <p className="mt-2 text-sm text-white/60">Hier liegt jetzt alles, was vorher den Foto-Flow erschlagen hat.</p>
+                  </div>
+                  <button onClick={() => setShowDiscoverHub(false)} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70" data-testid="dating-close-discover-hub-button">Schließen</button>
+                </div>
+
+                {!isPremium && (
+                  <div className="mt-5 rounded-[28px] border border-yellow-400/20 bg-gradient-to-br from-yellow-500/12 via-orange-500/10 to-pink-500/10 p-5" data-testid="dating-monetization-hero-card">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="max-w-2xl">
+                        <p className="text-xs uppercase tracking-[0.18em] text-yellow-200/70">Premium · dezent verschoben</p>
+                        <h2 className="mt-2 text-2xl font-bold text-white">{monetization?.experiments?.paywall_layout?.headline || 'Mehr Matches, mehr Sichtbarkeit, mehr Umsatz'}</h2>
+                        <p className="mt-2 text-sm text-white/65">Jetzt im Hub statt mitten über den Profilfotos. So bleibt Dating Dating.</p>
+                        {monetization?.starter_offer && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200" data-testid="dating-starter-offer-chip"><Gem size={13} />Starter Deal · {monetization.starter_offer.offer_price_eur.toFixed(2)} € statt {monetization.starter_offer.regular_price_eur.toFixed(2)} € · {monetization.starter_offer.days_left} Tage</div>}
+                        {monetization?.limited_bundle_offer && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100" data-testid="dating-limited-bundle-chip"><Inbox size={13} />{monetization.limited_bundle_offer.title} · {monetization.limited_bundle_offer.price_eur.toFixed(2)} € · {monetization.limited_bundle_offer.badge}</div>}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[430px]">
+                        {premiumPlans.slice(0, 3).map((plan) => (
+                          <button key={plan.plan_id} onClick={() => startPremiumCheckout(plan.plan_id)} className={`rounded-2xl border px-4 py-4 text-left transition-transform hover:-translate-y-0.5 ${monetization?.experiments?.paywall_layout?.highlight_plan === plan.plan_id ? 'ring-2 ring-emerald-400/40' : ''} ${plan.tier === 'platinum' ? 'border-fuchsia-400/30 bg-fuchsia-500/10' : plan.tier === 'gold' ? 'border-yellow-400/25 bg-yellow-500/10' : 'border-white/10 bg-white/5'}`} data-testid={`dating-plan-card-${plan.plan_id}`}>
+                            <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold text-white">{plan.label}</span>{plan.tier === 'platinum' ? <Gem size={14} className="text-fuchsia-300" /> : plan.tier === 'gold' ? <Crown size={14} className="text-yellow-300" /> : <Lock size={14} className="text-white/45" />}</div>
+                            <p className="mt-2 text-lg font-bold text-white">{(plan.starter_offer?.offer_price_eur || plan.price_eur).toFixed(2)} €</p>
+                            {plan.starter_offer ? <p className="text-[11px] text-emerald-200">Starterpreis statt {plan.price_eur.toFixed(2)} €</p> : <p className="text-[11px] text-white/45">30 Tage</p>}
+                            <div className="mt-3 space-y-1">{(plan.features || []).slice(0, 3).map((feature, index) => <p key={`${feature}-${index}`} className="text-[11px] text-white/75" data-testid={`dating-plan-feature-${plan.plan_id}-${index}`}>• {feature}</p>)}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs uppercase tracking-[0.18em] text-white/45 mb-1">Profil-Vervollständigung</p>
+                    <p className="text-sm font-semibold text-white">{userProfile.profile_completion || 0}% bereit für bessere Matches</p>
+                    <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full bg-gradient-to-r from-pink-500 to-orange-400" style={{ width: `${userProfile.profile_completion || 0}%` }} /></div>
+                  </div>
+                  <div className="flex flex-wrap gap-2" data-testid="dating-profile-action-row">
+                    <button onClick={activateBoost} disabled={Boolean(boostState.is_active || boostState.cooldown_remaining_seconds > 0)} className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${boostState.is_active ? "bg-yellow-400 text-black" : boostState.cooldown_remaining_seconds > 0 ? "bg-white/10 text-white/45" : "bg-yellow-500/15 text-yellow-200"}`} data-testid="dating-boost-button"><Zap size={14} className="inline mr-1" />{boostLabel}</button>
+                    {!userProfile.verified && <button onClick={runDemoVerify} className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-300" data-testid="dating-verify-demo-button"><BadgeCheck size={14} className="inline mr-1" />Verifizieren</button>}
+                    <button onClick={() => setShowProfileSetup(true)} className="px-3 py-2 rounded-xl text-xs font-semibold bg-pink-500/15 text-pink-300" data-testid="dating-profile-completion-edit">Verbessern</button>
+                    {!isPremium && <button onClick={startPremiumCheckout} className="px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-yellow-300 to-orange-400 text-black" data-testid="dating-upgrade-premium-inline">{premiumCheckoutState.loading ? 'Weiterleitung...' : 'Premium holen'}</button>}
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 lg:grid-cols-3" data-testid="dating-consumables-grid">
+                  {consumables.map((item) => (
+                    <div key={item.item_id} className="rounded-2xl border border-white/10 bg-white/5 p-4" data-testid={`dating-consumable-card-${item.item_id}`}>
+                      <div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">Einzelkauf</p><h3 className="text-sm font-semibold text-white">{item.label}</h3></div>{item.type === 'boost_pack' ? <Zap size={15} className="text-yellow-300" /> : item.type === 'superlike_pack' ? <Star size={15} className="text-blue-300" /> : item.type === 'rose_pack' ? <Gem size={15} className="text-rose-300" /> : <ArrowLeft size={15} className="text-white/70" />}</div>
+                      <p className="mt-2 text-xl font-bold text-white">{item.price_eur.toFixed(2)} €</p>
+                      <p className="mt-1 text-xs text-white/55">{item.description}</p>
+                      <button onClick={() => startConsumableCheckout(item.item_id)} className="mt-4 w-full rounded-2xl bg-white/10 px-4 py-3 text-xs font-semibold text-white" data-testid={`dating-consumable-buy-${item.item_id}`}>{packCheckoutState.loading === item.item_id ? 'Weiterleitung...' : 'Jetzt kaufen'}</button>
+                    </div>
+                  ))}
+                </div>
+
+                {monetization?.limited_bundle_offer && <div className="mt-5 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4" data-testid="dating-limited-bundle-card"><div className="flex items-center justify-between gap-3 flex-wrap"><div><p className="text-xs uppercase tracking-[0.18em] text-rose-100/75">Zeitlich limitiertes Bundle</p><h3 className="text-sm font-semibold text-white">{monetization.limited_bundle_offer.title}</h3><p className="mt-1 text-xs text-rose-100/70">{monetization.limited_bundle_offer.subtitle} · {monetization.limited_bundle_offer.badge}</p></div><button onClick={() => startConsumableCheckout(monetization.limited_bundle_offer.item_id)} className="rounded-2xl bg-black/20 px-4 py-3 text-xs font-semibold text-white" data-testid="dating-limited-bundle-buy">Jetzt sichern · {monetization.limited_bundle_offer.price_eur.toFixed(2)} €</button></div></div>}
+
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4" data-testid="dating-safety-pro-card"><div className="flex items-start justify-between gap-3 flex-wrap"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">Safety Pro</p><h3 className="text-sm font-semibold text-white">Scam Detection & Nudity Warning</h3><p className="mt-1 text-xs text-white/55">Dein Profil wird auf riskante Signale geprüft und die Discovery-Reihenfolge berücksichtigt das Ergebnis.</p></div><button onClick={refreshSafetyScan} className="px-3 py-2 rounded-xl bg-white/10 text-white text-xs font-semibold" data-testid="dating-safety-refresh-button">{safetyRefreshing ? "Prüft..." : "Neu prüfen"}</button></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className={`rounded-2xl border px-3 py-3 ${safetyTone(userProfile?.safety_summary?.scam_level)}`} data-testid="dating-safety-scam-tile"><div className="flex items-center justify-between gap-3"><span className="text-xs uppercase tracking-[0.14em]">Scam-Risiko</span><span className="text-xs font-bold">{safetyLabel(userProfile?.safety_summary?.scam_level)}</span></div><p className="mt-2 text-lg font-bold">{userProfile?.safety_summary?.scam_score || 0}/100</p><div className="mt-2 flex flex-wrap gap-2">{(userProfile?.safety_summary?.scam_flags || []).length === 0 ? <span className="text-[11px] opacity-80">Keine kritischen Textsignale</span> : (userProfile?.safety_summary?.scam_flags || []).map((flag, index) => <span key={`${flag}-${index}`} className="rounded-full bg-black/15 px-2 py-1 text-[10px] font-semibold" data-testid={`dating-safety-scam-flag-${index}`}>{flag}</span>)}</div></div><div className={`rounded-2xl border px-3 py-3 ${safetyTone(userProfile?.safety_summary?.nudity_level)}`} data-testid="dating-safety-nudity-tile"><div className="flex items-center justify-between gap-3"><span className="text-xs uppercase tracking-[0.14em]">Bild-Warnung</span><span className="text-xs font-bold">{safetyLabel(userProfile?.safety_summary?.nudity_level)}</span></div><p className="mt-2 text-lg font-bold">{userProfile?.safety_summary?.nudity_score || 0}/100</p><div className="mt-2 flex flex-wrap gap-2">{(userProfile?.safety_summary?.nudity_flags || []).length === 0 ? <span className="text-[11px] opacity-80">Kein kritischer Bildhinweis</span> : (userProfile?.safety_summary?.nudity_flags || []).map((flag, index) => <span key={`${flag}-${index}`} className="rounded-full bg-black/15 px-2 py-1 text-[10px] font-semibold" data-testid={`dating-safety-nudity-flag-${index}`}>{flag}</span>)}</div></div></div></div>
+
+                <div className="mt-5 grid gap-3 lg:grid-cols-2" data-testid="dating-ai-tools-grid"><div className="rounded-2xl border border-fuchsia-500/20 bg-white/5 p-4" data-testid="dating-ai-bio-card"><div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">AI Bio</p><h3 className="text-sm font-semibold text-white">3 bessere Bio-Vorschläge</h3></div><button onClick={runAiBio} className="px-3 py-2 rounded-xl bg-fuchsia-500/15 text-fuchsia-200 text-xs font-semibold" data-testid="dating-ai-bio-button">{aiLoading === "bio" ? "Lädt..." : "Erstellen"}</button></div><div className="mt-3 space-y-2">{aiBioSuggestions.length === 0 ? <p className="text-xs text-white/55">Kurz, modern und besser für Matches.</p> : aiBioSuggestions.map((item, index) => <button key={`${item}-${index}`} onClick={() => setProfileForm((prev) => ({ ...prev, bio: item }))} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10 transition-colors" data-testid={`dating-ai-bio-suggestion-${index}`}>{item}</button>)}</div></div><div className="rounded-2xl border border-cyan-500/20 bg-white/5 p-4" data-testid="dating-ai-coach-card"><div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">AI Profil-Coach</p><h3 className="text-sm font-semibold text-white">Konkrete Verbesserungen</h3></div><button onClick={runAiCoach} className="px-3 py-2 rounded-xl bg-cyan-500/15 text-cyan-200 text-xs font-semibold" data-testid="dating-ai-coach-button">{aiLoading === "coach" ? "Lädt..." : "Analysieren"}</button></div><div className="mt-3 space-y-2">{aiCoachTips.length === 0 ? <p className="text-xs text-white/55">Bekomme direkte Tipps für Bio, Fotos und Profilwirkung.</p> : aiCoachTips.map((item, index) => <div key={`${item}-${index}`} className="rounded-xl bg-white/5 px-3 py-2 text-xs text-white/85" data-testid={`dating-ai-coach-tip-${index}`}>{item}</div>)}</div></div></div>
+
+                <div className="mt-5 grid gap-3 lg:grid-cols-2" data-testid="dating-location-grid"><div className="rounded-2xl border border-emerald-500/20 bg-white/5 p-4" data-testid="dating-nearby-card"><div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">Nearby</p><h3 className="text-sm font-semibold text-white">Singles in deiner Nähe</h3></div><button onClick={enableNearby} className="px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-200 text-xs font-semibold" data-testid="dating-enable-nearby-button">{locationState.loading ? "Lädt..." : locationState.enabled ? "Aktualisieren" : "Aktivieren"}</button></div><div className="mt-3 space-y-2">{nearbyProfiles.length === 0 ? <p className="text-xs text-white/55">Zeige echte Nähe-Matches mit Distanz, sobald Standort aktiv ist.</p> : nearbyProfiles.slice(0, 3).map((profile) => <button key={profile.profile_id} onClick={() => focusProfile(profile)} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10 transition-colors" data-testid={`dating-nearby-profile-${profile.profile_id}`}>{profile.name} · {profile.distance_km} km · {profile.compatibility_score}% Match</button>)}</div></div><div className="rounded-2xl border border-orange-500/20 bg-white/5 p-4" data-testid="dating-crossed-paths-card"><div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">Crossed Paths</p><h3 className="text-sm font-semibold text-white">Wem du begegnet bist</h3></div><span className="px-3 py-2 rounded-xl bg-orange-500/15 text-orange-200 text-xs font-semibold" data-testid="dating-crossed-paths-count">{crossedProfiles.length}</span></div><div className="mt-3 space-y-2">{crossedProfiles.length === 0 ? <p className="text-xs text-white/55">Wird automatisch gefüllt, wenn sich Wege räumlich kreuzen.</p> : crossedProfiles.slice(0, 3).map((profile) => <button key={profile.profile_id} onClick={() => focusProfile(profile)} className="w-full rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10 transition-colors" data-testid={`dating-crossed-profile-${profile.profile_id}`}>{profile.name} · {profile.cross_count || 1}x gesehen · {profile.last_distance_km || 0} km</button>)}</div></div></div>
+
+                <div className="mt-5 rounded-2xl border border-violet-500/20 bg-white/5 p-4" data-testid="dating-voice-intro-card"><div className="flex items-center justify-between gap-3 flex-wrap"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">Voice Intro</p><h3 className="text-sm font-semibold text-white">Deine Stimme in 30 Sekunden</h3></div><div className="flex items-center gap-2 flex-wrap" data-testid="dating-voice-intro-actions">{!voiceIntroState.recording ? <button onClick={startVoiceRecording} disabled={voiceIntroState.uploading} className="px-3 py-2 rounded-xl bg-violet-500/15 text-violet-200 text-xs font-semibold" data-testid="dating-voice-record-button"><Mic size={14} className="inline mr-1" />{voiceIntroState.uploading ? "Upload..." : "Aufnehmen"}</button> : <button onClick={stopVoiceRecording} className="px-3 py-2 rounded-xl bg-red-500/15 text-red-200 text-xs font-semibold" data-testid="dating-voice-stop-button"><Square size={14} className="inline mr-1" />Stop · {voiceIntroState.seconds}s</button>}{userProfile?.voice_intro?.media_id && <button onClick={removeVoiceIntro} className="px-3 py-2 rounded-xl bg-white/10 text-white/75 text-xs font-semibold" data-testid="dating-voice-delete-button"><Trash2 size={14} className="inline mr-1" />Löschen</button>}</div></div><div className="mt-3 space-y-2">{!userProfile?.voice_intro?.media_id ? <p className="text-xs text-white/55">Füge eine kurze Sprachnachricht hinzu, damit Matches sofort deine Energie hören.</p> : <div className="rounded-xl bg-white/5 px-3 py-3" data-testid="dating-voice-intro-preview"><div className="flex items-center justify-between gap-3 flex-wrap"><div><p className="text-xs text-white font-semibold">{userProfile.voice_intro.duration_seconds}s Voice Intro</p><p className="text-[11px] text-white/45">Maximal 30 Sekunden, direkt im Profil sichtbar</p></div><button onClick={() => togglePlayVoiceIntro(userProfile.voice_intro.media_id)} className="px-3 py-2 rounded-xl bg-violet-500/15 text-violet-200 text-xs font-semibold" data-testid="dating-voice-play-button"><Play size={14} className="inline mr-1" />{voiceIntroState.playingId === userProfile.voice_intro.media_id ? "Neu starten" : "Abspielen"}</button></div><audio id={`dating-voice-audio-${userProfile.voice_intro.media_id}`} data-dating-voice-audio="true" src={`${API}/api/dating/voice-intro/${userProfile.voice_intro.media_id}`} onEnded={() => setVoiceIntroState((prev) => ({ ...prev, playingId: "" }))} /></div>}</div></div>
+
+                <div className="mt-5 rounded-2xl border border-sky-500/20 bg-white/5 p-4" data-testid="dating-video-profile-card"><div className="flex items-center justify-between gap-3 flex-wrap"><div><p className="text-xs uppercase tracking-[0.18em] text-white/45">Video-Profil</p><h3 className="text-sm font-semibold text-white">Dein erster Eindruck in Bewegung</h3></div><div className="flex items-center gap-2 flex-wrap" data-testid="dating-video-profile-actions">{!videoProfileState.recording ? <button onClick={startVideoRecording} disabled={videoProfileState.uploading} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-xs font-semibold" data-testid="dating-video-record-button"><Video size={14} className="inline mr-1" />{videoProfileState.uploading ? "Upload..." : "Video aufnehmen"}</button> : <button onClick={stopVideoRecording} className="px-3 py-2 rounded-xl bg-red-500/15 text-red-200 text-xs font-semibold" data-testid="dating-video-stop-button"><Square size={14} className="inline mr-1" />Stop · {videoProfileState.seconds}s</button>}{userProfile?.video_profile?.media_id && <button onClick={removeVideoProfile} className="px-3 py-2 rounded-xl bg-white/10 text-white/75 text-xs font-semibold" data-testid="dating-video-delete-button"><Trash2 size={14} className="inline mr-1" />Löschen</button>}</div></div><div className="mt-3 space-y-2">{!userProfile?.video_profile?.media_id ? <p className="text-xs text-white/55">Zeig deine Mimik, Energie und Stimme mit einem kurzen Video bis 45 Sekunden.</p> : <div className="rounded-xl bg-white/5 px-3 py-3" data-testid="dating-video-profile-preview"><div className="flex items-center justify-between gap-3 flex-wrap mb-3"><div><p className="text-xs text-white font-semibold">{userProfile.video_profile.duration_seconds}s Video-Profil</p><p className="text-[11px] text-white/45">Sichtbar direkt im Profil und beim Entdecken</p></div><button onClick={() => togglePlayVideoProfile(userProfile.video_profile.media_id)} className="px-3 py-2 rounded-xl bg-sky-500/15 text-sky-200 text-xs font-semibold" data-testid="dating-video-play-button"><Play size={14} className="inline mr-1" />{videoProfileState.playingId === userProfile.video_profile.media_id ? "Neu starten" : "Abspielen"}</button></div><video id={`dating-video-player-${userProfile.video_profile.media_id}`} data-dating-video-player="true" className="w-full rounded-2xl bg-black/40 max-h-72 object-cover" src={`${API}/api/dating/video-profile/${userProfile.video_profile.media_id}`} onEnded={() => setVideoProfileState((prev) => ({ ...prev, playingId: "" }))} playsInline controls={false} /></div>}</div></div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
