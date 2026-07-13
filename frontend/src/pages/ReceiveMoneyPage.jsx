@@ -9,10 +9,10 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
   const { lang } = useI18n();
   const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
   const L = {
-    de: { merchant: "Für Kasse?", openPay: 'Dann "Bezahlen" öffnen', how: "So funktioniert es", customerOnly: "Wie im Händlerflow — nur für Kunden", alt: "Alternativen", copyId: "BidBlitz ID kopieren" },
-    en: { merchant: "For checkout?", openPay: 'Then open "Pay"', how: "How it works", customerOnly: "Like the merchant flow — only for customers", alt: "Alternatives", copyId: "Copy BidBlitz ID" },
-    sq: { merchant: "Për arkë?", openPay: 'Atëherë hap "Paguaj"', how: "Si funksionon", customerOnly: "Si rrjedha e tregtarit — vetëm për klientë", alt: "Alternativa", copyId: "Kopjo BidBlitz ID" },
-    ar: { merchant: "للصندوق؟", openPay: 'افتح "الدفع"', how: "كيف يعمل", customerOnly: "مثل مسار التاجر — ولكن للعملاء فقط", alt: "بدائل", copyId: "نسخ BidBlitz ID" },
+    de: { headerBadge: "Empfangen", headerTitle: "Mein QR-Code", heroBadge: "Nur privat empfangen", heroTitle: "Lass den anderen einfach diesen QR-Code scannen", heroDesc: 'Perfekt für private Zahlungen zwischen Kunden. Nicht für Händler-Kasse — dafür bitte "Bezahlen" öffnen.', loading: "QR wird geladen…", privateReceive: "Privat empfangen", merchant: "Für Kasse?", openPay: 'Dann "Bezahlen" öffnen', openSend: "Senden öffnen", copy: "Kopieren", privateLabel: "Privat", privateDesc: "Anderer Kunde scannt diesen QR", how: "So funktioniert es", customerOnly: "Wie im Händlerflow — nur für Kunden", alt: "Alternativen", copyId: "BidBlitz ID kopieren", copyQrData: "QR-Daten kopieren", qrDataLabel: "QR-Daten", copySuccess: "kopiert", copyError: "Konnte nicht kopiert werden", step1Title: "1. Diesen QR zeigen", step1Desc: 'Der andere Kunde öffnet „Geld senden“ und scannt deinen Code.', step2Title: "2. Betrag bestätigen", step2Desc: "Der Sender wählt Betrag und bestätigt die private Wallet-Zahlung.", step3Title: "3. Sofort empfangen", step3Desc: "Das Geld landet direkt in deiner Wallet.", loadError: "QR konnte nicht geladen werden" },
+    en: { headerBadge: "Receive", headerTitle: "My QR code", heroBadge: "Receive privately only", heroTitle: "Let the other person simply scan this QR code", heroDesc: 'Perfect for private payments between customers. Not for merchant checkout — please open "Pay" for that.', loading: "Loading QR…", privateReceive: "Receive privately", merchant: "For checkout?", openPay: 'Then open "Pay"', openSend: "Open send", copy: "Copy", privateLabel: "Private", privateDesc: "Another customer scans this QR", how: "How it works", customerOnly: "Like the merchant flow — only for customers", alt: "Alternatives", copyId: "Copy BidBlitz ID", copyQrData: "Copy QR data", qrDataLabel: "QR data", copySuccess: "copied", copyError: "Could not copy", step1Title: "1. Show this QR", step1Desc: 'The other customer opens “Send money” and scans your code.', step2Title: "2. Confirm amount", step2Desc: "The sender chooses the amount and confirms the private wallet payment.", step3Title: "3. Receive instantly", step3Desc: "The money lands directly in your wallet.", loadError: "Could not load QR" },
+    sq: { headerBadge: "Marrje", headerTitle: "Kodi im QR", heroBadge: "Merr vetëm privatisht", heroTitle: "Lëre tjetrin të skanojë thjesht këtë kod QR", heroDesc: 'Perfekt për pagesa private mes klientëve. Jo për arkën e tregtarit — për këtë hap "Paguaj".', loading: "QR po ngarkohet…", privateReceive: "Merr privatisht", merchant: "Për arkë?", openPay: 'Atëherë hap "Paguaj"', openSend: "Hap dërgimin", copy: "Kopjo", privateLabel: "Privat", privateDesc: "Klienti tjetër skanon këtë QR", how: "Si funksionon", customerOnly: "Si rrjedha e tregtarit — vetëm për klientë", alt: "Alternativa", copyId: "Kopjo BidBlitz ID", copyQrData: "Kopjo të dhënat QR", qrDataLabel: "Të dhënat QR", copySuccess: "u kopjua", copyError: "Nuk u kopjua dot", step1Title: "1. Trego këtë QR", step1Desc: 'Klienti tjetër hap “Dërgo para” dhe skanon kodin tënd.', step2Title: "2. Konfirmo shumën", step2Desc: "Dërguesi zgjedh shumën dhe konfirmon pagesën private të wallet-it.", step3Title: "3. Merre menjëherë", step3Desc: "Paratë mbërrijnë menjëherë në wallet-in tënd.", loadError: "QR nuk u ngarkua dot" },
+    ar: { headerBadge: "استلام", headerTitle: "رمز QR الخاص بي", heroBadge: "استلام خاص فقط", heroTitle: "دع الطرف الآخر يمسح هذا الرمز بسهولة", heroDesc: 'مثالي للمدفوعات الخاصة بين العملاء. ليس لصندوق التاجر — افتح "الدفع" لذلك.', loading: "جارٍ تحميل QR…", privateReceive: "استلام خاص", merchant: "للصندوق؟", openPay: 'افتح "الدفع"', openSend: "افتح الإرسال", copy: "نسخ", privateLabel: "خاص", privateDesc: "عميل آخر يمسح هذا الرمز", how: "كيف يعمل", customerOnly: "مثل مسار التاجر — ولكن للعملاء فقط", alt: "بدائل", copyId: "نسخ BidBlitz ID", copyQrData: "نسخ بيانات QR", qrDataLabel: "بيانات QR", copySuccess: "تم النسخ", copyError: "تعذر النسخ", step1Title: "1. اعرض هذا الرمز", step1Desc: 'العميل الآخر يفتح "إرسال المال" ويمسح رمزك.', step2Title: "2. أكد المبلغ", step2Desc: "يختار المرسل المبلغ ويؤكد دفعة المحفظة الخاصة.", step3Title: "3. استلم فوراً", step3Desc: "يصل المال مباشرة إلى محفظتك.", loadError: "تعذر تحميل QR" },
   }[locale];
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,11 +25,11 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
         const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/p2p/qr/generate`, {
           credentials: "include",
         });
-        if (!res.ok) throw new Error("QR konnte nicht geladen werden");
+        if (!res.ok) throw new Error(L.loadError);
         const data = await res.json();
         setProfile(data);
       } catch (loadError) {
-        setError(loadError?.message || "QR konnte nicht geladen werden");
+        setError(loadError?.message || L.loadError);
       } finally {
         setLoading(false);
       }
@@ -44,10 +44,10 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
-      toast.success(`${label} kopiert`);
+      toast.success(`${label} ${L.copySuccess}`);
     } catch (copyError) {
       void copyError;
-      toast.error("Konnte nicht kopiert werden");
+      toast.error(L.copyError);
     }
   };
 
@@ -59,23 +59,23 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
             <ArrowLeft size={18} className="text-slate-600" />
           </motion.button>
           <div>
-            <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6]">Empfangen</p>
-            <h1 className="text-[20px] font-bold text-slate-950">Mein QR-Code</h1>
+            <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6]">{L.headerBadge}</p>
+            <h1 className="text-[20px] font-bold text-slate-950">{L.headerTitle}</h1>
           </div>
         </div>
       </div>
 
       <div className="px-4 pt-4 pb-6">
         <div className="rounded-[30px] border border-[#00C2FF]/18 bg-gradient-to-br from-white to-[#eef8ff] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] mb-5">
-          <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-2">Nur privat empfangen</p>
-          <h2 className="text-[24px] font-bold text-slate-950 leading-tight">Lass den anderen einfach diesen QR-Code scannen</h2>
-          <p className="mt-2 text-[12px] leading-relaxed text-slate-600">Perfekt für private Zahlungen zwischen Kunden. Nicht für Händler-Kasse — dafür bitte &quot;Bezahlen&quot; öffnen.</p>
+          <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#00A6E6] mb-2">{L.heroBadge}</p>
+          <h2 className="text-[24px] font-bold text-slate-950 leading-tight">{L.heroTitle}</h2>
+          <p className="mt-2 text-[12px] leading-relaxed text-slate-600">{L.heroDesc}</p>
         </div>
 
         {loading ? (
           <div className="rounded-[28px] bg-white border border-slate-200 p-6 text-center">
             <div className="w-10 h-10 mx-auto rounded-full border-2 border-[#00C2FF] border-t-transparent animate-spin" />
-            <p className="mt-3 text-[13px] text-slate-500">QR wird geladen…</p>
+            <p className="mt-3 text-[13px] text-slate-500">{L.loading}</p>
           </div>
         ) : error ? (
           <div className="rounded-[28px] bg-white border border-red-200 p-5 text-center text-red-500">{error}</div>
@@ -83,7 +83,7 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
           <>
             <div className="rounded-[32px] bg-white border border-slate-200 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] text-center mb-5">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00C2FF]/10 text-[#00A6E6] text-[11px] font-semibold mb-4">
-                <CheckCircle2 size={13} /> Privat empfangen
+                <CheckCircle2 size={13} /> {L.privateReceive}
               </div>
               <div className="w-[240px] h-[240px] mx-auto bg-white rounded-[28px] border border-slate-200 p-4 flex items-center justify-center">
                 <QRCodeSVG value={receiveCode} size={190} includeMargin />
@@ -93,18 +93,18 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 mb-5">
-              <motion.button data-testid="receive-money-copy-qr" onClick={() => copyText(receiveCode, "QR-Daten")} whileTap={{ scale: 0.98 }} className="min-h-[50px] rounded-2xl bg-[#00C2FF] text-slate-950 font-bold flex items-center justify-center gap-2 shadow-[0_12px_28px_rgba(0,194,255,0.22)]">
-                <Copy size={16} /> Kopieren
+              <motion.button data-testid="receive-money-copy-qr" onClick={() => copyText(receiveCode, L.qrDataLabel)} whileTap={{ scale: 0.98 }} className="min-h-[50px] rounded-2xl bg-[#00C2FF] text-slate-950 font-bold flex items-center justify-center gap-2 shadow-[0_12px_28px_rgba(0,194,255,0.22)]">
+                <Copy size={16} /> {L.copy}
               </motion.button>
               <motion.button data-testid="receive-money-send-link" onClick={() => onNavigate?.('/send-money')} whileTap={{ scale: 0.98 }} className="min-h-[50px] rounded-2xl border border-slate-200 bg-white text-slate-900 font-semibold flex items-center justify-center gap-2">
-                <Send size={16} /> Senden öffnen
+                <Send size={16} /> {L.openSend}
               </motion.button>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 mb-5">
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                <p className="text-[12px] font-semibold text-[#10B981]">Privat</p>
-                <p className="mt-1 text-[11px] text-slate-600">Anderer Kunde scannt diesen QR</p>
+                <p className="text-[12px] font-semibold text-[#10B981]">{L.privateLabel}</p>
+                <p className="mt-1 text-[11px] text-slate-600">{L.privateDesc}</p>
               </div>
               <motion.button data-testid="receive-money-open-pay" onClick={() => onNavigate?.('/pay')} whileTap={{ scale: 0.98 }} className="rounded-2xl border border-[#00C2FF]/16 bg-[#00C2FF]/8 px-4 py-3 text-left">
                 <span className="block text-[12px] font-semibold text-[#00A6E6]">{L.merchant}</span>
@@ -122,9 +122,9 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
               </div>
               <div className="space-y-3">
                 {[
-                  { icon: QrCode, title: "1. Diesen QR zeigen", desc: "Der andere Kunde öffnet &quot;Geld senden&quot; und scannt deinen Code." },
-                  { icon: Wallet, title: "2. Betrag bestätigen", desc: "Der Sender wählt Betrag und bestätigt die private Wallet-Zahlung." },
-                  { icon: CheckCircle2, title: "3. Sofort empfangen", desc: "Das Geld landet direkt in deiner Wallet." },
+                  { icon: QrCode, title: L.step1Title, desc: L.step1Desc },
+                  { icon: Wallet, title: L.step2Title, desc: L.step2Desc },
+                  { icon: CheckCircle2, title: L.step3Title, desc: L.step3Desc },
                 ].map((item) => (
                   <div key={item.title} className="flex items-start gap-3 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3">
                     <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shrink-0"><item.icon size={16} className="text-[#00A6E6]" /></div>
