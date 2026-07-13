@@ -26,6 +26,19 @@ const swallowMaybePromise = (result) => {
   }
 };
 
+const normalizeScannerErrorMessage = (error, fallback) => {
+  const message = typeof error === "string" ? error : error?.message || "";
+  if (!message) return fallback;
+  if (
+    message.includes("No MultiFormat Readers were able to detect the code") ||
+    message.includes("No barcode or QR code detected") ||
+    message.includes("QR code parse error")
+  ) {
+    return fallback;
+  }
+  return message;
+};
+
 const normalizeAmount = (value) => {
   const numeric = Number(value ?? 0);
   return Number.isFinite(numeric) ? numeric : 0;
@@ -268,7 +281,31 @@ export default function SendMoneyPage({ onBack, onNavigate, currentBalance = 0 }
       setScanCodeInput(decodedText);
       await handleScanResolvedCode(decodedText);
     } catch (scanFileError) {
-      setCameraError(scanFileError?.message || L.imageReadFailed);
+      try {
+        if ("BarcodeDetector" in window && typeof window.createImageBitmap === "function") {
+          const supported = typeof window.BarcodeDetector.getSupportedFormats === "function"
+            ? await window.BarcodeDetector.getSupportedFormats()
+            : SUPPORTED_SCAN_FORMATS;
+          const formats = SUPPORTED_SCAN_FORMATS.filter((format) => supported.includes(format));
+          const detector = new window.BarcodeDetector({ formats: formats.length ? formats : ["qr_code"] });
+          const bitmap = await window.createImageBitmap(file);
+          try {
+            const detections = await detector.detect(bitmap);
+            const fallbackValue = detections?.[0]?.rawValue?.trim();
+            if (fallbackValue) {
+              setScanCodeInput(fallbackValue);
+              await handleScanResolvedCode(fallbackValue);
+              return;
+            }
+          } finally {
+            bitmap.close?.();
+          }
+        }
+      } catch (fallbackDetectionError) {
+        void fallbackDetectionError;
+      }
+
+      setCameraError(normalizeScannerErrorMessage(scanFileError, L.imageReadFailed));
     } finally {
       setCameraPreparing(false);
       stopCamera();
