@@ -3,11 +3,12 @@
  * KI-Assistent, Bilderkennung, Dynamic Pricing, Stempeluhr,
  * Trinkgeld-Pool, Webhooks/API-Keys
  */
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { useI18n } from "../store/I18nContext";
 import {
-  Shield, Archive, ChefHat, QrCode, Coffee, Bot, Camera,
-  TrendingUp, Clock, DollarSign, Webhook, Loader2, Sparkles,
+  Shield, Archive, ChefHat, QrCode, Coffee, Bot,
+  TrendingUp, Clock, DollarSign, Webhook, Loader2,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -24,17 +25,11 @@ async function api(path, { method = "GET", body } = {}) {
   return data;
 }
 
-const SECTIONS = [
-  { id: "tse", label: "TSE & GoBD", icon: Shield },
-  { id: "kds", label: "KDS Küche", icon: ChefHat },
-  { id: "tables", label: "QR-Tische", icon: QrCode },
-  { id: "deposits", label: "Pfand", icon: Coffee },
-  { id: "ki", label: "KI-Assistent", icon: Bot },
-  { id: "pricing", label: "Dynamic Pricing", icon: TrendingUp },
-  { id: "clock", label: "Stempeluhr", icon: Clock },
-  { id: "tips", label: "Trinkgeld", icon: DollarSign },
-  { id: "api", label: "API & Webhooks", icon: Webhook },
-];
+const usePosProTr = () => {
+  const { lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  return (values) => values?.[locale] ?? values?.en ?? values?.de ?? "";
+};
 
 const Card = ({ title, icon: Icon, children }) => (
   <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 mb-3">
@@ -66,12 +61,24 @@ const Input = ({ value, onChange, placeholder, type = "text", testId }) => (
 );
 
 export default function POSProTab({ storeId, registerId }) {
+  const tr = usePosProTr();
   const [section, setSection] = useState("tse");
-  if (!storeId) return <div className="text-white/60 text-[12px] text-center py-10">Bitte erst eine Filiale wählen.</div>;
+  const sections = [
+    { id: "tse", label: tr({ de: "TSE & GoBD", en: "TSE & GoBD", sq: "TSE & GoBD", ar: "TSE وGoBD" }), icon: Shield },
+    { id: "kds", label: tr({ de: "KDS Küche", en: "Kitchen KDS", sq: "KDS kuzhine", ar: "KDS المطبخ" }), icon: ChefHat },
+    { id: "tables", label: tr({ de: "QR-Tische", en: "QR tables", sq: "Tavolina QR", ar: "طاولات QR" }), icon: QrCode },
+    { id: "deposits", label: tr({ de: "Pfand", en: "Deposits", sq: "Depozita", ar: "الودائع" }), icon: Coffee },
+    { id: "ki", label: tr({ de: "KI-Assistent", en: "AI assistant", sq: "Asistenti AI", ar: "مساعد الذكاء الاصطناعي" }), icon: Bot },
+    { id: "pricing", label: tr({ de: "Dynamic Pricing", en: "Dynamic pricing", sq: "Çmime dinamike", ar: "التسعير الديناميكي" }), icon: TrendingUp },
+    { id: "clock", label: tr({ de: "Stempeluhr", en: "Time clock", sq: "Ora e punës", ar: "ساعة الدوام" }), icon: Clock },
+    { id: "tips", label: tr({ de: "Trinkgeld", en: "Tips", sq: "Bakshishet", ar: "الإكراميات" }), icon: DollarSign },
+    { id: "api", label: tr({ de: "API & Webhooks", en: "API & webhooks", sq: "API & webhooks", ar: "API وWebhooks" }), icon: Webhook },
+  ];
+  if (!storeId) return <div className="text-white/60 text-[12px] text-center py-10">{tr({ de: "Bitte erst eine Filiale wählen.", en: "Please choose a store first.", sq: "Ju lutem zgjidhni fillimisht një degë.", ar: "يرجى اختيار الفرع أولاً." })}</div>;
   return (
     <div data-testid="pos-pro-tab">
       <div className="flex gap-1 overflow-x-auto pb-3 hide-scrollbar -mx-1 px-1">
-        {SECTIONS.map((s) => (
+        {sections.map((s) => (
           <button key={s.id} onClick={() => setSection(s.id)} data-testid={`pro-section-${s.id}`}
             className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap"
             style={{
@@ -98,6 +105,7 @@ export default function POSProTab({ storeId, registerId }) {
 
 // ── TSE / GoBD
 function TSESection() {
+  const tr = usePosProTr();
   const [provider, setProvider] = useState("fiskaly");
   const [apiKey, setApiKey] = useState("");
   const [tssId, setTssId] = useState("");
@@ -108,7 +116,7 @@ function TSESection() {
     setBusy(true);
     try {
       await api("/api/pos/tse/configure", { method: "POST", body: { provider, api_key: apiKey, serial: tssId || null } });
-      toast.success("TSE konfiguriert");
+      toast.success(tr({ de: "TSE konfiguriert", en: "TSE configured", sq: "TSE u konfigurua", ar: "تم إعداد TSE" }));
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
 
@@ -124,8 +132,8 @@ function TSESection() {
 
   return (
     <>
-      <Card title="TSE / Fiskaly Konfiguration (KassenSichV-Pflicht)" icon={Shield}>
-        <p className="text-[10px] text-white/40 mb-2">In Deutschland verpflichtend seit 01.01.2020. Jeder Bon wird mit einer manipulationssicheren Signatur versehen.</p>
+      <Card title={tr({ de: "TSE / Fiskaly Konfiguration (KassenSichV-Pflicht)", en: "TSE / Fiskaly configuration (mandatory)", sq: "Konfigurimi TSE / Fiskaly (i detyrueshëm)", ar: "إعداد TSE / Fiskaly (إلزامي)" })} icon={Shield}>
+        <p className="text-[10px] text-white/40 mb-2">{tr({ de: "In Deutschland verpflichtend seit 01.01.2020. Jeder Bon wird mit einer manipulationssicheren Signatur versehen.", en: "Mandatory in Germany since 01/01/2020. Every receipt gets a tamper-proof signature.", sq: "E detyrueshme në Gjermani që nga 01.01.2020. Çdo faturë nënshkruhet në mënyrë të sigurt.", ar: "إلزامي في ألمانيا منذ 01.01.2020. كل إيصال يحصل على توقيع مقاوم للتلاعب." })}</p>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <select value={provider} onChange={(e) => setProvider(e.target.value)}
             className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-[11px] text-white" data-testid="tse-provider">
@@ -133,15 +141,15 @@ function TSESection() {
             <option value="epson">Epson Hardware-TSE</option>
             <option value="swissbit">Swissbit USB-TSE</option>
           </select>
-          <Input value={apiKey} onChange={setApiKey} placeholder="API-Key (vom TSE-Provider)" testId="tse-api-key" />
-          <Input value={tssId} onChange={setTssId} placeholder="Serial-Nr. (optional)" testId="tse-tss-id" />
+          <Input value={apiKey} onChange={setApiKey} placeholder={tr({ de: "API-Key (vom TSE-Provider)", en: "API key (from TSE provider)", sq: "API key (nga ofruesi TSE)", ar: "مفتاح API (من مزود TSE)" })} testId="tse-api-key" />
+          <Input value={tssId} onChange={setTssId} placeholder={tr({ de: "Serial-Nr. (optional)", en: "Serial no. (optional)", sq: "Nr. serial (opsionale)", ar: "الرقم التسلسلي (اختياري)" })} testId="tse-tss-id" />
         </div>
-        <Btn onClick={configure} loading={busy} testId="tse-save-btn"><Shield size={12} /> TSE aktivieren</Btn>
+        <Btn onClick={configure} loading={busy} testId="tse-save-btn"><Shield size={12} /> {tr({ de: "TSE aktivieren", en: "Activate TSE", sq: "Aktivizo TSE", ar: "تفعيل TSE" })}</Btn>
       </Card>
 
-      <Card title="GoBD-Integritätsprüfung" icon={Archive}>
-        <p className="text-[10px] text-white/40 mb-2">Prüft, ob alle bezahlten Bons unveränderbar archiviert sind (10-Jahre-Frist).</p>
-        <Btn onClick={checkIntegrity} variant="secondary" testId="gobd-check-btn">Integrität prüfen</Btn>
+      <Card title={tr({ de: "GoBD-Integritätsprüfung", en: "GoBD integrity check", sq: "Kontrolli i integritetit GoBD", ar: "فحص سلامة GoBD" })} icon={Archive}>
+        <p className="text-[10px] text-white/40 mb-2">{tr({ de: "Prüft, ob alle bezahlten Bons unveränderbar archiviert sind (10-Jahre-Frist).", en: "Checks whether all paid receipts are archived immutably (10-year retention).", sq: "Kontrollon nëse të gjitha faturat e paguara janë arkivuar në mënyrë të pandryshueshme.", ar: "يتحقق مما إذا كانت جميع الإيصالات المدفوعة مؤرشفة بشكل غير قابل للتغيير." })}</p>
+        <Btn onClick={checkIntegrity} variant="secondary" testId="gobd-check-btn">{tr({ de: "Integrität prüfen", en: "Check integrity", sq: "Kontrollo integritetin", ar: "تحقق من السلامة" })}</Btn>
         {integrity && (
           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]" data-testid="gobd-result">
             <div className="bg-black/20 rounded-lg p-2"><p className="text-white/40 text-[9px]">Bons archiviert</p><p className="text-white font-bold">{integrity.gobd_archived}</p></div>
@@ -157,12 +165,13 @@ function TSESection() {
 
 // ── KDS
 function KDSSection({ storeId }) {
+  const tr = usePosProTr();
   const [stations, setStations] = useState([]);
   const [name, setName] = useState("Küche");
   const [cats, setCats] = useState("Speisen, Vorspeise");
 
   const load = useCallback(async () => {
-    try { const d = await api(`/api/pos/kds/stations?store_id=${storeId}`); setStations(d.stations || []); } catch {}
+    try { const d = await api(`/api/pos/kds/stations?store_id=${storeId}`); setStations(d.stations || []); } catch (err) { void err; }
   }, [storeId]);
   useEffect(() => { load(); }, [load]);
 
@@ -171,24 +180,24 @@ function KDSSection({ storeId }) {
       await api(`/api/pos/kds/stations/create?store_id=${storeId}`, {
         method: "POST", body: { name, categories: cats.split(",").map(c => c.trim()).filter(Boolean) },
       });
-      toast.success("Station angelegt"); load();
+      toast.success(tr({ de: "Station angelegt", en: "Station created", sq: "Stacioni u krijua", ar: "تم إنشاء المحطة" })); load();
     } catch (e) { toast.error(e.message); }
   };
 
   return (
-    <Card title="Kitchen Display System (KDS)" icon={ChefHat}>
-      <p className="text-[10px] text-white/40 mb-3">Lege eine Display-Station an (z.B. Küche, Bar, Pizza). Dann öffne /kds/{`{station_id}`} auf einem Tablet in der Küche.</p>
+    <Card title={tr({ de: "Kitchen Display System (KDS)", en: "Kitchen display system (KDS)", sq: "Sistemi i ekranit të kuzhinës (KDS)", ar: "نظام شاشة المطبخ (KDS)" })} icon={ChefHat}>
+      <p className="text-[10px] text-white/40 mb-3">{tr({ de: "Lege eine Display-Station an (z.B. Küche, Bar, Pizza). Dann öffne /kds/{station_id} auf einem Tablet in der Küche.", en: "Create a display station (e.g. kitchen, bar, pizza). Then open /kds/{station_id} on a kitchen tablet.", sq: "Krijo një stacion ekrani (p.sh. kuzhinë, bar, pizza). Pastaj hap /kds/{station_id} në një tablet në kuzhinë.", ar: "أنشئ محطة عرض (مثل المطبخ أو البار أو البيتزا). ثم افتح /kds/{station_id} على جهاز لوحي في المطبخ." })}</p>
       <div className="grid grid-cols-2 gap-2 mb-2">
-        <Input value={name} onChange={setName} placeholder="Station-Name" testId="kds-name" />
-        <Input value={cats} onChange={setCats} placeholder="Kategorien (komma)" testId="kds-cats" />
+        <Input value={name} onChange={setName} placeholder={tr({ de: "Stationsname", en: "Station name", sq: "Emri i stacionit", ar: "اسم المحطة" })} testId="kds-name" />
+        <Input value={cats} onChange={setCats} placeholder={tr({ de: "Kategorien (Komma)", en: "Categories (comma)", sq: "Kategoritë (me presje)", ar: "الفئات (بفواصل)" })} testId="kds-cats" />
       </div>
-      <Btn onClick={create} testId="kds-create-btn">+ Station</Btn>
+      <Btn onClick={create} testId="kds-create-btn">+ {tr({ de: "Station", en: "Station", sq: "Stacion", ar: "محطة" })}</Btn>
       <div className="mt-3 space-y-1">
         {stations.map((s) => (
           <div key={s.station_id} className="flex justify-between bg-black/20 rounded-lg p-2 text-[10px]">
             <span className="text-white/80">{s.name} <span className="text-white/40">— {(s.categories || []).join(", ")}</span></span>
             <a href={`/kds/${s.station_id}`} target="_blank" rel="noreferrer" className="text-[#00C2FF] font-bold" data-testid={`kds-open-${s.station_id}`}>
-              Tablet öffnen ↗
+              {tr({ de: "Tablet öffnen", en: "Open tablet", sq: "Hap tabletin", ar: "افتح الجهاز اللوحي" })} ↗
             </a>
           </div>
         ))}
@@ -204,7 +213,7 @@ function TablesSection({ storeId }) {
   const [capacity, setCapacity] = useState(4);
 
   const load = useCallback(async () => {
-    try { const d = await api(`/api/pos/tables?store_id=${storeId}`); setTables(d.tables || []); } catch {}
+    try { const d = await api(`/api/pos/tables?store_id=${storeId}`); setTables(d.tables || []); } catch (err) { void err; }
   }, [storeId]);
   useEffect(() => { load(); }, [load]);
 
@@ -225,7 +234,7 @@ function TablesSection({ storeId }) {
 
   return (
     <Card title="QR-Tisch-Bestellung" icon={QrCode}>
-      <p className="text-[10px] text-white/40 mb-3">Lege Tische an, klicke „QR aktivieren", drucke den QR-Code und klebe ihn auf den Tisch. Gäste scannen, bestellen selbst, Bestellung landet automatisch im KDS.</p>
+      <p className="text-[10px] text-white/40 mb-3">Lege Tische an, klicke „QR aktivieren“, drucke den QR-Code und klebe ihn auf den Tisch. Gäste scannen, bestellen selbst, Bestellung landet automatisch im KDS.</p>
       <div className="grid grid-cols-3 gap-2 mb-2">
         <Input value={name} onChange={setName} placeholder="Tisch-Name" testId="tbl-num" />
         <Input value={capacity} onChange={setCapacity} type="number" placeholder="Plätze" testId="tbl-seats" />
@@ -262,10 +271,10 @@ function DepositsSection({ storeId }) {
   const [qty, setQty] = useState(1);
   const [refund, setRefund] = useState(null);
 
-  const load = async () => {
-    try { setOut(await api(`/api/pos/deposits/outstanding?store_id=${storeId}`)); } catch {}
-  };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  const load = useCallback(async () => {
+    try { setOut(await api(`/api/pos/deposits/outstanding?store_id=${storeId}`)); } catch (err) { void err; }
+  }, [storeId]);
+  useEffect(() => { load(); }, [load]);
 
   const doReturn = async () => {
     try {
@@ -350,7 +359,7 @@ function PricingSection({ storeId }) {
                                        discount_percent: 20, starts_at_hour: 17, ends_at_hour: 19 });
 
   const load = useCallback(async () => {
-    try { const d = await api(`/api/pos/pricing/rules?store_id=${storeId}`); setRules(d.rules || []); } catch {}
+    try { const d = await api(`/api/pos/pricing/rules?store_id=${storeId}`); setRules(d.rules || []); } catch (err) { void err; }
   }, [storeId]);
   useEffect(() => { load(); }, [load]);
 
@@ -400,7 +409,7 @@ function ClockSection({ storeId }) {
   const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
-    try { const d = await api("/api/pos/timeclock/me?days=7"); setMe(d.punches || []); } catch {}
+    try { const d = await api("/api/pos/timeclock/me?days=7"); setMe(d.punches || []); } catch (err) { void err; }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -435,10 +444,10 @@ function ClockSection({ storeId }) {
 // ── Tips
 function TipsSection({ storeId }) {
   const [my, setMy] = useState(null);
-  const load = async () => {
-    try { setMy(await api("/api/pos/tips/my-payouts?days=30")); } catch {}
-  };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  const load = useCallback(async () => {
+    try { setMy(await api("/api/pos/tips/my-payouts?days=30")); } catch (err) { void err; }
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
   const distribute = async () => {
     if (!window.confirm("Heutigen Trinkgeld-Pool an alle eingestempelten Mitarbeiter verteilen?")) return;
@@ -486,7 +495,7 @@ function ApiSection() {
     try {
       const [h, k] = await Promise.all([api("/api/pos/webhooks"), api("/api/pos/api-keys")]);
       setHooks(h.webhooks || []); setKeys(k.keys || []);
-    } catch {}
+    } catch (err) { void err; }
   };
   useEffect(() => { load(); }, []);
 

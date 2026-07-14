@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useI18n } from "../store/I18nContext";
 import {
   ChevronLeft, Store, Search, RotateCcw, Ban, CheckCircle,
-  Tag, Activity, AlertTriangle, Clock, Smartphone, ChevronRight,
-  X, Users, Zap, Hash, Shield,
+  Tag, AlertTriangle, Smartphone, ChevronRight,
+  X, Zap, Hash,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -23,7 +24,14 @@ const StatusDot = ({ online, suspended }) => {
   return <div className="w-2.5 h-2.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}60` }} />;
 };
 
+const useMerchantAdminTr = () => {
+  const { lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  return (values) => values?.[locale] ?? values?.en ?? values?.de ?? "";
+};
+
 const MerchantAdminPage = ({ onNavigate, onBack }) => {
+  const tr = useMerchantAdminTr();
   const [merchants, setMerchants] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,7 +39,6 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const loadMerchants = useCallback(async () => {
     setLoading(true);
@@ -41,26 +48,24 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
       setMerchants(d.merchants || []);
       setTotal(d.total || 0);
     } catch (e) {
-      toast.error("Fehler beim Laden: " + e.message);
+      toast.error(`${tr({ de: "Fehler beim Laden", en: "Error loading", sq: "Gabim gjatë ngarkimit", ar: "خطأ أثناء التحميل" })}: ${e.message}`);
     }
     setLoading(false);
-  }, [filter]);
+  }, [filter, tr]);
 
   useEffect(() => { loadMerchants(); }, [loadMerchants]);
 
   const loadDetail = async (email) => {
-    setDetailLoading(true);
     try {
       const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/detail`);
       setDetail(d);
     } catch (e) {
       toast.error(e.message);
     }
-    setDetailLoading(false);
   };
 
   const handleRestart = async (email) => {
-    if (!window.confirm(`Session von ${email} neustarten?`)) return;
+    if (!window.confirm(tr({ de: `Session von ${email} neustarten?`, en: `Restart session for ${email}?`, sq: `Të riniset sesioni për ${email}?`, ar: `إعادة تشغيل جلسة ${email}؟` }))) return;
     try {
       const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/restart`, { method: "POST" });
       toast.success(d.message);
@@ -107,7 +112,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   const timeAgo = (iso) => {
     if (!iso) return "-";
     const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (diff < 60) return "Gerade eben";
+    if (diff < 60) return tr({ de: "Gerade eben", en: "Just now", sq: "Sapo tani", ar: "الآن" });
     if (diff < 3600) return `${Math.floor(diff / 60)}m`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
     return `${Math.floor(diff / 86400)}d`;
@@ -123,9 +128,9 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
           </motion.button>
           <div>
             <h1 className="text-[15px] font-bold text-white flex items-center gap-2">
-              <Store size={14} className="text-[#FFB800]" /> Haendler-Verwaltung
+              <Store size={14} className="text-[#FFB800]" /> {tr({ de: "Händler-Verwaltung", en: "Merchant admin", sq: "Menaxhimi i tregtarëve", ar: "إدارة التجار" })}
             </h1>
-            <p className="text-[10px] text-white/30">{total} Haendler registriert</p>
+            <p className="text-[10px] text-white/30">{total} {tr({ de: "Händler registriert", en: "merchants registered", sq: "tregtarë të regjistruar", ar: "تاجرًا مسجلاً" })}</p>
           </div>
         </div>
         <motion.button
@@ -134,7 +139,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
           className="px-3 py-1.5 rounded-lg text-[10px] font-bold"
           style={{ background: "rgba(255,184,0,0.15)", color: "#FFB800" }}
         >
-          <Hash size={10} className="inline mr-1" />IDs vergeben
+          <Hash size={10} className="inline mr-1" />{tr({ de: "IDs vergeben", en: "Assign IDs", sq: "Cakto ID", ar: "تعيين المعرّفات" })}
         </motion.button>
       </div>
 
@@ -147,7 +152,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
               data-testid="merchant-search"
               className="w-full pl-9 pr-3 py-2.5 rounded-xl text-[12px] text-white placeholder:text-white/20"
               style={{ background: "#0A0A0A", border: "1px solid rgba(255,255,255,0.06)" }}
-              placeholder="Name, Email oder ID suchen..."
+              placeholder={tr({ de: "Name, E-Mail oder ID suchen...", en: "Search name, email or ID...", sq: "Kërko emër, email ose ID...", ar: "ابحث بالاسم أو البريد أو المعرّف..." })}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -158,9 +163,9 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
             value={filter}
             onChange={e => setFilter(e.target.value)}
           >
-            <option value="all">Alle</option>
-            <option value="active">Aktiv</option>
-            <option value="suspended">Gesperrt</option>
+            <option value="all">{tr({ de: "Alle", en: "All", sq: "Të gjitha", ar: "الكل" })}</option>
+            <option value="active">{tr({ de: "Aktiv", en: "Active", sq: "Aktiv", ar: "نشط" })}</option>
+            <option value="suspended">{tr({ de: "Gesperrt", en: "Suspended", sq: "I bllokuar", ar: "موقوف" })}</option>
           </select>
         </div>
 
@@ -168,23 +173,23 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
         <div className="grid grid-cols-3 gap-2">
           <div className="text-center p-2 rounded-xl" style={{ background: "rgba(16,185,129,0.08)" }}>
             <p className="text-[14px] font-bold text-emerald-400">{merchants.filter(m => m.is_online).length}</p>
-            <p className="text-[9px] text-white/30">Online</p>
+            <p className="text-[9px] text-white/30">{tr({ de: "Online", en: "Online", sq: "Online", ar: "متصل" })}</p>
           </div>
           <div className="text-center p-2 rounded-xl" style={{ background: "rgba(255,184,0,0.08)" }}>
             <p className="text-[14px] font-bold text-[#FFB800]">{merchants.filter(m => !m.merchant_id).length}</p>
-            <p className="text-[9px] text-white/30">Ohne ID</p>
+            <p className="text-[9px] text-white/30">{tr({ de: "Ohne ID", en: "Without ID", sq: "Pa ID", ar: "بدون معرّف" })}</p>
           </div>
           <div className="text-center p-2 rounded-xl" style={{ background: "rgba(239,68,68,0.08)" }}>
             <p className="text-[14px] font-bold text-red-400">{merchants.filter(m => m.errors_24h > 0).length}</p>
-            <p className="text-[9px] text-white/30">Mit Fehlern</p>
+            <p className="text-[9px] text-white/30">{tr({ de: "Mit Fehlern", en: "With errors", sq: "Me gabime", ar: "مع أخطاء" })}</p>
           </div>
         </div>
 
         {/* Merchant List */}
         {loading ? (
-          <div className="text-center py-8 text-white/30 text-[12px]">Laden...</div>
+          <div className="text-center py-8 text-white/30 text-[12px]">{tr({ de: "Laden...", en: "Loading...", sq: "Po ngarkohet...", ar: "جارٍ التحميل..." })}</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-8 text-white/30 text-[12px]">Keine Haendler gefunden</div>
+          <div className="text-center py-8 text-white/30 text-[12px]">{tr({ de: "Keine Händler gefunden", en: "No merchants found", sq: "Nuk u gjetën tregtarë", ar: "لم يتم العثور على تجار" })}</div>
         ) : (
           <div className="space-y-2">
             {filtered.map(m => (
@@ -212,7 +217,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                         </span>
                       ) : (
                         <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }}>
-                          Keine ID
+                          {tr({ de: "Keine ID", en: "No ID", sq: "Pa ID", ar: "بدون معرّف" })}
                         </span>
                       )}
                       <span className="text-[10px] text-white/30 truncate">{m.email}</span>
@@ -236,7 +241,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                     className="flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"
                     style={{ background: "rgba(0,194,255,0.1)", color: "#00C2FF" }}
                   >
-                    <RotateCcw size={10} /> Neustart
+                    <RotateCcw size={10} /> {tr({ de: "Neustart", en: "Restart", sq: "Rinis", ar: "إعادة تشغيل" })}
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
@@ -244,7 +249,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                     className="flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"
                     style={{ background: m.is_suspended ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: m.is_suspended ? "#10B981" : "#EF4444" }}
                   >
-                    {m.is_suspended ? <><CheckCircle size={10} /> Aktivieren</> : <><Ban size={10} /> Sperren</>}
+                    {m.is_suspended ? <><CheckCircle size={10} /> {tr({ de: "Aktivieren", en: "Activate", sq: "Aktivizo", ar: "تفعيل" })}</> : <><Ban size={10} /> {tr({ de: "Sperren", en: "Suspend", sq: "Blloko", ar: "إيقاف" })}</>}
                   </motion.button>
                   {!m.merchant_id && (
                     <motion.button
@@ -253,7 +258,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                       className="flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"
                       style={{ background: "rgba(255,184,0,0.1)", color: "#FFB800" }}
                     >
-                      <Tag size={10} /> ID vergeben
+                      <Tag size={10} /> {tr({ de: "ID vergeben", en: "Assign ID", sq: "Cakto ID", ar: "تعيين المعرّف" })}
                     </motion.button>
                   )}
                 </div>
@@ -292,19 +297,19 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                 {/* Merchant Info */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <p className="text-[9px] text-white/30">Haendler-ID</p>
-                    <p className="text-[13px] font-mono font-bold text-[#FFB800]">{detail.merchant?.merchant_id || "Keine"}</p>
+                    <p className="text-[9px] text-white/30">{tr({ de: "Händler-ID", en: "Merchant ID", sq: "ID e tregtarit", ar: "معرّف التاجر" })}</p>
+                    <p className="text-[13px] font-mono font-bold text-[#FFB800]">{detail.merchant?.merchant_id || tr({ de: "Keine", en: "None", sq: "Asnjë", ar: "لا يوجد" })}</p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <p className="text-[9px] text-white/30">Guthaben</p>
+                    <p className="text-[9px] text-white/30">{tr({ de: "Guthaben", en: "Balance", sq: "Bilanci", ar: "الرصيد" })}</p>
                     <p className="text-[13px] font-bold text-emerald-400">EUR {detail.merchant?.balance?.toFixed(2)}</p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <p className="text-[9px] text-white/30">Umsatz gesamt</p>
+                    <p className="text-[9px] text-white/30">{tr({ de: "Umsatz gesamt", en: "Total revenue", sq: "Të ardhurat totale", ar: "إجمالي الإيرادات" })}</p>
                     <p className="text-[13px] font-bold text-white">EUR {detail.revenue_total?.toFixed(2)}</p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <p className="text-[9px] text-white/30">Transaktionen</p>
+                    <p className="text-[9px] text-white/30">{tr({ de: "Transaktionen", en: "Transactions", sq: "Transaksionet", ar: "المعاملات" })}</p>
                     <p className="text-[13px] font-bold text-white">{detail.transaction_count}</p>
                   </div>
                 </div>
@@ -312,16 +317,16 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                 {/* Sessions */}
                 {detail.sessions?.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-bold text-white/60 mb-2 flex items-center gap-1"><Smartphone size={11} /> Geraete / Sessions</p>
+                    <p className="text-[11px] font-bold text-white/60 mb-2 flex items-center gap-1"><Smartphone size={11} /> {tr({ de: "Geräte / Sessions", en: "Devices / sessions", sq: "Pajisje / sesione", ar: "الأجهزة / الجلسات" })}</p>
                     {detail.sessions.map((s, i) => (
                       <div key={i} className="p-2 rounded-lg mb-1" style={{ background: "rgba(255,255,255,0.03)" }}>
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-white/50">{s.device_info || "Unbekannt"}</span>
+                          <span className="text-[10px] text-white/50">{s.device_info || tr({ de: "Unbekannt", en: "Unknown", sq: "E panjohur", ar: "غير معروف" })}</span>
                           <span className={`text-[9px] font-bold ${s.status === "online" ? "text-emerald-400" : s.status === "force_restart" ? "text-red-400" : "text-white/30"}`}>
                             {s.status}
                           </span>
                         </div>
-                        <p className="text-[9px] text-white/25">Letzte Aktivitaet: {timeAgo(s.last_active)}</p>
+                        <p className="text-[9px] text-white/25">{tr({ de: "Letzte Aktivität", en: "Last activity", sq: "Aktiviteti i fundit", ar: "آخر نشاط" })}: {timeAgo(s.last_active)}</p>
                       </div>
                     ))}
                   </div>
@@ -330,7 +335,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                 {/* Error Logs */}
                 {detail.recent_errors?.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-bold text-red-400/80 mb-2 flex items-center gap-1"><AlertTriangle size={11} /> Fehler-Log</p>
+                    <p className="text-[11px] font-bold text-red-400/80 mb-2 flex items-center gap-1"><AlertTriangle size={11} /> {tr({ de: "Fehler-Log", en: "Error log", sq: "Regjistri i gabimeve", ar: "سجل الأخطاء" })}</p>
                     {detail.recent_errors.slice(0, 5).map((e, i) => (
                       <div key={i} className="p-2 rounded-lg mb-1" style={{ background: "rgba(239,68,68,0.05)" }}>
                         <p className="text-[10px] text-white/60">{e.message}</p>
@@ -346,7 +351,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                 {/* Recent Transactions */}
                 {detail.recent_transactions?.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-bold text-white/60 mb-2 flex items-center gap-1"><Zap size={11} /> Letzte Transaktionen</p>
+                    <p className="text-[11px] font-bold text-white/60 mb-2 flex items-center gap-1"><Zap size={11} /> {tr({ de: "Letzte Transaktionen", en: "Recent transactions", sq: "Transaksionet e fundit", ar: "آخر المعاملات" })}</p>
                     {detail.recent_transactions.slice(0, 5).map((t, i) => (
                       <div key={i} className="flex items-center justify-between py-1.5" style={{ borderTop: i > 0 ? "1px solid rgba(255,255,255,0.03)" : "none" }}>
                         <div>

@@ -7,6 +7,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { useI18n } from "../store/I18nContext";
 import {
   Camera, Mic, Tag, ShoppingCart, Upload, Download, ClipboardList,
   Layers, ChefHat, CalendarDays, TrendingUp, Sparkles, FileSpreadsheet,
@@ -30,15 +31,11 @@ async function api(path, { method = "GET", body, raw = false, formData = null } 
   return data;
 }
 
-const SECTIONS = [
-  { id: "demo", label: "Demo-Modus", icon: Sparkles },
-  { id: "ki", label: "KI-Tools", icon: Sparkles },
-  { id: "stock", label: "Bestand+", icon: Layers },
-  { id: "menu", label: "Rezepte & Cross-Sell", icon: ChefHat },
-  { id: "ops", label: "Schicht & Reservierung", icon: CalendarDays },
-  { id: "money", label: "Finanzen & DATEV", icon: FileSpreadsheet },
-  { id: "marketing", label: "Marketing", icon: Mail },
-];
+const usePosAdvancedTr = () => {
+  const { lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  return (values) => values?.[locale] ?? values?.en ?? values?.de ?? "";
+};
 
 const Card = ({ title, icon: Icon, children }) => (
   <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 mb-3">
@@ -78,16 +75,26 @@ const Input = ({ value, onChange, placeholder, type = "text", testId }) => (
 );
 
 export default function POSAdvancedTab({ storeId, registerId }) {
+  const tr = usePosAdvancedTr();
   const [section, setSection] = useState("demo");
+  const sections = [
+    { id: "demo", label: tr({ de: "Demo-Modus", en: "Demo mode", sq: "Mënyra demo", ar: "وضع العرض" }), icon: Sparkles },
+    { id: "ki", label: tr({ de: "KI-Tools", en: "AI tools", sq: "Mjetet AI", ar: "أدوات الذكاء الاصطناعي" }), icon: Sparkles },
+    { id: "stock", label: tr({ de: "Bestand+", en: "Inventory+", sq: "Inventari+", ar: "المخزون+" }), icon: Layers },
+    { id: "menu", label: tr({ de: "Rezepte & Cross-Sell", en: "Recipes & cross-sell", sq: "Receta & cross-sell", ar: "الوصفات والبيع الإضافي" }), icon: ChefHat },
+    { id: "ops", label: tr({ de: "Schicht & Reservierung", en: "Shifts & reservations", sq: "Turnet & rezervimet", ar: "المناوبات والحجوزات" }), icon: CalendarDays },
+    { id: "money", label: tr({ de: "Finanzen & DATEV", en: "Finance & DATEV", sq: "Financa & DATEV", ar: "المالية وDATEV" }), icon: FileSpreadsheet },
+    { id: "marketing", label: tr({ de: "Marketing", en: "Marketing", sq: "Marketing", ar: "التسويق" }), icon: Mail },
+  ];
 
   if (!storeId) {
-    return <div className="text-white/60 text-[12px] text-center py-10">Bitte erst eine Filiale wählen.</div>;
+    return <div className="text-white/60 text-[12px] text-center py-10">{tr({ de: "Bitte erst eine Filiale wählen.", en: "Please choose a store first.", sq: "Ju lutem zgjidhni fillimisht një degë.", ar: "يرجى اختيار الفرع أولاً." })}</div>;
   }
 
   return (
     <div data-testid="pos-advanced-tab">
       <div className="flex gap-1 overflow-x-auto pb-3 hide-scrollbar -mx-1 px-1">
-        {SECTIONS.map((s) => (
+        {sections.map((s) => (
           <button
             key={s.id}
             onClick={() => setSection(s.id)}
@@ -117,6 +124,7 @@ export default function POSAdvancedTab({ storeId, registerId }) {
 
 // ─────────────────── 0. DEMO MODE — One-Click Sample Data
 function DemoSection({ storeId }) {
+  const tr = usePosAdvancedTr();
   const [busy, setBusy] = useState("");
   const [result, setResult] = useState(null);
 
@@ -125,50 +133,47 @@ function DemoSection({ storeId }) {
     try {
       const d = await api(`/api/pos/demo/seed?store_id=${storeId}`, { method: "POST" });
       setResult(d.created);
-      toast.success("Demo-Daten erstellt!");
+      toast.success(tr({ de: "Demo-Daten erstellt!", en: "Demo data created!", sq: "Të dhënat demo u krijuan!", ar: "تم إنشاء بيانات العرض!" }));
     } catch (err) { toast.error(err.message); } finally { setBusy(""); }
   };
 
   const clear = async () => {
-    if (!window.confirm("ALLE Demo-Daten (Präfix DEMO) löschen?")) return;
+    if (!window.confirm(tr({ de: "ALLE Demo-Daten (Präfix DEMO) löschen?", en: "Delete ALL demo data (prefix DEMO)?", sq: "Të fshihen TË GJITHA të dhënat demo (prefiksi DEMO)?", ar: "حذف كل بيانات العرض (بادئة DEMO)؟" }))) return;
     setBusy("clear");
     try {
       const d = await api(`/api/pos/demo/clear?store_id=${storeId}`, { method: "DELETE" });
       const total = Object.values(d.deleted).reduce((a, b) => a + b, 0);
-      toast.success(`${total} Demo-Einträge gelöscht`);
+      toast.success(tr({ de: `${total} Demo-Einträge gelöscht`, en: `${total} demo entries deleted`, sq: `${total} hyrje demo u fshinë`, ar: `تم حذف ${total} من بيانات العرض` }));
       setResult(null);
     } catch (err) { toast.error(err.message); } finally { setBusy(""); }
   };
 
   return (
     <>
-      <Card title="Demo-Daten mit einem Klick anlegen" icon={Sparkles}>
+      <Card title={tr({ de: "Demo-Daten mit einem Klick anlegen", en: "Create demo data in one click", sq: "Krijo të dhëna demo me një klikim", ar: "أنشئ بيانات العرض بنقرة واحدة" })} icon={Sparkles}>
         <p className="text-[10px] text-white/50 mb-3 leading-relaxed">
-          Perfekt für den ersten Test: erzeugt sofort einen Test-Lieferanten, 3 Demo-Produkte
-          (Cola, Brötchen, Burger-Menü), einen 25 €-Gutschein, eine offene Inventur,
-          ein Rezept (Burger = Brötchen + Cola), eine Reservierung für morgen 19:00 Uhr
-          und eine Schicht für heute. Alles mit Präfix <span className="text-[#00C2FF] font-bold">DEMO</span> —
-          jederzeit löschbar.
+          {tr({ de: "Perfekt für den ersten Test: erzeugt sofort einen Test-Lieferanten, 3 Demo-Produkte (Cola, Brötchen, Burger-Menü), einen 25 €-Gutschein, eine offene Inventur, ein Rezept, eine Reservierung und eine Schicht für heute.", en: "Perfect for a first test: instantly creates a supplier, 3 demo products, a €25 gift card, an open stocktake, a recipe, a reservation and a shift for today.", sq: "Perfekte për testin e parë: krijon menjëherë një furnitor, 3 produkte demo, një voucher 25 €, një inventurë të hapur, një recetë, një rezervim dhe një turn për sot.", ar: "مثالي لأول اختبار: ينشئ فوراً مورداً و3 منتجات تجريبية وبطاقة هدية بقيمة 25€ وجرداً مفتوحاً ووصفةً وحجزاً ومناوبة لليوم." })}
+          <span className="text-[#00C2FF] font-bold"> DEMO</span>.
         </p>
         <div className="flex gap-2">
           <Btn onClick={seed} loading={busy === "seed"} testId="demo-seed-btn">
-            <Sparkles size={12} /> Demo-Daten erstellen
+            <Sparkles size={12} /> {tr({ de: "Demo-Daten erstellen", en: "Create demo data", sq: "Krijo të dhëna demo", ar: "أنشئ بيانات العرض" })}
           </Btn>
           <Btn onClick={clear} loading={busy === "clear"} variant="secondary" testId="demo-clear-btn">
-            Alle DEMO-Einträge löschen
+            {tr({ de: "Alle DEMO-Einträge löschen", en: "Delete all DEMO entries", sq: "Fshi të gjitha hyrjet DEMO", ar: "احذف كل بيانات DEMO" })}
           </Btn>
         </div>
         {result && (
           <div className="mt-3 bg-black/30 rounded-lg p-3 text-[10px] space-y-1" data-testid="demo-result">
-            <p className="text-[#10B981] font-bold">✓ Erstellt:</p>
-            <p className="text-white/70">• Lieferant: <span className="text-white">{result.supplier_id}</span></p>
-            <p className="text-white/70">• Produkte: <span className="text-white">{result.product_ids?.length || 0}</span> (IDs: {(result.product_ids || []).join(", ")})</p>
-            <p className="text-white/70">• Gutschein: <span className="text-[#00C2FF] font-bold">{result.giftcard?.code}</span> ({result.giftcard?.amount} €)</p>
-            <p className="text-white/70">• Offene Inventur: <span className="text-white">{result.stocktake_id}</span></p>
-            <p className="text-white/70">• Rezept verknüpft mit Produkt: <span className="text-white">{result.recipe_for}</span></p>
-            <p className="text-white/70">• Reservierung: <span className="text-white">{result.reservation_id}</span></p>
-            <p className="text-white/70">• Schicht für heute angelegt</p>
-            <p className="text-white/40 mt-2 italic">Tipp: wechsle in die Tabs „Bestand+", „Rezepte" oder „Schicht & Reservierung" um die Daten zu sehen.</p>
+            <p className="text-[#10B981] font-bold">✓ {tr({ de: "Erstellt", en: "Created", sq: "U krijua", ar: "تم الإنشاء" })}:</p>
+            <p className="text-white/70">• {tr({ de: "Lieferant", en: "Supplier", sq: "Furnitor", ar: "المورد" })}: <span className="text-white">{result.supplier_id}</span></p>
+            <p className="text-white/70">• {tr({ de: "Produkte", en: "Products", sq: "Produktet", ar: "المنتجات" })}: <span className="text-white">{result.product_ids?.length || 0}</span> (IDs: {(result.product_ids || []).join(", ")})</p>
+            <p className="text-white/70">• {tr({ de: "Gutschein", en: "Gift card", sq: "Voucher", ar: "بطاقة هدية" })}: <span className="text-[#00C2FF] font-bold">{result.giftcard?.code}</span> ({result.giftcard?.amount} €)</p>
+            <p className="text-white/70">• {tr({ de: "Offene Inventur", en: "Open stocktake", sq: "Inventurë e hapur", ar: "جرد مفتوح" })}: <span className="text-white">{result.stocktake_id}</span></p>
+            <p className="text-white/70">• {tr({ de: "Rezept verknüpft", en: "Recipe linked", sq: "Receta e lidhur", ar: "وصفة مرتبطة" })}: <span className="text-white">{result.recipe_for}</span></p>
+            <p className="text-white/70">• {tr({ de: "Reservierung", en: "Reservation", sq: "Rezervim", ar: "حجز" })}: <span className="text-white">{result.reservation_id}</span></p>
+            <p className="text-white/70">• {tr({ de: "Schicht für heute angelegt", en: "Shift created for today", sq: "Turni për sot u krijua", ar: "تم إنشاء مناوبة لليوم" })}</p>
+            <p className="text-white/40 mt-2 italic">{tr({ de: "Tipp: wechsle in die Tabs Bestand+, Rezepte oder Schicht & Reservierung, um die Daten zu sehen.", en: "Tip: switch to Inventory+, Recipes or Shifts & Reservations to see the data.", sq: "Këshillë: kalo te Inventari+, Recetat ose Turnet & Rezervimet për t'i parë të dhënat.", ar: "نصيحة: انتقل إلى المخزون+ أو الوصفات أو المناوبات والحجوزات لرؤية البيانات." })}</p>
           </div>
         )}
       </Card>
@@ -178,6 +183,7 @@ function DemoSection({ storeId }) {
 
 // ─────────────────── 1. KI: OCR + Voice
 function KISection({ storeId, registerId }) {
+  const tr = usePosAdvancedTr();
   const fileInputRef = useRef(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
@@ -206,7 +212,7 @@ function KISection({ storeId, registerId }) {
         body: { image_base64: b64, store_id: storeId, po_id: poId || null },
       });
       setOcrResult(data);
-      toast.success(`${data.count} Artikel erkannt`);
+      toast.success(tr({ de: `${data.count} Artikel erkannt`, en: `${data.count} items detected`, sq: `U zbuluan ${data.count} artikuj`, ar: `تم اكتشاف ${data.count} عناصر` }));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -236,7 +242,7 @@ function KISection({ storeId, registerId }) {
             body: { audio_base64: b64, register_id: registerId },
           });
           setVoiceResult(data);
-          toast.success("Transkribiert");
+          toast.success(tr({ de: "Transkribiert", en: "Transcribed", sq: "U transkriptua", ar: "تم التفريغ" }));
         } catch (err) {
           toast.error(err.message);
         } finally {
@@ -247,7 +253,7 @@ function KISection({ storeId, registerId }) {
       mediaRecRef.current = rec;
       setRecording(true);
     } catch (err) {
-      toast.error("Mikrofon-Zugriff verweigert");
+      toast.error(tr({ de: "Mikrofon-Zugriff verweigert", en: "Microphone access denied", sq: "Qasja në mikrofon u refuzua", ar: "تم رفض الوصول إلى الميكروفون" }));
     }
   };
 
@@ -260,18 +266,18 @@ function KISection({ storeId, registerId }) {
 
   return (
     <>
-      <Card title="Lieferschein / Rechnung scannen (Gemini Vision OCR)" icon={Camera}>
-        <p className="text-[10px] text-white/40 mb-2">Foto vom Lieferschein hochladen — KI extrahiert Artikel automatisch.</p>
+      <Card title={tr({ de: "Lieferschein / Rechnung scannen (Gemini Vision OCR)", en: "Scan delivery note / invoice (Gemini Vision OCR)", sq: "Skano fletëdorëzimin / faturën (Gemini Vision OCR)", ar: "امسح ورقة التسليم / الفاتورة (Gemini Vision OCR)" })} icon={Camera}>
+        <p className="text-[10px] text-white/40 mb-2">{tr({ de: "Foto vom Lieferschein hochladen — KI extrahiert Artikel automatisch.", en: "Upload a delivery note photo — AI extracts items automatically.", sq: "Ngarko një foto të fletëdorëzimit — AI nxjerr artikujt automatikisht.", ar: "ارفع صورة ورقة التسليم — يستخرج الذكاء الاصطناعي العناصر تلقائياً." })}</p>
         <div className="grid grid-cols-2 gap-2 mb-2">
-          <Input value={poId} onChange={setPoId} placeholder="PO-ID (optional)" testId="ocr-po-id" />
+          <Input value={poId} onChange={setPoId} placeholder={tr({ de: "PO-ID (optional)", en: "PO ID (optional)", sq: "PO ID (opsionale)", ar: "معرّف PO (اختياري)" })} testId="ocr-po-id" />
           <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={onPickFile} className="hidden" data-testid="ocr-file-input" />
           <Btn onClick={() => fileInputRef.current?.click()} loading={ocrLoading} testId="ocr-upload-btn">
-            <Camera size={12} /> {ocrLoading ? "Analysiere…" : "Foto wählen"}
+            <Camera size={12} /> {ocrLoading ? tr({ de: "Analysiere…", en: "Analyzing…", sq: "Po analizohet…", ar: "جارٍ التحليل…" }) : tr({ de: "Foto wählen", en: "Choose photo", sq: "Zgjidh foto", ar: "اختر صورة" })}
           </Btn>
         </div>
         {ocrResult && (
           <div className="mt-2 max-h-64 overflow-y-auto bg-black/30 rounded-lg p-2" data-testid="ocr-result">
-            <p className="text-[10px] text-[#00C2FF] mb-1">{ocrResult.count} Artikel:</p>
+            <p className="text-[10px] text-[#00C2FF] mb-1">{ocrResult.count} {tr({ de: "Artikel", en: "items", sq: "artikuj", ar: "عناصر" })}:</p>
             {ocrResult.items?.map((it, i) => (
               <div key={i} className="text-[10px] text-white/80 py-0.5 border-b border-white/5">
                 {it.quantity}× {it.name} — {it.unit_price ? `€${it.unit_price}` : ""} {it.barcode ? `· EAN ${it.barcode}` : ""}
@@ -281,23 +287,23 @@ function KISection({ storeId, registerId }) {
         )}
       </Card>
 
-      <Card title="Sprach-Befehl an die Kasse (Whisper)" icon={Mic}>
-        <p className="text-[10px] text-white/40 mb-2">Beispiele: „2 Coca-Cola hinzufügen", „10 Prozent Rabatt", „Stornieren"</p>
+      <Card title={tr({ de: "Sprach-Befehl an die Kasse (Whisper)", en: "Voice command at checkout (Whisper)", sq: "Komandë zanore për arkën (Whisper)", ar: "أمر صوتي إلى الكاشير (Whisper)" })} icon={Mic}>
+        <p className="text-[10px] text-white/40 mb-2">{tr({ de: "Beispiele: 2 Coca-Cola hinzufügen, 10 Prozent Rabatt, Stornieren", en: "Examples: add 2 Coca-Cola, 10 percent discount, cancel", sq: "Shembuj: shto 2 Coca-Cola, 10 për qind zbritje, anulo", ar: "أمثلة: أضف 2 كوكاكولا، خصم 10 بالمئة، إلغاء" })}</p>
         <div className="flex gap-2">
           {!recording ? (
             <Btn onClick={startRec} loading={voiceLoading} testId="voice-rec-start">
-              <Mic size={12} /> {voiceLoading ? "Verarbeite…" : "Aufnahme starten"}
+              <Mic size={12} /> {voiceLoading ? tr({ de: "Verarbeite…", en: "Processing…", sq: "Po përpunohet…", ar: "جارٍ المعالجة…" }) : tr({ de: "Aufnahme starten", en: "Start recording", sq: "Nis regjistrimin", ar: "ابدأ التسجيل" })}
             </Btn>
           ) : (
             <Btn onClick={stopRec} variant="secondary" testId="voice-rec-stop">
-              <MicOff size={12} /> Stop
+              <MicOff size={12} /> {tr({ de: "Stop", en: "Stop", sq: "Ndalo", ar: "إيقاف" })}
             </Btn>
           )}
         </div>
         {voiceResult && (
           <div className="mt-2 bg-black/30 rounded-lg p-2 text-[10px]" data-testid="voice-result">
-            <p className="text-white/60">Text: <span className="text-white">{voiceResult.text}</span></p>
-            <p className="text-[#00C2FF] mt-1">Befehl: {JSON.stringify(voiceResult.command)}</p>
+            <p className="text-white/60">{tr({ de: "Text", en: "Text", sq: "Teksti", ar: "النص" })}: <span className="text-white">{voiceResult.text}</span></p>
+            <p className="text-[#00C2FF] mt-1">{tr({ de: "Befehl", en: "Command", sq: "Komanda", ar: "الأمر" })}: {JSON.stringify(voiceResult.command)}</p>
           </div>
         )}
       </Card>
@@ -307,6 +313,7 @@ function KISection({ storeId, registerId }) {
 
 // ─────────────────── 2. STOCK: Bulk-Import/Export, Auto-Order, Inventur, Chargen, Etiketten
 function StockSection({ storeId }) {
+  const tr = usePosAdvancedTr();
   const [busy, setBusy] = useState("");
   const fileRef = useRef(null);
   const [autoSettings, setAutoSettings] = useState({
@@ -331,7 +338,7 @@ function StockSection({ storeId }) {
       ]);
       setAutoSettings(settingsRes.settings || {});
       setAutoItems(itemsRes.items || []);
-    } catch {}
+    } catch (err) { void err; }
   }, [storeId]);
 
   useEffect(() => { loadAutoOrder(); }, [loadAutoOrder]);
@@ -347,8 +354,8 @@ function StockSection({ storeId }) {
         method: "POST", credentials: "include", body: fd,
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.detail || "Import fehlgeschlagen");
-      toast.success(`${data.created} angelegt, ${data.skipped} übersprungen`);
+      if (!r.ok) throw new Error(data.detail || tr({ de: "Import fehlgeschlagen", en: "Import failed", sq: "Importi dështoi", ar: "فشل الاستيراد" }));
+      toast.success(tr({ de: `${data.created} angelegt, ${data.skipped} übersprungen`, en: `${data.created} created, ${data.skipped} skipped`, sq: `${data.created} u krijuan, ${data.skipped} u kapërcyen`, ar: `تم إنشاء ${data.created} وتخطي ${data.skipped}` }));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -361,7 +368,7 @@ function StockSection({ storeId }) {
     setBusy("export");
     try {
       const r = await fetch(`${API}/api/pos/products/bulk-export?store_id=${storeId}`, { credentials: "include" });
-      if (!r.ok) throw new Error("Export fehlgeschlagen");
+      if (!r.ok) throw new Error(tr({ de: "Export fehlgeschlagen", en: "Export failed", sq: "Eksporti dështoi", ar: "فشل التصدير" }));
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -369,7 +376,7 @@ function StockSection({ storeId }) {
       a.download = `produkte_${storeId}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("CSV exportiert");
+      toast.success(tr({ de: "CSV exportiert", en: "CSV exported", sq: "CSV u eksportua", ar: "تم تصدير CSV" }));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -382,7 +389,7 @@ function StockSection({ storeId }) {
     try {
       const data = await api(`/api/pos/auto-order/run?store_id=${storeId}`, { method: "POST" });
       setAutoOrderResult(data);
-      toast.success(`${data.created_pos.length} Bestellungen für ${data.low_stock_count} niedrige Artikel angelegt`);
+      toast.success(tr({ de: `${data.created_pos.length} Bestellungen für ${data.low_stock_count} niedrige Artikel angelegt`, en: `${data.created_pos.length} orders created for ${data.low_stock_count} low-stock items`, sq: `U krijuan ${data.created_pos.length} porosi për ${data.low_stock_count} artikuj me stok të ulët`, ar: `تم إنشاء ${data.created_pos.length} طلبات لـ ${data.low_stock_count} عناصر منخفضة المخزون` }));
       loadAutoOrder();
     } catch (err) { toast.error(err.message); } finally { setBusy(""); }
   };
@@ -392,7 +399,7 @@ function StockSection({ storeId }) {
     try {
       const data = await api(`/api/pos/auto-order/settings?store_id=${storeId}`, { method: "POST", body: autoSettings });
       setAutoSettings(data.settings || autoSettings);
-      toast.success("Auto-Bestellregeln gespeichert");
+      toast.success(tr({ de: "Auto-Bestellregeln gespeichert", en: "Auto-order rules saved", sq: "Rregullat e auto-porosisë u ruajtën", ar: "تم حفظ قواعد الطلب التلقائي" }));
     } catch (err) { toast.error(err.message); } finally { setBusy(""); }
   };
 
@@ -400,7 +407,7 @@ function StockSection({ storeId }) {
     setBusy("auto-items");
     try {
       await api(`/api/pos/auto-order/items`, { method: "POST", body: { store_id: storeId, items: autoItems } });
-      toast.success("Auto-Bestellartikel gespeichert");
+      toast.success(tr({ de: "Auto-Bestellartikel gespeichert", en: "Auto-order items saved", sq: "Artikujt e auto-porosisë u ruajtën", ar: "تم حفظ عناصر الطلب التلقائي" }));
       loadAutoOrder();
     } catch (err) { toast.error(err.message); } finally { setBusy(""); }
   };
@@ -413,7 +420,7 @@ function StockSection({ storeId }) {
   const [labelIds, setLabelIds] = useState("");
   const [labelCopies, setLabelCopies] = useState(1);
   const printLabels = async () => {
-    if (!labelIds.trim()) return toast.error("Produkt-IDs fehlen");
+    if (!labelIds.trim()) return toast.error(tr({ de: "Produkt-IDs fehlen", en: "Product IDs missing", sq: "Mungojnë ID-të e produkteve", ar: "معرّفات المنتجات مفقودة" }));
     setBusy("labels");
     try {
       const r = await fetch(`${API}/api/pos/labels/generate`, {
@@ -425,38 +432,38 @@ function StockSection({ storeId }) {
           copies_per_product: labelCopies,
         }),
       });
-      if (!r.ok) throw new Error("Etiketten-Druck fehlgeschlagen");
+      if (!r.ok) throw new Error(tr({ de: "Etiketten-Druck fehlgeschlagen", en: "Label print failed", sq: "Printimi i etiketave dështoi", ar: "فشل طباعة الملصقات" }));
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
-      toast.success("Etiketten generiert");
+      toast.success(tr({ de: "Etiketten generiert", en: "Labels generated", sq: "Etiketat u gjeneruan", ar: "تم إنشاء الملصقات" }));
     } catch (err) { toast.error(err.message); } finally { setBusy(""); }
   };
 
   // Inventur
   const [stocktakes, setStocktakes] = useState([]);
-  const [stkName, setStkName] = useState("Inventur " + new Date().toLocaleDateString("de-DE"));
+  const [stkName, setStkName] = useState(`${tr({ de: "Inventur", en: "Stocktake", sq: "Inventurë", ar: "الجرد" })} ` + new Date().toLocaleDateString("de-DE"));
   const loadStk = useCallback(async () => {
     try {
       const d = await api(`/api/pos/stocktake/list?store_id=${storeId}`);
       setStocktakes(d.stocktakes || d || []);
-    } catch {}
+    } catch (err) { void err; }
   }, [storeId]);
   useEffect(() => { loadStk(); }, [loadStk]);
 
   const startStk = async () => {
     try {
       await api("/api/pos/stocktake/start", { method: "POST", body: { store_id: storeId, name: stkName } });
-      toast.success("Inventur gestartet");
+      toast.success(tr({ de: "Inventur gestartet", en: "Stocktake started", sq: "Inventura u nis", ar: "تم بدء الجرد" }));
       loadStk();
     } catch (err) { toast.error(err.message); }
   };
 
   const finalizeStk = async (id) => {
-    if (!window.confirm("Inventur abschließen und Bestand korrigieren?")) return;
+    if (!window.confirm(tr({ de: "Inventur abschließen und Bestand korrigieren?", en: "Finalize stocktake and adjust inventory?", sq: "Të mbyllet inventura dhe të korrigjohet stoku?", ar: "إنهاء الجرد وتعديل المخزون؟" }))) return;
     try {
       const d = await api(`/api/pos/stocktake/${id}/finalize`, { method: "POST" });
-      toast.success(`Abgeschlossen — ${d.adjustments || 0} Anpassungen`);
+      toast.success(tr({ de: `Abgeschlossen — ${d.adjustments || 0} Anpassungen`, en: `Completed — ${d.adjustments || 0} adjustments`, sq: `U përfundua — ${d.adjustments || 0} korrigjime`, ar: `اكتمل — ${d.adjustments || 0} تعديلات` }));
       loadStk();
     } catch (err) { toast.error(err.message); }
   };
@@ -468,67 +475,67 @@ function StockSection({ storeId }) {
     try {
       const d = await api(`/api/pos/batches/expiring?store_id=${storeId}&days=${expiryDays}`);
       setBatches(d.batches || []);
-    } catch {}
+    } catch (err) { void err; }
   }, [storeId, expiryDays]);
   useEffect(() => { loadBatches(); }, [loadBatches]);
 
   return (
     <>
-      <Card title="CSV Bulk-Import / Export" icon={FileSpreadsheet}>
-        <p className="text-[10px] text-white/40 mb-2">Spalten: name;barcode;sku;price;purchase_price;tax_rate;stock;minimum_stock;unit;category</p>
+      <Card title={tr({ de: "CSV Bulk-Import / Export", en: "CSV bulk import / export", sq: "CSV import / export në grup", ar: "استيراد / تصدير CSV بالجملة" })} icon={FileSpreadsheet}>
+        <p className="text-[10px] text-white/40 mb-2">{tr({ de: "Spalten", en: "Columns", sq: "Kolonat", ar: "الأعمدة" })}: name;barcode;sku;price;purchase_price;tax_rate;stock;minimum_stock;unit;category</p>
         <div className="flex gap-2">
           <input ref={fileRef} type="file" accept=".csv" onChange={csvImport} className="hidden" data-testid="csv-import-input" />
           <Btn onClick={() => fileRef.current?.click()} loading={busy === "import"} testId="csv-import-btn">
-            <Upload size={12} /> CSV importieren
+            <Upload size={12} /> {tr({ de: "CSV importieren", en: "Import CSV", sq: "Importo CSV", ar: "استيراد CSV" })}
           </Btn>
           <Btn onClick={csvExport} loading={busy === "export"} variant="secondary" testId="csv-export-btn">
-            <Download size={12} /> Exportieren
+            <Download size={12} /> {tr({ de: "Exportieren", en: "Export", sq: "Eksporto", ar: "تصدير" })}
           </Btn>
         </div>
       </Card>
 
-      <Card title="Auto-Bestellung + Lieferschein" icon={ShoppingCart}>
+      <Card title={tr({ de: "Auto-Bestellung + Lieferschein", en: "Auto-order + delivery note", sq: "Auto-porosi + fletëdorëzim", ar: "طلب تلقائي + ورقة تسليم" })} icon={ShoppingCart}>
         <p className="text-[10px] text-white/40 mb-3">
-          Kombination aus Mindestbestand, Verkaufsrate und fixer Uhrzeit. Auto-generierte Bestellungen landen direkt in der Warenwirtschaft der POS-Module und erzeugen einen Lieferschein zum Drucken.
+          {tr({ de: "Kombination aus Mindestbestand, Verkaufsrate und fixer Uhrzeit. Auto-generierte Bestellungen landen direkt in der Warenwirtschaft der POS-Module und erzeugen einen Lieferschein zum Drucken.", en: "Combines minimum stock, sales velocity and a fixed time. Auto-generated orders go directly into POS inventory and create a printable delivery note.", sq: "Kombinon stokun minimal, ritmin e shitjes dhe një orar fiks. Porositë automatike hyjnë direkt në inventarin POS dhe krijojnë fletëdorëzim për printim.", ar: "يجمع بين الحد الأدنى للمخزون وسرعة البيع ووقت ثابت. الطلبات التلقائية تدخل مباشرة إلى مخزون نقاط البيع وتولد ورقة تسليم قابلة للطباعة." })}
         </p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-[11px]">
           <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2" data-testid="auto-order-enabled-toggle">
-            <input type="checkbox" checked={!!autoSettings.enabled} onChange={(e) => setAutoSettings({ ...autoSettings, enabled: e.target.checked })} /> Aktiv
+            <input type="checkbox" checked={!!autoSettings.enabled} onChange={(e) => setAutoSettings({ ...autoSettings, enabled: e.target.checked })} /> {tr({ de: "Aktiv", en: "Active", sq: "Aktiv", ar: "نشط" })}
           </label>
           <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
-            <input type="checkbox" checked={!!autoSettings.trigger_low_stock} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_low_stock: e.target.checked })} /> Mindestbestand
+            <input type="checkbox" checked={!!autoSettings.trigger_low_stock} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_low_stock: e.target.checked })} /> {tr({ de: "Mindestbestand", en: "Minimum stock", sq: "Stoku minimal", ar: "الحد الأدنى للمخزون" })}
           </label>
           <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
-            <input type="checkbox" checked={!!autoSettings.trigger_velocity} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_velocity: e.target.checked })} /> Verkaufsrate
+            <input type="checkbox" checked={!!autoSettings.trigger_velocity} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_velocity: e.target.checked })} /> {tr({ de: "Verkaufsrate", en: "Sales velocity", sq: "Ritmi i shitjes", ar: "سرعة المبيعات" })}
           </label>
           <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
-            <input type="checkbox" checked={!!autoSettings.trigger_daily_time} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_daily_time: e.target.checked })} /> Uhrzeit
+            <input type="checkbox" checked={!!autoSettings.trigger_daily_time} onChange={(e) => setAutoSettings({ ...autoSettings, trigger_daily_time: e.target.checked })} /> {tr({ de: "Uhrzeit", en: "Time", sq: "Ora", ar: "الوقت" })}
           </label>
           <Input value={autoSettings.run_time} onChange={(v) => setAutoSettings({ ...autoSettings, run_time: v })} placeholder="20:00" testId="auto-order-run-time" />
-          <Input value={autoSettings.velocity_days} onChange={(v) => setAutoSettings({ ...autoSettings, velocity_days: v })} type="number" placeholder="Verkaufstage" testId="auto-order-velocity-days" />
-          <Input value={autoSettings.lookahead_days} onChange={(v) => setAutoSettings({ ...autoSettings, lookahead_days: v })} type="number" placeholder="Vorlauf Tage" testId="auto-order-lookahead-days" />
+          <Input value={autoSettings.velocity_days} onChange={(v) => setAutoSettings({ ...autoSettings, velocity_days: v })} type="number" placeholder={tr({ de: "Verkaufstage", en: "Sales days", sq: "Ditët e shitjes", ar: "أيام المبيعات" })} testId="auto-order-velocity-days" />
+          <Input value={autoSettings.lookahead_days} onChange={(v) => setAutoSettings({ ...autoSettings, lookahead_days: v })} type="number" placeholder={tr({ de: "Vorlauf Tage", en: "Lead days", sq: "Ditët paraprake", ar: "أيام التحضير" })} testId="auto-order-lookahead-days" />
           <label className="bg-black/20 rounded-lg p-2 border border-white/10 flex items-center gap-2">
-            <input type="checkbox" checked={!!autoSettings.auto_submit_orders} onChange={(e) => setAutoSettings({ ...autoSettings, auto_submit_orders: e.target.checked })} /> Direkt bestellen
+            <input type="checkbox" checked={!!autoSettings.auto_submit_orders} onChange={(e) => setAutoSettings({ ...autoSettings, auto_submit_orders: e.target.checked })} /> {tr({ de: "Direkt bestellen", en: "Order directly", sq: "Porosit direkt", ar: "اطلب مباشرة" })}
           </label>
         </div>
 
         <div className="flex gap-2 mb-3">
           <Btn onClick={saveAutoSettings} loading={busy === "auto-settings"} testId="auto-order-settings-save">
-            <ShoppingCart size={12} /> Regeln speichern
+            <ShoppingCart size={12} /> {tr({ de: "Regeln speichern", en: "Save rules", sq: "Ruaj rregullat", ar: "احفظ القواعد" })}
           </Btn>
           <Btn onClick={autoOrder} loading={busy === "auto"} testId="auto-order-btn">
-            <ShoppingCart size={12} /> Auto-PO ausführen
+            <ShoppingCart size={12} /> {tr({ de: "Auto-PO ausführen", en: "Run auto PO", sq: "Ekzekuto auto-PO", ar: "شغّل طلب الشراء التلقائي" })}
           </Btn>
         </div>
 
         <div className="bg-black/20 rounded-xl border border-white/10 overflow-hidden" data-testid="auto-order-items-list">
           <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-white/40 border-b border-white/10">
-            <span className="col-span-3">Artikel</span>
-            <span className="col-span-2">Bestand</span>
-            <span className="col-span-2">Ziel</span>
+            <span className="col-span-3">{tr({ de: "Artikel", en: "Item", sq: "Artikulli", ar: "العنصر" })}</span>
+            <span className="col-span-2">{tr({ de: "Bestand", en: "Stock", sq: "Stoku", ar: "المخزون" })}</span>
+            <span className="col-span-2">{tr({ de: "Ziel", en: "Target", sq: "Synimi", ar: "الهدف" })}</span>
             <span className="col-span-2">VE</span>
-            <span className="col-span-2">Einheit</span>
+            <span className="col-span-2">{tr({ de: "Einheit", en: "Unit", sq: "Njësia", ar: "الوحدة" })}</span>
             <span className="col-span-1">Auto</span>
           </div>
           <div className="max-h-72 overflow-y-auto">
@@ -536,14 +543,14 @@ function StockSection({ storeId }) {
               <div key={item.product_id} className="grid grid-cols-12 gap-2 px-3 py-2 border-b border-white/5 text-[11px] items-center" data-testid={`auto-order-item-${item.product_id}`}>
                 <div className="col-span-3 min-w-0">
                   <p className="text-white font-semibold truncate">{item.name}</p>
-                  <p className="text-[10px] text-white/40 truncate">{item.supplier_name || "Lieferant"}</p>
+                  <p className="text-[10px] text-white/40 truncate">{item.supplier_name || tr({ de: "Lieferant", en: "Supplier", sq: "Furnitor", ar: "المورد" })}</p>
                 </div>
                 <div className="col-span-2 text-white/70">{item.stock} / min {item.minimum_stock}</div>
-                <div className="col-span-2"><Input value={item.reorder_target_stock} onChange={(v) => updateAutoItem(item.product_id, { reorder_target_stock: v })} type="number" placeholder="Ziel" testId={`auto-target-${item.product_id}`} /></div>
+                <div className="col-span-2"><Input value={item.reorder_target_stock} onChange={(v) => updateAutoItem(item.product_id, { reorder_target_stock: v })} type="number" placeholder={tr({ de: "Ziel", en: "Target", sq: "Synimi", ar: "الهدف" })} testId={`auto-target-${item.product_id}`} /></div>
                 <div className="col-span-2"><Input value={item.order_unit_size} onChange={(v) => updateAutoItem(item.product_id, { order_unit_size: v })} type="number" placeholder="VE" testId={`auto-unit-size-${item.product_id}`} /></div>
-                <div className="col-span-2"><Input value={item.order_unit_label} onChange={(v) => updateAutoItem(item.product_id, { order_unit_label: v })} placeholder="Stk / Stange" testId={`auto-unit-label-${item.product_id}`} /></div>
+                <div className="col-span-2"><Input value={item.order_unit_label} onChange={(v) => updateAutoItem(item.product_id, { order_unit_label: v })} placeholder={tr({ de: "Stk / Stange", en: "pcs / pack", sq: "copë / pako", ar: "قطعة / عبوة" })} testId={`auto-unit-label-${item.product_id}`} /></div>
                 <label className="col-span-1 flex justify-center"><input type="checkbox" checked={!!item.auto_reorder_enabled} onChange={(e) => updateAutoItem(item.product_id, { auto_reorder_enabled: e.target.checked })} data-testid={`auto-enable-${item.product_id}`} /></label>
-                <div className="col-span-12"><Input value={item.reorder_note || ""} onChange={(v) => updateAutoItem(item.product_id, { reorder_note: v })} placeholder="Hinweis für Lieferschein / Bestellung (optional)" testId={`auto-note-${item.product_id}`} /></div>
+                <div className="col-span-12"><Input value={item.reorder_note || ""} onChange={(v) => updateAutoItem(item.product_id, { reorder_note: v })} placeholder={tr({ de: "Hinweis für Lieferschein / Bestellung (optional)", en: "Note for delivery note / order (optional)", sq: "Shënim për fletëdorëzim / porosi (opsionale)", ar: "ملاحظة لورقة التسليم / الطلب (اختياري)" })} testId={`auto-note-${item.product_id}`} /></div>
               </div>
             ))}
           </div>
@@ -551,13 +558,13 @@ function StockSection({ storeId }) {
 
         <div className="mt-3 flex gap-2">
           <Btn onClick={saveAutoItems} loading={busy === "auto-items"} variant="secondary" testId="auto-order-items-save">
-            Artikel speichern
+            {tr({ de: "Artikel speichern", en: "Save items", sq: "Ruaj artikujt", ar: "احفظ العناصر" })}
           </Btn>
         </div>
 
         {autoOrderResult && (
           <div className="mt-3 bg-black/30 rounded-xl p-3 text-[11px] space-y-2" data-testid="auto-order-result">
-            <p className="text-white/70">{autoOrderResult.created_pos?.length || 0} Bestellung(en) erzeugt für {autoOrderResult.low_stock_count || 0} betroffene Artikel.</p>
+            <p className="text-white/70">{tr({ de: `${autoOrderResult.created_pos?.length || 0} Bestellung(en) erzeugt für ${autoOrderResult.low_stock_count || 0} betroffene Artikel.`, en: `${autoOrderResult.created_pos?.length || 0} order(s) created for ${autoOrderResult.low_stock_count || 0} affected items.`, sq: `${autoOrderResult.created_pos?.length || 0} porosi u krijuan për ${autoOrderResult.low_stock_count || 0} artikuj të prekur.`, ar: `تم إنشاء ${autoOrderResult.created_pos?.length || 0} طلب/طلبات لـ ${autoOrderResult.low_stock_count || 0} عناصر متأثرة.` })}</p>
             {(autoOrderResult.created_pos || []).map((po) => (
               <div key={po.po_id} className="flex flex-wrap items-center justify-between gap-2 border border-white/10 rounded-lg p-2">
                 <div>
@@ -566,7 +573,7 @@ function StockSection({ storeId }) {
                 </div>
                 <div className="flex gap-2">
                   <Btn onClick={() => window.open(`${API}${po.delivery_note_url}`, "_blank")} variant="secondary" testId={`auto-delivery-note-${po.po_id}`}>
-                    <Receipt size={12} /> Lieferschein
+                    <Receipt size={12} /> {tr({ de: "Lieferschein", en: "Delivery note", sq: "Fletëdorëzimi", ar: "ورقة التسليم" })}
                   </Btn>
                 </div>
               </div>
@@ -575,23 +582,23 @@ function StockSection({ storeId }) {
         )}
       </Card>
 
-      <Card title="Etiketten / Preisschilder drucken (PDF)" icon={Tag}>
-        <Input value={labelIds} onChange={setLabelIds} placeholder="Produkt-IDs kommagetrennt: PRD-123,PRD-456" testId="label-ids-input" />
+      <Card title={tr({ de: "Etiketten / Preisschilder drucken (PDF)", en: "Print labels / price tags (PDF)", sq: "Printo etiketa / çmimet (PDF)", ar: "اطبع الملصقات / بطاقات الأسعار (PDF)" })} icon={Tag}>
+        <Input value={labelIds} onChange={setLabelIds} placeholder={tr({ de: "Produkt-IDs kommagetrennt: PRD-123,PRD-456", en: "Product IDs comma-separated: PRD-123,PRD-456", sq: "ID-të e produkteve me presje: PRD-123,PRD-456", ar: "معرّفات المنتجات مفصولة بفواصل: PRD-123,PRD-456" })} testId="label-ids-input" />
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <Input value={labelCopies} onChange={setLabelCopies} type="number" placeholder="Kopien" testId="label-copies-input" />
+          <Input value={labelCopies} onChange={setLabelCopies} type="number" placeholder={tr({ de: "Kopien", en: "Copies", sq: "Kopje", ar: "نسخ" })} testId="label-copies-input" />
           <Btn onClick={printLabels} loading={busy === "labels"} testId="label-print-btn">
-            <Tag size={12} /> Drucken
+            <Tag size={12} /> {tr({ de: "Drucken", en: "Print", sq: "Printo", ar: "طباعة" })}
           </Btn>
         </div>
       </Card>
 
-      <Card title="Inventur" icon={ClipboardList}>
+      <Card title={tr({ de: "Inventur", en: "Stocktake", sq: "Inventura", ar: "الجرد" })} icon={ClipboardList}>
         <div className="flex gap-2 mb-3">
-          <Input value={stkName} onChange={setStkName} placeholder="Inventur-Name" testId="stk-name-input" />
-          <Btn onClick={startStk} testId="stk-start-btn">Start</Btn>
+          <Input value={stkName} onChange={setStkName} placeholder={tr({ de: "Inventur-Name", en: "Stocktake name", sq: "Emri i inventurës", ar: "اسم الجرد" })} testId="stk-name-input" />
+          <Btn onClick={startStk} testId="stk-start-btn">{tr({ de: "Start", en: "Start", sq: "Nis", ar: "ابدأ" })}</Btn>
         </div>
         {stocktakes.length === 0 ? (
-          <p className="text-[10px] text-white/40">Keine Inventuren bisher.</p>
+          <p className="text-[10px] text-white/40">{tr({ de: "Keine Inventuren bisher.", en: "No stocktakes yet.", sq: "Ende nuk ka inventura.", ar: "لا توجد عمليات جرد بعد." })}</p>
         ) : (
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {stocktakes.map((s) => (
@@ -599,7 +606,7 @@ function StockSection({ storeId }) {
                 <span className="text-white/80">{s.name} — <span className="text-white/40">{s.status}</span></span>
                 {s.status === "open" && (
                   <button onClick={() => finalizeStk(s.stocktake_id)} className="text-[#00C2FF] font-bold" data-testid={`stk-finalize-${s.stocktake_id}`}>
-                    Abschließen
+                    {tr({ de: "Abschließen", en: "Finalize", sq: "Mbylle", ar: "إنهاء" })}
                   </button>
                 )}
               </div>
@@ -608,13 +615,13 @@ function StockSection({ storeId }) {
         )}
       </Card>
 
-      <Card title="Chargen — bald ablaufend" icon={Layers}>
+      <Card title={tr({ de: "Chargen — bald ablaufend", en: "Batches — expiring soon", sq: "Lotet — skadojnë së shpejti", ar: "الدفعات — تنتهي قريباً" })} icon={Layers}>
         <div className="flex gap-2 mb-3">
-          <Input value={expiryDays} onChange={setExpiryDays} type="number" placeholder="Tage" testId="expiry-days-input" />
-          <Btn onClick={loadBatches} variant="secondary" testId="expiry-refresh-btn">Aktualisieren</Btn>
+          <Input value={expiryDays} onChange={setExpiryDays} type="number" placeholder={tr({ de: "Tage", en: "Days", sq: "Ditë", ar: "أيام" })} testId="expiry-days-input" />
+          <Btn onClick={loadBatches} variant="secondary" testId="expiry-refresh-btn">{tr({ de: "Aktualisieren", en: "Refresh", sq: "Përditëso", ar: "تحديث" })}</Btn>
         </div>
         {batches.length === 0 ? (
-          <p className="text-[10px] text-white/40">Keine Chargen laufen in {expiryDays} Tagen ab.</p>
+          <p className="text-[10px] text-white/40">{tr({ de: `Keine Chargen laufen in ${expiryDays} Tagen ab.`, en: `No batches expire within ${expiryDays} days.`, sq: `Asnjë lot nuk skadon brenda ${expiryDays} ditëve.`, ar: `لا توجد دفعات تنتهي خلال ${expiryDays} يومًا.` })}</p>
         ) : (
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {batches.map((b, i) => (
@@ -631,6 +638,7 @@ function StockSection({ storeId }) {
 
 // ─────────────────── 3. MENU: Rezepte (BOM) + Cross-Sell + Forecast
 function MenuSection({ storeId }) {
+  const tr = usePosAdvancedTr();
   const [productId, setProductId] = useState("");
   const [recipe, setRecipe] = useState({ ingredients: [{ product_id: "", quantity: 1 }] });
   const [busy, setBusy] = useState(false);
@@ -642,14 +650,14 @@ function MenuSection({ storeId }) {
   }));
 
   const saveRecipe = async () => {
-    if (!productId) return toast.error("Produkt-ID fehlt");
+    if (!productId) return toast.error(tr({ de: "Produkt-ID fehlt", en: "Product ID missing", sq: "Mungon ID e produktit", ar: "معرّف المنتج مفقود" }));
     setBusy(true);
     try {
       await api("/api/pos/recipes/create", {
         method: "POST",
         body: { product_id: productId, ingredients: recipe.ingredients.filter((i) => i.product_id) },
       });
-      toast.success("Rezept gespeichert");
+      toast.success(tr({ de: "Rezept gespeichert", en: "Recipe saved", sq: "Receta u ruajt", ar: "تم حفظ الوصفة" }));
     } catch (err) { toast.error(err.message); } finally { setBusy(false); }
   };
 
@@ -676,47 +684,47 @@ function MenuSection({ storeId }) {
 
   return (
     <>
-      <Card title="Rezepte / Stücklisten (BOM)" icon={ChefHat}>
-        <p className="text-[10px] text-white/40 mb-2">Bei Verkauf eines Gerichts werden die Zutaten automatisch vom Lager abgezogen.</p>
-        <Input value={productId} onChange={setProductId} placeholder="Produkt-ID des Gerichts (PRD-…)" testId="recipe-product-id" />
+      <Card title={tr({ de: "Rezepte / Stücklisten (BOM)", en: "Recipes / bill of materials (BOM)", sq: "Receta / BOM", ar: "الوصفات / قائمة المواد" })} icon={ChefHat}>
+        <p className="text-[10px] text-white/40 mb-2">{tr({ de: "Bei Verkauf eines Gerichts werden die Zutaten automatisch vom Lager abgezogen.", en: "When a dish is sold, ingredients are deducted from stock automatically.", sq: "Kur shitet një pjatë, përbërësit zbriten automatikisht nga stoku.", ar: "عند بيع طبق، يتم خصم المكونات من المخزون تلقائياً." })}</p>
+        <Input value={productId} onChange={setProductId} placeholder={tr({ de: "Produkt-ID des Gerichts (PRD-…)", en: "Dish product ID (PRD-…)", sq: "ID e produktit të pjatës (PRD-…)", ar: "معرّف منتج الطبق (PRD-…)" })} testId="recipe-product-id" />
         <div className="my-2 space-y-1">
           {recipe.ingredients.map((ing, i) => (
             <div key={i} className="grid grid-cols-3 gap-2">
-              <div className="col-span-2"><Input value={ing.product_id} onChange={(v) => setIng(i, "product_id", v)} placeholder="Zutat-ID" testId={`recipe-ing-${i}`} /></div>
-              <Input value={ing.quantity} onChange={(v) => setIng(i, "quantity", v)} type="number" placeholder="Menge" testId={`recipe-qty-${i}`} />
+              <div className="col-span-2"><Input value={ing.product_id} onChange={(v) => setIng(i, "product_id", v)} placeholder={tr({ de: "Zutat-ID", en: "Ingredient ID", sq: "ID e përbërësit", ar: "معرّف المكوّن" })} testId={`recipe-ing-${i}`} /></div>
+              <Input value={ing.quantity} onChange={(v) => setIng(i, "quantity", v)} type="number" placeholder={tr({ de: "Menge", en: "Quantity", sq: "Sasia", ar: "الكمية" })} testId={`recipe-qty-${i}`} />
             </div>
           ))}
         </div>
         <div className="flex gap-2">
-          <Btn onClick={addIng} variant="secondary" testId="recipe-add-ing">+ Zutat</Btn>
-          <Btn onClick={saveRecipe} loading={busy} testId="recipe-save-btn">Speichern</Btn>
+          <Btn onClick={addIng} variant="secondary" testId="recipe-add-ing">+ {tr({ de: "Zutat", en: "Ingredient", sq: "Përbërës", ar: "مكوّن" })}</Btn>
+          <Btn onClick={saveRecipe} loading={busy} testId="recipe-save-btn">{tr({ de: "Speichern", en: "Save", sq: "Ruaj", ar: "حفظ" })}</Btn>
         </div>
       </Card>
 
-      <Card title="Cross-Sell-Empfehlungen" icon={Sparkles}>
+      <Card title={tr({ de: "Cross-Sell-Empfehlungen", en: "Cross-sell suggestions", sq: "Sugjerime cross-sell", ar: "اقتراحات البيع الإضافي" })} icon={Sparkles}>
         <div className="flex gap-2 mb-2">
-          <Input value={csProductId} onChange={setCsProductId} placeholder="Produkt-ID" testId="cs-product-id" />
-          <Btn onClick={loadCs} testId="cs-load-btn">Vorschläge</Btn>
+          <Input value={csProductId} onChange={setCsProductId} placeholder={tr({ de: "Produkt-ID", en: "Product ID", sq: "ID e produktit", ar: "معرّف المنتج" })} testId="cs-product-id" />
+          <Btn onClick={loadCs} testId="cs-load-btn">{tr({ de: "Vorschläge", en: "Suggestions", sq: "Sugjerime", ar: "اقتراحات" })}</Btn>
         </div>
         {crossSells.length > 0 && (
           <div className="space-y-1">
             {crossSells.map((c, i) => (
               <div key={i} className="text-[10px] bg-black/20 rounded-lg p-2 text-white/80">
-                {c.name} — {c.frequency || c.count || 0}× zusammen gekauft
+                {c.name} — {c.frequency || c.count || 0}× {tr({ de: "zusammen gekauft", en: "bought together", sq: "blerë bashkë", ar: "تم شراؤه معًا" })}
               </div>
             ))}
           </div>
         )}
       </Card>
 
-      <Card title="KI-Umsatzprognose" icon={TrendingUp}>
+      <Card title={tr({ de: "KI-Umsatzprognose", en: "AI revenue forecast", sq: "Parashikimi AI i të ardhurave", ar: "توقع الإيرادات بالذكاء الاصطناعي" })} icon={TrendingUp}>
         <div className="flex gap-2 mb-2">
-          <Input value={forecastDays} onChange={setForecastDays} type="number" placeholder="Tage voraus" testId="fc-days" />
-          <Btn onClick={loadForecast} testId="fc-load-btn">Berechnen</Btn>
+          <Input value={forecastDays} onChange={setForecastDays} type="number" placeholder={tr({ de: "Tage voraus", en: "Days ahead", sq: "Ditë përpara", ar: "أيام مسبقًا" })} testId="fc-days" />
+          <Btn onClick={loadForecast} testId="fc-load-btn">{tr({ de: "Berechnen", en: "Calculate", sq: "Llogarit", ar: "احسب" })}</Btn>
         </div>
         {forecast && (
           <div className="bg-black/20 rounded-lg p-2 text-[10px]">
-            <p className="text-[#00C2FF] mb-1">Prognose:</p>
+            <p className="text-[#00C2FF] mb-1">{tr({ de: "Prognose", en: "Forecast", sq: "Parashikimi", ar: "التوقع" })}:</p>
             {(forecast.forecast || forecast.days || []).map((d, i) => (
               <div key={i} className="flex justify-between text-white/80 py-0.5">
                 <span>{d.date}</span><span>€{(d.predicted_revenue || d.value || 0).toFixed(2)}</span>
@@ -743,13 +751,13 @@ function OpsSection({ storeId }) {
       loadWeek();
     } catch (err) { toast.error(err.message); }
   };
-  const loadWeek = async () => {
+  const loadWeek = useCallback(async () => {
     try {
       const d = await api(`/api/pos/schedule/week?store_id=${storeId}&week_start=${weekStart}`);
       setWeekData(d.entries || d.schedule || []);
     } catch (err) { toast.error(err.message); }
-  };
-  useEffect(() => { loadWeek(); /* eslint-disable-next-line */ }, [weekStart]);
+  }, [storeId, weekStart]);
+  useEffect(() => { loadWeek(); }, [loadWeek]);
 
   // Reservierung
   const [resv, setResv] = useState({ guest_name: "", phone: "", when: "", party_size: 2, notes: "" });
@@ -762,13 +770,13 @@ function OpsSection({ storeId }) {
       loadResv();
     } catch (err) { toast.error(err.message); }
   };
-  const loadResv = async () => {
+  const loadResv = useCallback(async () => {
     try {
       const d = await api(`/api/pos/reservations?store_id=${storeId}`);
       setResvList(d.reservations || []);
-    } catch {}
-  };
-  useEffect(() => { loadResv(); /* eslint-disable-next-line */ }, []);
+    } catch (err) { void err; }
+  }, [storeId]);
+  useEffect(() => { loadResv(); }, [loadResv]);
 
   // Performance
   const [perfDays, setPerfDays] = useState(30);
@@ -882,13 +890,13 @@ function MoneySection({ storeId }) {
   };
 
   const [pnl, setPnl] = useState(null);
-  const loadPnl = async () => {
+  const loadPnl = useCallback(async () => {
     try {
       const d = await api(`/api/pos/pnl/today?store_id=${storeId}`);
       setPnl(d);
     } catch (err) { toast.error(err.message); }
-  };
-  useEffect(() => { loadPnl(); /* eslint-disable-next-line */ }, [storeId]);
+  }, [storeId]);
+  useEffect(() => { loadPnl(); }, [loadPnl]);
 
   return (
     <>
