@@ -4,9 +4,10 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useI18n } from "../store/I18nContext";
 import {
   ChevronLeft, DollarSign, Receipt, Download, Upload,
-  Printer, Loader2, Clock, TrendingUp, Layers,
+  Loader2, Clock, Layers,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -23,6 +24,9 @@ async function api(path, opts = {}) {
 }
 
 export default function POSExtendedPage({ onBack }) {
+  const { lang } = useI18n();
+  const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
+  const tr = (values) => values?.[locale] ?? values?.en ?? values?.de ?? "";
   const [tab, setTab] = useState("closing"); // closing | history | offline
   const [cashCounted, setCashCounted] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,7 +51,7 @@ export default function POSExtendedPage({ onBack }) {
   const closeDay = async () => {
     const counted = parseFloat(cashCounted);
     if (isNaN(counted) || counted < 0) {
-      toast.error("Bitte gültigen Betrag eingeben");
+      toast.error(tr({ de: "Bitte gültigen Betrag eingeben", en: "Please enter a valid amount", sq: "Ju lutem vendosni një shumë të vlefshme", ar: "يرجى إدخال مبلغ صالح" }));
       return;
     }
 
@@ -57,7 +61,7 @@ export default function POSExtendedPage({ onBack }) {
         method: "POST",
         body: JSON.stringify({ cash_counted: counted }),
       });
-      toast.success("Tagesabschluss erfolgreich");
+      toast.success(tr({ de: "Tagesabschluss erfolgreich", en: "Day closing successful", sq: "Mbyllja ditore u krye me sukses", ar: "تم إغلاق اليوم بنجاح" }));
       setCashCounted("");
       console.log(res.closing);
     } catch (err) {
@@ -76,7 +80,7 @@ export default function POSExtendedPage({ onBack }) {
       a.href = url;
       a.download = `pos-offline-${Date.now()}.json`;
       a.click();
-      toast.success("Offline-Daten heruntergeladen");
+      toast.success(tr({ de: "Offline-Daten heruntergeladen", en: "Offline data downloaded", sq: "Të dhënat offline u shkarkuan", ar: "تم تنزيل بيانات الأوفلاين" }));
     } catch (err) {
       toast.error(err.message);
     }
@@ -91,8 +95,8 @@ export default function POSExtendedPage({ onBack }) {
             <ChevronLeft size={24} />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-bold">POS Extended</h1>
-            <p className="text-xs text-gray-600">Kassensturz, Offline, Drucker</p>
+            <h1 className="text-lg font-bold">{tr({ de: "POS Extended", en: "POS Extended", sq: "POS Extended", ar: "POS Extended" })}</h1>
+            <p className="text-xs text-gray-600">{tr({ de: "Kassensturz, Offline, Drucker", en: "Cash count, offline, printer", sq: "Arkë, offline, printer", ar: "الجرد النقدي، الأوفلاين، الطابعة" })}</p>
           </div>
         </div>
 
@@ -105,7 +109,7 @@ export default function POSExtendedPage({ onBack }) {
             }`}
           >
             <DollarSign size={16} className="inline mr-1" />
-            Kassensturz
+            {tr({ de: "Kassensturz", en: "Cash count", sq: "Arkë", ar: "الجرد النقدي" })}
           </button>
           <button
             onClick={() => setTab("history")}
@@ -114,7 +118,7 @@ export default function POSExtendedPage({ onBack }) {
             }`}
           >
             <Clock size={16} className="inline mr-1" />
-            Historie
+            {tr({ de: "Historie", en: "History", sq: "Historiku", ar: "السجل" })}
           </button>
           <button
             onClick={() => setTab("offline")}
@@ -123,7 +127,7 @@ export default function POSExtendedPage({ onBack }) {
             }`}
           >
             <Download size={16} className="inline mr-1" />
-            Offline
+            {tr({ de: "Offline", en: "Offline", sq: "Offline", ar: "أوفلاين" })}
           </button>
         </div>
       </div>
@@ -134,14 +138,14 @@ export default function POSExtendedPage({ onBack }) {
         {tab === "closing" && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <h2 className="text-lg font-bold mb-4">Tagesabschluss durchführen</h2>
+              <h2 className="text-lg font-bold mb-4">{tr({ de: "Tagesabschluss durchführen", en: "Run day closing", sq: "Kryej mbylljen ditore", ar: "نفّذ إغلاق اليوم" })}</h2>
               <p className="text-sm text-gray-600 mb-4">
-                Zähle das Bargeld in der Kasse und gib den Betrag ein.
+                {tr({ de: "Zähle das Bargeld in der Kasse und gib den Betrag ein.", en: "Count the cash in the register and enter the amount.", sq: "Numëro cash-in në arkë dhe vendos shumën.", ar: "احسب النقد في الصندوق وأدخل المبلغ." })}
               </p>
               <input
                 type="number"
                 step="0.01"
-                placeholder="Bargeld gezählt (€)"
+                placeholder={tr({ de: "Bargeld gezählt (€)", en: "Counted cash (€)", sq: "Cash i numëruar (€)", ar: "النقد المعدود (€)" })}
                 value={cashCounted}
                 onChange={(e) => setCashCounted(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg mb-4"
@@ -152,7 +156,7 @@ export default function POSExtendedPage({ onBack }) {
                 className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={20} className="animate-spin" /> : <DollarSign size={20} />}
-                Abschluss durchführen
+                {tr({ de: "Abschluss durchführen", en: "Run closing", sq: "Kryej mbylljen", ar: "نفّذ الإغلاق" })}
               </button>
             </div>
 
@@ -160,11 +164,11 @@ export default function POSExtendedPage({ onBack }) {
             <div className="grid grid-cols-2 gap-3">
               <button className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center hover:bg-gray-50">
                 <Receipt size={32} className="mx-auto mb-2 text-blue-600" />
-                <p className="text-sm font-medium">Bon drucken</p>
+                <p className="text-sm font-medium">{tr({ de: "Bon drucken", en: "Print receipt", sq: "Printo bonin", ar: "اطبع الإيصال" })}</p>
               </button>
               <button className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center hover:bg-gray-50">
                 <Layers size={32} className="mx-auto mb-2 text-green-600" />
-                <p className="text-sm font-medium">Split-Payment</p>
+                <p className="text-sm font-medium">{tr({ de: "Split-Payment", en: "Split payment", sq: "Pagesë e ndarë", ar: "دفع مقسّم" })}</p>
               </button>
             </div>
           </div>
@@ -182,7 +186,7 @@ export default function POSExtendedPage({ onBack }) {
             {!loading && history.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 <Clock size={48} className="mx-auto mb-2 opacity-50" />
-                <p>Keine Abschlüsse gefunden</p>
+                <p>{tr({ de: "Keine Abschlüsse gefunden", en: "No closings found", sq: "Nuk u gjetën mbyllje", ar: "لم يتم العثور على عمليات إغلاق" })}</p>
               </div>
             )}
 
@@ -205,17 +209,17 @@ export default function POSExtendedPage({ onBack }) {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <p className="text-gray-600">Transaktionen:</p>
+                      <p className="text-gray-600">{tr({ de: "Transaktionen", en: "Transactions", sq: "Transaksionet", ar: "المعاملات" })}:</p>
                       <p className="font-medium">{closing.total_transactions}</p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Bargeld:</p>
+                      <p className="text-gray-600">{tr({ de: "Bargeld", en: "Cash", sq: "Cash", ar: "النقد" })}:</p>
                       <p className="font-medium">€{closing.cash_sales.toFixed(2)}</p>
                     </div>
                   </div>
                   {closing.cash_difference !== 0 && (
                     <p className={`text-xs mt-2 ${closing.cash_difference > 0 ? "text-green-600" : "text-red-600"}`}>
-                      Differenz: €{closing.cash_difference.toFixed(2)}
+                      {tr({ de: "Differenz", en: "Difference", sq: "Diferenca", ar: "الفرق" })}: €{closing.cash_difference.toFixed(2)}
                     </p>
                   )}
                 </motion.div>
@@ -229,26 +233,26 @@ export default function POSExtendedPage({ onBack }) {
           <div className="space-y-4">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 text-center">
               <Download size={48} className="mx-auto mb-3 text-purple-600" />
-              <h3 className="font-bold mb-2">Offline-Modus</h3>
+              <h3 className="font-bold mb-2">{tr({ de: "Offline-Modus", en: "Offline mode", sq: "Modaliteti offline", ar: "وضع الأوفلاين" })}</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Lade Produktdaten herunter, um offline zu arbeiten.
+                {tr({ de: "Lade Produktdaten herunter, um offline zu arbeiten.", en: "Download product data to work offline.", sq: "Shkarko të dhënat e produkteve për të punuar offline.", ar: "نزّل بيانات المنتجات للعمل دون اتصال." })}
               </p>
               <button
                 onClick={downloadOfflineData}
                 className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
               >
-                Daten herunterladen
+                {tr({ de: "Daten herunterladen", en: "Download data", sq: "Shkarko të dhënat", ar: "تنزيل البيانات" })}
               </button>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 text-center">
               <Upload size={48} className="mx-auto mb-3 text-blue-600" />
-              <h3 className="font-bold mb-2">Transaktionen synchronisieren</h3>
+              <h3 className="font-bold mb-2">{tr({ de: "Transaktionen synchronisieren", en: "Sync transactions", sq: "Sinkronizo transaksionet", ar: "مزامنة المعاملات" })}</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Synchronisiere Offline-Transaktionen nach Wiederverbindung.
+                {tr({ de: "Synchronisiere Offline-Transaktionen nach Wiederverbindung.", en: "Sync offline transactions after reconnecting.", sq: "Sinkronizo transaksionet offline pas rilidhjes.", ar: "زامن معاملات الأوفلاين بعد إعادة الاتصال." })}
               </p>
               <button className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-                Sync starten
+                {tr({ de: "Sync starten", en: "Start sync", sq: "Nis sinkronizimin", ar: "ابدأ المزامنة" })}
               </button>
             </div>
           </div>
