@@ -37,6 +37,7 @@ RTK_FILTERS_PATH = Path.home() / ".config" / "rtk" / "filters.toml"
 RTK_PROJECT_FILTERS_PATH = Path("/app/.rtk/filters.toml")
 RTK_TRUST_STORE_PATH = Path.home() / ".local" / "share" / "rtk" / "trusted_filters.json"
 RTK_PROJECT_ROOT = Path("/app")
+RTK_ACTION_LOG_PATH = Path.home() / ".local" / "share" / "rtk" / "admin_actions.jsonl"
 
 
 async def _require_admin(request: Request):
@@ -117,6 +118,42 @@ def _read_json(path: Path):
         return None
 
 
+def _append_rtk_action_event(action: str, ok: bool, message: str, result: dict | None = None):
+    try:
+        RTK_ACTION_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "action": action,
+            "ok": ok,
+            "message": message,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "summary": {
+                "exit_code": (result or {}).get("exit_code"),
+                "stdout": ((result or {}).get("stdout") or "")[:400],
+                "stderr": ((result or {}).get("stderr") or "")[:400],
+            },
+        }
+        with RTK_ACTION_LOG_PATH.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        return
+
+
+def _read_rtk_action_history(limit: int = 12) -> list[dict]:
+    if not RTK_ACTION_LOG_PATH.exists():
+        return []
+    try:
+        lines = RTK_ACTION_LOG_PATH.read_text(encoding="utf-8").splitlines()
+        items = []
+        for raw in reversed(lines[-limit:]):
+            try:
+                items.append(json.loads(raw))
+            except Exception:
+                continue
+        return items
+    except Exception:
+        return []
+
+
 def _load_rtk_config_state() -> dict:
     raw = _read_text(RTK_CONFIG_PATH)
     parsed = {}
@@ -175,10 +212,12 @@ def _load_rtk_project_filters_state() -> dict:
 
 
 def _action_response(ok: bool, action: str, result: dict | None = None, message: str | None = None) -> dict:
+    resolved_message = message or ("done" if ok else "failed")
+    _append_rtk_action_event(action, ok, resolved_message, result=result)
     payload = {
         "ok": ok,
         "action": action,
-        "message": message or ("done" if ok else "failed"),
+        "message": resolved_message,
         "result": result or {},
     }
     payload["status"] = _build_rtk_status_payload()
@@ -333,6 +372,7 @@ def _build_rtk_status_payload() -> dict:
         "hooks": hooks_state,
         "gain": gain_json,
         "rewrite_samples": rewrite_samples,
+        "action_history": _read_rtk_action_history(),
         "notes": notes,
     }
 
@@ -440,6 +480,35 @@ async def diag_rtk_reapply_agents(request: Request):
         runs = [_run_rtk_command(cmd, timeout=30) for cmd in commands]
         ok = all(run.get("exit_code") == 0 for run in runs)
         return _action_response(ok, "reapply_agents", result={"runs": runs}, message="Agent-Dateien wurden neu erzeugt" if ok else "Mindestens ein Agent-Setup konnte nicht erneuert werden")
+
+    return await asyncio.to_thread(_run)
+
+
+@router.post("/rtk/rerun-rewrite-tests")
+async def diag_rtk_rerun_rewrite_tests(request: Request):
+    await _require_admin(request)
+
+    def _run():
+        status = _build_rtk_status_payload()
+        samples = status.get("rewrite_samples", [])
+        rewritten = sum(1 for sample in samples if sample.get("rewritten"))
+        passthrough = sum(1 for sample in samples if sample.get("status") == "passthrough")
+        result = {
+            "samples": samples,
+            "summary": {
+                "rewritten": rewritten,
+                "passthrough": passthrough,
+                "total": len(samples),
+            },
+        }
+        payload = {
+            "ok": True,
+            "action": "rerun_rewrite_tests",
+            "message": "Rewrite-Tests wurden neu ausgeführt",
+            "result": result,
+            "status": status,
+        }
+        return payload
 
     return await asyncio.to_thread(_run)
 

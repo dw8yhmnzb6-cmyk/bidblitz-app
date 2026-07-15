@@ -72,6 +72,7 @@ export default function AdminRtkPage({ onBack }) {
   const includeCommands = data?.config?.include_commands || [];
   const excludeCommands = data?.config?.exclude_commands || [];
   const projectFilters = data?.project_filters || {};
+  const actionHistory = data?.action_history || [];
 
   const runAction = async (actionId, path, successMessage) => {
     setActionLoading(actionId);
@@ -362,7 +363,7 @@ export default function AdminRtkPage({ onBack }) {
                 </div>
                 <StatusPill testId="admin-rtk-actions-status" ok={!actionLoading} label={actionLoading ? `läuft: ${actionLoading}` : "bereit"} />
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   disabled={Boolean(actionLoading) || projectFilters.trusted}
@@ -393,6 +394,16 @@ export default function AdminRtkPage({ onBack }) {
                   <p className="text-[13px] font-bold text-sky-900">Agent-Dateien neu generieren</p>
                   <p className="mt-1 text-[11px] text-sky-700">Erneuert Claude, Codex, Gemini, Hermes und Cursor.</p>
                 </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  disabled={Boolean(actionLoading)}
+                  onClick={() => runAction("rewrite-tests", "/api/diag/rtk/rerun-rewrite-tests", "Rewrite-Tests wurden neu ausgeführt")}
+                  data-testid="admin-rtk-action-rerun-rewrite"
+                  className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left disabled:opacity-60"
+                >
+                  <p className="text-[13px] font-bold text-amber-900">Rewrite-Test neu ausführen</p>
+                  <p className="mt-1 text-[11px] text-amber-700">Prüft Rewrite vs. Passthrough sofort mit der aktuellen Config.</p>
+                </motion.button>
               </div>
               {lastAction ? (
                 <div className="mt-4 rounded-2xl border border-gray-100 bg-gray-50 p-4" data-testid="admin-rtk-last-action-box">
@@ -401,6 +412,44 @@ export default function AdminRtkPage({ onBack }) {
                   {lastAction.stdout ? <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-[10px] text-gray-700">{lastAction.stdout}</pre> : null}
                 </div>
               ) : null}
+            </section>
+
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm" data-testid="admin-rtk-history-section">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-[15px] font-bold text-gray-900">RTK-Aktions-History</h2>
+                  <p className="text-[12px] text-gray-500">Die letzten Admin-Aktionen mit Zeitstempel und Kurzresultat.</p>
+                </div>
+                <StatusPill
+                  testId="admin-rtk-history-count-pill"
+                  ok={actionHistory.length > 0}
+                  label={`${numberFmt(actionHistory.length)} Einträge`}
+                />
+              </div>
+              <div className="space-y-3">
+                {actionHistory.length === 0 ? (
+                  <div className="rounded-2xl bg-gray-50 p-4 text-[12px] text-gray-500" data-testid="admin-rtk-history-empty">
+                    Noch keine protokollierten RTK-Aktionen vorhanden.
+                  </div>
+                ) : actionHistory.map((entry, index) => (
+                  <div key={`${entry.created_at}-${index}`} className="rounded-2xl border border-gray-100 bg-gray-50 p-4" data-testid={`admin-rtk-history-row-${index}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-[13px] font-bold text-gray-900">{entry.action}</p>
+                        <p className="text-[11px] text-gray-500">{entry.created_at ? new Date(entry.created_at).toLocaleString("de-DE") : "–"}</p>
+                      </div>
+                      <StatusPill testId={`admin-rtk-history-pill-${index}`} ok={Boolean(entry.ok)} label={entry.ok ? "ok" : "fehlgeschlagen"} />
+                    </div>
+                    <p className="mt-2 text-[11px] text-gray-700">{entry.message}</p>
+                    {(entry.summary?.stdout || entry.summary?.stderr) ? (
+                      <div className="mt-3 rounded-xl bg-white p-3 text-[10px] text-gray-600">
+                        {entry.summary?.stdout ? <p className="whitespace-pre-wrap break-words">{entry.summary.stdout}</p> : null}
+                        {entry.summary?.stderr ? <p className="mt-2 whitespace-pre-wrap break-words text-red-600">{entry.summary.stderr}</p> : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </section>
 
             <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm" data-testid="admin-rtk-savings-section">

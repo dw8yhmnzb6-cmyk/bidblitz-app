@@ -33,6 +33,17 @@
 - Während dieses Ausbaus wurde ein bereits vorhandener, abgeschnittener Syntaxfehler am Ende von `backend/routes/diag.py` (`migration_audit_log_rollback`) repariert; danach registrierte der Server wieder **194 Router** sauber.
 - Verifiziert per Live-API: `trust-project-filters` => **200 / ok=true**, `telemetry/forget` => **200 / ok=true**, `reapply-agents` => **200 / ok=true**. Danach liefert `GET /api/diag/rtk` den Status **`project_filters.trusted = true`**, `telemetry_enabled = false`, `hooks.configured_count = 5`.
 
+## 15.07.2026 — Rewrite-Test als vierte RTK-Adminaktion ergänzt
+- `backend/routes/diag.py` erweitert um **`POST /api/diag/rtk/rerun-rewrite-tests`**. Die Aktion führt keine destruktiven Änderungen aus, sondern baut die RTK-Status-Payload neu und liefert die aktuellen Rewrite-Samples plus kompakte Summary (`rewritten`, `passthrough`, `total`) zurück.
+- `frontend/src/pages/AdminRtkPage.jsx` erweitert um den vierten Aktionsbutton **„Rewrite-Test neu ausführen“** mit eigenem `data-testid="admin-rtk-action-rerun-rewrite"`.
+- Verifiziert per Live-API: **200 / ok=true** mit Summary **`rewritten: 2`, `passthrough: 2`, `total: 4`**; Statusliste bleibt konsistent bei `git status` + `pytest -q` => rewritten und `curl` + `docker run` => passthrough.
+
+## 15.07.2026 — RTK-Event-History im Admin-Dashboard ergänzt
+- `backend/routes/diag.py` erweitert um ein leichtgewichtiges Aktions-Log unter **`/root/.local/share/rtk/admin_actions.jsonl`**. Jede erfolgreiche/fehlgeschlagene RTK-Adminaktion schreibt jetzt Zeitstempel, Aktion, Status sowie gekürztes stdout/stderr in dieses Log.
+- Die RTK-Status-Payload enthält nun zusätzlich **`action_history`**, wodurch `/admin/rtk` die letzten Aktionen direkt ohne separate API laden kann.
+- `frontend/src/pages/AdminRtkPage.jsx` zeigt jetzt eine eigene **RTK-Aktions-History** mit Zeitstempel, Status-Badge und Kurzresultat je Eintrag.
+- Verifiziert per Live-API und Datei-Check: Nach `telemetry_forget` wurde `admin_actions.jsonl` angelegt; `GET /api/diag/rtk` liefert **`history_count: 1`** mit dem letzten Eintrag `telemetry_forget`, `ok: true` und dem gekürzten Output.
+
 ## 10.07.2026 — Mining Revenue Conversion Block
 - `frontend/src/pages/MiningTrustPage.jsx`: Advisor-/Ansprechpartner-Block ergänzt, inklusive Antwortzeit-Badge sowie WhatsApp-/Call-CTA.
 - `frontend/src/pages/MiningTrustPage.jsx`: Zielgruppen-Segmentierung für Investoren, Partner und Hosting-Kunden ergänzt.

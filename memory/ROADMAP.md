@@ -9,7 +9,9 @@
 - ✅ Danach wurde zusätzlich eine echte **Admin-/Debug-Ansicht für RTK-Status/Savings** gebaut: `/admin/rtk` mit Live-Daten aus `/api/diag/rtk`.
 - ✅ Danach wurden auch **projektspezifische `.rtk/filters.toml`-Filter** für dieses Repo ergänzt und im Admin-Dashboard sichtbar gemacht.
 - ✅ Danach wurden auch echte **RTK-Admin-Aktionen** eingebaut: Trust, Telemetry-Forget und Agent-Reapply direkt aus `/admin/rtk`.
-- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch **„Rewrite-Test neu ausführen“** und **„project filter diff / validation“** als zusätzliche Admin-Aktionen ergänzen oder die RTK-Seite um eine kleine Event-History erweitern.
+- ✅ Danach wurde auch **„Rewrite-Test neu ausführen“** als vierte RTK-Admin-Aktion ergänzt.
+- ✅ Danach wurde auch eine echte **RTK-Event-History** für die letzten Admin-Aktionen ergänzt.
+- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch **„project filter diff / validation“** ergänzen oder die History um Filter/Export/Clear-Funktionen erweitern.
 
 ## Status nach Admin-Kundendaten-Mix-Fix — 11.07.2026
 - ✅ Admin-Datenmix bei `admin@bidblitz.ae` bereinigt.
