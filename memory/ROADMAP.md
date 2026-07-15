@@ -11,7 +11,8 @@
 - ✅ Danach wurden auch echte **RTK-Admin-Aktionen** eingebaut: Trust, Telemetry-Forget und Agent-Reapply direkt aus `/admin/rtk`.
 - ✅ Danach wurde auch **„Rewrite-Test neu ausführen“** als vierte RTK-Admin-Aktion ergänzt.
 - ✅ Danach wurde auch eine echte **RTK-Event-History** für die letzten Admin-Aktionen ergänzt.
-- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch **„project filter diff / validation“** ergänzen oder die History um Filter/Export/Clear-Funktionen erweitern.
+- ✅ Danach wurde auch **Project Filter Diff / Validation** mit Baseline-Speicherung ergänzt.
+- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch History-Funktionen wie **Export / Clear / Filter nach Aktionstyp** ergänzen oder die RTK-Seite um Auto-Refresh erweitern.
 
 ## Status nach Admin-Kundendaten-Mix-Fix — 11.07.2026
 - ✅ Admin-Datenmix bei `admin@bidblitz.ae` bereinigt.

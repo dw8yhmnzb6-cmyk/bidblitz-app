@@ -44,6 +44,13 @@
 - `frontend/src/pages/AdminRtkPage.jsx` zeigt jetzt eine eigene **RTK-Aktions-History** mit Zeitstempel, Status-Badge und Kurzresultat je Eintrag.
 - Verifiziert per Live-API und Datei-Check: Nach `telemetry_forget` wurde `admin_actions.jsonl` angelegt; `GET /api/diag/rtk` liefert **`history_count: 1`** mit dem letzten Eintrag `telemetry_forget`, `ok: true` und dem gekürzten Output.
 
+## 15.07.2026 — Projektfilter-Validierung + Baseline-Diff ergänzt
+- `backend/routes/diag.py` erweitert um **`project_filters_validation`** in der RTK-Status-Payload. Enthalten sind jetzt: `valid`, `errors`, `warnings`, `baseline_exists`, `signature` und ein Diff-Block mit `added`, `removed`, `changed`.
+- Neue Admin-Endpunkte ergänzt: **`POST /api/diag/rtk/validate-project-filters`** und **`POST /api/diag/rtk/project-filters/save-baseline`**.
+- Neue Baseline-Datei: **`/root/.local/share/rtk/project_filters_baseline.json`**. Sie speichert den aktuellen Filter-Signaturstand als Vergleichsbasis.
+- `frontend/src/pages/AdminRtkPage.jsx` zeigt jetzt im Projektfilter-Bereich zusätzlich Validierungsstatus, Added/Changed/Removed-Zähler sowie Fehler-/Warnungsboxen. Im Aktionsblock gibt es jetzt auch **„Filter validieren“** und **„Baseline speichern“**.
+- Verifiziert per Live-API: erste Validierung **200 / ok=true / valid=true** mit `baseline_exists=false` und allen 6 Filtern als `added`; nach Baseline-Speicherung erneut **200 / ok=true**, danach zeigt Validierung **`baseline_exists=true`** und Diff **`added=[]`, `removed=[]`, `changed=[]`**.
+
 ## 10.07.2026 — Mining Revenue Conversion Block
 - `frontend/src/pages/MiningTrustPage.jsx`: Advisor-/Ansprechpartner-Block ergänzt, inklusive Antwortzeit-Badge sowie WhatsApp-/Call-CTA.
 - `frontend/src/pages/MiningTrustPage.jsx`: Zielgruppen-Segmentierung für Investoren, Partner und Hosting-Kunden ergänzt.

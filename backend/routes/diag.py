@@ -38,6 +38,7 @@ RTK_PROJECT_FILTERS_PATH = Path("/app/.rtk/filters.toml")
 RTK_TRUST_STORE_PATH = Path.home() / ".local" / "share" / "rtk" / "trusted_filters.json"
 RTK_PROJECT_ROOT = Path("/app")
 RTK_ACTION_LOG_PATH = Path.home() / ".local" / "share" / "rtk" / "admin_actions.jsonl"
+RTK_FILTERS_BASELINE_PATH = Path.home() / ".local" / "share" / "rtk" / "project_filters_baseline.json"
 
 
 async def _require_admin(request: Request):
@@ -211,6 +212,101 @@ def _load_rtk_project_filters_state() -> dict:
     }
 
 
+def _project_filter_signature() -> dict:
+    raw = _read_text(RTK_PROJECT_FILTERS_PATH)
+    try:
+        parsed = tomllib.loads(raw) if raw else {}
+    except Exception:
+        parsed = {}
+
+    filters_obj = parsed.get("filters") if isinstance(parsed, dict) else None
+    entries = []
+    if isinstance(filters_obj, dict):
+        for name in sorted(filters_obj.keys()):
+            item = filters_obj.get(name) or {}
+            if isinstance(item, dict):
+                entries.append({
+                    "name": name,
+                    "keys": sorted(item.keys()),
+                    "match_command": item.get("match_command"),
+                })
+    return {
+        "schema_version": parsed.get("schema_version") if isinstance(parsed, dict) else None,
+        "entries": entries,
+    }
+
+
+def _validate_project_filters() -> dict:
+    if not RTK_PROJECT_FILTERS_PATH.exists():
+        return {
+            "exists": False,
+            "valid": False,
+            "errors": ["Projektfilter-Datei fehlt"],
+            "warnings": [],
+            "signature": {"schema_version": None, "entries": []},
+            "baseline_exists": RTK_FILTERS_BASELINE_PATH.exists(),
+            "diff": {"added": [], "removed": [], "changed": []},
+        }
+
+    raw = _read_text(RTK_PROJECT_FILTERS_PATH)
+    errors = []
+    warnings = []
+    parsed = {}
+    try:
+        parsed = tomllib.loads(raw)
+    except Exception as exc:
+        errors.append(f"TOML parse error: {exc}")
+
+    if parsed and parsed.get("schema_version") != 1:
+        warnings.append("schema_version ist nicht 1")
+
+    filters_obj = parsed.get("filters") if isinstance(parsed, dict) else None
+    if not isinstance(filters_obj, dict) or not filters_obj:
+        errors.append("Keine [filters.*]-Einträge gefunden")
+        filters_obj = {}
+
+    signature = _project_filter_signature()
+    current_map = {item["name"]: item for item in signature.get("entries", [])}
+
+    for name, item in filters_obj.items():
+        if not isinstance(item, dict):
+            errors.append(f"Filter '{name}' ist kein Objekt")
+            continue
+        if not item.get("match_command"):
+            errors.append(f"Filter '{name}' hat kein match_command")
+        if not any(key in item for key in ["strip_lines_matching", "max_lines", "tail_lines", "strip_ansi"]):
+            warnings.append(f"Filter '{name}' hat keine sichtbare Reduktionsregel")
+
+    baseline = _read_json(RTK_FILTERS_BASELINE_PATH) or {}
+    baseline_entries = baseline.get("entries") if isinstance(baseline, dict) else []
+    if not isinstance(baseline_entries, list):
+        baseline_entries = []
+    baseline_map = {item.get("name"): item for item in baseline_entries if isinstance(item, dict) and item.get("name")}
+
+    current_names = set(current_map.keys())
+    baseline_names = set(baseline_map.keys())
+    added = sorted(current_names - baseline_names)
+    removed = sorted(baseline_names - current_names)
+    changed = []
+    for name in sorted(current_names & baseline_names):
+        if current_map[name] != baseline_map[name]:
+            changed.append(name)
+
+    return {
+        "exists": True,
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "signature": signature,
+        "baseline_exists": RTK_FILTERS_BASELINE_PATH.exists(),
+        "diff": {
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+        },
+    }
+
+
 def _action_response(ok: bool, action: str, result: dict | None = None, message: str | None = None) -> dict:
     resolved_message = message or ("done" if ok else "failed")
     _append_rtk_action_event(action, ok, resolved_message, result=result)
@@ -372,6 +468,7 @@ def _build_rtk_status_payload() -> dict:
         "hooks": hooks_state,
         "gain": gain_json,
         "rewrite_samples": rewrite_samples,
+        "project_filters_validation": _validate_project_filters(),
         "action_history": _read_rtk_action_history(),
         "notes": notes,
     }
@@ -509,6 +606,44 @@ async def diag_rtk_rerun_rewrite_tests(request: Request):
             "status": status,
         }
         return payload
+
+    return await asyncio.to_thread(_run)
+
+
+@router.post("/rtk/validate-project-filters")
+async def diag_rtk_validate_project_filters(request: Request):
+    await _require_admin(request)
+
+    def _run():
+        validation = _validate_project_filters()
+        result = {
+            "validation": validation,
+            "signature": validation.get("signature", {}),
+        }
+        ok = bool(validation.get("valid"))
+        return _action_response(ok, "validate_project_filters", result=result, message="Projektfilter wurden validiert" if ok else "Projektfilter haben Validierungsfehler")
+
+    return await asyncio.to_thread(_run)
+
+
+@router.post("/rtk/project-filters/save-baseline")
+async def diag_rtk_save_project_filters_baseline(request: Request):
+    await _require_admin(request)
+
+    def _run():
+        validation = _validate_project_filters()
+        signature = validation.get("signature", {})
+        RTK_FILTERS_BASELINE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+            **signature,
+        }
+        RTK_FILTERS_BASELINE_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        result = {
+            "baseline_path": str(RTK_FILTERS_BASELINE_PATH),
+            "signature": signature,
+        }
+        return _action_response(True, "save_project_filters_baseline", result=result, message="Filter-Baseline wurde gespeichert")
 
     return await asyncio.to_thread(_run)
 

@@ -73,6 +73,7 @@ export default function AdminRtkPage({ onBack }) {
   const excludeCommands = data?.config?.exclude_commands || [];
   const projectFilters = data?.project_filters || {};
   const actionHistory = data?.action_history || [];
+  const projectValidation = data?.project_filters_validation || {};
 
   const runAction = async (actionId, path, successMessage) => {
     setActionLoading(actionId);
@@ -353,6 +354,40 @@ export default function AdminRtkPage({ onBack }) {
                   Projekt-Filter werden von RTK erst nach explizitem Vertrauen genutzt. Nach Änderungen an <code className="rounded bg-white/70 px-1 py-0.5 text-[11px]">.rtk/filters.toml</code> bitte bewusst <code className="rounded bg-white/70 px-1 py-0.5 text-[11px]">rtk trust</code> im Projektverzeichnis ausführen.
                 </p>
               </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl bg-gray-50 p-4" data-testid="admin-rtk-project-validation-valid">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Validierung</p>
+                  <div className="mt-2"><StatusPill testId="admin-rtk-project-validation-pill" ok={Boolean(projectValidation.valid)} label={projectValidation.valid ? "gültig" : "fehlerhaft"} /></div>
+                </div>
+                <div className="rounded-2xl bg-gray-50 p-4" data-testid="admin-rtk-project-validation-added">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Neu vs. Baseline</p>
+                  <p className="mt-2 text-xl font-bold text-gray-900">{numberFmt(projectValidation.diff?.added?.length || 0)}</p>
+                </div>
+                <div className="rounded-2xl bg-gray-50 p-4" data-testid="admin-rtk-project-validation-changed">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Geändert</p>
+                  <p className="mt-2 text-xl font-bold text-gray-900">{numberFmt(projectValidation.diff?.changed?.length || 0)}</p>
+                </div>
+                <div className="rounded-2xl bg-gray-50 p-4" data-testid="admin-rtk-project-validation-removed">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Entfernt</p>
+                  <p className="mt-2 text-xl font-bold text-gray-900">{numberFmt(projectValidation.diff?.removed?.length || 0)}</p>
+                </div>
+              </div>
+              {(projectValidation.errors?.length || projectValidation.warnings?.length) ? (
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4" data-testid="admin-rtk-project-validation-errors">
+                    <p className="mb-2 text-[12px] font-bold text-red-700">Fehler</p>
+                    <div className="space-y-1 text-[11px] text-red-700">
+                      {(projectValidation.errors || []).map((item, index) => <div key={index}>• {item}</div>)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4" data-testid="admin-rtk-project-validation-warnings">
+                    <p className="mb-2 text-[12px] font-bold text-amber-700">Warnungen</p>
+                    <div className="space-y-1 text-[11px] text-amber-700">
+                      {(projectValidation.warnings || []).map((item, index) => <div key={index}>• {item}</div>)}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </section>
 
             <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm" data-testid="admin-rtk-actions-section">
@@ -403,6 +438,26 @@ export default function AdminRtkPage({ onBack }) {
                 >
                   <p className="text-[13px] font-bold text-amber-900">Rewrite-Test neu ausführen</p>
                   <p className="mt-1 text-[11px] text-amber-700">Prüft Rewrite vs. Passthrough sofort mit der aktuellen Config.</p>
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  disabled={Boolean(actionLoading)}
+                  onClick={() => runAction("validate-filters", "/api/diag/rtk/validate-project-filters", "Projektfilter wurden validiert")}
+                  data-testid="admin-rtk-action-validate-filters"
+                  className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left disabled:opacity-60"
+                >
+                  <p className="text-[13px] font-bold text-rose-900">Filter validieren</p>
+                  <p className="mt-1 text-[11px] text-rose-700">Prüft TOML, Pflichtfelder und Diff zur Baseline.</p>
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  disabled={Boolean(actionLoading)}
+                  onClick={() => runAction("save-baseline", "/api/diag/rtk/project-filters/save-baseline", "Filter-Baseline wurde gespeichert")}
+                  data-testid="admin-rtk-action-save-baseline"
+                  className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-left disabled:opacity-60"
+                >
+                  <p className="text-[13px] font-bold text-indigo-900">Baseline speichern</p>
+                  <p className="mt-1 text-[11px] text-indigo-700">Merkt den aktuellen Filterstand als Vergleichsbasis.</p>
                 </motion.button>
               </div>
               {lastAction ? (
