@@ -1,5 +1,26 @@
 # BidBlitz — CHANGELOG
 
+## 15.07.2026 — Schwimmbad-System MVP als neues Modul eingebaut
+- Neues Full-Stack-Modul **Schwimmbad / Pool Facility System** ergänzt. Öffentliche Route **`/pool`** zeigt jetzt eine mehrsprachige Pool-/Freizeitbad-Seite mit Ticketpaketen, Extras, Gastdaten, Live-Auslastung und Online-Checkout-Einstieg. Look & Feel wurden auf die Pool-/Freizeitbad-Referenzrichtung ausgerichtet (hell, aquatisch, orange CTA, familienfreundliche Betriebsoptik).
+- Neues Betreiber-Dashboard **`/admin/pool`** ergänzt mit Tabs für **Übersicht**, **Kasse**, **Einlass**, **Spinde**, **Snack POS** und **History**. Alle zentralen UI-Elemente haben `data-testid`.
+- Backend-seitig neue Route **`backend/routes/pool_management.py`** ergänzt mit Endpunkten für:
+  - `GET /api/pool/public/overview`
+  - `POST /api/pool/public/tickets/checkout`
+  - `GET /api/pool/public/tickets/checkout-status/{session_id}`
+  - `GET /api/pool/admin/dashboard`
+  - `POST /api/pool/admin/tickets/cash-sale`
+  - `POST /api/pool/admin/lockers/assign`
+  - `POST /api/pool/admin/lockers/release`
+  - `POST /api/pool/admin/turnstile/scan`
+  - `POST /api/pool/admin/pos/sale`
+- Stripe-/Webhook-Anbindung vorbereitet: Pool-Onlinekäufe werden als `payment_transactions` vom Typ **`pool_ticket`** angelegt; `routes/stripe.py` ruft bei bezahlter Session jetzt zusätzlich `handle_pool_ticket_webhook()` auf. Vor-Ort-Zahlungen laufen über Kassenflow (`cash` / `card`).
+- Domänenobjekte: Ticketpakete, Extras, Snack-Menü, Turnstiles und kleine Locker-Flotte für MVP. Reale Hardware-Anbindung ist sichtbar vorbereitet, aber in diesem Block bewusst **MOCKED** markiert für: **RFID bridge**, **Turnstile bridge**, **Locker relay bridge**.
+- Admin- und Nutzer-Navigation erweitert: neue Route in `App.js`, Admin-Kachel in `AdminPage.jsx`, Admin-Sections-Eintrag in `components/admin/sections.js`, API-Helfer in `services/api.js` und Discoverability über `AllServicesPage.jsx`.
+- Wichtiger Infrastrukturhinweis: Während der Umsetzung trat mehrfach **`No space left on device`** auf (`/app`-Volume). Ich habe nur sichere Artefakte/Caches bereinigt und den initialen Locker-Seed für das MVP bewusst klein gehalten (**8 Lockers**), damit das Modul in dieser Umgebung stabil läuft.
+- Verifiziert:
+  - Backend-Self-Test erfolgreich: `public overview 200`, `admin dashboard 200`, `cash sale 200`, `locker assign 200`, `turnstile entry 200`, `snack sale 200`.
+  - Testing Agent **Iteration 250 PASS**: `/pool` und `/admin/pool` komplett geprüft, **7/7 Kernfeatures PASS**, **41 data-testid** erkannt. Nur nicht-blockierender Hinweis: Cookie-Banner-Overlay unten rechts.
+
 ## 15.07.2026 — RTK CLI Proxy im Container installiert und verifiziert
 - RTK **v0.43.0** für den aktuellen **aarch64**-Container installiert. Der offizielle Release-Download `rtk-aarch64-unknown-linux-gnu.tar.gz` war in dieser Umgebung **nicht direkt lauffähig** (`GLIBC_2.39 not found` gegen Container-GLIBC 2.36), daher wurde RTK kontrolliert **aus dem offiziellen GitHub-Tag `v0.43.0` per Rust/Cargo lokal kompiliert** und nach `/usr/local/bin/rtk` installiert.
 - Globales Hook-Setup für Claude-Code-artige Bash-Rewrites aktiviert mit `rtk init -g --hook-only --auto-patch`; resultierende Konfiguration in `/root/.claude/settings.json` zeigt jetzt `PreToolUse -> rtk hook claude`.
