@@ -601,6 +601,7 @@ function SystemDetail({ data, onNavigate }) {
     passwords: "Passwort-Verwaltung",
     "voice-commands": "Sprachbefehle",
     debug: "Debug Reports",
+    "rtk-proxy": "RTK Proxy",
     "system-health": "System-Gesundheit",
     database: "Daten-Management",
   };
@@ -636,8 +637,22 @@ function SystemDetail({ data, onNavigate }) {
               data-testid="goto-merchant-admin">
               Haendler-Verwaltung
             </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/admin/rtk")}
+              className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)" }}
+              data-testid="goto-rtk-admin">
+              RTK Proxy Dashboard
+            </motion.button>
           </div>
         </>
+      )}
+      {data.subtype === "rtk-proxy" && (
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => onNavigate("/admin/rtk")}
+          className="w-full py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)" }}
+          data-testid="goto-rtk-dashboard-direct">
+          RTK Status & Savings öffnen
+        </motion.button>
       )}
       {data.subtype === "database" && (
         <div className="space-y-2">
@@ -649,7 +664,7 @@ function SystemDetail({ data, onNavigate }) {
           ))}
         </div>
       )}
-      {!["system-health", "database"].includes(data.subtype) && (
+      {!["system-health", "database", "rtk-proxy"].includes(data.subtype) && (
         <p className="text-[10px] text-gray-400 text-center">Konfiguration in nächstem Update</p>
       )}
     </div>

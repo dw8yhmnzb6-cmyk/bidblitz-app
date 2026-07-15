@@ -220,6 +220,7 @@ export async function loadAdminDetail(item, onNavigate) {
     case "passwords":
     case "voice-commands":
     case "debug":
+    case "rtk-proxy":
     case "system-health":
     case "database":
       return { type: "system_detail", subtype: item.key };

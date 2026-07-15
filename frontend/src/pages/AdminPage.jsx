@@ -198,6 +198,7 @@ const ADMIN_SECTIONS = [
       { id: "logs", icon: ScrollText, label: "Systemlogs", tab: "audit" },
       { id: "biopay-audit-center", icon: Shield, label: "BioPay Audit", tab: "biopay-audit", highlight: true },
       { id: "debug", icon: Bug, label: "Debug Reports", tab: "audit" },
+      { id: "rtk-proxy", icon: Cpu, label: "RTK Proxy", tab: "rtk", highlight: true },
       { id: "system-health", icon: Activity, label: "System", tab: "flags" },
       { id: "database", icon: Database, label: "Daten-Manager", tab: "settings" },
     ]
@@ -652,6 +653,10 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
                   onItemClick={(targetTab) => {
                     if (targetTab === "biopay-audit") {
                       onNavigate("/admin/biopay-audit");
+                      return;
+                    }
+                    if (targetTab === "rtk") {
+                      onNavigate("/admin/rtk");
                       return;
                     }
                     setTab(targetTab);

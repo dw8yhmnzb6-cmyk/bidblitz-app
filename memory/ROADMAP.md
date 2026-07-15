@@ -6,7 +6,9 @@
 - ✅ Telemetry ist deaktiviert; erste Bash-Verifikation mit `rtk git status`, `rtk ls /app` und `rtk gain` erfolgreich.
 - ⚠️ Wichtige technische Notiz: Das offizielle ARM64-Release-Binary war in diesem Container wegen **GLIBC_2.39** inkompatibel; funktionierende Lösung in diesem Fork ist daher **lokaler Build aus dem offiziellen Tag `v0.43.0`** statt direkter Release-Extraktion.
 - ✅ RTK wurde danach zusätzlich **ausgewogen konfiguriert** (`include_commands` + `exclude_commands`) und auf weitere Agent-Ziele im Container ausgerollt: **Codex, Gemini CLI, Hermes, Cursor**.
-- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch projektspezifische `.rtk/filters.toml`-Filter für dieses Repo ergänzen oder eine kleine Admin-/Debug-Ansicht für RTK-Status/Savings bauen.
+- ✅ Danach wurde zusätzlich eine echte **Admin-/Debug-Ansicht für RTK-Status/Savings** gebaut: `/admin/rtk` mit Live-Daten aus `/api/diag/rtk`.
+- ✅ Danach wurden auch **projektspezifische `.rtk/filters.toml`-Filter** für dieses Repo ergänzt und im Admin-Dashboard sichtbar gemacht.
+- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch Admin-Aktionen wie **„rtk trust ausführen“**, **„Rewrite-Test neu ausführen“**, **„Telemetry-Check aktualisieren“** oder **„Agent-Dateien neu generieren“** direkt aus `/admin/rtk` anbieten.
 
 ## Status nach Admin-Kundendaten-Mix-Fix — 11.07.2026
 - ✅ Admin-Datenmix bei `admin@bidblitz.ae` bereinigt.

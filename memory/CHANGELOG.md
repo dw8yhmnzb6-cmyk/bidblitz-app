@@ -13,6 +13,20 @@
 - Claude-Setup wurde bei diesem Ausbau von reinem Hook-Only auf den vollständigen globalen Modus erweitert: `~/.claude/RTK.md` und `~/.claude/CLAUDE.md` sind jetzt vorhanden; Hook in `~/.claude/settings.json` bleibt aktiv.
 - Verifiziert per Bash/Datei-Checks: Hook-/Agent-Dateien existieren, `rtk init --show` bestätigt Claude + Cursor, und `rtk rewrite` verhält sich passend zu den Regeln (`git status`/`pytest -q` werden zu RTK umgeschrieben, `curl`/`docker run` bleiben bewusst außen vor). Telemetry wurde danach erneut deaktiviert.
 
+## 15.07.2026 — Admin RTK Dashboard + Live-Status-API ergänzt
+- Neue Admin-Seite **`/admin/rtk`** ergänzt (`frontend/src/pages/AdminRtkPage.jsx`) mit Live-Status für RTK-Binary, Config, Agent-Rollouts, Rewrite-Beispiele und Savings-Kennzahlen. Alle zentralen UI-Elemente sind mit `data-testid` versehen.
+- Neue abgesicherte Backend-Diagnose-API **`GET /api/diag/rtk`** ergänzt (`backend/routes/diag.py`). Die Route liest nur systemnahe RTK-Metadaten aus: Binary-Pfad/Version, Config-Zustand, Agent-Dateien (Claude/Cursor/Codex/Gemini/Hermes), `rtk gain --all --format json` und kontrollierte Rewrite-Beispiele. Keine Mongo-Objekte werden zurückgegeben.
+- RTK-Dashboard wurde in die Admin-Navigation eingehängt: Grid-/System-Menüs in `AdminPage.jsx`, `components/admin/sections.js`, `AdminDetailRouter.jsx`, `adminRouteMap.js` und `App.js` verlinken jetzt direkt auf `/admin/rtk`.
+- Verifiziert per Bash-Ende-zu-Ende: Admin-Login `200`, `GET /api/diag/rtk` `200`, Status zeigt **RTK 0.43.0**, **5/5 Agent-Setups aktiv**, **30 include_commands**, **20 exclude_commands**, Rewrite-Status `git status`/`pytest -q` => rewritten und `curl`/`docker run` => passthrough.
+- Hinweis: Browser-Screenshot-Smoke konnte in dieser Umgebung **nicht** gespeichert werden, weil das Automations-Output-Verzeichnis gerade mit **`No space left on device`** blockiert war. Die neue Seite selbst ist aber über die Live-Route eingebunden und die zugrunde liegende API ist grün getestet.
+
+## 15.07.2026 — Projektspezifische RTK-Filter für dieses Repo ergänzt
+- Neue Projektdatei **`/app/.rtk/filters.toml`** ergänzt mit **6 repo-spezifischen Filtern** für dieses große Monorepo: `vitest-noise`, `pytest-brief`, `grep-clean`, `git-status-focus`, `supervisor-tail-focus`, `curl-json-noise`.
+- Zweck der Filter: Dev-Server-/Test-Noise reduzieren, Trefferlisten und Supervisor-Logs fokussieren und große JSON-Diagnose-Antworten leichter lesbar machen — ohne produktive App-Logik anzufassen.
+- `backend/routes/diag.py` erweitert jetzt den RTK-Status um **Projektfilter-Metadaten**: Existenz von `.rtk/filters.toml`, Schema-Version, Filternamen, Filteranzahl, Trust-Store-Pfad und ob die Repo-Filter bereits als **trusted** markiert sind.
+- `frontend/src/pages/AdminRtkPage.jsx` zeigt dazu nun eine eigene **Projekt-Filter-Sektion** mit Trust-Hinweis, Filteranzahl, Filternamen und Trust-Status direkt im Admin-Dashboard.
+- Verifiziert per Bash/API: `.rtk/filters.toml` existiert, API meldet **6 Filter**, Namen werden korrekt zurückgegeben und Status ist aktuell bewusst **`not trusted`**, bis im Projektverzeichnis explizit `rtk trust` ausgeführt wird.
+
 ## 10.07.2026 — Mining Revenue Conversion Block
 - `frontend/src/pages/MiningTrustPage.jsx`: Advisor-/Ansprechpartner-Block ergänzt, inklusive Antwortzeit-Badge sowie WhatsApp-/Call-CTA.
 - `frontend/src/pages/MiningTrustPage.jsx`: Zielgruppen-Segmentierung für Investoren, Partner und Hosting-Kunden ergänzt.

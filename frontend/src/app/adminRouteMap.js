@@ -37,6 +37,7 @@ export const ADMIN_TAB_MAP = {
   compliance: "verification",
   moderation: "verification",
   logs: "logs",
+  rtk: "settings",
   system: "settings",
   settings: "settings",
 };

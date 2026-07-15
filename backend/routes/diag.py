@@ -14,7 +14,12 @@ Endpoint-Bereich aussetzt (siehe iter98 Bug: express_checkout_stripe.py).
 import os
 import time
 import asyncio
+import json
+import shutil
+import subprocess
+import tomllib
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from core.security import get_current_user
 from core.database import db
@@ -22,12 +27,297 @@ from core.router_registry import get_registration_state
 
 router = APIRouter(prefix="/api/diag", tags=["diagnostics"])
 
+RTK_BINARY_CANDIDATES = [
+    Path("/root/.cargo/bin/rtk"),
+    Path("/usr/local/bin/rtk"),
+    Path.home() / ".local" / "bin" / "rtk",
+]
+RTK_CONFIG_PATH = Path.home() / ".config" / "rtk" / "config.toml"
+RTK_FILTERS_PATH = Path.home() / ".config" / "rtk" / "filters.toml"
+RTK_PROJECT_FILTERS_PATH = Path("/app/.rtk/filters.toml")
+RTK_TRUST_STORE_PATH = Path.home() / ".local" / "share" / "rtk" / "trusted_filters.json"
+
 
 async def _require_admin(request: Request):
     user = await get_current_user(request)
     if user.get("role") != "admin":
         raise HTTPException(403, "Admin access required")
     return user
+
+
+def _find_rtk_binary() -> str | None:
+    for candidate in RTK_BINARY_CANDIDATES:
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return shutil.which("rtk")
+
+
+def _run_rtk_command(args: list[str], timeout: int = 10) -> dict:
+    binary = _find_rtk_binary()
+    if not binary:
+        return {
+            "available": False,
+            "exit_code": None,
+            "stdout": "",
+            "stderr": "RTK binary not found",
+            "command": args,
+        }
+
+    try:
+        proc = subprocess.run(
+            [binary, *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+        return {
+            "available": True,
+            "exit_code": proc.returncode,
+            "stdout": proc.stdout or "",
+            "stderr": proc.stderr or "",
+            "command": args,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "available": True,
+            "exit_code": None,
+            "stdout": "",
+            "stderr": f"Timeout after {timeout}s",
+            "command": args,
+        }
+    except Exception as exc:
+        return {
+            "available": True,
+            "exit_code": None,
+            "stdout": "",
+            "stderr": str(exc),
+            "command": args,
+        }
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text()
+    except Exception:
+        return ""
+
+
+def _read_json(path: Path):
+    try:
+        if not path.exists():
+            return None
+        return json.loads(path.read_text())
+    except Exception:
+        return None
+
+
+def _load_rtk_config_state() -> dict:
+    raw = _read_text(RTK_CONFIG_PATH)
+    parsed = {}
+    if raw:
+        try:
+            parsed = tomllib.loads(raw)
+        except Exception:
+            parsed = {}
+
+    hooks = parsed.get("hooks", {}) if isinstance(parsed, dict) else {}
+    telemetry = parsed.get("telemetry", {}) if isinstance(parsed, dict) else {}
+
+    return {
+        "path": str(RTK_CONFIG_PATH),
+        "exists": RTK_CONFIG_PATH.exists(),
+        "filters_template_exists": RTK_FILTERS_PATH.exists(),
+        "project_filters_exists": RTK_PROJECT_FILTERS_PATH.exists(),
+        "include_commands": hooks.get("include_commands") or [],
+        "exclude_commands": hooks.get("exclude_commands") or [],
+        "transparent_prefixes": hooks.get("transparent_prefixes") or [],
+        "telemetry_enabled": bool(telemetry.get("enabled", False)),
+        "telemetry_consented": bool(telemetry.get("consent_given", False)),
+    }
+
+
+def _load_rtk_project_filters_state() -> dict:
+    raw = _read_text(RTK_PROJECT_FILTERS_PATH)
+    parsed = {}
+    if raw:
+        try:
+            parsed = tomllib.loads(raw)
+        except Exception:
+            parsed = {}
+
+    trust_store = _read_json(RTK_TRUST_STORE_PATH) or {}
+    trusted = False
+    trust_blob = json.dumps(trust_store) if isinstance(trust_store, dict) else ""
+    if str(RTK_PROJECT_FILTERS_PATH) in trust_blob or '"/app"' in trust_blob:
+        trusted = True
+
+    filter_names = []
+    filters_obj = parsed.get("filters") if isinstance(parsed, dict) else None
+    if isinstance(filters_obj, dict):
+        filter_names = sorted(filters_obj.keys())
+
+    return {
+        "path": str(RTK_PROJECT_FILTERS_PATH),
+        "exists": RTK_PROJECT_FILTERS_PATH.exists(),
+        "trusted": trusted,
+        "trust_store_path": str(RTK_TRUST_STORE_PATH),
+        "schema_version": parsed.get("schema_version") if isinstance(parsed, dict) else None,
+        "filter_count": len(filter_names),
+        "filter_names": filter_names,
+    }
+
+
+def _detect_rtk_hooks() -> dict:
+    claude_settings = Path.home() / ".claude" / "settings.json"
+    claude_rtk_md = Path.home() / ".claude" / "RTK.md"
+    claude_claude_md = Path.home() / ".claude" / "CLAUDE.md"
+    cursor_hooks = Path.home() / ".cursor" / "hooks.json"
+    codex_agents = Path.home() / ".codex" / "AGENTS.md"
+    codex_rtk = Path.home() / ".codex" / "RTK.md"
+    gemini_settings = Path.home() / ".gemini" / "settings.json"
+    gemini_hook = Path.home() / ".gemini" / "hooks" / "rtk-hook-gemini.sh"
+    gemini_md = Path.home() / ".gemini" / "GEMINI.md"
+    hermes_config = Path.home() / ".hermes" / "config.yaml"
+    hermes_plugin = Path.home() / ".hermes" / "plugins" / "rtk-rewrite" / "plugin.yaml"
+
+    claude_text = _read_text(claude_settings)
+    cursor_text = _read_text(cursor_hooks)
+    codex_text = _read_text(codex_agents)
+    gemini_text = _read_text(gemini_settings)
+    hermes_text = _read_text(hermes_config)
+
+    agents = [
+        {
+            "id": "claude",
+            "label": "Claude",
+            "configured": "rtk hook claude" in claude_text,
+            "details": "PreToolUse Hook",
+            "path": str(claude_settings),
+            "meta_files": [str(claude_rtk_md), str(claude_claude_md)],
+            "meta_present": claude_rtk_md.exists() and claude_claude_md.exists(),
+        },
+        {
+            "id": "cursor",
+            "label": "Cursor",
+            "configured": "rtk hook cursor" in cursor_text,
+            "details": "hooks.json preToolUse",
+            "path": str(cursor_hooks),
+            "meta_files": [],
+            "meta_present": cursor_hooks.exists(),
+        },
+        {
+            "id": "codex",
+            "label": "Codex",
+            "configured": "RTK.md" in codex_text and codex_rtk.exists(),
+            "details": "AGENTS.md + RTK.md",
+            "path": str(codex_agents),
+            "meta_files": [str(codex_rtk)],
+            "meta_present": codex_rtk.exists(),
+        },
+        {
+            "id": "gemini",
+            "label": "Gemini",
+            "configured": "rtk-hook-gemini.sh" in gemini_text and gemini_hook.exists(),
+            "details": "BeforeTool Hook",
+            "path": str(gemini_settings),
+            "meta_files": [str(gemini_hook), str(gemini_md)],
+            "meta_present": gemini_hook.exists() and gemini_md.exists(),
+        },
+        {
+            "id": "hermes",
+            "label": "Hermes",
+            "configured": "rtk-rewrite" in hermes_text and hermes_plugin.exists(),
+            "details": "Plugin Adapter",
+            "path": str(hermes_config),
+            "meta_files": [str(hermes_plugin)],
+            "meta_present": hermes_plugin.exists(),
+        },
+    ]
+
+    configured_count = sum(1 for agent in agents if agent["configured"])
+    return {
+        "configured_count": configured_count,
+        "total_agents": len(agents),
+        "agents": agents,
+    }
+
+
+def _build_rtk_status_payload() -> dict:
+    binary_path = _find_rtk_binary()
+    version_result = _run_rtk_command(["--version"])
+    gain_result = _run_rtk_command(["gain", "--all", "--format", "json"], timeout=15)
+    config_state = _load_rtk_config_state()
+    project_filters_state = _load_rtk_project_filters_state()
+    hooks_state = _detect_rtk_hooks()
+
+    gain_json = {"summary": {"total_commands": 0, "total_saved": 0, "avg_savings_pct": 0.0}}
+    if gain_result.get("stdout", "").strip():
+        try:
+            gain_json = json.loads(gain_result["stdout"])
+        except Exception:
+            gain_json = {
+                "summary": {"total_commands": 0, "total_saved": 0, "avg_savings_pct": 0.0},
+                "parse_error": gain_result["stdout"][:500],
+            }
+
+    rewrite_inputs = [
+        ["git", "status"],
+        ["pytest", "-q"],
+        ["curl", "https://example.com"],
+        ["docker", "run", "alpine", "echo", "hi"],
+    ]
+    rewrite_samples = []
+    for sample in rewrite_inputs:
+        result = _run_rtk_command(["rewrite", *sample])
+        rewritten_output = (result.get("stdout") or "").strip() or None
+        rewrite_samples.append(
+            {
+                "input": " ".join(sample),
+                "rewritten_output": rewritten_output,
+                "exit_code": result.get("exit_code"),
+                "rewritten": bool(rewritten_output),
+                "status": "rewritten" if rewritten_output else ("passthrough" if result.get("exit_code") == 1 else "unavailable"),
+            }
+        )
+
+    binary_source = "missing"
+    if binary_path:
+        if binary_path.startswith("/root/.cargo/bin"):
+            binary_source = "local_build"
+        elif binary_path.startswith("/usr/local/bin"):
+            binary_source = "system_install"
+        else:
+            binary_source = "path_install"
+
+    notes = []
+    if not binary_path:
+        notes.append("RTK binary nicht gefunden")
+    if config_state["telemetry_enabled"]:
+        notes.append("Telemetry ist aktiv")
+    if hooks_state["configured_count"] < hooks_state["total_agents"]:
+        notes.append("Nicht alle unterstützten Agent-Setups sind aktiv")
+    if not config_state["include_commands"]:
+        notes.append("Keine include_commands gesetzt — RTK rewritet potenziell breiter")
+    if project_filters_state["exists"] and not project_filters_state["trusted"]:
+        notes.append("Projekt-Filter vorhanden, aber noch nicht per rtk trust freigegeben")
+
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "binary": {
+            "available": bool(binary_path),
+            "path": binary_path,
+            "version": (version_result.get("stdout") or "").strip() or None,
+            "install_source": binary_source,
+            "error": (version_result.get("stderr") or "").strip() or None,
+        },
+        "config": config_state,
+        "project_filters": project_filters_state,
+        "hooks": hooks_state,
+        "gain": gain_json,
+        "rewrite_samples": rewrite_samples,
+        "notes": notes,
+    }
 
 
 @router.get("/routes")
@@ -83,6 +373,12 @@ async def diag_failed_only(request: Request):
             for f in state.get("failed", [])
         ],
     }
+
+
+@router.get("/rtk")
+async def diag_rtk_status(request: Request):
+    await _require_admin(request)
+    return await asyncio.to_thread(_build_rtk_status_payload)
 
 
 

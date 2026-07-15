@@ -1,0 +1,56 @@
+schema_version = 1
+
+[filters.vitest-noise]
+description = "Reduziert Vite/Vitest Dev-Noise in diesem Monorepo"
+match_command = "^(npm|pnpm|yarn|npx)\\s+.*(vitest|vite)"
+strip_ansi = true
+strip_lines_matching = [
+  "^\\s*$",
+  "^\\s*DEV\\s+v[0-9].*",
+  "^\\s*➜\\s+Local:",
+  "^\\s*➜\\s+Network:",
+  "^\\s*➜\\s+press h \\+ enter to show help",
+  "^\\s*watching for file changes\\.\\.\\.$",
+]
+max_lines = 80
+
+[filters.pytest-brief]
+description = "Entfernt leere Zeilen und unkritischen pytest-Noise"
+match_command = "^pytest\\b"
+strip_ansi = true
+strip_lines_matching = [
+  "^\\s*$",
+  "^plugins: .*",
+  "^rootdir: .*",
+]
+max_lines = 120
+
+[filters.grep-clean]
+description = "Begrenzt grep/rg-Ausgaben in diesem großen Repo"
+match_command = "^(grep|rg)\\b"
+strip_ansi = true
+strip_lines_matching = [
+  "^\\s*$",
+]
+max_lines = 120
+
+[filters.git-status-focus]
+description = "Fokussiert git status in dieser Arbeitskopie auf die wichtigsten Zeilen"
+match_command = "^git\\s+status(\\s|$)"
+strip_ansi = true
+strip_lines_matching = [
+  "^nothing to commit, working tree clean$",
+]
+max_lines = 80
+
+[filters.supervisor-tail-focus]
+description = "Begrenzt Supervisor-Logs für diese App auf die letzten relevanten Zeilen"
+match_command = "^(tail|cat)\\s+.*supervisor/.*(backend|frontend).*(log|err|out)"
+strip_ansi = true
+tail_lines = 120
+
+[filters.curl-json-noise]
+description = "Kürzt reine JSON-curl-Health/Diag-Antworten für Admin-Debug etwas ein"
+match_command = "^curl\\b.*(/api/diag/rtk|/api/diag|/api/auth/me|/api/feature-flags)"
+strip_ansi = true
+max_lines = 80

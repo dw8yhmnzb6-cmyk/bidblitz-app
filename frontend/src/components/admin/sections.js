@@ -9,7 +9,7 @@ import {
   BarChart, UserCheck, Gavel, Bot, Trophy, Percent, TrendingUp,
   Zap, Eye, Mail, Target, Gift, MessageCircle, Wrench, DollarSign,
   Home, GraduationCap, Film, Stethoscope, Heart, CarFront, Sparkles,
-  Truck, Dog, Dumbbell, Palmtree, BatteryCharging, UtensilsCrossed
+  Truck, Dog, Dumbbell, Palmtree, BatteryCharging, UtensilsCrossed, Cpu
 } from "lucide-react";
 
 export const ADMIN_SECTIONS = [
@@ -117,7 +117,7 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "System", color: "#6B7280", count: 10,
+    title: "System", color: "#6B7280", count: 11,
     items: [
       { key: "maintenance", icon: Wrench, label: "Wartung" },
       { key: "cms", icon: FileText, label: "Seiten (CMS)" },
@@ -127,6 +127,7 @@ export const ADMIN_SECTIONS = [
       { key: "system-logs", icon: Activity, label: "Systemlogs" },
       { key: "voice-commands", icon: Mic, label: "Sprachbefehle" },
       { key: "debug", icon: Bug, label: "Debug Reports" },
+      { key: "rtk-proxy", icon: Cpu, label: "RTK Proxy", nav: "/admin/rtk" },
       { key: "system-health", icon: Server, label: "System" },
       { key: "database", icon: Database, label: "Daten-Management" },
     ],
