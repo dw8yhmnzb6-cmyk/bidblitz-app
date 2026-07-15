@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 15.07.2026 — RTK CLI Proxy im Container installiert und verifiziert
+- RTK **v0.43.0** für den aktuellen **aarch64**-Container installiert. Der offizielle Release-Download `rtk-aarch64-unknown-linux-gnu.tar.gz` war in dieser Umgebung **nicht direkt lauffähig** (`GLIBC_2.39 not found` gegen Container-GLIBC 2.36), daher wurde RTK kontrolliert **aus dem offiziellen GitHub-Tag `v0.43.0` per Rust/Cargo lokal kompiliert** und nach `/usr/local/bin/rtk` installiert.
+- Globales Hook-Setup für Claude-Code-artige Bash-Rewrites aktiviert mit `rtk init -g --hook-only --auto-patch`; resultierende Konfiguration in `/root/.claude/settings.json` zeigt jetzt `PreToolUse -> rtk hook claude`.
+- RTK-Konfiguration unter `/root/.config/rtk/config.toml` geprüft; Telemetry explizit deaktiviert/vergessen (`rtk telemetry forget`).
+- Verifiziert per Bash: `rtk --version` => `0.43.0`, `rtk init --show` => Hook aktiv, `rtk git status` und `rtk ls /app` laufen erfolgreich, `rtk gain` zeigt bereits erste Savings (**2 Commands, ~58.0% Ersparnis**).
+- Hinweis: Das ist **Container-/Tooling-Setup**, keine produktive App-API. Es wurden **keine Frontend- oder Backend-Feature-Flows geändert**.
+
 ## 10.07.2026 — Mining Revenue Conversion Block
 - `frontend/src/pages/MiningTrustPage.jsx`: Advisor-/Ansprechpartner-Block ergänzt, inklusive Antwortzeit-Badge sowie WhatsApp-/Call-CTA.
 - `frontend/src/pages/MiningTrustPage.jsx`: Zielgruppen-Segmentierung für Investoren, Partner und Hosting-Kunden ergänzt.

@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach RTK-Installation — 15.07.2026
+- ✅ RTK CLI Proxy **v0.43.0** ist im aktuellen **aarch64-Kubernetes-Container** installiert und lauffähig.
+- ✅ Globaler Hook-Only-Mode für Claude-Code-artige Bash-Rewrites ist aktiv (`rtk hook claude` in `~/.claude/settings.json`).
+- ✅ Telemetry ist deaktiviert; erste Bash-Verifikation mit `rtk git status`, `rtk ls /app` und `rtk gain` erfolgreich.
+- ⚠️ Wichtige technische Notiz: Das offizielle ARM64-Release-Binary war in diesem Container wegen **GLIBC_2.39** inkompatibel; funktionierende Lösung in diesem Fork ist daher **lokaler Build aus dem offiziellen Tag `v0.43.0`** statt direkter Release-Extraktion.
+- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, RTK später zusätzlich auf weitere Agent-/CLI-Ziele im selben Container ausrollen oder die Include/Exclude-Command-Filter feiner abstimmen.
+
 ## Status nach Admin-Kundendaten-Mix-Fix — 11.07.2026
 - ✅ Admin-Datenmix bei `admin@bidblitz.ae` bereinigt.
 - ✅ Balance blieb korrekt; jetzt sind auch **Registrierungsdatum, letzte Anmeldung und Login-Zähler** überall kanonisch.
