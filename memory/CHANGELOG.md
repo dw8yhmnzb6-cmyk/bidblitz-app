@@ -7,6 +7,12 @@
 - Verifiziert per Bash: `rtk --version` => `0.43.0`, `rtk init --show` => Hook aktiv, `rtk git status` und `rtk ls /app` laufen erfolgreich, `rtk gain` zeigt bereits erste Savings (**2 Commands, ~58.0% Ersparnis**).
 - Hinweis: Das ist **Container-/Tooling-Setup**, keine produktive App-API. Es wurden **keine Frontend- oder Backend-Feature-Flows geändert**.
 
+## 15.07.2026 — RTK erweitert konfiguriert + weitere Agent-Modi ausgerollt
+- RTK-Konfiguration auf **ausgewogenen Modus** nachgeschärft: In `/root/.config/rtk/config.toml` wurde eine gezielte `include_commands`-Liste für typische Dev-/Infra-Befehle gesetzt (`git`, `ls`, `find`, `grep`, `pytest`, `cargo`, `docker`, `kubectl`, `pnpm`, `npm`, `tsc`, `eslint`, `prisma`, `mvn`, `pip`, `uv` usw.). Gleichzeitig wurden bewusst riskante oder unpassende Auto-Rewrites per `exclude_commands` ausgespart, u. a. `curl`, `wget`, `playwright`, `ssh`, `scp`, `tar`, `zip`, `openssl`, `docker run`, `docker compose up`, `kubectl apply`, `kubectl create`.
+- Zusätzliche Agent-Rollouts erfolgreich angelegt: **Codex** (`/root/.codex/AGENTS.md`, `/root/.codex/RTK.md`), **Gemini CLI** (`/root/.gemini/settings.json`, `/root/.gemini/hooks/rtk-hook-gemini.sh`, `/root/.gemini/GEMINI.md`), **Hermes** (`/root/.hermes/config.yaml`, Plugin unter `/root/.hermes/plugins/rtk-rewrite`) sowie **Cursor** (`/root/.cursor/hooks.json`).
+- Claude-Setup wurde bei diesem Ausbau von reinem Hook-Only auf den vollständigen globalen Modus erweitert: `~/.claude/RTK.md` und `~/.claude/CLAUDE.md` sind jetzt vorhanden; Hook in `~/.claude/settings.json` bleibt aktiv.
+- Verifiziert per Bash/Datei-Checks: Hook-/Agent-Dateien existieren, `rtk init --show` bestätigt Claude + Cursor, und `rtk rewrite` verhält sich passend zu den Regeln (`git status`/`pytest -q` werden zu RTK umgeschrieben, `curl`/`docker run` bleiben bewusst außen vor). Telemetry wurde danach erneut deaktiviert.
+
 ## 10.07.2026 — Mining Revenue Conversion Block
 - `frontend/src/pages/MiningTrustPage.jsx`: Advisor-/Ansprechpartner-Block ergänzt, inklusive Antwortzeit-Badge sowie WhatsApp-/Call-CTA.
 - `frontend/src/pages/MiningTrustPage.jsx`: Zielgruppen-Segmentierung für Investoren, Partner und Hosting-Kunden ergänzt.
