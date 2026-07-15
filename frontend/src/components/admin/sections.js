@@ -97,13 +97,14 @@ export const ADMIN_SECTIONS = [
     ],
   },
   {
-    title: "Lifestyle & Gesundheit", color: "#EC4899", count: 5,
+    title: "Lifestyle & Gesundheit", color: "#EC4899", count: 6,
     items: [
       { key: "admin-streaming", icon: Film, label: "Streaming" },
       { key: "admin-telemedizin", icon: Stethoscope, label: "Telemedizin" },
       { key: "admin-dating", icon: Heart, label: "Dating" },
       { key: "admin-fitness", icon: Dumbbell, label: "Fitness" },
       { key: "admin-reiseplaner", icon: Palmtree, label: "Reiseplaner" },
+      { key: "admin-pool", icon: Ticket, label: "Schwimmbad", nav: "/admin/pool" },
     ],
   },
   {

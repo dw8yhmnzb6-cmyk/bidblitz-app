@@ -172,6 +172,8 @@ const AdminAuditLogPage = lazy(() => import("./pages/AdminAuditLogPage"));
 const AdminBioPayAuditPage = lazy(() => import("./pages/AdminBioPayAuditPage"));
 const AdminDiagPage = lazy(() => import("./pages/AdminDiagPage"));
 const AdminRtkPage = lazy(() => import("./pages/AdminRtkPage"));
+const PoolFacilityPage = lazy(() => import("./pages/PoolFacilityPage"));
+const PoolAdminPage = lazy(() => import("./pages/PoolAdminPage"));
 const StaffUIAuditPage = lazy(() => import("./staff/StaffUIAuditPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
@@ -709,6 +711,8 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
+      case "/pool":
+        return <PoolFacilityPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} />;
       case "/selfcheckout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SelfCheckoutPage onBack={() => handleNavigate("/")} navState={navState} />;
       case "/admin/old":
@@ -751,6 +755,8 @@ function AppContent() {
         return user.role === "admin" ? <AdminDiagPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/rtk":
         return user.role === "admin" ? <AdminRtkPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/pool":
+        return user.role === "admin" ? <PoolAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/staff/ui-audit":
         return <StaffUIAuditPage onBack={() => handleNavigate("/staff")} />;
       case "/admin/push-broadcast":

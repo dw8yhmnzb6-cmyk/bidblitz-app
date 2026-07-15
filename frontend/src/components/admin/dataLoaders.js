@@ -71,6 +71,12 @@ const MODULE_LIST_CONFIG = {
     module: "Fitness-Studios", countLabel: "Gyms",
     fields: ["name", "type", "city", "monthly_price", "rating"],
   },
+  "admin-pool": {
+    url: "/api/pool/admin/dashboard",
+    pickItems: (d) => d.recent_tickets || [],
+    module: "Schwimmbad", countLabel: "Tickets",
+    fields: ["ticket_code", "package_label_de", "status", "total_amount"],
+  },
   "admin-reiseplaner": {
     url: "/api/reiseplaner/trips",
     pickItems: (d) => d.trips || [],

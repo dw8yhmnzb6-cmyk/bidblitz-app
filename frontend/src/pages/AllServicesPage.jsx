@@ -55,6 +55,7 @@ const CATEGORIES = [
     items: [
       { icon: Hotel, label: "Hotels", desc: "Weltweit buchen, Cashback", route: "/hotels", color: "#3B82F6" },
       { icon: Ticket, label: "Events", desc: "Konzerte, Sport, Theater", route: "/events", color: "#A855F7" },
+      { icon: Ticket, label: "Schwimmbad", desc: "Tickets, Spinde, Einlass & Familienpässe", route: "/pool", color: "#0088CC" },
       { icon: UtensilsCrossed, label: "Restaurants", desc: "Tisch reservieren", route: "/restaurants", color: "#EF4444" },
       { icon: Calendar, label: "Termine", desc: "Arzt, Friseur, Behörde", route: "/appointments", color: "#3B82F6" },
       { icon: Palmtree, label: "Reiseplaner", desc: "Komplett-Pakete buchen", route: "/reiseplaner", color: "#0D9488" },

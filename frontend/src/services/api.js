@@ -237,6 +237,18 @@ export const api = {
   updateAdminCustomerRadarScheduler: (body) => request("/api/admin/customer-intelligence/radar/scheduler", { method: "POST", body: JSON.stringify(body) }),
   triggerAdminCustomerRadarSchedulerTick: () => request("/api/admin/customer-intelligence/radar/scheduler/tick", { method: "POST" }),
 
+  // Pool / swimming facility
+  getPoolPublicOverview: () => request("/api/pool/public/overview"),
+  createPoolCheckout: (body) => request("/api/pool/public/tickets/checkout", { method: "POST", body: JSON.stringify(body) }),
+  getPoolCheckoutStatus: (sessionId) => request(`/api/pool/public/tickets/checkout-status/${encodeURIComponent(sessionId)}`),
+  getPoolAdminDashboard: () => request("/api/pool/admin/dashboard"),
+  createPoolCashSale: (body) => request("/api/pool/admin/tickets/cash-sale", { method: "POST", body: JSON.stringify(body) }),
+  getPoolLockers: () => request("/api/pool/admin/lockers"),
+  assignPoolLocker: (body) => request("/api/pool/admin/lockers/assign", { method: "POST", body: JSON.stringify(body) }),
+  releasePoolLocker: (body) => request("/api/pool/admin/lockers/release", { method: "POST", body: JSON.stringify(body) }),
+  scanPoolTurnstile: (body) => request("/api/pool/admin/turnstile/scan", { method: "POST", body: JSON.stringify(body) }),
+  createPoolSnackSale: (body) => request("/api/pool/admin/pos/sale", { method: "POST", body: JSON.stringify(body) }),
+
   // Transactions
   getTransactions: (params = {}) => {
     const query = new URLSearchParams();

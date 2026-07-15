@@ -384,6 +384,11 @@ async def stripe_webhook(request: Request):
                 await handle_dating_premium_webhook(event.session_id)
             except Exception:
                 pass
+            try:
+                from routes.pool_management import handle_pool_ticket_webhook
+                await handle_pool_ticket_webhook(event.session_id)
+            except Exception:
+                pass
 
             # 1. Wallet-Topup
             payment = await db.payment_transactions.find_one({"session_id": event.session_id})

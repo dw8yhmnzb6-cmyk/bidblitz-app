@@ -104,6 +104,7 @@ const ADMIN_SECTIONS = [
       { id: "partner-portal", icon: Handshake, label: "Partner Portal", tab: "merchants" },
       { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
       { id: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", tab: "qr-management", highlight: true },
+      { id: "pool-system", icon: Ticket, label: "Schwimmbad", tab: "pool", highlight: true },
     ]
   },
   {
@@ -657,6 +658,10 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
                     }
                     if (targetTab === "rtk") {
                       onNavigate("/admin/rtk");
+                      return;
+                    }
+                    if (targetTab === "pool") {
+                      onNavigate("/admin/pool");
                       return;
                     }
                     setTab(targetTab);
