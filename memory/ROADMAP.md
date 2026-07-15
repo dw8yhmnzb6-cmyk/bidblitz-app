@@ -8,7 +8,8 @@
 - ✅ RTK wurde danach zusätzlich **ausgewogen konfiguriert** (`include_commands` + `exclude_commands`) und auf weitere Agent-Ziele im Container ausgerollt: **Codex, Gemini CLI, Hermes, Cursor**.
 - ✅ Danach wurde zusätzlich eine echte **Admin-/Debug-Ansicht für RTK-Status/Savings** gebaut: `/admin/rtk` mit Live-Daten aus `/api/diag/rtk`.
 - ✅ Danach wurden auch **projektspezifische `.rtk/filters.toml`-Filter** für dieses Repo ergänzt und im Admin-Dashboard sichtbar gemacht.
-- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch Admin-Aktionen wie **„rtk trust ausführen“**, **„Rewrite-Test neu ausführen“**, **„Telemetry-Check aktualisieren“** oder **„Agent-Dateien neu generieren“** direkt aus `/admin/rtk` anbieten.
+- ✅ Danach wurden auch echte **RTK-Admin-Aktionen** eingebaut: Trust, Telemetry-Forget und Agent-Reapply direkt aus `/admin/rtk`.
+- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, noch **„Rewrite-Test neu ausführen“** und **„project filter diff / validation“** als zusätzliche Admin-Aktionen ergänzen oder die RTK-Seite um eine kleine Event-History erweitern.
 
 ## Status nach Admin-Kundendaten-Mix-Fix — 11.07.2026
 - ✅ Admin-Datenmix bei `admin@bidblitz.ae` bereinigt.

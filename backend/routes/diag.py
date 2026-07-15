@@ -36,6 +36,7 @@ RTK_CONFIG_PATH = Path.home() / ".config" / "rtk" / "config.toml"
 RTK_FILTERS_PATH = Path.home() / ".config" / "rtk" / "filters.toml"
 RTK_PROJECT_FILTERS_PATH = Path("/app/.rtk/filters.toml")
 RTK_TRUST_STORE_PATH = Path.home() / ".local" / "share" / "rtk" / "trusted_filters.json"
+RTK_PROJECT_ROOT = Path("/app")
 
 
 async def _require_admin(request: Request):
@@ -52,7 +53,7 @@ def _find_rtk_binary() -> str | None:
     return shutil.which("rtk")
 
 
-def _run_rtk_command(args: list[str], timeout: int = 10) -> dict:
+def _run_rtk_command(args: list[str], timeout: int = 10, cwd: str | None = None) -> dict:
     binary = _find_rtk_binary()
     if not binary:
         return {
@@ -70,6 +71,7 @@ def _run_rtk_command(args: list[str], timeout: int = 10) -> dict:
             text=True,
             timeout=timeout,
             check=False,
+            cwd=cwd,
         )
         return {
             "available": True,
@@ -77,6 +79,7 @@ def _run_rtk_command(args: list[str], timeout: int = 10) -> dict:
             "stdout": proc.stdout or "",
             "stderr": proc.stderr or "",
             "command": args,
+            "cwd": cwd,
         }
     except subprocess.TimeoutExpired:
         return {
@@ -85,6 +88,7 @@ def _run_rtk_command(args: list[str], timeout: int = 10) -> dict:
             "stdout": "",
             "stderr": f"Timeout after {timeout}s",
             "command": args,
+            "cwd": cwd,
         }
     except Exception as exc:
         return {
@@ -93,6 +97,7 @@ def _run_rtk_command(args: list[str], timeout: int = 10) -> dict:
             "stdout": "",
             "stderr": str(exc),
             "command": args,
+            "cwd": cwd,
         }
 
 
@@ -162,10 +167,22 @@ def _load_rtk_project_filters_state() -> dict:
         "exists": RTK_PROJECT_FILTERS_PATH.exists(),
         "trusted": trusted,
         "trust_store_path": str(RTK_TRUST_STORE_PATH),
+        "project_root": str(RTK_PROJECT_ROOT),
         "schema_version": parsed.get("schema_version") if isinstance(parsed, dict) else None,
         "filter_count": len(filter_names),
         "filter_names": filter_names,
     }
+
+
+def _action_response(ok: bool, action: str, result: dict | None = None, message: str | None = None) -> dict:
+    payload = {
+        "ok": ok,
+        "action": action,
+        "message": message or ("done" if ok else "failed"),
+        "result": result or {},
+    }
+    payload["status"] = _build_rtk_status_payload()
+    return payload
 
 
 def _detect_rtk_hooks() -> dict:
@@ -379,6 +396,52 @@ async def diag_failed_only(request: Request):
 async def diag_rtk_status(request: Request):
     await _require_admin(request)
     return await asyncio.to_thread(_build_rtk_status_payload)
+
+
+@router.post("/rtk/trust-project-filters")
+async def diag_rtk_trust_project_filters(request: Request):
+    await _require_admin(request)
+    if not RTK_PROJECT_FILTERS_PATH.exists():
+        raise HTTPException(404, "Projektfilter-Datei nicht gefunden")
+
+    def _run():
+        result = _run_rtk_command(["trust"], timeout=20, cwd=str(RTK_PROJECT_ROOT))
+        ok = result.get("exit_code") == 0
+        return _action_response(ok, "trust_project_filters", result=result, message="Projektfilter wurden vertraut" if ok else "Projektfilter konnten nicht vertraut werden")
+
+    return await asyncio.to_thread(_run)
+
+
+@router.post("/rtk/telemetry/forget")
+async def diag_rtk_telemetry_forget(request: Request):
+    await _require_admin(request)
+
+    def _run():
+        result = _run_rtk_command(["telemetry", "forget"], timeout=20)
+        ok = result.get("exit_code") == 0
+        return _action_response(ok, "telemetry_forget", result=result, message="Telemetry wurde deaktiviert" if ok else "Telemetry konnte nicht aktualisiert werden")
+
+    return await asyncio.to_thread(_run)
+
+
+@router.post("/rtk/reapply-agents")
+async def diag_rtk_reapply_agents(request: Request):
+    await _require_admin(request)
+
+    def _run():
+        Path.home().joinpath(".cursor").mkdir(parents=True, exist_ok=True)
+        commands = [
+            ["init", "-g", "--auto-patch"],
+            ["init", "-g", "--codex"],
+            ["init", "-g", "--gemini", "--auto-patch"],
+            ["init", "-g", "--agent", "hermes"],
+            ["init", "-g", "--agent", "cursor"],
+        ]
+        runs = [_run_rtk_command(cmd, timeout=30) for cmd in commands]
+        ok = all(run.get("exit_code") == 0 for run in runs)
+        return _action_response(ok, "reapply_agents", result={"runs": runs}, message="Agent-Dateien wurden neu erzeugt" if ok else "Mindestens ein Agent-Setup konnte nicht erneuert werden")
+
+    return await asyncio.to_thread(_run)
 
 
 

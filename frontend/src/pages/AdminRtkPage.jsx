@@ -47,6 +47,8 @@ function MetricCard({ icon: Icon, label, value, sub, color, testId }) {
 export default function AdminRtkPage({ onBack }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState("");
+  const [lastAction, setLastAction] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -70,6 +72,29 @@ export default function AdminRtkPage({ onBack }) {
   const includeCommands = data?.config?.include_commands || [];
   const excludeCommands = data?.config?.exclude_commands || [];
   const projectFilters = data?.project_filters || {};
+
+  const runAction = async (actionId, path, successMessage) => {
+    setActionLoading(actionId);
+    try {
+      const res = await fetch(`${API}${path}`, { method: "POST", credentials: "include" });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload.ok === false) {
+        throw new Error(payload.message || payload.detail || `Action failed (${res.status})`);
+      }
+      setLastAction({
+        id: actionId,
+        message: payload.message || successMessage,
+        stdout: payload.result?.stdout || payload.result?.stderr || JSON.stringify(payload.result || {}, null, 2),
+      });
+      setData(payload.status || null);
+      toast.success(payload.message || successMessage);
+    } catch (error) {
+      toast.error(error.message);
+      setLastAction({ id: actionId, message: error.message, stdout: "" });
+    } finally {
+      setActionLoading("");
+    }
+  };
 
   const rewriteStats = useMemo(() => {
     const samples = data?.rewrite_samples || [];
@@ -327,6 +352,55 @@ export default function AdminRtkPage({ onBack }) {
                   Projekt-Filter werden von RTK erst nach explizitem Vertrauen genutzt. Nach Änderungen an <code className="rounded bg-white/70 px-1 py-0.5 text-[11px]">.rtk/filters.toml</code> bitte bewusst <code className="rounded bg-white/70 px-1 py-0.5 text-[11px]">rtk trust</code> im Projektverzeichnis ausführen.
                 </p>
               </div>
+            </section>
+
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm" data-testid="admin-rtk-actions-section">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-[15px] font-bold text-gray-900">Admin-Aktionen</h2>
+                  <p className="text-[12px] text-gray-500">Kontrollierte RTK-Aktionen direkt aus dem Admin.</p>
+                </div>
+                <StatusPill testId="admin-rtk-actions-status" ok={!actionLoading} label={actionLoading ? `läuft: ${actionLoading}` : "bereit"} />
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  disabled={Boolean(actionLoading) || projectFilters.trusted}
+                  onClick={() => runAction("trust", "/api/diag/rtk/trust-project-filters", "Projektfilter wurden vertraut")}
+                  data-testid="admin-rtk-action-trust"
+                  className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-left disabled:opacity-60"
+                >
+                  <p className="text-[13px] font-bold text-violet-900">Projektfilter trusten</p>
+                  <p className="mt-1 text-[11px] text-violet-700">Führt `rtk trust --yes` im Repo aus.</p>
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  disabled={Boolean(actionLoading)}
+                  onClick={() => runAction("telemetry", "/api/diag/rtk/telemetry/forget", "Telemetry wurde deaktiviert")}
+                  data-testid="admin-rtk-action-telemetry"
+                  className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left disabled:opacity-60"
+                >
+                  <p className="text-[13px] font-bold text-emerald-900">Telemetry deaktivieren</p>
+                  <p className="mt-1 text-[11px] text-emerald-700">Führt `rtk telemetry forget` erneut aus.</p>
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  disabled={Boolean(actionLoading)}
+                  onClick={() => runAction("agents", "/api/diag/rtk/reapply-agents", "Agent-Dateien wurden neu erzeugt")}
+                  data-testid="admin-rtk-action-reapply"
+                  className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left disabled:opacity-60"
+                >
+                  <p className="text-[13px] font-bold text-sky-900">Agent-Dateien neu generieren</p>
+                  <p className="mt-1 text-[11px] text-sky-700">Erneuert Claude, Codex, Gemini, Hermes und Cursor.</p>
+                </motion.button>
+              </div>
+              {lastAction ? (
+                <div className="mt-4 rounded-2xl border border-gray-100 bg-gray-50 p-4" data-testid="admin-rtk-last-action-box">
+                  <p className="text-[12px] font-bold text-gray-900">Letzte Aktion: {lastAction.id}</p>
+                  <p className="mt-1 text-[11px] text-gray-600">{lastAction.message}</p>
+                  {lastAction.stdout ? <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-[10px] text-gray-700">{lastAction.stdout}</pre> : null}
+                </div>
+              ) : null}
             </section>
 
             <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm" data-testid="admin-rtk-savings-section">

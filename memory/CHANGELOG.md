@@ -27,6 +27,12 @@
 - `frontend/src/pages/AdminRtkPage.jsx` zeigt dazu nun eine eigene **Projekt-Filter-Sektion** mit Trust-Hinweis, Filteranzahl, Filternamen und Trust-Status direkt im Admin-Dashboard.
 - Verifiziert per Bash/API: `.rtk/filters.toml` existiert, API meldet **6 Filter**, Namen werden korrekt zurückgegeben und Status ist aktuell bewusst **`not trusted`**, bis im Projektverzeichnis explizit `rtk trust` ausgeführt wird.
 
+## 15.07.2026 — RTK-Adminaktionen eingebaut und Trust live aktiviert
+- `frontend/src/pages/AdminRtkPage.jsx` erweitert um echte **Admin-Aktionen** mit `data-testid`: Projektfilter trusten, Telemetry erneut vergessen/deaktivieren und Agent-Dateien neu generieren. Jede Aktion zeigt den letzten Lauf inkl. Meldung/Output im UI.
+- `backend/routes/diag.py` erweitert um neue Admin-Endpunkte: **`POST /api/diag/rtk/trust-project-filters`**, **`POST /api/diag/rtk/telemetry/forget`** und **`POST /api/diag/rtk/reapply-agents`**. Rückgabe enthält jeweils die aktualisierte RTK-Status-Payload für sofortige UI-Aktualisierung.
+- Während dieses Ausbaus wurde ein bereits vorhandener, abgeschnittener Syntaxfehler am Ende von `backend/routes/diag.py` (`migration_audit_log_rollback`) repariert; danach registrierte der Server wieder **194 Router** sauber.
+- Verifiziert per Live-API: `trust-project-filters` => **200 / ok=true**, `telemetry/forget` => **200 / ok=true**, `reapply-agents` => **200 / ok=true**. Danach liefert `GET /api/diag/rtk` den Status **`project_filters.trusted = true`**, `telemetry_enabled = false`, `hooks.configured_count = 5`.
+
 ## 10.07.2026 — Mining Revenue Conversion Block
 - `frontend/src/pages/MiningTrustPage.jsx`: Advisor-/Ansprechpartner-Block ergänzt, inklusive Antwortzeit-Badge sowie WhatsApp-/Call-CTA.
 - `frontend/src/pages/MiningTrustPage.jsx`: Zielgruppen-Segmentierung für Investoren, Partner und Hosting-Kunden ergänzt.
