@@ -1,11 +1,40 @@
 #import <Foundation/Foundation.h>
 #import <CoreData/CoreData.h>
 #import <objc/runtime.h>
+#import <sys/sysctl.h>
+#include <unistd.h>
 
-#if DEBUG
+static BOOL BBTraceDebuggerAttached(void) {
+    int mib[4];
+    struct kinfo_proc info;
+    size_t size = sizeof(info);
+    memset(&info, 0, sizeof(info));
+
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROC;
+    mib[2] = KERN_PROC_PID;
+    mib[3] = getpid();
+
+    if (sysctl(mib, 4, &info, &size, NULL, 0) != 0) {
+        return NO;
+    }
+
+    return ((info.kp_proc.p_flag & P_TRACED) != 0);
+}
+
+static BOOL BBTraceShouldActivate(void) {
+    NSDictionary<NSString *, NSString *> *env = NSProcessInfo.processInfo.environment;
+    if (env[@"OS_ACTIVITY_DT_MODE"] != nil) return YES;
+    if (env[@"IDE_DISABLED_OS_ACTIVITY_DT_MODE"] != nil) return YES;
+    if (env[@"__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil) return YES;
+    return BBTraceDebuggerAttached();
+}
 
 __attribute__((constructor))
 static void BBTraceConstructor(void) {
+    if (!BBTraceShouldActivate()) {
+        return;
+    }
     NSLog(@"[CoreDataTrace][START] CoreDataTrace DEBUG constructor loaded");
     NSLog(@"[CoreDataTrace][END] CoreDataTrace DEBUG constructor ready");
 }
@@ -51,6 +80,9 @@ static NSArray<NSString *> *BBTraceRelevantFrameworks(void) {
 }
 
 static void BBTraceInstallSwizzle(void) {
+    if (!BBTraceShouldActivate()) {
+        return;
+    }
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         Class class = [NSPersistentStoreCoordinator class];
@@ -115,6 +147,9 @@ static void BBTraceLogStoreEvent(NSString *storeType, NSString *configuration, N
 @implementation BBTraceProbe
 
 + (void)load {
+    if (!BBTraceShouldActivate()) {
+        return;
+    }
     NSLog(@"[CoreDataTrace][START] BBTraceProbe +load invoked");
     BBTraceInstallSwizzle();
     NSLog(@"[CoreDataTrace][END] BBTraceProbe +load finished");
@@ -152,5 +187,3 @@ static void BBTraceLogStoreEvent(NSString *storeType, NSString *configuration, N
 }
 
 @end
-
-#endif
