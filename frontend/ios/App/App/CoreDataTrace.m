@@ -30,8 +30,39 @@ static BOOL BBTraceShouldActivate(void) {
     return BBTraceDebuggerAttached();
 }
 
+static void BBEnsureApplicationSupportDirectory(void) {
+    NSError *directoryError = nil;
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSURL *applicationSupportURL = [fileManager URLForDirectory:NSApplicationSupportDirectory
+                                                       inDomain:NSUserDomainMask
+                                              appropriateForURL:nil
+                                                         create:YES
+                                                          error:&directoryError];
+
+    if (applicationSupportURL == nil) {
+        NSLog(@"[CoreDataFix][ERROR] Failed to resolve Application Support directory: %@", directoryError.localizedDescription ?: @"unknown error");
+        return;
+    }
+
+    directoryError = nil;
+    BOOL created = [fileManager createDirectoryAtURL:applicationSupportURL
+                         withIntermediateDirectories:YES
+                                          attributes:nil
+                                               error:&directoryError];
+
+    if (!created && directoryError != nil) {
+        NSLog(@"[CoreDataFix][ERROR] Failed to create Application Support directory at %@: %@", applicationSupportURL.path ?: @"(nil)", directoryError.localizedDescription ?: @"unknown error");
+        return;
+    }
+
+    if (BBTraceShouldActivate()) {
+        NSLog(@"[CoreDataFix][ENSURE] Application Support ready at %@", applicationSupportURL.path ?: @"(nil)");
+    }
+}
+
 __attribute__((constructor))
 static void BBTraceConstructor(void) {
+    BBEnsureApplicationSupportDirectory();
     if (!BBTraceShouldActivate()) {
         return;
     }
