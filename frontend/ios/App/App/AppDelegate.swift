@@ -6,6 +6,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    override init() {
+        super.init()
+        ensureApplicationSupportDirectory()
+    }
+
     private func ensureApplicationSupportDirectory() {
         guard let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             return
