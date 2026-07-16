@@ -1329,13 +1329,29 @@ def resolve_product_image(title: str, current: str = "") -> str:
 
 
 def resolve_product_gallery(title: str, image_urls: list | None = None, image_url: str = "") -> list[str]:
+    title_text = (title or "").lower()
+    explicit_gallery_map = [
+        (["iphone 17 pro max"], SMARTPHONE_GALLERY),
+        (["samsung galaxy s26 ultra"], list(reversed(SMARTPHONE_GALLERY))),
+        (["google pixel 10 pro"], SMARTPHONE_GALLERY[2:] + SMARTPHONE_GALLERY[:2]),
+        (["xiaomi 16 ultra"], SMARTPHONE_GALLERY[3:] + SMARTPHONE_GALLERY[:3]),
+        (["macbook pro m6 max"], LAPTOP_GALLERY),
+        (["dell xps 17"], LAPTOP_GALLERY[1:] + LAPTOP_GALLERY[:1]),
+        (["lenovo yoga pro 9i"], LAPTOP_GALLERY[2:] + LAPTOP_GALLERY[:2]),
+        (["asus rog zephyrus"], LAPTOP_GALLERY[3:] + LAPTOP_GALLERY[:3]),
+    ]
+    for keywords, gallery in explicit_gallery_map:
+        if any(keyword in title_text for keyword in keywords):
+            primary = resolve_product_image(title, image_url or "")
+            ordered = [primary] + [img for img in gallery if img != primary]
+            return ordered[:4]
+
     candidates = []
     for img in (image_urls or []):
         resolved = resolve_product_image(title, img or "")
         if resolved and resolved not in candidates:
             candidates.append(resolved)
 
-    title_text = (title or "").lower()
     curated_map = [
         (["iphone", "galaxy", "pixel", "xiaomi", "oneplus", "smartphone", "phone"], SMARTPHONE_GALLERY),
         (["macbook", "laptop", "notebook", "xps", "zephyrus", "yoga"], LAPTOP_GALLERY),
@@ -1505,7 +1521,7 @@ def _build_auction_doc(d: dict, created_by: str, now: datetime, slot_index: int 
         # i18n: pre-translated catalog (DE/EN/SQ/TR) — None if not yet translated
         "translations": d.get("translations") or None,
         "image_url": resolve_product_image(d["title"], d.get("image_url") or PRODUCT_IMAGES.get(d["title"], "")),
-        "image_urls": [resolve_product_image(d["title"], img) for img in (d.get("image_urls") or [])][:4],
+        "image_urls": resolve_product_gallery(d["title"], d.get("image_urls") or [], d.get("image_url") or PRODUCT_IMAGES.get(d["title"], "")),
         "retail_price": d["retail_price"],
         "starting_price": 0.01,
         "current_price": 0.01,
@@ -2416,6 +2432,7 @@ async def schedule_single_auction(req: ScheduleAuctionRequest, request: Request)
         "title": product["title"],
         "description": product["description"],
         "image_url": resolve_product_image(product["title"], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
+        "image_urls": resolve_product_gallery(product["title"], product.get("image_urls") or [], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
         "retail_price": product["retail_price"],
         "starting_price": 0.00,
         "current_price": 0.00,
@@ -2481,6 +2498,7 @@ async def bulk_schedule_auctions(req: BulkScheduleRequest, request: Request):
             "title": product["title"],
             "description": product["description"],
             "image_url": resolve_product_image(product["title"], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
+            "image_urls": resolve_product_gallery(product["title"], product.get("image_urls") or [], product.get("image_url") or PRODUCT_IMAGES.get(product["title"], "")),
             "retail_price": product["retail_price"],
             "starting_price": 0.00,
             "current_price": 0.00,
