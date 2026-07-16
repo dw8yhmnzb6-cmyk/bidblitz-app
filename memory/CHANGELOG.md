@@ -21,6 +21,27 @@
   - Backend-Self-Test erfolgreich: `public overview 200`, `admin dashboard 200`, `cash sale 200`, `locker assign 200`, `turnstile entry 200`, `snack sale 200`.
   - Testing Agent **Iteration 250 PASS**: `/pool` und `/admin/pool` komplett geprüft, **7/7 Kernfeatures PASS**, **41 data-testid** erkannt. Nur nicht-blockierender Hinweis: Cookie-Banner-Overlay unten rechts.
 
+## 15.07.2026 — Echte Hardware-Anbindung fachlich definiert (vendor-neutral)
+- Auf Basis der Nutzerwahl wurde für das Pool-Modul eine **vendor-neutrale Hardware-Architektur** ergänzt: RFID/NFC + QR-Armbänder, Turnstile via HTTP **und** TCP/Serial, Locker via Netzwerk-API **und** Relay-Bridge. Unterstützte Betriebsmodelle sind jetzt fachlich im System hinterlegt: **Cloud only**, **Cloud + local edge service** und **Hybrid with gateway box**.
+- `backend/routes/pool_management.py` erweitert um:
+  - **`GET /api/pool/admin/hardware/config`**
+  - **`POST /api/pool/admin/hardware/config`**
+  - Hardware-Blueprint-Datenmodell (`HARDWARE_BLUEPRINT`, `DEFAULT_HARDWARE_CONFIG`)
+  - leichtgewichtiges Hardware-Event-Log in `pool_hardware_events`
+  - persistente Hardware-Konfiguration in `pool_hardware_config`
+- `frontend/src/pages/PoolAdminPage.jsx` erweitert um neuen Tab **Hardware** mit:
+  - Auswahl des Deployment-Modus
+  - RFID-Provider-/Adapter-Modus
+  - Turnstile-Bridge-Typ
+  - Locker-Bridge-Typ
+  - Shared-Secret-/Gateway-Hinweis
+  - Architektur-Karten, Adapter-Feldlisten und Hardware-Event-Log
+- Verifiziert per Live-API:
+  - `GET /api/pool/admin/hardware/config` => **200**
+  - `POST /api/pool/admin/hardware/config` => **200 / ok=true**
+  - Hardware-Blueprint erfolgreich auf **`hybrid_gateway`** mit **serial_reader_bridge**, **serial_turnstile_bridge** und **relay_locker_bridge** gespeichert
+  - `GET /api/pool/admin/dashboard` zeigt danach **1 Hardware-Event** und die aktualisierte Konfiguration.
+
 ## 15.07.2026 — RTK CLI Proxy im Container installiert und verifiziert
 - RTK **v0.43.0** für den aktuellen **aarch64**-Container installiert. Der offizielle Release-Download `rtk-aarch64-unknown-linux-gnu.tar.gz` war in dieser Umgebung **nicht direkt lauffähig** (`GLIBC_2.39 not found` gegen Container-GLIBC 2.36), daher wurde RTK kontrolliert **aus dem offiziellen GitHub-Tag `v0.43.0` per Rust/Cargo lokal kompiliert** und nach `/usr/local/bin/rtk` installiert.
 - Globales Hook-Setup für Claude-Code-artige Bash-Rewrites aktiviert mit `rtk init -g --hook-only --auto-patch`; resultierende Konfiguration in `/root/.claude/settings.json` zeigt jetzt `PreToolUse -> rtk hook claude`.

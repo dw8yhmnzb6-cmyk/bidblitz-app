@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, CreditCard, Lock, QrCode, Loader2, Ticket, BarChart3, ShoppingBag, CheckCircle2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CreditCard, Lock, QrCode, Loader2, Ticket, BarChart3, ShoppingBag, CheckCircle2, ShieldCheck, Cpu, ServerCog, Radio, Cable } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const tabLabels = {
-  de: { overview: "Übersicht", cashier: "Kasse", access: "Einlass", lockers: "Spinde", snacks: "Snack POS", history: "History" },
-  en: { overview: "Overview", cashier: "Cashier", access: "Access", lockers: "Lockers", snacks: "Snack POS", history: "History" },
+  de: { overview: "Übersicht", cashier: "Kasse", access: "Einlass", lockers: "Spinde", snacks: "Snack POS", hardware: "Hardware", history: "History" },
+  en: { overview: "Overview", cashier: "Cashier", access: "Access", lockers: "Lockers", snacks: "Snack POS", hardware: "Hardware", history: "History" },
 };
 
 async function adminApi(path, options = {}) {
@@ -60,12 +60,25 @@ export default function PoolAdminPage({ onBack }) {
   const [salePaymentMethod, setSalePaymentMethod] = useState("cash");
   const [saleTicketCode, setSaleTicketCode] = useState("");
   const [saleResult, setSaleResult] = useState(null);
+  const [deploymentMode, setDeploymentMode] = useState("cloud_plus_edge");
+  const [rfidProviderMode, setRfidProviderMode] = useState("nfc_mifare_and_qr");
+  const [rfidAdapterType, setRfidAdapterType] = useState("edge_reader_bridge");
+  const [turnstileAdapterType, setTurnstileAdapterType] = useState("edge_turnstile_bridge");
+  const [lockerAdapterType, setLockerAdapterType] = useState("edge_locker_bridge");
+  const [sharedSecretHint, setSharedSecretHint] = useState("");
+  const [hardwareSaveResult, setHardwareSaveResult] = useState(null);
 
   const load = async () => {
     setLoading(true);
     try {
       const data = await adminApi("/api/pool/admin/dashboard");
       setDashboard(data);
+      setDeploymentMode(data.hardware_config?.selected_mode || "cloud_plus_edge");
+      setRfidProviderMode(data.hardware_config?.rfid?.provider_mode || "nfc_mifare_and_qr");
+      setRfidAdapterType(data.hardware_config?.rfid?.adapter_type || "edge_reader_bridge");
+      setTurnstileAdapterType(data.hardware_config?.turnstile?.adapter_type || "edge_turnstile_bridge");
+      setLockerAdapterType(data.hardware_config?.locker?.adapter_type || "edge_locker_bridge");
+      setSharedSecretHint(data.hardware_config?.security?.shared_secret_hint || "");
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -185,6 +198,32 @@ export default function PoolAdminPage({ onBack }) {
 
   const lockers = dashboard?.lockers || [];
   const occupiedLockers = lockers.filter((locker) => locker.status === "occupied");
+  const hardwareBlueprint = dashboard?.hardware_blueprint || {};
+  const hardwareEvents = dashboard?.hardware_events || [];
+
+  const saveHardwareBlueprint = async () => {
+    setBusy(true);
+    try {
+      const data = await adminApi("/api/pool/admin/hardware/config", {
+        method: "POST",
+        body: JSON.stringify({
+          selected_mode: deploymentMode,
+          rfid_provider_mode: rfidProviderMode,
+          rfid_adapter_type: rfidAdapterType,
+          turnstile_adapter_type: turnstileAdapterType,
+          locker_adapter_type: lockerAdapterType,
+          shared_secret_hint: sharedSecretHint,
+        }),
+      });
+      setHardwareSaveResult(data.hardware_event);
+      toast.success("Hardware-Blueprint gespeichert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (loading && !dashboard) {
     return <div className="flex min-h-screen items-center justify-center bg-[#F4F7F9]" data-testid="pool-admin-loading"><Loader2 className="animate-spin text-[#0088CC]" /></div>;
@@ -345,6 +384,96 @@ export default function PoolAdminPage({ onBack }) {
               <button onClick={createSnackSale} disabled={busy} data-testid="pool-admin-create-snack-sale" className="rounded-full bg-[#FF8C00] px-6 py-4 text-sm font-black text-white disabled:opacity-60">Save sale · € {snackTotal}</button>
             </div>
             {saleResult ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" data-testid="pool-admin-snack-sale-result">{saleResult.receipt_code} · € {Number(saleResult.total_amount || 0).toFixed(2)}</div> : null}
+          </div>
+        ) : null}
+
+        {tab === "hardware" ? (
+          <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]" data-testid="pool-admin-hardware-section">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900"><Cpu size={18} /> Hardware blueprint</div>
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Deployment mode</div>
+                  <div className="flex flex-wrap gap-2">
+                    {(hardwareBlueprint.architectures || []).map((item) => <TogglePill key={item.id} active={deploymentMode === item.id} onClick={() => setDeploymentMode(item.id)} label={`${item.label_de} · ${item.fit}`} testId={`pool-admin-hardware-mode-${item.id}`} />)}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-admin-hardware-rfid-card">
+                  <div className="mb-2 flex items-center gap-2 font-bold text-slate-900"><Radio size={16} /> RFID / Wristband</div>
+                  <div className="flex flex-wrap gap-2">
+                    <TogglePill active={rfidProviderMode === "nfc_mifare_and_qr"} onClick={() => setRfidProviderMode("nfc_mifare_and_qr")} label="NFC/MIFARE + QR" testId="pool-admin-rfid-mode-combo" />
+                    <TogglePill active={rfidProviderMode === "nfc_mifare"} onClick={() => setRfidProviderMode("nfc_mifare")} label="NFC / MIFARE" testId="pool-admin-rfid-mode-nfc" />
+                    <TogglePill active={rfidProviderMode === "qr_only"} onClick={() => setRfidProviderMode("qr_only")} label="QR only" testId="pool-admin-rfid-mode-qr" />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <TogglePill active={rfidAdapterType === "edge_reader_bridge"} onClick={() => setRfidAdapterType("edge_reader_bridge")} label="Edge reader bridge" testId="pool-admin-rfid-adapter-edge" />
+                    <TogglePill active={rfidAdapterType === "serial_reader_bridge"} onClick={() => setRfidAdapterType("serial_reader_bridge")} label="Serial / USB bridge" testId="pool-admin-rfid-adapter-serial" />
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-admin-hardware-turnstile-card">
+                  <div className="mb-2 flex items-center gap-2 font-bold text-slate-900"><ServerCog size={16} /> Turnstile bridge</div>
+                  <div className="flex flex-wrap gap-2">
+                    <TogglePill active={turnstileAdapterType === "edge_turnstile_bridge"} onClick={() => setTurnstileAdapterType("edge_turnstile_bridge")} label="HTTP controller" testId="pool-admin-turnstile-http" />
+                    <TogglePill active={turnstileAdapterType === "serial_turnstile_bridge"} onClick={() => setTurnstileAdapterType("serial_turnstile_bridge")} label="TCP / Serial bridge" testId="pool-admin-turnstile-serial" />
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-admin-hardware-locker-card">
+                  <div className="mb-2 flex items-center gap-2 font-bold text-slate-900"><Cable size={16} /> Locker relay / API</div>
+                  <div className="flex flex-wrap gap-2">
+                    <TogglePill active={lockerAdapterType === "edge_locker_bridge"} onClick={() => setLockerAdapterType("edge_locker_bridge")} label="Network locker API" testId="pool-admin-locker-network" />
+                    <TogglePill active={lockerAdapterType === "relay_locker_bridge"} onClick={() => setLockerAdapterType("relay_locker_bridge")} label="Relay bridge" testId="pool-admin-locker-relay" />
+                  </div>
+                </div>
+                <input value={sharedSecretHint} onChange={(e) => setSharedSecretHint(e.target.value)} data-testid="pool-admin-hardware-secret-hint" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3" placeholder="Shared secret / gateway note" />
+                <button onClick={saveHardwareBlueprint} disabled={busy} data-testid="pool-admin-save-hardware-blueprint" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0088CC] px-5 py-4 text-sm font-black text-white disabled:opacity-60">Save hardware blueprint</button>
+                {hardwareSaveResult ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" data-testid="pool-admin-hardware-save-result">{hardwareSaveResult.message}</div> : null}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-hardware-architecture-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Empfohlene Integrations-Architektur</div>
+                <div className="space-y-3 text-sm text-slate-600">
+                  {(hardwareBlueprint.architectures || []).map((item) => (
+                    <div key={item.id} className={`rounded-2xl border p-4 ${deploymentMode === item.id ? "border-[#0088CC] bg-[#E8F6FD]" : "border-slate-200 bg-slate-50"}`} data-testid={`pool-admin-architecture-${item.id}`}>
+                      <div className="font-bold text-slate-900">{item.label_de}</div>
+                      <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">Fit: {item.fit}</div>
+                      <div className="mt-2">{item.note_de}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-hardware-fields-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Adapter-Felder & Kommandos</div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-admin-hardware-rfid-fields">
+                    <div className="font-bold text-slate-900">RFID</div>
+                    <div className="mt-2 space-y-1 text-xs text-slate-600">{(hardwareBlueprint.rfid?.fields || []).map((field) => <div key={field}>• {field}</div>)}</div>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-admin-hardware-turnstile-fields">
+                    <div className="font-bold text-slate-900">Turnstile</div>
+                    <div className="mt-2 space-y-1 text-xs text-slate-600">{(hardwareBlueprint.turnstile?.fields || []).map((field) => <div key={field}>• {field}</div>)}</div>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-admin-hardware-locker-fields">
+                    <div className="font-bold text-slate-900">Locker</div>
+                    <div className="mt-2 space-y-1 text-xs text-slate-600">{(hardwareBlueprint.locker?.fields || []).map((field) => <div key={field}>• {field}</div>)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-hardware-events-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Hardware event log</div>
+                <div className="space-y-3">
+                  {hardwareEvents.length === 0 ? <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500" data-testid="pool-admin-hardware-events-empty">Noch keine Hardware-Ereignisse gespeichert.</div> : hardwareEvents.map((event) => (
+                    <div key={event.event_id} className="rounded-2xl bg-slate-50 p-4" data-testid={`pool-admin-hardware-event-${event.event_id}`}>
+                      <div className="flex items-center justify-between gap-3"><div className="font-bold text-slate-900">{event.device_type} · {event.adapter_type}</div><div className="text-sm text-slate-500">{event.status}</div></div>
+                      <div className="mt-1 text-sm text-slate-600">{event.message}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         ) : null}
 

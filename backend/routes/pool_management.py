@@ -123,6 +123,97 @@ TURNSTILES = [
     {"turnstile_id": "SPA-01", "label": "Spa lane"},
 ]
 
+HARDWARE_BLUEPRINT = {
+    "architectures": [
+        {
+            "id": "cloud_only",
+            "label_de": "Cloud-Backend direkt",
+            "label_en": "Direct cloud backend",
+            "fit": "Niedrig bis mittel",
+            "note_de": "Einfach, aber für lokale Controller nur bedingt robust.",
+            "note_en": "Simple, but only moderately robust for local controllers.",
+        },
+        {
+            "id": "cloud_plus_edge",
+            "label_de": "Cloud + lokaler Edge-Dienst",
+            "label_en": "Cloud + local edge service",
+            "fit": "Hoch",
+            "note_de": "Empfohlene Standardarchitektur für Drehkreuze, Relais und Offline-Fallback.",
+            "note_en": "Recommended default architecture for turnstiles, relays and offline fallback.",
+        },
+        {
+            "id": "hybrid_gateway",
+            "label_de": "Hybrid mit Gateway-Box",
+            "label_en": "Hybrid with gateway box",
+            "fit": "Sehr hoch",
+            "note_de": "Beste Option für mehrere Zonen, hohe Frequenz und verschiedene Hersteller.",
+            "note_en": "Best option for multiple zones, high throughput and mixed vendors.",
+        },
+    ],
+    "rfid": {
+        "supported_modes": ["nfc_mifare", "qr_wristband"],
+        "recommended_patterns": [
+            {
+                "id": "rfid-reader-http",
+                "label": "HTTP reader bridge",
+                "protocols": ["HTTP", "Webhook", "Local daemon"],
+                "best_for": "REST-fähige Reader oder Edge-Service mit Reader-SDK",
+            },
+            {
+                "id": "rfid-reader-serial",
+                "label": "Serial / USB bridge",
+                "protocols": ["USB", "Serial", "TCP bridge"],
+                "best_for": "MIFARE-/NFC-Leser ohne Cloud-API",
+            },
+        ],
+        "fields": ["wristband_uid", "rfid_family", "reader_id", "encoding", "site_code"],
+    },
+    "turnstile": {
+        "supported_modes": ["http_controller", "tcp_serial_bridge"],
+        "commands": ["grant_entry", "grant_exit", "lock_lane", "unlock_lane", "heartbeat"],
+        "fields": ["turnstile_id", "controller_url", "lane_direction", "protocol", "auth_token"],
+    },
+    "locker": {
+        "supported_modes": ["network_api", "relay_bridge"],
+        "commands": ["open_locker", "close_locker", "reserve_locker", "release_locker", "status_sync"],
+        "fields": ["locker_id", "controller_url", "relay_channel", "zone", "fail_safe_mode"],
+    },
+}
+
+DEFAULT_HARDWARE_CONFIG = {
+    "deployment_modes": ["cloud_only", "cloud_plus_edge", "hybrid_gateway"],
+    "selected_mode": "cloud_plus_edge",
+    "rfid": {
+        "enabled": True,
+        "provider_mode": "nfc_mifare_and_qr",
+        "adapter_type": "edge_reader_bridge",
+        "protocols": ["http", "serial"],
+        "webhook_path": "/api/pool/hardware/rfid/events",
+        "status": "planned",
+    },
+    "turnstile": {
+        "enabled": True,
+        "adapter_type": "edge_turnstile_bridge",
+        "protocols": ["http", "tcp", "serial"],
+        "webhook_path": "/api/pool/hardware/turnstile/events",
+        "status": "planned",
+    },
+    "locker": {
+        "enabled": True,
+        "adapter_type": "edge_locker_bridge",
+        "protocols": ["http", "relay"],
+        "webhook_path": "/api/pool/hardware/locker/events",
+        "status": "planned",
+    },
+    "security": {
+        "shared_secret_required": True,
+        "heartbeat_seconds": 30,
+        "allow_offline_queue": True,
+        "audit_every_event": True,
+    },
+    "updated_at": None,
+}
+
 
 class PoolCheckoutRequest(BaseModel):
     package_id: str
@@ -167,6 +258,15 @@ class SnackSaleRequest(BaseModel):
     items: List[SnackSaleItem]
     payment_method: str = Field("cash")
     ticket_code: Optional[str] = None
+
+
+class HardwareConfigRequest(BaseModel):
+    selected_mode: str = Field("cloud_plus_edge")
+    rfid_provider_mode: str = Field("nfc_mifare_and_qr")
+    rfid_adapter_type: str = Field("edge_reader_bridge")
+    turnstile_adapter_type: str = Field("edge_turnstile_bridge")
+    locker_adapter_type: str = Field("edge_locker_bridge")
+    shared_secret_hint: Optional[str] = None
 
 
 def _now_iso() -> str:
@@ -339,6 +439,42 @@ def _sale_view(doc: dict) -> dict:
     }
 
 
+def _hardware_log_view(doc: dict) -> dict:
+    return {
+        "event_id": doc.get("event_id"),
+        "device_type": doc.get("device_type"),
+        "adapter_type": doc.get("adapter_type"),
+        "status": doc.get("status"),
+        "message": doc.get("message"),
+        "payload_summary": doc.get("payload_summary"),
+        "created_at": doc.get("created_at"),
+    }
+
+
+async def _ensure_hardware_config():
+    existing = await db.pool_hardware_config.find_one({"facility_id": FACILITY_ID}, {"_id": 0})
+    if existing:
+        return existing
+    doc = {"facility_id": FACILITY_ID, **DEFAULT_HARDWARE_CONFIG, "updated_at": _now_iso()}
+    await db.pool_hardware_config.insert_one(doc)
+    return doc
+
+
+async def _record_hardware_event(device_type: str, adapter_type: str, status: str, message: str, payload_summary: dict | None = None):
+    event_doc = {
+        "event_id": _short_id("HWE", 10),
+        "facility_id": FACILITY_ID,
+        "device_type": device_type,
+        "adapter_type": adapter_type,
+        "status": status,
+        "message": message,
+        "payload_summary": payload_summary or {},
+        "created_at": _now_iso(),
+    }
+    await db.pool_hardware_events.insert_one(event_doc)
+    return event_doc
+
+
 async def _issue_ticket_from_transaction(tx: dict) -> dict:
     existing = await db.pool_tickets.find_one({"session_id": tx.get("session_id")}, {"_id": 0})
     if existing:
@@ -402,6 +538,7 @@ async def handle_pool_ticket_webhook(session_id: str):
 
 async def _build_public_overview() -> dict:
     await _ensure_lockers()
+    hardware_config = await _ensure_hardware_config()
     active_guests = await db.pool_tickets.count_documents({"facility_id": FACILITY_ID, "status": "active"})
     total_lockers = await db.pool_lockers.count_documents({"facility_id": FACILITY_ID})
     free_lockers = await db.pool_lockers.count_documents({"facility_id": FACILITY_ID, "status": "free"})
@@ -409,9 +546,9 @@ async def _build_public_overview() -> dict:
         "facility": {
             **FACILITY_INFO,
             "hardware_modes": {
-                "rfid": "MOCKED",
-                "turnstile_bridge": "MOCKED",
-                "locker_relays": "MOCKED",
+                "rfid": hardware_config.get("rfid", {}).get("status", "planned"),
+                "turnstile_bridge": hardware_config.get("turnstile", {}).get("status", "planned"),
+                "locker_relays": hardware_config.get("locker", {}).get("status", "planned"),
             },
             "supported_payments": ["cash", "card", "online"],
         },
@@ -526,10 +663,12 @@ async def get_pool_checkout_status(session_id: str, request: Request):
 async def get_pool_admin_dashboard(request: Request):
     user = await _require_pool_staff(request)
     await _ensure_lockers()
+    hardware_config = await _ensure_hardware_config()
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     recent_tickets = await db.pool_tickets.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("created_at", -1).limit(12).to_list(12)
     recent_access = await db.pool_access_events.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("created_at", -1).limit(12).to_list(12)
     recent_sales = await db.pool_pos_sales.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("created_at", -1).limit(12).to_list(12)
+    hardware_events = await db.pool_hardware_events.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("created_at", -1).limit(12).to_list(12)
     locker_docs = await db.pool_lockers.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("locker_id", 1).limit(48).to_list(48)
 
     tickets_today = [doc async for doc in db.pool_tickets.find({"facility_id": FACILITY_ID, "created_at": {"$gte": today_start}}, {"_id": 0, "total_amount": 1})]
@@ -552,13 +691,70 @@ async def get_pool_admin_dashboard(request: Request):
         "recent_tickets": [_ticket_public_view(doc) for doc in recent_tickets],
         "recent_access": [_access_event_view(doc) for doc in recent_access],
         "recent_sales": [_sale_view(doc) for doc in recent_sales],
+        "hardware_blueprint": HARDWARE_BLUEPRINT,
+        "hardware_config": hardware_config,
+        "hardware_events": [_hardware_log_view(doc) for doc in hardware_events],
         "lockers": [_locker_public_view(doc) for doc in locker_docs],
         "hardware_modes": {
-            "rfid": "MOCKED",
-            "turnstile_bridge": "MOCKED",
-            "locker_relays": "MOCKED",
+            "rfid": hardware_config.get("rfid", {}).get("status", "planned"),
+            "turnstile_bridge": hardware_config.get("turnstile", {}).get("status", "planned"),
+            "locker_relays": hardware_config.get("locker", {}).get("status", "planned"),
         },
     }
+
+
+@router.get("/admin/hardware/config")
+async def get_pool_hardware_config(request: Request):
+    await _require_pool_staff(request)
+    config = await db.pool_hardware_config.find_one({"facility_id": FACILITY_ID}, {"_id": 0})
+    if not config:
+        config = await _ensure_hardware_config()
+    events = await db.pool_hardware_events.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    return {
+        "facility": FACILITY_INFO,
+        "hardware_blueprint": HARDWARE_BLUEPRINT,
+        "hardware_config": config,
+        "hardware_events": [_hardware_log_view(doc) for doc in events],
+    }
+
+
+@router.post("/admin/hardware/config")
+async def update_pool_hardware_config(req: HardwareConfigRequest, request: Request):
+    user = await _require_pool_staff(request)
+    if req.selected_mode not in DEFAULT_HARDWARE_CONFIG["deployment_modes"]:
+        raise HTTPException(status_code=400, detail="Ungültiger deployment mode")
+    now_iso = _now_iso()
+    update_doc = {
+        "selected_mode": req.selected_mode,
+        "rfid.enabled": True,
+        "rfid.provider_mode": req.rfid_provider_mode,
+        "rfid.adapter_type": req.rfid_adapter_type,
+        "rfid.status": "planned",
+        "turnstile.enabled": True,
+        "turnstile.adapter_type": req.turnstile_adapter_type,
+        "turnstile.status": "planned",
+        "locker.enabled": True,
+        "locker.adapter_type": req.locker_adapter_type,
+        "locker.status": "planned",
+        "security.shared_secret_hint": req.shared_secret_hint or "configured-via-edge",
+        "updated_at": now_iso,
+        "updated_by": str(user.get("_id")),
+    }
+    await db.pool_hardware_config.update_one({"facility_id": FACILITY_ID}, {"$set": update_doc}, upsert=True)
+    event = await _record_hardware_event(
+        "config",
+        "admin_blueprint",
+        "updated",
+        "Hardware blueprint updated",
+        {
+            "selected_mode": req.selected_mode,
+            "rfid": req.rfid_adapter_type,
+            "turnstile": req.turnstile_adapter_type,
+            "locker": req.locker_adapter_type,
+        },
+    )
+    config = await db.pool_hardware_config.find_one({"facility_id": FACILITY_ID}, {"_id": 0})
+    return {"ok": True, "hardware_config": config, "hardware_event": _hardware_log_view(event)}
 
 
 @router.post("/admin/tickets/cash-sale")

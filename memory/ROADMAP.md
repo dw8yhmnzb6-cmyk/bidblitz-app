@@ -4,9 +4,10 @@
 - ✅ Neues Modul **Schwimmbad-System** live: öffentliche Pool-Seite `/pool` + Betreiber-Dashboard `/admin/pool`.
 - ✅ Kernflows im MVP fertig: Tickets/Tarife, QR-/RFID-Readiness, Spind-Zuordnung, Drehkreuz-/Einlasslogik, Snack-POS, Kassenverkauf, Online-Checkout-Vorbereitung via Stripe.
 - ✅ Frontend-Testing Agent **PASS** (Iteration 250) und Backend-Smoke grün.
-- ⚠️ Hardware-Bridges bleiben aktuell bewusst **MOCKED**: RFID, Turnstile, Locker Relay.
+- ✅ Hardware-Architektur jetzt fachlich definiert: RFID/NFC + QR, HTTP/TCP/Serial Turnstiles, Netzwerk-API + Relay für Locker, plus Betriebsmodelle Cloud / Edge / Hybrid.
+- ⚠️ Reale Hersteller-/SDK-Integration bleibt weiterhin **MOCKED** bis konkrete Vendoren/Controller gewählt sind.
 - ⚠️ Wegen Container-Speichergrenzen läuft das MVP hier mit kleiner Lockerkapazität (**8 Lockers**); fachlich ist die Struktur aber skalierbar angelegt.
-- 🟡 Nächster sinnvoller Schritt: echte Hardware-Adapter / Gate-Bridge / RFID-Provider spezifizieren oder Pool-Modul um Reservierungen, Schichtplanung, Reinigung und Bahnbelegung erweitern.
+- 🟡 Nächster sinnvoller Schritt: konkrete Hersteller/Controller pro Bereich festlegen und daraus echte Adapter/Edge-Daemon-Verträge ableiten.
 
 ## Status nach RTK-Installation — 15.07.2026
 - ✅ RTK CLI Proxy **v0.43.0** ist im aktuellen **aarch64-Kubernetes-Container** installiert und lauffähig.
