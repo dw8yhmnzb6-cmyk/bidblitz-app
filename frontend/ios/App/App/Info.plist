@@ -47,6 +47,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 		<string>BidBlitz uses the camera to scan QR codes for payments and to let users upload verification documents when needed.</string>
+	<key>NSMicrophoneUsageDescription</key>
+		<string>BidBlitz uses the microphone only when you choose voice, call, or video features such as voice intro, video profile, or in-app communication.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 		<string>BidBlitz accesses selected photos only when you choose to upload documents or images.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
@@ -76,5 +78,7 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 	</dict>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
