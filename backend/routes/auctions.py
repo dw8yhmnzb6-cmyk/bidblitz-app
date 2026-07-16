@@ -89,6 +89,11 @@ async def list_auctions(request: Request, response: Response):
     now_dt = datetime.now(timezone.utc)
     for a in auctions:
         a["image_url"] = resolve_product_image(a.get("title", ""), a.get("image_url") or "")
+        a["image_urls"] = resolve_product_gallery(
+            a.get("title", ""),
+            a.get("image_urls") or [],
+            a.get("image_url") or "",
+        )
         if a.get("status") == "active" and a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -122,6 +127,11 @@ async def get_active_auctions():
     
     for a in auctions:
         a["image_url"] = resolve_product_image(a.get("title", ""), a.get("image_url") or "")
+        a["image_urls"] = resolve_product_gallery(
+            a.get("title", ""),
+            a.get("image_urls") or [],
+            a.get("image_url") or "",
+        )
         if a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -150,6 +160,11 @@ async def list_all_auctions(status: str = None, limit: int = 100):
     now = datetime.now(timezone.utc)
     for a in auctions:
         a["image_url"] = resolve_product_image(a.get("title", ""), a.get("image_url") or "")
+        a["image_urls"] = resolve_product_gallery(
+            a.get("title", ""),
+            a.get("image_urls") or [],
+            a.get("image_url") or "",
+        )
         if a.get("status") == "active" and a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -1487,6 +1502,22 @@ ACTIVE_AUCTION_CATALOG = [
     {"title": "LG UltraGear OLED 49 2026", "description": "LG Gaming-Monitor 2026 mit OLED, ultrabreitem Panel und Profi-Gaming-Look.", "retail_price": 1799, "category": "gaming", "image_url": MONITOR_GALLERY[1], "image_urls": MONITOR_GALLERY[:4], "features": ["OLED Panel", "Ultra Wide", "Pro Gaming Color"]},
     {"title": "Roborock S10 Max Ultra 2026", "description": "Premium Reinigungsroboter 2026 mit AI Mapping, Docking und vollautomatischer Pflege.", "retail_price": 1499, "category": "robots", "image_url": ROBOT_GALLERY[0], "image_urls": ROBOT_GALLERY[:4], "features": ["AI Mapping", "Self-Clean Dock", "Smart Home Ready"]},
     {"title": "iRobot Roomba X Combo 2026", "description": "High-End Robot Cleaner 2026 mit kombinierter Saugen/Wischen-Intelligenz.", "retail_price": 1299, "category": "robots", "image_url": ROBOT_GALLERY[1], "image_urls": ROBOT_GALLERY[:4], "features": ["Vacuum + Mop", "Smart Navigation", "Auto Empty Base"]},
+]
+
+ACTIVE_AUCTION_CATALOG = [
+    {
+        **product,
+        "image_url": resolve_product_image(
+            product["title"],
+            product.get("image_url") or PRODUCT_IMAGES.get(product["title"], ""),
+        ),
+        "image_urls": resolve_product_gallery(
+            product["title"],
+            product.get("image_urls") or [],
+            product.get("image_url") or PRODUCT_IMAGES.get(product["title"], ""),
+        ),
+    }
+    for product in ACTIVE_AUCTION_CATALOG
 ]
 
 TARGET_ACTIVE_AUCTIONS = 30
