@@ -12,7 +12,14 @@ export default function Countdown({ endsAt, status, size = "md" }) {
   const [rem, setRem] = useState(0);
 
   useEffect(() => {
-    const tick = () => setRem(Math.max(0, Math.floor((new Date(endsAt) - Date.now()) / 1000)));
+    const tick = () => {
+      const target = new Date(endsAt).getTime();
+      if (Number.isNaN(target)) {
+        setRem(0);
+        return;
+      }
+      setRem(Math.max(0, Math.floor((target - Date.now()) / 1000)));
+    };
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
@@ -28,18 +35,29 @@ export default function Countdown({ endsAt, status, size = "md" }) {
   const crit = rem <= 20 && rem > 0;
   const ts = size === "lg" ? "text-3xl" : size === "sm" ? "text-sm" : "text-xl";
 
-  if (d > 0 || h > 0) {
+  if (d > 0) {
     return (
-      <div className="flex items-baseline gap-1 font-mono font-black tabular-nums select-none">
-        {d > 0 && <><span className={`${ts} text-white/90`}>{d}</span><span className="text-xs text-white/30 mr-1">{t("auction.days")}</span></>}
+      <div data-testid="auction-countdown" className="flex items-baseline gap-1 font-mono font-black tabular-nums select-none">
+        <span className={`${ts} text-white/90`}>{d}</span><span className="text-xs text-white/30 mr-1">{t("auction.days")}</span>
+        <span className={`${ts} text-white/90`}>{String(h).padStart(2, "0")}</span><span className="text-xs text-white/30 mr-1">{t("auction.hours")}</span>
+        <span className={`${ts} text-white/60`}>{String(m).padStart(2, "0")}</span><span className="text-xs text-white/15 mr-1">m</span>
+        <span className={`${ts} text-white/60`}>{String(s).padStart(2, "0")}</span><span className="text-xs text-white/15">s</span>
+      </div>
+    );
+  }
+
+  if (h > 0) {
+    return (
+      <div data-testid="auction-countdown" className="flex items-baseline gap-1 font-mono font-black tabular-nums select-none">
         <span className={`${ts} text-white/90`}>{h}</span><span className="text-xs text-white/30 mr-1">{t("auction.hours")}</span>
-        <span className={`${ts} text-white/60`}>{String(m).padStart(2, "0")}</span><span className="text-xs text-white/15">m</span>
+        <span className={`${ts} text-white/60`}>{String(m).padStart(2, "0")}</span><span className="text-xs text-white/15 mr-1">m</span>
+        <span className={`${ts} text-white/60`}>{String(s).padStart(2, "0")}</span><span className="text-xs text-white/15">s</span>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div data-testid="auction-countdown" className="flex flex-col items-center gap-1">
       {isFinalBattle && (
         <motion.div className="px-2 py-0.5 rounded-md mb-0.5"
           style={{ background: "rgba(255,64,96,0.15)", border: "1px solid rgba(255,64,96,0.25)" }}

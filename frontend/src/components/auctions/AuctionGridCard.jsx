@@ -55,9 +55,9 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
   const countdownLabel = isEnded
     ? "BEENDET"
     : d > 0
-      ? `${d}T ${h}Std ${String(m).padStart(2, "0")}m`
+      ? `${d}T ${String(h).padStart(2, "0")}Std ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
       : h > 0
-        ? `${h}Std ${String(m).padStart(2, "0")}m`
+        ? `${h}Std ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
         : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 
   return (

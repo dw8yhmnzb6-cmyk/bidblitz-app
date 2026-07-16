@@ -477,6 +477,31 @@ async def get_auction(auction_id: str, request: Request):
     # Count unique bidders
     unique_bidders = await db.auction_bids.distinct("user_id", {"auction_id": auction_id})
 
+    auction["image_url"] = resolve_product_image(auction.get("title", ""), auction.get("image_url") or "")
+    gallery = []
+    for img in (auction.get("image_urls") or []):
+        resolved = resolve_product_image(auction.get("title", ""), img or "")
+        if resolved and resolved not in gallery:
+            gallery.append(resolved)
+    if auction["image_url"] and auction["image_url"] not in gallery:
+        gallery.insert(0, auction["image_url"])
+    if not gallery and auction["image_url"]:
+        gallery = [auction["image_url"]]
+    auction["image_urls"] = gallery[:4]
+
+    if auction.get("status") == "active" and auction.get("ends_at"):
+        try:
+            ends = datetime.fromisoformat(auction["ends_at"])
+            remaining = (ends - datetime.now(timezone.utc)).total_seconds()
+            auction["remaining_seconds"] = max(0, remaining)
+            auction["final_battle"] = 0 < remaining <= FINAL_BATTLE_THRESHOLD
+        except Exception:
+            auction["remaining_seconds"] = 0
+            auction["final_battle"] = False
+    else:
+        auction["remaining_seconds"] = 0
+        auction["final_battle"] = False
+
     return {"auction": auction, "bids": bids, "unique_bidders": len(unique_bidders)}
 
 
@@ -1249,6 +1274,8 @@ PRODUCT_IMAGES = {
 
 
 def resolve_product_image(title: str, current: str = "") -> str:
+    if current and str(current).strip():
+        return current
     if title in PRODUCT_IMAGES:
         return PRODUCT_IMAGES[title]
     text = (title or "").lower()
