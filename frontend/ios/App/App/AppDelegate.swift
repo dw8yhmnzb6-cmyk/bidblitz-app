@@ -6,8 +6,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    private func ensureApplicationSupportDirectory() {
+        guard let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return
+        }
+
+        if !FileManager.default.fileExists(atPath: appSupportURL.path) {
+            try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+        }
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        ensureApplicationSupportDirectory()
         return true
     }
 
