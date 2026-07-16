@@ -85,7 +85,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const fallbackImage = getAuctionFallbackImage(auction || {});
   const [detailImage, setDetailImage] = useState("");
   const [hideDetailImage, setHideDetailImage] = useState(false);
-  const galleryImages = (auction?.image_urls?.length ? auction.image_urls : [auction?.image_url]).filter(Boolean);
+  const galleryImages = Array.from(new Set((auction?.image_urls?.length ? auction.image_urls : [auction?.image_url]).filter(Boolean)));
 
   useEffect(() => {
     setHideDetailImage(false);
@@ -168,7 +168,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
       </div>
 
       <div className="px-5 -mt-5 pb-40 relative z-10 space-y-3">
-        {galleryImages.length > 1 && (
+        {galleryImages.length > 0 && (
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" data-testid="auction-detail-gallery">
             {galleryImages.map((img, idx) => {
               const active = img === detailImage;

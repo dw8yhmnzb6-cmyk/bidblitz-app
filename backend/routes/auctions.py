@@ -478,16 +478,11 @@ async def get_auction(auction_id: str, request: Request):
     unique_bidders = await db.auction_bids.distinct("user_id", {"auction_id": auction_id})
 
     auction["image_url"] = resolve_product_image(auction.get("title", ""), auction.get("image_url") or "")
-    gallery = []
-    for img in (auction.get("image_urls") or []):
-        resolved = resolve_product_image(auction.get("title", ""), img or "")
-        if resolved and resolved not in gallery:
-            gallery.append(resolved)
-    if auction["image_url"] and auction["image_url"] not in gallery:
-        gallery.insert(0, auction["image_url"])
-    if not gallery and auction["image_url"]:
-        gallery = [auction["image_url"]]
-    auction["image_urls"] = gallery[:4]
+    auction["image_urls"] = resolve_product_gallery(
+        auction.get("title", ""),
+        auction.get("image_urls") or [],
+        auction.get("image_url") or "",
+    )
 
     if auction.get("status") == "active" and auction.get("ends_at"):
         try:
@@ -1318,6 +1313,40 @@ def resolve_product_image(title: str, current: str = "") -> str:
     if current:
         return current
     return "https://images.pexels.com/photos/5412270/pexels-photo-5412270.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+
+
+def resolve_product_gallery(title: str, image_urls: list | None = None, image_url: str = "") -> list[str]:
+    candidates = []
+    for img in (image_urls or []):
+        resolved = resolve_product_image(title, img or "")
+        if resolved and resolved not in candidates:
+            candidates.append(resolved)
+
+    title_text = (title or "").lower()
+    curated_map = [
+        (["iphone", "galaxy", "pixel", "xiaomi", "oneplus", "smartphone", "phone"], SMARTPHONE_GALLERY),
+        (["macbook", "laptop", "notebook", "xps", "zephyrus", "yoga"], LAPTOP_GALLERY),
+        (["ipad", "tablet", "surface", "pad"], TABLET_GALLERY),
+        (["quest", "vision", "xr", "vive", "headset", "vr"], VR_GALLERY),
+        (["drone", "mavic", "autel", "skydio", "karma"], DRONE_GALLERY),
+        (["vanmoof", "cowboy", "stromer", "e-bike", "ebike", "bike"], EBIKE_GALLERY),
+        (["scooter", "segway", "xiaomi scooter"], ESCOOTER_GALLERY),
+        (["monitor", "odyssey", "ultragear"], MONITOR_GALLERY),
+        (["roborock", "irobot", "roomba", "robot"], ROBOT_GALLERY),
+    ]
+    for keywords, gallery in curated_map:
+        if any(keyword in title_text for keyword in keywords):
+            for img in gallery:
+                if img and img not in candidates:
+                    candidates.append(img)
+            break
+
+    primary = resolve_product_image(title, image_url or "")
+    if primary:
+        if primary in candidates:
+            candidates.remove(primary)
+        candidates.insert(0, primary)
+    return candidates[:4]
 
 import json
 import os

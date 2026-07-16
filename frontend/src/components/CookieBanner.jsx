@@ -55,7 +55,9 @@ export default function CookieBanner({ onNavigate }) {
       const walletSecurityFocused = document.querySelector('[data-cookie-banner-block="true"]');
       const sendScannerOpen = document.querySelector('[data-testid="send-money-scan-sheet"]');
       const cashierOrScannerPage = document.querySelector('[data-cookie-banner-suppress="true"]');
-      if (blockingModal || walletSecurityFocused || sendScannerOpen || cashierOrScannerPage) {
+      const auctionDetailPage = document.querySelector('[data-testid="auction-detail"]');
+      const liveAuctionsPage = document.querySelector('[data-testid="live-auctions-page"]');
+      if (blockingModal || walletSecurityFocused || sendScannerOpen || cashierOrScannerPage || auctionDetailPage || liveAuctionsPage) {
         setShow(false);
       }
     };
