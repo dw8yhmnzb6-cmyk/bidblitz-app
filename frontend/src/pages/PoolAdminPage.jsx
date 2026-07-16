@@ -7,8 +7,8 @@ import { useI18n } from "../store/I18nContext";
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const tabLabels = {
-  de: { overview: "Übersicht", cashier: "Kasse", access: "Einlass", lockers: "Spinde", snacks: "Snack POS", hardware: "Hardware", history: "History" },
-  en: { overview: "Overview", cashier: "Cashier", access: "Access", lockers: "Lockers", snacks: "Snack POS", hardware: "Hardware", history: "History" },
+  de: { overview: "Übersicht", pricing: "Preise", cashier: "Kasse", access: "Einlass", lockers: "Spinde", snacks: "Snack POS", hardware: "Hardware", history: "History" },
+  en: { overview: "Overview", pricing: "Pricing", cashier: "Cashier", access: "Access", lockers: "Lockers", snacks: "Snack POS", hardware: "Hardware", history: "History" },
 };
 
 async function adminApi(path, options = {}) {
@@ -44,6 +44,10 @@ export default function PoolAdminPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cashPackage, setCashPackage] = useState("adult-day");
+  const [cashDuration, setCashDuration] = useState("day");
+  const [cashAdults, setCashAdults] = useState(2);
+  const [cashChildren, setCashChildren] = useState(0);
+  const [cashVisitDate, setCashVisitDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [cashQuantity, setCashQuantity] = useState(1);
   const [cashExtras, setCashExtras] = useState([]);
   const [cashPaymentMethod, setCashPaymentMethod] = useState("cash");
@@ -67,6 +71,14 @@ export default function PoolAdminPage({ onBack }) {
   const [lockerAdapterType, setLockerAdapterType] = useState("edge_locker_bridge");
   const [sharedSecretHint, setSharedSecretHint] = useState("");
   const [hardwareSaveResult, setHardwareSaveResult] = useState(null);
+  const [pricingConfig, setPricingConfig] = useState(null);
+  const [pricingSaveBusy, setPricingSaveBusy] = useState(false);
+  const [doorId, setDoorId] = useState("ENTRY-01");
+  const [doorTicketCode, setDoorTicketCode] = useState("");
+  const [doorCommandResult, setDoorCommandResult] = useState(null);
+  const [lockerOpenId, setLockerOpenId] = useState("");
+  const [lockerOpenTicketCode, setLockerOpenTicketCode] = useState("");
+  const [lockerCommandResult, setLockerCommandResult] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -79,6 +91,8 @@ export default function PoolAdminPage({ onBack }) {
       setTurnstileAdapterType(data.hardware_config?.turnstile?.adapter_type || "edge_turnstile_bridge");
       setLockerAdapterType(data.hardware_config?.locker?.adapter_type || "edge_locker_bridge");
       setSharedSecretHint(data.hardware_config?.security?.shared_secret_hint || "");
+      setPricingConfig(data.pricing_config || null);
+      setCashDuration(data.pricing_config?.durations?.[0]?.duration_id || "day");
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -91,12 +105,31 @@ export default function PoolAdminPage({ onBack }) {
   const packages = dashboard?.packages || [];
   const extras = dashboard?.extras || [];
   const snackMenu = dashboard?.snack_menu || [];
+  const durations = pricingConfig?.durations || dashboard?.pricing_config?.durations || [];
+  const accessPoints = dashboard?.access_points || [];
 
   const cashTotal = useMemo(() => {
-    const base = Number(packages.find((pkg) => pkg.package_id === cashPackage)?.price || 0) * cashQuantity;
-    const extrasTotal = extras.filter((extra) => cashExtras.includes(extra.extra_id)).reduce((sum, extra) => sum + Number(extra.price || 0) * cashQuantity, 0);
-    return (base + extrasTotal).toFixed(2);
-  }, [cashPackage, cashQuantity, cashExtras, packages, extras]);
+    const day = new Date(cashVisitDate);
+    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+    const dayType = isWeekend ? "weekend" : "weekday";
+    const rates = (pricingConfig?.rates?.[dayType] || {})[cashDuration] || {};
+    const family = pricingConfig?.family_bundle;
+    let subtotal = 0;
+    if (family?.enabled && cashAdults === family.exact_adults && cashChildren === family.exact_children) {
+      subtotal += Number(rates.family || 0);
+    } else {
+      subtotal += Number(rates.adult || 0) * cashAdults;
+      subtotal += Number(rates.child || 0) * cashChildren;
+    }
+    const extrasTotal = extras.filter((extra) => cashExtras.includes(extra.extra_id)).reduce((sum, extra) => {
+      const cfg = pricingConfig?.extras?.[extra.extra_id] || {};
+      const unit = Number(isWeekend ? (cfg.weekend ?? extra.weekend_price ?? extra.price) : (cfg.weekday ?? extra.price) || 0);
+      const pricingMode = cfg.pricing_mode || extra.pricing_mode || "per_booking";
+      const units = pricingMode === "per_guest" ? (cashAdults + cashChildren) : 1;
+      return sum + unit * units;
+    }, 0);
+    return (subtotal + extrasTotal).toFixed(2);
+  }, [cashVisitDate, pricingConfig, cashDuration, cashAdults, cashChildren, cashExtras, extras]);
 
   const snackTotal = useMemo(() => snackMenu.reduce((sum, item) => sum + ((saleItems[item.menu_id] || 0) * Number(item.price || 0)), 0).toFixed(2), [saleItems, snackMenu]);
 
@@ -109,6 +142,10 @@ export default function PoolAdminPage({ onBack }) {
         method: "POST",
         body: JSON.stringify({
           package_id: cashPackage,
+          duration_id: cashDuration,
+          adult_count: cashAdults,
+          child_count: cashChildren,
+          visit_date: cashVisitDate,
           quantity: cashQuantity,
           extras: cashExtras,
           customer_name: cashName,
@@ -200,6 +237,7 @@ export default function PoolAdminPage({ onBack }) {
   const occupiedLockers = lockers.filter((locker) => locker.status === "occupied");
   const hardwareBlueprint = dashboard?.hardware_blueprint || {};
   const hardwareEvents = dashboard?.hardware_events || [];
+  const hardwareCommands = dashboard?.hardware_commands || [];
 
   const saveHardwareBlueprint = async () => {
     setBusy(true);
@@ -217,6 +255,86 @@ export default function PoolAdminPage({ onBack }) {
       });
       setHardwareSaveResult(data.hardware_event);
       toast.success("Hardware-Blueprint gespeichert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const updateRate = (dayType, durationId, field, value) => {
+    setPricingConfig((prev) => ({
+      ...prev,
+      rates: {
+        ...prev.rates,
+        [dayType]: {
+          ...prev.rates?.[dayType],
+          [durationId]: {
+            ...prev.rates?.[dayType]?.[durationId],
+            [field]: Number(value),
+          },
+        },
+      },
+    }));
+  };
+
+  const updateExtraRate = (extraId, field, value) => {
+    setPricingConfig((prev) => ({
+      ...prev,
+      extras: {
+        ...prev.extras,
+        [extraId]: {
+          ...prev.extras?.[extraId],
+          [field]: field === "pricing_mode" ? value : Number(value),
+        },
+      },
+    }));
+  };
+
+  const savePricing = async () => {
+    setPricingSaveBusy(true);
+    try {
+      const data = await adminApi("/api/pool/admin/pricing/config", {
+        method: "POST",
+        body: JSON.stringify({ pricing_config: pricingConfig }),
+      });
+      setPricingConfig(data.pricing_config);
+      toast.success("Preislogik gespeichert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setPricingSaveBusy(false);
+    }
+  };
+
+  const sendDoorCommand = async () => {
+    setBusy(true);
+    try {
+      const data = await adminApi("/api/pool/admin/access/door-command", {
+        method: "POST",
+        body: JSON.stringify({ door_id: doorId, ticket_code: doorTicketCode || undefined, action: "unlock" }),
+      });
+      setDoorCommandResult(data);
+      toast.success("Türbefehl eingereiht");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openLockerManually = async () => {
+    setBusy(true);
+    try {
+      const data = await adminApi("/api/pool/admin/lockers/open", {
+        method: "POST",
+        body: JSON.stringify({ locker_id: lockerOpenId, ticket_code: lockerOpenTicketCode || undefined }),
+      });
+      setLockerCommandResult(data);
+      toast.success("Spindbefehl eingereiht");
       await load();
     } catch (error) {
       toast.error(error.message);
@@ -283,18 +401,94 @@ export default function PoolAdminPage({ onBack }) {
           </>
         ) : null}
 
+        {tab === "pricing" ? (
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]" data-testid="pool-admin-pricing-section">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 text-lg font-bold text-slate-900">Tarife, Zeitfenster und Wochenendpreise</div>
+              <div className="space-y-5">
+                {durations.map((duration) => (
+                  <div key={duration.duration_id} className="rounded-3xl bg-slate-50 p-4" data-testid={`pool-admin-pricing-duration-${duration.duration_id}`}>
+                    <div className="mb-3 font-bold text-slate-900">{duration.label_de}</div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {['weekday','weekend'].map((dayType) => (
+                        <div key={dayType} className="rounded-2xl border border-slate-200 bg-white p-4" data-testid={`pool-admin-pricing-${dayType}-${duration.duration_id}`}>
+                          <div className="mb-3 text-sm font-bold text-slate-700">{dayType === 'weekend' ? 'Wochenende' : 'Wochentag'}</div>
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            {['adult','child','family'].map((field) => (
+                              <label key={field} className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                {field}
+                                <input type="number" step="0.5" value={pricingConfig?.rates?.[dayType]?.[duration.duration_id]?.[field] ?? 0} onChange={(e) => updateRate(dayType, duration.duration_id, field, e.target.value)} data-testid={`pool-admin-price-${dayType}-${duration.duration_id}-${field}`} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold text-slate-900" />
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-pricing-extras-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Extras & Preislogik</div>
+                <div className="space-y-4">
+                  {extras.map((extra) => (
+                    <div key={extra.extra_id} className="rounded-2xl bg-slate-50 p-4" data-testid={`pool-admin-extra-config-${extra.extra_id}`}>
+                      <div className="font-bold text-slate-900">{activeLang === 'de' ? extra.label_de : extra.label_en}</div>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        <input type="number" step="0.5" value={pricingConfig?.extras?.[extra.extra_id]?.weekday ?? extra.price} onChange={(e) => updateExtraRate(extra.extra_id, 'weekday', e.target.value)} data-testid={`pool-admin-extra-weekday-${extra.extra_id}`} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold" />
+                        <input type="number" step="0.5" value={pricingConfig?.extras?.[extra.extra_id]?.weekend ?? extra.weekend_price ?? extra.price} onChange={(e) => updateExtraRate(extra.extra_id, 'weekend', e.target.value)} data-testid={`pool-admin-extra-weekend-${extra.extra_id}`} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold" />
+                        <select value={pricingConfig?.extras?.[extra.extra_id]?.pricing_mode || extra.pricing_mode || 'per_booking'} onChange={(e) => updateExtraRate(extra.extra_id, 'pricing_mode', e.target.value)} data-testid={`pool-admin-extra-mode-${extra.extra_id}`} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold">
+                          <option value="per_booking">pro Buchung</option>
+                          <option value="per_guest">pro Gast</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={savePricing} disabled={pricingSaveBusy} data-testid="pool-admin-save-pricing" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0088CC] px-5 py-4 text-sm font-black text-white disabled:opacity-60">{pricingSaveBusy ? <Loader2 size={16} className="animate-spin" /> : null} Preise speichern</button>
+              </div>
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-overstay-card">
+                <div className="text-lg font-bold text-slate-900">Überziehungsgebühr</div>
+                <div className="mt-3 text-sm text-slate-600">Grace: {pricingConfig?.overstay_rules?.grace_minutes} min · Erwachsene je 30 min: € {Number(pricingConfig?.overstay_rules?.adult_per_30_min || 0).toFixed(2)} · Kinder je 30 min: € {Number(pricingConfig?.overstay_rules?.child_per_30_min || 0).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {tab === "cashier" ? (
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-cashier-section">
             <div className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900"><CreditCard size={18} /> On-site ticket sale</div>
             <div className="grid gap-3 lg:grid-cols-2">
               <div className="space-y-3">
-                {packages.map((pkg) => <TogglePill key={pkg.package_id} active={cashPackage === pkg.package_id} onClick={() => setCashPackage(pkg.package_id)} label={`${activeLang === "de" ? pkg.label_de : pkg.label_en} · €${Number(pkg.price || 0).toFixed(2)}`} testId={`pool-admin-cash-package-${pkg.package_id}`} />)}
+                {durations.map((duration) => <TogglePill key={duration.duration_id} active={cashDuration === duration.duration_id} onClick={() => setCashDuration(duration.duration_id)} label={`${activeLang === "de" ? duration.label_de : duration.label_en}`} testId={`pool-admin-cash-duration-${duration.duration_id}`} />)}
               </div>
               <div className="space-y-4 rounded-3xl bg-slate-50 p-5">
-                <div className="flex items-center gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Erwachsene</div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setCashAdults((value) => Math.max(0, value - 1))} data-testid="pool-admin-cash-adult-minus" className="h-10 w-10 rounded-full border border-slate-200 bg-white">−</button>
+                      <div data-testid="pool-admin-cash-adult-value" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-bold">{cashAdults}</div>
+                      <button onClick={() => setCashAdults((value) => Math.min(20, value + 1))} data-testid="pool-admin-cash-adult-plus" className="h-10 w-10 rounded-full border border-slate-200 bg-white">+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Kinder</div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setCashChildren((value) => Math.max(0, value - 1))} data-testid="pool-admin-cash-child-minus" className="h-10 w-10 rounded-full border border-slate-200 bg-white">−</button>
+                      <div data-testid="pool-admin-cash-child-value" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-bold">{cashChildren}</div>
+                      <button onClick={() => setCashChildren((value) => Math.min(20, value + 1))} data-testid="pool-admin-cash-child-plus" className="h-10 w-10 rounded-full border border-slate-200 bg-white">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input type="date" value={cashVisitDate} onChange={(e) => setCashVisitDate(e.target.value)} data-testid="pool-admin-cash-visit-date" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3" />
+                  <div className="flex items-center gap-3">
                   <button onClick={() => setCashQuantity((value) => Math.max(1, value - 1))} data-testid="pool-admin-cash-qty-minus" className="h-10 w-10 rounded-full border border-slate-200 bg-white">−</button>
                   <div data-testid="pool-admin-cash-qty-value" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-bold">{cashQuantity}</div>
                   <button onClick={() => setCashQuantity((value) => Math.min(10, value + 1))} data-testid="pool-admin-cash-qty-plus" className="h-10 w-10 rounded-full border border-slate-200 bg-white">+</button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">{extras.map((extra) => <TogglePill key={extra.extra_id} active={cashExtras.includes(extra.extra_id)} onClick={() => toggleCashExtra(extra.extra_id)} label={`${activeLang === "de" ? extra.label_de : extra.label_en} · €${Number(extra.price || 0).toFixed(2)}`} testId={`pool-admin-extra-${extra.extra_id}`} />)}</div>
                 <div className="flex flex-wrap gap-2">
@@ -318,12 +512,20 @@ export default function PoolAdminPage({ onBack }) {
               <button onClick={() => scanTurnstile("entry")} disabled={busy} data-testid="pool-admin-entry-button" className="rounded-full bg-[#0088CC] px-5 py-3 text-sm font-black text-white disabled:opacity-60">Entry</button>
               <button onClick={() => scanTurnstile("exit")} disabled={busy} data-testid="pool-admin-exit-button" className="rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white disabled:opacity-60">Exit</button>
             </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_auto]" data-testid="pool-admin-door-command-card">
+              <select value={doorId} onChange={(e) => setDoorId(e.target.value)} data-testid="pool-admin-door-select" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                {accessPoints.map((door) => <option key={door.door_id} value={door.door_id}>{door.label_de}</option>)}
+              </select>
+              <input value={doorTicketCode} onChange={(e) => setDoorTicketCode(e.target.value)} data-testid="pool-admin-door-ticket-code" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="POOL-... oder WB-..." />
+              <button onClick={sendDoorCommand} disabled={busy} data-testid="pool-admin-door-open-button" className="rounded-full bg-[#FF8C00] px-5 py-3 text-sm font-black text-white disabled:opacity-60">Tür öffnen</button>
+            </div>
             {scanResult ? (
               <div className="mt-4 rounded-2xl bg-slate-50 p-4" data-testid="pool-admin-scan-result">
                 <div className="font-bold text-slate-900">{scanResult.message}</div>
                 <div className="mt-2 text-sm text-slate-600">Ticket: {scanResult.ticket?.ticket_code} · Wristband: {scanResult.ticket?.wristband_id || "—"} · Locker: {scanResult.ticket?.locker_id || "—"}</div>
               </div>
             ) : null}
+            {doorCommandResult ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" data-testid="pool-admin-door-command-result">{doorCommandResult.command?.device_id} · {doorCommandResult.command?.action} · queued</div> : null}
           </div>
         ) : null}
 
@@ -337,8 +539,12 @@ export default function PoolAdminPage({ onBack }) {
                 <button onClick={assignLocker} disabled={busy} data-testid="pool-admin-assign-locker" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0088CC] px-5 py-3 text-sm font-black text-white disabled:opacity-60">Assign locker</button>
                 <input value={releaseLockerId} onChange={(e) => setReleaseLockerId(e.target.value)} data-testid="pool-admin-release-locker-id" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Locker to release" />
                 <button onClick={releaseLocker} disabled={busy} data-testid="pool-admin-release-locker" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white disabled:opacity-60">Release locker</button>
+                <input value={lockerOpenId} onChange={(e) => setLockerOpenId(e.target.value)} data-testid="pool-admin-open-locker-id" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Locker manuell öffnen" />
+                <input value={lockerOpenTicketCode} onChange={(e) => setLockerOpenTicketCode(e.target.value)} data-testid="pool-admin-open-locker-ticket-code" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Optional Ticketcode" />
+                <button onClick={openLockerManually} disabled={busy} data-testid="pool-admin-open-locker-button" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF8C00] px-5 py-3 text-sm font-black text-white disabled:opacity-60">Open locker now</button>
               </div>
               {lockerResult ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" data-testid="pool-admin-locker-result">{lockerResult.locker?.locker_id} ↔ {lockerResult.ticket?.ticket_code}</div> : null}
+              {lockerCommandResult ? <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800" data-testid="pool-admin-locker-command-result">{lockerCommandResult.command?.device_id} · {lockerCommandResult.command?.action} · queued</div> : null}
             </div>
             <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3"><div className="text-lg font-bold text-slate-900">Locker status</div><div className="text-sm text-slate-500" data-testid="pool-admin-occupied-lockers-count">{occupiedLockers.length} occupied</div></div>
@@ -469,6 +675,17 @@ export default function PoolAdminPage({ onBack }) {
                     <div key={event.event_id} className="rounded-2xl bg-slate-50 p-4" data-testid={`pool-admin-hardware-event-${event.event_id}`}>
                       <div className="flex items-center justify-between gap-3"><div className="font-bold text-slate-900">{event.device_type} · {event.adapter_type}</div><div className="text-sm text-slate-500">{event.status}</div></div>
                       <div className="mt-1 text-sm text-slate-600">{event.message}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-hardware-commands-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Hardware command queue</div>
+                <div className="space-y-3">
+                  {hardwareCommands.length === 0 ? <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500" data-testid="pool-admin-hardware-commands-empty">Noch keine Kommandos gespeichert.</div> : hardwareCommands.map((command) => (
+                    <div key={command.command_id} className="rounded-2xl bg-slate-50 p-4" data-testid={`pool-admin-hardware-command-${command.command_id}`}>
+                      <div className="flex items-center justify-between gap-3"><div className="font-bold text-slate-900">{command.device_type} · {command.device_id}</div><div className="text-sm text-slate-500">{command.status}</div></div>
+                      <div className="mt-1 text-sm text-slate-600">{command.action} · {command.message}</div>
                     </div>
                   ))}
                 </div>

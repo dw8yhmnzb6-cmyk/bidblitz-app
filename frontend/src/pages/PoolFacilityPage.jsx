@@ -15,6 +15,15 @@ const copy = {
     packageTitle: "Tickets & Pässe",
     extrasTitle: "Extras",
     guestTitle: "Gastdaten",
+    durationTitle: "Dauer & Gäste",
+    visitDate: "Besuchstag",
+    adults: "Erwachsene",
+    children: "Kinder",
+    dynamicPricing: "Flexible Preislogik",
+    weekendLabel: "Wochenende",
+    weekdayLabel: "Wochentag",
+    pricingBreakdown: "Preisaufschlüsselung",
+    accessZones: "Freigeschaltete Bereiche",
     quantity: "Menge",
     checkout: "Online bezahlen",
     digitalPass: "Dein digitales Ticket",
@@ -38,6 +47,15 @@ const copy = {
     packageTitle: "Tickets & passes",
     extrasTitle: "Add-ons",
     guestTitle: "Guest details",
+    durationTitle: "Duration & guests",
+    visitDate: "Visit date",
+    adults: "Adults",
+    children: "Children",
+    dynamicPricing: "Flexible pricing logic",
+    weekendLabel: "Weekend",
+    weekdayLabel: "Weekday",
+    pricingBreakdown: "Price breakdown",
+    accessZones: "Unlocked areas",
     quantity: "Quantity",
     checkout: "Pay online",
     digitalPass: "Your digital ticket",
@@ -91,27 +109,42 @@ const PackageCard = ({ pkg, active, onClick, lang, testId }) => (
   </motion.button>
 );
 
+const CounterPill = ({ label, value, onMinus, onPlus, minusTestId, valueTestId, plusTestId }) => (
+  <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4" data-testid={`${valueTestId}-wrapper`}>
+    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+    <div className="mt-3 flex items-center gap-3">
+      <button onClick={onMinus} data-testid={minusTestId} className="h-10 w-10 rounded-full border border-slate-200 bg-white text-lg font-bold">−</button>
+      <div data-testid={valueTestId} className="min-w-[56px] rounded-full border border-slate-200 bg-white px-4 py-2 text-center text-base font-bold">{value}</div>
+      <button onClick={onPlus} data-testid={plusTestId} className="h-10 w-10 rounded-full border border-slate-200 bg-white text-lg font-bold">+</button>
+    </div>
+  </div>
+);
+
 export default function PoolFacilityPage({ onBack, onNavigate }) {
   const { lang } = useI18n();
   const L = copy[localeKey(lang)];
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState("adult-day");
+  const [selectedDuration, setSelectedDuration] = useState("day");
+  const [adultCount, setAdultCount] = useState(2);
+  const [childCount, setChildCount] = useState(0);
+  const [visitDate, setVisitDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [quantity, setQuantity] = useState(1);
   const [extras, setExtras] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [ticket, setTicket] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [quote, setQuote] = useState(null);
 
   const loadOverview = async () => {
     setLoading(true);
     try {
       const data = await poolApi("/api/pool/public/overview");
       setOverview(data);
-      if (!data.packages?.find((pkg) => pkg.package_id === selectedPackage)) {
-        setSelectedPackage(data.packages?.[0]?.package_id || "adult-day");
+      if (!data.pricing_config?.durations?.find((item) => item.duration_id === selectedDuration)) {
+        setSelectedDuration(data.pricing_config?.durations?.[0]?.duration_id || "day");
       }
     } catch (error) {
       toast.error(error.message);
@@ -153,29 +186,45 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
     return () => { active = false; };
   }, [L.cancelled, L.ticketReady]);
 
-  const selectedPackageDoc = useMemo(
-    () => overview?.packages?.find((pkg) => pkg.package_id === selectedPackage),
-    [overview, selectedPackage],
-  );
+  useEffect(() => {
+    if (!overview?.pricing_config?.durations?.length) return;
+    let active = true;
+    const loadQuote = async () => {
+      try {
+        const data = await poolApi("/api/pool/public/pricing/quote", {
+          method: "POST",
+          body: JSON.stringify({
+            duration_id: selectedDuration,
+            adult_count: adultCount,
+            child_count: childCount,
+            extras,
+            visit_date: visitDate,
+          }),
+        });
+        if (active) setQuote(data);
+      } catch (error) {
+        if (active) toast.error(error.message);
+      }
+    };
+    loadQuote();
+    return () => { active = false; };
+  }, [overview, selectedDuration, adultCount, childCount, extras, visitDate]);
 
-  const total = useMemo(() => {
-    const base = Number(selectedPackageDoc?.price || 0) * quantity;
-    const extrasTotal = (overview?.extras || [])
-      .filter((extra) => extras.includes(extra.extra_id))
-      .reduce((sum, extra) => sum + Number(extra.price || 0) * quantity, 0);
-    return (base + extrasTotal).toFixed(2);
-  }, [selectedPackageDoc, quantity, extras, overview]);
+  const total = useMemo(() => Number(quote?.total || 0).toFixed(2), [quote]);
 
   const toggleExtra = (extraId) => setExtras((prev) => prev.includes(extraId) ? prev.filter((item) => item !== extraId) : [...prev, extraId]);
 
   const startCheckout = async () => {
-    if (!selectedPackage) return toast.error("Ticket fehlt");
+    if (!selectedDuration) return toast.error("Tarif fehlt");
     setCheckoutBusy(true);
     try {
       const data = await poolApi("/api/pool/public/tickets/checkout", {
         method: "POST",
         body: JSON.stringify({
-          package_id: selectedPackage,
+          duration_id: selectedDuration,
+          adult_count: adultCount,
+          child_count: childCount,
+          visit_date: visitDate,
           quantity,
           extras,
           customer_name: customerName,
@@ -225,29 +274,59 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
             <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-xl shadow-[#0088CC]/10" data-testid="pool-booking-card">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#0088CC]">{L.packageTitle}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#0088CC]">{L.dynamicPricing}</p>
                   <p className="mt-1 text-sm text-slate-500">{overview?.facility?.name}</p>
                 </div>
                 <div className="rounded-full bg-[#F4F7F9] px-4 py-2 text-sm font-semibold text-slate-700" data-testid="pool-total-pill">€ {total}</div>
               </div>
-              <div className="mt-4 space-y-3">
-                {overview?.packages?.map((pkg) => (
+              <div className="mt-5">
+                <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.16em] text-slate-500">{L.durationTitle}</div>
+                <div className="space-y-3">
+                  {(overview?.pricing_config?.durations || []).map((pkg) => (
                   <PackageCard
-                    key={pkg.package_id}
+                    key={pkg.duration_id}
                     pkg={pkg}
                     lang={localeKey(lang)}
-                    active={selectedPackage === pkg.package_id}
-                    onClick={() => setSelectedPackage(pkg.package_id)}
-                    testId={`pool-package-${pkg.package_id}`}
+                    active={selectedDuration === pkg.duration_id}
+                    onClick={() => setSelectedDuration(pkg.duration_id)}
+                    testId={`pool-duration-${pkg.duration_id}`}
                   />
                 ))}
+                </div>
               </div>
-              <div className="mt-5">
-                <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.16em] text-slate-500">{L.quantity}</div>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setQuantity((value) => Math.max(1, value - 1))} data-testid="pool-quantity-minus" className="h-11 w-11 rounded-full border border-slate-200 bg-slate-50 text-xl font-bold">−</button>
-                  <div data-testid="pool-quantity-value" className="min-w-[70px] rounded-full border border-slate-200 bg-white px-4 py-3 text-center text-lg font-bold">{quantity}</div>
-                  <button onClick={() => setQuantity((value) => Math.min(10, value + 1))} data-testid="pool-quantity-plus" className="h-11 w-11 rounded-full border border-slate-200 bg-slate-50 text-xl font-bold">+</button>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <CounterPill
+                  label={L.adults}
+                  value={adultCount}
+                  onMinus={() => setAdultCount((value) => Math.max(0, value - 1))}
+                  onPlus={() => setAdultCount((value) => Math.min(20, value + 1))}
+                  minusTestId="pool-adult-minus"
+                  valueTestId="pool-adult-value"
+                  plusTestId="pool-adult-plus"
+                />
+                <CounterPill
+                  label={L.children}
+                  value={childCount}
+                  onMinus={() => setChildCount((value) => Math.max(0, value - 1))}
+                  onPlus={() => setChildCount((value) => Math.min(20, value + 1))}
+                  minusTestId="pool-child-minus"
+                  valueTestId="pool-child-value"
+                  plusTestId="pool-child-plus"
+                />
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.16em] text-slate-500">{L.visitDate}</label>
+                  <input type="date" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} data-testid="pool-visit-date" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none" />
+                </div>
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4" data-testid="pool-day-type-card">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{L.quantity}</div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button onClick={() => setQuantity((value) => Math.max(1, value - 1))} data-testid="pool-quantity-minus" className="h-10 w-10 rounded-full border border-slate-200 bg-white text-lg font-bold">−</button>
+                    <div data-testid="pool-quantity-value" className="min-w-[70px] rounded-full border border-slate-200 bg-white px-4 py-2 text-center text-base font-bold">{quantity}</div>
+                    <button onClick={() => setQuantity((value) => Math.min(10, value + 1))} data-testid="pool-quantity-plus" className="h-10 w-10 rounded-full border border-slate-200 bg-white text-lg font-bold">+</button>
+                    <div className="rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-700" data-testid="pool-day-type-pill">{quote?.is_weekend ? L.weekendLabel : L.weekdayLabel}</div>
+                  </div>
                 </div>
               </div>
               <div className="mt-5">
@@ -285,6 +364,30 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
                   <input value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} data-testid="pool-customer-email" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none" placeholder="mail@example.com" />
                 </div>
               </div>
+              {quote ? (
+                <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-4" data-testid="pool-pricing-breakdown-card">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-slate-500">{L.pricingBreakdown}</div>
+                    <div className="text-sm font-bold text-slate-700">{quote.duration_label_de}</div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {(quote.breakdown || []).map((item, index) => (
+                      <div key={`${item.type}-${index}`} className="flex items-center justify-between gap-3 text-sm" data-testid={`pool-breakdown-item-${index}`}>
+                        <div className="text-slate-700">{localeKey(lang) === "de" ? item.label_de : item.label_en}</div>
+                        <div className="font-bold text-slate-900">€ {Number(item.line_total || 0).toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 border-t border-slate-200 pt-4" data-testid="pool-access-zones-card">
+                    <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-slate-500">{L.accessZones}</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(quote.access_zones || []).map((zone) => (
+                        <div key={zone} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700" data-testid={`pool-access-zone-${zone}`}>{zone}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <button onClick={startCheckout} disabled={checkoutBusy} data-testid="pool-start-checkout-button" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF8C00] px-5 py-4 text-sm font-black text-white shadow-lg shadow-[#FF8C00]/30 disabled:opacity-60">
                 {checkoutBusy ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
                 {L.checkout}
@@ -338,6 +441,10 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
                 <div className="rounded-2xl bg-white p-4" data-testid="pool-ticket-wristband"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Wristband</div><div className="mt-2 text-base font-bold text-slate-900">{ticket.wristband_id || "Assign on entry"}</div></div>
                 <div className="rounded-2xl bg-white p-4" data-testid="pool-ticket-locker"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Locker</div><div className="mt-2 text-base font-bold text-slate-900">{ticket.locker_id || "Optional"}</div></div>
                 <div className="rounded-2xl bg-white p-4" data-testid="pool-ticket-guest"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Guest</div><div className="mt-2 text-base font-bold text-slate-900">{ticket.customer_name || ticket.customer_email || "Guest"}</div></div>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2" data-testid="pool-ticket-validity-grid">
+                <div className="rounded-2xl bg-white p-4" data-testid="pool-ticket-valid-until"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Valid until</div><div className="mt-2 text-base font-bold text-slate-900">{ticket.valid_until || "On first check-in"}</div></div>
+                <div className="rounded-2xl bg-white p-4" data-testid="pool-ticket-guests"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Guests</div><div className="mt-2 text-base font-bold text-slate-900">{ticket.adult_count || 0}A / {ticket.child_count || 0}K</div></div>
               </div>
             </div>
           ) : null}
