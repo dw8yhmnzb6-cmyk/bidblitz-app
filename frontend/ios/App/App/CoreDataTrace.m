@@ -4,6 +4,12 @@
 
 #if DEBUG
 
+__attribute__((constructor))
+static void BBTraceConstructor(void) {
+    NSLog(@"[CoreDataTrace][START] CoreDataTrace DEBUG constructor loaded");
+    NSLog(@"[CoreDataTrace][END] CoreDataTrace DEBUG constructor ready");
+}
+
 static BOOL BBTraceIsRelevantSymbol(NSString *symbol) {
     if (symbol.length == 0) return NO;
     NSArray<NSString *> *includeKeywords = @[
@@ -44,6 +50,27 @@ static NSArray<NSString *> *BBTraceRelevantFrameworks(void) {
     return matches;
 }
 
+static void BBTraceInstallSwizzle(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        Class class = [NSPersistentStoreCoordinator class];
+        SEL originalSelector = @selector(addPersistentStoreWithType:configuration:URL:options:error:);
+        SEL swizzledSelector = @selector(bb_trace_addPersistentStoreWithType:configuration:URL:options:error:);
+
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+
+        if (originalMethod && swizzledMethod) {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+            NSLog(@"[CoreDataTrace][START] NSPersistentStoreCoordinator swizzle active (DEBUG only)");
+            NSLog(@"[CoreDataTrace][END] Swizzle ready");
+        } else {
+            NSLog(@"[CoreDataTrace][START] Failed to install NSPersistentStoreCoordinator swizzle");
+            NSLog(@"[CoreDataTrace][END] Swizzle missing");
+        }
+    });
+}
+
 static void BBTraceLogStoreEvent(NSString *storeType, NSString *configuration, NSURL *storeURL, NSDictionary *options) {
     NSLog(@"[CoreDataTrace][START]");
     NSLog(@"[CoreDataTrace][STORE_TYPE] %@", storeType ?: @"(nil)");
@@ -82,28 +109,20 @@ static void BBTraceLogStoreEvent(NSString *storeType, NSString *configuration, N
     NSLog(@"[CoreDataTrace][END]");
 }
 
-@implementation NSPersistentStoreCoordinator (BidBlitzCoreDataTrace)
+@interface BBTraceProbe : NSObject
+@end
+
+@implementation BBTraceProbe
 
 + (void)load {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        Class class = [self class];
-        SEL originalSelector = @selector(addPersistentStoreWithType:configuration:URL:options:error:);
-        SEL swizzledSelector = @selector(bb_trace_addPersistentStoreWithType:configuration:URL:options:error:);
-
-        Method originalMethod = class_getInstanceMethod(class, originalSelector);
-        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
-
-        if (originalMethod && swizzledMethod) {
-            method_exchangeImplementations(originalMethod, swizzledMethod);
-            NSLog(@"[CoreDataTrace][START] NSPersistentStoreCoordinator swizzle active (DEBUG only)");
-            NSLog(@"[CoreDataTrace][END] Swizzle ready");
-        } else {
-            NSLog(@"[CoreDataTrace][START] Failed to install NSPersistentStoreCoordinator swizzle");
-            NSLog(@"[CoreDataTrace][END] Swizzle missing");
-        }
-    });
+    NSLog(@"[CoreDataTrace][START] BBTraceProbe +load invoked");
+    BBTraceInstallSwizzle();
+    NSLog(@"[CoreDataTrace][END] BBTraceProbe +load finished");
 }
+
+@end
+
+@implementation NSPersistentStoreCoordinator (BidBlitzCoreDataTrace)
 
 - (NSPersistentStore *)bb_trace_addPersistentStoreWithType:(NSString *)storeType
                                             configuration:(NSString *)configuration
