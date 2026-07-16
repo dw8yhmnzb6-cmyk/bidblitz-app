@@ -4,6 +4,84 @@
 
 #if DEBUG
 
+static BOOL BBTraceIsRelevantSymbol(NSString *symbol) {
+    if (symbol.length == 0) return NO;
+    NSArray<NSString *> *includeKeywords = @[
+        [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleExecutable"] ?: @"",
+        @"Capacitor",
+        @"capgo",
+        @"capawesome",
+        @"Health",
+        @"Pods",
+        @"Frameworks",
+        @"App"
+    ];
+    for (NSString *keyword in includeKeywords) {
+        if (keyword.length > 0 && [symbol localizedCaseInsensitiveContainsString:keyword]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static NSArray<NSString *> *BBTraceRelevantFrameworks(void) {
+    NSMutableArray<NSString *> *matches = [NSMutableArray array];
+    NSArray<NSBundle *> *bundles = [[NSBundle allFrameworks] arrayByAddingObjectsFromArray:[NSBundle allBundles]];
+    NSArray<NSString *> *keywords = @[@"capacitor", @"capgo", @"capawesome", @"health", @"firebase", @"cloudkit", @"coredata"];
+
+    for (NSBundle *bundle in bundles) {
+        NSString *descriptor = [NSString stringWithFormat:@"%@ | %@ | %@",
+                                bundle.bundleIdentifier ?: @"(no bundle id)",
+                                bundle.bundlePath ?: @"(no path)",
+                                bundle.executablePath ?: @"(no executable)"];
+        for (NSString *keyword in keywords) {
+            if ([descriptor localizedCaseInsensitiveContainsString:keyword]) {
+                [matches addObject:descriptor];
+                break;
+            }
+        }
+    }
+    return matches;
+}
+
+static void BBTraceLogStoreEvent(NSString *storeType, NSString *configuration, NSURL *storeURL, NSDictionary *options) {
+    NSLog(@"[CoreDataTrace][START]");
+    NSLog(@"[CoreDataTrace][STORE_TYPE] %@", storeType ?: @"(nil)");
+    NSLog(@"[CoreDataTrace][CONFIGURATION] %@", configuration ?: @"(nil)");
+    NSLog(@"[CoreDataTrace][STORE_URL] %@", storeURL.absoluteString ?: @"(nil)");
+    NSLog(@"[CoreDataTrace][OPTIONS] %@", options ?: @{});
+
+    NSArray<NSString *> *frameworks = BBTraceRelevantFrameworks();
+    if (frameworks.count == 0) {
+        NSLog(@"[CoreDataTrace][FRAMEWORK] No relevant non-system frameworks matched filter");
+    } else {
+        for (NSString *framework in frameworks) {
+            NSLog(@"[CoreDataTrace][FRAMEWORK] %@", framework);
+        }
+    }
+
+    NSArray<NSString *> *symbols = [NSThread callStackSymbols];
+    NSMutableArray<NSString *> *relevant = [NSMutableArray array];
+    for (NSString *symbol in symbols) {
+        if (BBTraceIsRelevantSymbol(symbol)) {
+            [relevant addObject:symbol];
+        }
+    }
+
+    if (relevant.count == 0) {
+        NSLog(@"[CoreDataTrace][CALLER] No filtered caller lines matched. Raw stack follows.");
+        for (NSString *symbol in symbols) {
+            NSLog(@"[CoreDataTrace][CALLER_RAW] %@", symbol);
+        }
+    } else {
+        for (NSString *symbol in relevant) {
+            NSLog(@"[CoreDataTrace][CALLER] %@", symbol);
+        }
+    }
+
+    NSLog(@"[CoreDataTrace][END]");
+}
+
 @implementation NSPersistentStoreCoordinator (BidBlitzCoreDataTrace)
 
 + (void)load {
@@ -18,9 +96,11 @@
 
         if (originalMethod && swizzledMethod) {
             method_exchangeImplementations(originalMethod, swizzledMethod);
-            NSLog(@"[CoreDataTrace] NSPersistentStoreCoordinator swizzle active");
+            NSLog(@"[CoreDataTrace][START] NSPersistentStoreCoordinator swizzle active (DEBUG only)");
+            NSLog(@"[CoreDataTrace][END] Swizzle ready");
         } else {
-            NSLog(@"[CoreDataTrace] Failed to install NSPersistentStoreCoordinator swizzle");
+            NSLog(@"[CoreDataTrace][START] Failed to install NSPersistentStoreCoordinator swizzle");
+            NSLog(@"[CoreDataTrace][END] Swizzle missing");
         }
     });
 }
@@ -46,10 +126,7 @@
     }
 
     if (isDefaultStore || hasHistoryKey || hasRemoteChangeKey) {
-        NSLog(@"[CoreDataTrace] addPersistentStore called | type=%@ | configuration=%@ | url=%@ | options=%@", storeType, configuration, storeURL, options ?: @{});
-        for (NSString *symbol in [NSThread callStackSymbols]) {
-            NSLog(@"[CoreDataTrace] %@", symbol);
-        }
+        BBTraceLogStoreEvent(storeType, configuration, storeURL, options);
     }
 
     return [self bb_trace_addPersistentStoreWithType:storeType configuration:configuration URL:storeURL options:options error:error];
