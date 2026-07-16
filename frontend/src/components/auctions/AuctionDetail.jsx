@@ -86,6 +86,11 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const [detailImage, setDetailImage] = useState("");
   const [hideDetailImage, setHideDetailImage] = useState(false);
   const galleryImages = Array.from(new Set((auction?.image_urls?.length ? auction.image_urls : [auction?.image_url]).filter(Boolean)));
+  const descriptionLines = (auction?.description || "")
+    .split(/[•\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 2);
 
   useEffect(() => {
     setHideDetailImage(false);
@@ -192,7 +197,11 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
           </div>
         )}
         <h1 className="text-[17px] font-bold text-white/90 font-outfit leading-tight">{auction.title}</h1>
-        <p className="text-[10px] text-white/30 leading-relaxed">{auction.description}</p>
+        <div className="space-y-1" data-testid="auction-detail-description">
+          {(descriptionLines.length ? descriptionLines : [auction.description]).map((line, index) => (
+            <p key={`${line}-${index}`} className="text-[10px] text-white/30 leading-relaxed">{line}</p>
+          ))}
+        </div>
 
         {/* Engagement: Leading / Outbid */}
         <AnimatePresence>

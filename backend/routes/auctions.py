@@ -1269,11 +1269,24 @@ PRODUCT_IMAGES = {
 
 
 def resolve_product_image(title: str, current: str = "") -> str:
+    text = (title or "").lower()
+    explicit_map = [
+        (["iphone 17 pro max"], SMARTPHONE_GALLERY[0]),
+        (["samsung galaxy s26 ultra"], SMARTPHONE_GALLERY[1]),
+        (["google pixel 10 pro"], SMARTPHONE_GALLERY[2]),
+        (["xiaomi 16 ultra"], SMARTPHONE_GALLERY[3]),
+        (["macbook pro m6 max"], LAPTOP_GALLERY[0]),
+        (["dell xps 17"], LAPTOP_GALLERY[1]),
+        (["lenovo yoga pro 9i"], LAPTOP_GALLERY[2]),
+        (["asus rog zephyrus"], LAPTOP_GALLERY[3]),
+    ]
+    for keywords, image in explicit_map:
+        if any(keyword in text for keyword in keywords):
+            return image
     if current and str(current).strip():
         return current
     if title in PRODUCT_IMAGES:
         return PRODUCT_IMAGES[title]
-    text = (title or "").lower()
     if any(k in text for k in ["iphone", "galaxy", "pixel", "phone", "smartphone", "xiaomi", "oneplus", "honor", "watch", "ipad", "tablet", "kindle"]):
         if any(k in text for k in ["watch", "fenix", "garmin"]):
             return "https://images.unsplash.com/photo-1638095562082-449d8c5a47b4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxzbWFydHdhdGNoJTIwcHJvZHVjdCUyMHN0dWRpb3xlbnwwfHx8fDE3NzkyNzAwOTB8MA&ixlib=rb-4.1.0&q=85"
