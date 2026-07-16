@@ -5,6 +5,7 @@
 - ✅ Bug 2 behoben: Countdown / verbleibende Zeit funktioniert wieder korrekt in Detail- und Grid-Ansicht.
 - ✅ Testing Agent **Iteration 251 PASS** (100% Frontend für diese beiden Bugs).
 - ✅ Danach zusätzlich verfeinert: Beschreibung aufgeräumt und modellgenaue Bilder für zentrale Smartphone-/Laptop-Auktionen. **Iteration 253 PASS**.
+- ✅ Danach nochmals tiefer korrigiert: **Samsung/iPhone-Galerie-Reihenfolge** getrennt und per **Iteration 254 PASS** final verifiziert.
 - ⚠️ Einziger nicht-blockierender Hinweis im Test: Cookie-Banner überlagert unten rechts etwas Fläche.
 - 🟡 Nächster sinnvoller Schritt: Falls gewünscht, kann die Auktionsgalerie noch mit **echten produktspezifischen Mehrfachbildern** statt teilweise identischen Gallery-URLs verbessert werden.
 

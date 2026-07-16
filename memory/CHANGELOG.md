@@ -11,6 +11,15 @@
 - `backend/routes/auctions.py` bekam zusätzlich **explizite Modell-Mappings** in `resolve_product_image()` für zentrale High-Volume-Produkte wie **iPhone 17 Pro Max 2026**, **Samsung Galaxy S26 Ultra Elite 2026**, **Google Pixel 10 Pro 2026**, **Xiaomi 16 Ultra 2026**, **MacBook Pro M6 Max 16 2026**, **Dell XPS 17 AI 2026**, **Lenovo Yoga Pro 9i Aura 2026** und **ASUS ROG Zephyrus G16 2026**. Dadurch bekommen ähnliche Kategorien nicht mehr nur grobe Sammelbilder, sondern modellnähere Hero-Bilder.
 - Verifiziert durch **Testing Agent Iteration 253 PASS**: Beschreibung bei iPhone, Samsung und MacBook ist laut Report jeweils „single clean line“, Bilder passen jetzt modellgenau, Galerie zeigt weiter 4 anklickbare Bilder und der Countdown hat keine Regression.
 
+## 16.07.2026 — Samsung/iPhone-Mismatch an der echten Ursache behoben
+- Nach berechtigtem Nutzerhinweis wurde der Bildfehler noch einmal tiefer korrigiert: Das Problem lag nicht nur am Primärbild, sondern auch an der **Galerie-Reihenfolge**. Einige Smartphone-Auktionen teilten sich dieselbe Sammelgalerie, wodurch z. B. Samsung-Text mit iPhone-artigem Erstbild wirken konnte.
+- `backend/routes/auctions.py` wurde deshalb in **`resolve_product_gallery()`** erweitert: Für iPhone, Samsung, Google Pixel, Xiaomi sowie zentrale Laptop-Modelle gibt es jetzt **explizite artikelgenaue Gallery-Reihenfolgen**, nicht nur ein anderes `image_url`. Zusätzlich schreiben Seed-/Schedule-Pfade (`_build_auction_doc`, Einzel-Schedule, Bulk-Schedule) jetzt ebenfalls die saubere `image_urls`-Liste direkt mit in die Auktion.
+- Verifiziert durch **Testing Agent Iteration 254 PASS** mit klarer Evidenz:
+  - iPhone 17 Pro Max 2026 → Primärbild `photo-1517777298614`
+  - Samsung Galaxy S26 Ultra Elite 2026 → Primärbild `photo-1544866092` (**anders als iPhone**)
+  - MacBook Pro M6 Max 16 2026 → Primärbild `photo-1511385348`
+  - alle drei Detailseiten zeigen **4 Galerie-Bilder** und **saubere, passende Beschreibungen**.
+
 ## 15.07.2026 — Schwimmbad-System MVP als neues Modul eingebaut
 - Neues Full-Stack-Modul **Schwimmbad / Pool Facility System** ergänzt. Öffentliche Route **`/pool`** zeigt jetzt eine mehrsprachige Pool-/Freizeitbad-Seite mit Ticketpaketen, Extras, Gastdaten, Live-Auslastung und Online-Checkout-Einstieg. Look & Feel wurden auf die Pool-/Freizeitbad-Referenzrichtung ausgerichtet (hell, aquatisch, orange CTA, familienfreundliche Betriebsoptik).
 - Neues Betreiber-Dashboard **`/admin/pool`** ergänzt mit Tabs für **Übersicht**, **Kasse**, **Einlass**, **Spinde**, **Snack POS** und **History**. Alle zentralen UI-Elemente haben `data-testid`.
