@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 16.07.2026 — Auktionsdetail: Bild-Mismatch + Countdown-Bug behoben
+- Nutzerfehlerbild 1 behoben: Auf der Auktionsdetailseite passte das Bild teils nicht zum Artikel. Ursache war, dass `resolve_product_image()` in `backend/routes/auctions.py` vorhandene `image_url`/`image_urls` zu aggressiv mit Kategorie-Fallbacks überschrieb. Fix: bestehende Produkt-URLs werden jetzt **bevorzugt beibehalten**, nur echte Leerschüsse fallen auf Fallback zurück.
+- `GET /api/auctions/{auction_id}` reichert jetzt das einzelne Auktionsobjekt genauso robust an wie die Listenansichten: `image_url`, deduplizierte `image_urls`, `remaining_seconds` und `final_battle` werden für die Detailseite sauber gesetzt.
+- Nutzerfehlerbild 2 behoben: Der Countdown zeigte bei längeren Laufzeiten unvollständige Formate. `frontend/src/components/auctions/Countdown.jsx` zeigt jetzt für Tage/Stunden ebenfalls **Sekunden** und behandelt ungültige Datumswerte defensiv. `AuctionGridCard.jsx` wurde für das Grid-Label passend mitgezogen.
+- Verifiziert per Direkt-API und Frontend-Testing Agent **Iteration 251 PASS**. Bestätigte Evidenz aus dem Testbericht: Smartphone-Auktionen zeigen Smartphone-Bilder, MacBook/Laptop-Auktionen zeigen Laptop-Bilder; Countdown zeigt Formate wie **`2T01Std35m40s`** bzw. im Grid **`2T 01Std 35:43`** und aktualisiert sich sekündlich.
+
 ## 15.07.2026 — Schwimmbad-System MVP als neues Modul eingebaut
 - Neues Full-Stack-Modul **Schwimmbad / Pool Facility System** ergänzt. Öffentliche Route **`/pool`** zeigt jetzt eine mehrsprachige Pool-/Freizeitbad-Seite mit Ticketpaketen, Extras, Gastdaten, Live-Auslastung und Online-Checkout-Einstieg. Look & Feel wurden auf die Pool-/Freizeitbad-Referenzrichtung ausgerichtet (hell, aquatisch, orange CTA, familienfreundliche Betriebsoptik).
 - Neues Betreiber-Dashboard **`/admin/pool`** ergänzt mit Tabs für **Übersicht**, **Kasse**, **Einlass**, **Spinde**, **Snack POS** und **History**. Alle zentralen UI-Elemente haben `data-testid`.

@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Auktionsdetail-Fix — 16.07.2026
+- ✅ Bug 1 behoben: Auktionsbilder passen wieder zum Artikeltyp.
+- ✅ Bug 2 behoben: Countdown / verbleibende Zeit funktioniert wieder korrekt in Detail- und Grid-Ansicht.
+- ✅ Testing Agent **Iteration 251 PASS** (100% Frontend für diese beiden Bugs).
+- ⚠️ Einziger nicht-blockierender Hinweis im Test: Cookie-Banner überlagert unten rechts etwas Fläche.
+- 🟡 Nächster sinnvoller Schritt: Falls gewünscht, kann die Auktionsgalerie noch mit **echten produktspezifischen Mehrfachbildern** statt teilweise identischen Gallery-URLs verbessert werden.
+
 ## Status nach Schwimmbad-System MVP — 15.07.2026
 - ✅ Neues Modul **Schwimmbad-System** live: öffentliche Pool-Seite `/pool` + Betreiber-Dashboard `/admin/pool`.
 - ✅ Kernflows im MVP fertig: Tickets/Tarife, QR-/RFID-Readiness, Spind-Zuordnung, Drehkreuz-/Einlasslogik, Snack-POS, Kassenverkauf, Online-Checkout-Vorbereitung via Stripe.
