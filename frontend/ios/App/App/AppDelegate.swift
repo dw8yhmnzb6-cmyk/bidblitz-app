@@ -1,28 +1,12 @@
 import UIKit
 import Capacitor
 
-@UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
-    override init() {
-        super.init()
-        ensureApplicationSupportDirectory()
-    }
-
-    private func ensureApplicationSupportDirectory() {
-        guard let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return
-        }
-
-        if !FileManager.default.fileExists(atPath: appSupportURL.path) {
-            try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
-        }
-    }
-
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        ensureApplicationSupportDirectory()
+        PersistenceBootstrap.prepareApplicationSupportDirectory()
         return true
     }
 
