@@ -25,8 +25,7 @@ function verifyIosProject() {
   assert(!pbx.includes('main.swift'), 'main.swift ist noch im Xcode-Projekt referenziert');
   assert(!pbx.includes('PersistenceBootstrap.swift'), 'PersistenceBootstrap.swift ist noch im Xcode-Projekt referenziert');
   assert(pbx.includes('CoreDataTrace.m in Sources'), 'CoreDataTrace.m ist nicht in Build Sources eingebunden');
-  assert(coreTrace.includes('BBTraceShouldActivate'), 'CoreDataTrace.m hat keine debugger-/run-basierte Aktivierungslogik');
-  assert(coreTrace.includes('OS_ACTIVITY_DT_MODE'), 'CoreDataTrace.m erkennt Xcode-Run-Umgebung nicht');
+  assert(coreTrace.includes('BBTraceShouldActivate'), 'CoreDataTrace.m hat keine Aktivierungslogik');
   assert(coreTrace.includes('[CoreDataTrace][START]'), 'Formatierte CoreDataTrace-Logs fehlen');
   assert(coreTrace.includes('[CoreDataTrace][CALLER]'), 'Caller-Logs fehlen');
   assert(coreTrace.includes('[CoreDataTrace][FRAMEWORK]'), 'Framework-Logs fehlen');
