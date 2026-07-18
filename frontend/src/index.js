@@ -5,12 +5,25 @@ import App from "@/App";
 import { initCapacitorBridge, isNativeApp } from "@/services/capacitorBridge";
 import { purgeLegacyAuthStorage } from "@/services/authService";
 
+const purgeLegacyWidgetStorage = () => {
+  const legacyKeys = [
+    "bb_ai_chat_session",
+    "bidblitz-chatbot-hidden",
+  ];
+  try {
+    legacyKeys.forEach((key) => localStorage.removeItem(key));
+  } catch (error) {
+    void error;
+  }
+};
+
 // ═══════════════════════════════════════════════════
 // PWA SERVICE WORKER — DISABLED GLOBALLY
 // (Was causing stale-cache issues on mobile. Also required
 // off for Capacitor native builds per Capacitor guidance.)
 // ═══════════════════════════════════════════════════
 purgeLegacyAuthStorage();
+purgeLegacyWidgetStorage();
 
 if (String(process.env.REACT_APP_TEST_MODE).toLowerCase() === 'true') {
   document.documentElement.classList.add('test-mode-active');
