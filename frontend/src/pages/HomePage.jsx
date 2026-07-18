@@ -461,7 +461,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         </AnimatePresence>
 
         <motion.section
-          className="rounded-[28px] p-5 mb-5 relative overflow-hidden cursor-pointer"
+          className={`rounded-[28px] p-5 mb-5 relative overflow-hidden cursor-pointer ${!isGuest ? "hidden sm:block" : ""}`}
           style={{
             background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(59,130,246,0.08) 55%, rgba(255,255,255,0.02))",
             border: "1px solid rgba(245,158,11,0.18)",
@@ -497,6 +497,39 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             </div>
           </div>
         </motion.section>
+
+        {!isGuest && (
+          <motion.button
+            onClick={() => onNavigate("/mining-trust")}
+            className="sm:hidden mb-4 w-full rounded-[22px] border p-4 text-left"
+            style={{
+              background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(59,130,246,0.06) 55%, rgba(255,255,255,0.02))",
+              borderColor: "rgba(245,158,11,0.16)",
+            }}
+            whileTap={{ scale: 0.985 }}
+            data-testid="home-mining-trust-compact"
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-400/15 bg-amber-500/10">
+                <Shield size={18} className="text-amber-300" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200/90">
+                  {miningTrustCopy.badge}
+                </div>
+                <div className="mt-1 text-[15px] font-bold leading-tight text-white">
+                  {miningTrustCopy.title}
+                </div>
+                <div className="mt-1 text-[11px] leading-relaxed text-white/65 line-clamp-2">
+                  {miningTrustCopy.subtitle}
+                </div>
+                <div className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-200">
+                  {miningTrustCopy.open} <ChevronRight size={14} />
+                </div>
+              </div>
+            </div>
+          </motion.button>
+        )}
 
         {/* ── Tagline (nur für Gäste — angemeldete User sehen sofort den Wallet) ── */}
         {isGuest && (

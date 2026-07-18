@@ -50,7 +50,7 @@ export default function AIChatWidget({ hidden = false }) {
       if (!r.ok) throw new Error(j.detail || "Fehler");
       if (j.session_id && j.session_id !== sessionId) {
         setSessionId(j.session_id);
-        try { localStorage.setItem(STORAGE_KEY, j.session_id); } catch {}
+        try { localStorage.setItem(STORAGE_KEY, j.session_id); } catch (storageError) { void storageError; }
       }
       setMessages((m) => [...m, { role: "assistant", content: j.response }]);
     } catch (e) {
@@ -67,11 +67,11 @@ export default function AIChatWidget({ hidden = false }) {
     if (sessionId) {
       try {
         await fetch(`${API}/api/ai/chat/${sessionId}`, { method: "DELETE", credentials: "include" });
-      } catch {}
+      } catch (deleteError) { void deleteError; }
     }
     setSessionId(null);
     setMessages([]);
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try { localStorage.removeItem(STORAGE_KEY); } catch (storageError) { void storageError; }
   };
 
   if (hidden) return null;
@@ -88,8 +88,9 @@ export default function AIChatWidget({ hidden = false }) {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             whileTap={{ scale: 0.9 }}
-            className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center"
+            className="fixed right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center"
             style={{
+              bottom: "calc(var(--app-bottom-nav-offset, 5.5rem) + 0.75rem)",
               background: "linear-gradient(135deg,#A855F7 0%,#EC4899 100%)",
               boxShadow: "0 8px 32px rgba(168,85,247,0.5), 0 0 0 1px rgba(255,255,255,0.1)",
             }}

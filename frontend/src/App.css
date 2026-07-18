@@ -292,7 +292,10 @@ body {
 
 /* App container - mobile-first premium design */
 .app-container {
-  --app-bottom-nav-offset: calc(4.9rem + env(safe-area-inset-bottom, 0px));
+  --app-browser-bottom-offset: 0px;
+  --app-bottom-nav-height: 4.9rem;
+  --app-bottom-safe-space: max(env(safe-area-inset-bottom, 0px), var(--app-browser-bottom-offset, 0px));
+  --app-bottom-nav-offset: calc(var(--app-bottom-nav-height) + var(--app-bottom-safe-space));
   --app-cookie-banner-offset: calc(var(--app-bottom-nav-offset) + 0.5rem);
   --app-mobile-content-offset: calc(var(--app-bottom-nav-offset) + 1rem);
   max-width: 28rem;
@@ -328,7 +331,8 @@ body {
 
 @media (max-width: 480px) {
   .app-container {
-    --app-bottom-nav-offset: calc(4.55rem + env(safe-area-inset-bottom, 0px));
+    --app-bottom-nav-height: 4.55rem;
+    --app-bottom-nav-offset: calc(var(--app-bottom-nav-height) + var(--app-bottom-safe-space));
     --app-cookie-banner-offset: calc(var(--app-bottom-nav-offset) + 0.4rem);
     --app-mobile-content-offset: calc(var(--app-bottom-nav-offset) + 1.15rem);
     max-width: 100%;
@@ -477,7 +481,7 @@ body {
 /* Bottom nav - Ultra glass effect */
 .bottom-nav {
   position: fixed;
-  bottom: 0;
+  bottom: var(--app-browser-bottom-offset, 0px);
   left: 0;
   right: 0;
   width: 100%;
@@ -487,9 +491,8 @@ body {
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.5rem 1rem 1rem;
-  /* iOS Safari: erzwinge mindestens 1.25rem damit URL-Bar nicht überlappt, wenn safe-area=0 */
-  padding-bottom: max(1.25rem, calc(1rem + env(safe-area-inset-bottom, 0px)));
+  padding: 0.5rem 1rem 0.9rem;
+  padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -518,8 +521,8 @@ body.taxi-fullscreen-mode .chatbot-window {
 @media (max-width: 480px) {
   .bottom-nav {
     max-width: 100%;
-    padding: 0.5rem 0.75rem 0.875rem;
-    padding-bottom: max(1.125rem, calc(0.875rem + env(safe-area-inset-bottom, 0px)));
+    padding: 0.45rem 0.75rem 0.8rem;
+    padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
   }
 }
 

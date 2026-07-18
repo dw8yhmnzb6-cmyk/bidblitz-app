@@ -345,6 +345,7 @@ function AppContent() {
   const user = useUser();
   const { setLang } = useI18n();
   const isKycVerified = isKycApprovedOrAdmin(user);
+  const routeBase = currentPath.split("?")[0] || "/";
 
   const isKycRestrictedPath = useCallback((path) => isKycRestrictedPathUtil(path), []);
 
@@ -366,6 +367,32 @@ function AppContent() {
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+
+    const syncMobileBrowserInset = () => {
+      const browserBottomOffset = viewport
+        ? Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+        : 0;
+      root.style.setProperty("--app-browser-bottom-offset", `${browserBottomOffset}px`);
+    };
+
+    syncMobileBrowserInset();
+    window.addEventListener("resize", syncMobileBrowserInset);
+    window.addEventListener("orientationchange", syncMobileBrowserInset);
+    viewport?.addEventListener("resize", syncMobileBrowserInset);
+    viewport?.addEventListener("scroll", syncMobileBrowserInset);
+
+    return () => {
+      window.removeEventListener("resize", syncMobileBrowserInset);
+      window.removeEventListener("orientationchange", syncMobileBrowserInset);
+      viewport?.removeEventListener("resize", syncMobileBrowserInset);
+      viewport?.removeEventListener("scroll", syncMobileBrowserInset);
+    };
   }, []);
 
   useEffect(() => {
@@ -1260,7 +1287,7 @@ function AppContent() {
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && currentPath !== '/dating' && <AIChatWidget />}
+      {user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && routeBase !== '/scan' && routeBase !== '/terminal' && routeBase !== '/nfc' && routeBase !== '/pos' && routeBase !== '/dating' && routeBase !== '/' && routeBase !== '/home' && routeBase !== '/wallet' && routeBase !== '/all-services' && routeBase !== '/more' && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
       {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && (
         <SuperAppOverlay
@@ -1277,7 +1304,7 @@ function AppContent() {
       {!user.isAuthenticated && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
-      {!isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}
+      {!user.isAuthenticated && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}
 
       {/* Push Notification Prompt */}
       {/* PushNotificationPrompt (FCM) removed — use PushPermissionPrompt above */}
