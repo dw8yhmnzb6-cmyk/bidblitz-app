@@ -16,8 +16,10 @@ def capacitor_pods
   pod 'CapacitorSplashScreen', :path => '../../node_modules/@capacitor/splash-screen'
   pod 'CapacitorStatusBar', :path => '../../node_modules/@capacitor/status-bar'
   pod 'CapawesomeCapacitorAppUpdate', :path => '../../node_modules/@capawesome/capacitor-app-update'
+  pod 'CapgoCameraPreview', :path => '../../node_modules/@capgo/camera-preview'
   pod 'CapgoCapacitorHealth', :path => '../../node_modules/@capgo/capacitor-health'
   pod 'CapgoCapacitorWifi', :path => '../../node_modules/@capgo/capacitor-wifi'
+  pod 'CapacitorNativeSettings', :path => '../../node_modules/capacitor-native-settings'
 end
 
 target 'App' do

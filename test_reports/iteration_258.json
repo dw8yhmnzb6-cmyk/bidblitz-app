@@ -1,0 +1,72 @@
+{
+  "summary": "Inline Scanner Feature Verification - SendMoneyPage now renders inline scanner panel within page (not separate fullscreen/bottom-sheet). All 5 test scenarios passed. Fixed JavaScript error 'Cannot read properties of undefined (reading catch)' in stopCamera cleanup.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed: scanner.stop().catch() was called without checking if stop() returns a promise - now properly checks before calling .catch()",
+    "Inline scanner panel (send-money-inline-scan-panel) renders within page flow, not as modal/overlay",
+    "Scanner surface (send-money-scanner-surface) visible with scan frame overlay",
+    "Close button properly removes panel from DOM without leaving overlay artifacts",
+    "Web/browser fallback works - html5-qrcode scanner attempts to start automatically"
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/SendMoneyPage.jsx"
+  ],
+  "success_rate": {
+    "backend": "N/A (frontend-only testing)",
+    "frontend": "100% (5/5 test scenarios passed)"
+  },
+  "test_credentials": {
+    "reviewer_account": "reviewer@bidblitz.ae / BidBlitzReview2026!"
+  },
+  "seed_data_creation": "None required",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Inline scanner feature verified. SendMoneyPage scan button opens inline panel within page (not fullscreen). Scanner surface visible with scan frame. Close button removes panel cleanly. Fixed JS error in stopCamera cleanup. Note: In web browser, native Capacitor camera preview not available, but html5-qrcode fallback works.",
+  "verified_features": {
+    "inline_scan_panel": {
+      "status": "PASS",
+      "testid": "send-money-inline-scan-panel",
+      "verification": "Panel renders within page flow, not as separate fullscreen/bottom-sheet"
+    },
+    "scanner_surface": {
+      "status": "PASS",
+      "testid": "send-money-scanner-surface",
+      "verification": "Scanner surface visible with scan frame overlay"
+    },
+    "auto_start_scanner": {
+      "status": "PASS",
+      "verification": "Scanner attempts to start automatically when panel opens (no 'Kamera starten' button required as primary flow)"
+    },
+    "close_panel_cleanup": {
+      "status": "PASS",
+      "testid": "send-money-scan-close",
+      "verification": "Panel removed from DOM after close, no overlay artifacts remain"
+    },
+    "web_browser_fallback": {
+      "status": "PASS",
+      "verification": "html5-qrcode scanner works in web browser environment"
+    }
+  },
+  "bug_fix": {
+    "issue": "TypeError: Cannot read properties of undefined (reading 'catch')",
+    "location": "SendMoneyPage.jsx stopCamera function",
+    "root_cause": "scanner.stop() may return undefined in some cases, calling .catch() on undefined throws error",
+    "fix": "Added proper checks before calling .catch() - now checks if result is a promise before calling .catch()"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-18T08:48:00Z",
+  "test_scope": "Inline Scanner Feature - SendMoneyPage iOS Scanner Embedded Flow"
+}

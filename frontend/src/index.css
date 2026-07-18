@@ -63,6 +63,16 @@ body {
   position: relative;
 }
 
+html.native-send-money-scanner-active,
+body.native-send-money-scanner-active,
+#root.native-send-money-scanner-active {
+  background: transparent !important;
+}
+
+body.native-send-money-scanner-active {
+  --ion-background-color: transparent !important;
+}
+
 #root {
   overflow-x: hidden;
   width: 100%;
