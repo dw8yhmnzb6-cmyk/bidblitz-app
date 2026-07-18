@@ -1,6 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Audi-Ticketverkauf — 18.07.2026
+- ✅ AI-/Landing-/Floating-Chatbots komplett aus dem Rendering entfernt; **Testing Agent Iteration 276 PASS**.
 - ✅ Backend-Readiness für Live-Deploy verbessert: `/health` kommt jetzt früh zurück, schwere Initialisierung läuft im Hintergrund mit Worker-Lock.
 - ✅ iPhone-UI-Polish für Header + Bottom-Nav verifiziert; **Testing Agent Iteration 275 PASS**.
 - ✅ Floating AI-/Chat-Button im Testbetrieb entfernt; **Testing Agent Iteration 270 PASS**.

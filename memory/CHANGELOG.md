@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — AIChatWidget, LandingChatbot und FloatingChatbot komplett aus Rendering entfernt
+- `App.js`: Render-Aufrufe für **`AIChatWidget`** und **`LandingChatbot`** vollständig gelöscht.
+- `LandingPage.jsx`: direkter Render von **`LandingChatbot`** vollständig entfernt.
+- Codeprüfung ergibt: **`FloatingChatbot`** wird nirgendwo mehr gerendert.
+- **Testing Agent Iteration 276 PASS**: keine Imports/Renders mehr, keine Floating-Chatbot-Elemente auf Guest-Landing, `/landing` oder Home. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Backend-Startup für Live-Deploy entlastet
 - `backend/server.py` wurde für Deploy-Readiness umgebaut: schwere Startup-Arbeiten laufen jetzt in `_run_post_startup_initialization()` als Hintergrundtask statt direkt blockierend im FastAPI-Startup.
 - Ein Dateilock (`/tmp/bidblitz_post_startup.lock`) sorgt dafür, dass bei mehreren Workern nur **ein** Worker die schweren Post-Startup-Jobs übernimmt.
