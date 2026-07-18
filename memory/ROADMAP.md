@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach ReceiveMoney-QR-Fix — 18.07.2026
+- ✅ Der QR-Code auf **Empfangen → Mein QR-Code** rendert wieder stabil, auch nach dem iOS-Startup-Fix.
+- ✅ Pflichtdatenpfad vereinheitlicht: `userId`, `walletId`, `token`, `bidblitzId`, `name` fließen jetzt sauber in einen JSON-String-Payload für `QRCodeSVG`.
+- ✅ Die rohe Browsermeldung **`The string did not match the expected pattern.`** wird dem Nutzer nicht mehr angezeigt; stattdessen existiert eine kontrollierte deutsche Fallback-Meldung.
+- ✅ `npm run build` und `npx cap sync ios` wurden ausgeführt; **Testing Agent Iteration 257 PASS**.
+- 🟡 Nächster Schritt bleibt: nativen Xcode-/iPhone-Run gegen den aktuellen Stand prüfen, danach wieder zurück zu **Audi-Ticketverkauf** und **Telegram-Monitoring-Backup**.
+
 ## Status nach iOS Startup-Crash Fix — 18.07.2026
 - ✅ React-Fehlergrenze jetzt aussagekräftig: Frontend-Errors loggen **`message`**, **`stack`**, **`component_stack`** und strukturierte Metadaten statt leerem `{}`.
 - ✅ Der iOS-Startup-Crash im Lazy-Chunk wurde auf den **Wallet-Chunk** eingegrenzt und mit Browser-/Runtime-Guards in Wallet, TopUpModal, WalletSecurityCards und Wallet-Hooks entschärft.
