@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Zentraler TEST_MODE für vollständigen KYC-Bypass im Testbetrieb
+- Neuer globaler Schalter **`TEST_MODE=true`** in `frontend/.env` und `backend/.env`. Frontend-seitig zentralisiert über `frontend/src/config/testMode.js` und die KYC-Gates in `App.js`, `pathUtils.js`, `adminAccess.js`, `HomePage.jsx`, `MorePage.jsx`, `WalletPage.jsx`, `AuthPage.jsx`, `KYCBanner.jsx`, `AuctionDetail.jsx` und `UserContext.jsx` auf diesen einen Schalter umgestellt.
+- Backend-seitig zentralisiert über `backend/core/config.py` + `backend/core/security.py` (`apply_test_mode_kyc()`), zusätzlich greifen `backend/core/security_advanced.py`, `backend/core/compliance.py`, `backend/routes/wallet.py`, `backend/routes/auctions.py`, `backend/routes/kyc.py`, `backend/routes/premium_finance.py` und `backend/routes/pro_features.py` nun testmodus-sicher. Damit erscheint der Reviewer im Testbetrieb als **KYC approved / verified**, ohne dass das eigentliche KYC-System entfernt wurde.
+- Die komplette Dashboard-/More-Seiten-Gating-UI wie **„Zugriff bewusst reduziert“**, `pre-kyc-home-gate`, `pre-kyc-more-gate` und `KYCBanner` bleibt im Code, ist bei aktivem TEST_MODE aber verborgen. **Testing Agent Iteration 264 PASS** bestätigt 100% Backend + 100% Frontend für den geforderten Testbetrieb. **KEINE MOCKED APIs** in diesem Umbau.
+
+## 18.07.2026 — Native Build-Readiness unter TEST_MODE bestätigt
+- Nach Aktivierung des neuen Testmodus wurden die nativen Build-Smokes erneut geprüft: **`yarn build` PASS**, **`yarn ios:diagnose` PASS**, **`npx cap sync android` PASS**. Bestehende ESLint-Warnungen außerhalb des aktuellen Scopes bleiben Altlasten, aber keine der neuen TEST_MODE-Änderungen bricht den Build.
+
 ## 18.07.2026 — Wallet-Karten auf iPhone/Mobil wieder sicher tappbar
 - Nach neuem Nutzerfeedback wurde der konkrete Mobilbug in `frontend/src/pages/WalletPage.jsx` behoben: Die unteren Wallet-Karten **„Kasse / Händler“**, **„Privat empfangen“** und **„Privat senden“** waren sichtbar, reagierten auf iPhone/Mobil aber nicht zuverlässig auf Taps.
 - Fix: die betroffenen Karten wurden von `motion.button` auf native `<button>`-Elemente umgestellt; zusätzlich greifen jetzt `touchAction: "manipulation"`, `WebkitTapHighlightColor: "transparent"`, `relative z-10` und ein gemeinsamer sicherer `handleWalletRouteNavigate(...)`-Handler. Die oberen Quick-Buttons wurden auf denselben Navigationspfad vereinheitlicht.

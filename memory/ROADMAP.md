@@ -1,6 +1,9 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Audi-Ticketverkauf — 18.07.2026
+- ✅ Zentraler **TEST_MODE** ist aktiv und verifiziert: alle KYC-Banner, Gates, Redirects und Restriktionen bleiben im Testbetrieb verborgen; Reviewer wird als verifiziert behandelt; **Testing Agent Iteration 264 PASS**.
+- ✅ Dashboard-Karte **„Zugriff bewusst reduziert“** ist im Testbetrieb entfernt, ohne den KYC-Codepfad zu löschen.
+- ✅ Build-Smokes unter Testmodus erfolgreich: `yarn build`, `yarn ios:diagnose`, `npx cap sync android`.
 - ✅ Wallet-Mobilbug gefixt: die Karten **Kasse/Händler**, **Privat empfangen** und **Privat senden** sind auf iPhone-/Mobile-Viewport wieder direkt tappbar; **Testing Agent Iteration 263 PASS**.
 - ✅ iOS-CoreData-Launch-Härtung erweitert: zusätzliche **`[CoreDataFix]`**-Pfad-/State-Logs plus frühes Directory-Prepare in `AppDelegate.swift`; `yarn ios:diagnose` erfolgreich.
 - ✅ **KYC temporär ausgeschaltet für Tests**: `REACT_APP_DISABLE_KYC=true` aktiv; keine Banner, Gates oder Redirects mehr; **Testing Agent Iteration 262 PASS**.
@@ -12,6 +15,7 @@
 - ✅ ReceiveMoney-QR-Bug zusätzlich auf **iPhone-Build-Ebene** abgesichert: aktuelles iOS-Bundle enthält jetzt Preview-Backend-URL + QR-Render-Fallback; **Testing Agent Iteration 260 PASS**.
 - ✅ iPhone-Home-UX aus Nutzer-Video bereinigt: Cookie-Banner nicht mehr über Bottom-Nav bei Auth-Usern, AI-FAB auf Kernrouten entfernt, Bottom-Nav dynamisch an Browser-Bottom angepasst, Mobile-Home kompakter; **Testing Agent Iteration 261 PASS**.
 - 🟡 Nächster Produkt-Schritt: **Telegram-Alarm als Backup** für Monitoring ergänzen.
+- 🟡 Danach optional: echter iPhone/Xcode-Lauf mit den neuen **`[CoreDataFix]`**- / **`[CoreDataTrace]`**-Logs prüfen, sobald der Nutzer den Log liefert.
 - 🟡 Parallel offen für User-Verifikation: echter iPhone/Xcode-Test für den nativen Inline-Scanner-Pfad und den CoreData-/SwiftData-Laufzeitpfad; dabei jetzt gezielt auf **`[CoreDataFix]`**, **`[CoreDataTrace]`** und **`[HealthDebug]`** achten.
 
 ## Status nach Inline-Scanner-Umstellung — 18.07.2026
