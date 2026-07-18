@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Chatbot-Dateien komplett aus dem Projekt gelöscht
+- Nach der vollständigen Render-Entfernung wurden diese Dateien auch physisch gelöscht:
+  - `AIChatWidget.jsx`
+  - `FloatingChatbot.jsx`
+  - `LandingChatbot.jsx`
+  - `LandingChatbot.css`
+- **Testing Agent Iteration 278 PASS**: alle 4 Dateien gelöscht, keine Rest-Referenzen, Landingpage lädt ohne Chatbot-Elemente. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Legacy-Widget-Speicher bereinigt
 - Die relevanten alten Widget-Keys wurden identifiziert und zentral bereinigt:
   - `bb_ai_chat_session`
