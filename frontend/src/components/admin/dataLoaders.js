@@ -77,6 +77,12 @@ const MODULE_LIST_CONFIG = {
     module: "Schwimmbad", countLabel: "Tickets",
     fields: ["ticket_code", "package_label_de", "status", "total_amount"],
   },
+  "admin-audi-tickets": {
+    url: "/api/audi-tickets/admin/dashboard",
+    pickItems: (d) => d.recent_orders || [],
+    module: "Audi Tickets", countLabel: "Bestellungen",
+    fields: ["order_id", "ticket_type_title", "quantity", "status", "total_amount"],
+  },
   "admin-reiseplaner": {
     url: "/api/reiseplaner/trips",
     pickItems: (d) => d.trips || [],

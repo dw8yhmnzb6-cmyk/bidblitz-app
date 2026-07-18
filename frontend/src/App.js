@@ -174,6 +174,7 @@ const AdminDiagPage = lazy(() => import("./pages/AdminDiagPage"));
 const AdminRtkPage = lazy(() => import("./pages/AdminRtkPage"));
 const PoolFacilityPage = lazy(() => import("./pages/PoolFacilityPage"));
 const PoolAdminPage = lazy(() => import("./pages/PoolAdminPage"));
+const AudiTicketSalesPage = lazy(() => import("./pages/AudiTicketSalesPage"));
 const StaffUIAuditPage = lazy(() => import("./staff/StaffUIAuditPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
@@ -713,6 +714,8 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
       case "/pool":
         return <PoolFacilityPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} />;
+      case "/audi-tickets":
+        return <AudiTicketSalesPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} />;
       case "/selfcheckout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SelfCheckoutPage onBack={() => handleNavigate("/")} navState={navState} />;
       case "/admin/old":

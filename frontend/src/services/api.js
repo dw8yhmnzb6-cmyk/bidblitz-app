@@ -249,6 +249,13 @@ export const api = {
   scanPoolTurnstile: (body) => request("/api/pool/admin/turnstile/scan", { method: "POST", body: JSON.stringify(body) }),
   createPoolSnackSale: (body) => request("/api/pool/admin/pos/sale", { method: "POST", body: JSON.stringify(body) }),
 
+  // Audi tickets
+  getAudiTicketOverview: () => request("/api/audi-tickets/public/overview"),
+  getMyAudiTicketOrders: () => request("/api/audi-tickets/my-orders"),
+  purchaseAudiTickets: (body) => request("/api/audi-tickets/purchase", { method: "POST", body: JSON.stringify(body) }),
+  getAudiTicketAdminDashboard: () => request("/api/audi-tickets/admin/dashboard"),
+  adminAudiTicketCheckin: (body) => request("/api/audi-tickets/admin/checkin", { method: "POST", body: JSON.stringify(body) }),
+
   // Transactions
   getTransactions: (params = {}) => {
     const query = new URLSearchParams();

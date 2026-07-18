@@ -99,6 +99,7 @@ def register_all_routers(app):
         ("routes.pos_retail_p1p2", "router"),
         ("routes.pos_hardware", "router"),
         ("routes.pool_management", "router"),
+        ("routes.audi_tickets", "router"),
         
         # Staff Management
         ("routes.staff", "router"),

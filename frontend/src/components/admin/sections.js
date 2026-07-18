@@ -105,6 +105,7 @@ export const ADMIN_SECTIONS = [
       { key: "admin-fitness", icon: Dumbbell, label: "Fitness" },
       { key: "admin-reiseplaner", icon: Palmtree, label: "Reiseplaner" },
       { key: "admin-pool", icon: Ticket, label: "Schwimmbad", nav: "/admin/pool" },
+      { key: "admin-audi-tickets", icon: Ticket, label: "Audi Tickets", nav: "/audi-tickets" },
     ],
   },
   {

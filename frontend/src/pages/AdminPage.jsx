@@ -105,6 +105,7 @@ const ADMIN_SECTIONS = [
       { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
       { id: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", tab: "qr-management", highlight: true },
       { id: "pool-system", icon: Ticket, label: "Schwimmbad", tab: "pool", highlight: true },
+      { id: "audi-ticket-system", icon: Ticket, label: "Audi Tickets", nav: "/audi-tickets", highlight: true },
     ]
   },
   {
@@ -261,7 +262,7 @@ const AdminGridSection = ({ section, onItemClick, startIndex }) => {
           <AdminGridMenuItem 
             key={item.id} 
             item={item} 
-            onClick={() => onItemClick(item.tab)}
+            onClick={() => onItemClick(item.nav || item.tab)}
             delay={startIndex + idx}
           />
         ))}
@@ -285,7 +286,7 @@ const AdminGridSection = ({ section, onItemClick, startIndex }) => {
           <AdminGridMenuItem 
             key={item.id} 
             item={item} 
-            onClick={() => onItemClick(item.tab)}
+            onClick={() => onItemClick(item.nav || item.tab)}
             delay={startIndex + idx}
           />
         ))}
@@ -652,6 +653,10 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
                   key={section.id}
                   section={section}
                   onItemClick={(targetTab) => {
+                    if (typeof targetTab === "string" && targetTab.startsWith("/")) {
+                      onNavigate(targetTab);
+                      return;
+                    }
                     if (targetTab === "biopay-audit") {
                       onNavigate("/admin/biopay-audit");
                       return;
