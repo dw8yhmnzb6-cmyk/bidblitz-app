@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Copy, Download, QrCode, Send, Smartphone, Wallet, CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -6,6 +6,28 @@ import { toast } from "sonner";
 import { useI18n, useUser, useWallet } from "../store";
 
 const GENERIC_QR_ERROR = "Der QR-Code konnte noch nicht erstellt werden. Bitte erneut versuchen.";
+
+class ReceiveQrRenderBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.error("[ReceiveMoneyPage] QR render failed", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || null;
+    }
+    return this.props.children;
+  }
+}
 
 function parseQrSource(rawValue) {
   if (typeof rawValue === "string") {
@@ -157,7 +179,11 @@ export default function ReceiveMoneyPage({ onBack, onNavigate }) {
                 <CheckCircle2 size={13} /> {L.privateReceive}
               </div>
               <div data-testid="receive-money-qr-container" className="w-[240px] h-[240px] mx-auto bg-white rounded-[28px] border border-slate-200 p-4 flex items-center justify-center">
-                <QRCodeSVG value={qrValue} size={190} includeMargin />
+                <ReceiveQrRenderBoundary
+                  fallback={<div data-testid="receive-money-qr-inline-fallback" className="text-center text-[12px] text-slate-500 px-4">{GENERIC_QR_ERROR}</div>}
+                >
+                  <QRCodeSVG value={qrValue} size={190} includeMargin />
+                </ReceiveQrRenderBoundary>
               </div>
               <p className="mt-4 text-[16px] font-bold text-slate-950">{profile?.name || "BidBlitz User"}</p>
               <p className="mt-1 text-[12px] text-slate-500">{resolvedBidblitzId || "BidBlitz ID"}</p>

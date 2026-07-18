@@ -1,6 +1,15 @@
 #import <Foundation/Foundation.h>
 #import <CoreData/CoreData.h>
 #import <objc/runtime.h>
+
+@interface NSPersistentStoreCoordinator (BidBlitzCoreDataTraceDeclaration)
+- (NSPersistentStore *)bb_trace_addPersistentStoreWithType:(NSString *)storeType
+                                            configuration:(NSString *)configuration
+                                                      URL:(NSURL *)storeURL
+                                                  options:(NSDictionary *)options
+                                                    error:(NSError * _Nullable __autoreleasing *)error;
+@end
+
 static BOOL BBTraceShouldActivate(void) {
     return YES;
 }
@@ -32,6 +41,32 @@ static void BBEnsureApplicationSupportDirectory(void) {
 
     if (BBTraceShouldActivate()) {
         NSLog(@"[CoreDataFix][ENSURE] Application Support ready at %@", applicationSupportURL.path ?: @"(nil)");
+    }
+}
+
+static void BBEnsurePersistentStoreParentDirectory(NSURL *storeURL) {
+    if (storeURL == nil || !storeURL.isFileURL) {
+        return;
+    }
+
+    NSURL *parentURL = [storeURL URLByDeletingLastPathComponent];
+    if (parentURL == nil) {
+        return;
+    }
+
+    NSError *directoryError = nil;
+    BOOL created = [[NSFileManager defaultManager] createDirectoryAtURL:parentURL
+                                             withIntermediateDirectories:YES
+                                                              attributes:nil
+                                                                   error:&directoryError];
+
+    if (!created && directoryError != nil) {
+        NSLog(@"[CoreDataFix][ERROR] Failed to create store parent at %@: %@", parentURL.path ?: @"(nil)", directoryError.localizedDescription ?: @"unknown error");
+        return;
+    }
+
+    if (BBTraceShouldActivate()) {
+        NSLog(@"[CoreDataFix][ENSURE] Store parent ready at %@", parentURL.path ?: @"(nil)");
     }
 }
 
@@ -186,6 +221,7 @@ static void BBTraceLogStoreEvent(NSString *storeType, NSString *configuration, N
     }
 
     if (isDefaultStore || hasHistoryKey || hasRemoteChangeKey) {
+        BBEnsurePersistentStoreParentDirectory(storeURL);
         BBTraceLogStoreEvent(storeType, configuration, storeURL, options);
     }
 
