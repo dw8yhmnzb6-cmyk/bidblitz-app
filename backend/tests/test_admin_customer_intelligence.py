@@ -249,7 +249,7 @@ def test_auth_preflight_has_credentials_and_explicit_origin(base_url: str, api_c
     response = api_client.options(
         f"{base_url}/api/auth/login",
         headers={
-            "Origin": "https://swipe-match-chat-8.preview.emergentagent.com",
+            "Origin": "https://super-app-staging-2.preview.emergentagent.com",
             "Access-Control-Request-Method": "POST",
             "Access-Control-Request-Headers": "content-type",
         },

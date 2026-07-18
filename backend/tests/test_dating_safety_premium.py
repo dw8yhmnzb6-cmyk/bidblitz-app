@@ -3,7 +3,7 @@ import requests
 import pytest
 
 
-BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "https://swipe-match-chat-8.preview.emergentagent.com").rstrip("/")
+BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "https://super-app-staging-2.preview.emergentagent.com").rstrip("/")
 
 
 class TestDatingSafetyAndPremium:

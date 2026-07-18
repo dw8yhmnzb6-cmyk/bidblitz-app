@@ -88,7 +88,7 @@ def configure_cors(app):
     """Configure CORS middleware."""
     origins = [
         "http://localhost:3000",
-        "https://swipe-match-chat-8.preview.emergentagent.com",
+        "https://super-app-staging-2.preview.emergentagent.com",
         os.getenv("REACT_APP_BACKEND_URL", ""),
     ]
     

@@ -136,7 +136,7 @@ def test_login_sets_http_only_auth_cookies(api_client, base_url):
 
 # module: CORS preflight credential support (explicit origin expected)
 def test_auth_preflight_cors_credentials_and_origin_header(base_url):
-    origin = "https://swipe-match-chat-8.preview.emergentagent.com"
+    origin = "https://super-app-staging-2.preview.emergentagent.com"
     response = requests.options(
         f"{base_url}/api/auth/login",
         headers={

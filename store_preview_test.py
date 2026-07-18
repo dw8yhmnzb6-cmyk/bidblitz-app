@@ -40,7 +40,7 @@ async def main():
             # TEST 1: Login
             print("\nTEST 1: Login with review account")
             print("-" * 80)
-            await page.goto("https://swipe-match-chat-8.preview.emergentagent.com/auth", wait_until="networkidle", timeout=30000)
+            await page.goto("https://super-app-staging-2.preview.emergentagent.com/auth", wait_until="networkidle", timeout=30000)
             await page.wait_for_timeout(2000)
             
             # Fill login form
@@ -79,7 +79,7 @@ async def main():
             
             for name, path in unsafe_paths.items():
                 try:
-                    await page.goto(f"https://swipe-match-chat-8.preview.emergentagent.com{path}", wait_until="networkidle", timeout=10000)
+                    await page.goto(f"https://super-app-staging-2.preview.emergentagent.com{path}", wait_until="networkidle", timeout=10000)
                     await page.wait_for_timeout(1000)
                     new_url = page.url
                     
@@ -109,7 +109,7 @@ async def main():
             
             for name, path in safe_paths.items():
                 try:
-                    await page.goto(f"https://swipe-match-chat-8.preview.emergentagent.com{path}", wait_until="networkidle", timeout=10000)
+                    await page.goto(f"https://super-app-staging-2.preview.emergentagent.com{path}", wait_until="networkidle", timeout=10000)
                     await page.wait_for_timeout(1000)
                     new_url = page.url
                     
@@ -130,7 +130,7 @@ async def main():
             print("\nTEST 4: Check More page for required options")
             print("-" * 80)
             
-            await page.goto("https://swipe-match-chat-8.preview.emergentagent.com/more", wait_until="networkidle", timeout=10000)
+            await page.goto("https://super-app-staging-2.preview.emergentagent.com/more", wait_until="networkidle", timeout=10000)
             await page.wait_for_timeout(2000)
             
             page_text = await page.evaluate("() => document.body.innerText.toLowerCase()")
@@ -157,7 +157,7 @@ async def main():
             print("\nTEST 5: Check wallet balance is realistic")
             print("-" * 80)
             
-            await page.goto("https://swipe-match-chat-8.preview.emergentagent.com/wallet", wait_until="networkidle", timeout=10000)
+            await page.goto("https://super-app-staging-2.preview.emergentagent.com/wallet", wait_until="networkidle", timeout=10000)
             await page.wait_for_timeout(2000)
             
             balance_text = await page.evaluate("""() => {
@@ -185,7 +185,7 @@ async def main():
             print("\nTEST 6: Check bottom navigation is clean")
             print("-" * 80)
             
-            await page.goto("https://swipe-match-chat-8.preview.emergentagent.com/home", wait_until="networkidle", timeout=10000)
+            await page.goto("https://super-app-staging-2.preview.emergentagent.com/home", wait_until="networkidle", timeout=10000)
             await page.wait_for_timeout(2000)
             
             nav_text = await page.evaluate("""() => {

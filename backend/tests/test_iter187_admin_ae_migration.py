@@ -140,7 +140,7 @@ def test_login_sets_http_only_cookie_and_options_allows_credentials(api_client, 
     assert "access_token=" in set_cookie_header
     assert "refresh_token=" in set_cookie_header
 
-    origin = "https://swipe-match-chat-8.preview.emergentagent.com"
+    origin = "https://super-app-staging-2.preview.emergentagent.com"
     preflight = requests.options(
         f"{base_url}/api/auth/login",
         headers={

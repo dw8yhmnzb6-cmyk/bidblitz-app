@@ -10,7 +10,7 @@ Test Scope:
 4. Merchant Payout Request (POST /api/payout/request) - creates request successfully
 5. Payout History (GET /api/payout/history) - shows new request
 
-External Preview URL: https://swipe-match-chat-8.preview.emergentagent.com
+External Preview URL: https://super-app-staging-2.preview.emergentagent.com
 Test User: admin@bidblitz.com / BidBlitz2026!
 """
 
@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 # Configuration
-BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
+BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials

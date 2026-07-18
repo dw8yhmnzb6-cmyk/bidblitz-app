@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Backend Test: 2026 Auction Reset - Final Dedicated Check
-Testing against: https://swipe-match-chat-8.preview.emergentagent.com
+Testing against: https://super-app-staging-2.preview.emergentagent.com
 
 Focus:
 1. GET /api/auctions/active returns exactly 30 active auctions
@@ -16,7 +16,7 @@ import json
 from datetime import datetime, timezone
 from collections import Counter
 
-BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
+BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
 
 def test_active_auctions():
     """Test 1: GET /api/auctions/active returns exactly 30 active auctions with 2026 products"""

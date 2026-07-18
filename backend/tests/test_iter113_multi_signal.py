@@ -6,7 +6,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/") or "https://swipe-match-chat-8.preview.emergentagent.com"
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/") or "https://super-app-staging-2.preview.emergentagent.com"
 
 MERCHANT_EMAIL = "haendler@bidblitz.com"
 MERCHANT_PW = "Haendler2026!"

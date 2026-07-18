@@ -102,7 +102,7 @@ Für die schnellste Dev-Erfahrung am physischen Gerät:
 ```ts
 // capacitor.config.ts
 server: {
-  url: 'https://swipe-match-chat-8.preview.emergentagent.com',
+  url: 'https://super-app-staging-2.preview.emergentagent.com',
   cleartext: false,
 }
 ```

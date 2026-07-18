@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 BidBlitz Commerce Center & Marketplace Backend Testing
-Testing against: https://swipe-match-chat-8.preview.emergentagent.com
+Testing against: https://super-app-staging-2.preview.emergentagent.com
 
 Test Flows:
 1. Auth-Login with admin@bidblitz.com / BidBlitz2026!
@@ -18,7 +18,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
+BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

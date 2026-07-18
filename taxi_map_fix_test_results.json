@@ -1,7 +1,7 @@
 {
   "test_name": "Taxi Map Fix - Error Handling & Fallback",
   "timestamp": "2026-06-11T21:27:36.135927",
-  "base_url": "https://swipe-match-chat-8.preview.emergentagent.com",
+  "base_url": "https://super-app-staging-2.preview.emergentagent.com",
   "tests": [
     {
       "test": "Page loads without uncaught fetch errors",

@@ -322,7 +322,7 @@ class TestDatingConsumableCheckout:
             f"{BASE_URL}/api/dating/consumables/checkout",
             json={
                 "item_id": "rose_pack_3",
-                "origin_url": "https://swipe-match-chat-8.preview.emergentagent.com"
+                "origin_url": "https://super-app-staging-2.preview.emergentagent.com"
             }
         )
         

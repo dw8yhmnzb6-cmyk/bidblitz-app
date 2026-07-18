@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-06-16T14:14:07.387304",
-  "base_url": "https://swipe-match-chat-8.preview.emergentagent.com",
+  "base_url": "https://super-app-staging-2.preview.emergentagent.com",
   "tests": [
     {
       "name": "Admin Login",

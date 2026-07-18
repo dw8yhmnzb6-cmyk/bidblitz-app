@@ -9,7 +9,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
+    BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
 
 TEST_EMAIL = "reviewer@bidblitz.ae"
 TEST_PASSWORD = "BidBlitzReview2026!"
@@ -139,7 +139,7 @@ class TestDatingConsumables:
         """POST /api/dating/consumables/checkout creates real Stripe session"""
         response = auth_token.post(f"{BASE_URL}/api/dating/consumables/checkout", json={
             "item_id": "boost_pack_1",
-            "origin_url": "https://swipe-match-chat-8.preview.emergentagent.com"
+            "origin_url": "https://super-app-staging-2.preview.emergentagent.com"
         })
         assert response.status_code == 200
         data = response.json()
@@ -160,7 +160,7 @@ class TestDatingConsumables:
         """POST /api/dating/consumables/checkout rejects invalid item"""
         response = auth_token.post(f"{BASE_URL}/api/dating/consumables/checkout", json={
             "item_id": "invalid_item_xyz",
-            "origin_url": "https://swipe-match-chat-8.preview.emergentagent.com"
+            "origin_url": "https://super-app-staging-2.preview.emergentagent.com"
         })
         assert response.status_code == 400
 
@@ -306,7 +306,7 @@ class TestDatingPremiumCheckoutMultiTier:
         """POST /api/dating/premium/checkout works for Plus tier"""
         response = auth_token.post(f"{BASE_URL}/api/dating/premium/checkout", json={
             "plan_id": "plus_30d",
-            "origin_url": "https://swipe-match-chat-8.preview.emergentagent.com"
+            "origin_url": "https://super-app-staging-2.preview.emergentagent.com"
         })
         assert response.status_code == 200
         data = response.json()
@@ -319,7 +319,7 @@ class TestDatingPremiumCheckoutMultiTier:
         """POST /api/dating/premium/checkout works for Gold tier"""
         response = auth_token.post(f"{BASE_URL}/api/dating/premium/checkout", json={
             "plan_id": "gold_30d",
-            "origin_url": "https://swipe-match-chat-8.preview.emergentagent.com"
+            "origin_url": "https://super-app-staging-2.preview.emergentagent.com"
         })
         assert response.status_code == 200
         data = response.json()
@@ -332,7 +332,7 @@ class TestDatingPremiumCheckoutMultiTier:
         """POST /api/dating/premium/checkout works for Platinum tier"""
         response = auth_token.post(f"{BASE_URL}/api/dating/premium/checkout", json={
             "plan_id": "platinum_30d",
-            "origin_url": "https://swipe-match-chat-8.preview.emergentagent.com"
+            "origin_url": "https://super-app-staging-2.preview.emergentagent.com"
         })
         assert response.status_code == 200
         data = response.json()

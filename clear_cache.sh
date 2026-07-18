@@ -5,11 +5,11 @@
 echo "🧹 Clearing ALL browser caches..."
 
 # 1. Unregister service worker via API
-curl -s "https://swipe-match-chat-8.preview.emergentagent.com/" > /dev/null
+curl -s "https://super-app-staging-2.preview.emergentagent.com/" > /dev/null
 
 # 2. Send cache-clear header
 curl -s -H "Clear-Site-Data: \"cache\", \"storage\"" \
-  "https://swipe-match-chat-8.preview.emergentagent.com/api/auctions" > /dev/null
+  "https://super-app-staging-2.preview.emergentagent.com/api/auctions" > /dev/null
 
 echo "✓ Cache-clear signals sent"
 echo ""

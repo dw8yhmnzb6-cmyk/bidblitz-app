@@ -14,7 +14,7 @@ import json
 from datetime import datetime
 
 # External preview URL
-BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
+BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
 
 # Admin credentials
 ADMIN_EMAIL = "admin@bidblitz.com"

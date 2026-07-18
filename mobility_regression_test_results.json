@@ -1,6 +1,6 @@
 {
   "test_date": "2026-06-09T19:12:53.689077",
-  "base_url": "https://swipe-match-chat-8.preview.emergentagent.com",
+  "base_url": "https://super-app-staging-2.preview.emergentagent.com",
   "tests": [
     {
       "test": "GET /api/mobility-platform/preferences",

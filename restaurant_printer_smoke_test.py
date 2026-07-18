@@ -15,7 +15,7 @@ import os
 import requests
 import json
 
-BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
+BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@bidblitz.com"
 ADMIN_PASSWORD = "BidBlitz2026!"
 

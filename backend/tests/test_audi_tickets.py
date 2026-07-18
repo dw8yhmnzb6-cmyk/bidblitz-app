@@ -7,7 +7,7 @@ import requests
 import os
 import secrets
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://swipe-match-chat-8.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://super-app-staging-2.preview.emergentagent.com')
 
 # Test credentials from test_credentials.md
 REVIEWER_EMAIL = "reviewer@bidblitz.ae"

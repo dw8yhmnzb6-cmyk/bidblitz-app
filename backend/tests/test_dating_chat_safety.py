@@ -1,7 +1,7 @@
 import requests
 
 
-BASE_URL = "https://swipe-match-chat-8.preview.emergentagent.com"
+BASE_URL = "https://super-app-staging-2.preview.emergentagent.com"
 
 
 def login_session():

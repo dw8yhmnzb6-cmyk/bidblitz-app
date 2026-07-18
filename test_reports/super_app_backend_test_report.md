@@ -1,7 +1,7 @@
 # BidBlitz Super-App Features Backend Test Report
 **Date:** 2026-04-26  
 **Tester:** Testing Agent  
-**Backend URL:** https://swipe-match-chat-8.preview.emergentagent.com/api
+**Backend URL:** https://super-app-staging-2.preview.emergentagent.com/api
 
 ## Test Summary
 - **Total Tests:** 10
