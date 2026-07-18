@@ -1,4 +1,4 @@
-export const TEST_MODE = String(process.env.TEST_MODE).toLowerCase() === 'true';
+export const TEST_MODE = String(process.env.REACT_APP_TEST_MODE).toLowerCase() === 'true';
 
 const TEST_MODE_USER_EMAILS = new Set([
   'reviewer@bidblitz.ae',

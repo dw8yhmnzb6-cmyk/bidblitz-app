@@ -18,9 +18,14 @@ function readEnvValue(key) {
 
 try {
   const backendUrl = process.env.REACT_APP_BACKEND_URL || readEnvValue('REACT_APP_BACKEND_URL');
+  const testMode = process.env.REACT_APP_TEST_MODE || process.env.TEST_MODE || readEnvValue('REACT_APP_TEST_MODE') || readEnvValue('TEST_MODE');
   if (backendUrl) {
     process.env.REACT_APP_BACKEND_URL = backendUrl;
     console.log(`\n[ios:prepare] Verwende REACT_APP_BACKEND_URL=${backendUrl}`);
+  }
+  if (testMode) {
+    process.env.REACT_APP_TEST_MODE = testMode;
+    console.log(`\n[ios:prepare] Verwende REACT_APP_TEST_MODE=${testMode}`);
   }
   console.log('\n[ios:prepare] Schritt 1/3: Dependencies installieren');
   run('yarn install');

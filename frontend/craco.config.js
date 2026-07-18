@@ -1,6 +1,11 @@
 // craco.config.js
 const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 const webpack = require("webpack");
+
+if (!process.env.REACT_APP_TEST_MODE && process.env.TEST_MODE) {
+  process.env.REACT_APP_TEST_MODE = process.env.TEST_MODE;
+}
 
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
@@ -69,7 +74,7 @@ let webpackConfig = {
       }
       webpackConfig.plugins.push(
         new webpack.DefinePlugin({
-          "process.env.TEST_MODE": JSON.stringify(process.env.TEST_MODE),
+          "process.env.REACT_APP_TEST_MODE": JSON.stringify(process.env.REACT_APP_TEST_MODE),
         })
       );
       return webpackConfig;

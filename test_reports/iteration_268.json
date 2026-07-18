@@ -1,0 +1,99 @@
+{
+  "summary": "REACT_APP_TEST_MODE env embedding fix VERIFIED - Production build now correctly embeds REACT_APP_TEST_MODE:'true' in compiled main bundle. All iOS scripts updated to use REACT_APP_TEST_MODE. yarn ios:diagnose passes. Frontend loads correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_268.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "testMode.js line 1: Correctly reads process.env.REACT_APP_TEST_MODE (CRA-safe variable)",
+    "craco.config.js lines 6-8: Mirrors TEST_MODE to REACT_APP_TEST_MODE for backward compatibility",
+    "craco.config.js lines 75-79: DefinePlugin correctly embeds REACT_APP_TEST_MODE at build time",
+    "frontend/.env line 6: Contains REACT_APP_TEST_MODE=true",
+    "ios-prepare.js line 21: Uses REACT_APP_TEST_MODE with fallback to TEST_MODE",
+    "ios-sync-web-assets.js line 20: Uses REACT_APP_TEST_MODE with fallback to TEST_MODE"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "100%"
+  },
+  "test_credentials": "N/A",
+  "seed_data_creation": "None required",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "REACT_APP_TEST_MODE env embedding fix verified. The root cause was CRA only embeds REACT_APP_* prefixed env vars into production bundles. Main agent fixed this by: 1) Changing testMode.js to read REACT_APP_TEST_MODE, 2) Adding DefinePlugin in craco.config.js, 3) Adding REACT_APP_TEST_MODE=true to .env, 4) Updating iOS scripts to use REACT_APP_TEST_MODE. Actual iOS device testing requires macOS with Xcode.",
+  "verified_features": {
+    "testMode_reads_correct_env": {
+      "test": "src/config/testMode.js reads process.env.REACT_APP_TEST_MODE",
+      "status": "PASS",
+      "result": "Line 1: export const TEST_MODE = String(process.env.REACT_APP_TEST_MODE).toLowerCase() === 'true'"
+    },
+    "craco_mirrors_test_mode": {
+      "test": "craco.config.js mirrors TEST_MODE to REACT_APP_TEST_MODE",
+      "status": "PASS",
+      "result": "Lines 6-8: if (!process.env.REACT_APP_TEST_MODE && process.env.TEST_MODE) { process.env.REACT_APP_TEST_MODE = process.env.TEST_MODE; }"
+    },
+    "craco_define_plugin": {
+      "test": "craco.config.js uses DefinePlugin to embed REACT_APP_TEST_MODE",
+      "status": "PASS",
+      "result": "Lines 75-79: new webpack.DefinePlugin({ 'process.env.REACT_APP_TEST_MODE': JSON.stringify(process.env.REACT_APP_TEST_MODE) })"
+    },
+    "env_contains_react_app_test_mode": {
+      "test": "frontend/.env contains REACT_APP_TEST_MODE=true",
+      "status": "PASS",
+      "result": "Line 6: REACT_APP_TEST_MODE=true"
+    },
+    "production_build_embeds_value": {
+      "test": "Production build main.js contains REACT_APP_TEST_MODE:'true'",
+      "status": "PASS",
+      "result": "grep found 3 occurrences of REACT_APP_TEST_MODE:\"true\" in /app/frontend/build/static/js/main.773235e1.js"
+    },
+    "ios_prepare_uses_correct_env": {
+      "test": "ios-prepare.js uses REACT_APP_TEST_MODE",
+      "status": "PASS",
+      "result": "Line 21: const testMode = process.env.REACT_APP_TEST_MODE || process.env.TEST_MODE || readEnvValue('REACT_APP_TEST_MODE') || readEnvValue('TEST_MODE')"
+    },
+    "ios_sync_uses_correct_env": {
+      "test": "ios-sync-web-assets.js uses REACT_APP_TEST_MODE",
+      "status": "PASS",
+      "result": "Line 20: const testMode = process.env.REACT_APP_TEST_MODE || process.env.TEST_MODE || readEnvValue('REACT_APP_TEST_MODE') || readEnvValue('TEST_MODE')"
+    },
+    "ios_diagnose_passes": {
+      "test": "yarn ios:diagnose completes successfully",
+      "status": "PASS",
+      "result": "All steps completed - build succeeded with warnings only (eslint unused vars)"
+    },
+    "frontend_smoke_test": {
+      "test": "Frontend loads at preview URL",
+      "status": "PASS",
+      "result": "https://super-app-staging-2.preview.emergentagent.com returns 200 and renders BidBlitz app"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-18T18:48:00Z",
+  "test_scope": "REACT_APP_TEST_MODE env embedding fix for iOS production bundle - Frontend Only",
+  "limitations": {
+    "xcode_compilation": "Cannot verify actual Xcode compilation in Linux container - requires macOS with Xcode",
+    "device_testing": "Cannot run on physical iOS device - requires macOS with Xcode and connected device",
+    "native_app_verification": "Cannot verify that native iOS app now shows full-access UI - requires real device test"
+  },
+  "technical_analysis": {
+    "issue": "Native iPhone/Xcode test app showed stale reduced-access UI despite TEST_MODE=true in .env",
+    "root_cause": "Create-React-App only embeds REACT_APP_* prefixed env vars into production bundles. TEST_MODE was not prefixed, so it was baked as false/undefined in the iOS bundle.",
+    "fix_applied": "1) Changed testMode.js to read REACT_APP_TEST_MODE, 2) Added DefinePlugin in craco.config.js to embed REACT_APP_TEST_MODE, 3) Added REACT_APP_TEST_MODE=true to frontend/.env, 4) Updated iOS scripts to use REACT_APP_TEST_MODE with fallback",
+    "fix_correctness": "VERIFIED - Production build now contains REACT_APP_TEST_MODE:\"true\" embedded in the compiled JavaScript bundle",
+    "remaining_blockers": "None from repo/build side. User should rebuild iOS app on macOS to verify the fix on device."
+  }
+}
