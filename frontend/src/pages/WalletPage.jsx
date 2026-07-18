@@ -35,6 +35,7 @@ const toSafeNumber = (value) => {
 const canUseWindow = () => typeof window !== "undefined";
 const canUseDocument = () => typeof document !== "undefined";
 const canUseClipboard = () => typeof navigator !== "undefined" && !!navigator.clipboard?.writeText;
+const tapSafeButtonStyle = { touchAction: "manipulation", WebkitTapHighlightColor: "transparent" };
 
 // Skeleton shimmer for loading state
 const Skeleton = ({ className }) => (
@@ -250,6 +251,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         : t("wallet.send_after_kyc"),
     });
     onNavigate?.("/kyc/status");
+  }, [onNavigate]);
+
+  const handleWalletRouteNavigate = useCallback((path) => {
+    onNavigate?.(path);
   }, [onNavigate]);
 
   // Demo mode: override data
@@ -547,9 +552,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <motion.button
                 data-testid="wallet-start-pay-btn"
                 type="button"
-                onClick={() => onNavigate?.("/pay")}
+                onClick={() => handleWalletRouteNavigate("/pay")}
                 whileTap={{ scale: 0.98 }}
-                className="min-h-[52px] rounded-2xl bg-[#00C2FF] px-4 py-3 text-left shadow-[0_12px_28px_rgba(0,194,255,0.22)]"
+                className="relative z-10 min-h-[52px] rounded-2xl bg-[#00C2FF] px-4 py-3 text-left shadow-[0_12px_28px_rgba(0,194,255,0.22)]"
+                style={tapSafeButtonStyle}
               >
                 <span className="block text-[14px] font-bold text-slate-950">{t("wallet.pay")}</span>
                 <span className="mt-0.5 block text-[11px] text-slate-900/70">{t("wallet.pay_merchant_desc")}</span>
@@ -557,9 +563,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <motion.button
                 data-testid="wallet-start-receive-btn"
                 type="button"
-                onClick={() => onNavigate?.('/receive-money')}
+                onClick={() => handleWalletRouteNavigate('/receive-money')}
                 whileTap={{ scale: 0.98 }}
-                className="min-h-[52px] rounded-2xl border border-[#00C2FF]/16 bg-[#00C2FF]/8 px-4 py-3 text-left"
+                className="relative z-10 min-h-[52px] rounded-2xl border border-[#00C2FF]/16 bg-[#00C2FF]/8 px-4 py-3 text-left"
+                style={tapSafeButtonStyle}
               >
                 <span className="block text-[14px] font-bold text-slate-950">{t("wallet.receive")}</span>
                 <span className="mt-0.5 block text-[11px] text-slate-600">{t("wallet.show_own_qr")}</span>
@@ -567,9 +574,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               <motion.button
                 data-testid="wallet-start-send-btn"
                 type="button"
-                onClick={() => onNavigate?.('/send-money')}
+                onClick={() => handleWalletRouteNavigate('/send-money')}
                 whileTap={{ scale: 0.98 }}
-                className="min-h-[52px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left"
+                className="relative z-10 min-h-[52px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left"
+                style={tapSafeButtonStyle}
               >
                 <span className="block text-[14px] font-bold text-slate-950">{t("wallet.send_money")}</span>
                 <span className="mt-0.5 block text-[11px] text-slate-600">{t("wallet.send_private_contact")}</span>
@@ -582,17 +590,18 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 { title: t('wallet.private_receive'), desc: t('wallet.private_receive_desc'), color: '#10B981', path: '/receive-money', testId: 'wallet-private-receive-card' },
                 { title: t('wallet.private_send'), desc: t('wallet.private_send_desc'), color: '#8B5CF6', path: '/send-money', testId: 'wallet-private-send-card' },
               ].map((item) => (
-                <motion.button
+                <button
                   key={item.title}
                   type="button"
                   data-testid={item.testId}
-                  onClick={() => onNavigate?.(item.path)}
-                  whileTap={{ scale: 0.98 }}
-                  className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-left transition-colors hover:bg-white"
+                  onClick={() => handleWalletRouteNavigate(item.path)}
+                  className="relative z-10 min-h-[88px] rounded-2xl border border-slate-200 bg-white/90 px-3 py-3 text-left transition-colors hover:bg-white active:scale-[0.98]"
+                  style={tapSafeButtonStyle}
+                  aria-label={`${item.title} öffnen`}
                 >
                   <p className="text-[12px] font-semibold" style={{ color: item.color }}>{item.title}</p>
                   <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">{item.desc}</p>
-                </motion.button>
+                </button>
               ))}
             </div>
           </motion.div>
