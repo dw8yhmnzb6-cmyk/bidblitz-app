@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Inline-Scanner-Umstellung — 18.07.2026
+- ✅ „Empfänger-Code scannen“ läuft jetzt direkt **inline in der Seite** statt in einem separaten Scanner-Sheet.
+- ✅ Native iOS-/Capacitor-Integration ergänzt: **`@capgo/camera-preview`** für eingebettete Live-Vorschau + Barcode-Events und **`capacitor-native-settings`** für den Settings-Pfad bei verweigerter Kamera-Berechtigung.
+- ✅ `npm run build` und `npx cap sync ios` erfolgreich; **Testing Agent Iteration 258 PASS**.
+- 🟡 Offener letzter Realwelt-Schritt: echter iPhone-/Xcode-Kameratest gegen den neuen nativen Pfad, weil der Linux-Container keine physische iOS-Kamera ausführen kann.
+- 🟡 Danach zurück auf Produkt-Roadmap: Audi-Ticketverkauf und Telegram-Monitoring-Backup.
+
 ## Status nach ReceiveMoney-QR-Fix — 18.07.2026
 - ✅ Der QR-Code auf **Empfangen → Mein QR-Code** rendert wieder stabil, auch nach dem iOS-Startup-Fix.
 - ✅ Pflichtdatenpfad vereinheitlicht: `userId`, `walletId`, `token`, `bidblitzId`, `name` fließen jetzt sauber in einen JSON-String-Payload für `QRCodeSVG`.
