@@ -1,5 +1,15 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Wallet-Karten auf iPhone/Mobil wieder sicher tappbar
+- Nach neuem Nutzerfeedback wurde der konkrete Mobilbug in `frontend/src/pages/WalletPage.jsx` behoben: Die unteren Wallet-Karten **„Kasse / Händler“**, **„Privat empfangen“** und **„Privat senden“** waren sichtbar, reagierten auf iPhone/Mobil aber nicht zuverlässig auf Taps.
+- Fix: die betroffenen Karten wurden von `motion.button` auf native `<button>`-Elemente umgestellt; zusätzlich greifen jetzt `touchAction: "manipulation"`, `WebkitTapHighlightColor: "transparent"`, `relative z-10` und ein gemeinsamer sicherer `handleWalletRouteNavigate(...)`-Handler. Die oberen Quick-Buttons wurden auf denselben Navigationspfad vereinheitlicht.
+- Verifiziert durch **Testing Agent Iteration 263 PASS**: **6/6 Wallet-Buttons/Karten** auf iPhone-ähnlichem Viewport erfolgreich getestet, inklusive Navigation nach `/pay`, `/receive-money` und `/send-money`. **Keine MOCKED APIs in diesem Bugfix.**
+
+## 18.07.2026 — iOS CoreData-Launch-Härtung und Diagnose erweitert
+- Für den noch offenen nativen `default.store`-/CoreData-/SwiftData-Pfad wurde die iOS-Launch-Seite weiter gehärtet. `frontend/ios/App/App/AppDelegate.swift` bereitet jetzt den Application-Support-Pfad und den `default.store`-Parent direkt beim App-Start vor und loggt den Zustand mit **`[CoreDataFix][ENSURE]`**, **`[CoreDataFix][PATH]`** und **`[CoreDataFix][STATE]`**.
+- `frontend/ios/App/App/CoreDataTrace.m` loggt zusätzlich **`[CoreDataFix][PATH_STATE]`** vor und nach dem Parent-Ensure sowie vor dem eigentlichen Store-Open. `frontend/scripts/ios-diagnose.js` und `frontend/ios/App/CORE_DATA_RUNTIME_TRACE.md` wurden an diese Logspur angepasst.
+- Verifiziert per **`yarn ios:diagnose` PASS**. Ein echter Xcode-/iPhone-Laufzeittest bleibt weiterhin offen, weil der Linux-Container kein physisches iPhone ausführen kann.
+
 ## 18.07.2026 — KYC testweise vollständig ausgeschaltet
 - Auf ausdrücklichen Nutzerwunsch wurde KYC vorübergehend **komplett aus dem Frontend-Testfluss entfernt**, damit ungestörte Produkt-/QA-Tests möglich sind. Dazu wurde in `frontend/.env` der neue Schalter **`REACT_APP_DISABLE_KYC=true`** gesetzt und der Frontend-Service neu gestartet.
 - Der Schalter wirkt zentral: `frontend/src/utils/adminAccess.js` gibt bei aktivem Flag immer KYC-freigegeben zurück; `frontend/src/app/pathUtils.js` deaktiviert KYC-Routenblockaden; `frontend/src/App.js` umgeht automatische Weiterleitungen nach `/kyc`; `frontend/src/components/KYCBanner.jsx` rendert nichts mehr; `frontend/src/pages/HomePage.jsx`, `frontend/src/pages/MorePage.jsx`, `frontend/src/pages/WalletPage.jsx` und `frontend/src/components/auctions/AuctionDetail.jsx` respektieren den Modus ebenfalls.

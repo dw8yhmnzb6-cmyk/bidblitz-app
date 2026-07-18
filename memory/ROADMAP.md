@@ -1,6 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Audi-Ticketverkauf — 18.07.2026
+- ✅ Wallet-Mobilbug gefixt: die Karten **Kasse/Händler**, **Privat empfangen** und **Privat senden** sind auf iPhone-/Mobile-Viewport wieder direkt tappbar; **Testing Agent Iteration 263 PASS**.
+- ✅ iOS-CoreData-Launch-Härtung erweitert: zusätzliche **`[CoreDataFix]`**-Pfad-/State-Logs plus frühes Directory-Prepare in `AppDelegate.swift`; `yarn ios:diagnose` erfolgreich.
 - ✅ **KYC temporär ausgeschaltet für Tests**: `REACT_APP_DISABLE_KYC=true` aktiv; keine Banner, Gates oder Redirects mehr; **Testing Agent Iteration 262 PASS**.
 - ✅ **Audi-Ticketverkauf** auf der Webseite ist jetzt live unter **`/audi-tickets`**.
 - ✅ Zahlung läuft wie vom Nutzer gewünscht **direkt über das BidBlitz Wallet** statt über Stripe/externe Checkout-Seiten.
@@ -10,7 +12,7 @@
 - ✅ ReceiveMoney-QR-Bug zusätzlich auf **iPhone-Build-Ebene** abgesichert: aktuelles iOS-Bundle enthält jetzt Preview-Backend-URL + QR-Render-Fallback; **Testing Agent Iteration 260 PASS**.
 - ✅ iPhone-Home-UX aus Nutzer-Video bereinigt: Cookie-Banner nicht mehr über Bottom-Nav bei Auth-Usern, AI-FAB auf Kernrouten entfernt, Bottom-Nav dynamisch an Browser-Bottom angepasst, Mobile-Home kompakter; **Testing Agent Iteration 261 PASS**.
 - 🟡 Nächster Produkt-Schritt: **Telegram-Alarm als Backup** für Monitoring ergänzen.
-- 🟡 Parallel offen für User-Verifikation: echter iPhone/Xcode-Test für den nativen Inline-Scanner-Pfad und den CoreData-/SwiftData-Laufzeitpfad.
+- 🟡 Parallel offen für User-Verifikation: echter iPhone/Xcode-Test für den nativen Inline-Scanner-Pfad und den CoreData-/SwiftData-Laufzeitpfad; dabei jetzt gezielt auf **`[CoreDataFix]`**, **`[CoreDataTrace]`** und **`[HealthDebug]`** achten.
 
 ## Status nach Inline-Scanner-Umstellung — 18.07.2026
 - ✅ „Empfänger-Code scannen“ läuft jetzt direkt **inline in der Seite** statt in einem separaten Scanner-Sheet.
