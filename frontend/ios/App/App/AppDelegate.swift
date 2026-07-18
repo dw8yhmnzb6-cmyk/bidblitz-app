@@ -1,12 +1,49 @@
 import UIKit
 import Capacitor
 
+private enum CoreDataLaunchPrep {
+    static func ensure() {
+        let fileManager = FileManager.default
+
+        guard let applicationSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            NSLog("[CoreDataFix][ERROR] Application Support konnte beim App-Start nicht aufgelöst werden")
+            return
+        }
+
+        ensureDirectory(at: applicationSupportURL, label: "Application Support")
+
+        let defaultStoreURL = applicationSupportURL.appendingPathComponent("default.store", isDirectory: false)
+        ensureDirectory(at: defaultStoreURL.deletingLastPathComponent(), label: "default.store parent")
+        logState(applicationSupportURL: applicationSupportURL, defaultStoreURL: defaultStoreURL)
+    }
+
+    private static func ensureDirectory(at url: URL, label: String) {
+        do {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            NSLog("[CoreDataFix][ENSURE] \(label) bereit unter \(url.path)")
+        } catch {
+            NSLog("[CoreDataFix][ERROR] \(label) konnte nicht erstellt werden: \(error.localizedDescription)")
+        }
+    }
+
+    private static func logState(applicationSupportURL: URL, defaultStoreURL: URL) {
+        let fileManager = FileManager.default
+        var supportIsDirectory = ObjCBool(false)
+        let supportExists = fileManager.fileExists(atPath: applicationSupportURL.path, isDirectory: &supportIsDirectory)
+        let storeExists = fileManager.fileExists(atPath: defaultStoreURL.path)
+        NSLog("[CoreDataFix][PATH] Application Support = \(applicationSupportURL.path)")
+        NSLog("[CoreDataFix][PATH] default.store = \(defaultStoreURL.path)")
+        NSLog("[CoreDataFix][STATE] support_exists=\(supportExists) support_is_directory=\(supportIsDirectory.boolValue) default_store_exists=\(storeExists)")
+    }
+}
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        CoreDataLaunchPrep.ensure()
         return true
     }
 

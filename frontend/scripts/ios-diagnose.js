@@ -18,8 +18,11 @@ function verifyIosProject() {
   const healthPatch = read('patches/@capgo+capacitor-health+7.2.15.patch');
   const healthSwift = read('node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/Health.swift');
   const healthPlugin = read('node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/HealthPlugin.swift');
+  const traceGuide = read('ios/App/CORE_DATA_RUNTIME_TRACE.md');
 
   assert(appDelegate.includes('@UIApplicationMain'), 'AppDelegate.swift nutzt nicht den normalen Capacitor-Start');
+  assert(appDelegate.includes('CoreDataLaunchPrep.ensure()'), 'AppDelegate.swift startet die CoreData-Launch-Härtung nicht');
+  assert(appDelegate.includes('[CoreDataFix][PATH]'), 'AppDelegate.swift enthält keine CoreDataFix-Pfadlogs');
   assert(!exists('ios/App/App/main.swift'), 'main.swift existiert noch');
   assert(!exists('ios/App/App/PersistenceBootstrap.swift'), 'PersistenceBootstrap.swift existiert noch');
   assert(!pbx.includes('main.swift'), 'main.swift ist noch im Xcode-Projekt referenziert');
@@ -31,12 +34,14 @@ function verifyIosProject() {
   assert(coreTrace.includes('[CoreDataTrace][FRAMEWORK]'), 'Framework-Logs fehlen');
   assert(coreTrace.includes('[CoreDataTrace][STORE_URL]'), 'Store-URL-Logs fehlen');
   assert(coreTrace.includes('[CoreDataTrace][END]'), 'End-Logs fehlen');
+  assert(coreTrace.includes('[CoreDataFix][PATH_STATE]'), 'CoreDataTrace enthält keine Path-State-Logs');
   assert(healthPatch.includes('[HealthDebug] HealthPlugin initialized'), 'Health-Patch enthält HealthPlugin-Log nicht');
   assert(healthPatch.includes('[HealthDebug] HKHealthStore initialized'), 'Health-Patch enthält HKHealthStore-Log nicht');
   assert(healthSwift.includes('private lazy var healthStore: HKHealthStore = {'), 'Health.swift hat keinen Lazy HealthStore');
   assert(healthSwift.includes('[HealthDebug] HKHealthStore initialized'), 'Health.swift enthält HKHealthStore-Debuglog nicht');
   assert(healthPlugin.includes('Health.shared'), 'HealthPlugin.swift nutzt nicht Health.shared');
   assert(healthPlugin.includes('[HealthDebug] HealthPlugin initialized'), 'HealthPlugin.swift enthält HealthPlugin-Debuglog nicht');
+  assert(traceGuide.includes('[CoreDataFix][PATH]'), 'Runtime-Trace-Doku enthält die neuen Path-Logs nicht');
 }
 
 try {
@@ -53,7 +58,7 @@ try {
   console.log('\n[ios:diagnose] Schritt 4/4: Ergebnis');
   console.log('[ios:diagnose] ✅ Projekt ist für den Gerätetest bereit.');
   console.log('[ios:diagnose] Öffne ios/App/App.xcworkspace, wähle dein iPhone und drücke Run.');
-  console.log('[ios:diagnose] Danach nur noch den Xcode-Log mit [CoreDataTrace] und [HealthDebug] kopieren.');
+  console.log('[ios:diagnose] Danach den Xcode-Log mit [CoreDataFix], [CoreDataTrace] und [HealthDebug] kopieren.');
 } catch (error) {
   console.error(`\n[ios:diagnose] ❌ ${error.message}`);
   process.exit(1);

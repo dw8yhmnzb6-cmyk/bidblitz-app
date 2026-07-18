@@ -70,6 +70,20 @@ static void BBEnsurePersistentStoreParentDirectory(NSURL *storeURL) {
     }
 }
 
+static void BBLogPathState(NSURL *targetURL, NSString *label) {
+    if (!BBTraceShouldActivate() || targetURL == nil || !targetURL.isFileURL) {
+        return;
+    }
+
+    BOOL isDirectory = NO;
+    BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:targetURL.path isDirectory:&isDirectory];
+    NSLog(@"[CoreDataFix][PATH_STATE] %@ path=%@ exists=%@ is_directory=%@",
+          label ?: @"(nil)",
+          targetURL.path ?: @"(nil)",
+          exists ? @"true" : @"false",
+          isDirectory ? @"true" : @"false");
+}
+
 __attribute__((constructor))
 static void BBTraceConstructor(void) {
     BBEnsureApplicationSupportDirectory();
@@ -221,7 +235,10 @@ static void BBTraceLogStoreEvent(NSString *storeType, NSString *configuration, N
     }
 
     if (isDefaultStore || hasHistoryKey || hasRemoteChangeKey) {
+        BBLogPathState([storeURL URLByDeletingLastPathComponent], @"before_store_parent_ensure");
         BBEnsurePersistentStoreParentDirectory(storeURL);
+        BBLogPathState([storeURL URLByDeletingLastPathComponent], @"after_store_parent_ensure");
+        BBLogPathState(storeURL, @"store_file_before_open");
         BBTraceLogStoreEvent(storeType, configuration, storeURL, options);
     }
 
