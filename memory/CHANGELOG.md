@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Restliche `localStorage token`-Logik entfernt
+- Die letzten regulären Frontend-Stellen mit `localStorage.getItem('token')` wurden bereinigt: `AdminLandingLeadsPage.jsx`, `LiveKitStreamPage.jsx`, `POSHardwareModal.jsx`, `AgeVerificationModal.jsx` und `POSRetailEnterpriseComponents.jsx` nutzen jetzt einheitlich **Cookie-Auth via `credentials: 'include'`**.
+- **Testing Agent Iteration 273 PASS** bestätigt: kein `localStorage.getItem('token')` mehr in `frontend/src`, keine `Authorization`-/`Bearer`-Patterns mehr in den betroffenen Dateien, Landingpage lädt normal.
+- Hinweis: `child_token` in `ChildModePage.jsx` bleibt bewusst bestehen, weil er ein separater Child-Mode-Mechanismus ist und nicht die normale Benutzer-Auth repräsentiert. **KEINE MOCKED APIs** in diesem Fix.
+
 ## 18.07.2026 — Legacy localStorage Auth-Key `bidblitz_auth` bereinigt
 - `frontend/src/services/authService.js` wurde von lokalem Mock-Login auf echte Backend-Auth via `api` umgestellt. Der alte Key **`bidblitz_auth`** wird jetzt aktiv per **`purgeLegacyAuthStorage()`** entfernt.
 - Die Bereinigung läuft mehrfach defensiv: direkt beim App-Start in `frontend/src/index.js`, beim Mount von `UserContext.jsx` und in allen Auth-Methoden (`login`, `register`, `logout`, `getSession`, `refreshSession`).

@@ -74,4 +74,4 @@ Wenn ein Problem wie **KYC-Karte bleibt sichtbar**, **falscher Login-Status**, o
 
 - Auth-/KYC-Wahrheit weiterhin nur aus Backend + Cookie ableiten
 - lokale Speicherung nur für UI-Präferenzen nutzen
-- Legacy-Mock `authService.js` bei nächster Bereinigung entfernen oder deaktivieren
+- Legacy-Mock `authService.js` ist jetzt auf echte API-Auth umgestellt; zusätzliche Aufmerksamkeit gilt nur noch separaten Spezial-Tokens wie `child_token` im Child-Mode
