@@ -1292,7 +1292,7 @@ function AppContent() {
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
       {/* AI Chatbot (powered by gpt-5.2) */}
-      {user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && routeBase !== '/scan' && routeBase !== '/terminal' && routeBase !== '/nfc' && routeBase !== '/pos' && routeBase !== '/dating' && routeBase !== '/' && routeBase !== '/home' && routeBase !== '/wallet' && routeBase !== '/all-services' && routeBase !== '/more' && <AIChatWidget />}
+      {!TEST_MODE && user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && routeBase !== '/scan' && routeBase !== '/terminal' && routeBase !== '/nfc' && routeBase !== '/pos' && routeBase !== '/dating' && routeBase !== '/' && routeBase !== '/home' && routeBase !== '/wallet' && routeBase !== '/all-services' && routeBase !== '/more' && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
       {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && (
         <SuperAppOverlay
@@ -1306,7 +1306,7 @@ function AppContent() {
       <InAppUpdateManager />
 
       {/* Landing Chatbot — Floating widget for guest visitors (hidden on staff mobile) */}
-      {!user.isAuthenticated && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && <LandingChatbot />}
+      {!TEST_MODE && !user.isAuthenticated && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
       {!user.isAuthenticated && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}
