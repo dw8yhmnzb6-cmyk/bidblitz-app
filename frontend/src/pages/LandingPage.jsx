@@ -28,25 +28,25 @@ export default function LandingPage({ onGetStarted }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#030303] via-[#0a0a0f] to-[#030303] text-white font-outfit overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 pt-20 pb-32 overflow-hidden">
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 pb-40 pt-[max(env(safe-area-inset-top,0px),5.5rem)] sm:px-6 sm:pb-32 sm:pt-20">
         {/* Animated Background */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-10 w-96 h-96 bg-cyan-500/30 rounded-full blur-[120px] animate-pulse" />
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/30 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
-        <div className="relative z-10 max-w-6xl mx-auto text-center">
+        <div className="relative z-10 mx-auto max-w-6xl text-center">
           {/* Logo */}
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="mb-8"
+            className="mb-7 sm:mb-8"
           >
-            <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-cyan-500 to-purple-600 shadow-2xl mb-6">
-              <span className="text-5xl">⚡</span>
+            <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-gradient-to-br from-cyan-500 to-purple-600 shadow-2xl sm:mb-6 sm:h-24 sm:w-24 sm:rounded-3xl">
+              <span className="text-4xl sm:text-5xl">⚡</span>
             </div>
-            <h1 className="text-7xl md:text-8xl font-black mb-4 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="mb-3 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-5xl font-black leading-none text-transparent sm:mb-4 sm:text-7xl md:text-8xl">
               BidBlitz
             </h1>
           </motion.div>
@@ -56,7 +56,7 @@ export default function LandingPage({ onGetStarted }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-3xl md:text-5xl font-bold mb-6 text-white/90"
+            className="mb-4 text-[1.65rem] font-bold leading-tight text-white/90 sm:mb-6 sm:text-3xl md:text-5xl"
           >
             Die Super-App für alles
           </motion.h2>
@@ -65,7 +65,7 @@ export default function LandingPage({ onGetStarted }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-xl md:text-2xl text-white/60 mb-12 max-w-3xl mx-auto"
+            className="mx-auto mb-10 max-w-[21rem] text-base leading-relaxed text-white/60 sm:mb-12 sm:max-w-3xl sm:text-xl md:text-2xl"
           >
             Taxi buchen • Essen bestellen • E-Scooter mieten • Auktionen gewinnen • Bezahlen — alles in einer App
           </motion.p>
@@ -75,17 +75,18 @@ export default function LandingPage({ onGetStarted }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+            className="mb-14 flex flex-col items-stretch justify-center gap-3 sm:mb-16 sm:flex-row sm:items-center sm:gap-4"
           >
             <button
               onClick={onGetStarted}
-              className="group px-8 py-4 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl font-bold text-lg flex items-center gap-3 shadow-2xl hover:shadow-cyan-500/50 transition-all hover:scale-105"
+              className="group flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-purple-600 px-8 py-4 text-base font-bold shadow-2xl transition-all hover:scale-105 hover:shadow-cyan-500/50 sm:w-auto sm:text-lg"
+              data-testid="landing-open-app-button"
             >
               <span>App öffnen</span>
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
 
-            <button className="px-8 py-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl font-semibold text-lg flex items-center gap-3 hover:bg-white/10 transition-all">
+            <button className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold backdrop-blur-xl transition-all hover:bg-white/10 sm:w-auto sm:text-lg" data-testid="landing-watch-demo-button">
               <Play size={20} />
               <span>Demo ansehen</span>
             </button>
@@ -96,13 +97,13 @@ export default function LandingPage({ onGetStarted }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="flex items-center justify-center gap-4"
+            className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
           >
             <a href="#" className="opacity-60 hover:opacity-100 transition-opacity">
-              <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/de-de?size=250x83" alt="App Store" className="h-12" />
+              <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/de-de?size=250x83" alt="App Store" className="h-11 sm:h-12" />
             </a>
             <a href="#" className="opacity-60 hover:opacity-100 transition-opacity">
-              <img src="https://play.google.com/intl/en_us/badges/static/images/badges/de_badge_web_generic.png" alt="Google Play" className="h-[52px]" />
+              <img src="https://play.google.com/intl/en_us/badges/static/images/badges/de_badge_web_generic.png" alt="Google Play" className="h-[48px] sm:h-[52px]" />
             </a>
           </motion.div>
 
@@ -111,7 +112,7 @@ export default function LandingPage({ onGetStarted }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="mt-20 grid grid-cols-3 gap-8 max-w-2xl mx-auto"
+            className="mx-auto mt-16 grid max-w-[21rem] grid-cols-3 gap-3 sm:mt-20 sm:max-w-2xl sm:gap-8"
           >
             {[
               { value: '50K+', label: 'Aktive Nutzer' },
@@ -119,10 +120,10 @@ export default function LandingPage({ onGetStarted }) {
               { value: '4.9★', label: 'App Rating' },
             ].map((stat, i) => (
               <div key={i}>
-                <div className="text-4xl font-black bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-1">
+                <div className="mb-1 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-[1.7rem] font-black text-transparent sm:text-4xl">
                   {stat.value}
                 </div>
-                <div className="text-sm text-white/40">{stat.label}</div>
+                <div className="text-[10px] leading-snug text-white/40 sm:text-sm">{stat.label}</div>
               </div>
             ))}
           </motion.div>
@@ -132,7 +133,7 @@ export default function LandingPage({ onGetStarted }) {
         <motion.div
           animate={{ y: [0, 10, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 sm:bottom-8"
         >
           <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2">
             <div className="w-1 h-2 bg-white/40 rounded-full" />

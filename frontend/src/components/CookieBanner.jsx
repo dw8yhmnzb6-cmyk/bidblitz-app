@@ -88,32 +88,36 @@ export default function CookieBanner({ onNavigate }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="fixed inset-x-0 bottom-0 z-[10000] p-3 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[420px] sm:p-0"
-        style={{ paddingBottom: 'var(--app-cookie-banner-offset, calc(5rem + env(safe-area-inset-bottom, 0px)))' }}
+        className="fixed inset-x-0 bottom-0 z-[10000] px-3 pb-3 pt-0 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[420px] sm:p-0"
+        style={{
+          paddingBottom: 'max(0.75rem, var(--app-cookie-banner-offset, calc(5rem + env(safe-area-inset-bottom, 0px))))',
+          paddingLeft: 'max(0.75rem, calc(0.75rem + env(safe-area-inset-left, 0px)))',
+          paddingRight: 'max(0.75rem, calc(0.75rem + env(safe-area-inset-right, 0px)))',
+        }}
         data-testid="cookie-banner"
       >
-        <div className={`max-w-3xl mx-auto bg-[#0A0A0F]/90 backdrop-blur-md border border-white/10 rounded-2xl p-2 sm:p-5 shadow-2xl sm:max-w-none overflow-y-auto sm:max-h-none ${showDetails ? 'max-h-[42vh]' : 'max-h-[6.25rem] sm:max-h-none overflow-hidden'}`}>
+        <div className={`mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#0A0A0F]/92 p-2 shadow-2xl backdrop-blur-md sm:max-w-none sm:p-5 ${showDetails ? 'max-h-[42vh] overflow-y-auto sm:max-h-none' : 'max-h-[6.2rem] overflow-hidden sm:max-h-none sm:overflow-visible'}`}>
           {isCompactMobile && (
             <div className="sm:hidden" data-testid="cookie-banner-mobile-mini">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10">
                   <Cookie size={13} className="text-amber-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold text-white truncate">
+                  <p className="truncate text-[9px] font-semibold text-white">
                     {t('cookie.title') || 'Wir respektieren deine Privatsphäre'}
                   </p>
-                  <p className="text-[9px] text-white/55 truncate">
+                  <p className="truncate text-[8px] text-white/55">
                     {t('cookie.necessary_desc') || 'Login-Session, CSRF-Schutz'}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-[0.82fr_1.18fr] gap-1.5 mt-2">
+              <div className="mt-1.5 grid grid-cols-[0.82fr_1.18fr] gap-1.5">
                 <button
                   onClick={() => setShowDetails(true)}
                   data-testid="cookie-banner-customize"
-                  className="h-8 px-2 py-1 text-[9px] font-semibold bg-white/6 hover:bg-white/10 text-gray-200 rounded-lg flex items-center justify-center gap-1"
+                  className="flex h-7 items-center justify-center gap-1 rounded-lg bg-white/6 px-2 py-1 text-[8px] font-semibold text-gray-200 hover:bg-white/10"
                 >
                   <Settings size={10} />
                   {t('common.customize') || 'Anpassen'}
@@ -121,7 +125,7 @@ export default function CookieBanner({ onNavigate }) {
                 <button
                   onClick={() => accept('all')}
                   data-testid="cookie-banner-accept-all"
-                  className="h-8 px-2 py-1 text-[9px] font-bold bg-amber-500 hover:bg-amber-600 text-black rounded-lg"
+                  className="h-7 rounded-lg bg-amber-500 px-2 py-1 text-[8px] font-bold text-black hover:bg-amber-600"
                 >
                   {t('cookie.accept_all') || 'Alle akzeptieren'}
                 </button>

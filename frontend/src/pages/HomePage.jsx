@@ -399,7 +399,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── Header ── */}
         <motion.header
-          className="flex items-start justify-between gap-3 pt-[max(env(safe-area-inset-top,0px),24px)] pb-5 sm:items-center"
+          className="flex flex-wrap items-start justify-between gap-3 pt-[max(env(safe-area-inset-top,0px),24px)] pb-5 sm:flex-nowrap sm:items-center"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.04, ...slide }}
@@ -414,7 +414,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <h2 className="truncate text-[16px] text-white font-semibold font-outfit tracking-tight">{isGuest ? "BidBlitz" : user.name}</h2>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
+          <div className="flex w-full items-center justify-end gap-2 self-start sm:w-auto sm:shrink-0 sm:self-center">
             <ModeSwitcher onModeChange={(mode) => {
               if (mode === "kids") onNavigate("/kids");
               else if (mode === "merchant") onNavigate("/merchant-portal");
@@ -423,10 +423,10 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <LanguageSwitcher />
             {isGuest ? (
               <div className="flex shrink-0 items-center gap-1.5">
-                <motion.button data-testid="header-login-btn" className="px-3.5 py-[7px] rounded-full text-[11px] font-semibold font-outfit" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
+                <motion.button data-testid="header-login-btn" className="px-3 py-[7px] rounded-full text-[10px] font-semibold font-outfit sm:px-3.5 sm:text-[11px]" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
                   {t("auth.signin") || "Login"}
                 </motion.button>
-                <motion.button data-testid="header-register-btn" className="px-3.5 py-[7px] rounded-full text-[11px] font-semibold font-outfit" style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onRegister}>
+                <motion.button data-testid="header-register-btn" className="px-3 py-[7px] rounded-full text-[10px] font-semibold font-outfit sm:px-3.5 sm:text-[11px]" style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onRegister}>
                   {t("auth.create") || "Register"}
                 </motion.button>
               </div>
