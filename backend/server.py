@@ -9,6 +9,9 @@ load_dotenv(Path(__file__).parent / '.env')
 import logging
 import json
 import hashlib
+import asyncio
+import fcntl
+import os
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timezone
 
@@ -37,6 +40,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("bidblitz")
+POST_STARTUP_LOCK_PATH = Path("/tmp/bidblitz_post_startup.lock")
 
 LEGACY_ADMIN_SUSPICIOUS_BALANCES = {2622000000.0, 63366525.91}
 LEGACY_ADMIN_SUSPICIOUS_BLZ = {91.0}
@@ -323,6 +327,15 @@ logger.info(f"✓ BidBlitz V2 API started ({APP_ENV} mode)")
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+def _acquire_post_startup_lock():
+    try:
+        lock_file = open(POST_STARTUP_LOCK_PATH, "w")
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return lock_file
+    except OSError:
+        return None
 
 
 async def ensure_admin_driver_account():
@@ -633,71 +646,98 @@ async def serve_bidblitz_pay_sdk():
 # STARTUP & SHUTDOWN
 # ══════════════════════════════════════════════════════════════════════════════
 
+async def _run_post_startup_initialization():
+    """Heavy startup work runs after the server is already able to answer /health."""
+    logger.info("🚀 Starting BidBlitz V2...")
+    try:
+        await create_indexes()
+        logger.info("✓ Database indexes created")
+        await seed_admin()
+        await restore_admin_balance_if_needed()
+        await restore_missing_legacy_wallet_users()
+        await cleanup_legacy_admin_artifacts()
+        await ensure_admin_driver_account()
+
+        # Seed demo auctions and start background bot+maintenance loops
+        try:
+            from routes.auctions import (
+                seed_demo_auctions,
+                start_auction_maintenance_loop,
+                start_bot_loop,
+            )
+            await seed_demo_auctions()
+            start_auction_maintenance_loop()
+            start_bot_loop()
+            logger.info("✓ Auction maintenance + bot loops started")
+        except Exception as e:
+            logger.warning(f"Auction loops start failed: {e}")
+
+        # Staff Shift Watchdog (Push-Reminders alle 5min)
+        try:
+            from routes.staff_shift_watchdog import start_watchdog_loop
+            start_watchdog_loop()
+            logger.info("✓ Staff shift watchdog loop started")
+        except Exception as e:
+            logger.warning(f"Staff watchdog start failed: {e}")
+
+        # Taxi Pre-Booking / Recurring Watchdog (iter123)
+        try:
+            from routes.taxi_scheduled import start_taxi_scheduled_loop
+            start_taxi_scheduled_loop()
+            logger.info("✓ Taxi scheduled/recurring watchdog started")
+        except Exception as e:
+            logger.warning(f"Taxi scheduled watchdog start failed: {e}")
+
+        # Customer Radar Automation Scheduler
+        try:
+            from routes.admin_customer_intelligence import start_radar_scheduler_loop
+            start_radar_scheduler_loop()
+            logger.info("✓ Customer radar automation scheduler started")
+        except Exception as e:
+            logger.warning(f"Customer radar scheduler start failed: {e}")
+
+        # Optional: Seed demo data if DEMO_SEED=true
+        if os.environ.get("DEMO_SEED", "").lower() == "true":
+            try:
+                from scripts.seed_demo_data import seed_demo_data
+                await seed_demo_data(db)
+                logger.info("✓ Demo data seeded")
+            except Exception as e:
+                logger.warning(f"Demo seed failed: {e}")
+
+        app.state.startup_status = "ready"
+    except Exception as e:
+        app.state.startup_status = "error"
+        logger.exception(f"Post-startup initialization failed: {e}")
+
+
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database indexes on startup"""
-    logger.info("🚀 Starting BidBlitz V2...")
-    await create_indexes()
-    logger.info("✓ Database indexes created")
-    await seed_admin()
-    await restore_admin_balance_if_needed()
-    await restore_missing_legacy_wallet_users()
-    await cleanup_legacy_admin_artifacts()
-    await ensure_admin_driver_account()
-
-    # Seed demo auctions and start background bot+maintenance loops
-    try:
-        from routes.auctions import (
-            seed_demo_auctions,
-            start_auction_maintenance_loop,
-            start_bot_loop,
-        )
-        await seed_demo_auctions()
-        start_auction_maintenance_loop()
-        start_bot_loop()
-        logger.info("✓ Auction maintenance + bot loops started")
-    except Exception as e:
-        logger.warning(f"Auction loops start failed: {e}")
-
-    # Staff Shift Watchdog (Push-Reminders alle 5min)
-    try:
-        from routes.staff_shift_watchdog import start_watchdog_loop
-        start_watchdog_loop()
-        logger.info("✓ Staff shift watchdog loop started")
-    except Exception as e:
-        logger.warning(f"Staff watchdog start failed: {e}")
-
-    # Taxi Pre-Booking / Recurring Watchdog (iter123)
-    try:
-        from routes.taxi_scheduled import start_taxi_scheduled_loop
-        start_taxi_scheduled_loop()
-        logger.info("✓ Taxi scheduled/recurring watchdog started")
-    except Exception as e:
-        logger.warning(f"Taxi scheduled watchdog start failed: {e}")
-
-    # Customer Radar Automation Scheduler
-    try:
-        from routes.admin_customer_intelligence import start_radar_scheduler_loop
-        start_radar_scheduler_loop()
-        logger.info("✓ Customer radar automation scheduler started")
-    except Exception as e:
-        logger.warning(f"Customer radar scheduler start failed: {e}")
-
-    # Optional: Seed demo data if DEMO_SEED=true
-    import os
-    if os.environ.get("DEMO_SEED", "").lower() == "true":
-        try:
-            from scripts.seed_demo_data import seed_demo_data
-            await seed_demo_data(db)
-            logger.info("✓ Demo data seeded")
-        except Exception as e:
-            logger.warning(f"Demo seed failed: {e}")
+    """Return health immediately; run heavy initialization in the background."""
+    app.state.startup_status = "booting"
+    lock_file = _acquire_post_startup_lock()
+    app.state.post_startup_lock = lock_file
+    if lock_file is None:
+        logger.info("Post-startup initialization already owned by another worker; serving traffic immediately")
+        return
+    app.state.post_startup_task = asyncio.create_task(_run_post_startup_initialization())
+    logger.info("Post-startup initialization scheduled in background")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
     logger.info("Shutting down BidBlitz V2...")
+    task = getattr(app.state, "post_startup_task", None)
+    if task and not task.done():
+        task.cancel()
+    lock_file = getattr(app.state, "post_startup_lock", None)
+    if lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            lock_file.close()
+        except Exception:
+            pass
     await close_connection()
     logger.info("✓ Database connection closed")
 
@@ -709,7 +749,12 @@ async def shutdown_event():
 @app.get("/health")
 async def health_check():
     """Simple health check endpoint"""
-    return {"status": "healthy", "version": "2.0.0", "environment": APP_ENV}
+    return {
+        "status": "healthy",
+        "version": "2.0.0",
+        "environment": APP_ENV,
+        "startup_status": getattr(app.state, "startup_status", "booting"),
+    }
 
 
 @app.get("/")
