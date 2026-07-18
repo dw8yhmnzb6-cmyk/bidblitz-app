@@ -127,20 +127,24 @@ export function usePaymentFlow() {
  */
 export function useGroupedTransactions() {
   const { transactions } = useWallet();
-  
-  const groupedTransactions = transactions.reduce((groups, transaction) => {
-    const date = new Date(transaction.date);
+
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const groupedTransactions = safeTransactions.reduce((groups, transaction) => {
+    const date = transaction?.date ? new Date(transaction.date) : null;
+    const isValidDate = date instanceof Date && !Number.isNaN(date.getTime());
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
     let dateKey;
-    if (date.toDateString() === today.toDateString()) {
+    if (isValidDate && date.toDateString() === today.toDateString()) {
       dateKey = 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
+    } else if (isValidDate && date.toDateString() === yesterday.toDateString()) {
       dateKey = 'Yesterday';
-    } else {
+    } else if (isValidDate) {
       dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } else {
+      dateKey = 'Unknown';
     }
 
     if (!groups[dateKey]) {
@@ -159,16 +163,22 @@ export function useGroupedTransactions() {
  */
 export function useWalletStats() {
   const { transactions, balance } = useWallet();
-  
-  const stats = transactions.reduce(
+
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeBalance = Number.isFinite(Number(balance)) ? Number(balance) : 0;
+
+  const stats = safeTransactions.reduce(
     (acc, txn) => {
       if (txn.status !== 'success' && txn.status !== 'completed') return acc;
+
+      const amount = Number(txn.amount);
+      if (!Number.isFinite(amount)) return acc;
       
-      if (txn.amount > 0) {
-        acc.totalIncome += txn.amount;
+      if (amount > 0) {
+        acc.totalIncome += amount;
         acc.incomeCount += 1;
       } else {
-        acc.totalSpent += Math.abs(txn.amount);
+        acc.totalSpent += Math.abs(amount);
         acc.spentCount += 1;
       }
       
@@ -178,24 +188,29 @@ export function useWalletStats() {
   );
 
   // Calculate this month's change (simplified)
-  const thisMonthTransactions = transactions.filter((txn) => {
-    const txnDate = new Date(txn.date);
+  const thisMonthTransactions = safeTransactions.filter((txn) => {
+    const txnDate = txn?.date ? new Date(txn.date) : null;
+    if (!(txnDate instanceof Date) || Number.isNaN(txnDate.getTime())) return false;
     const now = new Date();
     return txnDate.getMonth() === now.getMonth() && txnDate.getFullYear() === now.getFullYear();
   });
 
   const monthlyChange = thisMonthTransactions.reduce((sum, txn) => {
-    return txn.status === 'success' ? sum + txn.amount : sum;
+    const amount = Number(txn.amount);
+    return txn.status === 'success' && Number.isFinite(amount) ? sum + amount : sum;
   }, 0);
 
-  const percentageChange = balance > 0 ? ((monthlyChange / (balance - monthlyChange)) * 100).toFixed(1) : 0;
+  const changeBase = safeBalance - monthlyChange;
+  const percentageChange = safeBalance > 0 && changeBase !== 0
+    ? Number(((monthlyChange / changeBase) * 100).toFixed(1))
+    : 0;
 
   return {
     ...stats,
-    balance,
+    balance: safeBalance,
     monthlyChange,
     percentageChange,
-    transactionCount: transactions.length,
+    transactionCount: safeTransactions.length,
   };
 }
 

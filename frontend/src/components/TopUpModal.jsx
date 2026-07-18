@@ -11,7 +11,6 @@ import {
 import { formatCurrency } from "../models";
 import { useI18n } from "../store";
 import { useNetwork } from "../store/NetworkContext";
-import AppleGooglePayButton from "./AppleGooglePayButton";
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -125,7 +124,9 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
 
   // Check URL params on mount (return from Stripe)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search || "");
     const sid = params.get("stripe_session_id");
     const cancelled = params.get("stripe_cancelled");
 
@@ -158,14 +159,14 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
         method: "POST",
         body: JSON.stringify({
           package_id: pkgId,
-          origin_url: window.location.origin,
+          origin_url: typeof window !== "undefined" ? window.location.origin : "",
         }),
       });
 
-      if (data.checkout_url) {
+      if (data.checkout_url && typeof window !== "undefined") {
         setStep("redirecting");
         setTimeout(() => {
-          window.location.href = data.checkout_url;
+          window.location.assign(data.checkout_url);
         }, 800);
       }
     } catch (err) {
@@ -436,7 +437,7 @@ export const TopUpModal = ({ isOpen, onClose, onSuccess, currentBalance }) => {
                       onClick={async () => {
                         try {
                           const res = await apiCall("/api/stripe/save-card", { method: "POST" });
-                          if (res.checkout_url) window.location.href = res.checkout_url;
+                          if (res.checkout_url && typeof window !== "undefined") window.location.assign(res.checkout_url);
                         } catch (err) { console.error(err); }
                       }}
                       className="w-full py-3 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-2 mb-2"

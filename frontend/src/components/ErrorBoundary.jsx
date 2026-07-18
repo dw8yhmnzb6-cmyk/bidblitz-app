@@ -7,6 +7,119 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+const getBrowserContext = () => {
+  if (typeof window === "undefined") {
+    return {
+      href: "",
+      page: "",
+      path: "",
+      search: "",
+      userAgent: "",
+    };
+  }
+
+  return {
+    href: window.location?.href || "",
+    page: `${window.location?.pathname || "/"}${window.location?.search || ""}`,
+    path: window.location?.pathname || "/",
+    search: window.location?.search || "",
+    userAgent: window.navigator?.userAgent || "",
+  };
+};
+
+const normalizeErrorMessage = (error) => {
+  if (!error) return "Unknown frontend error";
+  if (typeof error === "string") return error;
+  if (error?.message) return error.message;
+  try {
+    return JSON.stringify(error);
+  } catch (serializationError) {
+    void serializationError;
+    return String(error);
+  }
+};
+
+const normalizeErrorStack = (error) => {
+  if (!error) return "";
+  if (typeof error?.stack === "string") return error.stack;
+  return typeof error === "string" ? error : "";
+};
+
+const serializeError = (error) => {
+  if (!error) return null;
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack || "",
+    };
+  }
+
+  if (typeof error === "string") {
+    return { name: "Error", message: error, stack: "" };
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(error));
+  } catch (serializationError) {
+    void serializationError;
+    return { value: String(error) };
+  }
+};
+
+const resolveComponentName = (componentStack = "") => {
+  const firstLine = componentStack
+    .split("\n")
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  return firstLine || "UnknownComponent";
+};
+
+export const buildFrontendErrorPayload = ({
+  error,
+  errorInfo,
+  level = "error",
+  boundary = "root",
+  meta = {},
+}) => {
+  const browser = getBrowserContext();
+  const componentStack = errorInfo?.componentStack || meta.component_stack || "";
+
+  return {
+    message: normalizeErrorMessage(error),
+    page: browser.page,
+    stack: normalizeErrorStack(error),
+    component_stack: componentStack,
+    level,
+    meta: {
+      boundary,
+      component: resolveComponentName(componentStack),
+      path: browser.path,
+      search: browser.search,
+      href: browser.href,
+      user_agent: browser.userAgent,
+      error_name: error?.name || typeof error,
+      error_serialized: serializeError(error),
+      ...meta,
+    },
+  };
+};
+
+export async function postFrontendError(payload) {
+  if (!API) return;
+
+  try {
+    await fetch(`${API}/api/monitoring/log-error`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+  } catch (loggingError) {
+    console.warn("[ErrorBoundary] Backend logging failed", loggingError);
+  }
+}
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -18,33 +131,30 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
-    
     this.setState({ error, errorInfo });
 
-    // Log error to backend
-    this.logError({
-      error_type: "react_error",
-      message: error.toString(),
-      stack_trace: errorInfo.componentStack,
-      context: {
-        component: errorInfo.componentStack?.split("\n")[1],
+    const payload = buildFrontendErrorPayload({
+      error,
+      errorInfo,
+      boundary: this.props.boundaryName || "app-root",
+      meta: {
+        source: "react-error-boundary",
       },
-      page: window.location.pathname,
-      severity: "error",
     });
+
+    console.error("[ErrorBoundary] React runtime error", {
+      message: payload.message,
+      stack: payload.stack,
+      componentStack: payload.component_stack,
+      page: payload.page,
+      meta: payload.meta,
+    });
+
+    this.logError(payload);
   }
 
   async logError(errorData) {
-    try {
-      await fetch(`${API}/api/monitoring/log-error`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(errorData),
-      });
-    } catch (e) {
-      console.error("Failed to log error:", e);
-    }
+    await postFrontendError(errorData);
   }
 
   render() {
@@ -64,12 +174,18 @@ class ErrorBoundary extends Component {
             {process.env.NODE_ENV === "development" && this.state.error && (
               <div className="bg-gray-100 rounded-lg p-4 mb-6 text-left overflow-auto max-h-40">
                 <p className="text-xs font-mono text-red-600">
-                  {this.state.error.toString()}
+                  {normalizeErrorMessage(this.state.error)}
                 </p>
+                {this.state.errorInfo?.componentStack && (
+                  <pre className="mt-3 text-[10px] text-slate-700 whitespace-pre-wrap break-words">
+                    {this.state.errorInfo.componentStack}
+                  </pre>
+                )}
               </div>
             )}
 
             <button
+              data-testid="error-boundary-reload-button"
               onClick={() => window.location.reload()}
               className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center justify-center gap-2"
             >
@@ -78,6 +194,7 @@ class ErrorBoundary extends Component {
             </button>
 
             <button
+              data-testid="error-boundary-reset-button"
               onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
               className="w-full mt-3 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300"
             >
@@ -97,72 +214,73 @@ class ErrorBoundary extends Component {
  * Call this in App.jsx useEffect
  */
 export function setupGlobalErrorHandler() {
+  if (typeof window === "undefined") return;
+  if (window.__bidblitzGlobalErrorHandlerInstalled) return;
+  window.__bidblitzGlobalErrorHandlerInstalled = true;
+
   // Unhandled Promise Rejections
   window.addEventListener("unhandledrejection", (event) => {
-    console.error("Unhandled promise rejection:", event.reason);
-    
-    logErrorToBackend({
-      error_type: "unhandled_promise",
-      message: event.reason?.message || String(event.reason),
-      stack_trace: event.reason?.stack,
-      page: window.location.pathname,
-      severity: "warning",
+    const payload = buildFrontendErrorPayload({
+      error: event.reason,
+      level: "warning",
+      boundary: "unhandled-promise",
+      meta: {
+        source: "window.unhandledrejection",
+      },
     });
+
+    console.error("[GlobalError] Unhandled promise rejection", payload);
+    logErrorToBackend(payload);
   });
 
   // Global errors
   window.addEventListener("error", (event) => {
-    console.error("Global error:", event.error);
-    
-    logErrorToBackend({
-      error_type: "global_error",
-      message: event.message,
-      stack_trace: event.error?.stack,
-      context: {
+    const payload = buildFrontendErrorPayload({
+      error: event.error || event.message,
+      level: "error",
+      boundary: "window-error",
+      meta: {
+        source: "window.error",
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
       },
-      page: window.location.pathname,
-      severity: "error",
     });
+
+    console.error("[GlobalError] Window error", payload);
+    logErrorToBackend(payload);
   });
 
   // Console errors (optional, might be noisy)
   const originalConsoleError = console.error;
   console.error = (...args) => {
     originalConsoleError(...args);
-    
-    // Only log errors, not warnings
-    if (args.length > 0 && args[0] instanceof Error) {
-      logErrorToBackend({
-        error_type: "console_error",
-        message: args[0].message,
-        stack_trace: args[0].stack,
-        page: window.location.pathname,
-        severity: "warning",
-      });
+
+    const firstArg = args[0];
+    const shouldLog = firstArg instanceof Error || (typeof firstArg === "string" && firstArg.startsWith("[LazyErrorBoundary]"));
+    if (shouldLog) {
+      logErrorToBackend(buildFrontendErrorPayload({
+        error: firstArg,
+        level: "warning",
+        boundary: "console-error",
+        meta: {
+          source: "console.error",
+          arg_count: args.length,
+        },
+      }));
     }
   };
 }
 
 async function logErrorToBackend(errorData) {
-  try {
-    await fetch(`${API}/api/monitoring/log-error`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(errorData),
-    });
-  } catch (e) {
-    // Fail silently
-  }
+  await postFrontendError(errorData);
 }
 
 /**
  * Performance Monitoring
  */
 export function trackPerformance() {
+  if (typeof window === "undefined") return;
   if (!window.PerformanceObserver) return;
 
   // Largest Contentful Paint (LCP)

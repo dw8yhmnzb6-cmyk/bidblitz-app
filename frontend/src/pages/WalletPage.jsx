@@ -31,6 +31,10 @@ const toSafeNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const canUseWindow = () => typeof window !== "undefined";
+const canUseDocument = () => typeof document !== "undefined";
+const canUseClipboard = () => typeof navigator !== "undefined" && !!navigator.clipboard?.writeText;
+
 // Skeleton shimmer for loading state
 const Skeleton = ({ className }) => (
   <div className={`relative overflow-hidden rounded-xl ${className}`} style={{ background: "rgba(255,255,255,0.72)", border: "1px solid rgba(15,23,42,0.06)" }}>
@@ -118,12 +122,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const effectiveDemoMode = STORE_SAFE_MODE ? false : isDemoMode;
   const canAutoOpenWalletActions = !isGuest || effectiveDemoMode;
   const isPendingKyc = !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
+  const windowSearch = canUseWindow() ? window.location.search || "" : "";
   // Auto-open TopUp modal if returning from Stripe
-  const hasStripeParam = typeof window !== "undefined" &&
-    (window.location.search.includes("stripe_session_id") || window.location.search.includes("stripe_cancelled"));
+  const hasStripeParam = windowSearch.includes("stripe_session_id") || windowSearch.includes("stripe_cancelled");
 
   // Handle card_saved redirect from Stripe Setup
-  const hasCardSaved = typeof window !== "undefined" && window.location.search.includes("card_saved=success");
+  const hasCardSaved = windowSearch.includes("card_saved=success");
 
   const [showBalance, setShowBalance] = useState(true);
   const [showTopUp, setShowTopUp] = useState(canAutoOpenWalletActions && (hasStripeParam || routeParams.action === "topup"));
@@ -153,7 +157,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         })
         .catch(() => {});
       // Clean URL
-      window.history.replaceState({}, "", window.location.pathname);
+      if (canUseWindow()) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
     }
   }, [hasCardSaved, isGuest]);
 
@@ -199,13 +205,13 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       const API = process.env.REACT_APP_BACKEND_URL;
       const res = await fetch(`${API}/api/stripe/save-card`, { method: "POST", credentials: "include" });
       const data = await res.json();
-      if (data.checkout_url) window.location.href = data.checkout_url;
+      if (data.checkout_url && canUseWindow()) window.location.assign(data.checkout_url);
     } catch (err) { console.error(err); }
     setCardSaving(false);
   };
 
   const handleRemoveCard = async () => {
-    if (!window.confirm(t("wallet.confirm_remove_saved_card"))) return;
+    if (canUseWindow() && typeof window.confirm === "function" && !window.confirm(t("wallet.confirm_remove_saved_card"))) return;
     try {
       const API = process.env.REACT_APP_BACKEND_URL;
       await fetch(`${API}/api/stripe/saved-method`, { method: "DELETE", credentials: "include" });
@@ -280,8 +286,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const userExports = [
     { key: "transactions", label: t("export.transactions"), action: (f) => api.exportUserTransactions(f) },
     { key: "transactions-pdf", label: "Transaktionen (PDF)", action: (f) => {
+      if (!canUseWindow()) return;
       const params = new URLSearchParams(f).toString();
-      window.open(`${process.env.REACT_APP_BACKEND_URL}/api/export/user/transactions/pdf?${params}`, "_blank");
+      window.open(`${process.env.REACT_APP_BACKEND_URL}/api/export/user/transactions/pdf?${params}`, "_blank", "noopener,noreferrer");
     }},
     { key: "topups", label: t("export.topups"), action: (f) => api.exportUserTopups(f) },
     { key: "payments-sent", label: t("export.sent"), action: (f) => api.exportUserPayments({ ...f, direction: "sent" }) },
@@ -296,6 +303,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
   // Capacitor: refresh wallet when deep-link returns from Stripe checkout
   useEffect(() => {
+    if (!canUseWindow()) return;
+
     const onPay = () => { refreshWallet?.(); };
     const onResume = () => { refreshWallet?.(); };
     window.addEventListener("bidblitz:refresh-wallet", onPay);
@@ -316,6 +325,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   useEffect(() => {
     if (isGuest && !isDemoMode) return;
     if (!refreshWallet) return;
+    if (!canUseDocument()) return;
+
     const interval = setInterval(() => {
       if (!document.hidden) refreshWallet();
     }, 20000);
@@ -632,6 +643,9 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                   const num = resolvedUserNumber;
                   if (num) {
                     try {
+                      if (!canUseClipboard()) {
+                        throw new Error("Clipboard API unavailable");
+                      }
                       await navigator.clipboard.writeText(num);
                       toast.success(t("wallet.number_copied"));
                     } catch (copyError) {

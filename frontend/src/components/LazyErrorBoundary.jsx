@@ -1,4 +1,5 @@
 import React from "react";
+import { buildFrontendErrorPayload, postFrontendError } from "./ErrorBoundary";
 
 /**
  * LazyErrorBoundary — catches failures in React.lazy() chunks (network errors,
@@ -16,9 +17,24 @@ export default class LazyErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    // Log to console for dev; production telemetry can hook here
-    // eslint-disable-next-line no-console
-    console.error("[LazyErrorBoundary]", error, info);
+    const payload = buildFrontendErrorPayload({
+      error,
+      errorInfo: info,
+      boundary: this.props.boundaryName || "lazy-chunk",
+      meta: {
+        source: "react-lazy-error-boundary",
+      },
+    });
+
+    console.error("[LazyErrorBoundary]", {
+      message: payload.message,
+      stack: payload.stack,
+      componentStack: payload.component_stack,
+      page: payload.page,
+      meta: payload.meta,
+    });
+
+    postFrontendError(payload);
   }
 
   reset = () => {

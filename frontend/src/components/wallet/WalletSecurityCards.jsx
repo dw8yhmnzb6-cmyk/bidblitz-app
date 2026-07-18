@@ -6,6 +6,15 @@ import { useI18n } from "../../store";
 
 import { api } from "../../services/api";
 
+const toggleCookieBannerBlock = (isBlocked) => {
+  if (typeof document === "undefined" || !document.body) return;
+  if (isBlocked) {
+    document.body.setAttribute("data-cookie-banner-block", "true");
+    return;
+  }
+  document.body.removeAttribute("data-cookie-banner-block");
+};
+
 export function WalletPaymentPinCard() {
   const { t } = useI18n();
   const [status, setStatus] = useState(null);
@@ -79,12 +88,8 @@ export function WalletPaymentPinCard() {
       style={{ background: "#ffffff", borderColor: "rgba(15,23,42,0.12)" }}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      onViewportEnter={() => {
-        document.body.setAttribute('data-cookie-banner-block', 'true');
-      }}
-      onViewportLeave={() => {
-        document.body.removeAttribute('data-cookie-banner-block');
-      }}
+      onViewportEnter={() => toggleCookieBannerBlock(true)}
+      onViewportLeave={() => toggleCookieBannerBlock(false)}
       data-testid="wallet-payment-pin-card"
     >
       <div className="flex items-center gap-3 mb-3">
@@ -185,12 +190,10 @@ export function WalletBioPayCard() {
     }
   };
 
+  const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
+
   return (
-    <motion.div className="rounded-[26px] border p-4 sm:p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]" style={{ background: "#ffffff", borderColor: "rgba(15,23,42,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onViewportEnter={() => {
-      document.body.setAttribute('data-cookie-banner-block', 'true');
-    }} onViewportLeave={() => {
-      document.body.removeAttribute('data-cookie-banner-block');
-    }} data-testid="wallet-biopay-card">
+    <motion.div className="rounded-[26px] border p-4 sm:p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]" style={{ background: "#ffffff", borderColor: "rgba(15,23,42,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onViewportEnter={() => toggleCookieBannerBlock(true)} onViewportLeave={() => toggleCookieBannerBlock(false)} data-testid="wallet-biopay-card">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-11 h-11 rounded-2xl bg-[#7df4d2]/10 border border-[#7df4d2]/15 flex items-center justify-center shrink-0"><Hand size={18} className="text-[#0f9f74]" /></div>
         <div>
@@ -199,7 +202,7 @@ export function WalletBioPayCard() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <StatusPill label="PalmPay" value={data.profiles.some((profile) => profile.modality === "palm") ? t("common.active") : t("wallet.not_active")} testId="wallet-biopay-palm-status" />
+        <StatusPill label="PalmPay" value={profiles.some((profile) => profile.modality === "palm") ? t("common.active") : t("wallet.not_active")} testId="wallet-biopay-palm-status" />
         <StatusPill label="FacePay" value={data.facepay_enabled ? t("wallet.flag_active") : t("wallet.flag_off")} testId="wallet-biopay-face-status" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-[120px,1fr] gap-2 mb-2">
@@ -220,7 +223,7 @@ export function WalletBioPayCard() {
         </div>
       </div>
       <div className="space-y-2" data-testid="wallet-biopay-profiles-list">
-        {data.profiles.length === 0 ? <p className="text-[10px] text-slate-500">{t("wallet.no_biopay_profile")}</p> : data.profiles.map((profile) => (
+        {profiles.length === 0 ? <p className="text-[10px] text-slate-500">{t("wallet.no_biopay_profile")}</p> : profiles.map((profile) => (
           <div key={profile.profile_id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
             <ShieldCheck size={14} className="text-[#0f9f74]" />
             <div className="flex-1 min-w-0">
