@@ -399,22 +399,22 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── Header ── */}
         <motion.header
-          className="flex items-center justify-between pt-[max(env(safe-area-inset-top,0px),24px)] pb-5"
+          className="flex items-start justify-between gap-3 pt-[max(env(safe-area-inset-top,0px),24px)] pb-5 sm:items-center"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.04, ...slide }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3 pr-1 sm:pr-0">
             <motion.div className="relative" whileTap={{ scale: 0.95 }}>
               <img src={user.avatar} alt="Profile" data-testid="user-avatar" className="w-11 h-11 rounded-full object-cover" style={{ border: "2px solid rgba(0,194,255,0.2)", boxShadow: "0 0 16px rgba(0,194,255,0.12)" }} />
               {!isGuest && <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full" style={{ background: "#00D26A", border: "2px solid #030303", boxShadow: "0 0 6px rgba(0,210,106,0.5)" }} />}
             </motion.div>
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.1em] uppercase">{getGreeting()}</p>
-              <h2 className="text-[16px] text-white font-semibold font-outfit tracking-tight">{isGuest ? "BidBlitz" : user.name}</h2>
+              <h2 className="truncate text-[16px] text-white font-semibold font-outfit tracking-tight">{isGuest ? "BidBlitz" : user.name}</h2>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
             <ModeSwitcher onModeChange={(mode) => {
               if (mode === "kids") onNavigate("/kids");
               else if (mode === "merchant") onNavigate("/merchant-portal");
@@ -422,7 +422,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             }} />
             <LanguageSwitcher />
             {isGuest ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1.5">
                 <motion.button data-testid="header-login-btn" className="px-3.5 py-[7px] rounded-full text-[11px] font-semibold font-outfit" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
                   {t("auth.signin") || "Login"}
                 </motion.button>
@@ -431,7 +431,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 </motion.button>
               </div>
             ) : (
-              <motion.button data-testid="notification-btn" className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/notifications")}>
+              <motion.button data-testid="notification-btn" className="w-10 h-10 shrink-0 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/notifications")}>
                 <Bell size={15} strokeWidth={1.5} className="text-white/50" />
                 <motion.span className="absolute top-2.5 right-2.5 w-[6px] h-[6px] bg-[#00C2FF] rounded-full" animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 2, repeat: Infinity }} style={{ boxShadow: "0 0 6px rgba(0,194,255,0.8)" }} />
               </motion.button>
