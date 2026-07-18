@@ -316,11 +316,6 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 # Setup CORS, Logging, Error Handling
 setup_middleware(app)
 
-# Auto-register all routers from /routes
-register_all_routers(app)
-
-logger.info(f"✓ BidBlitz V2 API started ({APP_ENV} mode)")
-
 # ══════════════════════════════════════════════════════════════════════════════
 # STATIC FILES
 # ══════════════════════════════════════════════════════════════════════════════
@@ -336,6 +331,21 @@ def _acquire_post_startup_lock():
         return lock_file
     except OSError:
         return None
+
+
+@app.middleware("http")
+async def startup_guard_middleware(request: Request, call_next):
+    startup_status = getattr(app.state, "startup_status", "booting")
+    allowed_paths = {"/health", "/openapi.json", "/docs", "/redoc"}
+    if startup_status in {"booting", "routes_loading"} and request.url.path not in allowed_paths:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "booting",
+                "message": "Service is warming up. Please retry shortly.",
+            },
+        )
+    return await call_next(request)
 
 
 async def ensure_admin_driver_account():
@@ -647,9 +657,9 @@ async def serve_bidblitz_pay_sdk():
 # ══════════════════════════════════════════════════════════════════════════════
 
 async def _run_post_startup_initialization():
-    """Heavy startup work runs after the server is already able to answer /health."""
-    logger.info("🚀 Starting BidBlitz V2...")
+    """Heavy startup work runs after routers are loaded and health is already available."""
     try:
+        app.state.startup_status = "initializing"
         await create_indexes()
         logger.info("✓ Database indexes created")
         await seed_admin()
@@ -711,17 +721,40 @@ async def _run_post_startup_initialization():
         logger.exception(f"Post-startup initialization failed: {e}")
 
 
+async def _load_routers_for_worker():
+    if getattr(app.state, "routes_loaded", False):
+        return
+    app.state.startup_status = "routes_loading"
+    register_all_routers(app)
+    app.state.routes_loaded = True
+    logger.info(f"✓ BidBlitz V2 API routers loaded ({APP_ENV} mode)")
+
+
+async def _bootstrap_worker_routes_and_tasks():
+    try:
+        await _load_routers_for_worker()
+        if getattr(app.state, "post_startup_lock", None) is None:
+            app.state.startup_status = "ready"
+            return
+        await _run_post_startup_initialization()
+    except Exception as e:
+        app.state.startup_status = "error"
+        logger.exception(f"Worker bootstrap failed: {e}")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Return health immediately; run heavy initialization in the background."""
     app.state.startup_status = "booting"
+    app.state.routes_loaded = False
     lock_file = _acquire_post_startup_lock()
     app.state.post_startup_lock = lock_file
     if lock_file is None:
-        logger.info("Post-startup initialization already owned by another worker; serving traffic immediately")
-        return
-    app.state.post_startup_task = asyncio.create_task(_run_post_startup_initialization())
-    logger.info("Post-startup initialization scheduled in background")
+        logger.info("Post-startup initialization already owned by another worker; warming routes in background")
+    else:
+        logger.info("🚀 Starting BidBlitz V2...")
+    app.state.post_startup_task = asyncio.create_task(_bootstrap_worker_routes_and_tasks())
+    logger.info("Background bootstrap scheduled")
 
 
 @app.on_event("shutdown")
