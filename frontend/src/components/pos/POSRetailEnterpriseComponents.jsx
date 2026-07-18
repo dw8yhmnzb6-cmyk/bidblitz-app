@@ -21,7 +21,8 @@ export function VoidReceiptModal({ isOpen, onClose, onVoid }) {
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/pos/receipts/void`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ receipt_id: receiptId, reason }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -125,7 +126,8 @@ export function ReturnModal({ isOpen, onClose, onReturn }) {
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/pos/receipts/return`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ receipt_id: receiptId, items, return_type: returnType }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -272,7 +274,7 @@ export function WeightedProductScanner({ storeId, onAdd }) {
     try {
       const res = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/api/pos/products/weighted/lookup?plu_code=${pluCode}&weight_kg=${weight}&store_id=${storeId}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        { credentials: 'include' }
       );
       if (!res.ok) throw new Error('PLU nicht gefunden');
       const data = await res.json();
@@ -368,7 +370,7 @@ export function SupervisorConsole({ storeId }) {
     try {
       const res = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/api/pos/supervisor/dashboard?store_id=${storeId}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        { credentials: 'include' }
       );
       const data = await res.json();
       setDashboard(data);
@@ -383,7 +385,7 @@ export function SupervisorConsole({ storeId }) {
     try {
       await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/pos/supervisor/alert/${alertId}/resolve`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        credentials: 'include',
       });
       loadDashboard();
     } catch (err) {

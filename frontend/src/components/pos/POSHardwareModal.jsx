@@ -15,7 +15,6 @@ export function POSHardwareModal({ isOpen, onClose, storeId = 'default' }) {
 
   const headers = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
   };
 
   const callApi = async (path, body = null, method = 'POST') => {
@@ -23,7 +22,7 @@ export function POSHardwareModal({ isOpen, onClose, storeId = 'default' }) {
     setError('');
     setResult(null);
     try {
-      const opts = { method, headers };
+      const opts = { method, headers, credentials: 'include' };
       if (body) opts.body = JSON.stringify(body);
       const res = await fetch(`${API}${path}`, opts);
       const data = await res.json();

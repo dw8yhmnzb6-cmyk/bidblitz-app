@@ -28,7 +28,6 @@ export default function LiveKitStreamPage({ onBack }) {
 
   const headers = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
   };
 
   const loadRooms = async () => {
@@ -49,7 +48,6 @@ export default function LiveKitStreamPage({ onBack }) {
   // Initial load
   useEffect(() => {
     loadRooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const safeJson = async (res) => {
