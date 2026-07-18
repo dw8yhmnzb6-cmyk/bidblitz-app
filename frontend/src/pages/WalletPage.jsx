@@ -577,14 +577,21 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
               {[
-                { title: t('wallet.cashier_merchant'), desc: t('wallet.cashier_merchant_desc'), color: '#00A6E6' },
-                { title: t('wallet.private_receive'), desc: t('wallet.private_receive_desc'), color: '#10B981' },
-                { title: t('wallet.private_send'), desc: t('wallet.private_send_desc'), color: '#8B5CF6' },
+                { title: t('wallet.cashier_merchant'), desc: t('wallet.cashier_merchant_desc'), color: '#00A6E6', path: '/pay', testId: 'wallet-cashier-merchant-card' },
+                { title: t('wallet.private_receive'), desc: t('wallet.private_receive_desc'), color: '#10B981', path: '/receive-money', testId: 'wallet-private-receive-card' },
+                { title: t('wallet.private_send'), desc: t('wallet.private_send_desc'), color: '#8B5CF6', path: '/send-money', testId: 'wallet-private-send-card' },
               ].map((item) => (
-                <div key={item.title} className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-3">
+                <motion.button
+                  key={item.title}
+                  type="button"
+                  data-testid={item.testId}
+                  onClick={() => onNavigate?.(item.path)}
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 text-left transition-colors hover:bg-white"
+                >
                   <p className="text-[12px] font-semibold" style={{ color: item.color }}>{item.title}</p>
                   <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">{item.desc}</p>
-                </div>
+                </motion.button>
               ))}
             </div>
           </motion.div>
