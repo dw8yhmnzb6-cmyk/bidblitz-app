@@ -1,6 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Audi-Ticketverkauf — 18.07.2026
+- ✅ iPhone-UI-Polish für Header + Bottom-Nav verifiziert; **Testing Agent Iteration 275 PASS**.
 - ✅ Floating AI-/Chat-Button im Testbetrieb entfernt; **Testing Agent Iteration 270 PASS**.
 - ✅ Finaler KYC-Gate-Fix verifiziert: Home/More lesen jetzt zusätzlich die echte `/api/kyc/status`-Freigabe via `useEffectiveKycAccess`, damit stale lokale User-State-Reste keine Pre-KYC-Karten mehr anzeigen; **Testing Agent Iteration 269 PASS**.
 - ✅ Zentraler **TEST_MODE** ist aktiv und verifiziert: alle KYC-Banner, Gates, Redirects und Restriktionen bleiben im Testbetrieb verborgen; Reviewer wird als verifiziert behandelt; **Testing Agent Iteration 264 PASS**.

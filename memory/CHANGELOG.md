@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — iPhone Header-/Bottom-Nav-Spacings verbessert
+- In `HomePage.jsx` wurde der mobile Header so umgebaut, dass Avatar/Name und rechte Controls nicht mehr zusammenquetschen: `min-w-0`, `truncate`, `shrink-0`, klarere Gaps und `items-start` auf kleineren Viewports.
+- In `App.css` erhielt die Bottom-Nav mehr Safe-Area-Padding links/rechts/unten sowie größere Mindest-Tapflächen für `nav-item` und `nav-center`.
+- **Testing Agent Iteration 275 PASS**: kein Header-Overlap, Controls vollständig sichtbar, rechte/linke Nav-Ränder ~24.8px vom Screen-Rand entfernt. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Root Cause für lila Floating-Button geklärt und hart blockiert
 - Der vom Nutzer gemeldete lila Floating-Button war **nicht nur ein lokaler Speicherzustand**, sondern hatte mehrere Render-Quellen: `App.js` (`AIChatWidget`, `LandingChatbot`), `LandingPage.jsx` (direktes `LandingChatbot`) und `FloatingChatbot.jsx` als zusätzlicher Altpfad.
 - Fix: Alle drei Chatbot-Komponenten geben in **`TEST_MODE` direkt `null`** zurück; `LandingPage.jsx` rendert `LandingChatbot` zusätzlich nur noch bei `!TEST_MODE`; `App.css` blockiert die bekannten Selektoren zusätzlich auf `html.test-mode-active` und `body.test-mode-active`.
