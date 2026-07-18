@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Root Cause für lila Floating-Button geklärt und hart blockiert
+- Der vom Nutzer gemeldete lila Floating-Button war **nicht nur ein lokaler Speicherzustand**, sondern hatte mehrere Render-Quellen: `App.js` (`AIChatWidget`, `LandingChatbot`), `LandingPage.jsx` (direktes `LandingChatbot`) und `FloatingChatbot.jsx` als zusätzlicher Altpfad.
+- Fix: Alle drei Chatbot-Komponenten geben in **`TEST_MODE` direkt `null`** zurück; `LandingPage.jsx` rendert `LandingChatbot` zusätzlich nur noch bei `!TEST_MODE`; `App.css` blockiert die bekannten Selektoren zusätzlich auf `html.test-mode-active` und `body.test-mode-active`.
+- **Testing Agent Iteration 274 PASS**: auf `/` und `/landing` sind keine Floating-Chatbot-Buttons, keine Aria-Launcher und keine festen lila Elemente mehr sichtbar. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Restliche `localStorage token`-Logik entfernt
 - Die letzten regulären Frontend-Stellen mit `localStorage.getItem('token')` wurden bereinigt: `AdminLandingLeadsPage.jsx`, `LiveKitStreamPage.jsx`, `POSHardwareModal.jsx`, `AgeVerificationModal.jsx` und `POSRetailEnterpriseComponents.jsx` nutzen jetzt einheitlich **Cookie-Auth via `credentials: 'include'`**.
 - **Testing Agent Iteration 273 PASS** bestätigt: kein `localStorage.getItem('token')` mehr in `frontend/src`, keine `Authorization`-/`Bearer`-Patterns mehr in den betroffenen Dateien, Landingpage lädt normal.

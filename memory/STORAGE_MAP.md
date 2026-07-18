@@ -70,6 +70,17 @@ Wenn ein Problem wie **KYC-Karte bleibt sichtbar**, **falscher Login-Status**, o
 3. **Live-KYC-Freigabe aus `/api/kyc/status`**
 4. erst danach lokale UI-Keys wie `bidblitz_mode`, `more_open_groups`, `bb_balance_hidden`
 
+### Sonderfall: lila Floating-Chat-/AI-Button
+- Sichtbarkeit kam **nicht** allein aus Storage, sondern aus Render-Pfaden in:
+  - `frontend/src/App.js`
+  - `frontend/src/pages/LandingPage.jsx`
+  - `frontend/src/components/LandingChatbot.jsx`
+  - `frontend/src/components/AIChatWidget.jsx`
+  - `frontend/src/components/FloatingChatbot.jsx`
+- Lokale Begleit-Keys dazu:
+  - `bb_ai_chat_session` → Chat-Session
+  - `bidblitz-chatbot-hidden` → merkt nur, ob der alte FloatingChatbot manuell ausgeblendet wurde
+
 ## 5) Empfehlung
 
 - Auth-/KYC-Wahrheit weiterhin nur aus Backend + Cookie ableiten
