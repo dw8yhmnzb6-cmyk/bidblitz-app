@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Finaler Fix für Home-/More-KYC-Karten bei stale Frontend-State
+- Nach den echten iPhone-Screenshots war klar: Nicht mehr der Build-Selector oder das Flag allein war das Problem, sondern ein **staler lokaler User-State**, der Home/More kurzfristig weiter wie „nicht verifiziert“ behandeln konnte, obwohl der Server längst `approved` meldete.
+- Fix: neuer Hook **`frontend/src/hooks/useEffectiveKycAccess.js`**, der `/api/kyc/status` live abfragt und `forceKycUnlocked` an `App.js`, `HomePage.jsx`, `MorePage.jsx` und `WalletPage.jsx` durchreicht. Damit verschwinden die Pre-KYC-Karten jetzt servergestützt und nicht nur über lokale User-Felder.
+- **Testing Agent Iteration 269 PASS**: `pre-kyc-home-gate` und `pre-kyc-more-gate` nicht mehr vorhanden, Texte **„Zugriff bewusst reduziert“** und **„Vor KYC nur Basisbereiche sichtbar“** nicht mehr im DOM, Wallet für Reviewer vollständig offen. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Zentraler TEST_MODE für vollständigen KYC-Bypass im Testbetrieb
 - Neuer globaler Schalter **`TEST_MODE=true`** in `frontend/.env` und `backend/.env`. Frontend-seitig zentralisiert über `frontend/src/config/testMode.js` und die KYC-Gates in `App.js`, `pathUtils.js`, `adminAccess.js`, `HomePage.jsx`, `MorePage.jsx`, `WalletPage.jsx`, `AuthPage.jsx`, `KYCBanner.jsx`, `AuctionDetail.jsx` und `UserContext.jsx` auf diesen einen Schalter umgestellt.
 - Backend-seitig zentralisiert über `backend/core/config.py` + `backend/core/security.py` (`apply_test_mode_kyc()`), zusätzlich greifen `backend/core/security_advanced.py`, `backend/core/compliance.py`, `backend/routes/wallet.py`, `backend/routes/auctions.py`, `backend/routes/kyc.py`, `backend/routes/premium_finance.py` und `backend/routes/pro_features.py` nun testmodus-sicher. Damit erscheint der Reviewer im Testbetrieb als **KYC approved / verified**, ohne dass das eigentliche KYC-System entfernt wurde.
