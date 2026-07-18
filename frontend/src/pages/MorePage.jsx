@@ -24,6 +24,8 @@ import { PushNotificationToggle } from "../components/PushNotifications";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { filterStoreSafeItems } from "../config/release";
 
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 const isRtlLanguage = (lang) => lang === "ar" || lang === "ar-AE";
 const normalizeLocale = (lang) => (lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang);
@@ -658,7 +660,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     return mapped ? (mapped[effectiveLocale] ?? mapped.de ?? mapped.en ?? value) : value;
   };
   const isAdmin = isAdminUser(user);
-  const isKycVerified = isKycApprovedOrAdmin(user);
+  const isKycVerified = KYC_DISABLED ? true : isKycApprovedOrAdmin(user);
   const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);

@@ -1,3 +1,5 @@
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+
 export function isAdminUser(user = {}) {
   const role = String(user?.role || '').toLowerCase();
   const email = String(user?.email || '').toLowerCase();
@@ -7,5 +9,6 @@ export function isAdminUser(user = {}) {
 }
 
 export function isKycApprovedOrAdmin(user = {}) {
+  if (KYC_DISABLED) return true;
   return isAdminUser(user) || user?.kyc_status === 'approved' || user?.kyc_verified === true;
 }

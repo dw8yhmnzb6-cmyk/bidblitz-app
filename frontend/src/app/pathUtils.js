@@ -21,6 +21,8 @@ const KYC_RESTRICTED_PREFIXES = [
   "/marketplace-dashboard",
 ];
 
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+
 export function getInitialAppPath({ hasKidsReturn, hasStripeReturn, pathname, search }) {
   if (hasKidsReturn) return "/more";
   if (hasStripeReturn) return "/wallet";
@@ -33,6 +35,7 @@ export function resolveBrowserPath(path) {
 }
 
 export function isKycRestrictedPath(path) {
+  if (KYC_DISABLED) return false;
   const basePath = (path || "/").split("?")[0];
   return KYC_RESTRICTED_PREFIXES.some(
     (prefix) => basePath === prefix || basePath.startsWith(`${prefix}/`),

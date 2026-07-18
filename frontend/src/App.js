@@ -297,6 +297,7 @@ const AdCampaignManagerPage = lazy(() => import("./pages/AdCampaignManagerPage")
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
 
 function AppContent() {
   const hasStripeReturn = typeof window !== "undefined" &&
@@ -344,7 +345,7 @@ function AppContent() {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
-  const isKycVerified = isKycApprovedOrAdmin(user);
+  const isKycVerified = KYC_DISABLED ? true : isKycApprovedOrAdmin(user);
   const routeBase = currentPath.split("?")[0] || "/";
 
   const isKycRestrictedPath = useCallback((path) => isKycRestrictedPathUtil(path), []);
@@ -437,7 +438,7 @@ function AppContent() {
         setShowFullAuth("");
         setIsDemoMode(false);
         if (currentPath === "/login" || currentPath === "/register") {
-          const nextPath = user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
+          const nextPath = KYC_DISABLED ? "/" : user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
           syncBrowserPath(nextPath, "replace");
           setCurrentPath(nextPath);
         }
@@ -516,7 +517,7 @@ function AppContent() {
       requireAuth();
       return;
     }
-    if (!isGuest && !isDemoMode && !isKycVerified && isKycRestrictedPath(path)) {
+    if (!KYC_DISABLED && !isGuest && !isDemoMode && !isKycVerified && isKycRestrictedPath(path)) {
       syncBrowserPath("/kyc");
       setCurrentPath("/kyc");
       return;

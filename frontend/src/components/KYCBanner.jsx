@@ -9,6 +9,7 @@ import KYCVerificationModal from "./KYCVerificationModal";
 import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
 
 const KYCBanner = ({ onVerified, onNavigate }) => {
   const { t } = useI18n();
@@ -38,6 +39,7 @@ const KYCBanner = ({ onVerified, onNavigate }) => {
 
   useEffect(() => { load(); }, []);
 
+  if (KYC_DISABLED) return null;
   if (loading || !status) return null;
   if (status.kyc_verified) return null; // Already verified — hide
 

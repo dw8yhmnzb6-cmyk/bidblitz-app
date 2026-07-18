@@ -14,6 +14,8 @@ import BuyCreditsModal from "./BuyCreditsModal";
 import { POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGreen, accentGold, accentRed, accentPurple } from "./atoms";
 import { getAuctionFallbackImage } from "./imageFallbacks";
 
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+
 /* ─── BidRow (local to AuctionDetail) ─── */
 const BidRow = ({ bid, isLatest }) => (
   <motion.div className={`flex items-center justify-between py-2 px-3 ${isLatest ? "bg-[#00E0FF]/[0.02]" : ""}`}
@@ -264,7 +266,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
         )}
 
         {/* KYC Banner — show BEFORE bid attempt if KYC not approved */}
-        {isActive && !auction.bot_only && !isGuest && user.kyc_status !== "approved" && user.role !== "admin" && (
+        {isActive && !auction.bot_only && !isGuest && !KYC_DISABLED && user.kyc_status !== "approved" && user.role !== "admin" && (
           <motion.div
             data-testid="kyc-required-banner"
             className="px-4 py-3 rounded-2xl text-center mb-2"

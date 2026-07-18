@@ -30,6 +30,7 @@ import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { STORE_SAFE_MODE, filterStoreSafeItems } from "../config/release";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
 
 const iconMap = {
   wallet: Wallet,
@@ -314,7 +315,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   };
   const gt = useGuestTranslations(lang);
   const isAdmin = isAdminUser(user);
-  const isKycVerified = isKycApprovedOrAdmin(user);
+  const isKycVerified = KYC_DISABLED ? true : isKycApprovedOrAdmin(user);
   const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   
   // Use total balance if available, otherwise fall back to EUR balance
@@ -636,7 +637,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         )}
 
         {/* ── KYC Verifizierungs-Banner (kompakt, nur für eingeloggte unverifizierte User) ── */}
-        {!isGuest && <KYCBanner onNavigate={onNavigate} />}
+        {!isGuest && !KYC_DISABLED && <KYCBanner onNavigate={onNavigate} />}
 
         {/* ── Marketing-Widgets (gäste oben; auth-User kompakt nach Wallet-Block) ── */}
         {isGuest && (

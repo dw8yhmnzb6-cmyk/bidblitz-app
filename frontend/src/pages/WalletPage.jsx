@@ -25,6 +25,7 @@ import { STORE_SAFE_MODE } from "../config/release";
 import GuestCTABar from "../components/GuestCTABar";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
+const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
 
 const toSafeNumber = (value) => {
   const numeric = Number(value ?? 0);
@@ -121,7 +122,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const user = useUser();
   const effectiveDemoMode = STORE_SAFE_MODE ? false : isDemoMode;
   const canAutoOpenWalletActions = !isGuest || effectiveDemoMode;
-  const isPendingKyc = !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
+  const isPendingKyc = !KYC_DISABLED && !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
   const windowSearch = canUseWindow() ? window.location.search || "" : "";
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = windowSearch.includes("stripe_session_id") || windowSearch.includes("stripe_cancelled");
