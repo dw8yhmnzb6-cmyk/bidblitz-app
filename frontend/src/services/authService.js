@@ -1,87 +1,68 @@
 /**
- * BidBlitz V2 - Auth Service
- * Handles authentication operations.
- * Currently uses localStorage mock. Replace internals with real API calls later.
+ * Legacy auth service wrapper.
+ *
+ * Uses real backend cookie auth and actively removes the old
+ * `bidblitz_auth` localStorage mock key.
  */
 
-const STORAGE_KEY = 'bidblitz_auth';
+import { api } from './api';
 
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+const LEGACY_STORAGE_KEY = 'bidblitz_auth';
+
+export function purgeLegacyAuthStorage() {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch (error) {
+    void error;
+  }
+}
 
 class AuthService {
-  /**
-   * Login with email/password
-   * TODO: Replace with real API call → POST /api/auth/login
-   */
+  constructor() {
+    purgeLegacyAuthStorage();
+  }
+
   async login(email, password) {
-    await delay(1200);
-    const user = {
-      id: 'user_' + Date.now().toString(36),
-      name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-      email,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BidBlitz',
-      isPremium: true,
-    };
-    this._saveSession(user);
-    return { success: true, user };
+    purgeLegacyAuthStorage();
+    const response = await api.login({ email, password, remember_me: true });
+    return response.user || response;
   }
 
-  /**
-   * Register a new account
-   * TODO: Replace with real API call → POST /api/auth/register
-   */
   async register(name, email, password) {
-    await delay(1400);
-    const user = {
-      id: 'user_' + Date.now().toString(36),
-      name,
-      email,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=BidBlitz',
-      isPremium: true,
-    };
-    this._saveSession(user);
-    return { success: true, user };
+    purgeLegacyAuthStorage();
+    await api.register({ name, email, password });
+    const response = await api.login({ email, password, remember_me: true });
+    return response.user || response;
   }
 
-  /**
-   * Logout current user
-   * TODO: Replace with real API call → POST /api/auth/logout
-   */
   async logout() {
-    this._clearSession();
+    purgeLegacyAuthStorage();
+    try {
+      await api.logout();
+    } finally {
+      purgeLegacyAuthStorage();
+    }
     return { success: true };
   }
 
-  /**
-   * Get current session from storage
-   * TODO: Replace with real API call → GET /api/auth/me
-   */
   async getSession() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { authenticated: false, user: null };
+    purgeLegacyAuthStorage();
     try {
-      const user = JSON.parse(raw);
+      const user = await api.getMe();
       return { authenticated: true, user };
     } catch {
       return { authenticated: false, user: null };
     }
   }
 
-  /**
-   * Refresh session / token
-   * TODO: Replace with real API call → POST /api/auth/refresh
-   */
   async refreshSession() {
-    const session = await this.getSession();
-    return session;
-  }
-
-  _saveSession(user) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...user, isAuthenticated: true }));
-  }
-
-  _clearSession() {
-    localStorage.removeItem(STORAGE_KEY);
+    purgeLegacyAuthStorage();
+    try {
+      const user = await api.refresh();
+      return { authenticated: true, user };
+    } catch {
+      return this.getSession();
+    }
   }
 }
 

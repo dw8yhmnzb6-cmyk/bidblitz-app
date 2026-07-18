@@ -3,12 +3,15 @@ import ReactDOM from "react-dom/client";
 import "@/index.css";
 import App from "@/App";
 import { initCapacitorBridge, isNativeApp } from "@/services/capacitorBridge";
+import { purgeLegacyAuthStorage } from "@/services/authService";
 
 // ═══════════════════════════════════════════════════
 // PWA SERVICE WORKER — DISABLED GLOBALLY
 // (Was causing stale-cache issues on mobile. Also required
 // off for Capacitor native builds per Capacitor guidance.)
 // ═══════════════════════════════════════════════════
+purgeLegacyAuthStorage();
+
 if ('serviceWorker' in navigator) {
   // FORCE UNREGISTER ALL SERVICE WORKERS TO FIX CACHE ISSUE
   navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -90,14 +93,14 @@ root.render(
 // ═══════════════════════════════════════════════════
 initCapacitorBridge({
   onDeepLink: (path) => {
-    try { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); } catch {}
+    try { window.history.pushState({}, "", path); window.dispatchEvent(new PopStateEvent("popstate")); } catch (error) { void error; }
   },
   onPaymentReturn: (params) => {
     // Refresh balance once the user returns from Stripe checkout
-    try { window.dispatchEvent(new CustomEvent("bidblitz:refresh-wallet", { detail: Object.fromEntries(params) })); } catch {}
+    try { window.dispatchEvent(new CustomEvent("bidblitz:refresh-wallet", { detail: Object.fromEntries(params) })); } catch (error) { void error; }
   },
   onResume: () => {
-    try { window.dispatchEvent(new CustomEvent("bidblitz:app-resume")); } catch {}
+    try { window.dispatchEvent(new CustomEvent("bidblitz:app-resume")); } catch (error) { void error; }
   },
 });
 

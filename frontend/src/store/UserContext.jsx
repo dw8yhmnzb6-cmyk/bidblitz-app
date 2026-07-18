@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { api } from '../services/api';
+import { purgeLegacyAuthStorage } from '../services/authService';
 import { isAdminUser } from '../utils/adminAccess';
 import { TEST_MODE, isTestModeUser } from '../config/testMode';
 
@@ -136,6 +137,7 @@ export function UserProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      purgeLegacyAuthStorage();
       try {
         const user = await api.getMe();
         if (!cancelled) dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
@@ -172,6 +174,7 @@ export function UserProvider({ children }) {
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
+      purgeLegacyAuthStorage();
       try {
         await api.logout();
       } catch (logoutError) {
@@ -210,6 +213,7 @@ export function UserProvider({ children }) {
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
+      purgeLegacyAuthStorage();
       const user = await api.verify2FA({ code });
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
       return true;
@@ -238,6 +242,7 @@ export function UserProvider({ children }) {
     }
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
+      purgeLegacyAuthStorage();
       const body = { name, email, password };
       if (requestedRole && requestedRole !== "customer") body.requested_role = requestedRole;
       await api.register(body);
@@ -262,12 +267,15 @@ export function UserProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    purgeLegacyAuthStorage();
     try { await api.logout(); } catch (logoutError) { void logoutError; }
+    purgeLegacyAuthStorage();
     dispatch({ type: AUTH_ACTIONS.LOGOUT });
   }, []);
 
   const refreshUser = useCallback(async () => {
     try {
+      purgeLegacyAuthStorage();
       const user = await api.getMe();
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
     } catch (refreshUserError) {

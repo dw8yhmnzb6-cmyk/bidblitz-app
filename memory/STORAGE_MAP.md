@@ -58,8 +58,8 @@ Stand: 18.07.2026
 ### `bidblitz_auth`
 - Datei: `frontend/src/services/authService.js`
 - Zweck im Altcode: lokaler Mock-Login
-- Status aktuell: **laut Code-Suche nicht aktiv im laufenden App-Flow verwendet**
-- Relevanz: sollte perspektivisch entfernt oder klar als Legacy isoliert werden, damit keine Verwirrung entsteht
+- Status aktuell: **Legacy-Key wird jetzt aktiv bereinigt und nicht mehr für Auth verwendet**
+- Relevanz: `authService.js` nutzt jetzt echte Backend-Auth via `api` und ruft zusätzlich eine Cleanup-Funktion auf, damit alte `bidblitz_auth`-Einträge keine Tests oder Altzustände mehr verfälschen
 
 ## 4) Für die aktuelle Fehlersuche wichtig
 
