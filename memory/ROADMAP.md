@@ -1,6 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Audi-Ticketverkauf — 18.07.2026
+- ✅ Backend-Readiness für Live-Deploy verbessert: `/health` kommt jetzt früh zurück, schwere Initialisierung läuft im Hintergrund mit Worker-Lock.
 - ✅ iPhone-UI-Polish für Header + Bottom-Nav verifiziert; **Testing Agent Iteration 275 PASS**.
 - ✅ Floating AI-/Chat-Button im Testbetrieb entfernt; **Testing Agent Iteration 270 PASS**.
 - ✅ Finaler KYC-Gate-Fix verifiziert: Home/More lesen jetzt zusätzlich die echte `/api/kyc/status`-Freigabe via `useEffectiveKycAccess`, damit stale lokale User-State-Reste keine Pre-KYC-Karten mehr anzeigen; **Testing Agent Iteration 269 PASS**.

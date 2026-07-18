@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Backend-Startup für Live-Deploy entlastet
+- `backend/server.py` wurde für Deploy-Readiness umgebaut: schwere Startup-Arbeiten laufen jetzt in `_run_post_startup_initialization()` als Hintergrundtask statt direkt blockierend im FastAPI-Startup.
+- Ein Dateilock (`/tmp/bidblitz_post_startup.lock`) sorgt dafür, dass bei mehreren Workern nur **ein** Worker die schweren Post-Startup-Jobs übernimmt.
+- `/health` antwortet jetzt früher und enthält zusätzlich `startup_status`, damit Kubernetes/Ingress den Prozess schneller als erreichbar erkennt.
+
 ## 18.07.2026 — iPhone Header-/Bottom-Nav-Spacings verbessert
 - In `HomePage.jsx` wurde der mobile Header so umgebaut, dass Avatar/Name und rechte Controls nicht mehr zusammenquetschen: `min-w-0`, `truncate`, `shrink-0`, klarere Gaps und `items-start` auf kleineren Viewports.
 - In `App.css` erhielt die Bottom-Nav mehr Safe-Area-Padding links/rechts/unten sowie größere Mindest-Tapflächen für `nav-item` und `nav-center`.
