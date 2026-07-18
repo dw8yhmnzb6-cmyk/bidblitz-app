@@ -9,13 +9,11 @@ import { renderSpecialRoutes } from "./app/renderSpecialRoutes";
 
 import { AppProvider, useUser, useI18n } from "./store";
 import { ThemeProvider } from "./store/ThemeContext";
-import AIChatWidget from "./components/AIChatWidget";
 import SuperAppOverlay from "./components/SuperAppOverlay";
 import InAppUpdateManager from "./components/InAppUpdateManager";
 import BackToHomeBar from "./components/BackToHomeBar";
 import ErrorBoundary, { setupGlobalErrorHandler } from "./components/ErrorBoundary";
 import KYCFlow from "./pages/KYCFlow";
-import { LandingChatbot } from "./components/LandingChatbot";
 import CookieBanner from "./components/CookieBanner";
 import { initSentryIfConsented } from "./utils/sentry";
 import { STORE_SAFE_MODE, DEMO_MODE, isStoreBlockedPath } from "./config/release";
@@ -1297,8 +1295,6 @@ function AppContent() {
        !currentPath.startsWith("/pay/merchant/") && (
         <OnboardingTour onComplete={() => { setShowOnboarding(false); localStorage.setItem("bidblitz_onboarded", "1"); }} />
       )}
-      {/* AI Chatbot (powered by gpt-5.2) */}
-      {!TEST_MODE && user.isAuthenticated && !isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && routeBase !== '/scan' && routeBase !== '/terminal' && routeBase !== '/nfc' && routeBase !== '/pos' && routeBase !== '/dating' && routeBase !== '/' && routeBase !== '/home' && routeBase !== '/wallet' && routeBase !== '/all-services' && routeBase !== '/more' && <AIChatWidget />}
       {/* Super-App Overlay: Safety, Voice, Loyalty, Subscriptions (Uber/Bolt/Lieferando-Style) */}
       {!isCheckout && !isPublicInvoicePayment && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && currentPath !== '/scan' && currentPath !== '/terminal' && currentPath !== '/nfc' && currentPath !== '/pos' && (
         <SuperAppOverlay
@@ -1310,9 +1306,6 @@ function AppContent() {
       )}
       {/* In-App Update Manager (Native Android/iOS) */}
       <InAppUpdateManager />
-
-      {/* Landing Chatbot — Floating widget for guest visitors (hidden on staff mobile) */}
-      {!TEST_MODE && !user.isAuthenticated && !isCheckout && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && <LandingChatbot />}
 
       {/* Cookie-Consent-Banner (DSGVO/UAE-konform) */}
       {!user.isAuthenticated && !isQrOrder && !isRestaurantTableGuest && !isInvoicePay && !isStaffEmployeeShell && !isFullScreenStaffMgr && <CookieBanner onNavigate={handleNavigate} />}

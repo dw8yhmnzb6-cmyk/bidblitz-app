@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Smartphone, Zap, Shield, Globe, Star, TrendingUp, Gift, Users, ArrowRight, Play, Check, Apple, Download } from 'lucide-react';
-import { LandingChatbot } from '../components/LandingChatbot';
-import { TEST_MODE } from '../config/testMode';
 
 /**
  * Landing Page — Marketing/SEO für BidBlitz Super-App
@@ -240,9 +238,6 @@ export default function LandingPage({ onGetStarted }) {
           </div>
         </div>
       </footer>
-
-      {/* AI Landing Chatbot */}
-      {!TEST_MODE && <LandingChatbot />}
     </div>
   );
 }
