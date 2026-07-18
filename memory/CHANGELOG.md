@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Guest-Header, Cookie-Banner und `/landing` für iPhone verdichtet
+- `HomePage.jsx`: Guest-Header mit `flex-wrap`, kleineren Login/Register-Buttons und besserem rechten Control-Block.
+- `CookieBanner.jsx`: kompakteres Mobile-Mini-Layout, geringere Höhen/Typo, bessere Safe-Area-/Bottom-Nav-Trennung.
+- `LandingPage.jsx`: kompakterer Hero für iPhone (kleineres Logo, engere Typo, mobilere CTA-/Badge-/Stats-Abstände).
+- **Testing Agent Iteration 279 PASS** auf **390x844** und **320x568**. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Chatbot-Dateien komplett aus dem Projekt gelöscht
 - Nach der vollständigen Render-Entfernung wurden diese Dateien auch physisch gelöscht:
   - `AIChatWidget.jsx`
