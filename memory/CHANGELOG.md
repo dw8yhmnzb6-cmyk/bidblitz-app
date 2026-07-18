@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Legacy localStorage Auth-Key `bidblitz_auth` bereinigt
+- `frontend/src/services/authService.js` wurde von lokalem Mock-Login auf echte Backend-Auth via `api` umgestellt. Der alte Key **`bidblitz_auth`** wird jetzt aktiv per **`purgeLegacyAuthStorage()`** entfernt.
+- Die Bereinigung läuft mehrfach defensiv: direkt beim App-Start in `frontend/src/index.js`, beim Mount von `UserContext.jsx` und in allen Auth-Methoden (`login`, `register`, `logout`, `getSession`, `refreshSession`).
+- **Testing Agent Iteration 272 PASS**: injizierter `bidblitz_auth`-Key wird nach Navigation und Reload zuverlässig gelöscht; Landingpage lädt normal; keine Mock-Auth-Patterns mehr. **KEINE MOCKED APIs** in diesem Fix.
+
 ## 18.07.2026 — Client-Storage zentral dokumentiert
 - Neue Datei **`/app/memory/STORAGE_MAP.md`** ergänzt. Sie dokumentiert die aktuell genutzten `localStorage`-/`sessionStorage`-Keys inklusive Datei und Zweck.
 - Zentrales Ergebnis: **User-/Login-/KYC-Status wird nicht lokal gespeichert**, sondern über Backend-Session/Cookies und Live-Endpoints geladen. Der einzige auffällige Altpfad ist `frontend/src/services/authService.js` mit `bidblitz_auth` als ungenutzter Mock-Speicher.
