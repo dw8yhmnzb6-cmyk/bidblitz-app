@@ -6,8 +6,9 @@
 - ✅ Nutzerflow fertig: öffentliche Eventseite, Tickettypen, Verfügbarkeit, Wallet-Kauf, digitale Ticketcodes, persönliche Bestellliste.
 - ✅ Adminflow fertig: Dashboard-Daten + **Check-in** für gültige Ticketcodes.
 - ✅ Verifikation grün: Self-Test PASS und **Testing Agent Iteration 259 PASS**.
+- ✅ ReceiveMoney-QR-Bug zusätzlich auf **iPhone-Build-Ebene** abgesichert: aktuelles iOS-Bundle enthält jetzt Preview-Backend-URL + QR-Render-Fallback; **Testing Agent Iteration 260 PASS**.
 - 🟡 Nächster Produkt-Schritt: **Telegram-Alarm als Backup** für Monitoring ergänzen.
-- 🟡 Parallel offen für User-Verifikation: echter iPhone/Xcode-Test für den nativen Inline-Scanner-Pfad.
+- 🟡 Parallel offen für User-Verifikation: echter iPhone/Xcode-Test für den nativen Inline-Scanner-Pfad und den CoreData-/SwiftData-Laufzeitpfad.
 
 ## Status nach Inline-Scanner-Umstellung — 18.07.2026
 - ✅ „Empfänger-Code scannen“ läuft jetzt direkt **inline in der Seite** statt in einem separaten Scanner-Sheet.
