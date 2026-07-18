@@ -7,6 +7,7 @@
 - ✅ Adminflow fertig: Dashboard-Daten + **Check-in** für gültige Ticketcodes.
 - ✅ Verifikation grün: Self-Test PASS und **Testing Agent Iteration 259 PASS**.
 - ✅ ReceiveMoney-QR-Bug zusätzlich auf **iPhone-Build-Ebene** abgesichert: aktuelles iOS-Bundle enthält jetzt Preview-Backend-URL + QR-Render-Fallback; **Testing Agent Iteration 260 PASS**.
+- ✅ iPhone-Home-UX aus Nutzer-Video bereinigt: Cookie-Banner nicht mehr über Bottom-Nav bei Auth-Usern, AI-FAB auf Kernrouten entfernt, Bottom-Nav dynamisch an Browser-Bottom angepasst, Mobile-Home kompakter; **Testing Agent Iteration 261 PASS**.
 - 🟡 Nächster Produkt-Schritt: **Telegram-Alarm als Backup** für Monitoring ergänzen.
 - 🟡 Parallel offen für User-Verifikation: echter iPhone/Xcode-Test für den nativen Inline-Scanner-Pfad und den CoreData-/SwiftData-Laufzeitpfad.
 
