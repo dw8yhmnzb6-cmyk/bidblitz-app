@@ -36,6 +36,7 @@ import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import { tracker } from "./services/tracker";
 import { isKycApprovedOrAdmin } from "./utils/adminAccess";
 import { TEST_MODE } from "./config/testMode";
+import { useEffectiveKycAccess } from "./hooks/useEffectiveKycAccess";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
@@ -346,7 +347,9 @@ function AppContent() {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : false);
   const user = useUser();
   const { setLang } = useI18n();
-  const isKycVerified = KYC_DISABLED ? true : isKycApprovedOrAdmin(user);
+  const isGuest = !user.isAuthenticated;
+  const serverKycApproved = useEffectiveKycAccess({ isGuest, isDemoMode, user });
+  const isKycVerified = KYC_DISABLED || serverKycApproved || isKycApprovedOrAdmin(user);
   const routeBase = currentPath.split("?")[0] || "/";
 
   const isKycRestrictedPath = useCallback((path) => isKycRestrictedPathUtil(path), []);
@@ -447,8 +450,6 @@ function AppContent() {
       return () => clearTimeout(timer);
     }
   }, [currentPath, syncBrowserPath, user.isAuthenticated, user.kyc_status]);
-
-  const isGuest = !user.isAuthenticated;
 
   // Notification polling - show toast for new notifications
   useEffect(() => {
@@ -571,6 +572,7 @@ function AppContent() {
     const routeParams = Object.fromEntries(new URLSearchParams(queryStr));
     const homeProps = {
       onNavigate: handleNavigate, isGuest, isDemoMode,
+      forceKycUnlocked: isKycVerified,
       onLogin: () => { tracker.ctaClick("login", "home"); setShowFullAuth("login"); },
       onRegister: () => { tracker.guestRegisterClick("home"); setShowFullAuth("register"); },
       onStartDemo: () => {
@@ -588,6 +590,7 @@ function AppContent() {
     };
     const pageProps = {
       onNavigate: handleNavigate, isGuest, isDemoMode,
+      forceKycUnlocked: isKycVerified,
       onAuthRequired: requireAuth,
       onLogin: () => { tracker.ctaClick("login", currentPath); setShowFullAuth("login"); },
       onRegister: () => { tracker.guestRegisterClick(currentPath); setShowFullAuth("register"); },

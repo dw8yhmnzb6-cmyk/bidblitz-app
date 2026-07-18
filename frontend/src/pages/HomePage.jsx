@@ -272,7 +272,7 @@ const LoyaltyCard = ({ onNavigate, t }) => {
 };
 
 // ── Main Page ──
-export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister, onStartDemo }) => {
+export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister, onStartDemo, forceKycUnlocked = false }) => {
   const user = useUser();
   const { balance, currency, cryptoBalanceEur, totalBalanceEur, cryptoBreakdown } = useWallet();
   const { percentageChange } = useWalletStats();
@@ -316,7 +316,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   };
   const gt = useGuestTranslations(lang);
   const isAdmin = isAdminUser(user);
-  const isKycVerified = KYC_DISABLED ? true : isKycApprovedOrAdmin(user);
+  const isKycVerified = forceKycUnlocked || KYC_DISABLED || isKycApprovedOrAdmin(user);
   const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   
   // Use total balance if available, otherwise fall back to EUR balance

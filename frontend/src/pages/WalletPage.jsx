@@ -119,12 +119,12 @@ const StatPill = ({ label, value, trend, delay = 0 }) => (
   </motion.div>
 );
 
-export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, routeParams = {} }) => {
+export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, routeParams = {}, forceKycUnlocked = false }) => {
   const wallet = useWallet();
   const user = useUser();
   const effectiveDemoMode = STORE_SAFE_MODE ? false : isDemoMode;
   const canAutoOpenWalletActions = !isGuest || effectiveDemoMode;
-  const isPendingKyc = !KYC_DISABLED && !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
+  const isPendingKyc = !forceKycUnlocked && !KYC_DISABLED && !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
   const windowSearch = canUseWindow() ? window.location.search || "" : "";
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = windowSearch.includes("stripe_session_id") || windowSearch.includes("stripe_cancelled");

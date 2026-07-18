@@ -649,7 +649,7 @@ const SettingsView = ({ onBack, onNavigate, t, locale, setLocale, onOpenPassword
 };
 
 // ── Main More Page ──
-export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo }) => {
+export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, forceKycUnlocked = false }) => {
   const user = useUser();
   const { refreshUser } = user;
   const { t, lang: locale, setLang: setLocale } = useI18n();
@@ -661,7 +661,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     return mapped ? (mapped[effectiveLocale] ?? mapped.de ?? mapped.en ?? value) : value;
   };
   const isAdmin = isAdminUser(user);
-  const isKycVerified = KYC_DISABLED ? true : isKycApprovedOrAdmin(user);
+  const isKycVerified = forceKycUnlocked || KYC_DISABLED || isKycApprovedOrAdmin(user);
   const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
