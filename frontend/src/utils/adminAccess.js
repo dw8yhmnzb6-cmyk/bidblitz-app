@@ -1,4 +1,4 @@
-import { TEST_MODE } from "../config/testMode";
+import { TEST_MODE, isTestModeUser } from "../config/testMode";
 
 const KYC_DISABLED = TEST_MODE;
 
@@ -11,6 +11,6 @@ export function isAdminUser(user = {}) {
 }
 
 export function isKycApprovedOrAdmin(user = {}) {
-  if (KYC_DISABLED) return true;
+  if (KYC_DISABLED || isTestModeUser(user)) return true;
   return isAdminUser(user) || user?.kyc_status === 'approved' || user?.kyc_verified === true;
 }

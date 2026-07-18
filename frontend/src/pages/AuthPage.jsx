@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import KYCVerificationModal from "../components/KYCVerificationModal";
-import { TEST_MODE } from "../config/testMode";
+import { TEST_MODE, isTestModeUser } from "../config/testMode";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -96,7 +96,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
   const { t } = useI18n();
 
   const user = useUser();
-  const pendingKycUser = !TEST_MODE && user?.isAuthenticated && user?.kyc_status && user?.kyc_status !== "approved";
+  const pendingKycUser = !TEST_MODE && !isTestModeUser(user) && user?.isAuthenticated && user?.kyc_status && user?.kyc_status !== "approved";
 
   useEffect(() => {
     if (!user.error) return;
