@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — KYC testweise vollständig ausgeschaltet
+- Auf ausdrücklichen Nutzerwunsch wurde KYC vorübergehend **komplett aus dem Frontend-Testfluss entfernt**, damit ungestörte Produkt-/QA-Tests möglich sind. Dazu wurde in `frontend/.env` der neue Schalter **`REACT_APP_DISABLE_KYC=true`** gesetzt und der Frontend-Service neu gestartet.
+- Der Schalter wirkt zentral: `frontend/src/utils/adminAccess.js` gibt bei aktivem Flag immer KYC-freigegeben zurück; `frontend/src/app/pathUtils.js` deaktiviert KYC-Routenblockaden; `frontend/src/App.js` umgeht automatische Weiterleitungen nach `/kyc`; `frontend/src/components/KYCBanner.jsx` rendert nichts mehr; `frontend/src/pages/HomePage.jsx`, `frontend/src/pages/MorePage.jsx`, `frontend/src/pages/WalletPage.jsx` und `frontend/src/components/auctions/AuctionDetail.jsx` respektieren den Modus ebenfalls.
+- Ergebnis: normale eingeloggte Nutzer sehen **keine KYC-Banner**, **keine Pre-KYC-Gates**, **keine KYC-Redirects** und können Wallet, More, Auktionen und weitere vorher geschützte Frontend-Bereiche direkt testen.
+- Verifiziert: Frontend-Smoke-Test nach Neustart erfolgreich und **Testing Agent Iteration 262 PASS** mit 100% Erfolgsquote. **Keine MOCKED APIs in diesem Fixblock.**
+- Wichtig für später: KYC bleibt jetzt absichtlich **deaktiviert**, bis der Nutzer ausdrücklich sagt, dass es wieder eingeschaltet werden soll.
+
 ## 18.07.2026 — iPhone-Home-UX nach Nutzer-Video bereinigt
 - Auf Basis des vom Nutzer hochgeladenen iPhone-Videos wurden die sichtbar unfertigen Mobile-Probleme auf der Startseite direkt bereinigt. Der Kernpunkt war nicht ein einzelner Crash, sondern dass die App im iPhone-Web/App-Shell-Zustand **optisch nach Testphase** aussah: zu viele Overlays gleichzeitig, schlechte Safe-Area-Nutzung unten und ein zu schwerer Home-Block auf kleinem Screen.
 - **Bottom-Navigation / Safari-/Browser-Bottom-Area:** `frontend/src/App.js` berechnet jetzt über `window.visualViewport` einen dynamischen **`--app-browser-bottom-offset`**. `frontend/src/App.css` nutzt diesen Offset für `--app-bottom-nav-offset`, `--app-cookie-banner-offset` und die tatsächliche Positionierung der `.bottom-nav`. Ergebnis: Die Bottom-Navigation sitzt jetzt innerhalb des sichtbaren iPhone-Viewports statt mit Browser-/Home-Bereich zu kollidieren.

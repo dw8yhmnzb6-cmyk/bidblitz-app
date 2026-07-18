@@ -1,6 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Audi-Ticketverkauf — 18.07.2026
+- ✅ **KYC temporär ausgeschaltet für Tests**: `REACT_APP_DISABLE_KYC=true` aktiv; keine Banner, Gates oder Redirects mehr; **Testing Agent Iteration 262 PASS**.
 - ✅ **Audi-Ticketverkauf** auf der Webseite ist jetzt live unter **`/audi-tickets`**.
 - ✅ Zahlung läuft wie vom Nutzer gewünscht **direkt über das BidBlitz Wallet** statt über Stripe/externe Checkout-Seiten.
 - ✅ Nutzerflow fertig: öffentliche Eventseite, Tickettypen, Verfügbarkeit, Wallet-Kauf, digitale Ticketcodes, persönliche Bestellliste.
