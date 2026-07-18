@@ -411,6 +411,12 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("test-mode-active", TEST_MODE);
+    return () => document.body.classList.remove("test-mode-active");
+  }, []);
+
+  useEffect(() => {
     if (user.isAuthenticated && user.language) {
       setLang(user.language);
     }

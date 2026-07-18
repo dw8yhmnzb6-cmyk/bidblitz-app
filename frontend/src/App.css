@@ -518,6 +518,18 @@ body.taxi-fullscreen-mode .chatbot-window {
   display: none !important;
 }
 
+body.test-mode-active [data-testid="ai-chat-fab"],
+body.test-mode-active [data-testid="floating-chatbot-bubble"],
+body.test-mode-active .chatbot-toggle-btn,
+body.test-mode-active .chatbot-window,
+body.test-mode-active [aria-label="AI-Assistent öffnen"],
+body.test-mode-active [aria-label="Chat öffnen"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 @media (max-width: 480px) {
   .bottom-nav {
     max-width: 100%;
