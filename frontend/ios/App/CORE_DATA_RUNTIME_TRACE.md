@@ -17,6 +17,7 @@ Dieses Projekt enthält jetzt einen DEBUG-Runtime-Trace in `App/CoreDataTrace.m`
 - `[HealthDebug] HKHealthStore initialized`
 
 ## Lokaler Test auf dem Mac / echten iPhone
+0. Xcode-Buildphase **`Sync Web Assets`** ist jetzt aktiv und kopiert bei jedem Build automatisch den frischen Web-Stand nach iOS.
 1. `yarn ios:diagnose` ausführen
 2. `frontend/ios/App/App.xcworkspace` in Xcode öffnen
 3. Scheme: Debug

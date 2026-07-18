@@ -1,0 +1,93 @@
+{
+  "summary": "Xcode 'Sync Web Assets' build phase VERIFIED - iOS project now contains PBXShellScriptBuildPhase that runs yarn build + npx cap copy ios during Xcode builds. yarn ios:diagnose passes. Frontend loads correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_267.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "project.pbxproj lines 45-64: PBXShellScriptBuildPhase 'Sync Web Assets' correctly defined with shell script pointing to scripts/ios-sync-web-assets.js",
+    "project.pbxproj line 117: Build phase correctly included in App target's buildPhases array (runs after Sources, Frameworks, before Resources)",
+    "ios-sync-web-assets.js correctly runs: 1) yarn build, 2) npx cap copy ios",
+    "ios-diagnose.js line 31: Assertion for 'Sync Web Assets' build phase present",
+    "CORE_DATA_RUNTIME_TRACE.md line 20: Documentation updated to mention the new build phase"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "100%"
+  },
+  "test_credentials": "N/A",
+  "seed_data_creation": "None required",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Xcode 'Sync Web Assets' build phase verified. This ensures fresh web assets are copied to iOS during every Xcode build, reducing stale bundled UI in test app. Actual Xcode compilation cannot be verified in Linux container - requires macOS with Xcode.",
+  "verified_features": {
+    "build_phase_exists": {
+      "test": "PBXShellScriptBuildPhase named 'Sync Web Assets' in project.pbxproj",
+      "status": "PASS",
+      "result": "Lines 45-64 define the build phase with name='Sync Web Assets'"
+    },
+    "build_phase_in_target": {
+      "test": "Build phase included in App target's buildPhases",
+      "status": "PASS",
+      "result": "Line 117: 50D1F10016A4D900B1D11001 /* Sync Web Assets */ in buildPhases array"
+    },
+    "shell_script_content": {
+      "test": "Shell script runs node scripts/ios-sync-web-assets.js",
+      "status": "PASS",
+      "result": "shellScript = 'export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH\\ncd \"$SRCROOT/../..\" || exit 1\\nnode scripts/ios-sync-web-assets.js\\n'"
+    },
+    "sync_script_runs_build": {
+      "test": "ios-sync-web-assets.js runs yarn build",
+      "status": "PASS",
+      "result": "Line 9: run('yarn build')"
+    },
+    "sync_script_runs_cap_copy": {
+      "test": "ios-sync-web-assets.js runs npx cap copy ios",
+      "status": "PASS",
+      "result": "Line 11: run('npx cap copy ios')"
+    },
+    "diagnose_assertion": {
+      "test": "ios-diagnose.js asserts 'Sync Web Assets' exists",
+      "status": "PASS",
+      "result": "Line 31: assert(pbx.includes('Sync Web Assets'), 'Xcode-Buildphase für frische Web-Assets fehlt')"
+    },
+    "ios_diagnose_passes": {
+      "test": "yarn ios:diagnose completes successfully",
+      "status": "PASS",
+      "result": "All 4 steps completed - 'Projekt ist für den Gerätetest bereit'"
+    },
+    "frontend_smoke_test": {
+      "test": "App preview loads after native build-system change",
+      "status": "PASS",
+      "result": "Frontend loads correctly at https://super-app-staging-2.preview.emergentagent.com"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-18T18:35:00Z",
+  "test_scope": "iOS Xcode 'Sync Web Assets' Build Phase Verification - Frontend Only",
+  "limitations": {
+    "xcode_compilation": "Cannot verify actual Xcode compilation in Linux container - requires macOS with Xcode",
+    "device_testing": "Cannot run on physical iOS device - requires macOS with Xcode and connected device",
+    "stale_bundle_verification": "Cannot verify that stale bundles are actually eliminated - requires real Xcode build on macOS"
+  },
+  "technical_analysis": {
+    "issue": "User saw stale/old behavior in iOS test app package despite code fixes",
+    "root_cause": "Xcode was not automatically rebuilding web assets before bundling the iOS app",
+    "fix_applied": "Added PBXShellScriptBuildPhase 'Sync Web Assets' that runs yarn build + npx cap copy ios during every Xcode build",
+    "fix_correctness": "This is the standard Capacitor pattern for ensuring fresh web assets in iOS builds. The build phase runs after Sources/Frameworks but before Resources, ensuring the public/ folder contains fresh assets before being bundled.",
+    "remaining_blockers": "None identified from repo-side. User should: 1) Clean Xcode build folder (Cmd+Shift+K), 2) Delete app from device, 3) Rebuild and reinstall"
+  }
+}

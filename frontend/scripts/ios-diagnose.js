@@ -28,6 +28,7 @@ function verifyIosProject() {
   assert(!pbx.includes('main.swift'), 'main.swift ist noch im Xcode-Projekt referenziert');
   assert(!pbx.includes('PersistenceBootstrap.swift'), 'PersistenceBootstrap.swift ist noch im Xcode-Projekt referenziert');
   assert(pbx.includes('CoreDataTrace.m in Sources'), 'CoreDataTrace.m ist nicht in Build Sources eingebunden');
+  assert(pbx.includes('Sync Web Assets'), 'Xcode-Buildphase für frische Web-Assets fehlt');
   assert(coreTrace.includes('BBTraceShouldActivate'), 'CoreDataTrace.m hat keine Aktivierungslogik');
   assert(coreTrace.includes('[CoreDataTrace][START]'), 'Formatierte CoreDataTrace-Logs fehlen');
   assert(coreTrace.includes('[CoreDataTrace][CALLER]'), 'Caller-Logs fehlen');
