@@ -80,6 +80,9 @@ Wenn ein Problem wie **KYC-Karte bleibt sichtbar**, **falscher Login-Status**, o
 - Lokale Begleit-Keys dazu:
   - `bb_ai_chat_session` → Chat-Session
   - `bidblitz-chatbot-hidden` → merkt nur, ob der alte FloatingChatbot manuell ausgeblendet wurde
+- Status aktuell:
+  - beide Keys werden jetzt **beim App-Start aktiv gelöscht** in `frontend/src/index.js`
+  - Cleanup läuft vor dem React-Render
 
 ## 5) Empfehlung
 

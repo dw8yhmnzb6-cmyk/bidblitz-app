@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Legacy-Widget-Speicher bereinigt
+- Die relevanten alten Widget-Keys wurden identifiziert und zentral bereinigt:
+  - `bb_ai_chat_session`
+  - `bidblitz-chatbot-hidden`
+- `frontend/src/index.js` löscht beide Werte jetzt bei jedem App-Start, noch bevor React rendert.
+- **Testing Agent Iteration 277 PASS**: Keys werden nach Reload und frischer Navigation entfernt; keine Chatbot-Elemente mehr sichtbar. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — AIChatWidget, LandingChatbot und FloatingChatbot komplett aus Rendering entfernt
 - `App.js`: Render-Aufrufe für **`AIChatWidget`** und **`LandingChatbot`** vollständig gelöscht.
 - `LandingPage.jsx`: direkter Render von **`LandingChatbot`** vollständig entfernt.
