@@ -12,6 +12,8 @@ const ACTIONS = {
 };
 
 const initialState = {
+  id: '',
+  walletId: '',
   balance: 0,
   currency: 'EUR',
   cryptoBalanceEur: 0,  // NEW: Crypto balance in EUR
@@ -37,6 +39,8 @@ function walletReducer(state, action) {
       const w = action.payload;
       return {
         ...state,
+        id: w.id || w.user?.id || '',
+        walletId: w.wallet_id || w.id || w.user?.id || '',
         balance: w.balance ?? 0,
         cryptoBalanceEur: w.crypto_balance_eur ?? 0,
         totalBalanceEur: w.total_balance_eur ?? w.balance ?? 0,
@@ -162,6 +166,8 @@ export function WalletProvider({ children }) {
 
   const value = React.useMemo(() => ({
     balance: state.balance,
+    id: state.id,
+    walletId: state.walletId,
     currency: state.currency,
     cryptoBalanceEur: state.cryptoBalanceEur,
     totalBalanceEur: state.totalBalanceEur,

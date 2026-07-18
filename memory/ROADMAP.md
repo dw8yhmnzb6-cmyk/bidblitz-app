@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach iOS Startup-Crash Fix — 18.07.2026
+- ✅ React-Fehlergrenze jetzt aussagekräftig: Frontend-Errors loggen **`message`**, **`stack`**, **`component_stack`** und strukturierte Metadaten statt leerem `{}`.
+- ✅ Der iOS-Startup-Crash im Lazy-Chunk wurde auf den **Wallet-Chunk** eingegrenzt und mit Browser-/Runtime-Guards in Wallet, TopUpModal, WalletSecurityCards und Wallet-Hooks entschärft.
+- ✅ Testing Agent **Iteration 256 PASS**: Stripe-Return-Pfad, direkte `/wallet`-Route, iPhone-Viewport und authentifizierte Wallet-Ansicht rendern ohne Blank Screen oder sichtbare Error Boundary.
+- 🟡 Nächster sinnvoller Schritt: User/Xcode-Gerätetest gegen den nativen iOS-Build, damit wir sehen, ob nach dem JS-Fix noch ein neuer echter Device-Fehler übrig bleibt.
+- 🟡 Danach wieder in die Produkt-Roadmap zurück: **Audi-Ticketverkauf auf der Webseite** und **Telegram-Alarm als Monitoring-Backup**.
+
 ## Status nach Auktionsdetail-Fix — 16.07.2026
 - ✅ Bug 1 behoben: Auktionsbilder passen wieder zum Artikeltyp.
 - ✅ Bug 2 behoben: Countdown / verbleibende Zeit funktioniert wieder korrekt in Detail- und Grid-Ansicht.

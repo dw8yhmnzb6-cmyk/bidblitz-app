@@ -321,6 +321,7 @@ async def instant_transfer(req: TransferRequest, request: Request):
 async def generate_receive_qr(request: Request, amount: Optional[float] = None):
     """Generate QR code data for receiving money"""
     user = await get_current_user(request)
+    user_id = str(user["_id"])
     bidblitz_id = await ensure_bidblitz_id(user)
     
     qr_token = user.get("qr_token")
@@ -344,6 +345,8 @@ async def generate_receive_qr(request: Request, amount: Optional[float] = None):
     return {
         "qr_data": json.dumps(qr_data),
         "qr_token": qr_token,
+        "user_id": user_id,
+        "wallet_id": user_id,
         "bidblitz_id": bidblitz_id,
         "name": user.get("name"),
     }

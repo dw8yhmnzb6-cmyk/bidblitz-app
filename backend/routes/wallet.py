@@ -161,6 +161,8 @@ async def get_wallet(request: Request):
     ).sort("created_at", -1).limit(20).to_list(20)
 
     return {
+        "id": user_id,
+        "wallet_id": user_id,
         "balance": round(user.get("balance", 0.0), 2),
         "currency": user.get("currency", "EUR"),
         "card_number": user.get("card_number", ""),
