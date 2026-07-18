@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach Audi-Ticketverkauf — 18.07.2026
+- ✅ **Audi-Ticketverkauf** auf der Webseite ist jetzt live unter **`/audi-tickets`**.
+- ✅ Zahlung läuft wie vom Nutzer gewünscht **direkt über das BidBlitz Wallet** statt über Stripe/externe Checkout-Seiten.
+- ✅ Nutzerflow fertig: öffentliche Eventseite, Tickettypen, Verfügbarkeit, Wallet-Kauf, digitale Ticketcodes, persönliche Bestellliste.
+- ✅ Adminflow fertig: Dashboard-Daten + **Check-in** für gültige Ticketcodes.
+- ✅ Verifikation grün: Self-Test PASS und **Testing Agent Iteration 259 PASS**.
+- 🟡 Nächster Produkt-Schritt: **Telegram-Alarm als Backup** für Monitoring ergänzen.
+- 🟡 Parallel offen für User-Verifikation: echter iPhone/Xcode-Test für den nativen Inline-Scanner-Pfad.
+
 ## Status nach Inline-Scanner-Umstellung — 18.07.2026
 - ✅ „Empfänger-Code scannen“ läuft jetzt direkt **inline in der Seite** statt in einem separaten Scanner-Sheet.
 - ✅ Native iOS-/Capacitor-Integration ergänzt: **`@capgo/camera-preview`** für eingebettete Live-Vorschau + Barcode-Events und **`capacitor-native-settings`** für den Settings-Pfad bei verweigerter Kamera-Berechtigung.
