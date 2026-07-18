@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Floating AI-/Chat-Button im TEST_MODE entfernt
+- Der vom Nutzer markierte lila Floating-Button wurde im Testbetrieb abgeschaltet. In `App.js` werden jetzt sowohl **`AIChatWidget`** (eingeloggt) als auch **`LandingChatbot`** (Gastmodus) nur noch gerendert, wenn **`TEST_MODE` deaktiviert** ist.
+- **Testing Agent Iteration 270 PASS** bestätigt: auf mobil/Preview ist `ai-chat-fab` nicht sichtbar, `.chatbot-toggle-btn` ebenfalls nicht sichtbar, und die Seite lädt ohne Layout-Bruch.
+- **KEINE MOCKED APIs** in diesem Fix.
+
 ## 18.07.2026 — Finaler Fix für Home-/More-KYC-Karten bei stale Frontend-State
 - Nach den echten iPhone-Screenshots war klar: Nicht mehr der Build-Selector oder das Flag allein war das Problem, sondern ein **staler lokaler User-State**, der Home/More kurzfristig weiter wie „nicht verifiziert“ behandeln konnte, obwohl der Server längst `approved` meldete.
 - Fix: neuer Hook **`frontend/src/hooks/useEffectiveKycAccess.js`**, der `/api/kyc/status` live abfragt und `forceKycUnlocked` an `App.js`, `HomePage.jsx`, `MorePage.jsx` und `WalletPage.jsx` durchreicht. Damit verschwinden die Pre-KYC-Karten jetzt servergestützt und nicht nur über lokale User-Felder.
