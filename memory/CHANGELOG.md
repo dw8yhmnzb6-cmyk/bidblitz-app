@@ -1,5 +1,9 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Client-Storage zentral dokumentiert
+- Neue Datei **`/app/memory/STORAGE_MAP.md`** ergänzt. Sie dokumentiert die aktuell genutzten `localStorage`-/`sessionStorage`-Keys inklusive Datei und Zweck.
+- Zentrales Ergebnis: **User-/Login-/KYC-Status wird nicht lokal gespeichert**, sondern über Backend-Session/Cookies und Live-Endpoints geladen. Der einzige auffällige Altpfad ist `frontend/src/services/authService.js` mit `bidblitz_auth` als ungenutzter Mock-Speicher.
+
 ## 18.07.2026 — Floating AI-/Chat-Button im TEST_MODE entfernt
 - Der vom Nutzer markierte lila Floating-Button wurde im Testbetrieb abgeschaltet. In `App.js` werden jetzt sowohl **`AIChatWidget`** (eingeloggt) als auch **`LandingChatbot`** (Gastmodus) nur noch gerendert, wenn **`TEST_MODE` deaktiviert** ist.
 - **Testing Agent Iteration 270 PASS** bestätigt: auf mobil/Preview ist `ai-chat-fab` nicht sichtbar, `.chatbot-toggle-btn` ebenfalls nicht sichtbar, und die Seite lädt ohne Layout-Bruch.
