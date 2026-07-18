@@ -22,10 +22,11 @@ import { WalletBioPayCard, WalletPaymentPinCard } from "../components/wallet/Wal
 import { useI18n } from "../store";
 import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
 import { STORE_SAFE_MODE } from "../config/release";
+import { TEST_MODE } from "../config/testMode";
 import GuestCTABar from "../components/GuestCTABar";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
-const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+const KYC_DISABLED = TEST_MODE;
 
 const toSafeNumber = (value) => {
   const numeric = Number(value ?? 0);

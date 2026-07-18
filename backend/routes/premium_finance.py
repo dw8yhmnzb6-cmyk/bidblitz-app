@@ -10,6 +10,7 @@ from core.config import (
     STRIPE_API_KEY,
     STRIPE_ISSUING_ENABLED,
     STRIPE_ISSUING_DAILY_LIMIT_CENTS,
+    TEST_MODE,
 )
 import secrets
 import random
@@ -191,7 +192,7 @@ async def create_virtual_card(request: Request):
 
     # ── KYC Level 2 enforcement (verified or premium) ──
     # Admin can always issue cards (for testing / corporate cards)
-    if user.get("role") not in ("admin",):
+    if not TEST_MODE and user.get("role") not in ("admin",):
         kyc_level = user.get("kyc_level", "basic") or "none"
         # Map our string levels to spec levels: none=0, basic=1, verified|premium=2
         if kyc_level not in ("verified", "premium"):

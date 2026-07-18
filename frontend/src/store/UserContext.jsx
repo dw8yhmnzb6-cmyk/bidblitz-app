@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { api } from '../services/api';
 import { isAdminUser } from '../utils/adminAccess';
+import { TEST_MODE } from '../config/testMode';
 
 function formatUserFacingAuthError(err) {
   const message = String(err?.message || err || '').trim();
@@ -83,8 +84,8 @@ function mapUser(u) {
     email_notifications: u.email_notifications !== false,
     biometric_enabled: u.biometric_enabled === true,
     dark_mode: u.dark_mode !== false,
-    kyc_status: isAdmin ? 'approved' : (u.kyc_status || 'not_started'),
-    kyc_verified: isAdmin || u.kyc_verified === true || u.kyc_status === 'approved',
+    kyc_status: (isAdmin || TEST_MODE) ? 'approved' : (u.kyc_status || 'not_started'),
+    kyc_verified: isAdmin || TEST_MODE || u.kyc_verified === true || u.kyc_status === 'approved',
   };
 }
 

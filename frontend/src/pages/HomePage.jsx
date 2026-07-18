@@ -28,9 +28,10 @@ import SponsoredAdSlot from "../components/SponsoredAdSlot";
 import KYCBanner from "../components/KYCBanner";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { STORE_SAFE_MODE, filterStoreSafeItems } from "../config/release";
+import { TEST_MODE } from "../config/testMode";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
-const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+const KYC_DISABLED = TEST_MODE;
 
 const iconMap = {
   wallet: Wallet,

@@ -1,5 +1,6 @@
 // craco.config.js
 const path = require("path");
+const webpack = require("webpack");
 
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
@@ -66,6 +67,11 @@ let webpackConfig = {
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);
       }
+      webpackConfig.plugins.push(
+        new webpack.DefinePlugin({
+          "process.env.TEST_MODE": JSON.stringify(process.env.TEST_MODE),
+        })
+      );
       return webpackConfig;
     },
   },

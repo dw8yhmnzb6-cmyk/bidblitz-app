@@ -23,8 +23,9 @@ import FeatureGate from "../components/FeatureGate";
 import { PushNotificationToggle } from "../components/PushNotifications";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { filterStoreSafeItems } from "../config/release";
+import { TEST_MODE } from "../config/testMode";
 
-const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+const KYC_DISABLED = TEST_MODE;
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 const isRtlLanguage = (lang) => lang === "ar" || lang === "ar-AE";

@@ -35,6 +35,7 @@ import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import { tracker } from "./services/tracker";
 import { isKycApprovedOrAdmin } from "./utils/adminAccess";
+import { TEST_MODE } from "./config/testMode";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
@@ -297,7 +298,7 @@ const AdCampaignManagerPage = lazy(() => import("./pages/AdCampaignManagerPage")
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
-const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+const KYC_DISABLED = TEST_MODE;
 
 function AppContent() {
   const hasStripeReturn = typeof window !== "undefined" &&

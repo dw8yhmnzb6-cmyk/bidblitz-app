@@ -3,7 +3,7 @@ import jwt
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, Request
 from bson import ObjectId
-from core.config import JWT_SECRET, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, COOKIE_SECURE, COOKIE_SAMESITE
+from core.config import JWT_SECRET, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, COOKIE_SECURE, COOKIE_SAMESITE, TEST_MODE
 from core.database import db
 
 
@@ -52,11 +52,22 @@ def clear_auth_cookies(response):
     response.delete_cookie(key="refresh_token", path="/", secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE)
 
 
+def apply_test_mode_kyc(user: dict) -> dict:
+    if not TEST_MODE or not user:
+        return user
+    user["kyc_status"] = "approved"
+    user["kyc_verified"] = True
+    user["kyc_level"] = user.get("kyc_level") or "verified"
+    user["verified"] = True
+    user["verification_status"] = "approved"
+    return user
+
+
 def serialize_user(user: dict) -> dict:
     role = user.get("role", "user")
     modes = ["personal"]
-    kyc_status = "approved" if role == "admin" else user.get("kyc_status", "not_started")
-    kyc_verified = True if role == "admin" else bool(user.get("kyc_status") == "approved" or user.get("kyc_verified"))
+    kyc_status = "approved" if role == "admin" or TEST_MODE else user.get("kyc_status", "not_started")
+    kyc_verified = True if role == "admin" or TEST_MODE else bool(user.get("kyc_status") == "approved" or user.get("kyc_verified"))
     
     if role == "admin":
         modes = ["personal", "kids", "merchant"]
@@ -149,7 +160,7 @@ async def get_current_user(request: Request) -> dict:
             user["first_name"] = user.get("first_name") or (name_parts[0] if name_parts else "")
         if "last_name" not in user:
             user["last_name"] = user.get("last_name") or (name_parts[1] if len(name_parts) > 1 else "")
-        return user
+        return apply_test_mode_kyc(user)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
@@ -182,7 +193,7 @@ async def get_current_user_from_token(token: str) -> dict:
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         
-        return user
+        return apply_test_mode_kyc(user)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:

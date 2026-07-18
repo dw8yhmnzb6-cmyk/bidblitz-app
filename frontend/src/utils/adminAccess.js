@@ -1,4 +1,6 @@
-const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+import { TEST_MODE } from "../config/testMode";
+
+const KYC_DISABLED = TEST_MODE;
 
 export function isAdminUser(user = {}) {
   const role = String(user?.role || '').toLowerCase();

@@ -5,6 +5,7 @@ Structured checks for KYC limits, velocity detection, and suspicious activity fl
 
 from datetime import datetime, timezone, timedelta
 from core.database import db
+from core.config import TEST_MODE
 from bson import ObjectId
 import logging
 
@@ -49,6 +50,8 @@ PAYOUT_RISK = {
 
 async def _get_kyc_level(user_id: str) -> dict:
     """Get user's KYC level and limits."""
+    if TEST_MODE:
+        return {"level": "verified", "limits": KYC_LEVELS["verified"]}
     user = await db.users.find_one({"_id": ObjectId(user_id)}, {"kyc_level": 1})
     level = user.get("kyc_level", "basic") if user else "none"
     return {"level": level, "limits": KYC_LEVELS.get(level, KYC_LEVELS["none"])}

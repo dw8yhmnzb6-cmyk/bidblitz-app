@@ -1,3 +1,5 @@
+import { TEST_MODE } from "../config/testMode";
+
 const KYC_RESTRICTED_PREFIXES = [
   "/auctions",
   "/live-auctions",
@@ -21,7 +23,7 @@ const KYC_RESTRICTED_PREFIXES = [
   "/marketplace-dashboard",
 ];
 
-const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+const KYC_DISABLED = TEST_MODE;
 
 export function getInitialAppPath({ hasKidsReturn, hasStripeReturn, pathname, search }) {
   if (hasKidsReturn) return "/more";

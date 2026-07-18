@@ -13,8 +13,9 @@ import Countdown from "./Countdown";
 import BuyCreditsModal from "./BuyCreditsModal";
 import { POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGreen, accentGold, accentRed, accentPurple } from "./atoms";
 import { getAuctionFallbackImage } from "./imageFallbacks";
+import { TEST_MODE } from "../../config/testMode";
 
-const KYC_DISABLED = String(process.env.REACT_APP_DISABLE_KYC || '').toLowerCase() === 'true';
+const KYC_DISABLED = TEST_MODE;
 
 /* ─── BidRow (local to AuctionDetail) ─── */
 const BidRow = ({ bid, isLatest }) => (
