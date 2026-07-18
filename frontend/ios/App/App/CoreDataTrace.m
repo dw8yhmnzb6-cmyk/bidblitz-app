@@ -142,7 +142,7 @@ static void BBTraceInstallSwizzle(void) {
     dispatch_once(&onceToken, ^{
         Class class = [NSPersistentStoreCoordinator class];
         SEL originalSelector = @selector(addPersistentStoreWithType:configuration:URL:options:error:);
-        SEL swizzledSelector = @selector(bb_trace_addPersistentStoreWithType:configuration:URL:options:error:);
+        SEL swizzledSelector = NSSelectorFromString(@"bb_trace_addPersistentStoreWithType:configuration:URL:options:error:");
 
         Method originalMethod = class_getInstanceMethod(class, originalSelector);
         Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
