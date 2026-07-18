@@ -12,6 +12,11 @@ import { purgeLegacyAuthStorage } from "@/services/authService";
 // ═══════════════════════════════════════════════════
 purgeLegacyAuthStorage();
 
+if (String(process.env.REACT_APP_TEST_MODE).toLowerCase() === 'true') {
+  document.documentElement.classList.add('test-mode-active');
+  document.body?.classList.add('test-mode-active');
+}
+
 if ('serviceWorker' in navigator) {
   // FORCE UNREGISTER ALL SERVICE WORKERS TO FIX CACHE ISSUE
   navigator.serviceWorker.getRegistrations().then(function(registrations) {

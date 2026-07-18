@@ -5,9 +5,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { TEST_MODE } from "../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const STORAGE_KEY = "bb_ai_chat_session";
+const SUPPRESSED_PATHS = new Set(["/", "/home", "/wallet", "/all-services", "/more"]);
 
 const QUICK_PROMPTS = [
   "Was kann ich heute machen?",
@@ -74,7 +76,8 @@ export default function AIChatWidget({ hidden = false }) {
     try { localStorage.removeItem(STORAGE_KEY); } catch (storageError) { void storageError; }
   };
 
-  if (hidden) return null;
+  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  if (hidden || TEST_MODE || SUPPRESSED_PATHS.has(currentPath)) return null;
 
   return (
     <>

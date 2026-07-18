@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Loader, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { TEST_MODE } from '../config/testMode';
 
 const STORAGE_KEY = 'bidblitz-chatbot-hidden';
 
 export default function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [isHidden, setIsHidden] = useState(() => {
-    try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch { return false; }
+    try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch (error) { void error; return false; }
   });
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -22,7 +23,7 @@ export default function FloatingChatbot() {
   const hideBubble = (e) => {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     setIsHidden(true);
-    try { localStorage.setItem(STORAGE_KEY, '1'); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch (error) { void error; }
   };
 
   useEffect(() => {
@@ -120,6 +121,8 @@ export default function FloatingChatbot() {
       console.error('Feedback error:', err);
     }
   };
+
+  if (TEST_MODE) return null;
 
   return (
     <>

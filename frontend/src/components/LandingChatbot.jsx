@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { MessageCircle, X, Send, Mail } from 'lucide-react';
 import './LandingChatbot.css';
+import { TEST_MODE } from '../config/testMode';
 
 export function LandingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -87,6 +88,8 @@ export function LandingChatbot() {
     setInputMessage(message);
     setTimeout(() => handleSendMessage(), 100);
   };
+
+  if (TEST_MODE) return null;
 
   return (
     <>

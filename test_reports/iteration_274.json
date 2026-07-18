@@ -1,0 +1,102 @@
+{
+  "summary": "TEST_MODE floating chatbot kill-switch verification PASSED. All floating chatbot buttons (AIChatWidget, LandingChatbot, FloatingChatbot) are correctly hidden on both / (home) and /landing pages in TEST_MODE. Component-level and shell-level guards working as expected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_274.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AIChatWidget.jsx line 80: Returns null when TEST_MODE is true - VERIFIED",
+    "LandingChatbot.jsx line 92: Returns null when TEST_MODE is true - VERIFIED",
+    "FloatingChatbot.jsx line 125: Returns null when TEST_MODE is true - VERIFIED",
+    "LandingPage.jsx line 245: Conditionally renders LandingChatbot only when !TEST_MODE - VERIFIED",
+    "App.js line 413-417: Adds test-mode-active class to body when TEST_MODE is true - VERIFIED",
+    "Double kill-switch pattern (component-level + shell-level) properly implemented"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "100%"
+  },
+  "test_credentials": "N/A - no login required for this verification",
+  "seed_data_creation": "None required",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "TEST_MODE chatbot kill-switch verified working. All three chatbot components (AIChatWidget, LandingChatbot, FloatingChatbot) return null in TEST_MODE. LandingPage.jsx also has shell-level guard. Body has test-mode-active class. No floating purple buttons visible on / or /landing pages.",
+  "verified_features": {
+    "home_page_chatbot_absent": {
+      "test": "Check all chatbot selectors on / (home) page",
+      "status": "PASS",
+      "selectors_checked": [
+        "[data-testid='ai-chat-fab']: 0",
+        "[data-testid='floating-chatbot-bubble']: 0",
+        ".chatbot-toggle-btn: 0",
+        "[aria-label='KI-Assistent öffnen']: 0",
+        "[aria-label='AI-Assistent öffnen']: 0"
+      ]
+    },
+    "landing_page_chatbot_absent_mobile": {
+      "test": "Check all chatbot selectors on /landing page (mobile viewport 390x844)",
+      "status": "PASS",
+      "selectors_checked": [
+        "[data-testid='ai-chat-fab']: 0",
+        "[data-testid='floating-chatbot-bubble']: 0",
+        ".chatbot-toggle-btn: 0",
+        "[aria-label='KI-Assistent öffnen']: 0",
+        "[aria-label='AI-Assistent öffnen']: 0",
+        "[aria-label='Chat öffnen']: 0"
+      ]
+    },
+    "landing_page_chatbot_absent_desktop": {
+      "test": "Check all chatbot selectors on /landing page (desktop viewport 1920x1080) with full scroll",
+      "status": "PASS",
+      "scroll_positions_tested": ["top", "middle", "bottom"],
+      "selectors_checked": [
+        "[data-testid='ai-chat-fab']: 0",
+        "[data-testid='floating-chatbot-bubble']: 0",
+        ".chatbot-toggle-btn: 0",
+        "[aria-label='KI-Assistent öffnen']: 0",
+        "[aria-label='AI-Assistent öffnen']: 0",
+        "[aria-label='Chat öffnen']: 0",
+        ".chatbot-window: 0",
+        ".landing-chatbot: 0"
+      ]
+    },
+    "body_test_mode_class": {
+      "test": "Verify body has test-mode-active class",
+      "status": "PASS",
+      "result": "body.className includes 'test-mode-active'"
+    },
+    "no_fixed_purple_elements": {
+      "test": "Check for any fixed position purple/gradient elements",
+      "status": "PASS",
+      "result": "0 fixed purple elements found"
+    },
+    "page_loads_normally": {
+      "test": "Verify landing page content loads correctly",
+      "status": "PASS",
+      "result": "BidBlitz branding, Super-App text, 6 Apps in einer section all visible"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-18T20:15:00Z",
+  "test_scope": "Frontend Only - Verify floating chatbot buttons absent in TEST_MODE on start/landing screen",
+  "screenshots": [
+    ".screenshots/test_mode_chatbot_check.jpeg",
+    ".screenshots/landing_mobile_chatbot_check.jpeg",
+    ".screenshots/landing_desktop_top.jpeg",
+    ".screenshots/landing_desktop_middle.jpeg",
+    ".screenshots/landing_desktop_bottom.jpeg"
+  ]
+}
