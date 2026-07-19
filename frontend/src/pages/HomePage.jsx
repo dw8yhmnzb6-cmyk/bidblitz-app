@@ -438,6 +438,44 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </div>
         </motion.header>
 
+        {!isGuest && (
+          <motion.button
+            data-testid="live-test-banner"
+            className="mb-4 w-full rounded-[20px] px-4 py-3 text-left"
+            style={{
+              background: "linear-gradient(135deg, rgba(255,122,24,0.16), rgba(168,85,247,0.12) 55%, rgba(255,255,255,0.03))",
+              border: "1px solid rgba(255,122,24,0.28)",
+              boxShadow: "0 14px 36px rgba(0,0,0,0.18)",
+            }}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.06, ...slide }}
+            whileTap={{ scale: 0.985 }}
+            onClick={() => onNavigate("/more")}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFD7B0]">
+                  LIVE TEST BANNER
+                </p>
+                <p className="mt-1 text-[14px] font-bold text-white" data-testid="live-test-banner-title">
+                  Live-Check aktiv — neuer Header-Test
+                </p>
+                <p className="mt-1 text-[11px] text-white/70" data-testid="live-test-banner-subtitle">
+                  Wenn du das live oben siehst, kommt der neue Home-Screen wirklich an.
+                </p>
+              </div>
+              <div
+                className="shrink-0 rounded-full px-3 py-2 text-[11px] font-bold text-black"
+                style={{ background: "#FFD166" }}
+                data-testid="live-test-banner-pill"
+              >
+                Neu
+              </div>
+            </div>
+          </motion.button>
+        )}
+
         {/* ── Onboarding Hint (guest, dismissible, show once) ── */}
         <AnimatePresence>
           {isGuest && !hintDismissed && !isDemoMode && (
