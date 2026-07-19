@@ -60,6 +60,8 @@ const killTestingOverlays = () => {
     '[class*="agent-panel"]', '[id*="agent-panel"]',
     '[class*="agent-overlay"]', '[id*="agent-overlay"]',
     '[data-testing]', '[data-test-panel]', '[data-agent]',
+    '[class*="emergent"]', '[id*="emergent"]',
+    'iframe[src*="emergent"]', 'script[src*="emergent-main.js"]',
   ];
   selectors.forEach(sel => {
     document.querySelectorAll(sel).forEach(el => {

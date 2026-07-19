@@ -41,6 +41,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bidblitz")
 POST_STARTUP_LOCK_PATH = Path("/tmp/bidblitz_post_startup.lock")
+BACKEND_DIR = Path(__file__).resolve().parent
+UPLOADS_DIR = BACKEND_DIR / "uploads"
+STATIC_DIR = BACKEND_DIR / "static"
 
 LEGACY_ADMIN_SUSPICIOUS_BALANCES = {2622000000.0, 63366525.91}
 LEGACY_ADMIN_SUSPICIOUS_BLZ = {91.0}
@@ -320,8 +323,11 @@ setup_middleware(app)
 # STATIC FILES
 # ══════════════════════════════════════════════════════════════════════════════
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 def _acquire_post_startup_lock():
@@ -336,7 +342,7 @@ def _acquire_post_startup_lock():
 @app.middleware("http")
 async def startup_guard_middleware(request: Request, call_next):
     startup_status = getattr(app.state, "startup_status", "booting")
-    allowed_paths = {"/health", "/openapi.json", "/docs", "/redoc"}
+    allowed_paths = {"/health", "/ready", "/openapi.json", "/docs", "/redoc"}
     if startup_status in {"booting", "routes_loading"} and request.url.path not in allowed_paths:
         return JSONResponse(
             status_code=503,
@@ -789,6 +795,21 @@ async def health_check():
         "environment": APP_ENV,
         "startup_status": getattr(app.state, "startup_status", "booting"),
     }
+
+
+@app.get("/ready")
+async def readiness_check():
+    startup_status = getattr(app.state, "startup_status", "booting")
+    is_ready = startup_status == "ready"
+    payload = {
+        "status": "ready" if is_ready else "warming",
+        "version": "2.0.0",
+        "environment": APP_ENV,
+        "startup_status": startup_status,
+    }
+    if is_ready:
+        return payload
+    return JSONResponse(status_code=503, content=payload)
 
 
 @app.get("/")
