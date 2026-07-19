@@ -13,6 +13,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 os.environ["COOKIE_SECURE"] = "false"
 os.environ["COOKIE_SAMESITE"] = "lax"
 os.environ["DEMO_SEED"] = "false"
+os.environ["BIDBLITZ_SYNC_STARTUP"] = "true"
 
 import server  # noqa: E402
 

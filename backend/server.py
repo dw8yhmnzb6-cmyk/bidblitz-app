@@ -45,6 +45,11 @@ BACKEND_DIR = Path(__file__).resolve().parent
 UPLOADS_DIR = BACKEND_DIR / "uploads"
 STATIC_DIR = BACKEND_DIR / "static"
 
+
+def _should_use_sync_startup() -> bool:
+    sync_flag = os.environ.get("BIDBLITZ_SYNC_STARTUP", "").lower()
+    return sync_flag in {"1", "true", "yes", "on"} or bool(os.environ.get("PYTEST_CURRENT_TEST"))
+
 LEGACY_ADMIN_SUSPICIOUS_BALANCES = {2622000000.0, 63366525.91}
 LEGACY_ADMIN_SUSPICIOUS_BLZ = {91.0}
 LEGACY_RESTORE_TEMP_PASSWORD = "BidBlitzRestore2026!"
@@ -756,6 +761,12 @@ async def startup_event():
     app.state.routes_loaded = False
     lock_file = _acquire_post_startup_lock()
     app.state.post_startup_lock = lock_file
+    if _should_use_sync_startup():
+        logger.info("Synchronous startup enabled for test/CI context")
+        await _load_routers_for_worker()
+        app.state.startup_status = "ready"
+        app.state.post_startup_task = None
+        return
     if lock_file is None:
         logger.info("Post-startup initialization already owned by another worker; warming routes in background")
     else:

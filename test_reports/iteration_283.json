@@ -1,0 +1,90 @@
+{
+  "summary": "CI smoke suite fix verified - All 4 tests pass. The synchronous startup path for CI/test context works correctly while preserving async bootstrap for normal runtime. GET /health returns 200 with startup_status=ready in normal app runtime.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/pytest/iter283_ci_smoke.xml",
+    "/app/backend/tests/test_ci_smoke.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "N/A (skipped per request)"
+  },
+  "test_credentials": "admin@bidblitz.ae / BidBlitz2026!",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "CI smoke suite now passes with synchronous startup path. The _should_use_sync_startup() function detects CI/test context via BIDBLITZ_SYNC_STARTUP env var or PYTEST_CURRENT_TEST presence. Normal runtime uses async bootstrap and startup_guard middleware correctly.",
+  "verified_fixes": {
+    "ci_smoke_suite_fix": {
+      "issue": "CI workflow 'BidBlitz CI - fix-ios-runtime-error' failing because test client requests got 503 from startup_guard middleware during pytest",
+      "root_cause": "startup_guard blocked all non-/health requests while routers were being loaded asynchronously during pytest",
+      "fix_applied": [
+        "Added _should_use_sync_startup() function to detect CI/test context",
+        "Synchronous startup path loads routers immediately when BIDBLITZ_SYNC_STARTUP=true or PYTEST_CURRENT_TEST is set",
+        "test_ci_smoke.py sets BIDBLITZ_SYNC_STARTUP=true before importing server"
+      ],
+      "verification": {
+        "ci_smoke_tests_passed": 4,
+        "ci_smoke_tests_failed": 0,
+        "health_endpoint_status": 200,
+        "ready_endpoint_status": 200,
+        "startup_status": "ready",
+        "sync_startup_detection_logic_verified": true
+      }
+    }
+  },
+  "tests_executed": [
+    {
+      "name": "test_health_and_root_endpoints",
+      "status": "PASSED",
+      "description": "GET /health returns 200 with status=healthy; GET / returns API info"
+    },
+    {
+      "name": "test_public_commerce_and_payment_endpoints",
+      "status": "PASSED",
+      "description": "GET /api/commerce-center/overview returns 200 with expected keys; invalid pay token returns 404"
+    },
+    {
+      "name": "test_auth_register_and_login_contract",
+      "status": "PASSED",
+      "description": "Register new user, login, and GET /api/auth/me all work correctly"
+    },
+    {
+      "name": "test_invalid_login_rejected",
+      "status": "PASSED",
+      "description": "Invalid credentials return 401"
+    },
+    {
+      "name": "Sync startup detection logic",
+      "status": "PASSED",
+      "description": "Returns False for normal runtime, True when BIDBLITZ_SYNC_STARTUP=true or PYTEST_CURRENT_TEST is set"
+    },
+    {
+      "name": "Normal runtime health check",
+      "status": "PASSED",
+      "description": "GET /health on running server returns 200 with startup_status=ready"
+    },
+    {
+      "name": "Normal runtime readiness check",
+      "status": "PASSED",
+      "description": "GET /ready on running server returns 200 with status=ready"
+    }
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["TEST_MODE/KYC bypass remains enabled by design"]
+  },
+  "test_date": "2026-07-19",
+  "test_scope": "CI Smoke Suite Fix Verification (Backend Only)"
+}
