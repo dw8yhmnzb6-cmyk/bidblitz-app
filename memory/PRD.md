@@ -1884,3 +1884,16 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - Deployment-Agent PASS
   - Testing-Agent Iteration 282 PASS (Frontend 100%, Backend 100%)
 - Aktueller nächster Fokus nach diesen P0-Fixes: Telegram-Alarm als Backup für Monitoring.
+
+## Update 2026-07-19 — GitHub-CI-Fail nach Startup-Refactor behoben
+- Neuer gemeldeter Fehler per Screenshot analysiert: GitHub-Mail meldete `Run failed: BidBlitz CI - fix-ios-runtime-error (9ecadb4)`.
+- Root Cause: der neue `startup_guard` blockierte im Pytest-/CI-Kontext alle Requests außer `/health`, während Router asynchron geladen wurden; dadurch schlug `backend/tests/test_ci_smoke.py` mit 503 auf `/`, `/api/commerce-center/overview` und Auth-Endpoints fehl.
+- Fix:
+  - in `backend/server.py` `_should_use_sync_startup()` ergänzt
+  - im CI-/Pytest-Kontext werden Router jetzt synchron beim Startup geladen
+  - in `backend/tests/test_ci_smoke.py` wird `BIDBLITZ_SYNC_STARTUP=true` vor dem Import gesetzt
+- Wichtig: der normale Runtime-Pfad bleibt asynchron und behält die Live-Deployment-Readiness-Härtung bei.
+- Teststatus:
+  - lokales `pytest backend/tests/test_ci_smoke.py -q` PASS (4/4)
+  - Testing-Agent Iteration 283 PASS
+  - `/health` und `/ready` im laufenden Runtime-Kontext weiter 200/ready

@@ -1130,3 +1130,9 @@
 - `backend/server.py` erstellt `uploads` und `static` jetzt per absolutem Pfad vor `StaticFiles`, damit der Import/Start nicht an fehlenden relativen Verzeichnissen scheitert.
 - `/ready`-Endpoint ergänzt; Startup-Guard lässt `/health` und `/ready` während des Bootens zu.
 - Verifiziert mit eigenem Check, Deployment-Agent PASS und Testing-Agent Iteration 282 PASS.
+
+## 19.07.2026 — GitHub-CI nach Startup-Refactor repariert
+- CI-Fehler aus GitHub-Mail (`BidBlitz CI - fix-ios-runtime-error`, Commit `9ecadb4`) lokal reproduziert: `backend/tests/test_ci_smoke.py` bekam 503 durch den Startup-Guard.
+- `backend/server.py` um `_should_use_sync_startup()` erweitert; in Test-/CI-Kontext werden Router synchron geladen.
+- `backend/tests/test_ci_smoke.py` setzt `BIDBLITZ_SYNC_STARTUP=true` vor `import server`.
+- Verifiziert: lokales Pytest 4/4 PASS, Testing-Agent Iteration 283 PASS, normaler Runtime-Health-/Ready-Status bleibt grün.
