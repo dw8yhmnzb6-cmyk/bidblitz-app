@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 19.07.2026 — Finaler Startup-Timing-Fix für Live-Deploy
+- In `backend/server.py` wurde am Anfang von `_bootstrap_worker_routes_and_tasks()` ein kleines **`await asyncio.sleep(0.1)`** ergänzt.
+- Zweck: Uvicorn kann dadurch **`Application startup complete`** und den Port-Bind abschließen, bevor das schwere Hintergrundladen der Router startet.
+- **Testing Agent Iteration 281 PASS**: 12/12 Tests grün, `/health` sofort erreichbar, keine `connection refused`-Serie mehr im simulierten Mehrworker-Start. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Produktions-Readiness-Fix für `/health` getestet
 - Für das Live-Problem (neuer Deploy wird nicht ready, alte Live-Version bleibt sichtbar) wurde der Backend-Startpfad in `backend/server.py` entkoppelt: Router-Registrierung blockiert den Modulimport nicht mehr; `/health` ist früh erreichbar; Bootstrap läuft asynchron im Hintergrund.
 - **Testing Agent Iteration 280 PASS**: 8/8 Tests grün, Importzeit ~0.395s, `/health` direkt nach Import vorhanden, API-Routen während `booting` korrekt mit `503` geschützt.
