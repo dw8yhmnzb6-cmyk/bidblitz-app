@@ -1864,3 +1864,23 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
 - Final Store Readiness Gate abgeschlossen. Ergebnis: Store-Safe-/Legal-/Build-Artefakte weitgehend bereit, aber Wallet P0 **nicht behoben**.
 - Testing-Agent Iteration 217 bestätigt: öffentl. Store-Seiten und Store-Safe-Blocking PASS, aber Wallet-Reconciliation-Fehler bleibt kritisch (Welcome Bonus in Historie, Balance 0.00).
 - iOS bleibt ohne macOS/Xcode/Apple-Signing **nicht uploadbereit**; Android AAB ist vorhanden, aber Gesamt-Go bleibt NO-GO bis Wallet P0 und Wallet-Engine-Integrität bereinigt sind.
+
+## Update 2026-07-19 — Ghost-Button + Backend-Readiness stabilisiert
+- P0 UI-Bug auf dem iPhone behoben: der lila/pinke schwebende Sparkles-Button auf der Home-Ansicht wurde nicht mehr von React gerendert, sondern durch ein extern geladenes Script in `frontend/public/index.html` injiziert.
+- Fix dafür:
+  - externes `emergent-main.js` aus `frontend/public/index.html` entfernt
+  - `killTestingOverlays()` in `frontend/src/index.js` auf zusätzliche `emergent`-Selektoren/iframes erweitert
+  - bestehender `MutationObserver` bleibt aktiv, um nachträglich injizierte Overlays sofort zu verstecken
+- P0 Deployment-/Startup-Fix im Backend umgesetzt:
+  - `backend/server.py` erzeugt `uploads` und `static` jetzt absolut und frühzeitig vor dem `StaticFiles`-Mount
+  - neuer `/ready`-Endpoint ergänzt
+  - Startup-Guard erlaubt `/health` und `/ready` bereits während der Bootphase
+- Ergebnis:
+  - Ghost-Button auf iPhone/Home nicht mehr sichtbar
+  - `/health` und `/ready` liefern 200 nach abgeschlossenem Startup
+  - Import-/Startverhalten ist robuster gegen abweichendes Working Directory im Kubernetes-Rollout
+- Teststatus:
+  - eigener Smoke-Test auf Preview PASS
+  - Deployment-Agent PASS
+  - Testing-Agent Iteration 282 PASS (Frontend 100%, Backend 100%)
+- Aktueller nächster Fokus nach diesen P0-Fixes: Telegram-Alarm als Backup für Monitoring.

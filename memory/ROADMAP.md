@@ -242,6 +242,7 @@
 - Mobility nächster Schritt: Tracking jetzt mit Rebook/Support/Push-Remindern verknüpfen und danach Commerce Center wieder priorisieren
 
 ## P1
+- Monitoring/Operations: Telegram-Alarm als zusätzlicher Backup-Kanal für kritische Monitoring-Events jetzt als nächster Schritt umsetzen.
 - Wallet/Reconciliation Admin Center vertiefen: Bulk-Filter, CSV-Export, Delta-Gruppierung, Referenzketten und sichere Einzelfall-Korrektur-Workflows mit Review-Step ergänzen.
 - POS Security: Fraud Scoring weiter vertiefen (kassiererübergreifende Muster, Echtzeit-Suspicion-Score, Auto-Eskalation an Admin)
 - BioPay: Staff-BioTime-Seite im Frontend, Check-in/out-Historie und Manager-Freigabe für Ausreißer ergänzen

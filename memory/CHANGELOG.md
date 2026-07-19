@@ -1120,3 +1120,13 @@
 - `Rewind` eingebaut: letzter Swipe kann zurückgeholt werden, inkl. Rückbau eines erzeugten Demo-Matches.
 - Discovery verbessert: Kompatibilitätsscore, Sortierung nach Score/Verified/Aktivität, Profil-Vervollständigung (%) sichtbar.
 - Profil-Upgrade P1: zusätzliche Felder `occupation` und `profile_prompt` eingebaut.
+
+## 19.07.2026 — Ghost-Button auf iPhone entfernt
+- Ursache identifiziert: externer Script-Load `emergent-main.js` in `frontend/public/index.html` injizierte den pink/lila Sparkles-FAB auf der Home-Ansicht.
+- Script aus `index.html` entfernt und `killTestingOverlays()` in `frontend/src/index.js` auf emergent-bezogene Elemente/iframes erweitert.
+- Testing-Agent Iteration 282 bestätigt: kein schwebender Sparkles-/Chat-/Help-Button mehr auf der rechten Home-Seite nach Login.
+
+## 19.07.2026 — Backend-Readiness für Live-Rollout gehärtet
+- `backend/server.py` erstellt `uploads` und `static` jetzt per absolutem Pfad vor `StaticFiles`, damit der Import/Start nicht an fehlenden relativen Verzeichnissen scheitert.
+- `/ready`-Endpoint ergänzt; Startup-Guard lässt `/health` und `/ready` während des Bootens zu.
+- Verifiziert mit eigenem Check, Deployment-Agent PASS und Testing-Agent Iteration 282 PASS.
