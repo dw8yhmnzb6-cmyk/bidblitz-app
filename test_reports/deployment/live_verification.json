@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-07-19T15:02:07.926073+00:00",
+  "preview_version_status": 200,
+  "production_version_status": 404,
+  "preview_version": {
+    "environment": "preview",
+    "frontend_version": "0f408e1-20260719131120",
+    "backend_version": "2.0.0",
+    "git_commit": "0f408e110597f8069a223790d2aa57bad41651c0",
+    "git_branch": "main",
+    "build_id": "0f408e1-20260719131120",
+    "deployed_at": "2026-07-19T13:11:20.475313+00:00",
+    "api_base_url": "https://super-app-staging-2.preview.emergentagent.com",
+    "public_base_url": "https://super-app-staging-2.preview.emergentagent.com",
+    "frontend_url": "https://super-app-staging-2.preview.emergentagent.com",
+    "service_worker_version": "bidblitz-static-v16",
+    "api_cache_version": "bidblitz-api-v16",
+    "store_safe_mode": true,
+    "test_mode": true,
+    "generated_at": "2026-07-19T15:02:04.588730+00:00"
+  },
+  "production_version": {
+    "detail": "Not Found"
+  },
+  "routes": [
+    {
+      "route": "/",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    },
+    {
+      "route": "/login",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    },
+    {
+      "route": "/wallet",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    },
+    {
+      "route": "/scan",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    },
+    {
+      "route": "/merchant",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    },
+    {
+      "route": "/legal/datenschutz",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    },
+    {
+      "route": "/legal/agb",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    },
+    {
+      "route": "/support-chat",
+      "status": 200,
+      "contains_build_id": true,
+      "contains_preview_domain": false
+    }
+  ],
+  "commit_matches": false,
+  "build_matches": false,
+  "preview_domain_found_in_live": false
+}

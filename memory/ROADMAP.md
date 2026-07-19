@@ -1,6 +1,8 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Audi-Ticketverkauf — 18.07.2026
+- 🔴 Production-Deployment-Blocker offen: Live ist weiterhin nicht auf dem freigegebenen Preview-Commit. Nächster realer Schritt ist der echte GitHub/VPS-Deploy mit anschließendem Re-Check von `/api/system/version`, neuem Update-Banner und entferntem AI-FAB.
+- 🟡 Danach sofort Live-Visual-Compare erneut ausführen, bis Preview und Production identisch sind.
 - ✅ Finaler Produktions-Startup-Timing-Fix verifiziert; **Testing Agent Iteration 281 PASS**. Danach erneuter Live-Deploy nötig.
 - ✅ Produktions-Readiness-Fix für Backend verifiziert; **Testing Agent Iteration 280 PASS**. Neuer Redeploy nötig, damit Live den Fix übernimmt.
 - ✅ Guest-/Landing-Mobile-Polish verifiziert; **Testing Agent Iteration 279 PASS**.

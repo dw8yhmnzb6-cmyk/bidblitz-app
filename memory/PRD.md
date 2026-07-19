@@ -1897,3 +1897,43 @@ Complete the POS requirements (at the level of REWE/Lidl/Aldi) and integrate mis
   - lokales `pytest backend/tests/test_ci_smoke.py -q` PASS (4/4)
   - Testing-Agent Iteration 283 PASS
   - `/health` und `/ready` im laufenden Runtime-Kontext weiter 200/ready
+
+## Update 2026-07-19 — Preview-vs-Production Deployment-Diagnose + Verifikation aufgebaut
+- Vollständige Diagnose eingebaut für Preview vs. Production inkl. Build-/Commit-/Cache-Nachweis.
+- Neue Backend-Version-API:
+  - `GET /api/system/version`
+  - `GET /api/system/compare` (admin-only, serverseitiger Vergleich Preview vs. Live ohne Browser-CORS-Probleme)
+- Neue Build-/Deploy-Artefakte:
+  - `backend/core/versioning.py`
+  - `backend/routes/system_version.py`
+  - `backend/build_info.json`
+  - `frontend/public/version.json`
+- Neue Admin-Seite:
+  - `frontend/src/pages/AdminDeploymentInfoPage.jsx`
+  - Route: `/admin/deployment-info`
+  - zeigt Preview-/Production-Version, Commit, Build-ID, Health-Probe und Match/Mismatch-Status
+- Neue sichere Update-Mechanik:
+  - `frontend/src/components/WebUpdateBanner.jsx`
+  - sichtbare Meldung **„Eine neue Version ist verfügbar.“** mit Buttons **„Jetzt aktualisieren“** / **„Später“**
+  - Service Worker kann per `SKIP_WAITING` übernommen werden
+  - veraltete App-Caches werden gezielt gelöscht, ohne Login-/Wallet-Daten zu löschen
+- Deploy-/Test-Workflow erweitert:
+  - `scripts/generate_build_info.py`
+  - `scripts/test_and_deploy_approved_version.sh`
+  - `scripts/live_verify.py`
+  - `scripts/compare_preview_production.py`
+  - `.github/workflows/deploy.yml` baut jetzt mit echter Build-ID, Version-Artefakten, Lint-/Pytest-Prechecks und Produktions-Meta
+  - `deploy/nginx/bidblitz.conf` liefert `index.html`, `version.json` und `service-worker.js` cache-sicher aus
+- Verifizierte Root Cause Findings:
+  - Preview läuft auf neuerem Commit / neuerem Build, Production weiterhin auf älterem Serverstand
+  - Live-API `https://bidblitz.ae/api/system/version` bleibt **404**
+  - Preview Health-Probe meldet **197 Router**, Live nur **195 Router**
+  - Live zeigt weiterhin alten AI-FAB und keinen neuen Test-/Update-Banner
+  - Damit ist belegt: **nicht nur Browser-Cache**, sondern **Production-Deploy selbst ist nicht auf dem freigegebenen Commit angekommen**
+- Precheck-/Verifikationsstatus:
+  - `scripts/test_and_deploy_approved_version.sh` PASS (Preview-Build, Pytest, Build-Leak-Checks)
+  - `scripts/live_verify.py` zeigt weiter **Commit/Build-Mismatch** zwischen Preview und Production
+  - Sichtbarer Preview-Screenshot zeigt neuen Update-Banner; Live-Screenshot zeigt weiterhin alten Home-Stand
+- Wichtiger offener Blocker:
+  - aus dieser Pod-Umgebung ist **kein echter Production-Deploy triggerbar**, da VPS-/GitHub-Credentials hier nicht vorhanden sind
+  - deshalb konnte Live **nicht** bis zum identischen Stand gebracht werden

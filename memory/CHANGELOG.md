@@ -1136,3 +1136,11 @@
 - `backend/server.py` um `_should_use_sync_startup()` erweitert; in Test-/CI-Kontext werden Router synchron geladen.
 - `backend/tests/test_ci_smoke.py` setzt `BIDBLITZ_SYNC_STARTUP=true` vor `import server`.
 - Verifiziert: lokales Pytest 4/4 PASS, Testing-Agent Iteration 283 PASS, normaler Runtime-Health-/Ready-Status bleibt grün.
+
+## 19.07.2026 — Deployment-Transparenz + Live-Verifikation eingebaut
+- Neue APIs: `/api/system/version` und admin-only `/api/system/compare` für Commit-/Build-/Health-Abgleich zwischen Preview und Produktion.
+- Neue Admin-Seite `/admin/deployment-info` zeigt Preview vs. Production, Build-ID, Commit und Health-Status.
+- Neuer sicherer Web-Update-Banner mit „Eine neue Version ist verfügbar.“ plus „Jetzt aktualisieren“ / „Später“ und `skipWaiting`-Updatepfad.
+- Produktions-Deploy-Workflow gehärtet: Build-ID-Generierung, Version-Artefakte, Prechecks (Lint/Pytest), Leak-Prüfung und Live-Version-Ausgabe nach Deploy.
+- Neue Hilfsskripte für Precheck, Live-Verifikation und Preview-vs-Production-Vergleich angelegt.
+- Verifiziert: Preview zeigt neuen Stand; Production bleibt alter Stand (`/api/system/version` 404, AI-FAB weiter sichtbar) ⇒ Live-Deploy fehlt weiterhin.
