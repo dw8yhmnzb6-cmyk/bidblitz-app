@@ -732,6 +732,7 @@ async def _load_routers_for_worker():
 
 async def _bootstrap_worker_routes_and_tasks():
     try:
+        await asyncio.sleep(0.1)
         await _load_routers_for_worker()
         if getattr(app.state, "post_startup_lock", None) is None:
             app.state.startup_status = "ready"
