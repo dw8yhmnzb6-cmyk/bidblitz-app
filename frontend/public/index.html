@@ -10,6 +10,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#00C2FF" />
         <meta name="description" content="BidBlitz — Die Super-App für Bezahlen, Verdienen, Einkaufen, Fahren & mehr." />
+        <meta name="bidblitz-build-version" content="2026-07-19-live-refresh-1" />
 
         <!-- Open Graph / Facebook / iMessage / WhatsApp / Mail preview -->
         <meta property="og:type" content="website" />
@@ -54,6 +55,108 @@
         -->
         <title>BidBlitz — Die Super-App</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+        <script>
+            (function () {
+                var BUILD_VERSION = "2026-07-19-live-refresh-1";
+                var VERSION_KEY = "bidblitz_build_version";
+                var RELOAD_KEY = "bidblitz_build_reload_version";
+                var RELOAD_REASON_KEY = "bidblitz_build_reload_reason";
+
+                function getNavigationType() {
+                    try {
+                        var entries = performance.getEntriesByType && performance.getEntriesByType("navigation");
+                        return entries && entries[0] && entries[0].type ? entries[0].type : "";
+                    } catch (_err) {
+                        return "";
+                    }
+                }
+
+                function cleanRefreshParam() {
+                    try {
+                        var url = new URL(window.location.href);
+                        if (!url.searchParams.has("_bb_refresh")) return;
+                        url.searchParams.delete("_bb_refresh");
+                        window.history.replaceState({}, document.title, url.toString());
+                    } catch (_err) {}
+                }
+
+                function extractBuildVersion(html) {
+                    var match = html.match(/<meta\s+name=["']bidblitz-build-version["']\s+content=["']([^"']+)["']/i);
+                    return match && match[1] ? match[1] : null;
+                }
+
+                function triggerReload(targetVersion, reason) {
+                    try {
+                        if (
+                            sessionStorage.getItem(RELOAD_KEY) === targetVersion &&
+                            sessionStorage.getItem(RELOAD_REASON_KEY) === reason
+                        ) {
+                            return;
+                        }
+                        sessionStorage.setItem(RELOAD_KEY, targetVersion);
+                        sessionStorage.setItem(RELOAD_REASON_KEY, reason);
+                        var url = new URL(window.location.href);
+                        url.searchParams.set("_bb_refresh", targetVersion);
+                        window.location.replace(url.toString());
+                    } catch (_err) {
+                        window.location.reload();
+                    }
+                }
+
+                async function checkForFreshBuild(force) {
+                    cleanRefreshParam();
+                    try {
+                        var previousVersion = sessionStorage.getItem(VERSION_KEY);
+                        if (previousVersion && previousVersion !== BUILD_VERSION) {
+                            triggerReload(BUILD_VERSION, "local-build-version-changed");
+                            return;
+                        }
+
+                        sessionStorage.setItem(VERSION_KEY, BUILD_VERSION);
+
+                        if (!force && document.visibilityState === "hidden") return;
+
+                        var response = await fetch(
+                            "/index.html?__bbv=" + encodeURIComponent(Date.now()),
+                            {
+                                cache: "no-store",
+                                headers: { "Cache-Control": "no-cache" },
+                            },
+                        );
+                        var html = await response.text();
+                        var latestVersion = extractBuildVersion(html);
+
+                        if (latestVersion && latestVersion !== BUILD_VERSION) {
+                            triggerReload(latestVersion, "remote-build-version-changed");
+                        }
+                    } catch (_err) {}
+                }
+
+                window.addEventListener("pageshow", function (event) {
+                    if (event.persisted || getNavigationType() === "back_forward") {
+                        checkForFreshBuild(true);
+                        return;
+                    }
+                    cleanRefreshParam();
+                });
+
+                document.addEventListener("visibilitychange", function () {
+                    if (document.visibilityState === "visible") {
+                        checkForFreshBuild(false);
+                    }
+                });
+
+                window.addEventListener("focus", function () {
+                    checkForFreshBuild(false);
+                });
+
+                window.addEventListener("load", function () {
+                    window.setTimeout(function () {
+                        checkForFreshBuild(false);
+                    }, 1200);
+                });
+            })();
+        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
