@@ -1,0 +1,129 @@
+{
+  "summary": "Backend startup timing fix verification - All 12 tests passed. The tiny defer (await asyncio.sleep(0.1)) at the start of _bootstrap_worker_routes_and_tasks() is correctly in place and addresses the production deployment readiness symptom.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_startup_timing_fix.py",
+    "/app/test_reports/pytest/iter281_startup_timing_fix.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_startup_timing_fix.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "N/A (backend only test)"
+  },
+  "test_credentials": "N/A - no auth required for this test",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend startup timing fix verified. The tiny defer (await asyncio.sleep(0.1)) at line 735 in server.py allows uvicorn to complete startup before heavy background route loading begins.",
+  "verified_fix_details": {
+    "issue": "Production deployment failed readiness because nginx health checks to /health got connection refused while startup had not completed.",
+    "root_cause": "Background bootstrap for route loading started immediately during startup, and uvicorn's 'Application startup complete' did not appear early enough in production logs.",
+    "fix_applied": {
+      "location": "/app/backend/server.py line 735",
+      "change": "Added 'await asyncio.sleep(0.1)' at the start of _bootstrap_worker_routes_and_tasks()",
+      "purpose": "Allows uvicorn to finish startup and bind the port before heavy background route loading begins"
+    },
+    "verification_results": {
+      "asyncio_sleep_present": "✓ await asyncio.sleep(0.1) found at start of _bootstrap_worker_routes_and_tasks()",
+      "health_available_immediately": "✓ /health returns 200 with status=healthy",
+      "health_defined_at_module_level": "✓ /health is defined with @app.get at module level",
+      "startup_guard_allows_health": "✓ /health is in allowed_paths during booting state",
+      "background_bootstrap_async": "✓ _bootstrap_worker_routes_and_tasks scheduled via asyncio.create_task",
+      "startup_event_non_blocking": "✓ startup_event schedules background task without blocking",
+      "health_response_time": "✓ < 1 second",
+      "current_startup_status": "✓ ready",
+      "multi_worker_startup": "✓ /health available within ~2s with workers=2",
+      "no_connection_refused": "✓ 5 consecutive health checks succeeded"
+    }
+  },
+  "tests_executed": [
+    {
+      "name": "test_asyncio_sleep_present_in_bootstrap",
+      "status": "PASSED",
+      "description": "Verified await asyncio.sleep(0.1) is at the start of _bootstrap_worker_routes_and_tasks()"
+    },
+    {
+      "name": "test_health_endpoint_available_immediately",
+      "status": "PASSED",
+      "description": "Verified /health returns 200 with healthy status"
+    },
+    {
+      "name": "test_health_defined_before_routers",
+      "status": "PASSED",
+      "description": "Verified /health is defined at module level"
+    },
+    {
+      "name": "test_startup_guard_middleware_allows_health",
+      "status": "PASSED",
+      "description": "Verified /health is in allowed_paths in startup_guard_middleware"
+    },
+    {
+      "name": "test_background_bootstrap_is_async_task",
+      "status": "PASSED",
+      "description": "Verified _bootstrap_worker_routes_and_tasks is scheduled via asyncio.create_task"
+    },
+    {
+      "name": "test_startup_event_returns_quickly",
+      "status": "PASSED",
+      "description": "Verified startup_event schedules background task without blocking"
+    },
+    {
+      "name": "test_health_response_time",
+      "status": "PASSED",
+      "description": "Health response time < 1 second"
+    },
+    {
+      "name": "test_current_startup_status_is_ready",
+      "status": "PASSED",
+      "description": "Current startup_status is 'ready'"
+    },
+    {
+      "name": "test_api_endpoints_available_after_startup",
+      "status": "PASSED",
+      "description": "API endpoints available after startup completes"
+    },
+    {
+      "name": "test_uvicorn_workers_startup_simulation",
+      "status": "PASSED",
+      "description": "Multi-worker startup: /health available within ~2s with workers=2"
+    },
+    {
+      "name": "test_health_not_connection_refused",
+      "status": "PASSED",
+      "description": "5 consecutive health checks succeeded (no connection refused)"
+    },
+    {
+      "name": "test_fix_addresses_production_symptom",
+      "status": "PASSED",
+      "description": "Fix verified: tiny defer in place, /health available, startup complete"
+    }
+  ],
+  "production_deployment_assessment": {
+    "fix_addresses_symptom": true,
+    "explanation": "The tiny defer (await asyncio.sleep(0.1)) at the start of _bootstrap_worker_routes_and_tasks() allows uvicorn to complete its startup sequence and bind the port before heavy background route loading begins. This ensures /health is reachable immediately, preventing 'connection refused' errors during nginx readiness checks.",
+    "key_evidence": [
+      "Multi-worker test shows /health available within ~2s",
+      "5 consecutive health checks succeeded without connection refused",
+      "startup_status transitions correctly: booting -> routes_loading -> ready",
+      "startup_guard_middleware allows /health during all startup phases"
+    ]
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-01-18",
+  "test_scope": "Backend Only - Startup Timing Fix Verification (iteration 281)"
+}
