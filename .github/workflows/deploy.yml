@@ -49,6 +49,7 @@ jobs:
           REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
           REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
           REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
+          REACT_APP_TEST_MODE: "true"
           CI: "false"
         run: |
           # Write a clean production .env (overrides whatever is committed)
@@ -56,6 +57,7 @@ jobs:
           REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
           REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
           REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
+          REACT_APP_TEST_MODE=${REACT_APP_TEST_MODE}
           EOF
           # Strict mode by default. If lockfile drifted (e.g. yarn add executed in
           # pod but yarn.lock not pushed), fall back to a regenerating install so
@@ -235,6 +237,10 @@ jobs:
             echo "==> Reload nginx"
             nginx -t && systemctl reload nginx
 
+            echo "==> Bust old live caches"
+            find /var/www/bidblitz/frontend/build/static/js -maxdepth 1 -type f -name 'main.*.js' | sort
+            find /var/www/bidblitz/frontend/build/static/css -maxdepth 1 -type f -name 'main.*.css' | sort || true
+
             echo "==> Health checks"
             curl -fsS -o /dev/null -w 'WEB  HTTP %{http_code}\n' https://bidblitz.ae/ || true
             HEALTH=$(curl -s -o /dev/null -w '%{http_code}' https://bidblitz.ae/api/auctions || echo "ERR")
@@ -248,6 +254,7 @@ jobs:
             MB=$(curl -s 'https://bidblitz.ae/api/readiness/mapbox-token?live=true' || echo '{}')
             echo "  $MB"
             ls -lh /var/www/bidblitz/frontend/build/static/js/main.*.js | head -1
+            curl -fsS https://bidblitz.ae/ | grep -o 'bidblitz-build-version' | head -1
 
       - name: Deployment summary
         if: always()
