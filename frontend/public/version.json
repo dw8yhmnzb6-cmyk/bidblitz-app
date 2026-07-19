@@ -1,0 +1,13 @@
+{
+  "environment": "preview",
+  "frontend_version": "617541a-20260719111529",
+  "backend_version": "2.0.0",
+  "git_commit": "617541a00a108d846a2fb36803c103a429bff9d6",
+  "git_branch": "main",
+  "build_id": "617541a-20260719111529",
+  "deployed_at": "2026-07-19T11:15:29.693213+00:00",
+  "api_base_url": "https://super-app-staging-2.preview.emergentagent.com",
+  "public_base_url": "https://super-app-staging-2.preview.emergentagent.com",
+  "service_worker_version": "bidblitz-static-v16",
+  "api_cache_version": "bidblitz-api-v16"
+}

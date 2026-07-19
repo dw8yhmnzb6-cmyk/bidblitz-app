@@ -52,6 +52,7 @@ jobs:
           REACT_APP_TEST_MODE: "true"
           CI: "false"
         run: |
+          python3 ../scripts/generate_build_info.py
           # Write a clean production .env (overrides whatever is committed)
           cat > .env <<EOF
           REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
@@ -72,7 +73,19 @@ jobs:
             yarn install --network-timeout 600000
           fi
           yarn build
+          test ! -f build/version.json || cat build/version.json
+          if grep -R "localhost" build/static/js; then echo "::error::localhost URL found in build"; exit 1; fi
+          if grep -R "preview.emergentagent.com" build/static/js; then echo "::error::preview domain leaked into production build"; exit 1; fi
           ls -lh build/static/js/main.*.js | head -1
+
+      - name: Pre-deployment frontend smoke checks
+        working-directory: frontend
+        run: |
+          npx eslint src --ext .js,.jsx
+
+      - name: Pre-deployment backend smoke checks
+        run: |
+          PYTHONPATH=/app/backend DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
 
       - name: Verify deployment secrets
         env:
@@ -243,6 +256,7 @@ jobs:
 
             echo "==> Health checks"
             curl -fsS -o /dev/null -w 'WEB  HTTP %{http_code}\n' https://bidblitz.ae/ || true
+            curl -fsS https://bidblitz.ae/api/system/version | tee /tmp/bidblitz-live-version.json
             HEALTH=$(curl -s -o /dev/null -w '%{http_code}' https://bidblitz.ae/api/auctions || echo "ERR")
             echo "API  HTTP ${HEALTH}"
             if [ "$HEALTH" = "502" ] || [ "$HEALTH" = "ERR" ]; then
@@ -255,6 +269,15 @@ jobs:
             echo "  $MB"
             ls -lh /var/www/bidblitz/frontend/build/static/js/main.*.js | head -1
             curl -fsS https://bidblitz.ae/ | grep -o 'bidblitz-build-version' | head -1
+            python3 - <<'PY'
+import json
+from pathlib import Path
+v=Path('/tmp/bidblitz-live-version.json')
+if v.exists():
+    data=json.loads(v.read_text())
+    print('LIVE_BUILD_ID', data.get('build_id'))
+    print('LIVE_COMMIT', data.get('git_commit'))
+PY
 
       - name: Deployment summary
         if: always()

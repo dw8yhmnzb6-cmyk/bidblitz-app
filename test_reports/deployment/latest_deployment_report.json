@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-07-19T11:17:12.104928+00:00",
+  "build_id": "617541a-20260719111529",
+  "commit_hash": "617541a00a108d846a2fb36803c103a429bff9d6",
+  "files_changed": [
+    "frontend/src/pages/HomePage.jsx"
+  ],
+  "preview_url": "https://super-app-staging-2.preview.emergentagent.com",
+  "preview_version": {
+    "environment": "preview",
+    "frontend_version": "617541a-20260719111529",
+    "backend_version": "2.0.0",
+    "git_commit": "617541a00a108d846a2fb36803c103a429bff9d6",
+    "git_branch": "main",
+    "build_id": "617541a-20260719111529",
+    "deployed_at": "2026-07-19T11:15:29.693213+00:00",
+    "api_base_url": "http://super-app-staging-2.cluster-12.preview.emergentcf.cloud",
+    "public_base_url": "https://super-app-staging-2.preview.emergentagent.com",
+    "frontend_url": "https://super-app-staging-2.preview.emergentagent.com",
+    "service_worker_version": "bidblitz-static-v16",
+    "api_cache_version": "bidblitz-api-v16",
+    "store_safe_mode": true,
+    "test_mode": true,
+    "generated_at": "2026-07-19T11:17:11.667509+00:00"
+  },
+  "production_version_currently_active": {
+    "detail": "Not Found"
+  },
+  "tests": {
+    "frontend_build_compiles": true,
+    "backend_ci_smoke": true,
+    "no_localhost_urls": false,
+    "no_preview_domain_urls": false,
+    "store_safe_mode_enabled": true,
+    "preview_system_version_ok": true,
+    "production_system_version_ok": false
+  },
+  "passed": false,
+  "note": "Production deploy intentionally not auto-triggered from local pod. Use approved GitHub deploy after this report passes."
+}

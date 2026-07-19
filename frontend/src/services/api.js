@@ -148,6 +148,7 @@ export const api = {
   logout: () => request("/api/auth/logout", { method: "POST" }),
   getMe: () => request("/api/auth/me"),
   refresh: () => request("/api/auth/refresh", { method: "POST" }),
+  getSystemVersion: () => request("/api/system/version"),
 
   // Wallet
   getWallet: async () => {

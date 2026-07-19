@@ -11,6 +11,7 @@ import { AppProvider, useUser, useI18n } from "./store";
 import { ThemeProvider } from "./store/ThemeContext";
 import SuperAppOverlay from "./components/SuperAppOverlay";
 import InAppUpdateManager from "./components/InAppUpdateManager";
+import WebUpdateBanner from "./components/WebUpdateBanner";
 import BackToHomeBar from "./components/BackToHomeBar";
 import ErrorBoundary, { setupGlobalErrorHandler } from "./components/ErrorBoundary";
 import KYCFlow from "./pages/KYCFlow";
@@ -201,6 +202,7 @@ const QuestsPage = lazy(() => import("./pages/QuestsPage"));
 const RetentionHubPage = lazy(() => import("./pages/RetentionHubPage"));
 const MarketingHubPage = lazy(() => import("./pages/MarketingHubPage"));
 const AdminRevenueDashboardPage = lazy(() => import("./pages/AdminRevenueDashboardPage"));
+const AdminDeploymentInfoPage = lazy(() => import("./pages/AdminDeploymentInfoPage"));
 const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage"));
 const ExecutiveCenterPage = lazy(() => import("./pages/ExecutiveCenterPage"));
 const AdminAIAssistantPage = lazy(() => import("./pages/AdminAIAssistantPage"));
@@ -802,6 +804,8 @@ function AppContent() {
         return user.role === "admin" ? <AdminPushBroadcastPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/analytics":
         return user.role === "admin" ? <AdminAnalyticsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/deployment-info":
+        return user.role === "admin" ? <AdminDeploymentInfoPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/express-checkout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ExpressCheckoutPage onBack={() => handleNavigate("/more")} />;
       case "/staff/gps":
@@ -1242,6 +1246,7 @@ function AppContent() {
           style: { background: "#141414", color: "#fff", border: "1px solid rgba(255,255,255,0.08)", fontSize: "13px", fontFamily: "Outfit, sans-serif" },
         }}
       />
+      <WebUpdateBanner />
       {isDemoMode && <DemoBanner onExit={() => { tracker.demoExit(); setIsDemoMode(false); setCurrentPath("/"); }} />}
       <AnimatePresence mode="wait">
         <motion.div

@@ -937,6 +937,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "admin-diag", icon: Activity, label: "Routing Diagnostics", desc: "Live-Übersicht aller API-Routen, gemounteten Module & Silent-Failures", color: "#06B6D4", action: () => onNavigate("/admin/diag") },
     { id: "admin-push-broadcast", icon: Bell, label: "Push Notifications", desc: "Broadcast an alle User oder Gruppen", color: "#EC4899", action: () => onNavigate("/admin/push-broadcast") },
     { id: "admin-analytics", icon: TrendingUp, label: "Analytics Dashboard", desc: "User-Aktivität, Revenue, Feature-Usage", color: "#06B6D4", action: () => onNavigate("/admin/analytics") },
+    { id: "admin-deployment-info", icon: Activity, label: "Deployment Information", desc: "Preview vs. Live vergleichen, Build & Commit prüfen", color: "#FF7A18", action: () => onNavigate("/admin/deployment-info") },
     { id: "staff-gps", icon: MapPin, label: "Staff GPS Tracking", desc: "Live-Standorte aller Mitarbeiter", color: "#10B981", action: () => onNavigate("/staff/gps") },
     { id: "admin-car-rental", icon: Car, label: t("more.admin_car_rental"), desc: t("more.admin_car_rental_desc"), color: "#00C2FF", action: () => onNavigate("/car-rental/admin") },
     { id: "admin-support", icon: MessageCircle, label: t("more.admin_support"), desc: t("more.admin_support_desc"), color: "#A855F7", action: () => onNavigate("/admin/support") },

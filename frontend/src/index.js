@@ -17,11 +17,6 @@ const purgeLegacyWidgetStorage = () => {
   }
 };
 
-// ═══════════════════════════════════════════════════
-// PWA SERVICE WORKER — DISABLED GLOBALLY
-// (Was causing stale-cache issues on mobile. Also required
-// off for Capacitor native builds per Capacitor guidance.)
-// ═══════════════════════════════════════════════════
 purgeLegacyAuthStorage();
 purgeLegacyWidgetStorage();
 
@@ -30,24 +25,12 @@ if (String(process.env.REACT_APP_TEST_MODE).toLowerCase() === 'true') {
   document.body?.classList.add('test-mode-active');
 }
 
-if ('serviceWorker' in navigator) {
-  // FORCE UNREGISTER ALL SERVICE WORKERS TO FIX CACHE ISSUE
-  navigator.serviceWorker.getRegistrations().then(function(registrations) {
-    for(let registration of registrations) {
-      registration.unregister();
-      console.log('SW unregistered:', registration.scope);
-    }
-  });
-  
-  // Clear all caches
-  if ('caches' in window) {
-    caches.keys().then(function(names) {
-      for (let name of names) {
-        caches.delete(name);
-        console.log('Cache deleted:', name);
-      }
+if ('serviceWorker' in navigator && !isNativeApp()) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch((error) => {
+      console.warn('Service worker registration failed:', error);
     });
-  }
+  });
 }
 
 // Block any auto-injected testing overlays/panels from platform scripts
@@ -76,32 +59,6 @@ const killTestingOverlays = () => {
 killTestingOverlays();
 const observer = new MutationObserver(killTestingOverlays);
 observer.observe(document.body, { childList: true, subtree: true });
-
-// Emergency: Unregister service worker and clear ALL caches
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    for (let registration of registrations) {
-      registration.unregister();
-    }
-  });
-}
-
-if ('caches' in window) {
-  caches.keys().then(keys => {
-    keys.forEach(key => caches.delete(key));
-  });
-}
-
-// Clear IndexedDB
-if ('indexedDB' in window) {
-  indexedDB.databases().then(dbs => {
-    dbs.forEach(db => {
-      if (db.name && (db.name.includes('bidblitz') || db.name.includes('auction'))) {
-        indexedDB.deleteDatabase(db.name);
-      }
-    });
-  }).catch(() => {});
-}
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
