@@ -1,0 +1,121 @@
+{
+  "summary": "Ghost button fix and backend readiness verification - All tests passed. The purple/pink floating Sparkles button is no longer present on iPhone home screen after admin login. Backend /health and /ready endpoints respond correctly with 200 status.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/health and /api/ready",
+        "issue": "These endpoints are not accessible via /api prefix (return 404). They work on direct port 8001. This is expected behavior for Kubernetes internal health probes.",
+        "priority": "INFO"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iter282_iphone_home_after_login.jpeg",
+    "/app/test_reports/iter282_iphone_home_detailed.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "admin@bidblitz.ae / BidBlitz2026!",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Ghost button fix verified. The emergent-main.js script was removed from index.html and killTestingOverlays() in index.js hides any dynamically injected emergent elements. Backend startup directories (uploads/static) are created eagerly before StaticFiles mount.",
+  "verified_fixes": {
+    "ghost_button_fix": {
+      "issue": "Purple/pink floating Sparkles button visible on iPhone home screen after login",
+      "root_cause": "External emergent-main.js script in frontend/public/index.html was injecting overlay/button",
+      "fix_applied": [
+        "Removed external emergent-main.js script from index.html",
+        "Added emergent-related selectors to killTestingOverlays() in index.js",
+        "MutationObserver watches for dynamically injected elements"
+      ],
+      "verification": {
+        "emergent_script_present": false,
+        "ghost_button_visible": false,
+        "all_right_side_svgs_legitimate": true,
+        "no_fixed_position_fab": true,
+        "no_sparkles_icon": true
+      }
+    },
+    "backend_readiness_fix": {
+      "issue": "Backend startup crashes due to missing static/uploads directories; deployment readiness timeout",
+      "fix_applied": [
+        "UPLOADS_DIR.mkdir(parents=True, exist_ok=True) called before StaticFiles mount",
+        "STATIC_DIR.mkdir(parents=True, exist_ok=True) called before StaticFiles mount",
+        "/ready endpoint added for Kubernetes readiness probing",
+        "startup_guard_middleware allows /health and /ready during boot"
+      ],
+      "verification": {
+        "health_endpoint_status": 200,
+        "ready_endpoint_status": 200,
+        "startup_status": "ready",
+        "uploads_dir_exists": true,
+        "static_dir_exists": true
+      }
+    }
+  },
+  "tests_executed": [
+    {
+      "name": "Ghost Button Visual Check (iPhone viewport)",
+      "status": "PASSED",
+      "description": "No purple/pink floating Sparkles button visible on home screen after admin login"
+    },
+    {
+      "name": "emergent-main.js Script Check",
+      "status": "PASSED",
+      "description": "Script not present in page DOM"
+    },
+    {
+      "name": "Fixed Position FAB Check",
+      "status": "PASSED",
+      "description": "No floating action buttons found on right side of screen"
+    },
+    {
+      "name": "SVG Elements Analysis",
+      "status": "PASSED",
+      "description": "All 19 SVGs on right side are legitimate UI elements (icons in buttons, nav items)"
+    },
+    {
+      "name": "Backend /health Endpoint",
+      "status": "PASSED",
+      "description": "Returns 200 with status=healthy, startup_status=ready"
+    },
+    {
+      "name": "Backend /ready Endpoint",
+      "status": "PASSED",
+      "description": "Returns 200 with status=ready"
+    },
+    {
+      "name": "Static/Uploads Directories",
+      "status": "PASSED",
+      "description": "Both directories exist and are properly created"
+    },
+    {
+      "name": "Core Navigation Check",
+      "status": "PASSED",
+      "description": "Bottom navigation bar visible and functional"
+    },
+    {
+      "name": "Admin Login Flow",
+      "status": "PASSED",
+      "description": "Successfully logged in as admin@bidblitz.ae"
+    }
+  ],
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["TEST_MODE/KYC bypass remains enabled by design"]
+  },
+  "test_date": "2026-07-19",
+  "test_scope": "Ghost Button Fix + Backend Readiness Verification"
+}
