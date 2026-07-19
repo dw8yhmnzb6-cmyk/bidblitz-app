@@ -497,7 +497,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                 onTouchStartCapture={captureLoginSnapshot}
                 onPointerDownCapture={captureLoginSnapshot}
                 disabled={user.isLoading || forgotLoading}
-                className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+                className="w-full py-[11px] rounded-[13px] bg-[#00C2FF] text-[#020202] font-semibold text-[12px] flex items-center justify-center gap-1.5 mt-2 disabled:opacity-50"
                 style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }}
                 whileTap={!user.isLoading ? { scale: 0.96 } : {}}
               >
@@ -510,7 +510,7 @@ export const AuthPage = ({ onBack, initialMode, onAuthSuccess }) => {
                   </>
                 ) : (
                   <>
-                    {t("auth.signin") || "Anmelden"} <ArrowRight size={15} strokeWidth={2.5} />
+                    {t("auth.signin") || "Anmelden"} <ArrowRight size={13} strokeWidth={2.5} />
                   </>
                 )}
               </motion.button>
