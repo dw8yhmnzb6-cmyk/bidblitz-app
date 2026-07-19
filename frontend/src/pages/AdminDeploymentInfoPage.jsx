@@ -5,20 +5,6 @@ import { ArrowLeft, CheckCircle2, AlertTriangle, RefreshCw, Server } from "lucid
 import { api as apiService } from "../services/api";
 
 
-const PREVIEW_ORIGIN = process.env.REACT_APP_BACKEND_URL;
-const PRODUCTION_ORIGIN = "https://bidblitz.ae";
-
-
-async function fetchJson(url, options = {}) {
-  const response = await fetch(url, options);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.detail || data?.message || `Request failed (${response.status})`);
-  }
-  return data;
-}
-
-
 function StatusPill({ ok, label }) {
   return (
     <div
@@ -69,15 +55,10 @@ export default function AdminDeploymentInfoPage({ onBack }) {
     setLoading(true);
     setError("");
     try {
-      const [previewVersion, productionVersion, previewHealth, productionHealth] = await Promise.all([
-        apiService.getSystemVersion(),
-        fetchJson(`${PRODUCTION_ORIGIN}/api/system/version`, { credentials: "omit" }),
-        fetchJson(`${PREVIEW_ORIGIN}/api/diag/health/probe`, { credentials: "omit" }),
-        fetchJson(`${PRODUCTION_ORIGIN}/api/diag/health/probe`, { credentials: "omit" }),
-      ]);
-      setPreviewInfo(previewVersion);
-      setProductionInfo(productionVersion);
-      setHealth({ preview: previewHealth, production: productionHealth });
+      const comparison = await apiService.getSystemCompare();
+      setPreviewInfo(comparison.preview || null);
+      setProductionInfo(comparison.production || null);
+      setHealth({ preview: comparison.preview_health, production: comparison.production_health });
     } catch (err) {
       setError(err.message || "Deployment-Informationen konnten nicht geladen werden.");
     } finally {

@@ -149,6 +149,7 @@ export const api = {
   getMe: () => request("/api/auth/me"),
   refresh: () => request("/api/auth/refresh", { method: "POST" }),
   getSystemVersion: () => request("/api/system/version"),
+  getSystemCompare: () => request("/api/system/compare"),
 
   // Wallet
   getWallet: async () => {

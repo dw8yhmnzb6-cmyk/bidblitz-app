@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,24 +23,31 @@ def main() -> int:
     short_commit = commit[:7] if commit != "unknown" else "unknown"
     branch = git("branch", "--show-current")
     timestamp = datetime.now(timezone.utc).isoformat()
-    build_id = f"{short_commit}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    build_id = Path('/tmp/bidblitz_build_id.txt').read_text().strip() if Path('/tmp/bidblitz_build_id.txt').exists() else f"{short_commit}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    environment = os.environ.get("BUILD_ENVIRONMENT", "preview")
+    api_base_url = os.environ.get("BUILD_API_BASE_URL", "https://super-app-staging-2.preview.emergentagent.com")
+    public_base_url = os.environ.get("BUILD_PUBLIC_BASE_URL", api_base_url)
+    backend_version = os.environ.get("BUILD_BACKEND_VERSION", "2.0.0")
+    frontend_version = os.environ.get("BUILD_FRONTEND_VERSION", build_id)
+    service_worker_version = os.environ.get("BUILD_SERVICE_WORKER_VERSION", "bidblitz-static-v16")
+    api_cache_version = os.environ.get("BUILD_API_CACHE_VERSION", "bidblitz-api-v16")
 
     backend_payload = {
-        "environment": "preview",
-        "frontend_version": build_id,
-        "backend_version": "2.0.0",
+        "environment": environment,
+        "frontend_version": frontend_version,
+        "backend_version": backend_version,
         "git_commit": commit,
         "git_branch": branch,
         "build_id": build_id,
         "deployed_at": timestamp,
-        "api_base_url": "https://super-app-staging-2.preview.emergentagent.com",
-        "public_base_url": "https://super-app-staging-2.preview.emergentagent.com",
-        "service_worker_version": "bidblitz-static-v16",
-        "api_cache_version": "bidblitz-api-v16",
+        "api_base_url": api_base_url,
+        "public_base_url": public_base_url,
+        "service_worker_version": service_worker_version,
+        "api_cache_version": api_cache_version,
     }
     frontend_payload = {
         **backend_payload,
-        "frontend_version": build_id,
+        "frontend_version": frontend_version,
     }
 
     BACKEND_BUILD_INFO.write_text(json.dumps(backend_payload, indent=2) + "\n")

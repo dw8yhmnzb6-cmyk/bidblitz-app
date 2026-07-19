@@ -4,6 +4,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.request import Request, urlopen
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -65,11 +66,12 @@ def get_system_version_payload(request=None) -> dict[str, Any]:
     deployed_at = build_info.get("deployed_at") or frontend_info.get("deployed_at")
     build_id = build_info.get("build_id") or frontend_info.get("build_id") or (git_commit[:7] if git_commit != "unknown" else "unknown")
 
+    api_base_url = str(build_info.get("api_base_url") or frontend_info.get("api_base_url") or os.environ.get("PUBLIC_BASE_URL") or os.environ.get("FRONTEND_URL") or "").rstrip("/")
     if request is not None:
-        api_base_url = str(request.base_url).rstrip("/")
         host = request.url.hostname or ""
+        if not api_base_url:
+            api_base_url = str(request.base_url).rstrip("/")
     else:
-        api_base_url = str(build_info.get("api_base_url") or frontend_info.get("api_base_url") or os.environ.get("PUBLIC_BASE_URL") or os.environ.get("FRONTEND_URL") or "").rstrip("/")
         host = ""
 
     environment = _infer_environment(host, api_base_url, build_info or frontend_info)
@@ -95,3 +97,9 @@ def get_system_version_payload(request=None) -> dict[str, Any]:
         "test_mode": str(os.environ.get("TEST_MODE") or os.environ.get("REACT_APP_TEST_MODE") or "").lower() == "true",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def fetch_remote_json(url: str, timeout: float = 8.0) -> dict[str, Any]:
+    req = Request(url, headers={"User-Agent": "BidBlitz-VersionCheck/1.0"})
+    with urlopen(req, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))

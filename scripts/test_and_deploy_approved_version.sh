@@ -10,6 +10,9 @@ REPORT_FILE="$REPORT_DIR/latest_deployment_report.json"
 mkdir -p "$REPORT_DIR"
 
 python3 "$ROOT_DIR/scripts/generate_build_info.py" >/tmp/bidblitz_build_info.json
+BUILD_ID="$(git -C "$ROOT_DIR" rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
+echo "$BUILD_ID" > /tmp/bidblitz_build_id.txt
+BUILD_ENVIRONMENT=preview BUILD_API_BASE_URL="https://super-app-staging-2.preview.emergentagent.com" BUILD_PUBLIC_BASE_URL="https://super-app-staging-2.preview.emergentagent.com" BUILD_FRONTEND_VERSION="$BUILD_ID" python3 "$ROOT_DIR/scripts/generate_build_info.py" >/tmp/bidblitz_build_info.json
 BUILD_ID="$(python3 - <<'PY'
 import json
 print(json.load(open('/tmp/bidblitz_build_info.json'))['build_id'])
@@ -26,6 +29,14 @@ PY
 )"
 
 cd "$FRONTEND_DIR"
+python3 - <<'PY'
+from pathlib import Path
+build_id=Path('/tmp/bidblitz_build_id.txt').read_text().strip()
+p=Path('/app/frontend/public/index.html')
+txt=p.read_text()
+txt=txt.replace('%REACT_APP_BUILD_ID%', build_id)
+p.write_text(txt)
+PY
 yarn install --frozen-lockfile --network-timeout 600000 >/tmp/bidblitz_yarn_install.log 2>&1 || yarn install --network-timeout 600000 >/tmp/bidblitz_yarn_install.log 2>&1
 yarn build >/tmp/bidblitz_frontend_build.log 2>&1
 npx eslint src --ext .js,.jsx >/tmp/bidblitz_frontend_lint.log 2>&1

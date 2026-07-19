@@ -46,12 +46,19 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
+          BUILD_ENVIRONMENT: production
           REACT_APP_BACKEND_URL: ${{ secrets.PROD_REACT_APP_BACKEND_URL || 'https://bidblitz.ae' }}
           REACT_APP_MAPBOX_TOKEN: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
           REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.PROD_REACT_APP_STRIPE_PUBLISHABLE_KEY }}
           REACT_APP_TEST_MODE: "true"
           CI: "false"
         run: |
+          BUILD_ID="$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
+          echo "$BUILD_ID" > /tmp/bidblitz_build_id.txt
+          BUILD_ENVIRONMENT=production \
+          BUILD_API_BASE_URL="${REACT_APP_BACKEND_URL}" \
+          BUILD_PUBLIC_BASE_URL="https://bidblitz.ae" \
+          BUILD_FRONTEND_VERSION="$BUILD_ID" \
           python3 ../scripts/generate_build_info.py
           # Write a clean production .env (overrides whatever is committed)
           cat > .env <<EOF
@@ -59,6 +66,7 @@ jobs:
           REACT_APP_MAPBOX_TOKEN=${REACT_APP_MAPBOX_TOKEN}
           REACT_APP_STRIPE_PUBLISHABLE_KEY=${REACT_APP_STRIPE_PUBLISHABLE_KEY}
           REACT_APP_TEST_MODE=${REACT_APP_TEST_MODE}
+          REACT_APP_BUILD_ID=${BUILD_ID}
           EOF
           # Strict mode by default. If lockfile drifted (e.g. yarn add executed in
           # pod but yarn.lock not pushed), fall back to a regenerating install so
@@ -72,6 +80,7 @@ jobs:
             echo "::warning::frontend/yarn.lock missing — running yarn install without lockfile"
             yarn install --network-timeout 600000
           fi
+          perl -0pi -e 's/%REACT_APP_BUILD_ID%/'"${BUILD_ID}"'/g' public/index.html
           yarn build
           test ! -f build/version.json || cat build/version.json
           if grep -R "localhost" build/static/js; then echo "::error::localhost URL found in build"; exit 1; fi

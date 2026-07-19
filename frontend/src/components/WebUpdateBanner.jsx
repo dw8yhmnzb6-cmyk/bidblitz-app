@@ -6,6 +6,17 @@ import { RefreshCw } from "lucide-react";
 const VERSION_URL = "/version.json";
 
 
+async function getCurrentBuildId() {
+  try {
+    const response = await fetch(`${VERSION_URL}?self=${Date.now()}`, { cache: "no-store" });
+    const data = await response.json();
+    return data?.build_id || data?.frontend_version || "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+
 async function clearOutdatedCachesSafely() {
   if (typeof window === "undefined" || !("caches" in window)) return;
   const keepPrefixes = ["bidblitz-static-v16", "bidblitz-api-v16", "push-sw"];
@@ -46,9 +57,11 @@ export default function WebUpdateBanner() {
 
     const checkRemoteVersion = async () => {
       try {
+        const selfVersion = await getCurrentBuildId();
         const response = await fetch(`${VERSION_URL}?ts=${Date.now()}`, { cache: "no-store" });
         const data = await response.json();
-        if (!cancelled && data?.build_id && currentVersion && data.build_id !== currentVersion) {
+        const activeVersion = selfVersion || currentVersion;
+        if (!cancelled && data?.build_id && activeVersion && data.build_id !== activeVersion) {
           showUpdate(data.build_id);
         }
       } catch (_error) {
