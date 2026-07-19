@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 18.07.2026 — Produktions-Readiness-Fix für `/health` getestet
+- Für das Live-Problem (neuer Deploy wird nicht ready, alte Live-Version bleibt sichtbar) wurde der Backend-Startpfad in `backend/server.py` entkoppelt: Router-Registrierung blockiert den Modulimport nicht mehr; `/health` ist früh erreichbar; Bootstrap läuft asynchron im Hintergrund.
+- **Testing Agent Iteration 280 PASS**: 8/8 Tests grün, Importzeit ~0.395s, `/health` direkt nach Import vorhanden, API-Routen während `booting` korrekt mit `503` geschützt.
+- Hinweis: **Produktion braucht jetzt einen neuen Deploy**, damit der verifizierte Fix wirklich live geht. **KEINE MOCKED APIs**.
+
 ## 18.07.2026 — Guest-Header, Cookie-Banner und `/landing` für iPhone verdichtet
 - `HomePage.jsx`: Guest-Header mit `flex-wrap`, kleineren Login/Register-Buttons und besserem rechten Control-Block.
 - `CookieBanner.jsx`: kompakteres Mobile-Mini-Layout, geringere Höhen/Typo, bessere Safe-Area-/Bottom-Nav-Trennung.
