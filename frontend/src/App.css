@@ -521,6 +521,7 @@ body.taxi-fullscreen-mode .chatbot-window {
 }
 
 html.test-mode-active [data-testid="ai-chat-fab"],
+html.test-mode-active button[data-testid^="ai-chat-fa"],
 html.test-mode-active [data-testid="floating-chatbot-bubble"],
 html.test-mode-active .chatbot-toggle-btn,
 html.test-mode-active .chatbot-window,
@@ -528,12 +529,21 @@ html.test-mode-active [aria-label="AI-Assistent öffnen"],
 html.test-mode-active [aria-label="KI-Assistent öffnen"],
 html.test-mode-active [aria-label="Chat öffnen"],
 body.test-mode-active [data-testid="ai-chat-fab"],
+body.test-mode-active button[data-testid^="ai-chat-fa"],
 body.test-mode-active [data-testid="floating-chatbot-bubble"],
 body.test-mode-active .chatbot-toggle-btn,
 body.test-mode-active .chatbot-window,
 body.test-mode-active [aria-label="AI-Assistent öffnen"],
 body.test-mode-active [aria-label="KI-Assistent öffnen"],
 body.test-mode-active [aria-label="Chat öffnen"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+html button[data-testid^="ai-chat-fa"],
+body button[data-testid^="ai-chat-fa"] {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
