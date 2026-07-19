@@ -431,9 +431,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                 </motion.button>
               </div>
             ) : (
-              <motion.button data-testid="notification-btn" className="w-10 h-10 shrink-0 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center relative" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/notifications")}>
+              <motion.button data-testid="notification-btn" className="w-10 h-10 shrink-0 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/notifications")}>
                 <Bell size={15} strokeWidth={1.5} className="text-white/50" />
-                <motion.span className="absolute top-2.5 right-2.5 w-[6px] h-[6px] bg-[#00C2FF] rounded-full" animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 2, repeat: Infinity }} style={{ boxShadow: "0 0 6px rgba(0,194,255,0.8)" }} />
               </motion.button>
             )}
           </div>
