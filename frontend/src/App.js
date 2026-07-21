@@ -844,6 +844,25 @@ function AppContent() {
         return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="testimonials" /> : <HomePage {...homeProps} />;
       case "/admin/pay-sdk":
         return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay_sdk" /> : <HomePage {...homeProps} />;
+      case "/admin/loyalty-config":
+      case "/admin/loyalty-analytics":
+      case "/admin/coin-rates":
+      case "/admin/cashback-rates":
+        return user.role === "admin" ? <LoyaltyPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+      case "/admin/scooter-fleet":
+      case "/admin/scooter-add":
+        return user.role === "admin" ? <ScooterPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+      case "/admin/taxi-drivers":
+        return user.role === "admin" ? <AdminTaxiPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/restaurants":
+      case "/admin/qr-tables":
+        return user.role === "admin" ? <RestaurantTablesAdminPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/audi-ticket-system":
+        return user.role === "admin" ? <AudiTicketSalesPage onBack={() => handleNavigate("/admin")} onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+      case "/admin/biopay-audit-center":
+        return user.role === "admin" ? <AdminBioPayAuditPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/system-health":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="flags" /> : <HomePage {...homeProps} />;
       case "/admin/users":
       case "/admin/managers":
       case "/admin/employees":
@@ -996,8 +1015,6 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CryptoWalletPage onBack={() => handleNavigate("/more")} />;
       case "/budget":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BudgetPlannerPage onBack={() => handleNavigate("/more")} />;
-      case "/admin/credits":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <AdminCreditPage onBack={() => handleNavigate("/admin")} />;
       case "/notification-center":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <NotificationCenterPage onBack={() => handleNavigate("/more")} />;
       case "/contacts":
