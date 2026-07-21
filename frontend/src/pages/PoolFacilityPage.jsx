@@ -38,6 +38,16 @@ const copy = {
     mockNotice: "Hardware-Bridges für RFID, Spindrelais und Turnstiles sind aktuell MOCKED, die Software-Logik ist live.",
     cancelled: "Checkout abgebrochen",
     ticketReady: "Ticket erfolgreich erstellt",
+    maintenance: "Wartungsmodus aktiv",
+    maintenanceHint: "Das Schwimmbad ist vorübergehend im Wartungsmodus. Online-Buchung ist aktuell gesperrt.",
+    onlineBookingOff: "Online-Buchung deaktiviert",
+    onlineBookingOffHint: "Tickets sind aktuell nur an der Kasse oder über das Personal erhältlich.",
+    capacityTitle: "Kapazität & Regeln",
+    supportTitle: "Support vor Ort",
+    familyZone: "Familienzone",
+    spaZone: "Spa-Zone",
+    warningFrom: "Warnung ab",
+    maxGuests: "Max Gäste",
   },
   en: {
     eyebrow: "Swimming pool system",
@@ -70,6 +80,16 @@ const copy = {
     mockNotice: "Hardware bridges for RFID, locker relays and turnstiles are currently MOCKED, software logic is live.",
     cancelled: "Checkout cancelled",
     ticketReady: "Ticket created successfully",
+    maintenance: "Maintenance mode active",
+    maintenanceHint: "The pool is temporarily in maintenance mode. Online booking is currently blocked.",
+    onlineBookingOff: "Online booking disabled",
+    onlineBookingOffHint: "Tickets are currently only available at the cashier or via staff.",
+    capacityTitle: "Capacity & rules",
+    supportTitle: "On-site support",
+    familyZone: "Family zone",
+    spaZone: "Spa zone",
+    warningFrom: "Alert from",
+    maxGuests: "Max guests",
   },
 };
 
@@ -211,6 +231,9 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
   }, [overview, selectedDuration, adultCount, childCount, extras, visitDate]);
 
   const total = useMemo(() => Number(quote?.total || 0).toFixed(2), [quote]);
+  const poolSettings = overview?.settings_config || {};
+  const maintenanceMode = !!poolSettings?.operations?.maintenance_mode;
+  const onlineCheckoutEnabled = poolSettings?.operations?.online_checkout_enabled !== false;
 
   const toggleExtra = (extraId) => setExtras((prev) => prev.includes(extraId) ? prev.filter((item) => item !== extraId) : [...prev, extraId]);
 
@@ -270,6 +293,18 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
               <div className="mt-6 rounded-[28px] border border-[#D7EBF7] bg-[#EDF8FE] p-4 text-sm text-slate-700 shadow-sm" data-testid="pool-mock-notice">
                 {L.mockNotice}
               </div>
+              {maintenanceMode ? (
+                <div className="mt-4 rounded-[24px] border border-[#FF7A18]/25 bg-[#FFF4EB] p-4 text-sm text-[#9A3412] shadow-sm" data-testid="pool-maintenance-notice">
+                  <div className="font-black">{L.maintenance}</div>
+                  <div className="mt-1">{L.maintenanceHint}</div>
+                </div>
+              ) : null}
+              {!maintenanceMode && !onlineCheckoutEnabled ? (
+                <div className="mt-4 rounded-[24px] border border-[#FACC15]/35 bg-[#FEFCE8] p-4 text-sm text-[#854D0E] shadow-sm" data-testid="pool-booking-disabled-notice">
+                  <div className="font-black">{L.onlineBookingOff}</div>
+                  <div className="mt-1">{L.onlineBookingOffHint}</div>
+                </div>
+              ) : null}
             </div>
             <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-xl shadow-[#0088CC]/10" data-testid="pool-booking-card">
               <div className="flex items-center justify-between gap-3">
@@ -388,7 +423,7 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
                   </div>
                 </div>
               ) : null}
-              <button onClick={startCheckout} disabled={checkoutBusy} data-testid="pool-start-checkout-button" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF8C00] px-5 py-4 text-sm font-black text-white shadow-lg shadow-[#FF8C00]/30 disabled:opacity-60">
+              <button onClick={startCheckout} disabled={checkoutBusy || maintenanceMode || !onlineCheckoutEnabled} data-testid="pool-start-checkout-button" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF8C00] px-5 py-4 text-sm font-black text-white shadow-lg shadow-[#FF8C00]/30 disabled:opacity-60">
                 {checkoutBusy ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
                 {L.checkout}
               </button>
@@ -423,6 +458,12 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
                 <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Open</div>
                 <div className="mt-2 flex items-center gap-2 text-base font-bold text-slate-900"><Clock size={15} />{overview?.facility?.hours?.[localeKey(lang)]}</div>
               </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="pool-capacity-settings-grid">
+              <div className="rounded-2xl bg-slate-50 p-4"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{L.maxGuests}</div><div className="mt-2 text-xl font-black text-slate-900">{poolSettings?.visitor_limits?.max_guests_total || "—"}</div></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{L.warningFrom}</div><div className="mt-2 text-xl font-black text-slate-900">{poolSettings?.visitor_limits?.warning_threshold_percent || "—"}%</div></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{L.familyZone}</div><div className="mt-2 text-xl font-black text-slate-900">{poolSettings?.visitor_limits?.max_family_zone || "—"}</div></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{L.spaZone}</div><div className="mt-2 text-xl font-black text-slate-900">{poolSettings?.visitor_limits?.max_spa_zone || "—"}</div></div>
             </div>
           </div>
 
@@ -469,6 +510,12 @@ export default function PoolFacilityPage({ onBack, onNavigate }) {
               <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-operator-feature-entry">• Turnstile entry / exit with QR or wristband scan</div>
               <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-operator-feature-locker">• Locker assignment and release per guest ticket</div>
               <div className="rounded-2xl bg-slate-50 p-4" data-testid="pool-operator-feature-snacks">• Snack POS for drinks, fries, burgers and add-ons</div>
+            </div>
+            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700" data-testid="pool-support-card">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{L.supportTitle}</div>
+              <div className="mt-2 font-bold text-slate-900">{poolSettings?.support?.desk_label || "BlueWave Front Desk"}</div>
+              <div className="mt-1">{poolSettings?.support?.desk_phone || "—"}</div>
+              <div>{poolSettings?.support?.desk_email || "—"}</div>
             </div>
             <button onClick={() => onNavigate?.("/admin/pool")} data-testid="pool-open-admin-button" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#0088CC] bg-[#E8F6FD] px-5 py-3 text-sm font-black text-[#0088CC]">
               <ShieldCheck size={16} /> Open operator dashboard

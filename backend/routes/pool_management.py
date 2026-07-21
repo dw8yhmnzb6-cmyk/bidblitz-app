@@ -1140,6 +1140,7 @@ async def _build_public_overview() -> dict:
     await _ensure_lockers()
     hardware_config = await _ensure_hardware_config()
     pricing_config = await _ensure_pricing_config()
+    settings_config = await _ensure_settings_config()
     active_guests = await db.pool_tickets.count_documents({"facility_id": FACILITY_ID, "status": "active"})
     total_lockers = await db.pool_lockers.count_documents({"facility_id": FACILITY_ID})
     free_lockers = await db.pool_lockers.count_documents({"facility_id": FACILITY_ID, "status": "free"})
@@ -1157,6 +1158,7 @@ async def _build_public_overview() -> dict:
         "extras": [_extra_payload(extra_id) for extra_id in POOL_EXTRAS],
         "snack_menu": [_snack_payload(menu_id) for menu_id in SNACK_MENU],
         "pricing_config": pricing_config,
+        "settings_config": settings_config,
         "access_points": POOL_ACCESS_POINTS,
         "occupancy": {
             "inside_now": active_guests,
@@ -1179,16 +1181,25 @@ async def public_pool_overview():
 @router.post("/public/pricing/quote")
 async def get_pool_pricing_quote(req: PoolQuoteRequest):
     pricing_config = await _ensure_pricing_config()
+    settings_config = await _ensure_settings_config()
+    if settings_config.get("operations", {}).get("maintenance_mode"):
+        raise HTTPException(status_code=503, detail="Schwimmbad ist aktuell im Wartungsmodus")
     quote = _quote_pool_booking(req.duration_id, req.adult_count, req.child_count, req.extras, req.visit_date, pricing_config)
     quote["pricing_config"] = {
         "currency": pricing_config.get("currency", "EUR"),
         "weekend_days": pricing_config.get("weekend_days", [5, 6]),
     }
+    quote["settings_config"] = settings_config
     return quote
 
 
 @router.post("/public/tickets/checkout")
 async def create_pool_checkout(req: PoolCheckoutRequest, request: Request):
+    settings_config = await _ensure_settings_config()
+    if settings_config.get("operations", {}).get("maintenance_mode"):
+        raise HTTPException(status_code=503, detail="Schwimmbad ist aktuell im Wartungsmodus")
+    if not settings_config.get("operations", {}).get("online_checkout_enabled", True):
+        raise HTTPException(status_code=403, detail="Online-Buchung ist derzeit deaktiviert")
     if not STRIPE_API_KEY:
         raise HTTPException(status_code=503, detail="Stripe ist nicht konfiguriert")
     origin = _resolve_origin(req.origin_url, request)
@@ -1435,6 +1446,9 @@ async def update_pool_hardware_config(req: HardwareConfigRequest, request: Reque
 @router.post("/admin/tickets/cash-sale")
 async def create_cash_sale_ticket(req: CashSaleRequest, request: Request):
     user = await _require_pool_staff(request)
+    settings_config = await _ensure_settings_config()
+    if not settings_config.get("operations", {}).get("cashier_enabled", True):
+        raise HTTPException(status_code=403, detail="Kassenverkauf ist deaktiviert")
     quote = await _resolve_booking_quote(req.package_id, req.duration_id, req.adult_count, req.child_count, req.quantity, req.extras, req.visit_date)
     total = quote["total"]
     package = POOL_PACKAGES.get(req.package_id) if req.package_id else None
@@ -1492,6 +1506,7 @@ async def list_pool_lockers(request: Request):
 async def assign_pool_locker(req: LockerAssignRequest, request: Request):
     await _require_pool_staff(request)
     await _ensure_lockers()
+    settings_config = await _ensure_settings_config()
     hardware_config = await _ensure_hardware_config()
     ticket = await db.pool_tickets.find_one({"ticket_code": req.ticket_code}, {"_id": 0})
     if not ticket:
@@ -1506,6 +1521,8 @@ async def assign_pool_locker(req: LockerAssignRequest, request: Request):
     locker = await db.pool_lockers.find_one(locker_query, {"_id": 0})
     if not locker:
         raise HTTPException(status_code=404, detail="Kein verfügbarer Spind gefunden")
+    if not settings_config.get("locker_rules", {}).get("auto_assign", True) and not req.locker_id:
+        raise HTTPException(status_code=403, detail="Auto-Spind ist deaktiviert. Bitte einen Spind manuell wählen.")
     now_iso = _now_iso()
     wristband_id = ticket.get("wristband_id") or _short_id("WB", 8)
     await db.pool_lockers.update_one(
@@ -1532,6 +1549,7 @@ async def assign_pool_locker(req: LockerAssignRequest, request: Request):
 @router.post("/admin/lockers/release")
 async def release_pool_locker(req: LockerReleaseRequest, request: Request):
     await _require_pool_staff(request)
+    settings_config = await _ensure_settings_config()
     hardware_config = await _ensure_hardware_config()
     locker_query = None
     if req.locker_id:
@@ -1540,6 +1558,8 @@ async def release_pool_locker(req: LockerReleaseRequest, request: Request):
         locker_query = {"ticket_code": req.ticket_code}
     else:
         raise HTTPException(status_code=400, detail="locker_id oder ticket_code erforderlich")
+    if not settings_config.get("locker_rules", {}).get("release_on_checkout", True) and req.locker_id:
+        raise HTTPException(status_code=403, detail="Auto-Release ist deaktiviert. Bitte Ticket-basiert freigeben.")
 
     locker = await db.pool_lockers.find_one(locker_query, {"_id": 0})
     if not locker:
@@ -1570,6 +1590,9 @@ async def release_pool_locker(req: LockerReleaseRequest, request: Request):
 @router.post("/admin/lockers/open")
 async def open_pool_locker(req: LockerOpenRequest, request: Request):
     await _require_pool_staff(request)
+    settings_config = await _ensure_settings_config()
+    if not settings_config.get("locker_rules", {}).get("allow_manual_open", True):
+        raise HTTPException(status_code=403, detail="Manuelles Öffnen ist deaktiviert")
     hardware_config = await _ensure_hardware_config()
     locker = await db.pool_lockers.find_one({"locker_id": req.locker_id, "facility_id": FACILITY_ID}, {"_id": 0})
     if not locker:
