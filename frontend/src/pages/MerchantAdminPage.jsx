@@ -104,8 +104,8 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   };
 
   const filtered = merchants.filter(m =>
-    !search || m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase()) ||
+    !search || (m.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (m.email || "").toLowerCase().includes(search.toLowerCase()) ||
     (m.merchant_id || "").toLowerCase().includes(search.toLowerCase())
   );
 

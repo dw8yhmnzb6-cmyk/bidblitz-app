@@ -1,0 +1,58 @@
+{
+  "summary": "Admin action-level QA on mobile viewport. Tested KYC, Pay Requests, Analytics, Merchants, QR Management, Pool Admin, Deployment Info, BioPay Audit, Taxi Admin, and Restaurant Tables Admin pages. Found and fixed 1 critical bug in MerchantAdminPage.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "MerchantAdminPage",
+        "issue": "FIXED: TypeError 'Cannot read properties of undefined (reading toLowerCase)' when filtering merchants with undefined name/email fields",
+        "selector": "MerchantAdminPage.jsx line 106-110",
+        "priority": "HIGH",
+        "status": "FIXED"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "MerchantAdminPage",
+        "issues": ["React warning: Each child in a list should have a unique 'key' prop - minor issue"]
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_285.json"],
+  "action_items": [
+    "MerchantAdminPage: Fix React key warning for list items (minor)"
+  ],
+  "critical_code_review_comments": [
+    "MerchantAdminPage had null safety issue - m.name and m.email could be undefined causing crash. Fixed by adding fallback to empty string."
+  ],
+  "updated_files": ["/app/frontend/src/pages/MerchantAdminPage.jsx"],
+  "success_rate": {
+    "backend": "N/A (frontend only test)",
+    "frontend": "95%"
+  },
+  "test_credentials": "admin@bidblitz.ae / BidBlitz2026!",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin pages tested on mobile viewport (390x844). All major admin pages load correctly: KYC, Pay Requests, Analytics, Merchants, QR Management, Pool Admin, Deployment Info, BioPay Audit, Taxi Admin, Restaurant Tables Admin. MerchantAdminPage crash was fixed. Pool Admin has 9 tabs all working. Taxi Admin has 7 tabs all working. Hardware-related flows (pool hardware, certain diagnostics) are MOCKED by design.",
+  "pages_tested": {
+    "/admin/kyc": "PASS - Filter buttons work (Pending, Approved, Rejected)",
+    "/admin/pay-requests": "PASS - Filter buttons work (4 filters found)",
+    "/admin/analytics": "PASS - Period selector buttons work (7d, 14d, 30d)",
+    "/admin/merchants": "PASS after fix - Search works, action buttons visible (Neustart, Sperren, ID vergeben)",
+    "/admin/pool": "PASS - All 9 tabs work (overview, pricing, settings, cashier, access, lockers, snacks, hardware, history)",
+    "/admin/deployment-info": "PASS - Refresh button works, shows Preview vs Production comparison",
+    "/admin/biopay-audit": "PASS - Shows terminals, sessions, diagnostics, alerts stats",
+    "/admin/taxi": "PASS - All 7 tabs work (overview, applications, modes, zones, drivers, rides, settings)",
+    "/admin/qr-management": "PASS - Merchant selector works, shows QR table management",
+    "/admin/qr-tables": "PASS - Restaurant Tables Admin loads correctly"
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["Pool hardware/RFID/gate/locker bridges are MOCKED by design"]
+  }
+}
