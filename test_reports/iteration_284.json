@@ -1,0 +1,127 @@
+{
+  "summary": "Admin Panel QA Pass - Identified 3 broken admin routes/views. /admin/analytics shows 'Not Found' due to wrong API path in frontend. /admin/pay-requests shows 'Not Found' due to missing backend endpoint. /admin/merchants times out. Most other admin routes work correctly.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/pay/admin/applications",
+        "issue": "Endpoint does not exist - returns 404. Frontend expects this endpoint for Pay Requests admin view.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminAnalyticsPage",
+        "issue": "Wrong API path - calls /api/analytics/overview but endpoint is at /api/admin/analytics/overview",
+        "selector": "AdminAnalyticsPage.jsx line 38",
+        "priority": "HIGH"
+      },
+      {
+        "component": "AdminTabRouter - PayRequestsDetail",
+        "issue": "Shows 'Not Found' toast because backend endpoint /api/pay/admin/applications doesn't exist",
+        "selector": "AdminTabRouter.jsx line 741-750",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "/admin/merchants navigation",
+        "issue": "Page times out when navigating to /admin/merchants - possible infinite loop or heavy API call",
+        "affected_selectors": []
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iter284_admin_landing.jpeg",
+    "/app/test_reports/iter284_admin_kyc.jpeg",
+    "/app/test_reports/iter284_admin_pay_requests.jpeg",
+    "/app/test_reports/iter284_admin_grid_menu.jpeg",
+    "/app/test_reports/iter284_admin_analytics_detail.jpeg",
+    "/app/test_reports/iter284_admin_customers_detail.jpeg",
+    "/app/test_reports/iter284_admin_users_detail.jpeg"
+  ],
+  "action_items": [
+    "FIX: AdminAnalyticsPage.jsx line 38 - Change API path from /api/analytics/overview to /api/admin/analytics/overview",
+    "FIX: Create backend endpoint /api/pay/admin/applications for Pay Requests admin view OR update frontend to use existing endpoint",
+    "INVESTIGATE: /admin/merchants route timeout issue"
+  ],
+  "critical_code_review_comments": [
+    "AdminAnalyticsPage.jsx uses wrong API prefix - should be /api/admin/analytics/overview not /api/analytics/overview",
+    "Frontend api.js expects /api/pay/admin/applications endpoint that doesn't exist in backend"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (skipped per request)",
+    "frontend": "85%"
+  },
+  "test_credentials": "admin@bidblitz.ae / BidBlitz2026!",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin panel QA pass completed. Found 3 broken routes: /admin/analytics (wrong API path), /admin/pay-requests (missing backend endpoint), /admin/merchants (timeout). KYC and most other admin routes work correctly. The grid menu renders but items need data-testid attributes for better testing.",
+  "routes_tested": {
+    "working": [
+      "/admin (landing)",
+      "/admin/kyc",
+      "/admin/payouts",
+      "/admin/transactions",
+      "/admin/managers",
+      "/admin/employees",
+      "/admin/influencer",
+      "/admin/products",
+      "/admin/auctions",
+      "/admin/vip-auctions",
+      "/admin/voucher-auctions",
+      "/admin/bot",
+      "/admin/winners",
+      "/admin/partner-credit",
+      "/admin/merchant-coupons",
+      "/admin/bidder-coupons",
+      "/admin/partner-coupons",
+      "/admin/discounts",
+      "/admin/topup",
+      "/admin/wise",
+      "/admin/maintenance",
+      "/admin/cms",
+      "/admin/game-settings",
+      "/admin/sustainability",
+      "/admin/passwords",
+      "/admin/logs",
+      "/admin/debug",
+      "/admin/health",
+      "/admin/database",
+      "/admin/customers",
+      "/admin/users",
+      "/admin/enterprise",
+      "/admin/qr-management",
+      "/admin/pool",
+      "/admin/deployment-info"
+    ],
+    "broken": [
+      {
+        "route": "/admin/analytics",
+        "issue": "Shows 'Not Found' toast - wrong API path in frontend",
+        "fix": "Change /api/analytics/overview to /api/admin/analytics/overview in AdminAnalyticsPage.jsx"
+      },
+      {
+        "route": "/admin/pay-requests",
+        "issue": "Shows 'Not Found' toast - backend endpoint missing",
+        "fix": "Create /api/pay/admin/applications endpoint in backend"
+      },
+      {
+        "route": "/admin/merchants",
+        "issue": "Page times out during navigation",
+        "fix": "Investigate and fix timeout issue"
+      }
+    ]
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": ["Some pool hardware flows remain MOCKED by design"]
+  },
+  "test_date": "2026-07-21",
+  "test_scope": "Admin Panel QA Pass - Broad Navigation Test"
+}

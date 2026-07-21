@@ -838,6 +838,12 @@ function AppContent() {
         return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay-requests" /> : <HomePage {...homeProps} />;
       case "/admin/payouts":
         return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="payouts" /> : <HomePage {...homeProps} />;
+      case "/admin/credits":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="credits" /> : <HomePage {...homeProps} />;
+      case "/admin/testimonials":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="testimonials" /> : <HomePage {...homeProps} />;
+      case "/admin/pay-sdk":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay_sdk" /> : <HomePage {...homeProps} />;
       case "/admin/users":
       case "/admin/managers":
       case "/admin/employees":
@@ -876,7 +882,7 @@ function AppContent() {
       case "/admin/directory":
         return user.role === "admin" ? <AdminDirectoryPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/ads":
-        return user.role === "admin" ? <AdminAdManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="promos" /> : <HomePage {...homeProps} />;
       case "/admin/bookings":
         return user.role === "admin" ? <AdminBookingManagerPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/spin-wheel":
