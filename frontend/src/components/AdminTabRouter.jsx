@@ -25,7 +25,7 @@ const CreatePromoForm = ({ t, onCreated, onCancel }) => {
       const body = { ...form, value: Number(form.value), min_amount: Number(form.min_amount), max_uses: Number(form.max_uses), starts_at: `${form.starts_at}T00:00:00Z`, expires_at: `${form.expires_at}T23:59:59Z`, active: true };
       await fetch(`${API}/api/promotions/admin/create`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       onCreated({ ...body, current_uses: 0 });
-    } catch { /* noop */ } finally { setSaving(false); }
+    } catch (_error) { void _error; } finally { setSaving(false); }
   };
   const inputCls = "w-full px-3 py-2 rounded-xl text-[12px] text-white/90 placeholder-[#333] font-medium outline-none bg-white/[0.03] border border-white/[0.05]";
   return (
@@ -75,7 +75,7 @@ tab, t, loading,
         overview, users, merchants, payouts, txns, settings,
         featureFlags, auditLogs, auditTotal,
         complianceFlags, complianceChecks, analyticsData, promos, merchantFees,
-        roleRequests, verifications,
+        roleRequests, verifications, payRequests,
         search, setSearch,
         payoutFilter, setPayoutFilter,
         complianceTab, setComplianceTab,
@@ -482,7 +482,7 @@ tab, t, loading,
                             try {
                               await api(`/api/promotions/admin/toggle/${p.name}`, { method: "PUT" });
                               setPromos(promos.map(x => x.name === p.name ? { ...x, active: !x.active } : x));
-                            } catch {}
+                            } catch (_error) { void _error; }
                           }}>
                           {p.active ? <ToggleRight size={28} className="text-[#00D26A]" /> : <ToggleLeft size={28} className="text-[#333]" />}
                         </motion.button>
@@ -520,7 +520,7 @@ tab, t, loading,
                               method: "PUT", body: JSON.stringify({ enabled: !flag.enabled })
                             });
                             setFeatureFlags(featureFlags.map(f => f.name === flag.name ? { ...f, enabled: !f.enabled } : f));
-                          } catch {}
+                          } catch (_error) { void _error; }
                         }}
                         className="flex items-center"
                         whileTap={{ scale: 0.9 }}>
@@ -617,7 +617,7 @@ tab, t, loading,
                                 try {
                                   await api(`/api/admin/compliance-flags/${i}/resolve`, { method: "POST", body: JSON.stringify({ resolution: "Reviewed and resolved" }) });
                                   setComplianceFlags(complianceFlags.map((f, idx) => idx === i ? { ...f, status: "resolved" } : f));
-                                } catch {}
+                                } catch (_error) { void _error; }
                               }}
                               className="mt-2 px-3 py-1 rounded-lg text-[10px] font-medium bg-[#00D26A]/10 text-[#00D26A] border border-[#00D26A]/15"
                               whileTap={{ scale: 0.95 }}>
@@ -739,7 +739,14 @@ tab, t, loading,
 
           {/* ── Pay Requests Tab ── */}
           {tab === "pay-requests" && (
-            <PayRequestsTab t={t} />
+            <PayRequestsDetail
+              data={{
+                applications: Array.isArray(payRequests) ? payRequests : [],
+                count: Array.isArray(payRequests) ? payRequests.length : 0,
+                filter: "pending",
+              }}
+              setData={() => {}}
+            />
           )}
 
 
@@ -863,6 +870,67 @@ tab, t, loading,
             </motion.div>
           )}
     </>
+  );
+}
+
+function PayRequestsDetail({ data, setData }) {
+  const reload = async (filter = "pending") => {
+    try {
+      const d = await apiService.adminListPayApplications(filter);
+      setData({ type: "pay_requests", applications: d.applications || [], count: d.count || 0, filter });
+    } catch (_error) {
+      void _error;
+    }
+  };
+
+  const currentFilter = data?.filter || "pending";
+  const items = data?.applications || [];
+
+  return (
+    <div className="space-y-3" data-testid="admin-pay-requests">
+      <div className="flex gap-2 mb-3">
+        {["pending", "approved", "rejected", "all"].map((f) => (
+          <motion.button
+            key={f}
+            onClick={() => reload(f)}
+            whileTap={{ scale: 0.95 }}
+            data-testid={`pay-requests-filter-${f}`}
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold ${
+              currentFilter === f ? "bg-[#10B981] text-white" : "bg-white text-gray-600 border border-gray-200"
+            }`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </motion.button>
+        ))}
+      </div>
+      {items.length === 0 ? (
+        <div className="text-center py-10 text-gray-400 text-sm">Keine {currentFilter} Anträge</div>
+      ) : items.map((app, i) => (
+        <motion.div
+          key={app.application_id || i}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05 }}
+          className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm"
+        >
+          <div className="flex items-start justify-between mb-2 gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-bold text-gray-800 truncate">{app.business_name || app.full_name || app.email || "Antrag"}</p>
+              <p className="text-[11px] text-gray-500 truncate">{app.email || app.phone || "—"}</p>
+              {app.website ? <p className="text-[10px] text-[#10B981] truncate">{app.website}</p> : null}
+            </div>
+            <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase ${app.status === "approved" ? "bg-[#10B981]/10 text-[#10B981]" : app.status === "rejected" ? "bg-red-100 text-red-600" : "bg-yellow-100 text-yellow-700"}`}>
+              {app.status || "pending"}
+            </span>
+          </div>
+          {app.description ? <p className="text-[11px] text-gray-600 mb-3">{app.description}</p> : null}
+          <div className="flex items-center justify-between text-[9px] text-gray-400 mb-3">
+            <span>{app.created_at ? new Date(app.created_at).toLocaleDateString("de-DE") : "—"}</span>
+            {app.reviewed_at ? <span>Geprüft: {new Date(app.reviewed_at).toLocaleDateString("de-DE")}</span> : null}
+          </div>
+        </motion.div>
+      ))}
+    </div>
   );
 }
 

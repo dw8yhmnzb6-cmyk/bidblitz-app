@@ -116,7 +116,7 @@ export async function loadAdminDetail(item, onNavigate) {
     }
     case "kyc": {
       const d = await api("/api/kyc/admin/list?status=pending");
-      return { type: "kyc", requests: d.requests || [] };
+      return { type: "kyc", requests: d.reviews || [], total: d.total || 0 };
     }
     case "roles": {
       const d = await api("/api/role-requests/admin/list?status=pending");
@@ -143,13 +143,17 @@ export async function loadAdminDetail(item, onNavigate) {
 
     case "pay-requests": {
       const d = await api("/api/pay/admin/applications?status=pending");
-      return { type: "pay_requests", applications: d.applications || [], count: d.count || 0 };
+      return { type: "pay_requests", applications: d.applications || [], count: d.count || 0, filter: "pending" };
     }
     case "payments":
     case "wallet-topup":
     case "payouts":
     case "sepa":
     case "wholesale": {
+      if (item.key === "payouts" || item.key === "sepa") {
+        const d = await api("/api/admin/payouts?status=");
+        return { type: "payouts", payouts: d.payouts || [], count: (d.payouts || []).length };
+      }
       const d = await api("/api/admin/stats");
       return { type: "finance_detail", subtype: item.key, stats: d };
     }

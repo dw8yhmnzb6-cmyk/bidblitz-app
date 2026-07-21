@@ -345,6 +345,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
   const [auditTotal, setAuditTotal] = useState(0);
   const [complianceFlags, setComplianceFlags] = useState([]);
   const [complianceChecks, setComplianceChecks] = useState([]);
+  const [payRequests, setPayRequests] = useState([]);
   const [complianceTab, setComplianceTab] = useState("flags");
   const [analyticsData, setAnalyticsData] = useState(null);
   const [promos, setPromos] = useState([]);
@@ -451,6 +452,10 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
       if (t === "verification") {
         const d = await apiService.adminListVerifications(verFilter);
         setVerifications(d.verifications || []);
+      }
+      if (t === "pay-requests") {
+        const d = await api("/api/pay/admin/applications?status=pending");
+        setPayRequests(d.applications || []);
       }
       if (t === "merchant-fees") {
         const d = await api("/api/payments/admin/fees");
@@ -716,7 +721,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
           overview, users, merchants, payouts, txns, settings,
           featureFlags, auditLogs, auditTotal,
           complianceFlags, complianceChecks, analyticsData, promos, merchantFees,
-          roleRequests, verifications,
+          roleRequests, verifications, payRequests,
           search, setSearch,
           payoutFilter, setPayoutFilter,
           complianceTab, setComplianceTab,

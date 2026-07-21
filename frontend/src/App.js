@@ -832,6 +832,45 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <InstantCreditPage onBack={() => handleNavigate("/more")} />;
       case "/admin/manage":
         return user.role === "admin" ? <AdminManagementPage onBack={() => handleNavigate("/admin")} initialTab="customers" /> : <HomePage {...homeProps} />;
+      case "/admin/kyc":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="verification" /> : <HomePage {...homeProps} />;
+      case "/admin/pay-requests":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="pay-requests" /> : <HomePage {...homeProps} />;
+      case "/admin/payouts":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab="payouts" /> : <HomePage {...homeProps} />;
+      case "/admin/users":
+      case "/admin/managers":
+      case "/admin/employees":
+      case "/admin/enterprise":
+      case "/admin/influencer":
+      case "/admin/partner-credit":
+      case "/admin/partners":
+      case "/admin/applications":
+      case "/admin/products":
+      case "/admin/auctions":
+      case "/admin/vip-auctions":
+      case "/admin/voucher-auctions":
+      case "/admin/bot":
+      case "/admin/winners":
+      case "/admin/product-stats":
+      case "/admin/user-stats":
+      case "/admin/merchant-coupons":
+      case "/admin/bidder-coupons":
+      case "/admin/partner-coupons":
+      case "/admin/discounts":
+      case "/admin/transactions":
+      case "/admin/topup":
+      case "/admin/wise":
+      case "/admin/maintenance":
+      case "/admin/cms":
+      case "/admin/game-settings":
+      case "/admin/sustainability":
+      case "/admin/passwords":
+      case "/admin/logs":
+      case "/admin/debug":
+      case "/admin/health":
+      case "/admin/database":
+        return user.role === "admin" ? <AdminPage onNavigate={handleNavigate} defaultTab={getAdminTabFromPath(currentPath)} /> : <HomePage {...homeProps} />;
       case "/admin/taxi":
         return user.role === "admin" ? <AdminTaxiPage onNavigate={handleNavigate} /> : <HomePage {...homeProps} />;
       case "/admin/directory":

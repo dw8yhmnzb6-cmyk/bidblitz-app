@@ -51,6 +51,7 @@ export default function AdminDetailRouter({ data, setData, loading, error, onNav
     case "partners": return <PartnersDetail data={data} />;
     case "applications": return <ApplicationsDetail data={data} />;
     case "finance_detail": return <FinanceDetail data={data} onNavigate={onNavigate} />;
+    case "payouts": return <PayoutsDetail data={data} />;
     case "pay_requests": return <PayRequestsDetail data={data} setData={setData} />;
     case "api_keys": return <ApiKeysDetail />;
     case "marketing": return <MarketingDetail data={data} />;
@@ -116,7 +117,7 @@ function KycDetail({ data }) {
   return (
     <div className="space-y-2" data-testid="admin-detail-kyc">
       <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 mb-3">
-        <p className="text-xs text-amber-800 font-medium">{(data.requests || []).length} offene KYC-Anträge</p>
+        <p className="text-xs text-amber-800 font-medium">{data.total ?? (data.requests || []).length} offene KYC-Anträge</p>
       </div>
       {(data.requests || []).length === 0 ? (
         <div className="text-center py-10 text-gray-400 text-sm">Keine offenen KYC-Anträge</div>
@@ -130,6 +131,30 @@ function KycDetail({ data }) {
           <span className={`text-[9px] px-2 py-0.5 rounded font-medium ${r.status === "pending" ? "bg-amber-100 text-amber-700" : r.status === "approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
             {r.status || "pending"}
           </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PayoutsDetail({ data }) {
+  return (
+    <div className="space-y-3" data-testid="admin-detail-payouts">
+      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 mb-3">
+        <p className="text-xs text-emerald-800 font-medium">{data.count || 0} Auszahlungen geladen</p>
+      </div>
+      {(data.payouts || []).length === 0 ? (
+        <div className="text-center py-10 text-gray-400 text-sm">Keine Auszahlungen vorhanden</div>
+      ) : (data.payouts || []).map((p, i) => (
+        <div key={p.payout_id || i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-gray-800 truncate">{p.user_name || p.email || p.user_id || "Auszahlung"}</p>
+            <p className="text-[9px] text-gray-500 truncate">{p.reference || p.payout_id || "—"}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] font-bold text-emerald-600">€{Number(p.amount || 0).toFixed(2)}</p>
+            <p className="text-[9px] text-gray-400">{p.status || "pending"}</p>
+          </div>
         </div>
       ))}
     </div>
