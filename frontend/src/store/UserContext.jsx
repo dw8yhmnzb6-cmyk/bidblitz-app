@@ -175,12 +175,6 @@ export function UserProvider({ children }) {
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     try {
       purgeLegacyAuthStorage();
-      try {
-        await api.logout();
-      } catch (logoutError) {
-        void logoutError;
-      }
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
       const response = await api.login({ email, password, remember_me: rememberMe });
       
       // Check if 2FA is required
@@ -279,7 +273,9 @@ export function UserProvider({ children }) {
       const user = await api.getMe();
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
     } catch (refreshUserError) {
-      void refreshUserError;
+      if (refreshUserError?.status === 401) {
+        dispatch({ type: AUTH_ACTIONS.SESSION_CHECKED });
+      }
     }
   }, []);
 
