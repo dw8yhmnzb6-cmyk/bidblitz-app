@@ -35,7 +35,7 @@ export default function AdminAnalyticsPage({ onBack }) {
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const res = await api(`/api/analytics/overview?days=${period}`);
+      const res = await api(`/api/admin/analytics/overview?days=${period}`);
       setData(res);
     } catch (err) {
       toast.error(err.message);
@@ -54,31 +54,36 @@ export default function AdminAnalyticsPage({ onBack }) {
 
   if (!data) return null;
 
+  const users = data?.users || {};
+  const revenue = data?.revenue || {};
+  const featureUsage = data?.feature_usage || {};
+  const topEvents = Array.isArray(data?.top_events) ? data.top_events : [];
+
   const stats = [
     {
       label: "Total Users",
-      value: data.users.total,
+      value: users.total ?? 0,
       icon: Users,
       color: "#3B82F6",
-      change: `+${data.users.new} new`,
+      change: `+${users.new ?? 0} new`,
     },
     {
       label: "Active Users",
-      value: data.users.active,
+      value: users.active ?? 0,
       icon: Activity,
       color: "#10B981",
       change: `${period}d period`,
     },
     {
       label: "Revenue (30d)",
-      value: `€${data.revenue.total.toFixed(2)}`,
+      value: `€${Number(revenue.total || 0).toFixed(2)}`,
       icon: DollarSign,
       color: "#F59E0B",
-      change: data.revenue.currency,
+      change: revenue.currency || "EUR",
     },
     {
       label: "Push Devices",
-      value: data.feature_usage.push_devices,
+      value: featureUsage.push_devices ?? 0,
       icon: Zap,
       color: "#8B5CF6",
       change: "registered",
@@ -157,17 +162,15 @@ export default function AdminAnalyticsPage({ onBack }) {
             <h2 className="font-bold">Top Events</h2>
           </div>
 
-          {data.top_events.length === 0 && (
+          {topEvents.length === 0 && (
             <p className="text-sm text-gray-500 text-center py-4">
               Keine Events getrackt
             </p>
           )}
 
           <div className="space-y-2">
-            {data.top_events.map((event) => {
-              const maxCount = Math.max(
-                ...data.top_events.map((e) => e.count)
-              );
+            {topEvents.map((event) => {
+              const maxCount = Math.max(1, ...topEvents.map((e) => e.count || 0));
               const percentage = (event.count / maxCount) * 100;
 
               return (
@@ -196,7 +199,7 @@ export default function AdminAnalyticsPage({ onBack }) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries(data.feature_usage).map(([key, value]) => (
+            {Object.entries(featureUsage).map(([key, value]) => (
               <div
                 key={key}
                 className="bg-gray-50 rounded-lg p-3 border border-gray-200"

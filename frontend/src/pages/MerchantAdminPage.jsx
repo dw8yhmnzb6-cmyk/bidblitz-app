@@ -44,20 +44,20 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
     setLoading(true);
     try {
       const status = filter === "all" ? "" : `&status=${filter}`;
-      const d = await api(`/api/admin/merchants/list?limit=100${status}`);
+      const d = await api(`/api/admin/merchants?limit=100&search=${encodeURIComponent(search)}${status}`);
       setMerchants(d.merchants || []);
       setTotal(d.total || 0);
     } catch (e) {
       toast.error(`${tr({ de: "Fehler beim Laden", en: "Error loading", sq: "Gabim gjatë ngarkimit", ar: "خطأ أثناء التحميل" })}: ${e.message}`);
     }
     setLoading(false);
-  }, [filter, tr]);
+  }, [filter, search, tr]);
 
   useEffect(() => { loadMerchants(); }, [loadMerchants]);
 
   const loadDetail = async (email) => {
     try {
-      const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/detail`);
+      const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}`);
       setDetail(d);
     } catch (e) {
       toast.error(e.message);

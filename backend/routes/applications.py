@@ -606,3 +606,48 @@ async def admin_get_application_stats(request: Request):
         "restaurants": restaurant_stats,
         "total_pending": driver_stats["pending"] + restaurant_stats["pending"],
     }
+
+
+@router.get("/admin/applications")
+async def admin_list_pay_style_applications(status: str = "pending", request: Request = None):
+    """Compatibility endpoint for admin pay/application review screens."""
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Nur Admin")
+
+    normalized = (status or "pending").strip().lower()
+    driver_query = {} if normalized == "all" else {"status": normalized}
+    restaurant_query = {} if normalized == "all" else {"status": normalized}
+
+    applications = []
+    async for row in db.driver_applications.find(driver_query, {"_id": 0}).sort("submitted_at", -1):
+        applications.append({
+            "application_id": row.get("application_id") or row.get("id") or row.get("user_id") or row.get("email"),
+            "full_name": row.get("full_name") or row.get("name") or row.get("driver_name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "business_name": row.get("fleet_name") or row.get("company_name") or "Driver Application",
+            "description": row.get("experience") or row.get("notes") or row.get("message") or "Fahrerbewerbung",
+            "status": row.get("status", "pending"),
+            "website": row.get("website"),
+            "created_at": row.get("submitted_at") or row.get("created_at"),
+            "reviewed_at": row.get("reviewed_at"),
+            "application_type": "driver",
+        })
+    async for row in db.restaurant_applications.find(restaurant_query, {"_id": 0}).sort("submitted_at", -1):
+        applications.append({
+            "application_id": row.get("application_id") or row.get("id") or row.get("user_id") or row.get("email"),
+            "full_name": row.get("full_name") or row.get("name") or row.get("owner_name"),
+            "email": row.get("email"),
+            "phone": row.get("phone"),
+            "business_name": row.get("restaurant_name") or row.get("business_name") or "Restaurant Application",
+            "description": row.get("description") or row.get("cuisine") or row.get("notes") or "Restaurantbewerbung",
+            "status": row.get("status", "pending"),
+            "website": row.get("website"),
+            "created_at": row.get("submitted_at") or row.get("created_at"),
+            "reviewed_at": row.get("reviewed_at"),
+            "application_type": "restaurant",
+        })
+
+    applications.sort(key=lambda item: item.get("created_at") or "", reverse=True)
+    return {"applications": applications, "count": len(applications), "status": normalized}
