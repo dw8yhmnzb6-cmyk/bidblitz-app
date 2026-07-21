@@ -192,10 +192,10 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
           <div className="text-center py-8 text-white/30 text-[12px]">{tr({ de: "Keine Händler gefunden", en: "No merchants found", sq: "Nuk u gjetën tregtarë", ar: "لم يتم العثور على تجار" })}</div>
         ) : (
           <div className="space-y-2">
-            {filtered.map(m => (
+            {filtered.map((m, index) => (
               <motion.div
-                key={m.email}
-                data-testid={`merchant-card-${m.email}`}
+                key={m.email || m.merchant_id || m.user_id || `merchant-${index}`}
+                data-testid={`merchant-card-${m.email || m.merchant_id || index}`}
                 className="rounded-2xl p-3"
                 style={{ background: "#0A0A0A", border: `1px solid ${m.is_suspended ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.06)"}` }}
                 whileTap={{ scale: 0.98 }}
