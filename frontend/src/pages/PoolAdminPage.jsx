@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, CreditCard, Lock, QrCode, Loader2, Ticket, BarChart3, ShoppingBag, CheckCircle2, ShieldCheck, Cpu, ServerCog, Radio, Cable } from "lucide-react";
+import { ArrowLeft, CreditCard, Lock, QrCode, Loader2, Ticket, BarChart3, ShoppingBag, CheckCircle2, ShieldCheck, Cpu, ServerCog, Radio, Cable, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "../store/I18nContext";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const tabLabels = {
-  de: { overview: "Übersicht", pricing: "Preise", cashier: "Kasse", access: "Einlass", lockers: "Spinde", snacks: "Snack POS", hardware: "Hardware", history: "History" },
-  en: { overview: "Overview", pricing: "Pricing", cashier: "Cashier", access: "Access", lockers: "Lockers", snacks: "Snack POS", hardware: "Hardware", history: "History" },
+  de: { overview: "Übersicht", pricing: "Preise", settings: "Einstellungen", cashier: "Kasse", access: "Einlass", lockers: "Spinde", snacks: "Snack POS", hardware: "Hardware", history: "History" },
+  en: { overview: "Overview", pricing: "Pricing", settings: "Settings", cashier: "Cashier", access: "Access", lockers: "Lockers", snacks: "Snack POS", hardware: "Hardware", history: "History" },
 };
 
 async function adminApi(path, options = {}) {
@@ -72,7 +72,9 @@ export default function PoolAdminPage({ onBack }) {
   const [sharedSecretHint, setSharedSecretHint] = useState("");
   const [hardwareSaveResult, setHardwareSaveResult] = useState(null);
   const [pricingConfig, setPricingConfig] = useState(null);
+  const [settingsConfig, setSettingsConfig] = useState(null);
   const [pricingSaveBusy, setPricingSaveBusy] = useState(false);
+  const [settingsSaveBusy, setSettingsSaveBusy] = useState(false);
   const [doorId, setDoorId] = useState("ENTRY-01");
   const [doorTicketCode, setDoorTicketCode] = useState("");
   const [doorCommandResult, setDoorCommandResult] = useState(null);
@@ -92,6 +94,7 @@ export default function PoolAdminPage({ onBack }) {
       setLockerAdapterType(data.hardware_config?.locker?.adapter_type || "edge_locker_bridge");
       setSharedSecretHint(data.hardware_config?.security?.shared_secret_hint || "");
       setPricingConfig(data.pricing_config || null);
+      setSettingsConfig(data.settings_config || null);
       setCashDuration(data.pricing_config?.durations?.[0]?.duration_id || "day");
     } catch (error) {
       toast.error(error.message);
@@ -309,6 +312,46 @@ export default function PoolAdminPage({ onBack }) {
     }
   };
 
+  const updateSettingsSection = (section, field, value) => {
+    setSettingsConfig((prev) => ({
+      ...prev,
+      [section]: {
+        ...(prev?.[section] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateNestedSettings = (section, key, field, value) => {
+    setSettingsConfig((prev) => ({
+      ...prev,
+      [section]: {
+        ...(prev?.[section] || {}),
+        [key]: {
+          ...((prev?.[section] || {})[key] || {}),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const saveSettings = async () => {
+    setSettingsSaveBusy(true);
+    try {
+      const data = await adminApi("/api/pool/admin/settings/config", {
+        method: "POST",
+        body: JSON.stringify({ settings_config: settingsConfig }),
+      });
+      setSettingsConfig(data.settings_config);
+      toast.success("Pool-Einstellungen gespeichert");
+      await load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setSettingsSaveBusy(false);
+    }
+  };
+
   const sendDoorCommand = async () => {
     setBusy(true);
     try {
@@ -451,6 +494,102 @@ export default function PoolAdminPage({ onBack }) {
               <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-overstay-card">
                 <div className="text-lg font-bold text-slate-900">Überziehungsgebühr</div>
                 <div className="mt-3 text-sm text-slate-600">Grace: {pricingConfig?.overstay_rules?.grace_minutes} min · Erwachsene je 30 min: € {Number(pricingConfig?.overstay_rules?.adult_per_30_min || 0).toFixed(2)} · Kinder je 30 min: € {Number(pricingConfig?.overstay_rules?.child_per_30_min || 0).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {tab === "settings" ? (
+          <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]" data-testid="pool-admin-settings-section">
+            <div className="space-y-6">
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-settings-operations-card">
+                <div className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900"><Settings2 size={18} /> Pool-Betrieb</div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ["maintenance_mode", "Maintenance"],
+                    ["online_checkout_enabled", "Online Checkout"],
+                    ["cashier_enabled", "Kasse"],
+                    ["snack_pos_enabled", "Snack POS"],
+                    ["qr_checkin_enabled", "QR Check-in"],
+                    ["rfid_checkin_enabled", "RFID Check-in"],
+                    ["manual_override_enabled", "Manuelle Freigabe"],
+                  ].map(([key, label]) => (
+                    <TogglePill
+                      key={key}
+                      active={!!settingsConfig?.operations?.[key]}
+                      onClick={() => updateSettingsSection("operations", key, !settingsConfig?.operations?.[key])}
+                      label={`${label}: ${settingsConfig?.operations?.[key] ? "An" : "Aus"}`}
+                      testId={`pool-admin-setting-${key}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-settings-hours-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Öffnungszeiten</div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="mb-3 text-sm font-bold text-slate-800">Wochentage</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input type="time" value={settingsConfig?.opening_hours?.weekdays?.open || "09:00"} onChange={(e) => updateNestedSettings("opening_hours", "weekdays", "open", e.target.value)} data-testid="pool-admin-hours-weekdays-open" className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold" />
+                      <input type="time" value={settingsConfig?.opening_hours?.weekdays?.close || "21:00"} onChange={(e) => updateNestedSettings("opening_hours", "weekdays", "close", e.target.value)} data-testid="pool-admin-hours-weekdays-close" className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold" />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="mb-3 text-sm font-bold text-slate-800">Wochenende</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input type="time" value={settingsConfig?.opening_hours?.weekend?.open || "09:00"} onChange={(e) => updateNestedSettings("opening_hours", "weekend", "open", e.target.value)} data-testid="pool-admin-hours-weekend-open" className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold" />
+                      <input type="time" value={settingsConfig?.opening_hours?.weekend?.close || "22:00"} onChange={(e) => updateNestedSettings("opening_hours", "weekend", "close", e.target.value)} data-testid="pool-admin-hours-weekend-close" className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold" />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  <input value={settingsConfig?.opening_hours?.special_note_de || ""} onChange={(e) => updateSettingsSection("opening_hours", "special_note_de", e.target.value)} data-testid="pool-admin-hours-note-de" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" placeholder="Hinweis DE" />
+                  <input value={settingsConfig?.opening_hours?.special_note_en || ""} onChange={(e) => updateSettingsSection("opening_hours", "special_note_en", e.target.value)} data-testid="pool-admin-hours-note-en" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" placeholder="Note EN" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-settings-limits-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Kapazität & Zonen</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input type="number" value={settingsConfig?.visitor_limits?.max_guests_total || 0} onChange={(e) => updateSettingsSection("visitor_limits", "max_guests_total", Number(e.target.value))} data-testid="pool-admin-limit-total" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Gesamtlimit" />
+                  <input type="number" value={settingsConfig?.visitor_limits?.warning_threshold_percent || 0} onChange={(e) => updateSettingsSection("visitor_limits", "warning_threshold_percent", Number(e.target.value))} data-testid="pool-admin-limit-warning" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Warnschwelle %" />
+                  <input type="number" value={settingsConfig?.visitor_limits?.max_family_zone || 0} onChange={(e) => updateSettingsSection("visitor_limits", "max_family_zone", Number(e.target.value))} data-testid="pool-admin-limit-family" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Familienzone" />
+                  <input type="number" value={settingsConfig?.visitor_limits?.max_spa_zone || 0} onChange={(e) => updateSettingsSection("visitor_limits", "max_spa_zone", Number(e.target.value))} data-testid="pool-admin-limit-spa" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Spa-Zone" />
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-settings-rules-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Spind- & Check-in-Regeln</div>
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input type="number" value={settingsConfig?.locker_rules?.reservation_window_minutes || 0} onChange={(e) => updateSettingsSection("locker_rules", "reservation_window_minutes", Number(e.target.value))} data-testid="pool-admin-locker-window" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Reservierung Minuten" />
+                    <input type="number" value={settingsConfig?.locker_rules?.hold_after_checkout_minutes || 0} onChange={(e) => updateSettingsSection("locker_rules", "hold_after_checkout_minutes", Number(e.target.value))} data-testid="pool-admin-locker-hold" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Hold nach Checkout" />
+                    <input type="number" value={settingsConfig?.checkin_rules?.grace_before_open_minutes || 0} onChange={(e) => updateSettingsSection("checkin_rules", "grace_before_open_minutes", Number(e.target.value))} data-testid="pool-admin-checkin-grace" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Grace vor Öffnung" />
+                    <input type="number" value={settingsConfig?.checkin_rules?.max_reentry_per_day || 0} onChange={(e) => updateSettingsSection("checkin_rules", "max_reentry_per_day", Number(e.target.value))} data-testid="pool-admin-checkin-reentry" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" placeholder="Re-Entry pro Tag" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input type="time" value={settingsConfig?.checkin_rules?.evening_entry_from || "17:00"} onChange={(e) => updateSettingsSection("checkin_rules", "evening_entry_from", e.target.value)} data-testid="pool-admin-checkin-evening-from" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold" />
+                    <TogglePill active={!!settingsConfig?.checkin_rules?.require_valid_exit_scan} onClick={() => updateSettingsSection("checkin_rules", "require_valid_exit_scan", !settingsConfig?.checkin_rules?.require_valid_exit_scan)} label={`Exit-Scan Pflicht: ${settingsConfig?.checkin_rules?.require_valid_exit_scan ? "Ja" : "Nein"}`} testId="pool-admin-checkin-exit-required" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <TogglePill active={!!settingsConfig?.locker_rules?.auto_assign} onClick={() => updateSettingsSection("locker_rules", "auto_assign", !settingsConfig?.locker_rules?.auto_assign)} label={`Auto-Spind: ${settingsConfig?.locker_rules?.auto_assign ? "An" : "Aus"}`} testId="pool-admin-locker-auto-assign" />
+                    <TogglePill active={!!settingsConfig?.locker_rules?.release_on_checkout} onClick={() => updateSettingsSection("locker_rules", "release_on_checkout", !settingsConfig?.locker_rules?.release_on_checkout)} label={`Release bei Checkout: ${settingsConfig?.locker_rules?.release_on_checkout ? "An" : "Aus"}`} testId="pool-admin-locker-release-checkout" />
+                    <TogglePill active={!!settingsConfig?.locker_rules?.allow_manual_open} onClick={() => updateSettingsSection("locker_rules", "allow_manual_open", !settingsConfig?.locker_rules?.allow_manual_open)} label={`Manuell öffnen: ${settingsConfig?.locker_rules?.allow_manual_open ? "An" : "Aus"}`} testId="pool-admin-locker-manual-open" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm" data-testid="pool-admin-settings-support-card">
+                <div className="mb-4 text-lg font-bold text-slate-900">Support & Kontakt</div>
+                <div className="space-y-3">
+                  <input value={settingsConfig?.support?.desk_label || ""} onChange={(e) => updateSettingsSection("support", "desk_label", e.target.value)} data-testid="pool-admin-support-label" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" placeholder="Desk Label" />
+                  <input value={settingsConfig?.support?.desk_phone || ""} onChange={(e) => updateSettingsSection("support", "desk_phone", e.target.value)} data-testid="pool-admin-support-phone" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" placeholder="Telefon" />
+                  <input value={settingsConfig?.support?.desk_email || ""} onChange={(e) => updateSettingsSection("support", "desk_email", e.target.value)} data-testid="pool-admin-support-email" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" placeholder="E-Mail" />
+                </div>
+                <button onClick={saveSettings} disabled={settingsSaveBusy} data-testid="pool-admin-save-settings" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0088CC] px-5 py-4 text-sm font-black text-white disabled:opacity-60">{settingsSaveBusy ? <Loader2 size={16} className="animate-spin" /> : null} Einstellungen speichern</button>
               </div>
             </div>
           </div>

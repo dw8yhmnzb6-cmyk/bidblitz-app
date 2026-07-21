@@ -295,6 +295,49 @@ DEFAULT_POOL_PRICING_CONFIG = {
     },
 }
 
+DEFAULT_POOL_SETTINGS_CONFIG = {
+    "facility_id": FACILITY_ID,
+    "operations": {
+        "maintenance_mode": False,
+        "online_checkout_enabled": True,
+        "cashier_enabled": True,
+        "snack_pos_enabled": True,
+        "qr_checkin_enabled": True,
+        "rfid_checkin_enabled": True,
+        "manual_override_enabled": True,
+    },
+    "opening_hours": {
+        "weekdays": {"open": "09:00", "close": "21:00"},
+        "weekend": {"open": "09:00", "close": "22:00"},
+        "special_note_de": "Ferien und Feiertage nach Aushang.",
+        "special_note_en": "Holiday schedule may vary.",
+    },
+    "visitor_limits": {
+        "max_guests_total": 450,
+        "max_family_zone": 120,
+        "max_spa_zone": 60,
+        "warning_threshold_percent": 85,
+    },
+    "locker_rules": {
+        "auto_assign": True,
+        "release_on_checkout": True,
+        "allow_manual_open": True,
+        "reservation_window_minutes": 20,
+        "hold_after_checkout_minutes": 10,
+    },
+    "checkin_rules": {
+        "grace_before_open_minutes": 20,
+        "max_reentry_per_day": 3,
+        "require_valid_exit_scan": False,
+        "evening_entry_from": "17:00",
+    },
+    "support": {
+        "desk_label": "BlueWave Front Desk",
+        "desk_phone": "+49 40 555 010",
+        "desk_email": "pool@bidblitz.ae",
+    },
+}
+
 
 class PoolCheckoutRequest(BaseModel):
     package_id: Optional[str] = None
@@ -368,6 +411,10 @@ class PoolQuoteRequest(BaseModel):
 
 class PoolPricingConfigRequest(BaseModel):
     pricing_config: dict
+
+
+class PoolSettingsConfigRequest(BaseModel):
+    settings_config: dict
 
 
 class DoorCommandRequest(BaseModel):
@@ -603,6 +650,10 @@ def _clone_pricing_defaults() -> dict:
     return json.loads(json.dumps(DEFAULT_POOL_PRICING_CONFIG))
 
 
+def _clone_settings_defaults() -> dict:
+    return json.loads(json.dumps(DEFAULT_POOL_SETTINGS_CONFIG))
+
+
 def _safe_float(value, fallback: float) -> float:
     try:
         return round(float(value), 2)
@@ -620,6 +671,31 @@ def _safe_int(value, fallback: int, minimum: int | None = None, maximum: int | N
     if maximum is not None:
         parsed = min(maximum, parsed)
     return parsed
+
+
+def _safe_bool(value, fallback: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "off"}:
+            return False
+    return fallback
+
+
+def _safe_time(value: str | None, fallback: str) -> str:
+    raw = str(value or fallback).strip()
+    parts = raw.split(":")
+    if len(parts) != 2:
+        return fallback
+    try:
+        hour = max(0, min(23, int(parts[0])))
+        minute = max(0, min(59, int(parts[1])))
+    except Exception:
+        return fallback
+    return f"{hour:02d}:{minute:02d}"
 
 
 def _normalize_pricing_config(raw: dict | None) -> dict:
@@ -678,6 +754,58 @@ def _normalize_pricing_config(raw: dict | None) -> dict:
     return config
 
 
+def _normalize_settings_config(raw: dict | None) -> dict:
+    config = _clone_settings_defaults()
+    raw = raw or {}
+
+    raw_ops = raw.get("operations") if isinstance(raw.get("operations"), dict) else {}
+    for key, fallback in config["operations"].items():
+        config["operations"][key] = _safe_bool(raw_ops.get(key), fallback)
+
+    raw_hours = raw.get("opening_hours") if isinstance(raw.get("opening_hours"), dict) else {}
+    for bucket in ["weekdays", "weekend"]:
+        source = raw_hours.get(bucket) if isinstance(raw_hours.get(bucket), dict) else {}
+        config["opening_hours"][bucket] = {
+            "open": _safe_time(source.get("open"), config["opening_hours"][bucket]["open"]),
+            "close": _safe_time(source.get("close"), config["opening_hours"][bucket]["close"]),
+        }
+    config["opening_hours"]["special_note_de"] = str(raw_hours.get("special_note_de") or config["opening_hours"]["special_note_de"])
+    config["opening_hours"]["special_note_en"] = str(raw_hours.get("special_note_en") or config["opening_hours"]["special_note_en"])
+
+    raw_limits = raw.get("visitor_limits") if isinstance(raw.get("visitor_limits"), dict) else {}
+    config["visitor_limits"] = {
+        "max_guests_total": _safe_int(raw_limits.get("max_guests_total"), config["visitor_limits"]["max_guests_total"], 20, 5000),
+        "max_family_zone": _safe_int(raw_limits.get("max_family_zone"), config["visitor_limits"]["max_family_zone"], 0, 2000),
+        "max_spa_zone": _safe_int(raw_limits.get("max_spa_zone"), config["visitor_limits"]["max_spa_zone"], 0, 2000),
+        "warning_threshold_percent": _safe_int(raw_limits.get("warning_threshold_percent"), config["visitor_limits"]["warning_threshold_percent"], 50, 100),
+    }
+
+    raw_lockers = raw.get("locker_rules") if isinstance(raw.get("locker_rules"), dict) else {}
+    config["locker_rules"] = {
+        "auto_assign": _safe_bool(raw_lockers.get("auto_assign"), config["locker_rules"]["auto_assign"]),
+        "release_on_checkout": _safe_bool(raw_lockers.get("release_on_checkout"), config["locker_rules"]["release_on_checkout"]),
+        "allow_manual_open": _safe_bool(raw_lockers.get("allow_manual_open"), config["locker_rules"]["allow_manual_open"]),
+        "reservation_window_minutes": _safe_int(raw_lockers.get("reservation_window_minutes"), config["locker_rules"]["reservation_window_minutes"], 0, 240),
+        "hold_after_checkout_minutes": _safe_int(raw_lockers.get("hold_after_checkout_minutes"), config["locker_rules"]["hold_after_checkout_minutes"], 0, 180),
+    }
+
+    raw_checkin = raw.get("checkin_rules") if isinstance(raw.get("checkin_rules"), dict) else {}
+    config["checkin_rules"] = {
+        "grace_before_open_minutes": _safe_int(raw_checkin.get("grace_before_open_minutes"), config["checkin_rules"]["grace_before_open_minutes"], 0, 180),
+        "max_reentry_per_day": _safe_int(raw_checkin.get("max_reentry_per_day"), config["checkin_rules"]["max_reentry_per_day"], 0, 25),
+        "require_valid_exit_scan": _safe_bool(raw_checkin.get("require_valid_exit_scan"), config["checkin_rules"]["require_valid_exit_scan"]),
+        "evening_entry_from": _safe_time(raw_checkin.get("evening_entry_from"), config["checkin_rules"]["evening_entry_from"]),
+    }
+
+    raw_support = raw.get("support") if isinstance(raw.get("support"), dict) else {}
+    config["support"] = {
+        "desk_label": str(raw_support.get("desk_label") or config["support"]["desk_label"]),
+        "desk_phone": str(raw_support.get("desk_phone") or config["support"]["desk_phone"]),
+        "desk_email": str(raw_support.get("desk_email") or config["support"]["desk_email"]),
+    }
+    return config
+
+
 async def _ensure_pricing_config():
     existing = await db.pool_pricing_config.find_one({"facility_id": FACILITY_ID}, {"_id": 0})
     if existing:
@@ -688,6 +816,20 @@ async def _ensure_pricing_config():
     doc["facility_id"] = FACILITY_ID
     doc["updated_at"] = _now_iso()
     await db.pool_pricing_config.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+async def _ensure_settings_config():
+    existing = await db.pool_settings_config.find_one({"facility_id": FACILITY_ID}, {"_id": 0})
+    if existing:
+        normalized = _normalize_settings_config(existing)
+        normalized["facility_id"] = FACILITY_ID
+        return normalized
+    doc = _normalize_settings_config({})
+    doc["facility_id"] = FACILITY_ID
+    doc["updated_at"] = _now_iso()
+    await db.pool_settings_config.insert_one(doc)
     doc.pop("_id", None)
     return doc
 
@@ -1143,6 +1285,7 @@ async def get_pool_admin_dashboard(request: Request):
     await _ensure_lockers()
     hardware_config = await _ensure_hardware_config()
     pricing_config = await _ensure_pricing_config()
+    settings_config = await _ensure_settings_config()
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     recent_tickets = await db.pool_tickets.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("created_at", -1).limit(12).to_list(12)
     recent_access = await db.pool_access_events.find({"facility_id": FACILITY_ID}, {"_id": 0}).sort("created_at", -1).limit(12).to_list(12)
@@ -1161,6 +1304,7 @@ async def get_pool_admin_dashboard(request: Request):
         "extras": [_extra_payload(extra_id) for extra_id in POOL_EXTRAS],
         "snack_menu": [_snack_payload(menu_id) for menu_id in SNACK_MENU],
         "pricing_config": pricing_config,
+        "settings_config": settings_config,
         "access_points": POOL_ACCESS_POINTS,
         "metrics": {
             "ticket_revenue_today": _round_money(sum(doc.get("total_amount", 0) for doc in tickets_today)),
@@ -1207,9 +1351,11 @@ async def get_pool_hardware_config(request: Request):
 async def get_pool_pricing_config(request: Request):
     await _require_pool_staff(request)
     pricing_config = await _ensure_pricing_config()
+    settings_config = await _ensure_settings_config()
     return {
         "facility": FACILITY_INFO,
         "pricing_config": pricing_config,
+        "settings_config": settings_config,
         "extras": [_extra_payload(extra_id) for extra_id in POOL_EXTRAS],
         "access_points": POOL_ACCESS_POINTS,
     }
@@ -1224,6 +1370,27 @@ async def update_pool_pricing_config(req: PoolPricingConfigRequest, request: Req
     normalized["updated_by"] = str(user.get("_id"))
     await db.pool_pricing_config.update_one({"facility_id": FACILITY_ID}, {"$set": normalized}, upsert=True)
     return {"ok": True, "pricing_config": normalized}
+
+
+@router.get("/admin/settings/config")
+async def get_pool_settings_config(request: Request):
+    await _require_pool_staff(request)
+    settings_config = await _ensure_settings_config()
+    return {
+        "facility": FACILITY_INFO,
+        "settings_config": settings_config,
+    }
+
+
+@router.post("/admin/settings/config")
+async def update_pool_settings_config(req: PoolSettingsConfigRequest, request: Request):
+    user = await _require_pool_staff(request)
+    normalized = _normalize_settings_config(req.settings_config)
+    normalized["facility_id"] = FACILITY_ID
+    normalized["updated_at"] = _now_iso()
+    normalized["updated_by"] = str(user.get("_id"))
+    await db.pool_settings_config.update_one({"facility_id": FACILITY_ID}, {"$set": normalized}, upsert=True)
+    return {"ok": True, "settings_config": normalized}
 
 
 @router.post("/admin/hardware/config")
