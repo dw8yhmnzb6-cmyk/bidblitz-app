@@ -540,7 +540,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         {!isGuest && (
           <motion.button
             onClick={() => onNavigate("/mining-trust")}
-            className="sm:hidden mb-4 w-full rounded-[22px] border p-4 text-left"
+            className="sm:hidden mb-3.5 w-full rounded-[20px] border px-3.5 py-3 text-left"
             style={{
               background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(59,130,246,0.06) 55%, rgba(255,255,255,0.02))",
               borderColor: "rgba(245,158,11,0.16)",
@@ -548,22 +548,22 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             whileTap={{ scale: 0.985 }}
             data-testid="home-mining-trust-compact"
           >
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-400/15 bg-amber-500/10">
-                <Shield size={18} className="text-amber-300" />
+            <div className="flex items-start gap-2.5">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[16px] border border-amber-400/15 bg-amber-500/10">
+                <Shield size={16} className="text-amber-300" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200/90">
+                <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-200/90">
                   {miningTrustCopy.badge}
                 </div>
-                <div className="mt-1 text-[15px] font-bold leading-tight text-white">
+                <div className="mt-1 text-[14px] font-bold leading-tight text-white">
                   {miningTrustCopy.title}
                 </div>
-                <div className="mt-1 text-[11px] leading-relaxed text-white/65 line-clamp-2">
+                <div className="mt-1 text-[10px] leading-relaxed text-white/65 line-clamp-2">
                   {miningTrustCopy.subtitle}
                 </div>
-                <div className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-200">
-                  {miningTrustCopy.open} <ChevronRight size={14} />
+                <div className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-200">
+                  {miningTrustCopy.open} <ChevronRight size={13} />
                 </div>
               </div>
             </div>
@@ -572,13 +572,13 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── Tagline (nur für Gäste — angemeldete User sehen sofort den Wallet) ── */}
         {isGuest && (
-          <motion.div className="mb-6 lg:mb-8 lg:max-w-3xl" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
-            <h2 className="text-[20px] sm:text-[22px] lg:text-[40px] font-outfit font-bold text-white leading-[1.15] tracking-tight mb-1.5 break-words text-left">
+          <motion.div className="mb-5 lg:mb-8 lg:max-w-3xl" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
+            <h2 className="text-[18px] sm:text-[22px] lg:text-[40px] font-outfit font-bold text-white leading-[1.12] tracking-tight mb-1 break-words text-left">
               {t("home.tagline_1")}{" "}
               <span className="text-[#00C2FF]">{t("home.tagline_2")}</span>,{" "}
               <span className="text-[#00C2FF]">{t("home.tagline_3")}</span> {t("home.tagline_more")}
             </h2>
-            <p className="text-[12px] lg:text-[14px] text-[#333] font-medium max-w-2xl">{t("home.subtitle")}</p>
+            <p className="text-[11px] lg:text-[14px] text-[#333] font-medium max-w-2xl">{t("home.subtitle")}</p>
           </motion.div>
         )}
 
@@ -588,7 +588,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             {/* Hero Balance Card */}
             <motion.div
               data-testid="hero-balance-card"
-              className="rounded-[22px] p-5 mb-3 relative overflow-hidden"
+              className="rounded-[20px] px-4 py-4 mb-3 relative overflow-hidden"
               style={{ background: "linear-gradient(135deg, rgba(20,28,36,0.96) 0%, rgba(15,21,28,0.94) 52%, rgba(10,54,64,0.82) 100%)", border: "1px solid rgba(255,255,255,0.09)", boxShadow: "0 18px 36px rgba(0,0,0,0.24)", backdropFilter: "blur(24px)" }}
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
@@ -597,7 +597,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
               <motion.div className="absolute -top-16 -right-16 w-44 h-44 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(0,194,255,0.22) 0%, transparent 72%)" }} animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.18] to-transparent pointer-events-none" />
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
                     <Shield size={10} className="text-[#00C2FF]/50" />
                     <p className="text-[10px] text-white/55 font-semibold tracking-[0.12em] uppercase">{t("home.balance")}</p>
@@ -606,15 +606,15 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                     data-testid="balance-toggle-visibility"
                     whileTap={{ scale: 0.92 }}
                     onClick={() => setBalanceHidden(v => !v)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    className="w-6.5 h-6.5 rounded-full flex items-center justify-center"
                     style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
                   >
                     {balanceHidden ? <EyeOff size={12} className="text-white/65" /> : <Eye size={12} className="text-white/65" />}
                   </motion.button>
                 </div>
-                <motion.div className="flex items-baseline gap-1.5 mb-3 min-w-0 overflow-hidden" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
-                  <span className="text-[18px] sm:text-[24px] text-white/55 font-outfit font-light flex-shrink-0">{currency}</span>
-                  <span className="font-bold font-outfit text-[#F8FAFC] tracking-[-0.03em] leading-none truncate min-w-0 flex-1" style={{ fontSize: "clamp(28px, 9.2vw, 52px)", textShadow: "0 6px 24px rgba(0,0,0,0.24)" }}>
+                <motion.div className="flex items-baseline gap-1 mb-2.5 min-w-0 overflow-hidden" initial={{ opacity: 0, y: 10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.2, duration: 0.3 }}>
+                  <span className="text-[16px] sm:text-[24px] text-white/55 font-outfit font-light flex-shrink-0">{currency}</span>
+                  <span className="font-bold font-outfit text-[#F8FAFC] tracking-[-0.03em] leading-none truncate min-w-0 flex-1" style={{ fontSize: "clamp(25px, 8vw, 52px)", textShadow: "0 6px 24px rgba(0,0,0,0.24)" }}>
                     {balanceHidden ? "••••••" : displayBalance.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                   </span>
                 </motion.div>
@@ -642,7 +642,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             {/* Quick Actions Row */}
             <motion.div
               data-testid="home-quick-actions"
-              className="grid grid-cols-4 gap-2 mb-5"
+              className="grid grid-cols-4 gap-1.5 mb-4"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.18, ...slide }}
@@ -658,16 +658,16 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
                   data-testid={`quick-action-${a.id}`}
                   onClick={a.onClick}
                   whileTap={{ scale: 0.93 }}
-                  className="flex flex-col items-center gap-1.5 py-2.5 rounded-2xl"
+                  className="flex flex-col items-center gap-1 py-2 rounded-[18px]"
                   style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.22 + i * 0.04 }}
                 >
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${a.color}10`, border: `1px solid ${a.color}20` }}>
-                    <a.icon size={15} strokeWidth={1.8} style={{ color: a.color }} />
+                  <div className="w-8 h-8 rounded-[14px] flex items-center justify-center" style={{ background: `${a.color}10`, border: `1px solid ${a.color}20` }}>
+                    <a.icon size={14} strokeWidth={1.8} style={{ color: a.color }} />
                   </div>
-                  <span className="text-[10px] font-semibold text-white/92 font-outfit">{a.label}</span>
+                  <span className="text-[9px] font-semibold text-white/92 font-outfit">{a.label}</span>
                 </motion.button>
               ))}
             </motion.div>
@@ -690,14 +690,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── CTA Buttons (Gäste sehen Login/Register; eingeloggte User haben oben Quick-Actions) ── */}
         {isGuest ? (
-          <div className="mb-7 lg:mb-8 lg:max-w-xl">
-            <motion.button data-testid="cta-register-btn" className="w-full py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2 mb-2.5 relative overflow-hidden" style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, ...slide }} whileTap={{ scale: 0.96 }} onClick={onRegister}>
+          <div className="mb-6 lg:mb-8 lg:max-w-xl">
+            <motion.button data-testid="cta-register-btn" className="w-full py-[12px] rounded-[13px] bg-[#00C2FF] text-[#020202] font-semibold text-[12px] flex items-center justify-center gap-2 mb-2 relative overflow-hidden" style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, ...slide }} whileTap={{ scale: 0.96 }} onClick={onRegister}>
               <UserPlus size={15} strokeWidth={2} />
               {t("auth.create") || "Create Account"}
               <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }}><ChevronRight size={16} strokeWidth={2.5} /></motion.div>
             </motion.button>
-            <div className="flex gap-2.5 lg:grid lg:grid-cols-2">
-              <motion.button data-testid="cta-login-btn" className="flex-1 py-[12px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#fff" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, ...slide }} whileTap={{ scale: 0.96 }} onClick={onLogin}>
+            <div className="flex gap-2 lg:grid lg:grid-cols-2">
+              <motion.button data-testid="cta-login-btn" className="flex-1 py-[11px] rounded-[13px] font-semibold text-[12px] flex items-center justify-center gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#fff" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, ...slide }} whileTap={{ scale: 0.96 }} onClick={onLogin}>
                 <LogIn size={14} strokeWidth={2} />{t("auth.signin") || "Login"}
               </motion.button>
             </div>
