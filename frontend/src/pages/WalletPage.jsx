@@ -371,18 +371,18 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-3 relative z-10">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top,0px),20px)] pb-2.5 relative z-10 sm:px-5 sm:pt-[max(env(safe-area-inset-top,0px),24px)] sm:pb-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <motion.button
             data-testid="wallet-back-btn"
-            className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center"
+            className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center sm:h-10 sm:w-10"
             whileTap={{ scale: 0.88 }}
             onClick={() => onNavigate("/")}
           >
             <ArrowLeft size={15} strokeWidth={1.5} className="text-slate-600" />
           </motion.button>
           <motion.h1
-            className="text-[15px] font-semibold font-outfit text-slate-900 tracking-tight"
+            className="text-[14px] font-semibold font-outfit text-slate-900 tracking-tight sm:text-[15px]"
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.05 }}
@@ -393,7 +393,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
         <motion.button
           data-testid="toggle-balance-btn"
           onClick={() => setShowBalance(!showBalance)}
-          className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center"
+          className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center sm:h-10 sm:w-10"
           whileTap={{ scale: 0.88 }}
         >
           {showBalance
@@ -415,12 +415,12 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
       )}
 
       {/* Content - extra padding bottom for mobile nav */}
-      <div className="px-5 pb-40 sm:pb-8 relative z-10">
+      <div className="px-4 pb-40 sm:px-5 sm:pb-8 relative z-10">
         {!isGuest && <div className="pt-2 pb-1"><KYCBanner onNavigate={onNavigate} /></div>}
 
         {/* ── Balance Hero ── */}
         <motion.div
-          className="text-center pt-4 pb-4 px-3 sm:px-0 relative rounded-[28px] border border-white/80 shadow-[0_18px_50px_rgba(15,23,42,0.06)]"
+          className="text-center pt-3.5 pb-4 px-3 sm:px-0 relative rounded-[24px] border border-white/80 shadow-[0_18px_50px_rgba(15,23,42,0.06)] sm:rounded-[28px]"
           style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,252,0.94) 100%)" }}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -442,8 +442,8 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-baseline justify-center gap-1.5"
               >
-                <span className="text-[24px] text-slate-700 font-outfit font-light">{currency || "EUR"}</span>
-                <span className="text-[48px] font-bold font-outfit text-slate-700 tracking-[-0.03em] leading-none">
+                <span className="text-[20px] text-slate-700 font-outfit font-light sm:text-[24px]">{currency || "EUR"}</span>
+                <span className="text-[40px] font-bold font-outfit text-slate-700 tracking-[-0.03em] leading-none sm:text-[48px]">
                   &#8226;&#8226;&#8226;,&#8226;&#8226;
                 </span>
               </motion.div>
@@ -457,10 +457,10 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
               >
                 {showBalance ? (
                   <div className="flex items-baseline justify-center gap-1 px-2 max-w-full overflow-hidden">
-                    <span className="text-[18px] sm:text-[24px] text-slate-500 font-outfit font-light flex-shrink-0">{currency}</span>
+                    <span className="text-[16px] sm:text-[24px] text-slate-500 font-outfit font-light flex-shrink-0">{currency}</span>
                     <motion.span
                       className="font-bold font-outfit text-slate-900 tracking-[-0.03em] leading-none truncate min-w-0"
-                      style={{ fontSize: "clamp(28px, 9vw, 48px)" }}
+                      style={{ fontSize: "clamp(24px, 8vw, 48px)" }}
                       key={balance}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -470,7 +470,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
                     </motion.span>
                   </div>
                 ) : (
-                  <p className="font-bold font-outfit text-slate-900 tracking-[-0.03em] leading-none text-center" style={{ fontSize: "clamp(28px, 9vw, 48px)" }}>
+                  <p className="font-bold font-outfit text-slate-900 tracking-[-0.03em] leading-none text-center" style={{ fontSize: "clamp(24px, 8vw, 48px)" }}>
                     {currency}
                     <span className="text-slate-900">{"••••••"}</span>
                   </p>
@@ -510,7 +510,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
           <motion.button
             data-testid="primary-topup-btn"
             onClick={() => openWalletAction("topup")}
-            className="w-full py-4 mb-5 rounded-2xl text-[14px] font-bold flex items-center justify-center gap-2.5"
+            className="w-full py-3.5 mb-4 rounded-[18px] text-[13px] font-bold flex items-center justify-center gap-2 sm:py-4 sm:mb-5 sm:rounded-2xl sm:text-[14px] sm:gap-2.5"
             style={{
               background: "linear-gradient(135deg, #00C2FF 0%, #0090FF 100%)",
               boxShadow: "0 8px 32px rgba(0,194,255,0.25), inset 0 1px 0 rgba(255,255,255,0.2)",
@@ -527,7 +527,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
 
         {!isLoading && !isGuest && (
           <motion.div
-            className="mb-5 rounded-[28px] border p-4"
+            className="mb-4 rounded-[24px] border p-3.5 sm:mb-5 sm:rounded-[28px] sm:p-4"
             style={{
               background: "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,248,255,0.96) 100%)",
               borderColor: "rgba(0,194,255,0.12)",

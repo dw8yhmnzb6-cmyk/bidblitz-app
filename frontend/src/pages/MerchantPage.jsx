@@ -265,17 +265,17 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
       <motion.div className="absolute top-[-18%] left-1/2 -translate-x-1/2 w-[80vw] max-w-[480px] h-[80vw] max-h-[480px] rounded-full pointer-events-none" style={{ filter: "blur(140px)", background: "rgba(0,210,106,0.035)" }} />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-3 relative z-10">
-        <div className="flex items-center gap-3">
-          <motion.button data-testid="merchant-back-btn" className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/")}>
+      <div className="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top,0px),20px)] pb-2.5 relative z-10 sm:px-5 sm:pt-[max(env(safe-area-inset-top,0px),24px)] sm:pb-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <motion.button data-testid="merchant-back-btn" className="h-9 w-9 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center sm:h-10 sm:w-10" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/")}>
             <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
           </motion.button>
           <div>
-            <motion.h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>{t("merchant.dashboard")}</motion.h1>
-            <motion.p className="text-[10px] text-[#333] font-medium" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>{displayBusinessName}</motion.p>
+            <motion.h1 className="text-[14px] font-semibold font-outfit text-white tracking-tight sm:text-[15px]" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}>{t("merchant.dashboard")}</motion.h1>
+            <motion.p className="text-[9px] text-[#333] font-medium sm:text-[10px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>{displayBusinessName}</motion.p>
           </div>
         </div>
-        <motion.div className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}>
+        <motion.div className="h-9 w-9 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center sm:h-10 sm:w-10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}>
           <Store size={15} strokeWidth={1.5} className="text-[#00D26A]/60" />
         </motion.div>
       </div>
@@ -285,11 +285,11 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
         <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />
       )}
 
-      <div className="px-5 pb-8 relative z-10">
+      <div className="px-4 pb-8 relative z-10 sm:px-5">
 
         {/* ── Stripe Connect CTA ── */}
         <motion.button data-testid="merchant-stripe-connect-btn" onClick={() => onNavigate("/merchant-connect")}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-3"
+          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl mb-3"
           style={{ background: "rgba(0,224,255,0.03)", border: "1px solid rgba(0,224,255,0.06)" }}
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
           whileTap={{ scale: 0.98 }}>
@@ -297,8 +297,8 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
             <Shield size={13} className="text-[#00E0FF]" />
           </div>
           <div className="flex-1 text-left">
-            <p className="text-[11px] font-semibold text-white/70">{merchantConnectTitle}</p>
-            <p className="text-[8px] text-white/20">{merchantConnectDesc}</p>
+            <p className="text-[10px] font-semibold text-white/70 sm:text-[11px]">{merchantConnectTitle}</p>
+            <p className="text-[7px] text-white/20 sm:text-[8px]">{merchantConnectDesc}</p>
           </div>
           <ChevronRight size={12} className="text-white/15" />
         </motion.button>
@@ -310,13 +310,13 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
 
         {/* ── Earnings Hero ── */}
         <motion.div className="text-center pt-4 pb-5 relative" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06, ...slide }}>
-          <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase mb-3">{t("merchant.today")}</p>
+          <p className="text-[9px] text-[#3A3A3A] font-semibold tracking-[0.14em] uppercase mb-2.5 sm:text-[10px]">{t("merchant.today")}</p>
           <AnimatePresence mode="wait">
             {isLoading ? <Skeleton className="h-[48px] w-40 mx-auto" /> : (
               <motion.div initial={{ opacity: 0, y: 8, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 0.25 }}>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-[24px] text-[#2A2A2A] font-outfit font-light">&euro;</span>
-                  <motion.span className="text-[46px] font-bold font-outfit text-white tracking-[-0.03em] leading-none" key={stats.todayEarnings}
+                  <span className="text-[20px] text-[#2A2A2A] font-outfit font-light sm:text-[24px]">&euro;</span>
+                  <motion.span className="text-[40px] font-bold font-outfit text-white tracking-[-0.03em] leading-none sm:text-[46px]" key={stats.todayEarnings}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 200, damping: 20 }}>
                     {stats.todayEarnings.toLocaleString("de-DE", { minimumFractionDigits: 2 })}
                   </motion.span>
@@ -372,7 +372,7 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
         {isLoading ? (
           <div className="grid grid-cols-2 gap-2.5 mb-5">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[100px]" />)}</div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 mb-5">
+          <div className="grid grid-cols-2 gap-2 mb-4">
             <StatCard icon={CircleDollarSign} label={t("merchant.gross")} value={`\u20AC${(displayBalance.gross_earnings || stats.totalEarnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub={t("merchant.before_fees")} color="#00C2FF" delay={0.14} />
             <StatCard icon={Users} label={t("merchant.payments_today")} value={stats.todayPaymentCount.toString()} sub={t("common.today")} color="#A855F7" delay={0.18} />
             <StatCard icon={BarChart3} label={t("merchant.net")} value={`\u20AC${(displayBalance.total_earnings || 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })}`} sub={t("merchant.after_fees")} color="#00D26A" delay={0.22} />
@@ -401,16 +401,16 @@ export const MerchantPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, 
         </motion.div>
 
         {/* ── Action Buttons ── */}
-        <div className="flex gap-2.5 mb-5">
+        <div className="flex gap-2 mb-4">
           <motion.button data-testid="create-payment-btn"
-            className="flex-1 py-[13px] rounded-[14px] bg-[#00C2FF] text-[#020202] font-semibold text-[13px] flex items-center justify-center gap-2"
+            className="flex-1 py-[12px] rounded-[13px] bg-[#00C2FF] text-[#020202] font-semibold text-[12px] flex items-center justify-center gap-2 sm:py-[13px] sm:rounded-[14px] sm:text-[13px]"
             style={{ boxShadow: "0 4px 24px rgba(0,194,255,0.25)" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32, ...slide }}
             whileTap={{ scale: 0.96 }} onClick={() => effectiveDemoMode ? toast(t("merchant.create_payment"), { description: `${t("merchant.demo_prefix")}: ${t("merchant.demo_payment_simulated")}` }) : onNavigate("/scan")}>
             <Plus size={15} strokeWidth={2.5} />{t("merchant.create_payment")}
           </motion.button>
           <motion.button data-testid="request-payout-btn"
-            className="flex-1 py-[13px] rounded-[14px] font-semibold text-[13px] flex items-center justify-center gap-2"
+            className="flex-1 py-[12px] rounded-[13px] font-semibold text-[12px] flex items-center justify-center gap-2 sm:py-[13px] sm:rounded-[14px] sm:text-[13px]"
             style={{ background: "rgba(0,210,106,0.08)", border: "1px solid rgba(0,210,106,0.15)", color: "#00D26A" }}
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34, ...slide }}
             whileTap={{ scale: 0.96 }} onClick={() => (isGuest && !effectiveDemoMode) ? onAuthRequired(t("merchant.request_payout")) : effectiveDemoMode ? toast(t("merchant.payout"), { description: `${t("merchant.demo_prefix")}: ${t("merchant.demo_payout_simulated")}` }) : setShowPayout(true)}>

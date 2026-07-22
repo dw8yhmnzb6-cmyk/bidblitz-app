@@ -594,13 +594,13 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
     <motion.div data-testid="admin-page" className="min-h-screen relative" style={{ background: "#030303" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 pt-[max(env(safe-area-inset-top,0px),24px)] pb-3 relative z-10">
-        <motion.button data-testid="admin-back-btn" className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/")}>
+      <div className="flex items-center gap-2.5 px-4 pt-[max(env(safe-area-inset-top,0px),20px)] pb-2.5 relative z-10 sm:gap-3 sm:px-5 sm:pt-[max(env(safe-area-inset-top,0px),24px)] sm:pb-3">
+        <motion.button data-testid="admin-back-btn" className="h-9 w-9 rounded-full bg-white/[0.04] border border-white/[0.05] flex items-center justify-center sm:h-10 sm:w-10" whileTap={{ scale: 0.88 }} onClick={() => onNavigate("/")}>
           <ArrowLeft size={15} strokeWidth={1.5} className="text-white/50" />
         </motion.button>
         <div>
-          <h1 className="text-[15px] font-semibold font-outfit text-white tracking-tight">{t("admin.title")}</h1>
-          <p className="text-[10px] text-[#333] font-medium">{t("admin.subtitle")}</p>
+          <h1 className="text-[14px] font-semibold font-outfit text-white tracking-tight sm:text-[15px]">{t("admin.title")}</h1>
+          <p className="text-[9px] text-[#333] font-medium sm:text-[10px]">{t("admin.subtitle")}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {onToggleLayout && (
@@ -624,7 +624,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
 
       {/* Grid Menu Toggle */}
       {tab === "overview" && (
-        <div className="px-5 mb-4 relative z-10">
+        <div className="px-4 mb-3.5 relative z-10 sm:px-5 sm:mb-4">
           <motion.button 
             onClick={() => setShowGridMenu(!showGridMenu)}
             whileTap={{ scale: 0.95 }}
@@ -687,7 +687,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
 
       {/* Tab Bar - Compact Tabs for non-overview */}
       {tab !== "overview" && (
-        <div className="px-5 mb-4 relative z-10">
+        <div className="px-4 mb-3.5 relative z-10 sm:px-5 sm:mb-4">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {tabs.filter(tb => tb.id !== "overview").slice(0, 8).map((tb) => (
               <motion.button key={tb.id} onClick={() => tb.id === "biopay-audit" ? onNavigate("/admin/biopay-audit") : setTab(tb.id)} whileTap={{ scale: 0.95 }}
@@ -708,7 +708,7 @@ export const AdminPage = ({ onNavigate, defaultTab, layoutMode, onToggleLayout }
         </div>
       )}
 
-      <div className="px-5 pb-8 relative z-10">
+      <div className="px-4 pb-8 relative z-10 sm:px-5">
         {tab === "overview" && <AdminQuickCustomerIntelButton onClick={() => { setTab("customer-intelligence"); setShowGridMenu(false); }} />}
         {/* ── Error State ── */}
         {error && !loading && (
