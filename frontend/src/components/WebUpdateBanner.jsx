@@ -129,26 +129,27 @@ export default function WebUpdateBanner() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: -18, opacity: 0 }}
         transition={{ duration: 0.22 }}
-        className="fixed top-4 left-4 right-4 z-[140] mx-auto max-w-lg"
+        className="fixed top-3 left-3 right-3 z-[140] mx-auto max-w-lg sm:top-4 sm:left-4 sm:right-4"
         data-testid="web-update-banner"
       >
-        <div className="rounded-[22px] border border-[#00C2FF]/20 bg-[#061118]/95 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-xl">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#00C2FF]/14 text-[#00C2FF]">
-              <RefreshCw size={18} />
+        <div className="rounded-[18px] border border-[#00C2FF]/20 bg-[#061118]/95 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:rounded-[22px] sm:p-4">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#00C2FF]/14 text-[#00C2FF] sm:h-10 sm:w-10">
+              <RefreshCw size={16} className="sm:hidden" />
+              <RefreshCw size={18} className="hidden sm:block" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-white" data-testid="web-update-banner-title">
+              <p className="text-[12px] font-bold leading-tight text-white sm:text-sm" data-testid="web-update-banner-title">
                 Eine neue Version ist verfügbar.
               </p>
-              <p className="mt-1 text-xs text-white/70" data-testid="web-update-banner-subtitle">
+              <p className="mt-1 text-[10px] leading-snug text-white/70 sm:text-xs" data-testid="web-update-banner-subtitle">
                 Version {nextVersion || "neu"} ist bereit. Deine Anmeldung und wichtigen Einstellungen bleiben erhalten.
               </p>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-2 flex gap-1.5 sm:mt-3 sm:gap-2">
                 <button
                   type="button"
                   onClick={applyUpdate}
-                  className="rounded-full bg-[#00C2FF] px-4 py-2 text-xs font-bold text-black"
+                  className="rounded-full bg-[#00C2FF] px-3 py-1.5 text-[10px] font-bold text-black sm:px-4 sm:py-2 sm:text-xs"
                   data-testid="web-update-now-btn"
                 >
                   Jetzt aktualisieren
@@ -156,7 +157,7 @@ export default function WebUpdateBanner() {
                 <button
                   type="button"
                   onClick={() => setVisible(false)}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white/70"
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold text-white/70 sm:px-4 sm:py-2 sm:text-xs"
                   data-testid="web-update-later-btn"
                 >
                   Später
