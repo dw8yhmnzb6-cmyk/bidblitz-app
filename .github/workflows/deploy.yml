@@ -16,8 +16,6 @@ name: Deploy to IONOS Production
 
 on:
   push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:
@@ -26,7 +24,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy
+    name: Build, Verify & Conditional Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -35,6 +33,19 @@ jobs:
       VPS_FRONTEND_BUILD_DIR: /var/www/bidblitz/frontend/build
 
     steps:
+      - name: Decide run mode
+        id: run_mode
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] || [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "deploy_reason=live_deploy_allowed" >> "$GITHUB_OUTPUT"
+            echo "✅ Live-Deploy ist für diesen Run erlaubt (${GITHUB_EVENT_NAME} / ${GITHUB_REF_NAME})."
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "deploy_reason=branch_preflight_only" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ Branch-Run erkannt (${GITHUB_REF_NAME}) — es laufen Build + Tests, aber kein Live-Deploy."
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -97,6 +108,7 @@ jobs:
           PYTHONPATH=/app/backend DEMO_SEED=false pytest backend/tests/test_ci_smoke.py -q
 
       - name: Verify deployment secrets
+        if: steps.run_mode.outputs.should_deploy == 'true'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -117,11 +129,13 @@ jobs:
           echo "  VPS_PASSWORD:    [${#VPS_PASSWORD} chars]"
 
       - name: Install sshpass + rsync
+        if: steps.run_mode.outputs.should_deploy == 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq sshpass rsync
 
       - name: Backup remote build & rsync new build
+        if: steps.run_mode.outputs.should_deploy == 'true'
         env:
           SSHPASS: ${{ secrets.VPS_PASSWORD }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -165,6 +179,7 @@ jobs:
           $SSH "$VPS_USER@$VPS_HOST" "chmod +x /var/www/bidblitz/deploy/*.sh 2>/dev/null || true"
 
       - name: Sync MAPBOX_TOKEN into backend .env on VPS
+        if: steps.run_mode.outputs.should_deploy == 'true'
         uses: appleboy/ssh-action@v1.0.3
         env:
           MAPBOX_TOKEN_VALUE: ${{ secrets.PROD_REACT_APP_MAPBOX_TOKEN }}
@@ -195,6 +210,7 @@ jobs:
             fi
 
       - name: Install backend deps & restart services
+        if: steps.run_mode.outputs.should_deploy == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -279,16 +295,26 @@ jobs:
             ls -lh /var/www/bidblitz/frontend/build/static/js/main.*.js | head -1
             curl -fsS https://bidblitz.ae/ | grep -o 'bidblitz-build-version' | head -1
             python3 - <<'PY'
-import json
-from pathlib import Path
-v=Path('/tmp/bidblitz-live-version.json')
-if v.exists():
-    data=json.loads(v.read_text())
-    print('LIVE_BUILD_ID', data.get('build_id'))
-    print('LIVE_COMMIT', data.get('git_commit'))
-PY
+            import json
+            from pathlib import Path
+            v=Path('/tmp/bidblitz-live-version.json')
+            if v.exists():
+                data=json.loads(v.read_text())
+                print('LIVE_BUILD_ID', data.get('build_id'))
+                print('LIVE_COMMIT', data.get('git_commit'))
+            PY
+
+      - name: Branch run summary
+        if: steps.run_mode.outputs.should_deploy != 'true'
+        run: |
+          echo "::notice::Build + Smoke-Checks erfolgreich ausführbar. Live-Deploy wurde absichtlich übersprungen, weil dieser Push nicht auf main lief."
+          echo "::notice::Für echten Deploy: nach main mergen oder workflow_dispatch ausführen."
 
       - name: Deployment summary
         if: always()
         run: |
-          echo "::notice::Deploy finished. Verify https://bidblitz.ae"
+          if [ "${{ steps.run_mode.outputs.should_deploy }}" = "true" ]; then
+            echo "::notice::Deploy finished. Verify https://bidblitz.ae"
+          else
+            echo "::notice::Preflight finished without live deploy."
+          fi
