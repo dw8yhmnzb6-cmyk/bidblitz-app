@@ -88,9 +88,10 @@ export default function CookieBanner({ onNavigate }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="fixed inset-x-0 bottom-0 z-[10000] px-3 pb-3 pt-0 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[420px] sm:p-0"
+        className="fixed inset-x-0 z-[10000] px-3 pt-0 sm:inset-x-auto sm:right-4 sm:w-[420px] sm:p-0"
         style={{
-          paddingBottom: 'max(0.75rem, var(--app-cookie-banner-offset, calc(5rem + env(safe-area-inset-bottom, 0px))))',
+          bottom: 'var(--app-cookie-banner-offset, calc(6.75rem + env(safe-area-inset-bottom, 0px)))',
+          paddingBottom: '0.75rem',
           paddingLeft: 'max(0.75rem, calc(0.75rem + env(safe-area-inset-left, 0px)))',
           paddingRight: 'max(0.75rem, calc(0.75rem + env(safe-area-inset-right, 0px)))',
         }}
