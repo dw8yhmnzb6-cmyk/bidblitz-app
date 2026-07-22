@@ -399,22 +399,22 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
 
         {/* ── Header ── */}
         <motion.header
-          className="flex flex-wrap items-start justify-between gap-3 pt-[max(env(safe-area-inset-top,0px),24px)] pb-5 sm:flex-nowrap sm:items-center"
+          className="flex flex-wrap items-start justify-between gap-2.5 pt-[max(env(safe-area-inset-top,0px),20px)] pb-4 sm:flex-nowrap sm:items-center sm:gap-3 sm:pt-[max(env(safe-area-inset-top,0px),24px)] sm:pb-5"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.04, ...slide }}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3 pr-1 sm:pr-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-1 sm:gap-3 sm:pr-0">
             <motion.div className="relative" whileTap={{ scale: 0.95 }}>
-              <img src={user.avatar} alt="Profile" data-testid="user-avatar" className="w-11 h-11 rounded-full object-cover" style={{ border: "2px solid rgba(0,194,255,0.2)", boxShadow: "0 0 16px rgba(0,194,255,0.12)" }} />
-              {!isGuest && <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full" style={{ background: "#00D26A", border: "2px solid #030303", boxShadow: "0 0 6px rgba(0,210,106,0.5)" }} />}
+              <img src={user.avatar} alt="Profile" data-testid="user-avatar" className="h-10 w-10 rounded-full object-cover sm:h-11 sm:w-11" style={{ border: "2px solid rgba(0,194,255,0.2)", boxShadow: "0 0 16px rgba(0,194,255,0.12)" }} />
+              {!isGuest && <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3" style={{ background: "#00D26A", border: "2px solid #030303", boxShadow: "0 0 6px rgba(0,210,106,0.5)" }} />}
             </motion.div>
             <div className="min-w-0">
-              <p className="text-[10px] text-[#3A3A3A] font-semibold tracking-[0.1em] uppercase">{getGreeting()}</p>
-              <h2 className="truncate text-[16px] text-white font-semibold font-outfit tracking-tight">{isGuest ? "BidBlitz" : user.name}</h2>
+              <p className="text-[9px] text-[#3A3A3A] font-semibold tracking-[0.1em] uppercase sm:text-[10px]">{getGreeting()}</p>
+              <h2 className="truncate text-[15px] text-white font-semibold font-outfit tracking-tight sm:text-[16px]">{isGuest ? "BidBlitz" : user.name}</h2>
             </div>
           </div>
-          <div className="flex w-full items-center justify-end gap-2 self-start sm:w-auto sm:shrink-0 sm:self-center">
+          <div className="flex w-full items-center justify-end gap-1.5 self-start sm:w-auto sm:shrink-0 sm:self-center sm:gap-2">
             <ModeSwitcher onModeChange={(mode) => {
               if (mode === "kids") onNavigate("/kids");
               else if (mode === "merchant") onNavigate("/merchant-portal");
@@ -423,10 +423,10 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <LanguageSwitcher />
             {isGuest ? (
               <div className="flex shrink-0 items-center gap-1.5">
-                <motion.button data-testid="header-login-btn" className="px-3 py-[7px] rounded-full text-[10px] font-semibold font-outfit sm:px-3.5 sm:text-[11px]" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
+                <motion.button data-testid="header-login-btn" className="px-2.5 py-[6px] rounded-full text-[9px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onLogin}>
                   {t("auth.signin") || "Login"}
                 </motion.button>
-                <motion.button data-testid="header-register-btn" className="px-3 py-[7px] rounded-full text-[10px] font-semibold font-outfit sm:px-3.5 sm:text-[11px]" style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onRegister}>
+                <motion.button data-testid="header-register-btn" className="px-2.5 py-[6px] rounded-full text-[9px] font-semibold font-outfit sm:px-3.5 sm:py-[7px] sm:text-[11px]" style={{ background: "rgba(0,194,255,0.1)", border: "1px solid rgba(0,194,255,0.2)", color: "#00C2FF" }} whileTap={{ scale: 0.92 }} onClick={onRegister}>
                   {t("auth.create") || "Register"}
                 </motion.button>
               </div>
@@ -481,17 +481,17 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           {isGuest && !hintDismissed && !isDemoMode && (
             <motion.div
               data-testid="onboarding-hint"
-              className="rounded-[16px] px-4 py-3 mb-4 flex items-start gap-3 relative overflow-hidden"
+            className="rounded-[16px] px-3.5 py-2.5 mb-3.5 flex items-start gap-2.5 relative overflow-hidden"
               style={{ background: "rgba(0,194,255,0.04)", border: "1px solid rgba(0,194,255,0.08)" }}
               initial={{ opacity: 0, y: -10, height: 0, marginBottom: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto", marginBottom: 16 }}
               exit={{ opacity: 0, y: -10, height: 0, marginBottom: 0 }}
               transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.12)" }}>
-                <Sparkles size={14} className="text-[#00C2FF]" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(0,194,255,0.08)", border: "1px solid rgba(0,194,255,0.12)" }}>
+                <Sparkles size={13} className="text-[#00C2FF]" />
               </div>
-              <p className="text-[12px] text-[#888] font-medium leading-[1.5] flex-1 pt-1">{t("onboarding.hint")}</p>
+              <p className="text-[11px] text-[#888] font-medium leading-[1.45] flex-1 pt-0.5">{t("onboarding.hint")}</p>
               <motion.button data-testid="onboarding-hint-dismiss" className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "rgba(255,255,255,0.03)" }} whileTap={{ scale: 0.85 }} onClick={dismissHint}>
                 <X size={11} className="text-[#444]" />
               </motion.button>

@@ -97,7 +97,7 @@ export default function CookieBanner({ onNavigate }) {
         }}
         data-testid="cookie-banner"
       >
-        <div className={`mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#0A0A0F]/92 p-2 shadow-2xl backdrop-blur-md sm:max-w-none sm:p-5 ${showDetails ? 'max-h-[42vh] overflow-y-auto sm:max-h-none' : 'max-h-[5.4rem] overflow-hidden sm:max-h-none sm:overflow-visible'}`}>
+        <div className={`mx-auto max-w-3xl rounded-2xl border border-white/10 bg-[#0A0A0F]/92 p-1.5 shadow-2xl backdrop-blur-md sm:max-w-none sm:p-5 ${showDetails ? 'max-h-[42vh] overflow-y-auto sm:max-h-none' : 'max-h-[4.8rem] overflow-hidden sm:max-h-none sm:overflow-visible'}`}>
           {isCompactMobile && (
             <div className="sm:hidden" data-testid="cookie-banner-mobile-mini">
               <div className="flex items-center gap-1.5">
@@ -114,11 +114,11 @@ export default function CookieBanner({ onNavigate }) {
                 </div>
               </div>
 
-              <div className="mt-1 grid grid-cols-[0.8fr_1.2fr] gap-1">
+              <div className="mt-1 grid grid-cols-[0.78fr_1.22fr] gap-1">
                 <button
                   onClick={() => setShowDetails(true)}
                   data-testid="cookie-banner-customize"
-                  className="flex h-6 items-center justify-center gap-1 rounded-lg bg-white/6 px-2 py-1 text-[7px] font-semibold text-gray-200 hover:bg-white/10"
+                  className="flex h-5.5 items-center justify-center gap-1 rounded-lg bg-white/6 px-2 py-1 text-[6.5px] font-semibold text-gray-200 hover:bg-white/10"
                 >
                   <Settings size={9} />
                   {t('common.customize') || 'Anpassen'}
@@ -126,7 +126,7 @@ export default function CookieBanner({ onNavigate }) {
                 <button
                   onClick={() => accept('all')}
                   data-testid="cookie-banner-accept-all"
-                  className="h-6 rounded-lg bg-amber-500 px-2 py-1 text-[7px] font-bold text-black hover:bg-amber-600"
+                  className="h-5.5 rounded-lg bg-amber-500 px-2 py-1 text-[6.5px] font-bold text-black hover:bg-amber-600"
                 >
                   {t('cookie.accept_all') || 'Alle akzeptieren'}
                 </button>
