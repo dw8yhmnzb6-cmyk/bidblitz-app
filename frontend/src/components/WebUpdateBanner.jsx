@@ -37,6 +37,7 @@ export default function WebUpdateBanner() {
   const [visible, setVisible] = useState(false);
   const [nextVersion, setNextVersion] = useState("");
   const [waitingWorker, setWaitingWorker] = useState(null);
+  const [expandedMobile, setExpandedMobile] = useState(false);
 
   const currentVersion = useMemo(() => {
     if (typeof document === "undefined") return "";
@@ -52,6 +53,7 @@ export default function WebUpdateBanner() {
       if (cancelled) return;
       setNextVersion(version || "neu");
       setWaitingWorker(worker);
+      setExpandedMobile(false);
       setVisible(true);
     };
 
@@ -132,17 +134,33 @@ export default function WebUpdateBanner() {
         className="fixed top-3 left-3 right-3 z-[140] mx-auto max-w-lg sm:top-4 sm:left-4 sm:right-4"
         data-testid="web-update-banner"
       >
-        <div className="rounded-[18px] border border-[#00C2FF]/20 bg-[#061118]/95 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:rounded-[22px] sm:p-4">
+        <div className="rounded-[18px] border border-[#00C2FF]/20 bg-[#061118]/95 p-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:rounded-[22px] sm:p-4">
           <div className="flex items-start gap-2.5 sm:gap-3">
             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#00C2FF]/14 text-[#00C2FF] sm:h-10 sm:w-10">
               <RefreshCw size={16} className="sm:hidden" />
               <RefreshCw size={18} className="hidden sm:block" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-bold leading-tight text-white sm:text-sm" data-testid="web-update-banner-title">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[12px] font-bold leading-tight text-white sm:text-sm" data-testid="web-update-banner-title">
+                  Eine neue Version ist verfügbar.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setExpandedMobile((value) => !value)}
+                  className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-semibold text-white/65 sm:hidden"
+                  data-testid="web-update-mobile-toggle"
+                >
+                  {expandedMobile ? "Weniger" : "Mehr"}
+                </button>
+              </div>
+              <p className="mt-1 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-semibold text-white/50 sm:hidden" data-testid="web-update-banner-version-chip">
+                v{nextVersion || "neu"}
+              </p>
+              <p className="hidden text-[10px] leading-snug text-white/70 sm:block sm:text-xs" data-testid="web-update-banner-subtitle">
                 Eine neue Version ist verfügbar.
               </p>
-              <p className="mt-1 text-[10px] leading-snug text-white/70 sm:text-xs" data-testid="web-update-banner-subtitle">
+              <p className={`${expandedMobile ? "mt-1 block" : "hidden"} text-[10px] leading-snug text-white/70 sm:mt-1 sm:block sm:text-xs`} data-testid="web-update-banner-subtitle-long">
                 Version {nextVersion || "neu"} ist bereit. Deine Anmeldung und wichtigen Einstellungen bleiben erhalten.
               </p>
               <div className="mt-2 flex gap-1.5 sm:mt-3 sm:gap-2">
@@ -152,7 +170,8 @@ export default function WebUpdateBanner() {
                   className="rounded-full bg-[#00C2FF] px-3 py-1.5 text-[10px] font-bold text-black sm:px-4 sm:py-2 sm:text-xs"
                   data-testid="web-update-now-btn"
                 >
-                  Jetzt aktualisieren
+                  <span className="sm:hidden">Jetzt</span>
+                  <span className="hidden sm:inline">Jetzt aktualisieren</span>
                 </button>
                 <button
                   type="button"
