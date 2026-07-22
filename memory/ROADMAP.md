@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach GitHub-Deploy-Workflow-Fix — 22.07.2026
+- ✅ Gemeldeter GitHub-Fehler **`.github/workflows/deploy.yml: No jobs were run`** ist behoben.
+- ✅ `deploy.yml` triggert jetzt auf **alle Pushes**; Branch-Runs machen automatisch **Preflight only** (Build + ESLint + Backend-Smoke), während **`main`** und **`workflow_dispatch`** weiterhin den echten Live-Deploy-Pfad nutzen.
+- ✅ Verifiziert mit YAML-Check, Preview-Smoke und **Testing Agent Iteration 288 PASS**.
+- 🔴 Nächster echter Schritt bleibt: erfolgreichen GitHub-Deploy auf Live ausführen und danach `https://bidblitz.ae/api/system/version` plus Preview-vs-Production-Parität erneut prüfen.
+- 🟡 Danach den nächsten Produktpunkt **Telegram-Alarm als Monitoring-Backup** umsetzen.
+
 ## Status nach Audi-Ticketverkauf — 18.07.2026
 - 🔴 Production-Deployment-Blocker offen: Live ist weiterhin nicht auf dem freigegebenen Preview-Commit. Nächster realer Schritt ist der echte GitHub/VPS-Deploy mit anschließendem Re-Check von `/api/system/version`, neuem Update-Banner und entferntem AI-FAB.
 - 🟡 Danach sofort Live-Visual-Compare erneut ausführen, bis Preview und Production identisch sind.
