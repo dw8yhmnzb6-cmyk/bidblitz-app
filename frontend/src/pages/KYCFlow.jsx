@@ -50,6 +50,20 @@ function extractSubmitFeedback(detail) {
   return [];
 }
 
+const PREVIEW_OVERLAY_STYLES = {
+  error: { bg: "rgba(255,71,87,0.90)", text: "#fff", label: "Fehler" },
+  warning: { bg: "rgba(255,184,0,0.92)", text: "#111", label: "Hinweis" },
+  ok: { bg: "rgba(0,210,106,0.90)", text: "#04110A", label: "OK" },
+};
+
+function getPreviewOverlayMeta({ hasPreview, warnings = [], feedbackMessages = [], slotTone = "ok" }) {
+  if (!hasPreview) return null;
+  if (feedbackMessages.length) {
+    return slotTone === "error" ? PREVIEW_OVERLAY_STYLES.error : PREVIEW_OVERLAY_STYLES.ok;
+  }
+  return warnings.length ? PREVIEW_OVERLAY_STYLES.warning : PREVIEW_OVERLAY_STYLES.ok;
+}
+
 // ── Country list (most common — ISO 2 + label) ──
 const COUNTRIES = [
   { code: "DE", label: "Deutschland" },
@@ -291,6 +305,7 @@ export default function KYCFlow({ onBack, onComplete }) {
             key="review"
             form={form}
             previews={previews}
+          liveWarnings={liveWarnings}
             submitting={submitting}
             error={error}
           reviewFeedback={reviewFeedback}
@@ -485,6 +500,7 @@ function KYCUploadPage({ form, setForm, files, previews, liveWarnings, onFileSel
 
 function FileUpload({ slot, label, Icon, file, preview, warnings, onChange }) {
   const inputRef = useRef(null);
+  const overlayMeta = getPreviewOverlayMeta({ hasPreview: !!preview, warnings });
   return (
     <div className="mb-3">
       <input ref={inputRef} type="file" accept={KYC_ACCEPT_ATTR}
@@ -504,6 +520,15 @@ function FileUpload({ slot, label, Icon, file, preview, warnings, onChange }) {
         {preview ? (
           <div className="relative">
             <img src={preview} alt={label} className="w-full max-h-44 object-cover" />
+            {overlayMeta && (
+              <div
+                className="absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg"
+                style={{ background: overlayMeta.bg, color: overlayMeta.text }}
+                data-testid={`kyc-preview-overlay-${slot}`}
+              >
+                {overlayMeta.label}
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-3">
               <div className="flex items-center gap-2 text-white">
                 <CheckCircle2 size={14} className="text-[#00D26A]" />
@@ -551,7 +576,7 @@ function KYCReviewRow({ label, value }) {
   );
 }
 
-function KYCReviewPage({ form, previews, submitting, error, reviewFeedback, onBack, onSubmit, onRequestManualReview, manualReviewSubmitting }) {
+function KYCReviewPage({ form, previews, liveWarnings, submitting, error, reviewFeedback, onBack, onSubmit, onRequestManualReview, manualReviewSubmitting }) {
   const country = COUNTRIES.find((c) => c.code === form.country)?.label || form.country;
   const idType = { national_id: "Personalausweis", passport: "Reisepass", driver_license: "Führerschein" }[form.id_type] || form.id_type;
   const feedbackMessages = Array.isArray(reviewFeedback?.messages) ? reviewFeedback.messages.filter(Boolean) : [];
@@ -578,25 +603,42 @@ function KYCReviewPage({ form, previews, submitting, error, reviewFeedback, onBa
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
-        {["front", "back", "selfie"].map((slot) => (
-          <div
-            key={slot}
-            className="rounded-xl overflow-hidden aspect-square"
-            style={{
-              border: feedbackMessages.length > 0
-                ? `2px solid ${slotFeedbackMap[slot]?.tone === "error" ? "rgba(255,71,87,0.45)" : "rgba(0,210,106,0.30)"}`
-                : "1px solid rgba(255,255,255,0.10)",
-            }}
-          >
-            {previews[slot] ? (
-              <img src={previews[slot]} alt={slot} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-white/5">
-                <ImageIcon size={20} className="text-white/30" />
-              </div>
-            )}
-          </div>
-        ))}
+        {["front", "back", "selfie"].map((slot) => {
+          const overlayMeta = getPreviewOverlayMeta({
+            hasPreview: !!previews[slot],
+            warnings: liveWarnings?.[slot] || [],
+            feedbackMessages,
+            slotTone: slotFeedbackMap[slot]?.tone,
+          });
+          return (
+            <div
+              key={slot}
+              className="rounded-xl overflow-hidden aspect-square relative"
+              style={{
+                border: feedbackMessages.length > 0
+                  ? `2px solid ${slotFeedbackMap[slot]?.tone === "error" ? "rgba(255,71,87,0.45)" : "rgba(0,210,106,0.30)"}`
+                  : `2px solid ${(liveWarnings?.[slot] || []).length ? "rgba(255,184,0,0.35)" : "rgba(0,210,106,0.25)"}`,
+              }}
+            >
+              {previews[slot] ? (
+                <img src={previews[slot]} alt={slot} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-white/5">
+                  <ImageIcon size={20} className="text-white/30" />
+                </div>
+              )}
+              {overlayMeta && (
+                <div
+                  className="absolute right-2 top-2 rounded-full px-2 py-1 text-[9px] font-bold shadow-lg"
+                  style={{ background: overlayMeta.bg, color: overlayMeta.text }}
+                  data-testid={`kyc-review-preview-overlay-${slot}`}
+                >
+                  {overlayMeta.label}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="rounded-xl p-3 mb-4" style={{ background: "rgba(0,194,255,0.06)", border: "1px solid rgba(0,194,255,0.15)" }}>
