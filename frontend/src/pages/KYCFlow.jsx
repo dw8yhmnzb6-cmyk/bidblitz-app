@@ -15,6 +15,12 @@ import { KYC_ACCEPT_ATTR, getKycImageValidationMessage, isAlreadySubmittedKycErr
 const API = process.env.REACT_APP_BACKEND_URL;
 
 function normalizeSubmitError(detail) {
+  if (detail && Array.isArray(detail.user_feedback) && detail.user_feedback.length) {
+    return detail.user_feedback.filter(Boolean).join(" ");
+  }
+  if (detail && detail.detail && Array.isArray(detail.detail.user_feedback) && detail.detail.user_feedback.length) {
+    return detail.detail.user_feedback.filter(Boolean).join(" ");
+  }
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
     return detail.map((item) => {
@@ -30,6 +36,16 @@ function normalizeSubmitError(detail) {
   if (detail && typeof detail.message === "string") return detail.message;
   if (detail && typeof detail.msg === "string") return detail.msg;
   return "Übermittlung fehlgeschlagen";
+}
+
+function extractSubmitFeedback(detail) {
+  if (!detail) return [];
+  if (Array.isArray(detail?.user_feedback)) return detail.user_feedback.filter(Boolean);
+  if (Array.isArray(detail?.detail?.user_feedback)) return detail.detail.user_feedback.filter(Boolean);
+  if (typeof detail === "string") return [detail];
+  if (typeof detail?.message === "string") return [detail.message];
+  if (typeof detail?.detail === "string") return [detail.detail];
+  return [];
 }
 
 // ── Country list (most common — ISO 2 + label) ──
@@ -71,6 +87,7 @@ export default function KYCFlow({ onBack, onComplete }) {
   const [submitting, setSubmitting] = useState(false);
   const [manualReviewSubmitting, setManualReviewSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [reviewFeedback, setReviewFeedback] = useState(null);
 
   // On mount, load existing KYC status — show status page if already submitted
   useEffect(() => { loadStatus(); }, []);
@@ -107,6 +124,7 @@ export default function KYCFlow({ onBack, onComplete }) {
       return;
     }
     setError(null);
+    setReviewFeedback(null);
     setFiles((p) => ({ ...p, [slot]: f }));
     const url = URL.createObjectURL(f);
     setPreviews((p) => ({ ...p, [slot]: url }));
@@ -115,6 +133,7 @@ export default function KYCFlow({ onBack, onComplete }) {
   const submit = async () => {
     setSubmitting(true);
     setError(null);
+    setReviewFeedback(null);
     try {
       const fd = new FormData();
       fd.append("id_front", files.front);
@@ -134,12 +153,33 @@ export default function KYCFlow({ onBack, onComplete }) {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
-        let errMsg = normalizeSubmitError(d.detail);
+        const payload = d.detail || d.message || d;
+        const feedbackMessages = extractSubmitFeedback(d.detail || d);
+        const failedAttempts = Number(d.failed_attempts || d.detail?.failed_attempts || 0);
+        const canRequestManualReview = Boolean(d.can_request_manual_review || d.detail?.can_request_manual_review);
+        let errMsg = normalizeSubmitError(payload);
         if (isAlreadySubmittedKycError(errMsg)) {
           await loadStatus();
           setSubmitting(false);
           return;
         }
+        setReviewFeedback({
+          messages: feedbackMessages.length ? feedbackMessages : [errMsg],
+          failedAttempts,
+          canRequestManualReview,
+        });
+        setError(errMsg);
+        setSubmitting(false);
+        return;
+      }
+      if (d?.status === "rejected") {
+        const feedbackMessages = extractSubmitFeedback(d);
+        const errMsg = normalizeSubmitError(d);
+        setReviewFeedback({
+          messages: feedbackMessages.length ? feedbackMessages : [errMsg],
+          failedAttempts: Number(d.failed_attempts || 0),
+          canRequestManualReview: Boolean(d.can_request_manual_review),
+        });
         setError(errMsg);
         setSubmitting(false);
         return;
@@ -245,8 +285,11 @@ export default function KYCFlow({ onBack, onComplete }) {
             previews={previews}
             submitting={submitting}
             error={error}
+          reviewFeedback={reviewFeedback}
             onBack={() => setStage("upload")}
             onSubmit={submit}
+          onRequestManualReview={requestManualReview}
+          manualReviewSubmitting={manualReviewSubmitting}
           />
         )}
 
@@ -489,9 +532,12 @@ function KYCReviewRow({ label, value }) {
   );
 }
 
-function KYCReviewPage({ form, previews, submitting, error, onBack, onSubmit }) {
+function KYCReviewPage({ form, previews, submitting, error, reviewFeedback, onBack, onSubmit, onRequestManualReview, manualReviewSubmitting }) {
   const country = COUNTRIES.find((c) => c.code === form.country)?.label || form.country;
   const idType = { national_id: "Personalausweis", passport: "Reisepass", driver_license: "Führerschein" }[form.id_type] || form.id_type;
+  const feedbackMessages = Array.isArray(reviewFeedback?.messages) ? reviewFeedback.messages.filter(Boolean) : [];
+  const canRequestManualReview = !!reviewFeedback?.canRequestManualReview;
+  const failedAttempts = Number(reviewFeedback?.failedAttempts || 0);
 
   return (
     <motion.div data-testid="kyc-review-page"
@@ -536,6 +582,43 @@ function KYCReviewPage({ form, previews, submitting, error, onBack, onSubmit }) 
           className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 mb-4">
           <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-red-300">{error}</p>
+        </div>
+      )}
+
+      {feedbackMessages.length > 0 && (
+        <div data-testid="kyc-review-feedback-card" className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 mb-4">
+          <p className="text-[11px] font-bold text-red-300">Bitte diese Punkte korrigieren</p>
+          <ul className="mt-2 space-y-2">
+            {feedbackMessages.map((item, idx) => (
+              <li key={`${item}-${idx}`} className="flex items-start gap-2 text-xs text-red-200" data-testid={`kyc-review-feedback-item-${idx}`}>
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-300" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(feedbackMessages.length > 0 || canRequestManualReview) && (
+        <div data-testid="kyc-review-manual-review-card" className="rounded-xl bg-cyan-500/10 border border-cyan-400/20 p-3 mb-4">
+          <p className="text-[11px] font-bold text-cyan-300">Nächster Schritt</p>
+          <p className="mt-1 text-xs text-cyan-100/80">
+            {canRequestManualReview
+              ? `Du hast ${failedAttempts} von 2 automatischen Fehlversuchen erreicht. Du kannst jetzt direkt eine manuelle Prüfung anfordern.`
+              : "Korrigiere bitte die genannten Punkte und sende die Bilder danach erneut ab."}
+          </p>
+          {canRequestManualReview && (
+            <motion.button
+              type="button"
+              data-testid="kyc-review-manual-review-btn"
+              whileTap={{ scale: 0.97 }}
+              onClick={onRequestManualReview}
+              disabled={manualReviewSubmitting}
+              className="mt-3 w-full py-3 rounded-2xl bg-amber-300 text-black font-bold disabled:opacity-60"
+            >
+              {manualReviewSubmitting ? "Manuelle Prüfung wird angefordert…" : "Manuelle Prüfung anfordern"}
+            </motion.button>
+          )}
         </div>
       )}
 
