@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Admin-Nachupload & Live-Warnung — 23.07.2026
+- ✅ Admin kann jetzt **KYC-Notizen schreiben** und gezielt **Nachupload** anfordern.
+- ✅ Kunde sieht die **Admin-Hinweise** direkt im KYC-Status und in der Verification-Seite.
+- ✅ Vor dem Absenden erscheinen jetzt **Live-Bildwarnungen** bei dunklen oder niedrig aufgelösten Uploads.
+- ✅ Verifiziert mit **Testing Agent Iteration 292 PASS**.
+- 🔴 Live-Deploy auf `bidblitz.ae` bleibt weiterhin der nächste offene Schritt und braucht den echten GitHub-Run.
+
 ## Status nach KYC-Feedback-Ausbau — 23.07.2026
 - ✅ KYC zeigt jetzt **konkrete Fehlertexte** für Kunden statt generischem Fehlschlag.
 - ✅ Nach **2 Fehlversuchen** erscheint der Button **„Manuelle Prüfung anfordern“**.
