@@ -162,6 +162,7 @@ const VerificationPage = ({ onBack }) => {
   const failedAttempts = Number(data?.failed_attempts || 0);
   const canRequestManualReview = !!data?.can_request_manual_review;
   const manualReviewRequested = !!data?.manual_review_requested;
+  const adminRequestedReupload = !!data?.reupload_requested;
   const infoTone = submitFeedback?.tone === "error"
     ? { bg: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.14)", color: "#FF7C87", icon: AlertCircle }
     : submitFeedback?.tone === "success"
@@ -338,6 +339,13 @@ const VerificationPage = ({ onBack }) => {
                 {manualReviewSubmitting ? "Wird angefordert…" : "Manuelle Prüfung anfordern"}
               </button>
             )}
+          </motion.div>
+        )}
+
+        {adminRequestedReupload && (
+          <motion.div data-testid="verification-admin-reupload-card" className={`rounded-2xl p-4 ${glass}`} style={{ background: "rgba(255,184,0,0.06)", border: "1px solid rgba(255,184,0,0.16)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <p className="text-[11px] font-bold text-[#FFD166]">Admin hat einen Nachupload angefordert</p>
+            <p className="mt-2 text-[10px] leading-relaxed text-white/65">{data?.admin_note || data?.rejection_reason || "Bitte setze die Hinweise des Admins um und lade die Bilder erneut hoch."}</p>
           </motion.div>
         )}
 

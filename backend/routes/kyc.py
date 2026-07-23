@@ -88,6 +88,8 @@ class KYCStatusResponse(BaseModel):
     can_request_manual_review: Optional[bool] = False
     manual_review_requested: Optional[bool] = False
     manual_review_requested_at: Optional[str] = None
+    admin_note: Optional[str] = None
+    reupload_requested: Optional[bool] = False
     can_use_features: dict
 
 
@@ -256,6 +258,8 @@ async def get_kyc_status(request: Request):
         can_request_manual_review=_can_request_manual_review(int(user.get("kyc_failed_attempts", 0) or 0), bool(user.get("kyc_manual_review_requested"))),
         manual_review_requested=bool(user.get("kyc_manual_review_requested")),
         manual_review_requested_at=user.get("kyc_manual_review_requested_at"),
+        admin_note=user.get("kyc_admin_reason"),
+        reupload_requested=bool(user.get("kyc_reupload_requested")),
         can_use_features=_capabilities(capability_status),
     )
 
@@ -336,6 +340,8 @@ async def submit_kyc(
             "kyc_declared_country": (country or "").strip() or None,
             "kyc_declared_id_number": (id_number or "").strip() or None,
             "kyc_declared_address": (address or "").strip() or None,
+            "kyc_reupload_requested": False,
+            "kyc_admin_reason": None,
         }},
     )
 
@@ -368,6 +374,7 @@ async def submit_kyc(
         update["kyc_rejection_reason"] = None
         update["kyc_manual_review_requested"] = False
         update["kyc_manual_review_requested_at"] = None
+        update["kyc_reupload_requested"] = False
     elif decision == "rejected":
         update["kyc_verified"] = False
         update["kyc_reviewed_at"] = now
@@ -375,9 +382,11 @@ async def submit_kyc(
         update["kyc_rejection_reason"] = feedback["summary"] or verdict.get("fraud_signals") or "AI-Prüfung fehlgeschlagen"
         update["kyc_manual_review_requested"] = False
         update["kyc_manual_review_requested_at"] = None
+        update["kyc_reupload_requested"] = False
     else:
         update["kyc_verified"] = False
         update["kyc_rejection_reason"] = None
+        update["kyc_reupload_requested"] = False
 
     await db.users.update_one({"_id": user["_id"]}, {"$set": update})
 

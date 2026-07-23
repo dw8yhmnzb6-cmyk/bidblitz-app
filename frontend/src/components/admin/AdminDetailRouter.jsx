@@ -116,6 +116,7 @@ function UsersDetail({ data }) {
 
 function KycDetail({ data, setData }) {
   const [busyUserId, setBusyUserId] = useState(null);
+  const [notesByUser, setNotesByUser] = useState({});
 
   const handleDecision = async (userId, decision, reason) => {
     setBusyUserId(userId);
@@ -131,6 +132,8 @@ function KycDetail({ data, setData }) {
     }
     setBusyUserId(null);
   };
+
+  const getReason = (userId, fallback) => (notesByUser[userId] || "").trim() || fallback;
 
   return (
     <div className="space-y-2" data-testid="admin-detail-kyc">
@@ -163,10 +166,20 @@ function KycDetail({ data, setData }) {
               </ul>
             </div>
           )}
+          <div className="mt-3">
+            <label className="mb-1 block text-[10px] font-semibold text-gray-500">Admin-Notiz für Kunde / Nachupload</label>
+            <textarea
+              value={notesByUser[r.user_id] || ""}
+              onChange={(event) => setNotesByUser((prev) => ({ ...prev, [r.user_id]: event.target.value }))}
+              className="min-h-[76px] w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-700 outline-none focus:border-[#00C2FF]"
+              placeholder="Z. B. Vorderseite zu dunkel, bitte ohne Spiegelung und vollständiger hochladen."
+              data-testid={`admin-kyc-note-${r.user_id}`}
+            />
+          </div>
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              onClick={() => handleDecision(r.user_id, "approve", "Manuell durch Admin geprüft und freigeschaltet")}
+              onClick={() => handleDecision(r.user_id, "approve", getReason(r.user_id, "Manuell durch Admin geprüft und freigeschaltet"))}
               disabled={busyUserId === r.user_id}
               className="flex-1 rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-700 border border-emerald-200 disabled:opacity-50"
               data-testid={`admin-kyc-approve-${r.user_id}`}
@@ -175,7 +188,16 @@ function KycDetail({ data, setData }) {
             </button>
             <button
               type="button"
-              onClick={() => handleDecision(r.user_id, "reject", "Manuell geprüft: Bitte mit klareren, vollständigen Bildern erneut hochladen")}
+              onClick={() => handleDecision(r.user_id, "reupload", getReason(r.user_id, "Bitte die Bilder mit den Admin-Hinweisen erneut hochladen."))}
+              disabled={busyUserId === r.user_id}
+              className="flex-1 rounded-lg bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-700 border border-amber-200 disabled:opacity-50"
+              data-testid={`admin-kyc-reupload-${r.user_id}`}
+            >
+              {busyUserId === r.user_id ? "Prüft…" : "Nachupload"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDecision(r.user_id, "reject", getReason(r.user_id, "Manuell geprüft: Bitte mit klareren, vollständigen Bildern erneut hochladen"))}
               disabled={busyUserId === r.user_id}
               className="flex-1 rounded-lg bg-red-50 px-3 py-2 text-[10px] font-bold text-red-700 border border-red-200 disabled:opacity-50"
               data-testid={`admin-kyc-reject-${r.user_id}`}

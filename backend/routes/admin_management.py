@@ -212,7 +212,7 @@ class RoleRequest(BaseModel):
 
 
 class KYCDecisionRequest(BaseModel):
-    decision: str = Field(..., pattern="^(approve|reject)$")
+    decision: str = Field(..., pattern="^(approve|reject|reupload)$")
     reason: Optional[str] = "Admin manuelle KYC-Freischaltung"
 
 
@@ -235,6 +235,7 @@ async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, req
     admin = await _require_admin(request)
     now = datetime.now(timezone.utc).isoformat()
     approved = req.decision == "approve"
+    reupload = req.decision == "reupload"
     admin_id = str(admin.get("_id") or admin.get("id"))
     update = {
         "kyc_status": "approved" if approved else "rejected",
@@ -245,8 +246,14 @@ async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, req
         "kyc_manual_review_requested": False,
         "kyc_manual_review_requested_at": None,
         "kyc_manual_review_eligible": False,
+        "kyc_reupload_requested": reupload,
     }
-    if not approved:
+    if reupload:
+        update["kyc_rejection_reason"] = req.reason or "Bitte die Bilder mit den Admin-Hinweisen erneut hochladen"
+        update["kyc_failed_attempts"] = 0
+        update["kyc_user_feedback"] = [update["kyc_rejection_reason"]]
+        update["kyc_failure_reasons"] = []
+    elif not approved:
         update["kyc_rejection_reason"] = req.reason or "Von Admin abgelehnt"
     else:
         update["kyc_rejection_reason"] = None
@@ -255,7 +262,7 @@ async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, req
         raise HTTPException(404, "Kunde nicht gefunden")
     await db.kyc_reviews.update_many(
         {"user_id": user_id},
-        {"$set": {"status": update["kyc_status"], "reviewed_at": now, "reviewed_by": admin_id, "admin_reason": req.reason}},
+        {"$set": {"status": "reupload_requested" if reupload else update["kyc_status"], "reviewed_at": now, "reviewed_by": admin_id, "admin_reason": req.reason, "manual_review_requested": False}},
     )
     ip, ua = get_client_info(request)
     await log_audit(
@@ -266,7 +273,7 @@ async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, req
         user_agent=ua,
         details={"action": "manual_kyc_decision", "target_user_id": user_id, "decision": req.decision, "reason": req.reason},
     )
-    return {"ok": True, "user_id": user_id, "kyc_status": update["kyc_status"], "kyc_verified": approved}
+    return {"ok": True, "user_id": user_id, "kyc_status": update["kyc_status"], "kyc_verified": approved, "reupload_requested": reupload}
 
 
 class ResetPasswordRequest(BaseModel):

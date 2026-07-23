@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { KYC_ACCEPT_ATTR, getKycImageValidationMessage, isAlreadySubmittedKycError, isSupportedKycImage } from "../utils/kycUpload";
 import { KYCImageIssueGrid, buildKycSlotFeedback } from "../components/KYCImageIssueGrid";
+import { inspectKycImage } from "../utils/kycImageInspector";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -89,6 +90,7 @@ export default function KYCFlow({ onBack, onComplete }) {
   const [manualReviewSubmitting, setManualReviewSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [reviewFeedback, setReviewFeedback] = useState(null);
+  const [liveWarnings, setLiveWarnings] = useState({ front: [], back: [], selfie: [] });
 
   // On mount, load existing KYC status — show status page if already submitted
   useEffect(() => { loadStatus(); }, []);
@@ -113,7 +115,7 @@ export default function KYCFlow({ onBack, onComplete }) {
     }
   };
 
-  const onFileSelect = (slot) => (e) => {
+  const onFileSelect = (slot) => async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) {
@@ -129,6 +131,8 @@ export default function KYCFlow({ onBack, onComplete }) {
     setFiles((p) => ({ ...p, [slot]: f }));
     const url = URL.createObjectURL(f);
     setPreviews((p) => ({ ...p, [slot]: url }));
+    const warnings = await inspectKycImage(f);
+    setLiveWarnings((prev) => ({ ...prev, [slot]: warnings }));
   };
 
   const submit = async () => {
@@ -261,6 +265,7 @@ export default function KYCFlow({ onBack, onComplete }) {
             setForm={setForm}
             files={files}
             previews={previews}
+            liveWarnings={liveWarnings}
             onFileSelect={onFileSelect}
             error={error}
             setError={setError}
@@ -412,7 +417,7 @@ function KYCFormField({ form, setForm, label, icon: Icon, name, type = "text", p
   );
 }
 
-function KYCUploadPage({ form, setForm, files, previews, onFileSelect, error, setError, onContinue }) {
+function KYCUploadPage({ form, setForm, files, previews, liveWarnings, onFileSelect, error, setError, onContinue }) {
 
   return (
     <motion.div data-testid="kyc-upload-page"
@@ -452,6 +457,7 @@ function KYCUploadPage({ form, setForm, files, previews, onFileSelect, error, se
         <FileUpload
           key={slot} slot={slot} label={label} Icon={Icon}
           file={files[slot]} preview={previews[slot]}
+          warnings={liveWarnings?.[slot] || []}
           onChange={onFileSelect(slot)}
         />
       ))}
@@ -477,7 +483,7 @@ function KYCUploadPage({ form, setForm, files, previews, onFileSelect, error, se
   );
 }
 
-function FileUpload({ slot, label, Icon, file, preview, onChange }) {
+function FileUpload({ slot, label, Icon, file, preview, warnings, onChange }) {
   const inputRef = useRef(null);
   return (
     <div className="mb-3">
@@ -519,6 +525,16 @@ function FileUpload({ slot, label, Icon, file, preview, onChange }) {
           </div>
         )}
       </motion.button>
+      {!!warnings?.length && (
+        <div className="mt-2 rounded-xl border border-amber-400/20 bg-amber-300/10 px-3 py-2" data-testid={`kyc-live-warning-${slot}`}>
+          <p className="text-[10px] font-semibold text-amber-200">Sofort-Hinweis vor dem Absenden</p>
+          <ul className="mt-1 space-y-1">
+            {warnings.map((warning, index) => (
+              <li key={`${slot}-warning-${index}`} className="text-[10px] text-amber-100/85">• {warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -678,6 +694,7 @@ function KYCStatusPage({ status, onRetry, onBack, onRequestManualReview, manualR
   const failedAttempts = Number(status.failed_attempts || 0);
   const canRequestManualReview = !!status.can_request_manual_review;
   const manualReviewRequested = !!status.manual_review_requested;
+  const adminRequestedReupload = !!status.reupload_requested;
   const config = {
     approved: {
       icon: CheckCircle2, color: "#00D26A", bg: "rgba(0,210,106,0.10)", border: "rgba(0,210,106,0.25)",
@@ -752,6 +769,14 @@ function KYCStatusPage({ status, onRetry, onBack, onRequestManualReview, manualR
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {adminRequestedReupload && (
+        <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(255,184,0,0.08)", border: "1px solid rgba(255,184,0,0.20)" }} data-testid="kyc-admin-reupload-card">
+          <p className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Admin-Nachupload angefordert</p>
+          <p className="mt-2 text-sm font-bold text-white">Bitte diese Hinweise vor dem neuen Upload umsetzen</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/70">{status.admin_note || status.rejection_reason || "Ein Admin hat einen neuen Upload mit genauerem Foto angefordert."}</p>
         </div>
       )}
 
