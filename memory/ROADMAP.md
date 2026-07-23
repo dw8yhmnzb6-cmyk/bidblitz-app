@@ -1,5 +1,13 @@
 # BidBlitz — ROADMAP
 
+## Status nach KYC-Feedback-Ausbau — 23.07.2026
+- ✅ KYC zeigt jetzt **konkrete Fehlertexte** für Kunden statt generischem Fehlschlag.
+- ✅ Nach **2 Fehlversuchen** erscheint der Button **„Manuelle Prüfung anfordern“**.
+- ✅ Admin-KYC-Liste zeigt jetzt **Fehlversuche**, **konkrete Problemtexte** und **Freischalten / Ablehnen** direkt im Panel.
+- ✅ Verifiziert mit Backend-Selbsttest + **Testing Agent Iteration 289 PASS**.
+- 🔴 Nächster Schritt bleibt: echter GitHub-Deploy auf Live und danach Preview-vs-Production-Parität erneut prüfen.
+- 🟡 Danach: **Telegram-Alarm als Monitoring-Backup**.
+
 ## Status nach GitHub-Deploy-Workflow-Fix — 22.07.2026
 - ✅ Gemeldeter GitHub-Fehler **`.github/workflows/deploy.yml: No jobs were run`** ist behoben.
 - ✅ `deploy.yml` triggert jetzt auf **alle Pushes**; Branch-Runs machen automatisch **Preflight only** (Build + ESLint + Backend-Smoke), während **`main`** und **`workflow_dispatch`** weiterhin den echten Live-Deploy-Pfad nutzen.
