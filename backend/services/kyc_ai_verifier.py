@@ -41,6 +41,10 @@ Analysiere die Bilder und extrahiere die folgenden Felder. Antworte NUR in gült
   "back_matches_front": true/false,       // Gehören Vorder- und Rückseite zum gleichen Dokument?
   "selfie_holds_document": true/false,    // Hält die Person das Dokument tatsächlich?
   "face_match_confidence": 0-100,         // Übereinstimmung Selfie-Gesicht <-> ID-Foto
+  "front_issues": ["ok|too_high|too_low|too_close|too_far|cropped|tilted|blurry|glare|dark|text_unreadable"],
+  "back_issues": ["ok|too_high|too_low|too_close|too_far|cropped|tilted|blurry|glare|dark|text_unreadable|mrz_unreadable"],
+  "selfie_issues": ["ok|too_high|too_low|too_close|too_far|cropped|tilted|blurry|glare|dark|face_not_clear|document_not_visible|multiple_faces"],
+  "user_feedback": ["2-6 kurze deutsche Sätze, was konkret falsch ist und wie der Nutzer es korrigieren soll"],
   "liveness_signals": "Beschreibung in 1 Satz",
   "fraud_signals": "Bedenken in 1 Satz oder leerer String",
   "overall_confidence": 0-100,            // Gesamtbewertung
@@ -48,6 +52,7 @@ Analysiere die Bilder und extrahiere die folgenden Felder. Antworte NUR in gült
 }
 
 Sei streng aber fair. Wenn die Bilder zu unscharf sind, gib niedrige Quality-Werte. Wenn das Dokument abgelaufen ist, recommend "reject".
+Wenn etwas falsch aufgenommen wurde, benenne es konkret in `front_issues`, `back_issues`, `selfie_issues` und `user_feedback`, z. B. "Vorderseite zu hoch fotografiert", "Rückseite abgeschnitten", "Selfie zu dunkel".
 """
 
 

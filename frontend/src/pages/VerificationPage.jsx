@@ -22,6 +22,7 @@ const VerificationPage = ({ onBack }) => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [manualReviewSubmitting, setManualReviewSubmitting] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState(null);
   const [submitFeedback, setSubmitFeedback] = useState(null);
 
@@ -118,6 +119,23 @@ const VerificationPage = ({ onBack }) => {
     setUploading(false);
   };
 
+  const requestManualReview = async () => {
+    setManualReviewSubmitting(true);
+    setError("");
+    try {
+      const response = await api.requestKycManualReview();
+      setSubmitFeedback({
+        tone: "pending",
+        title: "Manuelle Prüfung angefordert",
+        message: response?.message || "Ein Admin prüft deine Unterlagen jetzt persönlich.",
+      });
+      await refreshStatus({ silent: true });
+    } catch (e) {
+      setError(e?.message || "Manuelle Prüfung konnte nicht angefordert werden");
+    }
+    setManualReviewSubmitting(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#040610" }}>
@@ -139,6 +157,10 @@ const VerificationPage = ({ onBack }) => {
     ? `Zuletzt aktualisiert: ${lastSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "Status wird geladen";
   const autoRefreshActive = ["pending", "submitted"].includes(status);
+  const detailedFeedback = Array.isArray(data?.user_feedback) ? data.user_feedback.filter(Boolean) : [];
+  const failedAttempts = Number(data?.failed_attempts || 0);
+  const canRequestManualReview = !!data?.can_request_manual_review;
+  const manualReviewRequested = !!data?.manual_review_requested;
   const infoTone = submitFeedback?.tone === "error"
     ? { bg: "rgba(255,71,87,0.06)", border: "1px solid rgba(255,71,87,0.14)", color: "#FF7C87", icon: AlertCircle }
     : submitFeedback?.tone === "success"
@@ -228,7 +250,7 @@ const VerificationPage = ({ onBack }) => {
           <motion.div className={`rounded-2xl p-4 text-center ${glass}`} style={{ background: "rgba(255,184,0,0.04)", border: "1px solid rgba(255,184,0,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Clock size={28} className="text-[#FFB800] mx-auto mb-2" />
             <p className="text-[13px] font-bold text-[#FFB800]">{t("verify.pending_title") || "Under Review"}</p>
-            <p className="text-[10px] text-white/30 mt-1">{t("verify.pending_desc") || "Your documents are being reviewed. This may take a few hours."}</p>
+            <p className="text-[10px] text-white/30 mt-1">{manualReviewRequested ? "Deine manuelle Prüfung läuft jetzt durch einen Admin." : (t("verify.pending_desc") || "Your documents are being reviewed. This may take a few hours.")}</p>
             <p className="text-[9px] text-white/15 mt-2">{t("verify.requested_role") || "Requested Role"}: <span className="text-[#00E0FF] font-bold">{requestedRole}</span></p>
           </motion.div>
         )}
@@ -262,6 +284,49 @@ const VerificationPage = ({ onBack }) => {
                 Neu hochladen
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {detailedFeedback.length > 0 && (
+          <motion.div data-testid="kyc-detailed-feedback-card" className={`rounded-2xl p-4 ${glass}`} style={{ background: "rgba(255,71,87,0.04)", border: "1px solid rgba(255,71,87,0.12)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <p className="text-[11px] font-bold text-[#FF7C87]">Was genau korrigiert werden muss</p>
+            <ul className="mt-3 space-y-2">
+              {detailedFeedback.map((item, index) => (
+                <li key={`${item}-${index}`} className="flex items-start gap-2 text-[11px] text-white/75" data-testid={`kyc-feedback-item-${index}`}>
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FF7C87]" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+
+        {(status === "rejected" || manualReviewRequested) && (
+          <motion.div data-testid="kyc-manual-review-card" className={`rounded-2xl p-4 ${glass}`} style={{ background: "rgba(0,224,255,0.03)", border: "1px solid rgba(0,224,255,0.1)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold text-[#00E0FF]">Manuelle Prüfung</p>
+                <p className="mt-1 text-[10px] text-white/55">{failedAttempts} von 2 automatischen Fehlversuchen erreicht.</p>
+              </div>
+              {manualReviewRequested && <span className="rounded-full bg-amber-400/10 px-3 py-1 text-[10px] font-bold text-amber-300">Admin prüft</span>}
+            </div>
+            <p className="mt-3 text-[10px] text-white/60">
+              {manualReviewRequested
+                ? "Deine Unterlagen liegen jetzt beim Admin-Team. Weitere Uploads sind aktuell nicht nötig."
+                : canRequestManualReview
+                  ? "Du kannst jetzt statt weiterer KI-Versuche eine persönliche Prüfung durch das Admin-Team anfordern."
+                  : "Falls die KI dich zweimal nicht sauber erkennt, wird der manuelle Prüf-Button automatisch freigeschaltet."}
+            </p>
+            {canRequestManualReview && !manualReviewRequested && (
+              <button
+                onClick={requestManualReview}
+                disabled={manualReviewSubmitting}
+                className="mt-3 w-full rounded-xl bg-[#FFB800] px-4 py-3 text-[11px] font-bold text-black disabled:opacity-60"
+                data-testid="kyc-request-manual-review-button"
+              >
+                {manualReviewSubmitting ? "Wird angefordert…" : "Manuelle Prüfung anfordern"}
+              </button>
+            )}
           </motion.div>
         )}
 

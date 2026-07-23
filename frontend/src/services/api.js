@@ -307,6 +307,7 @@ export const api = {
 
   // KYC
   getKycStatus: () => request("/api/kyc/status"),
+  requestKycManualReview: () => request("/api/kyc/manual-review/request", { method: "POST" }),
   submitKyc: (body) => request("/api/kyc/submit", { method: "POST", body }),
   submitKycFormData: (formData) => {
     return fetch(`${API_URL}/api/kyc/submit`, {

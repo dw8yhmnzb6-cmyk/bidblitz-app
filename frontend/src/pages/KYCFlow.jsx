@@ -69,6 +69,7 @@ export default function KYCFlow({ onBack, onComplete }) {
   const [files, setFiles] = useState({ front: null, back: null, selfie: null });
   const [previews, setPreviews] = useState({ front: null, back: null, selfie: null });
   const [submitting, setSubmitting] = useState(false);
+  const [manualReviewSubmitting, setManualReviewSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   // On mount, load existing KYC status — show status page if already submitted
@@ -155,6 +156,27 @@ export default function KYCFlow({ onBack, onComplete }) {
     setSubmitting(false);
   };
 
+  const requestManualReview = async () => {
+    setManualReviewSubmitting(true);
+    setError(null);
+    try {
+      const r = await fetch(`${API}/api/kyc/manual-review/request`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(normalizeSubmitError(d.detail || d.message));
+        setManualReviewSubmitting(false);
+        return;
+      }
+      await loadStatus();
+    } catch {
+      setError("Manuelle Prüfung konnte gerade nicht angefordert werden.");
+    }
+    setManualReviewSubmitting(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white" data-testid="kyc-flow">
       {/* Header */}
@@ -234,6 +256,8 @@ export default function KYCFlow({ onBack, onComplete }) {
             status={statusData}
             onRetry={() => { setStatusData(null); setStage("start"); }}
             onBack={onBack}
+            onRequestManualReview={requestManualReview}
+            manualReviewSubmitting={manualReviewSubmitting}
           />
         )}
       </AnimatePresence>
@@ -541,9 +565,13 @@ function KYCReviewPage({ form, previews, submitting, error, onBack, onSubmit }) 
 // ────────────────────────────────────────────────────────────────────────
 // Stage 4 — Status Page
 // ────────────────────────────────────────────────────────────────────────
-function KYCStatusPage({ status, onRetry, onBack }) {
+function KYCStatusPage({ status, onRetry, onBack, onRequestManualReview, manualReviewSubmitting }) {
   if (!status) return null;
   const s = status.kyc_status;
+  const feedbackList = Array.isArray(status.user_feedback) ? status.user_feedback.filter(Boolean) : [];
+  const failedAttempts = Number(status.failed_attempts || 0);
+  const canRequestManualReview = !!status.can_request_manual_review;
+  const manualReviewRequested = !!status.manual_review_requested;
   const config = {
     approved: {
       icon: CheckCircle2, color: "#00D26A", bg: "rgba(0,210,106,0.10)", border: "rgba(0,210,106,0.25)",
@@ -553,7 +581,9 @@ function KYCStatusPage({ status, onRetry, onBack }) {
     pending: {
       icon: Clock, color: "#FFB800", bg: "rgba(255,184,0,0.10)", border: "rgba(255,184,0,0.25)",
       title: "In Prüfung",
-      message: "Deine Verifizierung läuft. KI-Prüfung benötigt meist nur wenige Minuten — manuelle Prüfung bis zu 48h.",
+      message: manualReviewRequested
+        ? "Deine manuelle Prüfung wurde angefordert. Ein Admin prüft deine Unterlagen jetzt persönlich."
+        : "Deine Verifizierung läuft. KI-Prüfung benötigt meist nur wenige Minuten — manuelle Prüfung bis zu 48h.",
     },
     rejected: {
       icon: XCircle, color: "#FF4060", bg: "rgba(255,64,96,0.10)", border: "rgba(255,64,96,0.25)",
@@ -595,6 +625,40 @@ function KYCStatusPage({ status, onRetry, onBack }) {
       </div>
 
       {/* Capabilities matrix */}
+      {feedbackList.length > 0 && (
+        <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(255,71,87,0.05)", border: "1px solid rgba(255,71,87,0.16)" }} data-testid="kyc-detailed-feedback-card">
+          <p className="text-[10px] uppercase tracking-wider text-[#FF7C87] mb-3 font-semibold">Bitte genau so korrigieren</p>
+          <ul className="space-y-2">
+            {feedbackList.map((item, idx) => (
+              <li key={`${item}-${idx}`} className="text-xs text-white/80 flex items-start gap-2" data-testid={`kyc-feedback-item-${idx}`}>
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FF7C87]" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(s === "rejected" || manualReviewRequested) && (
+        <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(0,194,255,0.05)", border: "1px solid rgba(0,194,255,0.16)" }} data-testid="kyc-attempts-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[#00C2FF] font-semibold">Prüfstatus</p>
+              <p className="mt-1 text-sm font-bold text-white">{failedAttempts} von 2 automatischen Fehlversuchen</p>
+            </div>
+            {canRequestManualReview && <span className="rounded-full bg-[#00C2FF]/10 px-3 py-1 text-[10px] font-bold text-[#00C2FF]">Manuelle Prüfung verfügbar</span>}
+            {manualReviewRequested && <span className="rounded-full bg-amber-400/10 px-3 py-1 text-[10px] font-bold text-amber-300">Admin prüft jetzt</span>}
+          </div>
+          <p className="mt-2 text-xs text-white/65">
+            {manualReviewRequested
+              ? "Deine Unterlagen wurden in die Admin-Prüfliste gelegt."
+              : canRequestManualReview
+                ? "Du kannst jetzt statt weiterer KI-Versuche eine manuelle Prüfung durch das Admin-Team anfordern."
+                : "Bitte korrigiere zuerst die Punkte oben und lade die Bilder erneut hoch."}
+          </p>
+        </div>
+      )}
+
       {status.can_use_features && (
         <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
           <p className="text-[10px] uppercase tracking-wider text-white/40 mb-3 font-semibold">Freigeschaltete Funktionen</p>
@@ -610,19 +674,31 @@ function KYCStatusPage({ status, onRetry, onBack }) {
       {status.ai_confidence != null && (
         <div className="rounded-xl p-3 mb-5" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)" }}>
           <p className="text-[10px] uppercase tracking-wider text-[#A855F7] mb-1 font-semibold">KI-Konfidenz</p>
-          <p className="text-lg font-bold">{Math.round(status.ai_confidence * 100)}%</p>
+          <p className="text-lg font-bold">{Math.round(status.ai_confidence)}%</p>
         </div>
       )}
 
       <div className="flex gap-2">
         {s === "rejected" && (
-          <motion.button
-            data-testid="kyc-retry-btn"
-            whileTap={{ scale: 0.97 }}
-            onClick={onRetry}
-            className="flex-1 py-4 rounded-2xl bg-[#00C2FF] text-black font-bold flex items-center justify-center gap-2">
-            <RefreshCw size={16} /> Erneut versuchen
-          </motion.button>
+          <>
+            <motion.button
+              data-testid="kyc-retry-btn"
+              whileTap={{ scale: 0.97 }}
+              onClick={onRetry}
+              className="flex-1 py-4 rounded-2xl bg-[#00C2FF] text-black font-bold flex items-center justify-center gap-2">
+              <RefreshCw size={16} /> Erneut versuchen
+            </motion.button>
+            {canRequestManualReview && (
+              <motion.button
+                data-testid="kyc-manual-review-btn"
+                whileTap={{ scale: 0.97 }}
+                onClick={onRequestManualReview}
+                disabled={manualReviewSubmitting}
+                className="flex-1 py-4 rounded-2xl bg-amber-300 text-black font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+                {manualReviewSubmitting ? <><Loader2 size={16} className="animate-spin" /> Wird angefragt…</> : <>Manuelle Prüfung anfordern</>}
+              </motion.button>
+            )}
+          </>
         )}
         <motion.button
           data-testid="kyc-status-back"

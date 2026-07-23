@@ -2,6 +2,7 @@
  * Admin Detail Router — renders the right detail panel based on data.type.
  */
 import { motion } from "framer-motion";
+import { useState } from "react";
 import {
   AlertCircle, Bot, Check, Key, Loader2, Star, X, Zap,
 } from "lucide-react";
@@ -44,7 +45,7 @@ export default function AdminDetailRouter({ data, setData, loading, error, onNav
 
   switch (data.type) {
     case "users": return <UsersDetail data={data} />;
-    case "kyc": return <KycDetail data={data} />;
+    case "kyc": return <KycDetail data={data} setData={setData} />;
     case "roles": return <RolesDetail data={data} />;
     case "user_filter": return <UserFilterDetail data={data} />;
     case "form": return <FormDetail data={data} />;
@@ -113,7 +114,24 @@ function UsersDetail({ data }) {
   );
 }
 
-function KycDetail({ data }) {
+function KycDetail({ data, setData }) {
+  const [busyUserId, setBusyUserId] = useState(null);
+
+  const handleDecision = async (userId, decision, reason) => {
+    setBusyUserId(userId);
+    try {
+      await api(`/api/admin/customers/${encodeURIComponent(userId)}/kyc`, {
+        method: "POST",
+        body: JSON.stringify({ decision, reason }),
+      });
+      const nextRequests = (data.requests || []).filter((item) => item.user_id !== userId);
+      setData?.({ ...data, requests: nextRequests, total: nextRequests.length });
+    } catch (e) {
+      window.alert(e?.message || "KYC Entscheidung fehlgeschlagen");
+    }
+    setBusyUserId(null);
+  };
+
   return (
     <div className="space-y-2" data-testid="admin-detail-kyc">
       <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 mb-3">
@@ -122,15 +140,49 @@ function KycDetail({ data }) {
       {(data.requests || []).length === 0 ? (
         <div className="text-center py-10 text-gray-400 text-sm">Keine offenen KYC-Anträge</div>
       ) : (data.requests || []).map((r, i) => (
-        <div key={r.user_id || i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-gray-800 truncate">{r.user_name || r.name || r.user_email || r.email || "–"}</p>
-            <p className="text-[9px] text-gray-500 truncate">{r.user_email || r.email || "—"}</p>
-            <p className="text-[9px] text-gray-400 mt-1">Typ: {r.document_type || r.type || "KYC"}</p>
+        <div key={r.user_id || i} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-gray-800 truncate">{r.user_name || r.name || r.user_email || r.email || "–"}</p>
+              <p className="text-[9px] text-gray-500 truncate">{r.user_email || r.email || "—"}</p>
+              <p className="text-[9px] text-gray-400 mt-1">Typ: {r.document_type || r.type || "KYC"}</p>
+              <p className="text-[9px] text-gray-400 mt-1">Fehlversuche: {Number(r.failed_attempts || 0)}</p>
+              {r.manual_review_requested && <p className="text-[9px] mt-1 font-semibold text-amber-700">Manuelle Prüfung vom Nutzer angefordert</p>}
+            </div>
+            <span className={`text-[9px] px-2 py-0.5 rounded font-medium ${r.status === "pending" || r.status === "manual_review_requested" ? "bg-amber-100 text-amber-700" : r.status === "approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              {r.status || "pending"}
+            </span>
           </div>
-          <span className={`text-[9px] px-2 py-0.5 rounded font-medium ${r.status === "pending" ? "bg-amber-100 text-amber-700" : r.status === "approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-            {r.status || "pending"}
-          </span>
+          {(r.user_feedback || []).length > 0 && (
+            <div className="mt-3 rounded-lg bg-red-50 border border-red-100 p-2.5" data-testid={`admin-kyc-feedback-${r.user_id || i}`}>
+              <p className="text-[10px] font-semibold text-red-700">Konkret erkannte Probleme</p>
+              <ul className="mt-2 space-y-1">
+                {(r.user_feedback || []).map((item, idx) => (
+                  <li key={`${item}-${idx}`} className="text-[10px] text-red-600">• {item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleDecision(r.user_id, "approve", "Manuell durch Admin geprüft und freigeschaltet")}
+              disabled={busyUserId === r.user_id}
+              className="flex-1 rounded-lg bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-700 border border-emerald-200 disabled:opacity-50"
+              data-testid={`admin-kyc-approve-${r.user_id}`}
+            >
+              {busyUserId === r.user_id ? "Prüft…" : "Freischalten"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDecision(r.user_id, "reject", "Manuell geprüft: Bitte mit klareren, vollständigen Bildern erneut hochladen")}
+              disabled={busyUserId === r.user_id}
+              className="flex-1 rounded-lg bg-red-50 px-3 py-2 text-[10px] font-bold text-red-700 border border-red-200 disabled:opacity-50"
+              data-testid={`admin-kyc-reject-${r.user_id}`}
+            >
+              {busyUserId === r.user_id ? "Prüft…" : "Ablehnen"}
+            </button>
+          </div>
         </div>
       ))}
     </div>

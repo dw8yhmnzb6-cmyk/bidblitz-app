@@ -28,6 +28,49 @@ ALLOWED_DOC_TYPES = {"national_id", "passport", "driver_license", "drivers_licen
 
 UPLOAD_BASE = "/app/backend/uploads/kyc"
 os.makedirs(UPLOAD_BASE, exist_ok=True)
+MANUAL_REVIEW_THRESHOLD = 2
+
+ISSUE_MESSAGE_MAP = {
+    "front_too_high": "Die Vorderseite ist zu hoch fotografiert. Bitte mittig und vollständig aufnehmen.",
+    "front_too_low": "Die Vorderseite ist zu niedrig fotografiert. Bitte etwas höher und vollständig aufnehmen.",
+    "front_too_close": "Die Vorderseite ist zu nah am Rand. Bitte etwas mehr Abstand lassen.",
+    "front_too_far": "Die Vorderseite ist zu klein im Bild. Bitte näher herangehen.",
+    "front_cropped": "Die Vorderseite ist abgeschnitten. Alle vier Ecken müssen sichtbar sein.",
+    "front_tilted": "Die Vorderseite ist schief. Bitte den Ausweis gerade ausrichten.",
+    "front_blurry": "Die Vorderseite ist unscharf. Bitte das Foto ruhiger und schärfer aufnehmen.",
+    "front_glare": "Auf der Vorderseite gibt es Spiegelungen. Bitte ohne Blitz oder Reflexion neu fotografieren.",
+    "front_dark": "Die Vorderseite ist zu dunkel. Bitte bei besserem Licht neu fotografieren.",
+    "front_text_unreadable": "Die Schrift auf der Vorderseite ist nicht gut lesbar. Bitte das Foto schärfer aufnehmen.",
+    "back_too_high": "Die Rückseite ist zu hoch fotografiert. Bitte mittig und vollständig aufnehmen.",
+    "back_too_low": "Die Rückseite ist zu niedrig fotografiert. Bitte etwas höher und vollständig aufnehmen.",
+    "back_too_close": "Die Rückseite ist zu nah am Rand. Bitte etwas mehr Abstand lassen.",
+    "back_too_far": "Die Rückseite ist zu klein im Bild. Bitte näher herangehen.",
+    "back_cropped": "Die Rückseite ist abgeschnitten. Alle vier Ecken müssen sichtbar sein.",
+    "back_tilted": "Die Rückseite ist schief. Bitte den Ausweis gerade ausrichten.",
+    "back_blurry": "Die Rückseite ist unscharf. Bitte das Foto ruhiger und schärfer aufnehmen.",
+    "back_glare": "Auf der Rückseite gibt es Spiegelungen. Bitte ohne Blitz oder Reflexion neu fotografieren.",
+    "back_dark": "Die Rückseite ist zu dunkel. Bitte bei besserem Licht neu fotografieren.",
+    "back_text_unreadable": "Die Schrift auf der Rückseite ist nicht gut lesbar. Bitte das Foto schärfer aufnehmen.",
+    "back_mrz_unreadable": "Der maschinenlesbare Bereich auf der Rückseite ist nicht klar lesbar.",
+    "selfie_too_high": "Das Selfie ist zu hoch aufgenommen. Bitte Gesicht und Ausweis mittig halten.",
+    "selfie_too_low": "Das Selfie ist zu niedrig aufgenommen. Bitte Gesicht und Ausweis mittig halten.",
+    "selfie_too_close": "Das Selfie ist zu nah. Bitte etwas mehr Abstand lassen, damit Gesicht und Ausweis vollständig sichtbar sind.",
+    "selfie_too_far": "Das Selfie ist zu weit weg. Bitte näher herangehen, damit Gesicht und Ausweis klar sichtbar sind.",
+    "selfie_cropped": "Auf dem Selfie ist etwas abgeschnitten. Gesicht und Ausweis müssen vollständig sichtbar sein.",
+    "selfie_tilted": "Das Selfie ist schief. Bitte Kamera gerade halten.",
+    "selfie_blurry": "Das Selfie ist unscharf. Bitte ruhiger halten und neu aufnehmen.",
+    "selfie_glare": "Auf dem Selfie gibt es Spiegelungen auf dem Ausweis. Bitte ohne Reflexion neu aufnehmen.",
+    "selfie_dark": "Das Selfie ist zu dunkel. Bitte bei hellerem Licht neu aufnehmen.",
+    "selfie_face_not_clear": "Dein Gesicht ist auf dem Selfie nicht klar erkennbar.",
+    "selfie_document_not_visible": "Der Ausweis ist auf dem Selfie nicht klar sichtbar. Bitte den Ausweis neben dein Gesicht halten.",
+    "selfie_multiple_faces": "Auf dem Selfie wurden mehrere Gesichter erkannt. Bitte nur alleine im Bild sein.",
+    "document_not_real": "Das hochgeladene Dokument wirkt nicht wie ein gültiger amtlicher Ausweis.",
+    "document_expired": "Der Ausweis ist abgelaufen. Bitte ein gültiges Dokument hochladen.",
+    "document_mismatch": "Vorder- und Rückseite scheinen nicht zum gleichen Dokument zu gehören.",
+    "selfie_holds_document_failed": "Auf dem Selfie ist nicht klar erkennbar, dass du den Ausweis in der Hand hältst.",
+    "face_mismatch": "Das Selfie passt nicht ausreichend zum Foto auf dem Ausweis.",
+    "fraud_signal": "Die Prüfung hat Auffälligkeiten erkannt. Bitte verwende unveränderte Originalfotos.",
+}
 
 
 # ─── Models ──────────────────────────────────────────────────────
@@ -39,6 +82,12 @@ class KYCStatusResponse(BaseModel):
     reviewed_at: Optional[str] = None
     rejection_reason: Optional[str] = None
     ai_confidence: Optional[int] = None
+    failure_reasons: Optional[list[str]] = None
+    user_feedback: Optional[list[str]] = None
+    failed_attempts: Optional[int] = 0
+    can_request_manual_review: Optional[bool] = False
+    manual_review_requested: Optional[bool] = False
+    manual_review_requested_at: Optional[str] = None
     can_use_features: dict
 
 
@@ -99,12 +148,100 @@ def _normalize_kyc_status(user: dict) -> tuple[str, bool]:
     return raw_status, bool(user.get("kyc_verified"))
 
 
+def _as_issue_list(value) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return []
+
+
+def _normalize_issue_code(slot: str, code: str) -> str:
+    normalized = str(code or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if not normalized or normalized == "ok":
+        return ""
+    return normalized if normalized.startswith(f"{slot}_") else f"{slot}_{normalized}"
+
+
+def _push_feedback(failure_reasons: list[str], user_feedback: list[str], code: str, custom_message: Optional[str] = None):
+    if not code:
+        return
+    if code not in failure_reasons:
+        failure_reasons.append(code)
+    message = (custom_message or ISSUE_MESSAGE_MAP.get(code) or "").strip()
+    if message and message not in user_feedback:
+        user_feedback.append(message)
+
+
+def _build_feedback_from_verdict(verdict: dict) -> dict:
+    failure_reasons: list[str] = []
+    user_feedback: list[str] = []
+
+    for slot in ("front", "back", "selfie"):
+        for issue in _as_issue_list(verdict.get(f"{slot}_issues")):
+            _push_feedback(failure_reasons, user_feedback, _normalize_issue_code(slot, issue))
+
+    if not verdict.get("is_real_document", True):
+        _push_feedback(failure_reasons, user_feedback, "document_not_real")
+    if verdict.get("is_expired"):
+        _push_feedback(failure_reasons, user_feedback, "document_expired")
+    if verdict.get("back_matches_front") is False:
+        _push_feedback(failure_reasons, user_feedback, "document_mismatch")
+    if verdict.get("selfie_holds_document") is False:
+        _push_feedback(failure_reasons, user_feedback, "selfie_holds_document_failed")
+    if int(verdict.get("face_match_confidence", 0) or 0) < 50:
+        _push_feedback(failure_reasons, user_feedback, "face_mismatch")
+    if str(verdict.get("fraud_signals") or "").strip():
+        _push_feedback(failure_reasons, user_feedback, "fraud_signal")
+
+    if int(verdict.get("front_quality", 100) or 100) < 55 and not any(code.startswith("front_") for code in failure_reasons):
+        _push_feedback(failure_reasons, user_feedback, "front_blurry")
+    if int(verdict.get("back_quality", 100) or 100) < 55 and not any(code.startswith("back_") for code in failure_reasons):
+        _push_feedback(failure_reasons, user_feedback, "back_blurry")
+
+    for item in _as_issue_list(verdict.get("user_feedback")):
+        if item not in user_feedback:
+            user_feedback.append(item)
+
+    summary = user_feedback[0] if user_feedback else ""
+    return {
+        "failure_reasons": failure_reasons,
+        "user_feedback": user_feedback,
+        "summary": summary,
+    }
+
+
+def _next_failed_attempts(previous_failed_attempts: int, decision: str) -> int:
+    if decision == "rejected":
+        return previous_failed_attempts + 1
+    if decision == "approved":
+        return 0
+    return previous_failed_attempts
+
+
+def _can_request_manual_review(failed_attempts: int, manual_review_requested: bool) -> bool:
+    return failed_attempts >= MANUAL_REVIEW_THRESHOLD and not manual_review_requested
+
+
+def _capability_status_for_response(actual_status: str) -> str:
+    return "approved" if TEST_MODE else actual_status
+
+
+async def _get_raw_current_user(request: Request) -> dict:
+    auth_user = await get_current_user(request)
+    raw_user = await db.users.find_one({"_id": auth_user["_id"]})
+    if not raw_user:
+        raise HTTPException(status_code=401, detail="Benutzer nicht gefunden")
+    return raw_user
+
+
 # ─── Endpoints ───────────────────────────────────────────────────
 @router.get("/status", response_model=KYCStatusResponse)
 async def get_kyc_status(request: Request):
     """Get user's KYC verification status + capabilities."""
-    user = await get_current_user(request)
+    user = await _get_raw_current_user(request)
     kyc_status, kyc_verified = _normalize_kyc_status(user)
+    capability_status = _capability_status_for_response(kyc_status)
     return KYCStatusResponse(
         kyc_verified=kyc_verified,
         kyc_status=kyc_status,
@@ -113,7 +250,13 @@ async def get_kyc_status(request: Request):
         reviewed_at=user.get("kyc_reviewed_at"),
         rejection_reason=user.get("kyc_rejection_reason") if kyc_status == "rejected" else None,
         ai_confidence=user.get("kyc_ai_confidence"),
-        can_use_features=_capabilities(kyc_status),
+        failure_reasons=user.get("kyc_failure_reasons") or [],
+        user_feedback=user.get("kyc_user_feedback") or [],
+        failed_attempts=int(user.get("kyc_failed_attempts", 0) or 0),
+        can_request_manual_review=_can_request_manual_review(int(user.get("kyc_failed_attempts", 0) or 0), bool(user.get("kyc_manual_review_requested"))),
+        manual_review_requested=bool(user.get("kyc_manual_review_requested")),
+        manual_review_requested_at=user.get("kyc_manual_review_requested_at"),
+        can_use_features=_capabilities(capability_status),
     )
 
 
@@ -136,7 +279,7 @@ async def submit_kyc(
     Backend automatically runs Gemini Vision verification.
     Returns ai_verdict + final status (approved | pending | rejected).
     """
-    user = await get_current_user(request)
+    user = await _get_raw_current_user(request)
     user_id = str(user["_id"])
 
     if document_type == "driver_license":
@@ -199,8 +342,11 @@ async def submit_kyc(
     # Run AI verification
     verdict = await verify_id_documents(front_path, back_path, selfie_path)
     decision = auto_decision(verdict)
-    if decision == "rejected":
-        decision = "pending"
+    feedback = _build_feedback_from_verdict(verdict)
+    previous_failed_attempts = int(user.get("kyc_failed_attempts", 0) or 0)
+    failed_attempts = _next_failed_attempts(previous_failed_attempts, decision)
+    manual_review_requested = bool(user.get("kyc_manual_review_requested"))
+    can_request_manual_review = _can_request_manual_review(failed_attempts, manual_review_requested)
 
     update = {
         "kyc_ai_verdict": verdict,
@@ -210,16 +356,28 @@ async def submit_kyc(
         "kyc_extracted_dob": verdict.get("date_of_birth"),
         "kyc_extracted_doc_number": verdict.get("document_number"),
         "kyc_status": decision if decision != "pending" else "pending",
+        "kyc_failure_reasons": feedback["failure_reasons"],
+        "kyc_user_feedback": feedback["user_feedback"],
+        "kyc_failed_attempts": failed_attempts,
+        "kyc_manual_review_eligible": can_request_manual_review,
     }
     if decision == "approved":
         update["kyc_verified"] = True
         update["kyc_reviewed_at"] = now
         update["kyc_reviewed_by"] = "ai_auto"
+        update["kyc_rejection_reason"] = None
+        update["kyc_manual_review_requested"] = False
+        update["kyc_manual_review_requested_at"] = None
     elif decision == "rejected":
         update["kyc_verified"] = False
         update["kyc_reviewed_at"] = now
         update["kyc_reviewed_by"] = "ai_auto"
-        update["kyc_rejection_reason"] = verdict.get("fraud_signals") or "AI-Prüfung fehlgeschlagen"
+        update["kyc_rejection_reason"] = feedback["summary"] or verdict.get("fraud_signals") or "AI-Prüfung fehlgeschlagen"
+        update["kyc_manual_review_requested"] = False
+        update["kyc_manual_review_requested_at"] = None
+    else:
+        update["kyc_verified"] = False
+        update["kyc_rejection_reason"] = None
 
     await db.users.update_one({"_id": user["_id"]}, {"$set": update})
 
@@ -237,6 +395,11 @@ async def submit_kyc(
                 "selfie_path": selfie_path,
                 "status": decision,
                 "ai_verdict": verdict,
+                "failure_reasons": feedback["failure_reasons"],
+                "user_feedback": feedback["user_feedback"],
+                "failed_attempts": failed_attempts,
+                "manual_review_eligible": can_request_manual_review,
+                "manual_review_requested": False,
                 "submitted_at": now,
             }
         },
@@ -248,6 +411,11 @@ async def submit_kyc(
         "status": decision,
         "ai_confidence": verdict.get("overall_confidence", 0),
         "ai_recommendation": verdict.get("recommendation"),
+        "failure_reasons": feedback["failure_reasons"],
+        "user_feedback": feedback["user_feedback"],
+        "failed_attempts": failed_attempts,
+        "can_request_manual_review": can_request_manual_review,
+        "manual_review_requested": False,
         "extracted": {
             "name": verdict.get("full_name"),
             "date_of_birth": verdict.get("date_of_birth"),
@@ -256,9 +424,44 @@ async def submit_kyc(
         "message": (
             "Verifizierung erfolgreich!" if decision == "approved"
             else "Wir haben deine Dokumente erhalten und prüfen sie." if decision == "pending"
-            else "Wir haben deine Dokumente erhalten. Ein Admin kann dich jetzt manuell freischalten."
+            else "Bitte korrigiere die markierten Punkte und lade die Bilder erneut hoch."
         ),
-        "capabilities": _capabilities(decision if decision != "pending" else "pending"),
+        "capabilities": _capabilities(_capability_status_for_response(decision if decision != "pending" else "pending")),
+    }
+
+
+@router.post("/manual-review/request")
+async def request_manual_review(request: Request):
+    user = await _get_raw_current_user(request)
+    failed_attempts = int(user.get("kyc_failed_attempts", 0) or 0)
+    if user.get("kyc_status") != "rejected":
+        raise HTTPException(status_code=400, detail="Manuelle Prüfung ist erst nach einer abgelehnten automatischen Prüfung möglich.")
+    if failed_attempts < MANUAL_REVIEW_THRESHOLD:
+        raise HTTPException(status_code=400, detail=f"Manuelle Prüfung ist erst nach {MANUAL_REVIEW_THRESHOLD} Fehlversuchen möglich.")
+    if user.get("kyc_manual_review_requested"):
+        raise HTTPException(status_code=400, detail="Manuelle Prüfung wurde bereits angefordert.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    user_id = str(user["_id"])
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "kyc_status": "pending",
+            "kyc_verified": False,
+            "kyc_manual_review_requested": True,
+            "kyc_manual_review_requested_at": now,
+            "kyc_manual_review_eligible": False,
+        }},
+    )
+    await db.kyc_reviews.update_many(
+        {"user_id": user_id},
+        {"$set": {"manual_review_requested": True, "manual_review_requested_at": now, "status": "manual_review_requested"}},
+    )
+    return {
+        "ok": True,
+        "status": "pending",
+        "manual_review_requested": True,
+        "message": "Deine manuelle Prüfung wurde angefordert. Ein Admin prüft deine Unterlagen jetzt persönlich.",
     }
 
 
@@ -290,7 +493,12 @@ async def list_kyc_reviews(status: Optional[str] = None, limit: int = 100, reque
     admin = await get_current_user(request)
     if admin.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    query = {} if status in (None, "all") else {"status": status}
+    if status in (None, "all"):
+        query = {}
+    elif status == "pending":
+        query = {"status": {"$in": ["pending", "manual_review_requested"]}}
+    else:
+        query = {"status": status}
     reviews = await db.kyc_reviews.find(query, {"_id": 0}).sort("submitted_at", -1).limit(limit).to_list(limit)
     return {"reviews": reviews, "total": len(reviews)}
 
@@ -321,6 +529,9 @@ async def admin_decide(
         "kyc_verified": decision == "approve",
         "kyc_reviewed_at": now,
         "kyc_reviewed_by": str(admin["_id"]),
+        "kyc_manual_review_requested": False,
+        "kyc_manual_review_requested_at": None,
+        "kyc_manual_review_eligible": False,
     }
     if decision == "reject" and rejection_reason:
         update["kyc_rejection_reason"] = rejection_reason

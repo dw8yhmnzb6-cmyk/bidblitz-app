@@ -242,6 +242,9 @@ async def admin_customer_kyc_decision(user_id: str, req: KYCDecisionRequest, req
         "kyc_reviewed_at": now,
         "kyc_reviewed_by": admin_id,
         "kyc_admin_reason": req.reason,
+        "kyc_manual_review_requested": False,
+        "kyc_manual_review_requested_at": None,
+        "kyc_manual_review_eligible": False,
     }
     if not approved:
         update["kyc_rejection_reason"] = req.reason or "Von Admin abgelehnt"
