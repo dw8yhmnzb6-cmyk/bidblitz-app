@@ -7,6 +7,7 @@ import {
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
 import { KYC_ACCEPT_ATTR, getKycImageValidationMessage, isAlreadySubmittedKycError, isSupportedKycImage } from "../utils/kycUpload";
+import { KYCImageIssueGrid } from "../components/KYCImageIssueGrid";
 
 const glass = "backdrop-blur-xl";
 const panelBg = "rgba(8,12,20,0.7)";
@@ -284,6 +285,16 @@ const VerificationPage = ({ onBack }) => {
                 Neu hochladen
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {detailedFeedback.length > 0 && (
+          <motion.div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <KYCImageIssueGrid
+              failureReasons={data?.failure_reasons || []}
+              userFeedback={detailedFeedback}
+              dataTestidPrefix="verification-image-issue"
+            />
           </motion.div>
         )}
 

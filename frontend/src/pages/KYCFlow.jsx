@@ -11,6 +11,7 @@ import {
   CreditCard, FileText, User, Calendar, Globe, Hash,
 } from "lucide-react";
 import { KYC_ACCEPT_ATTR, getKycImageValidationMessage, isAlreadySubmittedKycError, isSupportedKycImage } from "../utils/kycUpload";
+import { KYCImageIssueGrid, buildKycSlotFeedback } from "../components/KYCImageIssueGrid";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -167,6 +168,7 @@ export default function KYCFlow({ onBack, onComplete }) {
           messages: feedbackMessages.length ? feedbackMessages : [errMsg],
           failedAttempts,
           canRequestManualReview,
+          failureReasons: d.failure_reasons || d.detail?.failure_reasons || [],
         });
         setError(errMsg);
         setSubmitting(false);
@@ -179,6 +181,7 @@ export default function KYCFlow({ onBack, onComplete }) {
           messages: feedbackMessages.length ? feedbackMessages : [errMsg],
           failedAttempts: Number(d.failed_attempts || 0),
           canRequestManualReview: Boolean(d.can_request_manual_review),
+          failureReasons: d.failure_reasons || [],
         });
         setError(errMsg);
         setSubmitting(false);
@@ -538,6 +541,8 @@ function KYCReviewPage({ form, previews, submitting, error, reviewFeedback, onBa
   const feedbackMessages = Array.isArray(reviewFeedback?.messages) ? reviewFeedback.messages.filter(Boolean) : [];
   const canRequestManualReview = !!reviewFeedback?.canRequestManualReview;
   const failedAttempts = Number(reviewFeedback?.failedAttempts || 0);
+  const slotFeedback = buildKycSlotFeedback(reviewFeedback?.failureReasons || [], feedbackMessages);
+  const slotFeedbackMap = Object.fromEntries(slotFeedback.map((item) => [item.id, item]));
 
   return (
     <motion.div data-testid="kyc-review-page"
@@ -558,7 +563,15 @@ function KYCReviewPage({ form, previews, submitting, error, reviewFeedback, onBa
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         {["front", "back", "selfie"].map((slot) => (
-          <div key={slot} className="rounded-xl overflow-hidden border border-white/10 aspect-square">
+          <div
+            key={slot}
+            className="rounded-xl overflow-hidden aspect-square"
+            style={{
+              border: feedbackMessages.length > 0
+                ? `2px solid ${slotFeedbackMap[slot]?.tone === "error" ? "rgba(255,71,87,0.45)" : "rgba(0,210,106,0.30)"}`
+                : "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
             {previews[slot] ? (
               <img src={previews[slot]} alt={slot} className="w-full h-full object-cover" />
             ) : (
@@ -582,6 +595,16 @@ function KYCReviewPage({ form, previews, submitting, error, reviewFeedback, onBa
           className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 mb-4">
           <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-red-300">{error}</p>
+        </div>
+      )}
+
+      {feedbackMessages.length > 0 && (
+        <div className="mb-4">
+          <KYCImageIssueGrid
+            failureReasons={reviewFeedback?.failureReasons || []}
+            userFeedback={feedbackMessages}
+            dataTestidPrefix="kyc-review-image-issue"
+          />
         </div>
       )}
 
@@ -708,6 +731,16 @@ function KYCStatusPage({ status, onRetry, onBack, onRequestManualReview, manualR
       </div>
 
       {/* Capabilities matrix */}
+      {(feedbackList.length > 0 || (status.failure_reasons || []).length > 0) && (
+        <div className="mb-5">
+          <KYCImageIssueGrid
+            failureReasons={status.failure_reasons || []}
+            userFeedback={feedbackList}
+            dataTestidPrefix="kyc-status-image-issue"
+          />
+        </div>
+      )}
+
       {feedbackList.length > 0 && (
         <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(255,71,87,0.05)", border: "1px solid rgba(255,71,87,0.16)" }} data-testid="kyc-detailed-feedback-card">
           <p className="text-[10px] uppercase tracking-wider text-[#FF7C87] mb-3 font-semibold">Bitte genau so korrigieren</p>
