@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "../store";
 import { getNativePlatform, isNativeApp } from "../services/capacitorBridge";
-import { KYC_REQUIRED, SHOW_KYC_GATE, TEST_MODE_FULL_ACCESS } from "../config/testMode";
+import { KYC_ENABLED, KYC_REQUIRED, SHOW_KYC_GATE, TEST_MODE_FULL_ACCESS } from "../config/testMode";
 
 const fallbackBuild = {
   build_id: process.env.REACT_APP_BUILD_ID || "unknown",
@@ -58,6 +58,8 @@ export const TestBuildDebugLine = () => {
         <span data-testid="debug-commit-hash">commit={(buildInfo.git_commit || "unknown").slice(0, 12)}</span>
         <span className="mx-2 text-white/30">•</span>
         <span data-testid="debug-environment">env={buildInfo.environment || "unknown"}</span>
+        <span className="mx-2 text-white/30">•</span>
+        <span data-testid="debug-kyc-enabled">KYC_ENABLED={String(KYC_ENABLED)}</span>
         <span className="mx-2 text-white/30">•</span>
         <span data-testid="debug-kyc-required">KYC_REQUIRED={String(KYC_REQUIRED)}</span>
         <span className="mx-2 text-white/30">•</span>

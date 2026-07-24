@@ -23,7 +23,7 @@ import FeatureGate from "../components/FeatureGate";
 import { PushNotificationToggle } from "../components/PushNotifications";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { filterStoreSafeItems } from "../config/release";
-import { KYC_DISABLED, SHOW_KYC_GATE } from "../config/testMode";
+import { KYC_DISABLED, SHOW_KYC_GATE, TEST_MODE_FULL_ACCESS } from "../config/testMode";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 const isRtlLanguage = (lang) => lang === "ar" || lang === "ar-AE";
@@ -738,6 +738,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       return <SettingsView onBack={() => setSubPage(null)} onNavigate={onNavigate} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
     }
     if (subPage === "kyc") {
+      if (TEST_MODE_FULL_ACCESS) {
+        return <SettingsView onBack={() => setSubPage(null)} onNavigate={onNavigate} t={t} locale={locale} setLocale={setLocale} onOpenPasswordChange={() => { setProfileOpenPw(true); setSubPage("profile"); }} />;
+      }
       onNavigate("/kyc");
       return null;
     }
@@ -777,7 +780,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "profile", icon: User, label: t("more.profile"), desc: t("more.profile_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("profile")) },
     { id: "notifications-settings", icon: Bell, label: t("more.push_notifications") || "Push-Benachrichtigungen", desc: t("more.push_notifications_desc") || "Echtzeit-Updates für SOS & mehr", color: "#FFB800", action: gatedAction(() => setSubPage("push-settings")) },
     { id: "cards", icon: CreditCard, label: t("more.payment_methods"), desc: t("more.cards_desc"), color: "#A855F7", action: gatedAction(() => {}) },
-    { id: "security", icon: Shield, label: t("more.security"), desc: t("more.security_desc"), color: "#00D26A", action: gatedAction(() => setSubPage("kyc")) },
+    { id: "security", icon: Shield, label: t("more.security"), desc: t("more.security_desc"), color: "#00D26A", action: gatedAction(() => setSubPage(TEST_MODE_FULL_ACCESS ? "settings" : "kyc")) },
   ];
 
   // Premium Finance Features

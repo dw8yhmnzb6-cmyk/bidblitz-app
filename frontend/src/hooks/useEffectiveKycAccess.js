@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TEST_MODE_FULL_ACCESS } from "../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -6,6 +7,11 @@ export function useEffectiveKycAccess({ isGuest, isDemoMode, user }) {
   const [serverApproved, setServerApproved] = useState(false);
 
   useEffect(() => {
+    if (TEST_MODE_FULL_ACCESS) {
+      setServerApproved(true);
+      return;
+    }
+
     if (isGuest || isDemoMode || !user?.isAuthenticated) {
       setServerApproved(false);
       return;

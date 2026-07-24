@@ -37,6 +37,13 @@ const KYCBanner = ({ onVerified, onNavigate }) => {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!SHOW_KYC_GATE) {
+      setStatus({ kyc_verified: true, _test_build_bypass: true });
+      setLoading(false);
+      setShowModal(false);
+    }
+  }, []);
 
   if (!SHOW_KYC_GATE) return null;
   if (loading || !status) return null;

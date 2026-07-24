@@ -14,6 +14,10 @@ if (!process.env.REACT_APP_TEST_MODE_FULL_ACCESS && (asEnabled(process.env.REACT
   process.env.REACT_APP_TEST_MODE_FULL_ACCESS = "true";
 }
 
+if (!process.env.REACT_APP_KYC_ENABLED && process.env.REACT_APP_TEST_MODE_FULL_ACCESS === "true") {
+  process.env.REACT_APP_KYC_ENABLED = "false";
+}
+
 if (!process.env.REACT_APP_KYC_REQUIRED && (process.env.REACT_APP_TEST_MODE_FULL_ACCESS === "true" || asEnabled(process.env.REACT_APP_DISABLE_KYC))) {
   process.env.REACT_APP_KYC_REQUIRED = "false";
 }
@@ -126,6 +130,7 @@ let webpackConfig = {
         new webpack.DefinePlugin({
           "process.env.REACT_APP_TEST_MODE": JSON.stringify(process.env.REACT_APP_TEST_MODE),
           "process.env.REACT_APP_TEST_MODE_FULL_ACCESS": JSON.stringify(process.env.REACT_APP_TEST_MODE_FULL_ACCESS),
+          "process.env.REACT_APP_KYC_ENABLED": JSON.stringify(process.env.REACT_APP_KYC_ENABLED),
           "process.env.REACT_APP_DISABLE_KYC": JSON.stringify(process.env.REACT_APP_DISABLE_KYC),
           "process.env.REACT_APP_KYC_REQUIRED": JSON.stringify(process.env.REACT_APP_KYC_REQUIRED),
           "process.env.REACT_APP_SHOW_KYC_GATE": JSON.stringify(process.env.REACT_APP_SHOW_KYC_GATE),

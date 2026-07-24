@@ -423,6 +423,7 @@ function AppContent() {
   }, [user.isAuthenticated, user.language, setLang]);
 
   const resolvePostAuthPath = useCallback(() => {
+    if (user.isAuthenticated && (TEST_MODE_FULL_ACCESS || KYC_DISABLED)) return "/";
     if (user.isAuthenticated && user.kyc_status === "pending") return "/";
     if (user.isAuthenticated && user.kyc_status === "rejected") return "/kyc";
     if (user.isAuthenticated && user.kyc_status === "not_started") return "/kyc";
@@ -448,7 +449,7 @@ function AppContent() {
         setShowFullAuth("");
         setIsDemoMode(false);
         if (currentPath === "/login" || currentPath === "/register") {
-          const nextPath = KYC_DISABLED ? "/" : user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
+          const nextPath = KYC_DISABLED || TEST_MODE_FULL_ACCESS ? "/" : user.kyc_status === "approved" ? "/" : user.kyc_status === "pending" ? "/" : "/kyc";
           syncBrowserPath(nextPath, "replace");
           setCurrentPath(nextPath);
         }
@@ -663,7 +664,7 @@ function AppContent() {
       case "/rewards":
         return <RewardsPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
       case "/verification":
-        return <VerificationPage onBack={() => handleNavigate("/more")} />;
+        return TEST_MODE_FULL_ACCESS ? <HomePage {...homeProps} /> : <VerificationPage onBack={() => handleNavigate("/more")} />;
       case "/merchant-dashboard":
         return <MerchantDashboardPage onBack={() => handleNavigate("/more")} />;
       case "/marketplace-dashboard":
@@ -761,7 +762,7 @@ function AppContent() {
           ? <AdminPage onNavigate={handleNavigate} />
           : <HomePage {...homeProps} />;
       case "/test/kyc":
-        return <KYCTestPage />;
+        return TEST_MODE_FULL_ACCESS ? <HomePage {...homeProps} /> : <KYCTestPage />;
       case "/kyc":
       case "/kyc/start":
       case "/profile/kyc":
@@ -770,7 +771,9 @@ function AppContent() {
       case "/kyc/status":
         return (isGuest && !isDemoMode)
           ? <HomePage {...homeProps} />
-          : <KYCFlow onBack={() => handleNavigate("/more")} onComplete={() => handleNavigate("/kyc/status")} />;
+          : TEST_MODE_FULL_ACCESS
+            ? <HomePage {...homeProps} />
+            : <KYCFlow onBack={() => handleNavigate("/more")} onComplete={() => handleNavigate("/kyc/status")} />;
       case "/blitz-transfer":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzTransferPage onNavigate={handleNavigate} onBack={() => handleNavigate("/more")} />;
       case "/blitz-boost":

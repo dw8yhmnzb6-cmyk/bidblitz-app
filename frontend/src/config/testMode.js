@@ -6,9 +6,10 @@ export const TEST_MODE_FULL_ACCESS =
   TEST_MODE ||
   isEnabled(process.env.REACT_APP_TEST_MODE_FULL_ACCESS) ||
   isEnabled(process.env.REACT_APP_DISABLE_KYC);
-export const KYC_REQUIRED = !TEST_MODE_FULL_ACCESS && !isExplicitFalse(process.env.REACT_APP_KYC_REQUIRED);
-export const SHOW_KYC_GATE = KYC_REQUIRED && !isExplicitFalse(process.env.REACT_APP_SHOW_KYC_GATE);
-export const KYC_DISABLED = !KYC_REQUIRED || TEST_MODE_FULL_ACCESS;
+export const KYC_ENABLED = !TEST_MODE_FULL_ACCESS && !isExplicitFalse(process.env.REACT_APP_KYC_ENABLED);
+export const KYC_REQUIRED = KYC_ENABLED && !isExplicitFalse(process.env.REACT_APP_KYC_REQUIRED);
+export const SHOW_KYC_GATE = KYC_ENABLED && KYC_REQUIRED && !isExplicitFalse(process.env.REACT_APP_SHOW_KYC_GATE);
+export const KYC_DISABLED = !KYC_ENABLED || !KYC_REQUIRED || TEST_MODE_FULL_ACCESS;
 export const SHOW_LIVE_CHECK_BANNER = !TEST_MODE_FULL_ACCESS && isEnabled(process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER);
 
 const TEST_MODE_USER_EMAILS = new Set([
