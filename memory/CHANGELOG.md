@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 24.07.2026 — GitHub Deploy-Workflow für IONOS stabilisiert
+- Nach Nutzer-Screenshot **"Deploy to IONOS Production: All jobs have failed"** wurde der aktuelle GitHub-Workflow geprüft. Der konkrete Workflow-Blocker lag nicht an Supervisor, sondern an einer inkonsistenten Frontend-Build-/Lint-Kette im Deploy-Workflow.
+- `.github/workflows/deploy.yml` wurde von gemischtem Yarn-/npm-Verhalten auf die stabile Root-Workspace-Kette umgestellt: **`actions/setup-node`** nutzt jetzt npm-Cache, danach läuft **`npm ci`** auf Root-Ebene, der Frontend-Build verwendet **`npm run build`**, und der Pre-Deployment-Lint nutzt **`npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"`**.
+- Dadurch entfällt die fehleranfällige `yarn install --frozen-lockfile`-Abhängigkeit im Deploy-Runner sowie der bereits historisch problematische Aufruf **`npx eslint src --ext .js,.jsx`**, der in GitHub Actions mit Dateimusterfehlern scheitern konnte.
+- Lokal verifiziert: **`npm ci` PASS**, **Frontend Production Build PASS** (mit nur bestehenden Warnings), **Workspace-ESLint PASS** (Warnings, kein Fatal-Error). Das behebt den akuten Workflow-Fehlerpfad für den IONOS-Deploy-Job.
+
 ## 24.07.2026 — Admin-Fehler nach Login in Analytics und Händlerverwaltung behoben
 - Die aktuelle Nutzer-Meldung **„Fehler“** wurde auf zwei echte Frontend-Crashes in Admin-Bereichen eingegrenzt: **`/admin/analytics`** brach mit **`Cannot read properties of undefined (reading 'total')`** und **`/admin/merchants`** mit **`Cannot read properties of undefined (reading 'toLowerCase')`**.
 - `frontend/src/pages/AdminAnalyticsPage.jsx` wurde auf die tatsächlich gelieferten Backend-Strukturen umgestellt. Die Seite liest jetzt **`/api/admin/analytics/overview`** plus **`/api/analytics/conversions`**, arbeitet mit sicheren Fallbacks und rendert Statistik-/Top-Event-/Feature-Karten ohne Undefined-Zugriffe.

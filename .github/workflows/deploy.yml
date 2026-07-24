@@ -53,6 +53,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install workspace dependencies
+        run: npm ci
 
       - name: Build frontend
         working-directory: frontend
@@ -79,29 +84,16 @@ jobs:
           REACT_APP_TEST_MODE=${REACT_APP_TEST_MODE}
           REACT_APP_BUILD_ID=${BUILD_ID}
           EOF
-          # Strict mode by default. If lockfile drifted (e.g. yarn add executed in
-          # pod but yarn.lock not pushed), fall back to a regenerating install so
-          # the deploy does not get blocked on a sync issue.
-          if [ -f yarn.lock ]; then
-            if ! yarn install --frozen-lockfile --network-timeout 600000; then
-              echo "::warning::yarn.lock drift detected — regenerating lockfile on the fly. Commit the updated frontend/yarn.lock to silence this warning."
-              yarn install --network-timeout 600000
-            fi
-          else
-            echo "::warning::frontend/yarn.lock missing — running yarn install without lockfile"
-            yarn install --network-timeout 600000
-          fi
           perl -0pi -e 's/%REACT_APP_BUILD_ID%/'"${BUILD_ID}"'/g' public/index.html
-          yarn build
+          npm run build
           test ! -f build/version.json || cat build/version.json
           if grep -R "localhost" build/static/js; then echo "::error::localhost URL found in build"; exit 1; fi
           if grep -R "preview.emergentagent.com" build/static/js; then echo "::error::preview domain leaked into production build"; exit 1; fi
           ls -lh build/static/js/main.*.js | head -1
 
       - name: Pre-deployment frontend smoke checks
-        working-directory: frontend
         run: |
-          npx eslint src --ext .js,.jsx
+          npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
 
       - name: Pre-deployment backend smoke checks
         run: |
