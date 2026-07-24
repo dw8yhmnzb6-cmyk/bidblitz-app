@@ -1,0 +1,134 @@
+{
+  "summary": "BidBlitz iOS KYC Native Build Fix Verification - ALL CODE FIXES VERIFIED. Confirmed: (1) .env.production now has full KYC-off flags, (2) ios-prepare.js and ios-sync-web-assets.js propagate all KYC flags, (3) PWAInstallPrompt and WebUpdateBanner disabled for native app via isNativeApp() check, (4) iOS bundle version.json shows latest build ba8ef25-20260724182339, (5) Capacitor configs have no server.url override, (6) Preview frontend shows NO KYC restricted texts for reviewer user.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_299.json",
+    "/.screenshots/kyc_fix_verification.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: frontend/.env.production now has REACT_APP_DISABLE_KYC=true, REACT_APP_KYC_ENABLED=false, REACT_APP_KYC_REQUIRED=false, REACT_APP_SHOW_KYC_GATE=false, REACT_APP_TEST_MODE=true, REACT_APP_TEST_MODE_FULL_ACCESS=true",
+    "VERIFIED: ios-prepare.js (lines 22-61) propagates all KYC flags: TEST_MODE, TEST_MODE_FULL_ACCESS, DISABLE_KYC, KYC_ENABLED, KYC_REQUIRED, SHOW_KYC_GATE, SHOW_LIVE_CHECK_BANNER",
+    "VERIFIED: ios-sync-web-assets.js (lines 22-56) propagates all KYC flags identically",
+    "VERIFIED: PWAInstallPrompt.jsx line 17 returns early if isNativeApp() - PWA prompt disabled for native",
+    "VERIFIED: WebUpdateBanner.jsx lines 49 and 127 return null/undefined if isNativeApp() - update banner disabled for native",
+    "VERIFIED: iOS bundle /app/ios/App/App/public/version.json has build_id ba8ef25-20260724182339 matching frontend/build/version.json",
+    "VERIFIED: Capacitor configs have no server.url override - iOS loads local bundled assets",
+    "VERIFIED: KYC restricted texts (Vor Verifizierung, Zugriff bewusst reduziert, KYC Starten, Identität verifizieren, Erlaubte Bereiche öffnen, Status prüfen) exist in HomePage.jsx lines 1000-1025 but are ONLY rendered when showKycRestrictedExperience=true, which evaluates to FALSE with current flags"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A - Frontend only testing",
+    "frontend": "100%"
+  },
+  "test_credentials": "reviewer@bidblitz.ae / BidBlitzReview2026!",
+  "seed_data_creation": "N/A",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iOS native build KYC fix verified. The user's uploaded iPhone video showing old KYC texts is from an OLDER installed native build. Current code and build path are FIXED. KYC restricted texts exist in bundle/translations but are NOT rendered in current active flows due to flag system (SHOW_KYC_GATE=false). User needs to install the NEW native build (ba8ef25-20260724182339) to see the fix.",
+  "verification_details": {
+    "env_production_kyc_flags": {
+      "REACT_APP_DISABLE_KYC": "true",
+      "REACT_APP_KYC_ENABLED": "false",
+      "REACT_APP_KYC_REQUIRED": "false",
+      "REACT_APP_SHOW_KYC_GATE": "false",
+      "REACT_APP_TEST_MODE": "true",
+      "REACT_APP_TEST_MODE_FULL_ACCESS": "true",
+      "REACT_APP_ENABLE_IN_APP_UPDATES": "false",
+      "status": "PASS - All KYC-off flags present in .env.production"
+    },
+    "ios_prepare_script_flags": {
+      "propagates_TEST_MODE": true,
+      "propagates_TEST_MODE_FULL_ACCESS": true,
+      "propagates_DISABLE_KYC": true,
+      "propagates_KYC_ENABLED": true,
+      "propagates_KYC_REQUIRED": true,
+      "propagates_SHOW_KYC_GATE": true,
+      "propagates_SHOW_LIVE_CHECK_BANNER": true,
+      "runs_from_repo_root": true,
+      "status": "PASS - All KYC flags propagated"
+    },
+    "ios_sync_script_flags": {
+      "propagates_TEST_MODE": true,
+      "propagates_TEST_MODE_FULL_ACCESS": true,
+      "propagates_DISABLE_KYC": true,
+      "propagates_KYC_ENABLED": true,
+      "propagates_KYC_REQUIRED": true,
+      "propagates_SHOW_KYC_GATE": true,
+      "propagates_SHOW_LIVE_CHECK_BANNER": true,
+      "status": "PASS - All KYC flags propagated"
+    },
+    "native_overlay_behavior": {
+      "PWAInstallPrompt_disabled_for_native": true,
+      "PWAInstallPrompt_check_line": "line 17: if (isNativeApp()) return;",
+      "WebUpdateBanner_disabled_for_native": true,
+      "WebUpdateBanner_check_lines": "line 49: if (isNativeApp()) return undefined; line 127: if (isNativeApp() || !visible) return null;",
+      "status": "PASS - Both overlays disabled for native app"
+    },
+    "ios_bundle_metadata": {
+      "ios_version_json_path": "/app/ios/App/App/public/version.json",
+      "frontend_build_version_json_path": "/app/frontend/build/version.json",
+      "build_id": "ba8ef25-20260724182339",
+      "git_commit": "ba8ef25b2a808a13db7799284ba74f9aa2a90579",
+      "deployed_at": "2026-07-24T18:23:39.353784+00:00",
+      "build_ids_match": true,
+      "status": "PASS - Latest build synced to iOS bundle"
+    },
+    "capacitor_config_analysis": {
+      "root_config": "/app/capacitor.config.ts",
+      "ios_config": "/app/ios/App/App/capacitor.config.json",
+      "server_url_override": false,
+      "uses_local_assets": true,
+      "status": "PASS - No server.url override, iOS loads local bundled assets"
+    },
+    "kyc_restricted_texts_analysis": {
+      "texts_in_source": [
+        "Vor Verifizierung (line 1000)",
+        "Zugriff bewusst reduziert (line 1001)",
+        "KYC Starten (line 1007)",
+        "Identität verifizieren (line 1014)",
+        "Erlaubte Bereiche öffnen (line 1024)",
+        "Status prüfen (line 1009)"
+      ],
+      "render_condition": "showKycRestrictedExperience (line 988)",
+      "showKycRestrictedExperience_formula": "SHOW_KYC_GATE && !isAdmin && !isGuest && !isDemoMode && !isKycVerified (line 319)",
+      "current_evaluation": "false (because SHOW_KYC_GATE=false)",
+      "texts_rendered_in_current_flow": false,
+      "status": "PASS - KYC texts exist in code but NOT rendered due to flag system"
+    },
+    "preview_frontend_test": {
+      "login_as_reviewer": "PASS",
+      "kyc_texts_on_guest_page": "NONE FOUND",
+      "kyc_texts_after_login": "NONE FOUND",
+      "pre_kyc_home_gate_visible": false,
+      "hero_balance_card_visible": true,
+      "home_quick_actions_visible": true,
+      "wallet_accessible": true,
+      "wallet_balance_hero_visible": true,
+      "pwa_install_prompt_visible": false,
+      "web_update_banner_visible": false,
+      "status": "PASS - Full access for reviewer, no KYC restrictions"
+    }
+  },
+  "rca_summary": {
+    "root_cause": "User's uploaded iPhone video shows an OLDER installed native build that was packaged before the KYC-off fixes were applied to .env.production and iOS build scripts.",
+    "fix_applied": "Main agent applied fixes: (1) .env.production now has full KYC-off flags, (2) ios-prepare.js and ios-sync-web-assets.js now propagate all KYC flags, (3) PWAInstallPrompt and WebUpdateBanner disabled for native via isNativeApp() check, (4) New iOS bundle built with build_id ba8ef25-20260724182339",
+    "verification": "All code fixes verified. Preview frontend shows no KYC restrictions for reviewer. KYC texts exist in source but are NOT rendered due to SHOW_KYC_GATE=false.",
+    "user_action_required": "User needs to install the NEW native build (ba8ef25-20260724182339) to see the fix. The old installed app on their iPhone has stale bundled assets."
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "KYC is intentionally disabled for the current test build via real feature flags",
+      "Premium upgrades remain MOCKED per project state"
+    ]
+  }
+}

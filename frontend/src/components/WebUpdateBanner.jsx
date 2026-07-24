@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
+import { isNativeApp } from "../services/capacitorBridge";
 
 
 const VERSION_URL = "/version.json";
@@ -45,6 +46,7 @@ export default function WebUpdateBanner() {
   }, []);
 
   useEffect(() => {
+    if (isNativeApp()) return undefined;
     if (typeof window === "undefined") return undefined;
 
     let cancelled = false;
@@ -122,7 +124,7 @@ export default function WebUpdateBanner() {
     window.location.reload();
   };
 
-  if (!visible) return null;
+  if (isNativeApp() || !visible) return null;
 
   return (
     <AnimatePresence>

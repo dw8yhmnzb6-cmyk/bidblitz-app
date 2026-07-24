@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, X, Smartphone } from "lucide-react";
+import { isNativeApp } from "../services/capacitorBridge";
 
 /**
  * PWA Install Prompt
@@ -13,6 +14,8 @@ export const PWAInstallPrompt = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    if (isNativeApp()) return;
+
     const dismissed = localStorage.getItem("bidblitz_pwa_dismissed");
     if (dismissed) return;
 
