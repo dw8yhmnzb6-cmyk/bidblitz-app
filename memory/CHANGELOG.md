@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 24.07.2026 — CI-Workflow auf npm gehärtet + iOS-Test-App ohne sichtbare KYC-Gates bestätigt
+- Der aktuelle GitHub-/CI-Fehler aus dem Nutzerhinweis wurde auf zwei konkrete Ursachen reduziert und behoben: In **`.github/workflows/ci.yml`** läuft der Frontend-Job jetzt **npm-basiert** mit **`npm ci`** statt Yarn, und der fehlerhafte ESLint-Aufruf **`npx eslint src --ext .js,.jsx`** wurde auf den funktionierenden Workspace-Command **`npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"`** umgestellt.
+- Für den Test-App-Modus wurden die Frontend-Schalter weiter zentralisiert: `frontend/src/config/testMode.js` exportiert jetzt zusätzlich **`KYC_DISABLED`** und **`SHOW_LIVE_CHECK_BANNER`**. `HomePage.jsx`, `WalletPage.jsx`, `MorePage.jsx`, `App.js`, `pathUtils.js`, `adminAccess.js` und `KYCBanner.jsx` lesen dadurch denselben Zustand statt verstreuter lokaler Ableitungen.
+- Ergebnis im Testbetrieb: **kein** sichtbares **„Live-Check aktiv“**-Banner, **keine** Pre-KYC-Home-/More-Gates und **kein** KYC-Banner im Wallet für den Reviewer-Testnutzer. Gleichzeitig bleibt das reale KYC-System im Code erhalten und ist nur per Flag verborgen.
+- Die iOS-Build-Helfer `frontend/scripts/ios-prepare.js` und `frontend/scripts/ios-sync-web-assets.js` propagieren jetzt zusätzlich **`REACT_APP_DISABLE_KYC`** und **`REACT_APP_SHOW_LIVE_CHECK_BANNER`**, damit der gewünschte Testzustand konsistent in den nativen iOS-Webbuild übernommen wird.
+- Nebenbei wurde `CookieBanner.jsx` an den doppelten `data-testid`-Stellen bereinigt (`cookie-banner-mobile-accept-all`, `cookie-banner-mobile-customize`), damit Browser-Automation stabil bleibt.
+- Verifiziert mit Root-`npm ci`, funktionierendem ESLint-Exit-Code **0** sowie **Testing Agent Iteration 296 PASS**. **MOCKED:** KYC-Gates bleiben im Testbetrieb absichtlich per Feature-Flag verborgen; Premium-Upgrades bleiben weiterhin **MOCKED**.
+
 ## 19.07.2026 — Finaler Startup-Timing-Fix für Live-Deploy
 - In `backend/server.py` wurde am Anfang von `_bootstrap_worker_routes_and_tasks()` ein kleines **`await asyncio.sleep(0.1)`** ergänzt.
 - Zweck: Uvicorn kann dadurch **`Application startup complete`** und den Port-Bind abschließen, bevor das schwere Hintergrundladen der Router startet.

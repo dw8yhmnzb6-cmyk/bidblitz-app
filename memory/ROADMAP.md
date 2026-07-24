@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach CI-Fix & iOS-Testmodus-Polish — 24.07.2026
+- ✅ Gemeldeter CI-Fehler behoben: `.github/workflows/ci.yml` nutzt jetzt **npm** statt Yarn und der ESLint-Schritt verwendet einen funktionierenden Workspace-Befehl.
+- ✅ iOS-/Test-App-Verhalten wieder auf normalen BidBlitz-Start zurückgeführt: **kein** Live-Check-Banner, **keine** sichtbaren KYC-Gates auf Home/More/Wallet für den Reviewer-Testnutzer.
+- ✅ iOS-Build-Skripte übernehmen jetzt zusätzlich `REACT_APP_DISABLE_KYC` und `REACT_APP_SHOW_LIVE_CHECK_BANNER`, damit der Testzustand im nativen Build nicht verloren geht.
+- ✅ Verifiziert mit **Testing Agent Iteration 296 PASS**.
+- 🔴 Weiter offen: echter GitHub-Run und danach Preview-vs-Production-Parität auf `bidblitz.ae`.
+- 🟡 Danach: **Telegram-Alarm als Monitoring-Backup**.
+- 🟡 Danach: ESLint-Warnungen gezielt abbauen (aktuell viele Alt-Warnungen, aber keine blockierenden Errors).
+
 ## Status nach Root-Exportprojekt — 24.07.2026
 - ✅ Vollständiges Download-Projekt **`BidBlitz/`** gebaut und als **`/app/BidBlitz.zip`** verpackt.
 - ✅ Root-Struktur mit `package.json`, `package-lock.json`, `capacitor.config.ts`, `src`, `public`, `ios`, `backend`, `README.md`, `.env.example` vorhanden.
