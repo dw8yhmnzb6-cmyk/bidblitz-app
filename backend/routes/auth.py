@@ -24,9 +24,13 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def _canonical_admin_identity(user: dict) -> dict:
-    email = str(user.get("email") or "").lower().strip().replace("@bid-blitz.", "@bidblitz.")
-    canonical = str(user.get("canonical_email") or email).lower().strip().replace("@bid-blitz.", "@bidblitz.")
-    aliases = [str(a).lower().strip().replace("@bid-blitz.", "@bidblitz.") for a in (user.get("email_aliases") or []) if a]
+    email = str(user.get("email") or "").lower().strip().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
+    canonical = str(user.get("canonical_email") or email).lower().strip().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
+    aliases = [
+        str(a).lower().strip().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
+        for a in (user.get("email_aliases") or [])
+        if a
+    ]
     if (user.get("role") == "admin") or email == "admin@bidblitz.ae" or canonical == "admin@bidblitz.ae" or "admin@bidblitz.ae" in aliases:
         user["email"] = "admin@bidblitz.ae"
         user["canonical_email"] = "admin@bidblitz.ae"
@@ -39,18 +43,22 @@ def _canonical_admin_identity(user: dict) -> dict:
 
 
 def _auth_email_candidates(raw_email: str) -> list[str]:
-    email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.")
+    email = (raw_email or "").lower().strip().replace("@bid-blitz.", "@bidblitz.").replace("@bitblitz.", "@bidblitz.")
     if not email:
         return [""]
     if email == "admin@bidblitz.ae":
-        return [email]
+        return [email, "admin@bitblitz.ae"]
     if email == "admin@bidblitz.com":
-        return [email]
+        return [email, "admin@bitblitz.com"]
     candidates = [email]
     if email.endswith("@bidblitz.ae"):
         candidates.append(email[:-2] + "com")
     elif email.endswith("@bidblitz.com"):
         candidates.append(email[:-3] + "ae")
+    if email.endswith("@bidblitz.ae"):
+        candidates.append(email.replace("@bidblitz.", "@bitblitz."))
+    elif email.endswith("@bidblitz.com"):
+        candidates.append(email.replace("@bidblitz.", "@bitblitz."))
     return list(dict.fromkeys(candidates))
 
 

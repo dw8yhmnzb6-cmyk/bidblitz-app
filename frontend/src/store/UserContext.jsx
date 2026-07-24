@@ -4,6 +4,12 @@ import { purgeLegacyAuthStorage } from '../services/authService';
 import { isAdminUser } from '../utils/adminAccess';
 import { TEST_MODE_FULL_ACCESS, isTestModeUser } from '../config/testMode';
 
+const normalizeLoginEmail = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace('@bid-blitz.', '@bidblitz.')
+  .replace('@bitblitz.', '@bidblitz.');
+
 function formatUserFacingAuthError(err) {
   const message = String(err?.message || err || '').trim();
   if (!message) return 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.';
@@ -186,9 +192,9 @@ export function UserProvider({ children }) {
       // CRITICAL FIX v2: Deep clone via JSON to ensure plain object (removes all non-serializable data)
       const rawData = response.user || response;
       const userData = JSON.parse(JSON.stringify(rawData));
-      const requestedEmail = String(email || '').trim().toLowerCase();
-      const actualLoginEmail = String(userData.login_email || userData.email || '').trim().toLowerCase();
-      const actualCanonicalEmail = String(userData.canonical_email || userData.email || '').trim().toLowerCase();
+      const requestedEmail = normalizeLoginEmail(email);
+      const actualLoginEmail = normalizeLoginEmail(userData.login_email || userData.email || '');
+      const actualCanonicalEmail = normalizeLoginEmail(userData.canonical_email || userData.email || '');
       if (requestedEmail && actualLoginEmail && requestedEmail !== actualLoginEmail && requestedEmail !== actualCanonicalEmail) {
         throw new Error(`Falsches Konto geladen: erwartet ${requestedEmail}, erhalten ${actualLoginEmail || actualCanonicalEmail}`);
       }

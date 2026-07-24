@@ -17,7 +17,11 @@ const TEST_MODE_USER_EMAILS = new Set([
   'admin@bidblitz.ae',
 ]);
 
-const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+const normalizeEmail = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace('@bid-blitz.', '@bidblitz.')
+  .replace('@bitblitz.', '@bidblitz.');
 
 export const isTestModeUser = (user = {}) => {
   const emails = [
