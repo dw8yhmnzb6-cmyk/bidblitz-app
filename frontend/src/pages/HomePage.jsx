@@ -28,7 +28,7 @@ import SponsoredAdSlot from "../components/SponsoredAdSlot";
 import KYCBanner from "../components/KYCBanner";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { STORE_SAFE_MODE, filterStoreSafeItems } from "../config/release";
-import { KYC_DISABLED, SHOW_LIVE_CHECK_BANNER } from "../config/testMode";
+import { KYC_DISABLED, SHOW_KYC_GATE, SHOW_LIVE_CHECK_BANNER } from "../config/testMode";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
 
@@ -316,7 +316,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
   const gt = useGuestTranslations(lang);
   const isAdmin = isAdminUser(user);
   const isKycVerified = forceKycUnlocked || KYC_DISABLED || isKycApprovedOrAdmin(user);
-  const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
+  const showKycRestrictedExperience = SHOW_KYC_GATE && !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   
   // Use total balance if available, otherwise fall back to EUR balance
   const displayBalance = totalBalanceEur > 0 ? totalBalanceEur : balance;

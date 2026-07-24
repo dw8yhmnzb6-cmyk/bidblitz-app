@@ -20,7 +20,13 @@ const purgeLegacyWidgetStorage = () => {
 purgeLegacyAuthStorage();
 purgeLegacyWidgetStorage();
 
-if (String(process.env.REACT_APP_TEST_MODE).toLowerCase() === 'true') {
+if (
+  [
+    process.env.REACT_APP_TEST_MODE,
+    process.env.REACT_APP_TEST_MODE_FULL_ACCESS,
+    process.env.REACT_APP_DISABLE_KYC,
+  ].some((value) => String(value || '').toLowerCase() === 'true')
+) {
   document.documentElement.classList.add('test-mode-active');
   document.body?.classList.add('test-mode-active');
 }

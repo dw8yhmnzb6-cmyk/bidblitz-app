@@ -87,8 +87,7 @@
     "test": "craco test",
     "screenshots": "node scripts/generate-screenshots.js",
     "ios:prepare": "node scripts/ios-prepare.js",
-    "ios:diagnose": "node scripts/ios-diagnose.js",
-    "postinstall": "patch-package"
+    "ios:diagnose": "node scripts/ios-diagnose.js"
   },
   "browserslist": {
     "production": [

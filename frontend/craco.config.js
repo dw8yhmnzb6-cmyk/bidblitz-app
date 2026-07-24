@@ -2,14 +2,63 @@
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 const webpack = require("webpack");
+const { execFileSync, execSync } = require("child_process");
+
+const asEnabled = (value) => String(value || "").trim().toLowerCase() === "true";
 
 if (!process.env.REACT_APP_TEST_MODE && process.env.TEST_MODE) {
   process.env.REACT_APP_TEST_MODE = process.env.TEST_MODE;
 }
 
+if (!process.env.REACT_APP_TEST_MODE_FULL_ACCESS && (asEnabled(process.env.REACT_APP_TEST_MODE) || asEnabled(process.env.REACT_APP_DISABLE_KYC))) {
+  process.env.REACT_APP_TEST_MODE_FULL_ACCESS = "true";
+}
+
+if (!process.env.REACT_APP_KYC_REQUIRED && (process.env.REACT_APP_TEST_MODE_FULL_ACCESS === "true" || asEnabled(process.env.REACT_APP_DISABLE_KYC))) {
+  process.env.REACT_APP_KYC_REQUIRED = "false";
+}
+
+if (!process.env.REACT_APP_SHOW_KYC_GATE && process.env.REACT_APP_KYC_REQUIRED === "false") {
+  process.env.REACT_APP_SHOW_KYC_GATE = "false";
+}
+
+if (!process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER) {
+  process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER = "false";
+}
+
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
 const isDevServer = process.env.NODE_ENV !== "production";
+
+function syncBuildMetadata() {
+  const repoRoot = path.resolve(__dirname, "..");
+  const commit = (() => {
+    try {
+      return execSync(`git -C "${repoRoot}" rev-parse HEAD`, { encoding: "utf8" }).trim();
+    } catch {
+      return "unknown";
+    }
+  })();
+  const shortCommit = commit === "unknown" ? "unknown" : commit.slice(0, 7);
+  const buildId = `${shortCommit}-${new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14)}`;
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || "";
+  const buildEnvironment = backendUrl.includes("bidblitz.ae") && !backendUrl.includes("preview") ? "production" : "preview";
+
+  process.env.REACT_APP_BUILD_ID = buildId;
+  process.env.REACT_APP_GIT_COMMIT = commit;
+
+  execFileSync("python3", [path.resolve(repoRoot, "scripts/generate_build_info.py")], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      BUILD_ENVIRONMENT: buildEnvironment,
+      BUILD_API_BASE_URL: backendUrl,
+      BUILD_PUBLIC_BASE_URL: backendUrl,
+      BUILD_FRONTEND_VERSION: buildId,
+    },
+    stdio: "inherit",
+  });
+}
 
 // Load .env files in the correct order:
 //   - Dev: load `.env` only (preview URL for sandbox)
@@ -21,6 +70,7 @@ if (isDevServer) {
 } else {
   require("dotenv").config({ path: path.resolve(__dirname, ".env.production") });
   require("dotenv").config();
+  syncBuildMetadata();
 }
 
 // Environment variable overrides
@@ -75,6 +125,13 @@ let webpackConfig = {
       webpackConfig.plugins.push(
         new webpack.DefinePlugin({
           "process.env.REACT_APP_TEST_MODE": JSON.stringify(process.env.REACT_APP_TEST_MODE),
+          "process.env.REACT_APP_TEST_MODE_FULL_ACCESS": JSON.stringify(process.env.REACT_APP_TEST_MODE_FULL_ACCESS),
+          "process.env.REACT_APP_DISABLE_KYC": JSON.stringify(process.env.REACT_APP_DISABLE_KYC),
+          "process.env.REACT_APP_KYC_REQUIRED": JSON.stringify(process.env.REACT_APP_KYC_REQUIRED),
+          "process.env.REACT_APP_SHOW_KYC_GATE": JSON.stringify(process.env.REACT_APP_SHOW_KYC_GATE),
+          "process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER": JSON.stringify(process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER),
+          "process.env.REACT_APP_BUILD_ID": JSON.stringify(process.env.REACT_APP_BUILD_ID),
+          "process.env.REACT_APP_GIT_COMMIT": JSON.stringify(process.env.REACT_APP_GIT_COMMIT),
         })
       );
       return webpackConfig;

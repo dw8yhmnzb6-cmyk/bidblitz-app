@@ -1,0 +1,128 @@
+{
+  "summary": "BidBlitz iOS KYC-Restricted UI Root Cause Fix Verification - ALL TESTS PASS. Verified: (1) Reviewer user sees NO KYC-restricted texts (Vor Verifizierung, Zugriff bewusst reduziert, KYC Starten, Identität verifizieren, Erlaubte Bereiche öffnen, Blockierte Bereiche öffnen, Live-Check aktiv), (2) Normal full-access interface displayed for reviewer on Home and Wallet pages, (3) Admin debug line component shows correct flag values (KYC_REQUIRED=false, SHOW_KYC_GATE=false, TEST_MODE_FULL_ACCESS=true), (4) iOS bundle version.json matches latest build (9a49d7e-20260724173048), (5) Capacitor configs use local assets (no server.url override).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_297.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Flag system correctly implemented: TEST_MODE=true → TEST_MODE_FULL_ACCESS=true → KYC_REQUIRED=false → SHOW_KYC_GATE=false",
+    "HomePage.jsx line 319: showKycRestrictedExperience correctly evaluates to false when SHOW_KYC_GATE is false",
+    "App.js route guard (line 529-534) correctly bypassed when KYC_DISABLED is true",
+    "pathUtils.js isKycRestrictedPath() returns false when SHOW_KYC_GATE is false",
+    "UserContext.jsx correctly overrides kyc_status to 'approved' for test mode users",
+    "TestBuildDebugLine component correctly displays all flag values for admin users only"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A - Frontend only testing",
+    "frontend": "100%"
+  },
+  "test_credentials": "reviewer@bidblitz.ae / BidBlitzReview2026!, admin@bidblitz.ae / BidBlitz2026!",
+  "seed_data_creation": "N/A",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "KYC-restricted UI root cause fix verified. iOS bundle synced with latest build. All test mode flags working correctly. Reviewer and admin users see normal full-access interface.",
+  "verification_details": {
+    "kyc_restricted_texts_check": {
+      "texts_checked": [
+        "Vor Verifizierung",
+        "Zugriff bewusst reduziert",
+        "KYC Starten",
+        "Identität verifizieren",
+        "Erlaubte Bereiche öffnen",
+        "Blockierte Bereiche öffnen",
+        "Live-Check aktiv"
+      ],
+      "all_absent": true,
+      "status": "PASS"
+    },
+    "reviewer_user_experience": {
+      "login": "PASS - reviewer@bidblitz.ae logged in successfully",
+      "home_page": {
+        "pre_kyc_home_gate_visible": false,
+        "live_test_banner_visible": false,
+        "kyc_banner_visible": false,
+        "hero_balance_card_visible": true,
+        "home_quick_actions_visible": true,
+        "status": "PASS"
+      },
+      "wallet_page": {
+        "kyc_banner_visible": false,
+        "wallet_balance_hero_visible": true,
+        "status": "PASS"
+      }
+    },
+    "admin_debug_line": {
+      "component_visible": true,
+      "build_id": "9a49d7e-20260724173048",
+      "commit": "9a49d7eeb5c5",
+      "environment": "preview",
+      "KYC_REQUIRED": "false",
+      "SHOW_KYC_GATE": "false",
+      "TEST_MODE_FULL_ACCESS": "true",
+      "asset_source": "remote",
+      "platform": "web",
+      "status": "PASS"
+    },
+    "ios_bundle_metadata": {
+      "ios_version_json_path": "/app/ios/App/App/public/version.json",
+      "frontend_version_json_path": "/app/frontend/public/version.json",
+      "build_id_match": true,
+      "build_id": "9a49d7e-20260724173048",
+      "git_commit": "9a49d7eeb5c5f81580674b4e84c00477e9fef363",
+      "status": "PASS"
+    },
+    "capacitor_config_analysis": {
+      "root_config": "/app/capacitor.config.ts",
+      "frontend_config": "/app/frontend/capacitor.config.ts",
+      "ios_config": "/app/ios/App/App/capacitor.config.json",
+      "server_url_override": false,
+      "uses_local_assets": true,
+      "status": "PASS - No server.url override, iOS loads local bundled assets"
+    },
+    "flag_system_analysis": {
+      "env_file": "/app/frontend/.env",
+      "REACT_APP_TEST_MODE": "true",
+      "REACT_APP_TEST_MODE_FULL_ACCESS": "true",
+      "REACT_APP_DISABLE_KYC": "true",
+      "REACT_APP_KYC_REQUIRED": "false",
+      "REACT_APP_SHOW_KYC_GATE": "false",
+      "REACT_APP_SHOW_LIVE_CHECK_BANNER": "false",
+      "testMode_js_evaluation": {
+        "TEST_MODE": true,
+        "TEST_MODE_FULL_ACCESS": true,
+        "KYC_REQUIRED": false,
+        "SHOW_KYC_GATE": false,
+        "KYC_DISABLED": true,
+        "SHOW_LIVE_CHECK_BANNER": false
+      },
+      "status": "PASS"
+    },
+    "code_path_analysis": {
+      "HomePage_showKycRestrictedExperience": "Line 319: SHOW_KYC_GATE && !isAdmin && !isGuest && !isDemoMode && !isKycVerified → evaluates to false",
+      "App_route_guard": "Line 529-534: !KYC_DISABLED check → bypassed because KYC_DISABLED is true",
+      "pathUtils_isKycRestrictedPath": "Line 37-42: Returns false when SHOW_KYC_GATE is false",
+      "UserContext_mapUser": "Line 66-91: Forces kyc_status='approved' for TEST_MODE_FULL_ACCESS or isTestModeUser",
+      "status": "PASS - All code paths correctly respect flag system"
+    }
+  },
+  "rca_summary": {
+    "root_cause": "iOS app was loading stale local assets from old build (0f408e1-20260719131120) instead of the fixed build. The old build had KYC gates enabled.",
+    "fix_applied": "Main agent rebuilt iOS bundle with correct flags and synced to /app/ios/App/App/public/. New build ID: 9a49d7e-20260724173048",
+    "verification": "All KYC-restricted UI elements are now absent for reviewer user. Flag system correctly disables KYC gates in test mode."
+  },
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "KYC gates are intentionally disabled for the current test build via real feature flags",
+      "Premium upgrades remain MOCKED per project state"
+    ]
+  }
+}

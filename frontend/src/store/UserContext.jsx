@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer, useCallback, useEffect } 
 import { api } from '../services/api';
 import { purgeLegacyAuthStorage } from '../services/authService';
 import { isAdminUser } from '../utils/adminAccess';
-import { TEST_MODE, isTestModeUser } from '../config/testMode';
+import { TEST_MODE_FULL_ACCESS, isTestModeUser } from '../config/testMode';
 
 function formatUserFacingAuthError(err) {
   const message = String(err?.message || err || '').trim();
@@ -63,7 +63,7 @@ const guestState = {
 function mapUser(u) {
   const role = u.role || 'user';
   const isAdmin = isAdminUser({ ...u, role });
-  const forceApprovedKyc = TEST_MODE || isTestModeUser(u);
+  const forceApprovedKyc = TEST_MODE_FULL_ACCESS || isTestModeUser(u);
   return {
     id: u.id,
     name: u.name,

@@ -23,7 +23,7 @@ import FeatureGate from "../components/FeatureGate";
 import { PushNotificationToggle } from "../components/PushNotifications";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { filterStoreSafeItems } from "../config/release";
-import { KYC_DISABLED } from "../config/testMode";
+import { KYC_DISABLED, SHOW_KYC_GATE } from "../config/testMode";
 
 const slide = { duration: 0.3, ease: [0.32, 0.72, 0, 1] };
 const isRtlLanguage = (lang) => lang === "ar" || lang === "ar-AE";
@@ -660,7 +660,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   };
   const isAdmin = isAdminUser(user);
   const isKycVerified = forceKycUnlocked || KYC_DISABLED || isKycApprovedOrAdmin(user);
-  const showKycRestrictedExperience = !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
+  const showKycRestrictedExperience = SHOW_KYC_GATE && !isAdmin && !isGuest && !isDemoMode && !isKycVerified;
   const [subPage, setSubPage] = useState(kidsReturn ? "kids" : null);
   const [profileOpenPw, setProfileOpenPw] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -819,7 +819,7 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     },
     { id: "influencer", icon: TrendingUp, label: t("influencer.title") || "Influencer", desc: t("influencer.menu_desc") || "Earn reward credits", color: "#00E0FF", action: gatedAction(() => onNavigate("/influencer")), roles: ["all"] },
     { id: "investor", icon: Star, label: t("investor.title") || "Investor", desc: t("investor.menu_desc") || "Invest in BidBlitz", color: "#FFD166", action: () => onNavigate("/investor"), roles: ["all"] },
-    ...(KYC_DISABLED ? [] : [{ id: "verification", icon: ShieldCheck, label: t("verify.title") || "Identitätsverifizierung", desc: t("verify.menu_desc") || "Rolle verifizieren", color: "#A855F7", action: gatedAction(() => onNavigate("/verification")), roles: ["all"] }]),
+    ...(KYC_DISABLED || !SHOW_KYC_GATE ? [] : [{ id: "verification", icon: ShieldCheck, label: t("verify.title") || "Identitätsverifizierung", desc: t("verify.menu_desc") || "Rolle verifizieren", color: "#A855F7", action: gatedAction(() => onNavigate("/verification")), roles: ["all"] }]),
     { id: "activity", icon: Activity, label: t("activity.title"), desc: t("activity.menu_desc"), color: "#00C2FF", action: gatedAction(() => setSubPage("activity")), roles: ["all"] },
     // Reselling, BlitzJobs, Cashback — for customers
     { id: "reselling", icon: Star, label: "Reselling", desc: "Sneakers, Streetwear verkaufen", color: "#F43F5E", action: gatedAction(() => onNavigate("/reselling")), roles: ["user", "admin"] },

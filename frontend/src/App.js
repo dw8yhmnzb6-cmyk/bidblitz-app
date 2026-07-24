@@ -34,8 +34,9 @@ import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import { tracker } from "./services/tracker";
 import { isKycApprovedOrAdmin } from "./utils/adminAccess";
-import { TEST_MODE, KYC_DISABLED } from "./config/testMode";
+import { TEST_MODE, KYC_DISABLED, SHOW_KYC_GATE, TEST_MODE_FULL_ACCESS } from "./config/testMode";
 import { useEffectiveKycAccess } from "./hooks/useEffectiveKycAccess";
+import TestBuildDebugLine from "./components/TestBuildDebugLine";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
 import LandingPage from "./pages/LandingPage"; // Keep landing page eager for fast first paint
@@ -616,7 +617,7 @@ function AppContent() {
     if (isStoreBlockedPath(currentPath)) {
       return <StoreSafeUnavailablePage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} />;
     }
-    if (!isGuest && !isDemoMode && !isKycVerified && isKycRestrictedPath(currentPath)) {
+    if (!isGuest && SHOW_KYC_GATE && !isDemoMode && !isKycVerified && isKycRestrictedPath(currentPath)) {
       return <KYCFlow onBack={() => handleNavigate("/")} onComplete={() => handleNavigate("/kyc/status")} />;
     }
     const specialRoute = renderSpecialRoutes({
@@ -1299,6 +1300,19 @@ function AppContent() {
     !isFullScreenStaffMgr &&
     currentPath.split("?")[0].startsWith("/admin");
 
+  const showTestBuildDebugLine =
+    user.isAuthenticated &&
+    user.role === "admin" &&
+    TEST_MODE_FULL_ACCESS &&
+    !isDemoMode &&
+    !isCheckout &&
+    !isPublicInvoicePayment &&
+    !isQrOrder &&
+    !isRestaurantTableGuest &&
+    !isInvoicePay &&
+    !isStaffEmployeeShell &&
+    !isFullScreenStaffMgr;
+
   return (
     <div className="app-container" data-testid="app-container">
       <Toaster
@@ -1328,6 +1342,7 @@ function AppContent() {
             </div>
           }>
             {showBackToHome && <BackToHomeBar onHome={() => handleNavigate("/")} />}
+            {showTestBuildDebugLine && <TestBuildDebugLine />}
             {showActiveAccountBanner && (
               <ActiveAccountBanner />
             )}

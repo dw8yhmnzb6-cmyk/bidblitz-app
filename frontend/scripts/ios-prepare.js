@@ -2,11 +2,13 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const root = path.resolve(__dirname, '..');
-const run = (cmd) => execSync(cmd, { cwd: root, stdio: 'inherit' });
+const frontendRoot = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(frontendRoot, '..');
+const runFrontend = (cmd) => execSync(cmd, { cwd: frontendRoot, stdio: 'inherit', env: process.env });
+const runRepo = (cmd) => execSync(cmd, { cwd: repoRoot, stdio: 'inherit', env: process.env });
 
 function readEnvValue(key) {
-  const envPath = path.join(root, '.env');
+  const envPath = path.join(frontendRoot, '.env');
   if (!fs.existsSync(envPath)) return '';
   const line = fs
     .readFileSync(envPath, 'utf8')
@@ -38,15 +40,15 @@ try {
     console.log(`\n[ios:prepare] Verwende REACT_APP_SHOW_LIVE_CHECK_BANNER=${showLiveCheckBanner}`);
   }
   console.log('\n[ios:prepare] Schritt 1/3: Dependencies installieren');
-  run('npm install');
+  runFrontend('npm install');
   console.log('\n[ios:prepare] Schritt 2/3: Web Build');
   try {
-    run('npm run build');
+    runFrontend('npm run build');
   } catch (error) {
     console.warn('\n[ios:prepare] Warnung: Web-Build lief mit nicht-blockierenden Warnungen weiter.');
   }
   console.log('\n[ios:prepare] Schritt 3/3: iOS Sync');
-  run('npx cap sync ios');
+  runRepo('npx cap sync ios');
   console.log('\n[ios:prepare] ✅ Vorbereitung abgeschlossen.');
 } catch (error) {
   console.error(`\n[ios:prepare] ❌ ${error.message}`);

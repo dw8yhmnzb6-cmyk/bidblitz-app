@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { Shield, ChevronRight, Loader2 } from "lucide-react";
 import KYCVerificationModal from "./KYCVerificationModal";
 import { useI18n } from "../store/I18nContext";
-import { KYC_DISABLED } from "../config/testMode";
+import { SHOW_KYC_GATE } from "../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const KYCBanner = ({ onVerified, onNavigate }) => {
@@ -38,7 +38,7 @@ const KYCBanner = ({ onVerified, onNavigate }) => {
 
   useEffect(() => { load(); }, []);
 
-  if (KYC_DISABLED) return null;
+  if (!SHOW_KYC_GATE) return null;
   if (loading || !status) return null;
   if (status.kyc_verified) return null; // Already verified — hide
 

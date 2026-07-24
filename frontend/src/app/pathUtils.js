@@ -1,4 +1,4 @@
-import { KYC_DISABLED } from "../config/testMode";
+import { SHOW_KYC_GATE } from "../config/testMode";
 
 const KYC_RESTRICTED_PREFIXES = [
   "/auctions",
@@ -35,7 +35,7 @@ export function resolveBrowserPath(path) {
 }
 
 export function isKycRestrictedPath(path) {
-  if (KYC_DISABLED) return false;
+  if (!SHOW_KYC_GATE) return false;
   const basePath = (path || "/").split("?")[0];
   return KYC_RESTRICTED_PREFIXES.some(
     (prefix) => basePath === prefix || basePath.startsWith(`${prefix}/`),

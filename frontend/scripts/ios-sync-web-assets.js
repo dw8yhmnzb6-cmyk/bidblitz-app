@@ -1,12 +1,14 @@
 const { execSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
-const root = path.resolve(__dirname, '..');
-const run = (cmd) => execSync(cmd, { cwd: root, stdio: 'inherit' });
+const frontendRoot = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(frontendRoot, '..');
+const runFrontend = (cmd) => execSync(cmd, { cwd: frontendRoot, stdio: 'inherit', env: process.env });
+const runRepo = (cmd) => execSync(cmd, { cwd: repoRoot, stdio: 'inherit', env: process.env });
 
 function readEnvValue(key) {
-  const fs = require('fs');
-  const envPath = path.join(root, '.env');
+  const envPath = path.join(frontendRoot, '.env');
   if (!fs.existsSync(envPath)) return '';
   const line = fs
     .readFileSync(envPath, 'utf8')
@@ -33,9 +35,9 @@ try {
     console.log(`\n[ios:xcode-sync] Verwende REACT_APP_SHOW_LIVE_CHECK_BANNER=${showLiveCheckBanner}`);
   }
   console.log('\n[ios:xcode-sync] Schritt 1/2: Web Build');
-  run('npm run build');
+  runFrontend('npm run build');
   console.log('\n[ios:xcode-sync] Schritt 2/2: Capacitor Copy');
-  run('npx cap copy ios');
+  runRepo('npx cap copy ios');
   console.log('\n[ios:xcode-sync] ✅ Frische Web-Assets nach iOS kopiert.');
 } catch (error) {
   console.error(`\n[ios:xcode-sync] ❌ ${error.message}`);

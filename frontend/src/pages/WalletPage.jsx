@@ -22,7 +22,7 @@ import { WalletBioPayCard, WalletPaymentPinCard } from "../components/wallet/Wal
 import { useI18n } from "../store";
 import { DEMO_BALANCE, DEMO_CURRENCY, DEMO_CARD_NUMBER, DEMO_CARD_EXPIRY, DEMO_CARD_HOLDER, DEMO_TRANSACTIONS } from "../models/demoData";
 import { STORE_SAFE_MODE } from "../config/release";
-import { KYC_DISABLED } from "../config/testMode";
+import { KYC_DISABLED, SHOW_KYC_GATE } from "../config/testMode";
 import GuestCTABar from "../components/GuestCTABar";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
@@ -123,7 +123,7 @@ export const WalletPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, on
   const user = useUser();
   const effectiveDemoMode = STORE_SAFE_MODE ? false : isDemoMode;
   const canAutoOpenWalletActions = !isGuest || effectiveDemoMode;
-  const isPendingKyc = !forceKycUnlocked && !KYC_DISABLED && !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
+  const isPendingKyc = SHOW_KYC_GATE && !forceKycUnlocked && !KYC_DISABLED && !isGuest && !effectiveDemoMode && user?.kyc_status === "pending" && user?.kyc_verified !== true;
   const windowSearch = canUseWindow() ? window.location.search || "" : "";
   // Auto-open TopUp modal if returning from Stripe
   const hasStripeParam = windowSearch.includes("stripe_session_id") || windowSearch.includes("stripe_cancelled");
