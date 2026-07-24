@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">BidBlitz</string>
-    <string name="title_activity_main">BidBlitz</string>
-    <string name="package_name">com.bidblitz.app</string>
-    <string name="custom_url_scheme">com.bidblitz.app</string>
-    <string name="health_connect_privacy_policy_url">https://bidblitz.ae/privacy</string>
-</resources>
