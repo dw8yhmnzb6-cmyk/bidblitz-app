@@ -33,6 +33,5 @@
   "engines": {
     "node": ">=20 <21",
     "npm": ">=10 <11"
-  },
-  "packageManager": "npm@10.8.2"
+  }
 }

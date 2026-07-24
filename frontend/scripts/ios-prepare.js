@@ -19,6 +19,8 @@ function readEnvValue(key) {
 try {
   const backendUrl = process.env.REACT_APP_BACKEND_URL || readEnvValue('REACT_APP_BACKEND_URL');
   const testMode = process.env.REACT_APP_TEST_MODE || process.env.TEST_MODE || readEnvValue('REACT_APP_TEST_MODE') || readEnvValue('TEST_MODE');
+  const disableKyc = process.env.REACT_APP_DISABLE_KYC || readEnvValue('REACT_APP_DISABLE_KYC');
+  const showLiveCheckBanner = process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER || readEnvValue('REACT_APP_SHOW_LIVE_CHECK_BANNER');
   if (backendUrl) {
     process.env.REACT_APP_BACKEND_URL = backendUrl;
     console.log(`\n[ios:prepare] Verwende REACT_APP_BACKEND_URL=${backendUrl}`);
@@ -27,11 +29,19 @@ try {
     process.env.REACT_APP_TEST_MODE = testMode;
     console.log(`\n[ios:prepare] Verwende REACT_APP_TEST_MODE=${testMode}`);
   }
+  if (disableKyc) {
+    process.env.REACT_APP_DISABLE_KYC = disableKyc;
+    console.log(`\n[ios:prepare] Verwende REACT_APP_DISABLE_KYC=${disableKyc}`);
+  }
+  if (showLiveCheckBanner) {
+    process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER = showLiveCheckBanner;
+    console.log(`\n[ios:prepare] Verwende REACT_APP_SHOW_LIVE_CHECK_BANNER=${showLiveCheckBanner}`);
+  }
   console.log('\n[ios:prepare] Schritt 1/3: Dependencies installieren');
-  run('yarn install');
+  run('npm install');
   console.log('\n[ios:prepare] Schritt 2/3: Web Build');
   try {
-    run('yarn build');
+    run('npm run build');
   } catch (error) {
     console.warn('\n[ios:prepare] Warnung: Web-Build lief mit nicht-blockierenden Warnungen weiter.');
   }

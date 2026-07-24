@@ -7,11 +7,9 @@ import { motion } from "framer-motion";
 import { Shield, ChevronRight, Loader2 } from "lucide-react";
 import KYCVerificationModal from "./KYCVerificationModal";
 import { useI18n } from "../store/I18nContext";
-import { TEST_MODE } from "../config/testMode";
+import { KYC_DISABLED } from "../config/testMode";
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const KYC_DISABLED = TEST_MODE;
-
 const KYCBanner = ({ onVerified, onNavigate }) => {
   const { t } = useI18n();
   const [status, setStatus] = useState(null);

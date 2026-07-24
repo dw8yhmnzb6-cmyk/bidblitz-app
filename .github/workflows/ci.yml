@@ -63,13 +63,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: frontend/yarn.lock
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install frontend deps
-        working-directory: frontend
-        run: yarn install --frozen-lockfile || yarn install
+        run: npm ci
 
       - name: Run ESLint
-        working-directory: frontend
-        run: npx eslint src --ext .js,.jsx
+        run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"

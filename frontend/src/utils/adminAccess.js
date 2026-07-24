@@ -1,6 +1,4 @@
-import { TEST_MODE, isTestModeUser } from "../config/testMode";
-
-const KYC_DISABLED = TEST_MODE;
+import { KYC_DISABLED, isTestModeUser } from "../config/testMode";
 
 export function isAdminUser(user = {}) {
   const role = String(user?.role || '').toLowerCase();

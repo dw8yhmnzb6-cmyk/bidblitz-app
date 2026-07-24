@@ -34,7 +34,7 @@ import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import { tracker } from "./services/tracker";
 import { isKycApprovedOrAdmin } from "./utils/adminAccess";
-import { TEST_MODE } from "./config/testMode";
+import { TEST_MODE, KYC_DISABLED } from "./config/testMode";
 import { useEffectiveKycAccess } from "./hooks/useEffectiveKycAccess";
 
 // Lazy load pages for better performance (reduces initial bundle size by ~60%)
@@ -299,7 +299,6 @@ const AdCampaignManagerPage = lazy(() => import("./pages/AdCampaignManagerPage")
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 
 const pageTransition = { duration: 0.25, ease: [0.32, 0.72, 0, 1] };
-const KYC_DISABLED = TEST_MODE;
 
 function AppContent() {
   const hasStripeReturn = typeof window !== "undefined" &&

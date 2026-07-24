@@ -28,10 +28,9 @@ import SponsoredAdSlot from "../components/SponsoredAdSlot";
 import KYCBanner from "../components/KYCBanner";
 import { isAdminUser, isKycApprovedOrAdmin } from "../utils/adminAccess";
 import { STORE_SAFE_MODE, filterStoreSafeItems } from "../config/release";
-import { TEST_MODE } from "../config/testMode";
+import { KYC_DISABLED, SHOW_LIVE_CHECK_BANNER } from "../config/testMode";
 
 const slide = { duration: 0.35, ease: [0.32, 0.72, 0, 1] };
-const KYC_DISABLED = TEST_MODE;
 
 const iconMap = {
   wallet: Wallet,
@@ -438,7 +437,7 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </div>
         </motion.header>
 
-        {!isGuest && (
+        {!isGuest && SHOW_LIVE_CHECK_BANNER && (
           <motion.button
             data-testid="live-test-banner"
             className="mb-4 w-full rounded-[20px] px-4 py-3 text-left"

@@ -1,4 +1,4 @@
-import { TEST_MODE } from "../config/testMode";
+import { KYC_DISABLED } from "../config/testMode";
 
 const KYC_RESTRICTED_PREFIXES = [
   "/auctions",
@@ -22,8 +22,6 @@ const KYC_RESTRICTED_PREFIXES = [
   "/merchant-connect",
   "/marketplace-dashboard",
 ];
-
-const KYC_DISABLED = TEST_MODE;
 
 export function getInitialAppPath({ hasKidsReturn, hasStripeReturn, pathname, search }) {
   if (hasKidsReturn) return "/more";

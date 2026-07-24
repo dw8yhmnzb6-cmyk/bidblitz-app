@@ -18,12 +18,22 @@ function readEnvValue(key) {
 
 try {
   const testMode = process.env.REACT_APP_TEST_MODE || process.env.TEST_MODE || readEnvValue('REACT_APP_TEST_MODE') || readEnvValue('TEST_MODE');
+  const disableKyc = process.env.REACT_APP_DISABLE_KYC || readEnvValue('REACT_APP_DISABLE_KYC');
+  const showLiveCheckBanner = process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER || readEnvValue('REACT_APP_SHOW_LIVE_CHECK_BANNER');
   if (testMode) {
     process.env.REACT_APP_TEST_MODE = testMode;
     console.log(`\n[ios:xcode-sync] Verwende REACT_APP_TEST_MODE=${testMode}`);
   }
+  if (disableKyc) {
+    process.env.REACT_APP_DISABLE_KYC = disableKyc;
+    console.log(`\n[ios:xcode-sync] Verwende REACT_APP_DISABLE_KYC=${disableKyc}`);
+  }
+  if (showLiveCheckBanner) {
+    process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER = showLiveCheckBanner;
+    console.log(`\n[ios:xcode-sync] Verwende REACT_APP_SHOW_LIVE_CHECK_BANNER=${showLiveCheckBanner}`);
+  }
   console.log('\n[ios:xcode-sync] Schritt 1/2: Web Build');
-  run('yarn build');
+  run('npm run build');
   console.log('\n[ios:xcode-sync] Schritt 2/2: Capacitor Copy');
   run('npx cap copy ios');
   console.log('\n[ios:xcode-sync] ✅ Frische Web-Assets nach iOS kopiert.');

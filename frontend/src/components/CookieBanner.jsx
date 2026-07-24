@@ -117,7 +117,7 @@ export default function CookieBanner({ onNavigate }) {
               <div className="mt-1 grid grid-cols-[0.78fr_1.22fr] gap-1">
                 <button
                   onClick={() => setShowDetails(true)}
-                  data-testid="cookie-banner-customize"
+                  data-testid="cookie-banner-mobile-customize"
                   className="flex h-5.5 items-center justify-center gap-1 rounded-lg bg-white/6 px-2 py-1 text-[6.5px] font-semibold text-gray-200 hover:bg-white/10"
                 >
                   <Settings size={9} />
@@ -125,7 +125,7 @@ export default function CookieBanner({ onNavigate }) {
                 </button>
                 <button
                   onClick={() => accept('all')}
-                  data-testid="cookie-banner-accept-all"
+                  data-testid="cookie-banner-mobile-accept-all"
                   className="h-5.5 rounded-lg bg-amber-500 px-2 py-1 text-[6.5px] font-bold text-black hover:bg-amber-600"
                 >
                   {t('cookie.accept_all') || 'Alle akzeptieren'}

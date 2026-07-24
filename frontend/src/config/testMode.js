@@ -1,4 +1,8 @@
-export const TEST_MODE = String(process.env.REACT_APP_TEST_MODE).toLowerCase() === 'true';
+const isEnabled = (value) => String(value || '').trim().toLowerCase() === 'true';
+
+export const TEST_MODE = isEnabled(process.env.REACT_APP_TEST_MODE);
+export const KYC_DISABLED = TEST_MODE || isEnabled(process.env.REACT_APP_DISABLE_KYC);
+export const SHOW_LIVE_CHECK_BANNER = isEnabled(process.env.REACT_APP_SHOW_LIVE_CHECK_BANNER);
 
 const TEST_MODE_USER_EMAILS = new Set([
   'reviewer@bidblitz.ae',
