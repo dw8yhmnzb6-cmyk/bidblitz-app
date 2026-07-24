@@ -19,6 +19,21 @@ const api = async (path, opts = {}) => {
   return res.json();
 };
 
+const normalizeMerchantRow = (merchant = {}) => ({
+  ...merchant,
+  id: merchant.id || merchant.merchant_id || merchant.user_id || "",
+  merchant_id: merchant.merchant_id || merchant.id || "",
+  name: merchant.name || "",
+  email: merchant.email || "",
+  business_name: merchant.business_name || merchant.name || merchant.email || "Unbekannter Händler",
+  balance: Number(merchant.balance || 0),
+  errors_24h: Number(merchant.errors_24h || 0),
+  is_online: Boolean(merchant.is_online),
+  is_suspended: Boolean(merchant.is_suspended),
+});
+
+const toMoney = (value) => Number(value || 0).toFixed(2);
+
 const StatusDot = ({ online, suspended }) => {
   const color = suspended ? "#EF4444" : online ? "#10B981" : "#6B7280";
   return <div className="w-2.5 h-2.5 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}60` }} />;
@@ -27,7 +42,7 @@ const StatusDot = ({ online, suspended }) => {
 const useMerchantAdminTr = () => {
   const { lang } = useI18n();
   const locale = lang === "sq-XK" ? "sq" : lang === "en-US" ? "en" : lang === "ar-AE" ? "ar" : lang;
-  return (values) => values?.[locale] ?? values?.en ?? values?.de ?? "";
+  return useCallback((values) => values?.[locale] ?? values?.en ?? values?.de ?? "", [locale]);
 };
 
 const MerchantAdminPage = ({ onNavigate, onBack }) => {
@@ -43,21 +58,25 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   const loadMerchants = useCallback(async () => {
     setLoading(true);
     try {
-      const status = filter === "all" ? "" : `&status=${filter}`;
-      const d = await api(`/api/admin/merchants?limit=100&search=${encodeURIComponent(search)}${status}`);
-      setMerchants(d.merchants || []);
+      const status = filter === "all" ? "" : `&status=${encodeURIComponent(filter)}`;
+      const d = await api(`/api/admin/merchants/list?limit=200${status}`);
+      setMerchants(Array.isArray(d.merchants) ? d.merchants.map(normalizeMerchantRow) : []);
       setTotal(d.total || 0);
     } catch (e) {
       toast.error(`${tr({ de: "Fehler beim Laden", en: "Error loading", sq: "Gabim gjatë ngarkimit", ar: "خطأ أثناء التحميل" })}: ${e.message}`);
     }
     setLoading(false);
-  }, [filter, search, tr]);
+  }, [filter, tr]);
 
   useEffect(() => { loadMerchants(); }, [loadMerchants]);
 
   const loadDetail = async (email) => {
+    if (!email) {
+      toast.error(tr({ de: "Für diesen Händler fehlt die E-Mail-Adresse.", en: "This merchant is missing an email address.", sq: "Për këtë tregtar mungon emaili.", ar: "البريد الإلكتروني لهذا التاجر غير موجود." }));
+      return;
+    }
     try {
-      const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}`);
+      const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/detail`);
       setDetail(d);
     } catch (e) {
       toast.error(e.message);
@@ -65,6 +84,10 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   };
 
   const handleRestart = async (email) => {
+    if (!email) {
+      toast.error(tr({ de: "Neustart nicht möglich: Händler ohne E-Mail.", en: "Restart not possible: merchant without email.", sq: "Rinisja nuk është e mundur: tregtar pa email.", ar: "إعادة التشغيل غير ممكنة: تاجر بدون بريد إلكتروني." }));
+      return;
+    }
     if (!window.confirm(tr({ de: `Session von ${email} neustarten?`, en: `Restart session for ${email}?`, sq: `Të riniset sesioni për ${email}?`, ar: `إعادة تشغيل جلسة ${email}؟` }))) return;
     try {
       const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/restart`, { method: "POST" });
@@ -74,6 +97,10 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   };
 
   const handleSuspend = async (email) => {
+    if (!email) {
+      toast.error(tr({ de: "Aktion nicht möglich: Händler ohne E-Mail.", en: "Action not possible: merchant without email.", sq: "Veprimi nuk është i mundur: tregtar pa email.", ar: "الإجراء غير ممكن: تاجر بدون بريد إلكتروني." }));
+      return;
+    }
     try {
       const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/suspend`, { method: "POST" });
       toast.success(d.message);
@@ -83,6 +110,10 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   };
 
   const handleAssignId = async (email) => {
+    if (!email) {
+      toast.error(tr({ de: "ID-Vergabe nicht möglich: Händler ohne E-Mail.", en: "Cannot assign ID: merchant without email.", sq: "Nuk mund të caktohet ID: tregtar pa email.", ar: "لا يمكن تعيين المعرّف: تاجر بدون بريد إلكتروني." }));
+      return;
+    }
     try {
       const d = await api(`/api/admin/merchants/${encodeURIComponent(email)}/assign-id`, {
         method: "POST",
@@ -104,9 +135,12 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
   };
 
   const filtered = merchants.filter(m =>
-    !search || (m.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    !search ||
+    (m.business_name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (m.name || "").toLowerCase().includes(search.toLowerCase()) ||
     (m.email || "").toLowerCase().includes(search.toLowerCase()) ||
-    (m.merchant_id || "").toLowerCase().includes(search.toLowerCase())
+    (m.merchant_id || "").toLowerCase().includes(search.toLowerCase()) ||
+    (m.id || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const timeAgo = (iso) => {
@@ -199,7 +233,11 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                 className="rounded-2xl p-3"
                 style={{ background: "#0A0A0A", border: `1px solid ${m.is_suspended ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.06)"}` }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => { setSelected(m.email); loadDetail(m.email); }}
+                onClick={() => {
+                  if (!m.email) return;
+                  setSelected(m.email);
+                  loadDetail(m.email);
+                }}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,184,0,0.1)" }}>
@@ -224,7 +262,7 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                     </div>
                   </div>
                   <div className="text-right">
-                    {m.errors_24h > 0 && (
+                    {Number(m.errors_24h || 0) > 0 && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 font-bold">
                         {m.errors_24h}
                       </span>
@@ -302,11 +340,11 @@ const MerchantAdminPage = ({ onNavigate, onBack }) => {
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
                     <p className="text-[9px] text-white/30">{tr({ de: "Guthaben", en: "Balance", sq: "Bilanci", ar: "الرصيد" })}</p>
-                    <p className="text-[13px] font-bold text-emerald-400">EUR {detail.merchant?.balance?.toFixed(2)}</p>
+                    <p className="text-[13px] font-bold text-emerald-400">EUR {toMoney(detail.merchant?.balance)}</p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
                     <p className="text-[9px] text-white/30">{tr({ de: "Umsatz gesamt", en: "Total revenue", sq: "Të ardhurat totale", ar: "إجمالي الإيرادات" })}</p>
-                    <p className="text-[13px] font-bold text-white">EUR {detail.revenue_total?.toFixed(2)}</p>
+                    <p className="text-[13px] font-bold text-white">EUR {toMoney(detail.revenue_total)}</p>
                   </div>
                   <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
                     <p className="text-[9px] text-white/30">{tr({ de: "Transaktionen", en: "Transactions", sq: "Transaksionet", ar: "المعاملات" })}</p>

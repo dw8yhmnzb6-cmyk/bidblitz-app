@@ -23,6 +23,18 @@ async function api(path, opts = {}) {
   return d;
 }
 
+const formatMoney = (value) => `€${Number(value || 0).toFixed(2)}`;
+
+const normalizeTopEvents = (totals = {}) => Object.entries(totals)
+  .map(([name, count]) => ({ name, count: Number(count || 0) }))
+  .sort((a, b) => b.count - a.count);
+
+const normalizeFeatureUsage = (topFeatures = []) => topFeatures.reduce((acc, item) => {
+  const key = item?.feature || "unknown";
+  acc[key] = Number(item?.clicks || 0);
+  return acc;
+}, {});
+
 export default function AdminAnalyticsPage({ onBack }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,8 +47,11 @@ export default function AdminAnalyticsPage({ onBack }) {
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const res = await api(`/api/admin/analytics/overview?days=${period}`);
-      setData(res);
+      const [overview, conversions] = await Promise.all([
+        api(`/api/admin/analytics/overview?days=${period}`),
+        api(`/api/analytics/conversions?days=${period}`).catch(() => ({ totals: {}, top_features: [] })),
+      ]);
+      setData({ overview, conversions });
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -54,39 +69,39 @@ export default function AdminAnalyticsPage({ onBack }) {
 
   if (!data) return null;
 
-  const users = data?.users || {};
-  const revenue = data?.revenue || {};
-  const featureUsage = data?.feature_usage || {};
-  const topEvents = Array.isArray(data?.top_events) ? data.top_events : [];
+  const overview = data?.overview || {};
+  const conversions = data?.conversions || {};
+  const featureUsage = normalizeFeatureUsage(conversions.top_features || []);
+  const topEvents = normalizeTopEvents(conversions.totals || {});
 
   const stats = [
     {
       label: "Total Users",
-      value: users.total ?? 0,
+      value: overview.total_users ?? 0,
       icon: Users,
       color: "#3B82F6",
-      change: `+${users.new ?? 0} new`,
+      change: `+${overview.new_today ?? 0} heute`,
     },
     {
-      label: "Active Users",
-      value: users.active ?? 0,
+      label: "Active Users (7d)",
+      value: overview.active_7d ?? 0,
       icon: Activity,
       color: "#10B981",
-      change: `${period}d period`,
+      change: `24h: ${overview.active_24h ?? 0}`,
     },
     {
-      label: "Revenue (30d)",
-      value: `€${Number(revenue.total || 0).toFixed(2)}`,
+      label: "Revenue Today",
+      value: formatMoney(overview.revenue_today),
       icon: DollarSign,
       color: "#F59E0B",
-      change: revenue.currency || "EUR",
+      change: `${overview.tx_today ?? 0} Tx heute`,
     },
     {
-      label: "Push Devices",
-      value: featureUsage.push_devices ?? 0,
+      label: "Online Now",
+      value: overview.online_now ?? 0,
       icon: Zap,
       color: "#8B5CF6",
-      change: "registered",
+      change: "letzte 5 Min",
     },
   ];
 
@@ -156,7 +171,7 @@ export default function AdminAnalyticsPage({ onBack }) {
         </div>
 
         {/* Top Events */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div data-testid="admin-analytics-top-events-card" className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 size={20} className="text-blue-600" />
             <h2 className="font-bold">Top Events</h2>
@@ -192,25 +207,29 @@ export default function AdminAnalyticsPage({ onBack }) {
         </div>
 
         {/* Feature Usage */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div data-testid="admin-analytics-feature-usage-card" className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
           <div className="flex items-center gap-2 mb-3">
             <PieChart size={20} className="text-purple-600" />
             <h2 className="font-bold">Feature Usage</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {Object.entries(featureUsage).map(([key, value]) => (
-              <div
-                key={key}
-                className="bg-gray-50 rounded-lg p-3 border border-gray-200"
-              >
-                <p className="text-2xl font-bold text-purple-600">{value}</p>
-                <p className="text-xs text-gray-600 capitalize">
-                  {key.replace(/_/g, " ")}
-                </p>
-              </div>
-            ))}
-          </div>
+          {Object.keys(featureUsage).length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">Keine Feature-Daten verfügbar</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(featureUsage).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="bg-gray-50 rounded-lg p-3 border border-gray-200"
+                >
+                  <p className="text-2xl font-bold text-purple-600">{value}</p>
+                  <p className="text-xs text-gray-600 capitalize">
+                    {key.replace(/_/g, " ")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
