@@ -798,3 +798,13 @@ frontend/node_modules/.cache/default-development/46.pack
 frontend/node_modules/.cache/default-development/55.pack
 frontend/node_modules/.cache/default-development/52.pack_
 frontend/node_modules/.cache/default-development/44.pack_
+
+# Capacitor native projects must stay committed
+!ios/
+!ios/**
+!frontend/ios/
+!frontend/ios/**
+!*.xcworkspace
+!*.xcworkspace/**
+!*.xcodeproj
+!*.xcodeproj/**
