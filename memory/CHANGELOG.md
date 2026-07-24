@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 24.07.2026 — Admin-Fehler nach Login in Analytics und Händlerverwaltung behoben
+- Die aktuelle Nutzer-Meldung **„Fehler“** wurde auf zwei echte Frontend-Crashes in Admin-Bereichen eingegrenzt: **`/admin/analytics`** brach mit **`Cannot read properties of undefined (reading 'total')`** und **`/admin/merchants`** mit **`Cannot read properties of undefined (reading 'toLowerCase')`**.
+- `frontend/src/pages/AdminAnalyticsPage.jsx` wurde auf die tatsächlich gelieferten Backend-Strukturen umgestellt. Die Seite liest jetzt **`/api/admin/analytics/overview`** plus **`/api/analytics/conversions`**, arbeitet mit sicheren Fallbacks und rendert Statistik-/Top-Event-/Feature-Karten ohne Undefined-Zugriffe.
+- `frontend/src/pages/MerchantAdminPage.jsx` nutzt jetzt die korrekten Admin-Endpunkte (**`/api/admin/merchants/list`** und **`/{email}/detail`**), normalisiert Händlerdaten defensiv, schützt Such-/Detail-/Aktionen gegen fehlende Felder und verhindert zusätzlich einen Re-Load-Loop durch stabilisiertes `tr`-Callback.
+- Verifiziert per Frontend-Smoke, Browser-Login und Admin-Routencheck: `/admin/analytics` ohne Error Boundary, `/admin/merchants` mit sichtbaren Händlerkarten. Zusätzlich **Auto Frontend Testing PASS** und **Backend-Regression-Check PASS**. Bekannte **nicht-blockierende** Preview-404s auf **`/api/pro/ads/active`**, **`/api/recommendations/home`** und **`/api/ai/recommendations`** bestehen weiter, blockieren diesen Fix aber nicht.
+
 ## 24.07.2026 — KYC im aktuellen Testbuild vollständig deaktiviert
 - Für den aktuellen BidBlitz-Testbuild wurde KYC nicht nur optisch versteckt, sondern **vollständig aus allen aktiven Render-, Redirect- und Guard-Pfaden entfernt bzw. per echter Feature-Flags deaktiviert**.
 - Neue/klare Testbuild-Flags: `REACT_APP_KYC_ENABLED=false`, `REACT_APP_KYC_REQUIRED=false`, `REACT_APP_SHOW_KYC_GATE=false`, `REACT_APP_TEST_MODE_FULL_ACCESS=true`, zusätzlich weiter `REACT_APP_DISABLE_KYC=true` und `REACT_APP_SHOW_LIVE_CHECK_BANNER=false`.

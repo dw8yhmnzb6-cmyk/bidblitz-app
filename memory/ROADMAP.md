@@ -1,5 +1,13 @@
 # BidBlitz — ROADMAP
 
+## Status nach Admin-Error-Fix — 24.07.2026
+- ✅ Die aktuelle Nutzer-Meldung **„Fehler“** wurde auf zwei echte Admin-Frontend-Crashes zurückgeführt und behoben.
+- ✅ `/admin/analytics` rendert wieder mit belastbaren Live-Kennzahlen statt mit `undefined.total` zu crashen.
+- ✅ `/admin/merchants` rendert wieder Händlerkarten statt mit `undefined.toLowerCase` bzw. Lade-Loop hängen zu bleiben.
+- ✅ Verifiziert mit Frontend-Smoke, Frontend-Testing-Agent PASS und Backend-Regression-Check PASS.
+- 🟡 Bekannte nicht-blockierende Preview-404s bleiben offen: `/api/pro/ads/active`, `/api/recommendations/home`, `/api/ai/recommendations`.
+- 🔴 Nächster Produktpunkt bleibt: **Telegram-Alarm als Monitoring-Backup**.
+
 ## Status nach kompletter KYC-Deaktivierung im Testbuild — 24.07.2026
 - ✅ KYC ist im **aktuellen Testbuild vollständig deaktiviert**: keine KYC-Karte, keine KYC-Buttons, keine KYC-Redirects, keine KYC-Routen-Blocks.
 - ✅ Reviewer-Testnutzer hat Full Access auf Home, Wallet und offene Service-Navigation ohne KYC-Sperren.
