@@ -16,7 +16,24 @@ import { inspectKycImage } from "../utils/kycImageInspector";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+async function logKycSubmissionIssue(payload) {
+  if (!API) return;
+  try {
+    await fetch(`${API}/api/monitoring/log-error`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.warn("[KYCFlow] Monitoring logging failed", error);
+  }
+}
+
 function normalizeSubmitError(detail) {
+  if (detail && typeof detail === "object" && detail.detail) {
+    return normalizeSubmitError(detail.detail);
+  }
   if (detail && Array.isArray(detail.user_feedback) && detail.user_feedback.length) {
     return detail.user_feedback.filter(Boolean).join(" ");
   }
@@ -37,17 +54,35 @@ function normalizeSubmitError(detail) {
   }
   if (detail && typeof detail.message === "string") return detail.message;
   if (detail && typeof detail.msg === "string") return detail.msg;
-  return "Übermittlung fehlgeschlagen";
+  if (detail && typeof detail.error === "string") return detail.error;
+  return "Die Verifizierung konnte gerade nicht verarbeitet werden. Bitte prüfe deine Angaben und versuche es erneut.";
 }
 
 function extractSubmitFeedback(detail) {
   if (!detail) return [];
+  if (detail?.detail) return extractSubmitFeedback(detail.detail);
   if (Array.isArray(detail?.user_feedback)) return detail.user_feedback.filter(Boolean);
   if (Array.isArray(detail?.detail?.user_feedback)) return detail.detail.user_feedback.filter(Boolean);
   if (typeof detail === "string") return [detail];
   if (typeof detail?.message === "string") return [detail.message];
   if (typeof detail?.detail === "string") return [detail.detail];
   return [];
+}
+
+function buildSubmitProblem(detail, fallbackMessage) {
+  const messages = extractSubmitFeedback(detail);
+  const primaryMessage = normalizeSubmitError(detail) || fallbackMessage;
+  const dedupedMessages = messages.length ? [...new Set(messages)] : [primaryMessage];
+  return {
+    primaryMessage,
+    messages: dedupedMessages,
+    incidentCode: detail?.incident_code || detail?.detail?.incident_code || "",
+    supportHint: detail?.support_hint || detail?.detail?.support_hint || "",
+    failureReasons: detail?.failure_reasons || detail?.detail?.failure_reasons || [],
+    failedAttempts: Number(detail?.failed_attempts || detail?.detail?.failed_attempts || 0),
+    canRequestManualReview: Boolean(detail?.can_request_manual_review || detail?.detail?.can_request_manual_review),
+    retryable: Boolean(detail?.retryable || detail?.detail?.retryable),
+  };
 }
 
 const PREVIEW_OVERLAY_STYLES = {
@@ -173,35 +208,47 @@ export default function KYCFlow({ onBack, onComplete }) {
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
         const payload = d.detail || d.message || d;
-        const feedbackMessages = extractSubmitFeedback(d.detail || d);
-        const failedAttempts = Number(d.failed_attempts || d.detail?.failed_attempts || 0);
-        const canRequestManualReview = Boolean(d.can_request_manual_review || d.detail?.can_request_manual_review);
-        let errMsg = normalizeSubmitError(payload);
+        const submitProblem = buildSubmitProblem(payload, "Die Verifizierung konnte gerade nicht verarbeitet werden. Bitte versuche es erneut.");
+        const errMsg = submitProblem.primaryMessage;
         if (isAlreadySubmittedKycError(errMsg)) {
           await loadStatus();
           setSubmitting(false);
           return;
         }
+        await logKycSubmissionIssue({
+          message: errMsg,
+          page: "/kyc/review",
+          level: "error",
+          meta: {
+            flow: "kyc_submit",
+            status: r.status,
+            incident_code: submitProblem.incidentCode,
+            retryable: submitProblem.retryable,
+          },
+        });
         setReviewFeedback({
-          messages: feedbackMessages.length ? feedbackMessages : [errMsg],
-          failedAttempts,
-          canRequestManualReview,
-          failureReasons: d.failure_reasons || d.detail?.failure_reasons || [],
+          messages: submitProblem.messages,
+          failedAttempts: submitProblem.failedAttempts,
+          canRequestManualReview: submitProblem.canRequestManualReview,
+          failureReasons: submitProblem.failureReasons,
+          incidentCode: submitProblem.incidentCode,
+          supportHint: submitProblem.supportHint,
         });
         setError(errMsg);
         setSubmitting(false);
         return;
       }
       if (d?.status === "rejected") {
-        const feedbackMessages = extractSubmitFeedback(d);
-        const errMsg = normalizeSubmitError(d);
+        const submitProblem = buildSubmitProblem(d, "Bitte korrigiere die markierten Punkte und sende die Bilder erneut.");
         setReviewFeedback({
-          messages: feedbackMessages.length ? feedbackMessages : [errMsg],
-          failedAttempts: Number(d.failed_attempts || 0),
-          canRequestManualReview: Boolean(d.can_request_manual_review),
-          failureReasons: d.failure_reasons || [],
+          messages: submitProblem.messages,
+          failedAttempts: submitProblem.failedAttempts,
+          canRequestManualReview: submitProblem.canRequestManualReview,
+          failureReasons: submitProblem.failureReasons,
+          incidentCode: submitProblem.incidentCode,
+          supportHint: submitProblem.supportHint,
         });
-        setError(errMsg);
+        setError(submitProblem.primaryMessage);
         setSubmitting(false);
         return;
       }
@@ -212,7 +259,16 @@ export default function KYCFlow({ onBack, onComplete }) {
       await loadStatus();
       onComplete?.();
     } catch (e) {
-      setError("Netzwerkfehler — bitte erneut versuchen");
+      const fallback = "Netzwerkfehler bei der Übermittlung. Bitte Verbindung prüfen und erneut versuchen.";
+      setReviewFeedback({
+        messages: [fallback],
+        failedAttempts: 0,
+        canRequestManualReview: false,
+        failureReasons: [],
+        incidentCode: "",
+        supportHint: "Wenn das Problem bestehen bleibt, versuche es bitte später erneut.",
+      });
+      setError(fallback);
     }
     setSubmitting(false);
   };
@@ -582,6 +638,8 @@ function KYCReviewPage({ form, previews, liveWarnings, submitting, error, review
   const feedbackMessages = Array.isArray(reviewFeedback?.messages) ? reviewFeedback.messages.filter(Boolean) : [];
   const canRequestManualReview = !!reviewFeedback?.canRequestManualReview;
   const failedAttempts = Number(reviewFeedback?.failedAttempts || 0);
+  const incidentCode = reviewFeedback?.incidentCode || "";
+  const supportHint = reviewFeedback?.supportHint || "";
   const slotFeedback = buildKycSlotFeedback(reviewFeedback?.failureReasons || [], feedbackMessages);
   const slotFeedbackMap = Object.fromEntries(slotFeedback.map((item) => [item.id, item]));
 
@@ -677,6 +735,18 @@ function KYCReviewPage({ form, previews, liveWarnings, submitting, error, review
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {(incidentCode || supportHint) && (
+        <div data-testid="kyc-review-incident-card" className="rounded-xl bg-cyan-500/10 border border-cyan-400/20 p-3 mb-4">
+          <p className="text-[11px] font-bold text-cyan-300">Was gerade passiert ist</p>
+          {supportHint && <p className="mt-2 text-xs text-cyan-100/80">{supportHint}</p>}
+          {incidentCode && (
+            <p data-testid="kyc-review-incident-code" className="mt-2 text-[11px] font-mono text-cyan-200/90">
+              Problemcode: {incidentCode}
+            </p>
+          )}
         </div>
       )}
 

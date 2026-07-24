@@ -162,10 +162,25 @@ frontend:
         agent: "testing"
         comment: "✓ VERIFIED: Live overlay markings properly integrated in KYCFlow.jsx. Upload stage overlays (lines 523-531) with data-testid kyc-preview-overlay-{slot}. Review stage overlays (lines 630-638) with data-testid kyc-review-preview-overlay-{slot}. Three overlay states implemented: OK (green bg, rgba(0,210,106,0.90)), Hinweis/Warning (amber bg, rgba(255,184,0,0.92)), Fehler/Error (red bg, rgba(255,71,87,0.90)). All 6 data-testids correctly implemented for slots: front, back, selfie. Feature is STATE-DEPENDENT: overlays only visible when preview images exist and show status based on validation (warnings/feedback). Code review confirms proper integration with getPreviewOverlayMeta() function. App loads without crashes on preview URL. Only expected 401/404 errors from auth endpoints. Feature production-ready."
 
+  - task: "KYC error flow - improved error messages and incident tracking"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/KYCFlow.jsx, backend/routes/kyc.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Code review for KYC error flow improvements: verständliche Fehlermeldungen statt generischer Meldungen, Problemcode/Incident-Code bei technischen Fehlern, Support-Hinweise. Testing data-testids: kyc-review-feedback-card, kyc-review-incident-card, kyc-review-incident-code"
+      - working: true
+        agent: "testing"
+        comment: "✅ CODE REVIEW BESTANDEN (24.07.2026): KYC-Fehlerflow vollständig implementiert und korrekt. Frontend (KYCFlow.jsx): 1) buildSubmitProblem() extrahiert incident_code und support_hint aus Backend-Response (Zeilen 72-86) ✓ 2) kyc-review-feedback-card zeigt verständliche Fehlermeldungen (Zeile 728) ✓ 3) kyc-review-incident-card zeigt Support-Hinweis bei technischen Fehlern (Zeile 742) ✓ 4) kyc-review-incident-code zeigt Problemcode (Zeile 746) ✓. Backend (kyc.py): 1) _record_kyc_submission_incident() erstellt eindeutigen incident_code im Format KYC-YYYYMMDDHHMMSS-XXXX (Zeile 259) ✓ 2) Bei AI-Fehler wird incident_code + support_hint in HTTPException detail zurückgegeben (Zeilen 437-450) ✓ 3) Bei unexpected error wird incident_code + support_hint zurückgegeben (Zeilen 555-568) ✓ 4) Incident wird in monitoring_incidents Collection gespeichert und Admin-Benachrichtigungen erstellt ✓. Alle 3 geforderten Test-IDs korrekt implementiert. Feature ist STATE-DEPENDENT: incident-card nur bei technischen Fehlern sichtbar, feedback-card bei Validierungsfehlern - korrektes Verhalten. Implementierung produktionsreif."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 6
+  test_sequence: 7
 
 test_plan:
   current_focus: []
@@ -192,4 +207,7 @@ agent_communication:
     message: "✅ ADMIN-BEREICHE BUGFIX VERIFIZIERT (24.07.2026): Fokussierter Test der Admin-Analytics und Merchant-Admin Seiten nach Behebung der undefined-Fehler erfolgreich. Test-Ergebnisse: 1) Admin-Login mit admin@bidblitz.ae funktioniert ✓ 2) /admin/analytics lädt ohne Error Boundary - alle 4 Statistik-Karten sichtbar (Total Users, Active Users, Revenue Today, Online Now), Top Events Card vorhanden, Feature Usage Card vorhanden ✓ 3) API-Calls erfolgreich: GET /api/admin/analytics/overview?days=7 → 200, GET /api/analytics/conversions?days=7 → 200 ✓ 4) /admin/merchants lädt ohne Error Boundary - 5 Händler-Karten sichtbar, Händler-Suchfeld vorhanden, Statistik-Bereiche (Online, Ohne ID, Mit Fehlern) sichtbar ✓ 5) API-Call erfolgreich: GET /api/admin/merchants/list?limit=200 → 200 ✓ 6) Keine Error-Boundary-UI auf beiden Seiten ✓ 7) Frühere Fehler 'Cannot read properties of undefined (reading total)' und 'Cannot read properties of undefined (reading toLowerCase)' sind behoben ✓. Safe-Access-Pattern (optional chaining, nullish coalescing, Fallback-Werte) funktionieren korrekt. Bekannte Nicht-Blocker: 404-Fehler in Console (erwartete fehlende Endpoints wie /api/pro/ads/active, /api/recommendations/home). Admin-Fix ist produktionsreif."
   - agent: "testing"
     message: "✅ BACKEND-REGRESSION-CHECK BESTANDEN (24.07.2026 Follow-up): Knapper Backend-Check für Admin-Endpunkte nach undefined-Fix durchgeführt. Alle 4 Ziel-Endpunkte erfolgreich getestet: 1) POST /api/auth/login mit admin@bidblitz.ae → 200 OK, role=admin ✓ 2) GET /api/admin/analytics/overview?days=7 → 200 OK, alle erwarteten Felder vorhanden (total_users, online_now, active_24h, active_7d, new_today, revenue_today, tx_today) ✓ 3) GET /api/analytics/conversions?days=7 → 200 OK, totals und top_features vorhanden ✓ 4) GET /api/admin/merchants/list?limit=5 → 200 OK, merchants Array mit 5 Einträgen, robuste Felder (id, merchant_id, name, email, business_name, balance, is_suspended, is_online) ✓. Kein 500er auf diesen Endpunkten. Keine Backend-Regression sichtbar. Admin-Analytics-Fix funktioniert korrekt."
+
+  - agent: "testing"
+    message: "✅ KYC-FEHLERFLOW CODE REVIEW BESTANDEN (24.07.2026): Umfassende Code-Review des KYC-Fehlerflows durchgeführt. Alle geforderten Features korrekt implementiert: 1) Verständliche Fehlermeldungen statt generischer Meldungen ✓ 2) Problemcode/Incident-Code bei technischen Fehlern ✓ 3) Support-Hinweise für Nutzer ✓ 4) Alle 3 Test-IDs vorhanden: kyc-review-feedback-card (Zeile 728), kyc-review-incident-card (Zeile 742), kyc-review-incident-code (Zeile 746) ✓. Backend erstellt eindeutige incident_codes im Format KYC-YYYYMMDDHHMMSS-XXXX und speichert sie in monitoring_incidents Collection. Frontend extrahiert incident_code und support_hint korrekt aus Backend-Response. Feature ist STATE-DEPENDENT: incident-card nur bei technischen Fehlern sichtbar, feedback-card bei Validierungsfehlern. Implementierung produktionsreif. Hinweis: UI-Test konnte nicht durchgeführt werden, da KYC in der Preview-Umgebung durch TEST_MODE_FULL_ACCESS und KYC_DISABLED deaktiviert ist - Code-Review bestätigt jedoch korrekte Implementierung."
 

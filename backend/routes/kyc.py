@@ -229,6 +229,78 @@ def _capability_status_for_response(actual_status: str) -> str:
     return "approved" if TEST_MODE else actual_status
 
 
+def _snapshot_kyc_state(user: dict) -> dict:
+    fields = [
+        "kyc_status", "kyc_verified", "kyc_document_type", "kyc_front_path", "kyc_back_path",
+        "kyc_selfie_path", "kyc_submitted_at", "kyc_declared_first_name", "kyc_declared_last_name",
+        "kyc_declared_date_of_birth", "kyc_declared_country", "kyc_declared_id_number", "kyc_declared_address",
+        "kyc_reupload_requested", "kyc_admin_reason", "kyc_ai_verdict", "kyc_ai_confidence", "kyc_ai_decision",
+        "kyc_extracted_name", "kyc_extracted_dob", "kyc_extracted_doc_number", "kyc_failure_reasons",
+        "kyc_user_feedback", "kyc_failed_attempts", "kyc_manual_review_eligible", "kyc_reviewed_at",
+        "kyc_reviewed_by", "kyc_rejection_reason", "kyc_manual_review_requested", "kyc_manual_review_requested_at",
+    ]
+    return {field: user.get(field) for field in fields}
+
+
+async def _restore_kyc_state(user_id, snapshot: dict):
+    await db.users.update_one({"_id": user_id}, {"$set": snapshot})
+
+
+def _cleanup_kyc_temp_files(*paths: Optional[str]):
+    for path in paths:
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception:
+                logger.warning("KYC temp file cleanup failed", extra={"path": path})
+
+
+async def _record_kyc_submission_incident(user: dict, phase: str, user_message: str, technical_reason: str, extra: Optional[dict] = None) -> str:
+    incident_code = f"KYC-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2).upper()}"
+    now = datetime.now(timezone.utc).isoformat()
+    incident = {
+        "type": "kyc_submission_error",
+        "key": "kyc_submit",
+        "label": "KYC Übermittlung fehlgeschlagen",
+        "status": "critical",
+        "severity": "critical",
+        "incident_code": incident_code,
+        "phase": phase,
+        "message": user_message,
+        "error_message": str(technical_reason or "")[:2000],
+        "user_id": str(user.get("_id")),
+        "user_email": user.get("email", ""),
+        "created_at": now,
+        "resolved": False,
+        "meta": extra or {},
+    }
+    await db.monitoring_incidents.insert_one(incident)
+
+    admins = await db.users.find({"role": "admin"}, {"_id": 1}).to_list(50)
+    if admins:
+        notifications = [{
+            "user_id": str(admin["_id"]),
+            "type": "kyc_submission_error",
+            "title": "KYC-Fehler bei Kundeneinreichung",
+            "message": f"{user.get('email', 'Unbekannter Nutzer')}: {user_message}",
+            "read": False,
+            "created_at": now,
+            "meta": {
+                "incident_code": incident_code,
+                "phase": phase,
+                "source": "kyc_submit",
+                **(extra or {}),
+            },
+        } for admin in admins]
+        await db.notifications.insert_many(notifications)
+
+    return incident_code
+
+
+def _is_forced_kyc_debug_failure(request: Request) -> bool:
+    return request.headers.get("x-debug-kyc-force-error") == "1"
+
+
 async def _get_raw_current_user(request: Request) -> dict:
     auth_user = await get_current_user(request)
     raw_user = await db.users.find_one({"_id": auth_user["_id"]})
@@ -285,6 +357,8 @@ async def submit_kyc(
     """
     user = await _get_raw_current_user(request)
     user_id = str(user["_id"])
+    previous_snapshot = _snapshot_kyc_state(user)
+    front_path = back_path = selfie_path = None
 
     if document_type == "driver_license":
         document_type = "drivers_license"
@@ -297,146 +371,201 @@ async def submit_kyc(
     if normalized_status == "pending":
         raise HTTPException(status_code=400, detail="KYC bereits eingereicht. Warte auf Prüfung.")
 
-    # Validate uploads
-    _validate_image(id_front, "Vorderseite")
-    _validate_image(id_back, "Rückseite")
-    _validate_image(selfie, "Selfie")
+    try:
+        # Validate uploads
+        _validate_image(id_front, "Vorderseite")
+        _validate_image(id_back, "Rückseite")
+        _validate_image(selfie, "Selfie")
 
-    # Save files
-    upload_dir = os.path.join(UPLOAD_BASE, user_id)
-    os.makedirs(upload_dir, exist_ok=True)
+        # Save files
+        upload_dir = os.path.join(UPLOAD_BASE, user_id)
+        os.makedirs(upload_dir, exist_ok=True)
 
-    def _path(prefix: str, fn: Optional[str]) -> str:
-        ext = "jpg"
-        if fn and "." in fn:
-            ext = fn.rsplit(".", 1)[-1].lower()
-            if ext not in ("jpg", "jpeg", "png", "webp"):
-                ext = "jpg"
-        return os.path.join(upload_dir, f"{prefix}_{secrets.token_hex(4)}.{ext}")
+        def _path(prefix: str, fn: Optional[str]) -> str:
+            ext = "jpg"
+            if fn and "." in fn:
+                ext = fn.rsplit(".", 1)[-1].lower()
+                if ext not in ("jpg", "jpeg", "png", "webp"):
+                    ext = "jpg"
+            return os.path.join(upload_dir, f"{prefix}_{secrets.token_hex(4)}.{ext}")
 
-    front_path = _path("front", id_front.filename)
-    back_path = _path("back", id_back.filename)
-    selfie_path = _path("selfie", selfie.filename)
+        front_path = _path("front", id_front.filename)
+        back_path = _path("back", id_back.filename)
+        selfie_path = _path("selfie", selfie.filename)
 
-    await _save_upload(id_front, front_path)
-    await _save_upload(id_back, back_path)
-    await _save_upload(selfie, selfie_path)
+        await _save_upload(id_front, front_path)
+        await _save_upload(id_back, back_path)
+        await _save_upload(selfie, selfie_path)
 
-    now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
-    # Mark pending immediately
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {
-            "kyc_status": "pending",
-            "kyc_document_type": document_type,
-            "kyc_front_path": front_path,
-            "kyc_back_path": back_path,
-            "kyc_selfie_path": selfie_path,
-            "kyc_submitted_at": now,
-            "kyc_declared_first_name": (first_name or "").strip() or None,
-            "kyc_declared_last_name": (last_name or "").strip() or None,
-            "kyc_declared_date_of_birth": (date_of_birth or "").strip() or None,
-            "kyc_declared_country": (country or "").strip() or None,
-            "kyc_declared_id_number": (id_number or "").strip() or None,
-            "kyc_declared_address": (address or "").strip() or None,
-            "kyc_reupload_requested": False,
-            "kyc_admin_reason": None,
-        }},
-    )
+        # Mark pending immediately
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "kyc_status": "pending",
+                "kyc_document_type": document_type,
+                "kyc_front_path": front_path,
+                "kyc_back_path": back_path,
+                "kyc_selfie_path": selfie_path,
+                "kyc_submitted_at": now,
+                "kyc_declared_first_name": (first_name or "").strip() or None,
+                "kyc_declared_last_name": (last_name or "").strip() or None,
+                "kyc_declared_date_of_birth": (date_of_birth or "").strip() or None,
+                "kyc_declared_country": (country or "").strip() or None,
+                "kyc_declared_id_number": (id_number or "").strip() or None,
+                "kyc_declared_address": (address or "").strip() or None,
+                "kyc_reupload_requested": False,
+                "kyc_admin_reason": None,
+            }},
+        )
 
-    # Run AI verification
-    verdict = await verify_id_documents(front_path, back_path, selfie_path)
-    decision = auto_decision(verdict)
-    feedback = _build_feedback_from_verdict(verdict)
-    previous_failed_attempts = int(user.get("kyc_failed_attempts", 0) or 0)
-    failed_attempts = _next_failed_attempts(previous_failed_attempts, decision)
-    manual_review_requested = bool(user.get("kyc_manual_review_requested"))
-    can_request_manual_review = _can_request_manual_review(failed_attempts, manual_review_requested)
+        if _is_forced_kyc_debug_failure(request):
+            raise RuntimeError("forced_kyc_debug_failure")
 
-    update = {
-        "kyc_ai_verdict": verdict,
-        "kyc_ai_confidence": verdict.get("overall_confidence", 0),
-        "kyc_ai_decision": decision,
-        "kyc_extracted_name": verdict.get("full_name"),
-        "kyc_extracted_dob": verdict.get("date_of_birth"),
-        "kyc_extracted_doc_number": verdict.get("document_number"),
-        "kyc_status": decision if decision != "pending" else "pending",
-        "kyc_failure_reasons": feedback["failure_reasons"],
-        "kyc_user_feedback": feedback["user_feedback"],
-        "kyc_failed_attempts": failed_attempts,
-        "kyc_manual_review_eligible": can_request_manual_review,
-    }
-    if decision == "approved":
-        update["kyc_verified"] = True
-        update["kyc_reviewed_at"] = now
-        update["kyc_reviewed_by"] = "ai_auto"
-        update["kyc_rejection_reason"] = None
-        update["kyc_manual_review_requested"] = False
-        update["kyc_manual_review_requested_at"] = None
-        update["kyc_reupload_requested"] = False
-    elif decision == "rejected":
-        update["kyc_verified"] = False
-        update["kyc_reviewed_at"] = now
-        update["kyc_reviewed_by"] = "ai_auto"
-        update["kyc_rejection_reason"] = feedback["summary"] or verdict.get("fraud_signals") or "AI-Prüfung fehlgeschlagen"
-        update["kyc_manual_review_requested"] = False
-        update["kyc_manual_review_requested_at"] = None
-        update["kyc_reupload_requested"] = False
-    else:
-        update["kyc_verified"] = False
-        update["kyc_rejection_reason"] = None
-        update["kyc_reupload_requested"] = False
+        verdict = await verify_id_documents(front_path, back_path, selfie_path)
+        if verdict.get("error"):
+            await _restore_kyc_state(user["_id"], previous_snapshot)
+            incident_code = await _record_kyc_submission_incident(
+                user,
+                "ai_verification",
+                "Die automatische KYC-Prüfung war gerade nicht erreichbar.",
+                verdict.get("error", "unknown_ai_error"),
+                {"document_type": document_type, "source": "kyc_ai_verifier"},
+            )
+            _cleanup_kyc_temp_files(front_path, back_path, selfie_path)
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "message": "Deine Verifizierung konnte gerade nicht verarbeitet werden. Bitte versuche es in ein paar Minuten erneut.",
+                    "user_feedback": [
+                        "Unsere automatische Ausweisprüfung ist im Moment nicht erreichbar.",
+                        "Deine Unterlagen wurden noch nicht endgültig eingereicht.",
+                        "Bitte versuche die Übermittlung in ein paar Minuten erneut.",
+                    ],
+                    "incident_code": incident_code,
+                    "support_hint": "Der Vorfall wurde automatisch im Admin-Monitoring protokolliert.",
+                    "retryable": True,
+                },
+            )
 
-    await db.users.update_one({"_id": user["_id"]}, {"$set": update})
+        decision = auto_decision(verdict)
+        feedback = _build_feedback_from_verdict(verdict)
+        previous_failed_attempts = int(user.get("kyc_failed_attempts", 0) or 0)
+        failed_attempts = _next_failed_attempts(previous_failed_attempts, decision)
+        manual_review_requested = bool(user.get("kyc_manual_review_requested"))
+        can_request_manual_review = _can_request_manual_review(failed_attempts, manual_review_requested)
 
-    # Insert/update review entry for admin
-    await db.kyc_reviews.update_one(
-        {"user_id": user_id, "submitted_at": now},
-        {
-            "$set": {
-                "user_id": user_id,
-                "user_name": user.get("name") or user.get("email", ""),
-                "user_email": user.get("email", ""),
-                "document_type": document_type,
-                "front_path": front_path,
-                "back_path": back_path,
-                "selfie_path": selfie_path,
-                "status": decision,
-                "ai_verdict": verdict,
-                "failure_reasons": feedback["failure_reasons"],
-                "user_feedback": feedback["user_feedback"],
-                "failed_attempts": failed_attempts,
-                "manual_review_eligible": can_request_manual_review,
-                "manual_review_requested": False,
-                "submitted_at": now,
-            }
-        },
-        upsert=True,
-    )
+        update = {
+            "kyc_ai_verdict": verdict,
+            "kyc_ai_confidence": verdict.get("overall_confidence", 0),
+            "kyc_ai_decision": decision,
+            "kyc_extracted_name": verdict.get("full_name"),
+            "kyc_extracted_dob": verdict.get("date_of_birth"),
+            "kyc_extracted_doc_number": verdict.get("document_number"),
+            "kyc_status": decision if decision != "pending" else "pending",
+            "kyc_failure_reasons": feedback["failure_reasons"],
+            "kyc_user_feedback": feedback["user_feedback"],
+            "kyc_failed_attempts": failed_attempts,
+            "kyc_manual_review_eligible": can_request_manual_review,
+        }
+        if decision == "approved":
+            update["kyc_verified"] = True
+            update["kyc_reviewed_at"] = now
+            update["kyc_reviewed_by"] = "ai_auto"
+            update["kyc_rejection_reason"] = None
+            update["kyc_manual_review_requested"] = False
+            update["kyc_manual_review_requested_at"] = None
+            update["kyc_reupload_requested"] = False
+        elif decision == "rejected":
+            update["kyc_verified"] = False
+            update["kyc_reviewed_at"] = now
+            update["kyc_reviewed_by"] = "ai_auto"
+            update["kyc_rejection_reason"] = feedback["summary"] or verdict.get("fraud_signals") or "AI-Prüfung fehlgeschlagen"
+            update["kyc_manual_review_requested"] = False
+            update["kyc_manual_review_requested_at"] = None
+            update["kyc_reupload_requested"] = False
+        else:
+            update["kyc_verified"] = False
+            update["kyc_rejection_reason"] = None
+            update["kyc_reupload_requested"] = False
 
-    return {
-        "ok": True,
-        "status": decision,
-        "ai_confidence": verdict.get("overall_confidence", 0),
-        "ai_recommendation": verdict.get("recommendation"),
-        "failure_reasons": feedback["failure_reasons"],
-        "user_feedback": feedback["user_feedback"],
-        "failed_attempts": failed_attempts,
-        "can_request_manual_review": can_request_manual_review,
-        "manual_review_requested": False,
-        "extracted": {
-            "name": verdict.get("full_name"),
-            "date_of_birth": verdict.get("date_of_birth"),
-            "document_type": verdict.get("document_type"),
-        },
-        "message": (
-            "Verifizierung erfolgreich!" if decision == "approved"
-            else "Wir haben deine Dokumente erhalten und prüfen sie." if decision == "pending"
-            else "Bitte korrigiere die markierten Punkte und lade die Bilder erneut hoch."
-        ),
-        "capabilities": _capabilities(_capability_status_for_response(decision if decision != "pending" else "pending")),
-    }
+        await db.users.update_one({"_id": user["_id"]}, {"$set": update})
+
+        # Insert/update review entry for admin
+        await db.kyc_reviews.update_one(
+            {"user_id": user_id, "submitted_at": now},
+            {
+                "$set": {
+                    "user_id": user_id,
+                    "user_name": user.get("name") or user.get("email", ""),
+                    "user_email": user.get("email", ""),
+                    "document_type": document_type,
+                    "front_path": front_path,
+                    "back_path": back_path,
+                    "selfie_path": selfie_path,
+                    "status": decision,
+                    "ai_verdict": verdict,
+                    "failure_reasons": feedback["failure_reasons"],
+                    "user_feedback": feedback["user_feedback"],
+                    "failed_attempts": failed_attempts,
+                    "manual_review_eligible": can_request_manual_review,
+                    "manual_review_requested": False,
+                    "submitted_at": now,
+                }
+            },
+            upsert=True,
+        )
+
+        return {
+            "ok": True,
+            "status": decision,
+            "ai_confidence": verdict.get("overall_confidence", 0),
+            "ai_recommendation": verdict.get("recommendation"),
+            "failure_reasons": feedback["failure_reasons"],
+            "user_feedback": feedback["user_feedback"],
+            "failed_attempts": failed_attempts,
+            "can_request_manual_review": can_request_manual_review,
+            "manual_review_requested": False,
+            "extracted": {
+                "name": verdict.get("full_name"),
+                "date_of_birth": verdict.get("date_of_birth"),
+                "document_type": verdict.get("document_type"),
+            },
+            "message": (
+                "Verifizierung erfolgreich!" if decision == "approved"
+                else "Wir haben deine Dokumente erhalten und prüfen sie." if decision == "pending"
+                else "Bitte korrigiere die markierten Punkte und lade die Bilder erneut hoch."
+            ),
+            "capabilities": _capabilities(_capability_status_for_response(decision if decision != "pending" else "pending")),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("KYC submit failed unexpectedly")
+        await _restore_kyc_state(user["_id"], previous_snapshot)
+        incident_code = await _record_kyc_submission_incident(
+            user,
+            "submit_unexpected_error",
+            "Bei der KYC-Übermittlung ist ein technisches Problem aufgetreten.",
+            str(exc),
+            {"document_type": document_type},
+        )
+        _cleanup_kyc_temp_files(front_path, back_path, selfie_path)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Deine Unterlagen konnten gerade nicht verarbeitet werden. Bitte versuche es erneut.",
+                "user_feedback": [
+                    "Beim Verarbeiten deiner Verifizierung ist ein technisches Problem aufgetreten.",
+                    "Bitte versuche die Übermittlung erneut.",
+                    "Wenn das Problem bestehen bleibt, wurde es bereits automatisch an unser Team gemeldet.",
+                ],
+                "incident_code": incident_code,
+                "support_hint": "Der Vorfall wurde automatisch im Admin-Monitoring markiert.",
+                "retryable": True,
+            },
+        )
 
 
 @router.post("/manual-review/request")
