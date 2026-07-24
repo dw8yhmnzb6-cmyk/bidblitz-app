@@ -1,0 +1,342 @@
+"""
+BidBlitz Staff — AI-Schichtplan-Assistent (P3)
+==============================================
+Heuristik-basierte Schichtplan-Empfehlungen aus der Heatmap-Matrix.
+Keine LLM-Calls — schnell, deterministisch, kostenfrei.
+
+Logik:
+  1. Hole 7×24 Heatmap-Matrix der letzten N Tage
+  2. Pro Wochentag: identifiziere zusammenhängende Hoch-Demand-Stunden
+  3. Schlage 4-8h Schichten vor, deren Personalbedarf = ceil(avg_demand * coverage_factor)
+  4. Markiere Under-Staffed-Slots als rote Warnung
+  5. Optional: Vorschlag für Off-Peak Pausen-Slots
+
+Endpoint:
+  GET /api/staff/shift-assistant/suggestions?days=30&coverage=1.1
+
+Response:
+  {
+    "days": 30,
+    "coverage_factor": 1.1,
+    "suggestions": [
+      { "weekday": 0, "weekday_label": "Mo",
+        "start_hour": 8, "end_hour": 14, "duration_h": 6,
+        "needed_staff": 4, "avg_demand": 3.6, "peak_demand": 5,
+        "confidence": "high", "reason": "Tagesstoßzeit Mo 08–14 mit ø 3.6 / max 5" }
+    ],
+    "warnings": [
+      { "weekday": 5, "hour": 18, "avg": 0.5,
+        "message": "Sa 18 Uhr: Unterbesetzt (ø 0.5)" }
+    ],
+    "totals": {"shifts": 14, "warnings": 3}
+  }
+"""
+from __future__ import annotations
+
+import math
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Request, Query
+
+from core.database import db
+from core.security import get_current_user
+from routes.staff_heatmap import _build_shift_intervals, _compute_matrix  # reuse
+
+router = APIRouter(prefix="/api/staff/shift-assistant", tags=["staff-shift-assistant"])
+
+WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+
+
+async def _manager(request: Request) -> dict:
+    user = await get_current_user(request)
+    role = user.get("role")
+    if role not in ("merchant", "admin"):
+        raise HTTPException(403, "Nur Manager")
+    uid = str(user.get("_id") or user.get("id") or "")
+    merchant = await db.merchants.find_one({"owner_user_id": uid}, {"_id": 1})
+    if not merchant:
+        merchant = await db.merchants.find_one({"email": user.get("email")}, {"_id": 1})
+    merchant_id = str(merchant["_id"]) if merchant else uid
+    return {"id": uid, "merchant_id": merchant_id}
+
+
+def _build_shifts_for_weekday(
+    weekday: int,
+    hours_matrix: list[dict],
+    coverage_factor: float,
+    min_demand: float,
+    min_shift_h: int = 4,
+    max_shift_h: int = 8,
+) -> list[dict]:
+    """Greift zusammenhängende Hoch-Demand-Slots ab und schneidet sie in 4-8h Schichten."""
+    # hours_matrix: 24 cells for this weekday, sorted by hour
+    busy_flags = [c["avg"] >= min_demand for c in hours_matrix]
+    shifts: list[dict] = []
+    i = 0
+    while i < 24:
+        if not busy_flags[i]:
+            i += 1
+            continue
+        j = i
+        while j < 24 and busy_flags[j]:
+            j += 1
+        # busy block [i..j-1]
+        # Split into chunks max_shift_h, but combine short tails into prior
+        start = i
+        while start < j:
+            chunk = min(max_shift_h, j - start)
+            if chunk < min_shift_h and shifts and shifts[-1]["weekday"] == weekday:
+                # extend previous
+                prev = shifts[-1]
+                if prev["end_hour"] == start:
+                    prev["end_hour"] = start + chunk
+                    prev["duration_h"] = prev["end_hour"] - prev["start_hour"]
+                    sub_cells = hours_matrix[prev["start_hour"]:prev["end_hour"]]
+                    if sub_cells:
+                        prev["avg_demand"] = round(sum(c["avg"] for c in sub_cells) / len(sub_cells), 2)
+                        prev["peak_demand"] = max(c["max"] for c in sub_cells)
+                        prev["needed_staff"] = max(1, math.ceil(prev["avg_demand"] * coverage_factor))
+                start += chunk
+                continue
+            sub = hours_matrix[start:start + chunk]
+            avg_d = round(sum(c["avg"] for c in sub) / len(sub), 2) if sub else 0
+            peak = max((c["max"] for c in sub), default=0)
+            needed = max(1, math.ceil(avg_d * coverage_factor))
+            confidence = "high" if all(c["samples"] >= 3 for c in sub) else "low"
+            shifts.append({
+                "weekday": weekday,
+                "weekday_label": WEEKDAYS[weekday],
+                "start_hour": start,
+                "end_hour": start + chunk,
+                "duration_h": chunk,
+                "avg_demand": avg_d,
+                "peak_demand": peak,
+                "needed_staff": needed,
+                "confidence": confidence,
+                "reason": f"{WEEKDAYS[weekday]} {start:02d}–{start+chunk:02d} Uhr · ø {avg_d:.1f}, max {peak}",
+            })
+            start += chunk
+        i = j
+    return shifts
+
+
+@router.get("/suggestions")
+async def shift_suggestions(
+    request: Request,
+    days: int = Query(30, ge=7, le=90),
+    coverage: float = Query(1.1, ge=1.0, le=2.0),
+    min_demand: float = Query(1.5, ge=0.5, le=20.0),
+):
+    """AI-Schichtplan: Empfiehlt Schichten basierend auf historischer Personalbedarf-Heatmap."""
+    mgr = await _manager(request)
+    merchant_id = mgr["merchant_id"]
+    t_to = datetime.now(timezone.utc)
+    t_from = t_to - timedelta(days=days)
+
+    intervals = await _build_shift_intervals(merchant_id, t_from, t_to, None)
+    res = _compute_matrix(intervals, t_from, t_to)
+    matrix = res["matrix"]  # list of 168 cells
+
+    # group by weekday → 24 cells each
+    by_wd: dict[int, list[dict]] = {w: [None] * 24 for w in range(7)}
+    for c in matrix:
+        by_wd[c["weekday"]][c["hour"]] = c
+
+    all_shifts: list[dict] = []
+    warnings: list[dict] = []
+    for w in range(7):
+        wd_cells = by_wd[w]
+        shifts = _build_shifts_for_weekday(w, wd_cells, coverage, min_demand)
+        all_shifts.extend(shifts)
+        # Warnings: cells with samples >= 3 but avg < min_demand AND historical max >= 2
+        for c in wd_cells:
+            if c["samples"] >= 3 and c["avg"] < min_demand and c["max"] >= 2:
+                warnings.append({
+                    "weekday": w,
+                    "weekday_label": WEEKDAYS[w],
+                    "hour": c["hour"],
+                    "avg": c["avg"],
+                    "max": c["max"],
+                    "message": f"{WEEKDAYS[w]} {c['hour']:02d} Uhr: Unterbesetzung (ø {c['avg']:.1f}, max {c['max']})",
+                })
+
+    # Sort shifts by weekday, start
+    all_shifts.sort(key=lambda s: (s["weekday"], s["start_hour"]))
+
+    # Total recommended weekly staff-hours
+    total_staff_hours = sum(s["needed_staff"] * s["duration_h"] for s in all_shifts)
+
+    return {
+        "days": days,
+        "coverage_factor": coverage,
+        "min_demand_threshold": min_demand,
+        "from": t_from.isoformat(),
+        "to": t_to.isoformat(),
+        "suggestions": all_shifts,
+        "warnings": warnings[:30],
+        "totals": {
+            "shifts": len(all_shifts),
+            "warnings": len(warnings),
+            "weekly_staff_hours": total_staff_hours,
+        },
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Auto-Publish Open Shifts (Enhancement)
+# ════════════════════════════════════════════════════════════════════════════
+# Manager kann eine AI-Empfehlung mit 1-Tap als „Open Shift" publizieren.
+# Staff-Mitarbeiter sehen offene Slots im Staff-Portal und können claimen.
+#
+# Collection: `staff_ai_open_shifts`
+#   id, merchant_id, weekday, start_hour, end_hour, duration_h,
+#   needed_staff, claimed_by:[staff_id], status: "open"|"filled"|"cancelled",
+#   shift_date (ISO date string – nächste Wochentags-Instanz),
+#   source: "ai_recommendation", created_at, created_by
+# ════════════════════════════════════════════════════════════════════════════
+from pydantic import BaseModel, Field
+from uuid import uuid4
+
+
+def _next_weekday_date(weekday: int) -> str:
+    """Returns ISO-date for the next occurrence of the given weekday (Mo=0 .. So=6)."""
+    today = datetime.now(timezone.utc).date()
+    days_ahead = (weekday - today.weekday()) % 7
+    if days_ahead == 0:
+        days_ahead = 7
+    return (today + timedelta(days=days_ahead)).isoformat()
+
+
+class PublishOpenShiftBody(BaseModel):
+    weekday: int = Field(..., ge=0, le=6)
+    start_hour: int = Field(..., ge=0, le=23)
+    end_hour: int = Field(..., ge=1, le=24)
+    needed_staff: int = Field(..., ge=1, le=20)
+    note: Optional[str] = Field(None, max_length=200)
+
+
+@router.post("/open-shifts/publish")
+async def publish_open_shift(payload: PublishOpenShiftBody, request: Request):
+    """Manager: publiziert eine AI-Empfehlung als Open Shift, den Staff claimen kann."""
+    mgr = await _manager(request)
+    if payload.end_hour <= payload.start_hour:
+        raise HTTPException(400, "end_hour muss > start_hour sein")
+
+    duration_h = payload.end_hour - payload.start_hour
+    shift_date = _next_weekday_date(payload.weekday)
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid4()),
+        "merchant_id": mgr["merchant_id"],
+        "weekday": payload.weekday,
+        "weekday_label": WEEKDAYS[payload.weekday],
+        "start_hour": payload.start_hour,
+        "end_hour": payload.end_hour,
+        "duration_h": duration_h,
+        "needed_staff": payload.needed_staff,
+        "claimed_by": [],
+        "status": "open",
+        "shift_date": shift_date,
+        "note": payload.note or "",
+        "source": "ai_recommendation",
+        "created_at": now,
+        "created_by": mgr["id"],
+    }
+    await db.staff_ai_open_shifts.insert_one(doc)
+    doc.pop("_id", None)
+    return {"success": True, "open_shift": doc}
+
+
+@router.get("/open-shifts")
+async def list_open_shifts(request: Request):
+    """Manager: listet alle offenen + gefüllten AI-publizierten Schichten."""
+    mgr = await _manager(request)
+    items = await db.staff_ai_open_shifts.find(
+        {"merchant_id": mgr["merchant_id"], "status": {"$ne": "cancelled"}},
+        {"_id": 0},
+    ).sort([("shift_date", 1), ("start_hour", 1)]).to_list(500)
+    return {"items": items, "count": len(items)}
+
+
+@router.delete("/open-shifts/{shift_id}")
+async def cancel_open_shift(shift_id: str, request: Request):
+    """Manager: storniert einen Open Shift."""
+    mgr = await _manager(request)
+    res = await db.staff_ai_open_shifts.update_one(
+        {"id": shift_id, "merchant_id": mgr["merchant_id"]},
+        {"$set": {"status": "cancelled",
+                  "cancelled_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(404, "Open Shift nicht gefunden")
+    return {"success": True}
+
+
+# Staff-Side: Claim
+async def _staff_session(request: Request) -> dict:
+    sid = request.cookies.get("staff_session")
+    if not sid:
+        raise HTTPException(401, "Nicht angemeldet")
+    m = await db.staff_members.find_one({"id": sid, "active": True}, {"_id": 0})
+    if not m:
+        raise HTTPException(401, "Session ungültig")
+    return m
+
+
+@router.get("/open-shifts/staff")
+async def staff_list_open_shifts(request: Request):
+    """Staff: listet offene Slots des eigenen Merchants."""
+    me = await _staff_session(request)
+    merchant_id = me.get("merchant_id")
+    items = await db.staff_ai_open_shifts.find(
+        {"merchant_id": merchant_id, "status": "open"},
+        {"_id": 0},
+    ).sort([("shift_date", 1), ("start_hour", 1)]).to_list(200)
+    # Annotate: did I already claim?
+    my_id = me["id"]
+    for it in items:
+        it["claimed_by_me"] = my_id in (it.get("claimed_by") or [])
+        it["seats_left"] = max(0, it["needed_staff"] - len(it.get("claimed_by") or []))
+    return {"items": items, "count": len(items)}
+
+
+@router.post("/open-shifts/{shift_id}/claim")
+async def staff_claim_open_shift(shift_id: str, request: Request):
+    """Staff: claimt einen offenen Slot. Sobald Anzahl Claims = needed_staff → status=filled."""
+    me = await _staff_session(request)
+    doc = await db.staff_ai_open_shifts.find_one({"id": shift_id, "status": "open"}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Slot nicht offen")
+    if doc.get("merchant_id") != me.get("merchant_id"):
+        raise HTTPException(403, "Fremder Merchant")
+    claimed = list(doc.get("claimed_by") or [])
+    if me["id"] in claimed:
+        return {"success": True, "already_claimed": True, "shift_id": shift_id}
+    claimed.append(me["id"])
+    update = {"claimed_by": claimed}
+    if len(claimed) >= int(doc.get("needed_staff", 1)):
+        update["status"] = "filled"
+        update["filled_at"] = datetime.now(timezone.utc).isoformat()
+    await db.staff_ai_open_shifts.update_one({"id": shift_id}, {"$set": update})
+    return {"success": True, "shift_id": shift_id, "status": update.get("status", "open"),
+            "seats_left": max(0, int(doc.get("needed_staff", 1)) - len(claimed))}
+
+
+@router.post("/open-shifts/{shift_id}/withdraw")
+async def staff_withdraw_claim(shift_id: str, request: Request):
+    """Staff: nimmt eigenen Claim zurück (solange status=open)."""
+    me = await _staff_session(request)
+    doc = await db.staff_ai_open_shifts.find_one({"id": shift_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Slot nicht gefunden")
+    if doc.get("status") != "open" and doc.get("status") != "filled":
+        raise HTTPException(400, "Slot ist nicht aktiv")
+    claimed = [c for c in (doc.get("claimed_by") or []) if c != me["id"]]
+    update = {"claimed_by": claimed, "status": "open"}
+    update.pop("filled_at", None)
+    await db.staff_ai_open_shifts.update_one(
+        {"id": shift_id},
+        {"$set": update, "$unset": {"filled_at": ""}},
+    )
+    return {"success": True, "shift_id": shift_id}

@@ -1,0 +1,482 @@
+/**
+ * TaxiBookingSheet — taxi.eu-style bottom-sheet content for booking.
+ * Shows: address rows (tappable → opens search sheet), order-options button,
+ * vehicle picker, fare summary, prominent "Buchen" CTA, no-taxis warning.
+ */
+import React from "react";
+import { motion } from "framer-motion";
+import TaxiVehiclePicker from "./TaxiVehiclePicker";
+import TaxiPromoCodeField from "./TaxiPromoCodeField";
+import TaxiQuickActions from "./TaxiQuickActions";
+
+const greet = () => {
+  const h = new Date().getHours();
+  if (h < 5) return "Gute Nacht";
+  if (h < 12) return "Guten Morgen";
+  if (h < 18) return "Guten Tag";
+  return "Guten Abend";
+};
+
+function AddressRow({ variant, value, notes, placeholder, onClick, onClear, onAddNotes, testId }) {
+  const dot =
+    variant === "pickup"
+      ? "bg-[#002FA7] ring-[#002FA7]/10"
+      : variant === "dropoff"
+        ? "bg-[#FF3B30] ring-[#FF3B30]/10"
+        : "bg-[#FFCC00] ring-[#FFCC00]/20";
+  return (
+    <div>
+      <button
+        onClick={onClick}
+        className="w-full flex items-center gap-3 px-4 py-3.5 bg-zinc-100 border border-zinc-200 rounded-2xl hover:border-zinc-300 active:bg-zinc-50 text-left transition-colors"
+        data-testid={testId}
+      >
+        <div className={`w-3 h-3 rounded-full ring-4 ${dot} shrink-0`} />
+        <span className={`flex-1 text-sm truncate ${value ? "text-zinc-900 font-medium" : "text-zinc-400"}`}>
+          {value || placeholder}
+        </span>
+        {value && onAddNotes && (
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onAddNotes(); }}
+            className="w-8 h-8 rounded-full bg-white text-zinc-500 border border-zinc-200 flex items-center justify-center"
+            data-testid={`${testId}-add-notes`}
+            title={notes ? "Hinweis bearbeiten" : "Hinweis hinzufügen"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={notes ? "#00C2FF" : "currentColor"} strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </span>
+        )}
+        {value && onClear && (
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onClear(); }}
+            className="w-6 h-6 rounded-full bg-white text-zinc-500 border border-zinc-200 flex items-center justify-center text-xs"
+            data-testid={`${testId}-clear`}
+          >×</span>
+        )}
+      </button>
+      {notes && (
+        <div className="mt-1 ml-7 text-[11px] text-[#002FA7]/80 italic truncate">
+          ↳ {notes}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OptionsButton({ summary, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center justify-between px-4 py-3.5 bg-zinc-100 border border-zinc-200 rounded-2xl active:bg-zinc-50"
+      data-testid="taxi-options-btn"
+    >
+      <div className="flex items-center gap-3">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#002FA7" strokeWidth="2">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <circle cx="9" cy="6" r="2.5" fill="#0A0A0F" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <circle cx="15" cy="12" r="2.5" fill="#0A0A0F" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+          <circle cx="7" cy="18" r="2.5" fill="#0A0A0F" />
+        </svg>
+        <span className="text-sm font-medium text-zinc-900">Bestelloptionen</span>
+      </div>
+      <span className="text-xs text-zinc-500 truncate max-w-[160px]">{summary}</span>
+    </button>
+  );
+}
+
+export default function TaxiBookingSheet({
+  taxiType, onChangeType,
+  pickup, dropoff,
+  onTapPickup, onTapDropoff, onClearDropoff,
+  onEditPickupNotes, onEditDropoffNotes,
+  // Waypoints
+  waypoints, onTapWaypoint, onRemoveWaypoint, onAddWaypoint, onEditWaypointNotes,
+  savedPlaces, onPickSavedPlace,
+  estimates, selectedVehicle, setSelectedVehicle,
+  surge, loading, error,
+  optionsSummary, onOpenOptions,
+  noDriversAvailable,
+  nearbyCount,
+  onGetEstimates, onBook,
+  scheduledLabel,
+  // Personalisation
+  userName,
+  // Promo code (P2)
+  promo, onPromoChange,
+  onApplyPromoCode,
+  // Quick actions (iter124 Phase B)
+  lastRide, onUseLastRide,
+  scheduleMode, onScheduleModeChange, onOpenScheduled,
+  // Multi-Tarif Zonen & Zeit (P2)
+  tariffZone, timeTariff,
+}) {
+  const selectedEstimate = estimates?.find((item) => item.vehicle_type === selectedVehicle) || estimates?.[0] || null;
+  const lowestEstimate = estimates?.reduce((best, item) => {
+    if (!best || item.fare < best.fare) return item;
+    return best;
+  }, null);
+  const instantBookingLabel = selectedEstimate
+    ? `Jetzt buchen · €${selectedEstimate.fare.toFixed(2)} · ${selectedEstimate.duration_minutes} Min`
+    : (scheduledLabel ? `Bestellen für ${scheduledLabel}` : "Taxi bestellen");
+
+  return (
+    <div className="space-y-4 pt-1 pb-1 font-taxi-body">
+      {/* Selected type pill + change (subtle) */}
+      <div className="flex items-center justify-between -mt-1">
+        <button
+          onClick={onChangeType}
+          className={`text-[11px] font-semibold px-3 py-1.5 rounded-full transition ${
+            taxiType === "business"
+              ? "bg-[#002FA7]/8 text-[#002FA7] hover:bg-[#002FA7]/12"
+              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+          }`}
+          data-testid="taxi-change-type-btn"
+        >
+          {taxiType === "business" ? "Unternehmer-Taxi" : "Privat-Taxi"} · Ändern
+        </button>
+      </div>
+
+      {/* Greeting + Favorite Routes (only when no destination chosen yet) */}
+      {!dropoff?.address && (
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 font-semibold mb-1">BidBlitz Taxi</p>
+          <h2 className="text-3xl font-taxi-heading font-black tracking-tight text-zinc-950">
+            {greet()}{userName ? `, ${userName}` : ""} <span className="inline-block">👋</span>
+          </h2>
+          <p className="text-sm text-zinc-500 mt-1">Wohin soll&apos;s gehen? Preis, ETA und Fahrer erscheinen sofort.</p>
+        </div>
+      )}
+
+      {/* Promo-Banner entfernt für cleaneren Look (iter124 UX). Promo-Code-Field bleibt unten. */}
+
+      {/* Welcome-State: 1 großer „Wohin?"-Search-Button statt 2 schmaler Address-Rows */}
+      {!dropoff?.address ? (
+        <button
+          onClick={onTapDropoff}
+          data-testid="taxi-dropoff-cta"
+          className="w-full flex items-center gap-4 px-4 py-4 bg-[#F4F4F5] hover:bg-white border border-zinc-200 hover:border-[#002FA7]/30 rounded-[24px] text-left active:scale-[0.98] transition-all shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0 border border-zinc-200">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#002FA7" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-bold mb-1">Ziel</p>
+            <p className="text-lg font-taxi-heading font-black tracking-tight text-zinc-950">Wohin möchtest du?</p>
+            <p className="text-[12px] text-zinc-500 mt-1">Straße, Hausnummer, Hotel, Bahnhof oder Ort suchen</p>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#71717A" strokeWidth="2" className="shrink-0">
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        </button>
+      ) : (
+      /* Address rows */
+      <div className="space-y-2">
+        <AddressRow
+          variant="pickup"
+          value={pickup?.address}
+          notes={pickup?.notes}
+          placeholder="Abholadresse"
+          onClick={onTapPickup}
+          onAddNotes={onEditPickupNotes}
+          testId="taxi-pickup-row"
+        />
+
+        {/* Waypoints */}
+        {waypoints?.map((wp, idx) => (
+          <AddressRow
+            key={idx}
+            variant="stop"
+            value={wp.address}
+            notes={wp.notes}
+            placeholder={`Zwischenstopp ${idx + 1}`}
+            onClick={() => onTapWaypoint?.(idx)}
+            onClear={() => onRemoveWaypoint?.(idx)}
+            onAddNotes={() => onEditWaypointNotes?.(idx)}
+            testId={`taxi-waypoint-row-${idx}`}
+          />
+        ))}
+
+        <AddressRow
+          variant="dropoff"
+          value={dropoff?.address}
+          notes={dropoff?.notes}
+          placeholder="Wohin möchtest du?"
+          onClick={onTapDropoff}
+          onClear={onClearDropoff}
+          onAddNotes={onEditDropoffNotes}
+          testId="taxi-dropoff-row"
+        />
+
+        {/* Add waypoint — erst wenn Ziel gewählt, sonst überfordert */}
+        {dropoff?.address && (waypoints?.length || 0) < 3 && (
+          <button
+            onClick={onAddWaypoint}
+            className="w-full flex items-center gap-2 px-3 py-2.5 bg-zinc-100 hover:bg-zinc-200 border border-dashed border-zinc-300 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 transition-colors"
+            data-testid="taxi-add-waypoint"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>Zwischenstopp hinzufügen</span>
+          </button>
+        )}
+      </div>
+      )}
+
+      {!dropoff?.address && (
+        <TaxiQuickActions
+          savedPlaces={savedPlaces}
+          lastRide={lastRide}
+          onPickPlace={onPickSavedPlace}
+          onUseLastRide={onUseLastRide}
+          scheduleMode={scheduleMode}
+          onScheduleModeChange={onScheduleModeChange}
+          onOpenScheduled={onOpenScheduled}
+        />
+      )}
+
+      {dropoff?.address && loading && !selectedEstimate && (
+        <div
+          className="rounded-[24px] border border-[#002FA7]/10 bg-[#F6F8FF] p-4"
+          data-testid="taxi-route-loading-card"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-white border border-[#002FA7]/10 flex items-center justify-center shrink-0">
+              <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#002FA7" strokeWidth="2">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-zinc-950" data-testid="taxi-route-loading-title">Route wird berechnet</p>
+              <p className="text-xs text-zinc-500">Preis, Fahrzeit und Strecke erscheinen sofort nach der Zielauswahl.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedEstimate && (
+        <div
+          className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
+          data-testid="taxi-route-summary-card"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#002FA7]/70">Route bereit</p>
+              <h3 className="mt-1 text-xl font-taxi-heading font-black tracking-tight text-zinc-950" data-testid="taxi-route-summary-title">
+                {selectedEstimate.name} ist ausgewählt
+              </h3>
+              <p className="mt-1 text-xs text-zinc-500" data-testid="taxi-route-summary-subtitle">
+                Preis und Fahrzeit wurden direkt nach deiner Zielauswahl berechnet.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-right shrink-0">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-600/80">Abholung</p>
+              <p className="text-sm font-semibold text-emerald-700" data-testid="taxi-route-summary-eta">
+                {selectedEstimate.eta_minutes} Min
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3" data-testid="taxi-route-summary-price-block">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Preis</p>
+              <p className="mt-1 text-base font-bold text-zinc-950 tabular-nums" data-testid="taxi-route-summary-price">
+                €{selectedEstimate.fare.toFixed(2)}
+              </p>
+              {selectedEstimate.fare_discount > 0 && selectedEstimate.fare_original && (
+                <p className="mt-1 text-[10px] text-emerald-700 tabular-nums" data-testid="taxi-route-summary-price-discount">
+                  <span className="line-through text-zinc-400 mr-1">€{selectedEstimate.fare_original.toFixed(2)}</span>
+                  −€{selectedEstimate.fare_discount.toFixed(2)}
+                </p>
+              )}
+              {!selectedEstimate.fare_discount && lowestEstimate && (
+                <p className="mt-1 text-[10px] text-zinc-500" data-testid="taxi-route-summary-price-hint">
+                  Günstigste Option ab €{lowestEstimate.fare.toFixed(2)}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3" data-testid="taxi-route-summary-duration-block">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Fahrzeit</p>
+              <p className="mt-1 text-base font-bold text-zinc-950" data-testid="taxi-route-summary-duration">
+                {selectedEstimate.duration_minutes} Min
+              </p>
+              <p className="mt-1 text-[10px] text-zinc-500">Direkt auf der Karte sichtbar</p>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3" data-testid="taxi-route-summary-distance-block">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Strecke</p>
+              <p className="mt-1 text-base font-bold text-zinc-950" data-testid="taxi-route-summary-distance">
+                {selectedEstimate.distance_km.toFixed(1)} km
+              </p>
+              <p className="mt-1 text-[10px] text-zinc-500">Route live berechnet</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gespeicherte-Orte-Row entfernt (Duplizierung mit Quick-Actions) — iter124 UX */}
+
+      {/* Vehicle picker — auto-shown when estimates available, BEFORE options */}
+      {estimates?.length > 0 && (
+        <div className="space-y-3" data-testid="taxi-vehicle-section">
+          <TaxiVehiclePicker
+            estimates={estimates}
+            selectedVehicle={selectedVehicle}
+            onSelect={setSelectedVehicle}
+          />
+
+          {selectedEstimate && (
+            <div
+              className="rounded-2xl border border-[#002FA7]/12 bg-[#F6F8FF] px-4 py-3 flex items-center justify-between gap-3"
+              data-testid="taxi-instant-booking-banner"
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#002FA7]/75">Sofortübersicht</p>
+                <p className="text-sm font-semibold text-zinc-950 truncate" data-testid="taxi-instant-booking-banner-title">
+                  {selectedEstimate.name} · €{selectedEstimate.fare.toFixed(2)}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[10px] text-zinc-500">Fahrzeit</p>
+                <p className="text-sm font-bold text-[#002FA7]" data-testid="taxi-instant-booking-banner-duration">
+                  {selectedEstimate.duration_minutes} Min
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Promo code */}
+      {onPromoChange && (
+        <TaxiPromoCodeField value={promo} onChange={onPromoChange} />
+      )}
+
+      {/* Options + Schedule */}
+      <OptionsButton summary={optionsSummary} onClick={onOpenOptions} />
+
+      {/* Surge */}
+      {surge?.active && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
+          <span className="text-xl">⚡</span>
+          <div>
+            <p className="text-sm font-medium text-amber-700">Hohe Nachfrage</p>
+            <p className="text-xs text-amber-600">Preise sind {surge.multiplier}× höher</p>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-Tarif Badges: Zone + Time (P2) */}
+      {(tariffZone || (timeTariff && timeTariff.multiplier > 1)) && (
+        <div className="flex flex-wrap gap-2" data-testid="taxi-tariff-badges">
+          {tariffZone && (
+            <div
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30"
+              data-testid="taxi-zone-badge"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" strokeWidth="2.5">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <span className="text-[11px] font-semibold text-cyan-300">Zone {tariffZone.name}</span>
+            </div>
+          )}
+          {timeTariff && timeTariff.multiplier > 1 && (
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                timeTariff.holiday
+                  ? "bg-rose-50 border-rose-200"
+                  : timeTariff.night
+                    ? "bg-indigo-50 border-indigo-200"
+                    : "bg-amber-50 border-amber-200"
+              }`}
+              data-testid="taxi-time-tariff-badge"
+            >
+              <span className="text-xs">
+                {timeTariff.holiday ? "🎉" : timeTariff.night ? "🌙" : "📅"}
+              </span>
+              <span className={`text-[11px] font-semibold ${
+                timeTariff.holiday ? "text-rose-300" : timeTariff.night ? "text-indigo-300" : "text-amber-300"
+              }`}>
+                {timeTariff.label} · ×{timeTariff.multiplier.toFixed(2)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Live driver availability hint (taxi.eu parity) */}
+      {nearbyCount != null && nearbyCount > 0 && (
+        <div className="flex items-center gap-2 text-xs text-emerald-700" data-testid="taxi-drivers-available">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span>
+            {nearbyCount === 1
+              ? "1 Taxi in der Nähe verfügbar"
+              : `${nearbyCount} Taxis in der Nähe verfügbar`}
+          </span>
+        </div>
+      )}
+
+      {/* No-drivers info banner — softer, info-style (taxi.eu shows similar) */}
+      {noDriversAvailable && (
+        <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl flex items-start gap-2.5" data-testid="taxi-no-drivers-banner">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold text-zinc-950">Gerade kein Taxi frei</p>
+            <p className="text-[11px] text-zinc-500 mt-0.5 leading-snug">Du kannst trotzdem eine Bestellung absenden — wir benachrichtigen dich, sobald ein Fahrer verfügbar ist.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Book CTA */}
+      {estimates?.length > 0 ? (
+        <>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={onBook}
+            disabled={loading}
+            className="w-full py-4 bg-[#002FA7] rounded-2xl font-bold text-white text-base disabled:opacity-50 shadow-[0_10px_24px_rgba(0,47,167,0.22)]"
+            data-testid="taxi-book-btn"
+          >
+            {loading ? "Wird gebucht..." : instantBookingLabel}
+          </motion.button>
+        </>
+      ) : (
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={onGetEstimates}
+          disabled={loading || !dropoff?.address || !pickup?.lat}
+          className="w-full py-4 bg-[#002FA7] rounded-2xl font-bold text-white text-base disabled:opacity-50 shadow-[0_10px_24px_rgba(0,47,167,0.22)]"
+          data-testid="taxi-show-prices-btn"
+        >
+          {loading ? "Lädt..." : "Preise anzeigen"}
+        </motion.button>
+      )}
+
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-sm text-center">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}

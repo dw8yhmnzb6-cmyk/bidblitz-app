@@ -1,0 +1,58 @@
+{
+  "name": "BidBlitz Super App",
+  "short_name": "BidBlitz",
+  "description": "Komplette Super App für Auktionen, Taxi, Hotels, Staff Management & POS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#00C2FF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "finance", "lifestyle", "productivity"],
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Express Checkout",
+      "short_name": "Checkout",
+      "description": "1-Klick Zahlung",
+      "url": "/#/express-checkout",
+      "icons": [{ "src": "/icons/checkout.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Hotels suchen",
+      "short_name": "Hotels",
+      "description": "Hotelsuche & Buchung",
+      "url": "/#/hotels/sabre",
+      "icons": [{ "src": "/icons/hotel.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "POS Kasse",
+      "short_name": "POS",
+      "description": "Kassensystem",
+      "url": "/#/pos/extended",
+      "icons": [{ "src": "/icons/pos.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

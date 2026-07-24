@@ -1,0 +1,1016 @@
+from datetime import datetime, timedelta, timezone
+import secrets
+from typing import Any
+
+from bson import ObjectId
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
+
+from core.database import db
+from core.payment_engine import TransactionType, credit_wallet, debit_wallet
+from core.security import get_current_user
+
+
+router = APIRouter(prefix="/api/commerce-center", tags=["commerce-center"])
+
+PLATFORM_COMMISSION = 0.05
+FLASH_SALE_DISCOUNTS = [0.12, 0.18, 0.22, 0.15]
+
+CATEGORY_THEME = {
+    "tech": {"label": "Tech", "accent": "#38bdf8"},
+    "gaming": {"label": "Gaming", "accent": "#8b5cf6"},
+    "mobility": {"label": "Mobility", "accent": "#10b981"},
+    "lifestyle": {"label": "Lifestyle", "accent": "#f97316"},
+    "premium": {"label": "Premium", "accent": "#f43f5e"},
+    "other": {"label": "More", "accent": "#94a3b8"},
+}
+
+
+class FlashSalePurchaseRequest(BaseModel):
+    use_shipping: bool = False
+
+
+class FlashSaleCreateRequest(BaseModel):
+    listing_id: str
+    sale_price: float
+    duration_minutes: int = 180
+
+
+class CommerceEventTrackRequest(BaseModel):
+    event_type: str
+    target_type: str
+    target_id: str = ""
+    source: str = "commerce_center"
+    metadata: dict = Field(default_factory=dict)
+
+
+def _serialize_value(value: Any):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_serialize_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _serialize_value(val) for key, val in value.items() if key != "_id"}
+    return value
+
+
+def _serialize_doc(doc: dict | None) -> dict:
+    return _serialize_value(doc or {})
+
+
+def _parse_date(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str) and value:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return None
+
+
+def _remaining_seconds(value: Any) -> int:
+    dt_value = _parse_date(value)
+    if not dt_value:
+        return 0
+    return max(0, int((dt_value - datetime.now(timezone.utc)).total_seconds()))
+
+
+def _normalize_category(raw_category: Any, raw_label: Any = None) -> dict:
+    key = str(raw_category or "other").strip().lower()
+    if key in {"electronics", "gadgets"}:
+        key = "tech"
+    elif key in {"home", "kitchen", "fashion", "beauty"}:
+        key = "lifestyle"
+    elif key in {"bikes", "scooter", "ebike"}:
+        key = "mobility"
+    elif key in {"luxury", "collectibles"}:
+        key = "premium"
+    theme = CATEGORY_THEME.get(key, CATEGORY_THEME["other"])
+    return {
+        "key": key if key in CATEGORY_THEME else "other",
+        "label": raw_label or theme["label"],
+        "accent": theme["accent"],
+    }
+
+
+def _build_category_mix(*groups: list[dict]) -> list[dict]:
+    category_map: dict[str, dict] = {}
+    for items in groups:
+        for item in items:
+            category = _normalize_category(item.get("category"), item.get("category_label"))
+            entry = category_map.setdefault(
+                category["key"],
+                {"key": category["key"], "label": category["label"], "accent": category["accent"], "count": 0},
+            )
+            entry["count"] += 1
+    return sorted(category_map.values(), key=lambda item: item["count"], reverse=True)
+
+
+def _build_spotlight_deal(flash_sales: list[dict], penny_auctions: list[dict], live_auctions: list[dict]) -> dict:
+    flash_sale = max(flash_sales, key=lambda sale: sale.get("discount_pct", 0), default=None)
+    if flash_sale:
+        category = _normalize_category(flash_sale.get("category"), flash_sale.get("category_label"))
+        return {
+            "type": "flash_sale",
+            "title": flash_sale.get("title", "Flash Deal"),
+            "subtitle": f"{flash_sale.get('discount_pct', 0)}% Deal · {category['label']}",
+            "price": flash_sale.get("sale_price", 0),
+            "original_price": flash_sale.get("original_price", 0),
+            "remaining_seconds": flash_sale.get("remaining_seconds", 0),
+            "route": f"/marketplace?listing_id={flash_sale.get('listing_id', '')}&source=commerce-spotlight",
+            "cta": "Deal öffnen",
+            "category": category,
+        }
+
+    live_auction = min(live_auctions, key=lambda item: item.get("remaining_seconds", 10**9), default=None)
+    if live_auction:
+        category = _normalize_category(live_auction.get("category"), live_auction.get("category"))
+        return {
+            "type": "live_auction",
+            "title": live_auction.get("title", "Live Auktion"),
+            "subtitle": f"Live Format · {category['label']}",
+            "price": live_auction.get("current_price", 0),
+            "original_price": live_auction.get("start_price", 0),
+            "remaining_seconds": live_auction.get("remaining_seconds", 0),
+            "route": f"/live-auctions?auction_id={live_auction.get('auction_id', '')}&source=commerce-spotlight",
+            "cta": "Live bieten",
+            "category": category,
+        }
+
+    auction = min(penny_auctions, key=lambda item: item.get("remaining_seconds", 10**9), default=None)
+    if auction:
+        category = _normalize_category(auction.get("category"), auction.get("category_label"))
+        return {
+            "type": "penny_auction",
+            "title": auction.get("title", "Penny Auktion"),
+            "subtitle": "Knappste Auktion im Feed",
+            "price": auction.get("current_price", 0),
+            "original_price": auction.get("retail_price", 0),
+            "remaining_seconds": auction.get("remaining_seconds", 0),
+            "route": f"/auctions?auction_id={auction.get('auction_id', '')}&source=commerce-spotlight",
+            "cta": "Auktion öffnen",
+            "category": category,
+        }
+    return {}
+
+
+def _build_live_insights(flash_sales: list[dict], penny_auctions: list[dict], live_streams: list[dict], category_mix: list[dict]) -> list[dict]:
+    biggest_discount = max((sale.get("discount_pct", 0) for sale in flash_sales), default=0)
+    ending_soon = min(
+        [item.get("remaining_seconds", 0) for item in [*flash_sales, *penny_auctions] if item.get("remaining_seconds", 0) > 0],
+        default=0,
+    )
+    hottest_category = category_mix[0] if category_mix else CATEGORY_THEME["other"]
+    return [
+        {
+            "id": "ending_soon",
+            "label": "Nächster Deadline-Moment",
+            "value": ending_soon,
+            "value_type": "seconds",
+            "detail": "Schnellster Countdown im Commerce Center",
+        },
+        {
+            "id": "biggest_discount",
+            "label": "Bester Flash-Discount",
+            "value": biggest_discount,
+            "value_type": "percent",
+            "detail": "Maximaler Preisvorteil aktuell live",
+        },
+        {
+            "id": "hottest_category",
+            "label": "Stärkste Kategorie",
+            "value": hottest_category.get("label", "Mixed"),
+            "value_type": "text",
+            "detail": f"{hottest_category.get('count', 0)} Deals aktuell im Hub",
+        },
+        {
+            "id": "live_now",
+            "label": "Live jetzt",
+            "value": len(live_streams),
+            "value_type": "count",
+            "detail": "Streams mit direktem Shopping-Entry",
+        },
+    ]
+
+
+def _build_program_schedule(flash_sales: list[dict], live_streams: list[dict], upcoming_streams: list[dict], live_auctions: list[dict]) -> list[dict]:
+    entries: list[dict] = []
+    for stream in (live_streams or [])[:2]:
+        entries.append({
+            "schedule_id": f"live-{stream.get('stream_id')}",
+            "type": "live_stream",
+            "title": stream.get("title") or "Live Shopping",
+            "subtitle": f"{stream.get('viewer_count', 0)} Zuschauer live · @{stream.get('host_handle') or stream.get('host_name') or 'host'}",
+            "state": "live",
+            "scheduled_at": stream.get("started_at") or stream.get("created_at"),
+            "cta_label": "Zum Stream",
+            "route": "/live",
+            "accent": "#ef4444",
+        })
+    for stream in (upcoming_streams or [])[:3]:
+        entries.append({
+            "schedule_id": f"upcoming-{stream.get('stream_id')}",
+            "type": "upcoming_stream",
+            "title": stream.get("title") or "Geplanter Stream",
+            "subtitle": f"Host: {stream.get('host_name') or stream.get('host_handle') or 'Creator'}",
+            "state": "scheduled",
+            "scheduled_at": stream.get("scheduled_start"),
+            "cta_label": "Programm öffnen",
+            "route": "/live",
+            "accent": "#38bdf8",
+        })
+    for auction in (live_auctions or [])[:2]:
+        entries.append({
+            "schedule_id": f"auction-{auction.get('auction_id')}",
+            "type": "live_auction",
+            "title": auction.get("title") or "Live Auktion",
+            "subtitle": f"{auction.get('bid_count', 0)} Gebote · endet in {max(0, auction.get('remaining_seconds', 0))}s",
+            "state": "live",
+            "scheduled_at": auction.get("ends_at"),
+            "cta_label": "Live bieten",
+            "route": f"/live-auctions?auction_id={auction.get('auction_id', '')}&source=commerce-program",
+            "accent": "#8b5cf6",
+        })
+    for sale in (flash_sales or [])[:2]:
+        entries.append({
+            "schedule_id": f"flash-{sale.get('sale_id')}",
+            "type": "flash_sale",
+            "title": sale.get("title") or "Flash Sale",
+            "subtitle": f"-{sale.get('discount_pct', 0)}% · {sale.get('category_label') or sale.get('category') or 'Deal'}",
+            "state": "active",
+            "scheduled_at": sale.get("ends_at"),
+            "cta_label": "Deal öffnen",
+            "route": f"/marketplace?listing_id={sale.get('listing_id', '')}&source=commerce-program",
+            "accent": "#f97316",
+        })
+
+    entries.sort(key=lambda item: str(item.get("scheduled_at") or ""))
+    return entries[:6]
+
+
+def _build_performance_rankings(flash_sales: list[dict], marketplace_items: list[dict], live_streams: list[dict], penny_auctions: list[dict]) -> list[dict]:
+    rankings: list[dict] = []
+    top_flash = max(flash_sales, key=lambda item: item.get("discount_pct", 0), default=None)
+    if top_flash:
+        rankings.append({
+            "rank_id": "top-flash",
+            "label": "Bester Flash Deal",
+            "title": top_flash.get("title") or "Flash Sale",
+            "metric_label": "Discount",
+            "metric_value": f"-{top_flash.get('discount_pct', 0)}%",
+            "route": f"/marketplace?listing_id={top_flash.get('listing_id', '')}&source=commerce-ranking",
+            "accent": "#f97316",
+        })
+    top_listing = max(marketplace_items, key=lambda item: (item.get("favorites", 0), item.get("views", 0)), default=None)
+    if top_listing:
+        rankings.append({
+            "rank_id": "top-listing",
+            "label": "Marketplace Leader",
+            "title": top_listing.get("title") or "Listing",
+            "metric_label": "Views",
+            "metric_value": str(top_listing.get("views", 0)),
+            "route": f"/marketplace?listing_id={top_listing.get('listing_id', '')}&source=commerce-ranking",
+            "accent": "#10b981",
+        })
+    top_stream = max(live_streams, key=lambda item: item.get("viewer_count", 0), default=None)
+    if top_stream:
+        rankings.append({
+            "rank_id": "top-stream",
+            "label": "Live Publikum",
+            "title": top_stream.get("title") or "Live Stream",
+            "metric_label": "Viewer",
+            "metric_value": str(top_stream.get("viewer_count", 0)),
+            "route": "/live",
+            "accent": "#ef4444",
+        })
+    top_auction = max(penny_auctions, key=lambda item: item.get("bid_count", 0), default=None)
+    if top_auction:
+        rankings.append({
+            "rank_id": "top-auction",
+            "label": "Meiste Gebote",
+            "title": top_auction.get("title") or "Penny Auktion",
+            "metric_label": "Gebote",
+            "metric_value": str(top_auction.get("bid_count", 0)),
+            "route": f"/auctions?auction_id={top_auction.get('auction_id', '')}&source=commerce-ranking",
+            "accent": "#8b5cf6",
+        })
+    return rankings
+
+
+async def _build_analytics_cards(flash_sales: list[dict], live_streams: list[dict]) -> list[dict]:
+    since_dt = datetime.now(timezone.utc) - timedelta(hours=24)
+    since_iso = since_dt.isoformat()
+    revenue_pipeline = [
+        {"$match": {"created_at": {"$gte": since_iso}, "status": "completed"}},
+        {"$group": {"_id": None, "revenue": {"$sum": "$total_price"}, "orders": {"$sum": 1}}},
+    ]
+    revenue_rows = await db.commerce_orders.aggregate(revenue_pipeline).to_list(1)
+    revenue_row = revenue_rows[0] if revenue_rows else {"revenue": 0, "orders": 0}
+
+    cta_clicks = await db.commerce_center_events.count_documents({
+        "event_type": "cta_click",
+        "created_at": {"$gte": since_iso},
+    })
+    live_viewers_now = sum(int(item.get("viewer_count") or 0) for item in (live_streams or []))
+    avg_discount = 0
+    if flash_sales:
+        avg_discount = round(sum(float(item.get("discount_pct") or 0) for item in flash_sales) / len(flash_sales), 1)
+    orders_24h = int(revenue_row.get("orders") or 0)
+    conversion_rate = round((orders_24h / cta_clicks) * 100, 1) if cta_clicks else 0
+
+    return [
+        {
+            "id": "revenue_24h",
+            "label": "Flash Revenue 24h",
+            "value": round(float(revenue_row.get("revenue") or 0), 2),
+            "value_type": "currency",
+            "detail": f"{orders_24h} Orders in den letzten 24h",
+        },
+        {
+            "id": "cta_clicks_24h",
+            "label": "CTA Klicks 24h",
+            "value": cta_clicks,
+            "value_type": "count",
+            "detail": "Klicks auf Spotlight, Karten und Commerce-Shortcuts",
+        },
+        {
+            "id": "conversion_rate",
+            "label": "Hub Conversion",
+            "value": conversion_rate,
+            "value_type": "percent",
+            "detail": "Orders relativ zu Commerce-CTA-Klicks",
+        },
+        {
+            "id": "live_viewers_now",
+            "label": "Live Viewer jetzt",
+            "value": live_viewers_now,
+            "value_type": "count",
+            "detail": f"Ø Discount aktuell {avg_discount}%",
+        },
+    ]
+
+
+async def _track_commerce_event(payload: CommerceEventTrackRequest, request: Request):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or request.client.host if request.client else ""
+    await db.commerce_center_events.insert_one({
+        "event_id": f"evt_{secrets.token_hex(6)}",
+        "event_type": payload.event_type,
+        "target_type": payload.target_type,
+        "target_id": payload.target_id,
+        "source": payload.source,
+        "metadata": payload.metadata,
+        "user_agent": request.headers.get("user-agent", ""),
+        "client_ip": client_ip,
+        "created_at": now_iso,
+    })
+
+
+async def _ensure_flash_sales() -> list[dict]:
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    active_sales = await db.commerce_flash_sales.find(
+        {"status": "active", "ends_at": {"$gt": now_iso}, "remaining_units": {"$gt": 0}},
+        {"_id": 0},
+    ).sort("ends_at", 1).limit(6).to_list(6)
+
+    if len(active_sales) >= 3:
+        return active_sales
+
+    existing_listing_ids = set(await db.commerce_flash_sales.distinct("listing_id"))
+    listings = await db.marketplace_listings.find(
+        {
+            "status": "active",
+            "listing_id": {"$nin": list(existing_listing_ids)},
+        },
+        {
+            "_id": 0,
+            "listing_id": 1,
+            "seller_id": 1,
+            "seller_name": 1,
+            "title": 1,
+            "price": 1,
+            "category": 1,
+            "category_label": 1,
+            "images": 1,
+            "location": 1,
+            "shipping_available": 1,
+            "shipping_cost": 1,
+        },
+    ).sort("created_at", -1).limit(12).to_list(12)
+
+    created_sales: list[dict] = []
+    slots_to_fill = max(0, 4 - len(active_sales))
+    for index, listing in enumerate(listings[:slots_to_fill]):
+        base_price = round(float(listing.get("price", 0) or 0), 2)
+        if base_price <= 0:
+            continue
+        discount = FLASH_SALE_DISCOUNTS[index % len(FLASH_SALE_DISCOUNTS)]
+        sale_price = round(max(0.5, base_price * (1 - discount)), 2)
+        seller_name = listing.get("seller_name") or ""
+        seller_email = listing.get("seller_email") or ""
+        if not seller_name and seller_email:
+            seller_name = seller_email.split("@")[0].replace(".", " ").title()
+        if not seller_name:
+            seller_name = "BidBlitz Deals"
+
+        sale = {
+            "sale_id": f"flash_{secrets.token_hex(5)}",
+            "listing_id": listing["listing_id"],
+            "seller_id": listing.get("seller_id", "") or "",
+            "seller_name": seller_name,
+            "title": listing.get("title", "Flash Deal"),
+            "category": listing.get("category", "other"),
+            "category_label": listing.get("category_label") or listing.get("category", "Sonstiges"),
+            "image_url": (listing.get("images") or [""])[0],
+            "location": listing.get("location", ""),
+            "original_price": base_price,
+            "sale_price": sale_price,
+            "discount_pct": int(round(discount * 100)),
+            "shipping_available": bool(listing.get("shipping_available")),
+            "shipping_cost": round(float(listing.get("shipping_cost") or 0), 2),
+            "remaining_units": 1,
+            "status": "active",
+            "starts_at": now.isoformat(),
+            "ends_at": (now + timedelta(minutes=90 + (index * 20))).isoformat(),
+            "created_at": now.isoformat(),
+        }
+        await db.commerce_flash_sales.insert_one(sale)
+        created_sales.append(sale)
+
+    return active_sales + created_sales
+
+
+async def _ensure_live_programming():
+    now = datetime.now(timezone.utc)
+    live_count = await db.live_streams.count_documents({"status": "live"})
+    upcoming_count = await db.live_streams.count_documents({"status": "idle"})
+    if live_count == 0:
+        live_doc = {
+            "stream_id": f"seedlive_{secrets.token_hex(5)}",
+            "host_user_id": "seed_bidblitz_live",
+            "host_name": "BidBlitz Live",
+            "host_handle": "bidblitzlive",
+            "title": "Live Deal Radar",
+            "description": "Tägliche Live-Deals und Produkt-Drops.",
+            "category": "marketplace",
+            "product_ids": [],
+            "auction_ids": [],
+            "featured_product_id": None,
+            "cover_image": "",
+            "status": "live",
+            "viewer_count": 42,
+            "peak_viewers": 68,
+            "total_messages": 0,
+            "total_reactions": 0,
+            "room_key": secrets.token_urlsafe(16),
+            "scheduled_start": now - timedelta(minutes=10),
+            "started_at": now - timedelta(minutes=10),
+            "created_at": now,
+        }
+        await db.live_streams.insert_one(live_doc)
+    if upcoming_count < 2:
+        missing = 2 - upcoming_count
+        seeds = [
+            ("Creator Spotlight", "marketplace", 90),
+            ("Late Night Penny Battle", "auction", 180),
+        ]
+        for title, category, offset in seeds[:missing]:
+            doc = {
+                "stream_id": f"seedup_{secrets.token_hex(5)}",
+                "host_user_id": "seed_bidblitz_live",
+                "host_name": "BidBlitz Studio",
+                "host_handle": "bidblitzstudio",
+                "title": title,
+                "description": "Geplanter Commerce Stream.",
+                "category": category,
+                "product_ids": [],
+                "auction_ids": [],
+                "featured_product_id": None,
+                "cover_image": "",
+                "status": "idle",
+                "viewer_count": 0,
+                "peak_viewers": 0,
+                "total_messages": 0,
+                "total_reactions": 0,
+                "room_key": secrets.token_urlsafe(16),
+                "scheduled_start": now + timedelta(minutes=offset),
+                "created_at": now,
+            }
+            await db.live_streams.insert_one(doc)
+
+    active_auction_count = await db.live_auctions.count_documents({"status": "active", "ends_at": {"$gt": now.isoformat()}})
+    if active_auction_count < 2:
+        seeds = [
+            ("Gaming Mystery Drop", "gaming", 9.5, 900),
+            ("Premium Mobility Bundle", "mobility", 14.0, 1200),
+        ]
+        for title, category, start_price, duration_seconds in seeds[: 2 - active_auction_count]:
+            auction = {
+                "auction_id": f"seedla_{secrets.token_hex(5)}",
+                "seller_email": "live@bidblitz.ae",
+                "seller_name": "BidBlitz Live",
+                "title": title,
+                "description": "Seeded live auction for Commerce Center programming.",
+                "start_price": start_price,
+                "current_price": start_price,
+                "category": category,
+                "image_url": "",
+                "bids": [],
+                "bid_count": 0,
+                "highest_bidder": None,
+                "status": "active",
+                "created_at": now.isoformat(),
+                "ends_at": (now + timedelta(seconds=duration_seconds)).isoformat(),
+                "duration_seconds": duration_seconds,
+            }
+            await db.live_auctions.insert_one(auction)
+
+
+@router.get("/merchant-dashboard")
+async def get_merchant_flash_sales_dashboard(request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    listings = await db.marketplace_listings.find(
+        {"seller_id": user_id},
+        {"_id": 0, "listing_id": 1, "title": 1, "price": 1, "status": 1, "views": 1, "images": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(100)
+
+    flash_sales = await db.commerce_flash_sales.find(
+        {"seller_id": user_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(100)
+
+    for sale in flash_sales:
+        sale["remaining_seconds"] = _remaining_seconds(sale.get("ends_at"))
+        if not sale.get("seller_name"):
+            sale["seller_name"] = user.get("name") or user.get("email") or "BidBlitz Deals"
+
+    active_sales = [sale for sale in flash_sales if sale.get("status") in {"active", "processing"} and sale.get("remaining_seconds", 0) > 0]
+    blocked_listing_ids = {sale.get("listing_id") for sale in active_sales}
+    eligible_listings = [listing for listing in listings if listing.get("status") == "active" and listing.get("listing_id") not in blocked_listing_ids]
+
+    commerce_orders = await db.commerce_orders.find(
+        {"seller_id": user_id, "status": "completed"},
+        {"_id": 0, "seller_amount": 1},
+    ).to_list(500)
+    total_flash_revenue = round(sum(float(order.get("seller_amount") or 0) for order in commerce_orders), 2)
+
+    return {
+        "stats": {
+            "total_listings": len(listings),
+            "eligible_listings": len(eligible_listings),
+            "active_flash_sales": len(active_sales),
+            "completed_flash_sales": len([sale for sale in flash_sales if sale.get("status") == "sold"]),
+            "flash_sale_revenue": total_flash_revenue,
+        },
+        "flash_sales": [_serialize_doc(sale) for sale in flash_sales],
+        "eligible_listings": [_serialize_doc(listing) for listing in eligible_listings[:12]],
+    }
+
+
+@router.post("/flash-sales")
+async def create_flash_sale(req: FlashSaleCreateRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    if req.sale_price <= 0:
+        raise HTTPException(status_code=400, detail="sale_price muss größer als 0 sein")
+    if req.duration_minutes < 15 or req.duration_minutes > 1440:
+        raise HTTPException(status_code=400, detail="duration_minutes muss zwischen 15 und 1440 liegen")
+
+    listing = await db.marketplace_listings.find_one({"listing_id": req.listing_id}, {"_id": 0})
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing nicht gefunden")
+    if listing.get("seller_id") != user_id:
+        raise HTTPException(status_code=403, detail="Nur eigene Listings können als Flash Sale gestartet werden")
+    if listing.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Nur aktive Listings können als Flash Sale gestartet werden")
+
+    base_price = round(float(listing.get("price") or 0), 2)
+    sale_price = round(float(req.sale_price), 2)
+    if sale_price >= base_price:
+        raise HTTPException(status_code=400, detail="Der Flash-Sale-Preis muss unter dem Listing-Preis liegen")
+
+    existing = await db.commerce_flash_sales.find_one(
+        {
+            "listing_id": req.listing_id,
+            "status": {"$in": ["active", "processing"]},
+            "ends_at": {"$gt": now_iso},
+        },
+        {"_id": 0, "sale_id": 1},
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Für dieses Listing läuft bereits ein aktiver Flash Sale")
+
+    sale = {
+        "sale_id": f"flash_{secrets.token_hex(5)}",
+        "listing_id": req.listing_id,
+        "seller_id": user_id,
+        "seller_name": listing.get("seller_name") or user.get("name") or user.get("email") or "BidBlitz Deals",
+        "title": listing.get("title", "Flash Deal"),
+        "category": listing.get("category", "other"),
+        "category_label": listing.get("category_label") or listing.get("category", "Sonstiges"),
+        "image_url": (listing.get("images") or [""])[0],
+        "location": listing.get("location", ""),
+        "original_price": base_price,
+        "sale_price": sale_price,
+        "discount_pct": int(round(((base_price - sale_price) / base_price) * 100)),
+        "shipping_available": bool(listing.get("shipping_available")),
+        "shipping_cost": round(float(listing.get("shipping_cost") or 0), 2),
+        "remaining_units": 1,
+        "status": "active",
+        "starts_at": now_iso,
+        "ends_at": (now + timedelta(minutes=req.duration_minutes)).isoformat(),
+        "created_at": now_iso,
+        "created_via": "merchant_dashboard",
+    }
+    await db.commerce_flash_sales.insert_one(sale)
+    sale.pop("_id", None)
+    sale["remaining_seconds"] = _remaining_seconds(sale.get("ends_at"))
+    return {"ok": True, "sale": _serialize_doc(sale)}
+
+
+@router.delete("/flash-sales/{sale_id}")
+async def cancel_flash_sale(sale_id: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    sale = await db.commerce_flash_sales.find_one({"sale_id": sale_id}, {"_id": 0})
+    if not sale:
+        raise HTTPException(status_code=404, detail="Flash Sale nicht gefunden")
+    if sale.get("seller_id") != user_id:
+        raise HTTPException(status_code=403, detail="Du kannst nur eigene Flash Sales beenden")
+    if sale.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Nur aktive Flash Sales können beendet werden")
+    if sale.get("order_id"):
+        raise HTTPException(status_code=400, detail="Verkaufte Flash Sales können nicht storniert werden")
+
+    await db.commerce_flash_sales.update_one(
+        {"sale_id": sale_id, "seller_id": user_id},
+        {
+            "$set": {"status": "cancelled", "cancelled_at": now_iso, "remaining_units": 0},
+            "$unset": {"reserved_by": "", "reserved_at": ""},
+        },
+    )
+    return {"ok": True, "sale_id": sale_id}
+
+
+@router.get("/overview")
+async def get_commerce_overview():
+    await _ensure_live_programming()
+    flash_sales = await _ensure_flash_sales()
+
+    marketplace_items = await db.marketplace_listings.find(
+        {"status": "active"},
+        {
+            "_id": 0,
+            "listing_id": 1,
+            "title": 1,
+            "price": 1,
+            "category": 1,
+            "category_label": 1,
+            "images": 1,
+            "location": 1,
+            "favorites": 1,
+            "views": 1,
+            "boost": 1,
+            "is_vip": 1,
+            "shipping_available": 1,
+        },
+    ).sort("created_at", -1).limit(8).to_list(8)
+
+    def _marketplace_rank(item: dict):
+        has_boost = bool(item.get("boost") and item["boost"].get("expires_at", "") > datetime.now(timezone.utc).isoformat())
+        return (
+            1 if has_boost else 0,
+            1 if item.get("is_vip") else 0,
+            item.get("favorites", 0),
+            item.get("views", 0),
+        )
+
+    marketplace_items.sort(key=_marketplace_rank, reverse=True)
+
+    penny_auctions = await db.auctions.find(
+        {"status": {"$in": ["active", "upcoming"]}},
+        {
+            "_id": 0,
+            "auction_id": 1,
+            "title": 1,
+            "current_price": 1,
+            "retail_price": 1,
+            "bid_count": 1,
+            "watchers": 1,
+            "image_url": 1,
+            "ends_at": 1,
+            "status": 1,
+            "shipping": 1,
+            "category": 1,
+        },
+    ).sort("ends_at", 1).limit(6).to_list(6)
+    for auction in penny_auctions:
+        auction["remaining_seconds"] = _remaining_seconds(auction.get("ends_at"))
+        auction["final_battle"] = 0 < auction["remaining_seconds"] <= 60
+
+    live_auctions = await db.live_auctions.find(
+        {"status": "active", "ends_at": {"$gt": datetime.now(timezone.utc).isoformat()}},
+        {
+            "_id": 0,
+            "auction_id": 1,
+            "title": 1,
+            "current_price": 1,
+            "start_price": 1,
+            "bid_count": 1,
+            "category": 1,
+            "image_url": 1,
+            "ends_at": 1,
+        },
+    ).sort("ends_at", 1).limit(4).to_list(4)
+    for auction in live_auctions:
+        auction["remaining_seconds"] = _remaining_seconds(auction.get("ends_at"))
+
+    for sale in flash_sales:
+        if not sale.get("seller_name"):
+            sale["seller_name"] = "BidBlitz Deals"
+        sale["remaining_seconds"] = _remaining_seconds(sale.get("ends_at"))
+
+    live_streams = await db.live_streams.find(
+        {"status": "live"},
+        {
+            "_id": 0,
+            "stream_id": 1,
+            "title": 1,
+            "host_name": 1,
+            "host_handle": 1,
+            "category": 1,
+            "cover_image": 1,
+            "viewer_count": 1,
+            "featured_product_id": 1,
+        },
+    ).sort("viewer_count", -1).limit(4).to_list(4)
+
+    upcoming_streams = await db.live_streams.find(
+        {"status": "idle"},
+        {
+            "_id": 0,
+            "stream_id": 1,
+            "title": 1,
+            "host_name": 1,
+            "host_handle": 1,
+            "category": 1,
+            "cover_image": 1,
+            "scheduled_start": 1,
+        },
+    ).sort("scheduled_start", 1).limit(4).to_list(4)
+
+    stats = {
+        "active_marketplace": await db.marketplace_listings.count_documents({"status": "active"}),
+        "active_flash_sales": await db.commerce_flash_sales.count_documents({"status": "active", "remaining_units": {"$gt": 0}}),
+        "active_penny_auctions": await db.auctions.count_documents({"status": "active"}),
+        "active_live_auctions": await db.live_auctions.count_documents({"status": "active", "ends_at": {"$gt": datetime.now(timezone.utc).isoformat()}}),
+        "active_live_streams": await db.live_streams.count_documents({"status": "live"}),
+    }
+
+    category_mix = _build_category_mix(marketplace_items[:6], penny_auctions[:4], flash_sales[:4])
+    spotlight = _build_spotlight_deal(flash_sales[:4], penny_auctions[:4], live_auctions)
+    live_insights = _build_live_insights(flash_sales[:4], penny_auctions[:4], live_streams, category_mix)
+    analytics_cards = await _build_analytics_cards(flash_sales[:4], live_streams)
+    performance_rankings = _build_performance_rankings(flash_sales[:4], marketplace_items[:6], live_streams, penny_auctions[:4])
+    program_schedule = _build_program_schedule(flash_sales[:4], live_streams, upcoming_streams, live_auctions)
+
+    return {
+        "stats": stats,
+        "flash_sales": [_serialize_doc(item) for item in flash_sales[:4]],
+        "marketplace": [_serialize_doc(item) for item in marketplace_items[:6]],
+        "penny_auctions": [_serialize_doc(item) for item in penny_auctions[:4]],
+        "live_auctions": [_serialize_doc(item) for item in live_auctions],
+        "live_streams": [_serialize_doc(item) for item in live_streams],
+        "upcoming_streams": [_serialize_doc(item) for item in upcoming_streams],
+        "spotlight": _serialize_doc(spotlight),
+        "category_mix": [_serialize_doc(item) for item in category_mix],
+        "live_insights": [_serialize_doc(item) for item in live_insights],
+        "analytics_cards": [_serialize_doc(item) for item in analytics_cards],
+        "performance_rankings": [_serialize_doc(item) for item in performance_rankings],
+        "program_schedule": [_serialize_doc(item) for item in program_schedule],
+    }
+
+
+@router.post("/events")
+async def track_commerce_center_event(req: CommerceEventTrackRequest, request: Request):
+    await _track_commerce_event(req, request)
+    return {"ok": True}
+
+
+@router.post("/flash-sales/{sale_id}/buy")
+async def buy_flash_sale(sale_id: str, req: FlashSalePurchaseRequest, request: Request):
+    user = await get_current_user(request)
+    buyer_id = str(user["_id"])
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    sale = await db.commerce_flash_sales.find_one(
+        {
+            "sale_id": sale_id,
+            "status": "active",
+            "ends_at": {"$gt": now_iso},
+            "remaining_units": {"$gt": 0},
+        },
+        {"_id": 0},
+    )
+    if not sale:
+        raise HTTPException(status_code=404, detail="Flash Sale nicht verfügbar")
+
+    if sale.get("seller_id") == buyer_id:
+        raise HTTPException(status_code=400, detail="Du kannst deinen eigenen Flash Sale nicht kaufen")
+
+    platform_owned = not sale.get("seller_id")
+    seller = None
+    if not platform_owned:
+        seller_query = {"_id": ObjectId(sale["seller_id"])} if ObjectId.is_valid(sale.get("seller_id", "")) else {"_id": sale.get("seller_id")}
+        seller = await db.users.find_one(seller_query, {"_id": 1, "name": 1})
+        if not seller:
+            raise HTTPException(status_code=400, detail="Verkäuferkonto nicht gefunden")
+
+    sale_lock = await db.commerce_flash_sales.update_one(
+        {
+            "sale_id": sale_id,
+            "status": "active",
+            "ends_at": {"$gt": now_iso},
+            "remaining_units": {"$gt": 0},
+        },
+        {"$set": {"status": "processing", "reserved_by": buyer_id, "reserved_at": now_iso}},
+    )
+    if sale_lock.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Flash Sale wurde gerade reserviert oder verkauft")
+
+    listing = await db.marketplace_listings.find_one(
+        {"listing_id": sale["listing_id"], "status": "active"},
+        {"_id": 0},
+    )
+    if not listing:
+        await db.commerce_flash_sales.update_one(
+            {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
+            {"$set": {"status": "inactive"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
+        )
+        raise HTTPException(status_code=400, detail="Produkt ist nicht mehr verfügbar")
+
+    listing_lock = await db.marketplace_listings.update_one(
+        {"listing_id": sale["listing_id"], "status": "active"},
+        {"$set": {"status": "processing_flash", "updated_at": now_iso}},
+    )
+    if listing_lock.modified_count == 0:
+        await db.commerce_flash_sales.update_one(
+            {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
+            {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
+        )
+        raise HTTPException(status_code=400, detail="Produkt wird bereits gekauft")
+
+    shipping_cost = round(float(listing.get("shipping_cost") or 0), 2) if req.use_shipping and listing.get("shipping_available") else 0
+    sale_price = round(float(sale.get("sale_price") or listing.get("price") or 0), 2)
+    total_price = round(sale_price + shipping_cost, 2)
+    commission = round(total_price if platform_owned else sale_price * PLATFORM_COMMISSION, 2)
+    seller_amount = 0 if platform_owned else round(sale_price - commission + shipping_cost, 2)
+    order_id = f"cc_{secrets.token_hex(6)}"
+    payment_committed = False
+    seller_name = sale.get("seller_name") or (seller.get("name") if seller else "BidBlitz Deals")
+
+    try:
+        debit_result = await debit_wallet(
+            user_id=buyer_id,
+            amount=total_price,
+            tx_type=TransactionType.PAYMENT,
+            description=f"Commerce Flash Sale: {listing['title'][:50]}",
+            reference=f"FLASH-{sale_id[:10].upper()}",
+            merchant_name=seller_name,
+            metadata={
+                "sale_id": sale_id,
+                "listing_id": sale["listing_id"],
+                "order_id": order_id,
+                "channel": "flash_sale",
+            },
+        )
+        if not debit_result.success:
+            raise HTTPException(status_code=400, detail=debit_result.error)
+
+        payment_committed = True
+        credit_result = None
+        if not platform_owned:
+            credit_result = await credit_wallet(
+                user_id=sale["seller_id"],
+                amount=seller_amount,
+                tx_type=TransactionType.MERCHANT_CREDIT,
+                description=f"Flash Sale Verkauf: {listing['title'][:50]}",
+                reference=f"FLASH-SELL-{sale_id[:8].upper()}",
+                source="commerce_center",
+                metadata={
+                    "sale_id": sale_id,
+                    "listing_id": sale["listing_id"],
+                    "order_id": order_id,
+                    "discount_pct": sale.get("discount_pct", 0),
+                    "commission": commission,
+                },
+            )
+
+        order = {
+            "order_id": order_id,
+            "sale_id": sale_id,
+            "listing_id": sale["listing_id"],
+            "buyer_id": buyer_id,
+            "buyer_name": user.get("name", ""),
+            "seller_id": sale["seller_id"],
+            "seller_name": seller_name,
+            "item_title": listing["title"],
+            "original_price": round(float(listing.get("price") or 0), 2),
+            "sale_price": sale_price,
+            "shipping_cost": shipping_cost,
+            "total_price": total_price,
+            "discount_pct": sale.get("discount_pct", 0),
+            "commission": commission,
+            "seller_amount": seller_amount,
+            "platform_owned": platform_owned,
+            "status": "completed",
+            "buyer_payment_id": debit_result.transaction_id,
+            "seller_payment_id": credit_result.transaction_id if credit_result and credit_result.success else None,
+            "created_at": now_iso,
+        }
+        await db.commerce_orders.insert_one(order)
+        order.pop("_id", None)
+
+        await db.marketplace_listings.update_one(
+            {"listing_id": sale["listing_id"]},
+            {
+                "$set": {
+                    "status": "sold",
+                    "sold_at": now_iso,
+                    "sold_to": buyer_id,
+                    "order_id": order_id,
+                    "flash_sale_id": sale_id,
+                    "updated_at": now_iso,
+                }
+            },
+        )
+        await db.commerce_flash_sales.update_one(
+            {"sale_id": sale_id},
+            {
+                "$set": {
+                    "status": "sold",
+                    "sold_at": now_iso,
+                    "buyer_id": buyer_id,
+                    "order_id": order_id,
+                },
+                "$inc": {"remaining_units": -1},
+                "$unset": {"reserved_by": "", "reserved_at": ""},
+            },
+        )
+        await db.platform_revenue.update_one(
+            {"date": now.strftime("%Y-%m-%d")},
+            {"$inc": {"total": commission, "by_source.commerce_flash_sales": commission}},
+            upsert=True,
+        )
+        if not platform_owned:
+            await db.notifications.insert_one(
+                {
+                    "id": secrets.token_hex(8),
+                    "user_id": sale["seller_id"],
+                    "type": "commerce_flash_sale",
+                    "title": "Flash Sale verkauft!",
+                    "message": f"{listing['title'][:40]} wurde im Commerce Center verkauft.",
+                    "data": {"order_id": order_id, "sale_id": sale_id, "listing_id": sale["listing_id"]},
+                    "read": False,
+                    "created_at": now_iso,
+                }
+            )
+
+        return {
+            "ok": True,
+            "order": order,
+            "new_balance": debit_result.new_balance,
+            "message": f"Flash Sale erfolgreich gekauft: €{total_price:.2f}",
+        }
+    except HTTPException:
+        if not payment_committed:
+            await db.commerce_flash_sales.update_one(
+                {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
+                {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
+            )
+            await db.marketplace_listings.update_one(
+                {"listing_id": sale["listing_id"], "status": "processing_flash"},
+                {"$set": {"status": "active", "updated_at": now_iso}},
+            )
+        raise
+    except Exception as exc:
+        if not payment_committed:
+            await db.commerce_flash_sales.update_one(
+                {"sale_id": sale_id, "status": "processing", "reserved_by": buyer_id},
+                {"$set": {"status": "active"}, "$unset": {"reserved_by": "", "reserved_at": ""}},
+            )
+            await db.marketplace_listings.update_one(
+                {"listing_id": sale["listing_id"], "status": "processing_flash"},
+                {"$set": {"status": "active", "updated_at": now_iso}},
+            )
+        raise HTTPException(status_code=500, detail=f"Flash Sale Kauf fehlgeschlagen: {exc}") from exc

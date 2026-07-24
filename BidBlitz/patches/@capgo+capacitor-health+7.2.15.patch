@@ -1,0 +1,51 @@
+diff --git a/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/Health.swift b/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/Health.swift
+index 7099564..30d5a64 100644
+--- a/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/Health.swift
++++ b/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/Health.swift
+@@ -112,16 +112,21 @@ struct AuthorizationStatusPayload {
+ }
+ 
+ final class Health {
+-    private let healthStore = HKHealthStore()
++    static let shared = Health()
++
++    private lazy var healthStore: HKHealthStore = {
++        NSLog("[HealthDebug] HKHealthStore initialized")
++        return HKHealthStore()
++    }()
+     private let isoFormatter: ISO8601DateFormatter
+ 
+-    init() {
++    private init() {
+         let formatter = ISO8601DateFormatter()
+         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+         isoFormatter = formatter
+     }
+ 
+-    func availabilityPayload() -> [String: Any] {
++    static func availabilityPayload() -> [String: Any] {
+         let available = HKHealthStore.isHealthDataAvailable()
+         if available {
+             return [
+diff --git a/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/HealthPlugin.swift b/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/HealthPlugin.swift
+index 5d54a5b..acb75f1 100644
+--- a/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/HealthPlugin.swift
++++ b/node_modules/@capgo/capacitor-health/ios/Sources/HealthPlugin/HealthPlugin.swift
+@@ -15,10 +15,15 @@ public class HealthPlugin: CAPPlugin, CAPBridgedPlugin {
+         CAPPluginMethod(name: "getPluginVersion", returnType: CAPPluginReturnPromise)
+     ]
+ 
+-    private let implementation = Health()
++    private let implementation = Health.shared
++
++    public override func load() {
++        super.load()
++        NSLog("[HealthDebug] HealthPlugin initialized")
++    }
+ 
+     @objc func isAvailable(_ call: CAPPluginCall) {
+-        call.resolve(implementation.availabilityPayload())
++        call.resolve(Health.availabilityPayload())
+     }
+ 
+     @objc func requestAuthorization(_ call: CAPPluginCall) {

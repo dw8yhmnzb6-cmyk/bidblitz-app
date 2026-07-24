@@ -1,0 +1,654 @@
+from fastapi import APIRouter, HTTPException, Request
+from bson import ObjectId
+from datetime import datetime, timezone
+from core.database import db
+from core.security import get_current_user
+from core.config import calculate_fee, FEES
+from core.rate_limit import limiter, RATE_PAYMENT
+from core.audit import log_audit, AuditEvent, get_client_info
+from core.compliance import run_compliance_check, BLOCKED, FLAGGED
+from core.payment_engine import TransactionType, debit_wallet, credit_wallet
+from schemas.models import PaymentRequest, SendRequest, MerchantScanPayment
+from routes.promotions import check_applicable_promotion, apply_promotion
+import secrets
+
+router = APIRouter(prefix="/api/payment", tags=["payment"])
+
+
+def generate_reference():
+    return f"BLZ-{secrets.token_hex(4).upper()}"
+
+
+@router.get("/fee-preview")
+async def fee_preview(amount: float, fee_type: str = "payment"):
+    """Preview fee breakdown before payment."""
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    fee = calculate_fee(amount, fee_type)
+    return {
+        "gross_amount": round(amount, 2),
+        "fee_amount": fee,
+        "fee_percent": FEES.get(fee_type, 0.0) * 100,
+        "net_amount": round(amount - fee, 2),
+        "total_charged": round(amount, 2),
+    }
+
+
+@router.post("/pay")
+@limiter.limit(RATE_PAYMENT)
+async def pay(req: PaymentRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    current_balance = user.get("balance", 0.0)
+    ip, ua = get_client_info(request)
+
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    # ── Compliance check ──
+    compliance = await run_compliance_check(user_id, "payment", req.amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+    if compliance["outcome"] == FLAGGED:
+        await log_audit(AuditEvent.SUSPICIOUS_ACTIVITY, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"txn_type": "payment", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
+
+    if current_balance < req.amount:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "insufficient_balance", "amount": req.amount, "balance": current_balance},
+                        severity="warn")
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. Current: EUR {current_balance:.2f}")
+
+    ref = generate_reference()
+
+    # Calculate platform fee
+    fee = calculate_fee(req.amount, "payment")
+    net_to_merchant = round(req.amount - fee, 2)
+
+    # Find merchant
+    merchant = None
+    if req.merchant_id and ObjectId.is_valid(req.merchant_id):
+        merchant = await db.merchants.find_one({"_id": ObjectId(req.merchant_id)})
+    if not merchant and req.merchant_id:
+        merchant = await db.merchants.find_one({"user_id": req.merchant_id})
+    merchant_name = merchant["business_name"] if merchant else "Unknown Merchant"
+
+    debit_result = await debit_wallet(
+        user_id=user_id,
+        amount=req.amount,
+        tx_type=TransactionType.PAYMENT,
+        description=req.description or f"Payment to {merchant_name}",
+        reference=ref,
+        merchant_id=str(merchant["_id"]) if merchant else None,
+        merchant_name=merchant_name,
+        metadata={
+            "gross_amount": req.amount,
+            "fee_amount": fee,
+            "net_amount": net_to_merchant,
+            "payment_method": "wallet",
+            "audit_metadata": {"route": "payment.pay"},
+        },
+        idempotency_key=req.idempotency_key,
+    )
+    if not debit_result.success:
+        raise HTTPException(status_code=400, detail=debit_result.error or "Payment failed")
+
+    merchant_credit_txn = None
+
+    # Credit net amount to merchant, track fees
+    if merchant:
+        await db.merchants.update_one(
+            {"_id": merchant["_id"]},
+            {
+                "$inc": {
+                    "total_earnings": net_to_merchant,
+                    "gross_earnings": req.amount,
+                    "total_fees": fee,
+                    "total_transactions": 1,
+                    "available_payout": net_to_merchant,
+                }
+            }
+        )
+
+        merchant_user_id = str(merchant.get("user_id") or "")
+        if merchant_user_id:
+            merchant_credit_result = await credit_wallet(
+                user_id=merchant_user_id,
+                amount=net_to_merchant,
+                tx_type=TransactionType.MERCHANT_CREDIT,
+                description=f"Payment from {user['name']}",
+                reference=ref,
+                source=user_id,
+                metadata={
+                    "gross_amount": req.amount,
+                    "fee_amount": fee,
+                    "net_amount": net_to_merchant,
+                    "customer_name": user.get("name", ""),
+                    "customer_email": user.get("email", ""),
+                    "merchant_name": merchant_name,
+                    "merchant_id": str(merchant["_id"]),
+                    "audit_metadata": {"route": "payment.pay", "kind": "merchant_credit"},
+                },
+                idempotency_key=f"merchant-credit:{debit_result.transaction_id}",
+            )
+            if not merchant_credit_result.success:
+                await credit_wallet(
+                    user_id=user_id,
+                    amount=req.amount,
+                    tx_type=TransactionType.REFUND,
+                    description=f"Refund: payment to {merchant_name} failed",
+                    reference=f"REF-{ref}",
+                    source="payment.pay.rollback",
+                    metadata={
+                        "original_reference": ref,
+                        "reason": merchant_credit_result.error or "merchant_credit_failed",
+                        "audit_metadata": {"route": "payment.pay.rollback"},
+                    },
+                    idempotency_key=f"refund:{debit_result.transaction_id}",
+                )
+                raise HTTPException(status_code=400, detail=merchant_credit_result.error or "Merchant settlement failed")
+            merchant_credit_txn = await db.transactions.find_one({"id": merchant_credit_result.transaction_id}, {"_id": 0}) or {}
+
+    txn = await db.transactions.find_one({"id": debit_result.transaction_id}, {"_id": 0}) or {}
+
+    updated_user = await db.users.find_one({"_id": user["_id"]})
+
+    await log_audit(AuditEvent.PAYMENT_SUCCESS, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": req.amount, "fee": fee,
+                             "merchant": merchant_name, "new_balance": updated_user["balance"]})
+
+    # Track first payment conversion
+    try:
+        existing_payments = await db.transactions.count_documents({"user_id": user_id, "type": "payment", "status": "completed"})
+        if existing_payments <= 1:  # This is the first
+            day_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            await db.conversion_events.insert_one({
+                "event": "first_payment",
+                "session_id": "",
+                "meta": {"amount": req.amount, "type": "payment"},
+                "day": day_key,
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "user_id": user_id,
+                "ip": ip,
+            })
+            await db.conversion_metrics.update_one(
+                {"day": day_key, "event": "first_payment"},
+                {"$inc": {"count": 1}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+                upsert=True,
+            )
+    except Exception:
+        pass
+
+    # ── Check for applicable promotions (cashback) ──
+    promo_applied = None
+    try:
+        promo = await check_applicable_promotion(user_id, "payment", req.amount)
+        if promo:
+            cashback = round(req.amount * promo["value"] / 100, 2)
+            if cashback > 0:
+                await credit_wallet(
+                    user_id=user_id,
+                    amount=cashback,
+                    tx_type=TransactionType.REWARD,
+                    description=f"Cashback: {promo['name']} ({promo['value']}%)",
+                    source="promotion",
+                    metadata={
+                        "promotion_name": promo["name"],
+                        "promotion_value": promo["value"],
+                        "reference_payment": ref,
+                        "audit_metadata": {"route": "payment.pay.cashback"},
+                    },
+                )
+                await apply_promotion(user_id, promo["name"], req.amount)
+                updated_user = await db.users.find_one({"_id": user["_id"]})
+                promo_applied = {"name": promo["name"], "cashback": cashback}
+    except Exception:
+        pass
+
+    # ── Loyalty / Coins reward ──
+    try:
+        from routes.loyalty_system import process_loyalty_rewards
+        await process_loyalty_rewards(
+            user_id=user_id, source_type="payment", source_id=ref,
+            amount=req.amount, tx_id=txn["id"],
+        )
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "new_balance": round(updated_user["balance"], 2),
+        "gross_amount": req.amount,
+        "fee_amount": fee,
+        "fee_percent": FEES["payment"] * 100,
+        "net_amount": net_to_merchant,
+        "merchant_name": merchant_name,
+        "transaction": txn,
+        "merchant_transaction": merchant_credit_txn,
+        "promotion": promo_applied,
+    }
+
+
+@router.post("/send")
+async def send_money(req: SendRequest, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+    current_balance = user.get("balance", 0.0)
+    ip, ua = get_client_info(request)
+
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    # ── Compliance check ──
+    compliance = await run_compliance_check(user_id, "send", req.amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.SEND_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+    if compliance["outcome"] == FLAGGED:
+        await log_audit(AuditEvent.SUSPICIOUS_ACTIVITY, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"txn_type": "send", "rules": compliance["rules"], "amount": req.amount},
+                        severity="warn")
+
+    # Calculate send fee
+    fee = calculate_fee(req.amount, "send")
+
+    # ── Check for applicable promotions (reduced_fee) ──
+    promo_applied = None
+    try:
+        promo = await check_applicable_promotion(user_id, "send", req.amount)
+        if promo:
+            discount = round(fee * promo["value"] / 100, 2)
+            fee = round(fee - discount, 2)
+            if fee < 0:
+                fee = 0
+            promo_applied = {"name": promo["name"], "discount": discount, "value": promo["value"]}
+    except Exception:
+        pass
+
+    total_debit = round(req.amount + fee, 2)
+
+    if current_balance < total_debit:
+        await log_audit(AuditEvent.SEND_FAILED, user_id=user_id, email=user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "insufficient_balance", "amount": req.amount, "balance": current_balance},
+                        severity="warn")
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. Need EUR {total_debit:.2f}, have EUR {current_balance:.2f}")
+
+    recipient = await db.users.find_one({"email": req.recipient_email.lower().strip()})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Recipient not found")
+
+    if str(recipient["_id"]) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot send money to yourself")
+
+    ref = generate_reference()
+    sender_result = await debit_wallet(
+        user_id=user_id,
+        amount=total_debit,
+        tx_type=TransactionType.TRANSFER,
+        description=req.description or f"Sent to {recipient['name']}",
+        reference=ref,
+        metadata={
+            "gross_amount": req.amount,
+            "fee_amount": fee,
+            "net_amount": req.amount,
+            "recipient_email": req.recipient_email,
+            "audit_metadata": {"route": "payment.send", "kind": "sender"},
+        },
+        idempotency_key=req.idempotency_key,
+    )
+    if not sender_result.success:
+        raise HTTPException(status_code=400, detail=sender_result.error or "Transfer failed")
+
+    recipient_result = await credit_wallet(
+        user_id=str(recipient["_id"]),
+        amount=req.amount,
+        tx_type=TransactionType.TRANSFER,
+        description=f"Received from {user['name']}",
+        reference=ref,
+        source=user_id,
+        metadata={
+            "sender_email": user.get("email", ""),
+            "gross_amount": req.amount,
+            "audit_metadata": {"route": "payment.send", "kind": "recipient"},
+        },
+        idempotency_key=f"recv:{req.idempotency_key}" if req.idempotency_key else None,
+    )
+    if not recipient_result.success:
+        await credit_wallet(
+            user_id=user_id,
+            amount=total_debit,
+            tx_type=TransactionType.REFUND,
+            description=f"Refund: transfer to {recipient['name']} failed",
+            reference=f"REF-{ref}",
+            source="payment.send.rollback",
+            metadata={"original_reference": ref, "reason": recipient_result.error or "recipient_credit_failed", "audit_metadata": {"route": "payment.send.rollback"}},
+        )
+        raise HTTPException(status_code=400, detail=recipient_result.error or "Transfer failed")
+
+    sender_txn = await db.transactions.find_one({"id": sender_result.transaction_id}, {"_id": 0}) or {}
+
+    updated_user = await db.users.find_one({"_id": user["_id"]})
+
+    await log_audit(AuditEvent.SEND_SUCCESS, user_id=user_id, email=user["email"],
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": req.amount, "fee": fee,
+                             "recipient_email": req.recipient_email, "new_balance": updated_user["balance"]})
+
+    # Record promo usage if applied
+    if promo_applied:
+        try:
+            await apply_promotion(user_id, promo_applied["name"], req.amount)
+        except Exception:
+            pass
+
+    # ── Loyalty / Coins reward for transfers ──
+    try:
+        from routes.loyalty_system import process_loyalty_rewards
+        await process_loyalty_rewards(
+            user_id=user_id, source_type="transfer", source_id=ref,
+            amount=req.amount, tx_id=sender_txn["id"],
+        )
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "new_balance": round(updated_user["balance"], 2),
+        "fee_amount": fee,
+        "transaction": sender_txn,
+        "promotion": promo_applied,
+    }
+
+
+# ── Customer Barcode ──
+
+import re
+import hmac
+import hashlib
+import time
+
+_BARCODE_RE = re.compile(r"^BLZ-[A-F0-9]{12}$")
+_DYNAMIC_QR_RE = re.compile(r"^BLZ-[A-F0-9]{12}-[A-F0-9]{8}$")
+QR_ROTATION_SECONDS = 300  # 5 minutes
+
+
+def _generate_qr_token(base_barcode: str, time_slot: int) -> str:
+    """Generate a time-based token for the dynamic QR code."""
+    payload = f"{base_barcode}:{time_slot}".encode()
+    h = hmac.new(b"bidblitz-qr-secret", payload, hashlib.sha256).hexdigest()[:8].upper()
+    return h
+
+
+def _get_current_time_slot():
+    return int(time.time()) // QR_ROTATION_SECONDS
+
+
+@router.get("/my-barcode")
+async def get_my_barcode(request: Request):
+    """Get or generate a dynamic payment QR code for the current user.
+    QR code rotates every 5 minutes for security."""
+    user = await get_current_user(request)
+    user_id = str(user["_id"])
+
+    barcode = user.get("payment_barcode")
+    if not barcode:
+        barcode = f"BLZ-{secrets.token_hex(6).upper()}"
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"payment_barcode": barcode}})
+
+    time_slot = _get_current_time_slot()
+    token = _generate_qr_token(barcode, time_slot)
+    dynamic_qr = f"{barcode}-{token}"
+
+    now = int(time.time())
+    expires_in = QR_ROTATION_SECONDS - (now % QR_ROTATION_SECONDS)
+
+    return {
+        "barcode": dynamic_qr,
+        "user_id": user_id,
+        "name": user.get("name", ""),
+        "balance": round(float(user.get("balance", 0) or 0), 2),
+        "expires_in": expires_in,
+        "rotation_seconds": QR_ROTATION_SECONDS,
+    }
+
+
+# ── Merchant-Initiated Scan Payment ──
+
+
+@router.post("/merchant-scan")
+@limiter.limit(RATE_PAYMENT)
+async def merchant_scan_payment(req: MerchantScanPayment, request: Request):
+    """
+    Merchant scans customer barcode to initiate a payment.
+    Idempotent: if idempotency_key is provided and already processed, returns cached result.
+    Uses atomic balance update to prevent double-charge.
+    """
+    merchant_user = await get_current_user(request)
+    merchant_user_id = str(merchant_user["_id"])
+    ip, ua = get_client_info(request)
+
+    # ── 1. Dynamic QR code validation ──
+    raw_code = req.customer_barcode.strip().upper()
+
+    # Support both old static format (BLZ-XXXXXXXXXXXX) and new dynamic (BLZ-XXXXXXXXXXXX-XXXXXXXX)
+    if _DYNAMIC_QR_RE.match(raw_code):
+        base_barcode = raw_code[:16]  # BLZ-XXXXXXXXXXXX
+        submitted_token = raw_code[17:]  # XXXXXXXX
+
+        # Validate against current and previous time slot (grace period)
+        current_slot = _get_current_time_slot()
+        valid_token = False
+        for slot in [current_slot, current_slot - 1]:
+            expected = _generate_qr_token(base_barcode, slot)
+            if submitted_token == expected:
+                valid_token = True
+                break
+
+        if not valid_token:
+            raise HTTPException(status_code=400, detail="scan.qr_expired")
+
+        barcode = base_barcode
+    elif _BARCODE_RE.match(raw_code):
+        barcode = raw_code
+    else:
+        raise HTTPException(status_code=400, detail="scan.invalid_barcode_format")
+
+    # ── 2. Idempotency check ──
+    idem_key = req.idempotency_key
+    if idem_key:
+        existing = await db.transactions.find_one(
+            {"idempotency_key": idem_key},
+            {"_id": 0}
+        )
+        if existing:
+            existing_meta = existing.get("metadata") or {}
+            # Already processed — return cached success
+            return {
+                "success": True,
+                "reference": existing["reference"],
+                "amount": existing_meta.get("gross_amount", existing.get("gross_amount", abs(existing.get("amount", 0)))),
+                "fee": existing_meta.get("fee_amount", existing.get("fee_amount", 0)),
+                "net_to_merchant": existing_meta.get("net_amount", existing.get("net_amount", 0)),
+                "customer_name": existing.get("description", "").replace("Payment to ", ""),
+                "customer_new_balance": 0,  # Not re-fetched for cached
+                "merchant_name": existing.get("merchant_name", ""),
+                "transaction": existing,
+                "duplicate": True,
+            }
+
+    # ── 3. Merchant profile ──
+    merchant = await db.merchants.find_one({"user_id": merchant_user_id})
+    if not merchant:
+        raise HTTPException(status_code=403, detail="No merchant profile found")
+
+    merchant_name = merchant.get("business_name") or merchant_user.get("name", "Unknown Merchant")
+
+    # ── 4. Find customer by barcode ──
+    customer = await db.users.find_one({"payment_barcode": barcode})
+    if not customer:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=merchant_user_id, email=merchant_user["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "invalid_barcode", "barcode": barcode[:8] + "***"},
+                        severity="warn")
+        raise HTTPException(status_code=404, detail="scan.barcode_not_found")
+
+    customer_id = str(customer["_id"])
+
+    if customer_id == merchant_user_id:
+        raise HTTPException(status_code=400, detail="Cannot charge yourself")
+
+    # ── 5. Compliance check ──
+    compliance = await run_compliance_check(customer_id, "payment", req.amount)
+    if compliance["outcome"] == BLOCKED:
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=customer_id, email=customer["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "compliance_blocked", "rules": compliance["rules"], "amount": req.amount,
+                                 "initiated_by": "merchant", "merchant_id": merchant_user_id},
+                        severity="warn")
+        raise HTTPException(status_code=403, detail=compliance["reason"])
+
+    # ── 6. Atomic balance deduction (prevents double-charge via race condition) ──
+    ref = generate_reference()
+    fee = calculate_fee(req.amount, "payment")
+    net_to_merchant = round(req.amount - fee, 2)
+    customer_debit = await debit_wallet(
+        user_id=customer_id,
+        amount=req.amount,
+        tx_type=TransactionType.PAYMENT,
+        description=req.description or f"Payment to {merchant_name}",
+        reference=ref,
+        merchant_id=str(merchant["_id"]),
+        merchant_name=merchant_name,
+        metadata={
+            "gross_amount": req.amount,
+            "fee_amount": fee,
+            "net_amount": net_to_merchant,
+            "payment_method": "barcode_scan",
+            "audit_metadata": {"route": "payment.merchant_scan", "idempotency_key": idem_key or ""},
+        },
+        idempotency_key=idem_key,
+    )
+
+    if not customer_debit.success:
+        # Balance was insufficient (or changed between check and deduct)
+        await log_audit(AuditEvent.PAYMENT_FAILED, user_id=customer_id, email=customer["email"],
+                        ip=ip, user_agent=ua,
+                        details={"reason": "insufficient_balance", "amount": req.amount, "initiated_by": "merchant"},
+                        severity="warn")
+        raise HTTPException(status_code=400, detail="scan.insufficient")
+
+    # ── 7. Credit merchant (only after successful deduction) ──
+    await db.merchants.update_one(
+        {"_id": merchant["_id"]},
+        {"$inc": {
+            "total_earnings": net_to_merchant,
+            "gross_earnings": req.amount,
+            "total_fees": fee,
+            "total_transactions": 1,
+            "available_payout": net_to_merchant,
+        }}
+    )
+
+    merchant_credit_result = await credit_wallet(
+        user_id=merchant_user_id,
+        amount=net_to_merchant,
+        tx_type=TransactionType.MERCHANT_CREDIT,
+        description=f"Barcode payment from {customer.get('name', 'Customer')}",
+        reference=ref,
+        source=customer_id,
+        metadata={
+            "gross_amount": req.amount,
+            "fee_amount": fee,
+            "net_amount": net_to_merchant,
+            "customer_name": customer.get("name", "Customer"),
+            "customer_email": customer.get("email", ""),
+            "merchant_name": merchant_name,
+            "merchant_id": str(merchant["_id"]),
+            "payment_method": "barcode_scan",
+            "audit_metadata": {"route": "payment.merchant_scan", "kind": "merchant_credit"},
+        },
+        idempotency_key=f"merchant-credit:{customer_debit.transaction_id}",
+    )
+    if not merchant_credit_result.success:
+        await credit_wallet(
+            user_id=customer_id,
+            amount=req.amount,
+            tx_type=TransactionType.REFUND,
+            description=f"Refund: payment to {merchant_name} failed",
+            reference=f"REF-{ref}",
+            source="payment.merchant_scan.rollback",
+            metadata={
+                "original_reference": ref,
+                "reason": merchant_credit_result.error or "merchant_credit_failed",
+                "audit_metadata": {"route": "payment.merchant_scan.rollback"},
+            },
+            idempotency_key=f"refund:{customer_debit.transaction_id}",
+        )
+        raise HTTPException(status_code=400, detail=merchant_credit_result.error or "Merchant settlement failed")
+
+    # ── 8. Load created customer transaction ──
+    customer_txn = await db.transactions.find_one({"id": customer_debit.transaction_id}, {"_id": 0}) or {}
+
+    # ── 9. Fetch updated balance ──
+    updated_customer = await db.users.find_one({"_id": customer["_id"]})
+
+    # ── 10. Audit log ──
+    await log_audit(AuditEvent.PAYMENT_SUCCESS, user_id=customer_id, email=customer["email"],
+                    ip=ip, user_agent=ua,
+                    details={"reference": ref, "amount": req.amount, "fee": fee,
+                             "merchant": merchant_name, "initiated_by": "merchant_scan",
+                             "merchant_user_id": merchant_user_id,
+                             "idempotency_key": idem_key or "none"})
+
+    # ── 11. Check for applicable promotions (cashback for customer) ──
+    promo_applied = None
+    try:
+        promo = await check_applicable_promotion(customer_id, "payment", req.amount)
+        if promo:
+            cashback = round(req.amount * promo["value"] / 100, 2)
+            if cashback > 0:
+                await credit_wallet(
+                    user_id=customer_id,
+                    amount=cashback,
+                    tx_type=TransactionType.REWARD,
+                    description=f"Cashback: {promo['name']} ({promo['value']}%)",
+                    source="promotion",
+                    metadata={
+                        "promotion_name": promo["name"],
+                        "promotion_value": promo["value"],
+                        "reference_payment": ref,
+                        "audit_metadata": {"route": "payment.merchant_scan.cashback"},
+                    },
+                )
+                await apply_promotion(customer_id, promo["name"], req.amount)
+                updated_customer = await db.users.find_one({"_id": customer["_id"]})
+                promo_applied = {"name": promo["name"], "cashback": cashback}
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "reference": ref,
+        "amount": req.amount,
+        "fee": fee,
+        "net_to_merchant": net_to_merchant,
+        "customer_id": customer_id,
+        "customer_name": customer.get("name", "Customer"),
+        "customer_new_balance": round(updated_customer["balance"], 2),
+        "merchant_name": merchant_name,
+        "transaction": customer_txn,
+        "promotion": promo_applied,
+    }

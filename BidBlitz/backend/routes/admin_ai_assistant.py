@@ -1,0 +1,844 @@
+from __future__ import annotations
+
+import json
+import os
+import re
+import secrets
+from datetime import datetime, timezone, timedelta
+from typing import Any, Optional
+
+from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
+
+from core.database import db
+from core.security import get_current_user
+from bson import ObjectId
+from routes.auctions import (
+    ACTIVE_AUCTION_CATALOG,
+    TARGET_ACTIVE_AUCTIONS,
+    _build_auction_doc,
+    DRONE_GALLERY,
+    EBIKE_GALLERY,
+    ESCOOTER_GALLERY,
+    LAPTOP_GALLERY,
+    MONITOR_GALLERY,
+    ROBOT_GALLERY,
+    SMARTPHONE_GALLERY,
+    TABLET_GALLERY,
+    VR_GALLERY,
+)
+from routes.monitoring import MONITORED_FLOWS, _run_probe, _store_probe_results
+from routes.admin_management import _issue_password_reset
+from core.payment_engine import credit_wallet, debit_wallet, TransactionType
+
+load_dotenv()
+
+router = APIRouter(prefix="/api/admin/ai-assistant", tags=["admin-ai-assistant"])
+
+CATEGORY_IMAGE_POOLS = {
+    "phones": SMARTPHONE_GALLERY,
+    "laptops": LAPTOP_GALLERY,
+    "tablets": TABLET_GALLERY,
+    "gaming": MONITOR_GALLERY,
+    "xr": VR_GALLERY,
+    "tech": DRONE_GALLERY,
+    "mobility": EBIKE_GALLERY,
+    "robots": ROBOT_GALLERY,
+}
+
+CATEGORY_ALIASES = {
+    "phone": "phones",
+    "smartphone": "phones",
+    "handy": "phones",
+    "laptop": "laptops",
+    "notebook": "laptops",
+    "tablet": "tablets",
+    "konsole": "gaming",
+    "gaming": "gaming",
+    "vr": "xr",
+    "ar": "xr",
+    "drohne": "tech",
+    "drone": "tech",
+    "tech": "tech",
+    "ebike": "mobility",
+    "e-bike": "mobility",
+    "escooter": "mobility",
+    "e-scooter": "mobility",
+    "scooter": "mobility",
+    "robot": "robots",
+    "roboter": "robots",
+}
+
+SUPPORTED_OPERATIONS = {
+    "auction_reseed_current_catalog",
+    "auction_replace_with_items",
+    "auction_create_items",
+    "auction_delete_by_title",
+    "auction_update_by_title",
+    "monitoring_run_probes",
+    "customer_reset_password",
+    "customer_ban_toggle",
+    "customer_delete_by_email",
+    "wallet_credit_user",
+    "wallet_debit_user",
+    "lead_update_status",
+    "report_auth_failures",
+    "report_system_errors",
+    "unsupported_request",
+}
+
+
+class AdminAssistantPlanRequest(BaseModel):
+    message: str = Field(..., min_length=2, max_length=4000)
+    conversation_id: str = ""
+
+
+class AdminAssistantConfirmRequest(BaseModel):
+    action_id: str
+
+
+def _normalize_category(raw: str) -> str:
+    key = (raw or "tech").strip().lower()
+    if key in CATEGORY_IMAGE_POOLS:
+        return key
+    return CATEGORY_ALIASES.get(key, "tech")
+
+
+def _extract_json(text: str) -> dict[str, Any]:
+    cleaned = (text or "").strip()
+    fenced = re.search(r"```json\s*(.*?)\s*```", cleaned, flags=re.S)
+    if fenced:
+        cleaned = fenced.group(1).strip()
+
+    decoder = json.JSONDecoder()
+    for candidate in [cleaned, cleaned[cleaned.find("{"): cleaned.rfind("}") + 1] if "{" in cleaned and "}" in cleaned else cleaned]:
+        candidate = (candidate or "").strip()
+        if not candidate:
+            continue
+        try:
+            obj, _end = decoder.raw_decode(candidate)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            pass
+
+    brace_positions = [m.start() for m in re.finditer(r"\{", cleaned)]
+    for start in brace_positions:
+        depth = 0
+        for idx in range(start, len(cleaned)):
+            char = cleaned[idx]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    snippet = cleaned[start:idx + 1]
+                    try:
+                        data = json.loads(snippet)
+                        if isinstance(data, dict):
+                            return data
+                    except Exception:
+                        continue
+    raise ValueError(f"Kein JSON in der KI-Antwort gefunden: {cleaned[:300]}")
+
+
+def _gallery_for_category(category: str) -> list[str]:
+    normalized = _normalize_category(category)
+    return CATEGORY_IMAGE_POOLS.get(normalized, DRONE_GALLERY)
+
+
+async def _find_user_by_email(email: str) -> Optional[dict[str, Any]]:
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        return None
+    return await db.users.find_one(
+        {"$or": [{"email": normalized}, {"canonical_email": normalized}]},
+        {"_id": 1, "email": 1, "canonical_email": 1, "role": 1, "banned": 1, "name": 1},
+    )
+
+
+def _extract_email(message: str) -> str:
+    match = re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", message or "", flags=re.I)
+    return match.group(0).strip().lower() if match else ""
+
+
+def _extract_amount(message: str, default: float = 0.0) -> float:
+    match = re.search(r"(\d+(?:[\.,]\d{1,2})?)", message or "")
+    if not match:
+        return default
+    return float(match.group(1).replace(",", "."))
+
+
+def _extract_wallet_currency(message: str) -> str:
+    lowered = (message or "").lower()
+    if "blz" in lowered:
+        return "BLZ"
+    return "EUR"
+
+
+def _extract_lead_status(message: str) -> str:
+    lowered = (message or "").lower()
+    if any(token in lowered for token in ["neu", "new"]):
+        return "new"
+    if any(token in lowered for token in ["kontakt", "contacted", "angerufen"]):
+        return "contacted"
+    if any(token in lowered for token in ["gewonnen", "won", "geschlossen"]):
+        return "won"
+    if any(token in lowered for token in ["verloren", "lost", "abgelehnt"]):
+        return "lost"
+    return "in_progress"
+
+
+def _extract_count(message: str, default: int = 10, cap: int = 30) -> int:
+    match = re.search(r"(\d{1,2})", message or "")
+    if not match:
+        return default
+    return max(1, min(cap, int(match.group(1))))
+
+
+def _extract_categories(message: str) -> list[str]:
+    lowered = (message or "").lower()
+    found = []
+    for raw, normalized in CATEGORY_ALIASES.items():
+        if raw in lowered and normalized not in found:
+            found.append(normalized)
+    for normalized in CATEGORY_IMAGE_POOLS.keys():
+        if normalized in lowered and normalized not in found:
+            found.append(normalized)
+    return found or ["tech"]
+
+
+def _build_generated_items(count: int, categories: list[str]) -> list[dict[str, Any]]:
+    items = []
+    templates = {
+        "phones": [
+            ("Ultra Smartphone", "Premium Smartphone mit Top-Kamera und AI-Features."),
+            ("Pro Max Smartphone", "High-End Smartphone mit großem Display und Titanium-Look."),
+        ],
+        "laptops": [
+            ("Creator Laptop", "Leistungsstarker Premium-Laptop für Business und Creator."),
+            ("OLED Pro Laptop", "Premium Notebook mit OLED, AI und langer Akkulaufzeit."),
+        ],
+        "tablets": [
+            ("Pro Tablet", "Leistungsstarkes Tablet für Arbeit, Entertainment und Mobility."),
+        ],
+        "gaming": [
+            ("Gaming Monitor", "High-End Gaming Display mit Premium Setup-Faktor."),
+            ("Next Gen Konsole", "Premium Gaming-Hardware für moderne Setups."),
+        ],
+        "xr": [
+            ("XR Headset", "Premium XR-Headset für immersive Anwendungen und Entertainment."),
+        ],
+        "mobility": [
+            ("E-Bike Pro", "Connected Mobility-Produkt mit Premium-Reichweite und App-Features."),
+            ("E-Scooter Max", "Starker E-Scooter mit Reichweite, Power und Komfort."),
+        ],
+        "robots": [
+            ("Robot Cleaner", "Premium-Roboter für modernes Smart Home und automatische Reinigung."),
+        ],
+        "tech": [
+            ("Creator Drone", "Premium Drohne mit starker Kamera und Creator-Fokus."),
+            ("Tech Flagship", "Hochwertiges Premium-Tech-Produkt für starke Auktionsconversion."),
+        ],
+    }
+
+    base_year = 2026
+    for idx in range(count):
+        category = categories[idx % len(categories)]
+        title_seed, desc_seed = templates.get(category, templates["tech"])[idx % len(templates.get(category, templates["tech"]))]
+        items.append({
+            "title": f"{title_seed} {base_year} #{idx + 1}",
+            "description": desc_seed,
+            "category": category,
+            "retail_price": 1199 + ((idx % 6) * 120),
+            "features": ["Premium", "2026", "Auktions-Ready"],
+        })
+    return items
+
+
+def _heuristic_plan(message: str) -> Optional[dict[str, Any]]:
+    lowered = (message or "").lower().strip()
+    if not lowered:
+        return None
+
+    categories = _extract_categories(lowered)
+    count = _extract_count(lowered, default=10)
+    email = _extract_email(lowered)
+    amount = _extract_amount(lowered, default=0.0)
+    currency = _extract_wallet_currency(lowered)
+
+    if email and any(token in lowered for token in ["passwort", "reset", "zurücksetzen", "login helfen", "anmeldung helfen"]):
+        return {
+            "assistant_title": "Passwort-Reset vorbereiten",
+            "assistant_message": f"Ich sende für {email} einen sicheren Reset-Link.",
+            "requires_confirmation": True,
+            "warnings": ["Der Kunde muss danach sein Passwort neu setzen."],
+            "operations": [{"type": "customer_reset_password", "reason": "Kunden-Login reparieren", "target_email": email}],
+        }
+
+    if email and any(token in lowered for token in ["sperr", "ban", "blockier", "entsperr", "freigeben"]):
+        banned = not any(token in lowered for token in ["entsperr", "freigeben"])
+        return {
+            "assistant_title": "Kundenstatus ändern",
+            "assistant_message": f"Ich werde den Status für {email} {'sperren' if banned else 'entsperren'}.",
+            "requires_confirmation": True,
+            "warnings": ["Diese Aktion beeinflusst den Kundenzugang."],
+            "operations": [{"type": "customer_ban_toggle", "reason": "Kundenstatus ändern", "target_email": email, "banned": banned}],
+        }
+
+    if email and any(token in lowered for token in ["lösch kunde", "kunde löschen", "account löschen", "konto löschen"]):
+        return {
+            "assistant_title": "Kundenkonto löschen",
+            "assistant_message": f"Ich werde das Konto {email} löschen.",
+            "requires_confirmation": True,
+            "warnings": ["Das Löschen ist dauerhaft und gefährlich."],
+            "operations": [{"type": "customer_delete_by_email", "reason": "Konto löschen", "target_email": email}],
+        }
+
+    if email and amount > 0 and any(token in lowered for token in ["gutschrift", "gutschreib", "aufladen", "geb", "add", "topup", "top up", "gib", "schenk", "schreib", "gut"]):
+        return {
+            "assistant_title": "Wallet-Gutschrift vorbereiten",
+            "assistant_message": f"Ich werde {email} {amount:.2f} {currency} gutschreiben.",
+            "requires_confirmation": True,
+            "warnings": ["Wallet-Buchung wird sofort verbucht."],
+            "operations": [{"type": "wallet_credit_user", "reason": "Admin Wallet Gutschrift", "target_email": email, "amount": amount, "currency": currency}],
+        }
+
+    if email and amount > 0 and any(token in lowered for token in ["abziehen", "belasten", "debit", "reduzier", "minus", "zieh", "ziehe"]):
+        return {
+            "assistant_title": "Wallet-Abzug vorbereiten",
+            "assistant_message": f"Ich werde bei {email} {amount:.2f} {currency} abziehen.",
+            "requires_confirmation": True,
+            "warnings": ["Wallet-Abzüge sind sensibel und wirken sofort."],
+            "operations": [{"type": "wallet_debit_user", "reason": "Admin Wallet Abzug", "target_email": email, "amount": amount, "currency": currency}],
+        }
+
+    if any(token in lowered for token in ["lead", "mining lead", "interessent"]) and any(token in lowered for token in ["status", "setze", "änder", "update"]):
+        lead_match = re.search(r"mlead_[a-z0-9]+", lowered)
+        lead_id = lead_match.group(0) if lead_match else ""
+        if lead_id:
+            status = _extract_lead_status(lowered)
+            return {
+                "assistant_title": "Lead-Status vorbereiten",
+                "assistant_message": f"Ich werde den Lead {lead_id} auf {status} setzen.",
+                "requires_confirmation": True,
+                "warnings": ["Der Lead-Status wird sofort aktualisiert."],
+                "operations": [{"type": "lead_update_status", "reason": "Lead im Mining CRM aktualisieren", "lead_id": lead_id, "status": status}],
+            }
+
+    if any(token in lowered for token in ["wer konnte sich", "anmelden", "login fehler", "anmeldeproblem", "auth fehler", "kunden problem login"]):
+        return {
+            "assistant_title": "Login-/Registrierungsbericht vorbereiten",
+            "assistant_message": "Ich werde die aktuellen Auth-Probleme und betroffenen Kunden zusammenfassen.",
+            "requires_confirmation": True,
+            "warnings": ["Es werden nur Berichte erstellt, nichts verändert."],
+            "operations": [{"type": "report_auth_failures", "reason": "Aktuelle Kundenprobleme bei Login/Registrierung sichtbar machen."}],
+        }
+
+    if any(token in lowered for token in ["welche fehler", "schlimmsten fehler", "systemfehler", "was funktioniert nicht", "fehlerbericht"]):
+        return {
+            "assistant_title": "System-Fehlerbericht vorbereiten",
+            "assistant_message": "Ich werde die wichtigsten Systemfehler und betroffenen Seiten zusammenfassen.",
+            "requires_confirmation": True,
+            "warnings": ["Es werden nur Daten gelesen, nichts verändert."],
+            "operations": [{"type": "report_system_errors", "reason": "Kritische Fehler und betroffene Bereiche im System zusammenfassen."}],
+        }
+
+    if any(token in lowered for token in ["prüf", "check", "status", "monitor", "fehler", "webseite", "login", "registrierung"]):
+        return {
+            "assistant_title": "System-Check Vorschlag",
+            "assistant_message": "Ich werde die Kernbereiche prüfen und dir danach die Fehlerlage zeigen.",
+            "requires_confirmation": True,
+            "warnings": ["Es werden nur Prüfungen gestartet, nichts Kritisches verändert."],
+            "operations": [{"type": "monitoring_run_probes", "reason": "Kern-Checks für Webseite, Login, Registrierung und Auktionen ausführen."}],
+        }
+
+    if any(token in lowered for token in ["lösch", "entfern", "ersetze", "alte auktion", "alte aktion"]) and any(token in lowered for token in ["neu", "neue", "erstell", "mach"]):
+        return {
+            "assistant_title": "Auktionen ersetzen",
+            "assistant_message": f"Ich werde die bestehenden Auktionen entfernen und {count} neue Premium-Auktionen anlegen.",
+            "requires_confirmation": True,
+            "warnings": ["Bestehende Auktionen werden entfernt.", "Gebotsverläufe der entfernten Auktionen gehen verloren."],
+            "operations": [{
+                "type": "auction_replace_with_items",
+                "reason": f"Kompletter Austausch des Auktionsbestands mit {count} neuen Premium-Auktionen.",
+                "items": _build_generated_items(count, categories),
+            }],
+        }
+
+    if any(token in lowered for token in ["mach", "erstell", "füge", "neue auktion", "neue aktion"]):
+        return {
+            "assistant_title": "Neue Auktionen erstellen",
+            "assistant_message": f"Ich werde {count} neue Premium-Auktionen hinzufügen.",
+            "requires_confirmation": True,
+            "warnings": ["Ich füge neue Auktionen hinzu und lasse bestehende aktiv."],
+            "operations": [{
+                "type": "auction_create_items",
+                "reason": f"{count} neue Premium-Auktionen auf Basis deiner Vorgabe erstellen.",
+                "items": _build_generated_items(count, categories),
+            }],
+        }
+
+    if any(token in lowered for token in ["katalog", "standard katalog", "reset auktion", "seed auktion"]):
+        return {
+            "assistant_title": "Standard-Katalog wiederherstellen",
+            "assistant_message": "Ich stelle den aktuellen Premium-Tech-Standardkatalog wieder her.",
+            "requires_confirmation": True,
+            "warnings": ["Aktive Auktionen werden vollständig durch den Standardkatalog ersetzt."],
+            "operations": [{"type": "auction_reseed_current_catalog", "reason": "Aktuellen Premium-Katalog neu aufsetzen."}],
+        }
+
+    return None
+
+
+def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
+    category = _normalize_category(str(item.get("category") or "tech"))
+    gallery = _gallery_for_category(category)
+    retail_price = float(item.get("retail_price") or 1299)
+    retail_price = max(1001.0, min(2000.0, retail_price))
+    title = str(item.get("title") or "Neue Premium-Auktion").strip()[:200]
+    description = str(item.get("description") or f"Premium {category} Produkt für die neue Admin-Auktion.").strip()[:500]
+    features = [str(x).strip()[:60] for x in (item.get("features") or []) if str(x).strip()][:4]
+    return {
+        "title": title,
+        "description": description,
+        "retail_price": round(retail_price, 2),
+        "category": category,
+        "image_url": gallery[0],
+        "image_urls": gallery[:4],
+        "features": features,
+    }
+
+
+async def _context_snapshot() -> dict[str, Any]:
+    active_auctions = await db.auctions.find({"status": "active"}, {"_id": 0, "auction_id": 1, "title": 1, "category": 1, "current_price": 1}).limit(24).to_list(24)
+    current_titles = [a.get("title", "") for a in active_auctions[:12]]
+    return {
+        "active_auction_count": len(active_auctions),
+        "sample_active_auctions": current_titles,
+        "catalog_count": len(ACTIVE_AUCTION_CATALOG),
+        "supported_operations": sorted(SUPPORTED_OPERATIONS),
+        "supported_categories": sorted(CATEGORY_IMAGE_POOLS.keys()),
+        "default_rules": {
+            "auction_starting_price": 0.01,
+            "auction_duration_seconds": 604800,
+            "retail_price_range": "1001-2000",
+            "proposal_before_execution": True,
+        },
+    }
+
+
+async def _generate_plan(message: str, conversation_id: str, history: list[dict[str, Any]]) -> dict[str, Any]:
+    heuristic = _heuristic_plan(message)
+    if heuristic:
+        return heuristic
+
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY fehlt")
+
+    context = await _context_snapshot()
+    system_message = f"""
+Du bist der BidBlitz Admin KI Assistent für Armend.
+Du verstehst natürliche deutsche Admin-Befehle und antwortest IMMER mit validem JSON.
+Du führst NIEMALS direkt etwas aus. Du machst immer zuerst einen sicheren Vorschlag.
+
+Unterstützte Operationen:
+- auction_reseed_current_catalog
+- auction_replace_with_items
+- auction_create_items
+- auction_delete_by_title
+- auction_update_by_title
+- monitoring_run_probes
+- customer_reset_password
+- customer_ban_toggle
+- customer_delete_by_email
+- wallet_credit_user
+- wallet_debit_user
+- lead_update_status
+- unsupported_request
+
+Regeln:
+- Antworte komplett auf Deutsch.
+- Wenn der Nutzer etwas Gefährliches will (löschen/ersetzen), setze requires_confirmation=true.
+- Für Auktionen nutze nur retail_price zwischen 1001 und 2000.
+- Neue Auktionen sollen als Premium-Tech-Auktionen gedacht sein, wenn der Nutzer nichts anderes sagt.
+- Wenn etwas außerhalb der Unterstützung liegt, gib unsupported_request zurück und erkläre kurz was später gebraucht wird.
+- Ausgabeformat exakt als JSON-Objekt:
+{{
+  "assistant_title": "Kurzer Titel",
+  "assistant_message": "Kurze Erklärung für Armend",
+  "requires_confirmation": true,
+  "warnings": ["..."],
+  "operations": [
+    {{
+      "type": "auction_create_items",
+      "reason": "Warum",
+      "items": [{{"title":"...","description":"...","category":"tech","retail_price":1499,"features":["..."]}}],
+      "match_titles": ["optional"],
+      "updates": {{"title":"...","description":"...","retail_price":1499}}
+    }}
+  ]
+}}
+
+Aktueller Kontext:
+{json.dumps(context, ensure_ascii=False)}
+
+Letzter Verlauf:
+{json.dumps(history[-8:], ensure_ascii=False)}
+"""
+
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=conversation_id,
+        system_message=system_message,
+    ).with_model("openai", "gpt-5.2")
+
+    full_text = ""
+    async for event in chat.stream_message(UserMessage(text=message)):
+        chunk = getattr(event, "content", None)
+        if chunk:
+            full_text += chunk
+
+    try:
+        parsed = _extract_json(full_text)
+    except Exception:
+        fallback = _heuristic_plan(message)
+        if fallback:
+            return fallback
+        raise
+    parsed.setdefault("assistant_title", "Vorschlag bereit")
+    parsed.setdefault("assistant_message", "Ich habe einen Vorschlag vorbereitet.")
+    parsed.setdefault("requires_confirmation", True)
+    parsed.setdefault("warnings", [])
+    parsed.setdefault("operations", [])
+
+    safe_ops = []
+    for op in parsed.get("operations", []):
+        op_type = op.get("type")
+        if op_type not in SUPPORTED_OPERATIONS:
+            safe_ops.append({"type": "unsupported_request", "reason": f"Nicht unterstützte Operation: {op_type}"})
+            continue
+        if op_type in {"auction_replace_with_items", "auction_create_items"}:
+            op["items"] = [_normalize_item(item) for item in (op.get("items") or [])][:30]
+        if op_type in {"auction_delete_by_title", "auction_update_by_title"}:
+            op["match_titles"] = [str(x).strip() for x in (op.get("match_titles") or []) if str(x).strip()][:20]
+        if op_type == "auction_update_by_title":
+            updates = op.get("updates") or {}
+            if "retail_price" in updates:
+                updates["retail_price"] = max(1001.0, min(2000.0, float(updates["retail_price"])))
+            op["updates"] = updates
+        safe_ops.append(op)
+
+    parsed["operations"] = safe_ops
+    return parsed
+
+
+async def _execute_operation(op: dict[str, Any], admin_user_id: str) -> dict[str, Any]:
+    op_type = op.get("type")
+    now = datetime.now(timezone.utc)
+
+    if op_type == "unsupported_request":
+        return {"type": op_type, "ok": False, "message": op.get("reason") or "Noch nicht automatisch ausführbar."}
+
+    if op_type == "monitoring_run_probes":
+        results = []
+        for flow in MONITORED_FLOWS:
+            results.append(await _run_probe(flow))
+        await _store_probe_results(results)
+        return {"type": op_type, "ok": True, "checked": len(results), "critical": len([r for r in results if r["status"] == "critical"])}
+
+    if op_type == "customer_reset_password":
+        email = (op.get("target_email") or "").strip().lower()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        issued = await _issue_password_reset(email, request=None, issued_by=admin_user_id, reason="admin_ai_reset", force_password_change=True)
+        email_sent = bool((issued or {}).get("email_sent"))
+        return {
+            "type": op_type,
+            "ok": bool(issued and email_sent),
+            "email": email,
+            "expires_at": (issued or {}).get("expires_at"),
+            "email_sent": email_sent,
+            "message": "Reset-E-Mail gesendet." if email_sent else "Reset-E-Mail konnte nicht zugestellt werden. Login wurde deshalb NICHT gesperrt.",
+            "enforcement_skipped": bool((issued or {}).get("enforcement_skipped")),
+        }
+
+    if op_type == "customer_ban_toggle":
+        email = (op.get("target_email") or "").strip().lower()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        banned = bool(op.get("banned", True))
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"banned": banned, "ban_reason": "admin_ai_assistant", "banned_at": now.isoformat() if banned else None, "banned_by": admin_user_id if banned else None}})
+        return {"type": op_type, "ok": True, "email": email, "banned": banned}
+
+    if op_type == "customer_delete_by_email":
+        email = (op.get("target_email") or "").strip().lower()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        await db.users.delete_one({"_id": user["_id"]})
+        await db.wallets.delete_many({"user_id": str(user["_id"])})
+        await db.transactions.delete_many({"user_id": str(user["_id"])})
+        return {"type": op_type, "ok": True, "email": email, "deleted": True}
+
+    if op_type in {"wallet_credit_user", "wallet_debit_user"}:
+        email = (op.get("target_email") or "").strip().lower()
+        amount = float(op.get("amount") or 0)
+        currency = str(op.get("currency") or "EUR").upper()
+        user = await _find_user_by_email(email)
+        if not user:
+            return {"type": op_type, "ok": False, "message": f"Kunde {email} nicht gefunden."}
+        user_id = str(user["_id"])
+        if currency == "BLZ":
+            if op_type == "wallet_credit_user":
+                await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": amount}})
+                await db.transactions.insert_one({"user_id": user_id, "type": "admin_credit_blz", "amount_blz": amount, "amount_eur": 0.0, "description": op.get("reason") or "Admin KI Gutschrift", "admin_id": admin_user_id, "created_at": now.isoformat()})
+            else:
+                await db.users.update_one({"_id": user["_id"]}, {"$inc": {"balance_blz": -amount}})
+                await db.transactions.insert_one({"user_id": user_id, "type": "admin_debit_blz", "amount_blz": -amount, "amount_eur": 0.0, "description": op.get("reason") or "Admin KI Abzug", "admin_id": admin_user_id, "created_at": now.isoformat()})
+        else:
+            if op_type == "wallet_credit_user":
+                result = await credit_wallet(user_id=user_id, amount=amount, tx_type=TransactionType.ADMIN_CREDIT, description=op.get("reason") or "Admin KI Gutschrift", metadata={"admin_id": admin_user_id, "audit_metadata": {"route": "admin_ai_assistant.credit"}}, idempotency_key=f"admin-ai-{secrets.token_hex(6)}")
+                if not result.success:
+                    return {"type": op_type, "ok": False, "message": result.error or "EUR-Gutschrift fehlgeschlagen"}
+            else:
+                result = await debit_wallet(user_id=user_id, amount=amount, tx_type=TransactionType.ADMIN_DEBIT, description=op.get("reason") or "Admin KI Abzug", metadata={"admin_id": admin_user_id, "audit_metadata": {"route": "admin_ai_assistant.debit"}}, idempotency_key=f"admin-ai-{secrets.token_hex(6)}")
+                if not result.success:
+                    return {"type": op_type, "ok": False, "message": result.error or "EUR-Abzug fehlgeschlagen"}
+        return {"type": op_type, "ok": True, "email": email, "amount": amount, "currency": currency}
+
+    if op_type == "lead_update_status":
+        lead_id = str(op.get("lead_id") or "").strip()
+        status = str(op.get("status") or "in_progress").strip()
+        if not lead_id:
+            return {"type": op_type, "ok": False, "message": "Lead-ID fehlt."}
+        await db.mining_trust_leads.update_one({"lead_id": lead_id}, {"$set": {"status": status, "updated_at": now.isoformat()}})
+        lead = await db.mining_trust_leads.find_one({"lead_id": lead_id}, {"_id": 0, "lead_id": 1, "email": 1, "status": 1})
+        if not lead:
+            return {"type": op_type, "ok": False, "message": f"Lead {lead_id} nicht gefunden."}
+        return {"type": op_type, "ok": True, "lead": lead}
+
+    if op_type == "report_auth_failures":
+        since = datetime.now(timezone.utc) - timedelta(hours=24)
+        since_iso = since.isoformat()
+        failed_logs = await db.audit_logs.find(
+            {"event": {"$in": ["login_failed", "login_locked"]}, "timestamp": {"$gte": since_iso}},
+            {"_id": 0, "event": 1, "email": 1, "details": 1, "timestamp": 1, "severity": 1},
+        ).sort("timestamp", -1).limit(80).to_list(80)
+        failed_registrations = await db.frontend_errors.find(
+            {"created_at": {"$gte": since_iso}, "page": {"$in": ["/register", "/login", "/auth"]}},
+            {"_id": 0, "page": 1, "message": 1, "created_at": 1},
+        ).sort("created_at", -1).limit(40).to_list(40)
+        by_email = {}
+        for row in failed_logs:
+            key = (row.get("email") or "unbekannt").lower()
+            by_email.setdefault(key, 0)
+            by_email[key] += 1
+        top_accounts = sorted(by_email.items(), key=lambda x: -x[1])[:10]
+        return {
+            "type": op_type,
+            "ok": True,
+            "window": "24h",
+            "failed_events": len(failed_logs),
+            "frontend_auth_errors": len(failed_registrations),
+            "top_accounts": [{"email": email, "count": count} for email, count in top_accounts],
+            "sample_events": failed_logs[:8],
+        }
+
+    if op_type == "report_system_errors":
+        since = datetime.now(timezone.utc) - timedelta(hours=24)
+        since_iso = since.isoformat()
+        incidents = await db.monitoring_incidents.find({"created_at": {"$gte": since_iso}}, {"_id": 0}).sort("created_at", -1).limit(60).to_list(60)
+        frontend_errors = await db.frontend_errors.find({"created_at": {"$gte": since_iso}}, {"_id": 0, "page": 1, "message": 1, "created_at": 1}).sort("created_at", -1).limit(60).to_list(60)
+        page_counts = {}
+        for row in frontend_errors:
+            page = row.get("page") or "unbekannt"
+            page_counts[page] = page_counts.get(page, 0) + 1
+        top_pages = sorted(page_counts.items(), key=lambda x: -x[1])[:10]
+        critical = [row for row in incidents if row.get("status") == "critical"]
+        return {
+            "type": op_type,
+            "ok": True,
+            "window": "24h",
+            "critical_incidents": len(critical),
+            "total_incidents": len(incidents),
+            "frontend_errors": len(frontend_errors),
+            "top_pages": [{"page": page, "count": count} for page, count in top_pages],
+            "sample_incidents": incidents[:8],
+        }
+
+    if op_type == "auction_reseed_current_catalog":
+        await db.auctions.delete_many({})
+        await db.auction_bids.delete_many({})
+        await db.auction_notifications.delete_many({})
+        await db.watchlist.delete_many({})
+        await db.auto_bids.delete_many({})
+        created = []
+        for index, product in enumerate(ACTIVE_AUCTION_CATALOG[:TARGET_ACTIVE_AUCTIONS]):
+            auction = _build_auction_doc(product, admin_user_id, now, index)
+            await db.auctions.insert_one(auction)
+            created.append({"auction_id": auction["auction_id"], "title": auction["title"]})
+        return {"type": op_type, "ok": True, "created": len(created), "sample_titles": [c["title"] for c in created[:8]]}
+
+    if op_type == "auction_replace_with_items":
+        items = [_normalize_item(item) for item in (op.get("items") or [])][:30]
+        await db.auctions.delete_many({})
+        await db.auction_bids.delete_many({})
+        await db.auction_notifications.delete_many({})
+        await db.watchlist.delete_many({})
+        await db.auto_bids.delete_many({})
+        created = []
+        for index, product in enumerate(items):
+            auction = _build_auction_doc(product, admin_user_id, now, index)
+            await db.auctions.insert_one(auction)
+            created.append({"auction_id": auction["auction_id"], "title": auction["title"]})
+        return {"type": op_type, "ok": True, "created": len(created), "sample_titles": [c["title"] for c in created[:8]]}
+
+    if op_type == "auction_create_items":
+        items = [_normalize_item(item) for item in (op.get("items") or [])][:30]
+        created = []
+        current_active = await db.auctions.count_documents({"status": "active"})
+        for offset, product in enumerate(items):
+            auction = _build_auction_doc(product, admin_user_id, now, current_active + offset)
+            await db.auctions.insert_one(auction)
+            created.append({"auction_id": auction["auction_id"], "title": auction["title"]})
+        return {"type": op_type, "ok": True, "created": len(created), "sample_titles": [c["title"] for c in created[:8]]}
+
+    if op_type == "auction_delete_by_title":
+        titles = [str(x).strip() for x in (op.get("match_titles") or []) if str(x).strip()]
+        deleted_titles = []
+        for title in titles:
+            auctions = await db.auctions.find({"title": title}, {"_id": 0, "auction_id": 1, "title": 1}).to_list(50)
+            for auction in auctions:
+                await db.auction_bids.delete_many({"auction_id": auction["auction_id"]})
+                await db.auction_notifications.delete_many({"auction_id": auction["auction_id"]})
+                await db.watchlist.delete_many({"auction_id": auction["auction_id"]})
+                await db.auto_bids.delete_many({"auction_id": auction["auction_id"]})
+                await db.auctions.delete_one({"auction_id": auction["auction_id"]})
+                deleted_titles.append(auction["title"])
+        return {"type": op_type, "ok": True, "deleted": len(deleted_titles), "titles": deleted_titles[:20]}
+
+    if op_type == "auction_update_by_title":
+        titles = [str(x).strip() for x in (op.get("match_titles") or []) if str(x).strip()]
+        updates = op.get("updates") or {}
+        normalized_updates = {}
+        if updates.get("title"):
+            normalized_updates["title"] = str(updates["title"]).strip()[:200]
+        if updates.get("description") is not None:
+            normalized_updates["description"] = str(updates["description"]).strip()[:500]
+        if updates.get("retail_price") is not None:
+            normalized_updates["retail_price"] = round(max(1001.0, min(2000.0, float(updates["retail_price"]))), 2)
+        normalized_updates["updated_at"] = now.isoformat()
+        updated = 0
+        for title in titles:
+            res = await db.auctions.update_many({"title": title}, {"$set": normalized_updates})
+            updated += res.modified_count
+        return {"type": op_type, "ok": True, "updated": updated, "fields": list(normalized_updates.keys())}
+
+    return {"type": op_type, "ok": False, "message": "Unbekannte Operation."}
+
+
+@router.post("/plan")
+async def create_plan(req: AdminAssistantPlanRequest, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    conversation_id = req.conversation_id or f"admin-ai-{secrets.token_hex(6)}"
+    history = await db.admin_ai_messages.find(
+        {"conversation_id": conversation_id, "user_id": str(user["_id"])} ,
+        {"_id": 0, "role": 1, "content": 1, "created_at": 1}
+    ).sort("created_at", 1).limit(20).to_list(20)
+
+    plan = await _generate_plan(req.message, conversation_id, history)
+    action_id = secrets.token_hex(10)
+    now = datetime.now(timezone.utc).isoformat()
+
+    await db.admin_ai_messages.insert_many([
+        {"conversation_id": conversation_id, "user_id": str(user["_id"]), "role": "user", "content": req.message, "created_at": now},
+        {
+            "conversation_id": conversation_id,
+            "user_id": str(user["_id"]),
+            "role": "assistant",
+            "content": plan.get("assistant_message", ""),
+            "created_at": now,
+            "plan_action_id": action_id,
+            "plan": plan,
+        },
+    ])
+    await db.admin_ai_actions.insert_one({
+        "action_id": action_id,
+        "conversation_id": conversation_id,
+        "user_id": str(user["_id"]),
+        "status": "proposed",
+        "original_message": req.message,
+        "plan": plan,
+        "created_at": now,
+    })
+    return {"conversation_id": conversation_id, "action_id": action_id, "plan": plan}
+
+
+@router.post("/confirm")
+async def confirm_plan(req: AdminAssistantConfirmRequest, request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    action = await db.admin_ai_actions.find_one({"action_id": req.action_id, "user_id": str(user["_id"])}, {"_id": 0})
+    if not action:
+        raise HTTPException(status_code=404, detail="Aktion nicht gefunden")
+    if action.get("status") != "proposed":
+        raise HTTPException(status_code=400, detail="Aktion wurde bereits verarbeitet")
+
+    results = []
+    for op in action.get("plan", {}).get("operations", []):
+        results.append(await _execute_operation(op, str(user["_id"])))
+
+    executed_at = datetime.now(timezone.utc).isoformat()
+    await db.admin_ai_actions.update_one(
+        {"action_id": req.action_id},
+        {"$set": {"status": "executed", "results": results, "executed_at": executed_at}},
+    )
+    await db.admin_ai_messages.insert_one({
+        "conversation_id": action["conversation_id"],
+        "user_id": str(user["_id"]),
+        "role": "assistant",
+        "content": "Ausführung abgeschlossen.",
+        "created_at": executed_at,
+        "execution_results": results,
+    })
+    return {"ok": True, "results": results, "conversation_id": action["conversation_id"]}
+
+
+@router.get("/history")
+async def get_history(request: Request, conversation_id: str = ""):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    if not conversation_id:
+        raise HTTPException(status_code=400, detail="conversation_id fehlt")
+    messages = await db.admin_ai_messages.find(
+        {"conversation_id": conversation_id, "user_id": str(user["_id"])},
+        {"_id": 0},
+    ).sort("created_at", 1).limit(100).to_list(100)
+
+    plan_ids = [msg.get("plan_action_id") for msg in messages if msg.get("plan_action_id") and not msg.get("plan")]
+    if plan_ids:
+        actions = await db.admin_ai_actions.find({"action_id": {"$in": plan_ids}}, {"_id": 0, "action_id": 1, "plan": 1, "results": 1, "status": 1}).to_list(100)
+        action_map = {action["action_id"]: action for action in actions}
+        for msg in messages:
+            action_id = msg.get("plan_action_id")
+            action = action_map.get(action_id)
+            if action and not msg.get("plan"):
+                if action.get("status") == "proposed":
+                    msg["plan"] = action.get("plan")
+                if action.get("results"):
+                    msg["execution_results"] = action.get("results")
+
+    return {"messages": messages, "conversation_id": conversation_id}
