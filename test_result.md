@@ -1,3 +1,16 @@
+backend:
+  - task: "Admin analytics endpoints after undefined fix"
+    implemented: true
+    working: true
+    file: "backend/routes/admin.py, backend/routes/analytics.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✓ VERIFIED (24.07.2026 Follow-up): Focused backend check after admin undefined errors fix. All 4 target endpoints tested successfully: 1) POST /api/auth/login with admin@bidblitz.ae → 200 OK, role=admin ✓ 2) GET /api/admin/analytics/overview?days=7 → 200 OK, returns all required fields (total_users=213, online_now=1, active_24h=2, active_7d, new_today, revenue_today, tx_today) ✓ 3) GET /api/analytics/conversions?days=7 → 200 OK, returns totals (dict) and top_features (list) ✓ 4) GET /api/admin/merchants/list?limit=5 → 200 OK, returns merchants array with 5 items, proper fields (id, merchant_id, name, email, business_name, balance, is_suspended, is_online) ✓. No 500 errors detected on any endpoint. No backend regression visible. Admin analytics fix confirmed working."
+
 frontend:
   - task: "Auction image mapping verification"
     implemented: true
@@ -177,4 +190,6 @@ agent_communication:
     message: "✓ KYC LIVE OVERLAY MARKINGS SMOKE TEST COMPLETE: Frontend smoke test for new KYC live overlay markings on preview images successful. Verification results: 1) App loads normally without UI crash on preview URL (https://super-app-staging-2.preview.emergentagent.com) ✓ 2) All 6 new data-testids correctly integrated in KYCFlow.jsx: kyc-preview-overlay-front/back/selfie (upload stage, lines 523-531), kyc-review-preview-overlay-front/back/selfie (review stage, lines 630-638) ✓ 3) Three overlay states properly implemented with PREVIEW_OVERLAY_STYLES: OK (green, rgba(0,210,106,0.90)), Hinweis/Warning (amber, rgba(255,184,0,0.92)), Fehler/Error (red, rgba(255,71,87,0.90)) ✓ 4) Overlays are STATE-DEPENDENT: only visible when preview images exist, display status based on validation state (warnings/feedback) via getPreviewOverlayMeta() function - this is correct behavior ✓ 5) No React errors or critical console errors (only expected 401/404 from auth endpoints) ✓. Code review confirms proper integration. Feature is production-ready."
   - agent: "testing"
     message: "✅ ADMIN-BEREICHE BUGFIX VERIFIZIERT (24.07.2026): Fokussierter Test der Admin-Analytics und Merchant-Admin Seiten nach Behebung der undefined-Fehler erfolgreich. Test-Ergebnisse: 1) Admin-Login mit admin@bidblitz.ae funktioniert ✓ 2) /admin/analytics lädt ohne Error Boundary - alle 4 Statistik-Karten sichtbar (Total Users, Active Users, Revenue Today, Online Now), Top Events Card vorhanden, Feature Usage Card vorhanden ✓ 3) API-Calls erfolgreich: GET /api/admin/analytics/overview?days=7 → 200, GET /api/analytics/conversions?days=7 → 200 ✓ 4) /admin/merchants lädt ohne Error Boundary - 5 Händler-Karten sichtbar, Händler-Suchfeld vorhanden, Statistik-Bereiche (Online, Ohne ID, Mit Fehlern) sichtbar ✓ 5) API-Call erfolgreich: GET /api/admin/merchants/list?limit=200 → 200 ✓ 6) Keine Error-Boundary-UI auf beiden Seiten ✓ 7) Frühere Fehler 'Cannot read properties of undefined (reading total)' und 'Cannot read properties of undefined (reading toLowerCase)' sind behoben ✓. Safe-Access-Pattern (optional chaining, nullish coalescing, Fallback-Werte) funktionieren korrekt. Bekannte Nicht-Blocker: 404-Fehler in Console (erwartete fehlende Endpoints wie /api/pro/ads/active, /api/recommendations/home). Admin-Fix ist produktionsreif."
+  - agent: "testing"
+    message: "✅ BACKEND-REGRESSION-CHECK BESTANDEN (24.07.2026 Follow-up): Knapper Backend-Check für Admin-Endpunkte nach undefined-Fix durchgeführt. Alle 4 Ziel-Endpunkte erfolgreich getestet: 1) POST /api/auth/login mit admin@bidblitz.ae → 200 OK, role=admin ✓ 2) GET /api/admin/analytics/overview?days=7 → 200 OK, alle erwarteten Felder vorhanden (total_users, online_now, active_24h, active_7d, new_today, revenue_today, tx_today) ✓ 3) GET /api/analytics/conversions?days=7 → 200 OK, totals und top_features vorhanden ✓ 4) GET /api/admin/merchants/list?limit=5 → 200 OK, merchants Array mit 5 Einträgen, robuste Felder (id, merchant_id, name, email, business_name, balance, is_suspended, is_online) ✓. Kein 500er auf diesen Endpunkten. Keine Backend-Regression sichtbar. Admin-Analytics-Fix funktioniert korrekt."
 
