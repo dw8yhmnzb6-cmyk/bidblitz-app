@@ -1,5 +1,11 @@
 # BidBlitz — ROADMAP
 
+## Status nach kompletter KYC-Deaktivierung im Testbuild — 24.07.2026
+- ✅ KYC ist im **aktuellen Testbuild vollständig deaktiviert**: keine KYC-Karte, keine KYC-Buttons, keine KYC-Redirects, keine KYC-Routen-Blocks.
+- ✅ Reviewer-Testnutzer hat Full Access auf Home, Wallet und offene Service-Navigation ohne KYC-Sperren.
+- ✅ Root-iOS-Bundle neu gebaut und **Testing Agent Iteration 298 PASS**.
+- 🔴 Weiter offen: echter GitHub-Push auf `main` und physischer Xcode-/iPhone-Test des neuesten lokalen iOS-Bundles.
+
 ## Status nach iOS-KYC-RCA — 24.07.2026
 - ✅ Root Cause der falschen iOS-Testansicht bestätigt: **stale lokales iOS-Bundle**, nicht falscher Remote-Host.
 - ✅ KYC-Sperrkarte aus `HomePage.jsx` und Route-Guard aus `App.js` / `pathUtils.js` hängen jetzt an den echten Testbuild-Flags statt an impliziten Nebeneffekten.

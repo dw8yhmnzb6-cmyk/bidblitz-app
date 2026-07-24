@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 24.07.2026 — KYC im aktuellen Testbuild vollständig deaktiviert
+- Für den aktuellen BidBlitz-Testbuild wurde KYC nicht nur optisch versteckt, sondern **vollständig aus allen aktiven Render-, Redirect- und Guard-Pfaden entfernt bzw. per echter Feature-Flags deaktiviert**.
+- Neue/klare Testbuild-Flags: `REACT_APP_KYC_ENABLED=false`, `REACT_APP_KYC_REQUIRED=false`, `REACT_APP_SHOW_KYC_GATE=false`, `REACT_APP_TEST_MODE_FULL_ACCESS=true`, zusätzlich weiter `REACT_APP_DISABLE_KYC=true` und `REACT_APP_SHOW_LIVE_CHECK_BANNER=false`.
+- Home-KYC-Karte, Wallet-KYC-Banner, Verification-/KYC-Routen, Auth-Pending-KYC-Logik und weitere clientseitige KYC-Sperrpfade wurden im Testbuild hart auf **Full Access** umgestellt, während das reale KYC-System im Code für spätere Produktion erhalten bleibt.
+- Root-iOS-Bundle wurde neu gebaut und mit aktuellem Stand synchronisiert. **Testing Agent Iteration 298 PASS** bestätigt: keine KYC-Sperrtexte sichtbar, Wallet offen, All-Services offen, KYC-Routen leiten im Testbuild nach Home statt in KYC-Flows. **MOCKED:** KYC bleibt im Testbuild absichtlich per Feature-Flags deaktiviert; Premium-Upgrades bleiben **MOCKED**.
+
 ## 24.07.2026 — RCA: iOS zeigte altes KYC-Sperrbild wegen stale lokalem Capacitor-Bundle
 - Root Cause sauber bestätigt: Die iOS-App lud **lokale** Capacitor-Web-Assets (**kein** `server.url`-Override), aber im Root-iOS-Bundle **`/app/ios/App/App/public`** lag noch ein **alter Build `0f408e1-20260719131120`**. Genau dieses stale Bundle enthielt noch die alte KYC-Sperransicht mit **„Vor Verifizierung“**, **„Zugriff bewusst reduziert“** und **„KYC Starten“**.
 - Der eigentliche Sperrbildschirm wurde aus **`frontend/src/pages/HomePage.jsx`** gerendert. Auslöser war dort die Bedingung `showKycRestrictedExperience`. Zusätzlich blockierte der Route-Guard in **`frontend/src/App.js`** zusammen mit **`frontend/src/app/pathUtils.js`** KYC-restriktierte Pfade, solange die Flags noch als aktiv ausgewertet wurden.
