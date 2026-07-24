@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach Root-Exportprojekt — 24.07.2026
+- ✅ Vollständiges Download-Projekt **`BidBlitz/`** gebaut und als **`/app/BidBlitz.zip`** verpackt.
+- ✅ Root-Struktur mit `package.json`, `package-lock.json`, `capacitor.config.ts`, `src`, `public`, `ios`, `backend`, `README.md`, `.env.example` vorhanden.
+- ✅ Verifiziert: `npm install`, `npm run build`, `npx cap sync ios`, `npx cap open ios`, Workspace vorhanden, `import Capacitor` vorhanden, Bundle ID `com.bidblitz.app`.
+- ⚠️ Echter Xcode-/iOS-Build bleibt **nur auf macOS mit Xcode + CocoaPods** final testbar.
+- 🔴 Weiter offen nach Nutzerstart: echter Live-Deploy-Run und danach Preview-vs-Production-Parität.
+
 ## Status nach Admin-Nachupload & Live-Warnung — 23.07.2026
 - ✅ Admin kann jetzt **KYC-Notizen schreiben** und gezielt **Nachupload** anfordern.
 - ✅ Kunde sieht die **Admin-Hinweise** direkt im KYC-Status und in der Verification-Seite.
