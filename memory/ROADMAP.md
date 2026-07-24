@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach iOS-KYC-RCA — 24.07.2026
+- ✅ Root Cause der falschen iOS-Testansicht bestätigt: **stale lokales iOS-Bundle**, nicht falscher Remote-Host.
+- ✅ KYC-Sperrkarte aus `HomePage.jsx` und Route-Guard aus `App.js` / `pathUtils.js` hängen jetzt an den echten Testbuild-Flags statt an impliziten Nebeneffekten.
+- ✅ Root-iOS-Bundle **`/app/ios/App/App/public`** neu aufgebaut und mit aktuellem Build synchronisiert.
+- ✅ Admin-Debug-Zeile für Build-/Flag-/Asset-Quelle ergänzt.
+- ✅ **Testing Agent Iteration 297 PASS**.
+- 🔴 Weiter offen: echter GitHub-Push/Run auf `main` und physischer Xcode-/iPhone-Buildtest durch den Nutzer.
+- 🟡 Danach: Telegram-Alarm als Monitoring-Backup.
+
 ## Status nach CI-Fix & iOS-Testmodus-Polish — 24.07.2026
 - ✅ Gemeldeter CI-Fehler behoben: `.github/workflows/ci.yml` nutzt jetzt **npm** statt Yarn und der ESLint-Schritt verwendet einen funktionierenden Workspace-Befehl.
 - ✅ iOS-/Test-App-Verhalten wieder auf normalen BidBlitz-Start zurückgeführt: **kein** Live-Check-Banner, **keine** sichtbaren KYC-Gates auf Home/More/Wallet für den Reviewer-Testnutzer.
