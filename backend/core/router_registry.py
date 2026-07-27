@@ -59,6 +59,7 @@ def register_all_routers(app):
         ("routes.notifications", "router"),
         ("routes.promotions", "router"),
         ("routes.analytics", "router"),
+        ("routes.recommendations", "router"),
         ("routes.kids", "router"),
         ("routes.kids_controls", "router"),
         ("routes.kids_app", "router"),
@@ -199,6 +200,8 @@ def register_all_routers(app):
         ("routes.legal", "admin_router"),  # Special case: legal has 2 routers
         ("routes.admin_management", "router"),
         ("routes.admin_ai_assistant", "router"),
+        ("routes.pro_features", "router"),
+        ("routes.ai_chat", "router"),
         ("routes.revenue", "router"),
         ("routes.revenue2", "router"),
         ("routes.merchant_payments", "router"),
