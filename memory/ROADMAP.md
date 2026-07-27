@@ -1,12 +1,12 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Admin-Error-Fix — 24.07.2026
+- ✅ Die bekannten Startseiten-404s auf Ads/Home-Recommendations/AI-Recommendations sind behoben; Router nun korrekt registriert.
 - ✅ GitHub-IonOS-Deploy-Workflow auf stabile npm-Workspace-Kette umgestellt; akuter Build/Lint-Fehlerpfad beseitigt.
 - ✅ Die aktuelle Nutzer-Meldung **„Fehler“** wurde auf zwei echte Admin-Frontend-Crashes zurückgeführt und behoben.
 - ✅ `/admin/analytics` rendert wieder mit belastbaren Live-Kennzahlen statt mit `undefined.total` zu crashen.
 - ✅ `/admin/merchants` rendert wieder Händlerkarten statt mit `undefined.toLowerCase` bzw. Lade-Loop hängen zu bleiben.
 - ✅ Verifiziert mit Frontend-Smoke, Frontend-Testing-Agent PASS und Backend-Regression-Check PASS.
-- 🟡 Bekannte nicht-blockierende Preview-404s bleiben offen: `/api/pro/ads/active`, `/api/recommendations/home`, `/api/ai/recommendations`.
 - 🔴 Nächster Produktpunkt bleibt: **Telegram-Alarm als Monitoring-Backup**.
 
 ## Status nach kompletter KYC-Deaktivierung im Testbuild — 24.07.2026

@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 27.07.2026 — Startseiten-404s für Ads und Empfehlungen behoben
+- Die bekannten Hintergrund-404s auf **`/api/pro/ads/active`**, **`/api/recommendations/home`** und **`/api/ai/recommendations`** wurden auf eine fehlende Router-Registrierung zurückgeführt. Die Routen existierten bereits in `backend/routes/pro_features.py`, `backend/routes/recommendations.py` und `backend/routes/ai_chat.py`, waren aber nicht in `backend/core/router_registry.py` eingetragen.
+- `router_registry.py` registriert jetzt zusätzlich **`routes.recommendations`**, **`routes.pro_features`** und **`routes.ai_chat`**. Dadurch laden Home-Empfehlungen, Ad-Banner und AI-Recommendations nicht mehr in 404-Zustände.
+- Verifiziert per API-Selbsttest: `/api/recommendations/home` = **200**, `/api/pro/ads/active` = **200**, `/api/ai/recommendations?limit=4` = **200** nach Admin-Login.
+- Zusätzlich **Frontend-Testing PASS**: keine 404s mehr auf den drei Endpunkten; `recommendations-section` nach Login sichtbar; Gast-Startseite lädt ohne sichtbaren Fehler.
+
 ## 24.07.2026 — GitHub Deploy-Workflow für IONOS stabilisiert
 - Nach Nutzer-Screenshot **"Deploy to IONOS Production: All jobs have failed"** wurde der aktuelle GitHub-Workflow geprüft. Der konkrete Workflow-Blocker lag nicht an Supervisor, sondern an einer inkonsistenten Frontend-Build-/Lint-Kette im Deploy-Workflow.
 - `.github/workflows/deploy.yml` wurde von gemischtem Yarn-/npm-Verhalten auf die stabile Root-Workspace-Kette umgestellt: **`actions/setup-node`** nutzt jetzt npm-Cache, danach läuft **`npm ci`** auf Root-Ebene, der Frontend-Build verwendet **`npm run build`**, und der Pre-Deployment-Lint nutzt **`npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"`**.
