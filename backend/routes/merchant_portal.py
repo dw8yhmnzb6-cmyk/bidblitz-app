@@ -17,6 +17,7 @@ from datetime import datetime, timezone, timedelta
 from core.database import db
 from core.security import get_current_user
 import secrets
+from routes.invoicing import _invoice_reminder_map, _now
 
 load_dotenv()
 
@@ -111,6 +112,260 @@ class OpsMaintenanceUpsertRequest(BaseModel):
     vendor_name: str = ""
     next_check_at: str = ""
     notes: str = ""
+
+
+class DealerReorderCreateRequest(BaseModel):
+    supplier_id: str = ""
+    store_id: str = ""
+    note: str = ""
+    items: List[Dict[str, Any]] = []
+
+
+class DealerWarrantyCreateRequest(BaseModel):
+    product_id: str = ""
+    serial_number: str = ""
+    issue_type: str = "defekt"
+    customer_name: str = ""
+    customer_email: str = ""
+    purchase_date: str = ""
+    issue_summary: str
+    requested_resolution: str = "repair"
+
+
+def _safe_round(value: Any) -> float:
+    return round(_num(value), 2)
+
+
+def _safe_slug(value: str, fallback: str = "item") -> str:
+    cleaned = "".join(ch.lower() if ch.isalnum() else "-" for ch in str(value or fallback))
+    while "--" in cleaned:
+        cleaned = cleaned.replace("--", "-")
+    return cleaned.strip("-")[:60] or fallback
+
+
+async def _build_dealer_inventory_suite(user: dict) -> Dict[str, Any]:
+    enterprise = await _build_enterprise_overview_data(user)
+    inventory = enterprise.get("inventory") or {}
+    analytics = enterprise.get("analytics") or {}
+    best_products = analytics.get("best_products") or []
+    low_stock_items = inventory.get("low_stock") or []
+    auto_reorder_items = inventory.get("auto_reorder") or []
+    expiring_batches = inventory.get("expiring_batches") or []
+
+    total_units = 0.0
+    for row in best_products:
+        total_units += _num(row.get("qty"))
+    for row in low_stock_items:
+        total_units += _num(row.get("stock"))
+
+    inventory_value_cost = _safe_round(inventory.get("stock_value_cost"))
+    inventory_value_retail = _safe_round(inventory.get("stock_value_retail"))
+    at_risk_value = _safe_round(sum(_num(item.get("stock")) * _num(item.get("purchase_price")) for item in low_stock_items))
+
+    for item in low_stock_items:
+        item["risk_level"] = "critical" if _num(item.get("stock")) <= 0 else "warning"
+        item["stock"] = _safe_round(item.get("stock"))
+        item["minimum_stock"] = _safe_round(item.get("minimum_stock"))
+        item["price"] = _safe_round(item.get("price"))
+        item["purchase_price"] = _safe_round(item.get("purchase_price"))
+    for item in auto_reorder_items:
+        item["suggested_qty"] = _safe_round(item.get("suggested_qty"))
+        item["stock"] = _safe_round(item.get("stock"))
+        item["target_stock"] = _safe_round(item.get("target_stock"))
+    for batch in expiring_batches:
+        batch["quantity_remaining"] = _safe_round(batch.get("quantity_remaining"))
+
+    top_products = [
+        {
+            **item,
+            "qty": _safe_round(item.get("qty")),
+            "revenue": _safe_round(item.get("revenue")),
+            "profit": _safe_round(item.get("profit")),
+        }
+        for item in best_products[:8]
+    ]
+
+    return {
+        "summary": {
+            "active_skus": len(best_products) or len(low_stock_items),
+            "inventory_value_cost": inventory_value_cost,
+            "inventory_value_retail": inventory_value_retail,
+            "total_units_seen": _safe_round(total_units),
+            "low_stock_count": len(low_stock_items),
+            "auto_reorder_count": len(auto_reorder_items),
+            "expiring_count": len(expiring_batches),
+            "at_risk_value": at_risk_value,
+        },
+        "low_stock": low_stock_items[:12],
+        "auto_reorder": auto_reorder_items[:12],
+        "expiring_batches": expiring_batches[:12],
+        "top_products": top_products,
+    }
+
+
+async def _build_dealer_reorder_suite(user: dict) -> Dict[str, Any]:
+    enterprise = await _build_enterprise_overview_data(user)
+    workflow = enterprise.get("supplier_workflow") or {}
+    recommendations = enterprise.get("insights", {}).get("purchase_recommendations") or []
+    merchant_id = enterprise.get("company", {}).get("merchant_id")
+    suppliers = []
+    stores = []
+    purchase_orders = []
+    if merchant_id:
+        suppliers = await db.pos_suppliers.find({"merchant_id": merchant_id}, {"_id": 0}).sort("name", 1).to_list(200)
+        stores = await db.pos_stores.find({"merchant_id": merchant_id}, {"_id": 0}).sort("name", 1).to_list(100)
+        purchase_orders = await db.pos_purchase_orders.find({"merchant_id": merchant_id}, {"_id": 0}).sort("created_at", -1).limit(30).to_list(30)
+
+    for po in purchase_orders:
+        po["total_cost"] = _safe_round(po.get("total_cost"))
+        po["items_count"] = len(po.get("items") or [])
+
+    open_orders = [po for po in purchase_orders if po.get("status") not in {"received", "cancelled"}]
+    supplier_labels = {row.get("supplier_id"): row.get("name") or row.get("company_name") or row.get("supplier_id") for row in suppliers}
+    store_labels = {row.get("store_id"): row.get("name") or row.get("store_id") for row in stores}
+    normalized_recommendations = []
+    for item in recommendations[:12]:
+        normalized_recommendations.append({
+            **item,
+            "supplier_name": item.get("supplier_name") or supplier_labels.get(item.get("supplier_id"), "Lieferant offen"),
+            "store_name": store_labels.get(item.get("store_id"), item.get("store_id") or "Store"),
+            "stock": _safe_round(item.get("stock")),
+            "minimum_stock": _safe_round(item.get("minimum_stock")),
+            "qty_sold_30d": _safe_round(item.get("qty_sold_30d")),
+            "suggested_qty": _safe_round(item.get("suggested_qty")),
+        })
+
+    return {
+        "summary": {
+            "suppliers_total": len(suppliers),
+            "stores_total": len(stores),
+            "recommendations_total": len(recommendations),
+            "open_orders_total": len(open_orders),
+            "submitted_total": int(workflow.get("submitted", 0) or 0),
+            "approved_total": int(workflow.get("approved", 0) or 0),
+        },
+        "workflow": workflow,
+        "suppliers": suppliers,
+        "stores": stores,
+        "recommendations": normalized_recommendations,
+        "purchase_orders": purchase_orders,
+    }
+
+
+async def _build_dealer_invoice_suite(user: dict) -> Dict[str, Any]:
+    user_email = user.get("email", "")
+    invoices = await db.invoices.find({"user_email": user_email}, {"_id": 0}).sort("created_at", -1).limit(60).to_list(60)
+    reminder_map = await _invoice_reminder_map([inv.get("invoice_id") for inv in invoices])
+    now = _now()
+    payload = []
+    open_total = 0.0
+    overdue_total = 0.0
+    paid_total = 0.0
+    for inv in invoices:
+        reminder_info = reminder_map.get(inv.get("invoice_id"), {})
+        total = _safe_round(inv.get("total"))
+        status = inv.get("status", "draft")
+        due_dt = _parse_iso(inv.get("due_at"))
+        is_overdue = bool(due_dt and due_dt < now and status != "paid")
+        if status == "paid":
+            paid_total += total
+        else:
+            open_total += total
+            if is_overdue:
+                overdue_total += total
+        payload.append({
+            "invoice_id": inv.get("invoice_id"),
+            "invoice_number": inv.get("invoice_number"),
+            "client_name": inv.get("client_name") or "—",
+            "client_email": inv.get("client_email") or "",
+            "total": total,
+            "status": status,
+            "due_at": inv.get("due_at"),
+            "created_at": inv.get("created_at"),
+            "reminder_count": reminder_info.get("count", 0),
+            "last_reminder_at": reminder_info.get("last"),
+            "is_overdue": is_overdue,
+        })
+    return {
+        "summary": {
+            "invoices_total": len(payload),
+            "open_total": _safe_round(open_total),
+            "overdue_total": _safe_round(overdue_total),
+            "paid_total": _safe_round(paid_total),
+            "open_count": len([inv for inv in payload if inv.get("status") != "paid"]),
+            "overdue_count": len([inv for inv in payload if inv.get("is_overdue")]),
+        },
+        "invoices": payload,
+    }
+
+
+async def _build_dealer_marketing_suite(user: dict) -> Dict[str, Any]:
+    user_id = str(user.get("_id"))
+    profile = await db.merchant_profiles.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    campaign_metrics = await db.pos_loyalty_transactions.count_documents({"merchant_id": user_id})
+    assets = [
+        {
+            "asset_id": "charge-brand-pack",
+            "title": "BidBlitz Charge Brand Pack",
+            "format": "ZIP / Guidelines",
+            "status": "ready",
+            "description": "Logos, Packaging-Hinweise, Retail-Display-Stil und Händler-Branding für ein einheitliches Premium-Bild.",
+            "cta_label": "Branding anwenden",
+        },
+        {
+            "asset_id": "charge-counter-display",
+            "title": "Counter Display Kit",
+            "format": "PDF / POS Materials",
+            "status": "ready",
+            "description": "Platzierungshinweise für Premium-Displays, Thekenaufsteller und Charger-Kommunikation im Store.",
+            "cta_label": "Display prüfen",
+        },
+        {
+            "asset_id": "charge-social-launch",
+            "title": "Launch Campaign Creatives",
+            "format": "PNG / Story / Reel",
+            "status": "ready",
+            "description": "Saubere High-End Creatives für Social, Händler-Newsletter und Produkt-Teaser.",
+            "cta_label": "Creatives nutzen",
+        },
+    ]
+    requests = await db.merchant_marketing_requests.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    return {
+        "summary": {
+            "assets_total": len(assets),
+            "requests_total": len(requests),
+            "campaign_touchpoints": campaign_metrics,
+            "branding_ready": bool(profile.get("logo_url") or profile.get("business_name")),
+        },
+        "brand_profile": {
+            "business_name": profile.get("business_name") or user.get("name") or "BidBlitz Charge Partner",
+            "logo_url": profile.get("logo_url") or "",
+            "category": profile.get("category") or "Charge / Retail",
+            "website": profile.get("website") or "",
+        },
+        "assets": assets,
+        "requests": requests,
+    }
+
+
+async def _build_dealer_warranty_suite(user: dict) -> Dict[str, Any]:
+    user_id = str(user.get("_id"))
+    claims = await db.merchant_warranty_claims.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(80).to_list(80)
+    now = _now_iso()
+    for claim in claims:
+        claim["created_at"] = claim.get("created_at") or now
+        claim["updated_at"] = claim.get("updated_at") or claim.get("created_at") or now
+    return {
+        "summary": {
+            "claims_total": len(claims),
+            "open_total": len([c for c in claims if c.get("status") in {"submitted", "under_review", "awaiting_parts"}]),
+            "resolved_total": len([c for c in claims if c.get("status") in {"resolved", "replacement_sent", "rejected"}]),
+            "replacement_total": len([c for c in claims if c.get("requested_resolution") == "replace"]),
+        },
+        "claims": claims,
+        "issue_types": ["defekt", "display", "akku", "kabel", "garantiefrage", "retoure"],
+        "resolution_types": ["repair", "replace", "credit", "inspect"],
+    }
 
 
 async def require_merchant(request: Request):
@@ -1687,6 +1942,129 @@ async def run_v5_business_automation_full(request: Request):
 async def get_v5_ops_suite(request: Request):
     user = await require_merchant(request)
     return await _build_ops_suite(user)
+
+
+@router.get("/dealer/inventory")
+async def get_dealer_inventory(request: Request):
+    user = await require_merchant(request)
+    return await _build_dealer_inventory_suite(user)
+
+
+@router.get("/dealer/reorders")
+async def get_dealer_reorders(request: Request):
+    user = await require_merchant(request)
+    return await _build_dealer_reorder_suite(user)
+
+
+@router.post("/dealer/reorders/create")
+async def create_dealer_reorder(req: DealerReorderCreateRequest, request: Request):
+    user = await require_merchant(request)
+    enterprise = await _build_enterprise_overview_data(user)
+    merchant_id = enterprise.get("company", {}).get("merchant_id")
+    if not merchant_id:
+        raise HTTPException(status_code=404, detail="Kein Händlerprofil gefunden")
+
+    stores = await db.pos_stores.find({"merchant_id": merchant_id}, {"_id": 0, "store_id": 1}).limit(1).to_list(1)
+    suppliers = await db.pos_suppliers.find({"merchant_id": merchant_id}, {"_id": 0, "supplier_id": 1, "name": 1}).limit(100).to_list(100)
+    supplier_map = {row.get("supplier_id"): row for row in suppliers}
+    store_id = req.store_id or (stores[0].get("store_id") if stores else "")
+    supplier_id = req.supplier_id
+    if not store_id:
+        raise HTTPException(status_code=400, detail="Kein Store verfügbar")
+    if not supplier_id or supplier_id not in supplier_map:
+        raise HTTPException(status_code=400, detail="Lieferant fehlt oder ist ungültig")
+
+    normalized_items = []
+    total_cost = 0.0
+    for line in req.items:
+        product_id = line.get("product_id")
+        quantity = max(_num(line.get("quantity")), 0)
+        if not product_id or quantity <= 0:
+            continue
+        product = await db.pos_products.find_one({"product_id": product_id, "merchant_id": merchant_id}, {"_id": 0})
+        if not product:
+            continue
+        purchase_price = _safe_round(line.get("purchase_price") or product.get("purchase_price") or 0)
+        line_total = _safe_round(quantity * purchase_price)
+        total_cost += line_total
+        normalized_items.append({
+            "product_id": product_id,
+            "product_name": product.get("name"),
+            "barcode": product.get("barcode"),
+            "quantity": quantity,
+            "purchase_price": purchase_price,
+            "line_total": line_total,
+            "received": 0,
+        })
+
+    if not normalized_items:
+        raise HTTPException(status_code=400, detail="Keine gültigen Nachbestellpositionen")
+
+    po_doc = {
+        "po_id": f"PO-{uuid.uuid4().hex[:10].upper()}",
+        "merchant_id": merchant_id,
+        "store_id": store_id,
+        "supplier_id": supplier_id,
+        "supplier_name": supplier_map[supplier_id].get("name") or supplier_id,
+        "items": normalized_items,
+        "total_cost": _safe_round(total_cost),
+        "status": "draft",
+        "note": req.note,
+        "created_by": str(user.get("_id")),
+        "created_at": _now_iso(),
+    }
+    await db.pos_purchase_orders.insert_one(po_doc)
+    return {"ok": True, "purchase_order": {k: v for k, v in po_doc.items() if k != "_id"}}
+
+
+@router.get("/dealer/invoices")
+async def get_dealer_invoices(request: Request):
+    user = await require_merchant(request)
+    return await _build_dealer_invoice_suite(user)
+
+
+@router.get("/dealer/marketing")
+async def get_dealer_marketing(request: Request):
+    user = await require_merchant(request)
+    return await _build_dealer_marketing_suite(user)
+
+
+@router.get("/dealer/warranty")
+async def get_dealer_warranty(request: Request):
+    user = await require_merchant(request)
+    return await _build_dealer_warranty_suite(user)
+
+
+@router.post("/dealer/warranty/create")
+async def create_dealer_warranty(req: DealerWarrantyCreateRequest, request: Request):
+    user = await require_merchant(request)
+    enterprise = await _build_enterprise_overview_data(user)
+    merchant_id = enterprise.get("company", {}).get("merchant_id")
+    claim_id = f"WAR-{uuid.uuid4().hex[:10].upper()}"
+    product = None
+    if req.product_id and merchant_id:
+        product = await db.pos_products.find_one({"product_id": req.product_id, "merchant_id": merchant_id}, {"_id": 0})
+    now = _now_iso()
+    doc = {
+        "claim_id": claim_id,
+        "user_id": str(user.get("_id")),
+        "user_email": user.get("email", ""),
+        "merchant_id": merchant_id,
+        "product_id": req.product_id,
+        "product_name": (product or {}).get("name") or "BidBlitz Charge Produkt",
+        "serial_number": req.serial_number,
+        "issue_type": req.issue_type,
+        "customer_name": req.customer_name,
+        "customer_email": req.customer_email,
+        "purchase_date": req.purchase_date,
+        "issue_summary": req.issue_summary,
+        "requested_resolution": req.requested_resolution,
+        "status": "submitted",
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.merchant_warranty_claims.insert_one(doc)
+    return {"ok": True, "claim": {k: v for k, v in doc.items() if k != "_id"}}
 
 
 @router.post("/v5/companies/upsert")

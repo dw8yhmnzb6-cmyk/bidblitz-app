@@ -1,7 +1,7 @@
 /**
  * BidBlitz V2 - Merchant Portal / Händler-Dashboard
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, BarChart3, DollarSign, ShoppingBag, Users, Star,
@@ -10,10 +10,11 @@ import {
   Settings, Loader2, Check, Save, Scissors, ChevronRight,
   Building2, Image as ImageIcon, Gift, Megaphone, Store, LineChart, Link2,
   BrainCircuit, Boxes, ReceiptText, AlertTriangle, Sparkles, Activity, ShieldAlert, PackageCheck,
-  Bot, Settings2, ClipboardList, Truck, Zap, PlayCircle, FileText, Wrench, Landmark, Plus
+  Bot, Settings2, ClipboardList, Truck, Zap, PlayCircle, FileText, Wrench, Landmark, Plus, ShieldCheck, Package, RefreshCcw, BadgeEuro
 } from "lucide-react";
 import { useI18n } from "../store/I18nContext";
 import { api } from "../services/api";
+import { toast } from "sonner";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -36,6 +37,11 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [automationSettings, setAutomationSettings] = useState(null);
   const [automationRunning, setAutomationRunning] = useState("");
   const [opsSuite, setOpsSuite] = useState(null);
+  const [dealerInventory, setDealerInventory] = useState(null);
+  const [dealerReorders, setDealerReorders] = useState(null);
+  const [dealerInvoices, setDealerInvoices] = useState(null);
+  const [dealerMarketing, setDealerMarketing] = useState(null);
+  const [dealerWarranty, setDealerWarranty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [txns, setTxns] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -54,6 +60,9 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [companyForm, setCompanyForm] = useState({ name: "", legal_name: "", country: "Kosovo", status: "active", manager_email: "", tax_id: "", wallet_budget: 0, branch_count: 1 });
   const [documentForm, setDocumentForm] = useState({ title: "", category: "compliance", status: "draft", linked_company_id: "", expiry_date: "", external_url: "", notes: "" });
   const [maintenanceForm, setMaintenanceForm] = useState({ asset_name: "", asset_type: "terminal", priority: "medium", status: "open", linked_company_id: "", vendor_name: "", next_check_at: "", notes: "" });
+  const [dealerBusy, setDealerBusy] = useState("");
+  const [reorderForm, setReorderForm] = useState({ supplier_id: "", store_id: "", note: "" });
+  const [warrantyForm, setWarrantyForm] = useState({ product_id: "", serial_number: "", issue_type: "defekt", customer_name: "", customer_email: "", purchase_date: "", issue_summary: "", requested_resolution: "repair" });
 
   const loadDash = useCallback(async () => {
     try {
@@ -121,8 +130,69 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     }
   }, []);
 
+  const loadDealerInventory = useCallback(async () => {
+    try {
+      const data = await api.getMerchantDealerInventory();
+      setDealerInventory(data);
+    } catch (error) {
+      toast.error(error.message || "Lagerbestand konnte nicht geladen werden");
+    }
+  }, []);
+
+  const loadDealerReorders = useCallback(async () => {
+    try {
+      const data = await api.getMerchantDealerReorders();
+      setDealerReorders(data);
+      const firstSupplier = (data.suppliers || [])[0]?.supplier_id || "";
+      const firstStore = (data.stores || [])[0]?.store_id || "";
+      setReorderForm((prev) => ({
+        ...prev,
+        supplier_id: prev.supplier_id || firstSupplier,
+        store_id: prev.store_id || firstStore,
+      }));
+    } catch (error) {
+      toast.error(error.message || "Nachbestellungen konnten nicht geladen werden");
+    }
+  }, []);
+
+  const loadDealerInvoices = useCallback(async () => {
+    try {
+      const data = await api.getMerchantDealerInvoices();
+      setDealerInvoices(data);
+    } catch (error) {
+      toast.error(error.message || "Rechnungen konnten nicht geladen werden");
+    }
+  }, []);
+
+  const loadDealerMarketing = useCallback(async () => {
+    try {
+      const data = await api.getMerchantDealerMarketing();
+      setDealerMarketing(data);
+    } catch (error) {
+      toast.error(error.message || "Werbematerial konnte nicht geladen werden");
+    }
+  }, []);
+
+  const loadDealerWarranty = useCallback(async () => {
+    try {
+      const data = await api.getMerchantDealerWarranty();
+      setDealerWarranty(data);
+      const firstProduct = (dealerInventory?.top_products || [])[0]?.product_id || "";
+      setWarrantyForm((prev) => ({ ...prev, product_id: prev.product_id || firstProduct }));
+    } catch (error) {
+      toast.error(error.message || "Garantieabwicklung konnte nicht geladen werden");
+    }
+  }, [dealerInventory?.top_products]);
+
   useEffect(() => { loadDash(); }, [loadDash]);
-  useEffect(() => { if (tab !== "dashboard" && tab !== "profile") loadTab(tab); }, [tab, loadTab]);
+  useEffect(() => { if (["transactions", "reservations", "hotels", "appointments", "tips"].includes(tab)) loadTab(tab); }, [tab, loadTab]);
+  useEffect(() => {
+    if (tab === "inventory") loadDealerInventory();
+    if (tab === "reorders") loadDealerReorders();
+    if (tab === "invoices") loadDealerInvoices();
+    if (tab === "marketing") loadDealerMarketing();
+    if (tab === "warranty") loadDealerWarranty();
+  }, [tab, loadDealerInventory, loadDealerReorders, loadDealerInvoices, loadDealerMarketing, loadDealerWarranty]);
 
   const saveProfile = async () => {
     setSaving(true);
@@ -287,8 +357,66 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     }
   }, [loadBusinessAutomation, loadDash]);
 
+  const reorderRecommendations = useMemo(() => (dealerReorders?.recommendations || []).slice(0, 4), [dealerReorders]);
+
+  const createQuickReorder = useCallback(async () => {
+    const candidates = (dealerReorders?.recommendations || []).slice(0, 3).filter((item) => item?.product_id && Number(item?.suggested_qty || 0) > 0);
+    if (candidates.length === 0) {
+      toast.error("Keine Nachbestell-Empfehlungen verfügbar");
+      return;
+    }
+    const supplierId = reorderForm.supplier_id || candidates[0]?.supplier_id;
+    const storeId = reorderForm.store_id || candidates[0]?.store_id;
+    if (!supplierId || !storeId) {
+      toast.error("Bitte zuerst Lieferant und Store auswählen");
+      return;
+    }
+    setDealerBusy("reorder");
+    try {
+      await api.createMerchantDealerReorder({
+        supplier_id: supplierId,
+        store_id: storeId,
+        note: reorderForm.note || "Auto-Reorder aus Händlerportal",
+        items: candidates.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.suggested_qty,
+          purchase_price: item.purchase_price || 0,
+        })),
+      });
+      toast.success("Nachbestellung wurde als Entwurf angelegt");
+      await loadDealerReorders();
+    } catch (error) {
+      toast.error(error.message || "Nachbestellung konnte nicht erstellt werden");
+    } finally {
+      setDealerBusy("");
+    }
+  }, [dealerReorders, reorderForm, loadDealerReorders]);
+
+  const submitWarrantyClaim = useCallback(async () => {
+    if (!warrantyForm.issue_summary.trim()) {
+      toast.error("Bitte den Garantiefall kurz beschreiben");
+      return;
+    }
+    setDealerBusy("warranty");
+    try {
+      await api.createMerchantDealerWarranty(warrantyForm);
+      toast.success("Garantiefall wurde erfasst");
+      setWarrantyForm({ product_id: "", serial_number: "", issue_type: "defekt", customer_name: "", customer_email: "", purchase_date: "", issue_summary: "", requested_resolution: "repair" });
+      await loadDealerWarranty();
+    } catch (error) {
+      toast.error(error.message || "Garantiefall konnte nicht gespeichert werden");
+    } finally {
+      setDealerBusy("");
+    }
+  }, [warrantyForm, loadDealerWarranty]);
+
   const TABS = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "inventory", label: "Lagerbestand", icon: Boxes },
+    { id: "reorders", label: "Nachbestellung", icon: RefreshCcw },
+    { id: "invoices", label: "Rechnungen", icon: ReceiptText },
+    { id: "marketing", label: "Werbematerial", icon: Megaphone },
+    { id: "warranty", label: "Garantie", icon: ShieldCheck },
     { id: "enterprise-v5", label: "Enterprise V5", icon: Building2 },
     { id: "executive-ai", label: "Executive AI", icon: BrainCircuit },
     { id: "business-automation", label: "Business Automation", icon: Bot },
@@ -352,6 +480,43 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
       {/* ═══ DASHBOARD ═══ */}
       {tab === "dashboard" && dash && (
         <div className="p-4 space-y-4">
+          <div data-testid="merchant-dealer-hero" className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,_rgba(0,194,255,0.18),_transparent_35%),linear-gradient(145deg,_rgba(5,5,5,1),_rgba(17,17,17,1))] p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">BidBlitz Charge Dealer Network</p>
+                <h2 className="mt-2 text-2xl font-black text-white">Premium Händlerportal für Charge, Service und Bestand</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-300">Ein hochwertiger Leitstand für Lagerbestand, Nachbestellung, Rechnungen, Werbematerial und digitale Garantieabwicklung.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <MetricPill label="Wallet" value={`€${(dash?.wallet_balance || 0).toFixed(0)}`} testid="merchant-dealer-wallet-kpi" />
+                <MetricPill label="Low Stock" value={enterprise?.kpis?.low_stock ?? 0} testid="merchant-dealer-lowstock-kpi" />
+                <MetricPill label="PO offen" value={enterprise?.kpis?.purchase_orders_open ?? 0} testid="merchant-dealer-po-kpi" />
+                <MetricPill label="Brand Assets" value={3} testid="merchant-dealer-brand-kpi" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+            {[
+              { id: "inventory", title: "Lagerbestand", helper: `${enterprise?.kpis?.products ?? 0} aktive Produkte`, icon: Boxes, accent: "#00C2FF" },
+              { id: "reorders", title: "Nachbestellung", helper: `${enterprise?.kpis?.purchase_orders_open ?? 0} offene Bestellungen`, icon: RefreshCcw, accent: "#FFD700" },
+              { id: "invoices", title: "Rechnungen", helper: "Offen, bezahlt, überfällig", icon: ReceiptText, accent: "#00D26A" },
+              { id: "marketing", title: "Werbematerial", helper: "Displays, Branding, Creatives", icon: Megaphone, accent: "#FF8E53" },
+              { id: "warranty", title: "Garantieabwicklung", helper: "Digitale Fälle & Status", icon: ShieldCheck, accent: "#A855F7" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setTab(item.id)}
+                className="rounded-[22px] border border-white/8 bg-[#101010] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/15"
+                data-testid={`merchant-dealer-jump-${item.id}`}
+              >
+                <item.icon size={18} style={{ color: item.accent }} />
+                <p className="mt-3 text-sm font-bold text-white">{item.title}</p>
+                <p className="mt-1 text-[11px] text-slate-400">{item.helper}</p>
+              </button>
+            ))}
+          </div>
+
           {/* Revenue Cards */}
           <div className="grid grid-cols-2 gap-2">
             {[
@@ -419,6 +584,227 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                 <ChevronRight size={12} className="text-gray-600 ml-auto" />
               </motion.button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "inventory" && (
+        <div className="p-4 space-y-4" data-testid="merchant-dealer-inventory-tab">
+          <DealerSectionHero
+            overline="Lagerbestand"
+            title="Hochwertiger Bestandsleitstand"
+            description="Volle Sicht auf kritische Artikel, Nachkaufdruck und wertvollen Bestand für das BidBlitz Charge Händlernetz."
+            metrics={[
+              ["SKUs", dealerInventory?.summary?.active_skus ?? 0],
+              ["Low Stock", dealerInventory?.summary?.low_stock_count ?? 0],
+              ["Auto Reorder", dealerInventory?.summary?.auto_reorder_count ?? 0],
+              ["EK-Wert", `€${Number(dealerInventory?.summary?.inventory_value_cost || 0).toFixed(0)}`],
+            ]}
+            testid="merchant-dealer-inventory-hero"
+          />
+
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <DealerListCard title="Kritische Bestände" icon={AlertTriangle} testid="merchant-dealer-low-stock-card">
+              {(dealerInventory?.low_stock || []).length === 0 ? <EmptyDealerState label="Keine kritischen Lagerartikel" /> : (dealerInventory?.low_stock || []).map((item, index) => (
+                <DealerRow
+                  key={`${item.product_id || item.name}-${index}`}
+                  title={item.name}
+                  subtitle={`${item.store_id || 'Store'} · Mindestbestand ${Number(item.minimum_stock || 0).toFixed(0)}`}
+                  badges={[`Bestand ${Number(item.stock || 0).toFixed(0)}`, item.risk_level === 'critical' ? 'kritisch' : 'Warnung']}
+                  value={`€${Number(item.price || 0).toFixed(2)}`}
+                  testid={`merchant-dealer-low-stock-item-${index}`}
+                />
+              ))}
+            </DealerListCard>
+
+            <DealerListCard title="Top Produkte" icon={PackageCheck} testid="merchant-dealer-top-products-card">
+              {(dealerInventory?.top_products || []).length === 0 ? <EmptyDealerState label="Noch keine Produktperformance vorhanden" /> : (dealerInventory?.top_products || []).map((item, index) => (
+                <DealerRow
+                  key={`${item.product_id || item.name}-${index}`}
+                  title={item.name}
+                  subtitle={`${Number(item.qty || 0).toFixed(0)} Einheiten · Profit €${Number(item.profit || 0).toFixed(0)}`}
+                  badges={[`Umsatz €${Number(item.revenue || 0).toFixed(0)}`]}
+                  value={`#${index + 1}`}
+                  testid={`merchant-dealer-top-product-${index}`}
+                />
+              ))}
+            </DealerListCard>
+          </div>
+        </div>
+      )}
+
+      {tab === "reorders" && (
+        <div className="p-4 space-y-4" data-testid="merchant-dealer-reorders-tab">
+          <DealerSectionHero
+            overline="Nachbestellung"
+            title="Schnelle Beschaffung ohne Excel-Chaos"
+            description="Automatische Einkaufsempfehlungen, offene Bestellungen und Lieferantenübersicht an einem Ort."
+            metrics={[
+              ["Lieferanten", dealerReorders?.summary?.suppliers_total ?? 0],
+              ["Empfehlungen", dealerReorders?.summary?.recommendations_total ?? 0],
+              ["Offene POs", dealerReorders?.summary?.open_orders_total ?? 0],
+              ["Submitted", dealerReorders?.summary?.submitted_total ?? 0],
+            ]}
+            testid="merchant-dealer-reorders-hero"
+          />
+
+          <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-dealer-reorder-form-card">
+              <div className="mb-4 flex items-center gap-2"><RefreshCcw size={16} className="text-cyan-300" /><h3 className="text-sm font-bold text-white">Nachbestellung anlegen</h3></div>
+              <div className="space-y-3">
+                <OpsSelect value={reorderForm.supplier_id} onChange={(value) => setReorderForm((prev) => ({ ...prev, supplier_id: value }))} options={(dealerReorders?.suppliers || []).map((item) => item.supplier_id)} labels={Object.fromEntries((dealerReorders?.suppliers || []).map((item) => [item.supplier_id, item.name]))} testid="merchant-dealer-reorder-supplier" />
+                <OpsSelect value={reorderForm.store_id} onChange={(value) => setReorderForm((prev) => ({ ...prev, store_id: value }))} options={(dealerReorders?.stores || []).map((item) => item.store_id)} labels={Object.fromEntries((dealerReorders?.stores || []).map((item) => [item.store_id, item.name]))} testid="merchant-dealer-reorder-store" />
+                <OpsTextarea value={reorderForm.note} onChange={(value) => setReorderForm((prev) => ({ ...prev, note: value }))} placeholder="Interne Einkaufsnotiz" testid="merchant-dealer-reorder-note" />
+                <button onClick={createQuickReorder} disabled={dealerBusy === "reorder"} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 text-slate-950 text-xs font-black disabled:opacity-50" data-testid="merchant-dealer-reorder-submit">
+                  {dealerBusy === "reorder" ? <Loader2 size={14} className="animate-spin" /> : <Truck size={14} />} Entwurf aus Empfehlungen erstellen
+                </button>
+              </div>
+            </div>
+
+            <DealerListCard title="Empfohlene Nachkäufe" icon={Truck} testid="merchant-dealer-recommendations-card">
+              {reorderRecommendations.length === 0 ? <EmptyDealerState label="Keine Nachkauf-Empfehlungen vorhanden" /> : reorderRecommendations.map((item, index) => (
+                <DealerRow
+                  key={`${item.product_id}-${index}`}
+                  title={item.name}
+                  subtitle={`${item.supplier_name || 'Lieferant offen'} · ${item.store_name || item.store_id || 'Store'}`}
+                  badges={[`+${Number(item.suggested_qty || 0).toFixed(0)} Stück`, `Cover ${item.days_of_cover ?? 'n/a'}`]}
+                  value={`Bestand ${Number(item.stock || 0).toFixed(0)}`}
+                  testid={`merchant-dealer-recommendation-${index}`}
+                />
+              ))}
+            </DealerListCard>
+          </div>
+
+          <DealerListCard title="Offene Bestellungen" icon={Package} testid="merchant-dealer-open-orders-card">
+            {(dealerReorders?.purchase_orders || []).length === 0 ? <EmptyDealerState label="Noch keine Bestellungen vorhanden" /> : (dealerReorders?.purchase_orders || []).map((item, index) => (
+              <DealerRow
+                key={item.po_id}
+                title={`${item.supplier_name || 'Lieferant'} · ${item.po_id}`}
+                subtitle={`${item.status} · ${item.items_count || 0} Positionen`}
+                badges={[item.store_id || 'Store']}
+                value={`€${Number(item.total_cost || 0).toFixed(2)}`}
+                testid={`merchant-dealer-open-order-${index}`}
+              />
+            ))}
+          </DealerListCard>
+        </div>
+      )}
+
+      {tab === "invoices" && (
+        <div className="p-4 space-y-4" data-testid="merchant-dealer-invoices-tab">
+          <DealerSectionHero
+            overline="Rechnungen"
+            title="Klarer Überblick über offene und bezahlte Rechnungen"
+            description="Alles, was Händler für Nachverfolgung, Liquidität und Außenstände brauchen — kompakt und professionell." 
+            metrics={[
+              ["Gesamt", dealerInvoices?.summary?.invoices_total ?? 0],
+              ["Offen", dealerInvoices?.summary?.open_count ?? 0],
+              ["Überfällig", dealerInvoices?.summary?.overdue_count ?? 0],
+              ["Offen €", `€${Number(dealerInvoices?.summary?.open_total || 0).toFixed(0)}`],
+            ]}
+            testid="merchant-dealer-invoices-hero"
+          />
+          <DealerListCard title="Letzte Rechnungen" icon={ReceiptText} testid="merchant-dealer-invoice-list-card">
+            {(dealerInvoices?.invoices || []).length === 0 ? <EmptyDealerState label="Noch keine Rechnungen vorhanden" /> : (dealerInvoices?.invoices || []).map((item, index) => (
+              <DealerRow
+                key={item.invoice_id}
+                title={`${item.invoice_number} · ${item.client_name}`}
+                subtitle={`${item.status}${item.is_overdue ? ' · überfällig' : ''} · Reminder ${item.reminder_count || 0}`}
+                badges={[item.client_email || 'Kein E-Mail-Empfänger']}
+                value={`€${Number(item.total || 0).toFixed(2)}`}
+                testid={`merchant-dealer-invoice-${index}`}
+              />
+            ))}
+          </DealerListCard>
+        </div>
+      )}
+
+      {tab === "marketing" && (
+        <div className="p-4 space-y-4" data-testid="merchant-dealer-marketing-tab">
+          <DealerSectionHero
+            overline="Werbematerial"
+            title="BidBlitz Charge als hochwertige Marke präsentieren"
+            description="Einheitliche Premium-Materialien, digitale Händlerassets und saubere Verkaufsdisplays für Vertrauen vom ersten Eindruck an."
+            metrics={[
+              ["Assets", dealerMarketing?.summary?.assets_total ?? 0],
+              ["Requests", dealerMarketing?.summary?.requests_total ?? 0],
+              ["Touchpoints", dealerMarketing?.summary?.campaign_touchpoints ?? 0],
+              ["Brand Ready", dealerMarketing?.summary?.branding_ready ? 'Ja' : 'Nein'],
+            ]}
+            testid="merchant-dealer-marketing-hero"
+          />
+          <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <DealerListCard title="Brand Assets" icon={Megaphone} testid="merchant-dealer-assets-card">
+              {(dealerMarketing?.assets || []).map((item, index) => (
+                <DealerRow
+                  key={item.asset_id}
+                  title={item.title}
+                  subtitle={item.description}
+                  badges={[item.format, item.status]}
+                  value={item.cta_label}
+                  testid={`merchant-dealer-asset-${index}`}
+                />
+              ))}
+            </DealerListCard>
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-dealer-brand-profile-card">
+              <div className="mb-4 flex items-center gap-2"><Sparkles size={16} className="text-amber-300" /><h3 className="text-sm font-bold text-white">Brand Profil</h3></div>
+              <div className="space-y-3 text-sm text-slate-300">
+                <div><span className="text-slate-500">Firma:</span> <span className="text-white">{dealerMarketing?.brand_profile?.business_name || 'BidBlitz Charge Partner'}</span></div>
+                <div><span className="text-slate-500">Kategorie:</span> <span className="text-white">{dealerMarketing?.brand_profile?.category || 'Charge / Retail'}</span></div>
+                <div><span className="text-slate-500">Website:</span> <span className="text-white">{dealerMarketing?.brand_profile?.website || '—'}</span></div>
+                <p className="rounded-2xl border border-white/8 bg-white/5 p-3 text-[13px] leading-6 text-slate-300">Positionierung: klare technische Formsprache, hochwertige Verpackung, digitale Garantie und ein professionelles Händlernetz – damit BidBlitz Charge sofort vertrauenswürdig wirkt.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "warranty" && (
+        <div className="p-4 space-y-4" data-testid="merchant-dealer-warranty-tab">
+          <DealerSectionHero
+            overline="Garantieabwicklung"
+            title="Digitale Garantie statt E-Mail-Pingpong"
+            description="Jeder Händler kann Defekte, Seriennummern und gewünschte Lösung direkt dokumentieren – sauber für Support und Skalierung." 
+            metrics={[
+              ["Fälle", dealerWarranty?.summary?.claims_total ?? 0],
+              ["Offen", dealerWarranty?.summary?.open_total ?? 0],
+              ["Gelöst", dealerWarranty?.summary?.resolved_total ?? 0],
+              ["Austausch", dealerWarranty?.summary?.replacement_total ?? 0],
+            ]}
+            testid="merchant-dealer-warranty-hero"
+          />
+          <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-dealer-warranty-form-card">
+              <div className="mb-4 flex items-center gap-2"><ShieldCheck size={16} className="text-fuchsia-300" /><h3 className="text-sm font-bold text-white">Garantiefall anlegen</h3></div>
+              <div className="space-y-3">
+                <OpsInput value={warrantyForm.product_id} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, product_id: value }))} placeholder="Produkt-ID" testid="merchant-dealer-warranty-product" />
+                <OpsInput value={warrantyForm.serial_number} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, serial_number: value }))} placeholder="Seriennummer" testid="merchant-dealer-warranty-serial" />
+                <div className="grid grid-cols-2 gap-2">
+                  <OpsSelect value={warrantyForm.issue_type} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, issue_type: value }))} options={dealerWarranty?.issue_types || ["defekt"]} testid="merchant-dealer-warranty-issue-type" />
+                  <OpsSelect value={warrantyForm.requested_resolution} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, requested_resolution: value }))} options={dealerWarranty?.resolution_types || ["repair"]} testid="merchant-dealer-warranty-resolution" />
+                </div>
+                <OpsInput value={warrantyForm.customer_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, customer_name: value }))} placeholder="Kundenname" testid="merchant-dealer-warranty-customer-name" />
+                <OpsInput value={warrantyForm.customer_email} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, customer_email: value }))} placeholder="kunde@email.de" testid="merchant-dealer-warranty-customer-email" />
+                <OpsInput value={warrantyForm.purchase_date} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, purchase_date: value }))} placeholder="2026-07-28" testid="merchant-dealer-warranty-purchase-date" />
+                <OpsTextarea value={warrantyForm.issue_summary} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, issue_summary: value }))} placeholder="Fehlerbild, Display, Ladeproblem, Zubehör..." testid="merchant-dealer-warranty-summary" />
+                <button onClick={submitWarrantyClaim} disabled={dealerBusy === "warranty"} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-fuchsia-400 text-slate-950 text-xs font-black disabled:opacity-50" data-testid="merchant-dealer-warranty-submit">
+                  {dealerBusy === "warranty" ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />} Garantiefall speichern
+                </button>
+              </div>
+            </div>
+
+            <DealerListCard title="Aktuelle Garantiefälle" icon={ShieldCheck} testid="merchant-dealer-warranty-list-card">
+              {(dealerWarranty?.claims || []).length === 0 ? <EmptyDealerState label="Noch keine Garantiefälle vorhanden" /> : (dealerWarranty?.claims || []).map((item, index) => (
+                <DealerRow
+                  key={item.claim_id}
+                  title={`${item.product_name || 'Produkt'} · ${item.claim_id}`}
+                  subtitle={`${item.issue_type} · ${item.requested_resolution} · ${item.customer_name || 'Kunde offen'}`}
+                  badges={[item.status, item.serial_number || 'ohne SN']}
+                  value={item.created_at ? new Date(item.created_at).toLocaleDateString('de-DE') : '—'}
+                  testid={`merchant-dealer-warranty-claim-${index}`}
+                />
+              ))}
+            </DealerListCard>
           </div>
         </div>
       )}
@@ -1454,6 +1840,59 @@ function OpsListRow({ title, subtitle, value, testid }) {
       </div>
     </div>
   );
+}
+
+function DealerSectionHero({ overline, title, description, metrics, testid }) {
+  return (
+    <div className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,_rgba(0,194,255,0.14),_transparent_32%),linear-gradient(145deg,_rgba(9,14,28,1),_rgba(17,24,39,1))] p-5" data-testid={testid}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/80">{overline}</p>
+          <h2 className="mt-2 text-2xl font-black text-white">{title}</h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-300">{description}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {metrics.map(([label, value], index) => (
+            <MetricPill key={`${label}-${index}`} label={label} value={value} testid={`${testid}-metric-${index}`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DealerListCard({ title, icon: Icon, children, testid }) {
+  return (
+    <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid={testid}>
+      <div className="mb-4 flex items-center gap-2"><Icon size={16} className="text-cyan-300" /><h3 className="text-sm font-bold text-white">{title}</h3></div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function DealerRow({ title, subtitle, badges = [], value, testid }) {
+  return (
+    <div className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={testid}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{title}</p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-400">{subtitle}</p>
+          {badges.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {badges.map((badge, index) => (
+                <span key={`${badge}-${index}`} className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{badge}</span>
+              ))}
+            </div>
+          )}
+        </div>
+        <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function EmptyDealerState({ label }) {
+  return <div className="rounded-2xl border border-dashed border-white/10 bg-black/10 px-4 py-8 text-center text-sm text-slate-500">{label}</div>;
 }
 
 export default MerchantPortalPage;
