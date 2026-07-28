@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 28.07.2026 — Händlerportal V1.5: Downloads, Materialanfragen und Garantie-Status
+- Die zweite Ausbaustufe des BidBlitz-Charge-Händlerportals ist live. Händler können jetzt **Brand-/POS-Material herunterladen**, **Materialanfragen direkt im Portal erfassen** und **Garantiefälle mit Status-Aktionen** weiterbearbeiten.
+- Backend: `backend/routes/merchant_portal.py` erhielt neue Endpunkte für Asset-Downloads, Marketing-Requests sowie Warranty-Status-Updates. Marketing-Assets liefern jetzt echte Download-URLs; Materialanfragen werden gespeichert; Garantiefälle können auf Status wie `under_review`, `replacement_sent` oder `resolved` gesetzt werden.
+- Frontend: `frontend/src/pages/MerchantPortalPage.jsx` zeigt im Marketing-Bereich jetzt Download-Buttons, ein Anfrageformular und eine Request-Liste. Im Garantie-Bereich sind Fall-Details, Fehlerbeschreibung und Status-Aktionsbuttons sichtbar.
+- Verifiziert: API-Tests für Download, Marketing-Request und Warranty-Status **PASS**; Browser-Smoke **PASS**; Frontend-Testing-Agent **PASS**. Kein Kernproblem offen.
+
 ## 28.07.2026 — Händlerportal V1 für BidBlitz Charge ausgebaut
 - Das bestehende Händlerportal wurde um einen echten **Dealer-/Händler-V1-Block** erweitert. Händler sehen jetzt im Login-geschützten Portal fünf neue Kernbereiche: **Lagerbestand**, **Nachbestellung**, **Rechnungen**, **Werbematerial** und **Garantieabwicklung**.
 - Backend: `backend/routes/merchant_portal.py` liefert neue Händler-Endpunkte für Inventory, Reorders, Invoices, Marketing und Warranty. Zusätzlich können Händler jetzt direkt **Nachbestell-Entwürfe** aus Empfehlungen erzeugen sowie **digitale Garantiefälle** anlegen.

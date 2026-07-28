@@ -1,6 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Admin-Error-Fix — 24.07.2026
+- ✅ Händlerportal V1.5: Werbematerial-Downloads, Materialanfragen und Garantie-Status-Aktionen sind live.
 - ✅ Händlerportal V1 für **BidBlitz Charge** steht: Lagerbestand, Nachbestellung, Rechnungen, Werbematerial und Garantieabwicklung sind im Händler-Login verfügbar.
 - ✅ Build-Frontend-Deploy-Fehler durch zu groben `localhost`-Guard im Workflow behoben.
 - ✅ IONOS-Deploy-Workflow gegen SSH-Secret-Mismatch gehärtet (`VPS_PASSWORD` oder `VPS_SSH_KEY`).
@@ -11,7 +12,7 @@
 - ✅ `/admin/merchants` rendert wieder Händlerkarten statt mit `undefined.toLowerCase` bzw. Lade-Loop hängen zu bleiben.
 - ✅ Verifiziert mit Frontend-Smoke, Frontend-Testing-Agent PASS und Backend-Regression-Check PASS.
 - 🔴 Nächster Produktpunkt bleibt: **Telegram-Alarm als Monitoring-Backup**.
-- 🟡 Nächster sinnvoller Ausbau für das Händlerportal: echte Brand-/Packaging-Asset-Downloads, Garantie-Status-Workflow und dedizierter Händler-Login-Rollout für nicht-admin Testkonten.
+- 🟡 Nächster sinnvoller Ausbau für das Händlerportal: Datei-Uploads für Garantiebelege/Bilder, echte Packaging-Mockups und dedizierter Händler-Login-Rollout für nicht-admin Testkonten.
 
 ## Status nach kompletter KYC-Deaktivierung im Testbuild — 24.07.2026
 - ✅ KYC ist im **aktuellen Testbuild vollständig deaktiviert**: keine KYC-Karte, keine KYC-Buttons, keine KYC-Redirects, keine KYC-Routen-Blocks.
