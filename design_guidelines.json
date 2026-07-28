@@ -1,122 +1,171 @@
 {
   "project_context": {
-    "type": "hybrid_fullstack",
-    "industry": "Leisure & Entertainment (Swimming Pool / Water Park)",
-    "theme": "light",
-    "vibe": "Fresh, aquatic, operational precision, family-friendly",
-    "languages": ["de", "en"]
+    "name": "BidBlitz Charge Händlerportal",
+    "type": "B2B Admin Dashboard / E-Commerce Portal",
+    "emotional_archetype": "The Performance Pro / Swiss High-Contrast",
+    "core_features": [
+      "Händler-Login",
+      "Lagerbestand",
+      "Nachbestellung",
+      "Rechnungen",
+      "Werbematerial",
+      "Garantieabwicklung"
+    ]
   },
   "typography": {
-    "headings": "Cabinet Grotesk (or Outfit) - clean, structural, yet modern and friendly",
-    "body": "Inter - for maximum legibility in POS and data-dense Admin dashboards",
-    "rules": [
-      "Use tracking-tight for all headings above 32px",
-      "Do NOT exceed text-6xl for hero headings",
-      "Use uppercase with wide tracking (tracking-widest) for tiny overlines and labels"
-    ]
-  },
-  "colors": {
-    "archetype": "ORGANIC & EARTHY meets PASTEL & SOFT (Aquatic Vibe)",
-    "primary": "#0088CC",
-    "secondary": "#00D4FF",
-    "background": "#F4F7F9",
-    "surface": "#FFFFFF",
-    "text": "#0F172A",
-    "text_muted": "#64748B",
-    "accents": {
-      "success": "#10B981",
-      "warning": "#F59E0B",
-      "danger": "#EF4444",
-      "action": "#FF8C00"
+    "fonts": {
+      "headings": "'Outfit', 'Cabinet Grotesk', sans-serif",
+      "body": "'Inter', 'IBM Plex Sans', sans-serif",
+      "mono": "'JetBrains Mono', monospace"
     },
     "rules": [
-      "Never use pure black or pure white; tint with a drop of blue (e.g., #0F172A for dark text)",
-      "Avoid teal green/blue (#1B93A4) for dashboards per constraints, rely on pure cyan or deep oceanic blue",
-      "CTAs should be high contrast (Action Orange) to stand out against blue/white aquatic backgrounds",
-      "No complete transparent backgrounds for overlays/dropdowns. Use solid white with shadow or glassmorphism (bg-white/80 backdrop-blur-xl)."
+      "No default Inter for H1/H2. Use Outfit for high-end technical feel.",
+      "Headings > 32px MUST use tracking-tight.",
+      "Overlines/Labels MUST be Uppercase + Tiny + tracking-[0.2em].",
+      "Line height: leading-none for headers, leading-relaxed for body."
+    ],
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-medium",
+      "h3": "text-xl sm:text-2xl font-medium",
+      "h4": "text-lg sm:text-xl font-medium",
+      "body": "text-sm sm:text-base",
+      "labels": "text-xs font-bold uppercase tracking-[0.2em]"
+    }
+  },
+  "colors": {
+    "archetype": "The Performance Pro",
+    "palette": {
+      "background": "#050505",
+      "surface": "#111111",
+      "surface_elevated": "#1A1A1A",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#A1A1AA",
+      "accent": "#00C2FF",
+      "accent_hover": "#00D4FF",
+      "border": "rgba(255, 255, 255, 0.08)",
+      "success": "#00D26A",
+      "error": "#FF4757",
+      "warning": "#FFD700"
+    },
+    "rules": [
+      "Never use pure black or gray, use tinted obsidian. Background is #050505.",
+      "Always set hover states explicitly (e.g., hover:bg-[#1A1A1A] hover:text-white).",
+      "Text must meet APCA / WCAG AA contrast ratio."
     ]
   },
-  "visual_enhancers": {
-    "glassmorphism": "Use sparingly on sticky headers or floating POS panels. bg-white/80 with backdrop-blur-xl and border-white/20.",
-    "neumorphism": "Not recommended for this theme to maintain crispness in wet environments.",
-    "borders": "1px solid border-slate-200 for cards, keeping it flat and clean.",
-    "shadows": "Ambient soft shadows (shadow-sm or shadow-md) for cards, drop-shadow-xl for floating action buttons."
+  "visual enhancers": {
+    "surfaces": [
+      "Grid Borders (Technical Look): Use border-r and border-b for data grids and tables.",
+      "Neumorphism (Tactile): Flat solid surfaces with 1px border-white/5 for cards.",
+      "Avoid Heavy Glass: For dashboards, use solid backgrounds to prevent visual refraction of data."
+    ],
+    "effects": [
+      "Subtle Glows: Use var(--accent-glow) for active tabs or critical KPIs.",
+      "Tracing Beam: Use sparingly on high-priority upgrade or active warranty claim cards."
+    ]
+  },
+  "component name": {
+    "strategy": "Shadcn UI Heavy + Custom Density",
+    "rules": [
+      "Cards: Go cardless or use rectangular dense styles. Max 8px border-radius.",
+      "Tables: High density. Left align data, right align numbers. Subtle border-b between rows.",
+      "Inputs: Use Shadcn Input/Select. Solid backgrounds (bg-[#111111]), no transparent dropdowns.",
+      "Buttons: Pill-shaped or sharp rectangles. Interactive hover states with transform.",
+      "Charts: Use Shadcn Charts (Recharts). Stick to monospaced numbers for tooltips."
+    ]
   },
   "grids": {
-    "dashboard": "High Density Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4) with gap-6.",
-    "marketing": "The 'Bento' Grid for landing/ticketing pages. Wide gaps (gap-8)."
+    "mode": "High Density Grid (For Dashboards/Analytics)",
+    "rules": [
+      "Base Grid: grid-cols-1 md:grid-cols-3 lg:grid-cols-4.",
+      "Gap Strategy: Tight (gap-4 or gap-6).",
+      "Every pixel utilized, use h-full to match neighbors.",
+      "Direct Children Only: Grid items MUST be direct children."
+    ]
   },
   "layouts": {
-    "admin_dashboard": "Sidebar navigation with dense data widgets and Shadcn charts. Quick-action top bar.",
-    "pos_interface": "Touch-friendly. Thumb-aligned large action buttons (min 44px height). Grid layout for snacks/add-ons.",
-    "online_checkout": "Step-by-step, clean, minimal friction, progress indicator, trust badges."
+    "spacing_scale": "p-4 to p-8 internally for widgets, generous margins for section gaps.",
+    "rules": [
+      "Mobile-first responsive grids.",
+      "Navigation: Sidebar Navigation for the dealer portal (Dashboard), Top bar for User/Quick Actions.",
+      "Optical alignment over geometrical."
+    ]
   },
   "motion": {
-    "interactions": "Hover states on all buttons (slight lift -translate-y-1, increased shadow).",
-    "page_transitions": "Subtle fade-in and slide-up (framer-motion).",
-    "micro_interactions": "Soft checkmarks upon task completion (e.g., locker assigned)."
-  },
-  "components": {
-    "buttons": "Pill-shaped or rounded-lg (8px), no sharp edges for consumer-facing, crisp edges for admin.",
-    "cards": "Subtle roundness (max 8px border-radius), flat with 1px border. Cardless where possible for data density.",
-    "inputs": "Shadcn standard but customized to have a very light blue/grey background (bg-slate-50) and no thick rings on focus unless necessary.",
-    "tables": "Shadcn tables for Admin. Striped rows for better legibility.",
-    "charts": "Shadcn charts / Recharts for capacity, revenue, and temperature monitoring.",
-    "toasts": "Sonner for notifications (e.g., 'RFID assigned', 'Gate unlocked')."
+    "rules": [
+      "Micro-interactions on hover (opacity and slight transforms).",
+      "Staggered entrance animations for table rows or grid items.",
+      "No universal transitions (transition: all). Target specific properties."
+    ]
   },
   "accessibility": {
-    "contrast": "Ensure 4.5:1 for standard text. Test text over aquatic background images.",
-    "focus": "Clear focus rings (focus:ring-2 focus:ring-blue-500) for POS terminal usability.",
-    "testing": "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., data-testid='pos-checkout-btn')."
+    "rules": [
+      "Include data-testid on ALL interactive elements.",
+      "Respect prefers-reduced-motion.",
+      "High contrast focus rings focus:ring-2 focus:ring-accent."
+    ]
   },
   "media": {
     "image_urls": {
-      "hero_background": {
-        "url": "https://images.unsplash.com/photo-1614667288602-9ac6e37318a7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwyfHxzd2ltbWluZyUyMHBvb2wlMjBpbmRvb3IlMjBibHVlfGVufDB8fHx8MTc4NDE1MzkwN3ww&ixlib=rb-4.1.0&q=85",
-        "description": "Blue swimming pool with water, used for hero banner on ticketing site"
+      "product_showcase_cables": {
+        "url": "https://images.unsplash.com/photo-1572721546624-05bf65ad7679?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwzfHxwcmVtaXVtJTIwdXNiJTIwYyUyMGNoYXJnZXIlMjB0ZWNofGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
+        "category": "Werbematerial / Marketing Materials",
+        "description": "Premium orange USB-C cables, useful for promotional asset section."
       },
-      "marketing_card_1": {
-        "url": "https://images.unsplash.com/photo-1724660583299-2356fe880e54?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHw0fHxzd2ltbWluZyUyMHBvb2wlMjBpbmRvb3IlMjBibHVlfGVufDB8fHx8MTc4NDE1MzkwN3ww&ixlib=rb-4.1.0&q=85",
-        "description": "Swimming pool tiled floor, good for membership/pass background"
+      "product_showcase_charger": {
+        "url": "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwyfHxwcmVtaXVtJTIwdXNiJTIwYyUyMGNoYXJnZXIlMjB0ZWNofGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
+        "category": "Nachbestellung / Hardware Catalog",
+        "description": "Sleek white charger, for product listing."
       },
-      "feature_slide": {
-        "url": "https://images.unsplash.com/photo-1646207683942-971653b6f6c2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwzfHx3YXRlciUyMHBhcmt8ZW58MHx8fHwxNzg0MTUzOTA3fDA&ixlib=rb-4.1.0&q=85",
-        "description": "Water park slide, for family fun and activities section"
+      "product_lifestyle": {
+        "url": "https://images.unsplash.com/photo-1557767382-97b28f5488e7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwxfHxwcmVtaXVtJTIwdXNiJTIwYyUyMGNoYXJnZXIlMjB0ZWNofGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
+        "category": "Login / Hero",
+        "description": "Black smartphone charging. Perfect for auth background or portal welcome."
       },
-      "feature_swim": {
-        "url": "https://images.unsplash.com/photo-1530549387789-4c1017266635?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwxfHxzd2ltbWluZyUyMHBvb2wlMjBpbmRvb3IlMjBibHVlfGVufDB8fHx8MTc4NDE1MzkwN3ww&ixlib=rb-4.1.0&q=85",
-        "description": "Man doing butterfly stroke underwater, dynamic feature image"
+      "warehouse_boxes": {
+        "url": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjB0ZWNoJTIwd2FyZWhvdXNlJTIwbG9naXN0aWNzfGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
+        "category": "Lagerbestand / Inventory",
+        "description": "Yellow and white logistic boxes to represent inventory/warehouse."
+      },
+      "warehouse_racks": {
+        "url": "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB0ZWNoJTIwd2FyZWhvdXNlJTIwbG9naXN0aWNzfGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
+        "category": "Lagerbestand / Inventory Background",
+        "description": "Warehouse racking system to illustrate scale and storage."
       }
     }
   },
-  "3d_libraries": {
-    "recommendation": "Not strictly necessary for core POS/Admin MVP unless specifically showcasing an interactive park map. For standard data, use Recharts. If a 3D park map is desired later, use React Three Fiber.",
-    "usage": "Keep lightweight."
+  "3d libraries": {
+    "libraries": [
+      "Recharts",
+      "Framer Motion"
+    ],
+    "steps": [
+      "Use Recharts for complex data in Lagerbestand (Inventory Trends) and Revenue visualization.",
+      "Use Framer Motion for progressive disclosure and smooth page transitions.",
+      "Avoid heavy 3D canvases in the data-heavy portal areas; focus on raw performance and clarity."
+    ]
   },
-  "instructions_to_main_agent": [
-    "Follow this guideline meticulously. We are building a hybrid ticketing, POS, and Admin system for a water park / leisure center.",
-    "Ensure dual-language support (de/en) structural readiness via i18n placeholders or a toggle.",
-    "Build the dashboard and POS interface with dense, clear data, using Shadcn components.",
-    "Make sure POS is touch-friendly (large buttons, distinct colors for actions).",
-    "Hardware readiness: Mock APIs for RFID/QR wristbands, locker opening/closing, and turnstiles.",
-    "Do NOT use HTML `<select>` or `<input type='date'>`. Use Shadcn equivalents.",
-    "Apply `data-testid` to all buttons and actionable items.",
-    "Use light theme as default for this aquatic, family-friendly app.",
-    "Integrate provided image URLs gracefully using CSS background-size: cover, overlays (bg-white/20 or bg-black/40) to ensure text readability.",
-    "Install Lucide React for consistent iconography."
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Do not use generic centered layouts or simplistic gradients.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Use glass-morphism effects with backdrop filters where appropriate, but favor solid dark panels for data grids to maintain high contrast.",
+    "NEVER use emojis for icons. Use lucide-react or @phosphor-icons/react.",
+    "Do not add `transition: all`. Transition specific properties.",
+    "Use sonner for toast notifications for success/error handling (e.g., Warranty submitted, Order placed)."
   ],
-  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
-    "Create depth through layered design elements with z-index hierarchy.",
-    "Use glass-morphism effects with backdrop filters (12-24px blur) where appropriate.",
-    "You MUST NOT apply universal transition. Eg: `transition: all`. This results in breaking transforms. Always add transitions for specific interactive elements.",
-    "You MUST NOT center align the app container, i.e., do not add `.App { text-align: center; }`.",
-    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
-    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
-    "Every interaction needs micro-animations - hover states, transitions.",
-    "Use generous spacing (p-6, p-8). Cramped designs look cheap.",
-    "Use sonner for toasts.",
-    "Use lucide-react for icons.",
-    "All interactive elements MUST include `data-testid` attribute."
+  "GENERAL UI UX DESIGN GUIDELINES": [
+    "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., data-testid='submit-reorder-btn').",
+    "Never use completely transparent backgrounds for dropdowns, overlays, or headers. Always have a solid or slightly translucent fill.",
+    "Always provide a prominent North Star KPI (e.g., Active Stock, Pending Orders) on the top-left.",
+    "Group metrics intuitively: Orders, Inventory, Revenue, and Support.",
+    "Mobile-first responsive design, even for B2B dashboards."
+  ],
+  "instructions_to_main_agent": [
+    "Implement the BidBlitz Charge Händlerportal using React and Tailwind.",
+    "Create a robust Layout with Sidebar navigation for switching between Login, Lagerbestand, Nachbestellung, Rechnungen, Werbematerial, Garantieabwicklung.",
+    "Ensure the UI reflects a premium hardware brand comparable to Anker/UGREEN—sleek, dark, technical, and highly readable.",
+    "Use the provided `App.css` and `tailwind.config.js` conventions for dark mode aesthetics.",
+    "Integrate Shadcn primitives (Card, Table, Badge, Button, Input) heavily customized for the dark theme."
   ]
 }

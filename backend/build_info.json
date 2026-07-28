@@ -1,13 +1,13 @@
 {
-  "environment": "production",
-  "frontend_version": "0fce36e-20260728200530",
+  "environment": "preview",
+  "frontend_version": "749aba8-20260728213954",
   "backend_version": "2.0.0",
-  "git_commit": "0fce36e5f7d32694eb6089ccd9a7fae211e72a88",
+  "git_commit": "749aba842498cd56a22b9d93029ef65c5b702d76",
   "git_branch": "main",
-  "build_id": "0fce36e-20260728200530",
-  "deployed_at": "2026-07-28T20:05:30.649388+00:00",
-  "api_base_url": "https://bidblitz.ae",
-  "public_base_url": "https://bidblitz.ae",
+  "build_id": "749aba8-20260728213954",
+  "deployed_at": "2026-07-28T21:39:54.679537+00:00",
+  "api_base_url": "https://super-app-staging-2.preview.emergentagent.com",
+  "public_base_url": "https://super-app-staging-2.preview.emergentagent.com",
   "service_worker_version": "bidblitz-static-v16",
   "api_cache_version": "bidblitz-api-v16"
 }
