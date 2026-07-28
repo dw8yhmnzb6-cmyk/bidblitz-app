@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 27.07.2026 — IONOS-Deploy-Workflow gegen Secret/Auth-Mismatch gehärtet
+- Nach dem neuen Nutzer-Screenshot war klar: **CI grün, aber „Deploy to IONOS Production“ rot**. Damit lag der Fehler nicht mehr im Build, sondern im echten VPS-Deploy-Pfad.
+- `.github/workflows/deploy.yml` wurde so erweitert, dass der Deploy jetzt **mit Passwort ODER SSH-Key** arbeiten kann. Der Workflow akzeptiert nun **`VPS_PASSWORD`** oder **`VPS_SSH_KEY`** statt hart nur Passwort zu verlangen.
+- Neu hinzugefügt: Schritt zur Erkennung des Auth-Modus, Schlüsseldatei-Erzeugung im Runner, `rsync`/SSH-Switch für Key-basierten Zugriff sowie doppelte Remote-Schritte für **MAPBOX_TOKEN-Sync** und **Backend-Restart** via appleboy/ssh-action sowohl für Passwort- als auch Key-Login.
+- Damit ist ein häufiger historischer GitHub-Secret-Mismatch behoben: Frühere Dokumente nutzten teilweise `VPS_SSH_KEY`, der Workflow erwartete aber nur `VPS_PASSWORD`. Der neue Workflow deckt jetzt beide Varianten ab.
+- Verifiziert: Workflow-YAML ist syntaktisch gültig und enthält die neuen Auth-Pfade. Nächster echter Beleg ist der nächste GitHub-Run auf `main`.
+
 ## 27.07.2026 — Startseiten-404s für Ads und Empfehlungen behoben
 - Die bekannten Hintergrund-404s auf **`/api/pro/ads/active`**, **`/api/recommendations/home`** und **`/api/ai/recommendations`** wurden auf eine fehlende Router-Registrierung zurückgeführt. Die Routen existierten bereits in `backend/routes/pro_features.py`, `backend/routes/recommendations.py` und `backend/routes/ai_chat.py`, waren aber nicht in `backend/core/router_registry.py` eingetragen.
 - `router_registry.py` registriert jetzt zusätzlich **`routes.recommendations`**, **`routes.pro_features`** und **`routes.ai_chat`**. Dadurch laden Home-Empfehlungen, Ad-Banner und AI-Recommendations nicht mehr in 404-Zustände.
