@@ -62,6 +62,7 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [maintenanceForm, setMaintenanceForm] = useState({ asset_name: "", asset_type: "terminal", priority: "medium", status: "open", linked_company_id: "", vendor_name: "", next_check_at: "", notes: "" });
   const [dealerBusy, setDealerBusy] = useState("");
   const [reorderForm, setReorderForm] = useState({ supplier_id: "", store_id: "", note: "" });
+  const [marketingRequestForm, setMarketingRequestForm] = useState({ asset_id: "charge-brand-pack", request_type: "display_kit", quantity: 1, notes: "" });
   const [warrantyForm, setWarrantyForm] = useState({ product_id: "", serial_number: "", issue_type: "defekt", customer_name: "", customer_email: "", purchase_date: "", issue_summary: "", requested_resolution: "repair" });
 
   const loadDash = useCallback(async () => {
@@ -410,6 +411,33 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     }
   }, [warrantyForm, loadDealerWarranty]);
 
+  const submitMarketingRequest = useCallback(async () => {
+    setDealerBusy("marketing-request");
+    try {
+      await api.createMerchantDealerMarketingRequest(marketingRequestForm);
+      toast.success("Materialanfrage wurde gespeichert");
+      setMarketingRequestForm((prev) => ({ ...prev, quantity: 1, notes: "" }));
+      await loadDealerMarketing();
+    } catch (error) {
+      toast.error(error.message || "Materialanfrage konnte nicht gespeichert werden");
+    } finally {
+      setDealerBusy("");
+    }
+  }, [marketingRequestForm, loadDealerMarketing]);
+
+  const updateWarrantyStatus = useCallback(async (claimId, status) => {
+    setDealerBusy(`warranty-status-${claimId}`);
+    try {
+      await api.updateMerchantDealerWarrantyStatus(claimId, { status, internal_note: `Status via Händlerportal auf ${status} gesetzt` });
+      toast.success("Garantiestatus aktualisiert");
+      await loadDealerWarranty();
+    } catch (error) {
+      toast.error(error.message || "Garantiestatus konnte nicht aktualisiert werden");
+    } finally {
+      setDealerBusy("");
+    }
+  }, [loadDealerWarranty]);
+
   const TABS = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "inventory", label: "Lagerbestand", icon: Boxes },
@@ -736,14 +764,21 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
             <DealerListCard title="Brand Assets" icon={Megaphone} testid="merchant-dealer-assets-card">
               {(dealerMarketing?.assets || []).map((item, index) => (
-                <DealerRow
-                  key={item.asset_id}
-                  title={item.title}
-                  subtitle={item.description}
-                  badges={[item.format, item.status]}
-                  value={item.cta_label}
-                  testid={`merchant-dealer-asset-${index}`}
-                />
+                <div key={item.asset_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-dealer-asset-${index}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-400">{item.description}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.format}</span>
+                        <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.status}</span>
+                      </div>
+                    </div>
+                    <a href={`${API}${item.download_url}`} className="inline-flex h-9 items-center justify-center rounded-2xl bg-cyan-400 px-4 text-xs font-black text-slate-950" data-testid={`merchant-dealer-asset-download-${index}`}>
+                      Download
+                    </a>
+                  </div>
+                </div>
               ))}
             </DealerListCard>
             <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-dealer-brand-profile-card">
@@ -755,6 +790,34 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
                 <p className="rounded-2xl border border-white/8 bg-white/5 p-3 text-[13px] leading-6 text-slate-300">Positionierung: klare technische Formsprache, hochwertige Verpackung, digitale Garantie und ein professionelles Händlernetz – damit BidBlitz Charge sofort vertrauenswürdig wirkt.</p>
               </div>
             </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-dealer-marketing-request-card">
+              <div className="mb-4 flex items-center gap-2"><PackageCheck size={16} className="text-amber-300" /><h3 className="text-sm font-bold text-white">Material anfragen</h3></div>
+              <div className="space-y-3">
+                <OpsSelect value={marketingRequestForm.asset_id} onChange={(value) => setMarketingRequestForm((prev) => ({ ...prev, asset_id: value }))} options={(dealerMarketing?.assets || []).map((item) => item.asset_id)} labels={Object.fromEntries((dealerMarketing?.assets || []).map((item) => [item.asset_id, item.title]))} testid="merchant-dealer-marketing-asset-select" />
+                <OpsSelect value={marketingRequestForm.request_type} onChange={(value) => setMarketingRequestForm((prev) => ({ ...prev, request_type: value }))} options={["display_kit", "poster_pack", "social_bundle", "packaging_guidelines"]} testid="merchant-dealer-marketing-request-type" />
+                <OpsInput value={String(marketingRequestForm.quantity)} onChange={(value) => setMarketingRequestForm((prev) => ({ ...prev, quantity: Number(value) || 1 }))} placeholder="Menge" testid="merchant-dealer-marketing-quantity" />
+                <OpsTextarea value={marketingRequestForm.notes} onChange={(value) => setMarketingRequestForm((prev) => ({ ...prev, notes: value }))} placeholder="Standort, Display-Fläche, Event, Händlerbedarf..." testid="merchant-dealer-marketing-notes" />
+                <button onClick={submitMarketingRequest} disabled={dealerBusy === 'marketing-request'} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-amber-300 text-slate-950 text-xs font-black disabled:opacity-50" data-testid="merchant-dealer-marketing-submit">
+                  {dealerBusy === 'marketing-request' ? <Loader2 size={14} className="animate-spin" /> : <Megaphone size={14} />} Anfrage senden
+                </button>
+              </div>
+            </div>
+
+            <DealerListCard title="Materialanfragen" icon={Package} testid="merchant-dealer-marketing-requests-list">
+              {(dealerMarketing?.requests || []).length === 0 ? <EmptyDealerState label="Noch keine Materialanfragen vorhanden" /> : (dealerMarketing?.requests || []).map((item, index) => (
+                <DealerRow
+                  key={item.request_id}
+                  title={`${item.request_type} · ${item.request_id}`}
+                  subtitle={item.notes || 'Ohne Zusatznotiz'}
+                  badges={[item.asset_id || 'asset', `Menge ${item.quantity || 1}`, item.status || 'submitted']}
+                  value={item.created_at ? new Date(item.created_at).toLocaleDateString('de-DE') : '—'}
+                  testid={`merchant-dealer-marketing-request-${index}`}
+                />
+              ))}
+            </DealerListCard>
           </div>
         </div>
       )}
@@ -795,14 +858,35 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
 
             <DealerListCard title="Aktuelle Garantiefälle" icon={ShieldCheck} testid="merchant-dealer-warranty-list-card">
               {(dealerWarranty?.claims || []).length === 0 ? <EmptyDealerState label="Noch keine Garantiefälle vorhanden" /> : (dealerWarranty?.claims || []).map((item, index) => (
-                <DealerRow
-                  key={item.claim_id}
-                  title={`${item.product_name || 'Produkt'} · ${item.claim_id}`}
-                  subtitle={`${item.issue_type} · ${item.requested_resolution} · ${item.customer_name || 'Kunde offen'}`}
-                  badges={[item.status, item.serial_number || 'ohne SN']}
-                  value={item.created_at ? new Date(item.created_at).toLocaleDateString('de-DE') : '—'}
-                  testid={`merchant-dealer-warranty-claim-${index}`}
-                />
+                <div key={item.claim_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-dealer-warranty-claim-${index}`}>
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{item.product_name || 'Produkt'} · {item.claim_id}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-400">{item.issue_type} · {item.requested_resolution} · {item.customer_name || 'Kunde offen'}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.status}</span>
+                        <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.serial_number || 'ohne SN'}</span>
+                      </div>
+                      {item.issue_summary && <p className="mt-3 text-[12px] leading-5 text-slate-300">{item.issue_summary}</p>}
+                    </div>
+                    <div className="flex flex-col gap-2 md:items-end">
+                      <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">{item.created_at ? new Date(item.created_at).toLocaleDateString('de-DE') : '—'}</span>
+                      <div className="flex flex-wrap gap-2">
+                        {['under_review', 'replacement_sent', 'resolved'].map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => updateWarrantyStatus(item.claim_id, status)}
+                            disabled={dealerBusy === `warranty-status-${item.claim_id}`}
+                            className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                            data-testid={`merchant-dealer-warranty-status-${_safeSlug(status)}-${index}`}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </DealerListCard>
           </div>
@@ -1893,6 +1977,10 @@ function DealerRow({ title, subtitle, badges = [], value, testid }) {
 
 function EmptyDealerState({ label }) {
   return <div className="rounded-2xl border border-dashed border-white/10 bg-black/10 px-4 py-8 text-center text-sm text-slate-500">{label}</div>;
+}
+
+function _safeSlug(value) {
+  return String(value || "item").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
 }
 
 export default MerchantPortalPage;

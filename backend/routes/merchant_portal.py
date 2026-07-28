@@ -132,6 +132,18 @@ class DealerWarrantyCreateRequest(BaseModel):
     requested_resolution: str = "repair"
 
 
+class DealerMarketingRequestCreateRequest(BaseModel):
+    asset_id: str = ""
+    request_type: str = "display_kit"
+    quantity: int = 1
+    notes: str = ""
+
+
+class DealerWarrantyStatusUpdateRequest(BaseModel):
+    status: str
+    internal_note: str = ""
+
+
 def _safe_round(value: Any) -> float:
     return round(_num(value), 2)
 
@@ -311,6 +323,7 @@ async def _build_dealer_marketing_suite(user: dict) -> Dict[str, Any]:
             "status": "ready",
             "description": "Logos, Packaging-Hinweise, Retail-Display-Stil und Händler-Branding für ein einheitliches Premium-Bild.",
             "cta_label": "Branding anwenden",
+            "download_url": "/api/merchant-portal/dealer/marketing/assets/charge-brand-pack/download",
         },
         {
             "asset_id": "charge-counter-display",
@@ -319,6 +332,7 @@ async def _build_dealer_marketing_suite(user: dict) -> Dict[str, Any]:
             "status": "ready",
             "description": "Platzierungshinweise für Premium-Displays, Thekenaufsteller und Charger-Kommunikation im Store.",
             "cta_label": "Display prüfen",
+            "download_url": "/api/merchant-portal/dealer/marketing/assets/charge-counter-display/download",
         },
         {
             "asset_id": "charge-social-launch",
@@ -327,6 +341,7 @@ async def _build_dealer_marketing_suite(user: dict) -> Dict[str, Any]:
             "status": "ready",
             "description": "Saubere High-End Creatives für Social, Händler-Newsletter und Produkt-Teaser.",
             "cta_label": "Creatives nutzen",
+            "download_url": "/api/merchant-portal/dealer/marketing/assets/charge-social-launch/download",
         },
     ]
     requests = await db.merchant_marketing_requests.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
@@ -2029,10 +2044,69 @@ async def get_dealer_marketing(request: Request):
     return await _build_dealer_marketing_suite(user)
 
 
+@router.get("/dealer/marketing/assets/{asset_id}/download")
+async def download_dealer_marketing_asset(asset_id: str, request: Request):
+    await require_merchant(request)
+    asset_docs = {
+        "charge-brand-pack": {
+            "filename": "bidblitz-charge-brand-pack.txt",
+            "content": "BidBlitz Charge Brand Pack\n\n- Premium Packaging: matte black, cyan accent, clean typography\n- POS Display: product-first, cable visibility, trust badges\n- Digital Warranty: QR-based handoff and serial-first registration\n- Händlernetz: einheitliche Counter Cards, shelf wobblers, launch posters\n",
+        },
+        "charge-counter-display": {
+            "filename": "bidblitz-charge-counter-display.txt",
+            "content": "Counter Display Kit\n\n1. Place hero charger at eye level\n2. Keep pricing simple and premium\n3. Use one trust line: 24M warranty / fast charge / premium build\n4. Keep display uncluttered for Belkin/Anker-level perception\n",
+        },
+        "charge-social-launch": {
+            "filename": "bidblitz-charge-social-launch.txt",
+            "content": "Launch Creatives\n\n- Reel Hook: Fast charge without cheap plastic look\n- Story Slide 1: Premium materials\n- Story Slide 2: Retail-ready display\n- Story Slide 3: Digital warranty & dealer support\n",
+        },
+    }
+    asset = asset_docs.get(asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset nicht gefunden")
+    return StreamingResponse(iter([asset["content"].encode("utf-8")]), media_type="text/plain", headers={"Content-Disposition": f"attachment; filename={asset['filename']}"})
+
+
+@router.post("/dealer/marketing/requests")
+async def create_dealer_marketing_request(req: DealerMarketingRequestCreateRequest, request: Request):
+    user = await require_merchant(request)
+    doc = {
+        "request_id": f"MRQ-{uuid.uuid4().hex[:10].upper()}",
+        "user_id": str(user.get("_id")),
+        "user_email": user.get("email", ""),
+        "asset_id": req.asset_id,
+        "request_type": req.request_type,
+        "quantity": max(1, int(req.quantity or 1)),
+        "notes": req.notes,
+        "status": "submitted",
+        "created_at": _now_iso(),
+    }
+    await db.merchant_marketing_requests.insert_one(doc)
+    return {"ok": True, "request": {k: v for k, v in doc.items() if k != "_id"}}
+
+
 @router.get("/dealer/warranty")
 async def get_dealer_warranty(request: Request):
     user = await require_merchant(request)
     return await _build_dealer_warranty_suite(user)
+
+
+@router.post("/dealer/warranty/{claim_id}/status")
+async def update_dealer_warranty_status(claim_id: str, req: DealerWarrantyStatusUpdateRequest, request: Request):
+    user = await require_merchant(request)
+    claim = await db.merchant_warranty_claims.find_one({"claim_id": claim_id}, {"_id": 0})
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    if user.get("role") != "admin" and claim.get("user_id") != str(user.get("_id")):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    update_doc = {
+        "status": req.status,
+        "updated_at": _now_iso(),
+    }
+    if req.internal_note:
+        update_doc["internal_note"] = req.internal_note
+    await db.merchant_warranty_claims.update_one({"claim_id": claim_id}, {"$set": update_doc})
+    return {"ok": True, "status": req.status}
 
 
 @router.post("/dealer/warranty/create")
