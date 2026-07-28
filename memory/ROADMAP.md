@@ -1,6 +1,7 @@
 # BidBlitz — ROADMAP
 
 ## Status nach Admin-Error-Fix — 24.07.2026
+- ✅ Build-Frontend-Deploy-Fehler durch zu groben `localhost`-Guard im Workflow behoben.
 - ✅ IONOS-Deploy-Workflow gegen SSH-Secret-Mismatch gehärtet (`VPS_PASSWORD` oder `VPS_SSH_KEY`).
 - ✅ Die bekannten Startseiten-404s auf Ads/Home-Recommendations/AI-Recommendations sind behoben; Router nun korrekt registriert.
 - ✅ GitHub-IonOS-Deploy-Workflow auf stabile npm-Workspace-Kette umgestellt; akuter Build/Lint-Fehlerpfad beseitigt.

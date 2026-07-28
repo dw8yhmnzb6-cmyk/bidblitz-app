@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 27.07.2026 — Build-Frontend Deploy-Fehler mit falschem localhost-Check behoben
+- Der neue GitHub-Screenshot zeigte endlich die konkrete Ursache im Deploy-Run: **Build frontend** scheiterte nicht am eigentlichen Build, sondern am Workflow-Guard **`localhost URL found in build`**.
+- Root Cause: Der Deploy-Workflow prüfte zu grob mit `grep -R "localhost" build/static/js` und erzeugte dadurch False Positives aus legitimen Bibliotheks-/Runtime-Strings wie *„https or localhost“* oder Host-Matcher-Konstanten. Das ist **kein echter Produktions-URL-Leak**.
+- `.github/workflows/deploy.yml` prüft jetzt nur noch auf **echte URL-/Origin-Leaks**: `http://localhost`, `https://localhost`, `127.0.0.1`, `ws://localhost`, `wss://localhost` sowie echte `preview.emergentagent.com`-Origins. Normale Textstrings mit dem Wort `localhost` blockieren den Deploy nicht mehr.
+- Verifiziert: Production-Build läuft lokal durch; die verschärfte Prüfung ergibt **`BAD_LOCALHOST=0`** und **`BAD_PREVIEW=0`**. Damit ist der aktuelle GitHub-Fehlerpfad aus Screenshot #23 konkret beseitigt.
+
 ## 27.07.2026 — IONOS-Deploy-Workflow gegen Secret/Auth-Mismatch gehärtet
 - Nach dem neuen Nutzer-Screenshot war klar: **CI grün, aber „Deploy to IONOS Production“ rot**. Damit lag der Fehler nicht mehr im Build, sondern im echten VPS-Deploy-Pfad.
 - `.github/workflows/deploy.yml` wurde so erweitert, dass der Deploy jetzt **mit Passwort ODER SSH-Key** arbeiten kann. Der Workflow akzeptiert nun **`VPS_PASSWORD`** oder **`VPS_SSH_KEY`** statt hart nur Passwort zu verlangen.

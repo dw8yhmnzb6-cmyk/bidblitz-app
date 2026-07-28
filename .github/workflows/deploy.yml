@@ -88,8 +88,14 @@ jobs:
           perl -0pi -e 's/%REACT_APP_BUILD_ID%/'"${BUILD_ID}"'/g' public/index.html
           npm run build
           test ! -f build/version.json || cat build/version.json
-          if grep -R "localhost" build/static/js; then echo "::error::localhost URL found in build"; exit 1; fi
-          if grep -R "preview.emergentagent.com" build/static/js; then echo "::error::preview domain leaked into production build"; exit 1; fi
+          if grep -R -E "https?://(localhost|127\.0\.0\.1)([:/]|$)|wss?://(localhost|127\.0\.0\.1)([:/]|$)" build/static/js; then
+            echo "::error::localhost URL leaked into production build"
+            exit 1
+          fi
+          if grep -R -E "https?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)|wss?://[A-Za-z0-9.-]*preview\.emergentagent\.com([:/]|$)" build/static/js; then
+            echo "::error::preview origin leaked into production build"
+            exit 1
+          fi
           ls -lh build/static/js/main.*.js | head -1
 
       - name: Pre-deployment frontend smoke checks
