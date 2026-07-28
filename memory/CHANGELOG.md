@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 28.07.2026 — Händlerportal V1 für BidBlitz Charge ausgebaut
+- Das bestehende Händlerportal wurde um einen echten **Dealer-/Händler-V1-Block** erweitert. Händler sehen jetzt im Login-geschützten Portal fünf neue Kernbereiche: **Lagerbestand**, **Nachbestellung**, **Rechnungen**, **Werbematerial** und **Garantieabwicklung**.
+- Backend: `backend/routes/merchant_portal.py` liefert neue Händler-Endpunkte für Inventory, Reorders, Invoices, Marketing und Warranty. Zusätzlich können Händler jetzt direkt **Nachbestell-Entwürfe** aus Empfehlungen erzeugen sowie **digitale Garantiefälle** anlegen.
+- Frontend: `frontend/src/pages/MerchantPortalPage.jsx` erhielt neue Premium-Händlerbereiche mit BidBlitz-Charge-Ausrichtung, inklusive Hero, KPI-Kacheln, Listen, Formularen und testbaren Dealer-Tabs. `frontend/src/services/api.js` wurde um die passenden Dealer-API-Helfer erweitert.
+- Verifiziert: API-Tests für alle neuen Endpunkte **PASS**; Browser-Smoke **PASS**; Frontend-Testing-Agent **PASS**. Alle fünf neuen Dealer-Tabs laden sichtbar und ohne Error Boundary.
+
 ## 27.07.2026 — Build-Frontend Deploy-Fehler mit falschem localhost-Check behoben
 - Der neue GitHub-Screenshot zeigte endlich die konkrete Ursache im Deploy-Run: **Build frontend** scheiterte nicht am eigentlichen Build, sondern am Workflow-Guard **`localhost URL found in build`**.
 - Root Cause: Der Deploy-Workflow prüfte zu grob mit `grep -R "localhost" build/static/js` und erzeugte dadurch False Positives aus legitimen Bibliotheks-/Runtime-Strings wie *„https or localhost“* oder Host-Matcher-Konstanten. Das ist **kein echter Produktions-URL-Leak**.
