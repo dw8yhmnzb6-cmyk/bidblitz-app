@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
+import { QRCodeSVG } from "qrcode.react";
+
+const API = process.env.REACT_APP_BACKEND_URL;
 
 
 export default function ChargeAppPage({ onBack, onNavigate }) {
@@ -13,6 +16,9 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [dashboard, setDashboard] = useState(null);
   const [merchantQuery, setMerchantQuery] = useState("");
   const [busy, setBusy] = useState("");
+  const [warrantyFile, setWarrantyFile] = useState(null);
+  const [invoiceFile, setInvoiceFile] = useState(null);
+  const [warrantyPassPreview, setWarrantyPassPreview] = useState(null);
   const [warrantyForm, setWarrantyForm] = useState({
     product_name: "BidBlitz Charge Pro 65W",
     serial_number: "",
@@ -51,9 +57,14 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
     setBusy("warranty");
     try {
-      await api.registerChargeWarranty(warrantyForm);
+      const response = await api.registerChargeWarranty(warrantyForm);
+      const registrationId = response?.warranty?.registration_id;
+      if (warrantyFile && registrationId) {
+        await api.uploadChargeWarrantyAttachment(registrationId, warrantyFile);
+      }
       toast.success("Garantie erfolgreich registriert");
       setWarrantyForm((prev) => ({ ...prev, serial_number: "", invoice_number: "" }));
+      setWarrantyFile(null);
       await loadDashboard();
     } catch (error) {
       toast.error(error.message || "Garantie konnte nicht registriert werden");
@@ -69,19 +80,37 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
     setBusy("invoice");
     try {
-      await api.saveChargeInvoice({
+      const response = await api.saveChargeInvoice({
         ...invoiceForm,
         amount: Number(invoiceForm.amount) || 0,
       });
+      const invoiceId = response?.invoice?.invoice_id;
+      if (invoiceFile && invoiceId) {
+        await api.uploadChargeInvoiceAttachment(invoiceId, invoiceFile);
+      }
       toast.success("Rechnung gespeichert");
       setInvoiceForm({ invoice_number: "", merchant_name: "", amount: "", purchase_date: "", product_name: "", serial_number: "" });
+      setInvoiceFile(null);
       await loadDashboard();
     } catch (error) {
       toast.error(error.message || "Rechnung konnte nicht gespeichert werden");
     } finally {
       setBusy("");
     }
-  }, [invoiceForm, loadDashboard]);
+  }, [invoiceForm, invoiceFile, loadDashboard]);
+
+  const previewWarrantyPass = useCallback(async (registrationId) => {
+    setBusy(`pass-${registrationId}`);
+    try {
+      const response = await api.getChargeWarrantyPass(registrationId);
+      setWarrantyPassPreview(response?.pass || null);
+      toast.success("Digitalpass geladen");
+    } catch (error) {
+      toast.error(error.message || "Digitalpass konnte nicht geladen werden");
+    } finally {
+      setBusy("");
+    }
+  }, []);
 
   const merchants = useMemo(() => {
     const rows = dashboard?.merchants || [];
@@ -146,6 +175,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
               <Field value={warrantyForm.invoice_number} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, invoice_number: value }))} placeholder="Rechnungsnummer" testid="charge-app-warranty-invoice-input" />
             </div>
             <Field value={warrantyForm.merchant_name} onChange={(value) => setWarrantyForm((prev) => ({ ...prev, merchant_name: value }))} placeholder="Händlername" testid="charge-app-warranty-merchant-input" />
+            <UploadField label="Garantiebeleg hochladen (PDF/JPG/PNG/WebP)" file={warrantyFile} onChange={setWarrantyFile} testid="charge-app-warranty-file-input" />
             <ActionButton onClick={submitWarranty} busy={busy === "warranty"} icon={ShieldCheck} testid="charge-app-warranty-submit">Garantie aktivieren</ActionButton>
           </SurfaceCard>
 
@@ -160,6 +190,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
               <Field value={invoiceForm.product_name} onChange={(value) => setInvoiceForm((prev) => ({ ...prev, product_name: value }))} placeholder="Produkt" testid="charge-app-invoice-product-input" />
               <Field value={invoiceForm.serial_number} onChange={(value) => setInvoiceForm((prev) => ({ ...prev, serial_number: value }))} placeholder="Seriennummer" testid="charge-app-invoice-serial-input" />
             </div>
+            <UploadField label="Rechnung / Beleg hochladen (PDF/JPG/PNG/WebP)" file={invoiceFile} onChange={setInvoiceFile} testid="charge-app-invoice-file-input" />
             <ActionButton onClick={saveInvoice} busy={busy === "invoice"} icon={Save} testid="charge-app-invoice-submit">Rechnung sichern</ActionButton>
           </SurfaceCard>
         </div>
@@ -223,6 +254,26 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <SurfaceCard title="Gespeicherte Garantien" icon={ShieldCheck} testid="charge-app-warranty-list-card">
+            {warrantyPassPreview ? (
+              <div className="mb-4 rounded-[28px] border border-[#B9E7EF] bg-[linear-gradient(145deg,#0A1626,#102236)] p-4 text-white" data-testid="charge-app-warranty-pass-preview-card">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-[#A9F3FF]">Digitaler Garantiepass</p>
+                    <h3 className="mt-2 text-xl font-black">{warrantyPassPreview.coverage_label}</h3>
+                    <p className="mt-1 text-sm text-slate-300">Pass ID {warrantyPassPreview.pass_id} · gültig bis {warrantyPassPreview.valid_until}</p>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                      <PassPill label="Status" value={warrantyPassPreview.status_label} testid="charge-app-pass-status" />
+                      <PassPill label="Produkt" value={warrantyPassPreview.product_name} testid="charge-app-pass-product" />
+                      <PassPill label="Seriennummer" value={warrantyPassPreview.serial_number} testid="charge-app-pass-serial" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center gap-3 rounded-[26px] border border-white/10 bg-white/5 p-4" data-testid="charge-app-pass-qr-card">
+                    <QRCodeSVG value={warrantyPassPreview.qr_payload} size={132} includeMargin bgColor="#ffffff" fgColor="#0A1626" />
+                    <a href={`${API}/api/charge-app/warranty/${encodeURIComponent(warrantyPassPreview.registration_id)}/pass/download`} className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#6EE7F9] px-4 text-xs font-black text-slate-950" data-testid="charge-app-pass-download-button"><Download size={14} className="mr-2" />Pass laden</a>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {(dashboard?.warranties || []).length === 0 ? <EmptyState label="Noch keine Garantie registriert" testid="charge-app-empty-warranties" /> : (dashboard?.warranties || []).map((item, index) => (
               <div key={item.registration_id} className="rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3" data-testid={`charge-app-warranty-item-${index}`}>
                 <div className="flex items-start justify-between gap-3">
@@ -230,8 +281,12 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     <p className="text-sm font-black text-slate-900">{item.product_name}</p>
                     <p className="mt-1 text-xs text-slate-500">SN {item.serial_number} · {item.merchant_name}</p>
                     <p className="mt-2 text-xs text-slate-600">{item.coverage_label} · gültig bis {item.valid_until}</p>
+                    {item.attachments?.length ? <AttachmentRow attachments={item.attachments} testid={`charge-app-warranty-attachments-${index}`} /> : null}
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{item.status}</span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{item.status}</span>
+                    <button onClick={() => previewWarrantyPass(item.registration_id)} disabled={busy === `pass-${item.registration_id}`} className="rounded-full border border-[#0A1626]/10 bg-[#0A1626] px-3 py-1 text-[11px] font-black text-[#D8FCFF] disabled:opacity-50" data-testid={`charge-app-warranty-pass-preview-${index}`}>{busy === `pass-${item.registration_id}` ? "Lädt..." : "Pass ansehen"}</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -269,6 +324,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     <p className="text-sm font-black text-slate-900">{item.invoice_number}</p>
                     <p className="mt-1 text-xs text-slate-500">{item.merchant_name} · {item.product_name}</p>
                     <p className="mt-2 text-xs text-slate-600">Kaufdatum {item.purchase_date || "—"} · SN {item.serial_number || "—"}</p>
+                    {item.attachments?.length ? <AttachmentRow attachments={item.attachments} testid={`charge-app-invoice-attachments-${index}`} /> : null}
                   </div>
                   <span className="rounded-full bg-[#0A1626] px-3 py-1 text-xs font-black text-[#6EE7F9]">€{Number(item.amount || 0).toFixed(2)}</span>
                 </div>
@@ -331,6 +387,20 @@ function Field({ value, onChange, placeholder, testid }) {
 }
 
 
+function UploadField({ label, file, onChange, testid }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-[#D9CFC0] bg-white px-4 py-3" data-testid={`${testid}-wrapper`}>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-900">{label}</p>
+        <p className="mt-1 truncate text-xs text-slate-500">{file?.name || "Noch keine Datei gewählt"}</p>
+      </div>
+      <div className="inline-flex items-center gap-2 rounded-full bg-[#0A1626] px-3 py-2 text-xs font-black text-[#D8FCFF]"><FileUp size={14} />Datei wählen</div>
+      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => onChange(e.target.files?.[0] || null)} data-testid={testid} />
+    </label>
+  );
+}
+
+
 function ActionButton({ onClick, busy, icon: Icon, children, testid }) {
   return (
     <button onClick={onClick} disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#0A1626] text-sm font-black text-[#D8FCFF] disabled:opacity-50" data-testid={testid}>
@@ -346,6 +416,24 @@ function InfoPill({ label, value, testid }) {
     <div className="rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3" data-testid={testid}>
       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <p className="mt-2 text-lg font-black text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+
+function PassPill({ label, value, testid }) {
+  return <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" data-testid={testid}><p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{label}</p><p className="mt-2 text-sm font-black text-white">{value}</p></div>;
+}
+
+
+function AttachmentRow({ attachments, testid }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2" data-testid={testid}>
+      {attachments.map((item, index) => (
+        <a key={item.attachment_id} href={`${API}${item.download_path}`} className="inline-flex items-center gap-2 rounded-full border border-[#0A1626]/10 bg-[#F4F8FB] px-3 py-1 text-[11px] font-semibold text-slate-700" data-testid={`${testid}-item-${index}`}>
+          <Download size={12} />{item.original_filename}
+        </a>
+      ))}
     </div>
   );
 }

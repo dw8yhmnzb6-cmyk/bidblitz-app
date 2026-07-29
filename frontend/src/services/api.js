@@ -129,6 +129,21 @@ async function downloadCSV(path, filename) {
   URL.revokeObjectURL(link.href);
 }
 
+async function uploadFormData(path, formData) {
+  const url = `${API_URL}${path}`;
+  const res = await fetch(url, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok) {
+    throw new ApiError(formatApiError(data.detail || data.message), { status: res.status, code: "upload" });
+  }
+  return data;
+}
+
 function buildExportQuery(params = {}) {
   const q = new URLSearchParams();
   if (params.date_from) q.set("date_from", params.date_from);
@@ -274,6 +289,18 @@ export const api = {
   getChargeAppDashboard: () => request("/api/charge-app/dashboard"),
   registerChargeWarranty: (body) => request("/api/charge-app/warranty/register", { method: "POST", body: JSON.stringify(body) }),
   saveChargeInvoice: (body) => request("/api/charge-app/invoices/save", { method: "POST", body: JSON.stringify(body) }),
+  uploadChargeWarrantyAttachment: (registrationId, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return uploadFormData(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/attachments`, formData);
+  },
+  uploadChargeInvoiceAttachment: (invoiceId, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return uploadFormData(`/api/charge-app/invoices/${encodeURIComponent(invoiceId)}/attachments`, formData);
+  },
+  getChargeWarrantyPass: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/pass`),
+  getChargeMerchantDetail: (slug) => request(`/api/charge-app/merchants/${encodeURIComponent(slug)}`),
 
   // Transactions
   getTransactions: (params = {}) => {

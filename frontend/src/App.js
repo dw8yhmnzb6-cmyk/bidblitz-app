@@ -178,6 +178,7 @@ const PoolFacilityPage = lazy(() => import("./pages/PoolFacilityPage"));
 const PoolAdminPage = lazy(() => import("./pages/PoolAdminPage"));
 const AudiTicketSalesPage = lazy(() => import("./pages/AudiTicketSalesPage"));
 const ChargeAppPage = lazy(() => import("./pages/ChargeAppPage"));
+const ChargeMerchantDetailPage = lazy(() => import("./pages/ChargeMerchantDetailPage"));
 const StaffUIAuditPage = lazy(() => import("./staff/StaffUIAuditPage"));
 const AdminPushBroadcastPage = lazy(() => import("./pages/AdminPushBroadcastPage"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
@@ -758,6 +759,10 @@ function AppContent() {
         return <AudiTicketSalesPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} />;
       case "/charge-app":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ChargeAppPage onBack={() => handleNavigate("/all-services")} onNavigate={handleNavigate} />;
+      case "/charge-app/merchant":
+        return (isGuest && !isDemoMode)
+          ? <HomePage {...homeProps} />
+          : <ChargeMerchantDetailPage slug={routeParams.slug} onBack={() => handleNavigate("/charge-app")} onNavigate={handleNavigate} />;
       case "/selfcheckout":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SelfCheckoutPage onBack={() => handleNavigate("/")} navState={navState} />;
       case "/admin/old":
