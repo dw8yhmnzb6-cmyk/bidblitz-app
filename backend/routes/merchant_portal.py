@@ -144,6 +144,15 @@ class DealerWarrantyStatusUpdateRequest(BaseModel):
     internal_note: str = ""
 
 
+class DealerBrandProfileUpdateRequest(BaseModel):
+    hero_claim: str = ""
+    package_tier: str = "premium"
+    display_mode: str = "counter_display"
+    warranty_badge: str = "24 Monate Garantie"
+    accent_finish: str = "matte_black"
+    packaging_notes: str = ""
+
+
 def _safe_round(value: Any) -> float:
     return round(_num(value), 2)
 
@@ -153,6 +162,51 @@ def _safe_slug(value: str, fallback: str = "item") -> str:
     while "--" in cleaned:
         cleaned = cleaned.replace("--", "-")
     return cleaned.strip("-")[:60] or fallback
+
+
+def _build_warranty_pass(claim: dict) -> dict:
+    purchase_dt = _parse_iso(claim.get("purchase_date")) or _parse_iso(claim.get("created_at")) or datetime.now(timezone.utc)
+    valid_until = (purchase_dt + timedelta(days=730)).date().isoformat()
+    claim_id = claim.get("claim_id") or f"WAR-{uuid.uuid4().hex[:8].upper()}"
+    pass_id = claim.get("pass_id") or f"BBCH-{claim_id[-6:]}"
+    status = claim.get("status") or "submitted"
+    qr_payload = json.dumps({
+        "type": "bidblitz_charge_warranty_pass",
+        "pass_id": pass_id,
+        "claim_id": claim_id,
+        "serial_number": claim.get("serial_number") or "",
+        "product_name": claim.get("product_name") or "BidBlitz Charge Produkt",
+        "status": status,
+        "valid_until": valid_until,
+    })
+    return {
+        "pass_id": pass_id,
+        "claim_id": claim_id,
+        "coverage_label": "BidBlitz Charge Care 24M",
+        "status_label": status.replace("_", " "),
+        "valid_until": valid_until,
+        "serial_number": claim.get("serial_number") or "—",
+        "qr_payload": qr_payload,
+    }
+
+
+async def _get_dealer_brand_profile(user: dict, merchant_profile: Optional[dict] = None) -> dict:
+    user_id = str(user.get("_id"))
+    profile = merchant_profile or await db.merchant_profiles.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    saved = await db.merchant_brand_profiles.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    return {
+        "business_name": profile.get("business_name") or user.get("name") or "BidBlitz Charge Partner",
+        "logo_url": profile.get("logo_url") or "",
+        "category": profile.get("category") or "Charge / Retail",
+        "website": profile.get("website") or "",
+        "hero_claim": saved.get("hero_claim") or "Premium Charging. Professionell präsentiert.",
+        "package_tier": saved.get("package_tier") or "premium",
+        "display_mode": saved.get("display_mode") or "counter_display",
+        "warranty_badge": saved.get("warranty_badge") or "24 Monate Garantie",
+        "accent_finish": saved.get("accent_finish") or "matte_black",
+        "packaging_notes": saved.get("packaging_notes") or "Saubere Verpackung, technische Klarheit und sichtbarer Qualitätsanspruch im Regal.",
+        "updated_at": saved.get("updated_at") or profile.get("updated_at"),
+    }
 
 
 async def _build_dealer_inventory_suite(user: dict) -> Dict[str, Any]:
@@ -343,8 +397,27 @@ async def _build_dealer_marketing_suite(user: dict) -> Dict[str, Any]:
             "cta_label": "Creatives nutzen",
             "download_url": "/api/merchant-portal/dealer/marketing/assets/charge-social-launch/download",
         },
+        {
+            "asset_id": "charge-packaging-mockups",
+            "title": "Packaging Mockup Pack",
+            "format": "TXT / Visual Specs",
+            "status": "ready",
+            "description": "Mockup-Richtlinien für Karton, Inlay, Kabeldarstellung und Garantiehinweise im Premium-Look.",
+            "cta_label": "Mockups prüfen",
+            "download_url": "/api/merchant-portal/dealer/marketing/assets/charge-packaging-mockups/download",
+        },
+        {
+            "asset_id": "charge-retail-display-manual",
+            "title": "Retail Display Manual",
+            "format": "TXT / Setup Guide",
+            "status": "ready",
+            "description": "Store-Setup-Guide für Thekenfläche, Licht, Messaging und POS-Storytelling auf Belkin-/UGREEN-Niveau.",
+            "cta_label": "Manual öffnen",
+            "download_url": "/api/merchant-portal/dealer/marketing/assets/charge-retail-display-manual/download",
+        },
     ]
     requests = await db.merchant_marketing_requests.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    brand_profile = await _get_dealer_brand_profile(user, profile)
     return {
         "summary": {
             "assets_total": len(assets),
@@ -352,12 +425,7 @@ async def _build_dealer_marketing_suite(user: dict) -> Dict[str, Any]:
             "campaign_touchpoints": campaign_metrics,
             "branding_ready": bool(profile.get("logo_url") or profile.get("business_name")),
         },
-        "brand_profile": {
-            "business_name": profile.get("business_name") or user.get("name") or "BidBlitz Charge Partner",
-            "logo_url": profile.get("logo_url") or "",
-            "category": profile.get("category") or "Charge / Retail",
-            "website": profile.get("website") or "",
-        },
+        "brand_profile": brand_profile,
         "assets": assets,
         "requests": requests,
     }
@@ -370,12 +438,14 @@ async def _build_dealer_warranty_suite(user: dict) -> Dict[str, Any]:
     for claim in claims:
         claim["created_at"] = claim.get("created_at") or now
         claim["updated_at"] = claim.get("updated_at") or claim.get("created_at") or now
+        claim["warranty_pass"] = _build_warranty_pass(claim)
     return {
         "summary": {
             "claims_total": len(claims),
             "open_total": len([c for c in claims if c.get("status") in {"submitted", "under_review", "awaiting_parts"}]),
             "resolved_total": len([c for c in claims if c.get("status") in {"resolved", "replacement_sent", "rejected"}]),
             "replacement_total": len([c for c in claims if c.get("requested_resolution") == "replace"]),
+            "pass_total": len(claims),
         },
         "claims": claims,
         "issue_types": ["defekt", "display", "akku", "kabel", "garantiefrage", "retoure"],
@@ -2044,6 +2114,31 @@ async def get_dealer_marketing(request: Request):
     return await _build_dealer_marketing_suite(user)
 
 
+@router.get("/dealer/branding/profile")
+async def get_dealer_branding_profile(request: Request):
+    user = await require_merchant(request)
+    return {"brand_profile": await _get_dealer_brand_profile(user)}
+
+
+@router.post("/dealer/branding/profile")
+async def update_dealer_branding_profile(req: DealerBrandProfileUpdateRequest, request: Request):
+    user = await require_merchant(request)
+    user_id = str(user.get("_id"))
+    now = _now_iso()
+    doc = {
+        "user_id": user_id,
+        "hero_claim": req.hero_claim,
+        "package_tier": req.package_tier,
+        "display_mode": req.display_mode,
+        "warranty_badge": req.warranty_badge,
+        "accent_finish": req.accent_finish,
+        "packaging_notes": req.packaging_notes,
+        "updated_at": now,
+    }
+    await db.merchant_brand_profiles.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
+    return {"ok": True, "brand_profile": await _get_dealer_brand_profile(user)}
+
+
 @router.get("/dealer/marketing/assets/{asset_id}/download")
 async def download_dealer_marketing_asset(asset_id: str, request: Request):
     await require_merchant(request)
@@ -2059,6 +2154,14 @@ async def download_dealer_marketing_asset(asset_id: str, request: Request):
         "charge-social-launch": {
             "filename": "bidblitz-charge-social-launch.txt",
             "content": "Launch Creatives\n\n- Reel Hook: Fast charge without cheap plastic look\n- Story Slide 1: Premium materials\n- Story Slide 2: Retail-ready display\n- Story Slide 3: Digital warranty & dealer support\n",
+        },
+        "charge-packaging-mockups": {
+            "filename": "bidblitz-charge-packaging-mockups.txt",
+            "content": "Packaging Mockups\n\n- Front face: product hero + wattage clarity\n- Side face: warranty badge + compatibility icons\n- Inlay: cable management + premium matte tray\n- Rear face: trust grid, QR warranty pass, dealer support CTA\n",
+        },
+        "charge-retail-display-manual": {
+            "filename": "bidblitz-charge-retail-display-manual.txt",
+            "content": "Retail Display Manual\n\n- Use one hero product per visual zone\n- Keep shelf messaging under 7 words\n- Show warranty pass QR next to charger headline\n- Use matte black + cyan accents for premium consistency\n",
         },
     }
     asset = asset_docs.get(asset_id)
@@ -2089,6 +2192,41 @@ async def create_dealer_marketing_request(req: DealerMarketingRequestCreateReque
 async def get_dealer_warranty(request: Request):
     user = await require_merchant(request)
     return await _build_dealer_warranty_suite(user)
+
+
+@router.get("/dealer/warranty/pass/{claim_id}")
+async def get_dealer_warranty_pass(claim_id: str, request: Request):
+    user = await require_merchant(request)
+    claim = await db.merchant_warranty_claims.find_one({"claim_id": claim_id}, {"_id": 0})
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    if user.get("role") != "admin" and claim.get("user_id") != str(user.get("_id")):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    return {"pass": _build_warranty_pass(claim)}
+
+
+@router.get("/dealer/warranty/pass/{claim_id}/download")
+async def download_dealer_warranty_pass(claim_id: str, request: Request):
+    user = await require_merchant(request)
+    claim = await db.merchant_warranty_claims.find_one({"claim_id": claim_id}, {"_id": 0})
+    if not claim:
+        raise HTTPException(status_code=404, detail="Garantiefall nicht gefunden")
+    if user.get("role") != "admin" and claim.get("user_id") != str(user.get("_id")):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+    warranty_pass = _build_warranty_pass(claim)
+    content = (
+        f"BidBlitz Charge Warranty Pass\n\n"
+        f"Pass ID: {warranty_pass['pass_id']}\n"
+        f"Claim ID: {warranty_pass['claim_id']}\n"
+        f"Produkt: {claim.get('product_name') or 'BidBlitz Charge Produkt'}\n"
+        f"Seriennummer: {warranty_pass['serial_number']}\n"
+        f"Status: {warranty_pass['status_label']}\n"
+        f"Gültig bis: {warranty_pass['valid_until']}\n"
+        f"Coverage: {warranty_pass['coverage_label']}\n"
+        f"QR Payload: {warranty_pass['qr_payload']}\n"
+    )
+    filename = f"warranty-pass-{_safe_slug(warranty_pass['pass_id'], 'pass')}.txt"
+    return StreamingResponse(iter([content.encode('utf-8')]), media_type="text/plain", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
 @router.post("/dealer/warranty/{claim_id}/status")
