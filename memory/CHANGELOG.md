@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 29.07.2026 — BidBlitz Charge Kunden-App MVP live
+- Neues Kundenmodul **`/charge-app`** gebaut: Endkunden können jetzt **Garantie registrieren**, **Rechnungen speichern**, **Punkte sehen**, **Angebote erhalten** und **Händler finden** in einer dedizierten BidBlitz-Charge-Oberfläche.
+- Backend: neue Route `backend/routes/charge_app.py` mit Dashboard-, Garantie- und Rechnungs-Endpunkten. Das Dashboard bündelt Garantie-/Rechnungsdaten, Loyalty-Status aus dem bestehenden System, Promotions und Händlerlisten.
+- Frontend: neue Seite `frontend/src/pages/ChargeAppPage.jsx`, Route in `frontend/src/App.js`, Service-Eintrag in `frontend/src/pages/AllServicesPage.jsx` und API-Wrapper in `frontend/src/services/api.js`.
+- Verifiziert: Browser-Smoke **PASS** und **Testing Agent Iteration 301 PASS**. Während des Tests wurde zusätzlich ein ObjectId-Serialisierungsfehler in `POST /api/charge-app/invoices/save` gefixt; danach alle Charge-Tests **PASS**.
+
 ## 28.07.2026 — Händlerportal V1.5: Downloads, Materialanfragen und Garantie-Status
 - Die zweite Ausbaustufe des BidBlitz-Charge-Händlerportals ist live. Händler können jetzt **Brand-/POS-Material herunterladen**, **Materialanfragen direkt im Portal erfassen** und **Garantiefälle mit Status-Aktionen** weiterbearbeiten.
 - Backend: `backend/routes/merchant_portal.py` erhielt neue Endpunkte für Asset-Downloads, Marketing-Requests sowie Warranty-Status-Updates. Marketing-Assets liefern jetzt echte Download-URLs; Materialanfragen werden gespeichert; Garantiefälle können auf Status wie `under_review`, `replacement_sent` oder `resolved` gesetzt werden.
