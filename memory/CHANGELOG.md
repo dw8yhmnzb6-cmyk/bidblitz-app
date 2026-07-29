@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 29.07.2026 — BidBlitz Charge V2: Uploads, Digitalpass und Händlerdetailseite
+- Die Charge-Kunden-App wurde um **Datei-Uploads** für Rechnungen und Garantiebelege erweitert. Erlaubt sind **PDF, JPG, JPEG, PNG und WebP**. Uploads laufen über das Backend und werden per Object Storage + MongoDB-Referenzmodell sicher gespeichert.
+- Für registrierte Garantien gibt es jetzt einen **digitalen Garantiepass** mit sichtbarer Vorschau, **QR-Code** und **Download-Datei**. Zusätzlich unterstützen die Download-Endpunkte jetzt auch **HEAD**, damit Browser-/Preflight-Verhalten sauber funktioniert.
+- Der **Charge-Finder** öffnet Händler jetzt in eine eigene **Händlerdetailseite** unter `/charge-app/merchant?slug=...` mit Kontakt, Highlights, Produkten und Promotions.
+- Neu/erweitert: `backend/services/charge_storage.py`, `backend/routes/charge_app.py`, `frontend/src/pages/ChargeAppPage.jsx`, `frontend/src/pages/ChargeMerchantDetailPage.jsx`, `frontend/src/services/api.js`, `frontend/src/App.js`.
+- Verifiziert: Backend-Selbsttests **PASS**, Browser-Smoke **PASS**, **Testing Agent Iteration 302 PASS** mit **100% Backend** und **100% Frontend**.
+
 ## 29.07.2026 — BidBlitz Charge Kunden-App MVP live
 - Neues Kundenmodul **`/charge-app`** gebaut: Endkunden können jetzt **Garantie registrieren**, **Rechnungen speichern**, **Punkte sehen**, **Angebote erhalten** und **Händler finden** in einer dedizierten BidBlitz-Charge-Oberfläche.
 - Backend: neue Route `backend/routes/charge_app.py` mit Dashboard-, Garantie- und Rechnungs-Endpunkten. Das Dashboard bündelt Garantie-/Rechnungsdaten, Loyalty-Status aus dem bestehenden System, Promotions und Händlerlisten.

@@ -1,5 +1,15 @@
 # BidBlitz — ROADMAP
 
+## Status nach Charge-App V2 — 29.07.2026
+- ✅ **Datei-Uploads** für Rechnungen und Garantiebelege sind live.
+- ✅ **Digitaler Garantiepass** mit QR-Vorschau und Download ist live.
+- ✅ **Händlerdetailseite** aus dem Charge-Finder ist live.
+- ✅ Verifiziert mit Backend-Selbsttests, Browser-Smoke und **Testing Agent Iteration 302 PASS**.
+- 🔴 Nächster sinnvoller Charge-Schritt: echte **Bild-/PDF-Vorschau** direkt in der App statt nur Download-Link.
+- 🟡 Danach: personalisierte Angebote je Händler / Region / Produktkategorie.
+- 🟡 Danach: Kundenvorteile und Reward-Stufen sichtbar mit konkreten Einlösungen.
+- 🟡 Separat weiter offen: **Telegram-Alarm als Monitoring-Backup** nur wenn wieder gewünscht.
+
 ## Status nach Charge-App MVP — 29.07.2026
 - ✅ Neue **BidBlitz Charge Kunden-App** unter **`/charge-app`** ist live.
 - ✅ Kunden können jetzt **Garantie registrieren**, **Rechnungen speichern**, **Punkte sehen/sammeln**, **Angebote erhalten** und **Händler finden**.
