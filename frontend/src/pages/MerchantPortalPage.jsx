@@ -64,6 +64,8 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
   const [reorderForm, setReorderForm] = useState({ supplier_id: "", store_id: "", note: "" });
   const [marketingRequestForm, setMarketingRequestForm] = useState({ asset_id: "charge-brand-pack", request_type: "display_kit", quantity: 1, notes: "" });
   const [warrantyForm, setWarrantyForm] = useState({ product_id: "", serial_number: "", issue_type: "defekt", customer_name: "", customer_email: "", purchase_date: "", issue_summary: "", requested_resolution: "repair" });
+  const [brandProfileForm, setBrandProfileForm] = useState({ hero_claim: "", package_tier: "premium", display_mode: "counter_display", warranty_badge: "24 Monate Garantie", accent_finish: "matte_black", packaging_notes: "" });
+  const [warrantyPassPreview, setWarrantyPassPreview] = useState(null);
 
   const loadDash = useCallback(async () => {
     try {
@@ -169,6 +171,16 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     try {
       const data = await api.getMerchantDealerMarketing();
       setDealerMarketing(data);
+      if (data?.brand_profile) {
+        setBrandProfileForm({
+          hero_claim: data.brand_profile.hero_claim || "",
+          package_tier: data.brand_profile.package_tier || "premium",
+          display_mode: data.brand_profile.display_mode || "counter_display",
+          warranty_badge: data.brand_profile.warranty_badge || "24 Monate Garantie",
+          accent_finish: data.brand_profile.accent_finish || "matte_black",
+          packaging_notes: data.brand_profile.packaging_notes || "",
+        });
+      }
     } catch (error) {
       toast.error(error.message || "Werbematerial konnte nicht geladen werden");
     }
@@ -178,6 +190,11 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
     try {
       const data = await api.getMerchantDealerWarranty();
       setDealerWarranty(data);
+      setWarrantyPassPreview((prev) => {
+        if (!prev?.claimId) return prev;
+        const nextClaim = (data?.claims || []).find((item) => item.claim_id === prev.claimId);
+        return nextClaim?.warranty_pass ? { claimId: nextClaim.claim_id, pass: nextClaim.warranty_pass } : prev;
+      });
       const firstProduct = (dealerInventory?.top_products || [])[0]?.product_id || "";
       setWarrantyForm((prev) => ({ ...prev, product_id: prev.product_id || firstProduct }));
     } catch (error) {
@@ -424,6 +441,35 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
       setDealerBusy("");
     }
   }, [marketingRequestForm, loadDealerMarketing]);
+
+  const saveBrandProfile = useCallback(async () => {
+    setDealerBusy("branding");
+    try {
+      const data = await api.updateMerchantDealerBrandProfile(brandProfileForm);
+      toast.success("Branding-Control-Center gespeichert");
+      setDealerMarketing((prev) => ({
+        ...(prev || {}),
+        brand_profile: data?.brand_profile || brandProfileForm,
+      }));
+    } catch (error) {
+      toast.error(error.message || "Brand Profil konnte nicht gespeichert werden");
+    } finally {
+      setDealerBusy("");
+    }
+  }, [brandProfileForm]);
+
+  const previewWarrantyPass = useCallback(async (claimId) => {
+    setDealerBusy(`warranty-pass-${claimId}`);
+    try {
+      const data = await api.getMerchantDealerWarrantyPass(claimId);
+      setWarrantyPassPreview({ claimId, pass: data?.pass || null });
+      toast.success("Garantiepass geladen");
+    } catch (error) {
+      toast.error(error.message || "Garantiepass konnte nicht geladen werden");
+    } finally {
+      setDealerBusy("");
+    }
+  }, []);
 
   const updateWarrantyStatus = useCallback(async (claimId, status) => {
     setDealerBusy(`warranty-status-${claimId}`);
@@ -782,12 +828,29 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
               ))}
             </DealerListCard>
             <div className="rounded-[26px] border border-white/8 bg-[#0f1725] p-4" data-testid="merchant-dealer-brand-profile-card">
-              <div className="mb-4 flex items-center gap-2"><Sparkles size={16} className="text-amber-300" /><h3 className="text-sm font-bold text-white">Brand Profil</h3></div>
-              <div className="space-y-3 text-sm text-slate-300">
-                <div><span className="text-slate-500">Firma:</span> <span className="text-white">{dealerMarketing?.brand_profile?.business_name || 'BidBlitz Charge Partner'}</span></div>
-                <div><span className="text-slate-500">Kategorie:</span> <span className="text-white">{dealerMarketing?.brand_profile?.category || 'Charge / Retail'}</span></div>
-                <div><span className="text-slate-500">Website:</span> <span className="text-white">{dealerMarketing?.brand_profile?.website || '—'}</span></div>
-                <p className="rounded-2xl border border-white/8 bg-white/5 p-3 text-[13px] leading-6 text-slate-300">Positionierung: klare technische Formsprache, hochwertige Verpackung, digitale Garantie und ein professionelles Händlernetz – damit BidBlitz Charge sofort vertrauenswürdig wirkt.</p>
+              <div className="mb-4 flex items-center gap-2"><Sparkles size={16} className="text-amber-300" /><h3 className="text-sm font-bold text-white">Branding Control Center</h3></div>
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-white/8 bg-white/5 p-3 text-sm text-slate-300" data-testid="merchant-dealer-brand-profile-summary">
+                  <div><span className="text-slate-500">Firma:</span> <span className="text-white">{dealerMarketing?.brand_profile?.business_name || 'BidBlitz Charge Partner'}</span></div>
+                  <div><span className="text-slate-500">Kategorie:</span> <span className="text-white">{dealerMarketing?.brand_profile?.category || 'Charge / Retail'}</span></div>
+                  <div><span className="text-slate-500">Website:</span> <span className="text-white">{dealerMarketing?.brand_profile?.website || '—'}</span></div>
+                </div>
+                <OpsInput value={brandProfileForm.hero_claim} onChange={(value) => setBrandProfileForm((prev) => ({ ...prev, hero_claim: value }))} placeholder="Premium Charging. Professionell präsentiert." testid="merchant-dealer-brand-hero-claim" />
+                <div className="grid grid-cols-2 gap-2">
+                  <OpsSelect value={brandProfileForm.package_tier} onChange={(value) => setBrandProfileForm((prev) => ({ ...prev, package_tier: value }))} options={["premium", "flagship", "retail_plus"]} testid="merchant-dealer-brand-package-tier" />
+                  <OpsSelect value={brandProfileForm.display_mode} onChange={(value) => setBrandProfileForm((prev) => ({ ...prev, display_mode: value }))} options={["counter_display", "shelf_story", "hero_wall"]} testid="merchant-dealer-brand-display-mode" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <OpsInput value={brandProfileForm.warranty_badge} onChange={(value) => setBrandProfileForm((prev) => ({ ...prev, warranty_badge: value }))} placeholder="24 Monate Garantie" testid="merchant-dealer-brand-warranty-badge" />
+                  <OpsSelect value={brandProfileForm.accent_finish} onChange={(value) => setBrandProfileForm((prev) => ({ ...prev, accent_finish: value }))} options={["matte_black", "graphite_cyan", "clean_silver"]} testid="merchant-dealer-brand-accent-finish" />
+                </div>
+                <OpsTextarea value={brandProfileForm.packaging_notes} onChange={(value) => setBrandProfileForm((prev) => ({ ...prev, packaging_notes: value }))} placeholder="Notizen zu Packaging, Regalwirkung und Display-Präsentation" testid="merchant-dealer-brand-packaging-notes" />
+                <div className="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-3 text-[12px] leading-5 text-amber-100" data-testid="merchant-dealer-brand-guidance">
+                  Zielbild: klare technische Formsprache, hochwertige Verpackung, digitale Garantie und ein professionelles Händlernetz – damit BidBlitz Charge sofort vertrauenswürdig wirkt.
+                </div>
+                <button onClick={saveBrandProfile} disabled={dealerBusy === "branding"} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-amber-300 text-slate-950 text-xs font-black disabled:opacity-50" data-testid="merchant-dealer-brand-save">
+                  {dealerBusy === "branding" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Branding speichern
+                </button>
               </div>
             </div>
           </div>
@@ -856,39 +919,96 @@ const MerchantPortalPage = ({ onBack, onNavigate }) => {
               </div>
             </div>
 
-            <DealerListCard title="Aktuelle Garantiefälle" icon={ShieldCheck} testid="merchant-dealer-warranty-list-card">
-              {(dealerWarranty?.claims || []).length === 0 ? <EmptyDealerState label="Noch keine Garantiefälle vorhanden" /> : (dealerWarranty?.claims || []).map((item, index) => (
-                <div key={item.claim_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-dealer-warranty-claim-${index}`}>
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-4">
+              {warrantyPassPreview?.pass && (
+                <div className="rounded-[26px] border border-cyan-400/20 bg-[linear-gradient(145deg,_rgba(8,18,30,1),_rgba(14,25,42,1))] p-4" data-testid="merchant-dealer-warranty-pass-preview-card">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-white">{item.product_name || 'Produkt'} · {item.claim_id}</p>
-                      <p className="mt-1 text-[11px] leading-5 text-slate-400">{item.issue_type} · {item.requested_resolution} · {item.customer_name || 'Kunde offen'}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.status}</span>
-                        <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.serial_number || 'ohne SN'}</span>
-                      </div>
-                      {item.issue_summary && <p className="mt-3 text-[12px] leading-5 text-slate-300">{item.issue_summary}</p>}
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-200/80">Digitaler Garantiepass</p>
+                      <h3 className="mt-2 text-lg font-black text-white">{warrantyPassPreview.pass.coverage_label}</h3>
+                      <p className="mt-1 text-sm text-slate-300">Pass ID {warrantyPassPreview.pass.pass_id} · gültig bis {warrantyPassPreview.pass.valid_until}</p>
                     </div>
-                    <div className="flex flex-col gap-2 md:items-end">
-                      <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">{item.created_at ? new Date(item.created_at).toLocaleDateString('de-DE') : '—'}</span>
-                      <div className="flex flex-wrap gap-2">
-                        {['under_review', 'replacement_sent', 'resolved'].map((status) => (
+                    <a
+                      href={`${API}/api/merchant-portal/dealer/warranty/pass/${encodeURIComponent(warrantyPassPreview.claimId)}/download`}
+                      className="inline-flex h-10 items-center justify-center rounded-2xl bg-cyan-400 px-4 text-xs font-black text-slate-950"
+                      data-testid="merchant-dealer-warranty-pass-download-active"
+                    >
+                      Pass laden
+                    </a>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <MetricPill label="Status" value={warrantyPassPreview.pass.status_label} testid="merchant-dealer-warranty-pass-status" />
+                    <MetricPill label="Seriennummer" value={warrantyPassPreview.pass.serial_number} testid="merchant-dealer-warranty-pass-serial" />
+                    <MetricPill label="Claim" value={warrantyPassPreview.pass.claim_id} testid="merchant-dealer-warranty-pass-claim" />
+                  </div>
+                  <div className="mt-4 rounded-2xl border border-white/8 bg-black/20 p-3" data-testid="merchant-dealer-warranty-pass-qr-payload">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">QR Payload</p>
+                    <p className="mt-2 break-all text-[11px] leading-5 text-slate-300">{warrantyPassPreview.pass.qr_payload}</p>
+                  </div>
+                </div>
+              )}
+
+              <DealerListCard title="Aktuelle Garantiefälle" icon={ShieldCheck} testid="merchant-dealer-warranty-list-card">
+                {(dealerWarranty?.claims || []).length === 0 ? <EmptyDealerState label="Noch keine Garantiefälle vorhanden" /> : (dealerWarranty?.claims || []).map((item, index) => (
+                  <div key={item.claim_id} className="rounded-2xl border border-white/6 bg-white/5 p-3" data-testid={`merchant-dealer-warranty-claim-${index}`}>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{item.product_name || 'Produkt'} · {item.claim_id}</p>
+                        <p className="mt-1 text-[11px] leading-5 text-slate-400">{item.issue_type} · {item.requested_resolution} · {item.customer_name || 'Kunde offen'}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.status}</span>
+                          <span className="rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">{item.serial_number || 'ohne SN'}</span>
+                          {item.warranty_pass?.pass_id ? <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] text-cyan-200">{item.warranty_pass.pass_id}</span> : null}
+                        </div>
+                        {item.issue_summary && <p className="mt-3 text-[12px] leading-5 text-slate-300">{item.issue_summary}</p>}
+                        {item.warranty_pass ? (
+                          <div className="mt-3 rounded-2xl border border-white/8 bg-black/20 p-3" data-testid={`merchant-dealer-warranty-pass-summary-${index}`}>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
+                              <span>Coverage {item.warranty_pass.coverage_label}</span>
+                              <span>•</span>
+                              <span>Valid until {item.warranty_pass.valid_until}</span>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-col gap-2 md:items-end">
+                        <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">{item.created_at ? new Date(item.created_at).toLocaleDateString('de-DE') : '—'}</span>
+                        <div className="flex flex-wrap gap-2">
                           <button
-                            key={status}
-                            onClick={() => updateWarrantyStatus(item.claim_id, status)}
-                            disabled={dealerBusy === `warranty-status-${item.claim_id}`}
-                            className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
-                            data-testid={`merchant-dealer-warranty-status-${_safeSlug(status)}-${index}`}
+                            onClick={() => previewWarrantyPass(item.claim_id)}
+                            disabled={dealerBusy === `warranty-pass-${item.claim_id}`}
+                            className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 disabled:opacity-50"
+                            data-testid={`merchant-dealer-warranty-pass-preview-${index}`}
                           >
-                            {status}
+                            {dealerBusy === `warranty-pass-${item.claim_id}` ? 'Lädt...' : 'Pass ansehen'}
                           </button>
-                        ))}
+                          <a
+                            href={`${API}/api/merchant-portal/dealer/warranty/pass/${encodeURIComponent(item.claim_id)}/download`}
+                            className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold text-white"
+                            data-testid={`merchant-dealer-warranty-pass-download-${index}`}
+                          >
+                            Pass laden
+                          </a>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {['under_review', 'replacement_sent', 'resolved'].map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => updateWarrantyStatus(item.claim_id, status)}
+                              disabled={dealerBusy === `warranty-status-${item.claim_id}`}
+                              className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                              data-testid={`merchant-dealer-warranty-status-${_safeSlug(status)}-${index}`}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </DealerListCard>
+                ))}
+              </DealerListCard>
+            </div>
           </div>
         </div>
       )}
