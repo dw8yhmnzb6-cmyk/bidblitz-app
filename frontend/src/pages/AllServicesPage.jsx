@@ -12,7 +12,7 @@ import {
   CarFront, Sparkles, Truck, Dog, Dumbbell, Palmtree,
   Gamepad2, Bot, Bitcoin, Baby, ShoppingBag, Star, MessageCircle,
   Phone, Globe, Crown, Gift, Gavel, Send, Eye, ChevronRight,
-  Layers, LayoutGrid, Tag, Percent
+  Layers, LayoutGrid, Tag, Percent, ShieldCheck, ReceiptText
 } from "lucide-react";
 import { filterStoreSafeItems } from "../config/release";
 import { useI18n } from "../store";
@@ -55,6 +55,7 @@ const CATEGORIES = [
     items: [
       { icon: Hotel, label: "Hotels", desc: "Weltweit buchen, Cashback", route: "/hotels", color: "#3B82F6" },
       { icon: Ticket, label: "Audi Tickets", desc: "Audi Event-Tickets direkt mit Wallet bezahlen", route: "/audi-tickets", color: "#B11226" },
+      { icon: ShieldCheck, label: "BidBlitz Charge", desc: "Garantie, Rechnungen, Punkte, Angebote und Händlerfinder", route: "/charge-app", color: "#6EE7F9" },
       { icon: Ticket, label: "Events", desc: "Konzerte, Sport, Theater", route: "/events", color: "#A855F7" },
       { icon: Ticket, label: "Schwimmbad", desc: "Tickets, Spinde, Einlass & Familienpässe", route: "/pool", color: "#0088CC" },
       { icon: UtensilsCrossed, label: "Restaurants", desc: "Tisch reservieren", route: "/restaurants", color: "#EF4444" },

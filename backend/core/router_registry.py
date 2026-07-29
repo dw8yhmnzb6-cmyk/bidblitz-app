@@ -102,6 +102,7 @@ def register_all_routers(app):
         ("routes.pos_hardware", "router"),
         ("routes.pool_management", "router"),
         ("routes.audi_tickets", "router"),
+        ("routes.charge_app", "router"),
         
         # Staff Management
         ("routes.staff", "router"),

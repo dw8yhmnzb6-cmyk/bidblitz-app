@@ -270,6 +270,11 @@ export const api = {
   getAudiTicketAdminDashboard: () => request("/api/audi-tickets/admin/dashboard"),
   adminAudiTicketCheckin: (body) => request("/api/audi-tickets/admin/checkin", { method: "POST", body: JSON.stringify(body) }),
 
+  // Charge App
+  getChargeAppDashboard: () => request("/api/charge-app/dashboard"),
+  registerChargeWarranty: (body) => request("/api/charge-app/warranty/register", { method: "POST", body: JSON.stringify(body) }),
+  saveChargeInvoice: (body) => request("/api/charge-app/invoices/save", { method: "POST", body: JSON.stringify(body) }),
+
   // Transactions
   getTransactions: (params = {}) => {
     const query = new URLSearchParams();
