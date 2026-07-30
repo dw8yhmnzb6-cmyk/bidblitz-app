@@ -19,6 +19,8 @@ import QuickAccessBar from "../components/QuickAccessBar";
 import AdBanner from "../components/AdBanner";
 import HomeRecommendations from "../components/HomeRecommendations";
 import SmartRecommendations from "../components/SmartRecommendations";
+import { P2PHeroSection } from "../components/home/P2PHeroSection";
+import { HomeMiningTrustPromo } from "../components/home/HomeMiningTrustPromo";
 import ModeSwitcher from "../components/ModeSwitcher";
 import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
 import RecommendAppCard from "../components/RecommendAppCard";
@@ -475,6 +477,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </motion.button>
         )}
 
+        {isGuest && <P2PHeroSection gt={gt} onRegister={onRegister} />}
+
         {/* ── Onboarding Hint (guest, dismissible, show once) ── */}
         <AnimatePresence>
           {isGuest && !hintDismissed && !isDemoMode && (
@@ -498,88 +502,10 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           )}
         </AnimatePresence>
 
-        <motion.section
-          className={`rounded-[28px] p-5 mb-5 relative overflow-hidden cursor-pointer ${!isGuest ? "hidden sm:block" : ""}`}
-          style={{
-            background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(59,130,246,0.08) 55%, rgba(255,255,255,0.02))",
-            border: "1px solid rgba(245,158,11,0.18)",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
-          }}
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08, ...slide }}
-          whileTap={{ scale: 0.985 }}
-          onClick={() => onNavigate("/mining-trust")}
-          data-testid="home-mining-trust-hero"
-        >
-          <div className="absolute -top-10 -right-10 h-36 w-36 rounded-full bg-amber-400/12 blur-3xl pointer-events-none" />
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200" data-testid="home-mining-trust-badge">
-                <Shield size={12} /> {miningTrustCopy.badge}
-              </div>
-              <h2 className="mt-3 text-[24px] sm:text-[30px] font-bold text-white tracking-tight" data-testid="home-mining-trust-title">
-                {miningTrustCopy.title}
-              </h2>
-              <p className="mt-2 max-w-xl text-[13px] sm:text-[14px] text-white/68" data-testid="home-mining-trust-subtitle">
-                {miningTrustCopy.subtitle}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button className="rounded-full bg-white px-5 py-3 text-[12px] font-bold text-black" data-testid="home-mining-trust-open-button">
-                {miningTrustCopy.open}
-              </button>
-              <button className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-[12px] font-semibold text-white" data-testid="home-mining-trust-open-mining-button" onClick={(e) => { e.stopPropagation(); onNavigate('/mining'); }}>
-                {miningTrustCopy.openMining}
-              </button>
-            </div>
-          </div>
-        </motion.section>
 
-        {!isGuest && (
-          <motion.button
-            onClick={() => onNavigate("/mining-trust")}
-            className="sm:hidden mb-3.5 w-full rounded-[20px] border px-3.5 py-3 text-left"
-            style={{
-              background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(59,130,246,0.06) 55%, rgba(255,255,255,0.02))",
-              borderColor: "rgba(245,158,11,0.16)",
-            }}
-            whileTap={{ scale: 0.985 }}
-            data-testid="home-mining-trust-compact"
-          >
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[16px] border border-amber-400/15 bg-amber-500/10">
-                <Shield size={16} className="text-amber-300" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-200/90">
-                  {miningTrustCopy.badge}
-                </div>
-                <div className="mt-1 text-[14px] font-bold leading-tight text-white">
-                  {miningTrustCopy.title}
-                </div>
-                <div className="mt-1 text-[10px] leading-relaxed text-white/65 line-clamp-2">
-                  {miningTrustCopy.subtitle}
-                </div>
-                <div className="mt-2.5 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-200">
-                  {miningTrustCopy.open} <ChevronRight size={13} />
-                </div>
-              </div>
-            </div>
-          </motion.button>
-        )}
 
-        {/* ── Tagline (nur für Gäste — angemeldete User sehen sofort den Wallet) ── */}
-        {isGuest && (
-          <motion.div className="mb-5 lg:mb-8 lg:max-w-3xl" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...slide }}>
-            <h2 className="text-[18px] sm:text-[22px] lg:text-[40px] font-outfit font-bold text-white leading-[1.12] tracking-tight mb-1 break-words text-left">
-              {t("home.tagline_1")}{" "}
-              <span className="text-[#00C2FF]">{t("home.tagline_2")}</span>,{" "}
-              <span className="text-[#00C2FF]">{t("home.tagline_3")}</span> {t("home.tagline_more")}
-            </h2>
-            <p className="text-[11px] lg:text-[14px] text-[#333] font-medium max-w-2xl">{t("home.subtitle")}</p>
-          </motion.div>
-        )}
+
+
 
         {/* ── BANKING-APP TOP: Wallet + Quick Actions (auth users only) ── */}
         {!isGuest && !showKycRestrictedExperience && (
@@ -687,22 +613,6 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </>
         )}
 
-        {/* ── CTA Buttons (Gäste sehen Login/Register; eingeloggte User haben oben Quick-Actions) ── */}
-        {isGuest ? (
-          <div className="mb-6 lg:mb-8 lg:max-w-xl">
-            <motion.button data-testid="cta-register-btn" className="w-full py-[12px] rounded-[13px] bg-[#00C2FF] text-[#020202] font-semibold text-[12px] flex items-center justify-center gap-2 mb-2 relative overflow-hidden" style={{ boxShadow: "0 6px 36px rgba(0,194,255,0.3), 0 2px 10px rgba(0,194,255,0.15)" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, ...slide }} whileTap={{ scale: 0.96 }} onClick={onRegister}>
-              <UserPlus size={15} strokeWidth={2} />
-              {t("auth.create") || "Create Account"}
-              <motion.div animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity }}><ChevronRight size={16} strokeWidth={2.5} /></motion.div>
-            </motion.button>
-            <div className="flex gap-2 lg:grid lg:grid-cols-2">
-              <motion.button data-testid="cta-login-btn" className="flex-1 py-[11px] rounded-[13px] font-semibold text-[12px] flex items-center justify-center gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#fff" }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, ...slide }} whileTap={{ scale: 0.96 }} onClick={onLogin}>
-                <LogIn size={14} strokeWidth={2} />{t("auth.signin") || "Login"}
-              </motion.button>
-            </div>
-          </div>
-        ) : null}
-
         {/* ═══════════ GUEST SECTIONS ═══════════ */}
         {isGuest && (
           <div className="lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,400px)] xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,420px)] lg:gap-6 xl:gap-8 items-start">
@@ -791,6 +701,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
           </div>
         )}
 
+        {isGuest && <HomeMiningTrustPromo copy={miningTrustCopy} onNavigate={onNavigate} />}
+
         {/* ═══════════ AUTHENTICATED SECTIONS ═══════════ */}
         {!isGuest && !showKycRestrictedExperience && (
           <>
@@ -841,6 +753,8 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             <div className="overflow-hidden">
               <HomeRecommendations onNavigate={onNavigate} />
             </div>
+
+            <HomeMiningTrustPromo copy={miningTrustCopy} compact onNavigate={onNavigate} />
 
             {/* ═══ Available Now ═══ */}
             <motion.section data-testid="available-now-section" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.26 }}>
