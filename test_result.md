@@ -11,6 +11,18 @@ backend:
         agent: "testing"
         comment: "✓ VERIFIED (24.07.2026 Follow-up): Focused backend check after admin undefined errors fix. All 4 target endpoints tested successfully: 1) POST /api/auth/login with admin@bidblitz.ae → 200 OK, role=admin ✓ 2) GET /api/admin/analytics/overview?days=7 → 200 OK, returns all required fields (total_users=213, online_now=1, active_24h=2, active_7d, new_today, revenue_today, tx_today) ✓ 3) GET /api/analytics/conversions?days=7 → 200 OK, returns totals (dict) and top_features (list) ✓ 4) GET /api/admin/merchants/list?limit=5 → 200 OK, returns merchants array with 5 items, proper fields (id, merchant_id, name, email, business_name, balance, is_suspended, is_online) ✓. No 500 errors detected on any endpoint. No backend regression visible. Admin analytics fix confirmed working."
 
+  - task: "Backend smoke test after Android AAB build prep"
+    implemented: true
+    working: true
+    file: "backend/routes/auth.py, backend/routes/admin.py, backend/routes/analytics.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ BACKEND SMOKE TEST BESTANDEN (30.07.2026): Sehr kleiner Backend-Smoke-Test nach Android-AAB-Buildvorbereitung erfolgreich. Kontext: Keine Backend-Features geändert, nur lokaler Android-Build/Signing vorbereitet. Test-Ergebnisse: 1) POST /api/auth/login mit admin@bidblitz.ae → 200 OK, role=admin ✓ 2) GET /api/admin/analytics/overview?days=7 → 200 OK, alle erwarteten Felder vorhanden (total_users=216, online_now=1, active_24h=2, active_7d, new_today, revenue_today, tx_today) ✓ 3) GET /api/analytics/conversions?days=7 → 200 OK, totals (dict) und top_features (list) vorhanden ✓ 4) GET /api/admin/merchants/list?limit=5 → 200 OK, merchants Array mit 5 Einträgen, korrekte Felder (id, merchant_id, name, email, business_name, balance, is_suspended, is_online) ✓. Keine 500-Fehler auf allen Endpunkten. Keine Backend-Regression sichtbar. Android-AAB-Buildvorbereitung hat Backend nicht beeinträchtigt. Smoke-Test erfolgreich."
+
 frontend:
   - task: "Auction image mapping verification"
     implemented: true
@@ -252,4 +264,7 @@ agent_communication:
 
   - agent: "testing"
     message: "✅ FRONTEND SMOKE TEST BESTANDEN (30.07.2026): Sehr kleiner Frontend-Smoke-Test nach Android-AAB-Buildvorbereitung erfolgreich durchgeführt. Kontext: Keine Frontend-Features geändert, nur Android-AAB-Build mit lokalem Signing vorbereitet. Test-Ergebnisse auf Preview-URL (https://super-app-staging-2.preview.emergentagent.com): 1) Startseite lädt ohne Blank Screen ✓ 2) Login-Button ('Anmelden') ist erreichbar (Header + Hauptbereich) ✓ 3) Keine offensichtlichen UI-Crashs ✓. Alle UI-Elemente funktional. Nur erwartete 401-Fehler von Auth-Endpoints (normales Gast-Verhalten). Android-Build-Vorbereitung hat Frontend nicht beeinträchtigt."
+
+  - agent: "testing"
+    message: "✅ BACKEND SMOKE TEST BESTANDEN (30.07.2026): Sehr kleiner Backend-Smoke-Test nach Android-AAB-Buildvorbereitung erfolgreich. Kontext: Keine Backend-Features geändert, nur lokaler Android-Build/Signing vorbereitet. Test-Ergebnisse: 1) Auth-Login mit admin@bidblitz.ae funktioniert → 200 OK, role=admin ✓ 2) Admin Analytics Overview API → 200 OK, alle Felder vorhanden (total_users=216, online_now=1, active_24h=2) ✓ 3) Analytics Conversions API → 200 OK, totals und top_features vorhanden ✓ 4) Merchants List API → 200 OK, 5 Händler zurückgegeben ✓. Keine 500-Fehler. Keine Backend-Regression. Android-AAB-Buildvorbereitung hat Backend nicht beeinträchtigt. Smoke-Test erfolgreich."
 
