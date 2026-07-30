@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 30.07.2026 — Admin-pflegbare Charge-Angebotsregeln
+- Admins können jetzt eigene **Charge-Angebotsregeln** pflegen: **Region**, **Händler-Slug**, **Kategorie**, **Grundlabel**, **Angebotstitel**, **Hinweistext**, **Score-Boost**, **Priorität** und **Aktiv/Inaktiv**.
+- Backend: `backend/routes/charge_app.py` enthält neue Admin-Endpunkte für **List / Create / Update / Toggle** unter `/api/charge-app/admin/offer-rules*` sowie die direkte Integration der Regeln in das Merchant-Ranking und die personalisierten Charge-Angebote.
+- Frontend: neue Seite `frontend/src/pages/AdminChargeOfferRulesPage.jsx`, Route `/admin/charge-offer-rules`, Admin-Navigationseintrag in `AdminPage.jsx` und `components/admin/sections.js`, neue API-Methoden in `frontend/src/services/api.js`.
+- Verifiziert: Backend-Selbsttests **PASS**, Browser-Smoke **PASS**, **Testing Agent Iteration 304 PASS** mit **100% Backend** und **100% Frontend**.
+
 ## 30.07.2026 — Personalisierte Charge-Angebote je Händler/Region
 - Die Charge-App spielt jetzt **personalisierte Angebote** in einer eigenen **„Für dich personalisiert“**-Sektion aus. Die Logik gewichtet **Region/Stadt**, **bisherige Händlerbeziehungen**, **angesehene Händler** und **passende Produktkategorien**.
 - Backend: `backend/routes/charge_app.py` liefert jetzt `personalization`, `personalized_offers` und nach Score sortierte `merchants`. Neu ist außerdem `POST /api/charge-app/interactions` für Merchant- und Offer-Tracking.

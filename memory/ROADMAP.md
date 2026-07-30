@@ -1,5 +1,15 @@
 # BidBlitz — ROADMAP
 
+## Status nach Admin-Regelsteuerung — 30.07.2026
+- ✅ **Admin-pflegbare Charge-Angebotsregeln** sind live.
+- ✅ Admin kann jetzt Regeln nach **Region**, **Händler**, **Kategorie**, **Score-Boost** und **Priorität** pflegen und aktiv/inaktiv schalten.
+- ✅ Diese Regeln wirken direkt auf Charge-Personalisierung und Merchant-Ranking.
+- ✅ Verifiziert mit Backend-Selbsttests, Browser-Smoke und **Testing Agent Iteration 304 PASS**.
+- 🔴 Nächster sinnvoller Charge-Schritt: echte **In-App Vorschau** für Rechnungen/Bilder plus Vorschau im Garantie-/Händlerkontext.
+- 🟡 Danach: Reward-Stufen mit konkreten Einlösungen und Vorteils-Copy.
+- 🟡 Danach: feinere regionale Kampagnensteuerung mit Laufzeiten / Gültigkeitsfenstern je Regel.
+- 🟡 Separat weiter offen: **Telegram-Alarm als Monitoring-Backup** nur wenn wieder gewünscht.
+
 ## Status nach Charge-Personalisierung — 30.07.2026
 - ✅ **Personalisierte Charge-Angebote je Händler/Region** sind live.
 - ✅ Dashboard liefert jetzt **Personalization Profile**, **personalized_offers** und **ranking-basierte Händler**.
