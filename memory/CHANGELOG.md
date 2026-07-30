@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 30.07.2026 — Personalisierte Charge-Angebote je Händler/Region
+- Die Charge-App spielt jetzt **personalisierte Angebote** in einer eigenen **„Für dich personalisiert“**-Sektion aus. Die Logik gewichtet **Region/Stadt**, **bisherige Händlerbeziehungen**, **angesehene Händler** und **passende Produktkategorien**.
+- Backend: `backend/routes/charge_app.py` liefert jetzt `personalization`, `personalized_offers` und nach Score sortierte `merchants`. Neu ist außerdem `POST /api/charge-app/interactions` für Merchant- und Offer-Tracking.
+- Frontend: `frontend/src/pages/ChargeAppPage.jsx` zeigt personalisierte Match-Scores, deutsche Grundlabels und CTAs zum Händler. `frontend/src/pages/ChargeMerchantDetailPage.jsx` trackt Detailansichten. `frontend/src/services/api.js` enthält die neue Interaction-API.
+- Verifiziert: Backend-Selbsttests **PASS**, Browser-Smoke **PASS**, **Testing Agent Iteration 303 PASS** mit **100% Backend** und **100% Frontend**.
+
 ## 29.07.2026 — BidBlitz Charge V2: Uploads, Digitalpass und Händlerdetailseite
 - Die Charge-Kunden-App wurde um **Datei-Uploads** für Rechnungen und Garantiebelege erweitert. Erlaubt sind **PDF, JPG, JPEG, PNG und WebP**. Uploads laufen über das Backend und werden per Object Storage + MongoDB-Referenzmodell sicher gespeichert.
 - Für registrierte Garantien gibt es jetzt einen **digitalen Garantiepass** mit sichtbarer Vorschau, **QR-Code** und **Download-Datei**. Zusätzlich unterstützen die Download-Endpunkte jetzt auch **HEAD**, damit Browser-/Preflight-Verhalten sauber funktioniert.

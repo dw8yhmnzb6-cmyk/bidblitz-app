@@ -1,5 +1,15 @@
 # BidBlitz — ROADMAP
 
+## Status nach Charge-Personalisierung — 30.07.2026
+- ✅ **Personalisierte Charge-Angebote je Händler/Region** sind live.
+- ✅ Dashboard liefert jetzt **Personalization Profile**, **personalized_offers** und **ranking-basierte Händler**.
+- ✅ Händler- und Angebotsklicks werden im Charge-Modul als Interaktionen erfasst.
+- ✅ Verifiziert mit Backend-Selbsttests, Browser-Smoke und **Testing Agent Iteration 303 PASS**.
+- 🔴 Nächster sinnvoller Charge-Schritt: echte **In-App Vorschau** für Rechnungen/Bilder plus Vorschau in Händler-/Garantiekontext.
+- 🟡 Danach: dynamische Angebotssteuerung je Region/Händlerkategorie mit Admin-Pflegefeldern.
+- 🟡 Danach: Reward-Stufen mit konkreten Einlösungen und Vorteils-Copy.
+- 🟡 Separat weiter offen: **Telegram-Alarm als Monitoring-Backup** nur wenn wieder gewünscht.
+
 ## Status nach Charge-App V2 — 29.07.2026
 - ✅ **Datei-Uploads** für Rechnungen und Garantiebelege sind live.
 - ✅ **Digitaler Garantiepass** mit QR-Vorschau und Download ist live.
