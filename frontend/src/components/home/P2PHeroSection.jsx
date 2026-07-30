@@ -143,9 +143,9 @@ export const P2PHeroSection = ({ gt, onRegister }) => {
           >
             <div className="pointer-events-none absolute -left-6 top-8 h-20 w-20 rounded-full bg-[#00C2FF]/12 blur-3xl" />
             <div className="pointer-events-none absolute -right-6 bottom-8 h-20 w-20 rounded-full bg-[#00D26A]/10 blur-3xl" />
-            <div className="relative grid gap-4 sm:grid-cols-2 sm:items-center">
+            <div className="relative grid gap-4 sm:grid-cols-2 sm:items-center sm:gap-5">
               <PhoneMockup
-                name="Afrim"
+                name="Lena"
                 title={gt("gp.p2p_sender_title")}
                 amount="50 €"
                 status={gt("gp.p2p_sender_status")}
@@ -153,8 +153,19 @@ export const P2PHeroSection = ({ gt, onRegister }) => {
                 chipLabel="BidBlitz-ID"
                 testid="home-p2p-phone-sender"
               />
+              <div className="flex justify-center sm:hidden" data-testid="home-p2p-transfer-pill-mobile-wrap">
+                <motion.div
+                  className="flex items-center gap-2 rounded-full border border-[#00C2FF]/18 bg-[#06121B]/95 px-4 py-2 text-xs font-black text-[#9EEBFF] shadow-[0_10px_28px_rgba(0,194,255,0.18)]"
+                  animate={reduceMotion ? {} : { opacity: [0.84, 1, 0.84] }}
+                  transition={reduceMotion ? undefined : { duration: 2.4, ease: "easeInOut", repeat: Infinity }}
+                  data-testid="home-p2p-transfer-pill-mobile"
+                >
+                  <span className="inline-block h-2 w-2 rounded-full bg-[#00C2FF] shadow-[0_0_14px_rgba(0,194,255,0.7)]" />
+                  {gt("gp.p2p_transfer_status")}
+                </motion.div>
+              </div>
               <PhoneMockup
-                name="Albin"
+                name="Jonas"
                 title={gt("gp.p2p_receiver_title")}
                 amount="50 €"
                 status={gt("gp.p2p_receiver_status")}
@@ -165,7 +176,7 @@ export const P2PHeroSection = ({ gt, onRegister }) => {
               />
 
               <motion.div
-                className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
+                className="pointer-events-none absolute left-1/2 top-1/2 z-20 hidden -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 sm:flex"
                 animate={reduceMotion ? {} : { x: [0, 12, 24, 12, 0], y: [0, -6, 0, 6, 0], opacity: [0.84, 1, 1, 1, 0.84] }}
                 transition={reduceMotion ? undefined : { duration: 2.7, ease: "easeInOut", repeat: Infinity }}
                 data-testid="home-p2p-transfer-pill"
@@ -235,42 +246,46 @@ export const P2PHeroSection = ({ gt, onRegister }) => {
 
 const PhoneMockup = ({ name, title, amount, status, accent, chipLabel, received = false, testid }) => {
   return (
-    <div className="relative mx-auto w-full max-w-[260px] rounded-[34px] border border-white/10 bg-[#02070B] p-2" style={phoneFrameStyle} data-testid={testid}>
+    <div className="relative mx-auto w-full max-w-[248px] rounded-[32px] border border-white/10 bg-[#02070B] p-2.5" style={phoneFrameStyle} data-testid={testid}>
       <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-white/12" />
-      <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,16,24,0.96),rgba(4,9,14,0.98))] p-4">
-        <div className="flex items-center justify-between text-[11px] text-white/65">
+      <div className="rounded-[26px] border border-white/8 bg-[linear-gradient(180deg,rgba(8,16,24,0.96),rgba(4,9,14,0.98))] px-4 pb-4 pt-3.5">
+        <div className="flex items-center justify-between text-[11px] text-white/68">
           <span>09:41</span>
-          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-white/82">{chipLabel}</span>
+          <span className="rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-[10px] font-bold text-white/86">{chipLabel}</span>
         </div>
 
-        <div className="mt-5 flex items-center gap-3">
+        <div className="mt-4 flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/10 bg-white/5 text-lg font-black text-white">
             {name.slice(0, 1)}
           </div>
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/55">{title}</p>
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-white/58">{received ? "Empfänger" : "Sender"}</p>
             <p className="mt-1 truncate text-lg font-black text-white">{name}</p>
+            <p className="mt-1 text-[12px] font-medium text-white/72">{title}</p>
           </div>
         </div>
 
-        <div className="mt-6 rounded-[22px] border border-white/8 bg-white/5 p-4">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-white/48">BidBlitz Wallet</p>
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <p className="text-[32px] font-black leading-none text-white">{amount}</p>
+        <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.06] p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-white/62">BidBlitz Wallet</p>
             <div className="rounded-full px-3 py-1 text-[11px] font-black" style={{ background: `${accent}18`, color: accent }}>
               {received ? "Empfangen" : "Senden"}
             </div>
           </div>
-          <p className="mt-3 text-sm leading-6" style={{ color: received ? "#88F7B7" : "#8EDFFF" }} data-testid={`${testid}-status`}>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <p className="text-[32px] font-black leading-none text-white">{amount}</p>
+            <span className="text-[11px] font-semibold text-white/56">EUR</span>
+          </div>
+          <p className="mt-2.5 text-[14px] font-semibold leading-5" style={{ color: received ? "#88F7B7" : "#8EDFFF" }} data-testid={`${testid}-status`}>
             {status}
           </p>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 text-xs text-white/58">
+        <div className="mt-3.5 flex items-center gap-2 text-[12px] text-white/68">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/5">
             <Smartphone size={14} />
           </span>
-          <span>{received ? "BidBlitz Wallet aktiv" : "Telefonnummer / ID"}</span>
+          <span className="font-medium">{received ? "BidBlitz Wallet aktiv" : "Telefonnummer / BidBlitz-ID"}</span>
         </div>
       </div>
     </div>
