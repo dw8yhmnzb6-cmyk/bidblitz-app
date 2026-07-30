@@ -1,171 +1,137 @@
 {
-  "project_context": {
-    "name": "BidBlitz Charge Händlerportal",
-    "type": "B2B Admin Dashboard / E-Commerce Portal",
-    "emotional_archetype": "The Performance Pro / Swiss High-Contrast",
-    "core_features": [
-      "Händler-Login",
-      "Lagerbestand",
-      "Nachbestellung",
-      "Rechnungen",
-      "Werbematerial",
-      "Garantieabwicklung"
-    ]
+  "theme": "dark",
+  "archetype": "LUXURY",
+  "colors": {
+    "primary": "#0A0A0A",
+    "primary_foreground": "#FFFFFF",
+    "accent": "#00C2FF",
+    "accent_hover": "#0099FF",
+    "accent_soft": "rgba(0, 194, 255, 0.12)",
+    "surface": "#111111",
+    "surface_elevated": "#161616",
+    "text_main": "#FFFFFF",
+    "text_secondary": "#B4B4B4",
+    "border_light": "rgba(255, 255, 255, 0.06)",
+    "success": "#00D26A"
   },
   "typography": {
-    "fonts": {
-      "headings": "'Outfit', 'Cabinet Grotesk', sans-serif",
-      "body": "'Inter', 'IBM Plex Sans', sans-serif",
-      "mono": "'JetBrains Mono', monospace"
-    },
+    "heading_font": "'Outfit', sans-serif",
+    "body_font": "'Inter', sans-serif",
+    "h1": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white",
+    "h2": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-white",
+    "badge": "text-xs font-bold tracking-[0.2em] uppercase text-[#00C2FF]",
+    "body": "text-base md:text-lg text-[#B4B4B4] leading-relaxed",
+    "trust_indicator": "text-sm font-medium text-white flex items-center gap-2",
     "rules": [
-      "No default Inter for H1/H2. Use Outfit for high-end technical feel.",
-      "Headings > 32px MUST use tracking-tight.",
-      "Overlines/Labels MUST be Uppercase + Tiny + tracking-[0.2em].",
-      "Line height: leading-none for headers, leading-relaxed for body."
-    ],
-    "hierarchy": {
-      "h1": "text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight",
-      "h2": "text-2xl sm:text-3xl lg:text-4xl font-medium",
-      "h3": "text-xl sm:text-2xl font-medium",
-      "h4": "text-lg sm:text-xl font-medium",
-      "body": "text-sm sm:text-base",
-      "labels": "text-xs font-bold uppercase tracking-[0.2em]"
-    }
-  },
-  "colors": {
-    "archetype": "The Performance Pro",
-    "palette": {
-      "background": "#050505",
-      "surface": "#111111",
-      "surface_elevated": "#1A1A1A",
-      "text_primary": "#FFFFFF",
-      "text_secondary": "#A1A1AA",
-      "accent": "#00C2FF",
-      "accent_hover": "#00D4FF",
-      "border": "rgba(255, 255, 255, 0.08)",
-      "success": "#00D26A",
-      "error": "#FF4757",
-      "warning": "#FFD700"
-    },
-    "rules": [
-      "Never use pure black or gray, use tinted obsidian. Background is #050505.",
-      "Always set hover states explicitly (e.g., hover:bg-[#1A1A1A] hover:text-white).",
-      "Text must meet APCA / WCAG AA contrast ratio."
-    ]
-  },
-  "visual enhancers": {
-    "surfaces": [
-      "Grid Borders (Technical Look): Use border-r and border-b for data grids and tables.",
-      "Neumorphism (Tactile): Flat solid surfaces with 1px border-white/5 for cards.",
-      "Avoid Heavy Glass: For dashboards, use solid backgrounds to prevent visual refraction of data."
-    ],
-    "effects": [
-      "Subtle Glows: Use var(--accent-glow) for active tabs or critical KPIs.",
-      "Tracing Beam: Use sparingly on high-priority upgrade or active warranty claim cards."
-    ]
-  },
-  "component name": {
-    "strategy": "Shadcn UI Heavy + Custom Density",
-    "rules": [
-      "Cards: Go cardless or use rectangular dense styles. Max 8px border-radius.",
-      "Tables: High density. Left align data, right align numbers. Subtle border-b between rows.",
-      "Inputs: Use Shadcn Input/Select. Solid backgrounds (bg-[#111111]), no transparent dropdowns.",
-      "Buttons: Pill-shaped or sharp rectangles. Interactive hover states with transform.",
-      "Charts: Use Shadcn Charts (Recharts). Stick to monospaced numbers for tooltips."
-    ]
-  },
-  "grids": {
-    "mode": "High Density Grid (For Dashboards/Analytics)",
-    "rules": [
-      "Base Grid: grid-cols-1 md:grid-cols-3 lg:grid-cols-4.",
-      "Gap Strategy: Tight (gap-4 or gap-6).",
-      "Every pixel utilized, use h-full to match neighbors.",
-      "Direct Children Only: Grid items MUST be direct children."
+      "No generic AI-style fonts for headings.",
+      "Headings must use tight letter spacing.",
+      "Keep text large and readable on iPhone screens."
     ]
   },
   "layouts": {
-    "spacing_scale": "p-4 to p-8 internally for widgets, generous margins for section gaps.",
-    "rules": [
-      "Mobile-first responsive grids.",
-      "Navigation: Sidebar Navigation for the dealer portal (Dashboard), Top bar for User/Quick Actions.",
-      "Optical alignment over geometrical."
-    ]
-  },
-  "motion": {
-    "rules": [
-      "Micro-interactions on hover (opacity and slight transforms).",
-      "Staggered entrance animations for table rows or grid items.",
-      "No universal transitions (transition: all). Target specific properties."
-    ]
-  },
-  "accessibility": {
-    "rules": [
-      "Include data-testid on ALL interactive elements.",
-      "Respect prefers-reduced-motion.",
-      "High contrast focus rings focus:ring-2 focus:ring-accent."
-    ]
-  },
-  "media": {
-    "image_urls": {
-      "product_showcase_cables": {
-        "url": "https://images.unsplash.com/photo-1572721546624-05bf65ad7679?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwzfHxwcmVtaXVtJTIwdXNiJTIwYyUyMGNoYXJnZXIlMjB0ZWNofGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
-        "category": "Werbematerial / Marketing Materials",
-        "description": "Premium orange USB-C cables, useful for promotional asset section."
-      },
-      "product_showcase_charger": {
-        "url": "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwyfHxwcmVtaXVtJTIwdXNiJTIwYyUyMGNoYXJnZXIlMjB0ZWNofGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
-        "category": "Nachbestellung / Hardware Catalog",
-        "description": "Sleek white charger, for product listing."
-      },
-      "product_lifestyle": {
-        "url": "https://images.unsplash.com/photo-1557767382-97b28f5488e7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwxfHxwcmVtaXVtJTIwdXNiJTIwYyUyMGNoYXJnZXIlMjB0ZWNofGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
-        "category": "Login / Hero",
-        "description": "Black smartphone charging. Perfect for auth background or portal welcome."
-      },
-      "warehouse_boxes": {
-        "url": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjB0ZWNoJTIwd2FyZWhvdXNlJTIwbG9naXN0aWNzfGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
-        "category": "Lagerbestand / Inventory",
-        "description": "Yellow and white logistic boxes to represent inventory/warehouse."
-      },
-      "warehouse_racks": {
-        "url": "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB0ZWNoJTIwd2FyZWhvdXNlJTIwbG9naXN0aWNzfGVufDB8fHx8MTc4NTI3NzU3OHww&ixlib=rb-4.1.0&q=85",
-        "category": "Lagerbestand / Inventory Background",
-        "description": "Warehouse racking system to illustrate scale and storage."
-      }
+    "hero_section": {
+      "type": "bento_grid",
+      "mobile": "flex flex-col gap-8 px-4 pt-12 pb-8",
+      "desktop": "grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[80vh] px-8",
+      "alignment": "left-aligned text content, right-aligned or bottom-stacked phone mockups"
+    },
+    "how_it_works_section": {
+      "type": "grid",
+      "mobile": "flex flex-col gap-6",
+      "desktop": "grid grid-cols-1 md:grid-cols-3 gap-8",
+      "padding": "py-24"
     }
   },
-  "3d libraries": {
-    "libraries": [
-      "Recharts",
-      "Framer Motion"
-    ],
-    "steps": [
-      "Use Recharts for complex data in Lagerbestand (Inventory Trends) and Revenue visualization.",
-      "Use Framer Motion for progressive disclosure and smooth page transitions.",
-      "Avoid heavy 3D canvases in the data-heavy portal areas; focus on raw performance and clarity."
+  "motion": {
+    "transfer_animation": {
+      "description": "Framer Motion sequence demonstrating 50€ transfer from Afrim to Albin. A floating pill or coin should animate from Phone 1 (Afrim) to Phone 2 (Albin).",
+      "phone_1_state": "Afrim sendet 50 €",
+      "transfer_state": "50 € wird gesendet",
+      "phone_2_state": "Albin erhält 50 € -> Zahlung angekommen",
+      "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "duration": "1.5s",
+      "loop": "infinite with a 2s delay"
+    },
+    "trust_indicators": "Staggered fade-in on load",
+    "buttons": "Hover scale up 1.05 and soft glow"
+  },
+  "visual_enhancers": {
+    "surfaces": "Use glass-premium (backdrop-blur-xl with subtle white/10 borders) for phone mockups.",
+    "glows": "Subtle #00C2FF radial gradients behind the phone mockups to separate them from the dark background.",
+    "borders": "1px solid rgba(255, 255, 255, 0.1) on cards."
+  },
+  "components_to_update": {
+    "HomePage": {
+      "path": "/app/frontend/src/pages/HomePage.jsx",
+      "instructions_to_main_agent": [
+        "Create a new component P2PHeroSection.jsx and import it at the top of HomePage.jsx.",
+        "Move the existing 'Bitcoin Mining Proof' section further down the page.",
+        "Make P2PHeroSection the very first visible component below the navigation header.",
+        "Ensure all existing props (onNavigate, onLogin, onRegister, etc.) are passed down or preserved so current auth/navigation flows remain fully functional.",
+        "Implement a 'How it Works' section directly below the Hero."
+      ]
+    }
+  },
+  "content": {
+    "hero": {
+      "badge": "BIDBLITZ WALLET",
+      "headline": "Geld senden. Geld empfangen. In Sekunden.",
+      "subheadline": "Sende Geld direkt an Freunde, Familie oder Geschäftspartner – per Telefonnummer, QR-Code oder BidBlitz-ID. Einfach, sicher und rund um die Uhr. (Nur zwischen BidBlitz Wallet Nutzern).",
+      "primary_cta": "Jetzt kostenlos starten",
+      "secondary_cta": "So funktioniert’s",
+      "trust_indicators": ["Schnell", "Sicher", "24/7 verfügbar"]
+    },
+    "how_it_works": {
+      "title": "So einfach funktioniert BidBlitz",
+      "steps": [
+        {
+          "number": "1",
+          "title": "Empfänger auswählen",
+          "desc": "Telefonnummer, QR-Code oder BidBlitz-ID"
+        },
+        {
+          "number": "2",
+          "title": "Betrag eingeben",
+          "desc": "Betrag prüfen und bestätigen"
+        },
+        {
+          "number": "3",
+          "title": "Geld angekommen",
+          "desc": "Der Empfänger erhält sofort eine Bestätigung"
+        }
+      ]
+    },
+    "translation_notes": [
+      "Ensure i18n hooks are used for these strings so they are fully translated into all existing BidBlitz languages.",
+      "Do NOT claim 'guaranteed in one second'. Always use 'in Sekunden'."
     ]
   },
-  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "Do not use generic centered layouts or simplistic gradients.",
-    "Prioritize using pre-existing components from src/components/ui when applicable.",
-    "Use glass-morphism effects with backdrop filters where appropriate, but favor solid dark panels for data grids to maintain high contrast.",
-    "NEVER use emojis for icons. Use lucide-react or @phosphor-icons/react.",
-    "Do not add `transition: all`. Transition specific properties.",
-    "Use sonner for toast notifications for success/error handling (e.g., Warranty submitted, Order placed)."
-  ],
-  "GENERAL UI UX DESIGN GUIDELINES": [
-    "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., data-testid='submit-reorder-btn').",
-    "Never use completely transparent backgrounds for dropdowns, overlays, or headers. Always have a solid or slightly translucent fill.",
-    "Always provide a prominent North Star KPI (e.g., Active Stock, Pending Orders) on the top-left.",
-    "Group metrics intuitively: Orders, Inventory, Revenue, and Support.",
-    "Mobile-first responsive design, even for B2B dashboards."
-  ],
-  "instructions_to_main_agent": [
-    "Implement the BidBlitz Charge Händlerportal using React and Tailwind.",
-    "Create a robust Layout with Sidebar navigation for switching between Login, Lagerbestand, Nachbestellung, Rechnungen, Werbematerial, Garantieabwicklung.",
-    "Ensure the UI reflects a premium hardware brand comparable to Anker/UGREEN—sleek, dark, technical, and highly readable.",
-    "Use the provided `App.css` and `tailwind.config.js` conventions for dark mode aesthetics.",
-    "Integrate Shadcn primitives (Card, Table, Badge, Button, Input) heavily customized for the dark theme."
+  "image_urls": {
+    "afrim_avatar": {
+      "url": "https://images.pexels.com/photos/26872232/pexels-photo-26872232.jpeg",
+      "description": "Professional young man, used for Afrim (Sender)"
+    },
+    "albin_avatar": {
+      "url": "https://images.pexels.com/photos/17910791/pexels-photo-17910791.jpeg",
+      "description": "Smiling young man, used for Albin (Receiver)"
+    }
+  },
+  "accessibility": {
+    "contrast": "Ensure all text over dark backgrounds meets WCAG AA 4.5:1 ratio.",
+    "data_testid": "Add data-testid attributes to all interactive elements (e.g. data-testid='hero-register-btn').",
+    "animations": "Respect prefers-reduced-motion for the phone transfer animation."
+  },
+  "testing": {
+    "responsive": "Must test on 320px, 390px, and desktop widths. Use stacked layout on mobile and side-by-side on desktop."
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "No generic centered layouts, simplistic gradients, and uniform styling.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Ensure the hero phone mockups look professional, clean, and minimal. Do not use random AI-generated vector illustrations. Build them with pure HTML/Tailwind.",
+    "Avoid complete transparent backgrounds on floating elements."
   ]
 }
