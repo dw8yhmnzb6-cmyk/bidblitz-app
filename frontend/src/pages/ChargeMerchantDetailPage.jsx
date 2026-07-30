@@ -12,6 +12,17 @@ export default function ChargeMerchantDetailPage({ slug, onBack, onNavigate }) {
     try {
       const response = await api.getChargeMerchantDetail(slug);
       setData(response);
+      try {
+        await api.trackChargeInteraction({
+          interaction_type: "merchant_detail_view",
+          merchant_slug: slug,
+          merchant_name: response?.merchant?.business_name || "",
+          city: response?.merchant?.city || "",
+          category: response?.merchant?.category || "",
+        });
+      } catch (error) {
+        void error;
+      }
     } catch (error) {
       toast.error(error.message || "Händlerdetail konnte nicht geladen werden");
     } finally {

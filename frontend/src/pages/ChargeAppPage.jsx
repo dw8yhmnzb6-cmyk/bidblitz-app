@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, ReceiptText, Coins, Tag, MapPin, Loader2,
-  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp
+  Save, Building2, Search, Sparkles, ChevronRight, Gift, Star, Download, FileUp, WandSparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
@@ -71,7 +71,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     } finally {
       setBusy("");
     }
-  }, [warrantyForm, loadDashboard]);
+  }, [warrantyForm, warrantyFile, loadDashboard]);
 
   const saveInvoice = useCallback(async () => {
     if (!invoiceForm.invoice_number.trim() || !invoiceForm.merchant_name.trim()) {
@@ -112,6 +112,23 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
   }, []);
 
+  const openMerchantDetail = useCallback(async (item, source = "merchant_list") => {
+    try {
+      await api.trackChargeInteraction({
+        interaction_type: source,
+        merchant_slug: item.public_slug || item.merchant_slug || "",
+        merchant_name: item.business_name || item.merchant_name || "",
+        city: item.city || item.region || "",
+        category: item.category || "",
+        offer_title: item.title || "",
+      });
+    } catch (error) {
+      void error;
+    }
+    const route = item.route || (item.public_slug || item.merchant_slug ? `/charge-app/merchant?slug=${encodeURIComponent(item.public_slug || item.merchant_slug)}` : "/merchant");
+    onNavigate?.(route);
+  }, [onNavigate]);
+
   const merchants = useMemo(() => {
     const rows = dashboard?.merchants || [];
     if (!merchantQuery.trim()) return rows;
@@ -131,6 +148,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
 
   const loyalty = dashboard?.loyalty?.status || {};
   const overview = dashboard?.summary || {};
+  const personalization = dashboard?.personalization || {};
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#06101B_0%,#0A1626_42%,#F4F0E8_42%,#F4F0E8_100%)] pb-24" data-testid="charge-app-page">
@@ -196,6 +214,43 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
         </div>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <SurfaceCard title="Für dich personalisiert" icon={WandSparkles} testid="charge-app-personalized-offers-card">
+            <div className="rounded-[26px] border border-[#D9CFC0] bg-[linear-gradient(145deg,#FFF7E9,#FFFFFF)] p-4" data-testid="charge-app-personalization-profile-card">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                <span className="rounded-full bg-[#0A1626] px-3 py-1 font-black text-[#6EE7F9]" data-testid="charge-app-personalization-region">Region: {personalization.region || "Deutschland"}</span>
+                {(personalization.top_categories || []).slice(0, 2).map((item, index) => <span key={item} className="rounded-full border border-[#D9CFC0] px-3 py-1 font-semibold" data-testid={`charge-app-personalization-category-${index}`}>{item}</span>)}
+                {(personalization.top_merchants || []).slice(0, 1).map((item) => <span key={item} className="rounded-full border border-[#D9CFC0] px-3 py-1 font-semibold" data-testid="charge-app-personalization-merchant">Händlerfokus: {item}</span>)}
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">Wir priorisieren Angebote für deine Region, deine bisherigen Charge-Händler und passende Zubehörkategorien.</p>
+            </div>
+            <div className="grid gap-3">
+              {(dashboard?.personalized_offers || []).map((item, index) => (
+                <div key={item.offer_id || `${item.title}-${index}`} className="rounded-[26px] border border-[#D9CFC0] bg-[linear-gradient(145deg,#FFF7E9,#FFFFFF)] p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]" data-testid={`charge-app-personalized-offer-${index}`}>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-[#0A1626] px-3 py-1 text-[11px] font-black text-[#6EE7F9]" data-testid={`charge-app-personalized-offer-score-${index}`}>{item.score || 0} Match</span>
+                        <span className="rounded-full border border-[#D9CFC0] px-3 py-1 text-[11px] font-semibold text-slate-600">{item.region || "Deutschland"}</span>
+                        <span className="rounded-full border border-[#D9CFC0] px-3 py-1 text-[11px] font-semibold text-slate-600">{item.category || "Charge / Retail"}</span>
+                      </div>
+                      <h3 className="mt-3 text-lg font-black text-slate-900">{item.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(item.reasons || [item.reason]).slice(0, 3).map((reason, reasonIndex) => (
+                          <span key={`${reason}-${reasonIndex}`} className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700" data-testid={`charge-app-personalized-offer-reason-${index}-${reasonIndex}`}>{reason}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex min-w-[160px] flex-col items-start gap-3 lg:items-end">
+                      <span className="rounded-full bg-[#0A1626] px-3 py-1 text-xs font-black text-[#6EE7F9]">{item.value}{typeof item.value === "number" ? "%" : ""}</span>
+                      <button onClick={() => openMerchantDetail(item, "personalized_offer_click")} className="inline-flex h-10 items-center justify-center rounded-2xl bg-[#0A1626] px-4 text-xs font-black text-[#D8FCFF]" data-testid={`charge-app-personalized-offer-cta-${index}`}>{item.cta_label || "Zum Händler"}</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SurfaceCard>
+
           <SurfaceCard title="Punkte sammeln" icon={Coins} testid="charge-app-loyalty-card">
             <div className="grid gap-3 sm:grid-cols-3">
               <InfoPill label="Coins" value={loyalty.coins_balance || 0} testid="charge-app-loyalty-coins" />
@@ -299,7 +354,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
             </div>
             <div className="space-y-3">
               {merchants.length === 0 ? <EmptyState label="Keine Händler gefunden" testid="charge-app-empty-merchants" /> : merchants.map((item, index) => (
-                <button key={`${item.business_name}-${index}`} onClick={() => onNavigate?.(item.route || "/merchant") } className="flex w-full items-center gap-3 rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3 text-left transition hover:-translate-y-0.5" data-testid={`charge-app-merchant-item-${index}`}>
+                <button key={`${item.business_name}-${index}`} onClick={() => openMerchantDetail(item, "merchant_click") } className="flex w-full items-center gap-3 rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3 text-left transition hover:-translate-y-0.5" data-testid={`charge-app-merchant-item-${index}`}>
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0A1626] text-[#6EE7F9]">
                     {item.logo_url ? <img src={item.logo_url} alt="" className="h-11 w-11 rounded-2xl object-cover" /> : <Building2 size={18} />}
                   </div>
@@ -307,6 +362,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     <p className="truncate text-sm font-black text-slate-900">{item.business_name}</p>
                     <p className="truncate text-xs text-slate-500">{item.city} · {item.category}</p>
                     <p className="truncate text-xs text-slate-400">{item.address || item.website || "BidBlitz Charge Netzwerk"}</p>
+                    {item.match_reason ? <p className="mt-2 text-[11px] font-semibold text-amber-700" data-testid={`charge-app-merchant-match-reason-${index}`}>{item.match_reason}</p> : null}
                   </div>
                   <ChevronRight size={18} className="text-slate-400" />
                 </button>
