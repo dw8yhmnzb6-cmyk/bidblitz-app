@@ -302,6 +302,10 @@ export const api = {
   },
   getChargeWarrantyPass: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/pass`),
   getChargeMerchantDetail: (slug) => request(`/api/charge-app/merchants/${encodeURIComponent(slug)}`),
+  getChargeOfferRulesAdmin: () => request("/api/charge-app/admin/offer-rules"),
+  createChargeOfferRuleAdmin: (body) => request("/api/charge-app/admin/offer-rules", { method: "POST", body: JSON.stringify(body) }),
+  updateChargeOfferRuleAdmin: (ruleId, body) => request(`/api/charge-app/admin/offer-rules/${encodeURIComponent(ruleId)}`, { method: "PUT", body: JSON.stringify(body) }),
+  toggleChargeOfferRuleAdmin: (ruleId) => request(`/api/charge-app/admin/offer-rules/${encodeURIComponent(ruleId)}/toggle`, { method: "PUT" }),
 
   // Transactions
   getTransactions: (params = {}) => {

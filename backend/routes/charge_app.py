@@ -56,6 +56,19 @@ class ChargeInteractionRequest(BaseModel):
     metadata: Dict[str, Any] = {}
 
 
+class ChargeOfferRuleRequest(BaseModel):
+    name: str
+    region: str = ""
+    merchant_slug: str = ""
+    category: str = ""
+    reason_label: str = ""
+    offer_title: str = ""
+    offer_hint: str = ""
+    score_boost: int = 10
+    priority: int = 50
+    active: bool = True
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -134,7 +147,58 @@ def _build_personalization_profile(user: Dict[str, Any], warranties: List[Dict[s
     }
 
 
-def _score_merchant_for_profile(merchant: Dict[str, Any], profile: Dict[str, Any]) -> Dict[str, Any]:
+def _serialize_offer_rule(doc: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "rule_id": doc.get("rule_id"),
+        "name": doc.get("name") or "Charge Regel",
+        "region": doc.get("region") or "",
+        "merchant_slug": doc.get("merchant_slug") or "",
+        "category": doc.get("category") or "",
+        "reason_label": doc.get("reason_label") or "",
+        "offer_title": doc.get("offer_title") or "",
+        "offer_hint": doc.get("offer_hint") or "",
+        "score_boost": int(doc.get("score_boost") or 0),
+        "priority": int(doc.get("priority") or 0),
+        "active": bool(doc.get("active", True)),
+        "created_at": doc.get("created_at") or "",
+        "updated_at": doc.get("updated_at") or "",
+    }
+
+
+def _rule_matches_profile(rule: Dict[str, Any], merchant: Dict[str, Any], profile: Dict[str, Any]) -> bool:
+    region = str(rule.get("region") or "").strip().lower()
+    merchant_slug = str(rule.get("merchant_slug") or "").strip().lower()
+    category = str(rule.get("category") or "").strip().lower()
+
+    merchant_city = str(merchant.get("city") or "").strip().lower()
+    merchant_public_slug = str(merchant.get("public_slug") or "").strip().lower()
+    merchant_categories = [item.lower() for item in _infer_categories(merchant.get("category"), merchant.get("business_name"))]
+    profile_regions = [str(item).strip().lower() for item in (profile.get("regions") or [])]
+    profile_categories = [str(item).strip().lower() for item in (profile.get("top_categories") or [])]
+
+    if region and region not in profile_regions and region != merchant_city:
+        return False
+    if merchant_slug and merchant_slug != merchant_public_slug:
+        return False
+    if category and category not in merchant_categories and category not in profile_categories:
+        return False
+    return True
+
+
+def _apply_offer_rules(merchant: Dict[str, Any], profile: Dict[str, Any], rules: List[Dict[str, Any]]) -> Dict[str, Any]:
+    matched = [rule for rule in rules if rule.get("active", True) and _rule_matches_profile(rule, merchant, profile)]
+    matched.sort(key=lambda item: (int(item.get("priority") or 0), int(item.get("score_boost") or 0)), reverse=True)
+    total_boost = sum(int(item.get("score_boost") or 0) for item in matched)
+    labels = [item.get("reason_label") for item in matched if item.get("reason_label")]
+    return {
+        "rules": matched,
+        "score_boost": total_boost,
+        "labels": labels,
+        "primary_rule": matched[0] if matched else None,
+    }
+
+
+def _score_merchant_for_profile(merchant: Dict[str, Any], profile: Dict[str, Any], rules: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     score = 0
     reasons: List[str] = []
     city = str(merchant.get("city") or "")
@@ -156,19 +220,30 @@ def _score_merchant_for_profile(merchant: Dict[str, Any], profile: Dict[str, Any
         score += 20
         reasons.append("Passend zu deinen Charge-Produkten")
 
+    rules_payload = _apply_offer_rules(merchant, profile, rules or [])
+    if rules_payload["score_boost"]:
+        score += rules_payload["score_boost"]
+        reasons.extend(rules_payload["labels"])
+
+    unique_reasons = _unique_list(reasons)
+
     return {
         **merchant,
         "personalization_score": score,
-        "match_reason": reasons[0] if reasons else "Beliebt im BidBlitz Charge Netzwerk",
-        "match_reasons": reasons or ["Beliebt im BidBlitz Charge Netzwerk"],
+        "match_reason": unique_reasons[0] if unique_reasons else "Beliebt im BidBlitz Charge Netzwerk",
+        "match_reasons": unique_reasons or ["Beliebt im BidBlitz Charge Netzwerk"],
+        "rule_boost": rules_payload["score_boost"],
+        "applied_rules": [_serialize_offer_rule(item) for item in rules_payload["rules"]],
+        "primary_rule": _serialize_offer_rule(rules_payload["primary_rule"]) if rules_payload["primary_rule"] else None,
     }
 
 
 def _personalized_offer_from_promo(promo: Dict[str, Any], merchant: Dict[str, Any], profile: Dict[str, Any], score: int, reasons: List[str]) -> Dict[str, Any]:
     merchant_name = merchant.get("business_name") or "BidBlitz Charge Händler"
     city = merchant.get("city") or profile.get("region") or "Deutschland"
-    title = promo.get("name") or f"Charge Angebot bei {merchant_name}"
-    description = promo.get("description") or f"Exklusiver Charge-Vorteil bei {merchant_name} in {city}."
+    primary_rule = merchant.get("primary_rule") or {}
+    title = primary_rule.get("offer_title") or promo.get("name") or f"Charge Angebot bei {merchant_name}"
+    description = primary_rule.get("offer_hint") or promo.get("description") or f"Exklusiver Charge-Vorteil bei {merchant_name} in {city}."
     return {
         "offer_id": f"{_slugify(title)}-{merchant.get('public_slug') or 'network'}",
         "title": title,
@@ -185,6 +260,7 @@ def _personalized_offer_from_promo(promo: Dict[str, Any], merchant: Dict[str, An
         "reason": reasons[0] if reasons else "Für dein Charge-Profil empfohlen",
         "reasons": reasons or ["Für dein Charge-Profil empfohlen"],
         "cta_label": "Zum Händler",
+        "applied_rule": primary_rule or None,
     }
 
 
@@ -192,11 +268,12 @@ def _fallback_offer(merchant: Dict[str, Any], profile: Dict[str, Any], score: in
     merchant_name = merchant.get("business_name") or "BidBlitz Charge Händler"
     city = merchant.get("city") or profile.get("region") or "Deutschland"
     category = merchant.get("category") or "Charge / Retail"
+    primary_rule = merchant.get("primary_rule") or {}
     value = 12 if any("Region" in reason for reason in reasons) else 8
     return {
         "offer_id": f"fallback-{merchant.get('public_slug') or _slugify(merchant_name)}",
-        "title": f"{merchant_name} Charge Bonus",
-        "description": f"Empfohlenes {category}-Angebot für dich in {city}. Perfekt für passendes Zubehör und neue Charge-Käufe.",
+        "title": primary_rule.get("offer_title") or f"{merchant_name} Charge Bonus",
+        "description": primary_rule.get("offer_hint") or f"Empfohlenes {category}-Angebot für dich in {city}. Perfekt für passendes Zubehör und neue Charge-Käufe.",
         "offer_type": "member_offer",
         "value": value,
         "expires_at": "",
@@ -209,6 +286,7 @@ def _fallback_offer(merchant: Dict[str, Any], profile: Dict[str, Any], score: in
         "reason": reasons[0] if reasons else "Empfohlen im Charge-Netzwerk",
         "reasons": reasons or ["Empfohlen im Charge-Netzwerk"],
         "cta_label": "Zum Händler",
+        "applied_rule": primary_rule or None,
     }
 
 
@@ -374,6 +452,7 @@ async def get_charge_dashboard(request: Request):
     invoices = await db.charge_app_invoices.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
     interactions = await db.charge_app_interactions.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
     merchants = await _get_charge_merchants()
+    rules = await db.charge_offer_rules.find({"active": True}, {"_id": 0}).sort("priority", -1).to_list(100)
 
     offers = await db.promotions.find(
         {"active": True},
@@ -412,7 +491,7 @@ async def get_charge_dashboard(request: Request):
         ]
 
     personalization = _build_personalization_profile(user, warranties, invoices, interactions)
-    ranked_merchants = [_score_merchant_for_profile(item, personalization) for item in merchants]
+    ranked_merchants = [_score_merchant_for_profile(item, personalization, rules) for item in merchants]
     ranked_merchants.sort(key=lambda item: item.get("personalization_score", 0), reverse=True)
     personalized_offers = _build_personalized_offers(normalized_offers, ranked_merchants, personalization)
 
@@ -428,6 +507,7 @@ async def get_charge_dashboard(request: Request):
             "offers_total": len(normalized_offers),
             "merchants_total": len(merchants),
             "personalized_offers_total": len(personalized_offers),
+            "active_rules_total": len(rules),
         },
         "warranties": [_warranty_card(item) for item in warranties],
         "invoices": [_invoice_card(item) for item in invoices],
@@ -437,6 +517,7 @@ async def get_charge_dashboard(request: Request):
             "history": loyalty_history,
         },
         "personalization": personalization,
+        "admin_rules": [_serialize_offer_rule(item) for item in rules[:10]],
         "personalized_offers": personalized_offers,
         "offers": normalized_offers,
         "merchants": ranked_merchants,
@@ -667,3 +748,87 @@ async def get_charge_merchant_detail(slug: str):
             "Passend für Zubehör, Bundles und schnelle Reklamationsfälle",
         ],
     }
+
+
+async def _require_admin(request: Request):
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    return user
+
+
+@router.get("/admin/offer-rules")
+async def list_charge_offer_rules(request: Request):
+    await _require_admin(request)
+    rows = await db.charge_offer_rules.find({}, {"_id": 0}).sort([("priority", -1), ("updated_at", -1)]).to_list(200)
+    return {
+        "ok": True,
+        "rules": [_serialize_offer_rule(item) for item in rows],
+        "summary": {
+            "total": len(rows),
+            "active": sum(1 for item in rows if item.get("active", True)),
+            "regions": len({str(item.get('region') or '').strip().lower() for item in rows if str(item.get('region') or '').strip()}),
+            "categories": len({str(item.get('category') or '').strip().lower() for item in rows if str(item.get('category') or '').strip()}),
+        },
+    }
+
+
+@router.post("/admin/offer-rules")
+async def create_charge_offer_rule(req: ChargeOfferRuleRequest, request: Request):
+    admin = await _require_admin(request)
+    now = _now_iso()
+    doc = {
+        "rule_id": f"CHG-RULE-{uuid.uuid4().hex[:10].upper()}",
+        "name": req.name.strip() or "Charge Regel",
+        "region": req.region.strip(),
+        "merchant_slug": req.merchant_slug.strip(),
+        "category": req.category.strip(),
+        "reason_label": req.reason_label.strip() or "Admin-Regel aktiv",
+        "offer_title": req.offer_title.strip(),
+        "offer_hint": req.offer_hint.strip(),
+        "score_boost": int(req.score_boost),
+        "priority": int(req.priority),
+        "active": bool(req.active),
+        "created_at": now,
+        "updated_at": now,
+        "updated_by": admin.get("email") or admin.get("user_id") or "admin",
+    }
+    await db.charge_offer_rules.insert_one(doc)
+    doc.pop("_id", None)
+    return {"ok": True, "rule": _serialize_offer_rule(doc)}
+
+
+@router.put("/admin/offer-rules/{rule_id}")
+async def update_charge_offer_rule(rule_id: str, req: ChargeOfferRuleRequest, request: Request):
+    admin = await _require_admin(request)
+    update_doc = {
+        "name": req.name.strip() or "Charge Regel",
+        "region": req.region.strip(),
+        "merchant_slug": req.merchant_slug.strip(),
+        "category": req.category.strip(),
+        "reason_label": req.reason_label.strip() or "Admin-Regel aktiv",
+        "offer_title": req.offer_title.strip(),
+        "offer_hint": req.offer_hint.strip(),
+        "score_boost": int(req.score_boost),
+        "priority": int(req.priority),
+        "active": bool(req.active),
+        "updated_at": _now_iso(),
+        "updated_by": admin.get("email") or admin.get("user_id") or "admin",
+    }
+    result = await db.charge_offer_rules.update_one({"rule_id": rule_id}, {"$set": update_doc})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Regel nicht gefunden")
+    saved = await db.charge_offer_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+    return {"ok": True, "rule": _serialize_offer_rule(saved or update_doc)}
+
+
+@router.put("/admin/offer-rules/{rule_id}/toggle")
+async def toggle_charge_offer_rule(rule_id: str, request: Request):
+    await _require_admin(request)
+    existing = await db.charge_offer_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Regel nicht gefunden")
+    next_active = not bool(existing.get("active", True))
+    await db.charge_offer_rules.update_one({"rule_id": rule_id}, {"$set": {"active": next_active, "updated_at": _now_iso()}})
+    saved = await db.charge_offer_rules.find_one({"rule_id": rule_id}, {"_id": 0})
+    return {"ok": True, "rule": _serialize_offer_rule(saved or {**existing, 'active': next_active})}

@@ -9,7 +9,7 @@ import {
   LayoutGrid, Menu,
   // Grid Menu Icons
   Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
-  UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode,
+  UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode, Sparkles,
   Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code, UtensilsCrossed, MapPin
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
@@ -159,6 +159,7 @@ const ADMIN_SECTIONS = [
     items: [
       { id: "flash-sales", icon: Zap, label: "Flash Sales", tab: "promos" },
       { id: "banners", icon: Eye, label: "Werbebanner", tab: "promos" },
+      { id: "charge-offer-rules", icon: Sparkles, label: "Charge Angebotsregeln", nav: "/admin/charge-offer-rules", highlight: true },
       { id: "email-marketing", icon: Mail, label: "E-Mail Marketing", tab: "promos" },
       { id: "jackpot", icon: Trophy, label: "Jackpot", tab: "auctions" },
       { id: "challenges", icon: Target, label: "Challenges", tab: "promos" },

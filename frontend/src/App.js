@@ -245,6 +245,7 @@ const FitnessPage = lazy(() => import("./pages/FitnessPage"));
 const ReiseplanerPage = lazy(() => import("./pages/ReiseplanerPage"));
 const LadesaeulenPage = lazy(() => import("./pages/LadesaeulenPage"));
 const EmailMarketingAdminPage = lazy(() => import("./pages/EmailMarketingAdminPage"));
+const AdminChargeOfferRulesPage = lazy(() => import("./pages/AdminChargeOfferRulesPage"));
 const AllServicesPage = lazy(() => import("./pages/AllServicesPage"));
 const StocksPage = lazy(() => import("./pages/StocksPage"));
 const ResellingPage = lazy(() => import("./pages/ResellingPage"));
@@ -1107,6 +1108,10 @@ function AppContent() {
       case "/admin/email-marketing":
         return user.role === "admin"
           ? <EmailMarketingAdminPage onBack={() => handleNavigate("/admin")} />
+          : <HomePage {...homeProps} />;
+      case "/admin/charge-offer-rules":
+        return user.role === "admin"
+          ? <AdminChargeOfferRulesPage onBack={() => handleNavigate("/admin")} />
           : <HomePage {...homeProps} />;
       case "/all-services":
         return <AllServicesPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;

@@ -52,6 +52,7 @@ export const ADMIN_SECTIONS = [
     items: [
       { key: "flash-sales", icon: Zap, label: "Flash Sales" },
       { key: "banners", icon: Eye, label: "Werbebanner" },
+      { key: "charge-offer-rules", icon: Sparkles, label: "Charge Angebotsregeln", nav: "/admin/charge-offer-rules" },
       { key: "email-marketing", icon: Mail, label: "E-Mail Marketing", nav: "/admin/email-marketing" },
       { key: "jackpot", icon: Trophy, label: "Jackpot" },
       { key: "challenges", icon: Target, label: "Challenges" },
