@@ -195,10 +195,22 @@ frontend:
         agent: "testing"
         comment: "✅ ZWEITE AUSBAUSTUFE BESTANDEN (28.07.2026): Gezielte Verifikation der neuen praktischen Händler-Aktionen erfolgreich. Test-Ergebnisse: 1) Werbematerial-Downloads: 3 Download-Buttons sichtbar und funktionsfähig (Brand Pack, Counter Display Kit, Launch Campaign Creatives) mit data-testid merchant-dealer-asset-download-{index} ✓ 2) Materialanfrage-Formular: Vollständiges Formular mit allen Feldern (Asset-Auswahl, Request Type, Quantity, Notes) und Submit-Button (merchant-dealer-marketing-submit) funktioniert ✓ 3) Garantie-Fälle: 1 Garantiefall mit vollständigen Details sichtbar (Produkt, Seriennummer, Issue Type, Customer Info, Issue Summary) ✓ 4) Status-Aktionsbuttons: 3 Status-Buttons (under_review, replacement_sent, resolved) mit data-testid merchant-dealer-warranty-status-{status}-{index} vorhanden und funktionsfähig ✓ 5) Alle geforderten data-testids korrekt implementiert: merchant-tab-marketing, merchant-tab-warranty, merchant-dealer-marketing-request-card, merchant-dealer-marketing-submit, merchant-dealer-asset-download-*, merchant-dealer-warranty-claim-*, merchant-dealer-warranty-status-* ✓ 6) Keine Error Boundaries oder leere kaputte Ansichten ✓ 7) Backend-APIs /api/merchant-portal/dealer/marketing und /dealer/warranty funktionieren ohne kritische Fehler ✓. Bekannte Nicht-Blocker: 3 erwartete 401-Fehler von Auth-Refresh-Endpoints. Zweite Ausbaustufe ist vollständig funktionsfähig und produktionsreif."
 
+  - task: "Frontend smoke test after Android AAB build prep"
+    implemented: true
+    working: true
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ FRONTEND SMOKE TEST BESTANDEN (30.07.2026): Sehr kleiner Frontend-Smoke-Test nach Android-AAB-Buildvorbereitung erfolgreich. Test-Ergebnisse auf https://super-app-staging-2.preview.emergentagent.com: 1) Startseite lädt ohne Blank Screen ✓ - Vollständige BidBlitz-Homepage mit allen Inhalten sichtbar (Hero-Bereich, Feature-Karten, Navigation) 2) Login-Button erreichbar ✓ - Mehrere 'Anmelden'-Buttons sichtbar (Header rechts oben + Hauptbereich) 3) Keine offensichtlichen UI-Crashs ✓ - Kein React Error Overlay, Seite rendert korrekt 4) Alle UI-Elemente funktional: Logo, Navigation, 'Konto erstellen', Feature-Karten (Zahlen & Empfangen, QR-Zahlungen, Händler-Tools, Mining), Cookie-Banner, Version-Update-Modal ✓. Bekannte Nicht-Blocker: 3 erwartete 401-Fehler von Auth-Endpoints (/api/auth/me, /api/auth/refresh) - normales Verhalten für Gast-Benutzer. Android-AAB-Buildvorbereitung hat Frontend nicht beeinträchtigt. Smoke-Test erfolgreich."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 7
+  test_sequence: 8
 
 test_plan:
   current_focus: []
@@ -237,4 +249,7 @@ agent_communication:
 
   - agent: "testing"
     message: "✅ ZWEITE AUSBAUSTUFE BESTANDEN (28.07.2026): Gezielte Verifikation der neuen praktischen Händler-Aktionen im BidBlitz Charge Portal erfolgreich. Test-Fokus: 1) Werbematerial-Downloads: 3 Download-Buttons für Brand Assets sichtbar und funktionsfähig (BidBlitz Charge Brand Pack, Counter Display Kit, Launch Campaign Creatives) mit korrekten data-testids merchant-dealer-asset-download-{index} ✓ 2) Materialanfrage-Formular: Vollständiges Formular mit Asset-Auswahl, Request Type, Quantity, Notes und Submit-Button (merchant-dealer-marketing-submit) funktioniert einwandfrei ✓ 3) Garantie-Fälle: 1 Garantiefall mit vollständigen Details (Auto Cigarettes 1112, Seriennummer SN-TEST-001, Issue Type: defekt, Customer: Max Händler, Issue: Display bleibt schwarz) sichtbar ✓ 4) Status-Aktionsbuttons: 3 Status-Buttons (under_review, replacement_sent, resolved) mit data-testid merchant-dealer-warranty-status-{status}-{index} vorhanden und klickbar ✓ 5) Alle geforderten Test-IDs korrekt implementiert: merchant-tab-marketing, merchant-tab-warranty, merchant-dealer-marketing-request-card, merchant-dealer-marketing-submit, merchant-dealer-asset-download-*, merchant-dealer-warranty-claim-*, merchant-dealer-warranty-status-* ✓ 6) Keine Error Boundaries oder leere kaputte Ansichten ✓ 7) Backend-APIs /api/merchant-portal/dealer/marketing und /dealer/warranty funktionieren ohne kritische Fehler ✓. Bekannte Nicht-Blocker: 3 erwartete 401-Fehler von Auth-Refresh-Endpoints. Zweite Ausbaustufe ist vollständig funktionsfähig und produktionsreif."
+
+  - agent: "testing"
+    message: "✅ FRONTEND SMOKE TEST BESTANDEN (30.07.2026): Sehr kleiner Frontend-Smoke-Test nach Android-AAB-Buildvorbereitung erfolgreich durchgeführt. Kontext: Keine Frontend-Features geändert, nur Android-AAB-Build mit lokalem Signing vorbereitet. Test-Ergebnisse auf Preview-URL (https://super-app-staging-2.preview.emergentagent.com): 1) Startseite lädt ohne Blank Screen ✓ 2) Login-Button ('Anmelden') ist erreichbar (Header + Hauptbereich) ✓ 3) Keine offensichtlichen UI-Crashs ✓. Alle UI-Elemente funktional. Nur erwartete 401-Fehler von Auth-Endpoints (normales Gast-Verhalten). Android-Build-Vorbereitung hat Frontend nicht beeinträchtigt."
 

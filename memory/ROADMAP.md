@@ -1,5 +1,12 @@
 # BidBlitz — ROADMAP
 
+## Status nach neuem AAB-Buildversuch — 30.07.2026
+- ✅ Neuer lokaler **Android Release-Keystore** ist erzeugt.
+- ✅ Android SDK + Java wurden im Container für den Buildpfad vorbereitet.
+- 🔴 Finales **Play-Store-AAB** bleibt im aktuellen **ARM64-Container** weiterhin blockiert durch **AAPT2 / Exec format error**.
+- 🔴 Nächster zwingender Schritt für echten Upload: denselben Release-Build auf **x86_64 / Android Studio / lokalem Rechner** ausführen.
+- 🟡 Danach: AAB hochladen und Play-Console-Release anlegen.
+
 ## Status nach Admin-Regelsteuerung — 30.07.2026
 - ✅ **Admin-pflegbare Charge-Angebotsregeln** sind live.
 - ✅ Admin kann jetzt Regeln nach **Region**, **Händler**, **Kategorie**, **Score-Boost** und **Priorität** pflegen und aktiv/inaktiv schalten.

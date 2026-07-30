@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 30.07.2026 — Neuer Android-Release-Keystore erzeugt, AAB im ARM64-Container weiter blockiert
+- Für den gewünschten Play-Store-Build wurde ein neuer lokaler Release-Keystore unter `frontend/android/bidblitz-upload.jks` erstellt und `frontend/android/keystore.properties` befüllt.
+- Java 17 sowie Android commandline tools, `platforms;android-35`, `build-tools;35.0.0` und `platform-tools` wurden im Container installiert, anschließend lief der native Release-Pfad bis zum Gradle-Resource-Step.
+- Der finale AAB-Build scheitert weiterhin reproduzierbar an **AAPT2 / Exec format error** im aktuellen **ARM64-Container**. Auch ein QEMU-/binfmt-Workaround war hier nicht aktivierbar, da `binfmt_misc` im Container nicht gemountet werden darf.
+- Ergebnis: **Kein finales `app-release.aab` in diesem Run**, aber Signing ist jetzt lokal vorbereitet und kann auf einem kompatiblen **x86_64-Host** weiterverwendet werden.
+
 ## 30.07.2026 — Admin-pflegbare Charge-Angebotsregeln
 - Admins können jetzt eigene **Charge-Angebotsregeln** pflegen: **Region**, **Händler-Slug**, **Kategorie**, **Grundlabel**, **Angebotstitel**, **Hinweistext**, **Score-Boost**, **Priorität** und **Aktiv/Inaktiv**.
 - Backend: `backend/routes/charge_app.py` enthält neue Admin-Endpunkte für **List / Create / Update / Toggle** unter `/api/charge-app/admin/offer-rules*` sowie die direkte Integration der Regeln in das Merchant-Ranking und die personalisierten Charge-Angebote.
