@@ -1,5 +1,15 @@
 # BidBlitz — ROADMAP
 
+## Status nach In-App Vorschau — 30.07.2026
+- ✅ **In-App Vorschau** für Charge-Rechnungen und Garantiebelege ist live.
+- ✅ Vorschau funktioniert jetzt auch im **Händlerkontext** über die Detailseite.
+- ✅ Bilder und PDFs werden direkt in der App geöffnet; Download bleibt zusätzlich erhalten.
+- ✅ Verifiziert mit Backend-Selbsttests, Browser-Smoke und **Testing Agent Iteration 305 PASS**.
+- 🔴 Nächster sinnvoller Charge-Schritt: **Reward-Stufen mit konkreten Einlösungen** und sichtbarer Vorteils-Copy.
+- 🟡 Danach: Regel-Laufzeiten / Gültigkeitsfenster je Region/Händler.
+- 🟡 Danach: feinere CRM-/Push-Kampagnen für personalisierte Charge-Angebote.
+- 🟡 Separat weiter offen: **Telegram-Alarm als Monitoring-Backup** nur wenn wieder gewünscht.
+
 ## Status nach neuem AAB-Buildversuch — 30.07.2026
 - ✅ Neuer lokaler **Android Release-Keystore** ist erzeugt.
 - ✅ Android SDK + Java wurden im Container für den Buildpfad vorbereitet.

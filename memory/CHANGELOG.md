@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 30.07.2026 — In-App Vorschau für Charge-Rechnungen und Garantiebelege
+- Hochgeladene Charge-Dokumente können jetzt **direkt in der App** geöffnet werden. Bilder werden als echte Bildvorschau angezeigt, PDFs in einer eingebetteten Vorschau mit zusätzlichem Download- und „Neu öffnen“-Button.
+- Backend: `backend/routes/charge_app.py` liefert jetzt `preview_mode` und `preview_supported` pro Attachment und ergänzt `customer_context` in der Händlerdetail-API. Außerdem wurde das Merchant-Merging im Finder verbessert, damit Händlernamen konsistent zwischen Liste und Detailansicht bleiben.
+- Frontend: neue Komponenten `frontend/src/components/charge/ChargeAttachmentActions.jsx` und `frontend/src/components/charge/ChargeDocumentPreviewModal.jsx`; Integration in `ChargeAppPage.jsx` und `ChargeMerchantDetailPage.jsx`; `api.js` enthält jetzt `getChargeProtectedBlob()` für geschützte Vorschau-Fetches.
+- Verifiziert: Backend-Selbsttests **PASS**, Browser-Smoke **PASS**, **Testing Agent Iteration 305 PASS** mit **100% Backend** und **100% Frontend**.
+
 ## 30.07.2026 — Neuer Android-Release-Keystore erzeugt, AAB im ARM64-Container weiter blockiert
 - Für den gewünschten Play-Store-Build wurde ein neuer lokaler Release-Keystore unter `frontend/android/bidblitz-upload.jks` erstellt und `frontend/android/keystore.properties` befüllt.
 - Java 17 sowie Android commandline tools, `platforms;android-35`, `build-tools;35.0.0` und `platform-tools` wurden im Container installiert, anschließend lief der native Release-Pfad bis zum Gradle-Resource-Step.
