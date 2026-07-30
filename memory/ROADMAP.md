@@ -1,5 +1,15 @@
 # BidBlitz — ROADMAP
 
+## Status nach Wallet-First Homepage Hero — 30.07.2026
+- ✅ Homepage kommuniziert für neue Besucher jetzt sofort **P2P-Geld senden/empfangen**.
+- ✅ Bitcoin-Mining-Proof ist nach unten verschoben und nicht mehr die Hauptbotschaft.
+- ✅ Neue Wallet-Hero-Section plus **„So einfach funktioniert BidBlitz“**-Sektion sind live.
+- ✅ Übersetzungen für die neue Homepage-Sektion sind in allen vorhandenen BidBlitz-Sprachen ergänzt.
+- ✅ Verifiziert mit 320px/390px/Desktop-Smokes, **Testing Agent Iteration 306 PASS** und finalem Frontend-Smoke.
+- 🔴 Nächster sinnvoller UX-Schritt: den **Send/Receive Flow** direkt aus dem Hero in einen geführten Wallet-Onboarding-Flow überführen.
+- 🟡 Danach: Reward-Stufen mit konkreten Einlösungen und Vorteils-Copy.
+- 🟡 Danach: Regel-Laufzeiten / Gültigkeitsfenster je Region/Händler.
+
 ## Status nach In-App Vorschau — 30.07.2026
 - ✅ **In-App Vorschau** für Charge-Rechnungen und Garantiebelege ist live.
 - ✅ Vorschau funktioniert jetzt auch im **Händlerkontext** über die Detailseite.

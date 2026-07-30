@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 30.07.2026 — Homepage Redesign: Wallet-First P2P Hero
+- Die erste sichtbare Homepage-Section für Gäste wurde komplett auf **instant person-to-person money transfers** umgebaut. Neue Kernbotschaft: **„Geld senden. Geld empfangen. In Sekunden.“**
+- Neu: `frontend/src/components/home/P2PHeroSection.jsx` mit Premium-Hero, großem Wallet-Fokus, CTA **„Jetzt kostenlos starten“**, Button **„So funktioniert’s“**, Trust-Indikatoren und animierter Transfer-Demo zwischen **Afrim** und **Albin**.
+- Neu: `frontend/src/components/home/HomeMiningTrustPromo.jsx` für die ausgelagerte Mining-Proof-Sektion. `frontend/src/pages/HomePage.jsx` rendert diese jetzt weiter unten statt als primäre Hero-Botschaft.
+- `frontend/src/models/homeTranslations.js` enthält jetzt vollständige Übersetzungen für alle vorhandenen BidBlitz-Sprachen inklusive der neuen Hero- und Schritttexte.
+- Verifiziert: 320px / 390px / Desktop-Smokes **PASS**, **Testing Agent Iteration 306 PASS**, finaler **auto_frontend_testing_agent PASS**.
+
 ## 30.07.2026 — In-App Vorschau für Charge-Rechnungen und Garantiebelege
 - Hochgeladene Charge-Dokumente können jetzt **direkt in der App** geöffnet werden. Bilder werden als echte Bildvorschau angezeigt, PDFs in einer eingebetteten Vorschau mit zusätzlichem Download- und „Neu öffnen“-Button.
 - Backend: `backend/routes/charge_app.py` liefert jetzt `preview_mode` und `preview_supported` pro Attachment und ergänzt `customer_context` in der Händlerdetail-API. Außerdem wurde das Merchant-Merging im Finder verbessert, damit Händlernamen konsistent zwischen Liste und Detailansicht bleiben.
