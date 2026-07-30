@@ -1,5 +1,10 @@
 # BidBlitz — ROADMAP
 
+## Status nach Mobile-Hero-Fix — 30.07.2026
+- ✅ Mobile P2P-Hero-Demo nach Video-Feedback überarbeitet.
+- ✅ Demo-Namen jetzt **Lena / Jonas** statt Afrim / Albin.
+- ✅ Phone-Mockups und mobile Transfer-Demo auf iPhone sauber ausgerichtet und lesbarer.
+
 ## Status nach Wallet-First Homepage Hero — 30.07.2026
 - ✅ Homepage kommuniziert für neue Besucher jetzt sofort **P2P-Geld senden/empfangen**.
 - ✅ Bitcoin-Mining-Proof ist nach unten verschoben und nicht mehr die Hauptbotschaft.

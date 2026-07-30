@@ -1,5 +1,10 @@
 # BidBlitz — CHANGELOG
 
+## 30.07.2026 — Mobile Feinschliff für P2P-Hero + deutsche Demo-Namen
+- Nach Video-Feedback wurde die mobile Phone-Demo im neuen Homepage-Hero visuell überarbeitet: klarere Informationshierarchie, lesbarere kleine Labels und ein eigener mobiler Transfer-Hinweis zwischen den beiden Karten.
+- Demo-Namen wurden von **Afrim / Albin** auf **Lena / Jonas** umgestellt und in allen vorhandenen Sprachvarianten übernommen.
+- Verifiziert mit iPhone-Smokes und finalem **auto_frontend_testing_agent PASS**.
+
 ## 30.07.2026 — Homepage Redesign: Wallet-First P2P Hero
 - Die erste sichtbare Homepage-Section für Gäste wurde komplett auf **instant person-to-person money transfers** umgebaut. Neue Kernbotschaft: **„Geld senden. Geld empfangen. In Sekunden.“**
 - Neu: `frontend/src/components/home/P2PHeroSection.jsx` mit Premium-Hero, großem Wallet-Fokus, CTA **„Jetzt kostenlos starten“**, Button **„So funktioniert’s“**, Trust-Indikatoren und animierter Transfer-Demo zwischen **Afrim** und **Albin**.
