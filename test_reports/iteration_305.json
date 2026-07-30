@@ -1,0 +1,138 @@
+{
+  "summary": "Charge App Document Preview Features - All tests PASSED. Backend: 22/22 tests passed. Frontend: All preview features verified including warranty/invoice attachment preview modal, merchant detail customer context, and download functionality.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_charge_preview_features.py",
+    "/app/test_reports/pytest/iter305_charge_preview.xml",
+    "/app/test_reports/iter305_charge_app_v2.jpeg",
+    "/app/test_reports/iter305_charge_app_scrolled.jpeg",
+    "/app/test_reports/iter305_warranty_invoice_lists.jpeg",
+    "/app/test_reports/iter305_merchant_detail_context.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "charge_app.py: _attachment_meta() correctly adds preview_mode and preview_supported fields based on content_type",
+    "charge_app.py: _preview_mode() helper correctly identifies image/* as 'image' and application/pdf as 'pdf'",
+    "charge_app.py: Merchant detail endpoint correctly returns customer_context with related warranties and invoices",
+    "charge_app.py: _matches_merchant_context() properly matches user documents to merchant by slugified name",
+    "ChargeAttachmentActions.jsx: Preview button only shown when preview_supported is true",
+    "ChargeAttachmentActions.jsx: Download link always available for all attachments",
+    "ChargeDocumentPreviewModal.jsx: Correctly renders image preview, PDF iframe, or fallback based on previewMode",
+    "ChargeDocumentPreviewModal.jsx: Download and 'Open in new tab' buttons properly linked",
+    "api.js: getChargeProtectedBlob() uses requestBlob() for authenticated blob fetching with auto-refresh",
+    "ChargeMerchantDetailPage.jsx: Customer context card shows warranty/invoice counts and items with preview actions"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_charge_preview_features.py"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22 tests passed)",
+    "frontend": "100% (all UI elements verified)"
+  },
+  "test_credentials": {
+    "reviewer_account": "reviewer@bidblitz.ae / BidBlitzReview2026!"
+  },
+  "seed_data_creation": "Test warranties and invoices created during testing with TEST-PREVIEW-, TEST-ATT-, TEST-DL-, TEST-IMG-, TEST-PDF- prefixes",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Charge App document preview features fully functional: (1) Warranty attachments show preview/download buttons with preview_mode and preview_supported metadata, (2) Invoice attachments show preview/download buttons, (3) Preview modal opens with image/PDF/fallback views and download/open-new-tab actions, (4) Merchant detail page includes customer_context card showing user's related warranties and invoices for that merchant, (5) Protected blob download works with authentication, (6) All existing Charge features (warranty registration, invoice save, personalized offers, loyalty, merchants list) remain intact.",
+  "verified_features": {
+    "warranty_attachment_preview": {
+      "status": "PASS",
+      "verification": "Warranty attachments include preview_mode, preview_supported, download_path fields",
+      "api_endpoint": "POST /api/charge-app/warranty/{id}/attachments",
+      "data_testid": "charge-app-warranty-attachments-*-preview-*"
+    },
+    "invoice_attachment_preview": {
+      "status": "PASS",
+      "verification": "Invoice attachments include preview_mode, preview_supported, download_path fields",
+      "api_endpoint": "POST /api/charge-app/invoices/{id}/attachments",
+      "data_testid": "charge-app-invoice-attachments-*-preview-*"
+    },
+    "preview_modal": {
+      "status": "PASS",
+      "verification": "Preview modal opens with title, download button, close button, and content preview",
+      "data_testid": "charge-document-preview-modal, charge-document-preview-title, charge-document-preview-download, charge-document-preview-close"
+    },
+    "image_preview": {
+      "status": "PASS",
+      "verification": "Image files (PNG, JPG, WEBP) render in modal with preview_mode=image",
+      "data_testid": "charge-document-preview-image"
+    },
+    "pdf_preview": {
+      "status": "PASS",
+      "verification": "PDF files render in iframe with preview_mode=pdf",
+      "data_testid": "charge-document-preview-pdf"
+    },
+    "attachment_download": {
+      "status": "PASS",
+      "verification": "Download endpoint returns file with Content-Disposition header",
+      "api_endpoint": "GET /api/charge-app/warranty/{id}/attachments/{att_id}/download"
+    },
+    "merchant_detail_customer_context": {
+      "status": "PASS",
+      "verification": "Merchant detail returns customer_context with warranty_count, invoice_count, warranties, invoices arrays",
+      "api_endpoint": "GET /api/charge-app/merchants/{slug}",
+      "data_testid": "charge-merchant-detail-customer-context-card, charge-merchant-detail-context-warranties, charge-merchant-detail-context-invoices"
+    },
+    "context_document_preview": {
+      "status": "PASS",
+      "verification": "Customer context documents have preview buttons that open preview modal",
+      "data_testid": "charge-merchant-detail-context-warranty-attachments-*-preview-*, charge-merchant-detail-context-invoice-attachments-*-preview-*"
+    },
+    "protected_blob_fetch": {
+      "status": "PASS",
+      "verification": "api.getChargeProtectedBlob() fetches authenticated blob for in-app preview",
+      "api_endpoint": "requestBlob() with credentials"
+    },
+    "regression_warranty_list": {
+      "status": "PASS",
+      "verification": "Dashboard returns warranties array with attachment metadata",
+      "data_testid": "charge-app-warranty-list-card, charge-app-warranty-item-*"
+    },
+    "regression_invoice_list": {
+      "status": "PASS",
+      "verification": "Dashboard returns invoices array with attachment metadata",
+      "data_testid": "charge-app-invoices-list-card, charge-app-invoice-item-*"
+    },
+    "regression_personalized_offers": {
+      "status": "PASS",
+      "verification": "Dashboard returns personalized_offers with scores and reasons",
+      "data_testid": "charge-app-personalized-offers-card, charge-app-personalized-offer-*"
+    },
+    "regression_merchants_list": {
+      "status": "PASS",
+      "verification": "Dashboard returns merchants with personalization_score and match_reason",
+      "data_testid": "charge-app-merchants-card, charge-app-merchant-item-*"
+    },
+    "regression_loyalty": {
+      "status": "PASS",
+      "verification": "Dashboard returns loyalty status, stats, and history",
+      "data_testid": "charge-app-loyalty-card"
+    },
+    "regression_warranty_pass": {
+      "status": "PASS",
+      "verification": "Warranty pass endpoint returns QR payload and pass data",
+      "api_endpoint": "GET /api/charge-app/warranty/{id}/pass"
+    }
+  },
+  "mocked_apis": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+  "test_date": "2026-07-30T11:10:00Z",
+  "test_scope": "Charge App Document Preview - In-app preview for invoices and warranty proofs, image/PDF preview modal, merchant detail customer context",
+  "test_viewport": {
+    "width": 1920,
+    "height": 1080,
+    "device": "Desktop"
+  }
+}

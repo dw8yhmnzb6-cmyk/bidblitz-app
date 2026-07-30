@@ -307,6 +307,15 @@ def _build_personalized_offers(promotions: List[Dict[str, Any]], merchants: List
     return result
 
 
+def _preview_mode(content_type: Any) -> str:
+    normalized = str(content_type or "").lower()
+    if normalized.startswith("image/"):
+        return "image"
+    if normalized == "application/pdf":
+        return "pdf"
+    return "download"
+
+
 def _parse_iso(value: Any) -> Optional[datetime]:
     if not value or not isinstance(value, str):
         return None
@@ -366,6 +375,7 @@ def _build_warranty_pass(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _attachment_meta(item: Dict[str, Any], base_download_path: str) -> Dict[str, Any]:
+    preview_mode = _preview_mode(item.get("content_type"))
     return {
         "attachment_id": item.get("attachment_id"),
         "original_filename": item.get("original_filename") or "Datei",
@@ -373,6 +383,8 @@ def _attachment_meta(item: Dict[str, Any], base_download_path: str) -> Dict[str,
         "size": item.get("size") or 0,
         "uploaded_at": item.get("uploaded_at") or "",
         "download_path": f"{base_download_path}/{item.get('attachment_id')}/download",
+        "preview_mode": preview_mode,
+        "preview_supported": preview_mode in {"image", "pdf"},
     }
 
 
@@ -421,21 +433,39 @@ async def _find_user_invoice(user_id: str, invoice_id: str) -> Dict[str, Any]:
     return doc
 
 
+def _matches_merchant_context(merchant_name: Any, merchant_payload: Dict[str, Any], slug: str) -> bool:
+    merchant_slug = _slugify(merchant_name)
+    if not merchant_slug:
+        return False
+    candidates = {
+        _slugify(merchant_payload.get("business_name")),
+        _slugify(slug),
+    }
+    return merchant_slug in candidates
+
+
 async def _get_charge_merchants(limit: int = 12) -> List[Dict[str, Any]]:
     merchants = await db.merchant_profiles.find({}, {"_id": 0}).sort("updated_at", -1).limit(limit).to_list(limit)
     payload = []
     for item in merchants:
-        business_name = item.get("business_name") or "BidBlitz Partner"
+        slug = item.get("public_slug") or ""
+        merchant_doc = None
+        if slug:
+            merchant_doc = await db.merchants.find_one({"public_slug": slug}, {"_id": 0})
+        if not merchant_doc and item.get("user_id"):
+            merchant_doc = await db.merchants.find_one({"user_id": item.get("user_id")}, {"_id": 0})
+
+        business_name = (merchant_doc or {}).get("business_name") or item.get("business_name") or "BidBlitz Partner"
         city = item.get("city") or "Deutschland"
         category = item.get("category") or "Charge / Retail"
-        slug = item.get("public_slug") or ""
         payload.append({
             "business_name": business_name,
             "city": city,
             "category": category,
             "website": item.get("website") or "",
-            "address": item.get("address") or "",
-            "phone": item.get("phone") or "",
+            "address": (merchant_doc or {}).get("address") or item.get("address") or "",
+            "phone": (merchant_doc or {}).get("phone") or item.get("phone") or "",
+            "email": (merchant_doc or {}).get("email") or item.get("email") or "",
             "logo_url": item.get("logo_url") or "",
             "public_slug": slug,
             "route": f"/charge-app/merchant?slug={slug}" if slug else "/merchant",
@@ -714,7 +744,9 @@ async def download_charge_warranty_pass(registration_id: str, request: Request):
 
 
 @router.get("/merchants/{slug}")
-async def get_charge_merchant_detail(slug: str):
+async def get_charge_merchant_detail(slug: str, request: Request):
+    user = await get_current_user(request)
+    user_id = str(user.get("_id"))
     merchant = await db.merchants.find_one({"public_slug": slug}, {"_id": 0})
     profile = await db.merchant_profiles.find_one({"public_slug": slug}, {"_id": 0})
     if not merchant and not profile:
@@ -737,11 +769,21 @@ async def get_charge_merchant_detail(slug: str):
     products = await db.pos_products.find({"merchant_id": merchant_id, "active": True}, {"_id": 0}).sort("created_at", -1).limit(8).to_list(8) if merchant_id else []
     promotions = await db.promotions.find({"active": True}, {"_id": 0, "name": 1, "description": 1, "type": 1, "value": 1}).sort("created_at", -1).limit(4).to_list(4)
     vouchers = await db.vouchers.find({"merchant_id": owner_user_id, "status": "active"}, {"_id": 0}).sort("created_at", -1).limit(4).to_list(4) if owner_user_id else []
+    user_warranties = await db.charge_app_warranties.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    user_invoices = await db.charge_app_invoices.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    related_warranties = [_warranty_card(item) for item in user_warranties if _matches_merchant_context(item.get("merchant_name"), merchant_payload, slug)][:4]
+    related_invoices = [_invoice_card(item) for item in user_invoices if _matches_merchant_context(item.get("merchant_name"), merchant_payload, slug)][:4]
     return {
         "merchant": merchant_payload,
         "products": products,
         "promotions": [{"title": item.get("name"), "description": item.get("description"), "offer_type": item.get("type"), "value": item.get("value")} for item in promotions],
         "vouchers": vouchers,
+        "customer_context": {
+            "warranty_count": len(related_warranties),
+            "invoice_count": len(related_invoices),
+            "warranties": related_warranties,
+            "invoices": related_invoices,
+        },
         "highlights": [
             "Digitale Garantie und klarer After-Sales-Support",
             "Hochwertige Charge-Produkte mit sauberer Präsentation",

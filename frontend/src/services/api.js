@@ -144,6 +144,36 @@ async function uploadFormData(path, formData) {
   return data;
 }
 
+async function requestBlob(path, options = {}) {
+  const url = `${API_URL}${path}`;
+  let res = await fetch(url, { credentials: "include", ...options });
+  if (res.status === 401 && !path.includes("/auth/refresh")) {
+    try {
+      const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (refreshRes.ok) {
+        res = await fetch(url, { credentials: "include", ...options });
+      }
+    } catch (error) {
+      void error;
+    }
+  }
+  if (!res.ok) {
+    if (res.status === 401) throw new ApiError("Session abgelaufen. Bitte erneut anmelden.", { status: 401, code: "auth" });
+    if (res.status === 403) throw new ApiError("Zugriff verweigert. Bitte Berechtigung prüfen.", { status: 403, code: "forbidden" });
+    if (res.status === 404) throw new ApiError("Datei nicht gefunden.", { status: 404, code: "not_found" });
+    throw new ApiError("Datei konnte nicht geladen werden.", { status: res.status, code: "blob" });
+  }
+  const blob = await res.blob();
+  return {
+    blob,
+    contentType: res.headers.get("Content-Type") || blob.type || "application/octet-stream",
+  };
+}
+
 function buildExportQuery(params = {}) {
   const q = new URLSearchParams();
   if (params.date_from) q.set("date_from", params.date_from);
@@ -302,6 +332,7 @@ export const api = {
   },
   getChargeWarrantyPass: (registrationId) => request(`/api/charge-app/warranty/${encodeURIComponent(registrationId)}/pass`),
   getChargeMerchantDetail: (slug) => request(`/api/charge-app/merchants/${encodeURIComponent(slug)}`),
+  getChargeProtectedBlob: (path) => requestBlob(path),
   getChargeOfferRulesAdmin: () => request("/api/charge-app/admin/offer-rules"),
   createChargeOfferRuleAdmin: (body) => request("/api/charge-app/admin/offer-rules", { method: "POST", body: JSON.stringify(body) }),
   updateChargeOfferRuleAdmin: (ruleId, body) => request(`/api/charge-app/admin/offer-rules/${encodeURIComponent(ruleId)}`, { method: "PUT", body: JSON.stringify(body) }),

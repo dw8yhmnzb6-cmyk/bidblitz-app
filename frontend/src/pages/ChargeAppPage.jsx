@@ -7,6 +7,8 @@ import {
 import { toast } from "sonner";
 import { api } from "../services/api";
 import { QRCodeSVG } from "qrcode.react";
+import { ChargeAttachmentActions } from "../components/charge/ChargeAttachmentActions";
+import { ChargeDocumentPreviewModal } from "../components/charge/ChargeDocumentPreviewModal";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -19,6 +21,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const [warrantyFile, setWarrantyFile] = useState(null);
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [warrantyPassPreview, setWarrantyPassPreview] = useState(null);
+  const [documentPreview, setDocumentPreview] = useState(null);
   const [warrantyForm, setWarrantyForm] = useState({
     product_name: "BidBlitz Charge Pro 65W",
     serial_number: "",
@@ -112,6 +115,42 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
     }
   }, []);
 
+  const closeDocumentPreview = useCallback(() => {
+    setDocumentPreview((current) => {
+      if (current?.objectUrl) {
+        URL.revokeObjectURL(current.objectUrl);
+      }
+      return null;
+    });
+  }, []);
+
+  const previewAttachment = useCallback(async (attachment, options = {}) => {
+    if (!attachment?.download_path) return;
+    setBusy(`preview-${attachment.attachment_id}`);
+    try {
+      const response = await api.getChargeProtectedBlob(attachment.download_path);
+      const objectUrl = URL.createObjectURL(response.blob);
+      setDocumentPreview((current) => {
+        if (current?.objectUrl) {
+          URL.revokeObjectURL(current.objectUrl);
+        }
+        return {
+          objectUrl,
+          fileName: attachment.original_filename,
+          contentType: response.contentType || attachment.content_type,
+          previewMode: attachment.preview_mode,
+          downloadPath: attachment.download_path,
+          title: options.title || attachment.original_filename,
+          subtitle: options.subtitle || attachment.content_type,
+        };
+      });
+    } catch (error) {
+      toast.error(error.message || "Vorschau konnte nicht geladen werden");
+    } finally {
+      setBusy("");
+    }
+  }, []);
+
   const openMerchantDetail = useCallback(async (item, source = "merchant_list") => {
     try {
       await api.trackChargeInteraction({
@@ -151,6 +190,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
   const personalization = dashboard?.personalization || {};
 
   return (
+    <>
     <div className="min-h-screen bg-[linear-gradient(180deg,#06101B_0%,#0A1626_42%,#F4F0E8_42%,#F4F0E8_100%)] pb-24" data-testid="charge-app-page">
       <div className="sticky top-0 z-30 border-b border-white/10 bg-[#08131dcc] px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
@@ -336,7 +376,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     <p className="text-sm font-black text-slate-900">{item.product_name}</p>
                     <p className="mt-1 text-xs text-slate-500">SN {item.serial_number} · {item.merchant_name}</p>
                     <p className="mt-2 text-xs text-slate-600">{item.coverage_label} · gültig bis {item.valid_until}</p>
-                    {item.attachments?.length ? <AttachmentRow attachments={item.attachments} testid={`charge-app-warranty-attachments-${index}`} /> : null}
+                    {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Garantiebeleg · ${item.product_name}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} testidPrefix={`charge-app-warranty-attachments-${index}`} /> : null}
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{item.status}</span>
@@ -380,7 +420,7 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
                     <p className="text-sm font-black text-slate-900">{item.invoice_number}</p>
                     <p className="mt-1 text-xs text-slate-500">{item.merchant_name} · {item.product_name}</p>
                     <p className="mt-2 text-xs text-slate-600">Kaufdatum {item.purchase_date || "—"} · SN {item.serial_number || "—"}</p>
-                    {item.attachments?.length ? <AttachmentRow attachments={item.attachments} testid={`charge-app-invoice-attachments-${index}`} /> : null}
+                    {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Rechnung · ${item.invoice_number}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} testidPrefix={`charge-app-invoice-attachments-${index}`} /> : null}
                   </div>
                   <span className="rounded-full bg-[#0A1626] px-3 py-1 text-xs font-black text-[#6EE7F9]">€{Number(item.amount || 0).toFixed(2)}</span>
                 </div>
@@ -406,6 +446,8 @@ export default function ChargeAppPage({ onBack, onNavigate }) {
         </div>
       </div>
     </div>
+    <ChargeDocumentPreviewModal document={documentPreview} onClose={closeDocumentPreview} />
+    </>
   );
 }
 
@@ -479,19 +521,6 @@ function InfoPill({ label, value, testid }) {
 
 function PassPill({ label, value, testid }) {
   return <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" data-testid={testid}><p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{label}</p><p className="mt-2 text-sm font-black text-white">{value}</p></div>;
-}
-
-
-function AttachmentRow({ attachments, testid }) {
-  return (
-    <div className="mt-3 flex flex-wrap gap-2" data-testid={testid}>
-      {attachments.map((item, index) => (
-        <a key={item.attachment_id} href={`${API}${item.download_path}`} className="inline-flex items-center gap-2 rounded-full border border-[#0A1626]/10 bg-[#F4F8FB] px-3 py-1 text-[11px] font-semibold text-slate-700" data-testid={`${testid}-item-${index}`}>
-          <Download size={12} />{item.original_filename}
-        </a>
-      ))}
-    </div>
-  );
 }
 
 

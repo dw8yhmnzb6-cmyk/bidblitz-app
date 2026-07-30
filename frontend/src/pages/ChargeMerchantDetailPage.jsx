@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Building2, Globe, Mail, MapPin, Phone, ReceiptText, ShieldCheck, Star, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Globe, Mail, MapPin, Phone, ReceiptText, ShieldCheck, Star, Loader2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../services/api";
+import { ChargeAttachmentActions } from "../components/charge/ChargeAttachmentActions";
+import { ChargeDocumentPreviewModal } from "../components/charge/ChargeDocumentPreviewModal";
 
 
 export default function ChargeMerchantDetailPage({ slug, onBack, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [documentPreview, setDocumentPreview] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -34,6 +37,39 @@ export default function ChargeMerchantDetailPage({ slug, onBack, onNavigate }) {
     load();
   }, [load]);
 
+  const closeDocumentPreview = useCallback(() => {
+    setDocumentPreview((current) => {
+      if (current?.objectUrl) {
+        URL.revokeObjectURL(current.objectUrl);
+      }
+      return null;
+    });
+  }, []);
+
+  const previewAttachment = useCallback(async (attachment, options = {}) => {
+    if (!attachment?.download_path) return;
+    try {
+      const response = await api.getChargeProtectedBlob(attachment.download_path);
+      const objectUrl = URL.createObjectURL(response.blob);
+      setDocumentPreview((current) => {
+        if (current?.objectUrl) {
+          URL.revokeObjectURL(current.objectUrl);
+        }
+        return {
+          objectUrl,
+          fileName: attachment.original_filename,
+          contentType: response.contentType || attachment.content_type,
+          previewMode: attachment.preview_mode,
+          downloadPath: attachment.download_path,
+          title: options.title || attachment.original_filename,
+          subtitle: options.subtitle || attachment.content_type,
+        };
+      });
+    } catch (error) {
+      toast.error(error.message || "Vorschau konnte nicht geladen werden");
+    }
+  }, []);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-[#06101B]" data-testid="charge-merchant-detail-loading"><Loader2 size={24} className="animate-spin text-[#6EE7F9]" /></div>;
   }
@@ -45,6 +81,7 @@ export default function ChargeMerchantDetailPage({ slug, onBack, onNavigate }) {
   const merchant = data.merchant;
 
   return (
+    <>
     <div className="min-h-screen bg-[linear-gradient(180deg,#06101B_0%,#0C1623_38%,#F3EFE7_38%,#F3EFE7_100%)] pb-24" data-testid="charge-merchant-detail-page">
       <div className="sticky top-0 z-30 border-b border-white/10 bg-[#08131dcc] px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center gap-3">
@@ -92,6 +129,33 @@ export default function ChargeMerchantDetailPage({ slug, onBack, onNavigate }) {
           </div>
 
           <div className="space-y-6">
+            <DetailCard title="Dein Dokumenten-Kontext" icon={ImageIcon} testid="charge-merchant-detail-customer-context-card">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ContextStat label="Garantien" value={data.customer_context?.warranty_count || 0} testid="charge-merchant-detail-context-warranties" />
+                <ContextStat label="Rechnungen" value={data.customer_context?.invoice_count || 0} testid="charge-merchant-detail-context-invoices" />
+              </div>
+              {(data.customer_context?.warranties || []).length === 0 && (data.customer_context?.invoices || []).length === 0 ? (
+                <EmptyCard label="Noch keine zugeordneten Belege oder Garantien für diesen Händler" testid="charge-merchant-detail-empty-context" />
+              ) : (
+                <div className="space-y-3">
+                  {(data.customer_context?.warranties || []).map((item, index) => (
+                    <div key={item.registration_id} className="rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3" data-testid={`charge-merchant-detail-context-warranty-${index}`}>
+                      <p className="text-sm font-black text-slate-900">Garantie · {item.product_name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.merchant_name} · SN {item.serial_number}</p>
+                      {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Garantiebeleg · ${item.product_name}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} testidPrefix={`charge-merchant-detail-context-warranty-attachments-${index}`} /> : null}
+                    </div>
+                  ))}
+                  {(data.customer_context?.invoices || []).map((item, index) => (
+                    <div key={item.invoice_id} className="rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3" data-testid={`charge-merchant-detail-context-invoice-${index}`}>
+                      <p className="text-sm font-black text-slate-900">Rechnung · {item.invoice_number}</p>
+                      <p className="mt-1 text-xs text-slate-500">{item.merchant_name} · {item.product_name}</p>
+                      {item.attachments?.length ? <ChargeAttachmentActions attachments={item.attachments} onPreview={(attachment) => previewAttachment(attachment, { title: `Rechnung · ${item.invoice_number}`, subtitle: `${item.merchant_name} · ${attachment.original_filename}` })} testidPrefix={`charge-merchant-detail-context-invoice-attachments-${index}`} /> : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DetailCard>
+
             <DetailCard title="Beliebte Produkte" icon={ShieldCheck} testid="charge-merchant-detail-products-card">
               {(data.products || []).length === 0 ? <EmptyCard label="Noch keine Produkte sichtbar" testid="charge-merchant-detail-empty-products" /> : (data.products || []).map((item, index) => (
                 <div key={item.product_id || `${item.name}-${index}`} className="flex items-center justify-between rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3" data-testid={`charge-merchant-detail-product-${index}`}>
@@ -124,6 +188,8 @@ export default function ChargeMerchantDetailPage({ slug, onBack, onNavigate }) {
         </div>
       </div>
     </div>
+    <ChargeDocumentPreviewModal document={documentPreview} onClose={closeDocumentPreview} />
+    </>
   );
 }
 
@@ -143,4 +209,8 @@ function MetaRow({ icon: Icon, value, testid }) {
 
 function EmptyCard({ label, testid }) {
   return <div className="rounded-2xl border border-dashed border-[#D9CFC0] bg-white/60 px-4 py-8 text-center text-sm text-slate-500" data-testid={testid}>{label}</div>;
+}
+
+function ContextStat({ label, value, testid }) {
+  return <div className="rounded-2xl border border-[#E1D7C7] bg-white px-4 py-3" data-testid={testid}><p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p><p className="mt-2 text-lg font-black text-slate-900">{value}</p></div>;
 }
