@@ -178,6 +178,7 @@ def register_all_routers(app):
         ("routes.p2p", "router"),
         ("routes.p2p_transfer", "router"),
         ("routes.split_bill", "router"),
+        ("routes.pay_sdk", "router"),  # BidBlitz Pay SDK before invoice catch-all /api/pay/{token}
         ("routes.invoicing", "router"),
         ("routes.invoicing", "public_router"),
         ("routes.invoicing", "webhook_router"),
@@ -188,7 +189,6 @@ def register_all_routers(app):
         ("routes.admin_wallet", "router"),
         ("routes.admin_legacy_restore", "router"),
         ("routes.coinbase_commerce", "router"),
-        ("routes.pay_sdk", "router"),  # BidBlitz Pay SDK for 3rd-party websites
         ("routes.bidblitz_pay", "router"),
         
         # Entertainment
