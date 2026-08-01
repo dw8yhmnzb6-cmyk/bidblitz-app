@@ -1,137 +1,93 @@
 {
   "theme": "dark",
-  "archetype": "LUXURY",
-  "colors": {
-    "primary": "#0A0A0A",
-    "primary_foreground": "#FFFFFF",
-    "accent": "#00C2FF",
-    "accent_hover": "#0099FF",
-    "accent_soft": "rgba(0, 194, 255, 0.12)",
-    "surface": "#111111",
-    "surface_elevated": "#161616",
-    "text_main": "#FFFFFF",
-    "text_secondary": "#B4B4B4",
-    "border_light": "rgba(255, 255, 255, 0.06)",
-    "success": "#00D26A"
-  },
   "typography": {
-    "heading_font": "'Outfit', sans-serif",
-    "body_font": "'Inter', sans-serif",
-    "h1": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white",
-    "h2": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-white",
-    "badge": "text-xs font-bold tracking-[0.2em] uppercase text-[#00C2FF]",
-    "body": "text-base md:text-lg text-[#B4B4B4] leading-relaxed",
-    "trust_indicator": "text-sm font-medium text-white flex items-center gap-2",
-    "rules": [
-      "No generic AI-style fonts for headings.",
-      "Headings must use tight letter spacing.",
-      "Keep text large and readable on iPhone screens."
-    ]
+    "headings": "Outfit",
+    "body": "Manrope",
+    "hierarchy_rules": "H1 max text-5xl/6xl. Do not exceed these limits. Use tight letter spacing (tracking-tight) for all headings. Overlines should be Uppercase + Wide Spacing. Do not default to Bold, mix Light and SemiBold for contrast.",
+    "alignment": "Left-align paragraphs, dense content, and cards. Center-align only for specific hero messaging if it improves visual rhythm."
+  },
+  "colors": {
+    "background": "#05070a",
+    "surface": "#0e131f",
+    "surface_glass": "rgba(14, 19, 31, 0.7)",
+    "primary": "#06b6d4",
+    "secondary": "#3b82f6",
+    "text_primary": "#ffffff",
+    "text_secondary": "#94a3b8",
+    "border": "rgba(255, 255, 255, 0.1)",
+    "success": "#10b981",
+    "glow": "rgba(6, 182, 212, 0.15)"
+  },
+  "visual enhancers": {
+    "cards": "Rounded premium cards (rounded-2xl or rounded-3xl), 1px subtle borders (border-white/10), flat solid or very dark glassmorphism (bg-black/40 backdrop-blur-xl).",
+    "glow_effects": "Use subtle cyan/blue radial gradients behind hero sections or active elements to create a premium glow effect without overwhelming the dark theme.",
+    "buttons": "Pill-shaped (rounded-full) or slightly rounded (rounded-xl) with clear interaction states. Primary button should use the cyan-to-blue gradient or solid cyan. Secondary button should be outlined or subtle glass.",
+    "glassmorphism": "Use Optical Clarity. Heavy blur (backdrop-blur-xl), dark background (bg-black/60), and a 1px delicate inner stroke (border-white/10)."
+  },
+  "component name": {
+    "shadcn_ui": "Use Shadcn components for structural logic (Forms, Dialogs, Select), heavily customized via Tailwind to match the dark premium branding. Remove standard Vercel-look borders.",
+    "hero_phones_mockup": "Create realistic, clean HTML/Tailwind CSS mockups of BidBlitz interfaces showing transfer between Max Müller and Anna Schmidt.",
+    "live_transfer_card": "One large animated transfer card demonstrating speed and success status.",
+    "benefits_bento": "Bento grid layout for the 5 benefit cards.",
+    "investor_portal_dashboard": "Use dense, data-rich tables and charts (Recharts) for the investor dashboard area."
+  },
+  "grids": {
+    "bento_grid": "Use Mode A 'Tetris' grid for the Benefits section (asymmetry, visual tension). Use Mode B 'High Density' grid for the Investor Dashboard (scanability).",
+    "general": "Grid items must be direct children. Avoid default Bootstrap columns."
   },
   "layouts": {
-    "hero_section": {
-      "type": "bento_grid",
-      "mobile": "flex flex-col gap-8 px-4 pt-12 pb-8",
-      "desktop": "grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[80vh] px-8",
-      "alignment": "left-aligned text content, right-aligned or bottom-stacked phone mockups"
-    },
-    "how_it_works_section": {
-      "type": "grid",
-      "mobile": "flex flex-col gap-6",
-      "desktop": "grid grid-cols-1 md:grid-cols-3 gap-8",
-      "padding": "py-24"
-    }
+    "mobile_first": "Start with grid-cols-1. Ensure perfect stacking on 320px, 390px, 430px screens. The hero must communicate the main message in the first 3 seconds without horizontal scrolling.",
+    "spacing": "Generous Spacing Philosophy: Use 2-3x more spacing (py-20, py-24, gap-8). Containers with borders must have internal padding (p-6, p-8).",
+    "sections_order": "1. Hero, 2. Live Demo, 3. How it Works, 4. Benefits, 5. Private/Business, 6. CTA, 7. Bitcoin Mining, 8. Additional services. Investor section goes below wallet hero areas."
   },
   "motion": {
-    "transfer_animation": {
-      "description": "Framer Motion sequence demonstrating 50€ transfer from Afrim to Albin. A floating pill or coin should animate from Phone 1 (Afrim) to Phone 2 (Albin).",
-      "phone_1_state": "Afrim sendet 50 €",
-      "transfer_state": "50 € wird gesendet",
-      "phone_2_state": "Albin erhält 50 € -> Zahlung angekommen",
-      "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
-      "duration": "1.5s",
-      "loop": "infinite with a 2s delay"
-    },
-    "trust_indicators": "Staggered fade-in on load",
-    "buttons": "Hover scale up 1.05 and soft glow"
-  },
-  "visual_enhancers": {
-    "surfaces": "Use glass-premium (backdrop-blur-xl with subtle white/10 borders) for phone mockups.",
-    "glows": "Subtle #00C2FF radial gradients behind the phone mockups to separate them from the dark background.",
-    "borders": "1px solid rgba(255, 255, 255, 0.1) on cards."
-  },
-  "components_to_update": {
-    "HomePage": {
-      "path": "/app/frontend/src/pages/HomePage.jsx",
-      "instructions_to_main_agent": [
-        "Create a new component P2PHeroSection.jsx and import it at the top of HomePage.jsx.",
-        "Move the existing 'Bitcoin Mining Proof' section further down the page.",
-        "Make P2PHeroSection the very first visible component below the navigation header.",
-        "Ensure all existing props (onNavigate, onLogin, onRegister, etc.) are passed down or preserved so current auth/navigation flows remain fully functional.",
-        "Implement a 'How it Works' section directly below the Hero."
-      ]
-    }
-  },
-  "content": {
-    "hero": {
-      "badge": "BIDBLITZ WALLET",
-      "headline": "Geld senden. Geld empfangen. In Sekunden.",
-      "subheadline": "Sende Geld direkt an Freunde, Familie oder Geschäftspartner – per Telefonnummer, QR-Code oder BidBlitz-ID. Einfach, sicher und rund um die Uhr. (Nur zwischen BidBlitz Wallet Nutzern).",
-      "primary_cta": "Jetzt kostenlos starten",
-      "secondary_cta": "So funktioniert’s",
-      "trust_indicators": ["Schnell", "Sicher", "24/7 verfügbar"]
-    },
-    "how_it_works": {
-      "title": "So einfach funktioniert BidBlitz",
-      "steps": [
-        {
-          "number": "1",
-          "title": "Empfänger auswählen",
-          "desc": "Telefonnummer, QR-Code oder BidBlitz-ID"
-        },
-        {
-          "number": "2",
-          "title": "Betrag eingeben",
-          "desc": "Betrag prüfen und bestätigen"
-        },
-        {
-          "number": "3",
-          "title": "Geld angekommen",
-          "desc": "Der Empfänger erhält sofort eine Bestätigung"
-        }
-      ]
-    },
-    "translation_notes": [
-      "Ensure i18n hooks are used for these strings so they are fully translated into all existing BidBlitz languages.",
-      "Do NOT claim 'guaranteed in one second'. Always use 'in Sekunden'."
-    ]
-  },
-  "image_urls": {
-    "afrim_avatar": {
-      "url": "https://images.pexels.com/photos/26872232/pexels-photo-26872232.jpeg",
-      "description": "Professional young man, used for Afrim (Sender)"
-    },
-    "albin_avatar": {
-      "url": "https://images.pexels.com/photos/17910791/pexels-photo-17910791.jpeg",
-      "description": "Smiling young man, used for Albin (Receiver)"
-    }
+    "transfer_animation": "Smooth SVG line drawing or floating particles (framer-motion) connecting sender and recipient phones to visualize the 'In Sekunden' transfer.",
+    "micro_interactions": "Hover states on cards should have a slight lift (-translate-y-1) and subtle shadow or border glow reveal.",
+    "scrolling": "Implement smooth, staggered entrance animations for list items and section reveals."
   },
   "accessibility": {
-    "contrast": "Ensure all text over dark backgrounds meets WCAG AA 4.5:1 ratio.",
-    "data_testid": "Add data-testid attributes to all interactive elements (e.g. data-testid='hero-register-btn').",
-    "animations": "Respect prefers-reduced-motion for the phone transfer animation."
+    "contrast": "Ensure text contrast meets APCA/WCAG standards. Use text-shadow if placed over glows. Never use gray-on-gray.",
+    "testing": "All interactive elements (buttons, links, inputs, confirmation texts) MUST have a data-testid attribute (e.g., data-testid='start-free-button').",
+    "focus": "Focus states must have HIGHER contrast than default state, not lower."
   },
-  "testing": {
-    "responsive": "Must test on 320px, 390px, and desktop widths. Use stacked layout on mobile and side-by-side on desktop."
+  "media": {
+    "icons": "Use @phosphor-icons/react (Duotone or Regular) or lucide-react for professional, clean fintech iconography. Avoid filled/heavy icons unless active. Do NOT use AI assistant emojis."
   },
-  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
-    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms.",
-    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file.",
-    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+  "3d libraries": {
+    "library": "framer-motion",
+    "steps": "Use framer-motion for the 2D layout animations (phones communicating, success checkmarks, layout transitions). A full 3D library like R3F is overkill for clean fintech and may distract from the 'fast transfer' messaging. Rely on CSS gradients and framer-motion for the 'subtle glow effects' and 'smooth but restrained animations'."
+  },
+  "image urls": [
+    {
+      "url": "https://images.pexels.com/photos/12903168/pexels-photo-12903168.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "category": "investor_landing_background",
+      "description": "Professional team collaborating in an office. Use for the Investor landing page (/investieren) header or about section to build trust."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1709990740078-05aa8ee5b9b7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA0MTJ8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMGRhcmslMjBjeWFuJTIwdGVjaG5vbG9neXxlbnwwfHx8fDE3ODU1NjkxOTl8MA&ixlib=rb-4.1.0&q=85",
+      "category": "hero_accent_texture",
+      "description": "Abstract dark cyan technology background. Use at a very low opacity (10-15%) mixed with a radial gradient mask as the background for the primary Wallet hero section."
+    }
+  ],
+  "instructions_to_main_agent": [
+    "Build the BidBlitz homepage strictly following the section order provided.",
+    "Ensure 'Geld senden. Geld empfangen. In Sekunden.' is the primary visible message on load for mobile devices.",
+    "Build pure HTML/Tailwind phone mockups for the hero section transferring money from Max Müller to Anna Schmidt. DO NOT use cartoon characters or AI images for this.",
+    "Implement the Investor landing page (/investieren) and portal routes (/investor-login, /investor-portal, /admin/...) with a serious, black+cyan aesthetic.",
+    "Investor routes should NOT contain payment processing, wallet connections, or gaming language.",
+    "Include data-testid on all buttons and actionable items.",
+    "Never use pure transparent backgrounds for headers or overlays that content scrolls under. Use dark glassmorphism (bg-black/80 backdrop-blur-md).",
+    "Keep navigation buttons functional as requested (e.g., 'Jetzt kostenlos starten' goes to registration if logged out)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Create depth through layered design elements with z-index hierarchy.",
     "Use glass-morphism effects with backdrop filters (12-24px blur).",
-    "No generic centered layouts, simplistic gradients, and uniform styling.",
-    "Use 2-3x more spacing than feels comfortable.",
-    "Ensure the hero phone mockups look professional, clean, and minimal. Do not use random AI-generated vector illustrations. Build them with pure HTML/Tailwind.",
-    "Avoid complete transparent backgrounds on floating elements."
+    "Do NOT apply universal transition (transition: all). Use specific transitions.",
+    "Do NOT center align the app container (.App { text-align: center; } is banned).",
+    "Use modern button styles (pill-shaped or sharp) with hover animations.",
+    "NEVER use AI assistant Emoji characters (🤖🧠💭💡🔮🎯) for icons.",
+    "Add micro-animations for interactions (hover states, entrance animations).",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN."
   ]
 }
