@@ -18,7 +18,9 @@ const InvestorPage = ({ onBack }) => {
     try {
       await api.submitInvestorContact({ name, email, company, message });
       setSent(true);
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setSending(false);
   };
 

@@ -10,7 +10,7 @@ import {
   // Grid Menu Icons
   Wallet, Building2, Key, Banknote, Mail, Trophy, Crown, Ticket, CheckCircle2, Euro, Tag, Percent,
   UserCheck, Briefcase, UserPlus, Building, Star, Car, BadgePercent, Handshake, Wrench, FileCode, Sparkles,
-  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code, UtensilsCrossed, MapPin
+  Cog, Leaf, Lock, ScrollText, Mic, Bug, Database, Package, Code, UtensilsCrossed, MapPin, Calendar
 } from "lucide-react";
 import { useUser, useI18n } from "../store";
 import { toast } from "sonner";
@@ -102,6 +102,10 @@ const ADMIN_SECTIONS = [
     color: "#A855F7",
     items: [
       { id: "partner-portal", icon: Handshake, label: "Partner Portal", tab: "merchants" },
+      { id: "investor-leads", icon: Users, label: "Investor Leads", nav: "/admin/investor-leads", highlight: true },
+      { id: "investor-documents", icon: FileText, label: "Investor Dokumente", nav: "/admin/investor-documents", highlight: true },
+      { id: "investor-updates", icon: Mail, label: "Investor Updates", nav: "/admin/investor-updates", highlight: true },
+      { id: "investor-meetings", icon: Calendar, label: "Investor Meetings", nav: "/admin/investor-meetings", highlight: true },
       { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
       { id: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", tab: "qr-management", highlight: true },
       { id: "pool-system", icon: Ticket, label: "Schwimmbad", tab: "pool", highlight: true },

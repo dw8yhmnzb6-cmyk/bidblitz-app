@@ -30,6 +30,10 @@ export const ADMIN_SECTIONS = [
     title: "Partner & Händler", color: "#F59E0B", count: 3,
     items: [
       { key: "partners", icon: Building2, label: "Partner Portal" },
+      { key: "investor-leads", icon: Users, label: "Investor Leads", highlight: true, nav: "/admin/investor-leads" },
+      { key: "investor-documents", icon: FileText, label: "Investor Dokumente", highlight: true, nav: "/admin/investor-documents" },
+      { key: "investor-updates", icon: Mail, label: "Investor Updates", highlight: true, nav: "/admin/investor-updates" },
+      { key: "investor-meetings", icon: Ticket, label: "Investor Meetings", highlight: true, nav: "/admin/investor-meetings" },
       { key: "applications", icon: FileText, label: "Alte Bewerbungen" },
       { key: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", highlight: true, nav: "/admin/qr-management" },
     ],

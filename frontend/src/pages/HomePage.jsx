@@ -21,6 +21,7 @@ import HomeRecommendations from "../components/HomeRecommendations";
 import SmartRecommendations from "../components/SmartRecommendations";
 import { P2PHeroSection } from "../components/home/P2PHeroSection";
 import { HomeVisionSection } from "../components/home/HomeVisionSection";
+import { HomeWhyNowSection } from "../components/home/HomeWhyNowSection";
 import { HomeInvestorOpportunitySection } from "../components/home/HomeInvestorOpportunitySection";
 import { HomeWhyBidBlitzSection } from "../components/home/HomeWhyBidBlitzSection";
 import { HomeMiningTrustPromo } from "../components/home/HomeMiningTrustPromo";
@@ -711,6 +712,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             gt={gt}
             onRegister={onRegister}
             onInvestor={() => onNavigate("/investieren")}
+          />
+        )}
+
+        {isGuest && (
+          <HomeWhyNowSection
+            gt={gt}
+            onInterest={() => onNavigate("/investieren")}
+            onContact={() => onNavigate("/contact")}
           />
         )}
 
