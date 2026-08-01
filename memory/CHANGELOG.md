@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 01.08.2026 — Premium-Investor-Section auf Homepage + öffentliche `/investieren`-Strecke
+- Guest-Homepage erweitert um eine neue Premium-Sektion **„Warum jetzt in BidBlitz investieren?“** mit schwarzem Fintech-Look, **6 Informationskarten**, **animierten Kapital-Einsatz-Balken**, **Roadmap-Timeline** und finalem CTA. Die Copy bleibt bewusst rechtlich vorsichtig: **keine Fake-Zahlen, keine garantierten Renditen, kein Wallet-/Karten-Investmentflow**.
+- Neue öffentliche Seite **`/investieren`** unter `frontend/src/pages/InvestierenPage.jsx`: gleicher Investor-Infoblock plus echter **unverbindlicher Interessens-/Unterlagen-Formularfluss** mit klarer Datenschutzeinwilligung.
+- Neues Backend `backend/routes/investor_interest.py` mit **`POST /api/investor-interest/lead`**. Der Flow speichert Leads getrennt in **`investor_interest_leads`**, normalisiert E-Mails, liefert duplicate-safe Erfolg bei erneuter identischer Anfrage und limitiert auf **5 Requests/IP/Stunde**.
+- `frontend/src/models/homeTranslations.js` enthält vollständige Investor-Übersetzungen für **alle vorhandenen BidBlitz-Sprachen**. `frontend/src/App.js`, `frontend/src/pages/HomePage.jsx`, `frontend/src/services/api.js` und `backend/core/router_registry.py` wurden passend erweitert.
+- Verifiziert: Homepage-Smoke **PASS**, API-Selbsttest **PASS**, Duplicate-Safe-POST **PASS**, **Testing Agent Iteration 308 PASS** inkl. **320px / 390px / Desktop** und neuem Testfile `backend/tests/test_investor_interest.py`.
+
 ## 01.08.2026 — BidBlitz Pay Sandbox-/Mock-Gateway komplett ergänzt
 - Neue Backend-Route **`backend/routes/bidblitz_pay.py`** liefert jetzt die neue BidBlitz-Pay-Gateway-Struktur mit **`GET /api/bidblitz-pay/config`**, **`POST /api/bidblitz-pay/payments`**, Statusabfrage, **Mock-Wallet-Freigabe**, **Cancel**, **Refunds**, **Webhook** und **Audit-Logs**.
 - Der Flow ist **environment-first** aufgebaut und nutzt für den späteren Live-Switch ausschließlich **`BIDBLITZ_PAY_API_URL`**, **`BIDBLITZ_PAY_API_KEY`**, **`BIDBLITZ_PAY_MERCHANT_ID`** und **`BIDBLITZ_PAY_WEBHOOK_SECRET`**. Wenn diese Daten fehlen, läuft der neue Gateway-Pfad absichtlich im **Sandbox-/Mock-Modus**.

@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach Investor-Homepage-Section + `/investieren` Interest-Flow — 01.08.2026
+- ✅ Neue Premium-Homepage-Sektion **„Warum jetzt in BidBlitz investieren?“** ist live, inklusive **6 Karten**, **Kapital-Einsatz**, **Roadmap** und finalem CTA.
+- ✅ Neue öffentliche Route **`/investieren`** ist live und enthält denselben Informationsblock plus **unverbindliches Interessensformular**.
+- ✅ Backend für Public-Investor-Leads ist live: **`POST /api/investor-interest/lead`** mit Duplicate-Schutz und Rate-Limit.
+- ✅ Verifiziert mit Screenshot-Smoke, API-Selbsttests und **Testing Agent Iteration 308 PASS**; responsive auch auf **320px** geprüft.
+- 🔴 Nächster sinnvoller Schritt: das **rechtlich saubere Investor-Portal Phase 2** bauen — **`/investor-login`**, **`/investor-register`**, **`/investor-portal/*`**, getrennte Investor-Datenmodelle, Statuslogik, Dokumentfreigaben, Fragen, Meetings, Admin-Tabellen und CSV-Export.
+- 🟡 Danach: Homepage-Reststruktur weiter exakt an die bestätigte Wallet-First-Reihenfolge annähern (Benefits / Privat-Unternehmen / CTA noch stärker modularisieren und entflechten).
+- 🟡 Danach: E-Mail-Benachrichtigungen für Investor-Status-/Dokumenten-Events sauber anschließen, sobald der Resend/DNS-Blocker wirklich gelöst ist.
+
 ## Status nach BidBlitz Pay Sandbox-Gateway — 01.08.2026
 - ✅ Neue BidBlitz-Pay-Sandbox-Struktur ist live: **Zahlung starten**, **Redirect Checkout**, **Wallet-/App-Freigabe**, **Status**, **Success/Cancel**, **Webhook**, **Refund-Struktur**, **Idempotency** und **Audit-Logs**.
 - ✅ Bestehender Checkout blieb intakt; zusätzlich wurde der Router-Konflikt gelöst, sodass **`/api/pay/directory`** wieder korrekt erreichbar ist.
