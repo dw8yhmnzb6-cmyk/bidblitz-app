@@ -81,6 +81,15 @@ Payload:
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4" data-testid="pay-docs-step-webhook"><div className="w-10 h-10 rounded-xl bg-[#FFB800]/12 flex items-center justify-center mb-3"><Webhook size={18} className="text-[#FFB800]" /></div><p className="font-semibold mb-1">3. Webhook</p><p className="text-[12px] text-white/55">Nach erfolgreicher Zahlung sendet BidBlitz Pay ein signiertes `session.paid` Event.</p></div>
         </div>
 
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-[#00C2FF]/15 bg-[linear-gradient(135deg,rgba(0,194,255,0.08),rgba(255,255,255,0.02))] p-6" data-testid="pay-docs-sandbox-card">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/20 text-[#8EF0FF] text-[11px] font-semibold">Sandbox / Redirect / Webhook</span>
+            <a href="/bidblitz-pay/sandbox" className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-white/70 text-[11px]" data-testid="pay-docs-sandbox-link"><ExternalLink size={12} /> Sandbox öffnen</a>
+          </div>
+          <h2 className="text-2xl font-black mb-2">Neue BidBlitz-Pay-Gateway-Struktur</h2>
+          <p className="text-sm text-white/60 max-w-3xl">Mock-/Sandbox-First mit Environment-Variablen für API-URL, API-Key, Merchant-ID und Webhook-Secret. Enthält Zahlung starten, Redirect, Wallet-/App-Freigabe, Status, Success/Cancel, Refund-Struktur, Idempotency und Audit-Logs.</p>
+        </motion.div>
+
         <CopyBlock title="Frontend Embed" code={sdkSnippet} testId="pay-docs-sdk-snippet" />
         <CopyBlock title="Session API Beispiel" code={sessionExample} testId="pay-docs-session-snippet" />
         <CopyBlock title="Webhook Payload / Signatur" code={webhookExample} testId="pay-docs-webhook-snippet" />

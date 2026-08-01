@@ -40,12 +40,17 @@ async function request(path, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
+  // Extract headers and body separately to avoid double-spreading issues
+  const { headers: optHeaders, body, ...restOptions } = options;
   const config = {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...options.headers },
+    headers: { "Content-Type": "application/json", ...optHeaders },
     signal: controller.signal,
-    ...options,
+    ...restOptions,
   };
+  if (body !== undefined) {
+    config.body = body;
+  }
 
   try {
     let res = await fetch(url, config);
@@ -227,6 +232,23 @@ export const api = {
   getMyBarcode: () => request("/api/payment/my-barcode"),
   merchantScanPayment: (body) => request("/api/payment/merchant-scan", { method: "POST", body: JSON.stringify(body) }),
   resolveScanCode: (body) => request("/api/scan/resolve", { method: "POST", body: JSON.stringify(body) }),
+
+  // BidBlitz Pay gateway
+  getBidBlitzPayConfig: () => request("/api/bidblitz-pay/config"),
+  createBidBlitzPayPayment: (body, idempotencyKey) => request("/api/bidblitz-pay/payments", {
+    method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    body: JSON.stringify(body),
+  }),
+  getBidBlitzPayPayment: (paymentId) => request(`/api/bidblitz-pay/payments/${encodeURIComponent(paymentId)}`),
+  confirmBidBlitzPayMock: (paymentId, body) => request(`/api/bidblitz-pay/payments/${encodeURIComponent(paymentId)}/confirm-mock`, { method: "POST", body: JSON.stringify(body) }),
+  cancelBidBlitzPayPayment: (paymentId) => request(`/api/bidblitz-pay/payments/${encodeURIComponent(paymentId)}/cancel`, { method: "POST" }),
+  createBidBlitzPayRefund: (paymentId, body, idempotencyKey) => request(`/api/bidblitz-pay/payments/${encodeURIComponent(paymentId)}/refunds`, {
+    method: "POST",
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {},
+    body: JSON.stringify(body),
+  }),
+  getBidBlitzPayAuditLogs: (paymentId = "") => request(`/api/bidblitz-pay/audit-logs${paymentId ? `?payment_id=${encodeURIComponent(paymentId)}` : ""}`),
 
   // Merchant
   getMerchantDashboard: () => request("/api/merchant/dashboard"),

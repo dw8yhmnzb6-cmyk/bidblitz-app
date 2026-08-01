@@ -20,6 +20,9 @@ const PayDeveloperDocsPage = lazy(() => import("../pages/PayDeveloperDocsPage"))
 const PayDirectoryPage = lazy(() => import("../pages/PayDirectoryPage"));
 const PayForBusinessPage = lazy(() => import("../pages/PayForBusinessPage"));
 const PayMerchantDetailPage = lazy(() => import("../pages/PayMerchantDetailPage"));
+const BidBlitzPaySandboxPage = lazy(() => import("../pages/BidBlitzPaySandboxPage"));
+const BidBlitzPayHostedCheckoutPage = lazy(() => import("../pages/BidBlitzPayHostedCheckoutPage"));
+const BidBlitzPayResultPage = lazy(() => import("../pages/BidBlitzPayResultPage"));
 const PublicMerchantBusinessPage = lazy(() => import("../pages/PublicMerchantBusinessPage"));
 const EVStartChargingPage = lazy(() => import("../pages/EVStartChargingPage"));
 const EVLiveSessionPage = lazy(() => import("../pages/EVLiveSessionPage"));
@@ -91,7 +94,7 @@ export function renderSpecialRoutes({
   if (basePath.startsWith("/invoice/pay/")) {
     return <InvoicePayPage scanCode={basePath.split("/")[3]} onNavigate={handleNavigate} />;
   }
-  if (basePath.startsWith("/pay/") && !basePath.startsWith("/pay/checkout/") && !basePath.startsWith("/pay/merchant/")) {
+  if (basePath.startsWith("/pay/") && !basePath.startsWith("/pay/checkout/") && !basePath.startsWith("/pay/merchant/") && basePath !== "/pay/docs" && basePath !== "/pay/directory" && basePath !== "/pay/for-business") {
     return <PublicInvoicePaymentPage token={basePath.split("/")[2]} onNavigate={handleNavigate} />;
   }
   if (basePath === "/ev" || basePath === "/ev/map") {
@@ -154,6 +157,20 @@ export function renderSpecialRoutes({
   }
   if (basePath === "/pay/for-business") {
     return <PayForBusinessPage onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/bidblitz-pay/sandbox") {
+    return <BidBlitzPaySandboxPage onNavigate={handleNavigate} />;
+  }
+  if (basePath.startsWith("/bidblitz-pay/checkout/")) {
+    return <BidBlitzPayHostedCheckoutPage paymentId={basePath.split("/")[3]} onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/bidblitz-pay/success") {
+    const params = new URLSearchParams(currentPath.split("?")[1] || "");
+    return <BidBlitzPayResultPage variant="success" paymentId={params.get("payment_id") || ""} onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/bidblitz-pay/cancel") {
+    const params = new URLSearchParams(currentPath.split("?")[1] || "");
+    return <BidBlitzPayResultPage variant="cancel" paymentId={params.get("payment_id") || ""} onNavigate={handleNavigate} />;
   }
 
   return null;

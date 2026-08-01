@@ -36,6 +36,7 @@ const NEVER_CACHE_PREFIXES = [
   '/api/hotels',
   '/api/sabre',
   '/api/pay',
+  '/api/bidblitz-pay',
   '/api/topup',
   '/api/refund',
   '/api/checkout',
