@@ -20,6 +20,7 @@ import AdBanner from "../components/AdBanner";
 import HomeRecommendations from "../components/HomeRecommendations";
 import SmartRecommendations from "../components/SmartRecommendations";
 import { P2PHeroSection } from "../components/home/P2PHeroSection";
+import { HomeVisionSection } from "../components/home/HomeVisionSection";
 import { HomeInvestorOpportunitySection } from "../components/home/HomeInvestorOpportunitySection";
 import { HomeWhyBidBlitzSection } from "../components/home/HomeWhyBidBlitzSection";
 import { HomeMiningTrustPromo } from "../components/home/HomeMiningTrustPromo";
@@ -704,6 +705,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
         )}
 
         {isGuest && <HomeWhyBidBlitzSection gt={gt} />}
+
+        {isGuest && (
+          <HomeVisionSection
+            gt={gt}
+            onRegister={onRegister}
+            onInvestor={() => onNavigate("/investieren")}
+          />
+        )}
 
         {isGuest && (
           <HomeInvestorOpportunitySection
