@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 01.08.2026 — Neue Premium-Homepage-Section „Unsere Vision“
+- Guest-Homepage ergänzt um die neue Premium-Sektion **„Unsere Vision“** mit Headline **„Die Zukunft digitaler Zahlungen beginnt heute.“** sowie sechs inhaltlichen Blöcken: **Mission**, **langfristige Vision / Roadmap**, **Werte**, **Warum wir BidBlitz entwickeln**, **Unser Anspruch** und **CTA**.
+- Neue Komponente `frontend/src/components/home/HomeVisionSection.jsx` umgesetzt. Enthalten sind **4 Missionskarten**, eine **3-Phasen-Roadmap**, **6 Wertekarten**, **5 Anspruchskarten** und CTA-Buttons **„Jetzt starten“** / **„Investor werden“** im schwarzen BidBlitz-Premiumstil mit Cyan-Glow, Glass-Cards und Motion.
+- `frontend/src/pages/HomePage.jsx` rendert die neue Section jetzt im Guest-Flow zwischen **„Warum BidBlitz?“** und der Investor-Section. `frontend/src/models/homeTranslations.js` enthält die vollständigen Übersetzungen in allen vorhandenen Sprachen.
+- Verifiziert: Screenshot-Smoke **PASS**, **Testing Agent Iteration 310 PASS** und **auto_frontend_testing_agent PASS**. Keine Layout-Brüche; **kein Horizontal-Overflow auf 320px / 390px / 768px / Desktop**. CTA-Verhalten bestätigt: **Jetzt starten** öffnet Registrierung, **Investor werden** navigiert nach `/investieren`.
+
 ## 01.08.2026 — Neue Premium-Homepage-Section „Warum BidBlitz?“
 - Guest-Homepage ergänzt um die neue Premium-Sektion **„Warum BidBlitz?“** mit Headline **„Eine App. Viele Möglichkeiten.“**, Supporting Text, **8 Feature-Karten** (Wallet, Händler, Digitale Karten, Mobilität, Reisen, Shopping, Unternehmen, Investieren), einer **Vergleichstabelle** und der Zielgruppen-Sektion **„Für wen ist BidBlitz?“**.
 - Neue Komponente `frontend/src/components/home/HomeWhyBidBlitzSection.jsx` umgesetzt. Sie nutzt Glass-Cards, Blue-Glow, Hover-Lift, weiche Motion-Transitions und mobile-first Layouts im bestehenden BidBlitz-Premiumstil.

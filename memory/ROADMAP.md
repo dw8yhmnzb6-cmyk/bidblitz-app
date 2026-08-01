@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach neuer Homepage-Section „Unsere Vision“ — 01.08.2026
+- ✅ Neue Premium-Section **„Unsere Vision“** ist live.
+- ✅ Enthalten: Mission, 3-Phasen-Roadmap, Werte, Begründungsblock, Anspruchsblock und CTA mit funktionierenden Buttons.
+- ✅ Vollständig übersetzt in allen vorhandenen BidBlitz-Sprachen.
+- ✅ Verifiziert mit Screenshot-Smoke, **Testing Agent Iteration 310 PASS** und zusätzlichem Frontend-Testagenten; responsive auf **320px / 390px / 768px / Desktop** ohne Overflow.
+- ✅ Regression-Check bestanden: **„Warum BidBlitz?“** und die Investor-Section bleiben darunter intakt.
+- 🔴 Nächster sinnvoller Schritt: das **Investor-Portal Phase 2** umsetzen — **`/investor-login`**, **`/investor-register`**, **`/investor-portal/*`**, Admin-Bereiche, Dokumente, Fragen, Meetings und Statuslogik.
+- 🟡 Danach: Homepage-Funnel weiter verfeinern und einzelne Premium-Sections mit gezielten Deep-Links in Wallet, Merchant und Investor-Flows verbinden.
+
 ## Status nach neuer Homepage-Section „Warum BidBlitz?“ — 01.08.2026
 - ✅ Neue Premium-Section **„Warum BidBlitz?“** ist live.
 - ✅ Enthalten: **8 Feature-Karten**, Vergleich **Andere Apps vs. BidBlitz**, Zielgruppenblock und vollständige Übersetzungen in allen vorhandenen Sprachen.
