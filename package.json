@@ -14,7 +14,9 @@
     "cap:ios": "npx cap open ios",
     "cap:open:ios": "npx cap open ios",
     "cap:android": "npx cap open android",
-    "postinstall": "node -e \"try{const path=require.resolve(\\\"patch-package/dist/index.js\\\");require(\\\"child_process\\\").execFileSync(process.execPath,[path,\\\"--patch-dir\\\",\\\"frontend/patches\\\"],{stdio:\\\"inherit\\\"});}catch(e){console.log(\\\"patch-package bootstrap skipped\\\")}\""
+    "postinstall": "node -e \"try{const path=require.resolve(\\\"patch-package/dist/index.js\\\");require(\\\"child_process\\\").execFileSync(process.execPath,[path,\\\"--patch-dir\\\",\\\"frontend/patches\\\"],{stdio:\\\"inherit\\\"});}catch(e){console.log(\\\"patch-package bootstrap skipped\\\")}\"",
+    "lint": "npm --workspace frontend exec -- eslint \"src/**/*.{js,jsx}\"",
+    "visual-qa": "npx playwright test --config frontend/playwright.config.cjs && node frontend/scripts/visual-qa/translation-consistency.mjs && node frontend/scripts/visual-qa/numeric-format-validation.mjs && node frontend/scripts/visual-qa/design-consistency.mjs && node frontend/scripts/visual-qa/product-image-validation.mjs && node frontend/scripts/visual-qa/ai-screenshot-review.mjs && node frontend/scripts/visual-qa/compile-report.mjs && node frontend/scripts/visual-qa/prepare-repair-pr.mjs && node frontend/scripts/visual-qa/upload-report.mjs"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^7.3.2",

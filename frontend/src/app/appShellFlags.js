@@ -88,6 +88,7 @@ export function getAppShellFlags(currentPath, isDesktopViewport) {
       && !currentPath.startsWith("/pay/merchant/")
       && currentPath !== "/merchant-landing"
       && currentPath !== "/pay/directory"
+      && currentPath !== "/design-system"
       && currentPath !== "/scan",
     showBackToHome: !isHomePath
       && !isCheckout

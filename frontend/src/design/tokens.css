@@ -1,0 +1,159 @@
+:root {
+  --bb-bg-app: #02050B;
+  --bb-bg-card: #07101D;
+  --bb-bg-card-soft: #0B1728;
+  --bb-bg-card-strong: #102033;
+  --bb-accent-cyan: #00C8FF;
+  --bb-accent-blue: #087CFF;
+  --bb-accent-success: #18D68C;
+  --bb-accent-warning: #FFCC33;
+  --bb-accent-danger: #FF4D5E;
+  --bb-text-primary: #FFFFFF;
+  --bb-text-secondary: #A9B1BF;
+  --bb-text-muted: #707888;
+  --bb-border-soft: rgba(169, 177, 191, 0.18);
+  --bb-border-strong: rgba(169, 177, 191, 0.3);
+  --bb-shadow-card: 0 24px 60px rgba(2, 7, 16, 0.46);
+  --bb-shadow-glow: 0 18px 40px rgba(0, 200, 255, 0.18);
+  --bb-radius-card: 24px;
+  --bb-radius-button: 20px;
+  --bb-radius-pill: 999px;
+  --bb-page-x: clamp(16px, 4vw, 20px);
+  --bb-card-padding: clamp(16px, 3.8vw, 24px);
+  --bb-card-gap: 12px;
+  --bb-section-gap: 24px;
+  --bb-button-height: 48px;
+  --bb-button-height-primary: 56px;
+  --bb-icon-size: 20px;
+  --bb-header-height: 64px;
+  --bb-bottom-nav-height: 88px;
+  --bb-desktop-content-width: 1440px;
+  --bb-safe-top: env(safe-area-inset-top, 0px);
+  --bb-safe-right: env(safe-area-inset-right, 0px);
+  --bb-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bb-safe-left: env(safe-area-inset-left, 0px);
+  --bb-bottom-nav-clearance: calc(var(--bb-bottom-nav-height) + var(--bb-safe-bottom) + 24px);
+}
+
+body {
+  background:
+    radial-gradient(circle at top center, rgba(0, 200, 255, 0.16), transparent 34%),
+    linear-gradient(180deg, #02050B 0%, #040A13 38%, #02050B 100%);
+}
+
+.bb-page-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at top right, rgba(0, 200, 255, 0.14), transparent 32%),
+    radial-gradient(circle at left 10%, rgba(8, 124, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(2, 5, 11, 0.98) 0%, rgba(4, 10, 19, 1) 100%);
+  color: var(--bb-text-primary);
+  overflow-x: hidden;
+}
+
+.bb-page-shell__inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: min(100%, var(--bb-desktop-content-width));
+  margin: 0 auto;
+  padding-inline: max(var(--bb-page-x), calc(var(--bb-page-x) + var(--bb-safe-left)));
+}
+
+.bb-page-shell__header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--bb-header-height);
+  padding-top: max(16px, var(--bb-safe-top));
+  padding-bottom: 14px;
+  background: linear-gradient(180deg, rgba(2, 5, 11, 0.96) 0%, rgba(2, 5, 11, 0.88) 70%, rgba(2, 5, 11, 0) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.bb-page-shell__header-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.bb-page-shell__content {
+  padding-top: 8px;
+  padding-bottom: var(--bb-bottom-nav-clearance);
+}
+
+.bb-page-shell__content--no-bottom-nav {
+  padding-bottom: calc(var(--bb-safe-bottom) + 32px);
+}
+
+.bb-surface {
+  border: 1px solid var(--bb-border-soft);
+  border-radius: var(--bb-radius-card);
+  background: linear-gradient(180deg, rgba(7, 16, 29, 0.96) 0%, rgba(5, 12, 21, 0.98) 100%);
+  box-shadow: var(--bb-shadow-card);
+}
+
+.bb-surface-soft {
+  border: 1px solid var(--bb-border-soft);
+  border-radius: calc(var(--bb-radius-card) - 4px);
+  background: rgba(11, 23, 40, 0.82);
+}
+
+.bb-pill {
+  border: 1px solid var(--bb-border-soft);
+  border-radius: var(--bb-radius-pill);
+  background: rgba(11, 23, 40, 0.8);
+}
+
+.bb-input {
+  border: 1px solid var(--bb-border-soft);
+  border-radius: calc(var(--bb-radius-card) - 6px);
+  background: rgba(7, 16, 29, 0.9);
+  color: var(--bb-text-primary);
+}
+
+.bb-input::placeholder {
+  color: var(--bb-text-muted);
+}
+
+.bb-sticky-safe {
+  position: sticky;
+  bottom: 0;
+  z-index: 45;
+  padding-bottom: calc(var(--bb-safe-bottom) + 24px);
+  background: linear-gradient(180deg, rgba(2, 5, 11, 0) 0%, rgba(2, 5, 11, 0.9) 22%, rgba(2, 5, 11, 1) 100%);
+}
+
+.bb-safe-bottom-clearance {
+  padding-bottom: var(--bb-bottom-nav-clearance);
+}
+
+.bb-grid-auto {
+  display: grid;
+  gap: var(--bb-card-gap);
+}
+
+.bb-token-chip {
+  border: 1px solid var(--bb-border-soft);
+  border-radius: 18px;
+  background: rgba(11, 23, 40, 0.82);
+  padding: 14px;
+}
+
+@media (max-width: 430px) {
+  :root {
+    --bb-page-x: 16px;
+    --bb-card-padding: 16px;
+    --bb-bottom-nav-height: 84px;
+  }
+
+  .bb-page-shell__header {
+    padding-bottom: 12px;
+  }
+}

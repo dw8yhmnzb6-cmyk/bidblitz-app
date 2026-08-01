@@ -1,12 +1,18 @@
 import fs from 'fs';
 import path from 'path';
+import { outputDir, rawAuditPath, supportedLanguages, readJson, writeJson } from './shared.mjs';
 
-const outputDir = path.resolve('frontend/qa-output');
-const raw = JSON.parse(fs.readFileSync(path.join(outputDir, 'raw-route-audit.json'), 'utf8'));
+const raw = readJson(rawAuditPath, { results: [] });
 const sourceDir = path.resolve('frontend/src');
 const phraseRegex = /(FREE WORLDWIDE SHIPPING|Brand New|Factory Sealed|\bbids\b|\bbidders\b)/g;
 const keyRegex = /\b[a-z]{2,}\.[a-z0-9_.-]+\b/g;
 const issues = [];
+
+if (!fs.existsSync(rawAuditPath)) {
+  writeJson(path.join(outputDir, 'translation-consistency.json'), { generated_at: new Date().toISOString(), mode: 'skipped', issues: [] });
+  console.log('Translation consistency skipped because the raw route audit is missing.');
+  process.exit(0);
+}
 
 for (const entry of raw.results || []) {
   for (const issue of entry.issues || []) {
@@ -73,5 +79,37 @@ function walk(dir) {
 }
 
 walk(sourceDir);
-fs.writeFileSync(path.join(outputDir, 'translation-consistency.json'), JSON.stringify({ generated_at: new Date().toISOString(), issues }, null, 2));
+
+const translationSources = [
+  path.resolve('frontend/src/models/homeTranslations.js'),
+  path.resolve('frontend/src/models/investorDashboardTranslations.js'),
+];
+
+for (const file of translationSources) {
+  if (!fs.existsSync(file)) continue;
+  const content = fs.readFileSync(file, 'utf8');
+  supportedLanguages.forEach((code) => {
+    const escaped = code.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const hasDirectEntry = new RegExp(`(^|\\n)\\s*${escaped}\\s*:\\s*\\{`, 'm').test(content);
+    const hasSupportedArray = content.includes(`"${code}"`) || content.includes(`'${code}'`);
+    if (!hasDirectEntry && !hasSupportedArray) {
+      issues.push({
+        issue_id: `translation-language-${issues.length}`,
+        severity: 'medium',
+        category: 'translation',
+        route: 'source-scan',
+        viewport: 'static',
+        status: 'New',
+        problem: `Supported language '${code}' may be missing in ${path.basename(file)}.`,
+        affected_component: path.relative(path.resolve('frontend'), file),
+        source_file: path.relative(path.resolve('frontend'), file),
+        suggested_fix: 'Add the missing language entry or confirm that the file intentionally resolves this language.',
+        confidence: 0.66,
+        safe_to_auto_fix: false,
+      });
+    }
+  });
+}
+
+writeJson(path.join(outputDir, 'translation-consistency.json'), { generated_at: new Date().toISOString(), supported_languages: supportedLanguages, issues });
 console.log(`Translation consistency report written with ${issues.length} issues.`);

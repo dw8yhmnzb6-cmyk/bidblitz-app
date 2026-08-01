@@ -10,6 +10,10 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 try:
     from emergentintegrations.llm.chat import (
         LlmChat,

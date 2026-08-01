@@ -3,6 +3,16 @@ import { motion } from "framer-motion";
 import { Gavel, Trophy, Timer, Package, Truck, Eye, Zap, Heart, Bot } from "lucide-react";
 import { localized } from "./atoms";
 import { getAuctionFallbackImage } from "./imageFallbacks";
+import { MoneyAmount } from "../design/MoneyAmount";
+import { formatBidBlitzDuration } from "../../design/tokens";
+
+function localizeCondition(condition) {
+  return String(condition || "Neu · Original versiegelt")
+    .replace(/Brand New/gi, "Neu")
+    .replace(/Factory Sealed/gi, "Original versiegelt")
+    .replace(/FREE SHIPPING/gi, "Weltweiter Versand")
+    .replace(/\s+—\s+/g, " · ");
+}
 
 function AuctionCardImage({ imageUrl, fallbackImage, title, isEnded }) {
   const [imageSrc, setImageSrc] = useState(imageUrl || fallbackImage);
@@ -47,18 +57,11 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
   const isEndingNow = rem > 0 && rem <= 20;
   const isHot = auction.total_bids > 10;
   const d = Math.floor(rem / 86400);
-  const h = Math.floor((rem % 86400) / 3600);
-  const m = Math.floor((rem % 3600) / 60);
-  const s = rem % 60;
-  const logisticsLabel = auction.category === "marine" ? "ABHOLUNG / MARINA" : "FREE SHIPPING";
+  const logisticsLabel = auction.category === "marine" ? "Abholung / Marina" : "Weltweiter Versand";
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
   const countdownLabel = isEnded
-    ? "BEENDET"
-    : d > 0
-      ? `${d}T ${String(h).padStart(2, "0")}Std ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-      : h > 0
-        ? `${h}Std ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-        : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    ? "Beendet"
+    : formatBidBlitzDuration(rem, { locale: lang, compact: d === 0 });
 
   return (
     <motion.button
@@ -101,7 +104,7 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
 
         <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(4,6,16,0.18) 0%, rgba(4,6,16,0.05) 35%, rgba(4,6,16,0.65) 100%)" }} />
 
-        <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-2 z-10">
+        <div className="absolute top-2 left-2 right-2 flex flex-col gap-2 min-[390px]:flex-row min-[390px]:items-start min-[390px]:justify-between z-10">
           <div
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl backdrop-blur-md min-w-0 ${isFinalBattle ? "animate-pulse" : ""}`}
             style={{
@@ -110,7 +113,7 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
             }}
           >
             <Timer size={10} className={isFinalBattle ? "text-white" : "text-white/60"} />
-            <span className={`text-[11px] font-mono font-bold tabular-nums truncate ${isFinalBattle ? "text-white" : "text-white/90"}`}>
+              <span className={`text-[11px] font-mono font-bold tabular-nums leading-tight break-words ${isFinalBattle ? "text-white" : "text-white/90"}`}>
               {countdownLabel}
             </span>
           </div>
@@ -214,7 +217,7 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
               animate={{ scale: isEndingNow ? [1, 1.05, 1] : 1 }}
               transition={{ duration: 0.4, repeat: isEndingNow ? Infinity : 0 }}
             >
-              <span className="text-[10px] font-black text-white tracking-wider">{isEndingNow ? "⚡ ENDING NOW" : "🔥 FINAL BATTLE"}</span>
+              <span className="text-[10px] font-black text-white tracking-wider">{isEndingNow ? "⚡ Endet jetzt" : "🔥 Letzte Runde"}</span>
             </motion.div>
           </motion.div>
         )}
@@ -225,27 +228,22 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
           {loc.title}
         </h3>
 
-        <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+        <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-[1fr_auto] min-[390px]:items-end">
           <div>
             <p className="text-[9px] text-white/28 uppercase tracking-[0.24em] font-bold mb-1">Preis</p>
-            <div className="flex items-end gap-1">
-              <span className="text-[10px] text-white/45 leading-none pb-1">€</span>
-              <motion.span
-                key={auction.current_price}
-                className={`text-[28px] sm:text-[30px] font-black font-mono tabular-nums leading-none ${isEnded ? "text-white/30" : isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}
-                style={!isEnded ? { textShadow: isFinalBattle ? "0 0 20px rgba(255,64,96,0.3)" : "0 0 20px rgba(0,224,255,0.2)" } : {}}
-                initial={{ scale: 1.08 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                {auction.current_price.toFixed(2)}
-              </motion.span>
-            </div>
+            <motion.div key={auction.current_price} initial={{ scale: 1.08 }} animate={{ scale: 1 }} transition={{ duration: 0.2 }}>
+              <MoneyAmount
+                value={auction.current_price}
+                locale={lang}
+                className={`text-[26px] sm:text-[30px] font-black leading-none ${isEnded ? "text-white/30" : isFinalBattle ? "text-[#FF4060]" : "text-[#00E0FF]"}`}
+                testId={`auction-price-${auction.auction_id}`}
+              />
+            </motion.div>
           </div>
 
           {auction.retail_price > 0 && !isEnded && (
-            <div className="text-right pb-1" data-testid={`auction-savings-${auction.auction_id}`}>
-              <p className="text-[10px] text-white/25 line-through truncate">UVP €{auction.retail_price.toFixed(0)}</p>
+            <div className="text-left min-[390px]:text-right pb-1" data-testid={`auction-savings-${auction.auction_id}`}>
+              <p className="text-[10px] text-white/25 line-through truncate"><MoneyAmount value={auction.retail_price} locale={lang} className="text-[10px] text-white/25" testId={`auction-retail-${auction.auction_id}`} /></p>
               <p className="text-[15px] font-black text-[#00E89D] leading-none">-{savePct}%</p>
             </div>
           )}

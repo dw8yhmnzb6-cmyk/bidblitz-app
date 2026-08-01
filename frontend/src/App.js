@@ -67,6 +67,7 @@ const AdminInvestorDocumentsPage = lazy(() => import("./pages/AdminInvestorDocum
 const AdminInvestorUpdatesPage = lazy(() => import("./pages/AdminInvestorUpdatesPage"));
 const AdminInvestorMeetingsPage = lazy(() => import("./pages/AdminInvestorMeetingsPage"));
 const AdminVisualQaPage = lazy(() => import("./pages/AdminVisualQaPage"));
+const DesignSystemPage = lazy(() => import("./pages/DesignSystemPage"));
 const RewardsPage = lazy(() => import("./pages/RewardsPage"));
 const VerificationPage = lazy(() => import("./pages/VerificationPage"));
 const MerchantDashboardPage = lazy(() => import("./pages/MerchantDashboardPage"));
@@ -710,8 +711,10 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MarketplaceDashboardPage onBack={() => handleNavigate("/more")} onNavigate={handleNavigate} routeParams={routeParams} />;
       case "/pay":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <PaymentPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
+      case "/send":
       case "/send-money":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <SendMoneyPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
+      case "/receive":
       case "/receive-money":
       case "/my-barcode":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <ReceiveMoneyPage onBack={() => handleNavigate("/wallet")} onNavigate={handleNavigate} />;
@@ -751,6 +754,10 @@ function AppContent() {
         return user.role === "admin" ? <AdminInvestorMeetingsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/visual-qa":
         return user.role === "admin" ? <AdminVisualQaPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/design-system":
+        return process.env.NODE_ENV !== "production" || user.role === "admin"
+          ? <DesignSystemPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />
+          : <HomePage {...homeProps} />;
       case "/admin/ai-assistant":
         return user.role === "admin"
           ? <AdminAIAssistantPage onBack={() => handleNavigate("/admin")} />

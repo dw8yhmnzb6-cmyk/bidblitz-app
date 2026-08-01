@@ -14,6 +14,15 @@ import BuyCreditsModal from "./BuyCreditsModal";
 import { POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGreen, accentGold, accentRed, accentPurple } from "./atoms";
 import { getAuctionFallbackImage } from "./imageFallbacks";
 import { KYC_DISABLED } from "../../config/testMode";
+import { MoneyAmount } from "../design/MoneyAmount";
+import { ProductImageGallery } from "../design/ProductImageGallery";
+
+function localizeCondition(condition) {
+  return String(condition || "Neu · Original versiegelt")
+    .replace(/Brand New/gi, "Neu")
+    .replace(/Factory Sealed/gi, "Original versiegelt")
+    .replace(/\s+—\s+/g, " · ");
+}
 
 /* ─── BidRow (local to AuctionDetail) ─── */
 const BidRow = ({ bid, isLatest }) => (
@@ -29,7 +38,7 @@ const BidRow = ({ bid, isLatest }) => (
         <p className="text-[9px] text-white/20">{new Date(bid.created_at).toLocaleTimeString()}</p>
       </div>
     </div>
-    <span className={`font-mono font-bold tabular-nums text-[12px] ${isLatest ? "text-[#00E0FF]" : "text-white/40"}`}>€{bid.bid_price.toFixed(2)}</span>
+    <MoneyAmount value={bid.bid_price} locale="de" className={`text-[12px] ${isLatest ? "text-[#00E0FF]" : "text-white/40"}`} testId="auction-bid-row-price" />
   </motion.div>
 );
 
@@ -84,19 +93,12 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const [showLocalCredits, setShowLocalCredits] = useState(false);
   const pollRef = useRef(null);
   const fallbackImage = getAuctionFallbackImage(auction || {});
-  const [detailImage, setDetailImage] = useState("");
-  const [hideDetailImage, setHideDetailImage] = useState(false);
-  const galleryImages = Array.from(new Set((auction?.image_urls?.length ? auction.image_urls : [auction?.image_url]).filter(Boolean)));
+  const galleryImages = Array.from(new Set((auction?.image_urls?.length ? auction.image_urls : [auction?.image_url, fallbackImage]).filter(Boolean)));
   const descriptionLines = (auction?.description || "")
     .split(/[•\n]+/)
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 2);
-
-  useEffect(() => {
-    setHideDetailImage(false);
-    setDetailImage(galleryImages[0] || auction?.image_url || fallbackImage);
-  }, [auction?.image_url, auction?.image_urls, auction?.title, auction?.category, fallbackImage, galleryImages]);
 
   const fetch = useCallback(async () => {
     try {
@@ -147,14 +149,25 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const isLeading = isActive && auction.last_bidder_id === user?.id;
   const isOutbid = isActive && auction.last_bidder_id && auction.last_bidder_id !== user?.id && bids.some(b => b.user_id === user?.id || b.user_name === user?.name);
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
-  const logisticsLabel = auction.category === "marine" ? "ÜBERGABE NACH ABSPRACHE" : "FREE WORLDWIDE SHIPPING";
+  const logisticsLabel = auction.category === "marine" ? "Übergabe nach Absprache" : "Weltweiter Versand";
+  const conditionLabel = localizeCondition(auction.condition);
 
   return (
     <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} data-testid="auction-detail" data-scroll-page="true">
       {/* Hero Image */}
-      <div className="relative w-full aspect-[16/10] max-h-[300px] overflow-hidden">
-        {!hideDetailImage ? <img src={detailImage} alt={auction.title || ''} className={`w-full h-full object-cover ${isEnded ? "opacity-30 grayscale" : ""}`} onError={() => { if (detailImage !== fallbackImage) setDetailImage(fallbackImage); else setHideDetailImage(true); }} /> : <div className="w-full h-full bg-[#060810]" />}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #040610 0%, #04061080 40%, transparent 100%)" }} />
+      <div className="relative px-4 pt-4">
+        <ProductImageGallery
+          title={auction.title || ''}
+          images={galleryImages}
+          productCategory={auction.category || 'general'}
+          productSubcategory={auction.category || 'general'}
+          imageCategory={auction.category || 'product'}
+          imageSource="auction-gallery"
+          imageVerified
+          className="relative"
+          testId="auction-detail-gallery"
+        />
+        <div className="pointer-events-none absolute inset-x-4 top-4 rounded-[24px]" style={{ background: "linear-gradient(to top, #040610 0%, #04061080 40%, transparent 100%)", height: 'calc(100% - 1rem)' }} />
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top,0px),16px)]">
           <motion.button data-testid="auction-back-btn" className={`w-9 h-9 rounded-full flex items-center justify-center ${glass}`}
             style={{ background: "rgba(6,8,16,0.6)", border: "1px solid rgba(255,255,255,0.06)" }} whileTap={{ scale: 0.88 }} onClick={onBack}>
@@ -165,38 +178,15 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
           </div>
         </div>
         {/* Badges on hero */}
-        <div data-testid="auction-detail-logistics-badge" className="absolute bottom-12 left-4 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#00E89D]/70 border border-[#00E89D]/25">
+        <div data-testid="auction-detail-logistics-badge" className="absolute bottom-28 left-8 flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#00E89D]/70 border border-[#00E89D]/25">
           <Truck size={9} className="text-white" /><span className="text-[8px] font-bold text-white tracking-wider">{logisticsLabel}</span>
         </div>
-        <div className="absolute bottom-12 right-4 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#060810]/60 border border-[#00E89D]/15">
-          <ShieldCheck size={8} className="text-[#00E89D]" /><span className="text-[8px] font-semibold text-[#00E89D]">{auction.condition || "Brand New"}</span>
+        <div className="absolute bottom-28 right-8 flex items-center gap-1 px-2 py-1 rounded-lg backdrop-blur-xl bg-[#060810]/60 border border-[#00E89D]/15">
+          <ShieldCheck size={8} className="text-[#00E89D]" /><span className="text-[8px] font-semibold text-[#00E89D]">{conditionLabel}</span>
         </div>
       </div>
 
       <div className="px-5 -mt-5 pb-40 relative z-10 space-y-3">
-        {galleryImages.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1" data-testid="auction-detail-gallery">
-            {galleryImages.map((img, idx) => {
-              const active = img === detailImage;
-              return (
-                <button
-                  key={`${img}-${idx}`}
-                  type="button"
-                  data-testid={`auction-detail-gallery-image-${idx}`}
-                  onClick={() => { setHideDetailImage(false); setDetailImage(img); }}
-                  className="shrink-0 w-20 h-20 rounded-2xl overflow-hidden border transition-all"
-                  style={{
-                    borderColor: active ? "rgba(0,224,255,0.55)" : "rgba(255,255,255,0.08)",
-                    boxShadow: active ? "0 0 0 1px rgba(0,224,255,0.18)" : "none",
-                    background: "rgba(8,12,20,0.9)",
-                  }}
-                >
-                  <img src={img} alt={`${auction.title || "auction"} ${idx + 1}`} className="w-full h-full object-cover" />
-                </button>
-              );
-            })}
-          </div>
-        )}
         <h1 className="text-[17px] font-bold text-white/90 font-outfit leading-tight">{auction.title}</h1>
         <div className="space-y-1" data-testid="auction-detail-description">
           {(descriptionLines.length ? descriptionLines : [auction.description]).map((line, index) => (
@@ -224,24 +214,23 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
         <motion.div className={`rounded-2xl p-4 relative overflow-hidden ${glass}`} style={{ background: panelBg, border: panelBorder }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {isActive && <motion.div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accentCyan}50, transparent)` }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 2, repeat: Infinity }} />}
-          <div className="flex items-start justify-between mb-3">
+          <div className="flex flex-col gap-4 min-[390px]:flex-row min-[390px]:items-start min-[390px]:justify-between mb-3">
             <div>
               <p className="text-[7px] text-[#444] uppercase tracking-widest font-semibold mb-1">{t("auction.current_price")}</p>
-              <motion.p className="text-[30px] font-black font-mono tabular-nums leading-none" style={{ color: isEnded ? accentGold : accentCyan, textShadow: isEnded ? "none" : "0 0 16px rgba(0,224,255,0.2)" }}
-                key={auction.current_price} initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 0.25 }}>
-                {auction.current_price.toFixed(2)}
-              </motion.p>
-              <p className="text-[9px] text-[#333] mt-0.5"><span className="line-through">{auction.retail_price.toFixed(2)}</span>{savePct > 0 && <span className="text-[#00E89D] ml-1 font-semibold">-{savePct}%</span>}</p>
+              <motion.div key={auction.current_price} initial={{ scale: 1.06 }} animate={{ scale: 1 }} transition={{ duration: 0.25 }}>
+                <MoneyAmount value={auction.current_price} locale="de" className="text-[28px] sm:text-[32px] font-black leading-none" testId="auction-detail-current-price" />
+              </motion.div>
+              <p className="text-[9px] text-[#333] mt-0.5"><MoneyAmount value={auction.retail_price} locale="de" className="text-[9px] text-[#333] line-through" testId="auction-detail-retail-price" />{savePct > 0 && <span className="text-[#00E89D] ml-1 font-semibold">-{savePct}%</span>}</p>
             </div>
-            <div className="text-right">
+            <div className="text-left min-[390px]:text-right">
               <p className="text-[7px] text-[#444] uppercase tracking-widest font-semibold mb-1">{isEnded ? t("auction.ended") : t("auction.time_left")}</p>
               {isActive && <Countdown endsAt={auction.ends_at} status={auction.status} size="lg" />}
               {isEnded && <div className="flex items-center gap-1"><Trophy size={14} className="text-[#FFD166]" /><span className="text-[12px] font-bold text-[#FFD166]">{auction.winner_name || "—"}</span></div>}
             </div>
           </div>
-          <div className="flex items-center gap-4 pt-3 border-t border-white/[0.03]">
-            <div className="flex items-center gap-1"><Gavel size={9} className="text-[#B068FF]" /><span className="text-[9px] text-white/40">{auction.total_bids} bids</span></div>
-            <div className="flex items-center gap-1"><Users size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">{uniqueBidders} bidders</span></div>
+          <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-white/[0.03]">
+            <div className="flex items-center gap-1"><Gavel size={9} className="text-[#B068FF]" /><span className="text-[9px] text-white/40">{auction.total_bids} Gebote</span></div>
+            <div className="flex items-center gap-1"><Users size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">{uniqueBidders} Bieter</span></div>
             <div className="flex items-center gap-1"><TrendingUp size={9} className="text-[#00E89D]" /><span className="text-[9px] text-white/40">+0.01</span></div>
             <div className="flex items-center gap-1"><Clock size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">+10s</span></div>
           </div>

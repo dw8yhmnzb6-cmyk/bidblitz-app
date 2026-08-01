@@ -17,6 +17,9 @@ import Countdown from "../components/auctions/Countdown";
 import AuctionGridCard from "../components/auctions/AuctionGridCard";
 import KYCBanner from "../components/KYCBanner";
 import { POLL_MS, LIST_POLL_MS, glass, panelBg, panelBorder, accentCyan, accentGold, accentGreen, accentRed, accentPurple, localized } from "../components/auctions/atoms";
+import { BidBlitzPageShell } from "../components/design/BidBlitzPageShell";
+import { MoneyAmount } from "../components/design/MoneyAmount";
+import { PrimaryButton } from "../components/design/BidBlitzButtons";
 
 // Lazy: only when user opens detail / credit-buy flow (saves ~50KB initial bundle)
 const AuctionDetail = lazy(() => import("../components/auctions/AuctionDetail"));
@@ -624,45 +627,23 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
       {/* Ambient */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px] h-[60vw] max-h-[400px] rounded-full pointer-events-none" style={{ filter: "blur(160px)", background: "rgba(0,224,255,0.02)" }} />
 
-      {/* Premium Header — DealDash Style */}
-      <div className="relative z-10">
-        <div className="flex items-center gap-4 px-5 pt-[max(env(safe-area-inset-top,0px),20px)] pb-4">
-          <motion.button data-testid="auctions-back-btn" 
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ 
-              background: "rgba(255,255,255,0.03)", 
-              border: "1px solid rgba(255,255,255,0.06)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
-            }}
-            whileTap={{ scale: 0.9 }} 
-            whileHover={{ background: "rgba(255,255,255,0.06)" }}
-            onClick={() => onNavigate("/")}>
-            <ArrowLeft size={16} className="text-white/50" />
-          </motion.button>
-          <div className="flex-1">
-            <h1 className="text-[18px] font-bold font-outfit text-white tracking-tight">{t("auction.title")}</h1>
-            <p className="text-[11px] text-white/30">{t("auction.subtitle")}</p>
-          </div>
-          {!isGuest && (
-            <motion.button data-testid="buy-credits-btn" onClick={() => setShowCredits(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(255,209,102,0.12) 0%, rgba(255,209,102,0.06) 100%)", 
-                border: "1px solid rgba(255,209,102,0.2)",
-                boxShadow: "0 4px 16px rgba(255,209,102,0.1)"
-              }} 
-              whileTap={{ scale: 0.95 }}
-              whileHover={{ borderColor: "rgba(255,209,102,0.35)" }}>
-              <Coins size={14} className="text-[#FFD166]" />
-              <span className="text-[13px] font-bold text-[#FFD166] tabular-nums">{credits}</span>
-            </motion.button>
-          )}
-        </div>
-      </div>
-
+      <BidBlitzPageShell
+        title={t("auction.title")}
+        subtitle={t("auction.subtitle")}
+        onBack={() => onNavigate("/")}
+        onHome={() => onNavigate("/")}
+        contentClassName="relative z-10"
+        testId="auctions-page-shell"
+        headerActions={!isGuest ? (
+          <PrimaryButton data-testid="buy-credits-btn" onClick={() => setShowCredits(true)} className="px-4">
+            <Coins size={14} />
+            <MoneyAmount value={credits} locale={lang} className="text-sm font-black text-[#08111D]" testId="auction-credits-balance" />
+          </PrimaryButton>
+        ) : null}
+      >
       {isGuest && !isDemoMode && <GuestCTABar onLogin={onLogin} onRegister={onRegister} onStartDemo={onStartDemo} isDemoMode={isDemoMode} />}
 
-      <div className="px-4 pb-8 relative z-10 space-y-3">
+      <div className="pb-8 relative z-10 space-y-3">
         {/* Daily Reward */}
         {!isGuest && <DailyReward onClaimed={setCredits} />}
 
@@ -839,6 +820,7 @@ const AuctionsPage = ({ onNavigate, isGuest, isDemoMode, onAuthRequired, onLogin
           </>
         )}
       </div>
+      </BidBlitzPageShell>
 
       {!isGuest && <LowCreditsPopup credits={credits} onBuy={() => setShowCredits(true)} t={t} />}
       <LazyErrorBoundary onReset={() => setShowCredits(false)}>

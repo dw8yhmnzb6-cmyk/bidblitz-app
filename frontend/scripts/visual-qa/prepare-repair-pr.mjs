@@ -14,8 +14,8 @@ const issues = JSON.parse(fs.readFileSync(issuesPath, 'utf8'));
 const safeIssues = issues.filter((issue) => issue.safe_to_auto_fix);
 
 safeIssues.forEach((issue) => {
-  const slug = `${issue.route || 'route'}-${issue.affected_component || 'issue'}`.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase();
-  const branch = `ai-fix/${slug}`;
+  const slug = `${issue.route || 'route'}-${issue.affected_component || 'issue'}`.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase().slice(0, 70).replace(/^-|-$/g, '');
+  const branch = `ai-fix/${slug || 'visual-qa-fix'}`;
   const plan = {
     issue_id: issue.issue_id,
     branch,

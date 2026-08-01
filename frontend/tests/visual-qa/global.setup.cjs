@@ -9,7 +9,11 @@ async function saveState(name, baseURL, endpoint, payload) {
   const context = await request.newContext({ baseURL, extraHTTPHeaders: { 'Content-Type': 'application/json' } });
   try {
     if (payload) {
-      await context.post(endpoint, { data: payload });
+      const response = await context.post(endpoint, { data: payload });
+      if (!response.ok()) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Could not create storage state for ${name}: ${response.status()} ${text}`);
+      }
     }
     await context.storageState({ path: path.join(AUTH_DIR, `${name}.json`) });
   } finally {

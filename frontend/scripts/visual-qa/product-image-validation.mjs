@@ -1,10 +1,9 @@
-import fs from 'fs';
 import path from 'path';
+import { outputDir, deriveVisualQaUrl, getQaBaseUrl, postJson, readJson, writeJson } from './shared.mjs';
 
-const outputDir = path.resolve('frontend/qa-output');
-const baseURL = process.env.QA_BASE_URL;
+const baseURL = getQaBaseUrl();
 if (!baseURL) {
-  fs.writeFileSync(path.join(outputDir, 'product-image-validation.json'), JSON.stringify({ generated_at: new Date().toISOString(), validation_mode: 'skipped', results: [] }, null, 2));
+  writeJson(path.join(outputDir, 'product-image-validation.json'), { generated_at: new Date().toISOString(), validation_mode: 'skipped', results: [] });
   console.log('QA_BASE_URL missing, product image validation skipped.');
   process.exit(0);
 }
@@ -20,7 +19,7 @@ const categoryRules = {
   gaming: { expected: ['gaming', 'console', 'monitor', 'playstation', 'xbox', 'switch'], forbidden: ['bike', 'vacuum'] },
 };
 
-const results = auctions.slice(0, 80).flatMap((auction) => {
+const heuristicResults = auctions.slice(0, 80).flatMap((auction) => {
   const rules = categoryRules[auction.category] || null;
   if (!rules) return [];
   const urls = [auction.image_url, ...(auction.image_urls || [])].filter(Boolean);
@@ -42,5 +41,32 @@ const results = auctions.slice(0, 80).flatMap((auction) => {
   });
 });
 
-fs.writeFileSync(path.join(outputDir, 'product-image-validation.json'), JSON.stringify({ generated_at: new Date().toISOString(), validation_mode: 'heuristic', results }, null, 2));
-console.log(`Product image validation finished for ${results.length} image references.`);
+let validationMode = 'heuristic';
+let results = heuristicResults;
+
+try {
+  const endpoint = deriveVisualQaUrl(process.env.QA_PRODUCT_VALIDATION_URL, '/api/visual-qa/product-image-validate');
+  if (endpoint) {
+    const products = auctions.slice(0, 30).map((auction) => ({
+      auction_id: auction.id || auction.auction_id || auction._id || 'unknown',
+      title: auction.title || '',
+      category: auction.category || '',
+      image_url: auction.image_url || '',
+      image_urls: [auction.thumbnail_url, ...(auction.image_urls || [])].filter(Boolean),
+    }));
+    const aiResponse = await postJson(endpoint, { products });
+    if (aiResponse.ok) {
+      const payload = await aiResponse.json();
+      const aiResults = payload?.results || [];
+      if (aiResults.length > 0) {
+        validationMode = 'ai+heuristic';
+        results = aiResults;
+      }
+    }
+  }
+} catch (error) {
+  validationMode = 'heuristic-fallback';
+}
+
+writeJson(path.join(outputDir, 'product-image-validation.json'), { generated_at: new Date().toISOString(), validation_mode: validationMode, results });
+console.log(`Product image validation finished for ${results.length} image references (${validationMode}).`);

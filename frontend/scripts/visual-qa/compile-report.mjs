@@ -1,28 +1,25 @@
-import fs from 'fs';
 import path from 'path';
+import { outputDir, rawAuditPath, designSpecPath, repairSafetyRulesPath, readJson, writeJson } from './shared.mjs';
 
-const outputDir = path.resolve('frontend/qa-output');
-const rawPath = path.join(outputDir, 'raw-route-audit.json');
 const translationPath = path.join(outputDir, 'translation-consistency.json');
 const numberPath = path.join(outputDir, 'numeric-format-validation.json');
 const designPath = path.join(outputDir, 'design-consistency.json');
 const imagePath = path.join(outputDir, 'product-image-validation.json');
 const aiPath = path.join(outputDir, 'ai-screenshot-review.json');
 
-function readJson(file, fallback) {
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : fallback;
-}
-
-const raw = readJson(rawPath, { results: [] });
+const raw = readJson(rawAuditPath, { results: [] });
 const translation = readJson(translationPath, { issues: [] });
 const numeric = readJson(numberPath, { issues: [] });
 const design = readJson(designPath, { issues: [] });
 const image = readJson(imagePath, { results: [] });
 const ai = readJson(aiPath, { issues: [] });
+const designSpec = readJson(designSpecPath, {});
+const safetyRules = readJson(repairSafetyRulesPath, {});
 
 const routeIssues = raw.results.flatMap((entry) => (entry.issues || []).map((issue, index) => ({
   issue_id: `${entry.viewport}-${entry.route}-${index}`.replace(/[^a-zA-Z0-9_-]/g, '_'),
   route: entry.route,
+  resolved_path: entry.resolved_path || entry.route,
   viewport: entry.viewport,
   status: 'New',
   affected_component: issue.rule || '',
@@ -30,6 +27,7 @@ const routeIssues = raw.results.flatMap((entry) => (entry.issues || []).map((iss
   risk_level: issue.safe_to_auto_fix ? 'low' : 'medium',
   ...issue,
   before_screenshot: entry.screenshot || '',
+  page_text_sample: entry.text_sample || '',
 }))); 
 
 const issues = [
@@ -73,11 +71,34 @@ const summary = {
   viewports: raw.viewports || [],
   routes: raw.routes || [],
   issues,
+  metadata: {
+    design_spec: designSpec,
+    repair_safety_rules: safetyRules,
+    detection_rules: [
+      'horizontal-overflow',
+      'content-outside-viewport',
+      'content-outside-safe-area',
+      'text-overlap',
+      'broken-image',
+      'unexpected-empty-section',
+      'nan-undefined-null',
+      'mixed-language-german',
+      'text-too-small',
+      'clipped-button',
+      'duplicate-header',
+      'duplicate-bottom-nav',
+      'bottom-nav-obstruction',
+      'missing-bottom-navigation',
+      'low-contrast-primary-action',
+      'numeric-format-validation',
+      'product-image-validation',
+      'ai-screenshot-review',
+    ],
+  },
 };
 
-fs.mkdirSync(outputDir, { recursive: true });
-fs.writeFileSync(path.join(outputDir, 'qa-report.json'), JSON.stringify(summary, null, 2));
-fs.writeFileSync(path.join(outputDir, 'qa-issues.json'), JSON.stringify(issues, null, 2));
+writeJson(path.join(outputDir, 'qa-report.json'), summary);
+writeJson(path.join(outputDir, 'qa-issues.json'), issues);
 
 if (criticalFailures.length > 0) {
   console.error(`Visual QA failed with ${criticalFailures.length} critical issues.`);

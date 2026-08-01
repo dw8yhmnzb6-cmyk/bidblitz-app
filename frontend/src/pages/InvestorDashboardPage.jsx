@@ -43,7 +43,7 @@ export default function InvestorDashboardPage({ onNavigate }) {
         <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="rounded-[34px] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(6,182,212,0.16),transparent_28%),linear-gradient(145deg,rgba(4,8,14,0.99),rgba(6,13,20,0.98)_45%,rgba(4,7,11,1))] p-6 shadow-[0_20px_44px_rgba(0,0,0,0.24)]">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#06B6D4]/20 bg-[#06B6D4]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.24em] text-[#9BE8FF]" data-testid="investor-dashboard-badge">
             <Building2 size={12} />
-            Investor Dashboard
+            {t("badge")}
           </div>
           <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div>
@@ -197,7 +197,7 @@ export default function InvestorDashboardPage({ onNavigate }) {
               <p className="text-sm leading-6 text-white/72">{t("contact")} · {t("meetingRequest")}</p>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <button onClick={() => onNavigate(data.contact?.meeting_request_url || "/investor-portal/meetings")} className="inline-flex h-12 items-center justify-center rounded-full bg-[#06B6D4] px-5 text-sm font-black text-[#041018] hover:bg-[#33c7e0]" data-testid="investor-dashboard-meeting-request-button">{t("meetingRequest")}</button>
-                {data.contact?.email ? <button onClick={() => window.location.href = `mailto:${data.contact.email}`} className="inline-flex h-12 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-bold text-white" data-testid="investor-dashboard-email-button">Email</button> : null}
+                {data.contact?.email ? <button onClick={() => window.location.href = `mailto:${data.contact.email}`} className="inline-flex h-12 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-bold text-white" data-testid="investor-dashboard-email-button">{t("email")}</button> : null}
               </div>
             </div>
           </div>
