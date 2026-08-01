@@ -1,5 +1,11 @@
 # BidBlitz — CHANGELOG
 
+## 01.08.2026 — Neue Premium-Homepage-Section „Warum BidBlitz?“
+- Guest-Homepage ergänzt um die neue Premium-Sektion **„Warum BidBlitz?“** mit Headline **„Eine App. Viele Möglichkeiten.“**, Supporting Text, **8 Feature-Karten** (Wallet, Händler, Digitale Karten, Mobilität, Reisen, Shopping, Unternehmen, Investieren), einer **Vergleichstabelle** und der Zielgruppen-Sektion **„Für wen ist BidBlitz?“**.
+- Neue Komponente `frontend/src/components/home/HomeWhyBidBlitzSection.jsx` umgesetzt. Sie nutzt Glass-Cards, Blue-Glow, Hover-Lift, weiche Motion-Transitions und mobile-first Layouts im bestehenden BidBlitz-Premiumstil.
+- `frontend/src/pages/HomePage.jsx` rendert die neue Section jetzt im Guest-Flow oberhalb der bereits gebauten Investor-Section; `frontend/src/models/homeTranslations.js` enthält vollständige Übersetzungen in allen vorhandenen Sprachen.
+- Verifiziert mit Screenshot-Smoke **PASS** und **Testing Agent Iteration 309 PASS**: alle 8 Karten sichtbar, Vergleich korrekt, Zielgruppenblock sichtbar, **kein Horizontal-Overflow auf 320px/390px**, Investor-Section darunter weiterhin intakt. **Keine MOCKED APIs in diesem Block.**
+
 ## 01.08.2026 — Premium-Investor-Section auf Homepage + öffentliche `/investieren`-Strecke
 - Guest-Homepage erweitert um eine neue Premium-Sektion **„Warum jetzt in BidBlitz investieren?“** mit schwarzem Fintech-Look, **6 Informationskarten**, **animierten Kapital-Einsatz-Balken**, **Roadmap-Timeline** und finalem CTA. Die Copy bleibt bewusst rechtlich vorsichtig: **keine Fake-Zahlen, keine garantierten Renditen, kein Wallet-/Karten-Investmentflow**.
 - Neue öffentliche Seite **`/investieren`** unter `frontend/src/pages/InvestierenPage.jsx`: gleicher Investor-Infoblock plus echter **unverbindlicher Interessens-/Unterlagen-Formularfluss** mit klarer Datenschutzeinwilligung.

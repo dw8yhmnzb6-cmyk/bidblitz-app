@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach neuer Homepage-Section „Warum BidBlitz?“ — 01.08.2026
+- ✅ Neue Premium-Section **„Warum BidBlitz?“** ist live.
+- ✅ Enthalten: **8 Feature-Karten**, Vergleich **Andere Apps vs. BidBlitz**, Zielgruppenblock und vollständige Übersetzungen in allen vorhandenen Sprachen.
+- ✅ Verifiziert mit Screenshot-Smoke und **Testing Agent Iteration 309 PASS** inkl. Mobile-Checks **320px / 390px**.
+- ✅ Regression-Check bestanden: die neue Investor-Section bleibt darunter sichtbar und funktionsfähig.
+- 🔴 Nächster sinnvoller Schritt: das **Investor-Portal Phase 2** umsetzen — **`/investor-login`**, **`/investor-register`**, **`/investor-portal/*`**, Admin-Bereiche, Dokumente, Fragen, Meetings und Statuslogik.
+- 🟡 Danach: Homepage weiter modularisieren und die Guest-Section-Reihenfolge endgültig auf den bestätigten Wallet-First-Funnel ausrichten.
+- 🟡 Danach: gezielte CTA-Verknüpfungen aus Feature-Karten in Wallet, Merchant, Travel und Mobility sauber verbinden, ohne die Startseite zu überladen.
+
 ## Status nach Investor-Homepage-Section + `/investieren` Interest-Flow — 01.08.2026
 - ✅ Neue Premium-Homepage-Sektion **„Warum jetzt in BidBlitz investieren?“** ist live, inklusive **6 Karten**, **Kapital-Einsatz**, **Roadmap** und finalem CTA.
 - ✅ Neue öffentliche Route **`/investieren`** ist live und enthält denselben Informationsblock plus **unverbindliches Interessensformular**.
