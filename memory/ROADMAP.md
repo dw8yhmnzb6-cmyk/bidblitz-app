@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach neuer Homepage-Section „Warum gerade jetzt?“ — 01.08.2026
+- ✅ Neue Premium-Section **„Warum gerade jetzt?“** ist live.
+- ✅ Enthalten: 10-Punkte-Progress-Timeline, 4 Karten **„Warum jetzt?“**, 6 Meilensteine, 6 Fokus-Karten und CTA mit zwei funktionierenden Buttons.
+- ✅ Vollständig übersetzt in allen vorhandenen BidBlitz-Sprachen.
+- ✅ Verifiziert mit Screenshot-Smoke und **Testing Agent Iteration 311 PASS**; responsive auf **320px / 390px / 768px / Desktop** ohne Overflow.
+- ✅ Regression-Check bestanden: **„Unsere Vision“**, **„Warum BidBlitz?“** und die Investor-Section bleiben intakt.
+- 🔴 Nächster sinnvoller Schritt: die Homepage-Sections jetzt in eine endgültige High-Conversion-Reihenfolge bringen und die CTA-Wege auf Wallet / Registrierung / Investor-Flow feinjustieren.
+- 🔴 Parallel dazu bleibt **Investor-Portal Phase 2** der nächste große Ausbau — Login/Register, Portal-Bereiche, Admin-Dokumente, Fragen, Meetings und Statuslogik vollständig verifizieren.
+
 ## Status nach neuer Homepage-Section „Unsere Vision“ — 01.08.2026
 - ✅ Neue Premium-Section **„Unsere Vision“** ist live.
 - ✅ Enthalten: Mission, 3-Phasen-Roadmap, Werte, Begründungsblock, Anspruchsblock und CTA mit funktionierenden Buttons.

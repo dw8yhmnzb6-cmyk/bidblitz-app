@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 01.08.2026 — Neue Premium-Homepage-Section „Warum gerade jetzt?“
+- Guest-Homepage ergänzt um die neue Premium-Sektion **„Warum gerade jetzt?“** mit Headline **„Jetzt beginnt die nächste Entwicklungsphase.“**, Supporting Text, einer **10-Punkte-Progress-Timeline**, **4 Premium-Karten**, einer **Meilenstein-Timeline mit 6 Punkten**, **6 Fokus-Karten** und einer finalen CTA **„Bleibe informiert“**.
+- Neue Komponente `frontend/src/components/home/HomeWhyNowSection.jsx` umgesetzt. Design: schwarzer BidBlitz-Premiumlook, Cyan-/Blue-Glow, Glass-Cards, animierte Progress-Bars, moderne Timeline und mobile-first Layout.
+- `frontend/src/pages/HomePage.jsx` rendert die neue Section jetzt zwischen **„Unsere Vision“** und der Investor-Section. `frontend/src/models/homeTranslations.js` enthält die vollständigen Übersetzungen in allen vorhandenen Sprachen.
+- Verifiziert mit Screenshot-Smoke **PASS** und **Testing Agent Iteration 311 PASS**: alle 10 Timeline-Einträge sichtbar, alle 4 Karten vorhanden, 6 Meilensteine und 6 Fokus-Karten korrekt, **kein Horizontal-Overflow auf 320px / 390px / 768px / Desktop**. CTA geprüft: **„Interesse vormerken“** → `/investieren`, **„Kontakt aufnehmen“** → `/contact`.
+- Nebenbei Buildfix: `frontend/src/pages/AdminPage.jsx` erhielt den fehlenden `Calendar`-Import, damit die Startseite wieder ohne Compiler-Overlay rendert.
+
 ## 01.08.2026 — Neue Premium-Homepage-Section „Unsere Vision“
 - Guest-Homepage ergänzt um die neue Premium-Sektion **„Unsere Vision“** mit Headline **„Die Zukunft digitaler Zahlungen beginnt heute.“** sowie sechs inhaltlichen Blöcken: **Mission**, **langfristige Vision / Roadmap**, **Werte**, **Warum wir BidBlitz entwickeln**, **Unser Anspruch** und **CTA**.
 - Neue Komponente `frontend/src/components/home/HomeVisionSection.jsx` umgesetzt. Enthalten sind **4 Missionskarten**, eine **3-Phasen-Roadmap**, **6 Wertekarten**, **5 Anspruchskarten** und CTA-Buttons **„Jetzt starten“** / **„Investor werden“** im schwarzen BidBlitz-Premiumstil mit Cyan-Glow, Glass-Cards und Motion.
