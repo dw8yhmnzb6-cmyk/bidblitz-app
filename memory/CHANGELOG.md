@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 01.08.2026 — Zentrales BidBlitz Design System + Visual-QA-Anbindung
+- Neues zentrales Frontend-Design-System live: `frontend/src/design/tokens.js` und `frontend/src/design/tokens.css` definieren jetzt die gemeinsamen BidBlitz-Tokens für Farben, Typografie, Spacing, Radien, Buttonhöhen, Bottom-Nav-Höhe, Safe Areas, Schatten, Breakpoints und Desktop-Maxbreite.
+- Neue Shared-UI-Bausteine gebaut: `BidBlitzPageShell`, `MoneyAmount`, `CountdownTimer`, `ProductImageGallery`, `BidBlitzButtons` und `BidBlitzCards`. Alle neuen interaktiven/prüfrelevanten Elemente besitzen eindeutige `data-testid`-Attribute.
+- Neue Dev-Dokumentationsroute **`/design-system`** ergänzt. Sie zeigt Token-Referenzen, Money-/Countdown-Beispiele, Gallery-Metadaten, Button-/Card-Zustände und eine testbare Sticky-CTA. Zusätzlich setzt die Seite `robots=noindex,nofollow`.
+- Zielseiten integriert: **`/auctions`** nutzt jetzt die neue Page-Shell; Auktionskarten/-details verwenden deutsches Währungsformat, neue Gallery-Metadaten, deutsche Label-Ersatztexte und mobile Preis-/Countdown-Trennung. **`/taxi`** wurde auf dunkles BidBlitz-Theme, bessere 320px/390px-Layouts, deutsche Preis-/ETA-Darstellung, übersetzte Regions-Fallbacks und sticky Safe-Area-CTAs gehärtet.
+- Visual-QA nachgezogen: `frontend/tests/visual-qa/visual-routes.spec.cjs`, `frontend/scripts/visual-qa/design-consistency.mjs` und `qa/design-spec.json` prüfen jetzt zusätzlich Design-Tokens, Buttonhöhen, Gallery-Metadaten und die neue Route `/design-system`.
+- Verifiziert mit Browser-Smoke **PASS** und **Testing Agent Iteration 312 PASS**. Bestätigt: `/design-system`, `/auctions`, Auktionsdetail und `/taxi` laden ohne Blank-Screen, kein Horizontal-Overflow auf **320px / 390px**, Bottom-Nav-/Safe-Area-Verhalten korrekt, deutsche Preisformate aktiv, verbotene englische Labels entfernt. **MOCKED/ABSICHTLICH DEAKTIVIERT:** KYC bleibt global deaktiviert via `REACT_APP_DISABLE_KYC=true`; Premium-Upgrades bleiben historisch **MOCKED**.
+
 ## 01.08.2026 — Neue Premium-Homepage-Section „Warum gerade jetzt?“
 - Guest-Homepage ergänzt um die neue Premium-Sektion **„Warum gerade jetzt?“** mit Headline **„Jetzt beginnt die nächste Entwicklungsphase.“**, Supporting Text, einer **10-Punkte-Progress-Timeline**, **4 Premium-Karten**, einer **Meilenstein-Timeline mit 6 Punkten**, **6 Fokus-Karten** und einer finalen CTA **„Bleibe informiert“**.
 - Neue Komponente `frontend/src/components/home/HomeWhyNowSection.jsx` umgesetzt. Design: schwarzer BidBlitz-Premiumlook, Cyan-/Blue-Glow, Glass-Cards, animierte Progress-Bars, moderne Timeline und mobile-first Layout.

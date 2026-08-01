@@ -1,5 +1,15 @@
 # BidBlitz — ROADMAP
 
+## Status nach zentralem Design System + Visual-QA-Anbindung — 01.08.2026
+- ✅ Zentrale BidBlitz-Tokens für Farben, Spacing, Radien, Buttonhöhen, Bottom-Nav und Safe Areas sind live.
+- ✅ Neue Shared-Komponenten **MoneyAmount**, **CountdownTimer**, **ProductImageGallery**, **BidBlitzPageShell**, Button- und Card-Sets sind gebaut.
+- ✅ Neue Dev-Route **`/design-system`** ist live und per **Testing Agent Iteration 312 PASS** verifiziert.
+- ✅ `/auctions`, Auktionsdetail und `/taxi` wurden sichtbar auf das Design-System gehärtet: deutsches Preisformat, Dark Theme, mobile Stack-Regeln, Gallery-Metadaten, Safe-Area-/Sticky-CTA-Absicherung.
+- ✅ Visual-QA-Spezifikation erkennt jetzt zusätzlich Token-Snapshots, Button-Min-Höhen und Gallery-Metadaten.
+- 🔴 Nächster sinnvoller Schritt: **weitere Kernrouten** wie Wallet, Home und More schrittweise auf dieselben Shared-Bausteine migrieren, damit Mobile/UI-Verhalten nicht mehr pro Seite auseinanderläuft.
+- 🔴 Parallel offen: den **lokalen Playwright-Workspace-Pfad** sauber finalisieren, damit Visual-QA nicht nur über Browser-Agenten, sondern auch wieder direkt per Projekt-Command stabil läuft.
+- 🟡 Danach zurück auf die größere Produkt-Roadmap: **Investor-Portal Phase 2** und — falls wieder priorisiert — **Telegram-Alarm als Monitoring-Backup**.
+
 ## Status nach neuer Homepage-Section „Warum gerade jetzt?“ — 01.08.2026
 - ✅ Neue Premium-Section **„Warum gerade jetzt?“** ist live.
 - ✅ Enthalten: 10-Punkte-Progress-Timeline, 4 Karten **„Warum jetzt?“**, 6 Meilensteine, 6 Fokus-Karten und CTA mit zwei funktionierenden Buttons.
