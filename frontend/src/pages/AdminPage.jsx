@@ -103,9 +103,11 @@ const ADMIN_SECTIONS = [
     items: [
       { id: "partner-portal", icon: Handshake, label: "Partner Portal", tab: "merchants" },
       { id: "investor-leads", icon: Users, label: "Investor Leads", nav: "/admin/investor-leads", highlight: true },
+      { id: "investor-dashboard", icon: BarChart3, label: "Investor Dashboard", nav: "/admin/investor-dashboard", highlight: true },
       { id: "investor-documents", icon: FileText, label: "Investor Dokumente", nav: "/admin/investor-documents", highlight: true },
       { id: "investor-updates", icon: Mail, label: "Investor Updates", nav: "/admin/investor-updates", highlight: true },
       { id: "investor-meetings", icon: Calendar, label: "Investor Meetings", nav: "/admin/investor-meetings", highlight: true },
+      { id: "visual-qa", icon: Eye, label: "Visual QA", nav: "/admin/visual-qa", highlight: true },
       { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
       { id: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", tab: "qr-management", highlight: true },
       { id: "pool-system", icon: Ticket, label: "Schwimmbad", tab: "pool", highlight: true },

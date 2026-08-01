@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-08-01T00:00:00Z",
+  "pages_scanned": 16,
+  "passed": 12,
+  "failed": 4,
+  "critical_issues": 1,
+  "warnings": 5,
+  "viewports": ["320x568", "375x812", "390x844", "430x932", "768x1024", "1440x900"],
+  "routes": ["/", "/wallet", "/auctions", "/investieren"],
+  "issues": [
+    {
+      "issue_id": "example-overflow-1",
+      "severity": "critical",
+      "category": "layout",
+      "route": "/wallet",
+      "viewport": "320x568",
+      "status": "New",
+      "problem": "Horizontal overflow detected in wallet summary card.",
+      "affected_component": "wallet-summary-card",
+      "suggested_fix": "Reduce min-width and allow text wrapping for balance labels.",
+      "confidence": 0.97,
+      "safe_to_auto_fix": true,
+      "risk_level": "low"
+    }
+  ]
+}

@@ -31,9 +31,11 @@ export const ADMIN_SECTIONS = [
     items: [
       { key: "partners", icon: Building2, label: "Partner Portal" },
       { key: "investor-leads", icon: Users, label: "Investor Leads", highlight: true, nav: "/admin/investor-leads" },
+      { key: "investor-dashboard", icon: BarChart, label: "Investor Dashboard", highlight: true, nav: "/admin/investor-dashboard" },
       { key: "investor-documents", icon: FileText, label: "Investor Dokumente", highlight: true, nav: "/admin/investor-documents" },
       { key: "investor-updates", icon: Mail, label: "Investor Updates", highlight: true, nav: "/admin/investor-updates" },
       { key: "investor-meetings", icon: Ticket, label: "Investor Meetings", highlight: true, nav: "/admin/investor-meetings" },
+      { key: "visual-qa", icon: Eye, label: "Visual QA", highlight: true, nav: "/admin/visual-qa" },
       { key: "applications", icon: FileText, label: "Alte Bewerbungen" },
       { key: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", highlight: true, nav: "/admin/qr-management" },
     ],

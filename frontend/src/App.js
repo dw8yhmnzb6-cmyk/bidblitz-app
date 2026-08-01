@@ -54,6 +54,7 @@ const InvestorPage = lazy(() => import("./pages/InvestorPage"));
 const InvestierenPage = lazy(() => import("./pages/InvestierenPage"));
 const InvestorLoginPage = lazy(() => import("./pages/InvestorLoginPage"));
 const InvestorRegisterPage = lazy(() => import("./pages/InvestorRegisterPage"));
+const InvestorDashboardPage = lazy(() => import("./pages/InvestorDashboardPage"));
 const InvestorPortalPage = lazy(() => import("./pages/InvestorPortalPage"));
 const InvestorPortalDocumentsPage = lazy(() => import("./pages/InvestorPortalDocumentsPage"));
 const InvestorPortalUpdatesPage = lazy(() => import("./pages/InvestorPortalUpdatesPage"));
@@ -61,9 +62,11 @@ const InvestorPortalQuestionsPage = lazy(() => import("./pages/InvestorPortalQue
 const InvestorPortalMeetingsPage = lazy(() => import("./pages/InvestorPortalMeetingsPage"));
 const InvestorPortalProfilePage = lazy(() => import("./pages/InvestorPortalProfilePage"));
 const AdminInvestorLeadsPage = lazy(() => import("./pages/AdminInvestorLeadsPage"));
+const AdminInvestorDashboardPage = lazy(() => import("./pages/AdminInvestorDashboardPage"));
 const AdminInvestorDocumentsPage = lazy(() => import("./pages/AdminInvestorDocumentsPage"));
 const AdminInvestorUpdatesPage = lazy(() => import("./pages/AdminInvestorUpdatesPage"));
 const AdminInvestorMeetingsPage = lazy(() => import("./pages/AdminInvestorMeetingsPage"));
+const AdminVisualQaPage = lazy(() => import("./pages/AdminVisualQaPage"));
 const RewardsPage = lazy(() => import("./pages/RewardsPage"));
 const VerificationPage = lazy(() => import("./pages/VerificationPage"));
 const MerchantDashboardPage = lazy(() => import("./pages/MerchantDashboardPage"));
@@ -679,6 +682,8 @@ function AppContent() {
         return <InvestorLoginPage onBack={() => handleNavigate("/investieren")} onNavigate={handleNavigate} />;
       case "/investor-register":
         return <InvestorRegisterPage onBack={() => handleNavigate("/investieren")} onNavigate={handleNavigate} />;
+      case "/investor-dashboard":
+        return <InvestorDashboardPage onNavigate={handleNavigate} />;
       case "/investor-portal":
         return <InvestorPortalPage onNavigate={handleNavigate} />;
       case "/investor-portal/documents":
@@ -736,12 +741,16 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/admin/investor-leads":
         return user.role === "admin" ? <AdminInvestorLeadsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/investor-dashboard":
+        return user.role === "admin" ? <AdminInvestorDashboardPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-documents":
         return user.role === "admin" ? <AdminInvestorDocumentsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-updates":
         return user.role === "admin" ? <AdminInvestorUpdatesPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/investor-meetings":
         return user.role === "admin" ? <AdminInvestorMeetingsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/visual-qa":
+        return user.role === "admin" ? <AdminVisualQaPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/ai-assistant":
         return user.role === "admin"
           ? <AdminAIAssistantPage onBack={() => handleNavigate("/admin")} />

@@ -284,6 +284,23 @@ export const api = {
   createAdminInvestorMeeting: (accountId, body) => request(`/api/investor-portal/admin/meetings/${accountId}`, { method: "POST", body: JSON.stringify(body) }),
   updateAdminInvestorMeeting: (meetingId, body) => request(`/api/investor-portal/admin/meetings/${meetingId}`, { method: "PATCH", body: JSON.stringify(body) }),
 
+  // Investor dashboard
+  getInvestorDashboard: () => request("/api/investor-dashboard"),
+  getAdminInvestorDashboardConfig: () => request("/api/investor-dashboard/admin/config"),
+  updateAdminInvestorDashboardConfig: (body) => request("/api/investor-dashboard/admin/config", { method: "PUT", body: JSON.stringify(body) }),
+
+  // Visual QA
+  getVisualQaDashboard: () => request("/api/visual-qa/dashboard"),
+  getVisualQaIssues: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set("status", params.status);
+    if (params.severity) q.set("severity", params.severity);
+    const qs = q.toString();
+    return request(`/api/visual-qa/issues${qs ? `?${qs}` : ""}`);
+  },
+  getVisualQaRuns: () => request("/api/visual-qa/runs"),
+  updateVisualQaIssueStatus: (issueId, status) => request(`/api/visual-qa/issues/${issueId}/status?status=${encodeURIComponent(status)}`, { method: "PATCH" }),
+
   // Merchant
   getMerchantDashboard: () => request("/api/merchant/dashboard"),
   getMerchantV5Dashboard: () => request("/api/merchant-portal/v5/dashboard"),

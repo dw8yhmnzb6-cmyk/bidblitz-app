@@ -1,0 +1,32 @@
+{
+  "auto_fix_allowed": [
+    "spacing",
+    "responsive_css",
+    "text_wrapping",
+    "font_sizing",
+    "overflow",
+    "safe_area_padding",
+    "translation_keys",
+    "broken_image_fallback",
+    "obvious_category_image_mismatch_high_confidence"
+  ],
+  "auto_fix_blocked": [
+    "wallet_balances",
+    "transactions",
+    "payment_logic",
+    "fees",
+    "stripe",
+    "payouts",
+    "kyc",
+    "authentication",
+    "permissions",
+    "admin_roles",
+    "production_database_records"
+  ],
+  "pr_policy": {
+    "branch_pattern": "ai-fix/<route>-<issue>",
+    "requires_before_after_screenshots": true,
+    "requires_build_lint_playwright": true,
+    "auto_merge": false
+  }
+}

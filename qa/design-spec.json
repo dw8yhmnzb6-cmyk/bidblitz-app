@@ -1,0 +1,22 @@
+{
+  "theme_name": "BidBlitz Premium European Fintech",
+  "primary_background": "#030507",
+  "primary_background_description": "Dark premium shell with black/graphite base",
+  "accent_palette": ["#06B6D4", "#00C2FF", "#3B82F6", "#9BE8FF"],
+  "card_radius_px": 18,
+  "button_radius_px": 999,
+  "min_body_font_px": 12,
+  "min_button_height_px": 44,
+  "preferred_header_style": "single prominent page header",
+  "preferred_bottom_navigation": "single persistent bottom navigation only",
+  "safe_area_required": true,
+  "theme_rules": {
+    "light_pages_allowed": false,
+    "unexpected_yellow_theme": false,
+    "dark_mode_bias": true,
+    "spacing_scale": "generous",
+    "glass_cards": true,
+    "large_typography": true
+  },
+  "intentionalLightRoutes": []
+}
