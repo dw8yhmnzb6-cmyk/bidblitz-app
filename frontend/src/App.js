@@ -51,6 +51,7 @@ const AuctionAdminPage = lazy(() => import("./pages/AuctionAdminPage"));
 const MerchantConnectPage = lazy(() => import("./pages/MerchantConnectPage"));
 const InfluencerPage = lazy(() => import("./pages/InfluencerPage"));
 const InvestorPage = lazy(() => import("./pages/InvestorPage"));
+const InvestierenPage = lazy(() => import("./pages/InvestierenPage"));
 const RewardsPage = lazy(() => import("./pages/RewardsPage"));
 const VerificationPage = lazy(() => import("./pages/VerificationPage"));
 const MerchantDashboardPage = lazy(() => import("./pages/MerchantDashboardPage"));
@@ -660,6 +661,8 @@ function AppContent() {
           : <HomePage {...homeProps} />;
       case "/investor":
         return <InvestorPage onBack={() => handleNavigate("/more")} />;
+      case "/investieren":
+        return <InvestierenPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />;
       case "/executive":
         return (!user.isAuthenticated || !["admin", "investor", "merchant"].includes(user.role))
           ? <HomePage {...homeProps} />

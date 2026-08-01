@@ -20,6 +20,7 @@ import AdBanner from "../components/AdBanner";
 import HomeRecommendations from "../components/HomeRecommendations";
 import SmartRecommendations from "../components/SmartRecommendations";
 import { P2PHeroSection } from "../components/home/P2PHeroSection";
+import { HomeInvestorOpportunitySection } from "../components/home/HomeInvestorOpportunitySection";
 import { HomeMiningTrustPromo } from "../components/home/HomeMiningTrustPromo";
 import ModeSwitcher from "../components/ModeSwitcher";
 import PremiumLaunchBanner from "../components/PremiumLaunchBanner";
@@ -699,6 +700,14 @@ export const HomePage = ({ onNavigate, isGuest, isDemoMode, onLogin, onRegister,
             </motion.div>
             </div>
           </div>
+        )}
+
+        {isGuest && (
+          <HomeInvestorOpportunitySection
+            gt={gt}
+            onInterest={() => onNavigate("/investieren")}
+            onRequestDocuments={() => onNavigate("/investieren")}
+          />
         )}
 
         {isGuest && <HomeMiningTrustPromo copy={miningTrustCopy} onNavigate={onNavigate} />}

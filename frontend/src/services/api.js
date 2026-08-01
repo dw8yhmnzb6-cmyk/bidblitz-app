@@ -250,6 +250,9 @@ export const api = {
   }),
   getBidBlitzPayAuditLogs: (paymentId = "") => request(`/api/bidblitz-pay/audit-logs${paymentId ? `?payment_id=${encodeURIComponent(paymentId)}` : ""}`),
 
+  // Investor interest
+  submitInvestorInterest: (body) => request("/api/investor-interest/lead", { method: "POST", body: JSON.stringify(body) }),
+
   // Merchant
   getMerchantDashboard: () => request("/api/merchant/dashboard"),
   getMerchantV5Dashboard: () => request("/api/merchant-portal/v5/dashboard"),

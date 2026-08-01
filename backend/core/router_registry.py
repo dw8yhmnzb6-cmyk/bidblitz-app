@@ -71,6 +71,7 @@ def register_all_routers(app):
         ("routes.merchant_connect", "router"),
         ("routes.influencer", "router"),
         ("routes.investor", "router"),
+        ("routes.investor_interest", "router"),
         ("routes.rewards", "router"),
         ("routes.move_earn", "router"),
         ("routes.role_requests", "router"),
