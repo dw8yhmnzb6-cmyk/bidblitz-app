@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach BidBlitz Pay Sandbox-Gateway — 01.08.2026
+- ✅ Neue BidBlitz-Pay-Sandbox-Struktur ist live: **Zahlung starten**, **Redirect Checkout**, **Wallet-/App-Freigabe**, **Status**, **Success/Cancel**, **Webhook**, **Refund-Struktur**, **Idempotency** und **Audit-Logs**.
+- ✅ Bestehender Checkout blieb intakt; zusätzlich wurde der Router-Konflikt gelöst, sodass **`/api/pay/directory`** wieder korrekt erreichbar ist.
+- ✅ Verifiziert mit API-Selbsttests, **Testing Agent Iteration 307 PASS**, **Frontend Testing PASS** und **Backend Testing PASS**.
+- 🔴 Nächster sinnvoller Schritt: echte **Live-Credentials** für BidBlitz Pay per Environment setzen und den neuen Gateway-Pfad gegen den realen Provider-Endpunkt validieren.
+- 🟡 Danach: echtes Merchant-/Provider-Webhook-Monitoring mit Retry-Backoff, Delivery-Statusansicht und Alerting ausbauen.
+- 🟡 Danach: UX-Polish für den Hosted Checkout (z. B. Login-inline, besserer Deep-Link-Fallback, klarere Sandbox/Live-Indikatoren).
+- 🟡 Wichtig: Im aktuellen Stand sind Wallet-/App-Freigabe und Refund-Abschluss im neuen Gateway **MOCKED**, bis echte Provider-Zugangsdaten vorliegen.
+
 ## Status nach Mobile-Hero-Fix — 30.07.2026
 - ✅ Mobile P2P-Hero-Demo nach Video-Feedback überarbeitet.
 - ✅ Demo-Namen jetzt **Lena / Jonas** statt Afrim / Albin.

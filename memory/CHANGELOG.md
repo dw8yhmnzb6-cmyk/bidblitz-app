@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 01.08.2026 — BidBlitz Pay Sandbox-/Mock-Gateway komplett ergänzt
+- Neue Backend-Route **`backend/routes/bidblitz_pay.py`** liefert jetzt die neue BidBlitz-Pay-Gateway-Struktur mit **`GET /api/bidblitz-pay/config`**, **`POST /api/bidblitz-pay/payments`**, Statusabfrage, **Mock-Wallet-Freigabe**, **Cancel**, **Refunds**, **Webhook** und **Audit-Logs**.
+- Der Flow ist **environment-first** aufgebaut und nutzt für den späteren Live-Switch ausschließlich **`BIDBLITZ_PAY_API_URL`**, **`BIDBLITZ_PAY_API_KEY`**, **`BIDBLITZ_PAY_MERCHANT_ID`** und **`BIDBLITZ_PAY_WEBHOOK_SECRET`**. Wenn diese Daten fehlen, läuft der neue Gateway-Pfad absichtlich im **Sandbox-/Mock-Modus**.
+- Neu im Frontend: **`frontend/src/pages/BidBlitzPaySandboxPage.jsx`**, **`BidBlitzPayHostedCheckoutPage.jsx`** und **`BidBlitzPayResultPage.jsx`** plus neue Routen **`/bidblitz-pay/sandbox`**, **`/bidblitz-pay/checkout/:paymentId`**, **`/bidblitz-pay/success`** und **`/bidblitz-pay/cancel`**.
+- `frontend/src/services/api.js` enthält passende API-Wrapper; `frontend/src/pages/PayDeveloperDocsPage.jsx` zeigt die neue Sandbox-Struktur; `frontend/public/service-worker.js` cached **`/api/bidblitz-pay`** absichtlich nicht.
+- Härtung/Regression-Fix: In **`backend/core/router_registry.py`** wird **`routes.pay_sdk`** jetzt vor dem Invoicing-Catch-all registriert, damit **`/api/pay/directory`** korrekt erreichbar bleibt.
+- Verifiziert: API-Selbsttests **PASS**, **Testing Agent Iteration 307 PASS**, **auto_frontend_testing_agent PASS**, **deep_testing_backend_v2 PASS**. **MOCKED:** Wallet-/App-Freigabe und Refund-Abschluss im neuen Sandbox-Modus sind absichtlich **MOCKED**.
+
 ## 30.07.2026 — Mobile Feinschliff für P2P-Hero + deutsche Demo-Namen
 - Nach Video-Feedback wurde die mobile Phone-Demo im neuen Homepage-Hero visuell überarbeitet: klarere Informationshierarchie, lesbarere kleine Labels und ein eigener mobiler Transfer-Hinweis zwischen den beiden Karten.
 - Demo-Namen wurden von **Afrim / Albin** auf **Lena / Jonas** umgestellt und in allen vorhandenen Sprachvarianten übernommen.
