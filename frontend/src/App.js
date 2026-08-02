@@ -69,6 +69,7 @@ const AdminInvestorMeetingsPage = lazy(() => import("./pages/AdminInvestorMeetin
 const AdminVisualQaPage = lazy(() => import("./pages/AdminVisualQaPage"));
 const AdminMasterRoadmapPage = lazy(() => import("./pages/AdminMasterRoadmapPage"));
 const AdminFeatureControlPage = lazy(() => import("./pages/AdminFeatureControlPage"));
+const AdminMerchantSettlementsPage = lazy(() => import("./pages/AdminMerchantSettlementsPage"));
 const AdminMerchantOnboardingPage = lazy(() => import("./pages/AdminMerchantOnboardingPage"));
 const InvestorProgressPage = lazy(() => import("./pages/InvestorProgressPage"));
 const DesignSystemPage = lazy(() => import("./pages/DesignSystemPage"));
@@ -832,6 +833,8 @@ function AppContent() {
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPosHardwarePage onBack={() => handleNavigate("/merchant/pos")} />;
       case "/admin/feature-control":
         return user.role === "admin" ? <AdminFeatureControlPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/merchant-settlements":
+        return user.role === "admin" ? <AdminMerchantSettlementsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/merchant-onboarding":
         return user.role === "admin" ? <AdminMerchantOnboardingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/pos":
