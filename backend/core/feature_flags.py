@@ -172,7 +172,8 @@ class FeatureFlagService:
 
     async def list_flags(self) -> list[dict[str, Any]]:
         await self.ensure_seeded()
-        return await db.feature_flags.find({}, {"_id": 0}).sort([("key", 1)]).to_list(3000)
+        rows = await db.feature_flags.find({}, {"_id": 0}).sort([("key", 1)]).to_list(3000)
+        return [row for row in rows if isinstance(row, dict) and row.get("key")]
 
     async def get_flag(self, key: str) -> dict[str, Any] | None:
         await self.ensure_seeded()
@@ -378,6 +379,10 @@ class FeatureFlagService:
 
 
 service = FeatureFlagService()
+
+
+async def get_flag(key: str) -> dict[str, Any] | None:
+    return await service.get_flag(key)
 
 
 async def get_all_flags() -> dict[str, dict[str, Any]]:

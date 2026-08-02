@@ -252,6 +252,21 @@ class PaymentCreate(BaseModel):
     customer_barcode: Optional[str] = None       # Optional: customer barcode scanned
 
 
+def _is_pending_payment_active(payment: dict) -> bool:
+    if not payment:
+        return False
+    status = payment.get("status")
+    if status != PAYMENT_STATUS_PENDING:
+        return False
+    expires_at = payment.get("expires_at")
+    if not expires_at:
+        return True
+    try:
+        return datetime.fromisoformat(expires_at) >= datetime.now(timezone.utc)
+    except ValueError:
+        return True
+
+
 class PaymentConfirm(BaseModel):
     payment_id: str
 
@@ -866,6 +881,25 @@ async def create_payment(req: PaymentCreate, request: Request):
     payment_id = short_id("PAY", 12)
     now = datetime.now(timezone.utc)
 
+    existing_pending = await db.pos_payments.find_one(
+        {"cart_id": cart["cart_id"], "status": PAYMENT_STATUS_PENDING},
+        {"_id": 0},
+        sort=[("created_at", -1)],
+    )
+    if existing_pending and _is_pending_payment_active(existing_pending):
+        return {
+            "ok": True,
+            "payment": existing_pending,
+            "awaiting_customer": existing_pending.get("method") in ("wallet_qr", "barcode"),
+            "status": "pending_existing",
+            "message": "Bestehender Zahlungsversuch wird noch geprüft.",
+        }
+    if existing_pending and existing_pending.get("status") == PAYMENT_STATUS_PENDING:
+        await db.pos_payments.update_one(
+            {"payment_id": existing_pending["payment_id"]},
+            {"$set": {"status": PAYMENT_STATUS_EXPIRED, "expired_at": now.isoformat()}},
+        )
+
     if req.method in ("wallet_qr", "barcode"):
         require_permission(actor, "payment.collect")
         limits = await get_effective_limits(actor["merchant_id"], actor["store_id"], actor["user_id"], actor["role"])
@@ -879,6 +913,7 @@ async def create_payment(req: PaymentCreate, request: Request):
 
     payment_doc = {
         "payment_id": payment_id,
+        "idempotency_key": f"pos:{cart['cart_id']}:{req.method}",
         "cart_id": cart["cart_id"],
         "register_id": cart["register_id"],
         "store_id": cart["store_id"],

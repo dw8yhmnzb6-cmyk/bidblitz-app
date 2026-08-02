@@ -385,6 +385,8 @@ export const api = {
   getPosPaymentStatus: (paymentId) => request(`/api/pos/payment/status/${encodeURIComponent(paymentId)}`),
   refundPosPayment: (body) => request("/api/pos/payment/refund", { method: "POST", body: JSON.stringify(body) }),
   getPosReceipt: (receiptId) => request(`/api/pos/receipts/${encodeURIComponent(receiptId)}`),
+  printPosReceipt: (body) => request("/api/pos/hardware/printer/print", { method: "POST", body: JSON.stringify(body) }),
+  getPosHardwareHealth: (storeId = "") => request(`/api/pos/hardware/health${storeId ? `?store_id=${encodeURIComponent(storeId)}` : ""}`),
   getPosSales: (storeId = "", limit = 50) => request(`/api/pos/sales${storeId ? `?store_id=${encodeURIComponent(storeId)}&` : "?"}limit=${encodeURIComponent(limit)}`),
 
   // Merchant setup

@@ -81,6 +81,8 @@ const ReceiveMoneyPage = lazy(() => import("./pages/ReceiveMoneyPage"));
 const MerchantTerminalPage = lazy(() => import("./pages/MerchantTerminalPage"));
 const MerchantOnboardingPage = lazy(() => import("./pages/MerchantOnboardingPage"));
 const MerchantSetupPage = lazy(() => import("./pages/MerchantSetupPage"));
+const MerchantPosSalesPage = lazy(() => import("./pages/MerchantPosSalesPage"));
+const MerchantPosHardwarePage = lazy(() => import("./pages/MerchantPosHardwarePage"));
 const MerchantPricingPage = lazy(() => import("./pages/MerchantPricingPage"));
 const MerchantLandingPage = lazy(() => import("./pages/MerchantLandingPage"));
 const PayCheckoutPage = lazy(() => import("./pages/PayCheckoutPage"));
@@ -819,6 +821,20 @@ function AppContent() {
         return user.role === "merchant" || user.role === "admin"
           ? <ManagerStaffLiveMapPage onBack={() => handleNavigate("/merchant/staff")} />
           : <HomePage {...homeProps} />;
+      case "/merchant/setup":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantSetupPage onBack={() => handleNavigate("/merchant")} onNavigate={handleNavigate} />;
+      case "/merchant/pos":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPosSimplePage onBack={() => handleNavigate("/merchant")} onNavigate={handleNavigate} />;
+      case "/merchant/pos/customer-display":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPosCustomerDisplayPage />;
+      case "/merchant/pos/sales":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPosSalesPage onBack={() => handleNavigate("/merchant/pos")} />;
+      case "/merchant/pos/hardware":
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MerchantPosHardwarePage onBack={() => handleNavigate("/merchant/pos")} />;
+      case "/admin/feature-control":
+        return user.role === "admin" ? <AdminFeatureControlPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/merchant-onboarding":
+        return user.role === "admin" ? <AdminMerchantOnboardingPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/pos":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <POSPage onBack={() => handleNavigate("/more")} />;
       case "/pool":
