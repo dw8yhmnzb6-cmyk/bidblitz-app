@@ -38,6 +38,11 @@ const EVOperatorStationsPage = lazy(() => import("../pages/EVOperatorStationsPag
 const EVOperatorSessionsPage = lazy(() => import("../pages/EVOperatorSessionsPage"));
 const EVOperatorRevenuePage = lazy(() => import("../pages/EVOperatorRevenuePage"));
 const EVOperatorPayoutsPage = lazy(() => import("../pages/EVOperatorPayoutsPage"));
+const MerchantCommandCenterPage = lazy(() => import("../pages/MerchantCommandCenterPage"));
+const MerchantSettlementDetailPage = lazy(() => import("../pages/MerchantSettlementDetailPage"));
+const MerchantPayoutsPage = lazy(() => import("../pages/MerchantPayoutsPage"));
+const MerchantDailyClosingPage = lazy(() => import("../pages/MerchantDailyClosingPage"));
+const AdminMerchantSettlementsPage = lazy(() => import("../pages/AdminMerchantSettlementsPage"));
 
 export function renderSpecialRoutes({
   currentPath,
@@ -90,6 +95,26 @@ export function renderSpecialRoutes({
   }
   if (basePath === "/merchant/qr-tables") {
     return <MerchantQrTablesPage onBack={() => handleNavigate("/merchant-dashboard")} user={user} />;
+  }
+  if (basePath === "/merchant/dashboard") {
+    if (isGuest) return null;
+    return <MerchantCommandCenterPage onBack={() => handleNavigate("/merchant")} onNavigate={handleNavigate} />;
+  }
+  if (basePath === "/merchant/payouts") {
+    if (isGuest) return null;
+    return <MerchantPayoutsPage onBack={() => handleNavigate("/merchant/dashboard")} />;
+  }
+  if (basePath === "/merchant/pos/daily-closing") {
+    if (isGuest) return null;
+    return <MerchantDailyClosingPage onBack={() => handleNavigate("/merchant/dashboard")} />;
+  }
+  if (basePath.startsWith("/merchant/settlements/")) {
+    if (isGuest) return null;
+    return <MerchantSettlementDetailPage settlementId={basePath.split("/")[3]} onBack={() => handleNavigate("/merchant/dashboard")} />;
+  }
+  if (basePath === "/admin/merchant-settlements") {
+    if (user?.role !== "admin") return null;
+    return <AdminMerchantSettlementsPage onBack={() => handleNavigate("/admin")} />;
   }
   if (basePath.startsWith("/invoice/pay/")) {
     return <InvoicePayPage scanCode={basePath.split("/")[3]} onNavigate={handleNavigate} />;

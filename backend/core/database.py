@@ -302,6 +302,23 @@ async def create_indexes():
     await safe_create_index(db.merchant_setup_progress, "merchant_id", unique=True)
     await safe_create_index(db.merchant_setup_progress, [("current_step", 1), ("updated_at", -1)])
     await safe_create_index(db.onboarding_test_sales, [("merchant_id", 1), ("created_at", -1)])
+
+    await safe_create_index(db.merchant_settlements, "settlement_id", unique=True)
+    await safe_create_index(db.merchant_settlements, [("merchant_id", 1), ("created_at", -1)])
+    await safe_create_index(db.merchant_settlements, [("merchant_id", 1), ("status", 1), ("period_start", -1)])
+    await safe_create_index(db.merchant_payouts, "payout_id", unique=True)
+    await safe_create_index(db.merchant_payouts, [("merchant_id", 1), ("status", 1), ("created_at", -1)])
+    await safe_create_index(db.merchant_balance_entries, "entry_id", unique=True)
+    await safe_create_index(db.merchant_balance_entries, [("merchant_id", 1), ("status", 1), ("created_at", -1)])
+    await safe_create_index(db.merchant_balance_entries, [("merchant_id", 1), ("transaction_id", 1), ("type", 1)], unique=True)
+    await safe_create_index(db.merchant_fee_rules, "rule_id", unique=True, sparse=True)
+    await safe_create_index(db.merchant_fee_rules, [("enabled", 1), ("priority", -1), ("valid_from", 1)])
+    await safe_create_index(db.merchant_reserves, "reserve_id", unique=True)
+    await safe_create_index(db.merchant_reserves, [("merchant_id", 1), ("mode", 1), ("status", 1)])
+    await safe_create_index(db.merchant_balance_state, "merchant_id", unique=True)
+    await safe_create_index(db.merchant_settlement_idempotency, [("scope", 1), ("merchant_id", 1), ("idempotency_key", 1)], unique=True)
+    await safe_create_index(db.merchant_daily_closing_reports, "report_number", unique=True)
+    await safe_create_index(db.merchant_z_reports, "report_number", unique=True)
     
     logger.info("Database indexes created/verified")
 

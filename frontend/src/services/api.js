@@ -740,6 +740,30 @@ export const api = {
     if (deviceId) q.push(`device_id=${deviceId}`);
     return request(`/api/merchant-hierarchy/revenue${q.length ? "?" + q.join("&") : ""}`);
   },
+  getMerchantCommandCenter: () => request("/api/merchant/command-center"),
+  getMerchantBalanceSummary: () => request("/api/merchant/balance"),
+  getMerchantSettlementOverview: () => request("/api/merchant-settlements/overview"),
+  listMerchantSettlements: (status = "") => request(`/api/merchant-settlements${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  calculateMerchantSettlement: (body) => request("/api/merchant-settlements/calculate", { method: "POST", body: JSON.stringify(body) }),
+  finaliseMerchantSettlement: (settlementId, body) => request(`/api/merchant-settlements/${encodeURIComponent(settlementId)}/finalise`, { method: "POST", body: JSON.stringify(body) }),
+  getMerchantSettlementDetail: (settlementId) => request(`/api/merchant-settlements/${encodeURIComponent(settlementId)}`),
+  exportMerchantSettlementCsv: async (settlementId) => {
+    const blob = await requestBlob(`/api/merchant-settlements/${encodeURIComponent(settlementId)}/export.csv`);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${settlementId}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+  getMerchantPayoutHistory: (status = "") => request(`/api/merchant/payouts${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  createMerchantPayout: (body) => request("/api/merchant/payouts", { method: "POST", body: JSON.stringify(body) }),
+  getMerchantDailyClosing: (date = "") => request(`/api/merchant/pos/daily-closing${date ? `?date=${encodeURIComponent(date)}` : ""}`),
+  createMerchantDailyClosing: (body) => request("/api/merchant/pos/daily-closing", { method: "POST", body: JSON.stringify(body) }),
+  getAdminMerchantSettlements: () => request("/api/admin/merchant-settlements"),
+  adminMerchantPayoutAction: (payoutId, body) => request(`/api/admin/merchant-settlements/payouts/${encodeURIComponent(payoutId)}/action`, { method: "POST", body: JSON.stringify(body) }),
+  adminApplyMerchantReserve: (body) => request("/api/admin/merchant-settlements/reserves", { method: "POST", body: JSON.stringify(body) }),
+  adminCreateMerchantAdjustment: (body) => request("/api/admin/merchant-settlements/adjustments", { method: "POST", body: JSON.stringify(body) }),
   getRegisterTransactions: (deviceId = "", branchId = "", period = "today") => {
     let q = [`period=${period}`];
     if (deviceId) q.push(`device_id=${deviceId}`);

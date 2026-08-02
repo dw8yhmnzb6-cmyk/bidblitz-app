@@ -50,6 +50,7 @@ def register_all_routers(app):
         ("routes.system_version", "router"),
         ("routes.merchant_admin", "router"),
         ("routes.merchant_portal", "router"),
+        ("routes.merchant_settlements", "router"),
         ("routes.blitz_transfer", "router"),
         ("routes.smm_boost", "router"),
         ("routes.export", "router"),
