@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach Merchant Settlement / Payout / Daily Closing / POS Leitstand — 02.08.2026
+- ✅ Merchant-Finanzkern ist live: **`/api/merchant/balance`**, **`/api/merchant/command-center`**, Settlement-Liste/Overview/Detail, Payout-Historie und Daily Closing.
+- ✅ Neue Owner-/Admin-Oberflächen sind live: **`/merchant/dashboard`**, **`/merchant/payouts`**, **`/merchant/pos/daily-closing`**, **`/merchant/settlements/:id`**, **`/admin/merchant-settlements`**.
+- ✅ Ledger-/Minor-Unit-Grundlage ist aktiv; Balances sind in **pending / available / reserved / payout_in_progress / paid_out_total** getrennt.
+- ✅ Verifiziert mit API-Smokes, Browser-Smokes und **Testing Agent Iteration 315 PASS**; zusätzlicher Frontend-Admin-Route-Fix nach Subagent-Fund ebenfalls geprüft.
+- 🔴 Nächster sinnvoller Schritt: die noch offenen **POS-Acceptance-Gates aus Iteration 314** gezielt schließen (Touch-Targets, unbekannte Zahlungszustände, Retry-/Duplicate-Proof, Customer-Display-Privacy, gemessene Performance-Gates).
+- 🔴 Parallel offen: Settlement-/Finance-V2 für **Reserve-/Adjustment-Admin-Workflows**, **Export-Polish**, **Dispute-/Chargeback-Sicht** und tiefergehende Refund-/Rollback-Automation erweitern.
+- 🟡 Danach: die größere Roadmap wieder aufnehmen — **Telegram-Alarm als Monitoring-Backup** und anschließend die größeren Refactors in **App.js / MerchantDashboardPage / Home / Wallet**.
+
 ## Status nach Mehr-Seiten-Split / Rangliste entfernt — 02.08.2026
 - ✅ Die sichtbare **Rangliste** ist aus der aktiven More-Navigation entfernt.
 - ✅ Die Mehr-Seite ist jetzt in **2 Bereiche** aufgeteilt: **Seite 1 = Wichtig**, **Seite 2 = Mehr entdecken**.

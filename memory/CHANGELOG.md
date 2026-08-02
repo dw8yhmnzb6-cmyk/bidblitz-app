@@ -1,5 +1,13 @@
 # BidBlitz — CHANGELOG
 
+## 02.08.2026 — Merchant Settlement / Payout / Daily Closing / POS Leitstand V1
+- Neue Merchant-Finanzstrecke live: `backend/routes/merchant_settlements.py` liefert jetzt **`/api/merchant/balance`**, **`/api/merchant/command-center`**, **`/api/merchant-settlements*`**, **`/api/merchant/payouts*`**, **`/api/merchant/pos/daily-closing`** und **`/api/admin/merchant-settlements`**.
+- Neues Settlement-Backend `backend/services/merchant_settlement.py`: Ledger-basierte Balance-Entries, Minor-Units-/Basis-Points-Fee-Logik, idempotente Settlement-Berechnung/-Finalisierung, Reserve-Holds/Releases, Payout-State-Handling, Daily Closing mit immutablem Report sowie Admin-Audit-Einsicht.
+- Neues Frontend für Owner/Admin: `MerchantCommandCenterPage.jsx`, `MerchantPayoutsPage.jsx`, `MerchantDailyClosingPage.jsx`, `MerchantSettlementDetailPage.jsx`, `AdminMerchantSettlementsPage.jsx` plus API-Wrapper in `frontend/src/services/api.js`.
+- Routing finalisiert: Merchant-Finanzseiten über `frontend/src/app/renderSpecialRoutes.jsx`; **`/admin/merchant-settlements`** zusätzlich explizit in `frontend/src/App.js` registriert, nachdem der Frontend-Testagent genau diese Route als letzten offenen Punkt fand.
+- Sichtbarer UX-Stand: **POS Leitstand** mit Top-Karten, Live-Status, Suche, Filialen/Kassen, Auszahlungsübersicht, Aufgaben sowie Settlement-/Berichtsbereich; Settlement-Detail mit Finalisieren/CSV-Export; Admin Settlement Center mit Settlements, Payouts und Balances.
+- Verifiziert: API-Selbsttests **PASS**, Browser-Smoke **PASS**, **Testing Agent Iteration 315 PASS** (**21/21 Backend-Tests, Frontend 100%**), zusätzlicher Frontend-Smoke **PASS** und Backend-Zusatzcheck **PASS**. **WICHTIG:** KYC bleibt im Preview absichtlich **DISABLED**; Sofortauszahlung ist aktuell **nicht verfügbar** (erwartetes Verhalten, nicht defekt).
+
 ## 02.08.2026 — Mehr-Seite in 2 Bereiche geteilt, Rangliste entfernt, POS-Härtung verifiziert
 - Die bisherige sichtbare **Rangliste** wurde aus der Nutzerführung entfernt. Auf der Mehr-Seite existiert **kein eigener Ranglisten-Eintrag** mehr.
 - `frontend/src/pages/MorePage.jsx` wurde in eine klarere **2-Seiten-Logik** umgebaut: **Seite 1 = Wichtig** (z. B. Wallet/Handel/Mobilität/Einstellungen), **Seite 2 = Mehr entdecken** mit ausgelagerten Bereichen wie **Auktionen, Mining, Rewards, Support und weiteren Extras**.
