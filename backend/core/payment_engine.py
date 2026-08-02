@@ -13,6 +13,13 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 
 from core.database import db
+from core.canonical_wallet_service import (
+    admin_adjustment as canonical_admin_adjustment,
+    credit_canonical_balance,
+    debit_canonical_balance,
+    sync_canonical_balance,
+    transfer_canonical_balance,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CONSTANTS & ENUMS
@@ -191,147 +198,28 @@ async def debit_wallet(
     - Full audit logging
     """
     
-    # 1. Input validation
-    if amount <= 0:
-        return PaymentResult(
-            success=False,
-            error="Amount must be positive",
-            status=TransactionStatus.FAILED
-        )
-    
-    amount = round(amount, 2)
-    
-    # 2. Generate or validate idempotency key
     ref = reference or generate_reference()
     if not idempotency_key:
         idempotency_key = compute_idempotency_key(user_id, tx_type.value, amount, ref)
-    
-    # 3. Check for duplicate transaction
-    existing = await check_idempotency(idempotency_key)
-    if existing:
-        return PaymentResult(
-            success=existing.get("status") == "completed",
-            transaction_id=existing.get("id"),
-            reference=existing.get("reference"),
-            new_balance=await get_user_balance(user_id),
-            error="Duplicate transaction" if existing.get("status") != "completed" else None,
-            status=TransactionStatus(existing.get("status", "completed"))
-        )
-    
-    # 4. Check balance
-    try:
-        current_balance = await get_user_balance(user_id)
-    except ValueError as e:
-        return PaymentResult(success=False, error=str(e), status=TransactionStatus.FAILED)
-    
-    if current_balance < amount:
-        # Log failed attempt
-        await log_audit(
-            action=f"debit_{tx_type.value}_failed",
-            user_id=user_id,
-            details={"amount": amount, "balance": current_balance, "reason": "insufficient_balance"},
-            status="failed"
-        )
-        return PaymentResult(
-            success=False,
-            error=f"Insufficient balance. Available: €{current_balance:.2f}, Required: €{amount:.2f}",
-            status=TransactionStatus.FAILED
-        )
-    
-    # 5. Create pending transaction first
-    tx_id = generate_transaction_id()
-    now = datetime.now(timezone.utc).isoformat()
-    
-    transaction = {
-        "id": tx_id,
-        "idempotency_key": idempotency_key,
-        "user_id": user_id,
-        "type": tx_type.value,
-        "amount": -amount,  # Negative for debit
-        "description": description,
-        "merchant_id": merchant_id,
-        "merchant_name": merchant_name or "",
-        "reference": ref,
-        "currency": "EUR",
-        "direction": "debit",
-        "source": "payment_engine",
-        "status": TransactionStatus.PENDING.value,
-        "metadata": {
-            **build_wallet_ledger_metadata(
-                user_id=user_id,
-                wallet_id=user_id,
-                tx_type=tx_type,
-                amount=amount,
-                status=TransactionStatus.PENDING,
-                source="payment_engine",
-                reference_id=ref,
-                idempotency_key=idempotency_key,
-                direction="debit",
-                audit_metadata=(metadata or {}).get("audit_metadata", {}),
-            ),
-            **(metadata or {}),
-        },
-        "created_at": now,
-        "updated_at": now,
-    }
-    transaction["metadata"]["transaction_id"] = tx_id
-    
-    await db.transactions.insert_one(transaction)
-    
-    # 6. Atomic balance update with optimistic locking
-    result = await db.users.update_one(
-        {
-            "_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id,
-            "balance": {"$gte": amount}  # Ensure balance still sufficient
-        },
-        {"$inc": {"balance": -amount}}
-    )
-    
-    if result.modified_count == 0:
-        # Balance changed between check and update - rollback
-        await db.transactions.update_one(
-            {"id": tx_id},
-            {"$set": {"status": TransactionStatus.FAILED.value, "updated_at": datetime.now(timezone.utc).isoformat()}}
-        )
-        await log_audit(
-            action=f"debit_{tx_type.value}_rollback",
-            user_id=user_id,
-            details={"tx_id": tx_id, "amount": amount, "reason": "balance_changed"},
-            status="failed"
-        )
-        return PaymentResult(
-            success=False,
-            transaction_id=tx_id,
-            error="Balance changed during transaction. Please try again.",
-            status=TransactionStatus.FAILED
-        )
-    
-    # 7. Mark transaction completed
-    await db.transactions.update_one(
-        {"id": tx_id},
-        {"$set": {
-            "status": TransactionStatus.COMPLETED.value,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "metadata.status": TransactionStatus.COMPLETED.value,
-            "metadata.transaction_id": tx_id,
-        }}
-    )
-    
-    # 8. Log success
-    new_balance = await get_user_balance(user_id)
-    await log_audit(
-        action=f"debit_{tx_type.value}",
+    result = await debit_canonical_balance(
         user_id=user_id,
-        details={"tx_id": tx_id, "amount": amount, "new_balance": new_balance},
-        status="success"
-    )
-    
-    return PaymentResult(
-        success=True,
-        transaction_id=tx_id,
+        amount_major=amount,
+        tx_type=tx_type.value,
+        description=description,
         reference=ref,
-        new_balance=new_balance,
-        status=TransactionStatus.COMPLETED
+        metadata=metadata,
+        idempotency_key=idempotency_key,
+        source="payment_engine",
+        merchant_id=merchant_id,
+        merchant_name=merchant_name,
+    )
+    return PaymentResult(
+        success=result.success,
+        transaction_id=result.transaction_id,
+        reference=result.reference,
+        new_balance=result.new_balance,
+        error=result.error,
+        status=TransactionStatus(result.status),
     )
 
 
@@ -354,116 +242,26 @@ async def credit_wallet(
     - Full audit logging
     """
     
-    # 1. Input validation
-    if amount <= 0:
-        return PaymentResult(
-            success=False,
-            error="Amount must be positive",
-            status=TransactionStatus.FAILED
-        )
-    
-    amount = round(amount, 2)
-    
-    # 2. Generate or validate idempotency key
     ref = reference or generate_reference()
     if not idempotency_key:
         idempotency_key = compute_idempotency_key(user_id, tx_type.value, amount, ref)
-    
-    # 3. Check for duplicate transaction
-    existing = await check_idempotency(idempotency_key)
-    if existing:
-        return PaymentResult(
-            success=existing.get("status") == "completed",
-            transaction_id=existing.get("id"),
-            reference=existing.get("reference"),
-            new_balance=await get_user_balance(user_id),
-            error="Duplicate credit" if existing.get("status") != "completed" else None,
-            status=TransactionStatus(existing.get("status", "completed"))
-        )
-    
-    # 4. Create pending transaction
-    tx_id = generate_transaction_id()
-    now = datetime.now(timezone.utc).isoformat()
-    
-    transaction = {
-        "id": tx_id,
-        "idempotency_key": idempotency_key,
-        "user_id": user_id,
-        "type": tx_type.value,
-        "amount": amount,  # Positive for credit
-        "description": description,
-        "source": source or "",
-        "reference": ref,
-        "currency": "EUR",
-        "direction": "credit",
-        "status": TransactionStatus.PENDING.value,
-        "metadata": {
-            **build_wallet_ledger_metadata(
-                user_id=user_id,
-                wallet_id=user_id,
-                tx_type=tx_type,
-                amount=amount,
-                status=TransactionStatus.PENDING,
-                source=source or "payment_engine",
-                reference_id=ref,
-                idempotency_key=idempotency_key,
-                direction="credit",
-                audit_metadata=(metadata or {}).get("audit_metadata", {}),
-            ),
-            **(metadata or {}),
-        },
-        "created_at": now,
-        "updated_at": now,
-    }
-    transaction["metadata"]["transaction_id"] = tx_id
-    
-    await db.transactions.insert_one(transaction)
-    
-    # 5. Atomic balance update on canonical visible source only
-    result = await db.users.update_one(
-        {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-        {"$inc": {"balance": amount}}
-    )
-    
-    if result.modified_count == 0:
-        # User not found
-        await db.transactions.update_one(
-            {"id": tx_id},
-            {"$set": {"status": TransactionStatus.FAILED.value, "updated_at": datetime.now(timezone.utc).isoformat()}}
-        )
-        return PaymentResult(
-            success=False,
-            transaction_id=tx_id,
-            error="User not found",
-            status=TransactionStatus.FAILED
-        )
-    
-    # 6. Mark transaction completed
-    await db.transactions.update_one(
-        {"id": tx_id},
-        {"$set": {
-            "status": TransactionStatus.COMPLETED.value,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "metadata.status": TransactionStatus.COMPLETED.value,
-            "metadata.transaction_id": tx_id,
-        }}
-    )
-    
-    # 7. Log success
-    new_balance = await get_user_balance(user_id)
-    await log_audit(
-        action=f"credit_{tx_type.value}",
+    result = await credit_canonical_balance(
         user_id=user_id,
-        details={"tx_id": tx_id, "amount": amount, "new_balance": new_balance, "source": source},
-        status="success"
-    )
-    
-    return PaymentResult(
-        success=True,
-        transaction_id=tx_id,
+        amount_major=amount,
+        tx_type=tx_type.value,
+        description=description,
         reference=ref,
-        new_balance=new_balance,
-        status=TransactionStatus.COMPLETED
+        source=source or "payment_engine",
+        metadata=metadata,
+        idempotency_key=idempotency_key,
+    )
+    return PaymentResult(
+        success=result.success,
+        transaction_id=result.transaction_id,
+        reference=result.reference,
+        new_balance=result.new_balance,
+        error=result.error,
+        status=TransactionStatus(result.status),
     )
 
 
@@ -481,92 +279,25 @@ async def transfer_between_wallets(
     Either both succeed or both fail.
     """
     
-    if amount <= 0:
-        return PaymentResult(
-            success=False,
-            error="Amount must be positive",
-            status=TransactionStatus.FAILED
-        )
-    
-    amount = round(amount, 2)
     ref = reference or generate_reference("TRF")
-    
-    # Generate idempotency keys for both legs
-    debit_key = compute_idempotency_key(from_user_id, f"{tx_type.value}_out", amount, ref)
-    credit_key = compute_idempotency_key(to_user_id, f"{tx_type.value}_in", amount, ref)
-    
-    # Check if already processed
-    existing_debit = await check_idempotency(debit_key)
-    if existing_debit and existing_debit.get("status") == "completed":
-        return PaymentResult(
-            success=True,
-            transaction_id=existing_debit.get("id"),
-            reference=ref,
-            new_balance=await get_user_balance(from_user_id),
-            status=TransactionStatus.COMPLETED
-        )
-    
-    # Step 1: Debit sender
-    debit_result = await debit_wallet(
-        user_id=from_user_id,
-        amount=amount,
-        tx_type=tx_type,
-        description=f"{description} (sent)",
+    idem = compute_idempotency_key(from_user_id, f"{tx_type.value}_transfer", amount, ref)
+    result = await transfer_canonical_balance(
+        from_user_id=from_user_id,
+        to_user_id=to_user_id,
+        amount_major=amount,
+        tx_type=tx_type.value,
+        description=description,
         reference=ref,
-        metadata={"to_user_id": to_user_id, **(metadata or {})},
-        idempotency_key=debit_key
+        metadata=metadata,
+        idempotency_key=idem,
     )
-    
-    if not debit_result.success:
-        return debit_result
-    
-    # Step 2: Credit receiver
-    credit_result = await credit_wallet(
-        user_id=to_user_id,
-        amount=amount,
-        tx_type=tx_type,
-        description=f"{description} (received)",
-        reference=ref,
-        source=from_user_id,
-        metadata={"from_user_id": from_user_id, **(metadata or {})},
-        idempotency_key=credit_key
-    )
-    
-    if not credit_result.success:
-        # Rollback: refund the sender
-        await credit_wallet(
-            user_id=from_user_id,
-            amount=amount,
-            tx_type=TransactionType.REFUND,
-            description=f"Refund: {description} (transfer failed)",
-            reference=f"REF-{ref}",
-            metadata={"original_ref": ref, "reason": "transfer_failed"}
-        )
-        await log_audit(
-            action="transfer_rollback",
-            user_id=from_user_id,
-            details={"ref": ref, "amount": amount, "to_user": to_user_id, "reason": credit_result.error},
-            status="failed"
-        )
-        return PaymentResult(
-            success=False,
-            error=f"Transfer failed. Funds refunded. Error: {credit_result.error}",
-            status=TransactionStatus.REVERSED
-        )
-    
-    await log_audit(
-        action="transfer_complete",
-        user_id=from_user_id,
-        details={"ref": ref, "amount": amount, "to_user": to_user_id},
-        status="success"
-    )
-    
     return PaymentResult(
-        success=True,
-        transaction_id=debit_result.transaction_id,
-        reference=ref,
-        new_balance=debit_result.new_balance,
-        status=TransactionStatus.COMPLETED
+        success=result.success,
+        transaction_id=result.transaction_id,
+        reference=result.reference,
+        new_balance=result.new_balance,
+        error=result.error,
+        status=TransactionStatus(result.status),
     )
 
 
@@ -583,99 +314,24 @@ async def sync_wallet_balance(
     Does not represent a new money movement, so ledger amount stays 0.
     """
 
-    target_balance = round(float(target_balance or 0), 2)
     ref = reference or generate_reference("SYNC")
     if not idempotency_key:
         idempotency_key = compute_idempotency_key(user_id, TransactionType.RECONCILIATION_SYNC.value, target_balance, ref)
-
-    existing = await check_idempotency(idempotency_key)
-    if existing:
-        return PaymentResult(
-            success=existing.get("status") == "completed",
-            transaction_id=existing.get("id"),
-            reference=existing.get("reference"),
-            new_balance=await get_user_balance(user_id),
-            error="Duplicate reconciliation sync" if existing.get("status") != "completed" else None,
-            status=TransactionStatus(existing.get("status", "completed")),
-        )
-
-    current_balance = await get_user_balance(user_id)
-    tx_id = generate_transaction_id()
-    now = datetime.now(timezone.utc).isoformat()
-    delta = round(target_balance - current_balance, 2)
-
-    transaction = {
-        "id": tx_id,
-        "idempotency_key": idempotency_key,
-        "user_id": user_id,
-        "type": TransactionType.RECONCILIATION_SYNC.value,
-        "amount": 0.0,
-        "description": description,
-        "reference": ref,
-        "currency": "EUR",
-        "direction": "sync",
-        "source": "payment_engine_reconciliation",
-        "status": TransactionStatus.PENDING.value,
-        "metadata": {
-            "transaction_id": tx_id,
-            "user_id": user_id,
-            "wallet_id": user_id,
-            "type": TransactionType.RECONCILIATION_SYNC.value,
-            "amount": 0.0,
-            "currency": "EUR",
-            "direction": "sync",
-            "status": TransactionStatus.PENDING.value,
-            "source": "payment_engine_reconciliation",
-            "reference_id": ref,
-            "idempotency_key": idempotency_key,
-            "created_at": now,
-            "before_balance": current_balance,
-            "target_balance": target_balance,
-            "projection_delta": delta,
-            **(metadata or {}),
-        },
-        "created_at": now,
-        "updated_at": now,
-    }
-    await db.transactions.insert_one(transaction)
-
-    result = await db.users.update_one(
-        {"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id},
-        {"$set": {"balance": target_balance}},
-    )
-    if result.modified_count == 0:
-        await db.transactions.update_one(
-            {"id": tx_id},
-            {"$set": {"status": TransactionStatus.FAILED.value, "updated_at": datetime.now(timezone.utc).isoformat()}},
-        )
-        return PaymentResult(
-            success=False,
-            transaction_id=tx_id,
-            error="User not found",
-            status=TransactionStatus.FAILED,
-        )
-
-    await db.transactions.update_one(
-        {"id": tx_id},
-        {"$set": {
-            "status": TransactionStatus.COMPLETED.value,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "metadata.status": TransactionStatus.COMPLETED.value,
-            "metadata.transaction_id": tx_id,
-        }},
-    )
-    await log_audit(
-        action="sync_reconciliation_balance",
+    result = await sync_canonical_balance(
         user_id=user_id,
-        details={"tx_id": tx_id, "before_balance": current_balance, "target_balance": target_balance, "delta": delta},
-        status="success",
+        target_balance_major=target_balance,
+        description=description,
+        reference=ref,
+        metadata=metadata,
+        idempotency_key=idempotency_key,
     )
     return PaymentResult(
-        success=True,
-        transaction_id=tx_id,
-        reference=ref,
-        new_balance=target_balance,
-        status=TransactionStatus.COMPLETED,
+        success=result.success,
+        transaction_id=result.transaction_id,
+        reference=result.reference,
+        new_balance=result.new_balance,
+        error=result.error,
+        status=TransactionStatus(result.status),
     )
 
 
