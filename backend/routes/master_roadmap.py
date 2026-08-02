@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from core.database import db
@@ -15,10 +16,38 @@ from core.security import get_current_user
 
 router = APIRouter(prefix="/api/master-roadmap", tags=["master-roadmap"])
 
+BASE_DIR = Path(__file__).resolve().parents[2]
+FRONTEND_DIR = BASE_DIR / "frontend"
+IOS_ROOT_PUBLIC_DIR = BASE_DIR / "ios" / "App" / "App" / "public"
+IOS_FRONTEND_PUBLIC_DIR = FRONTEND_DIR / "ios" / "App" / "App" / "public"
+FRONTEND_BUILD_DIR = FRONTEND_DIR / "build"
 BUILD_INFO_PATH = Path(__file__).resolve().parent.parent / "build_info.json"
+SCHEMA_VERSION = "final-completion-phase-v1"
 
-STATUS_ORDER = ["Backlog", "Ready", "In Progress", "Blocked", "In Review", "Testing", "Ready for Release", "Completed", "Rejected"]
+STATUS_ORDER = [
+    "Backlog",
+    "Ready",
+    "In Progress",
+    "Blocked",
+    "In Review",
+    "Testing",
+    "Manual Approval",
+    "Ready for Release",
+    "Completed",
+    "Rejected",
+]
 PRIORITY_ORDER = ["P0 Critical", "P1 Required", "P2 Important", "P3 Later"]
+GATE_STATUS_ORDER = ["verified", "incomplete", "blocked", "manual-approval"]
+PHASES = [
+    {"phase_id": "phase-1", "title": "PHASE 1 – P0 LAUNCH BLOCKERS", "priority": "P0", "description": "Kritische Beta-Blocker vor jeder Release-Freigabe schließen.", "sort_order": 1},
+    {"phase_id": "phase-2", "title": "PHASE 2 – CORE USER FLOWS", "priority": "P1", "description": "Alle Kernnutzerflüsse vollständig stabilisieren.", "sort_order": 2},
+    {"phase_id": "phase-3", "title": "PHASE 3 – MERCHANT AND ADMIN", "priority": "P1", "description": "Merchant- und Admin-Bereiche crash-sicher und release-fähig machen.", "sort_order": 3},
+    {"phase_id": "phase-4", "title": "PHASE 4 – MOBILE QUALITY", "priority": "P1", "description": "Responsive- und UI-Qualität auf allen Ziel-Viewports absichern.", "sort_order": 4},
+    {"phase_id": "phase-5", "title": "PHASE 5 – TRANSLATION AUDIT", "priority": "P1", "description": "Alle aktiven Seiten in allen Sprachen auditieren.", "sort_order": 5},
+    {"phase_id": "phase-6", "title": "PHASE 6 – STORE SAFE RELEASE", "priority": "P1", "description": "Store-sichere Mobile-Konfiguration mit klarer Modulgrenze liefern.", "sort_order": 6},
+    {"phase_id": "phase-7", "title": "PHASE 7 – RELEASE ARTIFACTS", "priority": "P1", "description": "Web-, iOS- und Android-Release-Artefakte ehrlich vorbereiten.", "sort_order": 7},
+    {"phase_id": "phase-8", "title": "PHASE 8 – FINAL ACCEPTANCE REPORT", "priority": "P1", "description": "Abschlussstatus, Beta-Readiness und offene Blocker transparent berichten.", "sort_order": 8},
+]
 
 
 class TaskPatchRequest(BaseModel):
@@ -33,6 +62,7 @@ class TaskPatchRequest(BaseModel):
 class FeatureRegistryPatchRequest(BaseModel):
     enabled_in_development: Optional[bool] = None
     enabled_in_test: Optional[bool] = None
+    enabled_in_staging: Optional[bool] = None
     enabled_in_web_production: Optional[bool] = None
     enabled_in_ios: Optional[bool] = None
     enabled_in_android: Optional[bool] = None
@@ -59,7 +89,7 @@ async def _require_admin(request: Request) -> dict[str, Any]:
 async def _allow_investor_view(request: Request) -> dict[str, Any]:
     try:
         user = await get_current_user(request)
-        if user.get("role") in {"admin", "investor", "reviewer", "merchant"}:
+        if user.get("role") in {"admin", "investor", "reviewer"}:
             return user
     except Exception:
         pass
@@ -74,17 +104,54 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _build_info() -> dict[str, Any]:
+def _safe_json(path: Path) -> dict[str, Any]:
     try:
-        import json
-        if BUILD_INFO_PATH.exists():
-            return json.loads(BUILD_INFO_PATH.read_text())
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
     return {}
 
 
-def _task(task_id: str, title: str, description: str, phase: str, priority: str, responsible_role: str, status: str, effort: str, target_offset_days: int, frontend_files: list[str], backend_files: list[str], api_routes: list[str], test_requirements: list[str], acceptance_criteria: list[str], security_impact: str, financial_impact: str, release_risk: str, dependencies: Optional[list[str]] = None, completion_percentage: int = 0, notes: str = "") -> dict[str, Any]:
+def _build_info() -> dict[str, Any]:
+    return _safe_json(BUILD_INFO_PATH)
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    data: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        data[key.strip()] = value.strip()
+    return data
+
+
+def _task(
+    task_id: str,
+    title: str,
+    description: str,
+    phase: str,
+    priority: str,
+    responsible_role: str,
+    status: str,
+    effort: str,
+    target_offset_days: int,
+    frontend_files: list[str],
+    backend_files: list[str],
+    api_routes: list[str],
+    test_requirements: list[str],
+    acceptance_criteria: list[str],
+    security_impact: str,
+    financial_impact: str,
+    release_risk: str,
+    dependencies: Optional[list[str]] = None,
+    completion_percentage: int = 0,
+    notes: str = "",
+) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     return {
         "task_id": task_id,
@@ -114,76 +181,247 @@ def _task(task_id: str, title: str, description: str, phase: str, priority: str,
 
 
 def _phase_task_defs() -> list[dict[str, Any]]:
-    return [
-        _task("P1-001", "Fix wallet consistency completely", "Audit and unify wallet read/write logic across app, admin and backend reconciliation.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Backend Lead", "Blocked", "XL", 21, ["frontend/src/services/api.js", "frontend/src/pages/WalletPage.jsx"], ["backend/server.py", "backend/routes/wallet.py", "backend/routes/payment.py"], ["/api/wallet", "/api/wallet/balance", "/api/payment/send"], ["Canonical wallet regression tests", "Balance reconciliation checks"], ["One wallet source of truth verified", "No divergent wallet balances"], "High", "Critical", "Critical", completion_percentage=30, notes="Legacy wallet reads and suspicious restore logic still exist in codebase."),
-        _task("P1-002", "Use one canonical EUR wallet balance source", "Remove parallel EUR balance paths and enforce one canonical source for UI and APIs.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Backend Lead", "In Progress", "L", 14, ["frontend/src/services/api.js"], ["backend/routes/wallet.py", "backend/routes/admin_wallet.py"], ["/api/wallet", "/api/wallet/balance", "/api/wallet/balance/total"], ["Wallet API contract test"], ["Frontend reads one canonical EUR balance source"], "High", "Critical", "Critical", dependencies=["P1-001"], completion_percentage=45),
-        _task("P1-003", "Remove legacy wallet read paths", "Delete old wallet fallback reads after reconciliation is proven stable.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Backend Lead", "Ready", "M", 12, ["frontend/src/services/api.js"], ["backend/server.py", "backend/routes/admin_legacy_restore.py"], ["/api/wallet", "/api/admin-wallet/*"], ["Static code audit"], ["No legacy wallet read path remains in production code"], "High", "Critical", "Critical", dependencies=["P1-001", "P1-002"], completion_percentage=15),
-        _task("P1-004", "Verify transaction and balance reconciliation", "Run reconciliation checks between transactions, wallet balances and admin corrections.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Finance QA", "Ready", "L", 18, ["frontend/src/pages/AdminWalletPage.jsx"], ["backend/routes/transactions.py", "backend/routes/admin_wallet.py"], ["/api/transactions", "/api/admin-wallet/*"], ["Reconciliation test suite"], ["Transaction totals match wallet totals"], "High", "Critical", "Critical", dependencies=["P1-001"], completion_percentage=10),
-        _task("P1-005", "Separate test mode from production mode", "Ensure test toggles do not leak into production readiness flows.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Frontend Lead", "Blocked", "M", 10, ["frontend/.env", "frontend/src/config/testMode.js"], ["backend/server.py"], [], ["Environment audit"], ["Preview/test flags isolated from production readiness"], "High", "High", "High", completion_percentage=25, notes="KYC is intentionally disabled for testing and must be separated from production settings."),
-        _task("P1-006", "Remove production TEST_MODE", "Eliminate production-style test mode toggles before launch release.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Frontend Lead", "Blocked", "S", 7, ["frontend/.env"], [], [], ["Env validation"], ["No production TEST_MODE style flag remains active"], "Medium", "High", "High", dependencies=["P1-005"], completion_percentage=0),
-        _task("P1-007", "Remove hard-coded customer and recovery data", "Remove hard-coded recovery users, temporary passwords and restore snapshots from runtime code.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Security Lead", "Blocked", "L", 10, [], ["backend/server.py"], [], ["Secret scan", "Security review"], ["No hard-coded customer/recovery data in production runtime"], "Critical", "High", "Critical", completion_percentage=0),
-        _task("P1-008", "Verify authentication and session security", "Review login, session refresh, cookie security and investor auth paths.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Security Lead", "In Review", "L", 14, ["frontend/src/pages/LoginPage.jsx"], ["backend/routes/auth.py", "backend/routes/investor_portal.py", "backend/core/security.py"], ["/api/auth/*", "/api/investor-portal/auth/*"], ["Auth regression tests"], ["Auth and session flows pass security verification"], "Critical", "High", "Critical", completion_percentage=55),
-        _task("P1-009", "Verify Stripe payment and webhook flows", "Validate payment intent, top-up and webhook processing with traceable tests.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Payments Lead", "Ready", "L", 14, ["frontend/src/pages/WalletPage.jsx"], ["backend/routes/stripe.py", "backend/routes/bidblitz_pay.py"], ["/api/stripe/*", "/api/bidblitz-pay/*"], ["Stripe integration test", "Webhook replay test"], ["Payments and webhooks verified end-to-end"], "High", "Critical", "Critical", completion_percentage=20),
-        _task("P1-010", "Verify backup and restore procedures", "Document and test backup export plus restore procedure for launch operations.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Platform Ops", "Backlog", "M", 10, [], ["backend/server.py"], [], ["Backup restore drill"], ["Backup and restore can be executed and verified"], "High", "High", "High", completion_percentage=0),
-        _task("P1-011", "Fix current GitHub production deployment", "Repair CI/CD deployment path and verify release workflow reliability.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Platform Ops", "Blocked", "L", 14, [], [], [], ["Deployment dry run"], ["GitHub deployment workflow executes successfully"], "High", "High", "Critical", completion_percentage=5, notes="Current preview work does not prove production GitHub deployment health."),
-        _task("P1-012", "Verify iOS production build", "Record, test and approve the native iOS production build.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Mobile Lead", "Testing", "M", 10, ["frontend/scripts/ios-prepare.js"], [], [], ["Physical iPhone build validation"], ["iOS production build status recorded and verified"], "Medium", "High", "High", completion_percentage=60),
-        _task("P1-013", "Verify Android production build", "Record and resolve Android production build blockers before release.", "PHASE 1 – LAUNCH BLOCKERS", "P0 Critical", "Mobile Lead", "Blocked", "M", 10, [], [], [], ["Android release build validation"], ["Android production build status recorded and verified"], "Medium", "High", "High", completion_percentage=15, notes="Known Android AAB compatibility blocker still open."),
-        _task("P2-001", "Login and registration", "Complete and stabilize user sign-up and login flows.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Frontend Lead", "In Review", "M", 21, ["frontend/src/pages/LoginPage.jsx", "frontend/src/pages/RegisterPage.jsx"], ["backend/routes/auth.py"], ["/api/auth/register", "/api/auth/login"], ["Auth E2E tests"], ["User can register and log in reliably"], "High", "High", "High", completion_percentage=70),
-        _task("P2-002", "User profile", "Finalize profile editing, security and deletion prerequisites.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Frontend Lead", "Ready", "M", 21, ["frontend/src/pages/ProfilePage.jsx"], ["backend/routes/profile.py"], ["/api/profile/*"], ["Profile CRUD tests"], ["Profile data updates persist correctly"], "Medium", "Medium", "Medium", completion_percentage=40),
-        _task("P2-003", "Wallet", "Complete wallet page using canonical source and stable history.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Frontend Lead", "In Progress", "L", 21, ["frontend/src/pages/WalletPage.jsx"], ["backend/routes/wallet.py"], ["/api/wallet"], ["Wallet E2E tests"], ["Wallet shows canonical EUR balance and recent activity"], "High", "Critical", "Critical", completion_percentage=55),
-        _task("P2-004", "Send money", "Stabilize peer-to-peer transfer flow.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Backend Lead", "Ready", "M", 18, ["frontend/src/pages/SendMoneyPage.jsx"], ["backend/routes/payment.py"], ["/api/payment/send"], ["P2P transfer tests"], ["Transfers succeed with correct validation and audit"], "High", "Critical", "Critical", completion_percentage=45),
-        _task("P2-005", "Receive money", "Stabilize receive flow and QR receiving experience.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Frontend Lead", "Ready", "M", 18, ["frontend/src/pages/ReceiveMoneyPage.jsx"], ["backend/routes/p2p.py"], ["/api/p2p/qr/generate"], ["Receive/QR tests"], ["Receive flow works on mobile without format errors"], "Medium", "High", "High", completion_percentage=50),
-        _task("P2-006", "QR payment", "Finalize merchant and person-to-person QR payment flows.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Backend Lead", "Ready", "M", 18, ["frontend/src/pages/QrScannerPage.jsx"], ["backend/routes/payment.py", "backend/routes/p2p.py"], ["/api/payment/merchant-scan", "/api/scan/resolve"], ["QR scanning regression"], ["QR payment resolves and charges correctly"], "High", "Critical", "Critical", completion_percentage=45),
-        _task("P2-007", "Transaction history", "Stabilize and verify transaction ledger visibility.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Frontend Lead", "Ready", "S", 14, ["frontend/src/pages/TransactionsPage.jsx"], ["backend/routes/transactions.py"], ["/api/transactions"], ["Ledger pagination tests"], ["Users can review accurate transaction history"], "Medium", "High", "Medium", completion_percentage=50),
-        _task("P2-008", "Merchant onboarding", "Complete merchant onboarding and approval handoff.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Merchant Ops", "Backlog", "L", 30, ["frontend/src/pages/MerchantOnboardingPage.jsx"], ["backend/routes/merchant.py"], ["/api/merchant/*"], ["Merchant onboarding flow test"], ["Merchant can onboard and reach dashboard"], "Medium", "High", "High", completion_percentage=20),
-        _task("P2-009", "Merchant dashboard", "Stabilize merchant overview, revenue and operations panels.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Merchant Ops", "Backlog", "L", 30, ["frontend/src/pages/MerchantDashboardPage.jsx"], ["backend/routes/merchant_portal.py"], ["/api/merchant/dashboard"], ["Merchant dashboard tests"], ["Merchant dashboard shows production-safe data"], "Medium", "High", "High", completion_percentage=25),
-        _task("P2-010", "Basic POS", "Finish minimal production-safe POS sales flow.", "PHASE 2 – CORE PRODUCT", "P1 Required", "POS Lead", "Backlog", "L", 30, ["frontend/src/pages/POSPage.jsx"], ["backend/routes/pos_system.py", "backend/routes/pos_payments.py"], ["/api/pos/*"], ["POS checkout tests"], ["Basic POS sale and receipt flow works"], "High", "Critical", "Critical", completion_percentage=20),
-        _task("P2-011", "Admin dashboard", "Unify admin overview for launch operations.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Operations Lead", "In Progress", "M", 21, ["frontend/src/pages/AdminPage.jsx"], ["backend/routes/admin.py"], ["/api/admin/*"], ["Admin smoke tests"], ["Admin can monitor launch-critical functions"], "Medium", "High", "High", completion_percentage=65),
-        _task("P2-012", "Notifications", "Verify notification delivery and fallback logic.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Backend Lead", "Ready", "M", 18, ["frontend/src/pages/NotificationsPage.jsx"], ["backend/routes/notifications.py"], ["/api/notifications/*"], ["Notification tests"], ["Users and admins receive notifications correctly"], "Medium", "Medium", "Medium", completion_percentage=40),
-        _task("P2-013", "Support", "Stabilize support routes and escalation flows.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Support Lead", "Ready", "S", 14, ["frontend/src/pages/SupportPage.jsx"], ["backend/routes/support.py"], ["/api/support/*"], ["Support request tests"], ["Support routes work and are reachable"], "Medium", "Low", "Medium", completion_percentage=45),
-        _task("P2-014", "Legal pages", "Verify and harden production legal routes.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Legal Ops", "Ready", "S", 14, ["frontend/src/pages/LegalPage.jsx"], ["backend/routes/legal.py"], ["/api/legal/*"], ["Route and content checks"], ["Legal routes exist and are not broken"], "Medium", "Low", "High", completion_percentage=40),
-        _task("P2-015", "Account deletion", "Finalize compliant account deletion flow.", "PHASE 2 – CORE PRODUCT", "P1 Required", "Security Lead", "Backlog", "M", 21, ["frontend/src/pages/ProfilePage.jsx"], ["backend/routes/profile.py"], ["/api/profile/delete"], ["Deletion flow tests"], ["User can request compliant account deletion"], "High", "Medium", "High", completion_percentage=10),
-        _task("P3-001", "Central design system", "Roll the shared design system across all core routes.", "PHASE 3 – QUALITY", "P1 Required", "Design Lead", "In Progress", "L", 21, ["frontend/src/design/tokens.js", "frontend/src/design/tokens.css"], [], [], ["Visual regression checks"], ["Core routes use shared tokens and components"], "Low", "Medium", "Medium", completion_percentage=65),
-        _task("P3-002", "Mobile responsive cleanup", "Complete responsive cleanup on core launch routes.", "PHASE 3 – QUALITY", "P1 Required", "Frontend Lead", "In Progress", "L", 18, ["frontend/src/pages/AuctionsPage.jsx", "frontend/src/pages/TaxiPage.jsx", "frontend/src/pages/WalletPage.jsx"], [], [], ["Mobile viewport tests"], ["Core routes have no horizontal overflow or hidden actions"], "Low", "Medium", "High", completion_percentage=60),
-        _task("P3-003", "Playwright tests", "Stabilize automated browser coverage for launch-critical flows.", "PHASE 3 – QUALITY", "P1 Required", "QA Lead", "In Progress", "M", 18, ["frontend/playwright.config.cjs", "frontend/tests/visual/auctions.spec.ts", "frontend/tests/visual/taxi.spec.ts"], [], [], ["Playwright suite"], ["Playwright suite passes on required routes and viewports"], "Medium", "Medium", "High", completion_percentage=45),
-        _task("P3-004", "Visual QA", "Run visual QA reports with screenshots, severity and report upload.", "PHASE 3 – QUALITY", "P1 Required", "QA Lead", "In Progress", "M", 18, ["frontend/scripts/visual-qa/*", "frontend/src/pages/AdminVisualQaPage.jsx"], ["backend/routes/visual_qa.py"], ["/api/visual-qa/*"], ["Visual QA report generation"], ["Visual QA report exists with screenshots and issue states"], "Low", "Medium", "High", completion_percentage=55),
-        _task("P3-005", "Translation audit", "Audit visible language consistency on core routes.", "PHASE 3 – QUALITY", "P1 Required", "QA Lead", "Ready", "S", 14, ["frontend/src/store/I18nContext.jsx"], [], [], ["Translation route audit"], ["German pages do not show blocked English labels"], "Low", "Low", "Medium", completion_percentage=35),
-        _task("P3-006", "Accessibility audit", "Review contrast, labels and tap targets for launch flows.", "PHASE 3 – QUALITY", "P1 Required", "Design Lead", "Backlog", "M", 21, [], [], [], ["Accessibility audit"], ["Core flows meet baseline accessibility requirements"], "Medium", "Low", "Medium", completion_percentage=10),
-        _task("P3-007", "Performance audit", "Measure build, bundle and route performance before launch.", "PHASE 3 – QUALITY", "P1 Required", "Platform Ops", "Backlog", "M", 21, [], [], [], ["Performance benchmark"], ["Critical routes meet agreed loading budget"], "Low", "Medium", "Medium", completion_percentage=5),
-        _task("P3-008", "Security audit", "Run secret, auth and production-safety audit across repo.", "PHASE 3 – QUALITY", "P1 Required", "Security Lead", "Ready", "L", 21, [], ["backend/server.py"], [], ["Secret scan", "Security checklist"], ["No exposed secrets or critical runtime risks remain"], "Critical", "High", "Critical", completion_percentage=20),
-        _task("P3-009", "API contract tests", "Cover launch-critical APIs with contract tests.", "PHASE 3 – QUALITY", "P1 Required", "Backend Lead", "Backlog", "M", 21, [], [], ["/api/auth/*", "/api/wallet/*", "/api/payment/*"], ["API contract suite"], ["Critical API contracts are versioned and tested"], "Medium", "High", "High", completion_percentage=5),
-        _task("P3-010", "Database integrity checks", "Add integrity checks for launch-critical collections.", "PHASE 3 – QUALITY", "P1 Required", "Backend Lead", "Backlog", "M", 21, [], [], [], ["DB integrity checks"], ["Critical collections can be verified for consistency"], "High", "High", "High", completion_percentage=5),
-        _task("P3-011", "Release checklist", "Document final launch checklist and ownership.", "PHASE 3 – QUALITY", "P1 Required", "Operations Lead", "Ready", "S", 10, [], [], [], ["Checklist review"], ["Launch checklist exists and is used before release"], "Low", "Medium", "High", completion_percentage=20),
-        _task("P4-001", "Investor landing page", "Stabilize investor landing content and CTA capture.", "PHASE 4 – INVESTORS", "P2 Important", "Growth Lead", "In Progress", "M", 30, ["frontend/src/pages/InvestorPage.jsx"], ["backend/routes/investor_interest.py"], ["/api/investor-interest/lead"], ["Investor landing tests"], ["Approved investor landing page is live"], "Low", "Low", "Medium", completion_percentage=60),
-        _task("P4-002", "Investor interest form", "Complete investor lead capture and follow-up status flow.", "PHASE 4 – INVESTORS", "P2 Important", "Growth Lead", "In Review", "M", 30, ["frontend/src/pages/InvestorPage.jsx"], ["backend/routes/investor_interest.py", "backend/routes/investor_portal.py"], ["/api/investor-interest/lead", "/api/investor-portal/admin/leads"], ["Lead capture regression"], ["Investor leads are stored and visible to admin"], "Medium", "Medium", "Medium", completion_percentage=70),
-        _task("P4-003", "Investor portal", "Continue investor portal phase 2 hardening.", "PHASE 4 – INVESTORS", "P2 Important", "Investor Ops", "In Progress", "L", 30, ["frontend/src/pages/InvestorPortalPage.jsx"], ["backend/routes/investor_portal.py"], ["/api/investor-portal/*"], ["Investor portal E2E"], ["Approved investors can access restricted portal areas"], "Medium", "Medium", "Medium", completion_percentage=55),
-        _task("P4-004", "Document center", "Finalize investor document center and acknowledgements.", "PHASE 4 – INVESTORS", "P2 Important", "Investor Ops", "Ready", "M", 30, ["frontend/src/pages/InvestorPortalDocumentsPage.jsx"], ["backend/routes/investor_portal.py"], ["/api/investor-portal/portal/documents"], ["Document access tests"], ["Investor document center works with approved files"], "Medium", "Low", "Medium", completion_percentage=45),
-        _task("P4-005", "Investor updates", "Stabilize investor updates publishing workflow.", "PHASE 4 – INVESTORS", "P2 Important", "Investor Ops", "Ready", "M", 30, ["frontend/src/pages/InvestorPortalUpdatesPage.jsx"], ["backend/routes/investor_portal.py"], ["/api/investor-portal/admin/updates"], ["Update publish tests"], ["Approved investor updates are visible in portal"], "Low", "Low", "Medium", completion_percentage=50),
-        _task("P4-006", "Meeting requests", "Finalize investor meeting request and scheduling flow.", "PHASE 4 – INVESTORS", "P2 Important", "Investor Ops", "Ready", "M", 30, ["frontend/src/pages/InvestorPortalMeetingsPage.jsx"], ["backend/routes/investor_portal.py"], ["/api/investor-portal/portal/meetings/*"], ["Meeting flow tests"], ["Meeting requests can be submitted and tracked"], "Low", "Low", "Medium", completion_percentage=45),
-        _task("P4-007", "Admin investor leads", "Keep investor lead admin view operational and compliant.", "PHASE 4 – INVESTORS", "P2 Important", "Investor Ops", "In Review", "M", 30, ["frontend/src/pages/AdminInvestorLeadsPage.jsx"], ["backend/routes/investor_portal.py"], ["/api/investor-portal/admin/leads"], ["Admin lead workflow tests"], ["Admin can classify and follow up investor leads"], "Medium", "Low", "Medium", completion_percentage=70),
-        _task("P4-008", "Risk information", "Prepare approved investor-safe risk information.", "PHASE 4 – INVESTORS", "P2 Important", "Legal Ops", "Backlog", "S", 30, [], [], [], ["Legal review"], ["Investor risk information is approved and published"], "High", "Low", "High", completion_percentage=0),
-        _task("P4-009", "Financing-round overview", "Maintain approved financing-round summary for investor channels.", "PHASE 4 – INVESTORS", "P2 Important", "Investor Ops", "In Review", "S", 30, ["frontend/src/pages/InvestorDashboardPage.jsx"], ["backend/routes/investor_dashboard.py"], ["/api/investor-dashboard"], ["Investor dashboard tests"], ["Financing-round overview uses approved data only"], "Medium", "Low", "Medium", completion_percentage=60),
-        _task("P4-010", "Investor presentation data", "Keep approved investor deck data synchronized with dashboard.", "PHASE 4 – INVESTORS", "P2 Important", "Investor Ops", "Ready", "S", 30, ["frontend/src/pages/AdminInvestorDashboardPage.jsx"], ["backend/routes/investor_dashboard.py"], ["/api/investor-dashboard/admin/config"], ["Config save tests"], ["Presentation data is editable and reviewable"], "Low", "Low", "Medium", completion_percentage=45),
-        _task("P5-001", "Merchant acquisition", "Post-launch merchant acquisition engine.", "PHASE 5 – GROWTH", "P2 Important", "Growth Lead", "Backlog", "M", 45, [], [], [], ["Growth KPI checks"], ["Merchant acquisition plan approved"], "Low", "Medium", "Low"),
-        _task("P5-002", "Promotions", "Controlled promotion system after launch stabilization.", "PHASE 5 – GROWTH", "P2 Important", "Growth Lead", "Backlog", "M", 45, [], [], [], ["Promo tests"], ["Promotions are launch-safe and measurable"], "Low", "Medium", "Low"),
-        _task("P5-003", "Referral system", "Relaunch referrals after core flows are stable.", "PHASE 5 – GROWTH", "P2 Important", "Growth Lead", "Backlog", "M", 45, [], [], [], ["Referral tests"], ["Referral program has correct tracking"], "Low", "Medium", "Low"),
-        _task("P5-004", "Loyalty", "Expand loyalty after launch blockers are closed.", "PHASE 5 – GROWTH", "P2 Important", "Growth Lead", "Backlog", "M", 45, [], [], [], ["Loyalty tests"], ["Loyalty logic is production-safe"], "Low", "Medium", "Low"),
-        _task("P5-005", "Premium subscriptions", "Stage premium subscriptions after core stability.", "PHASE 5 – GROWTH", "P2 Important", "Growth Lead", "Backlog", "M", 45, [], [], [], ["Subscription tests"], ["Premium subscriptions are legally and technically ready"], "Medium", "High", "Medium"),
-        _task("P5-006", "Analytics", "Broaden analytics after launch-critical instrumentation is stable.", "PHASE 5 – GROWTH", "P2 Important", "Data Lead", "Backlog", "S", 45, [], [], [], ["Analytics checks"], ["Growth analytics uses approved tracking"], "Low", "Low", "Low"),
-        _task("P5-007", "Campaign tracking", "Add post-launch campaign attribution safely.", "PHASE 5 – GROWTH", "P2 Important", "Data Lead", "Backlog", "S", 45, [], [], [], ["Campaign test coverage"], ["Campaign tracking does not affect payments or auth"], "Low", "Low", "Low"),
-        _task("P5-008", "Partner management", "Scale partner workflows only after core platform release.", "PHASE 5 – GROWTH", "P2 Important", "Partner Ops", "Backlog", "S", 45, [], [], [], ["Partner admin tests"], ["Partner workflows are documented and stable"], "Low", "Medium", "Low"),
-        _task("P6-001", "Optional modules remain disabled before launch", "Keep optional modules disabled in production until core launch is stable.", "PHASE 6 – OPTIONAL MODULES", "P3 Later", "Operations Lead", "In Progress", "S", 60, [], [], [], ["Feature flag audit"], ["Optional modules are not production-enabled before core launch"], "Medium", "Medium", "High", completion_percentage=80, notes="Auctions, Taxi and other optional modules must stay behind controlled readiness."),
+    tasks: list[dict[str, Any]] = []
+
+    tasks.extend([
+        _task("P1-WALLET-001", "Wallet consistency", "Eine kanonische EUR-Balance-Quelle erzwingen, Legacy-Reads entfernen und Reconciliation-Bericht bereitstellen.", PHASES[0]["title"], "P0 Critical", "Backend Lead", "In Progress", "XL", 10, ["frontend/src/services/api.js", "frontend/src/pages/WalletPage.jsx", "frontend/src/store/WalletContext.jsx"], ["backend/routes/wallet.py", "backend/routes/admin_wallet.py", "backend/routes/super_app_features.py", "backend/core/payment_engine.py"], ["/api/wallet", "/api/wallet/balance", "/api/admin/wallet/reconciliation", "/api/super-app/wallet/balance"], ["Concurrent wallet tests", "Duplicate request tests", "Reconciliation regression"], ["Alle Wallet-Ansichten zeigen dieselbe EUR-Balance", "Keine historischen Transaktionen überschrieben", "Keine Balance-Resets"], "Critical", "Critical", "Critical", completion_percentage=55, notes="Doppeltes /api/wallet/balance und Legacy-Lesepfade sind noch echte P0-Themen."),
+        _task("P1-ENV-001", "Environment separation", "Development, test, staging und production klar trennen; Produktion darf keine Test-/Demo-/Mock-Flags oder deaktivierte Finanzprüfungen nutzen.", PHASES[0]["title"], "P0 Critical", "Platform Ops", "Blocked", "L", 10, ["frontend/.env", "frontend/.env.production", "frontend/src/config/testMode.js", "frontend/src/config/release.js"], ["backend/.env", "backend/core/config.py", "backend/server.py"], [], ["Environment audit", "Production preflight check"], ["Production nutzt kein TEST_MODE oder DEMO_MODE", "Keine hard-coded Testuser in Production-Pfaden"], "Critical", "High", "Critical", completion_percentage=20, notes="KYC-Testbypass ist absichtlich aktiv und muss für Staging/Test klar von echter Production getrennt werden."),
+        _task("P1-PARITY-001", "Web, iOS and Android version parity", "Gleiche freigegebene Frontend-Version auf Web, iOS und Android sichern; Build-ID sichtbar machen und stale Capacitor-Bundles ausweisen.", PHASES[0]["title"], "P0 Critical", "Mobile Lead", "In Review", "L", 10, ["frontend/public/version.json", "frontend/scripts/ios-prepare.js", "frontend/scripts/ios-sync-web-assets.js", "frontend/src/pages/AdminDiagPage.jsx"], ["backend/build_info.json"], [], ["Build parity check", "Mobile bundle audit"], ["Build-ID in Admin-Diagnose sichtbar", "Asset-Quelle lokal/remote ausgewiesen", "Stale Bundles identifiziert"], "Medium", "Medium", "Critical", completion_percentage=40),
+        _task("P1-CI-001", "GitHub Actions hardening", "Frontend build, backend tests, ESLint, Playwright, visual QA, security checks und production preflight müssen als Gates gepflegt werden.", PHASES[0]["title"], "P0 Critical", "Platform Ops", "Blocked", "L", 10, [".github/workflows/ci.yml", ".github/workflows/deploy.yml", ".github/workflows/visual-qa.yml"], [], [], ["Workflow health review"], ["Kein Release bei offenem P0-Gate", "Alle Pflicht-Workflows im Dashboard sichtbar"], "High", "High", "Critical", completion_percentage=15),
+    ])
+
+    core_flows = [
+        ("REG", "Registration", ["frontend/src/pages/AuthPage.jsx"], ["backend/routes/auth.py"], ["/api/auth/register"]),
+        ("LOGIN", "Login", ["frontend/src/pages/AuthPage.jsx"], ["backend/routes/auth.py"], ["/api/auth/login"]),
+        ("LOGOUT", "Logout", ["frontend/src/pages/MorePage.jsx"], ["backend/routes/auth.py"], ["/api/auth/logout"]),
+        ("SESSION", "Session restore", ["frontend/src/services/api.js"], ["backend/routes/auth.py", "backend/routes/sessions.py"], ["/api/auth/me", "/api/auth/refresh"]),
+        ("RESET", "Password reset", ["frontend/src/pages/ResetPasswordPage.jsx"], ["backend/routes/auth.py"], ["/api/auth/forgot-password", "/api/auth/reset-password"]),
+        ("PROFILE", "Profile", ["frontend/src/pages/ProfilePage.jsx"], ["backend/routes/profile.py"], ["/api/profile/*"]),
+        ("LANG", "Language selection", ["frontend/src/store/I18nContext.jsx", "frontend/src/pages/MorePage.jsx"], [], [],),
+        ("WALLET", "Wallet", ["frontend/src/pages/WalletPage.jsx", "frontend/src/store/WalletContext.jsx"], ["backend/routes/wallet.py"], ["/api/wallet"]),
+        ("SEND", "Send money", ["frontend/src/pages/SendMoneyPage.jsx", "frontend/src/components/SendMoneyModal.jsx"], ["backend/routes/payment.py", "backend/routes/wallet.py"], ["/api/payment/send", "/api/wallet/send"]),
+        ("RECEIVE", "Receive money", ["frontend/src/pages/ReceiveMoneyPage.jsx"], ["backend/routes/p2p.py"], ["/api/p2p/qr/generate"]),
+        ("QRSCAN", "QR scan", ["frontend/src/pages/ScannerPage.jsx", "frontend/src/pages/SendMoneyPage.jsx"], ["backend/routes/payment.py", "backend/routes/p2p.py"], ["/api/scan/resolve"]),
+        ("QRRECV", "QR receive", ["frontend/src/pages/ReceiveMoneyPage.jsx"], ["backend/routes/p2p.py"], ["/api/p2p/qr/generate"]),
+        ("TOPUP", "Top-up", ["frontend/src/pages/WalletPage.jsx"], ["backend/routes/wallet.py", "backend/routes/stripe.py"], ["/api/wallet/topup", "/api/stripe/*"]),
+        ("HISTORY", "Transaction history", ["frontend/src/pages/WalletPage.jsx"], ["backend/routes/wallet.py", "backend/routes/transactions.py"], ["/api/wallet/transactions", "/api/transactions"]),
+        ("NOTIF", "Notifications", ["frontend/src/pages/NotificationsPage.jsx"], ["backend/routes/notifications.py"], ["/api/notifications/*"]),
+        ("SUPPORT", "Support", ["frontend/src/pages/SupportChatPage.jsx"], ["backend/routes/support.py", "backend/routes/support_tickets.py"], ["/api/support/*"]),
+        ("DELETE", "Account deletion", ["frontend/src/pages/ProfilePage.jsx"], ["backend/routes/profile.py"], ["/api/profile/delete"]),
     ]
+    for index, (suffix, title, frontend_files, backend_files, api_routes) in enumerate(core_flows, start=1):
+        tasks.append(_task(
+            f"P2-{suffix}-{index:03d}",
+            title,
+            f"{title} als Kernflow vollständig gegen Success, Validation, Network Error, Expired Session, Unauthorized, Empty State, Loading State und Mobile Layout prüfen.",
+            PHASES[1]["title"],
+            "P1 Required",
+            "Frontend Lead" if suffix not in {"TOPUP", "SEND", "RECEIVE", "QRSCAN", "QRRECV", "NOTIF", "SUPPORT"} else "Backend Lead",
+            "In Progress" if suffix in {"WALLET", "SEND", "RECEIVE", "SESSION"} else "Ready",
+            "M",
+            14,
+            frontend_files,
+            backend_files,
+            api_routes,
+            ["Success path", "Validation errors", "Network error", "Expired session", "Unauthorized access", "Empty state", "Loading state", "Mobile layout"],
+            [f"{title} ist stabil und regressionssicher", "Kein UI-Crash bei fehlenden Daten"],
+            "High" if suffix in {"WALLET", "SEND", "TOPUP", "SESSION", "RESET"} else "Medium",
+            "Critical" if suffix in {"WALLET", "SEND", "TOPUP", "HISTORY"} else "Medium",
+            "High",
+            completion_percentage=45 if suffix in {"WALLET", "SEND", "RECEIVE", "SESSION"} else 25,
+        ))
+
+    merchant_admin_tasks = [
+        ("M-ONBOARD", "Merchant onboarding", ["frontend/src/pages/MerchantOnboardingPage.jsx"], ["backend/routes/merchant.py"], ["/api/merchant/*"], "Merchant Ops"),
+        ("M-APPROVAL", "Merchant approval status", ["frontend/src/pages/MerchantDashboardPage.jsx"], ["backend/routes/merchant.py"], ["/api/merchant/status"], "Merchant Ops"),
+        ("M-DASH", "Merchant dashboard", ["frontend/src/pages/MerchantDashboardPage.jsx", "frontend/src/pages/MerchantPortalPage.jsx"], ["backend/routes/merchant.py", "backend/routes/merchant_portal.py"], ["/api/merchant/dashboard", "/api/merchant-portal/*"], "Merchant Ops"),
+        ("M-QR", "Merchant QR payment", ["frontend/src/pages/MerchantTerminalPage.jsx"], ["backend/routes/payment.py"], ["/api/payment/merchant-scan"], "Merchant Ops"),
+        ("M-TX", "Merchant transaction list", ["frontend/src/pages/MerchantDashboardPage.jsx"], ["backend/routes/merchant_payments.py"], ["/api/merchant/payments/*"], "Merchant Ops"),
+        ("M-STAFF", "Merchant staff", ["frontend/src/pages/StaffManagementPage.jsx"], ["backend/routes/staff.py", "backend/routes/staff_manager.py"], ["/api/staff/*"], "Merchant Ops"),
+        ("M-BRANCH", "Merchant branch selection", ["frontend/src/pages/MerchantDashboardPage.jsx"], ["backend/routes/merchant_hierarchy.py"], ["/api/merchant-hierarchy/*"], "Merchant Ops"),
+        ("M-PAYOUT", "Merchant payout status", ["frontend/src/pages/MerchantDashboardPage.jsx"], ["backend/routes/payout.py"], ["/api/payout/*"], "Merchant Ops"),
+        ("A-CUSTOMERS", "Admin customers", ["frontend/src/pages/AdminManagementPage.jsx"], ["backend/routes/admin_management.py"], ["/api/admin-management/*"], "Operations Lead"),
+        ("A-MERCHANTS", "Admin merchants", ["frontend/src/pages/MerchantAdminPage.jsx"], ["backend/routes/merchant_admin.py"], ["/api/admin/merchants/*"], "Operations Lead"),
+        ("A-TX", "Admin transactions", ["frontend/src/pages/AdminManagementPage.jsx", "frontend/src/pages/AdminWalletPage.jsx"], ["backend/routes/admin_wallet.py", "backend/routes/transactions.py"], ["/api/admin/wallet/*", "/api/transactions"], "Operations Lead"),
+        ("A-WALLET", "Admin wallet view", ["frontend/src/pages/AdminWalletPage.jsx"], ["backend/routes/admin_wallet.py"], ["/api/admin/wallet/reconciliation"], "Operations Lead"),
+        ("A-APPROVALS", "Admin approvals", ["frontend/src/pages/AdminPage.jsx"], ["backend/routes/admin_approvals.py"], ["/api/admin-approvals/*"], "Operations Lead"),
+        ("A-FLAGS", "Admin feature flags", ["frontend/src/pages/AdminPage.jsx"], ["backend/routes/feature_flags.py"], ["/api/feature-flags/*"], "Operations Lead"),
+        ("A-MONITOR", "Admin monitoring", ["frontend/src/pages/MonitoringDashboard.jsx"], ["backend/routes/monitoring.py"], ["/api/admin/monitoring/*"], "Operations Lead"),
+        ("A-LOGS", "Admin logs", ["frontend/src/pages/AdminDiagPage.jsx"], ["backend/routes/diag.py"], ["/api/diag/*"], "Operations Lead"),
+        ("A-HEALTH", "Admin system health", ["frontend/src/pages/AdminDiagPage.jsx"], ["backend/server.py", "backend/routes/diag.py"], ["/health", "/api/diag/health-deep"], "Operations Lead"),
+        ("A-VERSION", "Admin deployment version", ["frontend/src/pages/AdminDeploymentInfoPage.jsx", "frontend/src/pages/AdminDiagPage.jsx"], ["backend/routes/system_version.py", "backend/build_info.json"], ["/api/system/version"], "Operations Lead"),
+    ]
+    for index, (suffix, title, frontend_files, backend_files, api_routes, role) in enumerate(merchant_admin_tasks, start=1):
+        tasks.append(_task(
+            f"P3-{suffix}-{index:03d}",
+            title,
+            f"{title} ohne Crash bei fehlenden Werten absichern und für Beta verifizieren.",
+            PHASES[2]["title"],
+            "P1 Required",
+            role,
+            "In Progress" if suffix in {"A-WALLET", "A-MONITOR", "A-VERSION", "M-DASH"} else "Ready",
+            "M",
+            18,
+            frontend_files,
+            backend_files,
+            api_routes,
+            ["Success path", "Missing values", "Unauthorized access", "Empty state", "Mobile layout"],
+            [f"{title} rendert stabil", "Keine Admin-/Merchant-Crashes bei null/undefined Feldern"],
+            "High" if suffix.startswith("A-") else "Medium",
+            "High" if suffix in {"A-TX", "A-WALLET", "M-PAYOUT"} else "Medium",
+            "High",
+            completion_percentage=50 if suffix in {"A-WALLET", "A-MONITOR", "A-VERSION"} else 30,
+        ))
+
+    mobile_tasks = [
+        ("VIEWPORTS", "Viewport sweep 320→1440", "Alle wichtigen Routen auf 320x568, 375x812, 390x844, 430x932, 768x1024 und 1440x900 prüfen."),
+        ("OVERFLOW", "Horizontal overflow cleanup", "Horizontalen Overflow, verdeckte Buttons und abgeschnittene Inhalte entfernen."),
+        ("SAFEAREA", "Safe-area and bottom navigation", "Safe-Area-Spacings und verdeckende Bottom-Navigation korrigieren."),
+        ("MONEY", "MoneyAmount rollout", "MoneyAmount auf Kernrouten konsistent einsetzen."),
+        ("COUNTDOWN", "CountdownTimer rollout", "CountdownTimer und Preis-/Timer-Darstellung angleichen."),
+        ("PAGESHELL", "PageShell and Cards rollout", "PageShell, Buttons, Cards, EmptyState, ErrorState und LoadingState auf Kernrouten nutzen."),
+        ("IMAGES", "Image correctness and quality", "Gebrochene Bilder, falsche Produktbilder und Cropping-Probleme beheben."),
+        ("LANGMIX", "Language and formatting cleanup", "Gemischte Sprachen, fehlerhafte Preise und malformed timer beseitigen."),
+    ]
+    for index, (suffix, title, description) in enumerate(mobile_tasks, start=1):
+        tasks.append(_task(
+            f"P4-{suffix}-{index:03d}",
+            title,
+            description,
+            PHASES[3]["title"],
+            "P1 Required",
+            "Design Lead" if suffix in {"MONEY", "COUNTDOWN", "PAGESHELL"} else "Frontend Lead",
+            "In Progress" if suffix in {"VIEWPORTS", "OVERFLOW", "SAFEAREA", "MONEY", "COUNTDOWN", "PAGESHELL"} else "Ready",
+            "M",
+            18,
+            ["frontend/src/pages/WalletPage.jsx", "frontend/src/pages/TaxiPage.jsx", "frontend/src/pages/AuctionsPage.jsx", "frontend/src/design/tokens.css"],
+            [],
+            [],
+            ["Viewport regression", "Visual QA report", "Smoke on core routes"],
+            [f"{title} ist auf Kernrouten sichtbar verifiziert"],
+            "Low",
+            "Medium",
+            "High",
+            completion_percentage=60 if suffix in {"MONEY", "COUNTDOWN", "PAGESHELL"} else 45,
+        ))
+
+    translation_tasks = [
+        ("ACTIVE", "Audit active user-facing pages", "Alle aktiven Nutzerseiten in allen unterstützten Sprachen auditieren."),
+        ("KEYS", "Missing translation keys", "Fehlende Translation Keys und harte Strings identifizieren."),
+        ("DE", "German page purity", "Englische Texte in deutschen Seiten und Buttons entfernen."),
+        ("VALIDATION", "Validation and empty state translation", "Validierungs-, Empty-State- und ErrorState-Texte vollständig übersetzen."),
+        ("REPORT", "Missing translation report", "Fehlende Übersetzungen als Report ausgeben und offen halten bis bereinigt."),
+    ]
+    for index, (suffix, title, description) in enumerate(translation_tasks, start=1):
+        tasks.append(_task(
+            f"P5-{suffix}-{index:03d}",
+            title,
+            description,
+            PHASES[4]["title"],
+            "P1 Required",
+            "QA Lead",
+            "In Progress" if suffix in {"ACTIVE", "KEYS", "DE"} else "Ready",
+            "S",
+            14,
+            ["frontend/src/store/I18nContext.jsx"],
+            [],
+            [],
+            ["Translation audit", "Manual language spot check"],
+            [f"{title} transparent dokumentiert und ohne sichtbare Restfehler"],
+            "Low",
+            "Low",
+            "Medium",
+            completion_percentage=35 if suffix == "ACTIVE" else 20,
+        ))
+
+    store_tasks = [
+        ("CONFIG", "Store-safe mobile configuration", "Store-safe Modus für iOS/Android sauber definieren und anwenden."),
+        ("HIDE", "Hide or disable non-approved modules", "Auktionen, Gaming, Mining, Crypto, Lending/BNPL und ähnliche Bereiche in Store-Builds sperren."),
+        ("CORE", "Core-app store surface", "Store-Build auf Account, Wallet, QR, Merchant, History, Support, Notifications, Profile und Legal fokussieren."),
+        ("META", "Store metadata readiness", "Privacy, Terms, Support, Account Deletion, Permission Descriptions, Icons, Splash, Reviewer-Account und Screenshots prüfen."),
+        ("LEGAL", "Legal and reviewer readiness", "Reviewer-Anweisungen und rechtlich freigegebene Store-Oberfläche final prüfen."),
+    ]
+    for index, (suffix, title, description) in enumerate(store_tasks, start=1):
+        tasks.append(_task(
+            f"P6-{suffix}-{index:03d}",
+            title,
+            description,
+            PHASES[5]["title"],
+            "P1 Required",
+            "Mobile Lead",
+            "In Progress" if suffix in {"CONFIG", "HIDE"} else "Ready",
+            "M",
+            14,
+            ["frontend/src/config/release.js", "frontend/src/App.js", "frontend/public/store-assets/*"],
+            [],
+            [],
+            ["Store-safe smoke", "Static route audit"],
+            [f"{title} ist dokumentiert und in Mobile-Builds erkennbar"],
+            "High",
+            "High",
+            "High",
+            completion_percentage=50 if suffix in {"CONFIG", "HIDE"} else 15,
+        ))
+
+    artifact_tasks = [
+        ("WEB", "Web release artifacts", "Production build, Deployment-Verifikation und Rollback-Paket vorbereiten."),
+        ("IOS", "iOS release artifacts", "Xcode Workspace, Signing-Checklist, Archive-Checklist, TestFlight Notes und Reviewer Instructions vorbereiten."),
+        ("ANDROID", "Android release artifacts", "Signed AAB Checklist, Internal Testing Notes und Reviewer Instructions vorbereiten."),
+        ("HONESTY", "Artifact truthfulness", "Nie behaupten, dass IPA/AAB existiert, wenn nicht wirklich gebaut."),
+    ]
+    for index, (suffix, title, description) in enumerate(artifact_tasks, start=1):
+        tasks.append(_task(
+            f"P7-{suffix}-{index:03d}",
+            title,
+            description,
+            PHASES[6]["title"],
+            "P1 Required",
+            "Platform Ops",
+            "Ready" if suffix == "HONESTY" else "Backlog",
+            "M",
+            18,
+            ["frontend/build-mobile-final.sh", "frontend/build-aab-release.sh"],
+            [],
+            [],
+            ["Artifact checklist review"],
+            [f"{title} ist real belegbar oder klar als offen markiert"],
+            "Medium",
+            "Medium",
+            "High",
+            completion_percentage=100 if suffix == "HONESTY" else 0,
+        ))
+
+    tasks.extend([
+        _task("P8-REPORT-001", "Final acceptance table", "Finale Tabelle mit Feature-, Web-, iOS-, Android-, Backend-, Test-, Blocker- und Beta-Status erzeugen.", PHASES[7]["title"], "P1 Required", "Operations Lead", "In Progress", "S", 7, ["frontend/src/pages/AdminMasterRoadmapPage.jsx"], ["backend/routes/master_roadmap.py"], ["/api/master-roadmap/final-acceptance"], ["Acceptance endpoint check"], ["Finale Tabelle enthält ehrliche Readiness-Daten"], "Low", "Low", "High", completion_percentage=60),
+        _task("P8-BLOCKERS-002", "Remaining P0/P1 issue register", "Exakte verbleibende P0- und P1-Themen mit Build IDs, Workflows, Commit Hash und Beta-Readiness ausgeben.", PHASES[7]["title"], "P1 Required", "Operations Lead", "In Progress", "S", 7, ["frontend/src/pages/AdminMasterRoadmapPage.jsx"], ["backend/routes/master_roadmap.py", "backend/build_info.json"], ["/api/master-roadmap/final-acceptance"], ["Acceptance endpoint check"], ["Offene P0/P1-Issues sind vollständig und nicht geschönt"], "Low", "Low", "Critical", completion_percentage=60),
+    ])
+    return tasks
 
 
 def _feature_registry_seed() -> list[dict[str, Any]]:
-    def item(key: str, name: str, phase: str, enabled_dev: bool, enabled_test: bool, enabled_web: bool, enabled_ios: bool, enabled_android: bool, store_safe: bool, requires_kyc: bool, requires_payment_license: bool, requires_manual_approval: bool, notes: str = ""):
+    def item(
+        key: str,
+        name: str,
+        phase: str,
+        enabled_dev: bool,
+        enabled_test: bool,
+        enabled_staging: bool,
+        enabled_web: bool,
+        enabled_ios: bool,
+        enabled_android: bool,
+        store_safe: bool,
+        requires_kyc: bool,
+        requires_payment_license: bool,
+        requires_manual_approval: bool,
+        notes: str = "",
+    ) -> dict[str, Any]:
         return {
             "module_key": key,
             "name": name,
             "phase": phase,
             "enabled_in_development": enabled_dev,
             "enabled_in_test": enabled_test,
+            "enabled_in_staging": enabled_staging,
             "enabled_in_web_production": enabled_web,
             "enabled_in_ios": enabled_ios,
             "enabled_in_android": enabled_android,
@@ -196,140 +434,187 @@ def _feature_registry_seed() -> list[dict[str, Any]]:
         }
 
     return [
-        item("login", "Login & Registrierung", "PHASE 2 – CORE PRODUCT", True, True, True, True, True, True, False, False, False),
-        item("wallet", "Wallet", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, False, False, True, True, "Bis zur Wallet-Härtung nicht produktionsreif."),
-        item("send_money", "Geld senden", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, False, False, True, True),
-        item("receive_money", "Geld empfangen", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, False, False, True, True),
-        item("qr_payment", "QR Payment", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, False, False, True, True),
-        item("merchant", "Merchant", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, False, True, True, True),
-        item("pos", "POS", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, False, True, True, True),
-        item("admin", "Admin Dashboard", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, True, False, False, True),
-        item("notifications", "Notifications", "PHASE 2 – CORE PRODUCT", True, True, False, False, False, True, False, False, False),
-        item("support", "Support", "PHASE 2 – CORE PRODUCT", True, True, True, True, True, True, False, False, False),
-        item("legal", "Legal Pages", "PHASE 2 – CORE PRODUCT", True, True, True, True, True, True, False, False, False),
-        item("investor_portal", "Investor Portal", "PHASE 4 – INVESTORS", True, True, False, False, False, True, False, False, True),
-        item("auctions", "Auctions", "PHASE 6 – OPTIONAL MODULES", True, True, False, False, False, False, False, False, True, "Optional module stays disabled for production launch."),
-        item("taxi", "Taxi", "PHASE 6 – OPTIONAL MODULES", True, True, False, False, False, False, False, True, True, "Optional module stays disabled for production launch."),
-        item("scooter", "Scooter", "PHASE 6 – OPTIONAL MODULES", True, False, False, False, False, False, True, True, True),
-        item("hotels", "Hotels", "PHASE 6 – OPTIONAL MODULES", False, False, False, False, False, False, False, False, True),
-        item("flights", "Flights", "PHASE 6 – OPTIONAL MODULES", False, False, False, False, False, False, False, False, True),
-        item("marketplace", "Marketplace", "PHASE 6 – OPTIONAL MODULES", True, False, False, False, False, False, False, False, True),
-        item("kids", "Kids", "PHASE 6 – OPTIONAL MODULES", True, False, False, False, False, False, False, False, True),
-        item("gaming", "Gaming", "PHASE 6 – OPTIONAL MODULES", True, False, False, False, False, False, False, False, True),
-        item("crypto", "Crypto", "PHASE 6 – OPTIONAL MODULES", True, False, False, False, False, False, True, True, True),
-        item("mining", "Mining", "PHASE 6 – OPTIONAL MODULES", True, False, False, False, False, False, False, False, True),
+        item("account", "Account", PHASES[1]["title"], True, True, True, True, True, True, True, False, False, False),
+        item("auth", "Registration / Login", PHASES[1]["title"], True, True, True, True, True, True, True, False, False, False),
+        item("wallet", "Wallet", PHASES[1]["title"], True, True, True, False, False, False, False, True, True, True, "Bis Wallet-P0 geschlossen ist kein Produktions-Release."),
+        item("qr", "QR", PHASES[1]["title"], True, True, True, True, True, True, True, False, True, True),
+        item("merchant", "Merchant", PHASES[2]["title"], True, True, True, True, True, True, True, True, True, True),
+        item("transaction_history", "Transaction History", PHASES[1]["title"], True, True, True, True, True, True, True, False, False, False),
+        item("support", "Support", PHASES[1]["title"], True, True, True, True, True, True, True, False, False, False),
+        item("notifications", "Notifications", PHASES[1]["title"], True, True, True, True, True, True, True, False, False, False),
+        item("profile", "Profile", PHASES[1]["title"], True, True, True, True, True, True, True, False, False, False),
+        item("legal", "Legal Pages", PHASES[5]["title"], True, True, True, True, True, True, True, False, False, False),
+        item("auctions", "Auctions", PHASES[5]["title"], True, True, False, False, False, False, False, False, False, True, "Store-safe Build muss Auktionen sperren."),
+        item("live_auctions", "Live Auctions", PHASES[5]["title"], True, False, False, False, False, False, False, False, False, True),
+        item("gaming", "Gaming", PHASES[5]["title"], True, False, False, False, False, False, False, False, False, True),
+        item("lottery", "Lottery", PHASES[5]["title"], True, False, False, False, False, False, False, False, False, True),
+        item("mining", "Mining investment", PHASES[5]["title"], True, False, False, False, False, False, False, False, False, True),
+        item("crypto", "Crypto investment", PHASES[5]["title"], True, False, False, False, False, False, False, True, True, True),
+        item("bnpl", "BNPL / Lending", PHASES[5]["title"], True, False, False, False, False, False, False, True, True, True),
+        item("instant_credit", "Instant Credit / Lending", PHASES[5]["title"], True, False, False, False, False, False, False, True, True, True),
     ]
 
 
-def _phase_seed() -> list[dict[str, Any]]:
+def _version_snapshot() -> dict[str, Any]:
+    build_info = _build_info()
+    frontend_version = _safe_json(FRONTEND_DIR / "public" / "version.json")
+    ios_root_version = _safe_json(IOS_ROOT_PUBLIC_DIR / "version.json")
+    ios_frontend_version = _safe_json(IOS_FRONTEND_PUBLIC_DIR / "version.json")
+    web_build_exists = (FRONTEND_BUILD_DIR / "index.html").exists()
+    ios_root_exists = IOS_ROOT_PUBLIC_DIR.exists()
+    ios_frontend_exists = IOS_FRONTEND_PUBLIC_DIR.exists()
+    same_ios_bundle = (ios_root_version or {}).get("build_id") == (ios_frontend_version or {}).get("build_id") if ios_root_version and ios_frontend_version else False
+    return {
+        "build_info": build_info,
+        "web_version_file": frontend_version,
+        "ios_root_version_file": ios_root_version,
+        "ios_frontend_version_file": ios_frontend_version,
+        "web_build_exists": web_build_exists,
+        "ios_root_bundle_exists": ios_root_exists,
+        "ios_frontend_bundle_exists": ios_frontend_exists,
+        "ios_bundle_parity": same_ios_bundle,
+        "asset_delivery": "local_bundle" if ios_root_exists else "unknown",
+    }
+
+
+def _environment_snapshot() -> dict[str, Any]:
+    frontend_env = _read_env_file(FRONTEND_DIR / ".env")
+    frontend_prod_env = _read_env_file(FRONTEND_DIR / ".env.production")
+    backend_env = _read_env_file(BASE_DIR / "backend" / ".env")
+    return {
+        "frontend_env": {
+            "REACT_APP_DISABLE_KYC": frontend_env.get("REACT_APP_DISABLE_KYC"),
+            "REACT_APP_TEST_MODE": frontend_env.get("REACT_APP_TEST_MODE"),
+            "REACT_APP_TEST_MODE_FULL_ACCESS": frontend_env.get("REACT_APP_TEST_MODE_FULL_ACCESS"),
+            "REACT_APP_DEMO_MODE": frontend_env.get("REACT_APP_DEMO_MODE"),
+            "REACT_APP_MOCK_PAYMENTS": frontend_env.get("REACT_APP_MOCK_PAYMENTS"),
+            "REACT_APP_STORE_SAFE_MODE": frontend_env.get("REACT_APP_STORE_SAFE_MODE"),
+        },
+        "frontend_production_env": {
+            "REACT_APP_DISABLE_KYC": frontend_prod_env.get("REACT_APP_DISABLE_KYC"),
+            "REACT_APP_DEMO_MODE": frontend_prod_env.get("REACT_APP_DEMO_MODE"),
+            "REACT_APP_MOCK_PAYMENTS": frontend_prod_env.get("REACT_APP_MOCK_PAYMENTS"),
+            "REACT_APP_STORE_SAFE_MODE": frontend_prod_env.get("REACT_APP_STORE_SAFE_MODE"),
+        },
+        "backend_env": {
+            "TEST_MODE": backend_env.get("TEST_MODE"),
+            "DEMO_MODE": backend_env.get("DEMO_MODE"),
+            "DB_NAME": backend_env.get("DB_NAME"),
+        },
+    }
+
+
+def _workflow_snapshot(latest_qa: dict[str, Any]) -> list[dict[str, Any]]:
+    qa_ok = latest_qa.get("critical_issues", 1) == 0 and latest_qa.get("failed", 1) == 0 and latest_qa.get("pages_scanned", 0) > 0
+    eslint_file = FRONTEND_DIR / "package.json"
     return [
-        {"phase_id": "phase-1", "title": "PHASE 1 – LAUNCH BLOCKERS", "priority": "P0", "description": "Stabilize launch blockers before any release claim.", "sort_order": 1},
-        {"phase_id": "phase-2", "title": "PHASE 2 – CORE PRODUCT", "priority": "P1", "description": "Complete the required core product set.", "sort_order": 2},
-        {"phase_id": "phase-3", "title": "PHASE 3 – QUALITY", "priority": "P1", "description": "Hardening, QA and release controls.", "sort_order": 3},
-        {"phase_id": "phase-4", "title": "PHASE 4 – INVESTORS", "priority": "P2", "description": "Restricted investor-facing delivery.", "sort_order": 4},
-        {"phase_id": "phase-5", "title": "PHASE 5 – GROWTH", "priority": "P2", "description": "Growth only after the platform is controlled.", "sort_order": 5},
-        {"phase_id": "phase-6", "title": "PHASE 6 – OPTIONAL MODULES", "priority": "P3", "description": "Optional modules stay disabled until launch stability is proven.", "sort_order": 6},
+        {"key": "frontend_build", "label": "frontend build", "status": "verified" if (FRONTEND_BUILD_DIR / "index.html").exists() else "blocked", "notes": "Lokaler Build-Output vorhanden."},
+        {"key": "backend_tests", "label": "backend tests", "status": "blocked", "notes": "Globale Pytest-Suite ist historisch instabil und nicht als grün belegbar."},
+        {"key": "eslint", "label": "ESLint", "status": "incomplete" if eslint_file.exists() else "blocked", "notes": "Projekt enthält bekannte Alt-Warnungen; finaler grüner Pflichtlauf fehlt."},
+        {"key": "playwright", "label": "Playwright", "status": "verified" if qa_ok else "blocked", "notes": "Leitet sich aus dem letzten Visual-QA-/Browser-Lauf ab."},
+        {"key": "visual_qa", "label": "visual QA", "status": "verified" if qa_ok else "blocked", "notes": "Letzter Lauf muss fehlerfrei und ohne kritische Issues sein."},
+        {"key": "security_checks", "label": "security checks", "status": "blocked", "notes": "Geheimer/Produktions-Sicherheitsaudit noch offen."},
+        {"key": "production_preflight", "label": "production preflight", "status": "blocked", "notes": "P0-Blocker verhindern aktuell jeden Production-Preflight."},
     ]
 
 
-async def _ensure_seed_data():
-    await db.master_roadmap_tasks.create_index("task_id", unique=True)
-    await db.master_roadmap_tasks.create_index("phase")
-    await db.master_roadmap_feature_registry.create_index("module_key", unique=True)
-    await db.master_roadmap_release_gates.create_index("gate_key", unique=True)
-    await db.master_roadmap_meta.create_index("meta_key", unique=True)
-    await db.master_roadmap_audit.create_index("created_at")
+def _wallet_diagnostics() -> dict[str, Any]:
+    wallet_source = (BASE_DIR / "backend" / "routes" / "wallet.py").read_text(encoding="utf-8")
+    super_app_source = (BASE_DIR / "backend" / "routes" / "super_app_features.py").read_text(encoding="utf-8")
+    duplicate_balance_endpoints = wallet_source.count('@router.get("/balance")')
+    has_legacy_super_app_balance = '"/wallet/balance"' in super_app_source
+    return {
+        "canonical_visible_source": "users.balance",
+        "duplicate_balance_endpoints": duplicate_balance_endpoints,
+        "has_legacy_super_app_balance": has_legacy_super_app_balance,
+        "approved_engine_required": True,
+        "reconciliation_endpoint": "/api/admin/wallet/reconciliation",
+        "status": "blocked" if duplicate_balance_endpoints > 1 or has_legacy_super_app_balance else "verified",
+    }
 
-    if await db.master_roadmap_tasks.count_documents({}) == 0:
-        await db.master_roadmap_tasks.insert_many(_phase_task_defs())
-    if await db.master_roadmap_feature_registry.count_documents({}) == 0:
-        await db.master_roadmap_feature_registry.insert_many(_feature_registry_seed())
-    if await db.master_roadmap_meta.count_documents({"meta_key": "phases"}) == 0:
-        await db.master_roadmap_meta.insert_one({"meta_key": "phases", "items": _phase_seed(), "updated_at": _now_iso()})
+
+def _release_gate_seed(tasks: list[dict[str, Any]], latest_qa: dict[str, Any]) -> list[dict[str, Any]]:
+    version_snapshot = _version_snapshot()
+    env_snapshot = _environment_snapshot()
+    workflows = _workflow_snapshot(latest_qa)
+    wallet = _wallet_diagnostics()
+
+    frontend_build_ok = version_snapshot["web_build_exists"]
+    production_disable_kyc = (env_snapshot["frontend_production_env"].get("REACT_APP_DISABLE_KYC") or "").lower() in {"1", "true", "yes", "on"}
+    production_demo_mode = (env_snapshot["frontend_production_env"].get("REACT_APP_DEMO_MODE") or "").lower() in {"1", "true", "yes", "on"}
+    production_mock_payments = (env_snapshot["frontend_production_env"].get("REACT_APP_MOCK_PAYMENTS") or "").lower() in {"1", "true", "yes", "on"}
+    ios_parity_ok = bool(version_snapshot["ios_bundle_parity"])
+    qa_ok = latest_qa.get("critical_issues", 1) == 0 and latest_qa.get("failed", 1) == 0 and latest_qa.get("pages_scanned", 0) > 0
+
+    workflow_map = {item["key"]: item for item in workflows}
+    gates = [
+        {"gate_key": "wallet_consistency", "label": "Wallet consistency", "status": wallet["status"], "recorded_value": f"duplicate_balance_endpoints={wallet['duplicate_balance_endpoints']}", "notes": "Eine kanonische EUR-Quelle ist Pflicht vor Beta."},
+        {"gate_key": "environment_separation", "label": "Environment separation", "status": "blocked" if (production_disable_kyc or production_demo_mode or production_mock_payments) else "incomplete", "recorded_value": f"disable_kyc={production_disable_kyc},demo={production_demo_mode},mock={production_mock_payments}", "notes": "Production darf keine Test-/Demo-/Mock-Konfiguration tragen."},
+        {"gate_key": "version_parity", "label": "Web / iOS / Android parity", "status": "incomplete" if frontend_build_ok else "blocked", "recorded_value": f"web_build={frontend_build_ok},ios_bundle_parity={ios_parity_ok}", "notes": "Alle Plattformen müssen denselben freigegebenen Frontend-Commit verwenden."},
+        {"gate_key": "frontend_build", "label": "Frontend build", "status": "verified" if frontend_build_ok else "blocked", "recorded_value": str(frontend_build_ok).lower(), "notes": workflow_map["frontend_build"]["notes"]},
+        {"gate_key": "backend_tests", "label": "Backend tests", "status": workflow_map["backend_tests"]["status"], "recorded_value": "global-suite-unstable", "notes": workflow_map["backend_tests"]["notes"]},
+        {"gate_key": "eslint", "label": "ESLint", "status": workflow_map["eslint"]["status"], "recorded_value": "pending-clean-run", "notes": workflow_map["eslint"]["notes"]},
+        {"gate_key": "playwright", "label": "Playwright", "status": workflow_map["playwright"]["status"], "recorded_value": latest_qa.get("status", "unknown"), "notes": workflow_map["playwright"]["notes"]},
+        {"gate_key": "visual_qa", "label": "Visual QA", "status": workflow_map["visual_qa"]["status"], "recorded_value": str(latest_qa.get("critical_issues", 0)), "notes": workflow_map["visual_qa"]["notes"]},
+        {"gate_key": "security_checks", "label": "Security checks", "status": workflow_map["security_checks"]["status"], "recorded_value": "pending", "notes": workflow_map["security_checks"]["notes"]},
+        {"gate_key": "production_preflight", "label": "Production preflight", "status": workflow_map["production_preflight"]["status"], "recorded_value": "blocked-by-open-p0", "notes": workflow_map["production_preflight"]["notes"]},
+        {"gate_key": "store_safe_release", "label": "Store-safe release", "status": "incomplete", "recorded_value": env_snapshot["frontend_production_env"].get("REACT_APP_STORE_SAFE_MODE") or "unknown", "notes": "Store-safe Mobile-Konfiguration und Reviewer-Oberfläche müssen separat freigegeben werden."},
+        {"gate_key": "final_acceptance_report", "label": "Final acceptance report", "status": "incomplete", "recorded_value": "draft", "notes": "Die finale Tabelle darf erst bei geschlossenen P0 sauber grün werden."},
+    ]
+    return [{**gate, "updated_at": _now_iso()} for gate in gates]
 
 
 def _readiness_color(statuses: list[str]) -> str:
     lowered = {status.lower() for status in statuses}
     if lowered == {"completed"}:
         return "green"
-    if "blocked" in lowered or "backlog" in lowered or "ready" in lowered:
+    if lowered & {"blocked", "backlog", "ready"}:
         return "red"
     return "yellow"
 
 
-async def _release_gate_seed(tasks: list[dict[str, Any]], latest_qa: dict[str, Any]) -> list[dict[str, Any]]:
-    build_info = _build_info()
-    frontend_build_passes = (Path(__file__).resolve().parent.parent.parent / "frontend" / "build" / "index.html").exists()
-    production_test_mode = (os.environ.get("REACT_APP_DISABLE_KYC") or "").lower() in {"1", "true", "yes", "on"}
-    hardcoded_restore_present = True
-    qa_passed = latest_qa.get("critical_issues", 1) == 0 and latest_qa.get("failed", 1) == 0 and latest_qa.get("pages_scanned", 0) > 0
-    gates = [
-        {"gate_key": "frontend_build", "label": "Frontend build passes", "status": "verified" if frontend_build_passes else "blocked", "recorded_value": str(frontend_build_passes).lower(), "notes": "Uses latest local production build output."},
-        {"gate_key": "backend_tests", "label": "Backend tests pass", "status": "blocked", "recorded_value": "broken-suite", "notes": "Global backend pytest suite is still unstable."},
-        {"gate_key": "wallet_tests", "label": "Wallet tests pass", "status": "blocked", "recorded_value": "not-verified", "notes": "Wallet consistency work is still open."},
-        {"gate_key": "auth_tests", "label": "Authentication tests pass", "status": "incomplete", "recorded_value": "partial", "notes": "Auth/security review is still in progress."},
-        {"gate_key": "playwright_tests", "label": "Playwright tests pass", "status": "verified" if qa_passed else "blocked", "recorded_value": latest_qa.get("status", "unknown"), "notes": "Visual browser suite depends on latest recorded QA run."},
-        {"gate_key": "no_critical_visual_qa", "label": "No critical visual QA issues", "status": "verified" if latest_qa.get("critical_issues", 1) == 0 else "blocked", "recorded_value": str(latest_qa.get("critical_issues", 0)), "notes": "Derived from latest visual QA run."},
-        {"gate_key": "no_exposed_secrets", "label": "No exposed secrets", "status": "blocked" if hardcoded_restore_present else "verified", "recorded_value": "legacy-runtime-data-present", "notes": "Legacy runtime restore data still exists in backend/server.py."},
-        {"gate_key": "no_production_test_mode", "label": "No production TEST_MODE", "status": "blocked" if production_test_mode else "verified", "recorded_value": str(production_test_mode).lower(), "notes": "KYC test bypass is still active for testing."},
-        {"gate_key": "legal_routes", "label": "No broken legal routes", "status": "incomplete", "recorded_value": "not-verified", "notes": "Legal routes need explicit production verification."},
-        {"gate_key": "backup_verified", "label": "Backup verified", "status": "blocked", "recorded_value": "not-verified", "notes": "Restore drill has not been signed off."},
-        {"gate_key": "rollback_plan", "label": "Rollback plan documented", "status": "incomplete", "recorded_value": "missing", "notes": "Rollback plan still needs formal documentation."},
-        {"gate_key": "mobile_build_status", "label": "iOS and Android build status recorded", "status": "incomplete", "recorded_value": f"ios={build_info.get('ios_version', 'unknown')} android={build_info.get('android_version', 'unknown')}", "notes": "iOS/Android statuses are not yet fully verified for release."},
-    ]
-    return [{**gate, "updated_at": _now_iso()} for gate in gates]
-
-
-async def _load_release_gates(tasks: list[dict[str, Any]], latest_qa: dict[str, Any]) -> list[dict[str, Any]]:
-    existing = await db.master_roadmap_release_gates.find({}, {"_id": 0}).sort("gate_key", 1).to_list(100)
-    if existing:
-        return existing
-    seeded = await _release_gate_seed(tasks, latest_qa)
-    if seeded:
-        await db.master_roadmap_release_gates.insert_many(seeded)
-    return seeded
-
-
-def _launch_readiness(tasks: list[dict[str, Any]]) -> dict[str, Any]:
-    task_ids = {
-        "wallet_safety": ["P1-001", "P1-002", "P1-003", "P1-004"],
-        "authentication": ["P1-008", "P2-001"],
-        "payments": ["P1-009", "P2-003", "P2-004", "P2-006"],
-        "merchant": ["P2-008", "P2-009"],
-        "pos": ["P2-010"],
-        "backend": ["P1-004", "P3-009", "P3-010"],
-        "web_production": ["P1-011", "P3-011"],
-        "ios": ["P1-012"],
-        "android": ["P1-013"],
-        "security": ["P1-007", "P1-008", "P3-008"],
-        "legal": ["P2-014"],
-        "monitoring": ["P3-004"],
-        "backups": ["P1-010"],
-    }
-    task_map = {task["task_id"]: task for task in tasks}
-    items = []
-    for key, ids in task_ids.items():
-      statuses = [task_map[task_id]["status"] for task_id in ids if task_id in task_map]
-      items.append({
-          "key": key,
-          "label": key.replace("_", " ").title(),
-          "color": _readiness_color(statuses),
-          "task_ids": ids,
-          "statuses": statuses,
-      })
-    p0_open = [task for task in tasks if task["priority"] == "P0 Critical" and task["status"] != "Completed"]
-    return {"items": items, "launch_ready": len(p0_open) == 0, "open_p0_tasks": len(p0_open)}
-
-
 def _phase_summary(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    phases = _phase_seed()
     result = []
-    for phase in phases:
+    for phase in PHASES:
         phase_tasks = [task for task in tasks if task["phase"] == phase["title"]]
         completed = sum(1 for task in phase_tasks if task["status"] == "Completed")
         avg_progress = round(sum(task.get("completion_percentage", 0) for task in phase_tasks) / max(1, len(phase_tasks)))
         result.append({**phase, "task_count": len(phase_tasks), "completed": completed, "average_completion": avg_progress})
     return result
+
+
+def _launch_readiness(tasks: list[dict[str, Any]], release_gates: list[dict[str, Any]]) -> dict[str, Any]:
+    p0_open = [task for task in tasks if task["priority"] == "P0 Critical" and task["status"] != "Completed"]
+    blocked_gates = [gate for gate in release_gates if gate["status"] != "verified"]
+    sections = {
+        "wallet_consistency": ["P1-WALLET-001"],
+        "environment_separation": ["P1-ENV-001"],
+        "version_parity": ["P1-PARITY-001"],
+        "github_actions": ["P1-CI-001"],
+        "core_user_flows": [task["task_id"] for task in tasks if task["phase"] == PHASES[1]["title"]],
+        "merchant_admin": [task["task_id"] for task in tasks if task["phase"] == PHASES[2]["title"]],
+        "mobile_quality": [task["task_id"] for task in tasks if task["phase"] == PHASES[3]["title"]],
+        "translation_audit": [task["task_id"] for task in tasks if task["phase"] == PHASES[4]["title"]],
+        "store_safe": [task["task_id"] for task in tasks if task["phase"] == PHASES[5]["title"]],
+    }
+    task_map = {task["task_id"]: task for task in tasks}
+    items = []
+    for key, ids in sections.items():
+        statuses = [task_map[task_id]["status"] for task_id in ids if task_id in task_map]
+        items.append({
+            "key": key,
+            "label": key.replace("_", " ").title(),
+            "color": _readiness_color(statuses),
+            "task_ids": ids,
+            "statuses": statuses,
+        })
+    return {
+        "items": items,
+        "launch_ready": len(p0_open) == 0 and not blocked_gates,
+        "open_p0_tasks": len(p0_open),
+        "blocked_gates": len(blocked_gates),
+        "message": "Launch Ready bleibt false, solange P0 offen oder Gates nicht verifiziert sind.",
+    }
 
 
 def _ceo_view(tasks: list[dict[str, Any]], release_gates: list[dict[str, Any]], latest_qa: dict[str, Any]) -> dict[str, Any]:
@@ -341,83 +626,157 @@ def _ceo_view(tasks: list[dict[str, Any]], release_gates: list[dict[str, Any]], 
     p0_blockers = [task for task in tasks if task["priority"] == "P0 Critical" and task["status"] != "Completed"]
     security_risks = [task for task in tasks if task["security_impact"] in {"High", "Critical"} and task["status"] != "Completed"][:10]
     financial_risks = [task for task in tasks if task["financial_impact"] in {"High", "Critical"} and task["status"] != "Completed"][:10]
-    next_five = sorted([task for task in tasks if task["status"] != "Completed"], key=lambda task: (PRIORITY_ORDER.index(task["priority"]), STATUS_ORDER.index(task["status"])) )[:5]
+    next_five = sorted(
+        [task for task in tasks if task["status"] != "Completed"],
+        key=lambda task: (PRIORITY_ORDER.index(task["priority"]), STATUS_ORDER.index(task["status"]), task["task_id"]),
+    )[:5]
     return {
         "p0_blockers": p0_blockers,
         "tasks_completed_this_week": completed_this_week,
         "tasks_delayed": delayed,
-        "upcoming_release": next((gate for gate in release_gates if gate["gate_key"] == "frontend_build"), {}),
-        "current_production_version": build_info.get("frontend_version") or "unknown",
-        "current_ios_version": build_info.get("ios_version") or "unknown",
-        "current_android_version": build_info.get("android_version") or "unknown",
+        "current_web_build_id": build_info.get("build_id") or "unknown",
+        "current_web_commit": build_info.get("git_commit") or "unknown",
+        "current_staging_url": build_info.get("public_base_url") or build_info.get("api_base_url") or "unknown",
         "open_security_risks": security_risks,
         "open_financial_risks": financial_risks,
         "next_five_priorities": next_five,
         "latest_visual_qa": latest_qa,
+        "release_gates": release_gates,
     }
 
 
 async def _investor_view_payload(tasks: list[dict[str, Any]], feature_registry: list[dict[str, Any]]) -> dict[str, Any]:
-    updates = await db.investor_updates.find({"is_active": True}, {"_id": 0, "title": 1, "summary": 1, "published_at": 1}).sort("published_at", -1).limit(6).to_list(6)
+    updates = await db.investor_updates.find(
+        {"is_active": True},
+        {"_id": 0, "title": 1, "summary": 1, "published_at": 1},
+    ).sort("published_at", -1).limit(6).to_list(6)
     build_info = _build_info()
-    completed = [task for task in tasks if task["phase"] in {"PHASE 1 – LAUNCH BLOCKERS", "PHASE 2 – CORE PRODUCT", "PHASE 3 – QUALITY"} and task["status"] == "Completed"][:8]
-    current_phase = next((phase for phase in _phase_summary(tasks) if phase["average_completion"] < 100), _phase_summary(tasks)[-1])
-    next_milestones = [task for task in tasks if task["status"] in {"Ready", "In Progress", "Testing", "In Review"}][:8]
-    product_status = [item for item in feature_registry if item["phase"] != "PHASE 6 – OPTIONAL MODULES"][:10]
+    completed = [task for task in tasks if task["status"] == "Completed"][:8]
+    current_phase = next((phase for phase in _phase_summary(tasks) if phase["average_completion"] < 100), PHASES[-1])
+    next_milestones = [task for task in tasks if task["status"] in {"Ready", "In Progress", "Testing", "In Review", "Manual Approval"}][:8]
+    sanitized_registry = [
+        {
+            "module_key": item["module_key"],
+            "name": item["name"],
+            "enabled_in_development": item["enabled_in_development"],
+            "enabled_in_test": item["enabled_in_test"],
+            "enabled_in_staging": item.get("enabled_in_staging", False),
+            "enabled_in_web_production": item["enabled_in_web_production"],
+        }
+        for item in feature_registry
+        if item["module_key"] not in {"wallet", "qr", "merchant", "support", "notifications", "profile", "auth", "account", "legal", "transaction_history"}
+        or True
+    ]
     return {
         "completed_milestones": [{"task_id": task["task_id"], "title": task["title"], "phase": task["phase"]} for task in completed],
-        "current_development_phase": {"title": current_phase["title"], "priority": current_phase["priority"], "average_completion": current_phase["average_completion"]},
+        "current_development_phase": {
+            "title": current_phase["title"],
+            "priority": current_phase["priority"],
+            "average_completion": current_phase.get("average_completion", 0),
+        },
         "next_planned_milestones": [{"task_id": task["task_id"], "title": task["title"], "phase": task["phase"], "target_date": task.get("target_date")} for task in next_milestones],
-        "released_app_versions": {"web": build_info.get("frontend_version") or "unknown", "ios": build_info.get("ios_version") or "unknown", "android": build_info.get("android_version") or "unknown"},
-        "product_status": [{"module_key": item["module_key"], "name": item["name"], "enabled_in_development": item["enabled_in_development"], "enabled_in_test": item["enabled_in_test"], "enabled_in_web_production": item["enabled_in_web_production"]} for item in product_status],
-        "financing_use_categories": ["Technology", "Security", "Compliance", "Operations", "Go-to-market"],
+        "released_app_versions": {
+            "web": build_info.get("build_id") or "unknown",
+            "ios": _version_snapshot()["ios_root_version_file"].get("buildId") or "unknown",
+            "android": "unknown",
+        },
+        "product_status": sanitized_registry[:10],
+        "financing_use_categories": ["Technology", "Security", "Compliance", "Operations", "Controlled beta"],
         "approved_company_updates": updates,
+        "disclosure_policy": "Keine Kundendaten, Credentials, Sicherheitsdetails, Quellcode, privaten Finanzdaten oder offenen Schwachstellen in dieser Ansicht.",
     }
 
 
-async def sync_visual_qa_issues_to_master_roadmap(issues: list[dict[str, Any]], commit_hash: str = "", branch: str = ""):
-    await _ensure_seed_data()
-    for issue in issues:
-        severity = str(issue.get("severity", "medium")).lower()
-        priority = "P0 Critical" if severity in {"critical", "high"} else "P1 Required"
-        task_id = f"QA-{issue.get('issue_id', 'UNKNOWN')}"
-        task_doc = _task(
-            task_id,
-            f"Visual QA: {issue.get('problem', 'Issue')[:96]}",
-            issue.get("suggested_fix") or issue.get("problem") or "Visual QA issue imported from automation.",
-            "PHASE 3 – QUALITY",
-            priority,
-            "QA Lead",
-            "Testing" if issue.get("safe_to_auto_fix") else "In Review",
-            "S",
-            7,
-            [issue.get("source_file") or route_file_hint(issue.get("route", ""), issue.get("category", ""))],
-            [],
-            [issue.get("route", "")],
-            ["Replay Playwright route and verify screenshot issue."],
-            ["Issue no longer visible on affected route and viewport."],
-            "Medium",
-            "Low",
-            "High" if priority == "P0 Critical" else "Medium",
-            completion_percentage=0,
-            notes=f"Viewport: {issue.get('viewport', '')} | Component: {issue.get('affected_component', '')} | Screenshot: {issue.get('before_screenshot', '')} | Branch: {branch} | Commit: {commit_hash}",
-        )
-        task_doc["external_issue_meta"] = {
-            "severity": severity,
-            "route": issue.get("route", ""),
-            "viewport": issue.get("viewport", ""),
-            "affected_component": issue.get("affected_component", ""),
-            "suggested_fix": issue.get("suggested_fix", ""),
-            "safe_to_auto_fix": bool(issue.get("safe_to_auto_fix", False)),
-            "before_screenshot": issue.get("before_screenshot", ""),
-            "after_screenshot": issue.get("after_screenshot", ""),
-        }
-        await db.master_roadmap_tasks.update_one({"task_id": task_id}, {"$set": task_doc}, upsert=True)
+def _final_acceptance_report(tasks: list[dict[str, Any]], release_gates: list[dict[str, Any]], feature_registry: list[dict[str, Any]]) -> dict[str, Any]:
+    build_info = _build_info()
+    version_snapshot = _version_snapshot()
+    readiness = _launch_readiness(tasks, release_gates)
+    task_map = {task["task_id"]: task for task in tasks}
+
+    def phase_ready(phase_title: str) -> bool:
+        phase_tasks = [task for task in tasks if task["phase"] == phase_title]
+        return bool(phase_tasks) and all(task["status"] == "Completed" for task in phase_tasks)
+
+    rows = [
+        {"feature": "Launch blockers", "web_status": "blocked" if any(task_map[k]["status"] != "Completed" for k in ["P1-WALLET-001", "P1-ENV-001", "P1-PARITY-001", "P1-CI-001"] if k in task_map) else "ready", "ios_status": "incomplete", "android_status": "blocked", "backend_status": "blocked", "tests": "partial", "blocker": "Open P0 tasks", "ready_for_beta": False},
+        {"feature": "Core user flows", "web_status": "in-progress" if not phase_ready(PHASES[1]["title"]) else "ready", "ios_status": "incomplete", "android_status": "incomplete", "backend_status": "in-progress", "tests": "partial", "blocker": "Flow matrix unfinished", "ready_for_beta": False},
+        {"feature": "Merchant and admin", "web_status": "in-progress" if not phase_ready(PHASES[2]["title"]) else "ready", "ios_status": "n/a", "android_status": "n/a", "backend_status": "in-progress", "tests": "partial", "blocker": "Crash hardening still open", "ready_for_beta": False},
+        {"feature": "Mobile quality", "web_status": "in-progress", "ios_status": "in-progress", "android_status": "in-progress", "backend_status": "n/a", "tests": "partial", "blocker": "Viewport matrix unfinished", "ready_for_beta": False},
+        {"feature": "Translation audit", "web_status": "in-progress", "ios_status": "in-progress", "android_status": "in-progress", "backend_status": "n/a", "tests": "partial", "blocker": "Visible untranslated text remains", "ready_for_beta": False},
+        {"feature": "Store-safe release", "web_status": "incomplete", "ios_status": "in-progress", "android_status": "in-progress", "backend_status": "n/a", "tests": "partial", "blocker": "Store-safe gating not fully signed off", "ready_for_beta": False},
+        {"feature": "Release artifacts", "web_status": "partial", "ios_status": "partial", "android_status": "blocked", "backend_status": "n/a", "tests": "n/a", "blocker": "Real IPA/AAB not evidenced", "ready_for_beta": False},
+    ]
+
+    p0_issues = [task for task in tasks if task["priority"] == "P0 Critical" and task["status"] != "Completed"]
+    p1_issues = [task for task in tasks if task["priority"] == "P1 Required" and task["status"] != "Completed"]
+    passed_workflows = [gate["label"] for gate in release_gates if gate["status"] == "verified"]
+    build_ids = {
+        "web": build_info.get("build_id") or "unknown",
+        "frontend_commit": build_info.get("git_commit") or "unknown",
+        "frontend_version_file": version_snapshot["web_version_file"].get("buildId") or version_snapshot["web_version_file"].get("build_id") or "unknown",
+        "ios_root_bundle": version_snapshot["ios_root_version_file"].get("buildId") or version_snapshot["ios_root_version_file"].get("build_id") or "unknown",
+        "ios_frontend_bundle": version_snapshot["ios_frontend_version_file"].get("buildId") or version_snapshot["ios_frontend_version_file"].get("build_id") or "unknown",
+        "android": "unknown",
+    }
+    production_url = os.environ.get("PRODUCTION_URL") or "unknown"
+
+    return {
+        "rows": rows,
+        "remaining_p0_issues": [{"task_id": task["task_id"], "title": task["title"], "status": task["status"]} for task in p0_issues],
+        "remaining_p1_issues": [{"task_id": task["task_id"], "title": task["title"], "status": task["status"]} for task in p1_issues],
+        "files_changed": sorted({path for task in tasks for path in (task.get("affected_frontend_files", []) + task.get("affected_backend_files", [])) if path})[:200],
+        "workflows_passed": passed_workflows,
+        "build_ids": build_ids,
+        "commit_hash": build_info.get("git_commit") or "unknown",
+        "staging_url": build_info.get("public_base_url") or build_info.get("api_base_url") or "unknown",
+        "production_url": production_url,
+        "testflight_readiness": "not_ready" if any(task["phase"] in {PHASES[0]["title"], PHASES[5]["title"], PHASES[6]["title"]} and task["status"] != "Completed" for task in tasks) else "ready",
+        "google_play_readiness": "blocked" if any(task["task_id"] == "P1-PARITY-001" and task["status"] != "Completed" for task in tasks) else "ready",
+        "ready_for_beta": readiness["launch_ready"],
+        "registry_snapshot": [{"module_key": item["module_key"], "name": item["name"], "enabled_in_web_production": item["enabled_in_web_production"], "enabled_in_ios": item["enabled_in_ios"], "enabled_in_android": item["enabled_in_android"]} for item in feature_registry],
+    }
+
+
+async def _ensure_seed_data() -> None:
+    await db.master_roadmap_tasks.create_index("task_id", unique=True)
+    await db.master_roadmap_tasks.create_index("phase")
+    await db.master_roadmap_feature_registry.create_index("module_key", unique=True)
+    await db.master_roadmap_release_gates.create_index("gate_key", unique=True)
+    await db.master_roadmap_meta.create_index("meta_key", unique=True)
+    await db.master_roadmap_audit.create_index("created_at")
+
+    version_doc = await db.master_roadmap_meta.find_one({"meta_key": "schema_version"}, {"_id": 0}) or {}
+    if version_doc.get("value") != SCHEMA_VERSION:
+        await db.master_roadmap_tasks.delete_many({"task_id": {"$not": {"$regex": r"^QA-"}}})
+        await db.master_roadmap_feature_registry.delete_many({})
+        await db.master_roadmap_release_gates.delete_many({})
+        seed_tasks = _phase_task_defs()
+        if seed_tasks:
+            await db.master_roadmap_tasks.insert_many(seed_tasks)
+        feature_registry = _feature_registry_seed()
+        if feature_registry:
+            await db.master_roadmap_feature_registry.insert_many(feature_registry)
+        await db.master_roadmap_meta.update_one({"meta_key": "phases"}, {"$set": {"items": PHASES, "updated_at": _now_iso()}}, upsert=True)
+        await db.master_roadmap_meta.update_one({"meta_key": "schema_version"}, {"$set": {"value": SCHEMA_VERSION, "updated_at": _now_iso()}}, upsert=True)
+    elif await db.master_roadmap_meta.count_documents({"meta_key": "phases"}) == 0:
+        await db.master_roadmap_meta.insert_one({"meta_key": "phases", "items": PHASES, "updated_at": _now_iso()})
+
+
+async def _load_release_gates(tasks: list[dict[str, Any]], latest_qa: dict[str, Any]) -> list[dict[str, Any]]:
+    existing = await db.master_roadmap_release_gates.find({}, {"_id": 0}).sort("gate_key", 1).to_list(200)
+    if existing:
+        return existing
+    seeded = _release_gate_seed(tasks, latest_qa)
+    if seeded:
+        await db.master_roadmap_release_gates.insert_many(seeded)
+    return seeded
 
 
 def route_file_hint(route: str, category: str) -> str:
     if route.startswith("/taxi"):
         return "frontend/src/pages/TaxiPage.jsx"
+    if route.startswith("/wallet"):
+        return "frontend/src/pages/WalletPage.jsx"
     if route.startswith("/auction/"):
         return "frontend/src/components/auctions/AuctionDetail.jsx"
     if route.startswith("/auctions"):
@@ -427,32 +786,96 @@ def route_file_hint(route: str, category: str) -> str:
     return "frontend/src/design/tokens.css"
 
 
+async def sync_visual_qa_issues_to_master_roadmap(issues: list[dict[str, Any]], commit_hash: str = "", branch: str = "") -> None:
+    await _ensure_seed_data()
+    for issue in issues:
+        severity = str(issue.get("severity", "medium")).lower()
+        priority = "P0 Critical" if severity in {"critical", "high"} else "P1 Required"
+        route = issue.get("route", "")
+        protected_area = any(token in route for token in ["/wallet", "/payment", "/payout", "/kyc", "/auth", "/admin"])
+        task_id = f"QA-{issue.get('issue_id', 'UNKNOWN')}"
+        task_doc = _task(
+            task_id,
+            f"Visual QA: {issue.get('problem', 'Issue')[:96]}",
+            issue.get("suggested_fix") or issue.get("problem") or "Visual-QA-Issue aus Automatisierung importiert.",
+            PHASES[3]["title"],
+            priority,
+            "QA Lead",
+            "In Review",
+            "S",
+            7,
+            [issue.get("source_file") or route_file_hint(route, issue.get("category", ""))],
+            [],
+            [route],
+            ["Viewport reproduzieren", "Vor/Nachher Screenshot prüfen"],
+            ["Issue auf Route und Viewport nicht mehr sichtbar"],
+            "High" if protected_area else "Medium",
+            "High" if any(token in route for token in ["/wallet", "/payment"]) else "Low",
+            "Critical" if priority == "P0 Critical" else "High",
+            completion_percentage=0,
+            notes=f"Viewport: {issue.get('viewport', '')} | Component: {issue.get('affected_component', '')} | Screenshot: {issue.get('before_screenshot', '')} | Branch: {branch} | Commit: {commit_hash}",
+        )
+        task_doc["external_issue_meta"] = {
+            "severity": severity,
+            "route": route,
+            "viewport": issue.get("viewport", ""),
+            "affected_component": issue.get("affected_component", ""),
+            "suggested_fix": issue.get("suggested_fix", ""),
+            "safe_to_auto_fix": bool(issue.get("safe_to_auto_fix", False)) and not protected_area,
+            "before_screenshot": issue.get("before_screenshot", ""),
+            "after_screenshot": issue.get("after_screenshot", ""),
+            "protected_area": protected_area,
+        }
+        if protected_area:
+            task_doc["notes"] = f"{task_doc['notes']} | Auto-Fix verboten für Wallet/Payment/KYC/Auth/Admin-Pfade."
+        await db.master_roadmap_tasks.update_one({"task_id": task_id}, {"$set": task_doc}, upsert=True)
+
+
 @router.get("/dashboard")
 async def get_master_roadmap_dashboard(request: Request):
     await _require_admin(request)
     await _ensure_seed_data()
-    tasks = await db.master_roadmap_tasks.find({}, {"_id": 0}).sort([("priority", 1), ("phase", 1), ("task_id", 1)]).to_list(500)
-    feature_registry = await db.master_roadmap_feature_registry.find({}, {"_id": 0}).sort("module_key", 1).to_list(200)
+    tasks = await db.master_roadmap_tasks.find({}, {"_id": 0}).to_list(1200)
+    tasks = sorted(tasks, key=lambda task: (PHASES.index(next(phase for phase in PHASES if phase["title"] == task["phase"])), PRIORITY_ORDER.index(task["priority"]) if task["priority"] in PRIORITY_ORDER else 99, STATUS_ORDER.index(task["status"]) if task["status"] in STATUS_ORDER else 99, task["task_id"]))
+    feature_registry = await db.master_roadmap_feature_registry.find({}, {"_id": 0}).sort("module_key", 1).to_list(300)
     latest_qa = await db.visual_qa_runs.find_one({}, {"_id": 0}, sort=[("generated_at", -1)]) or {}
     release_gates = await _load_release_gates(tasks, latest_qa)
     return {
+        "schema_version": SCHEMA_VERSION,
         "phases": _phase_summary(tasks),
         "tasks": tasks,
-        "launch_readiness": _launch_readiness(tasks),
+        "launch_readiness": _launch_readiness(tasks, release_gates),
         "release_gates": release_gates,
         "feature_registry": feature_registry,
         "ceo_view": _ceo_view(tasks, release_gates, latest_qa),
         "latest_visual_qa": latest_qa,
         "status_choices": STATUS_ORDER,
         "priority_choices": PRIORITY_ORDER,
+        "workflow_status": _workflow_snapshot(latest_qa),
+        "wallet_diagnostics": _wallet_diagnostics(),
+        "environment_snapshot": _environment_snapshot(),
+        "version_snapshot": _version_snapshot(),
+        "final_acceptance": _final_acceptance_report(tasks, release_gates, feature_registry),
     }
+
+
+@router.get("/final-acceptance")
+async def get_final_acceptance(request: Request):
+    await _require_admin(request)
+    await _ensure_seed_data()
+    tasks = await db.master_roadmap_tasks.find({}, {"_id": 0}).to_list(1200)
+    feature_registry = await db.master_roadmap_feature_registry.find({}, {"_id": 0}).sort("module_key", 1).to_list(300)
+    latest_qa = await db.visual_qa_runs.find_one({}, {"_id": 0}, sort=[("generated_at", -1)]) or {}
+    release_gates = await _load_release_gates(tasks, latest_qa)
+    return _final_acceptance_report(tasks, release_gates, feature_registry)
 
 
 @router.patch("/tasks/{task_id}")
 @limiter.limit(RATE_ADMIN_ACTION)
-async def update_master_roadmap_task(task_id: str, request: Request, payload: TaskPatchRequest):
+async def update_master_roadmap_task(task_id: str, request: Request, payload: dict[str, Any] = Body(...)):
     actor = await _require_admin(request)
-    updates = {key: value for key, value in payload.model_dump().items() if value is not None}
+    validated = TaskPatchRequest.model_validate(payload)
+    updates = {key: value for key, value in validated.model_dump().items() if value is not None}
     if updates.get("status") and updates["status"] not in STATUS_ORDER:
         raise HTTPException(status_code=400, detail="Ungültiger Status")
     updates["updated_at"] = _now_iso()
@@ -465,9 +888,10 @@ async def update_master_roadmap_task(task_id: str, request: Request, payload: Ta
 
 @router.patch("/feature-registry/{module_key}")
 @limiter.limit(RATE_ADMIN_ACTION)
-async def update_feature_registry_item(module_key: str, request: Request, payload: FeatureRegistryPatchRequest):
+async def update_feature_registry_item(module_key: str, request: Request, payload: dict[str, Any] = Body(...)):
     actor = await _require_admin(request)
-    updates = {key: value for key, value in payload.model_dump().items() if value is not None}
+    validated = FeatureRegistryPatchRequest.model_validate(payload)
+    updates = {key: value for key, value in validated.model_dump().items() if value is not None}
     updates["updated_at"] = _now_iso()
     result = await db.master_roadmap_feature_registry.update_one({"module_key": module_key}, {"$set": updates})
     if result.matched_count == 0:
@@ -478,10 +902,11 @@ async def update_feature_registry_item(module_key: str, request: Request, payloa
 
 @router.patch("/release-gates/{gate_key}")
 @limiter.limit(RATE_ADMIN_ACTION)
-async def update_release_gate(gate_key: str, request: Request, payload: ReleaseGatePatchRequest):
+async def update_release_gate(gate_key: str, request: Request, payload: dict[str, Any] = Body(...)):
     actor = await _require_admin(request)
-    updates = {key: value for key, value in payload.model_dump().items() if value is not None}
-    if updates.get("status") and updates["status"] not in {"verified", "incomplete", "blocked", "manual-approval"}:
+    validated = ReleaseGatePatchRequest.model_validate(payload)
+    updates = {key: value for key, value in validated.model_dump().items() if value is not None}
+    if updates.get("status") and updates["status"] not in GATE_STATUS_ORDER:
         raise HTTPException(status_code=400, detail="Ungültiger Gate-Status")
     updates["updated_at"] = _now_iso()
     result = await db.master_roadmap_release_gates.update_one({"gate_key": gate_key}, {"$set": updates})
@@ -495,6 +920,6 @@ async def update_release_gate(gate_key: str, request: Request, payload: ReleaseG
 async def get_investor_progress(request: Request):
     await _allow_investor_view(request)
     await _ensure_seed_data()
-    tasks = await db.master_roadmap_tasks.find({}, {"_id": 0}).sort([("priority", 1), ("phase", 1), ("task_id", 1)]).to_list(500)
-    feature_registry = await db.master_roadmap_feature_registry.find({}, {"_id": 0}).sort("module_key", 1).to_list(200)
+    tasks = await db.master_roadmap_tasks.find({}, {"_id": 0}).to_list(1200)
+    feature_registry = await db.master_roadmap_feature_registry.find({}, {"_id": 0}).sort("module_key", 1).to_list(300)
     return await _investor_view_payload(tasks, feature_registry)

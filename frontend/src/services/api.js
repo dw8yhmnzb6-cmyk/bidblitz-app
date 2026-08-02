@@ -289,6 +289,14 @@ export const api = {
   getAdminInvestorDashboardConfig: () => request("/api/investor-dashboard/admin/config"),
   updateAdminInvestorDashboardConfig: (body) => request("/api/investor-dashboard/admin/config", { method: "PUT", body: JSON.stringify(body) }),
 
+  // Master roadmap
+  getMasterRoadmapDashboard: () => request("/api/master-roadmap/dashboard"),
+  getMasterRoadmapFinalAcceptance: () => request("/api/master-roadmap/final-acceptance"),
+  updateMasterRoadmapTask: (taskId, body) => request(`/api/master-roadmap/tasks/${encodeURIComponent(taskId)}`, { method: "PATCH", body: JSON.stringify(body) }),
+  updateMasterRoadmapFeature: (moduleKey, body) => request(`/api/master-roadmap/feature-registry/${encodeURIComponent(moduleKey)}`, { method: "PATCH", body: JSON.stringify(body) }),
+  updateMasterRoadmapGate: (gateKey, body) => request(`/api/master-roadmap/release-gates/${encodeURIComponent(gateKey)}`, { method: "PATCH", body: JSON.stringify(body) }),
+  getInvestorProgress: () => request("/api/master-roadmap/investor-progress"),
+
   // Visual QA
   getVisualQaDashboard: () => request("/api/visual-qa/dashboard"),
   getVisualQaIssues: (params = {}) => {

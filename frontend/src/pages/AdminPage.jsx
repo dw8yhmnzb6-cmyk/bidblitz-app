@@ -108,6 +108,7 @@ const ADMIN_SECTIONS = [
       { id: "investor-updates", icon: Mail, label: "Investor Updates", nav: "/admin/investor-updates", highlight: true },
       { id: "investor-meetings", icon: Calendar, label: "Investor Meetings", nav: "/admin/investor-meetings", highlight: true },
       { id: "visual-qa", icon: Eye, label: "Visual QA", nav: "/admin/visual-qa", highlight: true },
+      { id: "master-roadmap", icon: Activity, label: "Master Roadmap", nav: "/admin/master-roadmap", highlight: true },
       { id: "applications", icon: FileText, label: "Alte Bewerbungen", tab: "merchants" },
       { id: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", tab: "qr-management", highlight: true },
       { id: "pool-system", icon: Ticket, label: "Schwimmbad", tab: "pool", highlight: true },

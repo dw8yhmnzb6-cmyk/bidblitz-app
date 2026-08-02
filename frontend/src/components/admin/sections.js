@@ -36,6 +36,7 @@ export const ADMIN_SECTIONS = [
       { key: "investor-updates", icon: Mail, label: "Investor Updates", highlight: true, nav: "/admin/investor-updates" },
       { key: "investor-meetings", icon: Ticket, label: "Investor Meetings", highlight: true, nav: "/admin/investor-meetings" },
       { key: "visual-qa", icon: Eye, label: "Visual QA", highlight: true, nav: "/admin/visual-qa" },
+      { key: "master-roadmap", icon: Activity, label: "Master Roadmap", highlight: true, nav: "/admin/master-roadmap" },
       { key: "applications", icon: FileText, label: "Alte Bewerbungen" },
       { key: "qr-tables", icon: UtensilsCrossed, label: "QR-Tische", highlight: true, nav: "/admin/qr-management" },
     ],

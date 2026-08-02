@@ -40,14 +40,19 @@ def _ensure_kyc(user: dict):
         )
 
 
+def _wallet_balance_payload(user: dict) -> dict:
+    return {
+        "balance": round(float(user.get("balance", 0.0) or 0.0), 2),
+        "currency": user.get("currency", "EUR"),
+        "canonical_source": "users.balance",
+    }
+
+
 @router.get("/balance")
 async def get_balance(request: Request):
     """Get user's wallet balance - optimized with minimal DB read."""
     user = await get_current_user(request)
-    return {
-        "balance": round(user.get("balance", 0.0), 2),
-        "currency": user.get("currency", "EUR"),
-    }
+    return _wallet_balance_payload(user)
 
 
 @router.get("/balance/total")
@@ -166,8 +171,9 @@ async def get_wallet(request: Request):
     return {
         "id": user_id,
         "wallet_id": user_id,
-        "balance": round(user.get("balance", 0.0), 2),
+        "balance": round(float(user.get("balance", 0.0) or 0.0), 2),
         "currency": user.get("currency", "EUR"),
+        "canonical_source": "users.balance",
         "card_number": user.get("card_number", ""),
         "card_expiry": user.get("card_expiry", ""),
         "card_holder": user.get("name", ""),
@@ -179,16 +185,6 @@ async def get_wallet(request: Request):
             "user_number": user.get("user_number"),
         },
         "transactions": transactions,
-    }
-
-
-@router.get("/balance")
-async def get_wallet_balance(request: Request):
-    """Get just the wallet balance - fast endpoint."""
-    user = await get_current_user(request)
-    return {
-        "balance": round(user.get("balance", 0.0), 2),
-        "currency": user.get("currency", "EUR"),
     }
 
 

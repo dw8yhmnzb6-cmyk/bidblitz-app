@@ -67,6 +67,8 @@ const AdminInvestorDocumentsPage = lazy(() => import("./pages/AdminInvestorDocum
 const AdminInvestorUpdatesPage = lazy(() => import("./pages/AdminInvestorUpdatesPage"));
 const AdminInvestorMeetingsPage = lazy(() => import("./pages/AdminInvestorMeetingsPage"));
 const AdminVisualQaPage = lazy(() => import("./pages/AdminVisualQaPage"));
+const AdminMasterRoadmapPage = lazy(() => import("./pages/AdminMasterRoadmapPage"));
+const InvestorProgressPage = lazy(() => import("./pages/InvestorProgressPage"));
 const DesignSystemPage = lazy(() => import("./pages/DesignSystemPage"));
 const RewardsPage = lazy(() => import("./pages/RewardsPage"));
 const VerificationPage = lazy(() => import("./pages/VerificationPage"));
@@ -754,6 +756,11 @@ function AppContent() {
         return user.role === "admin" ? <AdminInvestorMeetingsPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
       case "/admin/visual-qa":
         return user.role === "admin" ? <AdminVisualQaPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/admin/master-roadmap":
+        return user.role === "admin" ? <AdminMasterRoadmapPage onBack={() => handleNavigate("/admin")} /> : <HomePage {...homeProps} />;
+      case "/investors/progress":
+      case "/investor-progress":
+        return <InvestorProgressPage onBack={() => handleNavigate("/")} />;
       case "/design-system":
         return process.env.NODE_ENV !== "production" || user.role === "admin"
           ? <DesignSystemPage onBack={() => handleNavigate("/")} onNavigate={handleNavigate} />

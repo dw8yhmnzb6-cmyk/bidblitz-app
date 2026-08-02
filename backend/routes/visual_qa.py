@@ -148,6 +148,18 @@ async def upload_visual_qa_report(request: Request, payload: VisualQaRunUpload):
       issue_doc["branch"] = payload.branch
       await db.visual_qa_issues.update_one({"issue_id": issue_doc["issue_id"]}, {"$set": issue_doc}, upsert=True)
 
+    try:
+        from routes.master_roadmap import sync_visual_qa_issues_to_master_roadmap
+
+        await sync_visual_qa_issues_to_master_roadmap(
+            [issue.model_dump() for issue in payload.issues],
+            commit_hash=payload.commit_hash,
+            branch=payload.branch,
+        )
+    except Exception:
+        # Visual-QA-Upload darf nicht scheitern, wenn die Roadmap-Synchronisierung nur ergänzend fehlschlägt.
+        pass
+
     return {"success": True, "run_id": payload.run_id, "uploaded_by": actor.get("email", "qa-bot")}
 
 

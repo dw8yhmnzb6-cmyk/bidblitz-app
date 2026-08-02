@@ -75,6 +75,7 @@ def register_all_routers(app):
         ("routes.investor_interest", "router"),
         ("routes.investor_portal", "router"),
         ("routes.visual_qa", "router"),
+        ("routes.master_roadmap", "router"),
         ("routes.rewards", "router"),
         ("routes.move_earn", "router"),
         ("routes.role_requests", "router"),
