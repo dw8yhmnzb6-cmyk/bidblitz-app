@@ -986,10 +986,18 @@ async def _settle_wallet_payment(payment: dict, cart: dict, customer: dict, fee_
     net_to_merchant = round(total - fee, 2)
     merchant = await db.pos_merchants.find_one({"merchant_id": cart["merchant_id"]})
     if merchant:
-        await db.users.update_one(
-            {"_id": ObjectId(merchant["owner_id"])},
-            {"$inc": {"balance": net_to_merchant}},
+        credit = await credit_wallet(
+            user_id=str(merchant["owner_id"]),
+            amount=net_to_merchant,
+            tx_type=TransactionType.MERCHANT_PAYMENT,
+            description=f"POS Merchant Settlement {payment['payment_id']}",
+            reference=f"SETTLE-{payment['payment_id']}",
+            source="pos_system",
+            metadata={"payment_id": payment["payment_id"], "merchant_id": cart["merchant_id"], "store_id": cart["store_id"], "settlement_type": "merchant_net_credit"},
+            idempotency_key=f"pos-settlement:{payment['payment_id']}",
         )
+        if not credit.success:
+            raise HTTPException(status_code=400, detail=credit.error or "Merchant settlement failed")
         await db.pos_merchants.update_one(
             {"merchant_id": cart["merchant_id"]},
             {"$inc": {"settlement_balance": net_to_merchant, "lifetime_volume": total}},

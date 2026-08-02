@@ -85,7 +85,7 @@ export default function LeaderboardPage({ onBack }) {
   const rankIcon = (r) => r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : `#${r}`;
   const rankColor = (r) => r === 1 ? "#FFD700" : r === 2 ? "#C0C0C0" : r === 3 ? "#CD7F32" : "#6B7280";
   const topThree = data.entries?.slice(0, 3) || [];
-  const restEntries = data.entries?.slice(3) || [];
+  const restEntries = data.entries?.slice(3, 7) || [];
   const typeMeta = {
     balance: { accent: "#FACC15", label: t("leaderboard.wallet_ranking"), hint: t("leaderboard.wallet_hint") },
     gaming: { accent: "#A855F7", label: t("leaderboard.top_gamer"), hint: t("leaderboard.gaming_hint") },
@@ -93,7 +93,7 @@ export default function LeaderboardPage({ onBack }) {
   }[type];
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white pb-16" data-testid="leaderboard-page">
+    <div className="min-h-screen bg-[#0A0A0F] text-white pb-10" data-testid="leaderboard-page">
       <div className="sticky top-0 z-20 bg-[#0A0A0F]/90 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div className="flex items-center gap-3">
           <button data-testid="leaderboard-back-button" onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center"><ArrowLeft size={18} /></button>
@@ -110,13 +110,13 @@ export default function LeaderboardPage({ onBack }) {
           ))}
         </div>
       </div>
-      <div className="px-4 pt-4 space-y-4" data-testid="leaderboard-content">
+      <div className="px-4 pt-3 space-y-3" data-testid="leaderboard-content">
         <div
           data-testid="leaderboard-hero-card"
-          className="rounded-[28px] border border-white/8 overflow-hidden"
+          className="rounded-[24px] border border-white/8 overflow-hidden"
           style={{ background: `radial-gradient(circle at top right, ${typeMeta.accent}22 0%, rgba(255,255,255,0.04) 35%, rgba(255,255,255,0.02) 100%)` }}
         >
-          <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3">
+          <div className="px-4 pt-4 pb-4 flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-[0.22em] text-white/45 font-bold">{t("leaderboard.live_ranking")}</p>
               <h2 data-testid="leaderboard-hero-title" className="text-lg font-black mt-1">{typeMeta.label}</h2>
@@ -126,13 +126,13 @@ export default function LeaderboardPage({ onBack }) {
               <Crown size={20} />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 px-3 pb-3">
+          <div className="grid grid-cols-2 gap-2 px-3 pb-3 sm:grid-cols-3">
             {[
               { id: "count", label: t("leaderboard.entries"), value: String(data.entries?.length || 0) },
               { id: "winner", label: t("leaderboard.rank_1"), value: topThree[0]?.name || "—" },
               { id: "mode", label: t("leaderboard.view"), value: typeMeta.label },
             ].map((item) => (
-              <div key={item.id} data-testid={`leaderboard-stat-${item.id}`} className="rounded-2xl px-3 py-3 bg-black/20 border border-white/6 min-h-[74px]">
+              <div key={item.id} data-testid={`leaderboard-stat-${item.id}`} className={`rounded-2xl px-3 py-3 bg-black/20 border border-white/6 min-h-[70px] ${item.id === "mode" ? "col-span-2 sm:col-span-1" : ""}`}>
                 <p className="text-[10px] uppercase tracking-[0.14em] text-white/40 font-bold">{item.label}</p>
                 <p className="text-xs font-bold text-white mt-2 break-words">{item.value}</p>
               </div>
@@ -159,15 +159,15 @@ export default function LeaderboardPage({ onBack }) {
           <div className="grid grid-cols-3 gap-2" data-testid="leaderboard-podium">
             {[topThree[1], topThree[0], topThree[2]].map((entry, index) => {
               if (!entry) {
-                return <div key={`empty-${index}`} className="rounded-3xl bg-white/[0.02] border border-white/5 min-h-[148px]" />;
+                return <div key={`empty-${index}`} className="rounded-3xl bg-white/[0.02] border border-white/5 min-h-[122px]" />;
               }
               const realRank = entry.rank;
-              const height = realRank === 1 ? "min-h-[176px]" : "min-h-[148px]";
+              const height = realRank === 1 ? "min-h-[154px]" : "min-h-[126px]";
               return (
                 <div key={entry.rank} data-testid={`leaderboard-podium-rank-${entry.rank}`} className={`rounded-3xl border flex flex-col justify-end px-3 py-4 ${height}`} style={{ borderColor: `${rankColor(realRank)}33`, background: `${rankColor(realRank)}14` }}>
-                  <div className="w-12 h-12 rounded-full mx-auto mb-3 bg-white/10 flex items-center justify-center text-sm font-black">{(entry.name || "?")[0]}</div>
-                  <p className="text-center text-lg">{rankIcon(realRank)}</p>
-                  <p className="text-xs font-bold text-center mt-2 truncate">{entry.name}</p>
+                  <div className="w-11 h-11 rounded-full mx-auto mb-2 bg-white/10 flex items-center justify-center text-sm font-black">{(entry.name || "?")[0]}</div>
+                  <p className="text-center text-base">{rankIcon(realRank)}</p>
+                  <p className="text-xs font-bold text-center mt-1 truncate">{entry.name}</p>
                   {type !== "balance" && entry.value ? <p className="text-[11px] text-center text-white/65 mt-1 break-words">{entry.value}</p> : null}
                 </div>
               );
@@ -194,13 +194,6 @@ export default function LeaderboardPage({ onBack }) {
             <div className="w-14 h-14 rounded-2xl mx-auto mb-4 bg-white/5 flex items-center justify-center"><Medal size={24} className="text-white/70" /></div>
             <p className="text-sm font-bold text-white">{t("leaderboard.no_entries")}</p>
             <p className="text-xs text-white/55 mt-1">{t("leaderboard.no_entries_hint")}</p>
-          </div>
-        )}
-
-        {!loading && !error && data.entries?.length > 0 && (
-          <div data-testid="leaderboard-footer-note" className="rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-3">
-            <p className="text-[11px] font-bold text-white/80">{t("leaderboard.live_updated")}</p>
-            <p className="text-[11px] text-white/50 mt-1">{t("leaderboard.live_updated_hint")}</p>
           </div>
         )}
       </div>

@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from core.database import db
 from core.canonical_wallet_service import (
-    admin_adjustment as canonical_admin_adjustment,
     credit_canonical_balance,
     debit_canonical_balance,
     sync_canonical_balance,

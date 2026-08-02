@@ -280,6 +280,28 @@ async def create_indexes():
     await safe_create_index(db.car_rental_customer_documents, [("customer_id", 1), ("doc_type", 1)])
     
     await safe_create_index(db.car_rental_activity_logs, [("vendor_id", 1), ("created_at", -1)])
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # V1 P0 WALLET / FEATURE CONTROL
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    await safe_create_index(db.wallet_ledger_entries, "entry_id", unique=True)
+    await safe_create_index(db.wallet_ledger_entries, [("transaction_id", 1), ("direction", 1)])
+    await safe_create_index(db.wallet_ledger_entries, [("wallet_id", 1), ("created_at", -1)])
+    await safe_create_index(db.wallet_ledger_entries, "idempotency_key")
+
+    await safe_create_index(db.payment_idempotency, "idempotency_key", unique=True)
+    await safe_create_index(db.payment_idempotency, [("user_id", 1), ("created_at", -1)])
+    await safe_create_index(db.payment_idempotency, "expires_at")
+
+    await safe_create_index(db.feature_flags, "key", unique=True)
+    await safe_create_index(db.feature_flags, "parent_key")
+    await safe_create_index(db.feature_flags, [("type", 1), ("status", 1)])
+    await safe_create_index(db.feature_flag_audit, [("key", 1), ("changed_at", -1)])
+
+    await safe_create_index(db.merchant_setup_progress, "merchant_id", unique=True)
+    await safe_create_index(db.merchant_setup_progress, [("current_step", 1), ("updated_at", -1)])
+    await safe_create_index(db.onboarding_test_sales, [("merchant_id", 1), ("created_at", -1)])
     
     logger.info("Database indexes created/verified")
 

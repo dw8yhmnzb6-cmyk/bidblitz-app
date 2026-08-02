@@ -41,8 +41,12 @@ def _ensure_kyc(user: dict):
 
 
 def _wallet_balance_payload(user: dict) -> dict:
+    balance = round(float(user.get("balance", 0.0) or 0.0), 2)
     return {
-        "balance": round(float(user.get("balance", 0.0) or 0.0), 2),
+        "wallet_id": str(user.get("_id", user.get("id", ""))),
+        "balance": balance,
+        "available_balance": balance,
+        "pending_balance": 0.0,
         "currency": user.get("currency", "EUR"),
         "canonical_source": "users.balance",
     }
@@ -169,9 +173,10 @@ async def get_wallet(request: Request):
     ).sort("created_at", -1).limit(20).to_list(20)
 
     return {
-        "id": user_id,
         "wallet_id": user_id,
         "balance": round(float(user.get("balance", 0.0) or 0.0), 2),
+        "available_balance": round(float(user.get("balance", 0.0) or 0.0), 2),
+        "pending_balance": 0.0,
         "currency": user.get("currency", "EUR"),
         "canonical_source": "users.balance",
         "card_number": user.get("card_number", ""),

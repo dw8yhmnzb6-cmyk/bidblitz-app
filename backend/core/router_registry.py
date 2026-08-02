@@ -192,7 +192,7 @@ def register_all_routers(app):
         ("routes.bills", "router"),
         ("routes.receipts", "router"),
         ("routes.admin_wallet", "router"),
-        ("routes.admin_legacy_restore", "router"),
+        ("routes.admin_wallet_reconciliation", "router"),
         ("routes.coinbase_commerce", "router"),
         ("routes.bidblitz_pay", "router"),
         
@@ -269,6 +269,7 @@ def register_all_routers(app):
         ("routes.bookings", "admin_router"),
         ("routes.apartments", "router"),
         ("routes.flights", "router"),
+        ("routes.merchant_setup", "router"),
         ("routes.restaurants", "router"),
     ]
     
