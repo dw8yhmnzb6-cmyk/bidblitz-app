@@ -1064,6 +1064,48 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       })).filter((group) => group.items.length > 0)
     : GRID_GROUPS;
 
+  const visibleGroupMap = Object.fromEntries(visibleGroups.map((group) => [group.id, group]));
+  const discoverSourceItems = [
+    ...(visibleGroupMap.growth?.items || []),
+    ...(visibleGroupMap.app?.items || []),
+    ...(visibleGroupMap.support?.items || []),
+    ...(visibleGroupMap.legal?.items || []),
+    ...(visibleGroupMap.admin?.items || []),
+  ];
+  const pickDiscoverItems = (ids) => ids.map((id) => discoverSourceItems.find((item) => item.id === id)).filter(Boolean);
+  const discoverGroups = [
+    {
+      id: "discover-auctions",
+      title: { de: "Auktionen", en: "Auctions", sq: "Ankande", ar: "المزادات" },
+      color: "#EF4444",
+      items: pickDiscoverItems(["live-auctions", "commerce-center", "predictions", "blitzhub"]),
+    },
+    {
+      id: "discover-mining",
+      title: { de: "Mining", en: "Mining", sq: "Mining", ar: "التعدين" },
+      color: "#FFD700",
+      items: pickDiscoverItems(["mining", "mining-trust", "supercharger", "premium", "blitz-mine"]),
+    },
+    {
+      id: "discover-rewards",
+      title: { de: "Rewards", en: "Rewards", sq: "Shpërblime", ar: "المكافآت" },
+      color: "#00E89D",
+      items: pickDiscoverItems(["rewards", "loyalty", "referral", "quests", "reward-hub", "spin-wheel"]),
+    },
+    {
+      id: "discover-tools",
+      title: { de: "Tools & Hilfe", en: "Tools & Help", sq: "Mjete & Ndihmë", ar: "الأدوات والمساعدة" },
+      color: "#06B6D4",
+      items: pickDiscoverItems(["notifications", "activity", "settings", "help", "support-chat", "legal-agb", "legal-datenschutz"]),
+    },
+    ...(visibleGroupMap.admin?.items?.length ? [{
+      id: "discover-admin",
+      title: "Admin",
+      color: "#F97316",
+      items: pickDiscoverItems(["admin-dashboard", "admin-wallet", "admin-revenue", "admin-analytics"]),
+    }] : []),
+  ].filter((group) => group.items.length > 0);
+
   const toggleGroup = (id) => {
     setOpenGroups((p) => {
       const nxt = { ...p, [id]: !p[id] };
@@ -1075,7 +1117,9 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const searchNorm = search.trim().toLowerCase();
   const currentPanel = PANEL_DEFINITIONS.find((panel) => panel.id === activePanel) || PANEL_DEFINITIONS[0];
   const panelGroupIds = new Set(currentPanel.groupIds);
-  const panelGroups = visibleGroups.filter((group) => panelGroupIds.has(group.id));
+  const panelGroups = activePanel === "discover"
+    ? discoverGroups
+    : visibleGroups.filter((group) => panelGroupIds.has(group.id));
 
   const filteredGroups = searchNorm
     ? panelGroups.map((g) => ({
@@ -1326,6 +1370,11 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           <div className="mt-3 rounded-2xl border border-white/[0.05] bg-[#071019] p-3" data-testid="more-panel-hint-card">
             <div className="text-sm font-black text-white">{localizeText(currentPanel.title)}</div>
             <p className="mt-1 text-[11px] text-white/60">{localizeText(currentPanel.hint)}</p>
+            {activePanel === "discover" ? (
+              <p className="mt-2 text-[10px] text-white/45" data-testid="more-panel-discover-hint-secondary">
+                Weitere Bereiche findest du weiterhin über Suche oder Alle Services — Seite 2 bleibt bewusst kompakter.
+              </p>
+            ) : null}
           </div>
         </motion.div>
 
