@@ -1,5 +1,17 @@
 # BidBlitz — ROADMAP
 
+## Status nach Final BidBlitz Completion Phase / Master Roadmap Control Center — 02.08.2026
+- ✅ Neue offizielle Abschlusszentrale **`/admin/master-roadmap`** ist live und testverifiziert.
+- ✅ Enthalten: **8 Phasen**, **P0 Launch Blockers**, **Release Gates**, **Feature Registry**, **Launch Readiness**, **CEO View**, **Wallet-/Environment-/Version-Diagnosen** und **Final Acceptance Report**.
+- ✅ Neue restriktive Fortschrittsroute **`/investors/progress`** ist live und gibt keine sensiblen internen Daten preis.
+- ✅ Visual-QA-Issues können jetzt zusätzlich als Roadmap-Tasks synchronisiert werden.
+- ✅ Wallet-API-Contract wurde gehärtet: **`/api/wallet`** und **`/api/wallet/balance`** liefern denselben kanonischen EUR-Saldo plus **`canonical_source='users.balance'`**.
+- ✅ Verifiziert mit API-Selbsttests, Browser-Smoke, `backend/tests/test_master_roadmap_control_center.py` **PASS** und **Testing Agent Iteration 313 PASS**.
+- 🔴 P0 bleibt bewusst offen: **Wallet-Konsistenz vollständig schließen**, **Environment-Separation production-safe machen**, **Version-Parity real verifizieren**, **GitHub-Workflow-Gates wirklich grün bekommen**.
+- 🔴 Nächster sinnvoller Umsetzungsschritt: auf Basis der neuen Zentrale jetzt **Phase 1 – Wallet Consistency** technisch fertigziehen (alle Legacy-Reads/duplizierten Endpunkte/Engine-Bypässe systematisch entfernen und Reconciliation sauber abschließen).
+- 🟡 Danach: **Phase 2 Core User Flows** matrizenartig durchtesten (Success, Validation, Network Error, Expired Session, Unauthorized, Empty, Loading, Mobile).
+- 🟡 Danach: **Store-safe Release** und **Release Artifacts** gegen echte Mobile-Build-Artefakte und Reviewer-Checklisten abgleichen.
+
 ## Status nach zentralem Design System + Visual-QA-Anbindung — 01.08.2026
 - ✅ Zentrale BidBlitz-Tokens für Farben, Spacing, Radien, Buttonhöhen, Bottom-Nav und Safe Areas sind live.
 - ✅ Neue Shared-Komponenten **MoneyAmount**, **CountdownTimer**, **ProductImageGallery**, **BidBlitzPageShell**, Button- und Card-Sets sind gebaut.

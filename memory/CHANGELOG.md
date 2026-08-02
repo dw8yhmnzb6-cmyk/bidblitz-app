@@ -1,5 +1,14 @@
 # BidBlitz — CHANGELOG
 
+## 02.08.2026 — Final BidBlitz Completion Phase: Master Roadmap Control Center
+- Neue Admin-Steuerzentrale **`/admin/master-roadmap`** gebaut. Sie zeigt jetzt **8 Abschlussphasen**, **P0 Launch Blockers**, **Release Gates**, **Feature Registry**, **Launch Readiness**, **CEO/Executive View**, **Wallet-/Environment-/Version-Parity-Diagnosen** und einen ehrlichen **Final Acceptance Report**.
+- Neue restriktive Investor-Route **`/investors/progress`** ergänzt. Diese Ansicht zeigt nur freigegebene Fortschrittsdaten und blendet **Kundendaten, Credentials, Sicherheitsdetails, Quellcode und offene Schwachstellen** aus.
+- Backend neu/erweitert: `backend/routes/master_roadmap.py`, Router-Registrierung in `backend/core/router_registry.py`, Visual-QA-Synchronisierung in `backend/routes/visual_qa.py`, Wallet-Kanonisierung in `backend/routes/wallet.py`.
+- Frontend neu/erweitert: `frontend/src/pages/AdminMasterRoadmapPage.jsx`, `frontend/src/pages/InvestorProgressPage.jsx`, neue Routen in `frontend/src/App.js`, neue API-Methoden in `frontend/src/services/api.js`, neuer Admin-Navigationseintrag in `AdminPage.jsx` und `components/admin/sections.js`, erweiterter Store-Safe-Block in `frontend/src/config/release.js`.
+- Wallet-Härtung: **`/api/wallet`** und **`/api/wallet/balance`** liefern jetzt beide **`canonical_source='users.balance'`**; das doppelte `/balance`-Routing wurde entfernt und die Master-Roadmap markiert Wallet-Konsistenz weiterhin korrekt als offenen **P0 Launch Blocker**.
+- Neue Backend-Regression: `backend/tests/test_master_roadmap_control_center.py` prüft Dashboard-Contract und Investor-Progress-Contract. Zusätzlich hat der Testing Agent ein weiteres Testfile `backend/tests/test_master_roadmap_full.py` erzeugt.
+- Verifiziert: API-Selbsttests **PASS**, Browser-Smoke **PASS**, `pytest -q backend/tests/test_master_roadmap_control_center.py` **PASS (2/2)** und **Testing Agent Iteration 313 PASS** mit **100% Backend** und **100% Frontend** für den neuen Scope. **MOCKED/ABSICHTLICH DEAKTIVIERT:** KYC bleibt global **DISABLED** via `REACT_APP_DISABLE_KYC=true`; Premium-Upgrades bleiben historisch **MOCKED**.
+
 ## 01.08.2026 — Zentrales BidBlitz Design System + Visual-QA-Anbindung
 - Neues zentrales Frontend-Design-System live: `frontend/src/design/tokens.js` und `frontend/src/design/tokens.css` definieren jetzt die gemeinsamen BidBlitz-Tokens für Farben, Typografie, Spacing, Radien, Buttonhöhen, Bottom-Nav-Höhe, Safe Areas, Schatten, Breakpoints und Desktop-Maxbreite.
 - Neue Shared-UI-Bausteine gebaut: `BidBlitzPageShell`, `MoneyAmount`, `CountdownTimer`, `ProductImageGallery`, `BidBlitzButtons` und `BidBlitzCards`. Alle neuen interaktiven/prüfrelevanten Elemente besitzen eindeutige `data-testid`-Attribute.
