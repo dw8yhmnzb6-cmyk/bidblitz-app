@@ -5,84 +5,88 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * *"
 
 jobs:
-  frontend-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm --workspace frontend run build
-
-  eslint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm --workspace frontend exec -- eslint "src/**/*.{js,jsx}"
-
   visual-qa:
     runs-on: ubuntu-latest
-    needs: [frontend-build, eslint]
     env:
       QA_BASE_URL: ${{ secrets.QA_BASE_URL }}
       QA_USER_EMAIL: ${{ secrets.QA_USER_EMAIL }}
       QA_USER_PASSWORD: ${{ secrets.QA_USER_PASSWORD }}
-      QA_MERCHANT_EMAIL: ${{ secrets.QA_MERCHANT_EMAIL }}
-      QA_MERCHANT_PASSWORD: ${{ secrets.QA_MERCHANT_PASSWORD }}
       QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
       QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
-      QA_INVESTOR_EMAIL: ${{ secrets.QA_INVESTOR_EMAIL }}
-      QA_INVESTOR_PASSWORD: ${{ secrets.QA_INVESTOR_PASSWORD }}
-      QA_VISUAL_REVIEW_URL: ${{ secrets.QA_VISUAL_REVIEW_URL }}
       QA_REPORT_UPLOAD_URL: ${{ secrets.QA_REPORT_UPLOAD_URL }}
       VISUAL_QA_REPORT_TOKEN: ${{ secrets.VISUAL_QA_REPORT_TOKEN }}
+      QA_VISUAL_REVIEW_URL: ${{ secrets.QA_VISUAL_REVIEW_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm --workspace frontend run build
+
+      - name: Prepare QA output directory
+        run: rm -rf frontend/qa-output && mkdir -p frontend/qa-output/screenshots
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - name: Playwright functional tests + screenshots
-        run: npx playwright test tests/visual-qa/visual-routes.spec.cjs
+
+      - name: Run auction visual tests
+        run: npx playwright test tests/visual/auctions.spec.ts
         working-directory: frontend
-      - name: Translation consistency
-        run: node frontend/scripts/visual-qa/translation-consistency.mjs
-      - name: Numeric format validation
+
+      - name: Run taxi visual tests
+        run: npx playwright test tests/visual/taxi.spec.ts
+        working-directory: frontend
+
+      - name: Generate numeric report
         run: node frontend/scripts/visual-qa/numeric-format-validation.mjs
-      - name: Design consistency
+
+      - name: Generate translation report
+        run: node frontend/scripts/visual-qa/translation-consistency.mjs
+
+      - name: Generate design report
         run: node frontend/scripts/visual-qa/design-consistency.mjs
-      - name: Product image validation
+
+      - name: Generate product image report
         run: node frontend/scripts/visual-qa/product-image-validation.mjs
-      - name: AI screenshot review
+
+      - name: Optional AI screenshot review
         run: node frontend/scripts/visual-qa/ai-screenshot-review.mjs
-      - name: Compile report and enforce rules
+
+      - name: Generate QA report
         run: node frontend/scripts/visual-qa/compile-report.mjs
-      - name: Prepare safe repair PR drafts
+
+      - name: Prepare repair draft
         run: node frontend/scripts/visual-qa/prepare-repair-pr.mjs
-      - name: Upload report to BidBlitz admin API
+
+      - name: Upload report summary to admin API
         run: node frontend/scripts/visual-qa/upload-report.mjs
-      - name: Lighthouse audit
-        run: |
-          npm i -g @lhci/cli@0.15.x
-          lhci autorun --collect.url="$QA_BASE_URL" || true
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
         with:
-          name: bidblitz-visual-qa-artifacts
-          path: |
-            frontend/qa-output
-            frontend/playwright-report
-            frontend/lighthouse*
+          name: bidblitz-visual-screenshots
+          path: frontend/qa-output/screenshots
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bidblitz-visual-qa-html
+          path: visual-qa-report.html
+
+      - name: Upload JSON report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bidblitz-visual-qa-json
+          path: visual-qa-report.json

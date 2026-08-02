@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { request } = require('@playwright/test');
+const { request } = require('playwright/test');
 
 const OUTPUT_DIR = path.join(__dirname, '../../qa-output');
 const AUTH_DIR = path.join(__dirname, '.auth');

@@ -6,11 +6,11 @@ import { getAuctionFallbackImage } from "./imageFallbacks";
 import { MoneyAmount } from "../design/MoneyAmount";
 import { formatBidBlitzDuration } from "../../design/tokens";
 
-function localizeCondition(condition) {
+function localizeCondition(condition, t) {
   return String(condition || "Neu · Original versiegelt")
-    .replace(/Brand New/gi, "Neu")
-    .replace(/Factory Sealed/gi, "Original versiegelt")
-    .replace(/FREE SHIPPING/gi, "Weltweiter Versand")
+    .replace(/Brand New/gi, t("auction.condition_new_short"))
+    .replace(/Factory Sealed/gi, t("auction.condition_factory_sealed_short"))
+    .replace(/FREE SHIPPING/gi, t("auction.shipping_worldwide_free"))
     .replace(/\s+—\s+/g, " · ");
 }
 
@@ -57,8 +57,9 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
   const isEndingNow = rem > 0 && rem <= 20;
   const isHot = auction.total_bids > 10;
   const d = Math.floor(rem / 86400);
-  const logisticsLabel = auction.category === "marine" ? "Abholung / Marina" : "Weltweiter Versand";
+  const logisticsLabel = auction.category === "marine" ? t("auction.shipping_pickup") : t("auction.shipping_worldwide_free");
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
+  const conditionLabel = localizeCondition(auction.condition, t);
   const countdownLabel = isEnded
     ? "Beendet"
     : formatBidBlitzDuration(rem, { locale: lang, compact: d === 0 });
@@ -66,6 +67,14 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
   return (
     <motion.button
       data-testid={`auction-card-${auction.auction_id}`}
+      data-product-id={auction.product_id || auction.auction_id}
+      data-product-title={auction.product_title || auction.title}
+      data-product-category={auction.product_category || auction.category || 'general'}
+      data-image-category={auction.image_category || 'product'}
+      data-image-url={auction.image_url || ''}
+      data-image-verified={auction.image_verified ? 'true' : 'false'}
+      data-image-confidence={auction.image_confidence ?? 0.9}
+      data-image-manual-review={auction.image_manual_review_required ? 'true' : 'false'}
       onClick={onClick}
       className="w-full rounded-[26px] overflow-hidden text-left relative group"
       style={{
@@ -113,7 +122,7 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
             }}
           >
             <Timer size={10} className={isFinalBattle ? "text-white" : "text-white/60"} />
-              <span className={`text-[11px] font-mono font-bold tabular-nums leading-tight break-words ${isFinalBattle ? "text-white" : "text-white/90"}`}>
+              <span data-testid={`auction-card-timer-${auction.auction_id}`} className={`text-[11px] font-mono font-bold tabular-nums leading-tight break-words ${isFinalBattle ? "text-white" : "text-white/90"}`}>
               {countdownLabel}
             </span>
           </div>
@@ -199,6 +208,12 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
           </div>
         )}
 
+        {auction.image_manual_review_required ? (
+          <div className="absolute left-2 bottom-16 z-10 rounded-full border border-[rgba(255,204,51,0.3)] bg-[rgba(255,204,51,0.12)] px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--bb-accent-warning)]" data-testid={`auction-image-review-${auction.auction_id}`}>
+            {t("auction.image_review")}
+          </div>
+        ) : null}
+
         {isEnded && auction.winner_name && (
           <div
             className="absolute bottom-2 left-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl z-10"
@@ -217,13 +232,13 @@ export default function AuctionGridCard({ auction, onClick, t, idx, isWatched, o
               animate={{ scale: isEndingNow ? [1, 1.05, 1] : 1 }}
               transition={{ duration: 0.4, repeat: isEndingNow ? Infinity : 0 }}
             >
-              <span className="text-[10px] font-black text-white tracking-wider">{isEndingNow ? "⚡ Endet jetzt" : "🔥 Letzte Runde"}</span>
+              <span className="text-[10px] font-black text-white tracking-wider">{isEndingNow ? `⚡ ${t("auction.ending_now")}` : `🔥 ${t("auction.final_round")}`}</span>
             </motion.div>
           </motion.div>
         )}
       </div>
 
-      <div className="px-3.5 py-3.5 space-y-3">
+      <div className="px-3.5 py-3.5 space-y-3" data-product-condition={conditionLabel}>
         <h3 className={`text-[15px] sm:text-[16px] font-semibold leading-[1.08] line-clamp-2 min-h-[34px] ${isEnded ? "text-white/30" : "text-white/92"}`} data-testid={`auction-title-${auction.auction_id}`}>
           {loc.title}
         </h3>

@@ -1,37 +1,39 @@
-import fs from 'fs';
-import path from 'path';
+import { readJson, repairDraftPath, visualQaReportJsonPath, writeText } from './shared.mjs';
 
-const issuesPath = path.resolve('frontend/qa-output/qa-issues.json');
-const outputDir = path.resolve('frontend/qa-output/repair-plans');
-fs.mkdirSync(outputDir, { recursive: true });
+const report = readJson(visualQaReportJsonPath, { issues: [] });
+const manualReview = report.issues.filter((issue) => !issue.safe_to_auto_fix || issue.status === 'Manual review');
+const changedFiles = Array.from(new Set(report.issues.map((issue) => issue.changed_file).filter(Boolean))).sort();
 
-if (!fs.existsSync(issuesPath)) {
-  console.log('No issue file found, skipping repair preparation.');
-  process.exit(0);
-}
+const body = `# BidBlitz Visual QA Repair Draft
 
-const issues = JSON.parse(fs.readFileSync(issuesPath, 'utf8'));
-const safeIssues = issues.filter((issue) => issue.safe_to_auto_fix);
+- Branch: \`ai-fix/visual-qa-mvp\`
+- Generated: ${new Date().toISOString()}
+- Routes tested: ${(report.routes_tested || []).join(', ') || '-'}
+- Viewports: ${(report.screen_sizes_tested || []).join(', ') || '-'}
 
-safeIssues.forEach((issue) => {
-  const slug = `${issue.route || 'route'}-${issue.affected_component || 'issue'}`.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase().slice(0, 70).replace(/^-|-$/g, '');
-  const branch = `ai-fix/${slug || 'visual-qa-fix'}`;
-  const plan = {
-    issue_id: issue.issue_id,
-    branch,
-    route: issue.route,
-    problem: issue.problem,
-    root_cause: issue.affected_component,
-    files_changed: [],
-    tests_required: ['npm ci', 'npm run build', 'npm run lint', 'npx playwright test'],
-    before_screenshot: issue.before_screenshot || '',
-    after_screenshot: issue.after_screenshot || '',
-    risk_level: issue.risk_level || 'low',
-    status: 'Repair prepared',
-    safety_rule: 'Never modify wallet, payment, auth, KYC, roles or live database records automatically.',
-  };
-  fs.writeFileSync(path.join(outputDir, `${issue.issue_id}.json`), JSON.stringify(plan, null, 2));
-  fs.writeFileSync(path.join(outputDir, `${issue.issue_id}.md`), `# Repair PR Draft\n\n- Problem: ${issue.problem}\n- Root cause: ${issue.affected_component || 'TBD'}\n- Route: ${issue.route}\n- Files changed: TBD\n- Tests passed: pending\n- Before screenshot: ${issue.before_screenshot || 'n/a'}\n- After screenshot: ${issue.after_screenshot || 'n/a'}\n- Risk level: ${issue.risk_level || 'low'}\n- Branch: ${branch}\n\nNo automatic merge allowed.\n`);
-});
+## Original problems
+${(report.issues || []).map((issue) => `- [${issue.severity}] ${issue.route} ${issue.viewport}: ${issue.problem}`).join('\n') || '- None'}
 
-console.log(`Prepared ${safeIssues.length} safe repair plan(s).`);
+## Root causes
+${(report.issues || []).map((issue) => `- ${issue.root_cause}`).join('\n') || '- None'}
+
+## Files changed / suggested
+${changedFiles.map((file) => `- ${file}`).join('\n') || '- None'}
+
+## Before / After screenshots
+${(report.issues || []).map((issue) => `- ${issue.route} ${issue.viewport}: before=${issue.before_screenshot || '-'} after=${issue.after_screenshot || '-'}`).join('\n') || '- None'}
+
+## Test results
+- Current status: ${report.current_status || 'unknown'}
+- Passed checks: ${report.passed_checks || 0}
+- Failed checks: ${report.failed_checks || 0}
+
+## Remaining manual-review problems
+${manualReview.map((issue) => `- ${issue.route} ${issue.viewport}: ${issue.problem}`).join('\n') || '- None'}
+
+## Risk level
+- ${manualReview.length ? 'medium' : 'low'}
+`;
+
+writeText(repairDraftPath, body);
+console.log(`Prepared repair PR draft at ${repairDraftPath}.`);

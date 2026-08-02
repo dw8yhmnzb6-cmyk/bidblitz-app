@@ -6,11 +6,14 @@ import { buildBidBlitzImageMeta } from '../../design/tokens';
 export const ProductImageGallery = ({
   title,
   images = [],
+  productId = 'unknown',
   productCategory = 'general',
   productSubcategory = 'general',
   imageCategory = '',
   imageSource = 'catalog',
   imageVerified = true,
+  imageConfidence = 1,
+  manualReviewRequired = false,
   aspectClassName = 'aspect-[16/10]',
   className,
   testId = 'product-image-gallery',
@@ -25,11 +28,16 @@ export const ProductImageGallery = ({
   return (
     <div
       data-testid={testId}
+      data-product-id={productId}
+      data-product-title={title}
       data-product-category={meta.product_category}
       data-product-subcategory={meta.product_subcategory}
       data-image-category={meta.image_category}
       data-image-source={meta.image_source}
+      data-image-url={activeImage}
       data-image-verified={meta.image_verified ? 'true' : 'false'}
+      data-image-confidence={imageConfidence}
+      data-image-manual-review={manualReviewRequired ? 'true' : 'false'}
       className={cn('space-y-3', className)}
     >
       <div className={cn('relative overflow-hidden rounded-[24px] border border-white/10 bg-[#07101D]', aspectClassName)}>
@@ -69,6 +77,11 @@ export const ProductImageGallery = ({
               ) : null}
             </button>
           ))}
+        </div>
+      ) : null}
+      {manualReviewRequired ? (
+        <div className="rounded-[18px] border border-[rgba(255,204,51,0.3)] bg-[rgba(255,204,51,0.1)] px-3 py-2 text-xs font-semibold text-[var(--bb-accent-warning)]" data-testid={`${testId}-manual-review-badge`}>
+          Bild prüfen
         </div>
       ) : null}
     </div>

@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import { outputDir, rawAuditPath, designSpecPath, deriveVisualQaUrl, postJson, readJson, writeJson } from './shared.mjs';
+import { aiReportPath, designSpecPath, deriveVisualQaUrl, outputDir, postJson, rawAuditPath, readJson, writeJson } from './shared.mjs';
 
 const reviewUrl = deriveVisualQaUrl(process.env.QA_VISUAL_REVIEW_URL, '/api/visual-qa/ai-review');
 
 if (!fs.existsSync(rawAuditPath) || !reviewUrl) {
-  writeJson(path.join(outputDir, 'ai-screenshot-review.json'), { generated_at: new Date().toISOString(), mode: 'skipped', issues: [] });
+  writeJson(aiReportPath, { generated_at: new Date().toISOString(), mode: 'skipped', issues: [] });
   console.log('AI screenshot review skipped (missing raw report or review endpoint).');
   process.exit(0);
 }
@@ -27,9 +27,9 @@ for (const entry of targetEntries) {
       language: 'de',
       role: entry.role,
       page_data: {
-        ...entry.data_summary,
         text_sample: entry.text_sample,
         numeric_candidates: entry.numeric_candidates,
+        image_references: entry.image_references,
       },
       design_tokens: designTokens,
     });
@@ -67,5 +67,5 @@ for (const entry of targetEntries) {
   }
 }
 
-writeJson(path.join(outputDir, 'ai-screenshot-review.json'), { generated_at: new Date().toISOString(), mode: 'remote-review', issues: aiIssues });
+writeJson(aiReportPath, { generated_at: new Date().toISOString(), mode: 'remote-review', issues: aiIssues });
 console.log(`AI screenshot review finished with ${aiIssues.length} issues.`);

@@ -1,8 +1,8 @@
-const { defineConfig } = require('@playwright/test');
+const { defineConfig } = require('playwright/test');
 const path = require('path');
 
 module.exports = defineConfig({
-  testDir: path.join(__dirname, 'tests/visual-qa'),
+  testDir: path.join(__dirname, 'tests'),
   timeout: 120000,
   expect: { timeout: 10000 },
   fullyParallel: false,
@@ -16,7 +16,7 @@ module.exports = defineConfig({
   use: {
     baseURL: process.env.QA_BASE_URL || 'http://127.0.0.1:3000',
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    screenshot: 'off',
     video: 'retain-on-failure',
   },
 });

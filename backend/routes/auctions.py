@@ -95,6 +95,7 @@ async def list_auctions(request: Request, response: Response):
             a.get("image_urls") or [],
             a.get("image_url") or "",
         )
+        enrich_auction_visual_image_data(a)
         if a.get("status") == "active" and a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -133,6 +134,7 @@ async def get_active_auctions():
             a.get("image_urls") or [],
             a.get("image_url") or "",
         )
+        enrich_auction_visual_image_data(a)
         if a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -166,6 +168,7 @@ async def list_all_auctions(status: str = None, limit: int = 100):
             a.get("image_urls") or [],
             a.get("image_url") or "",
         )
+        enrich_auction_visual_image_data(a)
         if a.get("status") == "active" and a.get("ends_at"):
             try:
                 ends = datetime.fromisoformat(a["ends_at"])
@@ -499,6 +502,7 @@ async def get_auction(auction_id: str, request: Request):
         auction.get("image_urls") or [],
         auction.get("image_url") or "",
     )
+    enrich_auction_visual_image_data(auction)
 
     if auction.get("status") == "active" and auction.get("ends_at"):
         try:
@@ -1392,6 +1396,120 @@ def resolve_product_gallery(title: str, image_urls: list | None = None, image_ur
             candidates.remove(primary)
         candidates.insert(0, primary)
     return candidates[:4]
+
+
+def infer_product_image_profile(title: str = "", category: str = "") -> str:
+    text = f"{title} {category}".lower()
+    if any(token in text for token in ["e-bike", "ebike", "vanmoof", "cowboy", "stromer", "bike"]):
+        return "e-bike"
+    if any(token in text for token in ["macbook", "laptop", "notebook", "xps", "surface"]):
+        return "laptop"
+    if any(token in text for token in ["roborock", "roomba", "robot", "vacuum"]):
+        return "robot-vacuum"
+    if any(token in text for token in ["iphone", "galaxy", "pixel", "smartphone", "phone"]):
+        return "smartphone"
+    if any(token in text for token in ["tv", "television", "oled", "monitor"]):
+        return "television"
+    if any(token in text for token in ["playstation", "xbox", "switch", "console"]):
+        return "gaming-console"
+    if any(token in text for token in ["coffee", "appliance", "washer", "dryer"]):
+        return "household-appliance"
+    return (category or "general").lower()
+
+
+def classify_image_reference(value: str = "") -> str:
+    text = (value or "").lower()
+    if any(token in text for token in ["motorcycle", "motorbike", "harley", "yamaha", "honda"]):
+        return "motorcycle"
+    if any(token in text for token in ["bike", "bicycle", "ebike", "e-bike", "vanmoof", "cowboy", "stromer"]):
+        return "e-bike"
+    if any(token in text for token in ["macbook", "laptop", "notebook", "surface", "xps"]):
+        return "laptop"
+    if any(token in text for token in ["roborock", "roomba", "robot", "vacuum"]):
+        return "robot-vacuum"
+    if any(token in text for token in ["iphone", "galaxy", "pixel", "smartphone", "phone"]):
+        return "smartphone"
+    if any(token in text for token in ["television", "tv", "oled", "monitor"]):
+        return "television"
+    if any(token in text for token in ["playstation", "xbox", "switch", "console"]):
+        return "gaming-console"
+    if any(token in text for token in ["coffee", "appliance", "washer", "dryer"]):
+        return "household-appliance"
+    return "product"
+
+
+def get_verified_gallery_for_profile(profile: str) -> list[str]:
+    galleries = {
+        "e-bike": EBIKE_GALLERY,
+        "laptop": LAPTOP_GALLERY,
+        "robot-vacuum": ROBOT_GALLERY,
+        "smartphone": SMARTPHONE_GALLERY,
+        "television": MONITOR_GALLERY,
+        "gaming-console": [],
+        "household-appliance": [],
+    }
+    return galleries.get(profile, [])
+
+
+def enrich_auction_visual_image_data(auction: dict) -> dict:
+    title = auction.get("title", "")
+    profile = infer_product_image_profile(title, auction.get("category", ""))
+    verified_gallery = get_verified_gallery_for_profile(profile)
+    raw_gallery = [auction.get("image_url", ""), *(auction.get("image_urls") or [])]
+    gallery = [url for url in raw_gallery if url]
+    visible_urls: list[str] = []
+    removed_urls: list[str] = []
+    manual_review_required = False
+
+    for url in gallery:
+        detected = classify_image_reference(f"{title} {url}")
+        forbidden_high_confidence = profile == "e-bike" and detected == "motorcycle"
+        if forbidden_high_confidence:
+            removed_urls.append(url)
+            continue
+        if profile in {"e-bike", "laptop", "robot-vacuum", "smartphone", "television", "gaming-console", "household-appliance"} and detected not in {"product", profile}:
+            manual_review_required = True
+        if url not in visible_urls:
+            visible_urls.append(url)
+
+    for fallback_url in verified_gallery:
+        if len(visible_urls) >= 4:
+            break
+        if fallback_url and fallback_url not in visible_urls:
+            visible_urls.append(fallback_url)
+
+    visible_urls = visible_urls[:4]
+    primary_url = visible_urls[0] if visible_urls else auction.get("image_url", "")
+    primary_verified = primary_url in verified_gallery if primary_url else False
+    primary_confidence = 0.99 if primary_verified else (0.78 if manual_review_required else 0.91)
+
+    gallery_meta = []
+    for url in visible_urls:
+        verified = url in verified_gallery if verified_gallery else not manual_review_required
+        confidence = 0.99 if verified else (0.74 if manual_review_required else 0.9)
+        gallery_meta.append({
+            "productId": auction.get("auction_id") or auction.get("id") or "unknown",
+            "productTitle": title,
+            "productCategory": profile,
+            "imageCategory": classify_image_reference(f"{title} {url}"),
+            "imageUrl": url,
+            "verified": verified,
+            "confidence": confidence,
+        })
+
+    auction["image_url"] = primary_url
+    auction["image_urls"] = visible_urls
+    auction["product_id"] = auction.get("auction_id") or auction.get("id") or "unknown"
+    auction["product_title"] = title
+    auction["product_category"] = profile
+    auction["image_category"] = classify_image_reference(f"{title} {primary_url}")
+    auction["image_source"] = "verified-gallery" if primary_verified else "catalog"
+    auction["image_verified"] = primary_verified
+    auction["image_confidence"] = primary_confidence
+    auction["image_manual_review_required"] = manual_review_required
+    auction["image_removed_urls"] = removed_urls
+    auction["image_gallery_meta"] = gallery_meta
+    return auction
 
 import json
 import os

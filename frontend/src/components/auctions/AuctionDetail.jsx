@@ -17,10 +17,10 @@ import { KYC_DISABLED } from "../../config/testMode";
 import { MoneyAmount } from "../design/MoneyAmount";
 import { ProductImageGallery } from "../design/ProductImageGallery";
 
-function localizeCondition(condition) {
+function localizeCondition(condition, t) {
   return String(condition || "Neu · Original versiegelt")
-    .replace(/Brand New/gi, "Neu")
-    .replace(/Factory Sealed/gi, "Original versiegelt")
+    .replace(/Brand New/gi, t("auction.condition_new_short"))
+    .replace(/Factory Sealed/gi, t("auction.condition_factory_sealed_short"))
     .replace(/\s+—\s+/g, " · ");
 }
 
@@ -149,8 +149,8 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
   const isLeading = isActive && auction.last_bidder_id === user?.id;
   const isOutbid = isActive && auction.last_bidder_id && auction.last_bidder_id !== user?.id && bids.some(b => b.user_id === user?.id || b.user_name === user?.name);
   const savePct = auction.retail_price > 0 ? Math.round(((auction.retail_price - auction.current_price) / auction.retail_price) * 100) : 0;
-  const logisticsLabel = auction.category === "marine" ? "Übergabe nach Absprache" : "Weltweiter Versand";
-  const conditionLabel = localizeCondition(auction.condition);
+  const logisticsLabel = auction.category === "marine" ? t("auction.shipping_pickup") : t("auction.shipping_worldwide_free");
+  const conditionLabel = localizeCondition(auction.condition, t);
 
   return (
     <motion.div className="min-h-screen" style={{ background: "#040610" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} data-testid="auction-detail" data-scroll-page="true">
@@ -159,11 +159,14 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
         <ProductImageGallery
           title={auction.title || ''}
           images={galleryImages}
-          productCategory={auction.category || 'general'}
+          productId={auction.product_id || auction.auction_id}
+          productCategory={auction.product_category || auction.category || 'general'}
           productSubcategory={auction.category || 'general'}
-          imageCategory={auction.category || 'product'}
-          imageSource="auction-gallery"
-          imageVerified
+          imageCategory={auction.image_category || auction.category || 'product'}
+          imageSource={auction.image_source || 'auction-gallery'}
+          imageVerified={auction.image_verified !== false}
+          imageConfidence={auction.image_confidence ?? 0.9}
+          manualReviewRequired={auction.image_manual_review_required === true}
           className="relative"
           testId="auction-detail-gallery"
         />
@@ -229,8 +232,8 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-white/[0.03]">
-            <div className="flex items-center gap-1"><Gavel size={9} className="text-[#B068FF]" /><span className="text-[9px] text-white/40">{auction.total_bids} Gebote</span></div>
-            <div className="flex items-center gap-1"><Users size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">{uniqueBidders} Bieter</span></div>
+            <div className="flex items-center gap-1"><Gavel size={9} className="text-[#B068FF]" /><span className="text-[9px] text-white/40">{auction.total_bids} {t("auction.bids_label")}</span></div>
+            <div className="flex items-center gap-1"><Users size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">{uniqueBidders} {t("auction.bidders_label")}</span></div>
             <div className="flex items-center gap-1"><TrendingUp size={9} className="text-[#00E89D]" /><span className="text-[9px] text-white/40">+0.01</span></div>
             <div className="flex items-center gap-1"><Clock size={9} className="text-[#FFD166]" /><span className="text-[9px] text-white/40">+10s</span></div>
           </div>
@@ -332,7 +335,7 @@ export default function AuctionDetail({ auctionId, onBack, isGuest, onAuthRequir
             </div>
             <span className="text-[8px] text-[#333]">{bids.length}</span>
           </div>
-          <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.02] ${glass}`} style={{ background: panelBg, border: panelBorder }}>
+          <div className={`rounded-2xl overflow-hidden divide-y divide-white/[0.02] ${glass}`} style={{ background: panelBg, border: panelBorder }} data-testid="auction-bid-history">
             {bids.length === 0 ? (
               <div className="py-8 text-center"><Gavel size={16} className="text-white/5 mx-auto mb-2" /><p className="text-[10px] text-[#333]">{t("auction.no_bids_yet")}</p></div>
             ) : bids.slice(0, 12).map((b, i) => <BidRow key={`bid-${b.bid_id || `fb-${i}`}`} bid={b} isLatest={i === 0} />)}

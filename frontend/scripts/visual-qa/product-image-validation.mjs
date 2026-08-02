@@ -1,72 +1,65 @@
-import path from 'path';
-import { outputDir, deriveVisualQaUrl, getQaBaseUrl, postJson, readJson, writeJson } from './shared.mjs';
+import { ensureOutputDir, productImageReportPath, rawAuditPath, readJson, routeFileMap, sanitizeIssue, writeJson } from './shared.mjs';
 
-const baseURL = getQaBaseUrl();
-if (!baseURL) {
-  writeJson(path.join(outputDir, 'product-image-validation.json'), { generated_at: new Date().toISOString(), validation_mode: 'skipped', results: [] });
-  console.log('QA_BASE_URL missing, product image validation skipped.');
-  process.exit(0);
-}
-
-const response = await fetch(`${baseURL}/api/auctions`);
-const data = await response.json();
-const auctions = data?.auctions || [];
-
-const categoryRules = {
-  mobility: { expected: ['bike', 'scooter', 'ebike', 'stromer', 'vanmoof', 'cowboy'], forbidden: ['motorcycle', 'car', 'truck'] },
-  laptops: { expected: ['laptop', 'macbook', 'notebook', 'surface'], forbidden: ['motorcycle', 'car', 'vacuum'] },
-  robots: { expected: ['robot', 'roomba', 'roborock', 'vacuum'], forbidden: ['car', 'motorcycle', 'laptop'] },
-  gaming: { expected: ['gaming', 'console', 'monitor', 'playstation', 'xbox', 'switch'], forbidden: ['bike', 'vacuum'] },
+const raw = readJson(rawAuditPath, { results: [] });
+const rules = {
+  'e-bike': { allowed: ['e-bike'], forbidden: ['motorcycle'] },
+  laptop: { allowed: ['laptop'], forbidden: ['motorcycle', 'robot-vacuum', 'e-bike'] },
+  'robot-vacuum': { allowed: ['robot-vacuum'], forbidden: ['motorcycle', 'laptop', 'e-bike'] },
+  smartphone: { allowed: ['smartphone'], forbidden: ['robot-vacuum', 'e-bike'] },
+  television: { allowed: ['television'], forbidden: ['robot-vacuum', 'e-bike'] },
+  'gaming-console': { allowed: ['gaming-console'], forbidden: ['robot-vacuum', 'e-bike'] },
+  'household-appliance': { allowed: ['household-appliance', 'robot-vacuum'], forbidden: ['motorcycle'] },
 };
 
-const heuristicResults = auctions.slice(0, 80).flatMap((auction) => {
-  const rules = categoryRules[auction.category] || null;
-  if (!rules) return [];
-  const urls = [auction.image_url, ...(auction.image_urls || [])].filter(Boolean);
-  return urls.map((url) => {
-    const normalized = `${auction.title} ${url}`.toLowerCase();
-    const hasExpected = rules.expected.some((token) => normalized.includes(token));
-    const hasForbidden = rules.forbidden.some((token) => normalized.includes(token));
-    const mismatch = hasForbidden || !hasExpected;
-    return {
-      product_id: auction.id || auction.auction_id || auction._id || 'unknown',
-      title: auction.title,
-      incorrect_image_url: url,
-      expected_category: auction.category,
-      confidence: mismatch ? (hasForbidden ? 0.96 : 0.72) : 0.12,
-      suggested_replacement: mismatch && hasForbidden ? 'Review category-aligned gallery asset with high confidence.' : '',
-      match_status: mismatch ? 'mismatch' : 'match',
-      validation_mode: 'heuristic',
-    };
-  });
-});
+const issues = [];
 
-let validationMode = 'heuristic';
-let results = heuristicResults;
-
-try {
-  const endpoint = deriveVisualQaUrl(process.env.QA_PRODUCT_VALIDATION_URL, '/api/visual-qa/product-image-validate');
-  if (endpoint) {
-    const products = auctions.slice(0, 30).map((auction) => ({
-      auction_id: auction.id || auction.auction_id || auction._id || 'unknown',
-      title: auction.title || '',
-      category: auction.category || '',
-      image_url: auction.image_url || '',
-      image_urls: [auction.thumbnail_url, ...(auction.image_urls || [])].filter(Boolean),
-    }));
-    const aiResponse = await postJson(endpoint, { products });
-    if (aiResponse.ok) {
-      const payload = await aiResponse.json();
-      const aiResults = payload?.results || [];
-      if (aiResults.length > 0) {
-        validationMode = 'ai+heuristic';
-        results = aiResults;
-      }
+for (const entry of raw.results || []) {
+  for (const image of entry.image_references || []) {
+    const productCategory = image.productCategory || '';
+    const imageCategory = image.imageCategory || '';
+    const rule = rules[productCategory];
+    if (!rule) continue;
+    const confidence = Number(image.confidence || 0.7);
+    const wrongWithHighConfidence = rule.forbidden.includes(imageCategory) && confidence >= 0.9;
+    const uncertain = !wrongWithHighConfidence && imageCategory && !rule.allowed.includes(imageCategory);
+    if (wrongWithHighConfidence) {
+      issues.push(sanitizeIssue({
+        issue_id: `${entry.route_key}-${entry.viewport}-wrong-image-${issues.length}`,
+        severity: 'high',
+        category: 'wrong_image',
+        route: entry.route,
+        viewport: entry.viewport,
+        problem: `Wrong product image detected for ${image.productTitle || productCategory}: ${imageCategory}`,
+        root_cause: 'Sichtbare Galerie enthält ein klar falsches Produktbild für die Kategorie.',
+        affected_component: image.productTitle || 'product-image',
+        suggested_fix: 'Falsches Bild aus der sichtbaren Galerie entfernen und verifiziertes Bild derselben Produktfamilie verwenden.',
+        changed_file: routeFileMap(entry.route, 'wrong_image'),
+        safe_to_auto_fix: true,
+        confidence,
+        before_screenshot: entry.screenshot,
+      }));
+    }
+    if (uncertain || image.manualReview === 'true') {
+      issues.push(sanitizeIssue({
+        issue_id: `${entry.route_key}-${entry.viewport}-manual-image-${issues.length}`,
+        severity: 'medium',
+        category: 'wrong_image',
+        route: entry.route,
+        viewport: entry.viewport,
+        status: 'Manual review',
+        problem: `Image match for ${image.productTitle || productCategory} is uncertain and needs manual review.`,
+        root_cause: 'Bildkategorie konnte nicht mit hoher Sicherheit bestätigt werden.',
+        affected_component: image.productTitle || 'product-image',
+        suggested_fix: 'Kein automatischer Austausch — Bild manuell bestätigen oder ersetzen.',
+        changed_file: routeFileMap(entry.route, 'wrong_image'),
+        safe_to_auto_fix: false,
+        confidence,
+        before_screenshot: entry.screenshot,
+      }));
     }
   }
-} catch (error) {
-  validationMode = 'heuristic-fallback';
 }
 
-writeJson(path.join(outputDir, 'product-image-validation.json'), { generated_at: new Date().toISOString(), validation_mode: validationMode, results });
-console.log(`Product image validation finished for ${results.length} image references (${validationMode}).`);
+ensureOutputDir();
+writeJson(productImageReportPath, { generated_at: new Date().toISOString(), issues });
+console.log(`Product image validation report written with ${issues.length} issues.`);

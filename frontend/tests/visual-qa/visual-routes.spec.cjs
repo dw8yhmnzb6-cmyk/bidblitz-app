@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { test } = require('@playwright/test');
+const { test } = require('playwright/test');
 
 const OUTPUT_DIR = path.join(__dirname, '../../qa-output');
 const SHOTS_DIR = path.join(OUTPUT_DIR, 'screenshots');
