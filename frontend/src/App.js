@@ -283,7 +283,6 @@ const LiveAuctionsPage = lazy(() => import("./pages/LiveAuctionsPage"));
 const SocialHubPage = lazy(() => import("./pages/SocialHubPage"));
 const BlitzLearnPage = lazy(() => import("./pages/BlitzLearnPage"));
 const BlitzHubPage = lazy(() => import("./pages/BlitzHubPage"));
-const LeaderboardPage = lazy(() => import("./pages/ExtraFeatures"));
 const GlobalSearch = lazy(() => import("./pages/ExtraFeatures"));
 const OnboardingTour = lazy(() => import("./pages/ExtraFeatures"));
 const CityServicesPage = lazy(() => import("./pages/CityServicesPage"));
@@ -1219,7 +1218,7 @@ function AppContent() {
       case "/blitzhub":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <BlitzHubPage onBack={() => handleNavigate("/more")} />;
       case "/leaderboard":
-        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <LeaderboardPage onBack={() => handleNavigate("/more")} />;
+        return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <MorePage {...pageProps} initialPanel="discover" />;
       case "/city":
         return (isGuest && !isDemoMode) ? <HomePage {...homeProps} /> : <CityServicesPage onBack={() => handleNavigate("/more")} />;
       case "/blitzpay":

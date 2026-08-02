@@ -504,7 +504,7 @@ export default function MerchantPosSimplePage({ onBack, onNavigate }) {
           </aside>
         </div>
 
-        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] z-[65] px-3 md:hidden" data-testid="merchant-pos-mobile-sticky-bar">
+        <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.25rem)] z-[120] px-3 md:hidden" data-testid="merchant-pos-mobile-sticky-bar">
           <div className="rounded-[24px] border border-white/10 bg-[#071019]/95 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">

@@ -647,7 +647,7 @@ const SettingsView = ({ onBack, onNavigate, t, locale, setLocale, onOpenPassword
 };
 
 // ── Main More Page ──
-export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, forceKycUnlocked = false }) => {
+export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDemoMode, onAuthRequired, onLogin, onRegister, onStartDemo, forceKycUnlocked = false, initialPanel = "main" }) => {
   const user = useUser();
   const { refreshUser } = user;
   const { t, lang: locale, setLang: setLocale } = useI18n();
@@ -666,6 +666,14 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   const [unreadCount, setUnreadCount] = useState(0);
   const [driverAccess, setDriverAccess] = useState(null);
   const [search, setSearch] = useState("");
+  const [activePanel, setActivePanel] = useState(() => {
+    try {
+      return localStorage.getItem("more_active_panel") || initialPanel;
+    } catch (error) {
+      void error;
+      return initialPanel;
+    }
+  });
   const [openGroups, setOpenGroups] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("more_open_groups") || "null");
@@ -691,6 +699,18 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
       api.getNotifications(true).then(d => setUnreadCount(d.unread_count || 0)).catch(() => {});
     }
   }, [isGuest]);
+
+  useEffect(() => {
+    setActivePanel(initialPanel || "main");
+  }, [initialPanel]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("more_active_panel", activePanel);
+    } catch (error) {
+      void error;
+    }
+  }, [activePanel]);
 
   // Driver eligibility — determines if Driver-Modus entry is visible
   useEffect(() => {
@@ -851,7 +871,6 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     { id: "user-stats", icon: BarChart3, label: "Meine Statistiken", desc: "Verdienst, Aktivitäten, Trends", color: "#22C55E", action: gatedAction(() => onNavigate("/user-stats")), roles: ["all"] },
     { id: "blitzlearn", icon: Star, label: "BlitzLearn", desc: "Skills lernen & unterrichten", color: "#3B82F6", action: gatedAction(() => onNavigate("/blitzlearn")), roles: ["all"] },
     { id: "blitzhub", icon: Zap, label: "BlitzHub", desc: "Karten, Battles, Boxen, KYC", color: "#F97316", action: gatedAction(() => onNavigate("/blitzhub")), roles: ["all"] },
-    { id: "leaderboard", icon: Trophy, label: "Rangliste", desc: "Top Sparer, Gamer & Verdiener", color: "#FFD700", action: gatedAction(() => onNavigate("/leaderboard")), roles: ["all"] },
     { id: "city", icon: MapPin, label: "City Services", desc: "Parken, Tickets, Deals, BNPL", color: "#EF4444", action: gatedAction(() => onNavigate("/city")), roles: ["all"] },
     { id: "blitzpay", icon: Wifi, label: "BlitzPay NFC", desc: "Kontaktlos bezahlen mit Wallet", color: "#06B6D4", action: gatedAction(() => onNavigate("/blitzpay")), roles: ["all"] },
     { id: "crypto-earn", icon: Coins, label: "Crypto Earn", desc: "Zinsen verdienen auf Coins", color: "#F59E0B", action: gatedAction(() => onNavigate("/crypto-earn")), roles: ["all"] },
@@ -999,6 +1018,23 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
     ...(adminMenu.length ? [{ id: "admin", title: "Admin", color: "#F97316", items: adminMenu }] : []),
   ].filter((g) => g.items && g.items.length > 0);
 
+  const PANEL_DEFINITIONS = [
+    {
+      id: "main",
+      label: { de: "Seite 1", en: "Page 1", sq: "Faqja 1", ar: "الصفحة 1" },
+      title: { de: "Wichtig", en: "Important", sq: "Kryesore", ar: "مهم" },
+      hint: { de: "Wallet, Handel, Mobilität und Einstellungen", en: "Wallet, commerce, mobility and settings", sq: "Wallet, tregti, lëvizshmëri dhe cilësime", ar: "المحفظة والتجارة والتنقل والإعدادات" },
+      groupIds: ["quick", "mobility", "finance", "account"],
+    },
+    {
+      id: "discover",
+      label: { de: "Seite 2", en: "Page 2", sq: "Faqja 2", ar: "الصفحة 2" },
+      title: { de: "Mehr entdecken", en: "Discover more", sq: "Zbulo më shumë", ar: "اكتشف المزيد" },
+      hint: { de: "Auktionen, Mining, Rewards, Support und weitere Extras", en: "Auctions, mining, rewards, support and more extras", sq: "Ankande, mining, shpërblime, suport dhe më shumë", ar: "مزادات وتعدين ومكافآت ودعم ومزيد من الإضافات" },
+      groupIds: ["growth", "app", "support", "legal", ...(adminMenu.length ? ["admin"] : [])],
+    },
+  ];
+
   const PRE_KYC_ALLOWED_IDS = new Set([
     "profile",
     "notifications-settings",
@@ -1037,15 +1073,19 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
   };
 
   const searchNorm = search.trim().toLowerCase();
+  const currentPanel = PANEL_DEFINITIONS.find((panel) => panel.id === activePanel) || PANEL_DEFINITIONS[0];
+  const panelGroupIds = new Set(currentPanel.groupIds);
+  const panelGroups = visibleGroups.filter((group) => panelGroupIds.has(group.id));
+
   const filteredGroups = searchNorm
-    ? visibleGroups.map((g) => ({
+    ? panelGroups.map((g) => ({
         ...g,
         items: g.items.filter((it) =>
           (localizeText(it.label) || "").toLowerCase().includes(searchNorm) ||
           (localizeText(it.desc) || "").toLowerCase().includes(searchNorm)
         ),
       })).filter((g) => g.items.length > 0)
-    : visibleGroups;
+    : panelGroups;
 
   const renderGridGroups = () => (
     <div className="space-y-3">
@@ -1260,8 +1300,60 @@ export const MorePage = ({ onNavigate, kidsReturn, onKidsHandled, isGuest, isDem
           )}
         </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="mb-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3"
+          data-testid="more-panel-switcher"
+        >
+          <div className="grid grid-cols-2 gap-2">
+            {PANEL_DEFINITIONS.map((panel) => {
+              const active = panel.id === activePanel;
+              return (
+                <button
+                  key={panel.id}
+                  onClick={() => setActivePanel(panel.id)}
+                  className={`min-h-12 rounded-2xl border px-3 py-3 text-left transition ${active ? "border-cyan-400/25 bg-cyan-400/10 text-white" : "border-white/[0.05] bg-white/[0.02] text-white/65"}`}
+                  data-testid={`more-panel-button-${panel.id}`}
+                >
+                  <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[#82E7FF]">{localizeText(panel.label)}</div>
+                  <div className="mt-1 text-sm font-bold">{localizeText(panel.title)}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 rounded-2xl border border-white/[0.05] bg-[#071019] p-3" data-testid="more-panel-hint-card">
+            <div className="text-sm font-black text-white">{localizeText(currentPanel.title)}</div>
+            <p className="mt-1 text-[11px] text-white/60">{localizeText(currentPanel.hint)}</p>
+          </div>
+        </motion.div>
+
         {/* ── Menu Groups (Accordion + Grid) ── */}
         {renderGridGroups()}
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-3 grid grid-cols-2 gap-2"
+          data-testid="more-panel-footer-nav"
+        >
+          <button
+            onClick={() => setActivePanel("main")}
+            className={`min-h-12 rounded-2xl border px-4 py-3 text-sm font-bold transition ${activePanel === "main" ? "border-cyan-400/25 bg-cyan-400/10 text-white" : "border-white/[0.05] bg-white/[0.02] text-white/65"}`}
+            data-testid="more-footer-main-button"
+          >
+            {localizeText(PANEL_DEFINITIONS[0].title)}
+          </button>
+          <button
+            onClick={() => setActivePanel("discover")}
+            className={`min-h-12 rounded-2xl border px-4 py-3 text-sm font-bold transition ${activePanel === "discover" ? "border-cyan-400/25 bg-cyan-400/10 text-white" : "border-white/[0.05] bg-white/[0.02] text-white/65"}`}
+            data-testid="more-footer-discover-button"
+          >
+            {localizeText(PANEL_DEFINITIONS[1].title)}
+          </button>
+        </motion.div>
 
         {/* ── Logout / Sign In ── */}
         {isGuest ? (
