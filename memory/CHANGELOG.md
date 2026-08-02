@@ -1,5 +1,12 @@
 # BidBlitz — CHANGELOG
 
+## 02.08.2026 — Mehr-Seite in 2 Bereiche geteilt, Rangliste entfernt, POS-Härtung verifiziert
+- Die bisherige sichtbare **Rangliste** wurde aus der Nutzerführung entfernt. Auf der Mehr-Seite existiert **kein eigener Ranglisten-Eintrag** mehr.
+- `frontend/src/pages/MorePage.jsx` wurde in eine klarere **2-Seiten-Logik** umgebaut: **Seite 1 = Wichtig** (z. B. Wallet/Handel/Mobilität/Einstellungen), **Seite 2 = Mehr entdecken** mit ausgelagerten Bereichen wie **Auktionen, Mining, Rewards, Support und weiteren Extras**.
+- Die Route **`/leaderboard`** zeigt jetzt bewusst **nicht mehr** die alte Ranglisten-Ansicht, sondern öffnet die neue Mehr-Erlebniswelt direkt mit aktivierter **zweiter Seite**. `frontend/src/App.js` wurde dafür angepasst.
+- Zusätzlich wurde die mobile POS-Checkout-Leiste höher geschichtet (`MerchantPosSimplePage.jsx`), damit der Warenkorb-Button nicht mehr von der Bottom-Navigation überlagert wird.
+- Verifiziert: Browser-Smokes **PASS** für `/more` und `/leaderboard`, Frontend-Testing-Agent **PASS** für die neue Zwei-Seiten-Navigation. Bereits zuvor verifiziert: **Testing Agent Iteration 314 PASS** für die neue POS-/Customer-Display-Härtung. **MOCKED:** POS-E-Mail-Beleg bleibt aktuell **MOCKED**; Tap-to-Pay bleibt absichtlich inaktiv ohne zertifizierten Provider.
+
 ## 02.08.2026 — Final BidBlitz Completion Phase: Master Roadmap Control Center
 - Neue Admin-Steuerzentrale **`/admin/master-roadmap`** gebaut. Sie zeigt jetzt **8 Abschlussphasen**, **P0 Launch Blockers**, **Release Gates**, **Feature Registry**, **Launch Readiness**, **CEO/Executive View**, **Wallet-/Environment-/Version-Parity-Diagnosen** und einen ehrlichen **Final Acceptance Report**.
 - Neue restriktive Investor-Route **`/investors/progress`** ergänzt. Diese Ansicht zeigt nur freigegebene Fortschrittsdaten und blendet **Kundendaten, Credentials, Sicherheitsdetails, Quellcode und offene Schwachstellen** aus.

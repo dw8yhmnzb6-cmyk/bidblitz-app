@@ -1,5 +1,14 @@
 # BidBlitz — ROADMAP
 
+## Status nach Mehr-Seiten-Split / Rangliste entfernt — 02.08.2026
+- ✅ Die sichtbare **Rangliste** ist aus der aktiven More-Navigation entfernt.
+- ✅ Die Mehr-Seite ist jetzt in **2 Bereiche** aufgeteilt: **Seite 1 = Wichtig**, **Seite 2 = Mehr entdecken**.
+- ✅ Inhalte wie **Auktionen, Mining, Rewards und weitere Extras** sind jetzt sauber auf **Seite 2** verschoben.
+- ✅ Die Route **`/leaderboard`** zeigt nicht mehr die alte Ranglisten-UI, sondern führt direkt in die neue zweite Mehr-Seite.
+- ✅ Browser-Smoke **PASS** und Frontend-Testagent **PASS** für die neue Navigation ohne sichtbaren Ranglisten-Eintrag.
+- 🔴 Nächster sinnvoller Schritt: die neue Mehr-Struktur weiter kürzen und pro Seite noch stärker nach **Kernaktionen vs. Entdecken** sortieren, damit die zweite Seite nicht erneut überfrachtet.
+- 🟡 Parallel offen: die alte ungenutzte Ranglisten-Komponente `ExtraFeatures.jsx` später technisch bereinigen oder in reine Search-/Onboarding-Helferdatei aufteilen.
+
 ## Status nach Final BidBlitz Completion Phase / Master Roadmap Control Center — 02.08.2026
 - ✅ Neue offizielle Abschlusszentrale **`/admin/master-roadmap`** ist live und testverifiziert.
 - ✅ Enthalten: **8 Phasen**, **P0 Launch Blockers**, **Release Gates**, **Feature Registry**, **Launch Readiness**, **CEO View**, **Wallet-/Environment-/Version-Diagnosen** und **Final Acceptance Report**.
